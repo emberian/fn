@@ -5,7 +5,7 @@
 (include-book "../../books/bp-node-debt-cache-invariants")
 (include-book "../../books/codec-attach")
 (include-book "bp-node-debt-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpndc-record*
   (fn-bpn-nth 4
@@ -49,7 +49,7 @@
 ; hypothetical delivered row/debt that the conclusion would require.
 (assert-event
  (not (car (mv-list 3 (fn-bpah-apply-delivery *bpndc-record* nil)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal
    (fn-bpnd-held-list-debt
@@ -133,7 +133,7 @@
 ; Dropping the :restart-ready premise would replace the physical count by
 ; the one corrupt observed name even though the live cache remains at two.
 (assert-event (equal (fn-bpn-nth 5 *bpndc-fault-event*) 1))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnp-used (fn-bpnf-answer-state *bpndc-fault*))
          (fn-bpn-nth 5 *bpndc-fault-event*))))

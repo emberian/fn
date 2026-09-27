@@ -1,7 +1,7 @@
 ; Teeth for books/post-identity-index.lisp (PRF-191).
 (in-package "ACL2")
 (include-book "../../books/post-identity-index")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-prepare-carried-tests")
 
 ; -----------------------------------------------------------------------------
@@ -108,7 +108,7 @@
                    (not (equal (fn-pidx-find-article *pit-fresh* *pit-arts*
                                                      *pit-bad-visible-view*)
                                (fn-find-article *pit-fresh* *pit-arts*)))))
-(must-fail
+(must-fail-checked
  (defthm pit-find-without-visible
    (equal (fn-pidx-find-article *pit-fresh* *pit-arts* *pit-bad-visible-view*)
           (fn-find-article *pit-fresh* *pit-arts*))))
@@ -126,7 +126,7 @@
                    (not (equal (fn-pidx-find-article *pit-fresh* *pit-arts*
                                                      *pit-bad-index-view*)
                                (fn-find-article *pit-fresh* *pit-arts*)))))
-(must-fail
+(must-fail-checked
  (defthm pit-find-without-index
    (equal (fn-pidx-find-article *pit-fresh* *pit-arts* *pit-bad-index-view*)
           (fn-find-article *pit-fresh* *pit-arts*))))
@@ -204,6 +204,21 @@
       (null (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-o*))
       (null (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
 
+; PRF-191's keystone, literally, at the reached owner (audit-fixes item 1):
+; both view hypotheses hold and the host's decision equals
+; fn-store-existing-action over the same arena for all three answers.
+; (fn-octets-p fn-octets) is the stobj's recognizer: no executable buffer
+; violates it, so no removal witness is claimed for it.
+(assert-event
+ (and (fn-ocl-view-visiblep (fn-own-view *pit-o*))
+      (fn-scar-view-indexedp *pit-o*)
+      (equal (pit-existing *pit-held* *pit-payload* *pit-groups* *pit-o*)
+             (pit-store-existing *pit-held* *pit-payload* *pit-groups* *pit-store*))
+      (equal (pit-existing *pit-held* *pit-changed* *pit-groups* *pit-o*)
+             (pit-store-existing *pit-held* *pit-changed* *pit-groups* *pit-store*))
+      (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-o*)
+             (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
+
 ; Hypothesis removal (corrupted views, as above): the fresh Message-ID is
 ; answered :duplicate from the fake article where the Store holds none.
 (defconst *pit-bad-visible-o* (pit-owner-with-view *pit-o* *pit-bad-visible-view*))
@@ -219,11 +234,11 @@
       (not (fn-scar-view-indexedp *pit-bad-index-o*))
       (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-index-o*)
              :duplicate)))
-(must-fail
+(must-fail-checked
  (defthm pit-existing-without-visible
    (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-visible-o*)
           (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
-(must-fail
+(must-fail-checked
  (defthm pit-existing-without-index
    (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-index-o*)
           (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
@@ -317,11 +332,11 @@
       (equal *pit-bad-index-prepared* *pit-bad-index-oc*)
       (equal (pit-phase (fn-pcar-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100))
              :record-staged)))
-(must-fail
+(must-fail-checked
  (defthm pit-prepare-without-visible
    (equal (fn-pidx-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100)
           (fn-pcar-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100))))
-(must-fail
+(must-fail-checked
  (defthm pit-prepare-without-index
    (equal (fn-pidx-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100)
           (fn-pcar-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100))))
@@ -353,7 +368,7 @@
              *pit-bad-count-oc*)
       (equal (pit-phase (fn-pcar-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100))
              :record-staged)))
-(must-fail
+(must-fail-checked
  (defthm pit-prepare-without-indexed-store
    (equal (fn-pidx-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100)
           (fn-pcar-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100))))

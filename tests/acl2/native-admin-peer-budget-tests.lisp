@@ -4,7 +4,7 @@
 ; hypothesis showing the conclusion failing without it.
 (in-package "ACL2")
 (include-book "../../books/native-admin")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun napbt-argv (words)
   (if (consp words)
@@ -54,7 +54,7 @@
         (list 1048576 16 (list 10))))
 ; Without a budget: the rows of the plain peer decode to no budget.
 (assert-event (not (fn-pcb-budget-of-rows *napbt-plain*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-native-admin-peer-budget-decode
           (append (fn-native-admin-peer-budget-octets *napbt-plain*) (list 10)))
@@ -64,7 +64,7 @@
                (list 10)))))
 ; Without a non-digit tail: a digit after the count is read into it.
 (assert-event (fn-napb-digitp 55))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-native-admin-peer-budget-decode
           (append (fn-native-admin-peer-budget-octets *napbt-group*) (list 55 10)))
@@ -108,7 +108,7 @@
 (defconst *napbt-dirty*
   (append *napbt-group* (list (fn-cfg-row-make "far" "carries-principal" "a b" 0))))
 (assert-event (not (fn-native-admin-peer-extra-cleanp *napbt-dirty*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-native-admin-peer-extra-decode
           (append (fn-native-admin-peer-extra-octets *napbt-dirty*)

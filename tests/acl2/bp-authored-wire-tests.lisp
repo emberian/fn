@@ -1,7 +1,7 @@
 ; Reachable operation and hypothesis teeth for authored-wire publication.
 (in-package "ACL2")
 (include-book "../../books/bp-authored-wire")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defconst *bpaw-a* (cons :dtn '(47 47 102 110 45 97 47)))
@@ -46,7 +46,7 @@
  (not (fn-bpn-authored-wire-operationp
        (fn-bpn-authored-wire-authorize
         *bpaw-config* *bpaw-b* *bpaw-adu* *bpaw-reservation* *bpaw-obs* nil t))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-authored-wire-operationp
    (fn-bpn-authored-wire-authorize
@@ -56,7 +56,7 @@
  (not (fn-bpn-authored-wire-operationp
        (fn-bpn-authored-wire-authorize
         *bpaw-config* *bpaw-b* *bpaw-adu* *bpaw-reservation* *bpaw-obs* t nil))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-authored-wire-operationp
    (fn-bpn-authored-wire-authorize
@@ -68,7 +68,7 @@
  (not (fn-bpn-authored-wire-operationp
        (fn-bpn-authored-wire-authorize
         *bpaw-config* *bpaw-b* *bpaw-adu* 7 *bpaw-obs* t t))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-authored-wire-operationp
    (fn-bpn-authored-wire-authorize

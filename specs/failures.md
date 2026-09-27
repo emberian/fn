@@ -12,7 +12,7 @@ See the [store refinement contract](store-refinement.md) and the
 | --- | --- |
 | A-DURABILITY | A completed platform barrier preserves the named bytes and necessary namespace updates across a modeled crash. |
 | A-WRITE-ISOLATION | Later incomplete writes cannot damage previously durable committed storage outside the modeled write unit. The adapter/layout must establish that isolation. |
-| A-HOST | The adapter preserves event identity/order contracts, reports outcomes honestly, and does not mutate logical data behind the core. |
+| A-HOST | The adapter preserves event identity/order contracts, reports outcomes honestly, and does not mutate logical data behind the core. Constrained as `fn-assume-host-report` and `fn-assume-host-events` (`books/assumptions.lisp`); no theorem takes them as a hypothesis yet, so no row with events cites A-HOST (the citations were dropped, keystone audit 2026-09-27 G3-9). A row cites it again when a statement is over those functions. |
 | A-HOST-EXCLUSIVE-READ | While a store is open under its lock no other writer changes the files a range read covers, so the concatenation of range reads equals one whole-file read (P3; `books/assumptions.lisp`). |
 | A-CRYPTO-TRAILER | The tears the platform produces of a written frame are tears of the byte model, and none validates as a frame unless it is the exact write (`fn-assume-crash-tearp`, `fn-assume-crash-tear-never-validates-unless-exact`, `books/assumptions.lisp`). Qualification is statistical: a validating tear is a garbled region whose 32-octet trailer is the SHA-256 of its own prefix; the pessimistic figure is the collision bound, about 2^-128 per chosen pair (the record log, PRF-244). |
 | A-CRYPTO | Selected primitives meet the stated integrity/authentication assumptions for the deployment; no universal digest-injectivity axiom. |
@@ -22,6 +22,17 @@ See the [store refinement contract](store-refinement.md) and the
 | A-FAIRNESS | For liveness only: useful contacts, capacity, scheduling, retries, and permitted routes eventually occur as stated. |
 | A-BP-CONTACT | For liveness only: a base contact to a peer sustains `(fn-assume-bp-contact-asks peer)` of the driver's asks with its gate open, every publication it proposes answered within its ask (`books/assumptions.lisp`; the base-job-offer reading of A-FAIRNESS and A-BP-PERSIST, spec bp-node-machine 4.9). |
 | A-DURABLE-EXTENT | A durable file holds, at an extent the host durably wrote and never rewrites, the octets written there, and the host's extent realizer answers them: `fn-durable-octets`, `fn-durable-octet`, `fn-durable-realize-octet`, `fn-durable-realize-octets` (the whole payload in one read) (`books/assumptions.lisp`; the payload arena's extent handles, PRF-294; the commit's reseat after the log's barrier takes the faithful WRITE -- the file holds, at the entry's record position, the record the log wrote there -- as its hypothesis, PRF-309). A read that does not match the entry's recorded trailer is refused by name (`arena-extent-digest`), never served. |
+
+### fn obligations stated as constrained functions
+
+Not assumptions: properties fn proves of its own owner, stated as an
+`encapsulate` in `books/assumptions.lisp` so that a theorem is proved once
+over the obligation and each caller discharges it by functional
+instantiation. No registry row cites them as assumptions.
+
+| Obligation | Stated | Used by | Discharged by |
+| --- | --- | --- | --- |
+| `fn-assume-log-sole-pending-writer` | while the log recovers, no store operation but the segment's own writes is pending | `fn-lgk-recover-establishes-relation` (`books/store-log-recover.lisp`) | `fn-owb-recover-establishes-relation` (a related state, `books/owner-batch.lisp`, PRF-254). `fn-lgob-recovered-segment-fence-is-identity` (PRF-273) used it until 2026-09-27; its weakened statement needs only the segment's inode. |
 
 ## Crash-only storage model
 

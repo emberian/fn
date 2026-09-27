@@ -2,7 +2,7 @@
 ; the IHAVE/CHECK history test answered from the view trie.
 (in-package "ACL2")
 (include-book "../../books/owner-offer-indexed")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "peer-inbound-tests")
 (include-book "owner-served-carried-tests")
 
@@ -93,7 +93,7 @@
 (assert-event (not (fn-midx-correspondencep nil *pix-t-arts*)))
 (assert-event (null (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* nil *pix-t-arts*)))
 (assert-event (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-pix-history-hasp "<a1@example.invalid>" *pt-node1* nil *pix-t-arts*)
                       (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*))))
 ; At the step: the same session with the wrong trie takes the held article
@@ -101,7 +101,7 @@
 (assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>") nil *pix-t-arts*)
                      (list (pt-reply "335 send it; end with <CR-LF>.<CR-LF>")
                            (fn-nntp-begin-article-effect))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>") nil *pix-t-arts*)
                       (in-arena-pix-ref *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>")))))
 
@@ -119,7 +119,7 @@
 (assert-event (fn-midx-correspondencep (fn-midx-build nil) nil))
 (assert-event (equal (fn-state-articles (fn-node-acceptance *pix-t-orphan*)) nil))
 (assert-event (fn-peer-history-hasp "<orphan@example.invalid>" *pix-t-orphan*))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-pix-history-hasp "<orphan@example.invalid>" *pix-t-orphan* nil nil)
                       (fn-peer-history-hasp "<orphan@example.invalid>" *pix-t-orphan*))))
 
@@ -155,7 +155,7 @@
                (fn-own-facts *scar-t-o*) (fn-own-config *scar-t-o*)
                (fn-own-queue *scar-t-o*) (fn-own-inflight *scar-t-o*)
                (fn-own-feeds *scar-t-o*) (fn-own-node-secret *scar-t-o*) (fn-own-refused *scar-t-o*)))
-(must-fail (assert-event (fn-scar-view-indexedp *pix-t-bad-view-owner*)))
+(must-fail-checked (assert-event (fn-scar-view-indexedp *pix-t-bad-view-owner*)))
 
 ; -----------------------------------------------------------------------------
 ; The Message-ID lookup by index (books/msgid-index-concrete.lisp) on the

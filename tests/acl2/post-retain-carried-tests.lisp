@@ -10,7 +10,7 @@
 ; are R1 after a forwarding undertaking and then its release, applied by the
 ; Store's own retention transition (fn-replay-apply-retention-event).
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/post-retain-carried")
 (include-book "owner-prepare-carried-tests")
 
@@ -18,11 +18,13 @@
 (defconst *pit-oc* *pcar-t-oc*)
 (defconst *pit-record* *pcar-t-record*)
 ; Held rows (records flip), as owner-served-invariants-tests' osi-record-of.
+; Spelled exactly as post-identity-index-tests spells them, which this book
+; includes below (a second, different defun of the same name is refused).
+(defun pit-record-wire-under (msgid)
+  (fn-record-make 2 2 2 msgid (fn-own-sub-octets *osi-sub*) '("fn.letters")
+                  "own-pin:pit" "own-content:pit" "own-release:pit" 2 841000000))
 (defun pit-record-under (msgid)
-  (fn-hrt-row-at
-   (fn-record-make 2 2 2 msgid (fn-own-sub-octets *osi-sub*) '("fn.letters")
-                   "own-pin:pit" "own-content:pit" "own-release:pit" 2 841000000)
-   2))
+  (fn-hrt-row-at (pit-record-wire-under msgid) 2))
 ; "<one@example>" is held by the owner's node; "<fresh@example>" is not.
 (defconst *pit-dup-record* (pit-record-under "<one@example>"))
 (defconst *pit-fresh-record* (pit-record-under "<fresh@example>"))
@@ -171,7 +173,7 @@
       (equal *prct-bad-prepared* *pit-oc*)
       (equal (pit-phase (fn-pidx-sbud-prepare *pit-oc* *pit-fresh-record* 100))
              :record-staged)))
-(must-fail
+(must-fail-checked
  (defthm prct-prepare-without-carryp
    (equal (fn-prc-sbud-prepare *pit-oc* *pit-fresh-record* 100 *prct-bad-carry*)
           (fn-pidx-sbud-prepare *pit-oc* *pit-fresh-record* 100))
@@ -193,7 +195,7 @@
       (not (fn-prc-has "own-pin:pit" (cdr *prct-short-carry*)))
       (consp (fn-node-stage *prct-short-prepared*))
       (null (fn-node-stage (fn-sn-prepare-node *prct-node1* *prct-reuse-record*)))))
-(must-fail
+(must-fail-checked
  (defthm prct-sn-prepare-without-carryp
    (equal (fn-prc-sn-prepare-node *prct-node1* *prct-reuse-record*
                                   (fn-own-view *pit-o*) *prct-short-carry*)
@@ -326,3 +328,76 @@
       (eq (symbol-class 'fn-rit-put (w state)) :common-lisp-compliant)
       (equal (guard 'fn-prc-node-prepare nil (w state))
              (guard 'fn-node-prepare nil (w state)))))
+
+; -----------------------------------------------------------------------------
+; fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare: removal of each view
+; and index hypothesis (audit packet G2-P5, lane audit-fixes).  The CORRUPTED
+; owners are post-identity-index-tests' (no owner transition builds them):
+; a visible list holding a fake article, a trie holding it, and a Store
+; index claiming 100 records.  The carry is the host's refresh of a carry
+; with the recognizer (R0's), so fn-prc-carryp holds; in each the omitted
+; hypothesis alone fails, and the host's call (run raw, as the host runs it)
+; refuses the fresh record where fn-pcar-sbud-prepare stages it.
+(include-book "post-identity-index-tests")
+(defconst *prct-host-carry* (fn-prc-refresh *prct-carry0* *prct-r0*))
+(defun prct-refresh-hyps (oc)
+  (list (fn-prc-carryp *prct-carry0*)
+        (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
+        (fn-scar-view-indexedp (fn-ocfg-owner oc))
+        (fn-ceis-indexedp (fn-sbud-oc-store oc))))
+(make-event
+ `(defconst *prct-host-answers*
+    ',(with-guard-checking
+       :none
+       (list (fn-prc-sbud-prepare *pit-oc* *pit-fresh-record* 100 *prct-host-carry*)
+             (fn-prc-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100 *prct-host-carry*)
+             (fn-prc-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100 *prct-host-carry*)
+             (fn-prc-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100 *prct-host-carry*)))))
+; Positive (reachable owner): every hypothesis, and the equality.
+(assert-event
+ (and (equal (prct-refresh-hyps *pit-oc*) '(t t t t))
+      (equal (nth 0 *prct-host-answers*) (fn-pcar-sbud-prepare *pit-oc* *pit-fresh-record* 100))
+      (equal (pit-phase (nth 0 *prct-host-answers*)) :record-staged)))
+; Without fn-ocl-view-visiblep.
+(assert-event
+ (and (equal (prct-refresh-hyps *pit-bad-visible-oc*) '(t nil t t))
+      (not (equal (nth 1 *prct-host-answers*)
+                  (fn-pcar-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100)))))
+; Without fn-scar-view-indexedp.
+(assert-event
+ (and (equal (prct-refresh-hyps *pit-bad-index-oc*) '(t t nil t))
+      (not (equal (nth 2 *prct-host-answers*)
+                  (fn-pcar-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100)))))
+; Without fn-ceis-indexedp.
+(assert-event
+ (and (equal (prct-refresh-hyps *pit-bad-count-oc*) '(t t t nil))
+      (not (equal (nth 3 *prct-host-answers*)
+                  (fn-pcar-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100)))))
+
+; fn-prc-set-okp-of-delta (audit packet G2-P5).  Positive (reached): the
+; carry R0's refresh builds, and the delta to R1 (after the pit record's
+; stage).  Removal of (fn-prc-set-okp (car carry) (cdr carry)), CORRUPTED
+; carry *prct-bad-carry* (its trie claims an id R0 does not know): the delta
+; to R0 is ok and the trie it answers is still unsound.  Removal of the
+; delta's ok flag: *prct-carry-r* to R0 (a pin gone without a release) takes
+; no delta, and the trie it answers is not sound for R0.
+(defun prct-delta-trie (carry ledger)
+  (declare (xargs :guard (consp carry)))
+  (mv-let (ok trie) (fn-prc-delta carry ledger)
+    (declare (ignore ok))
+    trie))
+(assert-event
+ (and (consp *prct-carry0*)
+      (fn-prc-set-okp (car *prct-carry0*) (cdr *prct-carry0*))
+      (prct-delta-okp *prct-carry0* *prct-r1*)
+      (fn-prc-set-okp *prct-r1* (prct-delta-trie *prct-carry0* *prct-r1*))))
+(assert-event
+ (and (consp *prct-bad-carry*)
+      (not (fn-prc-set-okp (car *prct-bad-carry*) (cdr *prct-bad-carry*)))
+      (prct-delta-okp *prct-bad-carry* *prct-r0*)
+      (not (fn-prc-set-okp *prct-r0* (prct-delta-trie *prct-bad-carry* *prct-r0*)))))
+(assert-event
+ (and (consp *prct-carry-r*)
+      (fn-prc-set-okp (car *prct-carry-r*) (cdr *prct-carry-r*))
+      (not (prct-delta-okp *prct-carry-r* *prct-r0*))
+      (not (fn-prc-set-okp *prct-r0* (prct-delta-trie *prct-carry-r* *prct-r0*)))))

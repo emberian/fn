@@ -6,7 +6,7 @@
 (include-book "../../books/store-node-resolution")
 (include-book "topic-history-local-admin-tests")
 (include-book "topic-history-admission-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun thsn-reserve (s)
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
@@ -130,7 +130,7 @@
                       (thsn-reserve *thsn-admitted*)
                       (list :topic-admit 6 6 6 *thad-topic*))
                      (thsn-reserve *thsn-admitted*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-th-at 1
                    (fn-sn-topic

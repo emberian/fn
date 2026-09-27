@@ -1,7 +1,7 @@
 ; Teeth for books/store-mount-identity.lisp (PRF-232, PKT-579).
 (in-package "ACL2")
 (include-book "../../books/store-mount-identity")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; Reachable witnesses: the mountinfo lines hbox prints for a loop-mounted
@@ -92,7 +92,7 @@
                                    (fn-frame-trailer (fn-smid-record-protected '(nil nil nil))))
                            (fn-frame-trailer (fn-smid-record-protected '(nil nil nil))))
                           '(nil nil nil))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-decode-of-seal-without-recordp
    (equal (fn-smid-record-decode
            (append (fn-smid-record-protected id)
@@ -141,7 +141,7 @@
 (assert-event (not (equal (fn-smid-record-plan *smid-t-mounted* 1) (list :record nil))))
 (assert-event (equal (fn-smid-open-verdict (fn-smid-sealed nil) *smid-t-mounted*)
                      (list :refused :filesystem-record-invalid *smid-t-id*)))
-(must-fail
+(must-fail-checked
  (defthm smid-t-opens-iff-without-plan
    (implies (fn-smid-observationp obs2)
             (equal (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs2)
@@ -193,7 +193,7 @@
 (assert-event (fn-smid-observationp *smid-t-sr-other-type*))
 (assert-event (not (equal (fn-smid-open-verdict (smid-t-sr-record) *smid-t-sr-other-type*)
                           (list :open))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-view-without-type
    (implies (and (fn-smid-observationp obs2)
                  (equal (fn-smid-record-plan obs policy) (list :record protected))
@@ -209,7 +209,7 @@
         (fn-smid-text "/var/lib/fn") (fn-smid-text "overlay") nil))
 (assert-event (not (equal (fn-smid-open-verdict (smid-t-sr-record) *smid-t-sr-other-fsid*)
                           (list :open))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-view-without-fsid
    (implies (and (fn-smid-observationp obs2)
                  (equal (fn-smid-record-plan obs policy) (list :record protected))
@@ -232,7 +232,7 @@
 (assert-event (fn-smid-observationp *smid-t-zero-inside*))
 (assert-event (not (equal (fn-smid-open-verdict (smid-t-zero-record) *smid-t-zero-inside*)
                           (list :open))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-view-without-nonzero-fsid
    (implies (and (fn-smid-observationp obs2)
                  (equal (fn-smid-record-plan obs policy) (list :record protected))
@@ -248,7 +248,7 @@
         (fn-smid-text "/var/lib/fn") (fn-smid-text "overlay") '(300)))
 (assert-event (equal (fn-smid-open-verdict (smid-t-sr-record) *smid-t-sr-bad-inside*)
                      (list :refused :filesystem-unobserved)))
-(must-fail
+(must-fail-checked
  (defthm smid-t-view-without-observation
    (implies (and (equal (fn-smid-record-plan obs policy) (list :record protected))
                  (equal (fn-smid-fstype (fn-smid-observed-identity obs))
@@ -262,7 +262,7 @@
 ; Without the plan: bytes that are no record do not open.
 (assert-event (not (equal (fn-smid-open-verdict (fn-smid-sealed nil) *smid-t-sr-inside*)
                           (list :open))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-view-without-plan
    (implies (and (fn-smid-observationp obs2)
                  (equal (fn-smid-fstype (fn-smid-observed-identity obs))
@@ -289,7 +289,7 @@
 (assert-event (not (equal (fn-smid-open-verdict (smid-t-record) *smid-t-remounted*)
                           (list :refused :filesystem-changed *smid-t-rec*
                                 (fn-smid-observed-identity *smid-t-remounted*)))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-other-without-difference
    (implies (and (fn-smid-observationp obs2)
                  (equal (fn-smid-record-plan obs policy) (list :record protected)))
@@ -304,7 +304,7 @@
 (assert-event (not (equal (fn-smid-open-verdict (smid-t-record) *smid-t-bad-moved*)
                           (list :refused :filesystem-changed *smid-t-rec*
                                 (fn-smid-observed-identity *smid-t-bad-moved*)))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-other-without-observation
    (implies (and (equal (fn-smid-record-plan obs policy) (list :record protected))
                  (not (fn-smid-same-filesystemp (fn-smid-observed-identity obs)
@@ -317,7 +317,7 @@
 (assert-event (equal (car (cdr (fn-smid-open-verdict (fn-smid-sealed nil)
                                                      *smid-t-unmounted*)))
                      :filesystem-record-invalid))
-(must-fail
+(must-fail-checked
  (defthm smid-t-other-without-plan
    (implies (and (fn-smid-observationp obs2)
                  (not (fn-smid-same-filesystemp (fn-smid-observed-identity obs)
@@ -335,7 +335,7 @@
   '(fn-smid-sealed (cadr (fn-smid-record-plan *smid-t-zero-at-volume* 1))))
 (assert-event (equal (fn-smid-open-verdict (smid-t-zero-volume-record) *smid-t-mounted*)
                      (list :open)))
-(must-fail
+(must-fail-checked
  (defthm smid-t-other-fsid-without-recorded-fsid
    (implies (and (fn-smid-observationp obs2)
                  (equal (fn-smid-record-plan obs policy) (list :record protected))
@@ -350,7 +350,7 @@
 ; ... and without a nonzero observed fsid, symmetrically.
 (assert-event (equal (fn-smid-open-verdict (smid-t-record) *smid-t-zero-at-volume*)
                      (list :open)))
-(must-fail
+(must-fail-checked
  (defthm smid-t-other-fsid-without-observed-fsid
    (implies (and (fn-smid-observationp obs2)
                  (equal (fn-smid-record-plan obs policy) (list :record protected))
@@ -363,7 +363,7 @@
                          (fn-smid-observed-record obs policy)
                          (fn-smid-observed-identity obs2))))))
 ; Without differing fsids: the remount opens.
-(must-fail
+(must-fail-checked
  (defthm smid-t-other-fsid-without-difference
    (implies (and (fn-smid-observationp obs2)
                  (equal (fn-smid-record-plan obs policy) (list :record protected))
@@ -383,7 +383,7 @@
                            (fn-smid-observed-record *smid-t-zero-outside* 1)
                            (fn-smid-observed-identity *smid-t-zero-inside*))))
 ; Without the zero fsid: the rehearsal's bind view opens.
-(must-fail
+(must-fail-checked
  (defthm smid-t-unreported-without-zero
    (implies (and (fn-smid-observationp obs2)
                  (equal (fn-smid-record-plan obs policy) (list :record protected))
@@ -396,7 +396,7 @@
 ; Without the moved mount point: the zero-fsid store opens where it was.
 (assert-event (equal (fn-smid-open-verdict (smid-t-zero-record) *smid-t-zero-outside*)
                      (list :open)))
-(must-fail
+(must-fail-checked
  (defthm smid-t-unreported-without-move
    (implies (and (fn-smid-observationp obs2)
                  (equal (fn-smid-record-plan obs policy) (list :record protected))
@@ -418,7 +418,7 @@
                                            *smid-t-sr-inside*)
                      (list :open)))
 ; Without the same fsid (or type, or a reported fsid), as for the view.
-(must-fail
+(must-fail-checked
  (defthm smid-t-rebind-outside-without-fsid
    (implies (and (equal (fn-smid-rebind-plan record obs requested)
                         (list :record protected))
@@ -429,7 +429,7 @@
                        (fn-smid-fsid (fn-smid-observed-identity obs2)))))
             (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs2)
                    (list :open)))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-rebind-outside-without-type
    (implies (and (equal (fn-smid-rebind-plan record obs requested)
                         (list :record protected))
@@ -440,7 +440,7 @@
                        (fn-smid-fsid (fn-smid-observed-identity obs2)))))
             (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs2)
                    (list :open)))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-rebind-outside-without-nonzero
    (implies (and (equal (fn-smid-rebind-plan record obs requested)
                         (list :record protected))
@@ -451,7 +451,7 @@
                         (fn-smid-fsid (fn-smid-observed-identity obs2))))
             (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs2)
                    (list :open)))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-rebind-outside-without-observation
    (implies (and (equal (fn-smid-rebind-plan record obs requested)
                         (list :record protected))
@@ -463,7 +463,7 @@
                        (fn-smid-fsid (fn-smid-observed-identity obs2)))))
             (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs2)
                    (list :open)))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-rebind-outside-without-plan
    (implies (and (fn-smid-observationp obs2)
                  (equal (fn-smid-fstype (fn-smid-observed-identity obs))
@@ -503,7 +503,7 @@
                     (fn-smid-mountinfo-step *smid-t-foreign-best*
                                             *smid-t-escaped-line* *smid-t-path*)
                     *smid-t-path*)))
-(must-fail
+(must-fail-checked
  (defthm smid-t-step-without-best-okp
    (fn-smid-best-okp (fn-smid-mountinfo-step best line path) path)))
 
@@ -593,7 +593,7 @@
                      (fn-smid-open-verdict (smid-t-record) *smid-t-unmounted*)))
 (assert-event (not (equal (fn-smid-start-verdict (smid-t-record) *smid-t-unmounted*)
                           (list :start))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-start-without-same-filesystem
    (implies (and (fn-smid-observationp obs2)
                  (equal (fn-smid-record-plan obs policy) (list :record protected)))
@@ -607,7 +607,7 @@
 ; refused as unobserved.
 (assert-event (not (equal (fn-smid-start-verdict (smid-t-record) *smid-t-bad-obs*)
                           (list :start))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-start-without-observation
    (implies (and (equal (fn-smid-record-plan obs policy) (list :record protected))
                  (fn-smid-same-filesystemp (fn-smid-observed-identity obs)
@@ -621,7 +621,7 @@
 ; Without the plan: no record, no start.
 (assert-event (not (equal (fn-smid-start-verdict (fn-smid-sealed nil) *smid-t-mounted*)
                           (list :start))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-start-without-plan
    (implies (and (fn-smid-observationp obs2)
                  (fn-smid-same-filesystemp (fn-smid-observed-identity obs)
@@ -649,7 +649,7 @@
 ; Without the plan: arbitrary bytes do not open.
 (assert-event (not (equal (fn-smid-open-verdict (fn-smid-sealed nil) *smid-t-mounted*)
                           (list :open))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-rebound-without-plan
    (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs)
           (list :open))))
@@ -668,7 +668,7 @@
                      (list :open-unrecorded *smid-t-id*)))
 (assert-event (not (equal (fn-smid-open-decision (list :absent) *smid-t-mounted* t)
                           (fn-smid-open-verdict (list :absent) *smid-t-mounted*))))
-(must-fail
+(must-fail-checked
  (defthm smid-t-decision-without-hypothesis
    (equal (fn-smid-open-decision record observation configured)
           (fn-smid-open-verdict record observation))))
@@ -680,7 +680,7 @@
 ; Without (not configured): a configured root with no record is opened.
 (assert-event (not (equal (car (fn-smid-open-decision (list :absent) *smid-t-unmounted* t))
                           :refused)))
-(must-fail
+(must-fail-checked
  (defthm smid-t-empty-root-without-hypothesis
    (equal (car (fn-smid-open-decision (list :absent) observation configured))
           :refused)))

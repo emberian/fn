@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-config-observation")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The pre-D27 listing bound (8192): every witness below that predates the
 ; profile runs at this instance of the operator's `max-config-generations'.
@@ -113,7 +113,7 @@
  (equal (fn-nco-result-reason (fn-nco-observe *ncot-above-old-cap* *ncot-old*)) :budget))
 ; The keystone's hypothesis is needed: a value that is not a proper list is
 ; refused by :budget under any bound, though its LEN is 0.
-(must-fail
+(must-fail-checked
  (defthm ncot-refusal-without-true-listp
    (iff (equal (fn-nco-result-reason (fn-nco-observe 'malformed 5)) :budget)
         (< (nfix 5) (len 'malformed)))

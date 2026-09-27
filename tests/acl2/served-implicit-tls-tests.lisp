@@ -1,7 +1,7 @@
 ; Witnesses and teeth for books/served-implicit-tls.lisp (PRF-162).
 (in-package "ACL2")
 (include-book "../../books/served-implicit-tls")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defconst *sit-groups* (list (fn-nntp-string-octets "fn.test")))
@@ -124,8 +124,8 @@
                                         fn-auth-gatedp fn-auth-principal-rolep
                                         fn-peer-open-session fn-post-offeredp
                                         fn-auth-single fn-nntp-single fn-auth-starttls-effect)))))
-(must-fail (sit-keystone-without ((fn-auth-configp acfg))))
-(must-fail (sit-keystone-without ((fn-auth-config-tls-availablep acfg))))
+(must-fail-checked (sit-keystone-without ((fn-auth-configp acfg))))
+(must-fail-checked (sit-keystone-without ((fn-auth-config-tls-availablep acfg))))
 
 ; ---------------------------------------------------------------------------
 ; fn-served-implicit-tls-session-is-protected: the witness.

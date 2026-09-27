@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-profile-v1")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The scale and development profiles as the image before P6 saved them
 ; (the presets' values), R = 17 138 486 (the article record of A = 32 768 and
@@ -60,7 +60,7 @@
 (assert-event (equal (fn-bs-profile-v1-invalid-reason *bspv1-short-scale*)
                      :max-record-octets-below-the-article-record))
 (assert-event (not (fn-bs-profile-admittedp *bspv1-short-scale*)))
-(must-fail
+(must-fail-checked
  (thm (implies (equal values *bspv1-short-scale*)
                (fn-bs-profile-admittedp values))))
 
@@ -80,7 +80,7 @@
 (assert-event (not (fn-bs-profile-admittedp *bspv1-poll-window*)))
 (assert-event (<= (fn-bs-pf 4 *bspv1-saved-scale*) *fn-stxa-max-octets*))
 (assert-event (<= (fn-bs-pf 4 *bspv1-saved-development*) *fn-stxa-max-octets*))
-(must-fail
+(must-fail-checked
  (thm (implies (equal values *bspv1-poll-window*)
                (fn-bs-profile-admittedp values))))
 ; At the ceiling itself the old relation's profile stays admitted.

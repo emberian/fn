@@ -12,7 +12,7 @@
 (include-book "../../books/login-binding-live")
 (include-book "login-binding-tests")
 (include-book "config-owner-live-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *lblt-p* *tha-principal*)
 (defconst *lblt-q* (make-list 32 :initial-element 9))
@@ -47,7 +47,7 @@
                                      *lblt-v-p* 2 0
                                      (fn-lb-binding-delta *lblt-name* nil))))))
 ; Without (consp name): the empty login is never bound.
-(must-fail
+(must-fail-checked
  (defthm lblt-binds-without-consp
    (implies (and (fn-cbor-octet-listp name) (fn-lb-principalp principal))
             (equal (fn-lb-binding
@@ -61,7 +61,7 @@
                                          *lblt-v-p* 2 0
                                          (fn-lb-binding-delta nil *lblt-q*))))))
 ; Without octets: a login that is not octets is spelled "" and never found.
-(must-fail
+(must-fail-checked
  (defthm lblt-binds-without-octets
    (implies (and (consp name) (fn-lb-principalp principal))
             (equal (fn-lb-binding
@@ -75,7 +75,7 @@
                                             *lblt-v-p* 2 0
                                             (fn-lb-binding-delta '(300) *lblt-q*))))))
 ; Without a principal the row can spell: (300) is written as the unbind.
-(must-fail
+(must-fail-checked
  (defthm lblt-binds-without-principalp
    (implies (and (fn-cbor-octet-listp name) (consp name))
             (equal (fn-lb-binding
@@ -102,7 +102,7 @@
 (assert-event (equal (fn-lb-binding *lblt-guest* (fn-lb-value-bindings *lblt-v-p*))
                      *lblt-q*))
 ; Without (not (equal other name)): the login itself moves.
-(must-fail
+(must-fail-checked
  (defthm lblt-keeps-without-other
    (equal (fn-lb-binding
            other (fn-lb-value-bindings
@@ -122,7 +122,7 @@
 (assert-event (equal (fn-cfg-delta-reason *lblt-v-p* 2 nil 0 512
                                           (fn-lb-binding-delta *lblt-spaced* *lblt-q*))
                      :binding-login))
-(must-fail
+(must-fail-checked
  (defthm lblt-admitted-without-bindable
    (implies (fn-lb-principalp principal)
             (not (fn-cfg-delta-reason v gen stamp reserved ceiling
@@ -133,7 +133,7 @@
 (assert-event (equal (fn-cfg-delta-reason *lblt-v-p* 2 nil 0 512
                                           (fn-lb-binding-delta *lblt-name* '(1 2)))
                      :binding-principal))
-(must-fail
+(must-fail-checked
  (defthm lblt-admitted-without-principalp
    (implies (fn-lb-bindable-namep name)
             (not (fn-cfg-delta-reason v gen stamp reserved ceiling
@@ -176,7 +176,7 @@
                                             *lblt-bad-file*
                                             (fn-lb-value-bindings *lblt-v-p*))))))
                           (fn-lb-binding *lblt-name* *lblt-bad-file*))))
-(must-fail
+(must-fail-checked
  (defthm lblt-sync-without-okp
    (equal (fn-lb-binding
            name (fn-lb-value-bindings
@@ -241,7 +241,7 @@
 ; Without the stable pin: an :advance of 5 re-pins it to the live table.
 (defconst *lblt-advance* (list (list :advance 5)))
 (assert-event (fn-ocfg-repins-forp 5 *lblt-advance*))
-(must-fail
+(must-fail-checked
  (defthm lblt-pinned-without-no-repin
    (implies (and (fn-ocfg-pin-find id (fn-ocfg-pins oc))
                  (equal (fn-lb-inflight-id (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))) id))
@@ -252,7 +252,7 @@
                                      received)))
    :hints (("Goal" :in-theory (disable fn-ocfg-run fn-lb-owner-gate)))))
 ; Without the in-flight connection being ID: the table of another pin.
-(must-fail
+(must-fail-checked
  (defthm lblt-pinned-without-inflight
    (implies (and (fn-ocfg-pin-find id (fn-ocfg-pins oc))
                  (not (fn-ocfg-repins-forp id events)))
@@ -263,7 +263,7 @@
                                      received)))
    :hints (("Goal" :in-theory (disable fn-ocfg-run fn-lb-owner-gate)))))
 ; Without a pin for ID before the trace: none to keep.
-(must-fail
+(must-fail-checked
  (defthm lblt-pinned-without-pin
    (implies (and (not (fn-ocfg-repins-forp id events))
                  (equal (fn-lb-inflight-id (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))) id))
@@ -328,7 +328,7 @@
                                    (fn-lb-conn-bindings
                                     (cdr (fn-ocfg-open (cadr *lblt-wrong*) nil))
                                     (fn-own-next-id (fn-ocfg-owner (cadr *lblt-wrong*)))))))
-(must-fail
+(must-fail-checked
  (defthm lblt-anew-without-durable
    (let* ((staged (fn-ocfg-step oc (list :reconfigure other
                                          (fn-lb-pairs-deltas pairs)) fn-arena))

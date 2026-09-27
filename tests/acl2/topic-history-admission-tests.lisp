@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/topic-history-admission")
 (include-book "topic-history-authorship-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *thad-topic* (fn-stxa-authored-id *tha-event*))
 (defconst *thad-report* (list :report *thad-topic* *thad-topic* nil))
@@ -197,27 +197,27 @@
                                   (fn-stmt-value *thad-anchored*))))
    (and (equal (fn-th-at 8 anchor) 2)
         (null (fn-th-anchor-reports anchor)))))
-(must-fail
+(must-fail-checked
  (defthm thad-anchor-without-admin
    (fn-stmt-okp
     (fn-th-prepare-anchor 8 9 10 *tha-event* *tha-snapshot*
                           *tha-other-principal* *tha-principal* 2 nil))))
-(must-fail
+(must-fail-checked
  (defthm thad-report-without-anchor
    (fn-stmt-okp
     (fn-th-prepare-report 11 12 13 *thad-event* *tha-snapshot* nil))))
-(must-fail
+(must-fail-checked
  (defthm thad-report-without-roster-membership
    (fn-stmt-okp
     (fn-th-prepare-report 16 17 18 *thad-stranger-event*
                           *thad-stranger-snapshot*
                           (fn-stmt-value *thad-anchored*)))))
-(must-fail
+(must-fail-checked
  (defthm thad-report-without-parent-admission
    (fn-stmt-okp
     (fn-th-prepare-report 21 22 23 *thad-parent-event*
                           *tha-snapshot* (fn-stmt-value *thad-anchored*)))))
-(must-fail
+(must-fail-checked
  (defthm thad-report-without-quota
    (fn-stmt-okp
     (fn-th-prepare-report 26 27 28 *thad-second-event*

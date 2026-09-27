@@ -3,7 +3,7 @@
 ; node recognizer in its guard.
 (in-package "ACL2")
 (include-book "../../books/served-carried")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "peer-offer-indexed-tests")
 
 ; -----------------------------------------------------------------------------
@@ -141,7 +141,7 @@
                            (fn-nntp-begin-article-effect))))
 (assert-event (equal (in-arena-pgc-ref *sr-arena* *pgc-t-orphan-ps* (pt-cmd "IHAVE <orphan@example.invalid>"))
                      nil))
-(must-fail
+(must-fail-checked
  (assert-event (equal (in-arena-pgc-scar *sr-arena* *pgc-t-orphan-ps* *pix-t-orphan* (pt-cmd "IHAVE <orphan@example.invalid>") *pgc-t-empty-trie* nil)
                       (in-arena-pgc-ref *sr-arena* *pgc-t-orphan-ps* (pt-cmd "IHAVE <orphan@example.invalid>")))))
 ; With a node-state `live' the same session is tested by fn-node-statep and
@@ -151,19 +151,19 @@
 
 ; fn-pgc-peer-arm-is-peer-step-pinned, hypothesis fn-peer-sessionp: the
 ; same orphan session at the arm.
-(must-fail
+(must-fail-checked
  (assert-event (equal (in-arena-pgc-arm *sr-arena* *pgc-t-orphan-ps* (pt-cmd "IHAVE <orphan@example.invalid>") *pgc-t-empty-trie* nil)
                       (in-arena-pgc-ref *sr-arena* *pgc-t-orphan-ps* (pt-cmd "IHAVE <orphan@example.invalid>")))))
 ; Hypothesis (fn-peer-session-peer ps): a real reader session.  The arm
 ; decides the offer (a refusal, no peer record) where the reference
 ; delegates to the reader's step (502).
 (assert-event (fn-peer-sessionp *pt-reader*))
-(must-fail
+(must-fail-checked
  (assert-event (equal (in-arena-pgc-arm *sr-arena* *pt-reader* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
                       (in-arena-pgc-ref *sr-arena* *pt-reader* (pt-cmd "IHAVE <a1@example.invalid>")))))
 ; Hypothesis (fn-midx-correspondencep trie arts): the empty trie keyed to
 ; the node's list takes the held id (335) where the reference refuses it.
-(must-fail
+(must-fail-checked
  (assert-event (equal (in-arena-pgc-arm *sr-arena* *pt-ps1* (pt-cmd "IHAVE <a1@example.invalid>") nil *pix-t-arts*)
                       (in-arena-pgc-ref *sr-arena* *pt-ps1* (pt-cmd "IHAVE <a1@example.invalid>")))))
 
@@ -175,7 +175,7 @@
 (assert-event (not (fn-retain-statep *pgc-t-bad-ledger*)))
 (assert-event (fn-pgc-retain-admissiblep *pgc-t-bad-ledger* "id" "subject" :archive
                                          (fn-peer-evidence "innA" *pt-cfg*) 1))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-pgc-retain-admissiblep *pgc-t-bad-ledger* "id" "subject" :archive
                                                  (fn-peer-evidence "innA" *pt-cfg*) 1)
                       (fn-retain-admissiblep *pgc-t-bad-ledger* "id" "subject" :archive
@@ -186,7 +186,7 @@
 (defconst *pgc-t-bad-ledger-node*
   (fn-node-make-state (fn-node-acceptance *pt-node0*) *pgc-t-bad-ledger* nil nil))
 (assert-event (not (fn-node-statep *pgc-t-bad-ledger-node*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-pgc-decide-offer *pgc-t-bad-ledger-node* *pt-cfg* "innA" nil
                                            *pt-idloop* nil 0 *pgc-t-empty-trie* nil)
                       (fn-pix-decide-offer *pgc-t-bad-ledger-node* *pt-cfg* "innA" nil

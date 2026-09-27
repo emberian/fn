@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/hybrid-signature-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *hsigi-principal-a* (make-list 32 :initial-element 17))
 (defconst *hsigi-principal-b* (make-list 32 :initial-element 18))
@@ -92,36 +92,36 @@
                 (equal *hsigi-source-a* *hsigi-source-b*)))))
 
 ; Every hypothesis of both keystones is load-bearing.
-(must-fail
+(must-fail-checked
  (defthm hsigi-body-without-left-subject
    (implies (and (fn-hsig-subject-p pb kb sb)
                  (equal (fn-hsig-subject-body pa ka sa)
                         (fn-hsig-subject-body pb kb sb)))
             (and (equal pa pb) (equal ka kb) (equal sa sb)))))
-(must-fail
+(must-fail-checked
  (defthm hsigi-body-without-right-subject
    (implies (and (fn-hsig-subject-p pa ka sa)
                  (equal (fn-hsig-subject-body pa ka sa)
                         (fn-hsig-subject-body pb kb sb)))
             (and (equal pa pb) (equal ka kb) (equal sa sb)))))
-(must-fail
+(must-fail-checked
  (defthm hsigi-body-without-byte-equality
    (implies (and (fn-hsig-subject-p pa ka sa)
                  (fn-hsig-subject-p pb kb sb))
             (and (equal pa pb) (equal ka kb) (equal sa sb)))))
-(must-fail
+(must-fail-checked
  (defthm hsigi-preimage-without-left-subject
    (implies (and (fn-hsig-subject-p pb kb sb)
                  (equal (fn-hsig-signed-preimage pa ka sa)
                         (fn-hsig-signed-preimage pb kb sb)))
             (and (equal pa pb) (equal ka kb) (equal sa sb)))))
-(must-fail
+(must-fail-checked
  (defthm hsigi-preimage-without-right-subject
    (implies (and (fn-hsig-subject-p pa ka sa)
                  (equal (fn-hsig-signed-preimage pa ka sa)
                         (fn-hsig-signed-preimage pb kb sb)))
             (and (equal pa pb) (equal ka kb) (equal sa sb)))))
-(must-fail
+(must-fail-checked
  (defthm hsigi-preimage-without-byte-equality
    (implies (and (fn-hsig-subject-p pa ka sa)
                  (fn-hsig-subject-p pb kb sb))
@@ -172,19 +172,19 @@
         (not (equal (nth 29 v1) (nth 29 v2)))))))
 
 ; Teeth: v2 injectivity needs each subject premise and the byte equality.
-(must-fail
+(must-fail-checked
  (defthm hsigi-v2-body-without-left-subject
    (implies (and (fn-hsig-subject-v2-p pb kb sb)
                  (equal (fn-hsig-subject-body-v2 pa ka sa)
                         (fn-hsig-subject-body-v2 pb kb sb)))
             (and (equal pa pb) (equal ka kb) (equal sa sb)))))
-(must-fail
+(must-fail-checked
  (defthm hsigi-v2-body-without-right-subject
    (implies (and (fn-hsig-subject-v2-p pa ka sa)
                  (equal (fn-hsig-subject-body-v2 pa ka sa)
                         (fn-hsig-subject-body-v2 pb kb sb)))
             (and (equal pa pb) (equal ka kb) (equal sa sb)))))
-(must-fail
+(must-fail-checked
  (defthm hsigi-v2-preimage-without-byte-equality
    (implies (and (fn-hsig-subject-v2-p pa ka sa)
                  (fn-hsig-subject-v2-p pb kb sb))
@@ -193,33 +193,33 @@
 ; Teeth: disjointness rests on the two different tags.  The same claim
 ; between two preimages under one tag is false (equal subjects frame to
 ; equal preimages).
-(must-fail
+(must-fail-checked
  (defthm hsigi-v1-v1-preimages-disjoint
    (not (equal (fn-hsig-signed-preimage pa ka sa)
                (fn-hsig-signed-preimage pb kb sb)))))
 
 ; Teeth for the cross-version keystone: without either subject premise,
 ; or without the preimage equality, versions and subjects need not agree.
-(must-fail
+(must-fail-checked
  (defthm hsigi-at-without-left-subject
    (implies (and (fn-hsig-subject-at-p vb pb kb sb)
                  (equal (fn-hsig-signed-preimage-at va pa ka sa)
                         (fn-hsig-signed-preimage-at vb pb kb sb)))
             (and (equal va vb) (equal pa pb) (equal ka kb) (equal sa sb)))))
-(must-fail
+(must-fail-checked
  (defthm hsigi-at-without-right-subject
    (implies (and (fn-hsig-subject-at-p va pa ka sa)
                  (equal (fn-hsig-signed-preimage-at va pa ka sa)
                         (fn-hsig-signed-preimage-at vb pb kb sb)))
             (and (equal va vb) (equal pa pb) (equal ka kb) (equal sa sb)))))
-(must-fail
+(must-fail-checked
  (defthm hsigi-at-without-byte-equality
    (implies (and (fn-hsig-subject-at-p va pa ka sa)
                  (fn-hsig-subject-at-p vb pb kb sb))
             (and (equal va vb) (equal pa pb) (equal ka kb) (equal sa sb)))))
 
 ; Teeth for version determinism: an unadmitted subject names any version.
-(must-fail
+(must-fail-checked
  (defthm hsigi-version-without-subject
    (equal version (fn-hsig-source-version source))))
 (assert-event

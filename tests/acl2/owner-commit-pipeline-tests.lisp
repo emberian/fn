@@ -4,7 +4,7 @@
 ; (fnn-owner-gate-pick, fnn-owner-commit-wake, fnn-owner-commit-event).
 (in-package "ACL2")
 (include-book "../../books/owner-commit-pipeline")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun ocpt-class (s w) (mv-let (c s2) (fn-ocp-next s w) (declare (ignore s2)) c))
 (defun ocpt-pick (s w) (mv-let (c s2) (fn-ocp-next s w) (declare (ignore c)) s2))
@@ -67,7 +67,7 @@
                    (equal (ocpt-phase *ocpt-s2*) :staged)))
 ; Teeth: without the antecedent the conclusion fails (a reached idle state
 ; and an event that is not the barrier's word).
-(must-fail
+(must-fail-checked
  (defthm ocpt-tooth-complete-needs-the-action
    (and (equal (fn-ocs-phase (fn-ocp-ocs s)) :staged) (equal event :fenced))
    :rule-classes nil))
@@ -80,7 +80,7 @@
                    (fn-ocs-in-flight-p (ocpt-phase (ocpt-event *ocpt-s1* :next-started)))))
 (assert-event (and (not (fn-ocp-open-next (ocpt-event *ocpt-s4* :fenced)))
                    (not (fn-ocs-in-flight-p (ocpt-phase *ocpt-s5*)))))
-(must-fail
+(must-fail-checked
  (defthm ocpt-tooth-in-flight-needs-an-open-next
    (fn-ocs-in-flight-p (fn-ocs-phase (fn-ocp-ocs (mv-nth 1 (fn-ocp-commit-event s event)))))
    :rule-classes nil))

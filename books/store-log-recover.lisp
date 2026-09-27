@@ -272,19 +272,14 @@
 
 ; -----------------------------------------------------------------------------
 ; The owner's obligation: while the log recovers, no store operation other
-; than the log's own writes is pending.  Lane w6-log-owner makes the log the
-; only pending store write and discharges this by functional instantiation
-; with its own predicate (its state's pending list names only the segment);
-; the constraint is all this book uses.  It is not a platform assumption and
-; is not in books/assumptions.lisp: fn proves it, of its own owner.
-
-(encapsulate
-  (((fn-assume-log-sole-pending-writer * *) => *))
-  (local (defun fn-assume-log-sole-pending-writer (bs ino)
-           (not (fn-bs-ops-not-for-ino (fn-bs-pending bs) ino))))
-  (defthm fn-assume-log-sole-pending-writer-names-only-the-log
-    (implies (fn-assume-log-sole-pending-writer bs ino)
-             (not (fn-bs-ops-not-for-ino (fn-bs-pending bs) ino)))))
+; than the log's own writes is pending.  Its constrained function
+; fn-assume-log-sole-pending-writer and the constraint
+; fn-assume-log-sole-pending-writer-names-only-the-log are in
+; books/assumptions.lisp (included through store-log), where every named
+; obligation of the tree lives; it is an fn obligation, not a platform
+; assumption, discharged by fn-owb-related-state-is-the-sole-pending-writer
+; (books/owner-batch.lisp, for fn-owb-recover-establishes-relation).  The
+; constraint is all this book uses.
 
 (local
  (defthm fn-lgkc-ops-all-for-ino

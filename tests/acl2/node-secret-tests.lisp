@@ -4,7 +4,7 @@
 ; hypothesis, and the key file's round trip fn-ns-file-parse-of-render.
 (in-package "ACL2")
 (include-book "../../books/node-secret")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun nst-codes (cs)
   (if (consp cs) (cons (char-code (car cs)) (nst-codes (cdr cs))) nil))
@@ -84,7 +84,7 @@
  (let ((i1 '(102 110 . 5)) (i2 '(102 110 . 6)))
    (and (true-listp nil) (not (true-listp i1)) (not (equal i1 i2))
         (equal (fn-ns-expand-input i1) (fn-ns-expand-input i2)))))
-(must-fail
+(must-fail-checked
  (defthm nst-separation-needs-distinct-labels
    (implies (and (true-listp i1) (true-listp i2))
             (not (equal (fn-ns-expand-input i1) (fn-ns-expand-input i2))))))

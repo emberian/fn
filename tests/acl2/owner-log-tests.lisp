@@ -13,7 +13,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/owner-log")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun olt-text (s) (fn-record-string-octets s))
 
@@ -87,7 +87,7 @@
                      (fn-olog-served-post-line *olt-served-unconsumed* 0 :durable))
                     (olt-text "accepted"))
              (equal :durable :durable))))
-(must-fail
+(must-fail-checked
  (defthm olt-served-line-echoes-the-host-word
    (equal (equal (fn-olog-line-word
                   (fn-olog-served-post-line *olt-served-unconsumed* 0 :durable))
@@ -123,7 +123,7 @@
 ; The control reply's word and the line's are the same word, not the host's:
 ; the host's :duplicate stays distinct for the control client, while the
 ; served line above reports it as the refusal the NNTP client was sent.
-(must-fail
+(must-fail-checked
  (defthm olt-control-line-is-the-served-class
    (equal (fn-olog-line-word (fn-olog-control-post-line *olt-control-unconsumed* :duplicate))
           (fn-olog-class-word (fn-olog-served-class *olt-control-unconsumed* :duplicate)))
@@ -242,7 +242,7 @@
  (not (equal (fn-olog-line-word
               (fn-olog-transit-line *olt-transit* 7 :defer :busy :refused nil nil))
              (olt-text "refused"))))
-(must-fail
+(must-fail-checked
  (defthm olt-transit-line-echoes-the-host-word
    (equal (equal (fn-olog-line-word
                   (fn-olog-transit-line o id kind reason word detail verdict))
@@ -255,7 +255,7 @@
                                     fn-olog-symbol-text))))))
 ; And without the completion clause: code 436 from an uncertain completion
 ; is not a rejection, so dropping the code test would call it refused.
-(must-fail
+(must-fail-checked
  (defthm olt-transit-line-refused-unless-accepted
    (equal (equal (fn-olog-line-word
                   (fn-olog-transit-line o id kind reason word detail verdict))
@@ -297,7 +297,7 @@
                                   (fn-feed-response 239 *olt-transit-msgid*)))
         (olt-text "accepted")))
 ; Teeth: the send-it clause is load-bearing (a 238 has no class line).
-(must-fail
+(must-fail-checked
  (defthm olt-feed-line-always-classed
    (equal (fn-olog-line-word (fn-olog-feed-reply-line o peer response))
           (fn-olog-code-class-word (fn-feed-response-code response)))
@@ -331,7 +331,7 @@
 ; Teeth: the visible filter is what makes the line one line.  The field
 ; built from the raw text, as a host `format' would build it, has a break.
 (assert-event (not (fn-olog-no-breakp *olt-broken-text*)))
-(must-fail
+(must-fail-checked
  (defthm olt-cleanup-raw-error-field-is-one-line
    (fn-olog-no-breakp (append (fn-olog-text "error=") text))))
 
@@ -361,7 +361,7 @@
 
 ; A line that said `refused' for every answer but acceptance would call a
 ; busy owner's deferral and an unknown word refusals: :busy separates.
-(must-fail
+(must-fail-checked
  (defthm olt-bp-app-line-refused-unless-accepted
    (equal (equal (fn-olog-line-word
                   (fn-olog-bp-app-refusal-line result reason xfer-id))
@@ -377,7 +377,7 @@
 
 ; The weakest clause alone (`:refused') is not the class: an unusable clock
 ; refuses too, with nothing written, and the line says so.
-(must-fail
+(must-fail-checked
  (defthm olt-bp-app-line-refused-only-for-refused
    (equal (equal (fn-olog-line-word
                   (fn-olog-bp-app-refusal-line result reason xfer-id))
@@ -415,13 +415,13 @@
                                      (list (olt-reply "240 article received")))))
 ; The weaker statement "one line per reply" is false: the 340 and the 240
 ; above are replies and have no line.
-(must-fail
+(must-fail-checked
  (defthm olt-refusal-lines-one-per-reply
    (equal (len (fn-olog-served-refusal-lines o id effects)) (len effects))
    :hints (("Goal" :in-theory (disable fn-olog-served-refusal-line)))))
 ; The reason read-back is not the identity on arbitrary octets: an unnamed
 ; 441 reads as `unnamed', so the membership hypothesis is needed.
-(must-fail
+(must-fail-checked
  (defthm olt-post-refusal-reason-without-membership
    (equal (fn-olog-post-refusal-reason (fn-olog-post-refusal-reply reason))
           reason)
@@ -457,7 +457,7 @@
                                      *olt-operator-ok-groups* *olt-source* :absent)))
 ; The weaker statement "a control line says refused whenever the submit did
 ; not submit" is false: :busy is not a refusal and has no line.
-(must-fail
+(must-fail-checked
  (defthm olt-control-refusal-line-for-every-non-submission
    (implies (not (equal (fn-own-operator-submit-result o m g x st) :submitted))
             (equal (fn-olog-line-word (fn-olog-control-refusal-line o m g x st))
@@ -507,12 +507,12 @@
 ; Teeth for fn-olog-detail-fields-print-an-accepted-arms-verdict: a pair
 ; detail (the first hypothesis dropped) prints its own verdict, not VERDICT;
 ; a nil verdict (the second) prints no verdict field.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-olog-detail-fields '(:no-local-binding :unenrolled) :verified)
          (append (fn-olog-field "detail" (fn-olog-symbol-text '(:no-local-binding :unenrolled)))
                  (cons 32 (fn-olog-field "verdict" (fn-olog-symbol-text :verified)))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-olog-detail-fields :carried nil)
          (append (fn-olog-field "detail" (fn-olog-symbol-text :carried))

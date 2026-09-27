@@ -13,7 +13,7 @@
 (in-package "ACL2")
 (include-book "../../books/control-visible-indexed")
 (include-book "../../books/catalog-record")   ; fn-held-facts-of: the rows' facts
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *cvit-p* (make-list 32 :initial-element 17))
 (defconst *cvit-p-verified* (fn-stx-make-verdict :verified *cvit-p* 1))
@@ -111,7 +111,7 @@
  (and (fn-ctl-rows-okp *cvit-hist*)
       (not (fn-cei-correspondencep *cvit-bad-ix* *cvit-hist*))
       (equal (cvit-index-branch "<t@example.invalid>" *cvit-bad-ix*) *cvit-other-rt*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ctl-row-event-ix "<t@example.invalid>" *cvit-hist* *cvit-bad-ix*)
          (fn-ctl-row-event "<t@example.invalid>" *cvit-hist*))))
@@ -132,7 +132,7 @@
       (not (fn-held-p *cvit-fake*))
       (equal (fn-ctl-event-row *cvit-fake*) *cvit-fake*)
       (equal (fn-ctl-row-event "<t@example.invalid>" *cvit-fake-hist*) *cvit-fake*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ctl-row-event-ix "<t@example.invalid>" *cvit-fake-hist* *cvit-fake-ix*)
          (fn-ctl-row-event "<t@example.invalid>" *cvit-fake-hist*))))

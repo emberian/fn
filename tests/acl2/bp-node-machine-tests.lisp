@@ -1,7 +1,7 @@
 ; Reachable witnesses and teeth for the host-called outbound lifecycle step.
 (in-package "ACL2")
 (include-book "../../books/bp-node-machine-codec")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defconst *bpnm-local* (cons :dtn '(47 47 102 110 45 97 47)))
@@ -62,7 +62,7 @@
  (not (fn-bpn-lifecycle-publication-operationp
        (fn-bpn-lifecycle-publication-authorize
         (fn-bpn-answer-state *bpnm-a0*) 0 *bpnm-r0* t nil))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-lifecycle-publication-operationp
    (fn-bpn-lifecycle-publication-authorize
@@ -103,7 +103,7 @@
  (equal (car (fn-bpn-lifecycle-namespace-plan
               (list *bpnm-name0* *bpnm-name2*)))
         :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-lifecycle-namespace-planp
    (fn-bpn-lifecycle-namespace-plan
@@ -174,7 +174,7 @@
  (equal (car (fn-bpn-lifecycle-recovery
               (list *bpnm-name0*) (list *bpnm-r1*)))
         :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpn-lifecycle-recovery
                (list *bpnm-name0*) (list *bpnm-r1*)))
@@ -259,7 +259,7 @@
 ; separating value contains an actual :release effect and is not an accepted
 ; machine effect list.
 (assert-event (not (fn-bpn-effect-listp '((:release work-1)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (fn-bpn-effect-kind-memberp :release '((:release work-1))))))
 

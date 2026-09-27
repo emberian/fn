@@ -8,7 +8,7 @@
 (include-book "../../books/store-node-retention")
 (include-book "../../books/codec-attach")
 (include-book "held-rows-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun snrt-reserve (s)
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
@@ -82,11 +82,11 @@
 ; same record otherwise, and prepare stages it.
 (assert-event (equal (fn-sf-phase (fn-sn-files (fn-spc-prepare *snrt-reserved* *snrt-affordable*)))
                      :record-staged))
-(must-fail
+(must-fail-checked
  (defthm snrt-spc-prepare-refusal-without-capacity-hypothesis
    (equal (fn-spc-prepare *snrt-reserved* *snrt-affordable*) *snrt-reserved*)
    :rule-classes nil))
-(must-fail
+(must-fail-checked
  (defthm snrt-sn-prepare-refusal-without-capacity-hypothesis
    (equal (fn-sn-prepare *snrt-reserved* *snrt-affordable*) *snrt-reserved*)
    :rule-classes nil))
@@ -103,7 +103,7 @@
 (assert-event (fn-node-statep *snrt-node*))
 (assert-event (equal (snrt-node-prepare 9) *snrt-node*))
 (assert-event (consp (fn-node-stage (snrt-node-prepare 8))))
-(must-fail
+(must-fail-checked
  (defthm snrt-node-prepare-refusal-without-capacity-hypothesis
    (equal (snrt-node-prepare 8) *snrt-node*)
    :rule-classes nil))
@@ -116,7 +116,7 @@
                    :archive "snrt-release" charge))
 (assert-event (equal (snrt-admit 9) (fn-node-retention *snrt-node*)))
 (assert-event (not (equal (snrt-admit 8) (fn-node-retention *snrt-node*))))
-(must-fail
+(must-fail-checked
  (defthm snrt-prepare-refusal-without-admit-refusal
    (equal (snrt-node-prepare 8) *snrt-node*)
    :rule-classes nil))
@@ -210,7 +210,7 @@
 
 ; Teeth for fn-sn-finish-keeps-accepted-articles (one hypothesis): an article
 ; that was not accepted before is not accepted after.
-(must-fail
+(must-fail-checked
  (defthm snrt-keep-without-membership
    (member-equal '(:never-accepted) (snrt-articles *snrt-released*))
    :rule-classes nil))
@@ -218,7 +218,7 @@
 ; Teeth for the release keystone, one per hypothesis.
 ; (1) Drop "the pin was held before": a pin never held is absent after an
 ;     undertaking, which is no release.
-(must-fail
+(must-fail-checked
  (defthm snrt-release-without-held-pin
    (let ((record (fn-sn-completion-record *snrt-completing-undertake*)))
      (and (fn-store-retention-event-p record)
@@ -230,7 +230,7 @@
 ;     release arm, and the release does not match it.
 (assert-event (member-equal *snrt-archive-pin* (snrt-pins *snrt-completing-release*)))
 (assert-event (member-equal *snrt-archive-pin* (snrt-pins *snrt-released*)))
-(must-fail
+(must-fail-checked
  (defthm snrt-release-without-removal
    (fn-retain-matching-releasep *snrt-archive-pin* "snrt-forward" "snrt-object"
                                 :forward "snrt-receipt")
@@ -239,7 +239,7 @@
 ; Teeth for fn-sn-finish-keeps-every-archive-obligation: drop the :archive
 ; kind and the :forward pin is released by the release arm.
 (assert-event (member-equal *snrt-forward-pin* (snrt-pins *snrt-completing-release*)))
-(must-fail
+(must-fail-checked
  (defthm snrt-archive-keep-without-archive-kind
    (member-equal *snrt-forward-pin* (snrt-pins *snrt-released*))
    :rule-classes nil))

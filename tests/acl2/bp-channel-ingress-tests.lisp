@@ -3,7 +3,7 @@
 (include-book "../../books/bp-channel-ingress")
 (include-book "bp-session-admission-tests")
 (include-book "bp-node-foundation-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpcin-uri* (fn-record-string-octets "dtn://peer/"))
 (defconst *bpcin-result*
@@ -15,7 +15,7 @@
         (list :admitted nil
               (list :cl (cons 3 1) 2 *bpat-eid*
                     (fn-record-string-octets "peer") 7))))
-(must-fail (assert-event (equal (car *bpcin-result*) :refused)))
+(must-fail-checked (assert-event (equal (car *bpcin-result*) :refused)))
 (assert-event
  (equal (fn-bpnf-ingress-principal (caddr *bpcin-result*))
         (fn-record-string-octets "peer")))
@@ -26,12 +26,12 @@
          *bpat-no-trust* *bpnf-s0* *bpat-channel* *bpcin-uri* 1 2)
         (list :refused :no-trust-profile
               (list :cl (cons 3 1) 2 *bpat-eid* nil 0))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpaj-tcpcl-ingress-result
                *bpat-no-trust* *bpnf-s0* *bpat-channel*
                *bpcin-uri* 1 2)) :admitted)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-ingress-principal
           (caddr (fn-bpaj-tcpcl-ingress-result
@@ -64,7 +64,7 @@
          (append *bpcin-uri* (make-list (+ 5 *fn-bpc-max-text*)
                                        :initial-element 65)) 1 2)
         '(:refused :announced-eid nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (caddr (fn-bpaj-tcpcl-ingress-result
                  *bpat-cfg* *bpnf-s0* *bpat-channel*
@@ -144,7 +144,7 @@
         '(:refused :no-trust-profile)))
 ; Hypothesis removal (not :admitted): an admitted channel's answer is :ready,
 ; so the conclusion fails without the hypothesis.
-(must-fail
+(must-fail-checked
  (assert-event (not (fn-bpnf-receive-wire-readyp *bpcin-admitted-answer*))))
 ; Mutation witness, labelled: the removed rule.  The anonymous ingress the
 ; refused admission still stamps, handed straight to the receive boundary
@@ -155,7 +155,7 @@
                               (caddr *bpcin-ambiguous*))))
 ; Hypothesis removal (admitted) for the admitted keystone: over the refused
 ; channel the answer is not the receive boundary's answer on its ingress.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal *bpcin-ambiguous-answer*
          (fn-bpnf-receive-wire-event *bpnf-config* *bpnf-wire* *bpnf-obs*

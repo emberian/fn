@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-fnbs-inspect")
 (include-book "bp-fnbs-codec-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-bpnfi-corrupt-last (frame)
   (declare (xargs :guard t :verify-guards nil))
@@ -24,7 +24,7 @@
          (fn-bpnfi-corrupt-last
           (fn-bpnf-stored-record-frame *bpnfc-record*)))
         '(:fault :invalid-fnbs)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-inspect-adu
           (fn-bpnfi-corrupt-last

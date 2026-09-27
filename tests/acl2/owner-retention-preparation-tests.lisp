@@ -1,7 +1,7 @@
 ; Actual configured-owner retention prepare: prepared, refused and premise tooth.
 (in-package "ACL2")
 (include-book "../../books/owner-retention-preparation")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *orpr-config*
   (fn-config-replay 0 (fn-cnode-line-ceiling)
@@ -94,7 +94,7 @@
                (fn-sn-files (fn-own-store (fn-ocfg-owner staged))))
               :reserved))
         (not (in-arena-orpr-conclusionp *sr-arena* staged :undertake 1)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((event (orpr-event *orpr-reserved* :undertake 1))
          (staged (in-arena-fn-ocfg-step *sr-arena* *orpr-reserved* (list :store (list :prepare-retention event)))))

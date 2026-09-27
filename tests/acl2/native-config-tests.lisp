@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-config")
 (include-book "../../host/native-config-host")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-ncfg-test-lines (lines)
   (if (consp lines)
@@ -344,7 +344,7 @@
 (assert-event (not (fn-native-config-listener-projection-listp (fn-ncfg-test-addrs "::"))))
 ;; The search is closed over the subject so the refusal is quick (the
 ;; open search took 41.7 s on persvati); "::" above is the counterexample.
-(must-fail
+(must-fail-checked
  (defthm fn-ncfg-test-addresses-without-admission
    (fn-native-config-listener-projection-listp
     (fn-native-config-listener-addresses host-octets))

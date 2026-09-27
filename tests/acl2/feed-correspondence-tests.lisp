@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/feed-events")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-feed-ct-peer* '(105 110 110))
 (defconst *fn-feed-ct-a* '(60 97 64 102 110 62))
@@ -28,7 +28,7 @@
   (fn-feed-find *fn-feed-ct-a* (fn-feed-queue *fn-feed-ct-retry*))) 10))
 (assert-event (equal (fn-feed-backoff-until
   (fn-feed-replay *fn-feed-ct-offered* (list *fn-feed-ct-old-retry-record*))) 0))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (equal (fn-feed-durable-projection *fn-feed-ct-retry*)
         (fn-feed-durable-projection (fn-feed-replay *fn-feed-ct-offered*
           (list *fn-feed-ct-old-retry-record*))))))
@@ -36,7 +36,7 @@
 ; A loss with no in-flight entry still changes backoff. The previous emitter
 ; returned no record for this reachable open -> enqueue -> socket-close run.
 (assert-event (equal (fn-feed-inflight-count (fn-feed-queue *fn-feed-ct-queued*)) 0))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (equal (fn-feed-durable-projection *fn-feed-ct-queued*)
         (fn-feed-durable-projection (fn-feed-lost *fn-feed-ct-queued* *fn-feed-ct-obs*)))))
 
@@ -47,7 +47,7 @@
     (list :reply (fn-feed-response 238 *fn-feed-ct-a*) '(65 13 10) *fn-feed-ct-obs*)))
 (assert-event (null (fn-feed-observe-records *fn-feed-ct-sent*
   (fn-feed-response 238 *fn-feed-ct-a*) *fn-feed-ct-obs*)))
-(must-fail (assert-event (fn-feed-drivenp *fn-feed-ct-sent*
+(must-fail-checked (assert-event (fn-feed-drivenp *fn-feed-ct-sent*
   (list (fn-feed-journal-entry :feed-sent
           (list *fn-feed-ct-peer* *fn-feed-ct-a* 1))))))
 

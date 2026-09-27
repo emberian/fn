@@ -113,10 +113,12 @@
                                                       config-stage record-stage extent)
                              nil nil nil)))))
 
+; The staging names need not be names (audit packet G4-5, lane audit-fixes):
+; the weakened theorem proves, so (fn-bs-namep config-stage) and
+; (fn-bs-namep record-stage) were dropped.
 (defthm fn-bsi-log-init-program-establishes-the-empty-log
   (implies (and (fn-cbor-octet-listp config) (consp config)
                 (fn-cbor-octet-listp config-record) (consp config-record)
-                (fn-bs-namep config-stage) (fn-bs-namep record-stage)
                 (posp extent))
            (let* ((s (fn-bsi-log-final config config-record config-stage record-stage extent))
                   (seg (fn-bs-durable-entry s :journal "000001.log")))

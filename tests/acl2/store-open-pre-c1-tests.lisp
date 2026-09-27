@@ -17,7 +17,7 @@
 (include-book "../../books/codec-attach")
 (include-book "../../books/crypto-attach")
 (include-book "std/testing/assert-equal" :dir :system)
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *sopc-txn0*
   '(70 78 83 84 1 1 0 0 8 4 68 102 110 45 101 0 3 0 0 0 1 76 102 110
@@ -933,7 +933,7 @@
 
 ; Without it: the target, which is not one, is admitted and advances.
 (assert-event (not (fn-sopc-pre-c1-control-record-p (sopc-r1))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((ctx (fn-replay-identity (list (sopc-r0))))
          (next (fn-replay-identity-step ctx (sopc-r1))))
@@ -963,7 +963,7 @@
    (and (not (equal (fn-stxk-context-kind (fn-replay-identity (list (sopc-r0) bad))) :ok))
         (fn-sopc-pre-c1-control-record-p (sopc-r2))
         (equal (fn-store-event-sequence (sopc-r2)) 2))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (sopc-open (list (sopc-r0) (sopc-regroup (sopc-r1) '("fn.other")) (sopc-r2)))
          *sopc-refusal*)))
@@ -974,7 +974,7 @@
       (not (fn-sopc-pre-c1-control-record-p (sopc-r1)))
       (equal (fn-store-event-sequence (sopc-r1)) 1)
       (equal (fn-sn-open-kind (cadr (sopc-open (list (sopc-r0) (sopc-r1))))) :ok)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (sopc-open (list (sopc-r0) (sopc-r1)))) :refused)))
 
@@ -985,7 +985,7 @@
  (and (equal (fn-stxk-context-kind (fn-replay-identity (list (sopc-r0)))) :ok)
       (fn-sopc-pre-c1-control-record-p (sopc-r2))
       (not (equal (fn-store-event-sequence (sopc-r2)) 1))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (sopc-open (list (sopc-r0) (sopc-r2))) *sopc-refusal*)))
 
@@ -1019,7 +1019,7 @@
    (and (fn-sopc-free-p history)
         (equal (sopc-open history) (sopc-old-open history))
         (equal (fn-sn-open-kind (cadr (sopc-open history))) :ok))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (sopc-open (list (sopc-r0) (sopc-r1)
                                (sopc-regroup (sopc-r2) '("control.cancel")))))
@@ -1028,7 +1028,7 @@
 ; Without the hypothesis: the witness history; the classified open is not
 ; the old open.
 (assert-event (not (fn-sopc-free-p (list (sopc-r0) (sopc-r1) (sopc-r2)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((history (list (sopc-r0) (sopc-r1) (sopc-r2))))
     (equal (sopc-open history) (sopc-old-open history)))))

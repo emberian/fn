@@ -1,7 +1,7 @@
 ; The actual poll's bounded index window uses exact journal objects.
 (in-package "ACL2")
 (include-book "../../books/consumer-poll-index")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *cpit-events*
   (list (fn-cpe-make 0 0 0 '(:bootstrap (1) (2)))
@@ -25,7 +25,7 @@
                            *cpit-index* 0 3 1)) 1))
 
 ; Omitting the correspondence premise permits an indexed substitution.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-col-poll-index-window nil 1 3 2)
          (fn-col-poll-list-window *cpit-events* 1 3 2))))

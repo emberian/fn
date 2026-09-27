@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-k0-staging")
 (include-book "byte-store-stable-prefix-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bsk0-related-at (run k)
   (fn-bs-store-relation (car (nth k run)) (cdr (nth k run)) *bsk5-arena*))
@@ -41,7 +41,7 @@
    (and (not (fn-bs-store-relation (bsk5-initial) ks *bsk5-arena*))
         (fn-bs-frontier-inputp ks ".allocation-k0" (fn-bs-frontier-encode 2))
         (not (fn-bs-lookup (bsk5-initial) :staging ".allocation-k0")))))
-(must-fail
+(must-fail-checked
  (assert-event
   (bsk0-related-at (bsk0-f-run (bsk5-initial) (cdr (bsk0-f-start))
                                ".allocation-k0" (fn-bs-frontier-encode 2))
@@ -53,7 +53,7 @@
 (assert-event
  (not (fn-bs-frontier-inputp (cdr (bsk0-f-start)) ".allocation-k0"
                              (fn-bs-frontier-encode 1))))
-(must-fail
+(must-fail-checked
  (assert-event
   (bsk0-related-at (bsk0-f-run (car (bsk0-f-start)) (cdr (bsk0-f-start))
                                ".allocation-k0" (fn-bs-frontier-encode 1))
@@ -70,7 +70,7 @@
                                  (fn-bs-dirs bs))
                 (fn-bs-pending bs) (fn-bs-next-ino bs))))
 (assert-event (fn-bs-lookup (bsk0-f-occupied) :staging ".allocation-k0"))
-(must-fail
+(must-fail-checked
  (assert-event
   (bsk0-related-at (bsk0-f-run (bsk0-f-occupied) (cdr (bsk0-f-start))
                                ".allocation-k0" (fn-bs-frontier-encode 2))
@@ -102,7 +102,7 @@
 (assert-event
  (and (not (fn-bs-store-relation (bsk5-initial) (bsk0-r-prepared) *bsk5-arena*))
       (fn-bs-record-inputp (bsk0-r-prepared) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (bsk0-related-at (bsk0-r-run (bsk5-initial) (bsk0-r-prepared)
                                ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))
@@ -112,7 +112,7 @@
 ; name.  The link lands, but its target does not decode to the candidate.
 (assert-event
  (not (fn-bs-record-inputp (bsk0-r-prepared) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame) *bsk5-arena*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (bsk0-related-at (bsk0-r-run (car (bsk0-r-start)) (bsk0-r-prepared)
                                ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame))
@@ -127,7 +127,7 @@
                                        (cdr (assoc-equal :staging (fn-bs-dirs bs))))
                                  (fn-bs-dirs bs))
                 (fn-bs-pending bs) (fn-bs-next-ino bs))))
-(must-fail
+(must-fail-checked
  (assert-event
   (bsk0-related-at (bsk0-r-run (bsk0-r-occupied) (bsk0-r-prepared)
                                ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))
@@ -146,13 +146,13 @@
         (equal (fn-sf-phase (cdr (nth 3 run))) :ready)
         (equal (len (fn-sf-successes (cdr (nth 3 run)))) 2))))
 ; Drop the relation: the completing kernel over the pre-publication bytes.
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((pair (car (last (bsk5-record-2-run)))))
     (fn-bs-run-relatedp (bsk0-fin-run (car (bsk0-r-start)) (cdr pair)) *bsk5-arena*))))
 ; The completion claim needs its input: a wrong txid leaves the kernel
 ; :completing.
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((pair (car (last (bsk5-record-2-run)))))
     (equal (fn-sf-phase (cdr (nth 3 (fn-bs-run (car pair) (cdr pair)
@@ -166,7 +166,7 @@
 ; one of those cuts on the retained-history fixture; below, one must-fail
 ; per hypothesis per newly covered cut.
 (defmacro bsk0-unrelated-at (run k)
-  `(must-fail (assert-event (bsk0-related-at ,run ,k))))
+  `(must-fail-checked (assert-event (bsk0-related-at ,run ,k))))
 (defun bsk0-f-bad-relation ()
   (bsk0-f-run (bsk5-initial) (cdr (bsk0-f-start)) ".allocation-k0" (fn-bs-frontier-encode 2)))
 (defun bsk0-f-bad-stage ()
@@ -246,9 +246,9 @@
         (equal (fn-sf-phase (fn-sf-frontier-dir-result (cdr (nth 11 f)) :error)) :fenced-frontier)
         (equal (fn-sf-phase (fn-sf-record-link-result (cdr (nth 6 r)) :error)) :fenced-record)
         (equal (fn-sf-phase (fn-sf-record-dir-result (cdr (nth 10 r)) :error)) :fenced-record))))
-(must-fail (assert-event (bsk0-f-arms-okp (bsk0-f-bad-relation))))
-(must-fail (assert-event (bsk0-f-arms-okp (bsk0-f-bad-stage))))
-(must-fail (assert-event (bsk0-f-arms-okp (bsk0-f-bad-absent))))
-(must-fail (assert-event (bsk0-r-arms-okp (bsk0-r-bad-relation))))
-(must-fail (assert-event (bsk0-r-arms-okp (bsk0-r-bad-stage))))
-(must-fail (assert-event (bsk0-r-arms-okp (bsk0-r-bad-absent))))
+(must-fail-checked (assert-event (bsk0-f-arms-okp (bsk0-f-bad-relation))))
+(must-fail-checked (assert-event (bsk0-f-arms-okp (bsk0-f-bad-stage))))
+(must-fail-checked (assert-event (bsk0-f-arms-okp (bsk0-f-bad-absent))))
+(must-fail-checked (assert-event (bsk0-r-arms-okp (bsk0-r-bad-relation))))
+(must-fail-checked (assert-event (bsk0-r-arms-okp (bsk0-r-bad-stage))))
+(must-fail-checked (assert-event (bsk0-r-arms-okp (bsk0-r-bad-absent))))

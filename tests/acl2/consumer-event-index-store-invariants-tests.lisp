@@ -2,7 +2,7 @@
 ; independent source of Store history.
 (in-package "ACL2")
 (include-book "../../books/consumer-event-index-store-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun ceist-reserve (s)
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
@@ -41,7 +41,7 @@
 ; A well-shaped but stale derived index cannot justify selection.  The
 ; correspondence premise is substantive even when the Store projection is
 ; otherwise valid.
-(must-fail
+(must-fail-checked
  (defthm fn-ceis-stale-index-does-not-satisfy-correspondence
    (implies (fn-sn-statep s)
             (fn-ceis-relatedp (fn-sn-with-event-index s nil)))))

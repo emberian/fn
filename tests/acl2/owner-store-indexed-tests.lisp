@@ -11,7 +11,7 @@
 (in-package "ACL2")
 (include-book "bp-signed-binding-tests")
 (include-book "../../books/owner-store-indexed")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *osi-configs* (list *fn-cfg-default-record*))
 (defconst *osi-events* (fn-sf-records (fn-sn-files *bsb-store*)))
@@ -103,6 +103,19 @@
 (assert-event
  (equal (in-arena-fn-bpaj-article-event *sr-arena* *bsb-record* (fn-sf-records (fn-sn-files *osi-store*)))
         *bsb-row-composite*))
+(bpr-lift fn-bpr-row-stands-for 2)
+;; The restated conclusion's arms, literally at the bound record (audit-fixes
+;; item 1): the event's article (the held row) stands for the bound wire
+;; record through the arena, and the composite arm (fn-hstxa-p) binds its
+;; verdict.
+(assert-event
+ (let ((event (in-arena-fn-bpaj-article-event *sr-arena* *bsb-record*
+                                              (fn-sf-records (fn-sn-files *osi-store*)))))
+   (and (fn-hstxa-p event)
+        (equal (fn-bpr-event-article event) *bsb-row*)
+        (in-arena-fn-bpr-row-stands-for *sr-arena* (fn-bpr-event-article event) *bsb-record*)
+        (fn-record-p (fn-bpr-event-article (fn-hstxa-stxa event)))
+        (fn-stxa-bindsp (fn-hstxa-stxa event)))))
 ; The live fast/checked equalities, at the live Store.
 (assert-event
  (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-joined* *osi-store* *bsb-request-octets* 1)
@@ -180,7 +193,7 @@
       (not (member-equal *bsb-row*
                          (fn-bpr-article-records
                           (fn-sf-records (fn-sn-files *osi-before*)))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-joined* *osi-before*
                                      *bsb-request-octets* 1)
@@ -196,7 +209,7 @@
       (not (equal (fn-record-msgid *bsb-row*)
                   (fn-bpaj-dispatch-msgid *bsb-other-joined*
                                           *bsb-other-request-octets*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-other-joined* *osi-store*
                                      *bsb-other-request-octets* 1)
@@ -215,7 +228,7 @@
  (not (equal (car (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-joined* *osi-before*
                                          *bsb-request-octets* 1))
              :bind)))
-(must-fail
+(must-fail-checked
  (assert-event
   (in-arena-bsb-binds-own-record-conclusion *sr-arena* *bsb-joined* *osi-before*
                                    *bsb-request-octets* 1)))
@@ -316,7 +329,7 @@
 (assert-event (not (fn-node-statep *osi-bad-node*)))
 (assert-event (in-arena-fn-bpaj-node-record-committed-carriedp *sr-arena* *osi-bad-node* *bsb-record*))
 (assert-event (not (in-arena-fn-bpi-node-wire-committedp *sr-arena* *osi-bad-node* *bsb-record*)))
-(must-fail
+(must-fail-checked
  (thm (equal (in-arena-fn-bpaj-node-record-committed-carriedp *sr-arena* *osi-bad-node* *bsb-record*)
              (in-arena-fn-bpi-node-wire-committedp *sr-arena* *osi-bad-node* *bsb-record*))))
 
@@ -347,7 +360,7 @@
 (assert-event (not (fn-ocl-relation *osi-bad-oc*)))
 (assert-event (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* *osi-bad-oc-store* *bsb-record*))
 (assert-event (not (in-arena-fn-bpr-store-record-acceptedp *sr-arena* *osi-bad-oc-store* *bsb-record*)))
-(must-fail
+(must-fail-checked
  (thm (let ((store (fn-own-store (fn-ocfg-owner *osi-bad-oc*))))
         (implies (fn-ceis-indexedp store)
                  (equal (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* store *bsb-record*)
@@ -366,7 +379,7 @@
 (assert-event (not (fn-ceis-indexedp *osi-stale-oc-store*)))
 (assert-event (not (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* *osi-stale-oc-store* *bsb-record*)))
 (assert-event (in-arena-fn-bpr-store-record-acceptedp *sr-arena* *osi-stale-oc-store* *bsb-record*))
-(must-fail
+(must-fail-checked
  (thm (let ((store (fn-own-store (fn-ocfg-owner *osi-stale-oc*))))
         (implies (fn-ocl-relation *osi-stale-oc*)
                  (equal (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* store *bsb-record*)

@@ -1,7 +1,7 @@
 ; Executable witnesses and hypothesis teeth for the attached transaction name.
 (in-package "ACL2")
 (include-book "../../books/byte-store-txn-name")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 ; Minimum width is padding, not a bound.  The realization covers every
@@ -45,7 +45,7 @@
 (assert-event
  (equal (fn-bs-txn-name-impl -1) (fn-bs-txn-name-impl 0)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-bs-txn-name-injective-without-left-natp
     (implies (and (natp j)
                   (equal (fn-bs-txn-name-impl i)
@@ -53,7 +53,7 @@
              (equal i j))
     :rule-classes nil)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-bs-txn-name-injective-without-right-natp
     (implies (and (natp i)
                   (equal (fn-bs-txn-name-impl i)
@@ -61,7 +61,7 @@
              (equal i j))
     :rule-classes nil)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-bs-txn-name-injective-without-name-equality
     (implies (and (natp i) (natp j))
              (equal i j))

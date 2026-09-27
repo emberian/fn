@@ -8,7 +8,7 @@
 ; hypothesis, and the journal that separates the two replays.
 (in-package "ACL2")
 (include-book "../../books/config-crash-replay")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "config-owner-publish-tests")
 
 (defconst *ccr-store* (fn-own-store (fn-ocfg-owner *ocp-admin*)))
@@ -114,7 +114,7 @@
 (assert-event (not (equal (fn-ccr-recovered *ccr-h* *ccr-e*)
                           (fn-ocfg-config *ccr-forged-staged*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocl-crash-recovers-the-live-generation-without-history
     (let ((staged (fn-ocfg-step (fn-ocfg-step oc (list :reconfigure id deltas) fn-arena) (list :close id) fn-arena)))
       (equal (fn-cnode-config
@@ -135,7 +135,7 @@
 (assert-event (equal (fn-ccr-recovered (list 7) nil) :fault))
 (assert-event (not (equal (fn-replay-result-kind (fn-cnode-config-replay (list 7))) :ok)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocl-config-replay-ok-without-the-called-ok
     (equal (fn-replay-result-kind (fn-cnode-config-replay configs)) :ok)
     :rule-classes nil
@@ -160,7 +160,7 @@
 (assert-event (equal (fn-replay-result-reason (fn-cpr-replay *ccr-descending* nil))
                      :config-txid))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocl-config-replay-ok-is-cpr-replay-ok-is-false
     (implies (equal (fn-replay-result-kind (fn-cnode-config-replay configs)) :ok)
              (equal (fn-replay-result-kind (fn-cpr-replay configs events)) :ok))

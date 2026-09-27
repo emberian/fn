@@ -6,7 +6,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/records-schema-v1")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The wide uint.  Boundary vectors: the last narrow value keeps its head, the
@@ -31,26 +31,26 @@
 (assert-event (not (equal (fn-cbor-decode-prechecked-wide '(27 0 0 0 1 0 0 0 0) 10)
                           (fn-cbor-decode-prechecked '(27 0 0 0 1 0 0 0 0) 10))))
 
-(must-fail
+(must-fail-checked
  (defthm p6-teeth-extends-narrow-without-acceptance
    (equal (fn-cbor-decode-prechecked-wide octets budget)
           (fn-cbor-decode-prechecked octets budget))))
 
-(must-fail
+(must-fail-checked
  (defthm p6-teeth-wide-round-trip-without-width
    (implies (and (natp n) (fn-cbor-octet-listp rest))
             (equal (fn-cbor-decode-prechecked-wide
                     (append (fn-cbor-encode-uint-wide n) rest) budget)
                    (fn-cbor-ok (cons :uint n) rest)))))
 
-(must-fail
+(must-fail-checked
  (defthm p6-teeth-wide-round-trip-without-octet-rest
    (implies (and (natp n) (<= n *fn-cbor-max-uint64*))
             (equal (fn-cbor-decode-prechecked-wide
                     (append (fn-cbor-encode-uint-wide n) rest) budget)
                    (fn-cbor-ok (cons :uint n) rest)))))
 
-(must-fail
+(must-fail-checked
  (defthm p6-teeth-reencode-without-acceptance
    (implies (fn-cbor-octet-listp octets)
             (equal (append (fn-cbor-encode-uint-wide
@@ -105,12 +105,12 @@
 (assert-event (not (equal (fn-record-decode-exact-impl *fn-record-schema2-golden-octets*)
                           (fn-record-v1-decode-exact *fn-record-schema2-golden-octets*))))
 
-(must-fail
+(must-fail-checked
  (defthm p6-teeth-identically-without-acceptance
    (equal (fn-record-decode-exact-impl octets)
           (fn-record-v1-decode-exact octets))))
 
-(must-fail
+(must-fail-checked
  (defthm p6-teeth-translation-without-acceptance
    (equal (fn-record-encode-impl
            (fn-record-result-record (fn-record-v1-decode-exact octets)))

@@ -23,7 +23,7 @@
 (include-book "../../books/records-freeze")
 (include-book "crypto-seam-tests")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The host runs compiled code: every function it may reach is guard-verified.
@@ -119,7 +119,7 @@
                           (fn-record-encode *rft-w-dotted*))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-record-shapep))))
-(must-fail
+(must-fail-checked
  (defthm rft-r-projection-bytes-without-shape
    (mv-let (held a2)
      (fn-cat-intern-list *rft-w-dotted* nil 1 nil)
@@ -216,7 +216,7 @@
        (not (equal (fn-rfz-verdicts-of-rows *rft-c-bad*)
                    (fn-rfz-verdicts-of-wire (fn-rfz-wire-rows *rft-c-bad* *rft-a*) nil 0))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm rft-r-replay-verdicts-without-contexts
    (equal (fn-rfz-verdicts-of-rows *rft-c-bad*)
           (fn-rfz-verdicts-of-wire (fn-rfz-wire-rows *rft-c-bad* *rft-a*) nil 0))
@@ -281,7 +281,7 @@
          (fn-cat-load (list *rft-w0*) nil 0 *rft-a* *rft-c-bad*)
          (not (fn-rfz-contexts-okp c nil 0 a))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm rft-r-load-without-contexts
    (mv-let (a c)
      (fn-cat-load (list *rft-w0*) nil 0 *rft-a* *rft-c-bad*)
@@ -301,7 +301,7 @@
                                      fn-arn-seal-many-is-append fn-arena-seal-list-is-append
                                      fn-rfz-wire-rows fn-rfz-articles-of-rows fn-rfz-contexts-okp
                                      fn-held-wire-of))))
-(must-fail
+(must-fail-checked
  (defthm rft-r-load-without-handles
    (mv-let (a c)
      (fn-cat-load (list *rft-w0*) nil 0 *rft-a* *rft-c-far*)
@@ -324,7 +324,7 @@
          (fn-cat-load (list *rft-w0*) nil 0 *rft-a* *rft-c-notrow*)
          (and (not (fn-cat-p c)) a)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm rft-r-load-without-cat-p
    (mv-let (a c)
      (fn-cat-load (list *rft-w0*) nil 0 *rft-a* *rft-c-notrow*)
@@ -341,7 +341,7 @@
          (and (not (fn-cat-p c)) a)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-rfz-contexts-okp))))
-(must-fail
+(must-fail-checked
  (defthm rft-r-load-without-natp-generation
    (mv-let (a c)
      (fn-cat-load (list *rft-w0*) nil -1 nil nil)
@@ -375,7 +375,7 @@
                                      fn-arn-seal-many-is-append fn-arena-seal-list-is-append
                                      fn-rfz-wire-rows fn-rfz-articles-of-rows fn-rfz-contexts-okp
                                      fn-held-wire-of))))
-(must-fail
+(must-fail-checked
  (defthm rft-r-pinned-rows-without-handles
    (equal (fn-rfz-wire-rows *rft-c-edge* (fn-arn-seal-many (list *rft-tomb*) *rft-a*))
           (fn-rfz-wire-rows *rft-c-edge* *rft-a*))
@@ -412,7 +412,7 @@
                                      fn-arn-seal-many-is-append fn-arena-seal-list-is-append
                                      fn-rfz-wire-rows fn-rfz-articles-of-rows fn-rfz-contexts-okp
                                      fn-held-wire-of))))
-(must-fail
+(must-fail-checked
  (defthm rft-r-reclaim-without-handle-below
    (let ((r (car *rft-c-edge*)))
      (equal (fn-held-wire-of r (fn-arena-seal-list *rft-tomb* *rft-a*))
@@ -460,7 +460,7 @@
 (defthm rft-w-resolve-before-without-order
   (and (not (<= 3 2)) (not (equal (fn-rfz-resolve 0 (list (cons 2 2)) 3) 0)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm rft-r-resolve-before-without-order
    (equal (fn-rfz-resolve 0 (list (cons 2 2)) 3) 0)
    :rule-classes nil))
@@ -468,7 +468,7 @@
 (defthm rft-w-resolve-after-without-order
   (and (not (< 2 2)) (not (equal (fn-rfz-resolve 0 (list (cons 2 2)) 2) 2)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm rft-r-resolve-after-without-order
    (equal (fn-rfz-resolve 0 (list (cons 2 2)) 2) 2)
    :rule-classes nil))
@@ -487,7 +487,7 @@
                                      fn-arn-seal-many-is-append fn-arena-seal-list-is-append
                                      fn-rfz-wire-rows fn-rfz-articles-of-rows fn-rfz-contexts-okp
                                      fn-held-wire-of))))
-(must-fail
+(must-fail-checked
  (defthm rft-r-resolved-survives-without-handle-below
    (equal (fn-arena-payload 2 (fn-arn-seal-many (list *rft-tomb* '(9)) *rft-a*))
           (fn-arena-payload 2 *rft-a*))

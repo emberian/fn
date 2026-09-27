@@ -22,7 +22,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/owner-agent")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The configuration: the default record, then `policy set path-identity'.
@@ -60,7 +60,7 @@
                            (fn-oag-post-config *oat-cfg-unset* 32768))
                           (fn-record-string-octets
                            (fn-oag-identity *oat-cfg-unset*)))))
-(must-fail
+(must-fail-checked
  (defthm oat-post-config-without-identity-setp
    (equal (fn-inj-config-agent (fn-oag-post-config *oat-cfg-unset* 32768))
           (fn-record-string-octets (fn-oag-identity *oat-cfg-unset*)))
@@ -124,7 +124,7 @@
 (assert-event (consp *oat-stale-found*))
 (assert-event (not (equal (fn-own-conn-config *oat-stale-found*)
                           (fn-own-config *oat-stale-owner*))))
-(must-fail
+(must-fail-checked
  (defthm oat-open-without-freshness
    (let* ((oc *oat-stale-oc*)
           (o (fn-ocfg-owner oc))
@@ -190,7 +190,7 @@
 ; path builds comes from fn-auth-step's result -- so this `must-fail' shows
 ; only that the proof needs the premise, not that the conclusion does, and it
 ; is the one general-claim tooth in this book for that reason.
-(must-fail
+(must-fail-checked
  (defthm oat-read-without-served-invariant
    (let ((conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
      (fn-oag-names-agentp

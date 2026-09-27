@@ -5,7 +5,7 @@
 ; split after the first event.  The owner installed from the checkpoint is
 ; the owner the full open installs, and it is a configured owner, not :fault.
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/owner-checkpoint-open")
 
 (defconst *ock-t-events*
@@ -43,7 +43,7 @@
 
 ; The keystone is not vacuous: a checkpoint of a different prefix installs a
 ; different owner (the checkpoint's records are the Store's history).
-(must-fail
+(must-fail-checked
  (defthm ock-t-other-prefix
    (equal (fn-ock-recover-extended
            (fn-sco-extend (fn-sco-capture *ock-t-configs* *ock-t-suffix*)
@@ -56,7 +56,7 @@
 ; :fault satisfies no relation.
 (assert-event (equal (fn-ock-recover-extended *ock-t-extended* *ock-t-configs* 8 nil)
                      :fault))
-(must-fail
+(must-fail-checked
  (defthm ock-t-relation-without-install
    (fn-ocl-relation (fn-ock-recover-extended *ock-t-extended* *ock-t-configs* 8 nil))))
 
@@ -96,23 +96,23 @@
 (assert-event (fn-ock-publication-duep 0 3 4 2))
 (assert-event (equal (car (fn-sco-select :ok 0 1 4)) :checkpoint))
 ; fn-ock-not-due-keeps-the-checkpoint-open, one must-fail per hypothesis.
-(must-fail
+(must-fail-checked
  (defthm ock-t-not-due-without-natp-durable
    (equal (car (fn-sco-select :ok nil 0 5)) :checkpoint)))
 (assert-event (not (fn-ock-publication-duep nil 0 5 nil)))
-(must-fail
+(must-fail-checked
  (defthm ock-t-not-due-without-natp-count
    (equal (car (fn-sco-select :ok 0 nil 5)) :checkpoint)))
 (assert-event (not (fn-ock-publication-duep 0 nil 5 nil)))
-(must-fail
+(must-fail-checked
  (defthm ock-t-not-due-without-durable-below-count
    (equal (car (fn-sco-select :ok 5 3 5)) :checkpoint)))
 (assert-event (not (fn-ock-publication-duep 5 3 5 nil)))
-(must-fail
+(must-fail-checked
  (defthm ock-t-not-due-without-natp-k
    (equal (car (fn-sco-select :ok 0 0 nil)) :checkpoint)))
 (assert-event (not (fn-ock-publication-duep 0 0 nil 1)))
-(must-fail
+(must-fail-checked
  (defthm ock-t-not-due-without-a-new-count
    (equal (car (fn-sco-select :ok 0 20 4)) :checkpoint)))
 (assert-event (not (fn-ock-publication-duep 0 20 4 20)))
@@ -183,7 +183,7 @@
 
 ; fn-ock-one-publication-in-flight without its hypothesis: nothing in flight
 ; and the rule true is :due.
-(must-fail
+(must-fail-checked
  (defthm ock-t-one-in-flight-without-inflight
    (not (equal (fn-ock-publication-next durable count k attempted inflight blockedp) :due))
    :rule-classes nil
@@ -191,7 +191,7 @@
 
 ; fn-ock-publication-next-decides-by-the-rule without its hypothesis: in
 ; flight, the rule true, the decision is :coalesce, not :due.
-(must-fail
+(must-fail-checked
  (defthm ock-t-decides-by-the-rule-without-not-inflight
    (iff (equal (fn-ock-publication-next durable count k attempted inflight blockedp) :due)
         (and (not blockedp) (fn-ock-publication-duep durable count k attempted)))
@@ -201,7 +201,7 @@
 ; fn-ock-fast-path-within-k-by-definition without (<= s count): S ahead of the
 ; count is :ahead-of-history though the difference is within K.
 (assert-event (and (<= (- 3 5) 4) (equal (fn-sco-select :ok 5 3 4) (list :full-replay :ahead-of-history))))
-(must-fail
+(must-fail-checked
  (defthm ock-t-fast-path-without-order
    (implies (and (natp s) (natp count) (natp k))
             (iff (equal (car (fn-sco-select :ok s count k)) :checkpoint)

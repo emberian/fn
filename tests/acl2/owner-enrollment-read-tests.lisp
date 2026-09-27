@@ -6,7 +6,7 @@
 (in-package "ACL2")
 (include-book "owner-verdict-tests")
 (include-book "../../books/owner-enrollment-read")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-oert-line (text)
   (append (fn-nntp-string-octets text) '(13 10)))
@@ -106,7 +106,7 @@
 ; Teeth: reader B (conn 2), opened before the rotation and the revocation,
 ; did not pin the finished keyring.
 (assert-event (fn-own-find-conn 2 (fn-own-conns *oer-after*)))
-(must-fail
+(must-fail-checked
  (thm (equal (fn-enr-pin-keyring
               (fn-own-conn-control
                (fn-own-find-conn 2 (fn-own-conns *oer-after*))))
@@ -188,7 +188,7 @@
                      (fn-oert-only-false 15 16)))
 (assert-event (equal (fn-served-reply-octets (car (in-arena-fn-own-read *sr-arena* *oer-reader-d* 4 *oer-nosuch*)))
                      (fn-oert-line "430 no article with that message-id")))
-(must-fail
+(must-fail-checked
  (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-nosuch* fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-nosuch-prefix* *oer-lf*))))
 
@@ -198,7 +198,7 @@
 (assert-event (equal (take 4 (fn-oert-hyps *oer-reader-d* 4 *oer-cut* *oer-cr*))
                      (fn-oert-all 4)))
 (assert-event (not (nth 4 (fn-oert-hyps *oer-reader-d* 4 *oer-cut* *oer-cr*))))
-(must-fail
+(must-fail-checked
  (thm (equal (car (fn-own-read *oer-reader-d* 4 (append *oer-cut* (list *oer-cr*)) fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-cut* *oer-cr*))))
 
@@ -207,7 +207,7 @@
 (defconst *oer-verified-prefix* (butlast *ov-hdr* 1))
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-verified-prefix* *oer-lf*)
                      (fn-oert-only-false 11 16)))
-(must-fail
+(must-fail-checked
  (thm (equal (car (fn-own-read *oer-reader-d* 4 *ov-hdr* fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-verified-prefix* *oer-lf*))))
 
@@ -216,7 +216,7 @@
 (defconst *oer-xhdr-prefix* (butlast *oer-xhdr* 1))
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-xhdr-prefix* *oer-lf*)
                      (fn-oert-only-false 10 16)))
-(must-fail
+(must-fail-checked
  (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-xhdr* fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-xhdr-prefix* *oer-lf*))))
 
@@ -229,7 +229,7 @@
                      (update-nth 15 nil (fn-oert-only-false 12 16))))
 (assert-event (equal (fn-served-reply-octets (car (in-arena-fn-own-read *sr-arena* *oer-reader-d* 4 *oer-range*)))
                      (fn-oert-line "501 syntax error")))
-(must-fail
+(must-fail-checked
  (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-range* fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-range-prefix* *oer-lf*))))
 
@@ -238,7 +238,7 @@
 (defconst *oer-extra-prefix* (butlast *oer-extra* 1))
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-extra-prefix* *oer-lf*)
                      (fn-oert-only-false 9 16)))
-(must-fail
+(must-fail-checked
  (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-extra* fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-extra-prefix* *oer-lf*))))
 
@@ -246,12 +246,12 @@
 (defconst *oer-bare* (fn-oert-line "HDR :fn-enrollment"))
 (defconst *oer-bare-prefix* (butlast *oer-bare* 1))
 (assert-event (equal (nth 8 (fn-oert-hyps *oer-reader-d* 4 *oer-bare-prefix* *oer-lf*)) nil))
-(must-fail
+(must-fail-checked
  (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-bare* fn-arena))
              (fn-oert-rhs *oer-reader-d* 4 *oer-bare-prefix* *oer-lf*))))
 
 ; Without a connection (premise 1): an unknown id reads nothing.
 (assert-event (null (car (in-arena-fn-own-read *sr-arena* *oer-reader-d* 99 *oer-hdr*))))
-(must-fail
+(must-fail-checked
  (thm (equal (car (fn-own-read *oer-reader-d* 99 (append *oer-prefix* (list *oer-lf*)) fn-arena))
              (fn-oert-rhs *oer-reader-d* 99 *oer-prefix* *oer-lf*))))

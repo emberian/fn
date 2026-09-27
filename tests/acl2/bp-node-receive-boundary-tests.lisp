@@ -3,7 +3,7 @@
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "bp-node-foundation-tests")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnrb-ready*
   (fn-bpnf-receive-wire-event
@@ -98,7 +98,7 @@
          (list (list :receive-answer *bpnf-ingress-q* :stored))
          *bpnf-ingress-p* nil)
         '(:uncertain :machine-answer)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-callback-result
           (list (list :receive-answer *bpnf-ingress-p* '(:refused :capacity)))

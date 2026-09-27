@@ -19,7 +19,7 @@
 ;   a5  fn.letters  no Injection-Date and no Date         unreadable stamp
 (in-package "ACL2")
 (include-book "../../books/nntp-effects")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; This book reasons about the NNTP transitions themselves, so it opens the
 ; vocabularies the books of the nntp cluster withdraw at their export events.
@@ -156,9 +156,9 @@
 (defconst *nn-line-badwildmat* '(78 69 87 78 69 87 83 32 91 32 50 48 50 54 48 57 49 57
     32 48 48 48 48 48 48 32 71 77 84))
 (defconst *nn-line-badtime* '(78 69 87 78 69 87 83 32 102 110 46 108 101 116 116 101 114 115
-(defconst *nn-line-newgroups* '(78 69 87 71 82 79 85 80 83 32 50 48 50 54 48 57 49 57 32 48 48 48 48 48 48 32 71 77 84))
     32 50 48 50 54 48 57 49 57 32 50 53 48 48 48 48 32 71
     77 84))
+(defconst *nn-line-newgroups* '(78 69 87 71 82 79 85 80 83 32 50 48 50 54 48 57 49 57 32 48 48 48 48 48 48 32 71 77 84))
 
 (defconst *nn-dt-plus0000* '(83 97 116 44 32 49 57 32 83 101 112 32 50 48 50 54 32 49
     50 58 48 48 58 48 48 32 43 48 48 48 48))
@@ -341,16 +341,16 @@
 (assert-event (equal (in-arena-fn-nntp-newnews-accepted-since *sr-arena* '("fn.letters") (+ *nn-noon* 1000) *nn-articles* nil :none)
                      (list *nn-a4-id*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm nn-teeth-every-article-is-a-candidate
     (fn-nntp-newnews-candidatep '("fn.letters") *nn-a3-article*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm nn-teeth-every-stamp-is-new
     (equal (nn-ids '("fn.letters") (+ *nn-noon* 1000) :none fn-arena)
            (nn-ids '("fn.letters") *nn-midnight* :none fn-arena)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm nn-teeth-payload-decides-the-answer
     (not (equal
           (fn-nntp-newnews-scan '("fn.letters") *nn-midnight* (fn-nntp-newnews-without-payload *nn-articles* fn-arena) :none fn-arena)
@@ -359,7 +359,7 @@
                       '("fn.letters") *nn-articles*) 4))
 (assert-event (equal (len (in-arena-nn-ids *sr-arena* '("fn.letters") *nn-midnight* :none)) 2))
 (local
- (must-fail
+ (must-fail-checked
   (defthm nn-teeth-lines-exceed-candidates
     (< (fn-nntp-newnews-candidate-count
         '("fn.letters") *nn-articles*)
@@ -437,27 +437,27 @@
 (assert-event (nn-dispatch-claim *nn-session* *nn-line-letters*))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm nn-teeth-dispatch-without-a-session
     (nn-dispatch-claim :not-a-session *nn-line-letters*))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm nn-teeth-dispatch-on-a-closed-session
     (nn-dispatch-claim *nn-closed-session* *nn-line-letters*))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm nn-teeth-dispatch-without-a-projection
     (nn-dispatch-claim *nn-unprojected-session* *nn-line-letters*))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm nn-teeth-dispatch-without-a-command-line
     (nn-dispatch-claim *nn-session* *nn-line-too-long*))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm nn-teeth-dispatch-of-any-keyword
     (nn-dispatch-claim *nn-session* *nn-line-newgroups*))))
 

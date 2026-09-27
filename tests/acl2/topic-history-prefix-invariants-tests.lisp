@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/topic-history-prefix-invariants")
 (include-book "topic-history-prefix-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; A real topic report has an earlier accepted T10 source and key snapshot,
 ; but remains inadmissible without a root anchor. This is not a syntax,
@@ -17,7 +17,7 @@
                   (fn-th-prefix-step *sti-unanchored-before*
                                      *thad-report-event*))
         :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-th-at 0
                    (fn-th-prefix-step *sti-unanchored-before*

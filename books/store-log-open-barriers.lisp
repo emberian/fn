@@ -14,7 +14,8 @@
 ;       segment again) is the identity on a related state with nothing in
 ;       flight: after P-LOG-RECOVER nothing is pending, so it fences nothing.
 ;   fn-lgob-recovered-segment-fence-is-identity   the same at the state the
-;       host holds after fnn-log-recover (log-recovered).
+;       host holds after fnn-log-recover (log-recovered), for any store
+;       whose segment inode exists: no obligation, no relation needed.
 ;   fn-lgob-file-fence-keeps-entry-operations      a file fence never drains a
 ;       pending directory entry: a create in journal/ (P-ROTATE's
 ;       rotate-created, init's init-segment-created), a rename into the root
@@ -90,32 +91,42 @@
            :in-theory (e/d (fn-lg-step fn-bs-write fn-bs-fsync-file fn-bs-fence-file)
                            (fn-bs-durable-content fn-bs-zeros fn-bs-apply-ops)))))
 
+; The recovery program ends with the segment's fence, which leaves nothing of
+; the segment pending, so fencing it again changes nothing: the only premise
+; is that the segment's inode exists (otherwise the program's first write is
+; refused with :ebadf and the run stops before its fence).  The statement
+; once carried six more hypotheses -- a positive unit, a unit-aligned true
+; content, a digest genesis, the owner's sole-pending-writer obligation and
+; no pending write of the segment -- which R needed and the conclusion does
+; not (lane audit-fixes, keystone-audit G4-7: this weakened theorem was
+; proved, so they were removed).
+
+(local
+ (defthm fn-lgob-ops-for-ino-of-not-for-ino
+   (equal (fn-bs-ops-for-ino (fn-bs-ops-not-for-ino ops ino) ino) nil)))
+
+(local
+ (defthm fn-lgob-ops-not-for-ino-idempotent
+   (equal (fn-bs-ops-not-for-ino (fn-bs-ops-not-for-ino ops ino) ino)
+          (fn-bs-ops-not-for-ino ops ino))))
+
+(local
+ (defthm fn-lgob-fence-file-idempotent
+   (equal (fn-bs-fence-file (fn-bs-fence-file s ino) ino)
+          (fn-bs-fence-file s ino))
+   :hints (("Goal" :in-theory (enable fn-bs-fence-file)))))
+
 (defthm fn-lgob-recovered-segment-fence-is-identity
   (let* ((ks (fn-lg-recovered-kernel bs ino genesis max floor))
          (final (car (last (fn-lg-run bs ks (fn-lg-recover-program) nil ino)))))
-    (implies (and (posp (fn-bs-unit bs)) ino (assoc-equal ino (fn-bs-inodes bs))
-                  (true-listp (fn-bs-durable-content bs ino))
-                  (equal (mod (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)) 0)
-                  (fn-frame-digestp genesis)
-                  (fn-assume-log-sole-pending-writer bs ino)
-                  (not (fn-bs-ops-for-ino (fn-bs-pending bs) ino)))
+    (implies (assoc-equal ino (fn-bs-inodes bs))
              (equal (fn-lg-step (car final) (cdr final) '(:fence :segment :tail) :ok ino)
                     (mv :ok (car final) (cdr final)))))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-lg-recover-program-establishes-the-relation)
-                 (:instance fn-lgob-recover-run-keeps-the-kernel
-                            (ks (fn-lg-recovered-kernel bs ino genesis max floor)))
-                 (:instance fn-lgob-duplicate-segment-fence-is-identity
-                            (bs (car (car (last (fn-lg-run bs (fn-lg-recovered-kernel
-                                                                bs ino genesis max floor)
-                                                           (fn-lg-recover-program) nil ino)))))
-                            (ks (fn-lg-recovered-kernel bs ino genesis max floor))))
-           :in-theory (e/d (fn-lgob-recovered-kernel-has-nothing-in-flight)
-                           (fn-lgk-relp fn-lgk-inflight fn-lg-step fn-lg-run fn-lg-recover-program
-                            fn-lg-recovered-kernel fn-bs-durable-content
-                            fn-lg-recover-program-establishes-the-relation
-                            fn-lgob-recover-run-keeps-the-kernel
-                            fn-lgob-duplicate-segment-fence-is-identity)))))
+           :expand ((:free (bs ks steps outcomes) (fn-lg-run bs ks steps outcomes ino)))
+           :in-theory (e/d (fn-lg-step fn-bs-fsync-file fn-bs-write fn-lg-recover-program)
+                           (fn-bs-fence-file fn-lg-recovered-kernel fn-bs-durable-content
+                            fn-bs-zeros fn-bs-take)))))
 
 ; -----------------------------------------------------------------------------
 ; Why one barrier is not enough.

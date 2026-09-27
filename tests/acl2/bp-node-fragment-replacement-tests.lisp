@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-fragment-replacement")
 (include-book "bp-node-fragment-plan-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnfr-record*
   (fn-bpnf-family-record 3 8 0 7 (nth 2 *bpnfp-plan*)))
@@ -34,7 +34,7 @@
          *bpnff-state*
          (fn-bpnf-family-record 3 8 0 7 '(159 0)) 7)
         '(:fault :family-image)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpnf-family-apply
                *bpnff-state*

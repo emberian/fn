@@ -3,7 +3,7 @@
 ; as format-7 translations (D34 kept the values, dropped the format).
 (in-package "ACL2")
 (include-book "../../books/store-profile-facts")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *spft-dev* *fn-bs-profile-development*)
 (defconst *spft-scale* *fn-bs-profile-scale*)
@@ -32,7 +32,7 @@
 (assert-event (fn-bs-profile-validp *spft-raised*))
 (assert-event (equal (fn-bs-config-decode (fn-bs-config-encode *spft-raised*))
                      *spft-raised*))
-(must-fail
+(must-fail-checked
  (defthm spft-round-trip-without-validp
    (equal (fn-bs-config-decode (fn-bs-config-encode '(1 2 3))) '(1 2 3))))
 

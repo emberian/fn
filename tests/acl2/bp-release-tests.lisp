@@ -10,7 +10,7 @@
 (include-book "../../books/bp-release-invariants")
 (include-book "../../books/bp-workflow-constructors")
 (include-book "../../books/bp-release-replay-status")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; Reachable witness
@@ -370,7 +370,7 @@
         '(:not-a-workflow-record)))
 (assert-event (not (car (fn-bprl-replay-journal *rl-node-committed*
                                                 *rl-broken-replay-records*))))
-(must-fail
+(must-fail-checked
  (defthm rl-teeth-failed-replay-is-not-restarted-status
    (equal
     (fn-bp-work-status
@@ -392,13 +392,13 @@
 
 ; fn-bprl-release-preserves-independent-pin without its inequality: the
 ; released pin itself is the counterexample.
-(must-fail
+(must-fail-checked
  (defthm rl-teeth-released-pin-is-not-independent
    (equal (fn-retain-find-id "forward-1" (fn-bprl-pins *rl-released*))
           (fn-retain-find-id "forward-1" (fn-bprl-pins *rl-receipted*)))))
 ; fn-bprl-authorized-receipt-evidence-matches-required without authorization:
 ; a wrong-subject receipt renders to a different string.
-(must-fail
+(must-fail-checked
  (defthm rl-teeth-unauthorized-evidence-does-not-match
    (equal (fn-bprl-evidence-string
            (fn-bprl-receipt-evidence
@@ -408,10 +408,10 @@
                                 "terms-1")))
           (fn-bprl-required-evidence *rl-config* *rl-work*))))
 ; The decision without its pin premise: the unpinned receipted state.
-(must-fail
+(must-fail-checked
  (defthm rl-teeth-no-pin-no-release
    (fn-bprl-decision-okp (fn-bprl-release-decision *rl-unpinned-receipted* "receipt-1"))))
 ; The undertaking without the stage guard would have to change a staged node.
-(must-fail
+(must-fail-checked
  (defthm rl-teeth-staged-node-refuses
    (not (equal (fn-bprl-undertake *rl-staged* "work-1" 3) *rl-staged*))))

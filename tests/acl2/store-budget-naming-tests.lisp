@@ -6,7 +6,7 @@
 (include-book "../../books/store-budget-naming")
 (include-book "../../books/owner-store-budget")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "held-rows-tests")
 
 ; -----------------------------------------------------------------------------
@@ -88,13 +88,13 @@
 ; one committed record and no candidate.
 (assert-event (not (equal (fn-sbud-pending-sequence *sbnt-reserved-store*)
                           (fn-sbud-used *sbnt-reserved-store*))))
-(must-fail
+(must-fail-checked
  (defthm sbnt-sequence-without-record-phase
    (implies (fn-sf-statep (fn-sn-files s))
             (equal (fn-sbud-pending-sequence s) (fn-sbud-used s)))))
 ; Without the kernel invariant: the misnumbered candidate below (5 over no
 ; committed record) is the other counterexample.
-(must-fail
+(must-fail-checked
  (defthm sbnt-sequence-without-kernel-invariant
    (implies (fn-sf-record-phasep (fn-sf-phase (fn-sn-files s)))
             (equal (fn-sbud-pending-sequence s) (fn-sbud-used s)))))
@@ -116,7 +116,7 @@
                     (fn-sf-phase (fn-sn-files *sbnt-reserved-store*)))))
 (assert-event (equal (fn-sbud-pending-sequence *sbnt-reserved-store*) nil))
 (assert-event (not (sbnt-name-conclusion *sbnt-reserved-store*)))
-(must-fail
+(must-fail-checked
  (defthm sbnt-name-without-record-phase
    (implies (fn-sf-statep (fn-sn-files s))
             (sbnt-name-conclusion s))))
@@ -139,7 +139,7 @@
 (assert-event (not (equal (fn-sbud-pending-sequence *sbnt-misnumbered*)
                           (fn-sbud-used *sbnt-misnumbered*))))
 (assert-event (not (sbnt-name-conclusion *sbnt-misnumbered*)))
-(must-fail
+(must-fail-checked
  (defthm sbnt-name-without-kernel-invariant
    (implies (fn-sf-record-phasep (fn-sf-phase (fn-sn-files s)))
             (sbnt-name-conclusion s))))
@@ -199,32 +199,32 @@
 (assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* 10 1 0)))
 (assert-event (not (sbnt-bound-conclusion *sbnt-dev* *sbnt-msgid* 10 1 4294967296)))
 
-(must-fail
+(must-fail-checked
  (defthm sbnt-bound-without-message-id
    (implies (and (natp n) (posp g) (<= g *fn-record-max-groups*)
                  (posp c) (<= c *fn-cbor-max-uint*))
             (sbnt-bound-conclusion p m n g c))))
-(must-fail
+(must-fail-checked
  (defthm sbnt-bound-without-natural-length
    (implies (and (fn-af-message-idp m) (posp g) (<= g *fn-record-max-groups*)
                  (posp c) (<= c *fn-cbor-max-uint*))
             (sbnt-bound-conclusion p m n g c))))
-(must-fail
+(must-fail-checked
  (defthm sbnt-bound-without-positive-groups
    (implies (and (fn-af-message-idp m) (natp n) (<= g *fn-record-max-groups*)
                  (posp c) (<= c *fn-cbor-max-uint*))
             (sbnt-bound-conclusion p m n g c))))
-(must-fail
+(must-fail-checked
  (defthm sbnt-bound-without-group-ceiling
    (implies (and (fn-af-message-idp m) (natp n) (posp g)
                  (posp c) (<= c *fn-cbor-max-uint*))
             (sbnt-bound-conclusion p m n g c))))
-(must-fail
+(must-fail-checked
  (defthm sbnt-bound-without-positive-charge
    (implies (and (fn-af-message-idp m) (natp n) (posp g)
                  (<= g *fn-record-max-groups*) (<= c *fn-cbor-max-uint*))
             (sbnt-bound-conclusion p m n g c))))
-(must-fail
+(must-fail-checked
  (defthm sbnt-bound-without-charge-ceiling
    (implies (and (fn-af-message-idp m) (natp n) (posp g)
                  (<= g *fn-record-max-groups*) (posp c))
@@ -278,7 +278,7 @@
                     *sbnt-r-below* 0
                     (len (fn-store-event-encode *sbnt-composite*)))))
 
-(must-fail
+(must-fail-checked
  (defthm sbnt-exactly-without-a-composite
    (equal (fn-sbud-signed-event-boundary profile event)
           (if (<= (len (fn-store-event-encode event))
@@ -288,7 +288,7 @@
                                        fn-stxa-p fn-bs-profile-max-record-octets
                                        fn-bs-profile-max-transactions
                                        fn-bs-profile-admittedp)))))
-(must-fail
+(must-fail-checked
  (defthm sbnt-publishable-without-ok
    (implies (and (fn-bs-profile-admittedp profile) (natp count)
                  (< count (fn-bs-profile-max-transactions profile)))
@@ -298,7 +298,7 @@
                                        fn-stxa-p fn-bs-profile-max-record-octets
                                        fn-bs-profile-max-transactions
                                        fn-bs-profile-admittedp)))))
-(must-fail
+(must-fail-checked
  (defthm sbnt-publishable-without-admitted-profile
    (implies (and (equal (fn-sbud-signed-event-boundary profile event) :ok)
                  (natp count)
@@ -309,7 +309,7 @@
                                        fn-stxa-p fn-bs-profile-max-record-octets
                                        fn-bs-profile-max-transactions
                                        fn-bs-profile-admittedp)))))
-(must-fail
+(must-fail-checked
  (defthm sbnt-publishable-without-natural-count
    (implies (and (equal (fn-sbud-signed-event-boundary profile event) :ok)
                  (fn-bs-profile-admittedp profile)
@@ -320,7 +320,7 @@
                                        fn-stxa-p fn-bs-profile-max-record-octets
                                        fn-bs-profile-max-transactions
                                        fn-bs-profile-admittedp)))))
-(must-fail
+(must-fail-checked
  (defthm sbnt-publishable-without-a-transaction-left
    (implies (and (equal (fn-sbud-signed-event-boundary profile event) :ok)
                  (fn-bs-profile-admittedp profile)
@@ -370,12 +370,12 @@
 ; Without the named-word hypothesis two unnamed words share the unnamed text.
 (assert-event (equal (fn-sbud-post-boundary-refusal :x)
                      (fn-sbud-post-boundary-refusal :y)))
-(must-fail
+(must-fail-checked
  (defthm sbnt-refusals-distinct-without-a-named-word
    (implies (not (equal v1 v2))
             (not (equal (fn-sbud-post-boundary-refusal v1)
                         (fn-sbud-post-boundary-refusal v2))))))
-(must-fail
+(must-fail-checked
  (defthm sbnt-refusals-distinct-without-distinct-words
    (implies (or (fn-sbud-post-boundary-verdictp v1)
                 (fn-sbud-post-boundary-verdictp v2))

@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "../../books/nntp-auth-fold")
 (local (include-book "../../books/codec-attach"))
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *aft-node* (fn-node-initial-state '("fn.letters") 1048576))
 (defconst *aft-archive* (fn-node-acceptance *aft-node*))
@@ -140,7 +140,7 @@
  (not (fn-auth-fold-no-local-effectsp
        (fn-served-result-effects (aft-post-served-read)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm aft-step-without-safe-connection-premise
     (fn-auth-fold-no-local-effectsp
      (fn-served-result-effects
@@ -191,7 +191,7 @@
    (fn-served-result-effects
     (in-arena-fn-served-step *sr-arena* (aft-forged-pending-conn) *aft-post-body*)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm aft-step-without-no-pending-post-premise
     (implies
      (and (fn-served-connp (aft-forged-pending-conn))

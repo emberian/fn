@@ -2,7 +2,7 @@
 (include-book "../../books/bp-report-observe")
 (include-book "bp-report-author-tests")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bproa-committed ()
   (declare (xargs :guard t :verify-guards nil))
@@ -71,7 +71,7 @@
  (null (fn-bpn-report-observe-next (bproa-state) *bpnm-local* 2)))
 (assert-event
  (null (fn-bpn-report-observe-next (bproa-state) *bpnm-peer* nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpn-report-observe-next (bproa-state) *bpnm-peer* nil)
          (list :observed 2 (fn-bpn-job-key (bproa-job)) (bproa-report)))))

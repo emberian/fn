@@ -10,7 +10,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-receiver-retention-invariants")
 (include-book "bp-receipt-records-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
@@ -100,7 +100,7 @@
  (not (equal (fn-sf-phase (fn-sn-files *bpr-recovering-store*)) :ready)))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm bprt-teeth-grounded-without-an-unready-store
     (let* ((store *bpr-recovering-store*)
            (records *bprt-journal*)
@@ -175,7 +175,7 @@
         *bpr-request*)))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm bprt-teeth-grounded-without-a-committed-decision
     (let* ((store *bpr-recovered-ready-store*)
            (records *bprt-intent-only*)

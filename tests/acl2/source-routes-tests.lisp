@@ -17,7 +17,7 @@
 (include-book "held-rows-tests")
 (include-book "../../books/source-routes")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun srt-text (s) (fn-record-string-octets s))
 (defconst *srt-agent* (srt-text "hbox.ember.software"))
@@ -292,7 +292,7 @@
         (equal (srt-action *srt-s-idless-spec* *srt-idless-msgid-b* (fn-inj-decision-octets db)
                                        *srt-groups* *srt-s-idless*) :conflict))))
 
-(must-fail
+(must-fail-checked
  (defthm srt-retry-without-the-held-payload
    (let ((held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
          (da (fn-inj-decide source config a)) (db (fn-inj-decide source config b)))
@@ -304,7 +304,7 @@
                      :duplicate)))
    :hints (("Goal" :in-theory (disable fn-inj-decide fn-store-existing-action))))
  )
-(must-fail
+(must-fail-checked
  (defthm srt-retry-without-the-groups
    (let ((held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
          (da (fn-inj-decide source config a)) (db (fn-inj-decide source config b)))
@@ -315,7 +315,7 @@
               (equal (fn-store-existing-action msgid (fn-inj-decision-octets db) groups s fn-arena)
                      :duplicate)))
    :hints (("Goal" :in-theory (disable fn-inj-decide fn-store-existing-action)))))
-(must-fail
+(must-fail-checked
  (defthm srt-retry-without-the-first-message-id
    (let ((held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
          (da (fn-inj-decide source config a)) (db (fn-inj-decide source config b)))
@@ -341,7 +341,7 @@
                                      *srt-s-dated*) :conflict)))
 ; Hypothesis removed: the sources are equal; the verdict is duplicate (the
 ; retry witness above, every other hypothesis kept).
-(must-fail
+(must-fail-checked
  (defthm srt-conflict-without-distinct-sources
    (let ((da (fn-inj-decide source1 config a)) (db (fn-inj-decide source2 config b))
          (held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
@@ -388,7 +388,7 @@
                    *srt-msgid* (srt-o *srt-changed* *srt-b*) *srt-groups*
                    (srt-reclaimed *srt-s-dated* 1))
         :conflict))
-(must-fail
+(must-fail-checked
  (defthm srt-conflict-after-reclaim-without-distinct-sources
    (let ((da (fn-inj-decide source1 config a)) (db (fn-inj-decide source2 config b))
          (held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
@@ -456,7 +456,7 @@
         :conflict))
 ; Hypothesis removed: no octets at B (injection disabled).
 (assert-event (null *srt-carrier-disabled*))
-(must-fail
+(must-fail-checked
  (defthm srt-signed-retry-without-the-held-payload
    (let ((pa (fn-hsig-injected-carrier-plan source principal keys signatures config a))
          (pb (fn-hsig-injected-carrier-plan source principal keys signatures config b))
@@ -470,7 +470,7 @@
               (equal (fn-store-existing-action msgid ob groups s fn-arena) :duplicate)))
    :hints (("Goal" :in-theory (disable fn-hsig-injected-carrier-octets
                                        fn-hsig-injected-carrier-plan fn-store-existing-action)))))
-(must-fail
+(must-fail-checked
  (defthm srt-signed-retry-without-the-groups
    (let ((pa (fn-hsig-injected-carrier-plan source principal keys signatures config a))
          (pb (fn-hsig-injected-carrier-plan source principal keys signatures config b))

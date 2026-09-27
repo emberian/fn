@@ -6,7 +6,7 @@
 (include-book "owner-verdict-tests")
 (include-book "../../books/owner-verdict-read")
 (include-book "../../books/hybrid-lifecycle-store-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The Store one step before the owner's (:complete): the kind-4 composite is
 ; the pending completion record.
@@ -60,7 +60,7 @@
                            (fn-sn-finish *ovr-off-sequence*)
                            (fn-stxe-msgid *ovr-kind4*))
                           (fn-ovrt-finish-rhs *ovr-kind4*))))
-(must-fail
+(must-fail-checked
  (thm (equal (fn-sn-verdict-lookup
               (fn-sn-finish *ovr-off-sequence*)
               (fn-stxe-msgid (fn-hls-kind4-verdict-event
@@ -79,7 +79,7 @@
 (assert-event (fn-stxk-p (fn-sn-completion-record *ovr-rotating*)))
 (assert-event (equal (fn-sn-verdicts (fn-sn-finish *ovr-rotating*))
                      (fn-sn-verdicts *ovr-rotating*)))
-(must-fail
+(must-fail-checked
  (thm (equal (fn-sn-verdict-lookup
               (fn-sn-finish *ovr-rotating*)
               (fn-stxe-msgid (fn-hls-kind4-verdict-event
@@ -120,7 +120,7 @@
                            (fn-own-find-conn 0 (fn-own-conns *ovr-reader-after*)))
                           (fn-sn-verdicts (fn-sn-finish
                                            (fn-own-store *ovr-owner-completing*))))))
-(must-fail
+(must-fail-checked
  (thm (equal (fn-own-conn-verdicts
               (fn-own-find-conn 0 (fn-own-conns *ovr-reader-after*)))
              (fn-sn-verdicts (fn-sn-finish
@@ -226,7 +226,7 @@
                      (fn-ovrt-only-false 26 27)))
 (assert-event (not (equal (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 0 *ov-hdr*))
                           (fn-ovrt-rhs *ov-reader-b* 0 *ovr-prefix* *ovr-lf*))))
-(must-fail
+(must-fail-checked
  (thm (equal (car (fn-own-read *ov-reader-b* 0 (append *ovr-prefix* (list *ovr-lf*)) fn-arena))
              (fn-ovrt-rhs *ov-reader-b* 0 *ovr-prefix* *ovr-lf*))))
 
@@ -240,7 +240,7 @@
 (assert-event (null (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 2 *ovr-prefix*))))
 (assert-event (not (equal (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 2 *ovr-prefix*))
                           (fn-ovrt-rhs *ov-reader-b* 2 *ovr-cut* *ovr-cr*))))
-(must-fail
+(must-fail-checked
  (thm (equal (car (fn-own-read *ov-reader-b* 2 (append *ovr-cut* (list *ovr-cr*)) fn-arena))
              (fn-ovrt-rhs *ov-reader-b* 2 *ovr-cut* *ovr-cr*))))
 
@@ -255,6 +255,6 @@
 (assert-event (not (equal (car (in-arena-fn-own-read *sr-arena* *ov-reader-b* 2 *ovr-subject*))
                           (fn-ovrt-rhs *ov-reader-b* 2 *ovr-subject-prefix*
                                        *ovr-lf*))))
-(must-fail
+(must-fail-checked
  (thm (equal (car (fn-own-read *ov-reader-b* 2 (append *ovr-subject-prefix* (list *ovr-lf*)) fn-arena))
              (fn-ovrt-rhs *ov-reader-b* 2 *ovr-subject-prefix* *ovr-lf*))))

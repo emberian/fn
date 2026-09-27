@@ -12,7 +12,7 @@
 ; rule's hypothesis (idle or due) failing for a non-idle, not-yet-due pick.
 (in-package "ACL2")
 (include-book "../../books/owner-commit-class")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The pick's two values, for assertions outside a logic function.
 (defun ocmt-class (s w c)
@@ -61,11 +61,11 @@
         (if class (+ 1 (ocmt-plain-delay s2 (cdr ws))) (ocmt-plain-delay s2 (cdr ws))))
     0))
 (assert-event (equal (ocmt-plain-delay (fn-ocm-init) *ocm-storm*) 6))
-(must-fail
+(must-fail-checked
  (assert-event (<= (ocmt-plain-delay (fn-ocm-init) *ocm-storm*) *fn-ocm-bound*)))
 
 ; Tooth: the admission rule's hypothesis.  Not idle and not due, a waiting
 ; commit is NOT picked.
 (assert-event (not (equal (ocmt-class (list (fn-osch-init) 3) '(0 3 0 0) t) :commit)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (ocmt-class (list (fn-osch-init) 3) '(0 3 0 0) t) :commit)))

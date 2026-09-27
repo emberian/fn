@@ -5,7 +5,7 @@
 (include-book "../../books/bp-node-records")
 (include-book "../../books/byte-store-invariants")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-bpnf-byte-inherited-frame ()
   (fn-bpn-sequence-record-frame (fn-bpn-sequence-record 1)))
@@ -31,7 +31,7 @@
                         (fn-bs-lookup (fn-bpnf-byte-zero-event-crash)
                                       :fnbs "frontier.fnb")))
         (fn-bpn-sequence-record 1)))
-(must-fail
+(must-fail-checked
  (assert-event
   (null (fn-bs-lookup (fn-bpnf-byte-zero-event-crash)
                       :fnbs "frontier.fnb"))))
@@ -62,6 +62,6 @@
              (fn-bs-content (fn-bpnf-byte-garbage)
                             (fn-bs-lookup (fn-bpnf-byte-garbage)
                                           :fnbs "frontier.fnb"))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (null (fn-bs-lookup (fn-bpnf-byte-garbage) :fnbs "frontier.fnb"))))

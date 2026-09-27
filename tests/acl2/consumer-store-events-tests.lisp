@@ -1,7 +1,7 @@
 ; E2 Store-journal event codec witnesses.  Publication and replay are separate.
 (in-package "ACL2")
 (include-book "../../books/consumer-store-events")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *cpet-cursor*
   (fn-cp-cursor '(1) '(2) '(3) '(4) '(5) 1 2 3 4))
@@ -39,6 +39,6 @@
 (assert-event (equal (fn-cpe-decode-exact
                       (cons 0 (cdr (fn-cpe-encode (car *cpet-events*)))))
                      '(:error :version)))
-(must-fail (defthm cpet-roundtrip-needs-valid-event
+(must-fail-checked (defthm cpet-roundtrip-needs-valid-event
              (equal (fn-cpe-decode-exact (fn-cpe-encode event))
                     (list :ok event))))

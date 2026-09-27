@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/feed-journal")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fj-peer* '(105 110 110))
 (defconst *fj-values* '((105 110 110) (60 97 64 102 110 62) 7))
@@ -73,10 +73,10 @@
         (list :migration-required 99
               (fn-feed-journal-entry :feed-outcome *fj-lost-values*))))
 ; Teeth: drop :next from bounded-progress, EOF has no strict progress.
-(must-fail
+(must-fail-checked
  (assert-event (< 99 (cadr (fn-feed-journal-scan *fj-peer* nil nil 99)))))
 ; Drop :repair from preserved-offset: the live valid frame advances it.
-(must-fail (assert-event (equal (cadr (fn-feed-journal-test-scan)) 99)))
+(must-fail-checked (assert-event (equal (cadr (fn-feed-journal-test-scan)) 99)))
 
 (defconst *fj-open-events*
   '(:opened :repair :truncated :content-durable :directory-durable :parent-durable))

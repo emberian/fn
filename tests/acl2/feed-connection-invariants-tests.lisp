@@ -1,7 +1,7 @@
 ; Executable witnesses and premise teeth for the carried connection table.
 (in-package "ACL2")
 (include-book "../../books/feed-connection-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fci-one* (fn-fc-initial-state t 7 :starttls))
 (defconst *fci-two* (fn-fc-initial-state nil 8 :clear))
@@ -31,37 +31,37 @@
               "one" (fn-fc-table-remove "two" *fci-table-two*)) *fci-one*)))
 
 ; Each fn-fc-table-put preservation premise has teeth.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-fc-tablep
    (fn-fc-table-put :not-a-string *fci-one*
                     (fn-fc-table-initial-state)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-fc-tablep
    (fn-fc-table-put "bad-state" :not-a-state
                     (fn-fc-table-initial-state)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-fc-tablep
    (fn-fc-table-put "new" *fci-one* '(:malformed-table)))))
 
 ; Remove preservation and selected-state validity both need the carried table
 ; invariant; selected-state validity also needs a present lookup.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-fc-tablep (fn-fc-table-remove "absent" '(:malformed-table)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((bad-table (list (cons "bad" :not-a-state))))
     (fn-fc-statep (fn-fc-table-lookup "bad" bad-table)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-fc-statep (fn-fc-table-lookup "absent" *fci-table-two*))))
 
 ; The sole selected-state premise of step preservation has teeth.  Chunk shape
 ; is deliberately not a premise: invalid input returns the still-valid state.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-fc-statep
    (fn-fc-next-state (fn-fc-step :not-a-state nil)))))

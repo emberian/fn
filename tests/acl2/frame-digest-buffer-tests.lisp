@@ -10,7 +10,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/payload-extent-read")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (and (eq (symbol-class 'fn-sha256-of-prefixed-buffer-any (w state)) :common-lisp-compliant)
@@ -58,7 +58,7 @@
   :rule-classes nil)
 
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm fdbt-durable-without-trailer
     (fn-arx-entry-ok-buffer (fn-durable-octets file (+ eoff elen) 32)
                             (fn-durable-octets file eoff elen))))))

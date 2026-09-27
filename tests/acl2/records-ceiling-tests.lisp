@@ -11,7 +11,7 @@
 (in-package "ACL2")
 (include-book "../../books/records-canonicality")
 (include-book "../../books/records-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; A reachable witness above the pre-D27 widths: a 70 000-octet payload (above
@@ -59,7 +59,7 @@
      (fn-record-encoded-octets-ceiling 70000 2)))
 (assert-event
  (< (+ 70000 256 7) (len (fn-record-encode *rct-record*))))
-(must-fail
+(must-fail-checked
  (thm (<= (len (fn-record-encode record))
           (len (fn-record-payload record)))))
 
@@ -90,7 +90,7 @@
         (< (fn-record-encoded-octets-ceiling 65536 1) (len (fn-record-encode r)))
         (<= (len (fn-record-encode r))
             (fn-record-wide-encoded-octets-ceiling 65536 1)))))
-(must-fail
+(must-fail-checked
  (thm (<= (len (fn-record-encode record))
           (fn-record-encoded-octets-ceiling
            (len (fn-record-payload record))
@@ -127,19 +127,19 @@
    :hints (("Goal" :in-theory (enable fn-record-item-decode
                                       fn-record-item-encode)))
    :rule-classes nil))
-(must-fail
+(must-fail-checked
  (thm (implies (and (<= (len xs) *fn-record-max-octets*)
                     (fn-cbor-octet-listp rest))
                (equal (fn-record-item-decode
                        (append (fn-record-item-encode (cons :bytes xs)) rest))
                       (fn-cbor-ok (cons :bytes xs) rest)))))
-(must-fail
+(must-fail-checked
  (thm (implies (and (fn-cbor-octet-listp xs)
                     (<= (len xs) *fn-record-max-octets*))
                (equal (fn-record-item-decode
                        (append (fn-record-item-encode (cons :bytes xs)) rest))
                       (fn-cbor-ok (cons :bytes xs) rest)))))
-(must-fail
+(must-fail-checked
  (thm (implies (and (fn-cbor-octet-listp xs)
                     (fn-cbor-octet-listp rest))
                (equal (fn-record-item-decode

@@ -2,7 +2,7 @@
 (include-book "../../books/bp-report-outbox")
 (include-book "bp-node-report-step-tests")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bpro-outbox ()
   (declare (xargs :guard t :verify-guards nil))
@@ -35,4 +35,4 @@
  (equal (second (fn-bpn-report-outbox-next (bpro-two-tombstones) nil)) 0))
 (assert-event
  (equal (second (fn-bpn-report-outbox-next (bpro-two-tombstones) 0)) 1))
-(must-fail (assert-event (fn-bpn-report-outbox-view *bprst-held*)))
+(must-fail-checked (assert-event (fn-bpn-report-outbox-view *bprst-held*)))

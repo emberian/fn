@@ -15,7 +15,7 @@
 (in-package "ACL2")
 (include-book "../../books/octets-stobj")
 (include-book "../../books/poster-bytes-buffer")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
 ; The D32 recipe v3 witnesses (a supplied Path): the tin article, its
 ; injections at two clocks and the Store holding the first.
@@ -141,7 +141,7 @@
       (natp 4) (< 4 (fn-octets$a-len *ost-a-over*))
       (not (equal (fn-octets$c-get 4 *ost-c-over*) (fn-octets$a-get 4 *ost-a-over*))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-get-without-corr
    (implies (and (natp 4) (< 4 (fn-octets$a-len *ost-a-over*)))
             (equal (fn-octets$c-get 4 *ost-c-over*) (fn-octets$a-get 4 *ost-a-over*)))))
@@ -152,7 +152,7 @@
  (and (fn-octets$corr *ost-c-empty* nil) (< -1 (fn-octets$a-len nil)) (not (natp -1))
       (not (equal (fn-octets$c-get -1 *ost-c-empty*) (fn-octets$a-get -1 nil))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-get-without-natp
    (implies (and (fn-octets$corr *ost-c-empty* nil) (< -1 (fn-octets$a-len nil)))
             (equal (fn-octets$c-get -1 *ost-c-empty*) (fn-octets$a-get -1 nil)))))
@@ -161,7 +161,7 @@
  (and (fn-octets$corr *ost-c* *ost-a*) (natp 3) (not (< 3 (fn-octets$a-len *ost-a*)))
       (not (equal (fn-octets$c-get 3 *ost-c*) (fn-octets$a-get 3 *ost-a*))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-get-without-bound
    (implies (and (fn-octets$corr *ost-c* *ost-a*) (natp 3))
             (equal (fn-octets$c-get 3 *ost-c*) (fn-octets$a-get 3 *ost-a*)))))
@@ -179,7 +179,7 @@
       (not (fn-octets$corr (fn-octets$c-put 3 9 *ost-c-over*)
                            (fn-octets$a-put 3 9 *ost-a-over*))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-put-without-corr
    (implies (and (natp 3) (< 3 (fn-octets$a-len *ost-a-over*)) (fn-cbor-octetp 9))
             (fn-octets$corr (fn-octets$c-put 3 9 *ost-c-over*)
@@ -190,7 +190,7 @@
       (fn-cbor-octetp 9)
       (not (fn-octets$corr (fn-octets$c-put -1 9 *ost-c-empty*) (fn-octets$a-put -1 9 nil))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-put-without-natp
    (implies (and (fn-octets$corr *ost-c-empty* nil) (< -1 (fn-octets$a-len nil))
                  (fn-cbor-octetp 9))
@@ -201,7 +201,7 @@
       (fn-cbor-octetp 9)
       (not (fn-octets$corr (fn-octets$c-put 3 9 *ost-c*) (fn-octets$a-put 3 9 *ost-a*))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-put-without-bound
    (implies (and (fn-octets$corr *ost-c* *ost-a*) (natp 3) (fn-cbor-octetp 9))
             (fn-octets$corr (fn-octets$c-put 3 9 *ost-c*) (fn-octets$a-put 3 9 *ost-a*)))))
@@ -211,7 +211,7 @@
       (not (fn-cbor-octetp 300))
       (not (fn-octets$corr (fn-octets$c-put 1 300 *ost-c*) (fn-octets$a-put 1 300 *ost-a*))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-put-without-octet
    (implies (and (fn-octets$corr *ost-c* *ost-a*) (natp 1) (< 1 (fn-octets$a-len *ost-a*)))
             (fn-octets$corr (fn-octets$c-put 1 300 *ost-c*) (fn-octets$a-put 1 300 *ost-a*)))))
@@ -236,7 +236,7 @@
       (not (fn-octets$corr (fn-octets$c-append-octet 8 *ost-c*)
                            (fn-octets$a-append-octet 8 *ost-a-other*))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-append-without-corr
    (implies (fn-cbor-octetp 8)
             (fn-octets$corr (fn-octets$c-append-octet 8 *ost-c*)
@@ -247,7 +247,7 @@
       (not (fn-octets$corr (fn-octets$c-append-octet 300 *ost-c*)
                            (fn-octets$a-append-octet 300 *ost-a*))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-append-without-octet
    (implies (fn-octets$corr *ost-c* *ost-a*)
             (fn-octets$corr (fn-octets$c-append-octet 300 *ost-c*)
@@ -261,7 +261,7 @@
  (and (not (fn-octets$corr *ost-c-over* *ost-a-over*))
       (not (equal (fn-octets$c-list *ost-c-over*) (fn-octets$a-list *ost-a-over*))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-list-without-corr
    (equal (fn-octets$c-list *ost-c-over*) (fn-octets$a-list *ost-a-over*))))
 
@@ -292,7 +292,7 @@
       (not (fn-octets$corr (fn-octets$c-from-list '(1 300) *ost-c*)
                            (fn-octets$a-from-list '(1 300) *ost-a*))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-from-list-without-octets
    (implies (fn-octets$corr *ost-c* *ost-a*)
             (fn-octets$corr (fn-octets$c-from-list '(1 300) *ost-c*)
@@ -317,7 +317,7 @@
       (not (fn-octets$corr (fn-oct-write-list '(1) *ost-c-over*)
                            (fn-octets$a-append-list '(1) *ost-a*))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-append-list-without-corr
    (implies (fn-cbor-octet-listp '(1))
             (fn-octets$corr (fn-oct-write-list '(1) *ost-c-over*)
@@ -329,7 +329,7 @@
       (not (fn-octets$corr (fn-oct-write-list '(300) *ost-c*)
                            (fn-octets$a-append-list '(300) *ost-a*))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-append-list-without-octets
    (implies (fn-octets$corr *ost-c* *ost-a*)
             (fn-octets$corr (fn-oct-write-list '(300) *ost-c*)
@@ -379,7 +379,7 @@
       (not (equal (nthcdr 0 '(1 2 . 3)) '(1 2)))
       (not (true-listp '(1 2 . 3))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-suffix-without-true-listp
    (implies (natp 0)
             (equal (fn-oct-suffix-equalp 0 '(1 2) '(1 2 . 3))
@@ -389,7 +389,7 @@
  (and (equal (fn-oct-suffix-equalp -1 nil '(1)) t)
       (not (equal (nthcdr -1 '(1)) nil)))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-suffix-without-natp
    (implies (true-listp '(1))
             (equal (fn-oct-suffix-equalp -1 nil '(1)) (equal (nthcdr -1 '(1)) nil)))))
@@ -543,7 +543,7 @@
   (equal (fn-pbb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s-wire*)
          :duplicate)
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-existing-action-without-octets-p
    (equal (fn-pbb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s-wire*)
           (fn-pb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s-wire*))))
@@ -650,7 +650,7 @@
       (equal (fn-pbb-desc-equalp '(0 1 1) '(1 2) '(1 2 . 3)) t)
       (not (equal (fn-pbb-desc-list '(0 1 1) '(1 2 . 3)) '(1 2))))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-desc-equalp-without-true-listp
    (implies (fn-pbb-descp '(0 1 1) 2)
             (equal (fn-pbb-desc-equalp '(0 1 1) '(1 2) '(1 2 . 3))
@@ -662,7 +662,7 @@
       (equal (fn-pbb-desc-equalp '(-1 0 0) '(1 1 2 3) '(1 2 3)) nil)
       (equal (fn-pbb-desc-list '(-1 0 0) '(1 2 3)) '(1 1 2 3)))
  :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-desc-equalp-without-descp
    (implies (true-listp '(1 2 3))
             (equal (fn-pbb-desc-equalp '(-1 0 0) '(1 1 2 3) '(1 2 3))
@@ -715,7 +715,7 @@
   (equal (fn-pbb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *ost-tin-wire*)
          :duplicate)
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm ost-t-v3-existing-action-without-octets-p
    (equal (fn-pbb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *ost-tin-wire*)
           (fn-pb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *ost-tin-wire*))))

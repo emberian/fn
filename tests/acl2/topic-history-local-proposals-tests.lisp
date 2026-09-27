@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/topic-history-local-proposals")
 (include-book "topic-history-store-node-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (equal (fn-th-local-propose-install
@@ -35,7 +35,7 @@
                (list :replayed-historical prior))
         (equal (fn-th-at 8 anchor) 1)
         (equal (fn-th-at 1 projection) 6))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-th-local-propose
                :report (fn-sn-topic *thsn-report-accepted*)
@@ -57,7 +57,7 @@
  (equal (fn-th-local-propose :report (fn-sn-topic *thsn-report-accepted*)
                              5 99 nil nil nil)
         (fn-stmt-error :missing-historical-authorship)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-stmt-okp
    (fn-th-local-propose-anchor

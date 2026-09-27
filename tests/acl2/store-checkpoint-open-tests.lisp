@@ -6,7 +6,7 @@
 ; still to come.  Split after the first event, the checkpoint open equals
 ; the full open, and the full open succeeds.
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/store-checkpoint-open")
 (include-book "../../books/store-checkpoint-codec")
 
@@ -43,45 +43,45 @@
 (defun sco-t-drop-slot (c n)
   (declare (xargs :guard (natp n) :verify-guards nil))
   (update-nth n nil c))
-(must-fail
+(must-fail-checked
  (defthm sco-t-without-consumer-slot
    (equal (fn-sco-open (sco-t-drop-slot *sco-t-capture* 4) *sco-t-configs* 8 *sco-t-suffix*)
           *sco-t-full*)))
-(must-fail
+(must-fail-checked
  (defthm sco-t-without-topic-slot
    (equal (fn-sco-open (sco-t-drop-slot *sco-t-capture* 5) *sco-t-configs* 8 *sco-t-suffix*)
           *sco-t-full*)))
-(must-fail
+(must-fail-checked
  (defthm sco-t-without-event-index-slot
    (equal (fn-sco-open (sco-t-drop-slot *sco-t-capture* 6) *sco-t-configs* 8 *sco-t-suffix*)
           *sco-t-full*)))
-(must-fail
+(must-fail-checked
  (defthm sco-t-without-identity-slot
    (equal (fn-sco-open (sco-t-drop-slot *sco-t-capture* 3) *sco-t-configs* 8 *sco-t-suffix*)
           *sco-t-full*)))
-(must-fail
+(must-fail-checked
  (defthm sco-t-without-configuration-slot
    (equal (fn-sco-open (sco-t-drop-slot *sco-t-capture* 2) *sco-t-configs* 8 *sco-t-suffix*)
           *sco-t-full*)))
-(must-fail
+(must-fail-checked
  (defthm sco-t-without-records-slot
    (equal (fn-sco-open (sco-t-drop-slot *sco-t-capture* 1) *sco-t-configs* 8 *sco-t-suffix*)
           *sco-t-full*)))
 ; A checkpoint of another prefix does not open to this history.
-(must-fail
+(must-fail-checked
  (defthm sco-t-stale-checkpoint
    (equal (fn-sco-open (fn-sco-capture *sco-t-configs* nil) *sco-t-configs* 8 *sco-t-suffix*)
           *sco-t-full*)))
 
 ; fn-sco-extend-of-capture: without a true-list suffix, extension keeps the
 ; improper tail and capture drops it.
-(must-fail
+(must-fail-checked
  (defthm sco-t-extend-improper-suffix
    (equal (fn-sco-extend *sco-t-capture* *sco-t-configs* (cons (cadr *sco-t-events*) 5))
           (fn-sco-capture *sco-t-configs* (append *sco-t-prefix* (cons (cadr *sco-t-events*) 5))))))
 ; fn-sco-finalize-of-capture: without a true-list history, capture repairs it
 ; and the checkpoint would open what the full open refuses.
-(must-fail
+(must-fail-checked
  (defthm sco-t-finalize-improper-history
    (equal (fn-sco-finalize (fn-sco-capture *sco-t-configs* (append *sco-t-events* 5))
                            *sco-t-configs* 8)
@@ -91,7 +91,7 @@
 (defconst *sco-t-early*
   (list (fn-cfg-record-make 1 0 2 (list (fn-cfg-set-capacity 1)) *fn-cfg-default-stamp*)))
 (assert-event (not (fn-sco-later-configsp *sco-t-early* *sco-t-prefix*)))
-(must-fail
+(must-fail-checked
  (defthm sco-t-capture-early-config
    (equal (fn-sco-capture (append (list *fn-cfg-default-record*) *sco-t-early*) *sco-t-prefix*)
           (fn-sco-capture (list *fn-cfg-default-record*) *sco-t-prefix*))))
@@ -148,7 +148,7 @@
                           :ok)))
 ; fn-scc-decode-segments-of-segments: a value outside the tree universe is
 ; not encoded.
-(must-fail
+(must-fail-checked
  (defthm sco-t-codec-needs-a-tree
    (equal (fn-scc-decode-segments (fn-scc-segments (list 1/2) 64))
           (list :ok (list 1/2)))))

@@ -6,7 +6,7 @@
 (include-book "../../books/byte-store-frame")
 (include-book "../../books/byte-store-txn-name")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bsk5-groups* '("fn.letters" "fn.test"))
 (defconst *bsk5-capacity* 10)
@@ -145,7 +145,7 @@
         (equal (fn-bs-scan-records (fn-bs-scan-store image))
                (list *bsk5-record* *bsk5-record-2*))
         (not (fn-bs-store-relation bs (cdr (bsk5-linked-2)) *bsk5-arena*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((bs (bsk5-two-pending))
          (image (fn-bs-crash bs '(:apply :apply))))
@@ -157,7 +157,7 @@
 ; concrete counterexample even with the byte/kernel relation preserved.
 (assert-event (fn-bs-store-relation (car (bsk5-linked))
                                     (cdr (bsk5-linked)) *bsk5-arena*))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((bs (car (bsk5-linked)))
          (image (fn-bs-crash (bsk5-two-pending) '(:apply :apply))))

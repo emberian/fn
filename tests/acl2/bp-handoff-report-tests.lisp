@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-handoff-report")
 (include-book "../../books/bp-node-receive-boundary")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bphr-local* (cons :dtn '(47 47 98 112 45 108 111 99 97 108 47)))
 (defconst *bphr-sender* (cons :dtn '(47 47 98 112 45 115 101 110 100 101 114 47)))
@@ -162,7 +162,7 @@
       (not (bphr-keystone *bphr-corrupt* :request-refused '(0) :durable))))
 ; The weakened statement (without the hypothesis) at that instance: a
 ; ground formula ACL2 evaluates to false.
-(must-fail
+(must-fail-checked
  (defthm bphr-keystone-without-issue
    (bphr-keystone *bphr-corrupt* :request-refused '(0) :durable)
    :hints (("Goal" :in-theory (disable bphr-keystone)))))

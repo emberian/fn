@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "../../books/peer-carriage")
 (include-book "peer-authored-accept-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The budget rows
@@ -27,7 +27,7 @@
 (assert-event (equal (fn-pa-carried-sources *pcb-extended*) *pat-carries*))
 (assert-event (equal (len *pcb-extended*) 4))
 ; Tooth (natp): a budget that is not a natural reads as no budget.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-pcb-budget-of-rows
           (fn-pcb-extend-rows *pcb-old-rows* (fn-pcb-budget-rows "relay" -1 3)))
@@ -60,7 +60,7 @@
 ; Tooth (the peer exists): an extension never creates a boundary.
 (assert-event (null (fn-pcb-extend-delta "nobody" (fn-pcb-budget-rows "nobody" 5 3)
                                          (fn-cfg-peers *pcb-value*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-pcb-peer-budget
           "nobody"
@@ -81,7 +81,7 @@
                      '(:refused :carried-octets-exhausted)))
 (assert-event (equal (fn-pcb-admission nil '(0 . 0) 1)
                      '(:refused :carried-budget-unset)))
-(must-fail (assert-event (equal (fn-pcb-admission nil '(0 . 0) 1) :within)))
+(must-fail-checked (assert-event (equal (fn-pcb-admission nil '(0 . 0) 1) :within)))
 
 ; -----------------------------------------------------------------------------
 ; The projection and the carried cache
@@ -111,7 +111,7 @@
 ; cover reads a usage the Store does not hold.
 (defconst *pcb-stale-cache* (cons 2 nil))
 (assert-event (not (fn-pcb-cache-validp *pcb-stale-cache* *pcb-records*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-pcb-tally-get *pcb-evidence*
                                         (fn-pcb-usage-extend *pcb-stale-cache*
                                                              *pcb-records*))
@@ -154,14 +154,14 @@
 (defconst *pcb-twice* (list *pat-carried-event* *pat-carried-event*))
 (assert-event (not (fn-pcb-admitted-from *pcb-twice* (cons 0 0) *pcb-budget*
                                          *pcb-evidence*)))
-(must-fail
+(must-fail-checked
  (assert-event (<= (cdr (fn-pcb-usage *pcb-twice* *pcb-evidence*))
                    (cadr *pcb-budget*))))
 ; Tooth (budgetp): with a budget that is no budget, an admitted history
 ; (no carried record) is not bounded by it.
 (assert-event (fn-pcb-admitted-from (list *pat-event*) (cons 0 0) '(-1 -1)
                                     *pcb-evidence*))
-(must-fail
+(must-fail-checked
  (assert-event (<= (car (fn-pcb-usage (list *pat-event*) *pcb-evidence*))
                    (car '(-1 -1)))))
 ; fn-pcb-no-budget-history-carries-nothing: the carried record is not
@@ -190,7 +190,7 @@
 (make-event
  `(defconst *pcb-h2-stale*
     ',(append *pcb-h1* (list (pcb-gated *pcb-budget* '(0 . 0))))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-pcb-admitted-from *pcb-h2-stale* (cons 0 0) *pcb-budget*
                                      *pcb-evidence*)))
 
@@ -246,24 +246,24 @@
 
 ; fn-pcb-present-carrier-not-accepted-has-a-class: one tooth per hypothesis.
 ; Carrier absent: the unsigned arm has no class.
-(must-fail
+(must-fail-checked
  (assert-event (member-equal (fn-pcb-refusal-class *tha-root-source*
                                                    *pat-snapshots* nil nil nil)
                              *fn-pcb-refusal-classes*)))
 ; Carried for the boundary: held, no refusal class.
-(must-fail
+(must-fail-checked
  (assert-event (member-equal (fn-pcb-refusal-class *pat-relayed* nil
                                                    *pat-carries* nil nil)
                              *fn-pcb-refusal-classes*)))
 ; Accepted under both observations: no class.
-(must-fail
+(must-fail-checked
  (assert-event (member-equal (fn-pcb-refusal-class *pat-relayed* *pat-snapshots*
                                                    nil :verified :verified)
                              *fn-pcb-refusal-classes*)))
 ; fn-pcb-bound-carrier-with-a-failed-primitive-is-signature-failed, tooth
 ; (the :ok arm): the same failed observation on an unbound carrier is
 ; no-local-binding, not signature-failed.
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-pcb-refusal-class *pat-relayed* nil nil
                                             :refused :refused)
                       :signature-failed)))
@@ -294,17 +294,17 @@
 ; The inner hypothesis (a present carrier): without it the verdict is
 ; :unsigned, which the conclusion excludes for present carriers.
 (assert-event (equal (fn-pa-carrier-kind *tha-root-source*) :absent))
-(must-fail
+(must-fail-checked
  (assert-event (not (equal (fn-pcb-admission-verdict *tha-root-source*
                                                      *pat-snapshots* nil nil nil)
                            :unsigned))))
 ; :verified needs BOTH observations: one refused is not :verified.
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-pcb-admission-verdict *pat-relayed* *pat-snapshots* nil
                                                 :verified :refused)
                       :verified)))
 ; A carried input is never :verified, even under verified observations.
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-pcb-admission-verdict *pat-relayed* nil *pat-carries*
                                                 :verified :verified)
                       :verified)))
@@ -447,7 +447,7 @@
 (assert-event (equal (fn-cfg-rows-with-key (fn-cfg-peers *pcb-grown-value*) "relay")
                      (append (fn-cfg-peers *pcb-big-value*) *pcb-one-more*)))
 ; Tooth (keyed): rows under another name do not land in the group.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-cfg-rows-with-key
           (fn-cfg-peers (fn-cfg-apply-delta *pcb-big-value* 1 nil
@@ -456,7 +456,7 @@
           "relay")
          (append (fn-cfg-peers *pcb-big-value*) (list (list "other" "x" "" 0))))))
 ; Tooth (true-listp rows): an improper tail is not a row.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-cfg-rows-with-key
           (fn-cfg-peers (fn-cfg-apply-delta *pcb-big-value* 1 nil
@@ -477,7 +477,7 @@
                             1 nil (fn-cfg-add-peer-rows "relay" *pcb-1024*))))
         (+ 1 1024)))
 (assert-event (not (fn-cfg-deltap (fn-cfg-add-peer-rows "relay" *pcb-1025*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (<= (len (fn-cfg-peers (fn-cfg-apply-delta
                           (fn-cfg-value-make nil 0 nil nil nil
@@ -514,7 +514,7 @@
                      nil nil nil nil))
 ; Tooth (keyed new): rows keyed on another peer apply in another order.
 (assert-event (not (fn-cfg-rows-keyed-p (list (list "zeta" "carried-budget-charge" "" 9)) "relay")))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-cfg-apply *pcb-two-value* 1 nil
                        (fn-pcb-extend-deltas "relay"
@@ -525,7 +525,7 @@
                                                   (list (list "zeta" "carried-budget-charge" "" 9))
                                                   (fn-cfg-peers *pcb-two-value*))))))
 ; Tooth (true-listp new): an improper list of rows.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-cfg-apply *pcb-value* 1 nil
                        (fn-pcb-extend-deltas "relay"
@@ -602,7 +602,7 @@
 (assert-event (equal (fn-pcb-transit-verdict *pat-relayed* nil nil t nil nil)
                      (fn-pcb-admission-verdict *pat-relayed* nil nil nil nil)))
 ; Its hypothesis matters: on the :revoked arm the two differ.
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-pcb-transit-verdict *pat-relayed* *pat-after-revocation* nil t
                                               :verified :verified)
                       (fn-pcb-admission-verdict *pat-relayed* *pat-after-revocation* nil

@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (include-book "../../books/key-statements")
 (include-book "topic-history-authorship-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun kst-hex (octets)
   (declare (xargs :mode :program))
@@ -119,7 +119,7 @@
                ',(fn-hc-render-at-most *fn-article-max-octets* *tha-root-source*
                                        *tha-principal* *kst-new-keys*
                                        *tha-signatures*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-pa-current-plan *kst-new-relayed*
                              (cons *kst-successor* *kst-snapshots*) nil t)
@@ -131,7 +131,7 @@
  (equal (fn-ks-plan *kst-event* *kst-snapshots* *kst-rows*
                     (cdr (second *kst-new-keys*)) :refused :verified)
         (list :decline :proof-of-possession)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-ks-execute *kst-event* *kst-snapshots* *kst-rows*
                  (cdr (second *kst-new-keys*)) :verified :refused 5 6 7)))
@@ -151,7 +151,7 @@
                                                 "keys" 0))
                          (cdr (second *kst-new-keys*)) :verified :verified))
         :decline))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-ks-execute *kst-event* *kst-snapshots* nil
                  (cdr (second *kst-new-keys*)) :verified :verified 5 6 7)))
@@ -196,7 +196,7 @@
  (equal (fn-ks-plan *kst-carried* *kst-snapshots* *kst-rows*
                     (cdr (second *kst-new-keys*)) :verified :verified)
         (list :decline :carried)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-ks-execute *kst-carried* *kst-snapshots* *kst-rows*
                  (cdr (second *kst-new-keys*)) :verified :verified 5 6 7)))
@@ -227,7 +227,7 @@
         :revoked))
 ; Tooth (fn-ks-revocation-leaves-no-ok-plan, the tombstone): without it the
 ; same carrier is :ok.
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (car (fn-pa-current-plan *kst-relayed* *kst-snapshots* nil t))
               :ok))))
@@ -276,7 +276,7 @@
 (assert-event
  (fn-ks-execute *kst-event* (cons nil *kst-snapshots*) *kst-rows* *kst-ml*
                 :verified :verified 5 6 7))
-(must-fail
+(must-fail-checked
  (assert-event
   (null (fn-ks-execute *kst-event* (cons nil *kst-snapshots*) *kst-rows* *kst-ml*
                        :verified :verified 5 6 7))))
@@ -315,7 +315,7 @@
 (assert-event
  (null (fn-ks-execute *kst-event* *kst-snapshots* *kst-rows* *kst-ml*
                       :refused :verified 5 6 7)))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((st (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
                           *kst-rows* *kst-ml* :refused :verified 5 6 7)))
@@ -370,7 +370,7 @@
 ; Hypothesis removal (the record is later than the statement): the same
 ; grant at the statement's own txid is in force there, and the recovery acts.
 (assert-event (not (fn-ks-configs-after-p *kst-tx* (list *kst-grant-before*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ks-recover-recorded (kst-declined) (list *kst-grant-before*)
                                  *kst-ml* :verified :verified 8 9 10)
@@ -415,8 +415,8 @@
                                 *kst-ml* :verified :verified 8 9 10)
         (kst-declined)))
 ; The old policy would not answer `declined', and the two reopens differ.
-(must-fail (assert-event (equal (car (kst-old-reopen-plan)) :decline)))
-(must-fail
+(must-fail-checked (assert-event (equal (car (kst-old-reopen-plan)) :decline)))
+(must-fail-checked
  (assert-event
   (equal (fn-ks-recover-recorded (kst-declined) (list *kst-grant*)
                                  *kst-ml* :verified :verified 8 9 10)
@@ -435,7 +435,7 @@
                                          *kst-tx* (list *kst-grant-before*))))
                          *kst-ml* :verified :verified))
         :enroll))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((st (fn-ks-accept *kst-prior* *kst-snapshots* *kst-event*
                           *kst-rows* *kst-ml* :verified :verified
@@ -454,7 +454,7 @@
         (fn-ks-recover-recorded (fn-ks-cut *kst-prior* *kst-snapshots* *kst-event*)
                                 (list *kst-grant-before*)
                                 *kst-ml* :verified :verified 5 6 7)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ks-recover-recorded (fn-ks-cut *kst-prior* *kst-snapshots* *kst-event*)
                                  (append nil (list *kst-grant-before*))
@@ -552,7 +552,7 @@
 (assert-event (not (fn-ctl-configs-all-through-p *kst-tx* (list *kst-grant-after*))))
 (assert-event (not (equal (fn-config-replay 0 510 (list *kst-grant-after*)) :fault)))
 (assert-event (fn-ks-configs-after-p *kst-tx* nil))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ks-recover-recorded (kst-cut-state)
                                  (append (list *kst-grant-after*) nil)
@@ -566,7 +566,7 @@
                                             (list *kst-grant-bad-generation*)))
 (assert-event (equal (fn-config-replay 0 510 (list *kst-grant-bad-generation*))
                      :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ks-recover-recorded (kst-cut-state)
                                  (append (list *kst-grant-bad-generation*) nil)
@@ -577,7 +577,7 @@
 ; Hypothesis removal (every later record is later than the txid): a
 ; revocation at the statement's own txid is in force there.
 (assert-event (not (fn-ks-configs-after-p *kst-tx* (list *kst-revoke-at-tx*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ks-recover-recorded (kst-cut-state)
                                  (append *kst-admission* (list *kst-revoke-at-tx*))
@@ -620,7 +620,7 @@
 ; Hypothesis removal (every journal record precedes the redecide's txid): at
 ; the statement's own txid the grant is not yet in force; the replay holds.
 (assert-event (not (fn-ctl-configs-all-through-p *kst-tx* *kst-after*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (kst-redecide (kst-declined) *kst-msgid* (kst-replay-rows *kst-after*))
          (fn-ks-redecide (kst-declined) *kst-msgid*
@@ -630,7 +630,7 @@
 ; follow is folded at the txid but faults the replay; all-through holds.
 (assert-event (fn-ctl-configs-all-through-p *kst-rtx*
                                             (list *kst-grant-bad-generation*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (kst-redecide (kst-declined) *kst-msgid*
                        (kst-replay-rows (list *kst-grant-bad-generation*)))
@@ -671,7 +671,7 @@
         (fn-record-string-octets
          "key-statement redecide refused not-a-key-statement")))
 ; Hypothesis removal: the stored statement's Message-ID is found and acts.
-(must-fail
+(must-fail-checked
  (assert-event (equal (kst-redecided) (kst-declined))))
 
 ; fn-ks-redecide-of-an-acted-statement-is-refused-by-name and
@@ -693,7 +693,7 @@
                      (kst-redecided)))
 ; Hypothesis removal (acted): before the redecide the statement has not
 ; acted, and the plan is not the refusal.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ks-redecide-plan *kst-event* *kst-snapshots*
                               (kst-replay-rows *kst-after*) *kst-ml* :verified
@@ -704,7 +704,7 @@
 (assert-event (not (fn-ks-redecide-event *kst-event* *kst-snapshots* nil
                                          *kst-ml* :verified :verified 8
                                          *kst-rtx* 10)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ks-redecide-plan
           (fn-ks-find-statement *kst-msgid*
@@ -725,7 +725,7 @@
                                     (kst-replay-rows *kst-after*) *kst-ml*
                                     :verified :verified 8 *kst-rtx* 10))
 (assert-event (not (< 4 (fn-hl-next-generation (cdr *kst-stale-state*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (let ((st2 (kst-redecide *kst-stale-state* *kst-msgid*
                                   (kst-replay-rows *kst-after*))))
@@ -748,7 +748,7 @@
                        *kst-ml* :verified :verified 8 *kst-rtx* 10)))
 ; Hypothesis removal (a statement): an absent MSGID's refusal is not the
 ; plan of nothing (nil).
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ks-redecide-plan nil *kst-snapshots* (kst-replay-rows *kst-after*)
                               *kst-ml* :verified :verified)
@@ -760,7 +760,7 @@
  (equal (fn-ks-plan *kst-event* (cdr (kst-redecided))
                     (kst-replay-rows *kst-after*) *kst-ml* :verified :verified)
         '(:decline :not-current)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (kst-redecided-twice-plan (kst-replay-rows *kst-after*))
          (fn-ks-plan *kst-event* (cdr (kst-redecided))

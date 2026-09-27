@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-auth-profile")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; These are the executable subjects the saved image reaches through the host
 ; wrapper.  Admission without Common Lisp compliance would not be deployment
@@ -206,7 +206,7 @@
         :too-many-credentials))
 ; The parser keystone's hypothesis on the credentials already collected is
 ; needed: two collected, bound 1, no more lines -- accepted with two.
-(must-fail
+(must-fail-checked
  (defthm fn-native-auth-test-parse-without-collected-bound
    (<= (len (fn-ncfg-second (fn-native-auth-parse-lines nil nil nil '(a b) 1)))
        1)

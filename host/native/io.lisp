@@ -4045,7 +4045,7 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
            (fnn-write-report
             (fnn-core 'fn-native-live-status-host-offline kind
                       (fnn-store-config store) (fnn-store-observation store)
-                      *the-live-state*))
+                      (fnn-live-arena) *the-live-state*))
            +fnn-exit-ok+)
       (fnn-store-close store))))
 

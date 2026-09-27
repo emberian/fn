@@ -11,7 +11,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-receiver-evolving-store-invariants")
 (include-book "bp-receipt-records-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
@@ -229,7 +229,7 @@
 (assert-event (not (in-arena-fn-bprv-context-groundedp (list *bpre-adu2*) *bpr-config* *bprr-context*
                                                      (list *bpr-row*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-grounded-without-history-record
     (let ((record (fn-bprv-find-grounding-record *bpr-config* *bprr-context* (list *bpre-row2*) *bpre-arena*)))
       (and (fn-record-p record)
@@ -244,7 +244,7 @@
 ; and groundedness does not carry to it.
 (assert-event (not (fn-sf-prefixp (list *bpr-row*) (list *bpre-row2*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-monotone-without-prefix
     (implies (fn-bprv-context-groundedp *bpr-config* *bprr-context* (list *bpr-row*) *bpre-arena*)
              (fn-bprv-context-groundedp *bpr-config* *bprr-context* (list *bpre-row2*) *bpre-arena*))
@@ -261,7 +261,7 @@
 (assert-event (in-arena-fn-bprv-system-invariantp *bpre-payloads* *bpr-store* *bpre-intent-state* *bpre-intent-journal*))
 (assert-event (not (member-equal *bprr-decision-record* *bpre-intent-journal*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-system-step-without-journaled-record
     (let ((next (fn-bprv-system-step *bpr-store* *bpre-intent-state*
                                      (list :receiver *bprr-decision-record*) *bpre-arena*)))
@@ -274,7 +274,7 @@
 ; Without the idle phase: the :completing Store holds the second record in
 ; its history and its node has not completed it.
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-committed-without-idle-phase
     (implies (and (fn-snt-relation (car *bpre-completing*))
                   (fn-held-p *bpre-row2*)
@@ -294,7 +294,7 @@
 (assert-event (equal (fn-bprv-phase *bpre-forged-store*) :ready))
 (assert-event (not (fn-snt-relation *bpre-forged-store*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-committed-without-relation
     (implies (and (member-equal (fn-bprv-phase *bpre-forged-store*)
                                 '(:ready :recovering :fenced-recovery))
@@ -331,7 +331,7 @@
 (assert-event (fn-store-event-p *bpre-retention*))
 (assert-event (not (fn-held-p *bpre-retention*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-committed-without-article-record
     (implies (and (fn-snt-relation *bpre-retained-store*)
                   (member-equal (fn-bprv-phase *bpre-retained-store*)
@@ -352,7 +352,7 @@
 (assert-event (fn-bpi-node-record-committedp (fn-sn-node *bpre-retained-store*) *bpr-row*))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-committed-without-membership
     (implies (and (fn-snt-relation *bpr-store*)
                   (member-equal (fn-bprv-phase *bpr-store*) '(:ready :recovering :fenced-recovery))
@@ -383,7 +383,7 @@
                    (equal *bpre-replaying-context*
                           (fn-bpr-context-from-request *bpre-replaying-record* *bpr-request*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-node-grounded-without-idle-phase
     (implies (and (fn-bprv-evolving-invariantp (car *bpre-replaying*) (cadr *bpre-replaying*)
                                                (caddr *bpre-replaying*) *bpre-arena*)
@@ -405,7 +405,7 @@
 (assert-event (fn-bprv-extendsp *bpre-final-store* *bpre-recovering-probe*))
 (assert-event (not (equal (fn-bprv-phase *bpre-recovering-probe*) :ready)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-live-replay-without-ready-probe
     (implies (and (fn-snt-relation *bpr-store*)
                   (equal (fn-bprr-replay *bpre-recovering-probe* (list *bprr-config-record*) *bpre-arena*)
@@ -431,7 +431,7 @@
 (assert-event (equal (fn-bprv-phase *bpre-empty-probe*) :ready))
 (assert-event (not (fn-bprv-extendsp *bpre-final-store* *bpre-empty-probe*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-live-replay-without-extension
     (implies (and (fn-snt-relation *bpr-store*)
                   (equal (fn-bprr-replay *bpre-empty-probe* (list *bprr-config-record*) *bpre-arena*)
@@ -455,7 +455,7 @@
 (assert-event (not (equal (in-arena-fn-bprr-replay *bpre-payloads* *bpre-probe* (caddr *bpre-ahead-live0*))
                           (list t (cadr *bpre-ahead-live0*)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-live-replay-without-base-agreement
     (implies (and (fn-snt-relation *bpr-store*)
                   (fn-snt-relation *bpre-probe*)
@@ -488,7 +488,7 @@
                (equal (fn-snrt-step *bpre-untyped-store* '(:io :start-frontier nil))
                       *bpre-untyped-store*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-live-extension-without-relation
     (fn-bprv-extendsp *bpre-untyped-store*
                       (car (fn-bpr-live-step (list *bpre-untyped-store* *bpr-initial*
@@ -500,7 +500,7 @@
 ; grounded in.
 (assert-event (not (fn-sf-crash-imagep (fn-sn-files *bpre-final-store*) *bpre-frontier* nil)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-reopen-without-admissible-image
     (implies (and (fn-bprv-system-invariantp *bpre-final-store* *bpre-final-state* *bpre-journal* *bpre-arena*)
                   (fn-sn-observed-identity-okp nil))
@@ -519,3 +519,84 @@
                                                 *bpre-frontier* nil)))
                (and (fn-sn-open-okp opened)
                     (in-arena-fn-bprv-system-invariantp *bpre-payloads* (fn-sn-open-state opened) *bpre-final-state* *bpre-journal*)))))) ; evaluation witness for bpre-teeth-reopen-without-admissible-image
+
+; -----------------------------------------------------------------------------
+; fn-bprv-evolving-output-is-history-grounded (PRF-012, restated by flip-L4
+; over fn-bpr-rows-stand-for; audit packet G6-3, lane audit-fixes).  Its
+; conclusion, verbatim, as one executable predicate over the arena.
+(defun bpre-hg-conclusion (store st journal request fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((context (fn-bpr-find-context (fn-bpa-request-work-id request)
+                                       (fn-bpr-state-contexts st)))
+         (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
+                                     (fn-bpr-state-receipts st)))
+         (record (fn-bprv-find-grounding-record
+                  (fn-bpr-state-config st) context
+                  (fn-bpr-article-records (fn-bprv-history store)) fn-arena)))
+    (and (consp context)
+         (equal (fn-bpaj-request-ref request)
+                (fn-bpr-context-request-ref context))
+         (fn-record-p record)
+         (fn-bpr-rows-stand-for record (fn-bpr-article-records (fn-bprv-history store))
+                                fn-arena)
+         (equal context (fn-bpr-context-from-request
+                         record (fn-bpr-context-resolve context record)))
+         (equal (fn-bpa-request-article (fn-bpr-context-resolve context record))
+                (fn-record-payload record))
+         (equal (fn-bpa-request-subject (fn-bpr-context-resolve context record))
+                (fn-record-content-subject record))
+         (member-equal entry (fn-bpr-state-receipts st))
+         (fn-bprv-entry-decidedp entry journal)
+         (equal (fn-bpr-receipt-entry-receipt entry)
+                (fn-bpr-receipt-for context (fn-bpr-state-config st)
+                                    (fn-bpa-receipt-id
+                                     (fn-bpr-receipt-entry-receipt entry))))
+         (equal (fn-bpr-receipt-adu st request)
+                (fn-bpa-encode (fn-bpr-receipt-entry-receipt entry))))))
+(bpr-lift bpre-hg-conclusion 4)
+
+; Positive witnesses: the complete antecedent and conclusion on three states
+; the live trace reaches -- the recovered Store after the crash (:ready), the
+; post-crash replaying Store (its node empty, its history intact), and the
+; final state of the uncrashed run.
+(assert-event
+ (and (in-arena-fn-bprv-evolving-invariantp *bpre-payloads* (car *bpre-recovered*)
+                                            (cadr *bpre-recovered*) (caddr *bpre-recovered*))
+      (fn-bpr-receipt-adu (cadr *bpre-recovered*) *bpr-request*)
+      (in-arena-bpre-hg-conclusion *bpre-payloads* (car *bpre-recovered*) (cadr *bpre-recovered*)
+                                   (caddr *bpre-recovered*) *bpr-request*)))
+(assert-event
+ (and (in-arena-fn-bprv-evolving-invariantp *bpre-payloads* (car *bpre-replaying*)
+                                            (cadr *bpre-replaying*) (caddr *bpre-replaying*))
+      (fn-bpr-receipt-adu (cadr *bpre-replaying*) *bpr-request*)
+      (in-arena-bpre-hg-conclusion *bpre-payloads* (car *bpre-replaying*) (cadr *bpre-replaying*)
+                                   (caddr *bpre-replaying*) *bpr-request*)))
+(assert-event
+ (and (in-arena-fn-bprv-evolving-invariantp *bpre-payloads* (car *bpre-final*)
+                                            (cadr *bpre-final*) (caddr *bpre-final*))
+      (fn-bpr-receipt-adu (cadr *bpre-final*) *bpr-request*)
+      (in-arena-bpre-hg-conclusion *bpre-payloads* (car *bpre-final*) (cadr *bpre-final*)
+                                   (caddr *bpre-final*) *bpr-request*)))
+
+; Removal of (fn-bpr-receipt-adu st request): the receiver's opening state
+; (reached: the first state of the live trace) holds the invariant, has no
+; receipt for the request, and the conclusion fails (no context).
+(assert-event
+ (and (in-arena-fn-bprv-evolving-invariantp *bpre-payloads* (car *bpre-live0*)
+                                            (cadr *bpre-live0*) (caddr *bpre-live0*))
+      (not (fn-bpr-receipt-adu (cadr *bpre-live0*) *bpr-request*))
+      (not (in-arena-bpre-hg-conclusion *bpre-payloads* (car *bpre-live0*) (cadr *bpre-live0*)
+                                        (caddr *bpre-live0*) *bpr-request*))))
+
+; Removal of the evolving invariant (CORRUPTED STATE, not reached): the
+; recovered receiver state and journal paired with an initial Store whose
+; history holds no article.  The receipt is still answered; the invariant
+; fails (the context is grounded in no history record), and so does the
+; conclusion (no grounding record).
+(defconst *bpre-hg-orphan-store* (fn-sn-initial *bpr-groups* 20))
+(assert-event
+ (and (not (in-arena-fn-bprv-evolving-invariantp *bpre-payloads* *bpre-hg-orphan-store*
+                                                 (cadr *bpre-recovered*) (caddr *bpre-recovered*)))
+      (fn-bpr-receipt-adu (cadr *bpre-recovered*) *bpr-request*)
+      (not (in-arena-bpre-hg-conclusion *bpre-payloads* *bpre-hg-orphan-store* (cadr *bpre-recovered*)
+                                        (caddr *bpre-recovered*) *bpr-request*))))

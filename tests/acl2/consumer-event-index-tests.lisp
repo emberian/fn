@@ -1,7 +1,7 @@
 ; Indexed Store sequence lookup has an exact committed-list authority.
 (in-package "ACL2")
 (include-book "../../books/consumer-event-index")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-ceit-events*
   (list '(:consumer 0 bootstrap) '(:consumer 1 register)
@@ -30,13 +30,13 @@
   (fn-cei-put 2 '(:article 2 substituted) *fn-ceit-index*))
 (assert-event (not (fn-cei-correspondencep
                     *fn-ceit-corrupt* *fn-ceit-events*)))
-(must-fail
+(must-fail-checked
  (defthm fn-ceit-false-lookup-without-correspondence
    (equal (fn-cei-get 2 *fn-ceit-corrupt*)
           (nth 2 *fn-ceit-events*))))
 
 ; A lookup of an absent future sequence is not the last report.
-(must-fail
+(must-fail-checked
  (defthm fn-ceit-false-future-lookup
    (equal (fn-cei-get 4 *fn-ceit-index*)
           (nth 3 *fn-ceit-events*))))
@@ -52,6 +52,6 @@
 (assert-event (not (fn-cei-correspondencep *fn-ceit-corrupt* *fn-ceit-events*)))
 (assert-event (not (equal (fn-cei-count *fn-ceit-corrupt*)
                           (len *fn-ceit-events*))))
-(must-fail
+(must-fail-checked
  (defthm fn-ceit-false-count-without-correspondence
    (equal (fn-cei-count *fn-ceit-corrupt*) (len *fn-ceit-events*))))

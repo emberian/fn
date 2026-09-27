@@ -4,7 +4,7 @@
 (include-book "../../books/store-identity-sequence-invariants")
 (include-book "store-identity-traces-tests")
 (include-book "std/testing/assert-equal" :dir :system)
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *hls-b* (make-list 32 :initial-element 8))
 (defconst *hls-b-keys*
@@ -26,7 +26,7 @@
        (fn-sn-prepare-identity (fn-sit-reserve *sit-after-enrollment*)
                                *sit-composite*))))
 (assert-event (fn-sn-completion-enabledp *hls-kind4-completing*))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-sn-verdicts (fn-sn-finish *hls-kind4-completing*))
          (fn-sn-verdicts *hls-kind4-completing*))))
@@ -50,7 +50,7 @@
     ',(fn-sn-prepare-identity (fn-sit-reserve *sit-after-composite*)
                               *hls-b2*)))
 (assert-event (not (fn-sn-completion-enabledp *hls-b-staged*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-hls-current-enrollment (fn-sn-finish *hls-b-staged*) 2)
          (fn-hl-current-enrollment

@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-export")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; A ground history of five committed records of four kinds (an article, an
 ; undertake, a release, two consumer events), each its sealed store frame
@@ -101,7 +101,7 @@
                                      *sxpt-records*)
                           (list :import *sxpt-format-8* *sxpt-frontier*
                                 *sxpt-configs* *sxpt-records*))))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   20000
   (defthm sxpt-without-logp
@@ -128,7 +128,7 @@
 ;; Without validp: '(1 2 3) takes the word and stays invalid.
 (assert-event (not (fn-bs-profile-validp '(1 2 3))))
 (assert-event (not (fn-bs-profile-validp (fn-sxp-log-profile '(1 2 3)))))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   20000
   (defthm sxpt-log-profile-without-validp
@@ -143,7 +143,7 @@
 (assert-event (equal (sxpt-plan *fn-bs-profile-development* *sxpt-frontier*
                                 *sxpt-configs* *sxpt-backwards*)
                      '(:refused :record-out-of-sequence 2)))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   20000
   (defthm sxpt-without-increasing
@@ -164,7 +164,7 @@
 (assert-event (equal (sxpt-plan *fn-bs-profile-development* *sxpt-frontier*
                                 *sxpt-configs-backwards* *sxpt-records*)
                      '(:refused :config-out-of-sequence)))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   20000
   (defthm sxpt-without-config-order

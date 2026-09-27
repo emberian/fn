@@ -559,11 +559,11 @@ and feed table, with the committed octets extended from the carried sum."
 
 ; What the owner renders for an FNLS request: the health report for :health,
 ; the status report of books/native-live-status.lisp otherwise.
-(defun fn-nh-answer-report (kind profile oc cache obs min)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-nh-answer-report (kind profile oc cache obs min fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (equal kind :health)
       (fn-nh-live-report profile oc cache min)
-    (fn-nls-live-report kind profile oc cache obs)))
+    (fn-nls-live-report kind profile oc cache obs fn-arena)))
 
 ; -----------------------------------------------------------------------------
 ; Theorems
@@ -948,7 +948,7 @@ and feed table, with the committed octets extended from the carried sum."
 ; `fnn-command-retention').  On the same Store node the two verbs print the
 ; same figures.
 (defthm fn-nls-obligations-figures-are-the-retention-figures
-  (equal (fn-nls-live-report :obligations profile oc cache obs)
+  (equal (fn-nls-live-report :obligations profile oc cache obs fn-arena)
          (let ((s (fn-own-store (fn-ocfg-owner oc))))
            (append (fn-nls-text "obligations=") (fn-nls-nat (fn-rtf-pin-count s))
                    (fn-nls-field "reserved" (fn-rtf-reserved s))

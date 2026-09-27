@@ -8,7 +8,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/article-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness.
@@ -60,7 +60,7 @@
 (assert-event (not (fn-article-result-okp (fn-article-parse *art-teeth-unterminated*))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm art-teeth-preserves-source-without-successful-parse
     (equal (fn-article-source
             (fn-article-result-article (fn-article-parse *art-teeth-unterminated*)))
@@ -73,7 +73,7 @@
                      '(:error :invalid-header)))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm art-teeth-preserves-source-without-crlf-framing
     (equal (fn-article-source
             (fn-article-result-article (fn-article-parse *art-teeth-bare-lf*)))

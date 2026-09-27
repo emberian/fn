@@ -1,7 +1,7 @@
 ; Witnesses and teeth for books/bp-route-jobs (spike/bp).
 (in-package "ACL2")
 (include-book "../../books/bp-route-jobs")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *rjt-a* (fn-bprt-route 100 "dtn://receiver/*" "via-a" "dtn://relay-a/" 4556))
 (defconst *rjt-b* (fn-bprt-route 50 "dtn://receiver/*" "via-b" "dtn://relay-b/" 4557))
@@ -27,7 +27,7 @@
               (list :route (fn-record-string-octets "127.0.0.1") 4557
                     (fn-record-string-octets "dtn://sender/") 30 1024 1048576)
               "via-b" "dtn://relay-b/")))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (caddr (fn-bprt-send-decision *rjt-queued* "dtn://receiver/"
                                        (list *rjt-a* *rjt-b*)))
@@ -40,7 +40,7 @@
  (equal (fn-bprt-send-decision *rjt-queued* "dtn://receiver/" (list *rjt-nocontact*))
         '(:held :no-live-hop)))
 ; Another destination is not routed by a receiver pattern.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bprt-send-decision *rjt-queued* "dtn://other/" (list *rjt-a*)))
          :send)))

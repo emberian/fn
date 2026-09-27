@@ -9,7 +9,7 @@
 (include-book "../../books/config-invariants")
 (include-book "../../books/owner-agent")
 (include-book "../../books/native-admin")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun gst-o (s) (declare (xargs :guard (stringp s))) (fn-nntp-string-octets s))
 
@@ -78,7 +78,7 @@
 ; Without the liveness hypothesis: an absent group is not set (the other
 ; hypotheses hold, the conclusion fails).
 (assert-event (not (fn-cfg-group-livep *gst-v1* 2 "fn.absent")))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-cfg-group-status
                        (fn-cfg-apply-delta *gst-v1* 2 *gst-stamp*
                                            (fn-cfg-set-group-status "fn.absent" "n"))
@@ -87,7 +87,7 @@
 ; Without the status hypothesis: "m" is not a status fn serves; the fold
 ; reads it as "y", so the conclusion (status = "m") fails.
 (assert-event (fn-cfg-group-livep *gst-v1* 2 "fn.announce"))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-cfg-group-status
                        (fn-cfg-apply-delta *gst-v1* 2 *gst-stamp*
                                            (fn-cfg-set-group-status "fn.announce" "m"))
