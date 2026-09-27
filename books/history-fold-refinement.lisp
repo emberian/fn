@@ -38,7 +38,7 @@
 (include-book "key-statements")
 (include-book "peer-carriage")
 (include-book "bp-receipt")
-(include-book "consumer-owner-local")
+(include-book "consumer-owner-local-progress")
 (include-book "store-open-pre-c1")
 (include-book "control-visible")
 
@@ -313,3 +313,64 @@
                                   (fn-col-poll fn-col-poll-report-octets
                                    fn-ncl-poll-event-bytesp fn-held-wire
                                    fn-row-bytes)))))
+
+; KEYSTONE (PKT-254 over the arena; the twin of
+; fn-col-poll-report-fits-or-refuses-by-name, books/consumer-owner-local-
+; progress.lisp, for the function the host calls after the flip): a refusal
+; or empty page exactly as fn-col-poll answered; a page whose report is the
+; exact encoding of the selected row's WIRE form when the kind-6 reply can
+; carry it; the named refusal :oversize above the ceiling.
+(defthm fn-col-poll-report-over-fits-or-refuses-by-name
+  (let ((r (fn-col-poll-report-over o consumer fn-arena))
+        (d (fn-col-poll o consumer)))
+    (and (implies (not (equal (car d) :poll)) (equal r d))
+         (implies (and (equal (car d) :poll) (not (caddr d))) (equal r d))
+         (implies (and (equal (car d) :poll) (caddr d)
+                       (fn-ncl-poll-event-bytesp
+                        (fn-col-poll-report-octets
+                         (fn-row-wire-of (caddr d) fn-arena))))
+                  (equal r (list :poll (cadr d)
+                                 (fn-col-poll-report-octets
+                                  (fn-row-wire-of (caddr d) fn-arena)))))
+         (implies (and (equal (car d) :poll) (caddr d)
+                       (consp (fn-col-poll-report-octets
+                               (fn-row-wire-of (caddr d) fn-arena)))
+                       (fn-cbor-octet-listp (fn-col-poll-report-octets
+                                             (fn-row-wire-of (caddr d) fn-arena)))
+                       (< *fn-stxa-max-octets*
+                          (len (fn-col-poll-report-octets
+                                (fn-row-wire-of (caddr d) fn-arena)))))
+                  (equal r '(:refused :oversize)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-col-poll-report-over fn-ncl-poll-event-bytesp)
+                                  (fn-col-poll fn-col-poll-report-octets
+                                   fn-row-wire-of fn-cbor-octet-listp)))))
+
+; KEYSTONE (PKT-467 over the arena; the twin of
+; fn-col-poll-report-of-an-admitted-payload-fits, books/consumer-owner-local-
+; progress.lisp): a page
+; whose selected row's wire encoding is a payload the publication gate admits
+; is served as that page, never :oversize.
+(defthm fn-col-poll-report-over-of-an-admitted-payload-fits
+  (let* ((d (fn-col-poll o consumer))
+         (octets (fn-col-poll-report-octets (fn-row-wire-of (caddr d) fn-arena))))
+    (implies (and (equal (car d) :poll)
+                  (caddr d)
+                  (consp octets)
+                  (fn-cbor-octet-listp octets)
+                  (fn-bs-publication-admissiblep profile committed-count
+                                                 (len octets)))
+             (equal (fn-col-poll-report-over o consumer fn-arena)
+                    (list :poll (cadr d) octets))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-col-poll-report-over-fits-or-refuses-by-name)
+                        (:instance fn-bs-profile-valid-record-fits-a-poll-reply
+                                   (values profile)
+                                   (octets (len (fn-col-poll-report-octets
+                                                 (fn-row-wire-of
+                                                  (caddr (fn-col-poll o consumer))
+                                                  fn-arena))))))
+           :in-theory (e/d (fn-ncl-poll-event-bytesp)
+                           (fn-col-poll fn-col-poll-report-over fn-col-poll-report-octets
+                            fn-row-wire-of fn-bs-publication-admissiblep
+                            fn-cbor-octet-listp)))))

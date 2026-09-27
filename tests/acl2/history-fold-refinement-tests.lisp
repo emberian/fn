@@ -9,6 +9,7 @@
 (include-book "key-statements-tests")
 (include-book "peer-carriage-tests")
 (include-book "store-open-pre-c1-tests")
+(include-book "../../books/records-concrete")
 (include-book "std/testing/must-fail" :dir :system)
 
 ; The rows the intern makes of a wire history WS on a fresh arena, and the
@@ -85,6 +86,26 @@
 (assert-event (not (fn-sopc-pre-c1-control-record-p (car (hfr :rows *hfr-sopc*)))))
 (assert-event (not (hfr :free *hfr-sopc*)))
 (assert-event (equal (hfr :free-wire *hfr-sopc*) (hfr :free *hfr-sopc*)))
+
+; The topic projection: a retained composite row records the wire composite
+; it carries, so a later topic event finds its authorship; the concrete twin
+; the host calls is the same step (fn-rcon-th-prefix-step-is-th-prefix-step,
+; reached on the row); a bare wire composite is no retained event and
+; faults the prefix.
+(defconst *hfr-tha-row*
+  (fn-hstxa-make *tha-event*
+                 (fn-held-plain (fn-replay-composite-record *tha-event*) 0)))
+(assert-event (fn-hstxa-p *hfr-tha-row*))
+(defconst *hfr-th-before*
+  (fn-th-prefix-state :ok (fn-stxa-sequence *tha-event*) (list *tha-snapshot*)
+                      nil nil nil nil))
+(defconst *hfr-th-after* (fn-th-prefix-step *hfr-th-before* *hfr-tha-row*))
+(assert-event (equal (fn-th-at 0 *hfr-th-after*) :ok))
+(assert-event (equal (fn-th-at 3 *hfr-th-after*) (list *tha-event*)))
+(assert-event (equal (fn-rcon-th-prefix-step *hfr-th-before* *hfr-tha-row*)
+                     *hfr-th-after*))
+(assert-event (equal (fn-th-at 0 (fn-th-prefix-step *hfr-th-before* *tha-event*))
+                     :fault))
 
 ; -----------------------------------------------------------------------------
 ; Hypothesis removal (fn-row-composite-okp): a composite row whose held row
