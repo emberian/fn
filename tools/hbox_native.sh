@@ -46,8 +46,11 @@
 #
 # Options: --name NAME, --label LABEL, --images LIST, --mem SIZE,
 # --image-acl2 PATH (the ACL2 wrapper the IMAGES are built with; certification
-# keeps the toolchain's: e.g. a --tls-limit 65536 wrapper, since the served
-# image's load exhausted SBCL's thread-local storage at 16384 on 2026-09-27),
+# keeps the toolchain's.  Default /tank/fn/toolchains/w28/acl2-literal-4g-tls64k,
+# the w28 launcher at --tls-limit 65536 (coordinator decision 2026-09-27): the
+# served image's load exhausted SBCL's thread-local storage at 16384 on
+# 2026-09-27 (batch AV's native-av-bb1a and recover-memory-2); give the
+# toolchain's own path to build at 16384),
 # --jobs N (certify, default 8), --no-build (reuse the images already in that
 # scratch tree), --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --deadline S (default 5400), --dry-run (print the box script; the refusal
@@ -63,7 +66,7 @@ NAME=$(basename "$HERE")
 LABEL=
 IMAGES=developer
 MEM=24G
-IMAGE_ACL2=
+IMAGE_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k
 JOBS=8
 BUILD=1
 DETACH=0
