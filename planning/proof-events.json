@@ -7150,6 +7150,14 @@
         {
           "kind": "theorem",
           "name": "fn-heap-figure-octets-grows-with-history-and-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-article-held-holds-the-article-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-article-held-meets-the-article-relations"
         }
       ]
     },

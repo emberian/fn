@@ -171,8 +171,18 @@ class LargeReplyTests(JoinFixture):
             j += 1
         return b"References: " + "\r\n ".join(ids).encode("ascii") + b"\r\n"
 
+    # The capacity this case needs, named: 3 + 2,000 POSTs (one transaction
+    # each) and about 11 MB of history.  Since batch AR (image-floor) a
+    # capacity-free `init' is sized conservatively within the budget, which
+    # on hbox_native's 24 GiB is development's 128 transactions: the 125th
+    # POST was refused 441 "no capacity".  Before, a capacity-free request
+    # kept the default preset's 2^32 transactions and 1 TiB.  These fields
+    # make it the operator's request, written as named, and its reservation
+    # is within 24 GiB.
+    CAPACITY = ("--max-transactions", "4096", "--max-history-octets", str(64 * 1024 * 1024))
+
     def test_article_of_1_2_3_mib_and_a_4_mb_over_leave_the_owner_serving(self):
-        created = self.op("init", "--max-article-octets", str(MIB4), "fn.test")
+        created = self.op("init", *self.CAPACITY, "--max-article-octets", str(MIB4), "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         owner = self.start_owner(self.image)
         rows = self.post_and_reread([1048576, 2097152, 3145728])
