@@ -1,5 +1,5 @@
 ; fn: the payload arena's EXTENT seal, its logical side (lane
-; arena-offheap-2, 2026-09-27; PRF-281; the design is
+; arena-offheap-2, 2026-09-27; PRF-294; the design is
 ; planning/evidence/arena-offheap-2026-09-27.md section 3).
 ;
 ; Stage 2 of arena-offheap moves payloads off the heap: a handle may denote

@@ -366,7 +366,7 @@
            (equal (fn-arena-seal-range a b fn-octets fn-arena)
                   (append fn-arena (list (fn-oct-slice-list a b fn-octets))))))
 
-; The extent seal (stage 2, PRF-281): an append of the extent's durable
+; The extent seal (stage 2, PRF-294): an append of the extent's durable
 ; octets (A-DURABLE-EXTENT).
 (defthm fn-arena-seal-extent-is-append
   (implies (fn-arena-p fn-arena)
@@ -426,7 +426,7 @@
          xs)
   :hints (("Goal" :in-theory (enable fn-arena-payload fn-arena-seal-list fn-arena-count))))
 
-; KEYSTONE (PRF-281) fn-arena-seal-extent-payload: the extent seal's new
+; KEYSTONE (PRF-294) fn-arena-seal-extent-payload: the extent seal's new
 ; handle is the old count and denotes the durable octets of its extent, every
 ; older handle keeps its payload, and the count grows by one.  No hypothesis:
 ; the extent's octets are what A-DURABLE-EXTENT says the file holds there.

@@ -431,7 +431,7 @@
     :rule-classes :type-prescription))
 
 ; -----------------------------------------------------------------------------
-; A-DURABLE-EXTENT (lane arena-offheap-2, 2026-09-27; PRF-281; the payload
+; A-DURABLE-EXTENT (lane arena-offheap-2, 2026-09-27; PRF-294; the payload
 ; arena's stage 2, planning/evidence/arena-offheap-2026-09-27.md section 3).
 ;
 ; "A durable file holds, at an extent the host durably wrote and never

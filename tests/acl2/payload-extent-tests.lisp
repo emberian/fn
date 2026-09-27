@@ -1,4 +1,4 @@
-; Tests for books/payload-extent.lisp (lane arena-offheap-2, PRF-281).
+; Tests for books/payload-extent.lisp (lane arena-offheap-2, PRF-294).
 ;
 ; 1. The exec functions the host calls are guard-verified.
 ; 2. The codec's place of the payload is right on a real record: a record
@@ -20,6 +20,9 @@
       (eq (symbol-class 'fn-arx-cat-intern-extent (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arx-entry-ok (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arx-read-cache-entries (w state)) :common-lisp-compliant)))
+
+; The chunk fold of the keystone is a model of the host's loop, not executed.
+(assert-event (eq (symbol-class 'fn-arx-steps (w state)) :ideal))
 
 (defconst *pxt-payload*
   (append (fn-record-string-octets "Subject: a") '(13 10 13 10)
@@ -99,6 +102,59 @@
        (equal (fn-arx-intern-step '(r0) nil nil nil '((1 2)))
               (fn-srs-intern-step '(r0) nil '((1 2))))
        (equal (fn-arx-intern-step '(r0) nil nil nil '((1 2))) (mv '(r0) '((1 2)))))
+  :rule-classes nil)
+
+;; KEYSTONE fn-arx-steps-are-one-step-of-the-concatenation (the chunk
+;; stream).  Positive witness: a chunk of one record R with no place (the
+;; faithful condition holds by computation), every hypothesis asserted with
+;; the conclusion.  (The record decode is not executable in this world --
+;; fn-record-decode-exact is attached in the image -- so the witness is
+;; symbolic in R and the arena.)
+(defthm pxt-chunks-witness
+  (implies (fn-arena-p fn-arena)
+           (and (fn-srs-chunksp (list (list r)))
+                (fn-arx-faithful-chunks-p (list (list r)) (list (list nil)))
+                (let ((steps (fn-arx-steps (list (list r)) (list (list nil)) acc fn-arena))
+                      (one (fn-srs-step acc (fn-srs-concat (list (list r))) fn-arena)))
+                  (and (iff (eq (mv-nth 0 steps) :bad) (eq (mv-nth 0 one) :bad))
+                       (implies (not (eq (mv-nth 0 one) :bad))
+                                (equal steps one))))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-arx-steps-are-one-step-of-the-concatenation
+                                   (chunks (list (list r))) (placess (list (list nil)))))
+           :in-theory (union-theories '(fn-srs-chunksp fn-arx-faithful-chunks-p fn-arx-faithful-p
+                                        true-listp iff car-cons cdr-cons (:e consp) (:e atom))
+                                      (theory 'minimal-theory)))))
+
+;; Hypothesis-removal must-fails (bounded search: a failed search, not a
+;; counterexample).
+(local
+ (must-fail
+  (with-prover-step-limit 50000 (defthm pxt-chunks-without-faithful
+    (implies (and (fn-arena-p fn-arena) (fn-srs-chunksp chunks))
+             (equal (fn-arx-steps chunks placess acc fn-arena)
+                    (fn-srs-steps chunks acc fn-arena)))))))
+
+(local
+ (must-fail
+  (with-prover-step-limit 50000 (defthm pxt-chunks-without-arena-p
+    (implies (and (fn-srs-chunksp chunks) (fn-arx-faithful-chunks-p chunks placess))
+             (equal (fn-arx-steps chunks placess acc fn-arena)
+                    (fn-srs-steps chunks acc fn-arena)))))))
+
+(local
+ (must-fail
+  (with-prover-step-limit 50000 (defthm pxt-chunks-without-chunksp
+    (implies (and (fn-arena-p fn-arena) (fn-arx-faithful-chunks-p chunks placess))
+             (let ((steps (fn-arx-steps chunks placess acc fn-arena))
+                   (one (fn-srs-step acc (fn-srs-concat chunks) fn-arena)))
+               (implies (not (eq (mv-nth 0 one) :bad))
+                        (equal steps one))))))))
+
+;; A record with no place needs no faithful read (fn-arx-intern-event-without-place).
+(defthm pxt-without-place-witness
+  (equal (fn-arx-intern-event w r nil 7 nil 0 fn-arena)
+         (fn-intern-event w nil 0 fn-arena))
   :rule-classes nil)
 
 ; fn-arx-entry-ok-of-durable: without the file holding the prefix's digest

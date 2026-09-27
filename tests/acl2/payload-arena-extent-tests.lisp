@@ -1,5 +1,5 @@
 ; Tests for books/payload-arena-extent.lisp and the generic's extent seal
-; (lane arena-offheap-2, PRF-281).
+; (lane arena-offheap-2, PRF-294).
 ;
 ; 1. Every exec function of the extent arena is guard-verified.
 ; 2. The extent arena run directly (not attached): resident seals, an extent

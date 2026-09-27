@@ -9995,6 +9995,10 @@
         {
           "kind": "theorem",
           "name": "fn-arx-entry-ok-of-durable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-steps-are-one-step-of-the-concatenation"
         }
       ]
     },

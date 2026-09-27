@@ -1,5 +1,5 @@
 ; fn: the payload arena with EXTENT handles, attached to the generic (lane
-; arena-offheap-2, 2026-09-27; PRF-281; design:
+; arena-offheap-2, 2026-09-27; PRF-294; design:
 ; planning/evidence/arena-offheap-2026-09-27.md section 3).
 ;
 ; `fn-arena-extent' is an abstract stobj over `fn-arena$x', a concrete stobj
