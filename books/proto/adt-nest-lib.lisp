@@ -337,11 +337,11 @@
 ; Records of a nested schema S (a list of nested kinds), as flat records.
 
 (defun adt-nrec (s r)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard t))
   (adt-nfl :ks s r))
 
 (defun adt-nunrec (s w)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard t))
   (car (adt-nunf :ks s w nil)))
 
 (defun adt-nmap (s a)
@@ -349,7 +349,7 @@
   (if (atom a) nil (cons (adt-nrec s (car a)) (adt-nmap s (cdr a)))))
 
 (defun adt-nseq-p (s a)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard t))
   (if (atom a) (null a) (and (adt-nval :ks s (car a)) (adt-nseq-p s (cdr a)))))
 
 (defthm adt-nunrec-nrec
@@ -415,7 +415,7 @@
   (implies (and (adt-nkind :ks s) (adt-nval :ks s r))
            (adt-rec-p (adt-nflat :ks s) (adt-nrec s r))))
 
-(in-theory (disable adt-nrec adt-flat-index adt-fkey adt-key-kind-p))
+(in-theory (disable adt-nrec adt-flat-index adt-fkey adt-key-kind-p adt-nunrec))
 
 (defthm adt-kmem-nmap
   (implies (and (adt-nkind :ks s) (adt-nseq-p s a) (natp j) (< j (len s))
@@ -585,12 +585,14 @@
 
 (deftheory adt-nkinstance-unfold
   '(adt-nkempty-c adt-nkmem-c adt-nkfind-c adt-nkinsert-c adt-nkremove-c adt-nkreplace-c
-    adt-nunrec adt-nrec
     (:executable-counterpart adt-nflat) (:executable-counterpart adt-flat-index)))
 
 (defthm adt-true-listp-when-nval-ks
   (implies (adt-nval :ks s r) (true-listp r))
-  :hints (("Goal" :induct (len s) :expand ((adt-nval :ks s r)))))
+  :hints (("Goal" :induct (adt-sj-induct s (len s) r) :expand ((adt-nval :ks s r)))))
 
 (defthm adt-true-listp-kfind-when-nseq-p
   (implies (adt-nseq-p s a) (true-listp (adt-kfind j k a))))
+
+(defthm adt-true-list-listp-when-nseq-p
+  (implies (adt-nseq-p s a) (true-list-listp a)))
