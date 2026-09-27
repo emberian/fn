@@ -52,7 +52,10 @@ EXIT_OK, EXIT_REFUSED = 0, 1
 SMALL_FLAGS = ("--profile", "development", "--max-transactions", "16384",
                "--max-history-octets", "8388608", "--max-record-octets", "196608",
                "--max-groups-per-article", "16", "--max-open-suffix", "128")
-HEAP_LINE = re.compile(r"^heap=(\d+) MB profile=([a-z]+) machine=(\d+) MB$", re.M)
+# `status' prints the launcher's run reservation (books/heap-reservation.lisp
+# fn-heap-status-decide): the heap line with the stack and the threads.
+HEAP_LINE = re.compile(r"^heap=(\d+) MB profile=([a-z]+) machine=(\d+) MB"
+                       r" stack=\d+ KB threads=\d+$", re.M)
 REFUSED = re.compile(
     r"refused machine-cannot-hold-profile heap=(\d+) MB machine=(\d+) MB")
 # What `init' prints (books/heap-reservation.lisp fn-heap-init-report-line).

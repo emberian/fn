@@ -643,17 +643,19 @@
        (equal (fn-bs-profile-max-groups-per-article *fn-heap-small-profile*) 16)
        (equal (fn-bs-profile-max-open-suffix *fn-heap-small-profile*) 128)))
 
-;; The small preset's figures since the records flip.  At its bounds
-;; (T = 16,384 records of at most 16 groups each, H = 8 MiB) the retained
-;; state alone is 345 MB and a full replay of such a store 1,280 MB, so its
-;; unobserved figure is 1,662 MB on the production image; a `run' sizes the
-;; open by the store on disk (`fn-heap-operation-decide', :run).  With any
+;; The small preset's figures since the records flip, with the measured
+;; per-record state and the streamed open (lane reservation-figure).  At its
+;; bounds (T = 16,384 records of at most 16 groups each, H = 8 MiB) the
+;; retained state alone is 553 MiB (2 x 16,384 x (12 KiB + 16 x 320)), and a
+;; full replay of such a store adds 108 MiB (one chunk and one record as
+;; lists, the input's vectors, 1 KiB a record); a `run' sizes the open by the
+;; store on disk (`fn-heap-operation-decide', :run).  With any
 ;; image up to 512 MiB of dynamic content and any nursery cap, the run
 ;; of an empty small store is accepted on every machine of at least 1,536 MiB
 ;; (OpenBSD's default login class; the friend's machine has about 2 GB).
 (defthm fn-heap-small-run-base-of-an-empty-store
   (equal (fn-heap-store-base-octets *fn-heap-small-profile* core '(0 . 0))
-         (+ (fn-heap-core-dynamic core) 420085898))
+         (+ (fn-heap-core-dynamic core) 718144682))
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 

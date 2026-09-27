@@ -973,20 +973,23 @@ dynamic space when the process starts, so the installed `bin/fn`
 (through `SBCL_USER_ARGS`, which every image launcher splices after its own
 figure; SBCL takes the last). ACL2 decides the figure
 (books/heap-figure.lisp `fn-heap-operation-decide` over
-books/heap-store-figure.lisp, host/native/heap.lisp `fnn-heap-reservation`
-and `fnn-heap-decision`; re-derived from the records flip's payload arena by
-lane reservation-after-flip, 2026-09-27): the image's dynamic content (the
-least of the core file's length and the dynamic space in use when the probe
-starts); the store's state at the profile's bounds -- the arena's byte array
-at three bytes per history octet (it doubles, and the old array is live
-during a resize), 48 octets of handles and, twice for the collector, 5,120
-octets per record and 320 per group membership (measured 3.5 to 4.8 KiB and
-0.25 KiB); the open's transient over the history on disk, which the probe
-observes (the history files' octets and the transaction files' count): two
-list copies of each octet at sixteen bytes, and 16 KiB per record, twice for
-the collector (a full replay decodes the records as octet lists); the
-request in flight (the record and three header copies as lists) and the two
-checkpoint buffers at the profile's file bound (`fn-ock-capture-budget`);
+books/heap-store-figure.lisp, host/native/heap.lisp `fnn-heap-reservation`;
+re-derived from the records flip's payload arena by lane
+reservation-after-flip and re-measured by lane reservation-figure,
+2026-09-27): the image's dynamic content (the least of the core file's
+length and the dynamic space in use when the probe starts); the store's
+state at the profile's bounds -- the paged arena (the payload octets, one
+page of slack and its page table: `fn-heap-arena-octets`), 48 octets of
+handles and, twice for the collector, 12,288 octets per record and 320 per
+group membership (the measured live state a record less its payload, 8 to 10
+KB, and 0.18 KB a membership: per-record-state, catalog-columns); the
+open's transient over the history on disk, which the probe observes (the
+history files' octets and the transaction files' count): the open streams
+one log entry and one 1 MiB chunk at a time, so one chunk and one record as
+lists with their decode, the checkpoint suffix's record vectors and 1 KiB
+per record, twice for the collector; the request in flight (the record and
+three header copies as lists) and the two checkpoint buffers at the
+profile's file bound (`fn-ock-capture-budget`);
 and twice the collection trigger the host sets in the space it gets
 (`fn-heap-nursery-trigger`: a sixteenth of it, at least 8 MiB, at most the
 host's 64 MiB), the figure being the least space that holds all of it
@@ -1003,17 +1006,22 @@ command does not run. An accepted figure holds every store the profile
 admits with an open of the store on disk
 (`fn-heap-operation-decide-holds-the-store`,
 `fn-heap-decide-admits-every-store-the-profile-admits`). `status` and
-`health` end with `heap=MB MB profile=WORD machine=M MB`, the next run's
-figure over the store on disk. The small preset (T 16,384, H 8 MiB, R
-196,608, A 32,768, G 16, K 128) reserves 583 MB of heap for the run of an
-empty store on the production image and 1,662 MB at its bounds;
+`health` end with `heap=MB MB profile=WORD machine=M MB stack=KB KB
+threads=N`, the reservation the launcher's probe makes for the store's next
+`run` over the store on disk (books/heap-reservation.lisp
+`fn-heap-status-decide`, `fn-heap-status-decide-is-the-launchers-run-reservation`). The small preset (T 16,384, H 8 MiB, R
+196,608, A 32,768, G 16, K 128) reserves 908 MB of heap for the run of an
+empty store on the production image and 963 MB at its bounds;
 `fn-heap-small-profile-run-fits-a-small-machine`: its empty store's run
 fits 1,536 MiB for any image of up to 512 MiB of dynamic content. The probe itself runs in the core's size plus 128 MB,
 a bound on its work (it reads `fn.toml` and `config.json`, 16 KiB each). A
 checkout's `packaging/fn` passes `FN_TEST_HEAP_MB` when set and otherwise
 the image launcher's own figure; the installed launcher ignores both
 `FN_TEST_HEAP_MB` and the caller's `SBCL_USER_ARGS`. The D27 default profile
-(H = 1 TiB) needs about 70 TiB and is refused on every machine (PKT-582).
+(H = 1 TiB, T = 2^32 - 1 records of up to 4,096 groups) needs about 10 PiB
+and is refused on every machine (PKT-582); the development and scale
+presets' figures are their G = 65,535 group memberships a record (2 x T x
+320 x G octets: nothing else bounds a store's memberships).
 PRF-198; the native case is SCN-127.
 
 

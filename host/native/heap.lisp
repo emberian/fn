@@ -116,32 +116,20 @@ that)."
              (progn (fnn-load-config store) (fnn-store-config store))))
     (error () nil)))
 
-(defun fnn-heap-decision (profile &optional observed)
-  ;; heap-figure's figure for the store, then the room the served connections'
-  ;; heap parts need beside it (books/connection-budget.lisp
-  ;; fn-cbud-launch-decide; PKT-605): the connections this machine holds
-  ;; beside the store, the fixed threads and their stacks, at most 1,024.
-  (let ((observations (fnn-heap-observations))
-        (core (fnn-heap-core-octets)))
-    (fnn-core 'fn-cbud-launch-decide
-              ;; The run's figure over the store on disk (reservation-after-flip).
-              (fnn-core 'fn-heap-operation-decide :run profile (fnn-heap-image-observation)
-                        +fnn-gc-nursery-octets+ observations observed)
-              profile core
-              (fnn-mux-thread-count nil) (fnn-mux-thread-stack-octets)
-              observations)))
-
-(defun fnn-heap-report-line (profile &optional observed)
-  (fnn-core 'fn-heap-report-line (fnn-heap-decision profile observed)))
-
 (defun fnn-heap-print-store-line (root)
-  "The `heap=' line `status' and `health' print after their report: the next
-run's figure over the store as it is on disk."
+  "The `heap=' line `status' and `health' print after their report: the
+reservation the launcher's probe makes for the store's next `run' over the
+store as it is on disk (books/heap-reservation.lisp fn-heap-status-decide,
+fn-heap-status-decide-is-the-launchers-run-reservation): one figure."
   (when (stringp root)
     (let ((profile (fnn-heap-store-profile root)))
-      (fnn-out "~a" (fnn-heap-report-line
-                     profile
-                     (and profile (fnn-heap-history-observation root profile)))))))
+      (fnn-out "~a" (fnn-core 'fn-heap-reserve-report-line
+                              (fnn-core 'fn-heap-status-decide profile
+                                        (fnn-heap-image-observation)
+                                        +fnn-gc-nursery-octets+
+                                        (fnn-heap-observations)
+                                        (and profile
+                                             (fnn-heap-history-observation root profile))))))))
 
 (defun fnn-heap-env-octets (name)
   "NAME's value in the environment as octets for ACL2 to read (at most 32

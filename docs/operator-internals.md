@@ -211,21 +211,33 @@ headroom transactions-used=7 transactions-budget=100000 bytes-used=1834 history-
 node the heap its store profile needs on this machine, and refuses a profile
 the machine cannot hold before anything runs (exit 1, on stderr
 `fn: refused machine-cannot-hold-profile heap=MB MB machine=M MB`). The
-figure is ACL2's (`fn-heap-decide`, books/heap-figure.lisp): the image, a
-64 MiB collection nursery, sixteen bytes per octet for twice the history
-bound H plus one record bound R, doubled for the collector, and two
-checkpoint buffers of three times H; the machine is the least of its physical
-memory, the cgroup's `memory.max` (Linux) and the data-size limit (`ulimit
--d`; OpenBSD's login class). `status` and `health` end with
-`heap=MB MB profile=WORD machine=M MB`. The presets on today's image (a
-389 MB core):
+figure is ACL2's (`fn-heap-decide`, books/heap-figure.lisp and
+books/heap-store-figure.lisp): the image's dynamic content, the state of the
+profile's largest store (its payloads in the paged arena, one octet each; 12
+KiB a record and 320 octets a group membership, twice for the collector:
+the measured live state of per-record-state and catalog-columns), the open's
+transient (the open streams one entry and one 1 MiB chunk at a time: no copy
+of the history), the record and header in flight, two checkpoint buffers of
+three times H, and the collector's room at the trigger the host sets; the
+machine is the least of its physical memory, the cgroup's `memory.max`
+(Linux) and the data-size limit (`ulimit -d`; OpenBSD's login class).
+`status` and `health` end with the reservation the launcher makes for the
+store's next `run` over the store on disk (`fn-heap-status-decide`, the same
+decision as the launcher's probe): `heap=MB MB profile=WORD machine=M MB
+stack=KB KB threads=N`. The presets' full-store figures on a 389 MB core:
 
 | preset | T | H | R | A | G | K | heap |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| small | 16,384 | 8 MiB | 196,608 | 32,768 | 16 | 128 | 1,002 MB: fits 1,536 MiB (OpenBSD's default datasize) and a 2 GB machine |
-| development | 128 | 24 MiB | 17,138,486 | 32,768 | 65,535 | 128 | 2,671 MB: refused on a 2 GB machine |
-| scale | 4,096 | 768 MiB | 17,138,486 | 32,768 | 65,535 | 4,096 | 54,751 MB |
-| default | 2^32-1 | 1 TiB | 64 MiB | 16 MiB | 4,096 | 65,536 | about 70 TiB: refused on every machine today (PKT-582) |
+| small | 16,384 | 8 MiB | 196,608 | 32,768 | 16 | 128 | 1,232 MB: fits 1,536 MiB (OpenBSD's default datasize) and a 2 GB machine |
+| development | 128 | 24 MiB | 17,138,486 | 32,768 | 65,535 | 128 | 7,506 MB: refused on a 2 GB machine |
+| scale | 4,096 | 768 MiB | 17,138,486 | 32,768 | 65,535 | 4,096 | 173,021 MB |
+| default | 2^32-1 | 1 TiB | 64 MiB | 16 MiB | 4,096 | 65,536 | about 10 PiB: refused on every machine (PKT-582) |
+
+The development and scale figures are their group memberships: a record may
+be posted to G = 65,535 groups and nothing else bounds a store's
+memberships, so the state is 2 x T x 320 x G octets (scale at T = 1,048,576:
+about 40 TiB). A node sized for many records names
+`--max-groups-per-article` (16 in the small preset).
 
 `init` with no `--profile` and no field flag (and every `init` under a
 `mission`, which fixes the profile) sizes conservatively: it writes the
