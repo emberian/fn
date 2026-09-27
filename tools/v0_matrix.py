@@ -946,7 +946,10 @@ def client_wire_outcomes(text: str) -> dict:
     the node's first 281 inside the client's own actions.  Nothing here
     judges an article; it only reads reply lines.
     """
-    segments, name = {}, None
+    # A client with several connections (pan keeps two) interleaves them in
+    # one log; a reply is only ever read from the connection that sent the
+    # command.  `conns` runs parallel to each segment's lines.
+    segments, conns, name = {}, {}, None
     for raw in text.splitlines():
         parts = raw.split(" ", 2)
         if len(parts) < 3:
@@ -955,20 +958,27 @@ def client_wire_outcomes(text: str) -> dict:
         if line.startswith("--- action "):
             name = line[len("--- action "):].strip()
             segments.setdefault(name, [])
+            conns.setdefault(name, [])
             continue
         if name is not None and line[:3] in ("C: ", "S: "):
             segments[name].append(line)
+            conns[name].append(parts[1])
 
-    def after(lines, predicate):
-        for index, line in enumerate(lines):
+    def same(key, index):
+        """The lines after `index` in segment `key` on that line's connection."""
+        lines, tags = segments.get(key, []), conns.get(key, [])
+        return [x for x, tag in zip(lines[index + 1:], tags[index + 1:]) if tag == tags[index]]
+
+    def after(key, predicate):
+        for index, line in enumerate(segments.get(key, [])):
             if predicate(line):
-                return next((x[3:] for x in lines[index + 1:] if x.startswith("S: ")), None)
+                return next((x[3:] for x in same(key, index) if x.startswith("S: ")), None)
         return None
 
-    def post_reply(lines):
-        for index, line in enumerate(lines):
+    def post_reply(key):
+        for index, line in enumerate(segments.get(key, [])):
             if line == "C: POST":
-                replies = [x[3:] for x in lines[index + 1:] if x.startswith("S: ")]
+                replies = [x[3:] for x in same(key, index) if x.startswith("S: ")]
                 if not replies:
                     return None
                 if replies[0].startswith("340"):
@@ -977,14 +987,16 @@ def client_wire_outcomes(text: str) -> dict:
         return None
 
     out = {"actions": sorted(segments)}
-    out["read"] = after(segments.get("read", []),
-                        lambda x: x.startswith(("C: ARTICLE", "C: BODY")))
+    out["read"] = after("read", lambda x: x.startswith(("C: ARTICLE", "C: BODY")))
     for key in ("reply", "post", "cancel"):
-        out[key] = post_reply(segments.get(key, []))
+        out[key] = post_reply(key)
+    # slrn --create: the node's answer to each LIST the client sent while
+    # building its newsrc (LIST SUBSCRIPTIONS is the first-run one).
+    out["create"] = {line[3:]: after("create", lambda x, l=line: x == l)
+                     for line in segments.get("create", []) if line.startswith("C: LIST")}
     redeem = [x[3:] for x in segments.get("redeem", []) if x.startswith("S: ")]
     out["redeem"] = redeem[1:3]
-    out["login"] = after(segments.get("seed", []),
-                         lambda x: x.startswith("C: AUTHINFO PASS"))
+    out["login"] = after("seed", lambda x: x.startswith("C: AUTHINFO PASS"))
     out["client_login"] = next(
         (x[3:] for key in ("read", "reply", "post", "cancel-fetch", "cancel")
          for x in segments.get(key, []) if x.startswith("S: 281")), None)
@@ -3946,9 +3958,10 @@ else echo NONE; fi
         if not self.has_client("slrn"):
             self.emit("V0-CLIENT-SLRN", NOT_EXERCISED, "slrn -h <host> -p <port>",
                       "(slrn is not installed)",
-                      blocker="slrn is not installed on {} (nor on hbox, measured "
-                              "2026-09-20); tests/interop_slrn.py has never run against "
-                              "an fn node".format(self.host.label))
+                      blocker="slrn is not installed on {}; over TLS with a redeemed "
+                              "account slrn 1.0.3 is driven on hbox in a container by "
+                              "tests/test_native_reader_clients.py (reader-clients-2, "
+                              "2026-09-27)".format(self.host.label))
             return
         step = self.sh("slrn client", self.cd(
             "python3 tests/interop_slrn.py --port {} --group {} 2>&1 | tail -20".format(
@@ -4030,18 +4043,12 @@ else echo NONE; fi
     # unpacked without root (apt-get download pan libgspell-1-3
     # libgmime-3.0-0t64; dpkg -x; LD_LIBRARY_PATH).
     PAN_BLOCKER = (
-        "unexercised: pan has no scripting interface and no headless read. "
-        "`pan --no-gui news:MID` (the only non-GUI article path besides --nzb) exits 0 "
-        "in 0.1 s without reading PAN_HOME or opening a socket (strace: no connect); "
-        "the GUI under xvfb-run connects over TLS but refuses the node's certificate "
-        "(`The certificate does not have a known issuer`) with the scratch CA in "
-        "PAN_HOME/ssl_certs, trusting it is an interactive dialog (or servers.xml "
-        "<trust>1, which skips verification and is not a protected channel), and "
-        "`--debug --debug` logs no NNTP lines. It would need: a keystroke driver "
-        "(xdotool from `apt-get download xdotool libxdo3`, dpkg -x) with a window-state "
-        "oracle for read, followup (f), post (p) and Article > Cancel, pan's ssl_certs "
-        "trust format for a CA-issued certificate, and a transcript source (a "
-        "TLS-terminating relay or a pan built with protocol logging)")
+        "not run by the v0 matrix: pan is driven on hbox by "
+        "tests/test_native_reader_clients.py (reader-clients-2, 2026-09-27): stock Debian "
+        "pan 0.162 in the tools/reader_clients container under Xvfb, typed at with xdotool, "
+        "the scratch CA in the container's system trust store (SSL_CERT_DIR, trust 0), its "
+        "transcript from the phase's TLS relay; see "
+        "planning/evidence/reader-clients-2-2026-09-27/")
 
     def reader_clients(self):
         """pan and Thunderbird over implicit TLS with an invitation-code account.
