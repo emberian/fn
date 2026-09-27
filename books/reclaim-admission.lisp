@@ -93,11 +93,11 @@
   ; An octet string that opens with NUL does not parse as an article.
   (implies (equal (car octets) 0)
            (not (fn-article-result-okp (fn-article-parse octets))))
-  :hints (("Goal" :in-theory (e/d (fn-article-parse)
+  :hints (("Goal" :in-theory (e/d (fn-article-parse fn-article-parse-under)
                                   (fn-article-new-field fn-article-next-line
                                    fn-article-line-okp fn-article-line-value
                                    fn-article-line-rest fn-article-result-okp))
-           :expand ((:free (n) (fn-article-parse-lines octets n 0 nil nil nil)))
+           :expand ((:free (lim n) (fn-article-parse-lines octets lim n 0 0 nil nil nil)))
            :use fn-rca-nul-line-first)))
 
 (local (in-theory (disable fn-rca-result-okp-is-line-okp)))

@@ -511,11 +511,43 @@ checkpoint's S, or NIL."
       (fnn-fault "owner refused the durable checkpoint sequence"))
     s))
 
+;;; SEC-006 (PRF-210): read the node's key ring and hand it to the owner,
+;;; which carries it (books/owner.lisp fn-own-node-secret): the current
+;;; entry from STORE/keys/node-secret.key, then each retained older epoch
+;;; E-1 .. 1 from node-secret-E.key, each read by ACL2
+;;; (host/native/io.lisp fnn-node-secret-read-entry, fn-ns-file-parse).
+;;; Refused by name, and the node does not start, when the current file is
+;;; missing (it is NEVER regenerated here: `store ROOT node-secret create'
+;;; is the only verb that makes one), a retained epoch is missing, a file is
+;;; not regular, is readable or writable by group or others, or does not
+;;; parse, or ACL2 does not accept the ring (fn-owner-install-node-secret
+;;; answers :refused unless fn-ns-ringp).
+(defun fnn-owner-load-node-secret (store)
+  (let* ((path (fnn-node-secret-path store))
+         (current (or (fnn-node-secret-read-entry path "node secret")
+                      (fnn-refuse "node secret ~a is missing: run `store ~a node-secret create' once (a start never creates one)"
+                                  path (fnn-store-root store))))
+         (epoch (fnn-core 'fn-ns-entry-epoch current))
+         (retained
+           (loop for e downfrom (1- epoch) to 1
+                 collect (let ((older (fnn-node-secret-epoch-path store e)))
+                           (or (fnn-node-secret-read-entry older "retained node secret")
+                               (fnn-refuse "node secret retained epoch ~d missing: ~a"
+                                           e older))))))
+    (unless (eq (fnn-owner-core 'fn-owner-install-node-secret (cons current retained))
+                :installed)
+      (fnn-refuse "node secret files in ~a do not form a key ring (epochs must decrease from the current one)"
+                  (fnn-node-secret-directory store)))))
+
 (defun fnn-owner-install (root max-connections &optional fault)
   (multiple-value-bind (store records) (fnn-open-live-store root t fault)
     (let ((service nil))
       (handler-case
           (progn
+            ;; PKT-648: the store's durability policy against its mount
+            ;; (books/store-mount-identity.lisp fn-smid-start-verdict),
+            ;; before the owner serves anything.
+            (fnn-check-filesystem-identity store t)
             (fnn-owner-recover-core store records max-connections)
             (fnn-err "OWNER-OPEN ~a" (fnn-open-report store))
             ;; The persisted profile ACL2 decoded at open, handed back once:
@@ -524,6 +556,9 @@ checkpoint's S, or NIL."
                                         (fnn-store-config store))
                         :installed)
               (fnn-fault "owner refused the store profile"))
+            ;; SEC-006: the node secret, handed to the owner after the
+            ;; recovery that built it (fnn-owner-load-node-secret).
+            (fnn-owner-load-node-secret store)
             ;; Five fresh namespace observations, now delivered to fn-owner.
             (let ((phase nil))
               (dolist (barrier
@@ -1838,7 +1873,13 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "owner returned a malformed exposure close"))
            (setq reply (concatenate 'fnn-octets reply (fnn-octets exposure-close))
                  closing t)))
-       (values reply (or closing uncertain) starttls consumed redeemed)))))
+       ;; PKT-600 (PRF-213): a read that emitted a submission yielded after
+       ;; its article (books/served-tls-prefix.lisp fn-served-feed-counted,
+       ;; the span fold books/served-span.lisp fn-scar-feed-span), so the
+       ;; caller feeds the rest of INCOMING as the next read, after this
+       ;; read's reply and the article's outcome are sent.
+       (values reply (or closing uncertain) starttls consumed redeemed
+               (fnn-owner-bool-global 'fn-owner-submittedp))))))
 
 ;;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge).
 ;;; Before every served step ACL2 answers :proceed or the milliseconds to
@@ -2003,7 +2044,7 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                          ((zerop (length incoming)) (return))
                          (t (fnn-owner-exposure-wait service cid)
                             (multiple-value-bind (reply closing starttls consumed
-                                                  redeemed)
+                                                  redeemed submitted)
                                 (fnn-owner-handle-chunk service cid incoming socket)
                               (cond
                                 (channel
@@ -2022,8 +2063,11 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                  ;; PRF-164: an XREDEEM PASS stops the fold at
                                  ;; its line; what the client sent after it is
                                  ;; the next step's input, already decrypted.
+                                 ;; PKT-600 (PRF-213): so does an article's
+                                 ;; submission: the next article or command
+                                 ;; in this record is the next step's input.
                                  (cond ((or closing (= consumed (length incoming))))
-                                       (redeemed
+                                       ((or redeemed submitted)
                                         (setq retained (subseq incoming consumed)))
                                        (t (fnn-fault "protected owner read left a TLS suffix"))))
                                 ((fnn-owner-service-tls-context service)
@@ -2035,7 +2079,12 @@ a loaded context makes STARTTLS reachable; ACL2 then chooses the exact prefix."
                                 ((/= consumed (length incoming))
                                  ;; The suffix is the next step's input, and
                                  ;; it is already in hand.  The served machine
-                                 ;; stops at the octet that closed the wire:
+                                 ;; stops after the octet that completed a
+                                 ;; submission (PKT-600, PRF-213: two
+                                 ;; pipelined TAKETHIS or POST articles in one
+                                 ;; read are two steps, each committed and
+                                 ;; answered before the next is framed), and
+                                 ;; at the octet that closed the wire:
                                  ;; an article over fn-own-body-limit
                                  ;; (books/owner.lisp, the record codec's
                                  ;; *fn-record-max-payload* = 32768) makes fn-wire-after-line answer
@@ -2202,10 +2251,14 @@ through fn-bs-scp-program's staged file before the next), all outside the
 mutex; then fn-owner-sco-publication-done under it.  A failed write leaves
 the old checkpoint (or, at and after the rename, the old or the new one:
 the crash keystone) and serving continues."
-  (destructuring-bind (base configs records segment count suffix budget frontier free revision)
+  (destructuring-bind (base configs records record-octets count suffix budget frontier free revision)
       captured
     (declare (ignore count))
-    (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil))
+    (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil)
+          ;; the writer's segment: ACL2's choice under the record bound R the
+          ;; capture handed over (fn-ockp-segment-octets, the verb's derivation)
+          (segment (fnn-core 'fn-ockp-segment-octets record-octets
+                             +fnn-checkpoint-batch-octets+)))
       (flet ((elapsed ()
                (round (* 1000 (- (get-internal-real-time) started))
                       internal-time-units-per-second)))
@@ -2259,13 +2312,23 @@ the crash keystone) and serving continues."
           (setf (fnn-owner-service-publisher service) nil
                 (fnn-owner-service-workers service)
                 (delete sb-thread:*current-thread*
-                        (fnn-owner-service-workers service) :test #'eq)))))))
+                        (fnn-owner-service-workers service) :test #'eq))))
+      ;; PKT-583 (b): the publication finished; decide again from the newest
+      ;; committed frontier now, not at the next accept (a load's tail has
+      ;; none), so a coalesced request is served as soon as it can be and a
+      ;; store that stopped posting is left with its suffix under K/2.
+      ;; fnn-owner-maybe-publish takes the mutex itself and refuses while
+      ;; stopping; at most one publication is in flight (fn-ock-one-
+      ;; publication-in-flight).
+      (fnn-owner-maybe-publish service))))
 
 (defun fnn-owner-maybe-publish (service)
-  "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts,
-never inside a command: when fn-ock-publication-duep says the suffix since
-the newest durable checkpoint reached half the profile's K (and no deferred
-publication is blocked on the profile's budget or the space, PKT-492), ACL2
+  "P3 owner publication (books/owner-checkpoint-open.lisp).  Between accepts
+and when a publication finishes, never inside a command: when
+fn-ock-publication-next says :due (fn-ock-publication-duep: the suffix since
+the newest durable checkpoint reached half the profile's K; no deferred
+publication is blocked on the profile's budget or the space, PKT-492; none in
+flight, else the observation is the one coalesced request, PKT-583 (b)), ACL2
 records the attempt and hands back the values the publication reads
 (fn-owner-sco-capture) under the owner mutex, O(1): the record list by
 pointer, the frontier, the free space the host observed by statvfs and the

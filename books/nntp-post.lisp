@@ -157,6 +157,10 @@
   (declare (xargs :guard t))
   (cond
    ((equal reason :unparsable) "441 posting failed; the article is not valid syntax")
+   ;; PRF-230: the store profile's header limits, each by its field name.
+   ((equal reason :header-fields-limit) "441 posting failed; the header has more fields than the profile's max-header-fields")
+   ((equal reason :header-lines-limit) "441 posting failed; the header has more lines than the profile's max-header-lines")
+   ((equal reason :header-octets-limit) "441 posting failed; the header has more octets than the profile's max-header-octets")
    ;; O2 (books/group-status.lisp): RFC 3977 section 7.6.3 status "n".
    ((equal reason :group-read-only) "441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)")
    ((equal reason :injection-info) "441 posting failed; Injection-Info must not be supplied")
@@ -189,12 +193,58 @@
 ; octets without CRLF and dot-stuffing has already been undone.  Reassembling
 ; the exact source the posting agent sent is a decision about octets, so it is
 ; made here and not in the host.
-(defun fn-post-body-octets (lines)
+;
+; The executable is a loop (D27; the class of PKT-481): each line is laid
+; onto an accumulator in reverse, CRLF after it, and the whole is turned
+; round once.  The recursion it replaced took one control-stack frame per
+; line, and a frame per octet of one line inside fn-inj-append; the profile
+; admits an article of one line as long as the article, so both were a
+; remote stop (planning/evidence/served-line-iterative-2026-09-26.md).
+(defun fn-post-body-onto (lines acc)
   (declare (xargs :guard t))
   (if (consp lines)
-      (fn-inj-append (car lines)
-                     (fn-inj-append '(13 10) (fn-post-body-octets (cdr lines))))
-    nil))
+      (fn-post-body-onto (cdr lines)
+                         (cons 10 (cons 13 (fn-ag-rev-onto (car lines) acc))))
+    acc))
+
+(defun fn-post-body-octets-iter (lines)
+  (declare (xargs :guard t))
+  (fn-ag-rev-onto (fn-post-body-onto lines nil) nil))
+
+(defun fn-post-body-octets (lines)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp lines)
+           (fn-inj-append (car lines)
+                          (fn-inj-append '(13 10) (fn-post-body-octets (cdr lines))))
+         nil)
+       :exec (fn-post-body-octets-iter lines)))
+
+(local (defthm fn-post-rev-onto-is-revappend
+         (equal (fn-ag-rev-onto x acc) (revappend x acc))))
+
+(local (defthm fn-post-inj-append-is-append
+         (equal (fn-inj-append a b) (append a b))
+         :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local (defthm fn-post-body-octets-true-listp
+         (true-listp (fn-post-body-octets lines))))
+
+(local (defthm fn-post-body-onto-is-revappend
+         (equal (fn-post-body-onto lines acc)
+                (revappend (fn-post-body-octets lines) acc))))
+
+;  KEYSTONE (D27, constant stack on the served POST).  The loop the host
+; runs is the reassembly the specification defines, on every argument; with
+; it the guard proof of fn-post-body-octets makes the loop the executable.
+(defthm fn-post-body-octets-iter-is-body-octets
+  (equal (fn-post-body-octets-iter lines)
+         (fn-post-body-octets lines)))
+
+(verify-guards fn-post-body-octets)
+
+(local (in-theory (disable fn-post-rev-onto-is-revappend fn-post-inj-append-is-append
+                           fn-post-body-octets-true-listp fn-post-body-onto-is-revappend)))
 
 (defun fn-post-single (ps text)
   (declare (xargs :guard t))
@@ -816,7 +866,7 @@
   (quote (fn-post-sessionp fn-post-open-session fn-post-session-consistentp
           fn-post-offeredp fn-post-refusal-line fn-post-single
           fn-post-store-refusalp fn-post-store-refusal-text fn-post-store-refusal-line
-          fn-post-body-octets
+          fn-post-body-onto fn-post-body-octets-iter fn-post-body-octets
           fn-nntp-post-step fn-nntp-post-outcome)))
 
 (in-theory (disable fn-nntp-post-vocabulary))

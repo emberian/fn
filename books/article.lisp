@@ -23,15 +23,51 @@
 ; hands the parser at most that many octets first (the injection
 ; configuration's max-octets, `fn-inj-decide').
 (defconst *fn-article-max-octets* 4261412864)
-; Work bounds.  The header parse's certified work bound
-; (`fn-article-parse-work-profile-bound', books/article-public-bound) is
-; fuel-per-header-line times input length, so these three are what keep a
-; header's parse linear in the article: removing them needs a work theorem
-; linear in the header, not a larger constant.  They bound the work of one
-; parse, not what a store holds.
+; The header limits (D27; lane header-limits-profile, PRF-230, STO-030).
+; They bound the data one article's header holds, so they are the
+; operator's: store profile fields 15 `max-header-fields', 16
+; `max-header-lines' and 17 `max-header-octets' (books/byte-store-frame),
+; handed to `fn-article-parse-under' as LIMITS = (FIELDS LINES OCTETS) by
+; every admission (the injection configuration, `fn-inj-config-header-
+; limits').  The three constants below are the defaults: every profile's
+; value unless the operator writes another, so a store under the default
+; profile admits exactly what it admitted before.
+; The parse's work stays bounded per header line whatever the limits: each
+; step reads one line (at most 998 octets, the RFC's MUST), and the field
+; count is carried, never recounted.
 (defconst *fn-article-max-header-octets* 16384)
 (defconst *fn-article-max-header-lines* 256)
 (defconst *fn-article-max-fields* 64)
+(defconst *fn-article-default-limits*
+  (list *fn-article-max-fields* *fn-article-max-header-lines*
+        *fn-article-max-header-octets*))
+
+; LIMITS accessors: total, a missing or non-natural entry reads as 0 (which
+; refuses the first line, never admits more).
+(defun fn-article-limit-fields (limits)
+  (declare (xargs :guard t))
+  (nfix (if (consp limits) (car limits) 0)))
+(defun fn-article-limit-lines (limits)
+  (declare (xargs :guard t))
+  (nfix (if (and (consp limits) (consp (cdr limits))) (cadr limits) 0)))
+(defun fn-article-limit-octets (limits)
+  (declare (xargs :guard t))
+  (nfix (if (and (consp limits) (consp (cdr limits)) (consp (cddr limits)))
+            (caddr limits)
+          0)))
+(defun fn-article-limits (fields lines octets)
+  (declare (xargs :guard t))
+  (list (nfix fields) (nfix lines) (nfix octets)))
+(defun fn-article-limitsp (limits)
+  (declare (xargs :guard t))
+  (and (true-listp limits) (equal (len limits) 3)
+       (posp (car limits)) (posp (cadr limits)) (posp (caddr limits))))
+; LIMITS is at most WIDER in every entry.
+(defun fn-article-limits-within (limits wider)
+  (declare (xargs :guard t))
+  (and (<= (fn-article-limit-fields limits) (fn-article-limit-fields wider))
+       (<= (fn-article-limit-lines limits) (fn-article-limit-lines wider))
+       (<= (fn-article-limit-octets limits) (fn-article-limit-octets wider))))
 ; RFC 5322 §2.1.1: a line is at most 998 octets.
 (defconst *fn-article-max-line-octets* 998)
 
@@ -284,23 +320,26 @@
              (fn-article-body-crlfp (cdr body))))
     t))
 
-; Parse until the first blank line.  `lines-left` is a local allocation/work
-; limit, so recursive termination and hostile-input work do not depend on an
-; untrusted header count.  The public entry gives it one extra step: 128
-; nonblank physical header lines are permitted, followed by their separator.
-(defun fn-article-parse-lines (octets lines-left header-bytes fields-rev current
-                                      header-rev)
+; Parse until the first blank line.  `lines-left` is the header-line limit
+; plus one (the separator's step) and the recursion's measure, so
+; termination and hostile-input work do not depend on an untrusted header
+; count.  NFIELDS is the number of completed fields (the length of
+; FIELDS-REV), carried so that starting a field is constant work.  Each limit
+; is refused by its own name.
+(defun fn-article-parse-lines (octets limits lines-left header-bytes nfields
+                                      fields-rev current header-rev)
   (declare (xargs :measure (nfix lines-left)
                   :guard (and (true-listp octets)
                               (natp lines-left)
                               (natp header-bytes)
+                              (natp nfields)
                               (true-listp fields-rev)
                               (or (null current)
                                   (fn-article-fieldp current))
                               (true-listp header-rev))
                   :verify-guards nil))
   (if (zp lines-left)
-      (fn-article-error :limit)
+      (fn-article-error :header-lines-limit)
     (let ((next (fn-article-next-line octets)))
       (if (not (fn-article-line-okp next))
           next
@@ -313,39 +352,64 @@
                  (fn-article-make
                   (reverse header-rev) rest
                   (fn-article-finish-fields fields-rev current))))
-            (if (< *fn-article-max-header-octets*
+            (if (< (fn-article-limit-octets limits)
                    (+ header-bytes (len line) 2))
-                (fn-article-error :limit)
+                (fn-article-error :header-octets-limit)
               (if (fn-article-wspp (car line))
                   (if (not current)
                       (fn-article-error :invalid-header)
                     (if (not (fn-article-fold-linep line))
                         (fn-article-error :invalid-header)
                       (fn-article-parse-lines
-                       rest (1- lines-left) (+ header-bytes (len line) 2)
-                       fields-rev (fn-article-add-fold current line)
+                       rest limits (1- lines-left) (+ header-bytes (len line) 2)
+                       nfields fields-rev (fn-article-add-fold current line)
                        (fn-article-header-rev-add-line header-rev line))))
                 (let ((field-result (fn-article-new-field line)))
                   (if (not (fn-article-line-okp field-result))
                       field-result
-                    (if (and current
-                             (<= (1- *fn-article-max-fields*)
-                                 (len fields-rev)))
-                        (fn-article-error :limit)
+                    (if (<= (fn-article-limit-fields limits)
+                            (+ (if current 1 0) (nfix nfields)))
+                        (fn-article-error :header-fields-limit)
                       (fn-article-parse-lines
-                       rest (1- lines-left) (+ header-bytes (len line) 2)
+                       rest limits (1- lines-left) (+ header-bytes (len line) 2)
+                       (if current (+ 1 (nfix nfields)) nfields)
                        (if current (cons current fields-rev) fields-rev)
                        (fn-article-line-value field-result)
                        (fn-article-header-rev-add-line header-rev line)))))))))))))
 
-(defun fn-article-parse (octets)
+; The admission parser: OCTETS under the header LIMITS of the profile the
+; store runs under.  The article-octet preflight is the codec ceiling; the
+; operator's article bound is applied before this by every admission.
+(defun fn-article-parse-under (octets limits)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (fn-cbor-at-mostp octets *fn-article-max-octets*))
       (fn-article-error :limit)
     (if (not (fn-cbor-octet-listp octets))
       (fn-article-error :invalid-header)
-      (fn-article-parse-lines octets (1+ *fn-article-max-header-lines*)
-                              0 nil nil nil))))
+      (fn-article-parse-lines octets limits
+                              (1+ (fn-article-limit-lines limits))
+                              0 0 nil nil nil))))
+
+; The parser every reader of a stored or received article uses: the widest
+; limits any profile can write (each the article codec's ceiling, the
+; relation of books/byte-store-frame's fields 15 to 17), so it never refuses
+; an article some profile admitted: an article parses here exactly as under
+; the limits it was admitted by (`fn-article-parse-under-raised-limits-
+; agree', books/article-header-limits).  Admission applies the profile's
+; limits (books/injection `fn-inj-decide').  Its work is bounded by the
+; input: every step consumes one line of at most 998 octets and its CRLF.
+(defconst *fn-article-ceiling-limits*
+  (list *fn-article-max-octets* *fn-article-max-octets* *fn-article-max-octets*))
+
+(defun fn-article-parse (octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-article-parse-under octets *fn-article-ceiling-limits*))
+
+; A limit refusal, by name.
+(defun fn-article-limit-reasonp (code)
+  (declare (xargs :guard t))
+  (member-eq code '(:header-fields-limit :header-lines-limit
+                    :header-octets-limit)))
 
 ; -----------------------------------------------------------------------------
 ; Lookup helpers.  Names are lowercased ftext octet lists; callers retain the
@@ -552,6 +616,7 @@
                     fn-article-line-value fn-article-line-rest
                     fn-article-add-fold fn-article-header-rev-add-line
                     fn-article-finish-fields fn-article-body-crlfp))))
+(verify-guards fn-article-parse-under)
 (verify-guards fn-article-parse)
 (verify-guards fn-article-field-name-equalp)
 (verify-guards fn-article-get-headers-aux)

@@ -32,6 +32,8 @@
 ;; host/owner-host.lisp fn-owner-reply-buffer calls fn-served-reply-to-buffer.
 (include-book "books/served-reply-buffer")
 (include-book "books/owner-open-carried")
+;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
+(include-book "books/reader-open-carried")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
 (include-book "books/frame")
@@ -49,6 +51,9 @@
 (include-book "books/checkpoint-compaction-preservation")
 ; The pack chain the open walks and compaction extends (P5).
 (include-book "books/checkpoint-pack-chain")
+; Each link decoded once per open (PRF-240): host/checkpoint-host.lisp's
+; chain step, coverage and observation call fn-ccco-*.
+(include-book "books/checkpoint-pack-chain-once")
 (include-book "books/node-config")
 (include-book "books/nntp")
 (include-book "books/served")
@@ -157,6 +162,7 @@
 ;; The fair base job offer, the named attempt result and the status-report
 ;; effect join (PRF-120): fnn-bps-foundation-step calls fn-bpnj-step.
 (include-book "books/bp-node-job-offer")
+(include-book "books/bp-node-job-cursor")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")
@@ -168,6 +174,9 @@
 ;; N16: the generation selection, recovery from a checkpoint and the
 ;; publication driver fnn-bps-open and `bp-node checkpoint' call.
 (include-book "books/bp-node-rotation")
+;; fnn-bps-selection-plan reads the selected checkpoint from fn-octets-bp by
+;; index (fn-bpnrb-selection-plan).
+(include-book "books/bp-node-rotation-buffer")
 ;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
 (include-book "books/bp-held-projection")
 (include-book "books/bp-node-retire")
@@ -187,8 +196,14 @@
 (include-book "books/store-history-required")
 ;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
 ;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
-;; fn-sxp-import-plan.
+;; fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's
+;; publication (staged, validated, no-replace rename, parent fenced) and
+;; classifies a leftover staged directory through fn-bs-imp-classify.
 (include-book "books/store-export")
+(include-book "books/store-import-publication")
+;; `operator init` publishes the empty store by the same program (PKT-647):
+;; fnn-command-init-published asks fn-bs-init-pub-admission.
+(include-book "books/store-init-publication")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.
@@ -203,11 +218,15 @@
 ;; books/owner-checkpoint-pipeline itself).
 (include-book "books/store-checkpoint-tables")
 (include-book "books/store-checkpoint-tables-reader")
-;; Wave 5's attach-stobj prototype (planning/design-2026-09-26-consolidation.md
-;; section 3): the attachable generic fn-pcat (books/proto-catalog.lisp) with
-;; the arena attached before it is introduced; host/native/proto-catalog.lisp
-;; registers the developer verb `proto-catalog' that calls fn-pcat-smoke.
-(include-book "books/proto-catalog-arena")
+;; The records freeze (PKT-293; planning/evidence/records-freeze-2026-09-26.md):
+;; the payload arena `fn-arena' (books/payload-arena.lisp) is an attachable
+;; generic whose logical value is the list of sealed payloads; this book
+;; attaches its byte-array implementation `fn-arena-bytes' (books/payload-arena-
+;; bytes.lisp) BEFORE the generic is introduced, so every book above the
+;; arena (the held record, the catalog) runs over one byte per payload octet
+;; from the certificates it was certified with.  It must precede every
+;; include that names fn-arena.
+(include-book "books/payload-arena-attach")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the
@@ -270,6 +289,10 @@
         ; restarted process cannot expose diagnostics by changing its
         ; environment.
         (fnn-select-image-profile)
+        ; The release version (VERSION at the tree root, 6.7.N), serialized
+        ; into the image for `fn --version'; a missing or malformed file
+        ; stops the build.
+        (fnn-select-release-version)
         ; The system libssl is the explicit native STARTTLS trust boundary.  It loads
         ; after io.lisp because its deadline/descriptor helpers are physical
         ; transport primitives, not protocol decisions.
@@ -338,7 +361,6 @@
         (load "host/native/tls-reload.lisp")
         (load "host/native/checkpoint.lisp")
         ; The attach-stobj prototype's smoke verb (developer image only).
-        (load "host/native/proto-catalog.lisp")
         (load "host/native/workflow.lisp")
         ; The convergence layer, over io.lisp's socket surface and nothing else.
         (load "host/native/tcpcl.lisp")

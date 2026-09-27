@@ -377,7 +377,8 @@
         "PRF-050",
         "PRF-216",
         "PRF-244",
-        "PRF-245"
+        "PRF-245",
+        "PRF-246"
       ],
       "verification": [
         "proof",
@@ -405,7 +406,8 @@
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/lanes/HANDOFF-w13-storage-initializer.md",
         "planning/lanes/HANDOFF-w13-transaction-name-codec.md",
-        "planning/evidence/native-initializer-composition-w18-2026-09-21.md"
+        "planning/evidence/native-initializer-composition-w18-2026-09-21.md",
+        "planning/evidence/power-loss-2026-09-26.md"
       ],
       "implementation_note": "Actual file/kernel completion ordering and arbitrary finite stable-history/success-prefix proofs are certified; composed live completion calls actual node semantics before acknowledgement. Real syscall/process-death tests pass. Full adapter adoption/refinement and qualified physical persistence remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open. W13 supplies the exact fresh-initializer image theorem and executable injective transaction-name attachment (PRF-044). The configuration-history fence witness distinguishes this image from the weaker existing relation. Source review and selected failures do not establish all host cuts, existing/retry initialization, native correspondence or general recovery. W18 adds explicit existing-valid and history-fenced retry programs with EEXIST observations, plus source-pinned native repeated-init and SIGKILL/reopen tests. Non-EEXIST publication errors are uncertain. These are selected branch/runtime results, not whole-host or power-loss correspondence; the followup classifier covers expected-EEXIST links, and separate link/barrier handlers preserve uncertainty for post-link errors. Integrated raw-handler tests also exercise the named post-link error cut. Whole-image validation of these later corrections remains separate.",
       "keystones": [
@@ -478,7 +480,8 @@
         "PRF-110",
         "PRF-216",
         "PRF-244",
-        "PRF-245"
+        "PRF-245",
+        "PRF-246"
       ],
       "verification": [
         "proof",
@@ -522,7 +525,8 @@
         "planning/evidence/m5-profile-upgrade-2026-09-24.md",
         "books/store-budget-naming.lisp",
         "tests/acl2/store-budget-naming-tests.lisp",
-        "planning/evidence/bounds-p1-2026-09-25.md"
+        "planning/evidence/bounds-p1-2026-09-25.md",
+        "planning/evidence/power-loss-2026-09-26.md"
       ],
       "implementation_note": "General finite file traces retain earlier acknowledged records under named stable-storage and ghost-history premises, and across a real reopen under fn-sf-crash-imagep (A-DURABILITY as hypothesis); the bounded exploration with a txid-gap record, fault injection and actual process reopen/lost-success retries pass, with designated process-death cuts represented in the experimental model. Complete current-host syscall/cut fidelity remains open: the metadata initializer omits lock/config-history operations and helper parent barriers (PRF-044). Freshness, host composition and platform qualification remain open. The composed adapter now reports physical observations through fn-sn and consumes a one-use completion opportunity; callback uncertainty cannot reopen mutation by retrying finish. Logical mixed-trace and observed recovery gates are certified; full physical qualification remains open. W13 supplies the exact fresh-initializer image theorem and executable injective transaction-name attachment (PRF-044). The configuration-history fence witness distinguishes this image from the weaker existing relation. Source review and selected failures do not establish all host cuts, existing/retry initialization, native correspondence or general recovery. W18 adds explicit existing-valid and history-fenced retry programs with EEXIST observations, plus source-pinned native repeated-init and SIGKILL/reopen tests. Non-EEXIST publication errors are uncertain. These are selected branch/runtime results, not whole-host or power-loss correspondence; the followup classifier covers expected-EEXIST links, and separate link/barrier handlers preserve uncertainty for post-link errors. Integrated raw-handler tests also exercise the named post-link error cut. Whole-image validation of these later corrections remains separate. Native transaction recovery now observes a bounded namespace and consumes ACL2-issued sequence/name pairs before binding each decoded record. The source-matched developer store image passed malformed-name and sequence-mismatch cases; configuration namespace recovery and general physical correspondence remain open. Native publication uncertainty now has focused byte-transition and exact fn-sn-io fence theorems for issued link, issued rename, and both authority-directory barrier errors. This is logical K7 scope; the exact-octet native SIGKILL run, general K0/K5/K6/K8, filesystem qualification and hardware power-loss correspondence remain open. 2026-09-22 (t5/sweep, campaign finding F2): recovery sweeps every staging prefix a host program uses, in bounded rounds decided by fn-sn-sweep-round; a store of N crash orphans opens for every N (fn-sn-sweep-rounds-collect-every-orphan), and the sweep is a stutter of the byte relation at every cut (K-sweep, PRF-041). More than one observation of unrecognized staging names is refused (exit 1), not faulted.",
       "keystones": [
@@ -1085,7 +1089,8 @@
         "PRF-046",
         "PRF-081",
         "PRF-214",
-        "PRF-215"
+        "PRF-215",
+        "PRF-216"
       ],
       "verification": [
         "proof",
@@ -1281,7 +1286,8 @@
         "PRF-056",
         "PRF-057",
         "PRF-063",
-        "PRF-091"
+        "PRF-091",
+        "PRF-206"
       ],
       "verification": [
         "proof",
@@ -1461,7 +1467,9 @@
         "PRF-094",
         "PRF-188",
         "PRF-191",
-        "PRF-192"
+        "PRF-192",
+        "PRF-227",
+        "PRF-218"
       ],
       "verification": [
         "proof",
@@ -1559,7 +1567,8 @@
         "PRF-087",
         "PRF-106",
         "PRF-144",
-        "PRF-193"
+        "PRF-193",
+        "PRF-220"
       ],
       "verification": [
         "proof",
@@ -2559,7 +2568,9 @@
         "PRF-128",
         "PRF-132",
         "PRF-144",
-        "PRF-139"
+        "PRF-139",
+        "PRF-226",
+        "PRF-220"
       ],
       "verification": [
         "proof",
@@ -2590,7 +2601,10 @@
         "books/bp-receipt.lisp",
         "host/bp-receipt-journal-host.lisp",
         "host/native/bp-app.lisp",
-        "planning/evidence/mission-signed-2-2026-09-26.md"
+        "planning/evidence/mission-signed-2-2026-09-26.md",
+        "books/bp-node-job-cursor.lisp",
+        "tests/acl2/bp-node-job-cursor-tests.lisp",
+        "planning/evidence/bp-cursors-2026-09-27.md"
       ],
       "implementation_note": "RFC 9171 section 5.4 leaves forwarding order and retry to the node (local policy); RFC 9174 section 5.2.4 XFER_ACK is a transport acknowledgement, never an fn retention receipt or application completion (stronger fn guarantee). fn-bpnj-contact-next offers the first ready base job for the peer; a status report (RFC 9171 section 6.1) is reported :forwarded only after the durable :finished record of its accepted transfer. Native evidence: the four-node mission lab (tests/bp-dtn7/run_mission_four_node.py) on the lane image; nothing here is deployed. Custody (PRF-128, lane mission-signed; D23): a relay takes custody only over an admitted channel; a bundle from a refused channel is refused at reception with the admission's reason (fn-bpaj-admitted-receive-event, called by fnn-bps-receive); a local policy (D23): RFC 9171 leaves the acceptance of a received bundle to the node. A signed article (PRF-132, lane mission-signed-2; D23, D25): the BP receiver binds the article record of the kind-4 composite its Store committed and never submits it a second time; the verdict the delivery is bound to is the receiving Store's own (fn-bpaj-dispatch-fast, called by fn-bprj-request-action)."
     },
@@ -2764,7 +2778,9 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-201"
+        "PRF-201",
+        "PRF-221",
+        "PRF-219"
       ],
       "verification": [
         "proof",
@@ -2773,7 +2789,8 @@
       ],
       "evidence": [
         "planning/evidence/rep-wave-d-2-2026-09-26.md",
-        "planning/evidence/catalog-slice-2026-09-26.md"
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "planning/evidence/acceptance-payload-arena-2026-09-26.md"
       ],
       "implementation_note": "Not implemented (rep-wave-d-2, 2026-09-26). The freeze as the wave-d record wrote it is not closed: fn-sn-finish reads every finished article's payload bytes for the statement verdict (books/store-node.lisp fn-stx-verdict-of-octets), the reclaim digests the held payload inside its step, and the served machine reads fn-article-payload in 40 books (tombstone checks, OVER's body line count, control targets, the sections); the acceptance state's article and pending are a second payload field sharing the record's list. The closed design (two views of one record shape: the wire record for the codec, unchanged, and the held record with the handle and the parsed fields decided once at intern; the transition parametric in the payload; the served article a reference effect) and its order are in the record's section 2 and PKT-293, ember's decision; the continuation takes its proof ids from the coordinator. Partial (catalog-slice, 2026-09-26): the held record fn-held-p carries a natp handle with the byte facts and the context (books/catalog-record.lisp), alpha (fn-held-wire-of) and the two interns are proved (fn-cat-intern-list-materializes); the acceptance state's payloads and the transition over the held record are PKT-585.",
       "note": "Lane rep-wave-d-2 (2026-09-26), PKT-293."
@@ -2933,7 +2950,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-085"
+        "PRF-085",
+        "PRF-240"
       ],
       "verification": [
         "proof",
@@ -3167,7 +3185,8 @@
         "PRF-169",
         "PRF-216",
         "PRF-244",
-        "PRF-245"
+        "PRF-245",
+        "PRF-246"
       ],
       "verification": [
         "proof",
@@ -3329,6 +3348,7 @@
         "books/native-live-status.lisp",
         "tests/test_native_checkpoint_auto.py",
         "planning/evidence/checkpoint-capture-stream-2026-09-26.md",
+        "books/owner-checkpoint-writer.lisp",
         "books/owner-checkpoint-pipeline.lisp",
         "tests/acl2/store-checkpoint-tables-tests.lisp"
       ],
@@ -3462,7 +3482,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-186"
+        "PRF-186",
+        "PRF-209"
       ],
       "verification": [
         "proof",
@@ -3472,9 +3493,11 @@
         "books/node-config.lisp",
         "books/config-physical-replay.lisp",
         "books/store-checkpoint-open.lisp",
-        "planning/evidence/caps-to-profile-2026-09-26.md"
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "books/config-carried-candidate.lisp",
+        "books/config-carried-open.lisp"
       ],
-      "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). Open: a configuration checkpoint so an open reads only the records after it (PKT-510)."
+      "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). An offline request authorizes from its open's carried fold and decides its candidate open from the open's own result, and verifies by reading its published record back instead of reopening (PRF-209, SCN-140; PKT-601 (1), (2)): one open per request. Open: the configuration-only fold still runs over the configuration history once per request."
     },
     {
       "id": "REP-013",
@@ -3486,7 +3509,10 @@
         "PRF-201",
         "PRF-202",
         "PRF-203",
-        "PRF-204"
+        "PRF-204",
+        "PRF-221",
+        "PRF-229",
+        "PRF-241"
       ],
       "verification": [
         "proof",
@@ -3496,11 +3522,14 @@
       "evidence": [
         "books/catalog-commit.lisp",
         "books/catalog-delta.lisp",
+        "books/catalog-number-index.lisp",
         "books/catalog-record.lisp",
         "books/catalog.lisp",
         "planning/evidence/catalog-slice-2026-09-26.md",
         "tests/acl2/catalog-commit-tests.lisp",
-        "tests/acl2/catalog-delta-tests.lisp"
+        "tests/acl2/catalog-delta-tests.lisp",
+        "tests/acl2/catalog-number-index-tests.lisp",
+        "books/config-policy-delta.lisp"
       ],
       "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585). Continuation catalog-slice-2 (2026-09-26): PreparedCommit and completion by token (books/catalog-commit.lisp, PRF-203), the shared transition fn-sn-finish-held equal to fn-sn-finish on the article arm under alpha and the context of the bytes, the context theorem in its re-decide form (the generation names the keyring; a stale context is refused by name), the delta grammar and its resumable application (books/catalog-delta.lisp), and the maintained relation R with its entries as the load fold (books/catalog-relation.lisp: written, admitted in the REPL, RED at certification at fn-cat-wire-list-of-redecide, not a root, not claimed; PKT-585). Still not served: the host calls none of it (steps 7 to 9 of PKT-585: the served reads, the host lines, the measurement).",
       "note": "Lane catalog-slice (wave 5 lane 2, D33; the consolidation design of 2026-09-26, section 1)."
@@ -3715,19 +3744,22 @@
     },
     {
       "id": "SEC-006",
-      "title": "An unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2",
+      "title": "An unsigned article's poster, and only its poster, can withdraw it: by the same authenticated account on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315)",
       "specification": "specs/nntp.md#own-post-cancel-and-cancel-lock-sec-006",
       "milestone": "M4",
-      "status": "specified",
-      "proof_targets": [],
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-210"
+      ],
       "verification": [
         "proof",
         "test"
       ],
       "evidence": [
-        "planning/evidence/group-policy-2026-09-26.md"
+        "planning/evidence/group-policy-2026-09-26.md",
+        "planning/evidence/newsreader-cancel-2026-09-26.md"
       ],
-      "implementation_note": "Specified, not implemented (PKT-575; the login provenance decision is PKT-576). RFC 5537 section 5.3 leaves cancel authentication to local policy; RFC 8315 sections 3 and 4 define Cancel-Lock and Cancel-Key (sha256). The same-login basis is a local policy (the coordinator's decision P1); Cancel-Lock verification is RFC 8315's MUST for a server that checks it."
+      "implementation_note": "Built by lanes newsreader-cancel, -2 and -3 (2026-09-26/27, PRF-210). The decision: an unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a sha256 Cancel-Lock of its target withdraws it (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster). The node writes the lock for the posting ACCOUNT (the authenticated principal id recorded on the submission, fn-own-sub-account; not the login spelling) as K = HMAC-SHA256(sec, uid+mid) (RFC 8315 section 4), sec an HKDF-SHA256 purpose key (info fn/cancel-lock/v1, salt the recorded node identity) of one protected root per key epoch; the lines stand in front of the injected block, outside the D25 source, so a same-source retry by any account or after a rotation is already stored (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored) and a changed source, a changed user Cancel-Lock included, is a conflict. A cancel carries one key per retained epoch (fn-cl-ring-keys-open-every-retained-lock). Signed articles get no lock. The root is STORE/keys/node-secret.key, created only by `node-secret create` (or init), never regenerated at start; `store export` excludes keys/."
     },
     {
       "id": "NNT-043",
@@ -3850,13 +3882,14 @@
       "evidence": [
         "books/store-checkpoint-tables.lisp",
         "books/store-checkpoint-tables-reader.lisp",
+        "books/owner-checkpoint-writer.lisp",
         "books/owner-checkpoint-pipeline.lisp",
         "tests/acl2/store-checkpoint-tables-tests.lisp",
         "tests/test_native_state_checkpoint.py",
         "tests/test_native_checkpoint_auto.py",
         "planning/evidence/checkpoint-pipeline-2026-09-26.md"
       ],
-      "implementation_note": "Lane checkpoint-pipeline (2026-09-26; D33, D34). The file: runs F (3 S FRONTIER REVISION), P (one row per committed event: its payload bytes or NIL), E (the event with every leaf equal to its P row written as a reference), R (the four fold roots with each stored article's payload as a reference to its P row through the event index's Message-ID trie); no event index in the file (rebuilt at load). Each run is fn-scc-chunks of its rows' programs in segments of at most the profile's record bound, framed and chained by the unchanged FNSC frame with schema byte 3; the reader's admission per segment is unchanged and refuses another schema by name (fn-sccr-admit-segment :schema -> fn-sco-select-named -> open=full-replay reason=checkpoint-schema). Written by fn-ockp-step per batch of 1,024 rows (host/native/io.lisp fnn-checkpoint-write-steps, both entries) through fn-bs-scp-program's staged file between its created and written cuts (no new program, no new cut; the batch-kill native case reopens with the old checkpoint); read by fn-sct-load (host fn-store-sco-decode) into fn-sct-capture-of-tables, the capture the open extends. The schema-2 writer and reader are gone (fn-sco-freeze/-thaw, fn-sco-index-records, fn-sccb-plan, fn-sccr-decode-plan, fn-ockb-file-len, fn-ock-publication, fn-ock-publication-stream, books/owner-checkpoint-stream.lisp, books/store-checkpoint-shape.lisp). Not exercised: a signed composite in the ACL2 witnesses (its carried record's payload in R stays a literal second copy); the loop theorem fn-ockp-run-writes-the-file (PKT-583)."
+      "implementation_note": "Lane checkpoint-pipeline (2026-09-26; D33, D34). The file: runs F (3 S FRONTIER REVISION), P (one row per committed event: its payload bytes or NIL), E (the event with every leaf equal to its P row written as a reference), R (the four fold roots with each stored article's payload as a reference to its P row through the event index's Message-ID trie); no event index in the file (rebuilt at load). Each run is fn-scc-chunks of its rows' programs in segments of at most the profile's record bound, framed and chained by the unchanged FNSC frame with schema byte 3; the reader's admission per segment is unchanged and refuses another schema by name (fn-sccr-admit-segment :schema -> fn-sco-select-named -> open=full-replay reason=checkpoint-schema). Written by fn-ockp-step per batch of 1,024 rows (host/native/io.lisp fnn-checkpoint-write-steps, both entries) through fn-bs-scp-program's staged file between its created and written cuts (no new program, no new cut; the batch-kill native case reopens with the old checkpoint); read by fn-sct-load (host fn-store-sco-decode) into fn-sct-capture-of-tables, the capture the open extends. The schema-2 writer and reader are gone (fn-sco-freeze/-thaw, fn-sco-index-records, fn-sccb-plan, fn-sccr-decode-plan, fn-ockb-file-len, fn-ock-publication, fn-ock-publication-stream, books/owner-checkpoint-stream.lisp, books/store-checkpoint-shape.lisp). Not exercised: a signed composite in the ACL2 witnesses (its carried record's payload in R stays a literal second copy). checkpoint-pipeline-5 (2026-09-26): the step's guard is the O(1) shape fn-ockp-statep (the rows' encodability is the setup's one check, carried as the invariant fn-ockp-step-preserves-encodable and checked per row as the encoder writes: B rows and BYTES octets per step, host/native/io.lisp +fnn-checkpoint-batch-rows+ 1024 and +fnn-checkpoint-batch-octets+ 4 MiB); the automatic publication's due path is fn-ock-publication-next (one in flight, one coalesced request, the decision again at the finish; K the fast-path threshold)."
     },
     {
       "id": "HST-020",
@@ -3882,6 +3915,141 @@
         "planning/evidence/tls-reload-2026-09-26.md"
       ],
       "implementation_note": "FNCT kind 19 (request reload|status) and kind 20 (reply: status, reason word, served line). The decision is ACL2's over the library's observations; the swap is the host's, under the context lock SSL_new also takes."
+    },
+    {
+      "id": "NNT-044",
+      "title": "Pipelined articles are each admitted and answered in order: two TAKETHIS or two POST articles in one socket read lose neither, and what is consumed from a stream does not depend on where it was cut",
+      "specification": "specs/nntp.md#pipelined-articles-nnt-044",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-213"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/served-tls-prefix.lisp",
+        "books/served-span.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-pipelining-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
+    },
+    {
+      "id": "REP-014",
+      "title": "The payload arena is an attachable generic whose logical value is the list of sealed payloads; the byte array is an implementation attached in the image; a handle has identity, extent and lifetime; replay over the retained view equals replay over the wire view; a pinned reader's payload survives reclamation",
+      "specification": "specs/store-refinement.md#abstraction-relation",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-221",
+        "PRF-118"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "measurement"
+      ],
+      "evidence": [
+        "planning/evidence/records-freeze-2026-09-26.md",
+        "books/payload-arena.lisp",
+        "books/payload-arena-bytes.lisp",
+        "books/payload-arena-attach.lisp",
+        "books/records-freeze.lisp",
+        "planning/evidence/manifests/certify-20260927T030010Z-2442389.json"
+      ],
+      "implementation_note": "Lane records-freeze (2026-09-26/27, PKT-293): the generic, its byte-array attachment, the intern's coordinates, the replay theorems and the reclamation identity are certified (PRF-221); the image attaches the byte array (host/native/build.lisp includes books/payload-arena-attach before any book naming fn-arena). Not yet served: no host line seals into the arena or loads the catalog (catalog-slice-5 step 8; acceptance-payload-arena PKT-635), so the retained bytes per stored octet are still sixteen on the running node until that join; the measurement belongs to it."
+    },
+    {
+      "id": "STO-029",
+      "title": "store import and operator init publish their staged store by a no-replace rename and a parent barrier: a crash leaves no store or the complete (init: empty) store, and an interrupted or ambiguous publication is refused by name",
+      "specification": "specs/storage.md#one-format-and-the-archive",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-217"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/store-import-publication.lisp",
+        "tests/acl2/store-import-publication-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_import_publication.py",
+        "books/store-init-publication.lisp",
+        "tests/acl2/store-init-publication-tests.lisp",
+        "tests/test_native_init_publication.py"
+      ],
+      "implementation_note": "gpt-6 review 2026-09-26 section 7. The staged ROOT.import-XXXX is completed and fenced, admitted by the ordinary open, published by renameat2(RENAME_NOREPLACE) and the parent fenced; a leftover staged directory is classified by ACL2 (interrupted-import, publication-uncertain) and refused by name. Operator init (PKT-647) runs the same program with init's plan in ROOT.init-XXXX (fnn-command-init-published); a leftover is refused interrupted-init or publication-uncertain, an existing ROOT store-path-exists. OpenBSD: exclusive flock on ROOT.lock, ROOT re-checked before rename(2)."
+    },
+    {
+      "id": "STO-030",
+      "title": "The header limits of one article (fields, physical lines, octets) are store profile fields, and admission refuses exactly past them by name",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-230"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/byte-store-frame.lisp",
+        "books/article-header-limits.lisp",
+        "books/injection.lisp",
+        "planning/evidence/header-limits-profile-2026-09-27.md"
+      ],
+      "implementation_note": "Fields 15 to 17 (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660)."
+    },
+    {
+      "id": "NNT-048",
+      "title": "A peer's host may be an RFC 1123 host name as well as an IPv4 literal; the node resolves a name on every connection attempt and never hands a literal to the resolver; a TLS transport verifies the certificate against its configured name under either a pinned anchor file or the system's public roots, the default for a named peer; a name mismatch is refused by name and a resolution failure is a named, retried condition, never a fault",
+      "specification": "specs/peering.md#124-peer-hosts-by-name-and-the-tls-check-pkt-613",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-231"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-host.lisp",
+        "tests/acl2/peer-host-tests.lisp",
+        "tests/test_native_peer_by_name.py",
+        "planning/evidence/peers-by-name-2026-09-27.md"
+      ],
+      "implementation_note": "PKT-613 (public-node gap d, fn half). RFC 1123 section 2.1 host syntax, RFC 6066 section 3 (no literal in SNI) are RFC requirements; resolving on every attempt, the system roots as the named default and the named dial outcomes are fn guarantees; refusing a trailing dot and IPv6 peer literals is local policy."
+    },
+    {
+      "id": "STO-031",
+      "title": "A Store opens only on the filesystem its record names: a missing node volume, a moved or restored store, or a missing or invalid record is refused by name at every open, `store rebind-filesystem` records a deliberate move, and the owner's start is refused by name when the store requires durable storage on a mount that observably disables it",
+      "specification": "specs/storage.md#the-stores-filesystem-sto-031",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-232"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-mount-identity.lisp",
+        "tests/acl2/store-mount-identity-tests.lisp",
+        "tests/test_native_store_mount_identity.py",
+        "planning/evidence/store-mount-identity-2026-09-27.md"
+      ],
+      "implementation_note": "Lane store-mount-identity (2026-09-27; PKT-579, PKT-648). The record filesystem-identity.fnmi (FNMI frame: fsid, type, mount point, source, policy) is written by init, store import and the developer probe; fnn-acquire asks fn-smid-open-verdict before any other read; fnn-owner-install asks fn-smid-start-verdict; `store rebind-filesystem [--storage-require-durable on|off]` (operator) and `store ROOT rebind-filesystem [on|off]` (developer). Policy 1 under a mission's configuration, 0 otherwise; every open warns on nobarrier/barrier=0/tmpfs/ramfs."
     }
   ]
 }

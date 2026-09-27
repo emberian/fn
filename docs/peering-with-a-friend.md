@@ -190,6 +190,27 @@ credential in the clear), `true` (stream with `MODE STREAM`), then `starttls
 SERVER-NAME ANCHOR-PEM` (the name the peer's certificate must carry, and its
 certificate as the only anchor).
 
+**A friend with a DNS name and a public certificate** (Let's Encrypt, say)
+is added by name, and anchored on the system's public roots rather than on
+a leaf that changes at every renewal:
+
+```sh
+$F operator $C peer add friend friend.example.org news.friend.example 563 \
+    'local.*' 'local.*' principal HEX $N/exchange/friend.fnauth false true \
+    implicit - -
+```
+
+The address word may be an RFC 1123 host name or an IPv4 literal. A name is
+resolved on every connection attempt (a renumbered friend is reached at the
+new address on the next try); `-` as the server name is the host's own name
+(a numeric address must be given the name its certificate carries), and `-`
+as the anchor is the system's trust store. A certificate that does not carry
+the name, and a name that does not resolve, each leave a line in `fn.log`
+(`peer dial via=feed peer=friend host=news.friend.example
+outcome=name-mismatch retry=yes`, or `outcome=unresolved`) and are retried;
+neither stops the node. `peer invite` takes a name for HOST and MY-HOST too
+(specs/peering.md section 1.2.4).
+
 **A cancel travels with the groups it names.** A control article is filed
 under `control.cancel`, and it is offered to a peer whose outbound wildmat
 matches its Newsgroups names *or* its filing group (RFC 5537 sections 3.6

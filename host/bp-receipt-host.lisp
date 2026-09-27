@@ -3,6 +3,7 @@
 ; context/decision through Sol's receiver journal before transmitting bytes.
 (in-package "ACL2")
 (include-book "../books/bp-receipt")
+(include-book "../books/bp-native-app-fast")
 
 (defun fn-bpr-host-request (adu)
   (let ((answer (fn-bpa-decode-exact adu)))
@@ -16,17 +17,6 @@
   (let ((request (fn-bpr-host-request adu)))
     (if request (value (fn-bpa-request-article request)) (value nil))))
 
-(defun fn-bpr-host-find-record (request records)
-  (if (consp records)
-      (let ((record (car records)))
-        (if (and (fn-record-p record)
-                 (equal (fn-record-payload record) (fn-bpa-request-article request))
-                 (equal (fn-record-content-subject record)
-                        (fn-bpa-request-subject request)))
-            record
-          (fn-bpr-host-find-record request (cdr records))))
-    nil))
-
 (defun fn-bpr-host-reset (config state)
   (declare (xargs :stobjs state :mode :program))
   (if (fn-bpr-configp config)
@@ -36,16 +26,24 @@
 
 ; `policy-authorizedp` is supplied from explicitly trusted local lab policy.
 ; The decoded request auth-context is never used in place of that input.
+; The record is ACL2's: the request article's own Message-ID selects it
+; through the Store's event index (fn-bpaj-record-lookup-fast, equal to the
+; history walk fn-bpaj-record-lookup under fn-ceis-indexedp), and two
+; records under one Message-ID are a conflict, never a host's first pick.
+; The receiver transition is the carried one
+; (fn-bpaj-bpr-accept-request-fast, equal to fn-bpr-accept-request under
+; fn-bpr-statep, fn-sn-statep and fn-ceis-indexedp): no whole-Store
+; recognizer and no history walk runs per request (PRF-220, PKT-448 (a), (g)).
 (defun fn-bpr-host-accept (adu policy-authorizedp state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((request (fn-bpr-host-request adu))
          (store (f-get-global 'fn-store-sn state))
-         (record (and request
-                      (fn-bpr-host-find-record request
-                                               (fn-sf-records (fn-sn-files store)))))
+         (lookup (and request (fn-bpaj-record-lookup-fast store request)))
+         (record (and (equal (car lookup) :found) (cadr lookup)))
          (old (f-get-global 'fn-bpr-state state))
          (answer (if (and request record)
-                     (fn-bpr-accept-request old store record request policy-authorizedp)
+                     (fn-bpaj-bpr-accept-request-fast
+                      old store record request policy-authorizedp)
                    (list :refused old))))
     (let ((state (f-put-global 'fn-bpr-state (car (cdr answer)) state)))
       (value (car answer)))))

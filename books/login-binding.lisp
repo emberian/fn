@@ -75,18 +75,17 @@
               ; refuses it with the carrier's own reason.
               (t (list :pass login bound)))))))
 
-; The login of the served submission in flight: the AUTHINFO USER name of
-; the connection that submitted it, once that connection authenticated.  A
-; control or BP submission (fn-own-control-submissionp) has no connection
-; and no login.
+; The login of the served submission in flight: the AUTHINFO USER name
+; recorded on the submission when it was enqueued (books/owner.lisp
+; fn-own-finish-read, fn-own-sub-login), the same login the RFC 8315 lock
+; is generated for (PKT-619: the gate reads the recorded login, never the
+; connection, which may have authenticated since or be gone).  A control or
+; BP submission (fn-own-control-submissionp) has no login.
 (defun fn-lb-inflight-login (o)
   (declare (xargs :guard t))
-  (let* ((sub (fn-own-inflight o))
-         (conn (and sub (not (fn-own-control-submissionp sub))
-                    (fn-own-find-conn (fn-own-sub-id sub) (fn-own-conns o))))
-         (as (and conn (fn-own-conn-session conn))))
-    (if (and conn (fn-auth-session-subject as))
-        (fn-auth-session-pending as)
+  (let ((sub (fn-own-inflight o)))
+    (if (and sub (not (fn-own-control-submissionp sub)))
+        (fn-own-sub-login sub)
       nil)))
 
 ; The function the host calls (host/owner-host.lisp fn-owner-login-gate):

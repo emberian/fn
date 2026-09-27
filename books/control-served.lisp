@@ -271,7 +271,7 @@
 ;                             held target declines (no grant, outside the
 ;                             namespace, ...);
 ;   (:owed)                   the record exists and the target is not held;
-;   (:executed :author) / (:executed :authority).
+;   (:executed :author) / (:executed :poster) / (:executed :authority).
 ; The decline of the plan does not depend on the configuration (only scope
 ; and generation do), so it is recomputed with none.
 
@@ -299,7 +299,10 @@
   (let* ((msgid (and (consp c) (fn-article-msgid c)))
          (target (and (consp c) (fn-ctl-target-octets (fn-article-payload c))))
          (plan (fn-ctl-withdrawal-plan msgid (fn-ctl-lookup-verdict msgid verdicts)
-                                       target nil)))
+                                       target
+                                       (and (consp c)
+                                            (fn-ctl-keys-octets (fn-article-payload c)))
+                                       nil)))
     (cond ((not target) (list :none))
           ((not (fn-ctl-withdrawalp plan)) (list :declined (fn-ctl-at 1 plan)))
           (t (let ((rec (fn-ctl-cause-record ws msgid target)))
@@ -310,7 +313,8 @@
                        (list :owed)
                      (let ((effect (fn-ctl-withdrawal-effect
                                     rec (fn-article-groups held)
-                                    (fn-ctl-lookup-verdict target verdicts))))
+                                    (fn-ctl-lookup-verdict target verdicts)
+                                    (fn-article-payload held))))
                        (if (fn-ctl-effect-withdrawsp effect)
                            (list :executed effect)
                          (list :declined (fn-ctl-at 1 effect))))))))))))
@@ -371,13 +375,14 @@
                     (equal (cadr st)
                            (fn-ctl-withdrawal-effect
                             rec (fn-article-groups held)
-                            (fn-ctl-lookup-verdict target verdicts)))
+                            (fn-ctl-lookup-verdict target verdicts)
+                            (fn-article-payload held)))
                     (fn-ctl-effect-withdrawsp (cadr st))))))
   :hints (("Goal" :in-theory (disable fn-ctl-withdrawal-plan fn-ctl-withdrawalp
                                       fn-ctl-withdrawal-effect fn-ctl-effect-withdrawsp
                                       fn-ctl-find-held fn-ctl-cause-record
                                       fn-ctl-visible-articles fn-ctl-withdrawn-articles
-                                      fn-ctl-target-octets fn-ctl-lookup-verdict
+                                      fn-ctl-target-octets fn-ctl-keys-octets fn-ctl-lookup-verdict
                                       fn-ctl-target-is-never-visible-beside-its-cancel
                                       fn-ctl-has-msgid-p fn-ctl-w-cause fn-ctl-w-target)
            :use ((:instance fn-ctl-find-held-is-held
@@ -412,7 +417,7 @@
                                       fn-ctl-withdrawal-effect fn-ctl-effect-withdrawsp
                                       fn-ctl-cause-record fn-ctl-msgid-withdrawn
                                       fn-ctl-visible-articles fn-ctl-withdrawn-articles
-                                      fn-ctl-target-octets fn-ctl-lookup-verdict
+                                      fn-ctl-target-octets fn-ctl-keys-octets fn-ctl-lookup-verdict
                                       fn-ctl-withdrawn-is-the-complement)
            :cases ((member-equal x (fn-ctl-visible-articles raw ws verdicts)))
            :use ((:instance fn-ctl-withdrawn-is-the-complement (arts raw))
@@ -431,7 +436,9 @@
     (cond ((eq tag :executed)
            (concatenate 'string "executed withdrawal "
                         (if (stringp target) target "")
-                        (if (eq arg :author) " author" " authority")))
+                        (cond ((eq arg :author) " author")
+                              ((eq arg :poster) " poster")
+                              (t " authority"))))
           ((eq tag :owed) "owed")
           ((eq tag :declined)
            (concatenate 'string "declined "
@@ -511,7 +518,10 @@
   (let* ((msgid (and (consp c) (fn-article-msgid c)))
          (target (and (consp c) (fn-ctl-target-octets (fn-article-payload c))))
          (plan (fn-ctl-withdrawal-plan msgid (fn-ctl-lookup-verdict msgid verdicts)
-                                       target nil)))
+                                       target
+                                       (and (consp c)
+                                            (fn-ctl-keys-octets (fn-article-payload c)))
+                                       nil)))
     (cond ((not target) (list :none))
           ((not (fn-ctl-withdrawalp plan)) (list :declined (fn-ctl-at 1 plan)))
           (t (let ((rec (fn-ctl-cause-record ws msgid target)))
@@ -522,7 +532,8 @@
                        (list :owed)
                      (let ((effect (fn-ctl-withdrawal-effect
                                     rec (fn-article-groups held)
-                                    (fn-ctl-lookup-verdict target verdicts))))
+                                    (fn-ctl-lookup-verdict target verdicts)
+                                    (fn-article-payload held))))
                        (if (fn-ctl-effect-withdrawsp effect)
                            (list :executed effect)
                          (list :declined (fn-ctl-at 1 effect))))))))))))
@@ -536,7 +547,7 @@
                                    fn-midx-correspondencep
                                    fn-ctl-withdrawal-plan fn-ctl-withdrawalp
                                    fn-ctl-withdrawal-effect fn-ctl-effect-withdrawsp
-                                   fn-ctl-cause-record fn-ctl-target-octets
+                                   fn-ctl-cause-record fn-ctl-target-octets fn-ctl-keys-octets
                                    fn-ctl-lookup-verdict)))))
 
 ; The article the reader names in `HDR :fn-control <msgid>': served or
