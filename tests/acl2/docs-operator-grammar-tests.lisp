@@ -84,6 +84,7 @@
     ("docs/operator.md#status-while-the-owner-runs" 3 "pins")
     ("docs/operator.md#the-dtn-image-a-bp-node-without-the-nntp-service" 1 "bp-boundary" "add" "relay-r1" "r1.example" "dtn://neighbour/" "1119" "carries" "dtn://far-node/")
     ("docs/operator.md#the-dtn-image-a-bp-node-without-the-nntp-service" 2 "bp-boundary" "add" "far-node" "far.example" "dtn://far-node/" "1120" "fn.*" "32768" "16")
+    ("docs/operator.md#the-node-volume" 1 "store" "rebind-filesystem")
     ("docs/operator.md#initialize" 1 "group" "create" "peer1")
     ("docs/operator.md#initialize" 2 "peer" "pull" "peer1" "60" "5")
     ("docs/operator.md#initialize" 3 "peer" "add" "peer1" "news.example.invalid" "127.0.0.1" "1119" "fn.*" "fn.*" "source-address" "127.0.0.1" "true")

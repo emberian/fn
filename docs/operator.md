@@ -963,7 +963,7 @@ it is rebound once. After a deliberate move (another volume, a restored
 backup, a copy to another machine) record the new place:
 
 ```
-fn operator /etc/fn/fn.toml store rebind-filesystem   # docs-check: skip (needs a configured store)
+fn operator /etc/fn/fn.toml store rebind-filesystem
 ```
 
 It takes the writer lock (a running owner refuses it), keeps the store's
