@@ -13,22 +13,22 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1306 |
 | Certification roots in the Makefile | 1267 |
 | Books inside the root closure | 1304 |
-| `defthm` and `defthmd` events | 19408 |
-| `defun` events | 13410 |
+| `defthm` and `defthmd` events | 19411 |
+| `defun` events | 13415 |
 | Functions with verified guards | 2488 |
-| Functions declared `:verify-guards nil` and never verified | 1628 |
+| Functions declared `:verify-guards nil` and never verified | 1630 |
 | Functions left at the default with an explicit guard | 7459 |
-| Functions left at the default with no guard | 1835 |
-| `assert-event` checks | 19204 |
-| `must-fail` checks | 2184 |
+| Functions left at the default with no guard | 1838 |
+| `assert-event` checks | 19213 |
+| `must-fail` checks | 2187 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 97 |
-| Theorems flagged SUSPECT by shape | 1010 |
+| Theorems flagged SUSPECT by shape | 1011 |
 | Export-hygiene warnings | 237 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 230 |
-| Include-hygiene warnings | 1784 |
-| Host-names warnings | 1411 |
+| Include-hygiene warnings | 1785 |
+| Host-names warnings | 1398 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -449,7 +449,7 @@ that `make certify` requests.
 | `books/mailbox.lisp` | root | 6 | 21 | 0/0/21/0 | 0 | 0 | 0 |
 | `books/membership-epochs-invariants.lisp` | root | 33 | 1 | 0/1/0/0 | 0 | 0 | 1 |
 | `books/membership-epochs.lisp` | root | 36 | 51 | 0/0/51/0 | 0 | 0 | 15 |
-| `books/moderation-verbs.lisp` | root | 6 | 18 | 0/0/18/0 | 0 | 0 | 1 |
+| `books/moderation-verbs.lisp` | root | 7 | 18 | 0/0/18/0 | 0 | 0 | 2 |
 | `books/moderation.lisp` | closure | 37 | 22 | 0/0/22/0 | 0 | 0 | 2 |
 | `books/msgid-index-concrete.lisp` | root | 13 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/msgid-index.lisp` | root | 22 | 14 | 0/0/14/0 | 0 | 0 | 0 |
@@ -474,7 +474,7 @@ that `make certify` requests.
 | `books/nntp-auth-fold.lisp` | root | 66 | 4 | 0/3/1/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 35 | 3 | 0/0/3/0 | 0 | 0 | 2 |
 | `books/nntp-auth.lisp` | root | 169 | 84 | 46/3/34/1 | 0 | 0 | 5 |
-| `books/nntp-control.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/nntp-control.lisp` | root | 11 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/nntp-effects.lisp` | root | 155 | 12 | 0/0/0/12 | 0 | 0 | 2 |
 | `books/nntp-enrollment.lisp` | root | 7 | 8 | 0/0/8/0 | 0 | 0 | 2 |
 | `books/nntp-help.lisp` | root | 10 | 5 | 0/0/5/0 | 0 | 0 | 0 |
@@ -1099,7 +1099,7 @@ that `make certify` requests.
 | `tests/acl2/login-binding-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 25 | 11 | 0 |
 | `tests/acl2/membership-epochs-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 100 | 0 | 0 |
 | `tests/acl2/moderation-tests.lisp` | root | 0 | 15 | 0/2/2/11 | 94 | 11 | 0 |
-| `tests/acl2/moderation-verbs-tests.lisp` | root | 0 | 5 | 0/0/1/4 | 66 | 6 | 0 |
+| `tests/acl2/moderation-verbs-tests.lisp` | root | 0 | 7 | 0/1/1/5 | 70 | 7 | 0 |
 | `tests/acl2/msgid-index-concrete-tests.lisp` | root | 4 | 2 | 0/1/0/1 | 15 | 1 | 0 |
 | `tests/acl2/msgid-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 5 | 0 |
 | `tests/acl2/must-fail-checked.lisp` | closure | 0 | 4 | 0/0/0/4 | 0 | 0 | 0 |
@@ -1126,7 +1126,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-auth-fold-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/nntp-auth-teeth-tests.lisp` | root | 0 | 27 | 0/14/0/13 | 337 | 84 | 0 |
 | `tests/acl2/nntp-auth-tests.lisp` | root | 0 | 9 | 0/5/0/4 | 145 | 0 | 0 |
-| `tests/acl2/nntp-control-tests.lisp` | root | 0 | 5 | 0/1/0/4 | 14 | 21 | 0 |
+| `tests/acl2/nntp-control-tests.lisp` | root | 0 | 8 | 0/2/0/6 | 19 | 23 | 0 |
 | `tests/acl2/nntp-help-tests.lisp` | root | 0 | 14 | 0/8/0/6 | 24 | 10 | 0 |
 | `tests/acl2/nntp-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 0 | 0 |
 | `tests/acl2/nntp-legacy-tests.lisp` | root | 0 | 7 | 0/2/0/5 | 93 | 0 | 0 |
@@ -1620,8 +1620,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ctl-classify-without-control-is-ordinary` | `books/control-classify.lisp` | 224 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ctl-classify-fields and the conclusion is that arm's value |
 | `fn-ctl-drop-via-of-atom` | `books/control-visible.lisp` | 123 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ctl-drop-via and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-ctl-drop-via and the conclusion is that branch's value |
 | `fn-ctl-key-record-without-an-opened-lock-declines-by-definition` | `books/control-authority.lisp` | 876 | branch-of-definition: the hypothesis negates a branch test of fn-ctl-withdrawal-effect and the conclusion is that branch's value |
-| `fn-ctl-pin-withdrawn-of-pin` | `books/control-served.lisp` | 472 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-ctl-pin-ws-of-pin` | `books/control-served.lisp` | 474 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ctl-pin-withdrawn-of-pin` | `books/control-served.lisp` | 481 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-ctl-pin-ws-of-pin` | `books/control-served.lisp` | 483 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ctl-visible-state-of-fields` | `books/control-visible.lisp` | 199 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-cvec-debt-from-of-atom` | `books/store-capacity-vector.lisp` | 717 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cvec-debt-from and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-cvec-debt-from and the conclusion is that branch's value |
 | `fn-cvec-debt-from-of-cons` | `books/store-capacity-vector.lisp` | 709 | arm-of-definition: the hypotheses select one IF/COND arm of fn-cvec-debt-from and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-cvec-debt-from and the conclusion is that branch's value |
@@ -1727,7 +1727,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-me-window-of-fn-me-site` | `books/membership-epochs.lisp` | 587 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-mod-inj-append-of-a-cons` | `books/moderation.lisp` | 358 | arm-of-definition: the hypotheses select one IF/COND arm of fn-inj-append and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-inj-append and the conclusion is that branch's value |
 | `fn-mod-named-entries-of-no-groups` | `books/moderation.lisp` | 101 | arm-of-definition: the hypotheses select one IF/COND arm of fn-mod-named-entries and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-mod-named-entries and the conclusion is that branch's value |
-| `fn-mvb-plan-unfolds` | `books/moderation-verbs.lisp` | 336 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-mvb-held-article-is-the-model-body` | `books/moderation-verbs.lisp` | 410 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-mvb-plan-unfolds` | `books/moderation-verbs.lisp` | 342 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-native-admin-plan-deltas-over-other-plans-by-definition` | `books/native-admin.lisp` | 831 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-admin-plan-deltas-over and the conclusion is that arm's value |
 | `fn-native-auth-load-protected-without-tls-refuses` | `books/native-auth-profile.lisp` | 327 | arm-of-definition: constant arguments select one IF/COND arm of fn-native-auth-load and the conclusion is that arm's value |
 | `fn-native-operator-control-outcome-passes-a-bindable-path` | `books/native-operator.lisp` | 2399 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-operator-control-outcome and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-native-operator-control-outcome and the conclusion is that branch's value |
@@ -1761,7 +1762,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-nntp-set-cursor-preserves-group` | `books/nntp-session.lisp` | 132 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-single-keeps-projection` | `books/nntp-invariants.lisp` | 170 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-nntp-single-preserves-session` | `books/nntp-invariants.lisp` | 99 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-nntp-withdrawn-reply-preserves-session` | `books/nntp.lisp` | 440 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-nntp-withdrawn-reply-preserves-session` | `books/nntp.lisp` | 445 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-node-capacity-refusal-is-no-op` | `books/node.lisp` | 469 | branch-of-definition: the hypothesis is a branch test of fn-node-prepare and the conclusion is that branch's value |
 | `fn-node-complete-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 159 | closed-theory-corollary: proved only by fn-node-complete-preserves-state, fn-node-state-has-committed-archive-pins |
 | `fn-node-prepare-preserves-committed-archive-pins` | `books/node-invariants.lisp` | 141 | closed-theory-corollary: proved only by fn-node-prepare-preserves-state, fn-node-state-has-committed-archive-pins |
