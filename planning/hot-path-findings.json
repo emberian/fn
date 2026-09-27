@@ -266,15 +266,8 @@
     },
     "fn-bpr-article-records recursion N": {
       "class": "unexpected",
-      "packet": "PKT-448 (g)"
-    },
-    "fn-bpr-host-find-record recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (g)"
-    },
-    "fn-bpreq-find-record recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (g)"
+      "packet": "PKT-448 (g)",
+      "note": "closed on every served entry by PRF-220 (hot-path-fixes-bp): fn-bpr-host-accept and fn-bpreq-existing-record look the record up through the event index (fn-bpaj-record-lookup-fast); what remains is the recovery replay at fn-bprj-install (cold)"
     },
     "fn-ccar-seek recursion N": {
       "class": "unexpected",

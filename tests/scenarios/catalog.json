@@ -4342,6 +4342,41 @@
         "tools/bench/bp-drain-bench.lisp",
         "planning/evidence/bp-cursors-2026-09-27.md"
       ]
+    },
+    {
+      "id": "SCN-149",
+      "title": "Articles of 2,000,000 lines and of one 4 MiB line are posted, served (ARTICLE, BODY), reopened and served again byte-identical at 1 MiB of control stack per thread and at the image's own 64 MiB, on the production and developer images",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-001"
+      ],
+      "steps": [
+        "init a store with --max-article-octets 8388608; start the owner with SBCL_USER_ARGS=--control-stack-size 1MB; POST an article of 2,000,000 body lines (every sixteenth a lone dot), ARTICLE and BODY it; POST an article whose body is one line of 4,194,304 octets and ARTICLE it; SIGTERM.",
+        "start the owner at the image's own stack on the same store (the reopen); ARTICLE both again; POST a second 2,000,000-line article and ARTICLE it; SIGTERM.",
+        "start the owner at 1 MiB again (a second reopen); ARTICLE the second article; SIGTERM."
+      ],
+      "expected": [
+        "Every POST is 240; every reply is the status line, the stored article exactly dot-stuffed (RFC 3977 section 3.1.1) and the terminator, ending with the posted body; BODY has 2,000,002 CRLFs; the owner exits 0 each time. Before this lane the 2,000,000-line POST exhausted the stack in fn-post-body-octets and the 4 MiB line in fn-wire-list-length (Control stack exhausted in fn-owner-chunk-span).",
+        "The replies at 64 MiB are byte-identical to those at 1 MiB; the second article is served.",
+        "The reply at 1 MiB after the reopen is byte-identical to the one at 64 MiB."
+      ],
+      "evidence": [
+        "tests/test_native_served_line_stack.py",
+        "tests/acl2/served-line-iterative-tests.lisp",
+        "planning/evidence/served-line-iterative-2026-09-26.md",
+        "planning/evidence/served-line-iterative-2026-09-26/test_native_served_line_stack.76a6757b.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_served_line_stack",
+        "cases": [
+          "test_production_serves_two_million_lines_at_one_mib_of_stack",
+          "test_developer_serves_two_million_lines_at_one_mib_of_stack"
+        ],
+        "native": true,
+        "record": "planning/evidence/served-line-iterative-2026-09-26.md",
+        "log": "planning/evidence/served-line-iterative-2026-09-26/test_native_served_line_stack.76a6757b.log"
+      }
     }
   ]
 }

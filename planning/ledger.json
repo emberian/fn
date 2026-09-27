@@ -699,6 +699,7 @@
     "tests/acl2/nntp-xref-tests",
     "tests/acl2/posting-account-tests",
     "tests/acl2/nntp-post-tests",
+    "tests/acl2/served-line-iterative-tests",
     "books/path",
     "books/path-update",
     "books/path-update-tail",
@@ -1036,27 +1037,27 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1061,
-    "books_in_root_closure": 1053,
-    "roots": 1032,
-    "theorems": 15107,
-    "functions": 10419,
-    "assert_events": 15545,
-    "must_fails": 1839,
+    "books": 1062,
+    "books_in_root_closure": 1054,
+    "roots": 1033,
+    "theorems": 15124,
+    "functions": 10429,
+    "assert_events": 15590,
+    "must_fails": 1848,
     "prover_refusals": 0,
     "encapsulates": 77,
     "guards": {
-      "verified": 2336,
+      "verified": 2338,
       "declared-off": 823,
-      "default-guarded": 5690,
+      "default-guarded": 5698,
       "default-unguarded": 1570
     },
     "suspect_theorems": 145,
-    "export_hygiene_warnings": 166,
+    "export_hygiene_warnings": 168,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 166,
     "include_hygiene_warnings": 1056,
-    "host_names_warnings": 1191,
+    "host_names_warnings": 1193,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -3205,15 +3206,15 @@
       "book": "books/bp-native-app-fast.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 35,
-      "functions": 19,
+      "theorems": 38,
+      "functions": 20,
       "guards": {
-        "verified": 0,
+        "verified": 1,
         "declared-off": 0,
         "default-guarded": 19,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 1,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -11226,15 +11227,15 @@
       "book": "books/nntp-post.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 30,
-      "functions": 24,
+      "theorems": 35,
+      "functions": 26,
       "guards": {
         "verified": 16,
         "declared-off": 1,
-        "default-guarded": 7,
+        "default-guarded": 9,
         "default-unguarded": 0
       },
-      "verify_guards_events": 16,
+      "verify_guards_events": 17,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -11423,12 +11424,12 @@
       "book": "books/nntp-session.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 1,
-      "functions": 34,
+      "theorems": 6,
+      "functions": 36,
       "guards": {
         "verified": 34,
         "declared-off": 0,
-        "default-guarded": 0,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
       "verify_guards_events": 34,
@@ -12762,7 +12763,7 @@
       "book": "books/owner-store-indexed.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 46,
+      "theorems": 48,
       "functions": 7,
       "guards": {
         "verified": 0,
@@ -17950,15 +17951,15 @@
       "book": "books/wire.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 50,
-      "functions": 69,
+      "theorems": 52,
+      "functions": 70,
       "guards": {
-        "verified": 49,
+        "verified": 50,
         "declared-off": 0,
         "default-guarded": 20,
         "default-unguarded": 0
       },
-      "verify_guards_events": 49,
+      "verify_guards_events": 50,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -19699,10 +19700,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
-      "must_fails": 0,
+      "assert_events": 22,
+      "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 4,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -19710,7 +19711,9 @@
         "../../books/codec-attach",
         "bp-native-app-tests"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -26989,10 +26992,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 47,
-      "must_fails": 3,
+      "assert_events": 67,
+      "must_fails": 6,
       "prover_refusals": 0,
-      "defconsts": 10,
+      "defconsts": 17,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -28136,6 +28139,34 @@
       "includes": [
         "../../books/codec-attach",
         "../../books/served-implicit-tls"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/served-line-iterative-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 21,
+      "must_fails": 4,
+      "prover_refusals": 0,
+      "defconsts": 9,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/nntp-post"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -31970,7 +32001,7 @@
     {
       "theorem": "fn-wire-feed-closed-noop",
       "book": "books/wire.lisp",
-      "line": 1071,
+      "line": 1097,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-wire-feed and the conclusion is that branch's value"
       ]
@@ -32486,15 +32517,27 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-post-body-octets-iter-is-body-octets",
+        "book": "books/nntp-post.lisp",
+        "line": 236,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-post-reader-env-listing",
         "book": "books/nntp-post.lisp",
-        "line": 261,
+        "line": 307,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-post-reader-env-closed",
         "book": "books/nntp-post.lisp",
-        "line": 268,
+        "line": 314,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-nntp-stuff-lines-iter-is-stuff-lines",
+        "book": "books/nntp-session.lisp",
+        "line": 125,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -42215,6 +42258,20 @@
         "name": "*fn-bpn-machine-max-octets*",
         "source": "books/bp-node-machine.lisp",
         "reason": "defined in books/bp-node-machine.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/bp-receipt-host.lisp",
+        "line": 37,
+        "name": "cadr",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/bp-receive-host.lisp",
+        "line": 23,
+        "name": "cadr",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/bp-release-owner-host.lisp",

@@ -1,6 +1,7 @@
 ; ACL2-only request projections for the filesystem receiver glue.
 (in-package "ACL2")
 (include-book "../books/bp-receipt")
+(include-book "../books/bp-native-app-fast")
 (defun fn-bpreq-request (adu)
   (let ((answer (fn-bpa-decode-exact adu)))
     (if (and (fn-bpa-result-okp answer)
@@ -14,26 +15,18 @@
  (declare (xargs :stobjs state :mode :program))
  (let ((request (fn-bpreq-request adu)))
   (value (if request (fn-record-string-octets (fn-bpa-request-work-id request)) nil))))
-(defun fn-bpreq-find-record (request records)
-  (if (consp records)
-      (let ((record (car records)))
-        (if (and (fn-record-p record)
-                 (equal (fn-record-payload record)
-                        (fn-bpa-request-article request))
-                 (equal (fn-record-content-subject record)
-                        (fn-bpa-request-subject request)))
-            record
-          (fn-bpreq-find-record request (cdr records))))
-    nil))
+; The Store record for a request, by ACL2's lookup through the event index
+; (fn-bpaj-record-lookup-fast: the request article's Message-ID, the
+; checked Store predicate fn-bpr-store-record-acceptedp under
+; fn-sn-statep and fn-ceis-indexedp); no history walk and no whole-Store
+; recognizer per request (PRF-220, PKT-448 (a), (g)).
 (defun fn-bpreq-existing-record (adu state)
  (declare (xargs :stobjs state :mode :program))
  (let* ((request (fn-bpreq-request adu))
         (store (f-get-global 'fn-store-sn state))
-        (record (and request
-                     (fn-bpreq-find-record
-                      request (fn-sf-records (fn-sn-files store))))))
-  (value (if (and record (fn-bpr-store-record-acceptedp store record))
-             (fn-record-encode record) nil))))
+        (lookup (and request (fn-bpaj-record-lookup-fast store request))))
+  (value (if (equal (car lookup) :found)
+             (fn-record-encode (cadr lookup)) nil))))
 (defun fn-bpreq-request-status (adu state)
  (declare (xargs :stobjs state :mode :program))
  (let* ((request (fn-bpreq-request adu))
