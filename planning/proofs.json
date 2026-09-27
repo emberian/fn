@@ -1365,7 +1365,7 @@
         "PRF-004"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "The transit path's DURABLE provenance is not covered: fn-peer-injection-arguments still passes fn-peer-evidence's rendering, and fn-peer-evidence-is-the-legacy-rendering is the equation between the typed record and that string, not evidence that the record reaches the store. books/peer-inbound and books/peer-inbound-invariants have no certificate on dev (blocked on fn-peer-echo-reply-effects-well-formed), so those two events are admitted, not certified, and are not listed here.",
       "events": [
         "fn-provp-of-string",
@@ -1573,7 +1573,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "Lane w11/one-owner. Keystones fn-frame-protected-plus-trailer-is-seal, fn-frame-decode-of-host-framing and their store instances fn-frame-store-protected-plus-trailer-is-seal and fn-frame-store-decode-of-host-framing, all in books/frame-trailer.lisp. Subject-to-host: the host lines that call fn-frame-trailer are tools/frame_bridge.py FrameSession.trailer (called by seal and digest_of), host/native/io.lisp fnn-trailer (called by fnn-seal and fnn-digest-of) and tools/run_owner.py Acl2Owner.trailer (called by feed_frames and feed_replay_frame); each replaced a separate SHA-256 in that host. Teeth in tests/acl2/frame-trailer-tests.lisp: 25 assert-events, including two FIPS 180-4 vectors, the exact store prefix and trailer octets, the :bad boundary arm, and one violating value per clause (a magic whose third octet is 300 for the shape clause keystone 1 needs, a max-payload of 2 for the bound clause keystone 2 needs, and a non-octet record for the store instance). Byte identity with the deleted host copies was cross-checked outside ACL2 against CPython hashlib.sha256 at 32, 4096, 32768, 262144 and 1048576 octets. NOT closed by this target: fn-frame-digest's collision resistance, and the marshalling cost of sealing a 4 MiB staged inbound bundle through the decimal-octet bridge. Lane rep-sha256 (D27 boundary 3, 2026-09-25): the executable digest is fn-sha256-stobj, SHA-256 over a word stobj (books/sha256-stobj.lisp), attached in crypto-attach under fn-sha256-stobj-is-sha256; fn-sha256-stobj-is-sha256-of-octets is its instance on octet lists and fn-sha256-of-string-is-sha256-of-octets covers the string entry the host sha256 verb calls (host/native/io.lisp, the verb; the host SHA-256 twin fnn-sha256 is deleted). Teeth in tests/acl2/sha256-stobj-tests.lisp: the FIPS vectors through both entries, the padding boundaries against the list model, a must-fail and a separating witness for the string theorem's stringp; the keystone has no hypothesis. No statement of an existing theorem moved.",
       "events": [
         "fn-frame-protected-plus-trailer-is-seal",
@@ -8927,6 +8927,124 @@
         "fn-ores-take-result-by-definition",
         "fn-ores-take-idle-is-a-result"
       ]
+    },
+    {
+      "id": "PRF-224",
+      "title": "The BP application handoff's reported outcome is the application's disposition: a refused delivery is reported refused by name, never durable",
+      "statement": "books/bp-handoff-report.lisp over books/bp-node-foundation.lisp. fn-bpah-persist-delivery-step's durable answer is (:delivery-answer :durable D), D the kind-7 record's disposition; fn-bpah-handoff-report (host/native/bp-service.lisp fnn-bps-drive-effects prints exactly its word for every :delivery-answer that fnn-bps-foundation-step returns) is :durable exactly for an accepting disposition and :refused for a refusing one. KEYSTONE fn-bpah-handoff-report-is-application-disposition: after fn-bpah-deliver-result-step records the application's STATUS and issues kind 7 ((car e1) = :persist-delivery), the report of fn-bpah-persist-delivery-step's answer to that publication is a member of (list (fn-bpah-disposition-report STATUS) :uncertain), and with RESULT :durable and the record applying to the held list it equals (fn-bpah-disposition-report STATUS). fn-bpah-persist-delivery-reports-the-record (hypothesis-free) and fn-bpah-persist-delivery-reports-exactly state the same for the publication step alone; fn-bpah-disposition-report-durable-is-accepting: the report is :durable iff the disposition is accepting. fn-bpnf-step-deliver-result-is-step and fn-bpnf-step-persist-delivery-is-step: the foundation dispatcher fn-bpnf-step routes the host's two events (host/native/bp-node.lisp fnn-bpnode-dispatch-one) to these steps. Why: SCN-077's 10 MiB case printed 'BP application handoff durable' while its development-base Store (32,768-octet articles) had refused the article as oversize (PKT-630 (7)). What it does not say: that the layers above fn-bpnf-step (fn-bpnj-step, fn-bpnp-step, the fragment step) pass the answer's effects through unchanged (they do by definition, or replace a :deliver answer by (:delivery-answer :uncertain), which reports :uncertain); that STATUS is the Store's true verdict (the application layer's theorems, PRF-128/PRF-132 and the FNRJ receipt books, own that).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-015"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpah-handoff-report-is-application-disposition",
+        "fn-bpah-persist-delivery-reports-the-record",
+        "fn-bpah-persist-delivery-reports-exactly",
+        "fn-bpah-disposition-report-durable-is-accepting",
+        "fn-bpnf-step-deliver-result-is-step",
+        "fn-bpnf-step-persist-delivery-is-step"
+      ],
+      "evidence": [
+        "books/bp-handoff-report.lisp",
+        "books/bp-node-foundation.lisp",
+        "books/bp-node-progress.lisp",
+        "tests/acl2/bp-handoff-report-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "tests/test_bp_node_native.py",
+        "tests/test_bp_fragment_node_native.py",
+        "specs/bp-node-machine.md",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      ],
+      "progress_note": "Lane bp-fragments-10mib (2026-09-27): farm r1 run-20260927T010932Z-27e6 passed (manifest planning/evidence/manifests/certify-20260927T011018Z-3953584.json) and r2 run-20260927T020859Z-118b (certify-20260927T021005Z-134473.json); native v1/v2 tests.test_bp_fragment_node_native print the refused handoff by name."
+    },
+    {
+      "id": "PRF-225",
+      "title": "The executed BP CRC-16/X.25 is table-driven and equals the bitwise definition every bundle theorem reasons about",
+      "statement": "books/bp-primary.lisp. fn-bpp-crc16-scan executes (mbe :exec) fn-bpp-crc16-scan-table: per octet, c = (logand (logxor crc x) 65535) and the next register (logand (logxor (ash c -8) (fn-bpp-crc16-table-ref (logand c 255))) 65535), the 256-entry table *fn-bpp-crc16-table* evaluated from fn-bpp-crc16-octet at every octet value by the defconst (it cannot drift). KEYSTONE fn-bpp-crc16-scan-table-is-scan: (implies (and (natp crc) (fn-cbor-octet-listp xs)) (equal (fn-bpp-crc16-scan-table crc xs) (fn-bpp-crc16-scan crc xs))), the guard proof of fn-bpp-crc16-scan. The octet step is checked at every one of the 65,536 16-bit registers by evaluation inside the proof (local fn-bpp-crc16-step-agrees), so the logical definitions, and every theorem about fn-bpp-crc16, fn-bpb-encode and the bundle codec, are unchanged. Host: every block CRC the node computes (fn-bpb-encode-block-with-crc, the decoders' checks) through fn-bpp-crc16; the reassembled whole bundle's encode in fn-bpnf-family-plan (bp-service.lisp fnn-bps-fragment-progress -> fn-bpnf-family-next, and the kind-18 publication). Why: sb-sprof over the receiver that reassembled and delivered a 1 MiB fragment family: 77 percent of CPU in fn-bpp-crc16-scan's bitwise steps (FLOOR 25.8 percent self, FN-BPP-CRC16-BIT 37 percent cumulative); a 1 MiB CRC now takes 0.06 s in the REPL. What it does not say: anything about CRC-32C (PRF-190) or the list representation of the payload (D27's by-handle encoder, PKT-630 (4)).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008"
+      ],
+      "depends_on": [
+        "PRF-190"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpp-crc16-scan-table-is-scan"
+      ],
+      "evidence": [
+        "books/bp-primary.lisp",
+        "tests/acl2/bp-primary-tests.lisp",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      ],
+      "progress_note": "Lane bp-fragments-10mib (2026-09-27): farm r2 run-20260927T020859Z-118b passed 189/189 (manifest planning/evidence/manifests/certify-20260927T021005Z-134473.json; bp-primary 9.5 s at 2 jobs). SCN-077 reassembly and handoff 280.3 s -> 117.2 s (native v2)."
+    },
+    {
+      "id": "PRF-249",
+      "title": "The BP application join and the receiver hold a request by reference, and every read binds exactly the live request's context",
+      "statement": "books/bp-request-ref.lisp, books/bp-request-reference.lisp over books/bp-receipt.lisp, books/bp-native-app.lisp, books/bp-native-app-fast.lisp and books/bp-transit-join.lisp (PKT-646, D27, D34). The FNRJ transit intent and context the host publishes (host/bp-receipt-journal-host.lisp fn-bprj-request-transit-intent-record and fn-bprj-request-transit-context-record, called by host/native/bp-app.lisp fnn-bpapp-request-intent and fnn-bpapp-bind-context) are built by fn-bpaj-transit-intent-from-plan (host/bp-native-app-host.lisp fn-owner-app-plan-install) and fn-bpaj-transit-context-record: the intent carries the request's reference (HEAD LENGTH DIGEST, fn-bpaj-request-ref), the relay projection's LENGTH and DIGEST and the pinned Path identities; the context carries the reference and the Store record's identity (Message-ID, txid, generation); neither carries the request ADU, the projection or the Store record. The receiver's context (books/bp-receipt.lisp fn-bpr-context-request-ref, slot 9) holds the reference, and fn-bpr-receipt-adu and the conflict rule compare references. KEYSTONE fn-bpaj-ref-request-resolves-exactly: (implies (fn-bpa-requestp request) (equal (fn-bpaj-ref-request HEAD LENGTH DIGEST (fn-bpa-request-article request)) request)); -to-the-bytes: its encoding is the request's octets. KEYSTONE fn-bpaj-transit-context-binds-the-live-request: for ctx = (fn-bpaj-transit-context-record inbound octets store-record g txid rg result), the receiver context every read binds over any record, (fn-bpr-context-from-ref record (fn-bpaj-context-ref ctx)), is (fn-bpr-context-from-request record (fn-bpaj-request octets)) and its reference is the request's; the read is fn-bpaj-apply-record (fn-bpaj-transit-context-receiver-is-existing-transition: the receiver is fn-bpr-accept-projected-ref over fn-bpaj-context-record, the Store record resolved by identity) and its fast twin (fn-bpaj-apply-record-fast-is-checked, fn-bpaj-context-record-fast-is-checked) at fn-bprj-install (every journal open, recovery included), fn-bprj-preflight and fn-bprj-apply. KEYSTONE fn-bpaj-transit-intent-pins-its-request-and-projection: an intent the builder answers names the request (fn-bpaj-intent-names-requestp) and pins the length and digest of (fn-pu-relay-article article local peer) under its own Path identities, which is the plan's stored projection. The receiver invariants (bp-receiver-store, -retention, -evolving-history) ground a context by resolving its reference over the grounding record's payload (fn-bpr-context-resolve; fn-bpr-context-resolve-of-derived-context from the keystone); their receipt conclusions now say the live request's reference is the context's. fn-bpaj-one-reference-is-one-request-or-a-digest-collision: two requests with one reference are equal or their articles differ with one length and one fn-frame-digest (A-CRYPTO, books/frame-octets; for n distinct articles the SHA-256 collision probability is at most n(n-1)/2^257). D34: the local :request-intent and :request-context-v2 kinds, their builders, the direct Store lookup and fn-owner-app-plan-install-legacy are deleted. What it does not say: that the Store keeps the record a context names (the replay refuses a context whose record is gone); that a Store record's payload IS the projection (length and digest, the collision scope above); the legacy version-1 :request-context kind still carries a request ADU (the receiver-journal model's, reached only before a journal's first intent).",
+      "milestone": "M4",
+      "requirements": [
+        "STO-015"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpaj-ref-request-resolves-exactly",
+        "fn-bpaj-ref-request-resolves-to-the-bytes",
+        "fn-bpaj-transit-context-binds-the-live-request",
+        "fn-bpaj-transit-intent-pins-its-request-and-projection",
+        "fn-bpaj-one-reference-is-one-request-or-a-digest-collision",
+        "fn-bpaj-transit-context-receiver-is-existing-transition",
+        "fn-bpaj-context-record-fast-is-checked",
+        "fn-bpr-context-from-ref-of-request-ref",
+        "fn-bpr-context-resolve-of-derived-context"
+      ],
+      "evidence": [
+        "books/bp-request-ref.lisp",
+        "books/bp-request-reference.lisp",
+        "books/bp-receipt.lisp",
+        "books/bp-native-app.lisp",
+        "books/bp-native-app-fast.lisp",
+        "books/bp-transit-join.lisp",
+        "tests/acl2/bp-request-reference-tests.lisp",
+        "tests/acl2/bp-receiver-teeth-tests.lisp",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      ],
+      "progress_note": "Lane bp-fragments-10mib-3 (2026-09-27): moved onto the transit arm (the composed node's), receiver context by reference, local kinds deleted; certified with certify_books.py --incremental on hbox."
+    },
+    {
+      "id": "PRF-250",
+      "title": "BP fragment reassembly as a resumable step bounded in octets: any schedule of bounded steps reaches the one RFC 9171 reassembly",
+      "statement": "books/bp-fragment-resume.lisp over books/bp-fragment-sweep.lisp. fn-bpfr-step runs the executed reassembler's sweep (fn-bpfw-sweep-acc) for at most QUANTUM positions and returns its state (active suffixes, queue, position, positions left, cells). KEYSTONE fn-bpfr-step-resumes (hypothesis-free): resuming the sweep from the state one step leaves equals the sweep from the state before it. KEYSTONE fn-bpfr-run-is-reassemble: for (posp quantum), steps of QUANTUM run to completion from fn-bpfr-start leave no position, and fn-bpfr-finish of the result is fn-bpfw-reassemble and fn-bpfw-spec (the uncapped reference), for every fragment list and total: complete, missing, conflicting and invalid families alike. fn-bpfr-step-is-bounded: a step consumes and emits exactly min(QUANTUM, left) positions and cells. What it does not say: that the node calls it -- the family plan (bp-node-fragment-family) still reassembles in one foundation step; carrying the state across steps, and assembling into the Store's arena by extents (PKT-585) instead of an octet list, are the integration boundary.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpfr-step-resumes",
+        "fn-bpfr-run-is-reassemble",
+        "fn-bpfr-step-is-bounded",
+        "fn-bpfr-finished-state-is-the-sweep",
+        "fn-bpfr-run-resumes",
+        "fn-bpfr-run-finishes"
+      ],
+      "evidence": [
+        "books/bp-fragment-resume.lisp",
+        "books/bp-fragment-sweep.lisp",
+        "tests/acl2/bp-fragment-resume-tests.lisp",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      ],
+      "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): REPL-admitted and certified with certify_books.py --incremental on persvati; no host caller yet."
     }
   ]
 }

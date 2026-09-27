@@ -707,9 +707,11 @@
                   (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
                   (fn-own-clock (fn-ocfg-owner oc))
                   deltas (fn-owner-connection-bound state))))
+    ;; The refusal is the staging step's result value (PRF-208,
+    ;; adapter-retirement: books/owner-results.lisp fn-ores-config-refused),
+    ;; which every live caller's recognizer accepts.
     (if memory
-        (let ((state (f-put-global 'fn-owner-config-reason memory state)))
-          (value :refused))
+        (value (fn-ores-config-refused memory))
       (fn-owner-reconfigure-deltas-admitted id deltas state))))
 
 (defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile

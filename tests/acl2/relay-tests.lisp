@@ -11,6 +11,7 @@
 (include-book "../../books/relay-crash-invariants")
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/codec-attach")
+(include-book "../../books/crypto-attach")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
@@ -68,13 +69,12 @@
                           *ry-terms*))
 (assert-event (fn-relay-invp *ry-initial*))
 
-(defconst *ry-accepted* (fn-relay-accept *ry-initial* *ry-record* *ry-request* t))
+(make-event `(defconst *ry-accepted* ',(fn-relay-accept *ry-initial* *ry-record* *ry-request* t)))
 (assert-event (equal (car *ry-accepted*) :accepted))
-(defconst *ry-ctx-state* (car (cdr *ry-accepted*)))
+(make-event `(defconst *ry-ctx-state* ',(car (cdr *ry-accepted*))))
 (assert-event (fn-relay-invp *ry-ctx-state*))
-(defconst *ry-ctx*
-  (fn-bpr-find-context "up-work-1"
-                       (fn-bpr-state-contexts (fn-relay-receiver *ry-ctx-state*))))
+(make-event `(defconst *ry-ctx* ',(fn-bpr-find-context "up-work-1"
+                       (fn-bpr-state-contexts (fn-relay-receiver *ry-ctx-state*)))))
 (assert-event (consp *ry-ctx*))
 (assert-event (fn-relay-content-durablep (fn-relay-node *ry-ctx-state*) *ry-ctx*))
 (assert-event (equal (fn-bpr-context-msgid *ry-ctx*) *ry-msgid*))
@@ -88,11 +88,10 @@
                      *ry-ctx-state*))
 
 ; The enqueue-then-crash gap: a pending (not yet durable) enqueue backs nothing.
-(defconst *ry-enqueue-pending*
-  (car (fn-relay-sender-step
+(make-event `(defconst *ry-enqueue-pending* ',(car (fn-relay-sender-step
         *ry-ctx-state*
         (fn-bp-enqueue-prepare-event 10 0 "onward-1" *ry-msgid* "forward-1"
-                                     "relay-policy" "terms-forward"))))
+                                     "relay-policy" "terms-forward")))))
 (assert-event (consp (fn-bp-state-pending (fn-relay-sender *ry-enqueue-pending*))))
 (assert-event (fn-relay-invp *ry-enqueue-pending*))
 (assert-event (not (fn-relay-onward-presentp (fn-relay-sender *ry-enqueue-pending*)
@@ -102,13 +101,12 @@
 (assert-event (equal (fn-relay-undertake *ry-enqueue-pending* "up-work-1" "receipt-1" t)
                      (list nil *ry-enqueue-pending*)))
 ; Crash here.  Enqueue found absent: no work, no promise.
-(defconst *ry-crash-absent* (fn-relay-crash-recover *ry-enqueue-pending* :absent :absent))
+(make-event `(defconst *ry-crash-absent* ',(fn-relay-crash-recover *ry-enqueue-pending* :absent :absent)))
 (assert-event (fn-relay-invp *ry-crash-absent*))
 (assert-event (null (fn-relay-receipt *ry-crash-absent* "up-work-1")))
 (assert-event (null (fn-bp-state-works (fn-relay-sender *ry-crash-absent*))))
 ; Enqueue found committed: the work is durable, and still no promise.
-(defconst *ry-crash-committed*
-  (fn-relay-crash-recover *ry-enqueue-pending* :absent :committed))
+(make-event `(defconst *ry-crash-committed* ',(fn-relay-crash-recover *ry-enqueue-pending* :absent :committed)))
 (assert-event (fn-relay-invp *ry-crash-committed*))
 (assert-event (fn-relay-onward-durablep (fn-relay-sender *ry-crash-committed*)
                                         "onward-1" *ry-ctx*))
@@ -117,9 +115,8 @@
 ; -----------------------------------------------------------------------------
 ; The straight path
 
-(defconst *ry-enqueued*
-  (car (fn-relay-sender-step *ry-enqueue-pending*
-                             (fn-bp-storage-complete-event 10 0 :durable))))
+(make-event `(defconst *ry-enqueued* ',(car (fn-relay-sender-step *ry-enqueue-pending*
+                             (fn-bp-storage-complete-event 10 0 :durable)))))
 (assert-event (fn-relay-invp *ry-enqueued*))
 (assert-event (fn-relay-onward-durablep (fn-relay-sender *ry-enqueued*)
                                         "onward-1" *ry-ctx*))
@@ -129,33 +126,31 @@
 ; A work that does not name this content cannot back the promise.
 (assert-event (equal (fn-relay-record-undertaking *ry-enqueued* "up-work-1" "onward-9")
                      *ry-enqueued*))
-(defconst *ry-undertaking*
-  (fn-relay-record-undertaking *ry-enqueued* "up-work-1" "onward-1"))
+(make-event `(defconst *ry-undertaking* ',(fn-relay-record-undertaking *ry-enqueued* "up-work-1" "onward-1")))
 (assert-event (not (equal *ry-undertaking* *ry-enqueued*)))
 (assert-event (fn-relay-invp *ry-undertaking*))
 ; Recorded twice is refused.
 (assert-event (equal (fn-relay-record-undertaking *ry-undertaking* "up-work-1" "onward-1")
                      *ry-undertaking*))
 
-(defconst *ry-promise-pending* (fn-relay-undertake *ry-undertaking* "up-work-1" "receipt-1" t))
+(make-event `(defconst *ry-promise-pending* ',(fn-relay-undertake *ry-undertaking* "up-work-1" "receipt-1" t)))
 (assert-event (equal (car *ry-promise-pending*) :forwarding))
-(defconst *ry-pending* (car (cdr *ry-promise-pending*)))
+(make-event `(defconst *ry-pending* ',(car (cdr *ry-promise-pending*))))
 (assert-event (fn-relay-invp *ry-pending*))
 ; An intent is not a promise: no typed receipt and no ADU yet.
 (assert-event (null (fn-relay-receipt *ry-pending* "up-work-1")))
 (assert-event (null (fn-relay-receipt-adu *ry-pending* *ry-request*)))
 ; Crash at the receipt intent.  Absent: no promise.  Committed: promise with
 ; its obligation.  The sender has nothing pending, so its result is moot.
-(defconst *ry-pending-absent* (fn-relay-crash-recover *ry-pending* :absent :absent))
+(make-event `(defconst *ry-pending-absent* ',(fn-relay-crash-recover *ry-pending* :absent :absent)))
 (assert-event (fn-relay-invp *ry-pending-absent*))
 (assert-event (null (fn-relay-receipt *ry-pending-absent* "up-work-1")))
-(defconst *ry-pending-committed* (fn-relay-crash-recover *ry-pending* :committed :absent))
+(make-event `(defconst *ry-pending-committed* ',(fn-relay-crash-recover *ry-pending* :committed :absent)))
 (assert-event (fn-relay-invp *ry-pending-committed*))
 (assert-event (equal (car (fn-relay-receipt *ry-pending-committed* "up-work-1")) :forwarding))
 (assert-event (fn-relay-onward-presentp (fn-relay-sender *ry-pending-committed*) "onward-1"))
 
-(defconst *ry-committed*
-  (fn-relay-commit-receipt *ry-pending* "up-work-1" "receipt-1" :committed))
+(make-event `(defconst *ry-committed* ',(fn-relay-commit-receipt *ry-pending* "up-work-1" "receipt-1" :committed)))
 (assert-event (fn-relay-invp *ry-committed*))
 (assert-event (equal (car (fn-relay-receipt *ry-committed* "up-work-1")) :forwarding))
 (assert-event (consp (fn-relay-receipt-adu *ry-committed* *ry-request*)))
@@ -164,14 +159,13 @@
 (assert-event (fn-bpa-receiptp (car (cdr (fn-relay-receipt *ry-committed* "up-work-1")))))
 
 ; The promise survives sender progress and a restart.
-(defconst *ry-after-attempt*
-  (car (fn-relay-sender-step
+(make-event `(defconst *ry-after-attempt* ',(car (fn-relay-sender-step
         (car (fn-relay-sender-step
               *ry-committed*
               (fn-bp-attempt-prepare-event 11 0 "onward-1" "attempt-0")))
-        (fn-bp-storage-complete-event 11 0 :durable))))
+        (fn-bp-storage-complete-event 11 0 :durable)))))
 (assert-event (fn-relay-invp *ry-after-attempt*))
-(defconst *ry-restarted* (fn-relay-crash-recover *ry-after-attempt* :absent :absent))
+(make-event `(defconst *ry-restarted* ',(fn-relay-crash-recover *ry-after-attempt* :absent :absent)))
 (assert-event (fn-relay-invp *ry-restarted*))
 (assert-event (equal (car (fn-relay-receipt *ry-restarted* "up-work-1")) :forwarding))
 (assert-event (fn-relay-onward-presentp (fn-relay-sender *ry-restarted*) "onward-1"))
@@ -179,25 +173,22 @@
 ; -----------------------------------------------------------------------------
 ; Archival acceptance is a different promise over the same bytes
 
-(defconst *ry-archival*
-  (fn-relay-make-state *ry-store* (fn-relay-receiver *ry-ctx-state*)
+(make-event `(defconst *ry-archival* ',(fn-relay-make-state *ry-store* (fn-relay-receiver *ry-ctx-state*)
                        (fn-relay-sender *ry-ctx-state*)
-                       '(("terms-forward" . :archived)) nil))
+                       '(("terms-forward" . :archived)) nil)))
 (assert-event (fn-relay-invp *ry-archival*))
-(defconst *ry-archival-pending* (fn-relay-undertake *ry-archival* "up-work-1" "receipt-a" t))
+(make-event `(defconst *ry-archival-pending* ',(fn-relay-undertake *ry-archival* "up-work-1" "receipt-a" t)))
 (assert-event (equal (car *ry-archival-pending*) :archived))
-(defconst *ry-archived*
-  (fn-relay-commit-receipt (car (cdr *ry-archival-pending*)) "up-work-1" "receipt-a"
-                           :committed))
+(make-event `(defconst *ry-archived* ',(fn-relay-commit-receipt (car (cdr *ry-archival-pending*)) "up-work-1" "receipt-a"
+                           :committed)))
 (assert-event (fn-relay-invp *ry-archived*))
 (assert-event (equal (car (fn-relay-receipt *ry-archived* "up-work-1")) :archived))
 (assert-event (null (fn-bp-state-works (fn-relay-sender *ry-archived*))))
 (assert-event (not (equal (car (fn-relay-receipt *ry-archived* "up-work-1"))
                           (car (fn-relay-receipt *ry-committed* "up-work-1")))))
 ; Unknown terms promise nothing; the relay's table has no destination kind.
-(defconst *ry-unknown-terms*
-  (fn-relay-make-state *ry-store* (fn-relay-receiver *ry-ctx-state*)
-                       (fn-relay-sender *ry-ctx-state*) nil nil))
+(make-event `(defconst *ry-unknown-terms* ',(fn-relay-make-state *ry-store* (fn-relay-receiver *ry-ctx-state*)
+                       (fn-relay-sender *ry-ctx-state*) nil nil)))
 (assert-event (equal (fn-relay-undertake *ry-unknown-terms* "up-work-1" "receipt-u" t)
                      (list nil *ry-unknown-terms*)))
 (assert-event (not (fn-relay-kindp :destination)))
@@ -215,17 +206,15 @@
 ; is a structurally valid relay state and it is exactly what no transition
 ; and no crash produces.
 
-(defconst *ry-promise-alone*
-  (fn-relay-make-state *ry-store* (fn-relay-receiver *ry-committed*)
-                       (fn-relay-sender *ry-ctx-state*) *ry-terms* nil))
+(make-event `(defconst *ry-promise-alone* ',(fn-relay-make-state *ry-store* (fn-relay-receiver *ry-committed*)
+                       (fn-relay-sender *ry-ctx-state*) *ry-terms* nil)))
 (assert-event (fn-relay-statep *ry-promise-alone*))
 (assert-event (equal (car (fn-relay-receipt *ry-promise-alone* "up-work-1")) :forwarding))
 (assert-event (not (fn-relay-invp *ry-promise-alone*)))
 ; Same with the undertaking recorded but the work gone: also excluded.
-(defconst *ry-promise-unbacked*
-  (fn-relay-make-state *ry-store* (fn-relay-receiver *ry-committed*)
+(make-event `(defconst *ry-promise-unbacked* ',(fn-relay-make-state *ry-store* (fn-relay-receiver *ry-committed*)
                        (fn-relay-sender *ry-ctx-state*) *ry-terms*
-                       (fn-relay-undertakings *ry-committed*)))
+                       (fn-relay-undertakings *ry-committed*))))
 (assert-event (fn-relay-statep *ry-promise-unbacked*))
 (assert-event (not (fn-relay-invp *ry-promise-unbacked*)))
 

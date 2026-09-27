@@ -6,6 +6,8 @@
 (include-book "../../books/bp-native-app-fast")
 (include-book "../../books/owner-invariants")
 (include-book "../../books/codec-attach")
+; The intent pins digests (PKT-646): fn-frame-digest runs through its attachment.
+(include-book "../../books/crypto-attach")
 (include-book "peer-inbound-tests")
 (include-book "std/testing/must-fail" :dir :system)
 
@@ -59,14 +61,24 @@
        *btj-cfg* "bundle-btj" *btj-request-octets* 1 0
        :accepted *btj-plan*)))
 (assert-event (fn-bpaj-transit-intentp *btj-intent*))
-(assert-event (equal (fn-bpaj-nth 2 *btj-intent*) *btj-request-octets*))
-(assert-event (equal (fn-bpaj-nth 9 *btj-intent*)
-                     (fn-bpaj-transit-stored-octets *btj-plan*)))
+; PKT-646: the intent pins the request by reference and the projection by
+; length and digest; it holds neither's bytes.
+(assert-event (equal (fn-bpaj-intent-ref *btj-intent*)
+                     (fn-bpaj-request-ref *btj-request*)))
+(assert-event (equal (fn-bpaj-nth 11 *btj-intent*)
+                     (len (fn-bpaj-transit-stored-octets *btj-plan*))))
+(assert-event (equal (fn-bpaj-nth 12 *btj-intent*)
+                     (fn-frame-digest (fn-bpaj-transit-stored-octets *btj-plan*))))
+(assert-event (and (not (member-equal *btj-request-octets* *btj-intent*))
+                   (not (member-equal (fn-bpaj-transit-stored-octets *btj-plan*)
+                                      *btj-intent*))
+                   (not (member-equal *pt-a1* *btj-intent*))))
+; The projection's bytes in place of its digest are no intent.
 (assert-event (not (fn-bpaj-transit-intentp
-                    (update-nth 9 *pt-a1* *btj-intent*))))
+                    (update-nth 12 *pt-a1* *btj-intent*))))
 (must-fail
  (assert-event (fn-bpaj-transit-intentp
-                (update-nth 9 *pt-a1* *btj-intent*))))
+                (update-nth 12 *pt-a1* *btj-intent*))))
 (assert-event
  (equal (fn-bpaj-transit-plan
          *pt-node0* *btj-cfg*

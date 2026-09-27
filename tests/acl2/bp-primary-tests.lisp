@@ -698,3 +698,46 @@
 (assert-event
  (not (equal (fn-bpp-adu-key (bpp-id-block *bpp-id-n1* 100 1))
              (fn-bpp-adu-key (bpp-id-block *bpp-id-n1* 100 2)))))
+
+; PRF-225 (lane bp-fragments-10mib): the table-driven CRC-16/X.25.  The
+; executed fn-bpp-crc16-scan IS the table scan (mbe), so the comparison is
+; with this bitwise scan, the logical body written out.
+(defun bpp-crc16-bitwise-scan (crc xs)
+  (declare (xargs :guard (and (natp crc) (fn-cbor-octet-listp xs))))
+  (if (consp xs)
+      (bpp-crc16-bitwise-scan (fn-bpp-crc16-octet (fn-bpp-xor crc (car xs) 16) 8)
+                              (cdr xs))
+    (nfix crc)))
+
+; fn-bpp-crc16-scan-table-is-scan: a reachable witness, the antecedent and
+; the conclusion of the literal theorem over the check string (0x906E), and
+; over the random octets from two registers.
+(assert-event
+ (let ((crc 65535) (xs '(49 50 51 52 53 54 55 56 57)))
+   (and (natp crc)
+        (fn-cbor-octet-listp xs)
+        (equal (fn-bpp-crc16-scan-table crc xs) (bpp-crc16-bitwise-scan crc xs))
+        (equal (fn-bpp-xor (fn-bpp-crc16-scan-table crc xs) 65535 16)
+               36974)
+        (equal (fn-bpp-crc16 xs) 36974))))
+(assert-event
+ (and (equal (fn-bpp-crc16-scan-table 4660 *bpp-crc-random-octets*)
+             (bpp-crc16-bitwise-scan 4660 *bpp-crc-random-octets*))
+      (equal (fn-bpp-crc16-scan-table 65535 *bpp-crc-random-octets*)
+             (bpp-crc16-bitwise-scan 65535 *bpp-crc-random-octets*))))
+;   without `(natp crc)': a register of -1 over no octets is -1 to the table
+;   scan and 0 to the bitwise one.  Evaluated logically, outside the guard.
+(assert-event
+ (with-guard-checking :none
+  (and (fn-cbor-octet-listp nil)
+       (not (natp -1))
+       (not (equal (fn-bpp-crc16-scan-table -1 nil)
+                   (fn-bpp-crc16-scan -1 nil))))))
+;   without `(fn-cbor-octet-listp xs)': `logxor' reads 1/2 as 0, the bitwise
+;   exclusive-or reads its parity, and the registers differ.
+(assert-event
+ (with-guard-checking :none
+  (and (natp 0)
+       (not (fn-cbor-octet-listp '(1/2)))
+       (not (equal (fn-bpp-crc16-scan-table 0 '(1/2))
+                   (fn-bpp-crc16-scan 0 '(1/2)))))))

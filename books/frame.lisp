@@ -234,21 +234,15 @@
    (cons :config '("destination-eid" "policy-id" "issuer-eid"))
    (cons :request-context '("inbound-bid" "request-adu" "store-record"
                             "policy-authorized"))
-   (cons :request-intent '("inbound-bid" "request-adu"
-                           "owner-config-generation" "owner-next-txid"
-                           "application-result"))
-   (cons :request-context-v2 '("inbound-bid" "request-adu" "store-record"
-                               "owner-config-generation" "store-txid"
-                               "store-generation" "policy-authorized"
-                               "application-result"))
    (cons :request-transit-intent
-         '("inbound-bid" "request-adu" "owner-config-generation"
+         '("inbound-bid" "request-head" "owner-config-generation"
            "owner-next-txid" "application-result" "admitted-peer"
-           "local-path-identity" "peer-path-identity" "stored-projection"))
+           "local-path-identity" "peer-path-identity" "article-length"
+           "article-digest" "projection-length" "projection-digest"))
    (cons :request-transit-context
-         '("inbound-bid" "request-adu" "store-record"
+         '("inbound-bid" "request-head" "store-msgid"
            "owner-config-generation" "store-txid" "store-generation"
-           "application-result"))
+           "application-result" "article-length" "article-digest"))
    (cons :receipt-intent '("work-id" "receipt-id" "receipt-adu"
                            "policy-authorized"))
    (cons :receipt-decision '("work-id" "receipt-id" "outcome"))))

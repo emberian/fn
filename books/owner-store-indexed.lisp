@@ -749,7 +749,8 @@
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
 ; The fast/checked equalities over the live Store: the Store record check,
-; the two Message-ID lookups and the dispatcher they compose into are the
+; the direct and transit Message-ID lookups (the direct one the receipt
+; hosts call, PRF-220) and the dispatcher they compose into are the
 ; checked walks over the history.
 (defthm fn-osi-live-store-record-accepted-fast-is-checked
   (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))

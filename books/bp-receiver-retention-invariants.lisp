@@ -30,7 +30,7 @@
  fn-bpr-context-incarnation
  fn-bpr-context-auth-context
  fn-bpr-context-terms-id
- fn-bpr-context-request
+ fn-bpr-context-request-ref
  fn-bpr-make-context
  fn-bpr-contextp
  fn-bpr-context-listp
@@ -342,7 +342,7 @@
   (let* ((context (fn-bpr-find-context (fn-bpa-request-work-id request) (fn-bpr-state-contexts st)))
          (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context) (fn-bpr-state-receipts st))))
    (and (consp context)
-        (equal request (fn-bpr-context-request context))
+        (equal (fn-bpaj-request-ref request) (fn-bpr-context-request-ref context))
         (member-equal entry (fn-bpr-state-receipts st))
         (equal context (fn-bpr-receipt-entry-context entry))
         (fn-bprv-context-backedp store (fn-bpr-state-config st) context)
@@ -371,9 +371,13 @@
         (fn-record-p record)
         (member-equal record (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))
         (fn-bpi-node-record-committedp (fn-sn-node store) record)
-        (equal context (fn-bpr-context-from-request record request))
-        (equal (fn-bpa-request-article request) (fn-record-payload record))
-        (equal (fn-bpa-request-subject request) (fn-record-content-subject record))
+        (equal (fn-bpaj-request-ref request) (fn-bpr-context-request-ref context))
+        (equal context (fn-bpr-context-from-request
+                        record (fn-bpr-context-resolve context record)))
+        (equal (fn-bpa-request-article (fn-bpr-context-resolve context record))
+               (fn-record-payload record))
+        (equal (fn-bpa-request-subject (fn-bpr-context-resolve context record))
+               (fn-record-content-subject record))
         (member-equal entry (fn-bpr-state-receipts st))
         (fn-bprv-entry-decidedp entry records)
         (equal (fn-bpr-receipt-entry-receipt entry)

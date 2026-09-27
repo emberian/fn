@@ -190,16 +190,62 @@
       (nfix crc)
     (fn-bpp-crc16-octet (fn-bpp-crc16-bit crc) (- k 1))))
 
-(defun fn-bpp-crc16-scan (crc xs)
-  (declare (xargs :guard (and (natp crc) (fn-cbor-octet-listp xs))))
+;; The executed CRC-16/X.25 (PRF-225, lane bp-fragments-10mib).  Every
+;; bundle block's CRC-16 was eight bitwise register steps per octet over
+;; generic floor/expt arithmetic: 77 percent of the receiver's CPU when a
+;; 1 MiB fragment family was reassembled, encoded and delivered (sb-sprof,
+;; planning/evidence/bp-fragments-10mib-2026-09-27.md).  As for CRC-32C
+;; (PRF-190) the executed scan does the eight steps of one octet as one
+;; lookup in a 256-entry table that the defconst evaluates from
+;; `fn-bpp-crc16-octet', so it cannot drift; `fn-bpp-crc16-scan-table-is-scan'
+;; equates the scans, the octet step checked at every 16-bit register.
+(defun fn-bpp-crc16-table-row (r j)
+  (declare (xargs :guard (and (natp r) (natp j))
+                  :measure (nfix (- 16 (nfix j)))))
+  (if (and (natp j) (< j 16))
+      (cons (fn-bpp-crc16-octet (+ (* 16 (nfix r)) j) 8)
+            (fn-bpp-crc16-table-row r (+ 1 j)))
+    nil))
+
+(defun fn-bpp-crc16-table-rows (r)
+  (declare (xargs :guard (natp r)
+                  :measure (nfix (- 16 (nfix r)))))
+  (if (and (natp r) (< r 16))
+      (cons (fn-bpp-crc16-table-row r 0)
+            (fn-bpp-crc16-table-rows (+ 1 r)))
+    nil))
+
+(defconst *fn-bpp-crc16-table* (fn-bpp-crc16-table-rows 0))
+
+(defun fn-bpp-crc16-table-ref (i)
+  (declare (xargs :guard (and (natp i) (< i 256))
+                  :verify-guards nil))
+  (nth (logand i 15) (nth (ash i -4) *fn-bpp-crc16-table*)))
+
+(defun fn-bpp-crc16-scan-table (crc xs)
+  (declare (xargs :guard (and (natp crc) (fn-cbor-octet-listp xs))
+                  :verify-guards nil))
   (if (consp xs)
-      (fn-bpp-crc16-scan
-       (fn-bpp-crc16-octet (fn-bpp-xor crc (car xs) 16) 8)
-       (cdr xs))
-    (nfix crc)))
+      (let ((c (logand (logxor crc (car xs)) 65535)))
+        (fn-bpp-crc16-scan-table
+         (logand (logxor (ash c -8) (fn-bpp-crc16-table-ref (logand c 255)))
+                 65535)
+         (cdr xs)))
+    crc))
+
+(defun fn-bpp-crc16-scan (crc xs)
+  (declare (xargs :guard (and (natp crc) (fn-cbor-octet-listp xs))
+                  :verify-guards nil))
+  (mbe :logic (if (consp xs)
+                  (fn-bpp-crc16-scan
+                   (fn-bpp-crc16-octet (fn-bpp-xor crc (car xs) 16) 8)
+                   (cdr xs))
+                (nfix crc))
+       :exec (fn-bpp-crc16-scan-table crc xs)))
 
 (defun fn-bpp-crc16 (xs)
-  (declare (xargs :guard (fn-cbor-octet-listp xs)))
+  (declare (xargs :guard (fn-cbor-octet-listp xs)
+                  :verify-guards nil))
   (fn-bpp-xor (fn-bpp-crc16-scan 65535 xs) 65535 16))
 
 (defun fn-bpp-crc32c-bit (crc)
@@ -563,9 +609,143 @@
                                         binary-logand ash fn-bpp-crc-shift-and-mask
                                         fn-bpp-crc32c-table-ref-is-natural)))))
 
+;; PRF-225: the table-driven CRC-16 scan is the bitwise one.  The octet
+;; step is checked at every one of the 65,536 registers by evaluation inside
+;; the proof (fn-bpp-crc16-step-agrees), which is the whole argument.
+(encapsulate
+  ()
+  (local (encapsulate
+           ()
+           (local (include-book "arithmetic-5/top" :dir :system))
+           (defthm fn-bpp-crc16-shift-and-mask
+             (implies (natp c)
+                      (and (equal (ash c -8) (floor c 256))
+                           (equal (ash c -4) (floor c 16))
+                           (equal (logand c 255) (mod c 256))
+                           (equal (logand c 15) (mod c 16)))))
+           (defthm fn-bpp-crc16-masked-bounds
+             (implies (integerp x)
+                      (and (natp (logand x 65535))
+                           (< (logand x 65535) 65536)
+                           (natp (logand x 255))
+                           (< (logand x 255) 256))))))
+  (local (defun fn-bpp-crc16-step-agrees (n)
+           (declare (xargs :measure (nfix n)))
+           (if (zp n)
+               t
+             (and (equal (logand (logxor (ash (- n 1) -8)
+                                         (fn-bpp-crc16-table-ref
+                                          (logand (- n 1) 255)))
+                                 65535)
+                         (fn-bpp-crc16-octet (- n 1) 8))
+                  (natp (fn-bpp-crc16-table-ref (logand (- n 1) 255)))
+                  (fn-bpp-crc16-step-agrees (- n 1))))))
+  (local (defthm fn-bpp-crc16-step-agrees-65536
+           (fn-bpp-crc16-step-agrees 65536)))
+  (local (defthm fn-bpp-crc16-step-agrees-means
+           (implies (and (fn-bpp-crc16-step-agrees n) (natp n) (natp c) (< c n))
+                    (and (equal (logand (logxor (ash c -8)
+                                                (fn-bpp-crc16-table-ref
+                                                 (logand c 255)))
+                                        65535)
+                                (fn-bpp-crc16-octet c 8))
+                         (natp (fn-bpp-crc16-table-ref (logand c 255)))))
+           :hints (("Goal" :in-theory (disable fn-bpp-crc16-table-ref
+                                               fn-bpp-crc16-octet
+                                               binary-logxor binary-logand ash)))))
+  (local (defthm fn-bpp-crc16-step-is-octet
+           (implies (and (natp c) (< c 65536))
+                    (and (equal (logand (logxor (ash c -8)
+                                                (fn-bpp-crc16-table-ref
+                                                 (logand c 255)))
+                                        65535)
+                                (fn-bpp-crc16-octet c 8))
+                         (natp (fn-bpp-crc16-table-ref (logand c 255)))))
+           :hints (("Goal" :use ((:instance fn-bpp-crc16-step-agrees-means
+                                            (n 65536)))
+                           :in-theory (disable fn-bpp-crc16-step-agrees-means
+                                               fn-bpp-crc16-step-agrees
+                                               fn-bpp-crc16-table-ref
+                                               fn-bpp-crc16-octet
+                                               binary-logxor binary-logand ash)))))
+  (local (defthm fn-bpp-crc16-masked-register
+           (implies (and (natp crc) (natp x))
+                    (and (equal (logand (logxor crc x) 65535)
+                                (fn-bpp-xor crc x 16))
+                         (natp (fn-bpp-xor crc x 16))
+                         (< (fn-bpp-xor crc x 16) 65536)))
+           :hints (("Goal" :use ((:instance fn-bpp-xor-is-masked-logxor
+                                            (a crc) (b x) (k 16))
+                                 (:instance fn-bpp-xor-is-bounded
+                                            (a crc) (b x) (k 16)))
+                           :in-theory (disable fn-bpp-xor binary-logxor
+                                               binary-logand
+                                               fn-bpp-xor-is-bounded)))))
+  (local (defthm fn-bpp-crc16-scan-table-step
+           (implies (and (natp crc) (natp x))
+                    (equal (logand (logxor (ash (logand (logxor crc x) 65535) -8)
+                                           (fn-bpp-crc16-table-ref
+                                            (logand (logand (logxor crc x) 65535)
+                                                    255)))
+                                   65535)
+                           (fn-bpp-crc16-octet (fn-bpp-xor crc x 16) 8)))
+           :hints (("Goal" :use ((:instance fn-bpp-crc16-masked-register)
+                                 (:instance fn-bpp-crc16-step-is-octet
+                                            (c (fn-bpp-xor crc x 16))))
+                           :in-theory (theory 'ground-zero)))))
+  (local (defthm fn-bpp-crc16-octet-natural
+           (natp (fn-bpp-crc16-octet c k))
+           :rule-classes :type-prescription))
+  (local (defthm fn-bpp-crc16-octet-list-car-natural
+           (implies (and (fn-cbor-octet-listp xs) (consp xs))
+                    (natp (car xs)))))
+  (defthmd fn-bpp-crc16-scan-table-is-scan
+    (implies (and (natp crc) (fn-cbor-octet-listp xs))
+             (equal (fn-bpp-crc16-scan-table crc xs)
+                    (fn-bpp-crc16-scan crc xs)))
+    :hints (("Goal" :induct (fn-bpp-crc16-scan-table crc xs)
+                    :in-theory (union-theories
+                                '(fn-bpp-crc16-scan-table fn-bpp-crc16-scan
+                                  fn-bpp-crc16-scan-table-step
+                                  fn-bpp-crc16-octet-natural
+                                  fn-bpp-crc16-octet-list-car-natural
+                                  fn-cbor-octet-listp natp nfix)
+                                (theory 'minimal-theory)))))
+  (local (defthm fn-bpp-crc16-nth-row-is-list
+           (implies (true-list-listp l) (true-listp (nth n l)))))
+  (local (defthm fn-bpp-crc16-table-is-rows
+           (true-list-listp *fn-bpp-crc16-table*)))
+  (local (defthm fn-bpp-crc16-index-naturals
+           (implies (natp i)
+                    (and (natp (ash i -4)) (natp (logand i 15))))
+           :hints (("Goal" :in-theory (enable fn-bpp-crc16-shift-and-mask)))))
+  (verify-guards fn-bpp-crc16-table-ref
+    :hints (("Goal" :use ((:instance fn-bpp-crc16-nth-row-is-list
+                                     (l *fn-bpp-crc16-table*) (n (ash i -4)))
+                          fn-bpp-crc16-table-is-rows
+                          fn-bpp-crc16-index-naturals)
+                    :in-theory (union-theories
+                                '(natp) (theory 'minimal-theory)))))
+  (verify-guards fn-bpp-crc16-scan-table
+    :hints (("Goal" :use ((:instance fn-bpp-crc16-step-is-octet
+                                     (c (logand (logxor crc (car xs)) 65535)))
+                          (:instance fn-bpp-crc16-masked-bounds
+                                     (x (logxor crc (car xs))))
+                          (:instance fn-bpp-crc16-masked-bounds
+                                     (x (logand (logxor crc (car xs)) 65535)))
+                          (:instance fn-bpp-crc16-octet-list-car-natural))
+                    :in-theory (union-theories
+                                '(natp fn-cbor-octet-listp fn-cbor-octetp
+                                  fn-bpp-crc16-octet-natural
+                                  (:type-prescription binary-logxor)
+                                  (:type-prescription binary-logand)
+                                  (:type-prescription ash))
+                                (theory 'minimal-theory))))))
+
 (verify-guards fn-bpp-crc16-bit)
 (verify-guards fn-bpp-crc16-octet)
-(verify-guards fn-bpp-crc16-scan)
+(verify-guards fn-bpp-crc16-scan
+  :hints (("Goal" :use ((:instance fn-bpp-crc16-scan-table-is-scan)))))
 (verify-guards fn-bpp-crc16)
 (verify-guards fn-bpp-crc32c-bit)
 (verify-guards fn-bpp-crc32c-octet)

@@ -4,30 +4,247 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
-    "books/consumer-store-invariants": {
-      "seconds": 10.087,
-      "run": "certify-20260927T043101Z-713885",
+    "books/acceptance-payload-ref": {
+      "seconds": 10.886,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/bp-node-debt-cache-invariants": {
+      "seconds": 11.205,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/bp-node-forward-plan": {
+      "seconds": 13.191,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/bp-node-fragment-guards": {
+      "seconds": 11.323,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/bp-node-progress-selection-invariants": {
+      "seconds": 10.353,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/bp-node-rotation-buffer": {
+      "seconds": 10.835,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/byte-store-k0-authority-error": {
+      "seconds": 14.924,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/byte-store-k0-marker": {
+      "seconds": 12.703,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/byte-store-k0-step": {
+      "seconds": 10.365,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/byte-store-k0-step-lemmas": {
+      "seconds": 12.997,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/byte-store-k0-step-root-fence": {
+      "seconds": 11.406,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/catalog": {
+      "seconds": 10.593,
+      "run": "certify-20260927T053413Z-938097",
       "host": "hbox",
       "jobs": 2,
       "verdict": "passed"
     },
+    "books/catalog-refresh": {
+      "seconds": 14.806,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/config-owner-live": {
+      "seconds": 38.485,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/config-owner-read-invariants": {
+      "seconds": 100.035,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/consumer-store-invariants": {
+      "seconds": 11.737,
+      "run": "certify-20260927T060441Z-1102076",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/heap-reservation": {
+      "seconds": 13.693,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
     "books/native-admin": {
-      "seconds": 10.242,
-      "run": "certify-20260927T045756Z-3635405",
+      "seconds": 13.5,
+      "run": "certify-20260927T060441Z-1102076",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/nntp-auth": {
+      "seconds": 11.788,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/nntp-auth-fold": {
+      "seconds": 11.771,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/nntp-invariants": {
+      "seconds": 10.035,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/nntp-post": {
+      "seconds": 11.837,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/owner-agent": {
+      "seconds": 10.644,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/owner-checkpoint-writer": {
+      "seconds": 11.878,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/owner-enrollment-read": {
+      "seconds": 11.845,
+      "run": "certify-20260927T062853Z-481059",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     },
     "books/owner-invariants": {
-      "seconds": 13.55,
-      "run": "certify-20260927T050619Z-3728043",
+      "seconds": 29.553,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/owner-tls-prefix": {
+      "seconds": 16.626,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/peer-authored-accept": {
+      "seconds": 10.234,
+      "run": "certify-20260927T060346Z-185095",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/peer-pull-session": {
+      "seconds": 10.185,
+      "run": "certify-20260927T060441Z-1102076",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/store-reclaim": {
+      "seconds": 10.483,
+      "run": "certify-20260927T060346Z-185095",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "tests/acl2/config-carried-open-tests": {
+      "seconds": 10.135,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "tests/acl2/config-carried-readback-tests": {
+      "seconds": 10.085,
+      "run": "certify-20260927T062853Z-481059",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     },
     "tests/acl2/native-admin-tests": {
-      "seconds": 11.487,
-      "run": "certify-20260927T045756Z-3635405",
+      "seconds": 21.011,
+      "run": "certify-20260927T060441Z-1102076",
+      "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "tests/acl2/source-routes-tests": {
+      "seconds": 11.384,
+      "run": "certify-20260927T062853Z-481059",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "tests/acl2/store-checkpoint-tables-tests": {
+      "seconds": 11.504,
+      "run": "certify-20260927T062853Z-481059",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"

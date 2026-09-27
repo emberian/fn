@@ -687,8 +687,14 @@ class NativeHybridAuthorTest(unittest.TestCase):
             original_path, received_path = original_paths[0], received_paths[0]
             self.assertEqual(received_path,
                              b"Path: relay.example.invalid!!" + original_path[6:])
-            self.assertEqual(received.replace(received_path + b"\r\n", b"", 1),
-                             original.replace(original_path + b"\r\n", b"", 1))
+            # Each node serves its own Xref line first (NNT-052, D01: Path
+            # and Xref are the node's projections); the rest is one article.
+            def without_xref(article):
+                return b"\r\n".join(line for line in article.split(b"\r\n")
+                                     if not line.startswith(b"Xref: "))
+            self.assertEqual(
+                without_xref(received.replace(received_path + b"\r\n", b"", 1)),
+                without_xref(original.replace(original_path + b"\r\n", b"", 1)))
             carried = self.root / "peer-received.eml"
             carried.write_bytes(received)
             ok("hybrid-verify-carrier", carried, self.ml_public)

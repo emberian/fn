@@ -4,6 +4,8 @@
 (in-package "ACL2")
 (include-book "bp-adu")
 (include-book "bp-ingress")
+; A context holds its request by REFERENCE (PKT-646, PRF-249).
+(include-book "bp-request-ref")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
@@ -68,7 +70,7 @@
 (defun fn-bpr-context-incarnation (x) (fn-bpa-nth 6 x))
 (defun fn-bpr-context-auth-context (x) (fn-bpa-nth 7 x))
 (defun fn-bpr-context-terms-id (x) (fn-bpa-nth 8 x))
-(defun fn-bpr-context-request (x) (fn-bpa-nth 9 x))
+(defun fn-bpr-context-request-ref (x) (fn-bpa-nth 9 x))
 (defun fn-bpr-make-context (work-id msgid subject archive-id peer policy
                                      incarnation auth-context terms request)
   (list work-id msgid subject archive-id peer policy incarnation auth-context
@@ -105,7 +107,7 @@
   (equal (fn-bpr-context-terms-id (fn-bpr-make-context work-id msgid subject archive-id peer policy
                                      incarnation auth-context terms request)) terms))
 (defthm fn-bpr-context-request-of-fn-bpr-make-context
-  (equal (fn-bpr-context-request (fn-bpr-make-context work-id msgid subject archive-id peer policy
+  (equal (fn-bpr-context-request-ref (fn-bpr-make-context work-id msgid subject archive-id peer policy
                                      incarnation auth-context terms request)) request))
 (defthm fn-bpr-context-shapep-forward-shape
   (implies (fn-bpr-context-shapep x) (and (consp x) (true-listp x)))
@@ -120,7 +122,7 @@
        (implies (fn-bpr-context-incarnation x) (consp x))
        (implies (fn-bpr-context-auth-context x) (consp x))
        (implies (fn-bpr-context-terms-id x) (consp x))
-       (implies (fn-bpr-context-request x) (consp x)))
+       (implies (fn-bpr-context-request-ref x) (consp x)))
   :rule-classes ((:forward-chaining :corollary (implies (fn-bpr-context-work-id x) (consp x))
                                     :trigger-terms ((fn-bpr-context-work-id x)))
                  (:forward-chaining :corollary (implies (fn-bpr-context-msgid x) (consp x))
@@ -139,9 +141,9 @@
                                     :trigger-terms ((fn-bpr-context-auth-context x)))
                  (:forward-chaining :corollary (implies (fn-bpr-context-terms-id x) (consp x))
                                     :trigger-terms ((fn-bpr-context-terms-id x)))
-                 (:forward-chaining :corollary (implies (fn-bpr-context-request x) (consp x))
-                                    :trigger-terms ((fn-bpr-context-request x)))))
-(in-theory (disable (:d fn-bpr-context-shapep) (:d fn-bpr-context-work-id) (:d fn-bpr-context-msgid) (:d fn-bpr-context-subject) (:d fn-bpr-context-archive-id) (:d fn-bpr-context-peer-eid) (:d fn-bpr-context-policy-id) (:d fn-bpr-context-incarnation) (:d fn-bpr-context-auth-context) (:d fn-bpr-context-terms-id) (:d fn-bpr-context-request)
+                 (:forward-chaining :corollary (implies (fn-bpr-context-request-ref x) (consp x))
+                                    :trigger-terms ((fn-bpr-context-request-ref x)))))
+(in-theory (disable (:d fn-bpr-context-shapep) (:d fn-bpr-context-work-id) (:d fn-bpr-context-msgid) (:d fn-bpr-context-subject) (:d fn-bpr-context-archive-id) (:d fn-bpr-context-peer-eid) (:d fn-bpr-context-policy-id) (:d fn-bpr-context-incarnation) (:d fn-bpr-context-auth-context) (:d fn-bpr-context-terms-id) (:d fn-bpr-context-request-ref)
                     (:d fn-bpr-make-context)))
 
 (defun fn-bpr-contextp (config x)
@@ -155,7 +157,7 @@
        (fn-bpa-metadatap (fn-bpr-context-incarnation x))
        (fn-bpa-metadatap (fn-bpr-context-auth-context x))
        (fn-bpa-metadatap (fn-bpr-context-terms-id x))
-       (fn-bpa-requestp (fn-bpr-context-request x))))
+       (fn-bpaj-request-refp (fn-bpr-context-request-ref x))))
 (defthm fn-bpr-contextp-forward-shape
   (implies (fn-bpr-contextp config x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining
@@ -279,7 +281,29 @@
    (fn-bpa-request-subject request) (fn-record-obligation-id record)
    (fn-bpa-request-source-eid request) (fn-bpa-request-policy-id request)
    (fn-bpa-request-incarnation request) (fn-bpa-request-auth-context request)
-   (fn-bpa-request-terms-id request) request))
+   (fn-bpa-request-terms-id request) (fn-bpaj-request-ref request)))
+
+; PKT-646 (D27): a context holds its request's REFERENCE (HEAD LENGTH
+; DIGEST, books/bp-request-ref.lisp), never the request ADU.  A context
+; bound at replay from a durable record that holds only the reference
+; reads its metadata from the reference's HEAD; for a request, the two
+; constructions agree (`fn-bpr-context-from-ref-of-request-ref').
+(defun fn-bpr-context-from-ref (record ref)
+  (let ((m (fn-bpaj-ref-metadata ref)))
+    (fn-bpr-make-context
+     (fn-bpa-request-work-id m) (fn-record-msgid record)
+     (fn-bpa-request-subject m) (fn-record-obligation-id record)
+     (fn-bpa-request-source-eid m) (fn-bpa-request-policy-id m)
+     (fn-bpa-request-incarnation m) (fn-bpa-request-auth-context m)
+     (fn-bpa-request-terms-id m) ref)))
+
+(defthm fn-bpr-context-from-ref-of-request-ref
+  (implies (fn-bpa-requestp request)
+           (equal (fn-bpr-context-from-ref record (fn-bpaj-request-ref request))
+                  (fn-bpr-context-from-request record request)))
+  :hints (("Goal" :use ((:instance fn-bpaj-ref-metadata-of-request-ref))
+           :in-theory (disable fn-bpaj-ref-metadata-of-request-ref
+                               fn-bpaj-request-ref fn-bpa-requestp))))
 
 ; The article record a Store event commits: a plain article record is its
 ; own; a signed acceptance composite (kind 4, `fn-stxa-p') commits the
@@ -332,9 +356,8 @@
 ; The identity/conflict transition is shared by historical raw-byte contexts
 ; and the transit context.  Only their Store-payload admission predicates
 ; differ; both preserve the original request for receipt construction.
-(defun fn-bpr-bind-request-context (st record request)
-    (let* ((context (fn-bpr-context-from-request record request))
-           (prior (fn-bpr-find-context (fn-bpr-context-work-id context)
+(defun fn-bpr-bind-context (st context)
+    (let* ((prior (fn-bpr-find-context (fn-bpr-context-work-id context)
                                        (fn-bpr-state-contexts st)))
            (by-msgid (fn-bpr-find-context-msgid (fn-bpr-context-msgid context)
                                                 (fn-bpr-state-contexts st))))
@@ -347,6 +370,8 @@
                  (fn-bpr-state-config st)
                  (cons context (fn-bpr-state-contexts st))
                  (fn-bpr-state-receipts st) nil))))))
+(defun fn-bpr-bind-request-context (st record request)
+  (fn-bpr-bind-context st (fn-bpr-context-from-request record request)))
 
 ; Result tags: :accepted, :duplicate, :conflict, :refused.  The context is
 ; retained only after actual Store durable acceptance and a local A-POLICY.
@@ -357,25 +382,54 @@
       (list :refused st)
     (fn-bpr-bind-request-context st record request)))
 
-(defun fn-bpr-projected-request-acceptablep
-    (store config record request stored-octets policy-authorizedp)
-  (and (equal policy-authorizedp t) (fn-bpr-configp config)
-       (fn-bpa-requestp request) (fn-record-p record)
-       (fn-bpr-store-record-acceptedp store record)
-       (equal (fn-bpa-request-destination-eid request)
-              (fn-bpr-config-destination config))
-       (equal (fn-bpa-request-policy-id request)
-              (fn-bpr-config-policy-id config))
-       (equal stored-octets (fn-record-payload record))))
+;; The request a context's reference resolves to over RECORD's payload, or
+;; nil.  Proof vocabulary: the receiver invariants ground a context in the
+;; Store record it was bound to by resolving its reference there (a context
+;; bound from the request whose article IS the record's payload resolves to
+;; exactly that request, `fn-bpr-context-resolve-of-derived-context').
+(defun fn-bpr-context-resolve (context record)
+  (let ((ref (fn-bpr-context-request-ref context)))
+    (fn-bpaj-ref-request (car ref) (cadr ref) (caddr ref)
+                         (fn-record-payload record))))
 
-(defun fn-bpr-accept-projected-request
-    (st store record request stored-octets policy-authorizedp)
+(defthm fn-bpr-context-resolve-of-derived-context
+  (implies (and (fn-bpa-requestp request)
+                (equal (fn-bpa-request-article request)
+                       (fn-record-payload record)))
+           (equal (fn-bpr-context-resolve
+                   (fn-bpr-context-from-request record request) record)
+                  request))
+  :hints (("Goal" :use ((:instance fn-bpaj-ref-request-resolves-exactly))
+           :in-theory (disable fn-bpaj-ref-request-resolves-exactly
+                               fn-bpaj-ref-request fn-bpaj-request-ref
+                               fn-bpa-requestp))))
+
+;; A TRANSIT context's Store record holds the relay projection, not the
+;; request's article, so its acceptance compares the record's payload with
+;; the projection's pinned LENGTH and DIGEST (the transit intent's), and
+;; binds the context from the request's REFERENCE: nothing here holds or
+;; reads the request's bytes.
+(defun fn-bpr-projected-ref-acceptablep
+    (store config record ref stored-length stored-digest policy-authorizedp)
+  (let ((m (fn-bpaj-ref-metadata ref)))
+    (and (equal policy-authorizedp t) (fn-bpr-configp config)
+         (fn-bpaj-request-refp ref) (fn-record-p record)
+         (fn-bpr-store-record-acceptedp store record)
+         (equal (fn-bpa-request-destination-eid m)
+                (fn-bpr-config-destination config))
+         (equal (fn-bpa-request-policy-id m)
+                (fn-bpr-config-policy-id config))
+         (equal (len (fn-record-payload record)) stored-length)
+         (equal (fn-frame-digest (fn-record-payload record)) stored-digest))))
+
+(defun fn-bpr-accept-projected-ref
+    (st store record ref stored-length stored-digest policy-authorizedp)
   (if (not (and (fn-bpr-statep st) (not (consp (fn-bpr-state-pending st)))
-                (fn-bpr-projected-request-acceptablep
-                 store (fn-bpr-state-config st) record request
-                 stored-octets policy-authorizedp)))
+                (fn-bpr-projected-ref-acceptablep
+                 store (fn-bpr-state-config st) record ref
+                 stored-length stored-digest policy-authorizedp)))
       (list :refused st)
-    (fn-bpr-bind-request-context st record request)))
+    (fn-bpr-bind-context st (fn-bpr-context-from-ref record ref))))
 
 (defun fn-bpr-receipt-for (context config receipt-id)
   (fn-bpa-make-receipt receipt-id (fn-bpr-context-work-id context)
@@ -435,7 +489,10 @@
                                  (fn-bpr-state-receipts st) nil)
             st))))))
 
-; Regeneration requires the same exact accepted request context and a committed
+; Regeneration requires the accepted context of the same request -- by
+; reference: the same metadata and an article of the same length and digest
+; (a different article of one length and digest is a collision, A-CRYPTO,
+; `fn-bpaj-one-reference-is-one-request-or-a-digest-collision') -- and a committed
 ; receipt.  The new BP BID is purposely not an input to this article/receipt
 ; decision; transport retry cannot create a second charge or decision.
 (defun fn-bpr-receipt-adu (st request)
@@ -443,7 +500,8 @@
                       (fn-bpr-find-context (fn-bpa-request-work-id request)
                                            (fn-bpr-state-contexts st)))))
     (if (and (fn-bpr-statep st) context
-             (equal request (fn-bpr-context-request context)))
+             (equal (fn-bpaj-request-ref request)
+                    (fn-bpr-context-request-ref context)))
         (let ((entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
                                           (fn-bpr-state-receipts st))))
           (if entry (fn-bpa-encode (fn-bpr-receipt-entry-receipt entry)) nil))
@@ -457,8 +515,8 @@
 ; enabled: proofs induct on it.
 (deftheory fn-bp-receiver-vocabulary
   '(fn-bpr-configp fn-bpr-contextp fn-bpr-receipt-entryp fn-bpr-statep
-    fn-bpr-initial-state fn-bpr-context-from-request
-    fn-bpr-store-record-acceptedp fn-bpr-request-acceptablep
+    fn-bpr-initial-state fn-bpr-context-from-request fn-bpr-context-from-ref
+    fn-bpr-context-resolve fn-bpr-store-record-acceptedp fn-bpr-request-acceptablep
     fn-bpr-accept-request fn-bpr-receipt-for fn-bpr-prepare-receipt
     fn-bpr-commit-receipt fn-bpr-receipt-adu))
 (in-theory (disable fn-bp-receiver-vocabulary))

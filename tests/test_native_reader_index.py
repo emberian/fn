@@ -246,10 +246,13 @@ class NativeReaderIndexTest(unittest.TestCase):
         self.assertEqual([xref(row) for row in alt_rows],
                          [(b"1", [b"fn.alt:1"]),
                           (b"2", [b"fn.alt:2", b"fn.test:1"])])
-        # ARTICLE serves the stored octets: no Xref header was spliced in.
+        # ARTICLE serves this node's Xref line first, then the stored octets
+        # (NNT-052, PKT-668; D01: the stored octets stay a suffix).
         art_status, art_rows = self.command(reader, "ARTICLE " + cross, True)
         self.assertTrue(art_status.startswith(b"220 "), art_status)
-        self.assertFalse(any(row.lower().startswith(b"xref:") for row in art_rows))
+        xref_rows = [row for row in art_rows if row.lower().startswith(b"xref:")]
+        self.assertEqual(len(xref_rows), 1, art_rows)
+        self.assertTrue(art_rows[0].lower().startswith(b"xref:"), art_rows[0])
         reader[1].close()
         reader[0].close()
         self.stop_owner(owner)
