@@ -328,20 +328,29 @@ def key_history(image, store):
     return code, [l for l in so.splitlines() if l.startswith("generation=")]
 
 
-def check_statements(image, store, phase, got, stmts, ref_history, violations):
-    """The statement oracle (see KEYS_GROUP): run with the owner stopped."""
+def _generations(lines):
+    """(generation, principal) of each history line, the state left out: the
+    newest generation of a cut history is active where the reference, which
+    has a later one, lists it retired."""
+    return [re.sub(r" state=\S+", "", l) for l in lines]
+
+
+def check_statements(image, store, phase, got, stmts, ref_history, violations, pretend=()):
+    """The statement oracle (see KEYS_GROUP): run with the owner stopped.
+    PRETEND: a control's statements judged as served although they are not
+    (the rig's teeth: the oracle must then report the mismatch)."""
     code, hist = key_history(image, store)
-    rec = {"key_history": len(hist)}
+    rec = {"key_history": len(hist), "key_history_lines": hist[:2]}
     if code:
         violations.append("key-history-exit-%d" % code)
         return rec
-    present = [i for i in stmts if i < len(got) and got[i].startswith(b"220")]
+    present = [i for i in stmts if (i < len(got) and got[i].startswith(b"220")) or i in pretend]
     rec["statements_present"] = len(present)
     if hist:
         states = [re.search(r"state=(\S+)", l).group(1) for l in hist]
         if states[0] != "active" or any(x != "retired" for x in states[1:]):
             violations.append("key-history-states:%s" % states)
-        if hist != ref_history[len(ref_history) - len(hist):]:
+        if _generations(hist) != _generations(ref_history[len(ref_history) - len(hist):]):
             violations.append("key-history-not-a-prefix-of-the-reference")
     if present and len(hist) != 1 + len(present):
         violations.append("statement-change-mismatch:present-%d:generations-%d"
@@ -826,6 +835,17 @@ def cuts(a):
     for at, i in crng.sample(sorted(ackable), min(plan.get("control", 0), len(ackable))):
         controls[at + 1] = i + 1
         chosen.append((at + 1, "control", "flush", crng.randrange(1 << 30)))
+    # The statement oracle's teeth (lane ack-before-barrier): a cut just
+    # after the ack mark of the POST before statement S (flush mode), judged
+    # as if S were acknowledged and served.  All of S's writes follow that
+    # mark, so S is absent, and the oracle MUST report both the lost
+    # acknowledged article and the key history that lacks S's change.
+    stmts_all = done.get("statements") or []
+    stmt_controls = {}
+    cand = [(ack_at[s - 1], s) for s in stmts_all if s - 1 in ack_at and s in ack_at]
+    for at, s in crng.sample(sorted(cand), min(plan.get("stmtcontrol", 0), len(cand))):
+        stmt_controls[at + 1] = s
+        chosen.append((at + 1, "stmtcontrol", "flush", crng.randrange(1 << 30)))
     chosen.sort()
     if a.limit:
         chosen = chosen[:a.limit]
@@ -858,7 +878,10 @@ def cuts(a):
         refused = sorted(i for i, at in refuse_at.items() if at < cut)
         if phase == "control":
             acked.append(controls[cut])
+        if phase == "stmtcontrol":
+            acked.append(stmt_controls[cut])
         rec = {"cut": cut, "phase": phase, "mode": mode, "seed": seed, "acked": len(acked),
+               "pretend": [stmt_controls[cut]] if phase == "stmtcontrol" else [],
                "refused": len(refused),
                "durable_upto": tail["durable_upto"], "tail": tail["tail"], "kept": len(tail["kept"])}
         # The attempted bound: every i whose attempt could have begun by the
@@ -872,7 +895,7 @@ def cuts(a):
             attempted = posts
         violations = []
         if phase == "recover-crash" or (a.recover_crash and rrng.random() < a.recover_crash
-                                        and phase not in ("control", "init")):
+                                        and phase not in ("control", "stmtcontrol", "init")):
             # Interrupted recovery followed by another crash: this cut's image
             # recovers under a second dm-log-writes device, and power is cut
             # again at a write of that recovery.
@@ -880,10 +903,14 @@ def cuts(a):
             rec["second"] = second_cut(ctx, img, rrng, violations)
             phase = "recover-crash:" + phase
         if not violations:
-            evaluate(ctx, img, rec, phase.split(":")[-1], acked, refused, attempted, violations)
+            evaluate(ctx, img, rec, "post" if phase == "stmtcontrol" else phase.split(":")[-1],
+                     acked, refused, attempted, violations)
         rec["violations"] = violations
         if phase == "control":
             rec["control_caught"] = bool(violations)
+        elif phase == "stmtcontrol":
+            rec["control_caught"] = any(v.startswith("statement-change-mismatch")
+                                        for v in violations)
         elif violations:
             keep = work / "violations" / ("cut-%d" % cut)
             keep.mkdir(parents=True, exist_ok=True)
@@ -929,7 +956,8 @@ def evaluate(ctx, img, rec, phase, acked, refused, attempted, violations):
             return
         rec.update(check_store(ctx["image"], ctx["cfg"], ctx["port"], ctx["work"], phase, acked,
                                attempted, ctx["ref"], ctx["ref2"], violations, refused,
-                               ctx.get("statements") or (), ctx.get("ref_history") or []))
+                               ctx.get("statements") or (), ctx.get("ref_history") or [],
+                               rec.get("pretend") or ()))
     except Exception as e:  # a harness failure is not a verdict
         rec["harness_error"] = repr(e)[-400:]
     finally:
@@ -1085,7 +1113,7 @@ def second_cut(ctx, img, rng, violations):
 
 
 def check_store(image, cfg, port, work, phase, acked, attempted, ref, ref2, violations, refused=(),
-                stmts=(), ref_history=()):
+                stmts=(), ref_history=(), pretend=()):
     rec = {}
     acked_set = set(acked)
     code, so, se = native(image, "operator", cfg, "recover")
@@ -1124,7 +1152,7 @@ def check_store(image, cfg, port, work, phase, acked, attempted, ref, ref2, viol
                 violations.append("key-history-not-the-reference:%d" % len(hist))
         else:
             rec.update(check_statements(image, store, phase, got, stmts, list(ref_history),
-                                        violations))
+                                        violations, pretend))
     for i in refused:
         if not got[i].startswith(b"430"):
             violations.append("refused-became-accepted:%d:%r" % (i, got[i][:40]))
@@ -1291,7 +1319,7 @@ def summary(paths):
             c = by.setdefault(r["phase"], collections.Counter())
             c["cuts"] += 1
             c[r["mode"]] += 1
-            if r["phase"] == "control":
+            if r["phase"] in ("control", "stmtcontrol"):
                 c["controls_caught"] += bool(r.get("control_caught"))
             elif r["violations"]:
                 c["violations"] += 1
@@ -1306,11 +1334,15 @@ def summary(paths):
                 c["second_cuts"] += 1
             c["e2fsck_nonzero"] += bool(r.get("e2fsck"))
             c["harness_error"] += bool(r.get("harness_error"))
+            if "statements_present" in r:
+                c["statement_checks"] += 1
+                c["statements_present"] += r["statements_present"]
         for ph, c in by.items():
             rows.append((name, ph, dict(c)))
     cols = ["cuts", "violations", "controls_caught", "flush", "prefix", "subset", "torn",
             "acked_checked", "refused_checked", "inflight_committed", "inflight_absent",
-            "bindings_checked", "second_cuts", "e2fsck_nonzero", "harness_error"]
+            "bindings_checked", "second_cuts", "e2fsck_nonzero", "harness_error",
+            "statement_checks", "statements_present"]
     print("| campaign | phase | " + " | ".join(cols) + " |")
     print("| --- | --- | " + " | ".join("---:" for _ in cols) + " |")
     tot = collections.Counter()
