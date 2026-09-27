@@ -72,10 +72,18 @@
 ; the keyring that verifies *stxt-r1*.  Tooth (the verdict is :absent):
 ; *stxt-r1* is :unverified under the empty keyring (its key not enrolled)
 ; and contributes a statement under *stxt-keyring*.
+; by specification: the flip -- the article carries its payload as an arena
+; handle (natp); the theorem is about the payload's OCTETS, which are the
+; bytes under that handle in the arena that interned the completing journal
+; (owner-served-invariants-tests osi-finish; held-rows-tests fn-hrt-bytes).
+(defconst *rht-art-octets*
+  (fn-hrt-bytes *osi-completing-prior* (fn-article-payload *rht-art*)))
+(assert-event (and (natp (fn-article-payload *rht-art*))
+                   (consp *rht-art-octets*)))
 (assert-event (equal (fn-stx-verdict-token
-                      (fn-stx-verdict-of-octets (fn-article-payload *rht-art*) nil 0))
+                      (fn-stx-verdict-of-octets *rht-art-octets* nil 0))
                      :absent))
-(assert-event (equal (fn-stx-delta (fn-article-payload *rht-art*) *stxt-keyring*) nil))
+(assert-event (equal (fn-stx-delta *rht-art-octets* *stxt-keyring*) nil))
 (assert-event (equal (fn-stx-verdict-token
                       (fn-stx-verdict-of-octets (fn-article-payload *stxt-r1*) nil 0))
                      :unverified))

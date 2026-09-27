@@ -16,7 +16,11 @@
 ; a durable attempt, run as an actual finite trace rather than a single step.
 
 (defconst *bpw-teeth-groups* '("fn.letters"))
-(defconst *bpw-teeth-payload* '(72 105 13 10))
+; by specification: the flip -- the node's acceptance machine carries the
+; payload as an arena handle (natp), never octets (books/acceptance.lisp
+; fn-article-payload natp; fn-accept-prepare refuses a non-natp payload).
+; This trace's one article (octets (72 105 13 10) before the flip) is handle 0.
+(defconst *bpw-teeth-payload* 0)
 (defconst *bpw-teeth-node*
   (fn-node-complete
    (fn-node-prepare (fn-node-initial-state *bpw-teeth-groups* 16)

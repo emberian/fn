@@ -108,6 +108,10 @@
 ; ---------------------------------------------------------------------------
 ; KEYSTONE fn-bpaj-transit-context-binds-the-live-request, over the
 ; native-app tests' Store (*bpr-store*, which committed *bpr-record*).
+; by specification: the flip -- the Store's context lookup and the replay
+; read the retained rows through the arena (fn-arena); the native-app tests'
+; arena holds *bpr-payloads* (bp-native-app-tests' in-arena-fn-bpaj-replay).
+(bpr-lift fn-bpaj-context-record 2)
 (defmacro bprf-binds-concl (octets ctx record)
   `(and (equal (fn-bpr-context-from-ref ,record (fn-bpaj-context-ref ,ctx))
                (fn-bpr-context-from-request ,record (fn-bpaj-request ,octets)))
@@ -118,7 +122,8 @@
 ; replay resolves for it.
 (assert-event
  (and *bprf-ctx*
-      (equal (fn-bpaj-context-record *bpr-store* *bprf-ctx*) *bpr-record*)
+      (equal (in-arena-fn-bpaj-context-record *bpr-payloads* *bpr-store* *bprf-ctx*)
+             *bpr-record*)
       (bprf-binds-concl *bprf-r-octets* *bprf-ctx* *bpr-record*)))
 ; The replay that reads it binds exactly that context into the receiver, and
 ; the receiver's reference is R's.
@@ -143,11 +148,11 @@
 ; differ), and R2's intent over R's Store record (its pinned projection is
 ; R2's article, not the record's payload).
 (assert-event
- (not (car (fn-bpaj-replay *bpr-store*
+ (not (car (in-arena-fn-bpaj-replay *bpr-payloads* *bpr-store*
                            (list *bpaj-config* *bpaj-intent* *bprf-ctx2*)))))
 (assert-event
- (not (car (fn-bpaj-replay
-            *bpr-store*
+ (not (car (in-arena-fn-bpaj-replay
+            *bpr-payloads* *bpr-store*
             (list *bpaj-config*
                   (bpaj-test-intent "bundle-original" *bprf-r2-octets* 7
                                     (fn-record-txid *bpr-record*) :duplicate
