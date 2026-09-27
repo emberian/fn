@@ -1887,7 +1887,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
    (lambda ()
      (let* ((entropy-id
               (and (eq operation :install)
-                   (fnn-octet-list (fnn-anchor-csprng-nonce 32))))
+                   (fnn-octet-list (fnn-surface-call :control 'fnn-anchor-csprng-nonce 32))))
             (proposal
               (fnn-owner-core 'fn-owner-topic-propose
                               operation source-sequence observed-uid
@@ -3582,12 +3582,11 @@ reads run as a :control quantum; the thread's registration is the roster's."
           ;; and the checkpoint's F row names the new segment.  A failed
           ;; rotation is a failed publication: logged, serving continues.
           (let* ((store (fnn-owner-service-store service))
-                 (position (and (fnn-store-logp store)
-                                (handler-case (fnn-log-rotate store)
-                                  ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
-                                  (fnn-store-error (e)
-                                    (fnn-err "CHECKPOINT auto failed: ~a" e)
-                                    :failed))))
+                 (position (handler-case (fnn-log-rotate store)
+                             ((or fnn-store-fault fnn-store-indeterminate) (e) (error e))
+                             (fnn-store-error (e)
+                               (fnn-err "CHECKPOINT auto failed: ~a" e)
+                               :failed)))
                  (captured (and (not (eq position :failed))
                                 (fnn-owner-core 'fn-owner-sco-capture
                                                 (fnn-checkpoint-budget-test-override nil)

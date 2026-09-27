@@ -218,5 +218,40 @@ class RawPostEntryWitnesses(unittest.TestCase):
                 self.assertIn(b"committed sequence=", posted.stdout)
 
 
+
+class DtnOmittedSurfaceWitnesses(unittest.TestCase):
+    """The DTN image (host/native/build-dtn.lisp) does not load the NNTP
+    service, the credential store or the control socket
+    (*fnn-image-omitted-surfaces*).  An operator verb that needs one is
+    refused by name (usage, exit 5), never a fault: the dispatch refuses the
+    plan, and every call into an omitted file goes through io.lisp's
+    fnn-surface-call (tools/host_check.py --load finds none otherwise)."""
+
+    def test_verbs_on_an_omitted_surface_are_refused_by_name(self):
+        if not (DTN.is_file() and os.access(DTN, os.X_OK)):
+            self.skipTest(f"build {DTN} for the saved-image witness")
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / "store"
+            initialized = invoke(DTN, "store", str(store), "init", "fn.test")
+            self.assertEqual(initialized.returncode, 0, initialized.stderr.decode())
+            config = Path(tmp) / "fn.toml"
+            config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\n'
+                              'port = 1119\n'.format(store), encoding="ascii")
+            for words, surface in ((("run", "--once"), b"nntp-service"),
+                                   (("tls", "reload"), b"control"),
+                                   (("keys", "redecide", "<x@test>"), b"control")):
+                with self.subTest(words=words):
+                    refused = invoke(DTN, "operator", str(config), *words)
+                    self.assertEqual(refused.returncode, 5,
+                                     refused.stdout.decode() + refused.stderr.decode())
+                    said = refused.stdout + refused.stderr
+                    self.assertIn(b"surface, which this image omits", said)
+                    self.assertIn(surface, said)
+                    self.assertNotIn(b"fault", said.lower())
+            # A verb on no omitted surface still runs there.
+            status = invoke(DTN, "operator", str(config), "status")
+            self.assertEqual(status.returncode, 0,
+                             status.stdout.decode() + status.stderr.decode())
+
 if __name__ == "__main__":
     unittest.main()

@@ -24,9 +24,12 @@ the difference explicit instead:
               its closure, unless DTN_OMITTED lists that name with the reason
               the DTN image cannot reach the reference;
   raw         the same for the raw side: no raw module build-dtn.lisp loads
-              calls or `#'`-names a function defined only in a raw module that
-              build.lisp loads and build-dtn.lisp does not, unless
-              DTN_RAW_REACH gives the reason the call cannot run there.  The
+              calls, `#'`-names or quotes a function defined only in a raw
+              module that build.lisp loads and build-dtn.lisp does not, unless
+              the quote is the NAME of io.lisp's surface guard
+              (fnn-surface-call / fnn-surface-function SURFACE 'NAME, a named
+              refusal on an image that omits SURFACE) or DTN_RAW_REACH gives
+              the reason the call cannot run there.  The
               first fix for the store-init failure loaded checkpoint-host and
               the image then failed on `fnn-checkpoint-name-result`, which
               io.lisp called and only checkpoint.lisp defined;
@@ -119,52 +122,11 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
         "includes books/topic-history-authorship for topic-local.lisp, not loaded; defines nothing", {}),
 }
 
-# (raw module that calls, raw function defined only outside the DTN image) -> why
-DTN_RAW_REACH: dict[tuple[str, str], str] = {
-    ("host/native/owner.lisp", "fnn-anchor-csprng-nonce"):
-        "only in fnn-owner-topic-local-serialized, which only control.lisp calls; "
-        "control.lisp is not loaded",
-    **{("host/native/operator.lisp", name):
-       "operator.lisp's `run` executor (the NNTP service), `post` executor and "
-       "live-owner admin arm; build-dtn.lisp names :nntp-service and :control in "
-       "*fnn-image-omitted-surfaces*, so the operator refuses `run` and `post` "
-       "(exit 5) and never takes the live arm"
-       for name in ("fnn-control-admin", "fnn-control-live-status", "fnn-control-owner-run-normalized",
-                    "fnn-control-remove-stale-offline",
-                    "fnn-control-socket-path-p", "fnn-control-submit",
-                    "fnn-feed-service-close", "fnn-feed-service-start",
-                    "fnn-pull-service-close", "fnn-pull-service-start", "fnn-pull-service-wake",
-                    "fnn-feed-service-wake", "fnn-native-auth-startup-hook")},
-    ("host/native/operator.lisp", "fnn-pinv-execute"):
-        "operator.lisp's peering executor; fnn-operator-dispatch-plan maps :peering "
-        "to the :control surface, which build-dtn.lisp names in "
-        "*fnn-image-omitted-surfaces*, so the DTN operator refuses it (the usage exit) "
-        "before this call",
-    ("host/native/operator.lisp", "fnn-keys-execute"):
-        "operator.lisp's `keys redecide` executor (host/native/keys.lisp, PRF-166); "
-        "fnn-operator-dispatch-plan maps :keys to the :control surface, which "
-        "build-dtn.lisp names in *fnn-image-omitted-surfaces*, so the DTN operator "
-        "refuses it (the usage exit) before this call",
-    ("host/native/operator.lisp", "fnn-tls-execute"):
-        "operator.lisp's `tls reload` executor (host/native/tls-reload.lisp, PRF-212); "
-        "fnn-operator-dispatch-plan maps :tls to the :control surface, which "
-        "build-dtn.lisp names in *fnn-image-omitted-surfaces*, so the DTN operator "
-        "refuses it (the usage exit) before this call",
-    ("host/native/operator.lisp", "fnn-tls-status-line"):
-        "operator.lisp's live `status` arm (PRF-212's served line); it runs only when "
-        "the owner answered over the control socket, and fnn-operator-status-once "
-        "takes that arm only when the image does not omit :control, which "
-        "build-dtn.lisp names in *fnn-image-omitted-surfaces*",
-    ("host/native/operator.lisp", "fnn-control-reasoned-exchange"):
-        "operator.lisp's `moderation approve|reject` and `article withdraw` "
-        "executor (control request 21, PKT-657); fnn-operator-dispatch-plan maps "
-        ":moderate to the :control surface, which build-dtn.lisp names in "
-        "*fnn-image-omitted-surfaces*, so the DTN operator refuses it (the usage "
-        "exit) before this call",
-    ("host/native/operator.lisp", "fnn-native-auth-admin-execute"):
-        "operator.lisp's `principal` executor; build-dtn.lisp names :credentials in "
-        "*fnn-image-omitted-surfaces*, so the operator refuses it (exit 5)",
-}
+# (raw module that calls, raw function defined only outside the DTN image) -> why.
+# Empty since lane log-leftovers (2026-09-27): every such call goes through
+# host/native/io.lisp fnn-surface-call / fnn-surface-function, which refuses by
+# name (usage) on an image that omits the surface, so no reason is needed.
+DTN_RAW_REACH: dict[tuple[str, str], str] = {}
 
 LD = re.compile(r'^\s*\(ld\s+"([^"]+)"', re.M)
 LOAD = re.compile(r'\(load\s+"([^"]+)"')
@@ -198,6 +160,20 @@ def strip_code(text: str) -> str:
 
 RAW_DEF = re.compile(r"\((?:defun|defmacro)\s+([^\s()]+)", re.I)
 RAW_USE = re.compile(r"(?:\(|#')(fnn-[^\s()']+)", re.I)
+# A quoted raw name is a call resolved at run time (funcall, apply, a hook
+# list) unless it is the NAME of io.lisp's surface guard, which refuses by
+# name on an image that omits the surface.
+RAW_QUOTED = re.compile(r"'(fnn-[^\s()']+)", re.I)
+SURFACE_GUARD = re.compile(r"\(fnn-surface-(?:call|function)\s+:[a-z-]+\s+$", re.I)
+
+
+def raw_uses(code: str) -> set[str]:
+    """The raw names CODE calls, #'-names or quotes outside the surface guard."""
+    uses = {use.lower() for use in RAW_USE.findall(code)}
+    for match in RAW_QUOTED.finditer(code):
+        if not SURFACE_GUARD.search(code[max(0, match.start() - 80):match.start()]):
+            uses.add(match.group(1).lower())
+    return uses
 
 
 def raw_findings(root: Path, default_text: str, dtn_text: str,
@@ -214,7 +190,7 @@ def raw_findings(root: Path, default_text: str, dtn_text: str,
                 absent.setdefault(name.lower(), path)
     out = []
     for user in dtn_raw:
-        for name in sorted({use.lower() for use in RAW_USE.findall(code[user])}):
+        for name in sorted(raw_uses(code[user])):
             if name in absent and name not in present and (user, name) not in reach:
                 out.append(f"raw: {user} calls {name}, defined only in {absent[name]}, "
                            f"which {DTN_BUILD} does not load")
