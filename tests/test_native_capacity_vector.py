@@ -277,25 +277,16 @@ class NativeCapacityVectorTests(_Bp):
 
         # 5. Maintain across crashes, then 6. the clean run.
         bad = self.cuts(sender, "compact")
+        # The reclaim campaign on copies of the store before its compaction:
+        # after `store compact' the active segment is empty and a checkpoint
+        # does not rotate it again (native m6: every reclaim cut unreached),
+        # and the full store takes no commit to fill one.
+        bad += self.cuts(sender, "reclaim")
         before_compact = footprint(sender)
         code, so, se = self.verb(cfg, "store", "compact")
         self.out(tag="compact", exit=code, stdout=so[:200], stderr=se,
                  before=before_compact, after=footprint(sender))
         self.assertEqual(code, 0, se)
-        # The compaction left an empty active segment, which a checkpoint does
-        # not rotate again (native m6: every reclaim cut unreached).  One
-        # commit after it gives the reclaim a segment to rotate and one to
-        # drop, so its rotation and drop cuts are reached.
-        owner = self.owner(cfg)
-        try:
-            c = m.Conn(port)
-            between = self.post(c, 800000)
-            c.close()
-        finally:
-            self.stop_owner(owner)
-        self.out(tag="post-after-compact", answer=between)
-        self.assertTrue(between.startswith("240"), between)
-        bad += self.cuts(sender, "reclaim")
         before = footprint(sender)
         pre = self.status(cfg)
         code, so, se = self.verb(cfg, "store", "reclaim")
