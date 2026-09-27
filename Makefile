@@ -335,6 +335,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log \
 	tests/acl2/store-log-tests \
 	books/store-log-crash \
+	books/store-log-kernel \
 	books/byte-store-k0-step-lemmas \
 	books/byte-store-k0-step-root-fence \
 	books/byte-store-k0-step \
