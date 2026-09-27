@@ -43,6 +43,8 @@
     "tests/acl2/article-work-tests",
     "books/article-fields",
     "tests/acl2/article-fields-tests",
+    "books/post-fields",
+    "tests/acl2/post-fields-tests",
     "books/store-config",
     "books/sha256",
     "tests/acl2/sha256-tests",
@@ -960,6 +962,8 @@
     "books/store-prepare-served",
     "books/owner-prepare-served-ocl",
     "tests/acl2/owner-prepare-served-tests",
+    "tests/acl2/owner-prepare-served-events-tests",
+    "tests/acl2/owner-identity-served-tests",
     "books/config-crash-replay",
     "tests/acl2/config-crash-replay-tests",
     "books/owner-config",
@@ -1236,26 +1240,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1279,
-    "books_in_root_closure": 1268,
-    "roots": 1232,
-    "theorems": 18990,
-    "functions": 12997,
-    "assert_events": 18531,
-    "must_fails": 2182,
+    "books": 1283,
+    "books_in_root_closure": 1272,
+    "roots": 1236,
+    "theorems": 19009,
+    "functions": 13014,
+    "assert_events": 18692,
+    "must_fails": 2184,
     "prover_refusals": 0,
     "encapsulates": 99,
     "guards": {
       "verified": 2480,
-      "declared-off": 1553,
-      "default-guarded": 7162,
-      "default-unguarded": 1802
+      "declared-off": 1555,
+      "default-guarded": 7172,
+      "default-unguarded": 1807
     },
     "suspect_theorems": 217,
-    "export_hygiene_warnings": 224,
+    "export_hygiene_warnings": 225,
     "enabled_projection_warnings": 49,
-    "teeth_form_warnings": 221,
-    "include_hygiene_warnings": 1367,
+    "teeth_form_warnings": 223,
+    "include_hygiene_warnings": 1375,
     "host_names_warnings": 1398,
     "hand_written_record_warnings": 18
   },
@@ -15781,6 +15785,35 @@
       "read_error": null
     },
     {
+      "book": "books/post-fields.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 18,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 10,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "acceptance-alloc",
+        "article-fields",
+        "provenance-codec",
+        "records-shape"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/post-identity-index.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -19357,7 +19390,7 @@
       "book": "books/store-node-resolution.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 39,
+      "theorems": 40,
       "functions": 8,
       "guards": {
         "verified": 6,
@@ -27941,10 +27974,10 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 22,
+      "assert_events": 32,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 14,
+      "defconsts": 15,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -31597,6 +31630,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-identity-served-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 29,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-identity-served",
+        "owner-prepare-served-events-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-injection-info-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -31942,6 +32002,37 @@
       "system_includes": [
         "std/testing/must-fail"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/owner-prepare-served-events-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 57,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 11,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/consumer-owner-local",
+        "../../books/hybrid-store",
+        "../../books/peer-authored-accept",
+        "../../books/topic-history-local-proposals",
+        "owner-prepare-served-tests",
+        "topic-history-authorship-tests"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -32875,6 +32966,35 @@
         "crypto-seam-tests"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/post-fields-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 32,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 9,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/crypto-attach",
+        "../../books/post-fields"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -34980,7 +35100,7 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 71,
+      "assert_events": 95,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 11,
@@ -37026,7 +37146,7 @@
         "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 27,
+      "assert_events": 36,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 5,
@@ -37034,6 +37154,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/store-node",
+        "../../books/store-node-resolution",
         "topic-history-admission-tests",
         "topic-history-local-admin-tests"
       ],
@@ -38971,7 +39092,7 @@
     {
       "theorem": "fn-sn-known-abort-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 157,
+      "line": 171,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value"
       ]
@@ -38987,7 +39108,7 @@
     {
       "theorem": "fn-sn-refuse-reservation-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 151,
+      "line": 165,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value"
       ]
@@ -39962,6 +40083,12 @@
         "theorem": "fn-pull-close-of-a-failed-round",
         "book": "books/peer-pull-session.lisp",
         "line": 408,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-pfld-textp-is-exactly-the-record-metadata-domain",
+        "book": "books/post-fields.lisp",
+        "line": 182,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -42010,6 +42137,18 @@
         "check": "ptf-k3-never-raises",
         "book": "tests/acl2/peer-transit-forms-tests.lisp",
         "line": 200,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "pft-textp-without-printable",
+        "book": "tests/acl2/post-fields-tests.lisp",
+        "line": 121,
+        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
+      },
+      {
+        "check": "pft-identity-text-without-bound",
+        "book": "tests/acl2/post-fields-tests.lisp",
+        "line": 124,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -45306,6 +45445,20 @@
         "line": 54,
         "include": "feed-journal",
         "included": "books/feed-journal.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/post-fields.lisp",
+        "line": 36,
+        "include": "article-fields",
+        "included": "books/article-fields.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/post-fields.lisp",
+        "line": 37,
+        "include": "acceptance-alloc",
+        "included": "books/acceptance-alloc.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -49915,6 +50068,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-identity-served-tests.lisp",
+        "line": 12,
+        "include": "../../books/owner-identity-served",
+        "included": "books/owner-identity-served.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-identity-served-tests.lisp",
+        "line": 13,
+        "include": "owner-prepare-served-events-tests",
+        "included": "tests/acl2/owner-prepare-served-events-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-injection-info-tests.lisp",
         "line": 5,
         "include": "../../books/owner-injection-info",
@@ -50052,6 +50219,34 @@
         "line": 57,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-prepare-served-events-tests.lisp",
+        "line": 18,
+        "include": "owner-prepare-served-tests",
+        "included": "tests/acl2/owner-prepare-served-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-prepare-served-events-tests.lisp",
+        "line": 19,
+        "include": "../../books/topic-history-local-proposals",
+        "included": "books/topic-history-local-proposals.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-prepare-served-events-tests.lisp",
+        "line": 20,
+        "include": "../../books/consumer-owner-local",
+        "included": "books/consumer-owner-local.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-prepare-served-events-tests.lisp",
+        "line": 23,
+        "include": "topic-history-authorship-tests",
+        "included": "tests/acl2/topic-history-authorship-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -51848,14 +52043,14 @@
       },
       {
         "book": "tests/acl2/topic-history-store-node-tests.lisp",
-        "line": 5,
+        "line": 7,
         "include": "topic-history-local-admin-tests",
         "included": "tests/acl2/topic-history-local-admin-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/topic-history-store-node-tests.lisp",
-        "line": 6,
+        "line": 8,
         "include": "topic-history-admission-tests",
         "included": "tests/acl2/topic-history-admission-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -51983,14 +52178,14 @@
     "host_names": [
       {
         "host": "host/bp-ingress-host.lisp",
-        "line": 132,
+        "line": 128,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/bp-ingress-host.lisp",
-        "line": 132,
+        "line": 128,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -61615,28 +61810,28 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1190,
+        "line": 1191,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1190,
+        "line": 1191,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2110,
+        "line": 2107,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 3271,
+        "line": 3267,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -61706,7 +61901,7 @@
       },
       {
         "host": "host/store-host.lisp",
-        "line": 139,
+        "line": 123,
         "name": "with-local-stobj",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
