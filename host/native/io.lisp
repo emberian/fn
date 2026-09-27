@@ -3851,19 +3851,6 @@ genesis carried across the closed segments the open scanned."
       (dolist (k closed genesis)
         (setq genesis (nth-value 1 (fnn-log-read-closed-segment store k genesis unit max)))))))
 
-(defun fnn-log-active-committed-records (store genesis)
-  "The active segment's committed records (octet lists, ACL2's), read from
-disk from GENESIS (the chain's trailer after the closed segments the open
-scanned): the first fn-lgc-count of the segment's records, the count read
-under the kernel lock."
-  (let* ((log (fnn-store-log store))
-         (count (fnn-log-with-kernel (log) (fnn-core 'fn-lgc-count (fnn-log-kernel log)))))
-    (if (eql count 0)
-        nil
-      (fnn-core 'fn-lgc-first count
-                (fnn-log-read-closed-segment store (fnn-log-index log) genesis
-                                             (fnn-store-log-unit) (fnn-store-log-max store))))))
-
 (defun fnn-log-history-records (store)
   "A format-9 STORE's history as a list, each record's exact octets in log
 order (`fnn-log-history-each' collected), for the verbs that take the whole
@@ -5526,6 +5513,24 @@ tree root), or stop the build."
 (defmacro fnn-log-with-kernel ((log) &body body)
   "BODY under the log's kernel lock (recursive: a kernel step may call another)."
   `(sb-thread:with-recursive-lock ((fnn-log-lock ,log)) ,@body))
+
+;; After fnn-log-with-kernel: a macro used before its definition compiles
+;; as a call (here to CL:LOG with no arguments), and every start of a
+;; format-9 store with committed records in the active segment faulted with
+;; "invalid number of arguments: 0" (lane ops-fixes, batch AW's
+;; kernel-concrete-2 x rm2-format9; tools/host_macro_order_check.py).
+(defun fnn-log-active-committed-records (store genesis)
+  "The active segment's committed records (octet lists, ACL2's), read from
+disk from GENESIS (the chain's trailer after the closed segments the open
+scanned): the first fn-lgc-count of the segment's records, the count read
+under the kernel lock."
+  (let* ((log (fnn-store-log store))
+         (count (fnn-log-with-kernel (log) (fnn-core 'fn-lgc-count (fnn-log-kernel log)))))
+    (if (eql count 0)
+        nil
+      (fnn-core 'fn-lgc-first count
+                (fnn-log-read-closed-segment store (fnn-log-index log) genesis
+                                             (fnn-store-log-unit) (fnn-store-log-max store))))))
 
 (defun fnn-log-at (point)
   "A developer-image cut: FN_NATIVE_LOG_FAULT=NAME (a +fnn-log-model-cuts+
