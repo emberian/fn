@@ -86,7 +86,7 @@
 ; allocated, already fenced inode.  Its raw octets are the full frame and
 ; the first record remains in the durable prefix.
 (defun bsk6-prepared ()
-  (fn-sf-prepare-record (cdr (bsk5-frontier-2)) *bsk5-record-2*
+  (fn-sf-prepare-record (cdr (bsk5-frontier-2)) *bsk5-row-2*
                         *bsk5-groups* *bsk5-capacity*))
 (assert-event
  (let* ((bs (bsk6-start)) (ks (bsk6-prepared))
@@ -94,7 +94,7 @@
         (file (bsk6-file-cut))
         (linked (car (nth 8 (bsk5-record-2-run)))))
    (and (fn-bs-statep bs)
-        (fn-bs-record-inputp ks ".stage-k5-2" name (bsk5-frame-2))
+        (fn-bs-record-inputp ks ".stage-k5-2" name (bsk5-frame-2) *bsk5-arena*)
         (not (fn-bs-lookup bs :staging ".stage-k5-2"))
         (not (fn-bs-lookup file :transactions name))
         (equal (fn-bs-lookup linked :transactions name)
@@ -204,7 +204,7 @@
         (name (fn-bs-txn-name 1)))
    (and (fn-bs-statep bs)
         (fn-bs-record-inputp (bsk6-prepared)
-                              ".stage-k5-2" name (bsk5-frame-2))
+                              ".stage-k5-2" name (bsk5-frame-2) *bsk5-arena*)
         (not (fn-bs-lookup file :transactions name))
         (equal (fn-bs-ops-for-name (fn-bs-pending file)
                                    :transactions name) nil)
@@ -245,8 +245,8 @@
 (assert-event
  (let* ((bs (bsk6-start)) (ks (bsk6-prepared))
         (file (bsk6-file-cut)) (name (fn-bs-txn-name 1)))
-   (and (fn-bs-store-relation bs ks)
-        (fn-bs-record-inputp ks ".stage-k5-2" name (bsk5-frame-2))
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
+        (fn-bs-record-inputp ks ".stage-k5-2" name (bsk5-frame-2) *bsk5-arena*)
         (not (fn-bs-lookup bs :staging ".stage-k5-2"))
         (not (fn-bs-lookup file :transactions name))
         (equal (fn-bs-ops-for-dir (fn-bs-pending file)
@@ -255,7 +255,7 @@
                                     :transactions name) nil)
         (fn-bs-store-relation
          (car (nth 10 (bsk5-record-2-run)))
-         (cdr (nth 10 (bsk5-record-2-run))))
+         (cdr (nth 10 (bsk5-record-2-run))) *bsk5-arena*)
         (equal (fn-bs-durable-content
                 (bsk6-kept-link-image)
                 (fn-bs-lookup (bsk6-kept-link-image)
@@ -305,7 +305,7 @@
              nil *bsk5-groups* *bsk5-capacity*))
 (assert-event
  (not (fn-bs-store-relation (bsk6-prior-final-set-and-delete)
-                            (bsk6-prepared))))
+                            (bsk6-prepared) *bsk5-arena*)))
 (must-fail
  (assert-event
   (let* ((file (car (nth 5 (bsk6-prior-run))))
@@ -337,13 +337,13 @@
  (and (equal (fn-store-event-sequence (bsk6-retention-candidate)) 1)
       (not (equal (fn-record-sequence (bsk6-retention-candidate)) 1))
       (equal (fn-sf-phase (bsk6-retention-prepared)) :record-staged)
-      (fn-bs-store-relation (bsk6-start) (bsk6-retention-prepared))
+      (fn-bs-store-relation (bsk6-start) (bsk6-retention-prepared) *bsk5-arena*)
       (fn-bs-store-relation
        (car (nth 10 (bsk6-retention-run)))
-       (cdr (nth 10 (bsk6-retention-run))))
+       (cdr (nth 10 (bsk6-retention-run))) *bsk5-arena*)
       (fn-bs-record-inputp (bsk6-retention-prepared)
                             ".stage-k6-retention" (fn-bs-txn-name 1)
-                            (bsk6-retention-frame))))
+                            (bsk6-retention-frame) *bsk5-arena*)))
 (must-fail
  (assert-event
   (equal (fn-record-sequence (bsk6-retention-candidate)) 1)))
@@ -388,7 +388,7 @@
         (old (fn-bs-durable-entry bs :transactions (fn-bs-txn-name 0))))
    (and (fn-bs-statep bs)
         (fn-bs-record-inputp (bsk6-prepared)
-                              ".stage-k5-2" name (bsk5-frame-2))
+                              ".stage-k5-2" name (bsk5-frame-2) *bsk5-arena*)
         (not (fn-bs-lookup file :transactions name))
         (consp (fn-bs-ops-for-name (fn-bs-pending file)
                                     :transactions name))
@@ -424,9 +424,9 @@
  (let ((bs (bsk6-occupied-final-start)))
    (and (fn-bs-statep bs)
         (fn-bs-record-inputp (bsk6-prepared) ".stage-k5-2"
-                             (fn-bs-txn-name 1) (bsk5-frame-2))
+                             (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*)
         (not (fn-bs-lookup bs :staging ".stage-k5-2"))
-        (not (fn-bs-store-relation bs (bsk6-prepared))))))
+        (not (fn-bs-store-relation bs (bsk6-prepared) *bsk5-arena*)))))
 (must-fail
  (assert-event
   (bsk0-trace-equalp (bsk6-occupied-final-start) (bsk6-prepared)
@@ -435,9 +435,9 @@
 ; Dropping the typed input gate allows the caller to reuse a durable name.
 (assert-event
  (let ((bs (bsk6-start)) (ks (bsk6-prepared)))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (not (fn-bs-record-inputp ks ".stage-k5-2"
-                                  (fn-bs-txn-name 0) (bsk5-frame-2)))
+                                  (fn-bs-txn-name 0) (bsk5-frame-2) *bsk5-arena*))
         (not (fn-bs-lookup bs :staging ".stage-k5-2")))))
 (must-fail
  (assert-event
@@ -452,9 +452,9 @@
     bs))
 (assert-event
  (let ((bs (bsk0-occupied-stage)) (ks (bsk6-prepared)))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (fn-bs-record-inputp ks ".stage-k5-2"
-                             (fn-bs-txn-name 1) (bsk5-frame-2))
+                             (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*)
         (fn-bs-lookup bs :staging ".stage-k5-2"))))
 (must-fail
  (assert-event
@@ -532,9 +532,9 @@
                 (fn-bs-durable-entry bs :transactions (fn-bs-txn-name 0)))))
 (assert-event
  (let ((bs (bsk0-alias-old-record)))
-   (and (not (fn-bs-store-relation bs (bsk6-prepared)))
+   (and (not (fn-bs-store-relation bs (bsk6-prepared) *bsk5-arena*))
         (fn-bs-record-inputp (bsk6-prepared) ".stage-k5-2"
-                             (fn-bs-txn-name 1) (bsk5-frame-2))
+                             (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*)
         (not (fn-bs-lookup bs :staging ".stage-k5-2")))))
 (must-fail
  (assert-event
@@ -567,7 +567,7 @@
         (article (car (nth 10 (bsk5-record-2-run))))
         (retention (car (nth 10 (bsk6-retention-run))))
         (old (fn-bs-durable-entry bs :transactions (fn-bs-txn-name 0))))
-   (and (fn-bs-store-relation bs (bsk6-prepared))
+   (and (fn-bs-store-relation bs (bsk6-prepared) *bsk5-arena*)
         (consp (assoc-equal old (fn-bs-inodes bs)))
         (equal (assoc-equal old (fn-bs-inodes article))
                (assoc-equal old (fn-bs-inodes bs)))
@@ -592,9 +592,9 @@
 (assert-event
  (let ((bs (bsk0-unfenced-old-authority)))
    (and (fn-bs-statep bs)
-        (not (fn-bs-store-relation bs (bsk6-prepared)))
+        (not (fn-bs-store-relation bs (bsk6-prepared) *bsk5-arena*))
         (fn-bs-record-inputp (bsk6-prepared) ".stage-k5-2"
-                             (fn-bs-txn-name 1) (bsk5-frame-2))
+                             (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*)
         (not (fn-bs-lookup bs :staging ".stage-k5-2")))))
 (must-fail
  (assert-event
@@ -618,9 +618,9 @@
 (assert-event
  (let ((bs (bsk0-missing-old-authority)))
    (and (fn-bs-statep bs)
-        (not (fn-bs-store-relation bs (bsk6-prepared)))
+        (not (fn-bs-store-relation bs (bsk6-prepared) *bsk5-arena*))
         (fn-bs-record-inputp (bsk6-prepared) ".stage-k5-2"
-                             (fn-bs-txn-name 1) (bsk5-frame-2))
+                             (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*)
         (not (fn-bs-lookup bs :staging ".stage-k5-2")))))
 (must-fail
  (assert-event
@@ -638,7 +638,7 @@
   (let ((cut (nth 10 (fn-bs-run bs ks
                                 (fn-bs-record-program stage name frame)
                                 nil *bsk5-groups* *bsk5-capacity*))))
-    (fn-bs-store-relation (car cut) (cdr cut))))
+    (fn-bs-store-relation (car cut) (cdr cut) *bsk5-arena*)))
 (assert-event
  (and (bsk0-attempted-cut-relatedp
        (bsk6-start) (bsk6-prepared) ".stage-k5-2"
@@ -668,24 +668,26 @@
 ; trailer; fnn-transaction-name delegates the sequence to ACL2.  This is
 ; the typed P-RECORD input for the second served article, not an arbitrary
 ; Python or host-side decoder agreement assumption.
-(defun bsk0-article-host-frame (record)
-  (let ((octets (fn-store-event-encode record)))
+; The records flip: the host stages the RETAINED row and writes the frame of
+; its alpha through the arena.
+(defun bsk0-article-host-frame (row)
+  (let ((octets (fn-store-event-encode (fn-bs-row-wire row *bsk5-arena*))))
     (append (fn-frame-store-protected octets)
             (fn-frame-trailer (fn-frame-store-protected octets)))))
-(defun bsk0-article-host-inputp (ks record stage)
+(defun bsk0-article-host-inputp (ks row stage)
   (fn-bs-record-inputp
-   ks stage (fn-bs-txn-name (fn-store-event-sequence record))
-   (bsk0-article-host-frame record)))
+   ks stage (fn-bs-txn-name (fn-store-event-sequence row))
+   (bsk0-article-host-frame row) *bsk5-arena*))
 (assert-event
- (and (fn-record-p *bsk5-record-2*)
+ (and (fn-record-p (fn-bs-row-wire *bsk5-row-2* *bsk5-arena*))
       (equal (fn-sf-phase (bsk6-prepared)) :record-staged)
-      (equal (fn-sf-record-candidate (bsk6-prepared)) *bsk5-record-2*)
-      (bsk0-article-host-inputp (bsk6-prepared) *bsk5-record-2*
+      (equal (fn-sf-record-candidate (bsk6-prepared)) *bsk5-row-2*)
+      (bsk0-article-host-inputp (bsk6-prepared) *bsk5-row-2*
                                ".stage-k5-2")
       (bsk0-attempted-cut-relatedp
        (bsk6-start) (bsk6-prepared) ".stage-k5-2"
-       (fn-bs-txn-name (fn-store-event-sequence *bsk5-record-2*))
-       (bsk0-article-host-frame *bsk5-record-2*))))
+       (fn-bs-txn-name (fn-store-event-sequence *bsk5-row-2*))
+       (bsk0-article-host-frame *bsk5-row-2*))))
 
 ; Each article call-argument premise has a direct negative witness.
 (must-fail
@@ -697,17 +699,30 @@
  (assert-event
   (bsk0-article-host-inputp
    (fn-sf-make :ready (fn-sf-frontier (bsk6-prepared)) nil
-               (fn-sf-records (bsk6-prepared)) *bsk5-record-2* nil nil nil)
-   *bsk5-record-2* ".stage-k5-2")))
+               (fn-sf-records (bsk6-prepared)) *bsk5-row-2* nil nil nil)
+   *bsk5-row-2* ".stage-k5-2")))
 (must-fail
  (assert-event
   (bsk0-article-host-inputp
    (fn-sf-make :record-staged (fn-sf-frontier (bsk6-prepared)) nil
-               (fn-sf-records (bsk6-prepared)) *bsk5-record* nil nil nil)
-   *bsk5-record-2* ".stage-k5-2")))
+               (fn-sf-records (bsk6-prepared)) *bsk5-row* nil nil nil)
+   *bsk5-row-2* ".stage-k5-2")))
 (must-fail
  (assert-event
-  (bsk0-article-host-inputp (bsk6-prepared) *bsk5-record-2* nil)))
+  (bsk0-article-host-inputp (bsk6-prepared) *bsk5-row-2* nil)))
+
+;; The arena is part of the input: the same row and frame under an arena whose
+;; handle 1 holds other bytes is not the record input (alpha disagrees with
+;; the decoded frame), and a row outside the arena has no wire record.
+(must-fail
+ (assert-event
+  (fn-bs-record-inputp (bsk6-prepared) ".stage-k5-2"
+                       (fn-bs-txn-name (fn-store-event-sequence *bsk5-row-2*))
+                       (bsk0-article-host-frame *bsk5-row-2*)
+                       (list '(65) '(67)))))
+(assert-event
+ (not (equal (fn-bs-row-wire *bsk5-row-2* (list '(65)))
+             (fn-bs-row-wire *bsk5-row-2* *bsk5-arena*))))
 
 ; ACL2 node preparation is the served article caller's logical step. It
 ; does not mutate the byte store, and the relation survives both the file
@@ -727,18 +742,18 @@
         (bs (car pair))
         (ks (cdr pair))
         (node (bsk0-node-reserved))
-        (prepared (fn-sn-prepare node *bsk5-record*)))
-   (and (fn-bs-store-relation bs ks)
+        (prepared (fn-sn-prepare node *bsk5-row*)))
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (equal ks (fn-sn-files node))
         (equal (fn-sf-phase ks) :reserved)
         (equal (fn-sf-phase (fn-sf-prepare-record
-                            ks *bsk5-record* *bsk5-groups* *bsk5-capacity*))
+                            ks *bsk5-row* *bsk5-groups* *bsk5-capacity*))
                :record-staged)
         (equal (fn-sf-phase (fn-sn-files prepared)) :record-staged)
         (fn-bs-store-relation
          bs (fn-sf-prepare-record
-             ks *bsk5-record* *bsk5-groups* *bsk5-capacity*))
-        (fn-bs-store-relation bs (fn-sn-files prepared)))))
+             ks *bsk5-row* *bsk5-groups* *bsk5-capacity*) *bsk5-arena*)
+        (fn-bs-store-relation bs (fn-sn-files prepared) *bsk5-arena*))))
 
 ; Without the physical relation, a valid pending write to an old article
 ; remains unfenced across preparation; no ACL2 callback can repair bytes.
@@ -746,8 +761,8 @@
  (assert-event
   (fn-bs-store-relation
    (bsk0-unfenced-old-authority)
-   (fn-sf-prepare-record (cdr (bsk5-frontier-2)) *bsk5-record-2*
-                         *bsk5-groups* *bsk5-capacity*))))
+   (fn-sf-prepare-record (cdr (bsk5-frontier-2)) *bsk5-row-2*
+                         *bsk5-groups* *bsk5-capacity*) *bsk5-arena*)))
 
 ; Compose the actual fn-sn-prepare article call with ACL2's host-facing
 ; frame/name values and the actual P-RECORD attempted cut.
@@ -758,18 +773,18 @@
          (cut (nth 10 (fn-bs-run bs ks
                                  (fn-bs-record-program stage name frame)
                                  nil *bsk5-groups* *bsk5-capacity*))))
-    (fn-bs-store-relation (car cut) (cdr cut))))
+    (fn-bs-store-relation (car cut) (cdr cut) *bsk5-arena*)))
 (assert-event
  (let* ((pair (car (last (bsk5-frontier-run))))
         (bs (car pair))
         (s (bsk0-node-reserved)))
-   (and (fn-bs-store-relation bs (fn-sn-files s))
+   (and (fn-bs-store-relation bs (fn-sn-files s) *bsk5-arena*)
         (equal (fn-sf-phase (fn-sn-files s)) :reserved)
-        (equal (fn-sf-phase (fn-sn-files (fn-sn-prepare s *bsk5-record*)))
+        (equal (fn-sf-phase (fn-sn-files (fn-sn-prepare s *bsk5-row*)))
                :record-staged)
         (not (fn-bs-lookup bs :staging ".stage-k5"))
         (bsk0-node-article-attempted-relatedp
-         bs s *bsk5-record* ".stage-k5"))))
+         bs s *bsk5-row* ".stage-k5"))))
 
 ; Invalid byte authority survives node preparation, so the served cut
 ; cannot gain a physical relation from the logical node alone.
@@ -783,12 +798,12 @@
 (assert-event
  (and (fn-bs-statep (bsk0-unfenced-config-at-reservation))
       (not (fn-bs-store-relation (bsk0-unfenced-config-at-reservation)
-                                 (fn-sn-files (bsk0-node-reserved))))))
+                                 (fn-sn-files (bsk0-node-reserved)) *bsk5-arena*))))
 (must-fail
  (assert-event
   (bsk0-node-article-attempted-relatedp
    (bsk0-unfenced-config-at-reservation)
-   (bsk0-node-reserved) *bsk5-record* ".stage-k5")))
+   (bsk0-node-reserved) *bsk5-row* ".stage-k5")))
 
 ; The successful prepare phase matters: an invalid record leaves the
 ; reservation unprepared, so the P-RECORD attempted cut is unreachable.
@@ -803,18 +818,18 @@
 ; targets the wrong transaction name, despite the source being related.
 (assert-event
  (let* ((bs (car (car (last (bsk5-frontier-run)))))
-        (staged (fn-sn-prepare (bsk0-node-reserved) *bsk5-record*)))
-   (and (fn-bs-store-relation bs (fn-sn-files staged))
+        (staged (fn-sn-prepare (bsk0-node-reserved) *bsk5-row*)))
+   (and (fn-bs-store-relation bs (fn-sn-files staged) *bsk5-arena*)
         (equal (fn-sf-phase (fn-sn-files staged)) :record-staged)
         (equal (fn-sf-phase
-                (fn-sn-files (fn-sn-prepare staged *bsk5-record-2*)))
+                (fn-sn-files (fn-sn-prepare staged *bsk5-row-2*)))
                :record-staged))))
 (must-fail
  (assert-event
   (bsk0-node-article-attempted-relatedp
    (car (car (last (bsk5-frontier-run))))
-   (fn-sn-prepare (bsk0-node-reserved) *bsk5-record*)
-   *bsk5-record-2* ".stage-k5")))
+   (fn-sn-prepare (bsk0-node-reserved) *bsk5-row*)
+   *bsk5-row-2* ".stage-k5")))
 
 ; An occupied staging key stops O_EXCL before the record-file callback.
 (must-fail
@@ -822,7 +837,7 @@
   (let* ((bs (car (car (last (bsk5-frontier-run)))))
          (occupied (mv-nth 1 (fn-bs-create bs :staging ".stage-k5" :ok))))
     (bsk0-node-article-attempted-relatedp
-     occupied (bsk0-node-reserved) *bsk5-record* ".stage-k5"))))
+     occupied (bsk0-node-reserved) *bsk5-row* ".stage-k5"))))
 
 ; The second allocation begins after an acknowledged first article.  These
 ; values are generated by the same ACL2 codec entry points called by the
@@ -838,7 +853,7 @@
  (let* ((entry (bsk5-finished))
         (bs (car entry)) (ks (cdr entry))
         (file (car (bsk0-second-frontier-file-pair))))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (equal (fn-sf-phase ks) :ready)
         (equal (fn-bs-frontier-next (fn-sf-frontier ks)) 2)
         (equal (bsk0-second-frontier-host-frame)
@@ -887,7 +902,7 @@
                       (fn-bs-frontier-program
                        ".allocation-k0-2"
                        (bsk0-second-frontier-host-frame))
-                      nil *bsk5-groups* *bsk5-capacity*))))
+                      nil *bsk5-groups* *bsk5-capacity*))) *bsk5-arena*)
         (equal (fn-sf-phase (cdr (nth 6 (fn-bs-run
                                              bs ks
                                              (fn-bs-frontier-program
@@ -944,7 +959,7 @@
 (assert-event
  (and (fn-bs-statep (bsk0-dangling-old-transaction))
       (not (fn-bs-store-relation
-            (bsk0-dangling-old-transaction) (cdr (bsk5-finished))))))
+            (bsk0-dangling-old-transaction) (cdr (bsk5-finished)) *bsk5-arena*))))
 (must-fail
  (assert-event
   (let* ((bs (bsk0-dangling-old-transaction))
@@ -970,7 +985,7 @@
                         ".allocation-k0-2"
                         (bsk0-second-frontier-host-frame))
                        nil *bsk5-groups* *bsk5-capacity*))))
-    (fn-bs-store-relation (car cut) (cdr cut)))))
+    (fn-bs-store-relation (car cut) (cdr cut) *bsk5-arena*))))
 
 (must-fail
  (assert-event
@@ -990,7 +1005,7 @@
                       (fn-bs-frontier-program ".allocation-k0-2" octets)
                       nil *bsk5-groups* *bsk5-capacity*)))
         (file (car pair)))
-   (and (fn-bs-store-relation (car entry) (cdr entry))
+   (and (fn-bs-store-relation (car entry) (cdr entry) *bsk5-arena*)
         (fn-bs-dir-quietp file :root)
         (equal (fn-bs-durable-content
                 file (fn-bs-durable-entry file :root *fn-bs-frontier-name*))
@@ -999,9 +1014,10 @@
                (1+ (fn-sf-frontier (cdr entry))))
         (equal (fn-bs-durable-records file)
                (fn-bs-durable-records (car entry)))
-        (fn-sf-crash-imagep (cdr pair)
-                            (fn-bs-durable-frontier file)
-                            (fn-bs-durable-records file)))))
+        (fn-bs-alpha-crash-imagep (cdr pair)
+                                  (fn-bs-durable-frontier file)
+                                  (fn-bs-durable-records file)
+                                  *bsk5-arena*))))
 
 ; The full byte/kernel relation is regained before the frontier-directory
 ; callback, after the first article is durable in the retained prefix.
@@ -1011,7 +1027,7 @@
                       (fn-bs-frontier-program ".allocation-k0-2"
                                                (bsk0-second-frontier-host-frame))
                       nil *bsk5-groups* *bsk5-capacity*))))
-   (fn-bs-store-relation (car pair) (cdr pair))))
+   (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*)))
 (must-fail
  (assert-event
   (let* ((entry (bsk5-finished))
@@ -1020,7 +1036,7 @@
                        (fn-bs-frontier-program ".allocation-k0-2"
                                                 (bsk0-second-frontier-host-frame))
                        nil *bsk5-groups* *bsk5-capacity*))))
-    (fn-bs-store-relation (car pair) (cdr pair)))))
+    (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*))))
 (must-fail
  (assert-event
   (let* ((entry (bsk5-finished))
@@ -1028,7 +1044,7 @@
                        (fn-bs-frontier-program ".allocation-k0-bad"
                                                 (list 65))
                        nil *bsk5-groups* *bsk5-capacity*))))
-    (fn-bs-store-relation (car pair) (cdr pair)))))
+    (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*))))
 (must-fail
  (assert-event
   (let* ((entry (bsk5-finished))
@@ -1038,7 +1054,7 @@
                        (fn-bs-frontier-program ".allocation-k0-2"
                                                 (bsk0-second-frontier-host-frame))
                        nil *bsk5-groups* *bsk5-capacity*))))
-    (fn-bs-store-relation (car pair) (cdr pair)))))
+    (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*))))
 
 ; The same retained history reaches the actual pair-14 callback in
 ; :reserved, with the relation reestablished.  Each premise matters here.
@@ -1048,7 +1064,7 @@
                        (fn-bs-frontier-program ".allocation-k0-2"
                                                 (bsk0-second-frontier-host-frame))
                        nil *bsk5-groups* *bsk5-capacity*))))
-   (and (fn-bs-store-relation (car pair) (cdr pair))
+   (and (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*)
         (equal (fn-sf-phase (cdr pair)) :reserved))))
 (must-fail
  (assert-event
@@ -1057,14 +1073,14 @@
                         (fn-bs-frontier-program ".allocation-k0-2"
                                                  (bsk0-second-frontier-host-frame))
                         nil *bsk5-groups* *bsk5-capacity*))))
-    (fn-bs-store-relation (car pair) (cdr pair)))))
+    (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*))))
 (must-fail
  (assert-event
   (let* ((entry (bsk5-finished))
          (pair (nth 14 (fn-bs-run (car entry) (cdr entry)
                         (fn-bs-frontier-program ".allocation-k0-bad" (list 65))
                         nil *bsk5-groups* *bsk5-capacity*))))
-    (fn-bs-store-relation (car pair) (cdr pair)))))
+    (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*))))
 (must-fail
  (assert-event
   (let* ((entry (bsk5-finished))
@@ -1074,7 +1090,7 @@
                         (fn-bs-frontier-program ".allocation-k0-2"
                                                  (bsk0-second-frontier-host-frame))
                         nil *bsk5-groups* *bsk5-capacity*))))
-    (fn-bs-store-relation (car pair) (cdr pair)))))
+    (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*))))
 
 ; Without fresh staging, O_EXCL stops the program before pair 12.  The
 ; exact-frame conclusion would otherwise be mistaken for a bare scan fact.
@@ -1123,11 +1139,11 @@
                                                (bsk0-second-frontier-host-frame))
                       nil *bsk5-groups* *bsk5-capacity*)))
         (file (car pair)))
-   (and (fn-bs-store-relation (car entry) (cdr entry))
+   (and (fn-bs-store-relation (car entry) (cdr entry) *bsk5-arena*)
         (fn-bs-frontier-inputp (cdr entry) ".allocation-k0-2"
                                 (bsk0-second-frontier-host-frame))
         (not (fn-bs-lookup (car entry) :staging ".allocation-k0-2"))
-        (fn-bs-pending-matches-phase file (cdr pair))
+        (fn-bs-pending-matches-phase file (cdr pair) *bsk5-arena*)
         (equal (fn-bs-ops-for-dir (fn-bs-pending file) :root) nil)
         (equal (fn-bs-ops-for-dir (fn-bs-pending file) :transactions) nil))))
 
@@ -1148,7 +1164,7 @@
     (and (equal (cdr file-pair) (fn-sn-files s3))
          (equal (car return-pair) (car file-pair))
          (equal (cdr return-pair) (fn-sn-files s4))
-         (fn-bs-store-relation (car return-pair) (fn-sn-files s4))
+         (fn-bs-store-relation (car return-pair) (fn-sn-files s4) *bsk5-arena*)
          (equal (fn-sf-phase (fn-sn-files s4)) :reserved))))
 
 (defun bsk0-native-frontier-entry ()
@@ -1160,7 +1176,7 @@
         (stage ".allocation-native-k0")
         (octets (fn-bs-frontier-encode 1)))
    (and (fn-sn-statep s)
-        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-store-relation bs (fn-sn-files s) *bsk5-arena*)
         (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
         (not (fn-bs-lookup bs :staging stage))
         (bsk0-native-frontier-returnp bs s stage octets))))
@@ -1225,7 +1241,7 @@
                 (cdr return-pair))
          (fn-bs-store-relation
           (car return-pair)
-          (fn-sn-files (fn-own-store (fn-ocfg-owner oc4))))
+          (fn-sn-files (fn-own-store (fn-ocfg-owner oc4))) *bsk5-arena*)
          (equal (fn-sf-phase
                  (fn-sn-files (fn-own-store (fn-ocfg-owner oc4))))
                 :reserved))))
@@ -1244,7 +1260,7 @@
         (stage ".allocation-owner-k0"))
    (and (fn-sn-statep s)
         (fn-ocfg-statep oc)
-        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-store-relation bs (fn-sn-files s) *bsk5-arena*)
         (fn-bs-frontier-inputp (fn-sn-files s) stage
                                 (fn-bs-frontier-encode 1))
         (not (fn-bs-lookup bs :staging stage))
@@ -1308,7 +1324,7 @@
          (k3 (fn-sn-files (fn-own-store (fn-ocfg-owner oc3))))
          (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
     (and (equal (len run) 13)
-         (fn-bs-store-relation failed k4)
+         (fn-bs-store-relation failed k4 *bsk5-arena*)
          (equal (fn-sf-phase k4) :fenced-frontier)
          (equal (fn-bs-durable-frontier failed)
                 (if (equal choice :apply)
@@ -1347,7 +1363,7 @@
         (octets (fn-bs-frontier-encode 1)))
    (and (fn-sn-statep s)
         (fn-ocfg-statep oc)
-        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-store-relation bs (fn-sn-files s) *bsk5-arena*)
         (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
         (not (fn-bs-lookup bs :staging stage))
         (bsk0-owner-frontier-eio-appliedp bs oc stage octets)
@@ -1381,8 +1397,8 @@
          bs oc stage (fn-bs-frontier-encode 1) :drop)
         (equal (fn-bs-durable-frontier (car (nth 12 applied))) 1)
         (equal (fn-bs-durable-frontier (car (nth 12 dropped))) 0)
-        (fn-bs-store-relation (car (nth 12 applied)) k4)
-        (fn-bs-store-relation (car (nth 12 dropped)) k4)
+        (fn-bs-store-relation (car (nth 12 applied)) k4 *bsk5-arena*)
+        (fn-bs-store-relation (car (nth 12 dropped)) k4 *bsk5-arena*)
         (equal (fn-sf-phase k4) :fenced-frontier))))
 
 ; Each theorem premise is independently necessary for the applied-error
@@ -1397,7 +1413,7 @@
         (stage ".allocation-owner-eio-k0")
         (octets (fn-bs-frontier-encode 1)))
    (and (not (fn-sn-statep s))
-        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-store-relation bs (fn-sn-files s) *bsk5-arena*)
         (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
         (not (fn-bs-lookup bs :staging stage))
         (not (bsk0-owner-frontier-eio-applied-conclusionp
@@ -1424,7 +1440,7 @@
         (stage ".allocation-owner-eio-k0")
         (octets (fn-bs-frontier-encode 1)))
    (and (fn-sn-statep s)
-        (not (fn-bs-store-relation bad (fn-sn-files s)))
+        (not (fn-bs-store-relation bad (fn-sn-files s) *bsk5-arena*))
         (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
         (not (fn-bs-lookup bad :staging stage))
         (not (bsk0-owner-frontier-eio-applied-conclusionp
@@ -1446,7 +1462,7 @@
         (stage ".allocation-owner-eio-k0")
         (octets (fn-bs-frontier-encode 0)))
    (and (fn-sn-statep s)
-        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-store-relation bs (fn-sn-files s) *bsk5-arena*)
         (not (fn-bs-frontier-inputp (fn-sn-files s) stage octets))
         (not (fn-bs-lookup bs :staging stage))
         (not (bsk0-owner-frontier-eio-applied-conclusionp
@@ -1465,7 +1481,7 @@
           (stage ".allocation-owner-eio-k0")
           (octets (fn-bs-frontier-encode 1)))
      (and (fn-sn-statep s)
-          (fn-bs-store-relation bs (fn-sn-files s))
+          (fn-bs-store-relation bs (fn-sn-files s) *bsk5-arena*)
           (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
           (fn-bs-lookup bs :staging stage)
           (not (bsk0-owner-frontier-eio-applied-conclusionp

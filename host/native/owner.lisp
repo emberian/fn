@@ -114,6 +114,23 @@
       (fnn-fault "owner returned non-action from ~a" name))
     value))
 
+(defun fnn-owner-arena-action (name &rest args)
+  "fnn-owner-action for an owner entry that reads or seals the payload arena
+(the records flip: the duplicate test reads stored bytes by handle)."
+  (let ((value (apply #'fnn-core-arena-state name args)))
+    (unless (keywordp value)
+      (fnn-fault "owner returned non-action from ~a" name))
+    value))
+
+(defun fnn-owner-buffer-arena-action (name &rest args)
+  "fnn-owner-buffer-action for an entry over the buffer AND the arena: the
+POST's duplicate test and prepare (fn-owner-existing-action-buffer,
+fn-owner-prepare-buffer), which seals the buffer's payload on acceptance."
+  (let ((value (apply #'fnn-core-buffer-arena-state name args)))
+    (unless (keywordp value)
+      (fnn-fault "owner returned non-action from ~a" name))
+    value))
+
 (defun fnn-owner-buffer-action (name &rest args)
   "fnn-owner-action for a wrapper that reads the octet buffer.  The owner's
 prepare answers owner outcomes (:unaffordable, :clock-unusable, ...) that the
@@ -717,7 +734,7 @@ the current connection."
 (defun fnn-owner-publish-prepared (service label)
   "Publish and finish the one ACL2-prepared owner transaction."
   (let* ((store (fnn-owner-service-store service))
-         (record (fnn-owner-core 'fn-owner-pending-octets))
+         (record (fnn-core-arena-state 'fn-owner-pending-octets))
          ;; The file is named from the staged record's own sequence, ACL2's
          ;; (fn-sbud-pending-sequence); the host keeps no count of its own.
          (sequence (fnn-pending-sequence
@@ -819,7 +836,7 @@ follows is justified only by this line."
           ;; books/sha256-buffer.lisp).  Nothing between the fill and the
           ;; prepare writes the buffer; all of it runs under the service mutex.
           (fnn-octets-fill payload)
-          (case (fnn-owner-buffer-action 'fn-owner-existing-action-buffer
+          (case (fnn-owner-buffer-arena-action 'fn-owner-existing-action-buffer
                                          (fnn-octet-list msgid) codes)
             (:duplicate (return-from fnn-owner-attempt :duplicate))
             (:conflict (return-from fnn-owner-attempt :conflict)))
@@ -831,7 +848,7 @@ follows is justified only by this line."
                 (fnn-metadata-buffer msgid)
               (declare (ignore ignored))
               (let ((prepared
-                      (fnn-owner-buffer-action
+                      (fnn-owner-buffer-arena-action
                        'fn-owner-prepare-buffer (fnn-octet-list msgid) codes
                        (fnn-octet-list obligation) (fnn-octet-list subject)
                        (fnn-octet-list evidence) charge)))
@@ -938,7 +955,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
              (fnn-validate-post-boundary
               (fnn-owner-core 'fn-owner-post-boundary (fnn-octet-list msgid)
                               (length payload) (length codes) charge))
-             (case (fnn-owner-action 'fn-owner-existing-action
+             (case (fnn-owner-arena-action 'fn-owner-existing-action
                                      (fnn-octet-list msgid)
                                      (fnn-octet-list payload) codes)
                (:duplicate (return-from fnn-owner-attempt-transit :duplicate))

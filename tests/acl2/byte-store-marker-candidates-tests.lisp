@@ -47,7 +47,7 @@
         (b (car (nth 7 run)))                 ; after the root barrier
         (ino (fn-bs-durable-entry b :root *fn-bs-history-marker-name*))
         (spelled (fn-hm-after-commit 22)))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (fn-bs-marker-inputp bs ".stage-marker-u")
         (equal (len run) 8)
         (equal (fn-bs-hm-observation bs) '(:absent))

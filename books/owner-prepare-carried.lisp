@@ -136,8 +136,8 @@
 (in-theory (disable fn-pcar-stage-record))
 
 ; fn-spc-prepare, carried.  The body is the reference's, with the record
-; recognised, projected and bound through the concrete twins
-; (books/records-concrete.lisp: fn-rcon-record-p-is-record-p,
+; projected and bound through the concrete twins
+; (books/records-concrete.lisp:
 ; fn-rcon-cpe-projection-step-is-cpe-projection-step,
 ; fn-rcon-sn-record-bindsp-is-sn-record-bindsp, each with no hypothesis).
 (defun fn-pcar-spc-prepare (s record)
@@ -145,8 +145,14 @@
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (null (fn-node-stage (fn-sn-node s)))
-           (fn-rcon-record-p record)
+           ; The records flip: the staged record is the retained ROW
+           ; (fn-held-p, books/held-record.lisp), interned at the entry, and
+           ; its context is of the keyring generation in force, as
+           ; fn-spc-prepare / fn-sn-prepare require.
+           (fn-held-p record)
            (not (equal (fn-record-stamp record) :legacy))
+           (equal (fn-hc-generation (fn-held-context record))
+                  (fn-sn-keyring-generation s))
            (eq (car (fn-rcon-cpe-projection-step
                      (fn-sn-consumer s) record (fn-sn-identity-next s))) :ok))
       (let* ((node (fn-sn-prepare-node (fn-sn-node s) record))

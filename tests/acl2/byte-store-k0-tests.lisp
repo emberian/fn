@@ -8,7 +8,7 @@
 (include-book "std/testing/must-fail" :dir :system)
 
 (defun bsk0-related-at (run k)
-  (fn-bs-store-relation (car (nth k run)) (cdr (nth k run))))
+  (fn-bs-store-relation (car (nth k run)) (cdr (nth k run)) *bsk5-arena*))
 
 ; ---------------------------------------------------------------------------
 ; P-FRONTIER.  Start: the :ready pair after the first finish.
@@ -23,7 +23,7 @@
 ; Reachable witness: every hypothesis holds and every proved cut is related.
 (assert-event
  (let ((bs (car (bsk0-f-start))) (ks (cdr (bsk0-f-start))) (run (bsk0-f-good)))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (consp (fn-sf-records ks))
         (fn-bs-frontier-inputp ks ".allocation-k0" (fn-bs-frontier-encode 2))
         (not (fn-bs-lookup bs :staging ".allocation-k0"))
@@ -38,7 +38,7 @@
 ; image with none.  Input and staging premises still hold.
 (assert-event
  (let ((ks (cdr (bsk0-f-start))))
-   (and (not (fn-bs-store-relation (bsk5-initial) ks))
+   (and (not (fn-bs-store-relation (bsk5-initial) ks *bsk5-arena*))
         (fn-bs-frontier-inputp ks ".allocation-k0" (fn-bs-frontier-encode 2))
         (not (fn-bs-lookup (bsk5-initial) :staging ".allocation-k0")))))
 (must-fail
@@ -80,7 +80,7 @@
 ; P-RECORD.  bsk5-record-2-run is the second publication.
 (defun bsk0-r-start () (bsk5-frontier-2))
 (defun bsk0-r-prepared ()
-  (fn-sf-prepare-record (cdr (bsk0-r-start)) *bsk5-record-2*
+  (fn-sf-prepare-record (cdr (bsk0-r-start)) *bsk5-row-2*
                         *bsk5-groups* *bsk5-capacity*))
 (defun bsk0-r-run (bs ks stage name frame)
   (fn-bs-run bs ks (fn-bs-record-program stage name frame)
@@ -88,8 +88,8 @@
 
 (assert-event
  (let ((bs (car (bsk0-r-start))) (ks (bsk0-r-prepared)) (run (bsk5-record-2-run)))
-   (and (fn-bs-store-relation bs ks)
-        (fn-bs-record-inputp ks ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
+        (fn-bs-record-inputp ks ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*)
         (not (fn-bs-lookup bs :staging ".stage-k5-2"))
         (equal (len run) 19)
         (bsk0-related-at run 6) (bsk0-related-at run 8) (bsk0-related-at run 10)
@@ -100,8 +100,8 @@
 
 ; Drop the relation: the prepared kernel over the initial byte image.
 (assert-event
- (and (not (fn-bs-store-relation (bsk5-initial) (bsk0-r-prepared)))
-      (fn-bs-record-inputp (bsk0-r-prepared) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))
+ (and (not (fn-bs-store-relation (bsk5-initial) (bsk0-r-prepared) *bsk5-arena*))
+      (fn-bs-record-inputp (bsk0-r-prepared) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*)))
 (must-fail
  (assert-event
   (bsk0-related-at (bsk0-r-run (bsk5-initial) (bsk0-r-prepared)
@@ -111,7 +111,7 @@
 ; Drop the input contract: publish the FIRST record's frame under the second
 ; name.  The link lands, but its target does not decode to the candidate.
 (assert-event
- (not (fn-bs-record-inputp (bsk0-r-prepared) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame))))
+ (not (fn-bs-record-inputp (bsk0-r-prepared) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame) *bsk5-arena*)))
 (must-fail
  (assert-event
   (bsk0-related-at (bsk0-r-run (car (bsk0-r-start)) (bsk0-r-prepared)
@@ -140,16 +140,16 @@
 (assert-event
  (let* ((pair (car (last (bsk5-record-2-run))))
         (run (bsk0-fin-run (car pair) (cdr pair))))
-   (and (fn-bs-store-relation (car pair) (cdr pair))
+   (and (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*)
         (fn-bs-finish-inputp (cdr pair) 1 1)
-        (fn-bs-run-relatedp run)
+        (fn-bs-run-relatedp run *bsk5-arena*)
         (equal (fn-sf-phase (cdr (nth 3 run))) :ready)
         (equal (len (fn-sf-successes (cdr (nth 3 run)))) 2))))
 ; Drop the relation: the completing kernel over the pre-publication bytes.
 (must-fail
  (assert-event
   (let ((pair (car (last (bsk5-record-2-run)))))
-    (fn-bs-run-relatedp (bsk0-fin-run (car (bsk0-r-start)) (cdr pair))))))
+    (fn-bs-run-relatedp (bsk0-fin-run (car (bsk0-r-start)) (cdr pair)) *bsk5-arena*))))
 ; The completion claim needs its input: a wrong txid leaves the kernel
 ; :completing.
 (must-fail
@@ -208,8 +208,8 @@
 (defun bsk0-r-bad-absent ()
   (bsk0-r-run (bsk0-r-occupied) (bsk0-r-prepared) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2)))
 (assert-event
- (and (not (fn-bs-record-inputp (bsk0-r-prepared) 'not-a-name (fn-bs-txn-name 1) (bsk5-frame-2)))
-      (not (fn-bs-record-inputp (bsk0-r-prepared) ".stage-k5-2" (fn-bs-txn-name 1) '(256)))))
+ (and (not (fn-bs-record-inputp (bsk0-r-prepared) 'not-a-name (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*))
+      (not (fn-bs-record-inputp (bsk0-r-prepared) ".stage-k5-2" (fn-bs-txn-name 1) '(256) *bsk5-arena*))))
 ; record-created (1), record-written (3), record-stage-unlinked (16),
 ; record-staging-cleaned (18).
 (bsk0-unrelated-at (bsk0-r-bad-relation) 1)
@@ -228,16 +228,16 @@
 ; Error arms: the host's error observation applied to the cut pair.
 (defun bsk0-f-arms-okp (run)
   (and (fn-bs-store-relation (car (nth 6 run))
-                             (fn-sf-frontier-replace-result (cdr (nth 6 run)) :error))
+                             (fn-sf-frontier-replace-result (cdr (nth 6 run)) :error) *bsk5-arena*)
        (fn-bs-store-relation (car (nth 9 run))
-                             (fn-sf-frontier-replace-result (cdr (nth 6 run)) :error))
+                             (fn-sf-frontier-replace-result (cdr (nth 6 run)) :error) *bsk5-arena*)
        (fn-bs-store-relation (car (nth 11 run))
-                             (fn-sf-frontier-dir-result (cdr (nth 11 run)) :error))))
+                             (fn-sf-frontier-dir-result (cdr (nth 11 run)) :error) *bsk5-arena*)))
 (defun bsk0-r-arms-okp (run)
   (and (fn-bs-store-relation (car (nth 6 run))
-                             (fn-sf-record-link-result (cdr (nth 6 run)) :error))
+                             (fn-sf-record-link-result (cdr (nth 6 run)) :error) *bsk5-arena*)
        (fn-bs-store-relation (car (nth 10 run))
-                             (fn-sf-record-dir-result (cdr (nth 10 run)) :error))))
+                             (fn-sf-record-dir-result (cdr (nth 10 run)) :error) *bsk5-arena*)))
 ; Reachable, non-degenerate: each error observation moves the kernel.
 (assert-event
  (let ((f (bsk0-f-good)) (r (bsk5-record-2-run)))

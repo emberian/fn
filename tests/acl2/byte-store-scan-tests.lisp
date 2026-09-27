@@ -55,7 +55,12 @@
                           (list (cons (fn-bs-txn-name 0) 10)
                                 (cons (fn-bs-txn-name 1) 11))))
               nil 12))
-(assert-event (fn-store-event-p *bsk-event-article*))
+; The scan decodes WIRE events (the codec's domain); an article frame holds a
+; wire record, which is never a retained event (the records flip: the kernel
+; retains the held row, alpha of which is this record).
+(assert-event (fn-wire-event-p *bsk-event-article*))
+(assert-event (not (fn-store-event-p *bsk-event-article*)))
+(assert-event (fn-wire-event-p *bsk-event-retention*))
 (assert-event (fn-store-event-p *bsk-event-retention*))
 (assert-event
  (equal (fn-bs-read-records (bsk-mixed-event-store) 0 2)
@@ -102,7 +107,7 @@
 (assert-event (fn-csi-full-relationp (bsk-e2-initial-node)))
 (assert-event
  (fn-bs-store-relation (bsk-e2-initial-store)
-                       (fn-sn-files (bsk-e2-initial-node))))
+                       (fn-sn-files (bsk-e2-initial-node)) 'nil))
 (defthm bsk-e2-initial-crash-admissible
   (fn-bs-crash-imagep (bsk-e2-initial-store)
                       (bsk-e2-initial-crash))
@@ -159,7 +164,7 @@
    (and (fn-csi-full-relationp s)
         (equal s *csnt-after-boot*)
         (equal (cdr pair) (fn-sn-files s))
-        (fn-bs-store-relation (car pair) (fn-sn-files s))
+        (fn-bs-store-relation (car pair) (fn-sn-files s) 'nil)
         (fn-bs-crash-choicesp nil (fn-bs-pending (car pair))
                               (fn-bs-unit (car pair)))
         (equal (fn-bs-scan-records scan) (list *csnt-boot*))
@@ -203,7 +208,7 @@
         (fn-sn-files (bsk-e2-invalid-node))))
 (assert-event
  (fn-bs-store-relation (car (bsk-e2-invalid-finished-pair))
-                       (fn-sn-files (bsk-e2-invalid-node))))
+                       (fn-sn-files (bsk-e2-invalid-node)) 'nil))
 (assert-event
  (fn-bs-crash-choicesp nil
                        (fn-bs-pending (car (bsk-e2-invalid-finished-pair)))
@@ -229,7 +234,7 @@
  (assert-event
   (implies (and (fn-bs-store-relation
                  (car (bsk-e2-invalid-finished-pair))
-                 (fn-sn-files (bsk-e2-invalid-node)))
+                 (fn-sn-files (bsk-e2-invalid-node)) 'nil)
                 (fn-bs-crash-choicesp
                  nil (fn-bs-pending (car (bsk-e2-invalid-finished-pair)))
                  (fn-bs-unit (car (bsk-e2-invalid-finished-pair)))))
@@ -243,7 +248,7 @@
 (assert-event
  (not (fn-bs-store-relation
        (car (bsk-e2-invalid-finished-pair))
-       (fn-sn-files *csnt-after-boot*))))
+       (fn-sn-files *csnt-after-boot*) 'nil)))
 (must-fail
  (assert-event
   (implies (and (fn-csi-full-relationp *csnt-after-boot*)
@@ -262,7 +267,7 @@
   (implies (and (fn-csi-full-relationp *csnt-after-boot*)
                 (fn-bs-store-relation
                  (car (bsk-e2-bootstrap-finished-pair))
-                 (fn-sn-files *csnt-after-boot*)))
+                 (fn-sn-files *csnt-after-boot*) 'nil))
            (fn-sn-observed-consumer-okp
             (fn-bs-scan-records (fn-bs-scan-store
                                  (bsk-e2-invalid-image)))))))
@@ -334,7 +339,7 @@
         (scan (fn-bs-scan-store (bsk-topic-image)))
         (records (fn-bs-scan-records scan)))
    (and (fn-csi-full-relationp s)
-        (fn-bs-store-relation (car pair) (fn-sn-files s))
+        (fn-bs-store-relation (car pair) (fn-sn-files s) 'nil)
         (fn-bs-crash-choicesp nil (fn-bs-pending (car pair))
                               (fn-bs-unit (car pair)))
         (equal records (list *csnt-boot* *bsk-topic-unbound-anchor*))
@@ -369,7 +374,7 @@
                     (cons :transactions nil))
               nil 2))
 (assert-event (fn-bs-statep *bsk-no-config*))
-(assert-event (not (fn-bs-store-relation *bsk-no-config* (fn-sf-initial-state))))
+(assert-event (not (fn-bs-store-relation *bsk-no-config* (fn-sf-initial-state) 'nil)))
 (defconst *bsk-no-config-image* (fn-bs-crash *bsk-no-config* nil))
 (assert-event (equal (fn-bs-scan-store *bsk-no-config-image*)
                      (list :fault :config)))

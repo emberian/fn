@@ -18,7 +18,9 @@
     (fn-bs-crash (car pair)
                  (fn-bs-view-choices (fn-bs-pending (car pair)) (fn-bs-unit (car pair))))))
 (defun sobt-f () (fn-bs-scan-frontier (fn-bs-scan-store (sobt-image))))
-(defun sobt-r () (fn-bs-scan-records (fn-bs-scan-store (sobt-image))))
+; The host opens over the retained rows whose alpha is the scan (the intern
+; of the scanned frames): the dying process's own rows at the crash pair.
+(defun sobt-r () (fn-bs-scanned-rows (cdr (bsk5-linked-2)) (sobt-image) *bsk5-arena*))
 (defun sobt-host (configs) (fn-cpo-open-observed configs (sobt-f) (sobt-r)))
 (defun sobt-model (groups capacity)
   (fn-sn-open-observed groups capacity (sobt-f) (sobt-r)))

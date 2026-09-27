@@ -152,6 +152,11 @@
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
 (include-book "books/post-identity-index")
+;; The records flip: host/store-host.lisp includes books/store-intern (the
+;; intern at the entries), which names the payload arena `fn-arena'; the
+;; byte-array attachment (books/payload-arena-attach.lisp) must precede the
+;; first include that introduces the generic, so it comes here.
+(include-book "books/payload-arena-attach")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.

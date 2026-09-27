@@ -63,18 +63,29 @@
 ; rest of the store host uses (fn-store-sn-domain).  `*fn-store-groups*' was
 ; deleted with the compiled group table in 4ba5599; these three sites still
 ; named it, so every Acl2Store bridge failed to load this file.
+;
+; Under the records flip the capture replays ROWS (the decoded events
+; interned into a local arena, books/store-intern.lisp fn-intern-events), and
+; a captured node holding an article would carry arena handles its frame does
+; not resolve: such a capture is refused by name (:error :arena) until the
+; checkpoint frame carries the arena's bytes (the same open item as the state
+; checkpoint, host/store-node-host.lisp fn-store-sco-decode).
 (defun fn-store-checkpoint-protected (octet-records frontier state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((records (fn-store-decode-records octet-records)))
+  (let* ((decoded (fn-store-decode-records octet-records))
+         (records (if (equal decoded :bad) :bad
+                    (fn-store-intern-records-local decoded))))
     (if (equal records :bad)
         (value :bad)
+      (if (fn-store-rows-hold-handles-p records)
+          (value (list :error :arena))
       (let ((captured (fn-checkpoint-capture (fn-store-sn-domain state)
                                              (fn-store-sn-capacity state)
                                              records frontier)))
         (if (not (equal (car captured) :ok))
             (value captured)
           (value (fn-cpc-frame-protected
-                  (fn-checkpoint-capture-value captured))))))))
+                  (fn-checkpoint-capture-value captured)))))))))
 
 (defun fn-store-checkpoint-selection-protected (generation)
   (declare (xargs :mode :program))
@@ -274,9 +285,13 @@
 ; the differential comparison below.
 (defun fn-store-checkpoint-restore (octet-suffix frontier state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((suffix (fn-store-decode-records octet-suffix)))
+  (let* ((decoded (fn-store-decode-records octet-suffix))
+         (suffix (if (equal decoded :bad) :bad
+                   (fn-store-intern-records-local decoded))))
     (if (equal suffix :bad)
         (value (list :error :suffix-octets))
+      (if (fn-store-rows-hold-handles-p suffix)
+          (value (list :error :arena))
       (let ((restored (fn-checkpoint-restore
                        (f-get-global 'fn-store-checkpoint state)
                        (fn-store-sn-domain state) (fn-store-sn-capacity state)
@@ -285,7 +300,7 @@
             (value restored)
           (let ((state (f-put-global 'fn-store-checkpoint-node
                                      (car (cdr restored)) state)))
-            (value :ok)))))))
+            (value :ok))))))))
 
 ; The differential test: the node restored from checkpoint plus suffix against
 ; the node the live composition rebuilt by full replay (fn-sn-open-observed).
