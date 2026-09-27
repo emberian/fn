@@ -69,4 +69,46 @@
                             fn-pcar-spc-prepare fn-intern-row-at
                             fn-record-p fn-arena-seal-list)))))
 
-(in-theory (disable fn-store-prepare-interned-carried))
+
+; -----------------------------------------------------------------------------
+; The host's two calls.  A :program host entry that calls an arena updater
+; (fn-arena-seal-list, fn-intern-events and every function over them) carries
+; ACL2's INVARIANT-RISK: ACL2 then runs it through its *1* body, so every
+; guard-verified callee checks its guard at the call -- here (fn-sn-statep s),
+; a walk of the whole history per POST (flip-L6-2 LANEDUMP: 0.79 s and
+; 1.21 GB of the 0.80 s and 1.22 GB the carried prepare cost at N = 10,000) --
+; and prints a warning on standard output.  So the host entry decides with
+; the arena READ only (fn-store-prepare-carried-next over the arena's count),
+; and the host then seals the octets the entry names with a separate call of
+; the guard-verified fn-arena-seal-list.  KEYSTONE
+; fn-store-prepare-interned-carried-is-next-then-seal: those two calls are the
+; entry, both results.
+
+(defun fn-store-prepare-carried-next (s w count)
+  (declare (xargs :guard (and (fn-sn-statep s) (natp count)) :verify-guards nil))
+  (if (and (fn-record-p w) (fn-prin-keyringp (fn-sn-keyring s))
+           (natp (fn-sn-keyring-generation s)))
+      (fn-pcar-spc-prepare
+       s (fn-intern-row-at w (fn-sn-keyring s) (fn-sn-keyring-generation s) count))
+    s))
+
+(verify-guards fn-store-prepare-carried-next
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep)
+                                  (fn-sf-statep fn-node-statep
+                                   fn-pcar-spc-prepare-is-spc-prepare
+                                   fn-intern-row-at fn-record-p)))))
+
+(defthm fn-store-prepare-interned-carried-is-next-then-seal
+  (equal (fn-store-prepare-interned-carried s w fn-arena)
+         (let ((next (fn-store-prepare-carried-next s w (fn-arena-count fn-arena))))
+           (mv next
+               (if (equal next s)
+                   fn-arena
+                 (fn-arena-seal-list (fn-record-payload w) fn-arena)))))
+  :hints (("Goal" :in-theory (e/d (fn-store-prepare-interned-carried
+                                   fn-store-prepare-carried-next)
+                                  (fn-pcar-spc-prepare fn-intern-row-at
+                                   fn-record-p fn-arena-seal-list
+                                   fn-pcar-spc-prepare-is-spc-prepare)))))
+
+(in-theory (disable fn-store-prepare-interned-carried fn-store-prepare-carried-next))

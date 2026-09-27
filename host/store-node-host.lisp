@@ -900,6 +900,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; bytes through the arena (books/store-intern.lisp fn-store-existing-action,
 ; KEYSTONE fn-store-existing-action-is-the-verdict-over-alpha: D25's verdict
 ; over alpha of the acceptance articles), and the prepare is
+; fn-store-prepare-carried-next then the host's seal, which is
 ; fn-store-prepare-interned-carried, which on a related store is
 ; fn-store-prepare-interned (KEYSTONES -is-intern-then-prepare,
 ; -refusal-keeps-the-arena, -acceptance-seals-one-payload): the row is
@@ -934,19 +935,26 @@ reopen predicate, writer-lock observation and observed final namespace."
                           (fn-store-octets->string subject-octets)
                           (fn-store-octets->string evidence-octets)
                           charge)))
-            ; The carried entry (books/store-prepare-carried.lisp): the
-            ; intern, then fn-pcar-spc-prepare over the row; no replay of the
-            ; history.  KEYSTONE fn-store-prepare-interned-carried-is-prepare-
-            ; interned: under fn-snt-relation it is fn-store-prepare-interned
-            ; (books/store-intern.lisp), whose keystones say what it does.
+            ; The carried prepare (books/store-prepare-carried.lisp): the
+            ; row interned at the arena's count, staged by fn-pcar-spc-prepare;
+            ; no replay of the history.  The entry READS the arena only, so it
+            ; carries no invariant-risk and runs compiled; the answer
+            ; (:seal OCTETS) names the payload the host then seals with one
+            ; call of fn-arena-seal-list (host/native/io.lisp
+            ; fnn-bridge-prepare, tools/run_store.py prepare).  KEYSTONES
+            ; fn-store-prepare-interned-carried-is-next-then-seal (the two
+            ; calls are the carried entry) and
+            ; fn-store-prepare-interned-carried-is-prepare-interned (under
+            ; fn-snt-relation, books/store-intern.lisp's entry).
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena state)
-              (mv-let (next fn-arena)
-                (fn-store-prepare-interned-carried s record fn-arena)
+              (let ((next (fn-store-prepare-carried-next
+                           s record (fn-arena-count fn-arena))))
                 (if (equal next s)
                     (mv nil :refused fn-arena state)
                   (let ((state (f-put-global 'fn-store-sn next state)))
-                    (mv nil :prepared fn-arena state))))))))))))
+                    (mv nil (list :seal (fn-record-payload record))
+                        fn-arena state))))))))))))
 
 ; A semantic refusal consumes the already durable allocator reservation using
 ; the proved composition transition, which advances the same live node to the

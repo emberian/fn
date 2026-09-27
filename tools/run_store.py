@@ -653,7 +653,23 @@ class Acl2Store:
         form += " '" + self.literal(subject) + " '" + self.literal(evidence)
         form += " {} (fn-clock-observation {} {} 1000 {}) fn-arena state)".format(
             charge, monotonic_ms, wall_ms, "t" if has_wall else "nil")
-        return acl2_symbol(self.call(form))
+        output = self.call(form)
+        body = acl2_result(output)
+        # An accepted prepare answers (:SEAL OCTETS): ACL2 staged the row and
+        # names the payload; the bridge seals exactly those octets with one
+        # call of the guard-verified fn-arena-seal-list (the entry only reads
+        # the arena, books/store-prepare-carried.lisp
+        # fn-store-prepare-interned-carried-is-next-then-seal).
+        if body.upper().startswith(b"(:SEAL ") and body.endswith(b")"):
+            inner = body[len(b"(:SEAL "):-1].strip()
+            octets = [] if inner.upper() == b"NIL" else decimal_list(inner)
+            if octets is None or any(value > 255 for value in octets):
+                raise StoreError("ACL2 returned a malformed seal")
+            sealed = self.call("(fn-arena-seal-list '" + self.numeric_list(octets) + " fn-arena)")
+            if acl2_result(sealed).lower() != b"<fn-arena>":
+                raise StoreError("the arena seal returned no arena")
+            return "prepared"
+        return acl2_symbol(output)
 
     def existing_action(self, msgid, payload, group_codes):
         form = "(fn-store-sn-existing-action '" + self.literal(msgid)
