@@ -66,19 +66,21 @@
 # tools/power_loss_openbsd.py on hbox: OB_BASE/NAME/cfg.json and its raw
 # disks, NAME `cutbld' by default (--openbsd-vm), OB_BASE
 # /tank/fn/scratch/power-loss-openbsd: the cut's own VM, so a lane using a
-# sibling VM never blocks a cut.  Its root disk is a copy of orfbld's (the
-# openbsd-release-fixes build VM), a clone of the release-openbsd install
-# (OpenBSD 7.9 amd64, syspatch 002-021; pkg sbcl 2.6.3, libsodium 1.0.22,
-# python 3.13, bash, gmake; ACL2 8.7 and its system books under
-# /usr/local/fn-work, the literal 4 GiB launcher acl2-lit-4g); its second disk is the build space, FFS2 on sd1a, mounted
+# sibling VM never blocks a cut.  Its root disk is a raw copy of
+# OB_BASE/vm/root-base.qcow2, the release-openbsd install (OpenBSD 7.9
+# amd64, syspatch 002-021; pkg sbcl 2.6.3, libsodium 1.0.22, python 3.13,
+# bash, gmake; ACL2 8.7 and its certified system books under
+# /usr/local/fn-work).  The gate writes its own literal ACL2 launcher there
+# (4 GiB heap, --tls-limit 65536 as hbox's image builds since batch AV).
+# Its second disk is the build space, FFS2 on sd1a, mounted
 # wxallowed at /bw.  qemu runs in the fn-openbsd-qemu:local container with
 # /dev/kvm; root logs in with OB_BASE/vm/id_ed25519 on 127.0.0.1:PORT
-# (cfg.json's `ssh').  Provisioned once on hbox with orfbld stopped (its
-# root disk is copied), as openbsd-release-fixes provisioned orfbld
+# (cfg.json's `ssh').  Provisioned once on hbox (2026-09-27, lane
+# release-machinery), as openbsd-release-fixes provisioned its orfbld
 # (planning/evidence/openbsd-release-fixes-2026-09-27.md section 1):
 #   python3 tools/power_loss_openbsd.py prepare cutbld --cache writeback \
 #     --ssh 2293 --nntp 11693 --smp 8 --mem 7168 --store-size 48G \
-#     --format raw --ffs 2 --root-from orfbld
+#     --format raw --ffs 2
 # The gate boots it (`power_loss_openbsd.py start', refused if it is
 # already running: someone else's), certifies REV's default closure in the
 # guest into a cache of the cut's own, builds the tarball with
@@ -377,7 +379,10 @@ g_tarball_openbsd() {
   guest="set -e
 mount | grep -q ' /bw ' || mount -o wxallowed /dev/sd1a /bw
 ulimit -d \$(ulimit -H -d)
-export FN_ACL2=/usr/local/fn-work/acl2-lit-4g ACL2_SYSTEM_BOOKS=/usr/local/fn-work/acl2-8.7/books
+L=/usr/local/fn-work/acl2-lit-4g-tls64k
+printf '%s\\n' '#!/bin/sh' 'export SBCL_HOME=/usr/local/lib/sbcl/' 'exec /usr/local/bin/sbcl --tls-limit 65536 --dynamic-space-size 4096 --control-stack-size 64 --disable-ldb --core /usr/local/fn-work/acl2-8.7/saved_acl2.core --end-runtime-options --no-userinit --eval \"(acl2::sbcl-restart)\" \"\$@\"' > \$L
+chmod 0755 \$L
+export FN_ACL2=\$L ACL2_SYSTEM_BOOKS=/usr/local/fn-work/acl2-8.7/books
 export FN_ACL2_SLOTS=7 FN_ACL2_TIMEOUT_SECONDS=3000 FN_CERT_CACHE=$W/certcache
 rm -rf $W/src $W/certcache $W/release $W/fresh; mkdir -p $W/src $W/certcache $W/release $W/fresh
 cd $W/src && tar -xf $W/source.tar
@@ -418,7 +423,7 @@ cd $R/out && sha256sum $tb && grep -F $tb SHA256SUMS"
   if [ "$DRY" = yes ]; then
     would "(gate 12's) git archive --format=tar $REV | ssh $HOST 'cat > $S/source.tar'"
     echo "$script" | sed 's/^/would (hbox): /'
-    echo "$guest" | sed 's/^/would (openbsd guest): /'
+    printf '%s\n' "$guest" | sed 's/^/would (openbsd guest): /'
     box "test -f $cfg && test -f $B/vm/id_ed25519" \
       || { echo "no OpenBSD build VM $OB_VM on $HOST ($cfg, $B/vm/id_ed25519): provision it as the header of tools/cut_release.sh says"; return 1; }
     running=$(box "docker inspect -f '{{.State.Running}}' pl-obsd-$OB_VM 2>/dev/null")
