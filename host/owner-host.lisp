@@ -1091,8 +1091,8 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-status (fn-owner-core state) consumer)))
 
-(defun fn-owner-consumer-local-poll (consumer state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-consumer-local-poll (consumer fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   ;; PKT-254: ACL2 encodes the selected event and refuses a report the
   ;; poll reply cannot carry by name (books/consumer-owner-local.lisp
   ;; fn-col-poll-report; fn-col-poll-report-fits-or-refuses-by-name,
@@ -1102,11 +1102,15 @@
   ;; PRF-234: fn-cbind-plain-poll is fn-col-poll-report for an unbound
   ;; consumer and refuses (:bound) a bound one (books/consumer-bound.lisp
   ;; fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll).
-  ;; PKT-710: the page is the poll's answer with the view's withdrawals in
-  ;; it (books/consumer-withdrawal.lisp fn-cwd-page; the answer itself while
+  ;; The records flip: a selected article is a held row, whose report reads
+  ;; its bytes through the live arena (fn-cbind-plain-poll-over,
+  ;; fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll).
+  ;; PKT-710: the page is that answer with the view's withdrawals in it
+  ;; (books/consumer-withdrawal.lisp fn-cwd-page; the answer itself while
   ;; nothing is withdrawn, fn-cwd-page-without-withdrawals-is-the-answer).
   (value (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
-                      (fn-cbind-plain-poll (fn-owner-ocfg state) consumer))))
+                      (fn-cbind-plain-poll-over (fn-owner-ocfg state) consumer
+                                                fn-arena))))
 
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :mode :program))
@@ -1422,13 +1426,15 @@
 ; fn-cbind-ack-is-the-consumer-ack-or-a-refusal).  The host carries the
 ; decoded consumer id or cursor and the password octets; it compares
 ; nothing.
-(defun fn-owner-consumer-local-bound-poll (consumer secret state)
-  (declare (xargs :stobjs state :mode :program))
-  ;; PKT-710: the bound poll's answer with the withdrawals in it (a
-  ;; refusal of the gate is served unchanged, fn-cwd-page-of-a-refusal).
+(defun fn-owner-consumer-local-bound-poll (consumer secret fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  ;; Over the live arena (records flip): fn-cbind-poll-over-delivers-only-
+  ;; readable-events, fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal.
+  ;; PKT-710: with the withdrawals in it (a refusal of the gate is served
+  ;; unchanged, fn-cwd-page-of-a-refusal).
   (value (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
-                      (fn-cbind-poll (fn-owner-ocfg state) (fn-owner-auth state)
-                                     consumer secret))))
+                      (fn-cbind-poll-over (fn-owner-ocfg state) (fn-owner-auth state)
+                                          consumer secret fn-arena))))
 
 ;; PRF-252: one step of a consumer wait (books/consumer-wait.lisp
 ;; fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page): the poll a
@@ -1436,12 +1442,13 @@
 ;; when that is an empty page before the deadline.  The admission of one
 ;; more waiter.  host/native/owner.lisp fnn-owner-consumer-local-wait calls
 ;; both under the owner mutex.
-(defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds state)
-  (declare (xargs :stobjs state :mode :program))
-  ;; PKT-710: a wait answers the page (fn-cwd-wait-step-is-the-page-or-a-
-  ;; sleep-on-an-empty-page), so a withdrawal wakes it as an article does.
-  (value (fn-cwd-wait-step (fn-owner-ocfg state) (fn-owner-auth state)
-                           consumer secret elapsed seconds)))
+(defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  ;; Over the live arena (records flip), and PKT-710: a wait answers the
+  ;; page (fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page),
+  ;; so a withdrawal wakes it as an article does.
+  (value (fn-cwd-wait-step-over (fn-owner-ocfg state) (fn-owner-auth state)
+                                consumer secret elapsed seconds fn-arena)))
 
 (defun fn-owner-consumer-local-wait-admit (waiters state)
   (declare (xargs :stobjs state :mode :program))

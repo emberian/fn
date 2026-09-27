@@ -50,9 +50,10 @@
 ; page is the answer; the (a) and (b) arms take effect with that refresh,
 ; through the same two accessors, with no change here.
 ;
-; Host callers: host/owner-host.lisp fn-owner-consumer-local-poll,
-; fn-owner-consumer-local-bound-poll (fn-cwd-page) and
-; fn-owner-consumer-local-wait-step (fn-cwd-wait-step).
+; Host callers: host/owner-host.lisp fn-owner-consumer-local-poll and
+; fn-owner-consumer-local-bound-poll (fn-cwd-page over fn-cbind-plain-poll-over
+; and fn-cbind-poll-over, the polls over the live arena) and
+; fn-owner-consumer-local-wait-step (fn-cwd-wait-step-over).
 ;
 ; Prefix `fn-cwd-' (docs/prefixes.md).
 (in-package "ACL2")
@@ -443,16 +444,19 @@
 
 ; -----------------------------------------------------------------------------
 ; The wait (PRF-252) over the page: a waiting consumer is woken and answered
-; by a withdrawal exactly as by an article.
+; by a withdrawal exactly as by an article.  The poll it runs is the one the
+; host's wait runs, over the live payload arena (books/consumer-wait.lisp
+; fn-cwait-poll-over, the records flip).
 
-(defun fn-cwd-wait-page (oc acfg consumer secret)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-cwd-wait-page-over (oc acfg consumer secret fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-cwd-page (fn-ocfg-owner oc) consumer
-               (fn-cwait-poll oc acfg consumer secret)))
+               (fn-cwait-poll-over oc acfg consumer secret fn-arena)))
 
-(defun fn-cwd-wait-step (oc acfg consumer secret elapsed seconds)
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-cwait-decide (fn-cwd-wait-page oc acfg consumer secret) elapsed seconds))
+(defun fn-cwd-wait-step-over (oc acfg consumer secret elapsed seconds fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-cwait-decide (fn-cwd-wait-page-over oc acfg consumer secret fn-arena)
+                   elapsed seconds))
 
 (local
  (defthm fn-cwd-empty-pagep-is-a-list
@@ -460,10 +464,10 @@
 
 ; KEYSTONE (the wait answers the page at its return point): the step answers
 ; exactly the page, or sleeps, only on an empty page before the deadline, as
-; fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page for the poll.
-(defthm fn-cwd-wait-step-is-the-page-or-a-sleep-on-an-empty-page
-  (let ((r (fn-cwd-wait-step oc acfg consumer secret elapsed seconds))
-        (p (fn-cwd-wait-page oc acfg consumer secret)))
+; fn-cwait-step-over-is-the-poll-or-a-sleep-on-an-empty-page for the poll.
+(defthm fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page
+  (let ((r (fn-cwd-wait-step-over oc acfg consumer secret elapsed seconds fn-arena))
+        (p (fn-cwd-wait-page-over oc acfg consumer secret fn-arena)))
     (and (or (equal r (list :answer p))
              (and (equal (car r) :sleep)
                   (fn-cwait-empty-pagep p)
@@ -477,9 +481,9 @@
          (implies (not (fn-cwait-empty-pagep p))
                   (equal r (list :answer p)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-cwd-wait-step fn-cwait-decide
+  :hints (("Goal" :in-theory (e/d (fn-cwd-wait-step-over fn-cwait-decide
                                    fn-cwd-empty-pagep-is-a-list)
-                                  (fn-cwd-wait-page fn-cwait-empty-pagep)))))
+                                  (fn-cwd-wait-page-over fn-cwait-empty-pagep)))))
 
-(verify-guards fn-cwd-wait-page)
-(verify-guards fn-cwd-wait-step)
+(verify-guards fn-cwd-wait-page-over)
+(verify-guards fn-cwd-wait-step-over)

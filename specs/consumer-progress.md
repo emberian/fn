@@ -447,7 +447,7 @@ withdrawal records.
   (`fn-cwd-page-without-withdrawals-is-the-answer`), so every guarantee above
   (CNS-006, CNS-007, at-least-once delivery, the ack) holds unchanged; a
   wait answers the page and wakes for a withdrawal as for an article
-  (`fn-cwd-wait-step-is-the-page-or-a-sleep-on-an-empty-page`).
+  (`fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page`).
 
 Not guarantees: a consumer that polls after the cancel can meet the same
 Message-ID twice (at the article's position and at the cancel's), as

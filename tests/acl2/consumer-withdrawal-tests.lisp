@@ -204,7 +204,7 @@
                      *cwdt-empty-cancel*))
 
 ; ---------------------------------------------------------------------------
-; fn-cwd-wait-step-is-the-page-or-a-sleep-on-an-empty-page: a withdrawal page
+; fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page: a withdrawal page
 ; is not empty, so a wait answers it at once (fn-cwait-decide over the page).
 (assert-event (not (fn-cwait-empty-pagep *cwdt-page-w*)))
 (assert-event (equal (fn-cwait-decide *cwdt-page-w* 0 300) (list :answer *cwdt-page-w*)))
