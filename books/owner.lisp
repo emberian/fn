@@ -1092,7 +1092,9 @@
 ; Recovery's rebuild decides alike (`fn-ctl-refresh-withdrawals-is-the-
 ; journal', books/control-visible.lisp).
 (defun fn-own-refresh (o)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (enable fn-sf-records-count
+                                                           fn-ctl-refresh-withdrawals)))))
   (let ((s (fn-own-store o)))
     (if (fn-own-store-idlep s)
         (let* ((old-view (fn-own-view o))
@@ -1100,10 +1102,21 @@
                (raw (fn-state-articles acceptance))
                (old-raw (fn-own-view-raw old-view))
                (verdicts (fn-sn-verdicts s))
-               (withdrawals (fn-ctl-refresh-withdrawals
-                             raw old-raw (fn-own-view-withdrawals old-view)
-                             verdicts (fn-sf-records (fn-sn-files s))
-                             (fn-sn-config-history s)))
+               ; The history is held as a snoc-list (books/store-files.lisp):
+               ; reading it conses it back, so the refresh reads it only when
+               ; the acceptance changed (a refresh that sees no new article
+               ; keeps the withdrawals: the reference's first arm), and reads
+               ; the count in O(1) (fn-sl-count-is-len).
+               (withdrawals (mbe :logic (fn-ctl-refresh-withdrawals
+                                         raw old-raw (fn-own-view-withdrawals old-view)
+                                         verdicts (fn-sf-records (fn-sn-files s))
+                                         (fn-sn-config-history s))
+                                 :exec (if (equal raw old-raw)
+                                           (fn-own-view-withdrawals old-view)
+                                         (fn-ctl-refresh-withdrawals
+                                          raw old-raw (fn-own-view-withdrawals old-view)
+                                          verdicts (fn-sf-records (fn-sn-files s))
+                                          (fn-sn-config-history s)))))
                (old-visible (fn-state-articles (fn-own-view-archive old-view)))
                (visible (fn-ctl-refresh-visible
                          raw old-raw old-visible withdrawals
@@ -1116,7 +1129,8 @@
                        (fn-own-view-index old-view) old-visible visible)))
           (fn-own-make s
                      (fn-own-view-make-visible
-                      (len (fn-sf-records (fn-sn-files s)))
+                      (mbe :logic (len (fn-sf-records (fn-sn-files s)))
+                           :exec (fn-sf-records-count (fn-sn-files s)))
                       (fn-sf-frontier (fn-sn-files s))
                       archive verdicts index
                       (fn-gidx-refresh (fn-own-view-group-index old-view)

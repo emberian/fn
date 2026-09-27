@@ -42,6 +42,7 @@
 (include-book "../books/owner-config-observe")
 (include-book "../books/owner-served-carried")
 (include-book "../books/owner-commit-carried")
+(include-book "../books/owner-refresh-indexed")
 (include-book "../books/owner-bound-commit")
 (include-book "../books/owner-log-reopen")
 (include-book "../books/owner-prepare-carried")
@@ -1169,7 +1170,12 @@
 
 ; Completion is the owner's (:complete) event: fn-sn-finish consumed once,
 ; its pair appended to the ledger once (fn-own-completion-consumed-once).
-;; The call is fn-ccar-ocfg-complete (books/owner-commit-carried.lisp), equal
+;; post-alloc-2: the call is fn-rix-ocfg-complete (books/owner-refresh-indexed.lisp),
+;; equal to fn-ccar-ocfg-complete under fn-ceis-indexedp of the owner's Store
+;; (fn-rix-ocfg-complete-is-ccar-ocfg-complete; every owner the host holds has
+;; it, fn-osi-live-owner-store-is-indexed): the refresh reads the new article's
+;; row and the count from the Store's event index.
+;; The call was fn-ccar-ocfg-complete (books/owner-commit-carried.lisp), equal
 ;; to fn-ocfg-step of (:complete) for every configured owner, no hypothesis
 ;; (fn-ccar-ocfg-complete-is-ocfg-step-complete).  It is guard-verified under
 ;; fn-sn-statep of the store, which fn-ocl-relation carries
@@ -1183,7 +1189,7 @@
   (let* ((before (fn-owner-core state))
          (before-files (fn-sn-files (fn-own-store before)))
          (state (fn-owner-install-ocfg
-                 (fn-ccar-ocfg-complete (fn-owner-ocfg state)) state))
+                 (fn-rix-ocfg-complete (fn-owner-ocfg state)) state))
          (after (fn-owner-core state))
          (after-files (fn-sn-files (fn-own-store after))))
     (if (and (equal (fn-sf-phase before-files) :completing)
@@ -1207,7 +1213,10 @@
 ; not an article completion at all, and the answer is :fault with nothing
 ; changed.  Retention, identity and config completions still use
 ; fn-owner-finish above: they have no article submission to name.
-;; The call is fn-ccar-own-finish (books/owner-commit-carried.lisp), equal
+;; post-alloc-2: the call is fn-rix-own-finish (books/owner-refresh-indexed.lisp),
+;; equal to fn-ccar-own-finish under fn-ceis-indexedp of the owner's Store
+;; (fn-rix-own-finish-is-ccar-own-finish; fn-osi-live-owner-store-is-indexed).
+;; fn-ccar-own-finish (books/owner-commit-carried.lisp) is equal
 ;; to fn-own-finish for every owner and configuration
 ;; (fn-ccar-own-finish-is-own-finish) under the same guard, fn-sn-statep of
 ;; the store, which the owner relation carries from open.  It finds the
@@ -1226,7 +1235,7 @@
   (let ((oc (fn-owner-ocfg state)))
     (if (fn-ocfg-staged oc)
         (value :fault)
-      (let* ((result (fn-ccar-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc) fn-arena))
+      (let* ((result (fn-rix-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc) fn-arena))
              (state (fn-owner-replace-core (cdr result) state)))
         (value (car result))))))
 

@@ -9,8 +9,9 @@
 ; representation appends at the end in O(1), so the kernel state holds each
 ; of the two as a snoc-list instead:
 ;
-;   (:snoc N . REV)   the list (fn-sl-rev-onto REV nil) of N elements, newest
-;                     first in REV;
+;   (:snoc N . REV)   the list of N elements whose reverse is the first N of
+;                     REV (newest first; a short REV is padded with nil, as
+;                     TAKE pads), so its length is N for EVERY value;
 ;   (:raw . X)        X itself, for a value that is not a true list (the
 ;                     kernel's accessors are total, so a non-list must round-
 ;                     trip too).
@@ -20,10 +21,11 @@
 ; one element: one cons and one increment on a snoc form
 ; (fn-sl-list-of-fn-sl-snoc: the list it represents is the append, for every
 ; value; fn-sl-snoc-of-fn-sl-of: it is the representation of the appended
-; list, for every list).  fn-sl-canonp says a value is the representation of
-; the list it represents; fn-sl-count and fn-sl-last read the length and the
-; last element in O(1) and equal len and (car (last ...)) of the list under
-; it (the last one for every value).
+; list, for every list).  fn-sl-count, fn-sl-last and fn-sl-nth read the
+; length, the last element and the I-th in O(1) / O(distance from the newest)
+; and equal len, (car (last ...)) and nth of the list for every value.
+; fn-sl-canonp says a value is the representation of the list it represents
+; (what copying a field instead of rebuilding it needs).
 ;
 ; The logical model stays the list: nothing above store-files sees a snoc-list.
 
@@ -34,6 +36,14 @@
   (if (consp x)
       (fn-sl-rev-onto (cdr x) (cons (car x) acc))
     acc))
+
+; The first N of X, reversed onto ACC (nil past X's end).
+(defun fn-sl-rev-take (n x acc)
+  (declare (xargs :guard (natp n)))
+  (if (zp n)
+      acc
+    (fn-sl-rev-take (1- n) (if (consp x) (cdr x) nil)
+                    (cons (if (consp x) (car x) nil) acc))))
 
 (defun fn-sl-of (x)
   (declare (xargs :guard t))
@@ -48,7 +58,7 @@
 (defun fn-sl-list (h)
   (declare (xargs :guard t))
   (if (fn-sl-snoc-formp h)
-      (fn-sl-rev-onto (cddr h) nil)
+      (fn-sl-rev-take (nfix (cadr h)) (cddr h) nil)
     (if (consp h) (cdr h) nil)))
 
 ; append with (list r), total.
@@ -83,7 +93,7 @@
 (defun fn-sl-last (h)
   (declare (xargs :guard t))
   (if (fn-sl-snoc-formp h)
-      (if (consp (cddr h)) (car (cddr h)) nil)
+      (if (and (posp (cadr h)) (consp (cddr h))) (car (cddr h)) nil)
     (fn-sl-last-elem (fn-sl-list h))))
 
 ; The I-th element (the oldest is 0), total.  On a snoc form it is the
@@ -142,12 +152,52 @@
             (equal (fn-sl-rev-onto (fn-sl-rev-onto x nil) nil) x))
    :hints (("Goal" :induct (fn-sl-rev-onto x acc)))))
 
+; The first N of a list of length N is the list.
+(local
+ (defthm fn-sl-rev-take-of-len
+   (implies (true-listp x)
+            (equal (fn-sl-rev-take (len x) x acc) (fn-sl-rev-onto x acc)))
+   :hints (("Goal" :induct (fn-sl-rev-onto x acc)
+            :in-theory (disable fn-sl-rev-onto-acc)))))
+
+(local
+ (defthm fn-sl-rev-take-len
+   (equal (len (fn-sl-rev-take n x acc)) (+ (nfix n) (len acc)))))
+
+(local
+ (defthm fn-sl-rev-take-true-listp
+   (implies (true-listp acc) (true-listp (fn-sl-rev-take n x acc)))))
+
+(local
+ (defthm fn-sl-rev-take-append
+   (equal (fn-sl-rev-take n x (append a b))
+          (append (fn-sl-rev-take n x a) b))
+   :hints (("Goal" :induct (fn-sl-rev-take n x a)
+            :in-theory (disable fn-sl-rev-onto-acc)))))
+
+(local
+ (defthm fn-sl-rev-take-acc
+   (implies (syntaxp (not (equal acc ''nil)))
+            (equal (fn-sl-rev-take n x acc)
+                   (append (fn-sl-rev-take n x nil) acc)))
+   :hints (("Goal" :use ((:instance fn-sl-rev-take-append (a nil) (b acc)))
+            :in-theory (disable fn-sl-rev-take-append)))))
+
 (defthm fn-sl-append1-is-append
   (equal (fn-sl-append1 x r) (append x (list r))))
 
 (local
  (defthm fn-sl-true-listp-append1
    (true-listp (append x (list r)))))
+
+(local
+ (defthm fn-sl-rev-take-of-rev
+   (implies (true-listp x)
+            (equal (fn-sl-rev-take (len x) (fn-sl-rev-onto x nil) nil) x))
+   :hints (("Goal" :use ((:instance fn-sl-rev-take-of-len
+                                    (x (fn-sl-rev-onto x nil)) (acc nil)))
+            :in-theory (disable fn-sl-rev-take-of-len fn-sl-rev-take-acc
+                                fn-sl-rev-onto-acc)))))
 
 ; KEYSTONE (representation).  Every value round-trips.
 (defthm fn-sl-list-of-fn-sl-of
@@ -176,19 +226,22 @@
   :hints (("Goal" :in-theory (disable fn-sl-snoc fn-sl-of fn-sl-list)
            :use ((:instance fn-sl-snoc-of-fn-sl-of (x (fn-sl-list h)))))))
 
+; The readers, for every value.
 (defthm fn-sl-count-is-len
-  (implies (fn-sl-canonp h)
-           (equal (fn-sl-count h) (len (fn-sl-list h)))))
+  (equal (fn-sl-count h) (len (fn-sl-list h))))
 
 (local
  (defthm fn-sl-last-elem-is-car-last
    (equal (fn-sl-last-elem x) (car (last x)))))
 
 (local
- (defthm fn-sl-car-last-of-rev-onto
-   (equal (car (last (fn-sl-rev-onto x acc)))
-          (if (consp acc) (car (last acc)) (if (consp x) (car x) nil)))
-   :hints (("Goal" :induct (fn-sl-rev-onto x acc)))))
+ (defthm fn-sl-car-last-of-rev-take
+   (equal (car (last (fn-sl-rev-take n x acc)))
+          (if (consp acc)
+              (car (last acc))
+            (if (zp n) nil (if (consp x) (car x) nil))))
+   :hints (("Goal" :induct (fn-sl-rev-take n x acc)
+            :in-theory (disable fn-sl-rev-take-acc fn-sl-rev-onto-acc)))))
 
 (defthm fn-sl-last-is-last
   (equal (fn-sl-last h) (car (last (fn-sl-list h)))))
@@ -198,20 +251,21 @@
    (equal (fn-sl-nth-elem k x) (nth k x))))
 
 (local
- (defthm fn-sl-nth-of-rev-onto
+ (defthm fn-sl-nth-of-rev-take
    (implies (natp i)
-            (equal (nth i (fn-sl-rev-onto x acc))
-                   (if (< i (len x))
-                       (nth (- (len x) (+ 1 i)) x)
-                     (nth (- i (len x)) acc))))
-   :hints (("Goal" :induct (fn-sl-rev-onto x acc)
-            :in-theory (disable fn-sl-rev-onto-acc)))))
+            (equal (nth i (fn-sl-rev-take n x acc))
+                   (if (< i (nfix n))
+                       (nth (- (nfix n) (+ 1 i)) x)
+                     (nth (- i (nfix n)) acc))))
+   :hints (("Goal" :induct (fn-sl-rev-take n x acc)
+            :in-theory (disable fn-sl-rev-take-acc fn-sl-rev-onto-acc)))))
 
 (defthm fn-sl-nth-is-nth
-  (implies (and (fn-sl-canonp h) (natp i))
+  (implies (natp i)
            (equal (fn-sl-nth i h) (nth i (fn-sl-list h))))
-  :hints (("Goal" :in-theory (disable fn-sl-rev-onto-acc))))
+  :hints (("Goal" :in-theory (disable fn-sl-rev-take-acc fn-sl-rev-onto-acc))))
 
-(in-theory (disable fn-sl-rev-onto fn-sl-of fn-sl-snoc-formp fn-sl-list
-                    fn-sl-append1 fn-sl-snoc fn-sl-canonp fn-sl-count
-                    fn-sl-last-elem fn-sl-last fn-sl-nth-elem fn-sl-nth))
+(in-theory (disable fn-sl-rev-onto fn-sl-rev-take fn-sl-of fn-sl-snoc-formp
+                    fn-sl-list fn-sl-append1 fn-sl-snoc fn-sl-canonp
+                    fn-sl-count fn-sl-last-elem fn-sl-last fn-sl-nth-elem
+                    fn-sl-nth))

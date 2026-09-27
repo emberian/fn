@@ -244,11 +244,12 @@
                                  ,completion (fn-sf-successes-field ,s)
                                  ,barriers)))
 
-; The history's length and its last record, in O(1) (fn-sl-count-is-len,
-; fn-sl-last-is-last): the prepare's candidate test reads both
-; (books/owner-prepare-carried.lisp).
+; The history's length and its last record, in O(1), for every value
+; (fn-sl-count-is-len, fn-sl-last-is-last): the prepare's candidate test and
+; the owner's refresh read them (books/owner-prepare-carried.lisp,
+; books/owner.lisp fn-own-refresh).
 (defun fn-sf-records-count (s)
-  (declare (xargs :guard (fn-sf-shapep s)))
+  (declare (xargs :guard t))
   (mbe :logic (len (fn-sf-records s))
        :exec (fn-sl-count (fn-sf-records-field s))))
 (defun fn-sf-records-last (s)
@@ -259,7 +260,7 @@
 ; end (fn-sl-nth-is-nth): the commit's finish reads the record it just
 ; appended in O(1) (books/owner-commit-carried.lisp).
 (defun fn-sf-records-nth (i s)
-  (declare (xargs :guard (and (natp i) (fn-sf-shapep s))))
+  (declare (xargs :guard (natp i)))
   (mbe :logic (nth i (fn-sf-records s))
        :exec (fn-sl-nth i (fn-sf-records-field s))))
 

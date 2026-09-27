@@ -32,18 +32,19 @@
 (assert-event (equal (fn-sl-nth 2 '(:snoc 3 c b a)) 'c))
 (assert-event (equal (fn-sl-nth 3 '(:snoc 3 c b a)) nil))
 
-; HYPOTHESIS-REMOVAL (fn-sl-canonp in fn-sl-count-is-len and fn-sl-nth-is-nth):
-; a snoc form whose count is not its length.  The retained hypothesis
-; (natp i) holds; canonp fails; the conclusion fails.
+; The readers hold for every value, a non-canonical one included: a snoc form
+; whose REV is shorter than its count reads as padded with nil.
 (defconst *sl-bad* '(:snoc 5 c b a))
+(assert-event (equal (fn-sl-list *sl-bad*) '(nil nil a b c)))
+(assert-event (equal (fn-sl-count *sl-bad*) (len (fn-sl-list *sl-bad*))))
+(assert-event (equal (fn-sl-nth 0 *sl-bad*) (nth 0 (fn-sl-list *sl-bad*))))
+(assert-event (equal (fn-sl-last *sl-bad*) (car (last (fn-sl-list *sl-bad*)))))
+; HYPOTHESIS-REMOVAL (fn-sl-canonp in fn-sl-of-list-when-canonp): the
+; retained conclusion's value, and canonp fails, and the conclusion fails.
 (assert-event (not (fn-sl-canonp *sl-bad*)))
-(assert-event (not (equal (fn-sl-count *sl-bad*) (len (fn-sl-list *sl-bad*)))))
-(assert-event (not (equal (fn-sl-nth 0 *sl-bad*) (nth 0 (fn-sl-list *sl-bad*)))))
-; fn-sl-of-list-when-canonp: without canonp the representation is not the
-; list's.
 (assert-event (not (equal (fn-sl-of (fn-sl-list *sl-bad*)) *sl-bad*)))
 ; fn-sl-list-of-fn-sl-snoc has no hypothesis: it holds on the bad form too.
-(assert-event (equal (fn-sl-list (fn-sl-snoc *sl-bad* 'd)) '(a b c d)))
+(assert-event (equal (fn-sl-list (fn-sl-snoc *sl-bad* 'd)) '(nil nil a b c d)))
 
 ; -----------------------------------------------------------------------------
 ; The kernel.  Reachable POSITIVE witnesses: the commit appends the candidate,
