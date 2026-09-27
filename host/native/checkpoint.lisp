@@ -379,6 +379,10 @@ the state).  Format 8: the pack chain."
     (format nil "reclaimable=~d reclaimable-octets=~d held=~d reclaimed=~d freed-octets=~d"
             reclaimable octets held reclaimed freed)))
 
+(defconstant +fnn-log-reclaim-prefix-chunk+ 1024
+  "Covered-prefix records encoded per ACL2 call while the reclaim streams the
+history (a work quantum per call, never a bound on the store).")
+
 (defun fnn-log-history-each (store records fn)
   "Call FN on each record of the history the open recovered, in order, as
 octets: the covered prefix encoded from the checkpoint's rows a chunk at a
