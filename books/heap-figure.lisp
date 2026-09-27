@@ -308,9 +308,11 @@
                   (equal (car decision) :heap)
                   (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
                   (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (* *fn-sbud-membership-octets* (nfix m))
+                      (nfix (fn-bs-profile-max-history-octets profile)))
                   (<= (nfix ou) (nfix (fn-bs-profile-max-history-octets profile)))
                   (<= (nfix on) (nfix (fn-bs-profile-max-transactions profile))))
-             (and (<= (fn-heap-store-need profile core used n ou on
+             (and (<= (fn-heap-store-need profile core used n m ou on
                                           (fn-heap-nursery-trigger d nursery))
                       d)
                   (<= d (fn-heap-machine-octets observations)))))
@@ -585,11 +587,13 @@
                   (equal (car decision) :heap)
                   (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
                   (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
+                  (<= (* *fn-sbud-membership-octets* (nfix m))
+                      (nfix (fn-bs-profile-max-history-octets profile)))
                   (<= (nfix ou) (fn-heap-open-octets-bound
                                  profile (fn-heap-operation-observation action observed)))
                   (<= (nfix on) (fn-heap-open-records-bound
                                  profile (fn-heap-operation-observation action observed))))
-             (and (<= (fn-heap-store-need profile core used n ou on
+             (and (<= (fn-heap-store-need profile core used n m ou on
                                           (fn-heap-nursery-trigger d nursery))
                       d)
                   (<= d (fn-heap-machine-octets observations)))))
@@ -645,9 +649,11 @@
        (equal (fn-bs-profile-max-open-suffix *fn-heap-small-profile*) 128)))
 
 ;; The small preset's figures since the records flip, with the measured
-;; per-record state and the streamed open (lane reservation-figure).  At its
-;; bounds (T = 16,384 records of at most 16 groups each, H = 8 MiB) the
-;; retained state alone is 553 MiB (2 x 16,384 x (12 KiB + 16 x 320)), and a
+;; per-record state and the streamed open (lane reservation-figure), and the
+;; memberships charged to the history budget (lane membership-budget: at
+;; most H / 320 = 26,214 of them, 16 MiB, where 16 groups a record counted
+;; 160 MiB).  At its bounds (T = 16,384 records, H = 8 MiB) the retained
+;; state alone is 401 MiB (2 x 16,384 x 12 KiB + 2 x 320 x 26,214), and a
 ;; full replay of such a store adds 108 MiB (one chunk and one record as
 ;; lists, the input's vectors, 1 KiB a record); a `run' sizes the open by the
 ;; store on disk (`fn-heap-operation-decide', :run).  With any
@@ -656,7 +662,7 @@
 ;; (OpenBSD's default login class; the friend's machine has about 2 GB).
 (defthm fn-heap-small-run-base-of-an-empty-store
   (equal (fn-heap-store-base-octets *fn-heap-small-profile* core '(0 . 0))
-         (+ (fn-heap-core-dynamic core) 718144682))
+         (+ (fn-heap-core-dynamic core) 567149482))
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 

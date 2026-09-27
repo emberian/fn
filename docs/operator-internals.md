@@ -252,12 +252,22 @@ over `fn-heap-friend-candidate`, PKT-707, decided 2026-09-27): the
 development base with H = 64, 32 or 16 MiB, one transaction slot per 512
 octets of history (T = H / 512), R raised to what the article bound needs;
 else the floor, H = 8 MiB with 16,384 transactions (the small preset). A
-short post with its headers is a record of about 860 octets, so the floor
-holds about 9,700 such posts and the top rung about 78,000; a friend's feed
-spends the same history. `init` prints its decision (`init:
-profile=custom sizing=... reservation=MB MB budget=MB MB within-budget=...`)
-and `status` prints `profile=custom`. A request naming T, H or R, or
-`--profile development|scale`, is written as named and never resized. The
+short post with its headers is a record of about 860 octets and its one
+group membership is charged 320 more (books/store-budget.lisp
+`*fn-sbud-membership-octets*`, lane membership-budget), so the floor holds
+about 7,100 such posts and the top rung about 56,800; a friend's feed
+spends the same history. Every rung and preset is judged by its FULL store's
+run (`fn-heap-reserve-full-store-decide`: the state at H and T and a replay
+of all of it), so a store init admitted always reopens on the same machine
+(`fn-heap-init-accepted-store-always-reopens`). `init` prints its decision
+(`init: profile=custom sizing=... reservation=MB MB budget=MB MB
+within-budget=yes`) and `status` prints `profile=custom`. A request naming
+T, H or R, or `--profile development|scale`, is written as named and never
+resized when the budget holds it; past the budget it is refused
+`init-budget-cannot-hold-profile` with both figures (exit 1,
+`fn-heap-init-decide-refuses-the-operators-request-past-the-budget`),
+unless FN_INIT_BUDGET_MB names a target budget that holds it: then it is
+written with `within-budget=no target-budget=MB MB`. The
 small preset has no `--profile` word (PKT-581); name its fields:
 `--max-transactions 16384 --max-history-octets 8388608 --max-record-octets
 196608 --max-article-octets 32768 --max-groups-per-article 16

@@ -56,7 +56,39 @@ ceiling cannot hold KIND's worst-case encoded record."
   (declare (xargs :guard t))
   (and (natp budget) (natp used) (< used budget)))
 
-; The stored octets of one retained row (records-flip, 2026-09-27).  A held
+; THE MEMBERSHIP CHARGE (lane membership-budget, 2026-09-27; ember's
+; decision 17:30Z: each group membership is charged to the history budget,
+; so the history bound H bounds memberships; no crosspost cap, D27).
+;
+; Before this lane the history budget charged an article its payload octets
+; only, and nothing but the profile's max-groups-per-article G bounded the
+; memberships a store holds: the heap figure's membership term was
+; 2 x T x 320 x G, 41 TB on the scale gate (record reservation-figure
+; section 1).  A membership is not free: each group an article is filed in
+; costs the catalog a (group . number) pair in the row's numbers, a slot in
+; that group's article-number column and its index entry, and the group's
+; name in the record the store writes.  Measured on the flipped image, 137
+; octets of live heap a membership plus 45 for the group's name
+; (per-record-state section 2, reservation-after-flip section 3): 182.  The
+; heap figure models it as `*fn-heap-membership-octets*' = 320 (the 182
+; rounded up with the per-group index's doubling slack), and the budget
+; charges the SAME 320 octets: so a store whose charges fit H holds at most
+; H / 320 memberships and the heap figure's membership term is at most
+; 2 x 320 x (H / 320) = 2 H (books/heap-store-figure.lisp
+; `fn-heap-store-figure-holds-every-store').
+(defconst *fn-sbud-membership-octets* 320)
+
+; The memberships one retained row holds: the groups its article is filed
+; in (a held row's, or the held article inside an accepted-statement
+; composite); 0 for any other row.
+(defun fn-sbud-row-memberships (row)
+  (declare (xargs :guard t))
+  (cond ((fn-held-p row) (len (fn-record-groups row)))
+        ((fn-hstxa-p row) (len (fn-record-groups (fn-hstxa-held row))))
+        (t 0)))
+
+; The stored octets of one retained row (records-flip, 2026-09-27), and its
+; membership charge.  A held
 ; article row keeps its payload in the arena: its octets are the extent of
 ; its handle, which the intern decided once as the facts' octets
 ; (books/records-freeze.lisp `fn-rfz-intern-extent'; stated over the arena
@@ -64,11 +96,17 @@ ceiling cannot hold KIND's worst-case encoded record."
 ; composite whole, so it is that composite's encoding.  Every other row is a
 ; wire event and is its encoding.  Before the flip this was the wire encoder
 ; alone, which is nil on a held row: every retained article counted 0
-; octets against the history bound.
+; octets against the history bound.  An article row (held or composite)
+; adds `*fn-sbud-membership-octets*' per group it is filed in.
 (defun fn-sbud-row-octets (row)
   (declare (xargs :guard t :verify-guards nil))
-  (cond ((fn-held-p row) (nfix (fn-hf-octets (fn-held-facts row))))
-        ((fn-hstxa-p row) (len (fn-store-event-encode (fn-hstxa-stxa row))))
+  (cond ((fn-held-p row)
+         (+ (nfix (fn-hf-octets (fn-held-facts row)))
+            (* *fn-sbud-membership-octets* (len (fn-record-groups row)))))
+        ((fn-hstxa-p row)
+         (+ (len (fn-store-event-encode (fn-hstxa-stxa row)))
+            (* *fn-sbud-membership-octets*
+               (len (fn-record-groups (fn-hstxa-held row))))))
         (t (len (fn-store-event-encode row)))))
 
 ; On a wire event (neither held nor composite) the row's octets are its
@@ -77,6 +115,16 @@ ceiling cannot hold KIND's worst-case encoded record."
   (implies (and (not (fn-held-p row)) (not (fn-hstxa-p row)))
            (equal (fn-sbud-row-octets row)
                   (len (fn-store-event-encode row)))))
+
+; Every row pays for its memberships.
+(defthm fn-sbud-row-octets-pays-its-memberships
+  (<= (* *fn-sbud-membership-octets* (fn-sbud-row-memberships row))
+      (fn-sbud-row-octets row))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-sbud-row-memberships)
+                                  (fn-store-event-encode fn-held-p fn-hstxa-p
+                                   fn-record-groups fn-hstxa-held fn-hstxa-stxa
+                                   fn-held-facts fn-hf-octets)))))
 
 (in-theory (disable fn-sbud-row-octets))
 
@@ -88,6 +136,24 @@ ceiling cannot hold KIND's worst-case encoded record."
       (+ (fn-sbud-row-octets (car records))
          (fn-sbud-record-octets (cdr records)))
     0))
+
+; The memberships the committed records hold, and the bridge the heap
+; figure uses: the budget's octets pay for every membership, so a store
+; whose charges are within H holds at most H / 320 memberships.
+(defun fn-sbud-record-memberships (records)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (+ (fn-sbud-row-memberships (car records))
+         (fn-sbud-record-memberships (cdr records)))
+    0))
+
+; KEYSTONE (the budget pays for the memberships).
+(defthm fn-sbud-record-octets-pays-the-memberships
+  (<= (* *fn-sbud-membership-octets* (fn-sbud-record-memberships records))
+      (fn-sbud-record-octets records))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-sbud-record-memberships records)
+           :in-theory (disable fn-sbud-row-memberships))))
 
 (defun fn-sbud-bytes-used (s)
   "Committed record octets of the Store state S."
@@ -490,6 +556,7 @@ index: equal to `fn-sbud-used' under `fn-ceis-indexedp'."
 (verify-guards fn-store-retention-event-encode)
 (verify-guards fn-store-event-encode)
 (verify-guards fn-sbud-row-octets)
+
 (verify-guards fn-sbud-record-octets)
 (verify-guards fn-sbud-bytes-used)
 (verify-guards fn-sbud-verdict)
