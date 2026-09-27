@@ -205,7 +205,7 @@ def q4(a):
     step("init", ["init", store, str(a.n)])
     d0 = step("digest-main-0", ["digest", store, "main"])
     for i in range(a.runs):
-        step(f"fork-{i}", ["fork", store, "main", f"b{i}"])
+        step(f"branch-{i}", ["branch", store, "main", f"b{i}"])
     db0 = step("digest-b0-0", ["digest", store, "b0"])
     step("commit-main", ["mutate", store, "main", "random", "100", "2"])
     d1 = step("digest-main-1", ["digest", store, "main"])
@@ -215,8 +215,8 @@ def q4(a):
     db2 = step("digest-b0-2", ["digest", store, "b0"])
     g = lambda r: [x for x in r if x.get("event") == "digest"][0]
     summary = {
-        "fork_ms": [x["recs"][-1]["ms-fork"] for x in steps if x["step"].startswith("fork-")],
-        "b0_equals_main_at_fork": g(db0)["digest"] == g(d0)["digest"],
+        "branch_ms": [x["recs"][-1]["ms-branch"] for x in steps if x["step"].startswith("branch-")],
+        "b0_equals_main_at_branch": g(db0)["digest"] == g(d0)["digest"],
         "b0_unchanged_by_main_commit": g(db1)["digest"] == g(db0)["digest"],
         "main_changed": g(d1)["digest"] != g(d0)["digest"],
         "main_unchanged_by_b0_commit": g(d2)["digest"] == g(d1)["digest"],

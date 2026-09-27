@@ -178,7 +178,7 @@
 ;; pages + table + record in ONE file and one fdatasync makes it durable.
 ;; Page 0 is kept from allocation by a pseudo record whose table run is page
 ;; 0 (`pgs-rec-keeps' of (:pgs-commit 0 0 0 0 0) is (0)), passed to
-;; `pgs-x-plan' with the real pairs.  Forks still get root files.
+;; `pgs-x-plan' with the real pairs.  Branches still get root files.
 (defun fnps-inline-p (dir) (probe-file (concatenate 'string dir "/inline")))
 (defparameter *fnps-reserved-pair* (cons (list :pgs-commit 0 0 0 0 0) nil))
 
@@ -575,9 +575,9 @@
                  :digest (format nil "~64,'0x" (fnps-image-digest)))
       (fnps-close s))))
 
-(defun fnps-cmd-fork (dir src dst)
-  (let ((s (fnps-open dir src :lazy :emit nil)) (t-fork 0))
-    (fnps-timed t-fork
+(defun fnps-cmd-branch (dir src dst)
+  (let ((s (fnps-open dir src :lazy :emit nil)) (t-branch 0))
+    (fnps-timed t-branch
       (let* ((base (* 512 (fnps-k s)))
              (rec (car (svref (fnps-slots s) (fnps-k s))))
              (fd (fnps-write-zero-root (fnps-root-path dir dst))))
@@ -589,7 +589,7 @@
         (fnps-fullsync fd)
         (sb-unix:unix-close fd)
         (fnps-sync-dir dir)))
-    (fnps-emit :event :fork :src src :dst dst :ms-fork t-fork
+    (fnps-emit :event :branch :src src :dst dst :ms-branch t-branch
                :txid (pgs-rec-txid (car (svref (fnps-slots s) (fnps-k s)))))
     (fnps-close s)))
 
@@ -636,7 +636,7 @@
                             :digest (sb-ext:posix-getenv "FNPS_DIGEST")))
           ((string= cmd "digest") (fnps-cmd-digest (first a) (second a)
                                                    (intern (string-upcase (or (third a) "eager")) "KEYWORD")))
-          ((string= cmd "fork") (fnps-cmd-fork (first a) (second a) (third a)))
+          ((string= cmd "branch") (fnps-cmd-branch (first a) (second a) (third a)))
           ((string= cmd "damage") (fnps-cmd-damage (first a) (second a) (parse-integer (third a))))
           ((string= cmd "cut-names") (fnps-cmd-cut-names))
           (t (error "unknown command ~a" cmd)))
