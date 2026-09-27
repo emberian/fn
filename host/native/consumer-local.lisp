@@ -14,10 +14,19 @@
                          (mapcar #'fnn-ascii-octet-list argv))
              '(:usage :argv)))
          (tag (and (consp plan) (first plan))))
+    (when (eq tag :help)
+      (fnn-out "~a" (fnn-core 'fn-ncl-usage-text))
+      (return-from fnn-command-consumer-local +fnn-exit-ok+))
     (unless (eq tag :run)
       (fnn-err "consumer command refused by ACL2 argv grammar: ~a"
                (and (consp plan) (second plan)))
+      (fnn-err "~a" (fnn-core 'fn-ncl-usage-text))
       (return-from fnn-command-consumer-local +fnn-exit-usage+))
+    ;; PKT-709: the steps before the command (register bootstraps first);
+    ;; an earlier step's outcome is not the command's.
+    (dolist (step (butlast (fnn-core 'fn-ncl-cli-steps (second plan))))
+      (ignore-errors
+       (fnn-control-consumer-local (fnn-octets (third plan)) step nil nil)))
     (destructuring-bind (ignored operation control first second output
                          &optional secret-file) plan
       (declare (ignore ignored))

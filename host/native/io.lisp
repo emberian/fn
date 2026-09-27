@@ -4861,8 +4861,11 @@ tree root), or stop the build."
         ;; protocol, because its arguments are a peer and a session and not
         ;; a store, so a handler takes a command and the rest.
         ((fnn-verb-handler verb)
-         (need 2)
-         (funcall (fnn-verb-handler verb) (second args) (cddr args)))
+         ;; PKT-709: a registered verb with no command word is asked for
+         ;; `help' (its own usage), never `missing arguments'.
+         (if (null (cdr args))
+             (funcall (fnn-verb-handler verb) "help" nil)
+           (funcall (fnn-verb-handler verb) (second args) (cddr args))))
         ((string= verb "sha256")
          (need 2)
          ;; The file reaches ACL2 as a string, read in place by
