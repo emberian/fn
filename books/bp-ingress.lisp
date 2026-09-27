@@ -641,6 +641,15 @@
 
 ; The prepared result, opened: the row is the intern of the wire record at H,
 ; the wire record's payload is the ADU, and the store is the prepare of the row.
+(local (defthm fn-bpi-record-for-payload
+  (implies (fn-record-p (fn-bpi-record-for store policy context msgid groups adu))
+           (equal (fn-record-payload (fn-bpi-record-for store policy context msgid groups adu))
+                  adu))
+  :hints (("Goal" :in-theory (enable fn-bpi-record-for fn-sn-article-record)))))
+
+; The record's builder, its payload, the article parse's octet facts and the
+; policy's shape stay closed: the branch is found by the tests alone (0.4 s,
+; against 72 s with them open).
 (local (defthm fn-bpi-prepared-shape
   (implies (equal (car (fn-bpi-ingress-prepare store policy context adu h)) :prepared)
            (let ((r (fn-bpi-ingress-prepare store policy context adu h)))
@@ -655,13 +664,16 @@
                   (natp (fn-sn-keyring-generation store)))))
   :hints (("Goal" :in-theory (e/d (fn-bpi-ingress-prepare fn-bpi-result-wire
                                    fn-bpi-result-record fn-bpi-result-store
-                                   fn-bpi-record-for fn-sn-article-record
-                                   fn-bpi-policy-appliesp fn-sn-statep)
-                                  (fn-article-parse fn-article-syntax-p
+                                   fn-bpi-policy-appliesp)
+                                  (fn-article-parse fn-article-syntax-p fn-bpi-record-for
+                                   fn-record-payload fn-record-p fn-article-parse-lines
                                    fn-article-result-okp fn-article-result-article
                                    fn-af-proto-article-check fn-bpi-map-groups
                                    fn-sn-prepare fn-intern-row-at
-                                   fn-sf-statep fn-node-statep))))))
+                                   fn-sf-statep fn-node-statep
+                                   (:type-prescription fn-cbor-octet-listp)
+                                   fn-bpi-policy-p fn-bpi-context-p fn-cp-idp
+                                   fn-bpi-group-mapp fn-bpi-map-values))))))
 
 ; A wire record interned at the arena's count and read back after its
 ; payload is sealed is itself (store-intern's KEYSTONE 1 at one event).
@@ -729,7 +741,11 @@
                                    fn-row-bytes fn-sn-prepare fn-bpi-result-wire
                                    fn-bpi-result-record fn-bpi-result-store
                                    fn-arena-seal-list-is-append fn-arena-count-is-len
-                                   fn-arena-payload-is-nth fn-arena-p-is-payload-listp))
+                                   fn-arena-payload-is-nth fn-arena-p-is-payload-listp
+                                   ; the article parse and the record's shape
+                                   ; stay closed: 0.1 s against 8 s.
+                                   fn-article-parse fn-article-parse-lines fn-record-p
+                                   fn-cbor-octet-listp fn-cp-idp))
            :use ((:instance fn-bpi-prepared-shape (h (fn-arena-count fn-arena)))
                  (:instance fn-bpi-row-at-count-materializes
                   (w (fn-bpi-result-wire (fn-bpi-ingress-prepare store policy context adu
