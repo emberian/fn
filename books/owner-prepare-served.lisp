@@ -66,31 +66,6 @@
       (fn-ccar-ocfg-prepare-identity oc event)
     oc))
 
-; THE IDENTITY PREPARE THE HOST CALLS after signed-post (host/owner-host.lisp
-; fn-owner-prepare-identity): the wire event W interned at the arena's count
-; H (books/owner-identity-intern.lisp fn-oii-identity-row: a signed
-; composite becomes the composite ROW holding its article's held row), then
-; fn-psrv-prepare-identity over that row, so the served test reads the
-; composite's article groups (fn-psrv-event-servedp's hstxa arm; over the
-; wire composite it answered t).  catalog-columns x signed-post, 2026-09-27.
-(defun fn-psrv-prepare-identity-at (oc w h)
-  (declare (xargs :guard (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc))) (natp h))
-                  :verify-guards nil))
-  (let ((s (fn-own-store (fn-ocfg-owner oc))))
-    (fn-psrv-prepare-identity
-     oc (fn-oii-identity-row w (fn-sn-keyring s) (fn-sn-keyring-generation s) h))))
-
-; When the row's groups are served it IS signed-post's identity prepare.
-(defthm fn-psrv-prepare-identity-at-when-served-by-definition
-  (let ((s (fn-own-store (fn-ocfg-owner oc))))
-    (implies (fn-psrv-event-servedp
-              (fn-ocfg-config oc)
-              (fn-oii-identity-row w (fn-sn-keyring s) (fn-sn-keyring-generation s) h))
-             (equal (fn-psrv-prepare-identity-at oc w h)
-                    (fn-oii-ocfg-prepare-identity oc w h))))
-  :hints (("Goal" :in-theory '(fn-psrv-prepare-identity-at fn-psrv-prepare-identity
-                               fn-oii-ocfg-prepare-identity))))
-
 ; THE TOPIC PREPARE THE HOST CALLS (host/owner-host.lisp
 ; fn-owner-prepare-topic): the configured owner's (:store (:prepare-topic E))
 ; when the carried consumer projection accepts E at the Store's next
