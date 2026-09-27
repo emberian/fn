@@ -145,6 +145,7 @@ class Findings:
     def __init__(self) -> None:
         self.problems: list[str] = []
         self.lines: list[str] = []
+        self.platform: str | None = None
 
     def fail(self, message: str) -> None:
         self.problems.append(message)
@@ -531,6 +532,7 @@ def tree_check(top: Path, platform: str | None = None) -> Findings:
     if platform is not None and detected is not None and detected != platform:
         findings.fail(f"the release's runtime is for {detected}, not {platform}")
     platform = platform or detected
+    findings.platform = platform
     libc = PLATFORM_LIBC_BY.get(platform, PLATFORM_LIBC)
     loaders = LIBC_LOADERS_BY.get(platform, LIBC_LOADERS)
     system_tls = SYSTEM_TLS_BY.get(platform, SYSTEM_TLS)
@@ -669,7 +671,7 @@ def main(argv: list[str] | None = None) -> int:
     if findings.problems:
         print(f"runpath_check {label}: {len(findings.problems)} finding(s)", file=sys.stderr)
         return 1
-    floor = "" if label == "static" else \
+    floor = "" if label == "static" or findings.platform == "openbsd" else \
         f"; no bundled ELF object needs more than GLIBC_{'.'.join(map(str, GLIBC_FLOOR))}"
     print(f"runpath_check {label}: no Python on the deployed path{floor}")
     return 0
