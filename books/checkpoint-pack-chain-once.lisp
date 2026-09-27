@@ -395,3 +395,142 @@
                                   (fn-ccc-decode-entries fn-ccc-links-okp
                                    fn-ccco-links-chainedp fn-ccco-decode-entries
                                    fn-cc-recover-observation)))))
+
+; -----------------------------------------------------------------------------
+; The coverage in bounded memory (lane openbsd-release-fixes, PKT-686).
+;
+; `fn-ccco-coverage-chain' decodes every link of the chain (each link's events
+; as octet lists) into ENTRIES and keeps all of them until the chain check and
+; the summary are done; the summary itself appends every link's events.  The
+; coverage reads nothing of a link but its six header fields and whether it
+; decodes: the chaining conditions and the head link's boundary and frontier.
+; `fn-ccco-coverage-headers' keeps, of each decoded link, its header (the
+; link with no events): a link's decode is released before the next link is
+; decoded (`fn-ccco-entry-header' returns only the header), so the coverage
+; holds one link's decode at a time and no copy of the chain's events.
+; KEYSTONE fn-ccco-coverage-headers-is-coverage-chain: it is the reference's
+; coverage for every input under a sound memo (the empty one included).
+; Host: host/checkpoint-host.lisp `fn-store-checkpoint-chain-coverage', which
+; host/native/checkpoint.lisp `fnn-pack-selected-raw-and-coverage' and
+; `fnn-pack-extend-chain' call (compaction, reclaim, the open's lower bound).
+
+(defun fn-ccco-link-header (l)
+  (declare (xargs :guard t))
+  (fn-ccc-make (fn-ccc-lower l) (fn-ccc-boundary l) (fn-ccc-lower-frontier l)
+               (fn-ccc-frontier l) (fn-ccc-pred-generation l) (fn-ccc-pred-digest l)
+               nil))
+
+; One entry's decode, reduced to its header before it returns: (:ok HEADER),
+; or NIL when the link does not decode.
+(defun fn-ccco-entry-header (e max memo)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((d (fn-ccco-framed-link (fn-cc-nth 1 e) (fn-cc-nth 2 e) max memo)))
+    (if (equal (car d) :ok)
+        (list :ok (fn-ccco-link-header (cadr d)))
+      nil)))
+
+(defun fn-ccco-decode-headers (framed max memo)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp framed)
+      (let* ((e (car framed))
+             (h (fn-ccco-entry-header e max memo))
+             (rest (fn-ccco-decode-headers (cdr framed) max memo)))
+        (if (or (not h) (equal rest :bad))
+            :bad
+          (cons (list (fn-cc-nth 0 e) (cadr h) (fn-cc-nth 2 e)) rest)))
+    (if (null framed) nil :bad)))
+
+(defun fn-ccco-coverage-headers (framed observed-count frontier max memo)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((entries (fn-ccco-decode-headers framed max memo)))
+    (cond ((equal entries :bad) '(:error :integrity))
+          ((not (fn-ccco-links-chainedp entries)) '(:error :chain))
+          (t (let ((head (fn-ccc-head-link entries)))
+               (if (or (< observed-count (fn-ccc-boundary head))
+                       (< frontier (fn-ccc-frontier head)))
+                   '(:error :coverage)
+                 (list :ok (fn-ccc-boundary head) (fn-ccc-frontier head))))))))
+
+; The reference's entries with each link replaced by its header.
+(defun fn-ccco-headers-of (entries)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp entries)
+      (cons (list (fn-cc-nth 0 (car entries))
+                  (fn-ccco-link-header (fn-cc-nth 1 (car entries)))
+                  (fn-cc-nth 2 (car entries)))
+            (fn-ccco-headers-of (cdr entries)))
+    entries))
+
+(local
+ (defthm fn-ccco-decode-entries-true-list-or-bad
+   (or (equal (fn-ccc-decode-entries framed max) :bad)
+       (true-listp (fn-ccc-decode-entries framed max)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-ccc-decode-entries)))))
+
+(local
+ (defthm fn-ccco-decode-headers-is-headers-of-decode-entries
+   (implies (fn-ccco-memo-soundp memo)
+            (equal (fn-ccco-decode-headers framed max memo)
+                   (fn-ccco-headers-of (fn-ccc-decode-entries framed max))))
+   :hints (("Goal" :induct (fn-ccco-decode-headers framed max memo)
+            :in-theory (e/d (fn-ccc-decode-entries) (fn-ccco-link-header))))))
+
+(local
+ (defthm fn-ccco-link-header-fields
+   (and (equal (fn-ccc-lower (fn-ccco-link-header l)) (fn-ccc-lower l))
+        (equal (fn-ccc-boundary (fn-ccco-link-header l)) (fn-ccc-boundary l))
+        (equal (fn-ccc-lower-frontier (fn-ccco-link-header l)) (fn-ccc-lower-frontier l))
+        (equal (fn-ccc-frontier (fn-ccco-link-header l)) (fn-ccc-frontier l))
+        (equal (fn-ccc-pred-generation (fn-ccco-link-header l)) (fn-ccc-pred-generation l))
+        (equal (fn-ccc-pred-digest (fn-ccco-link-header l)) (fn-ccc-pred-digest l)))))
+
+(in-theory (disable fn-ccco-link-header))
+
+(local
+ (defthm fn-ccco-links-chainedp-of-headers
+   (implies (not (equal entries :bad))
+            (equal (fn-ccco-links-chainedp (fn-ccco-headers-of entries))
+                   (fn-ccco-links-chainedp entries)))
+   :hints (("Goal" :induct (fn-ccco-links-chainedp entries)
+            :expand ((fn-ccco-headers-of entries)
+                     (fn-ccco-headers-of (cdr entries)))
+            :in-theory (enable fn-ccc-entry-link fn-ccc-entry-generation
+                               fn-ccc-entry-digest)))))
+
+(local
+ (defthm fn-ccco-head-of-headers
+   (implies (and (not (equal entries :bad)) (consp entries))
+            (equal (fn-ccc-head-link (fn-ccco-headers-of entries))
+                   (fn-ccco-link-header (fn-ccc-head-link entries))))
+   :hints (("Goal" :expand ((fn-ccco-headers-of entries))
+            :in-theory (enable fn-ccc-head-link fn-ccc-entry-link)))))
+
+(local
+ (defthm fn-ccco-chain-summary-fields
+   (and (equal (fn-cc-sequence (fn-ccc-chain-summary entries))
+               (fn-ccc-boundary (fn-ccc-head-link entries)))
+        (equal (fn-cc-frontier (fn-ccc-chain-summary entries))
+               (fn-ccc-frontier (fn-ccc-head-link entries))))
+   :hints (("Goal" :in-theory (enable fn-ccc-chain-summary fn-cc-make fn-cc-sequence
+                                      fn-cc-frontier)))))
+
+(local
+ (defthm fn-ccco-chainedp-means-consp
+   (implies (fn-ccco-links-chainedp entries) (consp entries))
+   :rule-classes :forward-chaining))
+
+(local
+ (defthm fn-ccco-headers-of-is-bad
+   (equal (equal (fn-ccco-headers-of x) :bad) (equal x :bad))))
+
+(defthm fn-ccco-coverage-headers-is-coverage-chain
+  (implies (fn-ccco-memo-soundp memo)
+           (equal (fn-ccco-coverage-headers framed observed-count frontier max memo)
+                  (fn-ccc-coverage-chain framed observed-count frontier max)))
+  :hints (("Goal" :in-theory (e/d (fn-ccc-coverage-chain)
+                                  (fn-ccc-decode-entries fn-ccc-links-okp
+                                   fn-ccco-links-chainedp fn-ccco-headers-of
+                                   fn-ccc-chain-summary fn-ccc-head-link
+                                   fn-ccc-boundary fn-ccc-frontier
+                                   fn-ccco-decode-headers fn-ccco-memo-soundp)))))

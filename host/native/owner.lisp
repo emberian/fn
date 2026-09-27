@@ -1193,6 +1193,12 @@ follows is justified only by this line."
                        'fn-owner-prepare-buffer (fnn-octet-list msgid) codes
                        (fnn-octet-list obligation) (fnn-octet-list subject)
                        (fnn-octet-list evidence) charge)))
+                ;; The prepare reads the arena only; on acceptance it answers
+                ;; :seal-buffer and the host seals the buffer's payload
+                ;; (host/owner-host.lisp fn-owner-prepare-buffer).
+                (when (eq prepared :seal-buffer)
+                  (fnn-seal-live-buffer)
+                  (setq prepared :prepared))
                 (unless (eq prepared :prepared)
                   (setf (fnn-store-fenced store) t)
                   (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation)
@@ -1669,12 +1675,12 @@ client, which can issue POSITION after reconnecting."
                 (:status
                  (fnn-owner-core 'fn-owner-consumer-local-status first))
                 (:poll
-                 (fnn-owner-core 'fn-owner-consumer-local-poll first))
+                 (fnn-core-arena-state 'fn-owner-consumer-local-poll first))
                 ;; PRF-234: a consumer bound to an account; SECOND is the
                 ;; account's password, which only ACL2 compares.
                 (:bound-poll
-                 (fnn-owner-core 'fn-owner-consumer-local-bound-poll
-                                 first second))
+                 (fnn-core-arena-state 'fn-owner-consumer-local-bound-poll
+                                       first second))
                 (:bound-ack
                  (fnn-owner-core 'fn-owner-consumer-local-bound-ack
                                  first second))
@@ -1684,6 +1690,11 @@ client, which can issue POSITION after reconnecting."
             (kind (and (consp proposal) (first proposal))))
        (case kind
          (:refused
+          ;; PKT-709: the refusal carries ACL2's reason, (:reason REPLY
+          ;; REASON); a reasoned request (kind 22) gets it on the wire
+          ;; (host/native/control.lisp), a plain one the reply alone.
+          (list
+           :reason
           (case operation
             (:status (list :consumer-status-reply :refused nil nil nil))
             ;; A refused poll answers on the poll reply kind
@@ -1693,7 +1704,8 @@ client, which can issue POSITION after reconnecting."
             ;; poll (an unknown consumer included) printed `uncertain' (exit
             ;; 3); a refusal is now `refused' (exit 1).
             ((:poll :bound-poll) (list :consumer-poll-reply :refused nil nil))
-            (otherwise (list :consumer-reply :refused nil))))
+            (otherwise (list :consumer-reply :refused nil)))
+           (second proposal)))
          (:position
           (let ((token (second proposal)))
             (unless (fnn-octet-list-p token)
@@ -1750,7 +1762,8 @@ client, which can issue POSITION after reconnecting."
        (unless (and (fnn-octet-list-p token) (fnn-octet-list-p report))
          (fnn-fault "ACL2 returned malformed consumer poll"))
        (list :consumer-poll-reply :accepted token report)))
-    (:refused (list :consumer-poll-reply :refused nil nil))
+    (:refused (list :reason (list :consumer-poll-reply :refused nil nil)
+                    (second answer)))
     (otherwise (fnn-fault "ACL2 returned malformed consumer poll decision"))))
 
 (defun fnn-owner-wait-elapsed-ms (start)
@@ -1791,7 +1804,8 @@ step follows a signal, a spurious wakeup or the sleep's end."
         (fnn-fault "ACL2 returned malformed wait admission"))
       (fnn-err "consumer wait refused: ~(~a~)" (second admission))
       (return-from fnn-owner-consumer-local-wait
-        (list :consumer-poll-reply :refused nil nil)))
+        (list :reason (list :consumer-poll-reply :refused nil nil)
+              (second admission))))
     (unwind-protect
          (loop
            (let* ((seen (sb-thread:with-mutex (lock)
@@ -1799,8 +1813,8 @@ step follows a signal, a spurious wakeup or the sleep's end."
                   (step (fnn-owner-serialized
                          service nil
                          (lambda ()
-                           (fnn-owner-core 'fn-owner-consumer-local-wait-step
-                                           consumer secret
+                           (fnn-core-arena-state 'fn-owner-consumer-local-wait-step
+                                                 consumer secret
                                            (fnn-owner-wait-elapsed-ms start)
                                            seconds)))))
              (case (and (consp step) (first step))
@@ -2447,7 +2461,7 @@ refused, not injected under a stale time (D10-a)."
                            service
                            (lambda ()
                              (let ((submitted
-                                     (fnn-owner-action 'fn-owner-operator-submit
+                                     (fnn-owner-arena-action 'fn-owner-operator-submit
                                                        (fnn-octet-list msgid)
                                                        (mapcar #'fnn-octet-list groups)
                                                        (fnn-octet-list payload))))
@@ -2470,7 +2484,7 @@ refused, not injected under a stale time (D10-a)."
                     ;; reason.lisp fn-nctrl-reason-word), a plain one the
                     ;; status alone.
                     (if (eq status :refused)
-                        (let ((reason (fnn-owner-core 'fn-owner-operator-refusal-reason
+                        (let ((reason (fnn-core-arena-state 'fn-owner-operator-refusal-reason
                                                       (fnn-octet-list msgid)
                                                       (mapcar #'fnn-octet-list groups)
                                                       (fnn-octet-list payload))))

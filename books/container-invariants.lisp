@@ -5,6 +5,7 @@
 ;   fn-ct-receipt-implies-validated            no receipt shape without validation
 ;   fn-ct-accepted-is-complete-of-prepare      the exact node composition
 ;   fn-ct-invalid-article-leaves-node-unchanged
+;   fn-ct-publish-article-seals-exactly-a-staged-article   the handle reads the octets
 ;   fn-ct-store-resolved-verdict-ignores-siblings
 ;   fn-ct-self-dependency-never-validates      a cycle exhausts the fuel
 ;   fn-ct-conflict-is-evidence                 OBJ-004
@@ -45,9 +46,9 @@
 (defthm fn-ct-receipt-implies-validated
   (implies (fn-ct-receiptp
             (fn-ct-result-receipt
-             (fn-ct-publish-article s a digest articles digests store profile
+             (mv-nth 0 (fn-ct-publish-article s a digest articles digests store profile
                                     generation groups evidence
-                                    obligation-digest completion stamp)))
+                                    obligation-digest completion stamp fn-arena))))
            (fn-ct-article-validp a digest articles digests store profile
                                  (len articles)))
   :hints (("Goal" :in-theory (e/d (fn-ct-publish-article fn-ct-result-receipt
@@ -59,28 +60,28 @@
 
 (defthm fn-ct-accepted-is-complete-of-prepare
   (implies (equal (fn-ct-result-status
-                   (fn-ct-publish-article s a digest articles digests store
+                   (mv-nth 0 (fn-ct-publish-article s a digest articles digests store
                                           profile generation groups evidence
-                                          obligation-digest completion stamp))
+                                          obligation-digest completion stamp fn-arena)))
                   :accepted)
            (and (fn-ct-article-validp a digest articles digests store profile
                                       (len articles))
                 (equal completion :durable)
                 (not (equal (fn-node-prepare
                              s generation (fn-ct-article-msgid a)
-                             (fn-ct-article-octets a) groups
+                             (fn-arena-count fn-arena) groups
                              (fn-ct-obligation-string obligation-digest)
                              (fn-ct-subject-string a) evidence (fn-ct-charge a) stamp)
                             s))
                 (equal (fn-ct-result-state
-                        (fn-ct-publish-article s a digest articles digests
+                        (mv-nth 0 (fn-ct-publish-article s a digest articles digests
                                                store profile generation groups
                                                evidence obligation-digest
-                                               completion stamp))
+                                               completion stamp fn-arena)))
                        (fn-node-complete
                         (fn-node-prepare
                          s generation (fn-ct-article-msgid a)
-                         (fn-ct-article-octets a) groups
+                         (fn-arena-count fn-arena) groups
                          (fn-ct-obligation-string obligation-digest)
                          (fn-ct-subject-string a) evidence (fn-ct-charge a) stamp)
                         (fn-state-next-txid (fn-node-acceptance s))
@@ -100,28 +101,57 @@
   (implies (not (fn-ct-article-validp a digest articles digests store profile
                                       (len articles)))
            (and (equal (fn-ct-result-status
-                        (fn-ct-publish-article s a digest articles digests
+                        (mv-nth 0 (fn-ct-publish-article s a digest articles digests
                                                store profile generation groups
                                                evidence obligation-digest
-                                               completion stamp))
+                                               completion stamp fn-arena)))
                        :invalid)
                 (equal (fn-ct-result-state
-                        (fn-ct-publish-article s a digest articles digests
+                        (mv-nth 0 (fn-ct-publish-article s a digest articles digests
                                                store profile generation groups
                                                evidence obligation-digest
-                                               completion stamp))
+                                               completion stamp fn-arena)))
                        s)
                 (equal (fn-ct-result-receipt
-                        (fn-ct-publish-article s a digest articles digests
+                        (mv-nth 0 (fn-ct-publish-article s a digest articles digests
                                                store profile generation groups
                                                evidence obligation-digest
-                                               completion stamp))
+                                               completion stamp fn-arena)))
                        nil)))
   :hints (("Goal" :in-theory (e/d (fn-ct-publish-article fn-ct-result-status
                                    fn-ct-result-state fn-ct-result-receipt
                                    fn-frame-item)
                                   (fn-ct-article-validp fn-node-prepare
                                    fn-node-complete)))))
+
+;  KEYSTONE (records-flip: what publication does to the payload arena).
+; An article the node staged -- accepted, or prepared and not durable -- is
+; prepared under the handle the arena's next seal returns, and its octets
+; are sealed there: the handle the node holds reads the article's octets.
+; Every other outcome (invalid, refused) leaves the arena as it was.
+(defthm fn-ct-publish-article-seals-exactly-a-staged-article
+  (let ((r (fn-ct-publish-article s a digest articles digests store profile
+                                  generation groups evidence obligation-digest
+                                  completion stamp fn-arena)))
+    (and (implies (member-equal (fn-ct-result-status (mv-nth 0 r))
+                                '(:accepted :not-durable))
+                  (and (equal (mv-nth 1 r)
+                              (fn-arena-seal-list (fn-ct-article-octets a) fn-arena))
+                       (equal (fn-arena-payload (fn-arena-count fn-arena) (mv-nth 1 r))
+                              (fn-ct-article-octets a))))
+         (implies (not (member-equal (fn-ct-result-status (mv-nth 0 r))
+                                     '(:accepted :not-durable)))
+                  (equal (mv-nth 1 r) fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-ct-publish-article fn-ct-result-status
+                                   fn-frame-item)
+                                  (fn-ct-article-validp fn-node-prepare
+                                   fn-node-complete fn-ct-subject-string
+                                   fn-ct-obligation-string fn-ct-charge
+                                   fn-id-digestp fn-arena-seal-list
+                                   fn-arena-payload fn-arena-count
+                                   fn-arena-count-is-len fn-arena-payload-is-nth))
+           :use ((:instance fn-arena-seal-new-handle
+                            (xs (fn-ct-article-octets a)))))))
 
 ; -----------------------------------------------------------------------------
 ; Independence: an article whose dependencies all resolve in the local store
@@ -235,28 +265,39 @@
 ; The publishing fold: an invalid head is skipped and its siblings see the
 ; same node state they would have seen without it.
 
+(local
+ (defthm fn-ct-invalid-article-is-the-invalid-result
+   (implies (not (fn-ct-article-validp a digest articles digests store profile
+                                       (len articles)))
+            (equal (fn-ct-publish-article s a digest articles digests store profile
+                                          generation groups evidence
+                                          obligation-digest completion stamp fn-arena)
+                   (list (list :invalid s nil) fn-arena)))
+   :hints (("Goal" :in-theory (e/d (fn-ct-publish-article) (fn-ct-article-validp))))))
+
 (defthm fn-ct-invalid-head-does-not-block-siblings
   (implies (and (consp candidates)
                 (not (fn-ct-article-validp
                       (car candidates) (if (consp digests) (car digests) nil)
                       articles all-digests store profile (len articles))))
            (equal (fn-frame-item
-                   0 (fn-ct-publish-list s candidates digests obligation-digests
+                   0 (mv-nth 0 (fn-ct-publish-list s candidates digests obligation-digests
                                          completions articles all-digests store
-                                         profile generation groups evidence stamp))
+                                         profile generation groups evidence stamp fn-arena)))
                   (fn-frame-item
-                   0 (fn-ct-publish-list
+                   0 (mv-nth 0 (fn-ct-publish-list
                       s (cdr candidates)
                       (if (consp digests) (cdr digests) nil)
                       (if (consp obligation-digests) (cdr obligation-digests) nil)
                       (if (consp completions) (cdr completions) nil)
                       articles all-digests store profile generation groups
-                      evidence stamp))))
+                      evidence stamp fn-arena)))))
   :hints (("Goal" :do-not-induct t
            :expand ((fn-ct-publish-list s candidates digests obligation-digests
                                         completions articles all-digests store
-                                        profile generation groups evidence stamp))
-           :in-theory (e/d (fn-frame-item)
+                                        profile generation groups evidence stamp
+                                        fn-arena))
+           :in-theory (e/d (fn-frame-item fn-ct-result-state)
                            (fn-ct-publish-article fn-ct-article-validp
                             fn-ct-publish-list)))))
 
@@ -398,18 +439,18 @@
 ; KEYSTONE: an :accepted result names an article the node has published.
 (defthm fn-ct-accepted-article-is-in-the-node
   (implies (equal (fn-ct-result-status
-                   (fn-ct-publish-article s a digest articles digests store
+                   (mv-nth 0 (fn-ct-publish-article s a digest articles digests store
                                           profile generation groups evidence
-                                          obligation-digest completion stamp))
+                                          obligation-digest completion stamp fn-arena)))
                   :accepted)
            (fn-acceptedp
             (fn-ct-article-msgid a)
             (fn-state-articles
              (fn-node-acceptance
               (fn-ct-result-state
-               (fn-ct-publish-article s a digest articles digests store
+               (mv-nth 0 (fn-ct-publish-article s a digest articles digests store
                                       profile generation groups evidence
-                                      obligation-digest completion stamp))))))
+                                      obligation-digest completion stamp fn-arena)))))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-ct-publish-article fn-node-prepare
                                fn-node-complete fn-acceptedp
@@ -417,7 +458,7 @@
            :use ((:instance fn-ct-accepted-is-complete-of-prepare)
                  (:instance fn-ct-prepare-then-durable-complete-accepts
                             (g generation) (m (fn-ct-article-msgid a))
-                            (p (fn-ct-article-octets a)) (gr groups)
+                            (p (fn-arena-count fn-arena)) (gr groups)
                             (o (fn-ct-obligation-string obligation-digest))
                             (sub (fn-ct-subject-string a)) (e evidence)
                             (c (fn-ct-charge a)))))))
@@ -430,10 +471,10 @@
                 (fn-ct-unknowns-okp us2 profile))
            (equal (fn-ct-publish-container
                    s (fn-ct-make-container v as us) digests obligation-digests
-                   completions store profile generation groups evidence stamp)
+                   completions store profile generation groups evidence stamp fn-arena)
                   (fn-ct-publish-container
                    s (fn-ct-make-container v as us2) digests obligation-digests
-                   completions store profile generation groups evidence stamp)))
+                   completions store profile generation groups evidence stamp fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-ct-publish-container fn-ct-containerp
                                    fn-ct-make-container fn-ct-version
                                    fn-ct-articles fn-ct-unknowns fn-frame-item)

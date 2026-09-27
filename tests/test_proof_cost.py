@@ -215,8 +215,10 @@ class ProofCostTests(unittest.TestCase):
 
 
     def measurement(self, book, seconds, host="hbox", tool="tool-A", run="certify-x",
-                    jobs=2):
-        record = proof_cost.Measurement(book, seconds, "passed", run, host, tool, jobs)
+                    jobs=2, steps=None, load=1.0, cpus=24, verdict="passed"):
+        # Quiet by default (load 1 on 24 CPUs): the seconds rules as before.
+        record = proof_cost.Measurement(book, seconds, verdict, run, host, tool, jobs,
+                                        steps, load, cpus)
         return {(book, host, tool, record.band): record}
 
     def test_ratchet_fails_new_and_regressed_books_and_names_improved(self):
@@ -234,14 +236,14 @@ class ProofCostTests(unittest.TestCase):
         verdict = proof_cost.ratchet(selected, books, baseline, 10)
         failing = "\n".join(verdict.failing)
         self.assertEqual(len(verdict.failing), 2)
-        self.assertIn("FAIL books/new: worst=12.000s > 10s", failing)
+        self.assertIn("FAIL books/new: best=12.000s > 10s", failing)
         self.assertIn("not in baseline", failing)
         # 40 > 31 * 1.25 = 38.75; the persvati 34s is within 25% of 31.
-        self.assertIn("FAIL books/worse: worst=40.000s > baseline 31.000s +25% = 38.750s",
+        self.assertIn("FAIL books/worse: best=40.000s > baseline 31.000s +25% = 38.750s",
                       failing)
         self.assertNotIn("books/held", failing)
-        self.assertTrue(any("KEPT books/held: worst=34.000s" in line
-                            for line in verdict.kept))
+        # The fastest measurement of the same bytes is the book's figure (load
+        # only adds time): hbox's 30 s, not persvati's 34 s.
         improved = "\n".join(verdict.improved)
         self.assertIn("IMPROVED books/fast", improved)
         self.assertIn("improved; remove from baseline", improved)
@@ -250,7 +252,7 @@ class ProofCostTests(unittest.TestCase):
         # held not raised, unmeasured kept.
         self.assertEqual(set(verdict.proposed),
                          {"books/held", "books/worse", "books/unmeasured"})
-        self.assertEqual(verdict.proposed["books/held"]["seconds"], 31.0)
+        self.assertEqual(verdict.proposed["books/held"]["seconds"], 30.0)
 
     def test_ratchet_lowers_a_faster_baseline_number(self):
         selected = self.measurement("books/held", 20.0, run="certify-new")
@@ -259,7 +261,7 @@ class ProofCostTests(unittest.TestCase):
         self.assertEqual(verdict.failing, [])
         self.assertEqual(verdict.proposed["books/held"],
                          {"seconds": 20.0, "run": "certify-new", "host": "hbox",
-                          "jobs": 2, "verdict": "passed"})
+                          "jobs": 2, "verdict": "passed", "load": 1.0, "cpus": 24})
 
     def test_write_baseline_refuses_to_add_without_allow_regression(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -315,12 +317,13 @@ class ProofCostTests(unittest.TestCase):
             selected = self.measurement("books/scoped", 10.5, jobs=jobs)
             verdict = proof_cost.ratchet(selected, {"books/scoped"}, {}, 10)
             self.assertEqual(verdict.failing, [])
-            self.assertTrue(any(f"NEAR books/scoped: worst=10.500s" in line and f"jobs={jobs}" in line
+            self.assertTrue(any(f"NEAR books/scoped: best=10.500s" in line and f"jobs={jobs}" in line
                                 for line in verdict.kept), verdict.kept)
             selected = self.measurement("books/scoped", 11.5, jobs=jobs)
             verdict = proof_cost.ratchet(selected, {"books/scoped"}, {}, 10)
             self.assertEqual(len(verdict.failing), 1)
-            self.assertIn(f"FAIL books/scoped: worst=11.500s > 10s host=hbox jobs={jobs}",
+            self.assertIn(f"FAIL books/scoped: best=11.500s > 10s steps=unknown "
+                          f"load=1/24cpu (quiet) host=hbox jobs={jobs}",
                           verdict.failing[0])
 
     def test_scoped_number_ratchets_while_a_wider_one_is_recorded(self):
@@ -332,7 +335,7 @@ class ProofCostTests(unittest.TestCase):
         verdict = proof_cost.ratchet(selected, {"books/b"},
                                      {"books/b": {"seconds": 17.0}}, 10)
         self.assertEqual(verdict.failing, [])
-        self.assertIn("IMPROVED books/b: worst=9.000s", "\n".join(verdict.improved))
+        self.assertIn("IMPROVED books/b: best=9.000s", "\n".join(verdict.improved))
         self.assertEqual(verdict.proposed, {})
 
     def test_newer_wide_run_does_not_hide_the_scoped_measurement(self):
@@ -381,6 +384,164 @@ class ProofCostTests(unittest.TestCase):
                 path.write_text(json.dumps(value), encoding="utf-8")
                 self.assertIn(f"ratchet: {word}",
                               "\n".join(proof_cost.report(path, 10)))
+
+
+    # 2026-09-27: steps are the ratchet; seconds decide D26 only when quiet.
+
+    def test_failed_fast_attempt_is_failed_never_improved(self):
+        # A book that failed in 0.06 s measured no cost: FAILED, row kept.
+        selected = self.measurement("books/red", 0.06, verdict="failed")
+        verdict = proof_cost.ratchet(selected, {"books/red"},
+                                     {"books/red": {"seconds": 30.0, "steps": 900}}, 10)
+        self.assertEqual(verdict.improved, [])
+        self.assertEqual(verdict.failing, [])
+        self.assertEqual(len(verdict.failed), 1)
+        self.assertIn("FAILED books/red", verdict.failed[0])
+        self.assertIn("measures no cost", verdict.failed[0])
+        self.assertEqual(verdict.proposed["books/red"], {"seconds": 30.0, "steps": 900})
+
+    def test_failed_attempt_never_replaces_a_passed_one(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture_book(root, "books/x", '(in-package "ACL2")\n')
+            sources = {"books/x.lisp": proof_cost.certs.content_hash(
+                root / "books/x.lisp")}
+            runs = [self.fixture_run("20260901T010000Z", sources=sources,
+                                     walls={"books/x": 25.0}),
+                    self.fixture_run("20260902T010000Z", sources=sources,
+                                     walls={"books/x": 0.06},
+                                     results={"books/x": "failed"})]
+            selected, _, _ = proof_cost.history(root, {"books/x"}, runs=runs)
+            record = selected[("books/x", "hbox", "tool-A", "scoped")]
+            self.assertEqual((record.seconds, record.verdict), (25.0, "passed"))
+            verdict = proof_cost.ratchet(selected, {"books/x"},
+                                         {"books/x": {"seconds": 25.0}}, 10)
+            self.assertEqual(verdict.improved, [])
+
+    def test_fastest_passed_attempt_of_the_same_bytes_is_kept_with_its_load(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture_book(root, "books/x", '(in-package "ACL2")\n')
+            sources = {"books/x.lisp": proof_cost.certs.content_hash(
+                root / "books/x.lisp")}
+            quiet = self.fixture_run("20260901T010000Z", sources=sources,
+                                     walls={"books/x": 6.4})
+            quiet[1].update({"book_load_average": {"books/x": [2.0, 3.5]},
+                             "cpu_count": 24, "book_prover_steps": {"books/x": 1488179}})
+            loaded = self.fixture_run("20260902T010000Z", sources=sources,
+                                      walls={"books/x": 14.9})
+            loaded[1].update({"book_load_average": {"books/x": [15.0, 12.0]},
+                              "cpu_count": 24})
+            selected, _, _ = proof_cost.history(root, {"books/x"}, runs=[quiet, loaded])
+            record = selected[("books/x", "hbox", "tool-A", "scoped")]
+            self.assertEqual((record.seconds, record.steps, record.load, record.cpus),
+                             (6.4, 1488179, 3.5, 24))
+            self.assertIs(record.quiet, True)
+            verdict = proof_cost.ratchet(selected, {"books/x"},
+                                         {"books/x": {"seconds": 14.9}}, 10)
+            self.assertIn("IMPROVED books/x: best=6.400s", "\n".join(verdict.improved))
+            self.assertEqual(verdict.proposed, {})
+
+    def test_loaded_or_unrecorded_measurement_over_the_line_is_unquiet_not_fail(self):
+        for load, cpus in ((12.0, 24), (None, None)):
+            selected = self.measurement("books/new", 17.0, load=load, cpus=cpus)
+            verdict = proof_cost.ratchet(selected, {"books/new"}, {}, 10)
+            self.assertEqual(verdict.failing, [], (load, cpus))
+            self.assertEqual(len(verdict.unquiet), 1)
+            self.assertIn("UNQUIET books/new: best=17.000s", verdict.unquiet[0])
+            self.assertIn("not a verdict", verdict.unquiet[0])
+            self.assertEqual(proof_cost.regression_baseline(selected, 10), {})
+        # Above LOAD_FACTOR times the line no load explains it: FAIL.
+        selected = self.measurement("books/new", 34.0, load=20.0)
+        verdict = proof_cost.ratchet(selected, {"books/new"}, {}, 10)
+        self.assertEqual(len(verdict.failing), 1)
+        self.assertIn("FAIL books/new: best=34.000s", verdict.failing[0])
+        # A quiet measurement over the line is a verdict.
+        selected = self.measurement("books/new", 12.0, load=6.0, cpus=24)
+        self.assertEqual(len(proof_cost.ratchet(selected, {"books/new"}, {}, 10).failing), 1)
+        selected = self.measurement("books/new", 12.0, load=6.1, cpus=24)
+        self.assertEqual(proof_cost.ratchet(selected, {"books/new"}, {}, 10).failing, [])
+
+    def test_steps_ratchet_a_baseline_book_whatever_its_seconds(self):
+        baseline = {"books/b": {"seconds": 30.0, "steps": 1_000_000, "run": "r0"}}
+        # Seconds far above the row under load, steps unchanged: no failure.
+        selected = self.measurement("books/b", 80.0, steps=1_000_000, load=20.0)
+        verdict = proof_cost.ratchet(selected, {"books/b"}, baseline, 10)
+        self.assertEqual((verdict.failing, verdict.unquiet), ([], []))
+        self.assertEqual(verdict.proposed["books/b"]["steps"], 1_000_000)
+        self.assertEqual(verdict.proposed["books/b"]["seconds"], 30.0)
+        # Quiet seconds under the row, steps 11% over: FAIL on steps.
+        selected = self.measurement("books/b", 20.0, steps=1_110_000)
+        verdict = proof_cost.ratchet(selected, {"books/b"}, baseline, 10)
+        self.assertEqual(len(verdict.failing), 1)
+        self.assertIn("FAIL books/b: steps=1,110,000 > baseline 1,000,000 +10%",
+                      verdict.failing[0])
+        self.assertEqual(verdict.proposed["books/b"], baseline["books/b"])
+        # Within the band: KEPT, not raised.
+        selected = self.measurement("books/b", 20.0, steps=1_050_000)
+        verdict = proof_cost.ratchet(selected, {"books/b"}, baseline, 10)
+        self.assertEqual(verdict.failing, [])
+        self.assertIn("KEPT books/b: steps=1,050,000", "\n".join(verdict.kept))
+        self.assertEqual(verdict.proposed["books/b"]["steps"], 1_000_000)
+        # Fewer steps and a faster run: both numbers lowered.
+        selected = self.measurement("books/b", 20.0, steps=400_000, run="r1")
+        verdict = proof_cost.ratchet(selected, {"books/b"}, baseline, 10)
+        self.assertEqual((verdict.proposed["books/b"]["steps"],
+                          verdict.proposed["books/b"]["seconds"],
+                          verdict.proposed["books/b"]["run"]), (400_000, 20.0, "r1"))
+
+    def test_row_without_steps_uses_seconds_under_the_quiet_rule_and_gains_steps(self):
+        baseline = {"books/b": {"seconds": 20.0}}
+        loaded = self.measurement("books/b", 40.0, load=None, cpus=None)
+        verdict = proof_cost.ratchet(loaded, {"books/b"}, baseline, 10)
+        self.assertEqual(verdict.failing, [])
+        self.assertIn("UNQUIET books/b", "\n".join(verdict.unquiet))
+        quiet = self.measurement("books/b", 40.0)
+        self.assertEqual(len(proof_cost.ratchet(quiet, {"books/b"}, baseline, 10).failing), 1)
+        faster = self.measurement("books/b", 15.0, steps=700)
+        proposed = proof_cost.ratchet(faster, {"books/b"}, baseline, 10).proposed
+        self.assertEqual((proposed["books/b"]["seconds"], proposed["books/b"]["steps"]),
+                         (15.0, 700))
+
+    def test_steps_come_from_the_local_log_when_the_manifest_lacks_them(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture_book(root, "books/x", '(in-package "ACL2")\n')
+            sources = {"books/x.lisp": proof_cost.certs.content_hash(
+                root / "books/x.lisp")}
+            run = self.fixture_run("20260901T010000Z", sources=sources,
+                                   walls={"books/x": 12.0})
+            log = root / "build/acl2" / run[0].run_id / "books--x.certify.log"
+            log.parent.mkdir(parents=True)
+            log.write_text(
+                "Summary\nForm:  ( DEFTHM A ...)\nTime:  1.00 seconds\n"
+                "Prover steps counted:  700\n"
+                "Summary\nForm:  ( ENCAPSULATE NIL ...)\nTime:  9.00 seconds\n"
+                "Prover steps counted:  5,000\n"
+                "Summary\nForm:  ( DEFTHM B ...)\nTime:  2.00 seconds\n"
+                "Prover steps counted:  4300\n"
+                "Summary\nForm:  (CERTIFY-BOOK \"books/x\" ...)\n"
+                "Time:  12.00 seconds (prove: 3.00)\nProver steps counted:  5000\n")
+            selected, _, _ = proof_cost.history(root, {"books/x"}, runs=[run])
+            self.assertEqual(selected[("books/x", "hbox", "tool-A", "scoped")].steps, 5000)
+            detail = proof_cost.event_detail(log)
+            self.assertIn("costliest-event=( DEFTHM B ...) 4,300 steps", detail)
+
+
+class Acl2CostTests(unittest.TestCase):
+    def test_book_steps_are_the_certify_book_summary_or_unknown(self):
+        from tools import acl2_cost
+        passed = ("Summary\nForm:  ( DEFTHM A ...)\nTime:  0.5 seconds\n"
+                  "Prover steps counted:  More than 1,000\n"
+                  "Summary\nForm:  (CERTIFY-BOOK \"b\" ...)\nTime:  3.0 seconds\n"
+                  "Prover steps counted:  299345\n")
+        self.assertEqual(acl2_cost.book_steps(passed), 299345)
+        self.assertTrue(acl2_cost.events(passed)[0].capped)
+        self.assertEqual(acl2_cost.book_steps("Summary\nForm:  ( DEFTHM A ...)\n"
+                                              "Time:  0.5 seconds\n"), None)
+        self.assertEqual(acl2_cost.book_steps(
+            "Summary\nForm:  (CERTIFY-BOOK \"b\" ...)\nTime:  0.1 seconds\n"), 0)
+        self.assertIsNone(acl2_cost.costliest_event(""))
 
 
 if __name__ == "__main__":

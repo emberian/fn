@@ -14,6 +14,7 @@
 (in-package "ACL2")
 (include-book "../books/replay")
 (include-book "../books/store-intern")
+(include-book "../books/store-recover-stream")
 (include-book "../books/store-config")
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")
@@ -108,15 +109,10 @@
 ; the entry interns the decoded events into the arena first
 ; (fn-store-intern-records below; books/store-intern.lisp fn-intern-events).
 (defun fn-store-decode-records (octet-records)
+  ; books/store-recover-stream.lisp fn-srs-decode: the chunked open's step
+  ; decodes with the same function.
   (declare (xargs :mode :program))
-  (if (consp octet-records)
-      (let ((decoded (fn-store-event-decode-exact (car octet-records))))
-        (if (and (consp decoded) (equal (car decoded) :ok)
-                 (consp (cdr decoded)) (fn-rcon-wire-event-p (car (cdr decoded))))
-            (let ((rest (fn-store-decode-records (cdr octet-records))))
-              (if (equal rest :bad) :bad (cons (car (cdr decoded)) rest)))
-          :bad))
-    (if (null octet-records) nil :bad)))
+  (fn-srs-decode octet-records))
 
 ; THE INTERN AT THE OPEN (records-flip; PKT-635): the decoded wire events
 ; become the store's rows, every article's payload sealed once into the
