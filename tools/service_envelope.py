@@ -158,8 +158,21 @@ def is_signed(i, every):
     return every > 0 and i % every == every // 2
 
 
+def ensure_node_secret(image, store, env):
+    """SEC-006: a store made before the node key files (a fixture or its
+    clone) gets its secret once; `run' refuses a store without one and a
+    start never creates it.  A store this image initialized has one."""
+    if (store / "keys" / "node-secret.key").exists():
+        return
+    made = subprocess.run([str(image), "--fn", "store", str(store), "node-secret", "create"],
+                          env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if made.returncode:
+        raise SystemExit("node-secret create rc=%d: %r" % (made.returncode, made.stdout[-600:]))
+
+
 class Owner:
     def __init__(self, image, d, env, label, timeout):
+        ensure_node_secret(image, d / "store", env)
         self.port = m.free_port()
         self.config = write_config(d, self.port)
         stderr = d / ("owner-%s.stderr" % label)

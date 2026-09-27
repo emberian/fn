@@ -32,7 +32,8 @@
 #  4. the store: `--store fresh` (default) inits TARGET/store and enrols the
 #     retired credentials.txt logins (the password fed on stdin, never argv);
 #     `--store import` is `cp -a` of the STOPPED retired store (the release
-#     has no store import verb), control.sock* dropped.
+#     has no store import verb), control.sock* dropped, and `store STORE
+#     node-secret create` when it has no keys/node-secret.key (SEC-006).
 #  5. TLS: `--cert-dir DIR` with fullchain.pem and privkey.pem (a Let's
 #     Encrypt layout, certbot or lego) when given; else the retired node's
 #     LAN pair, copied, never regenerated.  The key must match the certificate.
@@ -407,6 +408,11 @@ elif [ "$STORE" = import ]; then
   run cp -a "$RETIRED/store" "$TARGET/store"
   [ "$MODE" = go ] && for s in "$TARGET"/store/control.sock*; do [ -e "$s" ] && mv "$s" "$TARGET/store.dropped-$(basename "$s")-$STAMP"; done
   say "  imported by cp -a of the stopped store"
+  # SEC-006: a store from before the node key files gets its secret once
+  # (`run' refuses a store without one and never creates it).
+  if [ ! -f "$TARGET/store/keys/node-secret.key" ]; then
+    run clean_env "$FN" --fn store "$TARGET/store" node-secret create
+  fi
 else
   # shellcheck disable=SC2086
   run clean_env "$FN" operator "$TARGET/fn.toml" init $INIT_ARGS $NODE_GROUPS
