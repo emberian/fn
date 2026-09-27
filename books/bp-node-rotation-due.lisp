@@ -207,3 +207,102 @@
            :in-theory (union-theories
                        '(fn-bpnr-checkpoint-of-statep (:e fn-bpn-nth))
                        (theory 'minimal-theory)))))
+
+; ---------------------------------------------------------------------------
+; Rotation inside a running `bp-node serve' (lane bp-retention-leftovers).
+; The open-time decision above asks at a node verb's open only, so a serve
+; that ran past the profile's threshold kept writing into its generation
+; until the namespace limit (8,192 received records) refused custody.  The
+; serve loop now asks, between sessions (host/native/bp-node.lisp, after
+; each session's disposition and before the next accept),
+; fn-bpnrd-serve-rotation-due-p: the threshold is reached and the machine is
+; at a safe point -- no publication issued (so no row is in flight between
+; the machine and the journal), no forwarding image pending, no outbound
+; session open.  When it answers T the host reopens the journal IN PLACE
+; (host/native/bp-service.lisp fnn-bps-reopen-in-place: the recovery the
+; open runs, under the locks the serve already holds, so no other process
+; can take the journal in between), asks the open-time decision above over
+; that recovery, drives the same (:rotate G CK), and reopens in place again.
+; The in-flight families' custody is their held rows: every one the machine
+; holds when it rotates is held, with its handoffs and arrival frontier,
+; after the reopen (KEYSTONE fn-bpnrd-rotation-keeps-every-held-family),
+; and the reopen's recovery equals full recovery over the old generation
+; (fn-bpnrd-due-rotation-preserves-recovery).  The path adds no durable
+; step: a death in the in-place recovery is a death in an open, one in the
+; rotation a cut of PRF-081's publication and retirement programs.
+(defun fn-bpnrd-serve-rotation-due-p (st profile)
+  (declare (xargs :guard t))
+  (and (fn-bpnpf-node-profilep profile)
+       (true-listp st)
+       (natp (fn-bpnp-used st))
+       (<= (fn-bpnpf-rotate-records profile) (fn-bpnp-used st))
+       (null (fn-bpnf-issued st))
+       (null (fn-bpnp-pending-image st))
+       (null (fn-bpnp-sessions st))))
+
+; The serve asks only at a safe point: nothing issued, no pending image, no
+; outbound session.
+(defthm fn-bpnrd-serve-rotation-due-p-by-definition
+  (implies (fn-bpnrd-serve-rotation-due-p st profile)
+           (and (fn-bpnpf-node-profilep profile)
+                (<= (fn-bpnpf-rotate-records profile) (fn-bpnp-used st))
+                (null (fn-bpnf-issued st))
+                (null (fn-bpnp-pending-image st))
+                (null (fn-bpnp-sessions st))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-bpnrd-serve-rotation-due-p))))
+
+;; KEYSTONE (a rotation keeps every in-flight family's custody).  Whatever
+;; state ST the machine rotates from (at a node verb's open, or at a serve's
+;; safe point after its in-place recovery), if it proposes the publication,
+;; the reopen from the published file (read at the machine's depth budget,
+;; with no row yet in the new generation: what the host's reopen reads)
+;; recovers :ready with exactly ST's held rows -- every fragment of every
+;; family in flight -- its receipt handoffs and its arrival frontier, at the
+;; rotation's own operation frontier (E . 0).
+(defthm fn-bpnrd-rotation-keeps-every-held-family
+  (let* ((eff (car (fn-bpnf-answer-effects
+                    (fn-bpnp-rotate-step st generation ck))))
+         (budget (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+         (replay (fn-bpn-nth 4 (fn-bpnr-recover-auto-event
+                                st0 base-records sequence-ready nil
+                                (fn-bpnr-selection-plan
+                                 t (fn-bpnr-checkpoint-octets (fn-bpn-nth 4 eff)
+                                                              budget)
+                                 budget)))))
+    (implies (equal (car eff) :persist-checkpoint)
+             (and (equal (car replay) :ready)
+                  (equal (fn-bpn-nth 1 replay) (fn-bpnf-held-list st))
+                  (equal (fn-bpn-nth 2 replay) (fn-bpnf-handoffs st))
+                  (equal (fn-bpn-nth 3 replay) (cons (fn-bpnf-epoch st) 0))
+                  (equal (fn-bpn-nth 4 replay) (fn-bpnf-next-arrival st)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnp-rotate-step-proposes-only-own-projection)
+                 (:instance fn-bpnr-selection-plan-of-octets
+                            (ck (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
+                            (budget (fn-bpnr-depth-budget
+                                     (fn-bpn-machine-state-max-jobs
+                                      (fn-bpnf-base st)))))
+                 (:instance fn-bpnr-recover-event-replay
+                            (st st0) (rows nil)
+                            (plan (list :selected
+                                        (fn-bpnr-rotation-checkpoint
+                                         ck (fn-bpnf-epoch st)))))
+                 (:instance fn-bpnr-replay-from-rotation-checkpoint
+                            (e (fn-bpnf-epoch st)) (rows nil)
+                            (base (fn-bpnf-base st0)))
+                 (:instance fn-bpnr-replay-aux-of-nil
+                            (base (fn-bpnf-base st0))
+                            (held (fn-bpnr-checkpoint-held ck))
+                            (handoffs (fn-bpnr-checkpoint-handoffs ck))
+                            (prior (cons (fn-bpnf-epoch st) 0))
+                            (next-arrival (fn-bpnr-checkpoint-next-arrival ck))))
+           :in-theory (union-theories
+                       '(fn-bpnr-checkpoint-of-statep fn-bpnp-rotation-quiescentp
+                         fn-bpnr-plan-checkpoint-of-selected fn-frame-natp
+                         fn-bpn-nth car-cons cdr-cons fn-cbor-ag-car
+                         (:e fn-bpn-nth) (:e zp) (:e natp) (:e not) (:e equal)
+                         (:e binary-+) (:e car))
+                       (theory 'minimal-theory)))))

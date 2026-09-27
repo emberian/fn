@@ -1817,8 +1817,13 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 (defun fnn-owner-identity-commit (service event)
   "Publish one ACL2-constructed keyring snapshot or atomic acceptance event."
   (let ((store (fnn-owner-service-store service)))
-    (fnn-owner-preflight-publication
-     service (fnn-core 'fn-store-event-kind event))
+    ;; ACL2's verdict over the event itself (host/owner-host.lisp
+    ;; fn-owner-identity-publication-verdict): a composite is charged its
+    ;; figure with its article's memberships.
+    (unless (eq (fnn-owner-core 'fn-owner-identity-publication-verdict event)
+                :admissible)
+      (fnn-refuse "Store transaction budget refuses ~(~a~) transaction"
+                  (fnn-core 'fn-wire-event-kind event)))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store

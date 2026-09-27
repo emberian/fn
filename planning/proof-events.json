@@ -3075,6 +3075,10 @@
         {
           "kind": "theorem",
           "name": "fn-bpnrd-due-rotation-preserves-recovery"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrd-rotation-keeps-every-held-family"
         }
       ]
     },
@@ -3708,6 +3712,14 @@
         {
           "kind": "theorem",
           "name": "fn-rcl-store-counts-is-the-model-over-alpha"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-store-classes-partition-the-articles"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-signed-article-is-never-reclaimable"
         }
       ]
     },
@@ -5024,10 +5036,6 @@
         {
           "kind": "theorem",
           "name": "fn-bpnpf-profile-read-is-valid"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnpf-profile-write-never-lowers"
         },
         {
           "kind": "theorem",
@@ -10868,6 +10876,22 @@
         {
           "kind": "theorem",
           "name": "fn-heap-store-figure-holds-every-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-statement-admission-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-statement-row-within-its-figure"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oii-publication-group-count-is-the-rows"
         }
       ]
     },

@@ -4064,13 +4064,21 @@ error for the same reason."
                  (return-from fnn-command-post +fnn-exit-ok+))
                (when (eq existing :conflict)
                  (fnn-refuse "conflicting immutable Message-ID")))
-             ;; ACL2's article verdict: the count gate and the history gate
-             ;; at this article's own figure (fn-sbud-article-verdict-at).
-             (unless (eq (fnn-core-state 'fn-store-sn-article-verdict
-                                         (fnn-store-config store) (length payload)
-                                         (length codes))
-                         :admissible)
-               (fnn-refuse "store budget refuses the article (transaction count or history bound)"))
+             ;; ACL2's article verdict: the count gate, the history gate and
+             ;; the vector at this article's own figure, and its word
+             ;; (fn-cvec-article-verdict-word): :memberships when the
+             ;; membership charge alone refused it, named as the served
+             ;; POST names it (books/nntp-post.lisp).
+             (case (fnn-core-state 'fn-store-sn-article-verdict-word
+                                   (fnn-store-config store) (length payload)
+                                   (length codes))
+               (:admissible nil)
+               (:memberships
+                (fnn-refuse "store budget refuses the article's groups (memberships): each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups"))
+               (:unaffordable
+                (fnn-refuse "store budget refuses the article (transaction count or history bound)"))
+               (otherwise
+                (fnn-fault "ACL2 returned an invalid article verdict word")))
              (fnn-advance-frontier store (fnn-bridge-next-txid))
              (multiple-value-bind (obligation subject evidence) (fnn-metadata msgid payload)
                (let ((action (fnn-bridge-prepare msgid payload codes obligation subject evidence charge)))

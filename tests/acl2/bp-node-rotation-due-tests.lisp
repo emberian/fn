@@ -146,3 +146,51 @@
 ;; them; they are kept because fn-bpnr-recover-from-checkpoint-equals-full-
 ;; recover needs them.  Its own teeth (bp-node-counterexamples-tests)
 ;; separate them at the replay.
+
+;; ---------------------------------------------------------------------------
+;; Rotation inside a running serve (lane bp-retention-leftovers).
+
+;; fn-bpnrd-serve-rotation-due-p.  Witness: the recovered state is at a safe
+;; point (nothing issued, no pending image, no outbound session) and has
+;; reached threshold 1.  Threshold 2: not due.  With the rotation's own
+;; publication issued: not a safe point, not due.
+(assert-event (fn-bpnrd-serve-rotation-due-p (bprd-st) *bprd-profile-1*))
+(assert-event (not (fn-bpnrd-serve-rotation-due-p (bprd-st) *bprd-profile-2*)))
+(assert-event
+ (not (fn-bpnrd-serve-rotation-due-p
+       (fn-bpnf-answer-state
+        (fn-bpnp-rotate-step (bprd-st) 1
+                             (fn-bpnr-checkpoint-of-event (bprd-event) 1)))
+       *bprd-profile-1*)))
+;; An outbound session open: not a safe point.
+(assert-event
+ (not (fn-bpnrd-serve-rotation-due-p (update-nth 14 '((:peer 1)) (bprd-st))
+                                     *bprd-profile-1*)))
+
+;; KEYSTONE fn-bpnrd-rotation-keeps-every-held-family.  Reachable witness,
+;; the antecedent and every conclusion: the machine proposes, and the
+;; reopen from the published file with no rows is :ready with bundle A's
+;; held row, the handoffs and the arrival frontier the machine held, at the
+;; rotation's frontier (2 . 0).
+(defun bprd-keeps-replay (st profile)
+  (fn-bpn-nth 4 (bprd-reopen st profile nil)))
+(assert-event
+ (let ((replay (bprd-keeps-replay (bprd-st) *bprd-profile-1*)))
+   (and (equal (car (bprd-eff (bprd-st) *bprd-profile-1*)) :persist-checkpoint)
+        (equal (car replay) :ready)
+        (consp (fn-bpnf-held-list (bprd-st)))
+        (equal (fn-bpn-nth 1 replay) (fn-bpnf-held-list (bprd-st)))
+        (equal (fn-bpn-nth 2 replay) (fn-bpnf-handoffs (bprd-st)))
+        (equal (fn-bpn-nth 3 replay) '(2 . 0))
+        (equal (fn-bpn-nth 4 replay) (fn-bpnf-next-arrival (bprd-st))))))
+;; Tooth, hypothesis "the machine proposes the publication": the state whose
+;; held rows were dropped (the machine refuses, its checkpoint is not its
+;; own projection) has no published file, and the reopen is not :ready with
+;; its held list.
+(assert-event
+ (equal (car (bprd-eff (bprd-st-no-held) *bprd-profile-1*)) :rotation-refused))
+(must-fail-checked
+ (assert-event
+  (let ((replay (bprd-keeps-replay (bprd-st-no-held) *bprd-profile-1*)))
+    (and (equal (car replay) :ready)
+         (equal (fn-bpn-nth 1 replay) (fn-bpnf-held-list (bprd-st-no-held)))))))

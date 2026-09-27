@@ -824,7 +824,8 @@ STO-014: Content reclamation under D13: an operator retention rule, a per-articl
 Status: decision, tombstone and served projection proved (PRF-088); the
 host asks the tombstone-aware D25 verdict at every site; OVER, XOVER and
 NEWNEWS drop a reclaimed article; `status` prints the rule and the
-reclaimable, held and reclaimed counts. The durable `store reclaim` verb is
+reclaimable, held, reclaimed, signed and kept counts (every article in one
+class, PKT-844). The durable `store reclaim` verb is
 not implemented: the K0 byte model has no step that replaces a committed
 transaction's content (planning/evidence/reclaim-host-2026-09-25.md).
 
@@ -880,6 +881,21 @@ article's bindings, and the D25 duplicate-versus-conflict verdict the host
 calls (`fn-rcl-existing-action`) up to a SHA-256 collision on the compared
 pair. Verdict lookup reads the Store's verdict slot, which reclamation does
 not touch, and an article with a verdict is not reclaimed.
+
+**The classes** (PKT-844; `fn-rcl-class-in`, books/store-reclaim-holders).
+`status` prints each article in exactly one class: `reclaimable`, `held`
+(a holder), `reclaimed` (a tombstone), `signed` and `kept`, and the five
+sum to the report's `articles=N`
+(`fn-rcl-store-classes-partition-the-articles`). `signed` is an article
+an accepted authorship verdict other than `:absent` names: every kind-4
+composite (a signed article, a served key statement among them). Its
+payload is retained with the identity state that verdict belongs to and
+article retention never releases it, under every rule, clock and holder
+set (`fn-rcl-signed-article-is-never-reclaimable`); it is `signed` even
+where the rule would keep it anyway, because the verdict, not the rule, is
+its reason to stay. `kept` is the rest the rule keeps (keep-forever, too
+recent, a rule the store cannot apply). Before PKT-844 a signed or
+rule-kept article was counted in `articles` and in no class.
 
 **Served**: ARTICLE, HEAD, BODY and STAT of a reclaimed article answer
 `423 article reclaimed` by number and `430 article reclaimed` by

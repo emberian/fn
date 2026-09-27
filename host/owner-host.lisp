@@ -859,6 +859,29 @@
                                        (fn-sf-records-count (fn-sn-files s)) bytes debt)
                fn-hist state)))))
 
+; The identity preflight's verdict on one ACL2-constructed EVENT (lane
+; bp-retention-leftovers).  Its kind is the WIRE event's
+; (`fn-wire-event-kind'; the row reading `fn-store-event-kind' answered NIL
+; for a wire composite, so the preflight charged a composite nothing); an
+; accepted-statement composite is charged its figure, the kind's ceiling
+; plus 320 per group its article is filed in
+; (`fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at',
+; `fn-oii-publication-group-count-is-the-rows'); any other kind as before.
+(defun fn-owner-identity-publication-verdict (event fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (let ((kind (fn-wire-event-kind event)))
+    (if (not (equal kind :accepted-statement))
+        (fn-owner-publication-verdict kind fn-hist state)
+      (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
+        (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
+          (let ((s (fn-owner-store state)))
+            (mv nil (fn-pvc-statement-verdict-carried
+                     (fn-owner-profile-carry state)
+                     (fn-owner-store-profile state)
+                     (fn-sf-records-count (fn-sn-files s)) bytes
+                     (fn-oii-publication-group-count event) debt)
+                fn-hist state)))))))
+
 ; The carried profile as the operator reads it (field names and values).
 (defun fn-owner-profile-report (state)
   (declare (xargs :stobjs state :mode :program))

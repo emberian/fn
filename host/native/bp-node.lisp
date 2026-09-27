@@ -568,13 +568,41 @@ observations back.  Nil when there is nothing to observe."
 
 (defun fnn-bps-open-node (journal config wall wall-error)
   "fnn-bps-open for a node verb: open, rotate when ACL2 says it is due, and
-reopen after a rotation (without asking again)."
+reopen after a rotation (without asking again), in place: the locks the
+open took are held throughout (lane bp-retention-leftovers; before, the
+reopen released them and took them again, a window in which another
+process could take the journal)."
   (let ((bp (fnn-bps-open journal config wall wall-error)))
-    (if (handler-case (fnn-bps-rotate-when-due bp)
-          (error (e) (fnn-bps-release bp) (error e)))
-        (progn (fnn-bps-release bp)
-               (fnn-bps-open journal config wall wall-error))
-      bp)))
+    (handler-case
+        (progn
+          (when (fnn-bps-rotate-when-due bp)
+            (fnn-bps-reopen-in-place bp journal config wall wall-error))
+          bp)
+      (error (e) (fnn-bps-release bp) (error e)))))
+
+;;; Rotation inside a running serve (lane bp-retention-leftovers;
+;;; books/bp-node-rotation-due fn-bpnrd-serve-rotation-due-p).  Between
+;;; sessions the serve loop asks ACL2 whether its generation has reached the
+;;; profile's threshold at a safe point (nothing issued, no forwarding image
+;;; pending, no outbound session).  When it has, the journal is recovered
+;;; again in place (the open's recovery under the locks this serve holds),
+;;; the open-time decision is asked over that recovery and, when due, the
+;;; same rotation `bp-node checkpoint' drives runs, and the journal is
+;;; reopened in place.  Every held row -- every fragment of every family in
+;;; flight -- is held after it (fn-bpnrd-rotation-keeps-every-held-family),
+;;; and a death anywhere in it is a death in an open or in PRF-081's
+;;; publication and retirement programs.  Answers T when it rotated.
+(defun fnn-bps-serve-rotate-when-due (bp journal config wall wall-error)
+  (when (eq (fnn-core 'fn-bpnrd-serve-rotation-due-p
+                      (fnn-bps-state bp) (fnn-bps-node-profile bp))
+            t)
+    (fnn-out "BP journal rotation in serve records=~d threshold=~d"
+             (fnn-core 'fn-bpnp-used (fnn-bps-state bp))
+             (fnn-core 'fn-bpnpf-rotate-records (fnn-bps-node-profile bp)))
+    (fnn-bps-reopen-in-place bp journal config wall wall-error)
+    (when (fnn-bps-rotate-when-due bp)
+      (fnn-bps-reopen-in-place bp journal config wall wall-error)
+      t)))
 
 ;;; `bp-node profile JOURNAL NODE-ID ROWS OCTETS [ADU BUNDLE [ROTATE]]': raise the
 ;;; node's profile: the held rows and held octets its FNBS machine may hold,
@@ -997,6 +1025,12 @@ uncertain, as it does everywhere else."
                 (fnn-bpnode-pause-at-durable-cut
                  "FN_BP_NODE_TEST_PAUSE_AFTER_KIND_FIVE"
                  "BP NODE KIND5 DURABLE")
+                ;; Between sessions: rotate the journal when its generation
+                ;; reached the threshold (fn-bpnrd-serve-rotation-due-p),
+                ;; before this session's deliveries and forwarding run over
+                ;; the (reopened) state.
+                (fnn-bps-serve-rotate-when-due
+                 bp journal-root config wall wall-error)
                 (fnn-bpc-advance-clock
                  bp (fnn-bp-observation wall wall-error))
                 (fnn-bpnode-delete-expired bp reports-enabled)
