@@ -1,4 +1,4 @@
-; Teeth for books/owner-identity-intern.lisp (lane signed-post, PRF-288):
+; Teeth for books/owner-identity-intern.lisp (lane signed-post, PRF-289):
 ; the signed POST's composite over a flipped owner (tests/acl2/
 ; owner-signed-post-tests.lisp's reachable trace: an enrolled Store, a
 ; served POST carrying a valid FN-Authorship carrier, taken by the owner).

@@ -144,9 +144,8 @@ class Acl2Owner(Acl2Store):
                 " (if (eq records :bad) (mv nil :fault fn-arena state)"
                 " (let ((fn-arena (fn-arena-clear fn-arena)))"
                 " (mv-let (rows fn-arena) (fn-intern-events records nil 0 fn-arena)"
-                " (mv-let (erp val state) (fn-owner-recover-rows rows " + str(frontier)
-                + " '" + config + " " + str(self.max_conns) + " state)"
-                " (mv erp val fn-arena state))))))")
+                " (fn-owner-recover-rows rows " + str(frontier)
+                + " '" + config + " " + str(self.max_conns) + " fn-arena state)))))")
         timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                       self.form_timeout(form))
         return self._symbol(form, timeout=timeout)

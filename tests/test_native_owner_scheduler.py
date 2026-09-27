@@ -112,6 +112,12 @@ class SchedulerSourceTests(unittest.TestCase):
         inline = owner[owner.index("(defun fnn-owner-commit-queued-locked "):owner.index("(defun fnn-owner-commit-event ")]
         self.assertIn("fnn-owner-commit-step-action", inline)
         self.assertIn("'fn-ocs-commit-step", owner)
+        # fnn-core answers an mv function's FIRST value (the action): taking
+        # (first ...) of that keyword is a memory fault at nil in the saved
+        # image's compiled code (the operator post's inline commit, AW r4).
+        step = owner[owner.index("(defun fnn-owner-commit-step-action "):owner.index("(defun fnn-owner-commit-queued-locked ")]
+        self.assertIn("(fnn-core 'fn-ocs-commit-step phase event)", step)
+        self.assertNotIn("(first (fnn-core", step)
         commit_class = (ROOT / "books" / "owner-commit-class.lisp").read_text()
         self.assertIn("(fn-osch-next (fn-ocm-sched s) w)", commit_class)
         self.assertIn("(fn-osch-observe (fn-ocm-sched s) class hold-ms wait-ms)", commit_class)
@@ -152,13 +158,13 @@ class SchedulerNativeTests(unittest.TestCase):
             cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, timeout=timeout, check=False)
 
-    def start_owner(self, extra=None, image=None):
+    def start_owner(self, extra=None, image=None, stderr=None):
         env = environment()
         env.update(extra or {})
         process = subprocess.Popen(
             [str(image or IMAGE), "--fn", "operator", str(self.config), "run"],
             cwd=ROOT, env=env, stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL, bufsize=0)
+            stderr=stderr or subprocess.DEVNULL, bufsize=0)
         self.addCleanup(self.reap, process)
         for _ in range(4):
             self.assertTrue(select.select([process.stdout], [], [], 180)[0],
@@ -350,14 +356,38 @@ class SchedulerNativeTests(unittest.TestCase):
                  rows["control"], rows["reader"]))
 
     @unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
-    def test_status_is_answered_while_a_batch_barrier_is_in_flight(self):
-        # PKT-688 (4) slice 2 (books/owner-commit-steps.lisp, PRF-267).  The
-        # developer selector holds the committer's barrier open for 6 s with
-        # the owner RELEASED.  While it is open: `status' (the :inspect class)
-        # is answered, each well before the barrier ends; a reader's GROUP
-        # (the :reader class) is NOT admitted until the batch's COMPLETE
-        # (fn-ocs-in-flight-admits-only-inspect-and-commit); and the POST's
-        # 240 leaves only after the barrier (fn-ocs-complete-only-after-the-barrier).
+    def group_count(self, stream):
+        stream.write(b"GROUP fn.test\r\n")
+        stream.flush()
+        line = stream.readline()
+        self.assertTrue(line.startswith(b"211 "), line)
+        return int(line.split()[1])
+
+    def stat(self, stream, msgid):
+        stream.write(b"STAT <" + msgid + b">\r\n")
+        stream.flush()
+        return stream.readline()
+
+    def begin_post(self, stream, msgid, body):
+        stream.write(b"POST\r\n")
+        stream.flush()
+        self.assertTrue(stream.readline().startswith(b"340"))
+        stream.write(b"From: author@example.invalid\r\nNewsgroups: fn.test\r\n"
+                     b"Subject: in flight\r\nMessage-ID: <" + msgid + b">\r\n\r\n"
+                     + stuffed(body) + b".\r\n")
+        stream.flush()
+
+    def test_status_and_readers_are_answered_while_a_batch_barrier_is_in_flight(self):
+        # PKT-688 (4) slice 2 and PKT-828 (books/owner-commit-steps.lisp,
+        # books/owner-reader-view.lisp).  The developer selector holds the
+        # committer's barrier open for 6 s with the owner RELEASED.  While it
+        # is open: `status' (the :inspect class) is answered; a reader's GROUP
+        # and STAT (the :reader class) are answered too
+        # (fn-ocs-in-flight-admits-only-inspect-commit-and-reader), at the
+        # reader view: the in-flight article is not counted and not found
+        # (fn-ocvm-reader-view-is-the-completed-prefix); the POST's 240 leaves
+        # only after the barrier (fn-ocs-members-told-only-after-the-barrier),
+        # and from then on the reader counts and finds it.
         self.reap(self.owner)
         hold = 6.0
         self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000))},
@@ -365,25 +395,13 @@ class SchedulerNativeTests(unittest.TestCase):
         reader_conn, reader = self.connect()
         poster_conn, poster = self.connect()
         with reader_conn, poster_conn:
-            poster.write(b"POST\r\n")
-            poster.flush()
-            self.assertTrue(poster.readline().startswith(b"340"))
+            before = self.group_count(reader)
+            self.begin_post(poster, b"in-flight@example.invalid", b"held at the barrier\r\n")
             posted = time.monotonic()
-            poster.write(b"From: author@example.invalid\r\nNewsgroups: fn.test\r\n"
-                         b"Subject: in flight\r\nMessage-ID: <in-flight@example.invalid>\r\n\r\n"
-                         b"held at the barrier\r\n.\r\n")
-            poster.flush()
             time.sleep(0.5)
-            group = {}
-
-            def read_group():
-                reader.write(b"GROUP fn.test\r\n")
-                reader.flush()
-                group["line"] = reader.readline()
-                group["at"] = time.monotonic() - posted
-
-            thread = threading.Thread(target=read_group, daemon=True)
-            thread.start()
+            during = self.group_count(reader)
+            during_at = time.monotonic() - posted
+            stat_during = self.stat(reader, b"in-flight@example.invalid")
             answered = []
             for _ in range(2):
                 status = self.operator("status", timeout=30)
@@ -392,24 +410,94 @@ class SchedulerNativeTests(unittest.TestCase):
                 self.assertIn(b"transactions=", status.stdout)
             reply = poster.readline()
             accepted = time.monotonic() - posted
-            thread.join(timeout=60)
-            self.assertTrue(reply.startswith(b"240"), reply)
-            self.assertTrue(group.get("line", b"").startswith(b"211"), group)
+            after = self.group_count(reader)
+            stat_after = self.stat(reader, b"in-flight@example.invalid")
             reader.write(b"QUIT\r\n")
             reader.flush()
             poster.write(b"QUIT\r\n")
             poster.flush()
-        print("barrier held %.1fs: status answered at %s; 240 at %.3fs; GROUP at %.3fs"
-              % (hold, ["%.3f" % a for a in answered], accepted, group["at"]))
+        print("barrier held %.1fs: status answered at %s; GROUP at %.3fs (%d, before %d, after %d); "
+              "STAT during %r; 240 at %.3fs"
+              % (hold, ["%.3f" % a for a in answered], during_at, during, before, after,
+                 stat_during, accepted))
+        self.assertTrue(reply.startswith(b"240"), reply)
         # The 240 waited for the barrier (the selector applies only to the
         # log route's committer: a store that did not batch fails here).
         self.assertGreaterEqual(accepted, hold - 0.1, accepted)
-        # Both status requests were answered while the barrier was open.
+        # Both status requests and the reader were answered while the barrier
+        # was open, the reader at the durable view.
         self.assertLess(max(answered), hold - 0.5, answered)
-        # The reader was held until the batch completed.
-        self.assertGreaterEqual(group["at"], hold - 0.1, group)
+        self.assertLess(during_at, hold - 0.5, during_at)
+        self.assertEqual(during, before)
+        self.assertFalse(stat_during.startswith(b"223"), stat_during)
+        # After the COMPLETE the article is counted and found.
+        self.assertEqual(after, before + 1)
+        self.assertTrue(stat_after.startswith(b"223"), stat_after)
         bound, rows = self.sched()
         self.assertEqual(sorted(rows), ["control", "poster", "reader", "transit"])
+
+    def test_the_next_batch_is_prepared_while_the_previous_one_syncs(self):
+        # PKT-828 (books/owner-commit-pipeline.lisp START-NEXT,
+        # books/owner-reader-view.lisp).  Barrier held 4 s.  POST A's batch
+        # goes in flight; POST B, sent 1 s later, is prepared BEHIND that
+        # barrier (the developer trace line; fn-olr-take-never-joins-the-
+        # batch-in-flight) and sealed by A's COMPLETE, so its 240 comes one
+        # barrier after A's, not two.  A reader during A's barrier counts
+        # neither; between A's 240 and B's it counts A and not B; after B's,
+        # both.
+        self.reap(self.owner)
+        hold = 4.0
+        trace = open(self.root / "pipeline.stderr", "wb")
+        self.addCleanup(trace.close)
+        self.owner = self.start_owner({"FN_NATIVE_OWNER_TEST_BARRIER_MS": str(int(hold * 1000)),
+                                       "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE": "1"},
+                                      image=DEVELOPER, stderr=trace)
+        reader_conn, reader = self.connect()
+        a_conn, a = self.connect()
+        b_conn, b = self.connect()
+        with reader_conn, a_conn, b_conn:
+            before = self.group_count(reader)
+            self.begin_post(a, b"pipe-a@example.invalid", b"first batch\r\n")
+            t0 = time.monotonic()
+            time.sleep(1.0)
+            self.begin_post(b, b"pipe-b@example.invalid", b"second batch\r\n")
+            time.sleep(0.5)
+            count1 = self.group_count(reader)
+            at1 = time.monotonic() - t0
+            reply_a = a.readline()
+            at_a = time.monotonic() - t0
+            count2 = self.group_count(reader)
+            stat_a2 = self.stat(reader, b"pipe-a@example.invalid")
+            stat_b2 = self.stat(reader, b"pipe-b@example.invalid")
+            reply_b = b.readline()
+            at_b = time.monotonic() - t0
+            count3 = self.group_count(reader)
+            stat_b3 = self.stat(reader, b"pipe-b@example.invalid")
+            for stream in (reader, a, b):
+                stream.write(b"QUIT\r\n")
+                stream.flush()
+        self.reap(self.owner)
+        trace.flush()
+        lines = (self.root / "pipeline.stderr").read_bytes()
+        print("pipeline (barrier %.1fs): GROUP %d at %.3fs; A 240 at %.3fs; GROUP %d; "
+              "B 240 at %.3fs; GROUP %d (before %d); trace %r"
+              % (hold, count1, at1, at_a, count2, at_b, count3, before,
+                 [l for l in lines.splitlines() if b"pipeline" in l or b"start:" in l]))
+        self.assertTrue(reply_a.startswith(b"240"), reply_a)
+        self.assertTrue(reply_b.startswith(b"240"), reply_b)
+        self.assertIn(b"prepared behind the barrier", lines, lines[-2000:])
+        # During A's barrier the reader counts neither.
+        self.assertLess(at1, hold - 0.5, at1)
+        self.assertEqual(count1, before)
+        # Between the two COMPLETEs: A, not B.
+        self.assertEqual(count2, before + 1)
+        self.assertTrue(stat_a2.startswith(b"223"), stat_a2)
+        self.assertFalse(stat_b2.startswith(b"223"), stat_b2)
+        # B was prepared behind A's barrier: its 240 is one barrier after A's.
+        self.assertGreaterEqual(at_a, hold - 0.1, at_a)
+        self.assertLess(at_b, at_a + hold + 1.5, (at_a, at_b))
+        self.assertEqual(count3, before + 2)
+        self.assertTrue(stat_b3.startswith(b"223"), stat_b3)
 
 
 if __name__ == "__main__":

@@ -29,9 +29,25 @@
 ; tests.lisp witnesses fn-ocl-relation of the installed owner, and
 ; books/owner-commit-ocl.lisp's keystone carries it across the commit);
 ; this sentence is the label.
+;
+; After the records flip (2026-09-27) the store's history holds interned
+; ROWS (books/store-intern.lisp fn-intern-events: the payload position a
+; HANDLE into the arena), so the history the owner is recovered from is the
+; one article's row, and every relation this book stated over wire records
+; is checked over ALPHA of the rows (fn-rows-wire-of through the arena that
+; holds the payload).  The host's catalog load at recovery is
+; books/served-catalog-owner.lisp fn-sca-load-held-rows over the store's
+; rows (KEYSTONE fn-sca-load-held-rows-establishes-relation); the POST's
+; catalog row is fn-cat-prepare-sealed over the row the store prepared.
+; FINDING (labelled at the forms below): fn-cat-ocl-relation reads the
+; store's records through fn-sf-article-records, which keeps only
+; fn-record-p values; a held row is never fn-record-p, so over the flipped
+; store it reads NO articles, and the T2 keystone's antecedent is
+; unsatisfiable there.
 
 (in-package "ACL2")
 (include-book "../../books/catalog-entries")
+(include-book "../../books/served-catalog-owner")   ; the host's E load over rows; store-intern
 (include-book "../../books/crypto-attach")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
@@ -59,12 +75,40 @@
 (defconst *cet-configs* (list *fn-cfg-default-record*))
 (defconst *cet-w0* (cet-record 0 0 "<one@example>"))
 (defconst *cet-h* (list *cet-w0*))
+;; The arena's payloads (handle 0: the article's bytes).
+(defconst *cet-payloads* (list (fn-record-payload *cet-w0*)))
+
+;; The wire history interned as the owner's recovery interns it (keyring nil,
+;; generation 0, a fresh arena): the ROWS the store's history holds.
+(defun cet-rows (ws)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (rows fn-arena)
+      (fn-intern-events ws nil 0 fn-arena)
+      rows)))
+
+;; ALPHA: the wire events ROWS stand for over the arena holding PAYLOADS.
+(defun cet-wires (payloads rows)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (let ((fn-arena (fn-arn-seal-many payloads fn-arena)))
+        (mv (fn-rows-wire-of rows fn-arena) fn-arena))
+      r)))
+
+(defconst *cet-hr* (cet-rows *cet-h*))
+(defconst *cet-r0* (car *cet-hr*))
+(assert-event (and (equal (len *cet-hr*) 1)
+                   (fn-held-p *cet-r0*)
+                   (equal (fn-record-payload *cet-r0*) 0)
+                   (equal *cet-r0* (fn-intern-row-at *cet-w0* nil 0 0))
+                   (equal (cet-wires *cet-payloads* *cet-hr*) *cet-h*)))
 
 (defconst *cet-full*
-  (fn-ock-recover-extended (fn-sco-extend (fn-sco-capture *cet-configs* nil) *cet-configs* *cet-h*)
+  (fn-ock-recover-extended (fn-sco-extend (fn-sco-capture *cet-configs* nil) *cet-configs* *cet-hr*)
                            *cet-configs* 8 4))
 (defconst *cet-ckpt*
-  (fn-ock-recover-extended (fn-sco-extend (fn-sco-capture *cet-configs* *cet-h*) *cet-configs* nil)
+  (fn-ock-recover-extended (fn-sco-extend (fn-sco-capture *cet-configs* *cet-hr*) *cet-configs* nil)
                            *cet-configs* 8 4))
 
 ; The owner's conjuncts of the conclusion, on both entries.
@@ -72,9 +116,58 @@
 (assert-event (and (fn-ocl-relation *cet-full*) (fn-ocl-relation *cet-ckpt*)))
 (assert-event (and (fn-own-store-idlep (fn-own-store (fn-ocfg-owner *cet-full*)))
                    (fn-own-store-idlep (fn-own-store (fn-ocfg-owner *cet-ckpt*)))))
-(assert-event (and (equal (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner *cet-full*)))) *cet-h*)
-                   (equal (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner *cet-ckpt*)))) *cet-h*)))
+(assert-event (and (equal (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner *cet-full*)))) *cet-hr*)
+                   (equal (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner *cet-ckpt*)))) *cet-hr*)))
 (assert-event (equal *cet-full* *cet-ckpt*))
+;; The octet history is refused: the flipped store takes rows only.
+(assert-event (equal (fn-ock-recover-extended
+                      (fn-sco-extend (fn-sco-capture *cet-configs* nil) *cet-configs* *cet-h*)
+                      *cet-configs* 8 4)
+                     :fault))
+
+;; The host's catalog at recovery: fn-sca-load-held-rows over the recovered
+;; store's rows under its view index, over the arena holding the payload.
+;; R holds over ALPHA of the rows (the keystone's hypotheses asserted too),
+;; the one row materializes to the wire record, and it is visible at the
+;; owner's view version.
+(defun cet-held-run (records view fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many *cet-payloads* fn-arena))
+         (fn-cat (fn-sca-load-held-rows records (fn-own-view-index view) fn-arena fn-cat)))
+    (mv (list (fn-cat-count fn-cat)
+              (and (fn-arena-p fn-arena) (fn-sf-record-valuesp records)
+                   (fn-rows-handles-inp records fn-arena)
+                   (fn-wire-event-listp (fn-rows-wire-of records fn-arena)) t)
+              (fn-cat-history-relation (fn-rows-wire-of records fn-arena) fn-arena fn-cat)
+              (fn-cat-wire-list 0 fn-arena fn-cat)
+              (fn-scr-view-of (fn-own-view-version view) fn-cat))
+        fn-arena fn-cat)))
+
+(defun cet-held-exec (records view)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (cet-held-run records view fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+(defconst *cet-own* (fn-ocfg-owner *cet-full*))
+(assert-event (equal (cet-held-exec (fn-sf-records (fn-sn-files (fn-own-store *cet-own*)))
+                                    (fn-own-view *cet-own*))
+                     (list 1 t t *cet-h* 1)))
+
+;; FINDING (books/catalog-entries.lisp on the flipped store): the relation
+;; fn-cat-ocl-relation states reads the store's records through
+;; fn-sf-article-records, which keeps only fn-record-p values; the recovered
+;; store's row is not one, so it reads no article, while ALPHA of the rows
+;; reads the one.  The keystone's catalog (fn-cat-load over the same history)
+;; loads nothing from rows (its generation-0 image above is over wire records).
+(assert-event (and (not (fn-record-p *cet-r0*))
+                   (equal (fn-sf-article-records *cet-hr*) nil)
+                   (equal (fn-sf-article-records (cet-wires *cet-payloads* *cet-hr*)) *cet-h*)))
 
 ; The catalog's conjunct: the exec fold over the same history, on live
 ; stobjs, and the load in two parts (fn-cat-load-of-append).
@@ -150,22 +243,35 @@
 (defconst *cet-0* (fn-own-start (fn-sn-initial *cet-groups* 10) 4))
 (defconst *cet-a* (cdr (fn-own-open *cet-0* nil)))
 (include-book "arena-lift")
-;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
-(defconst *sr-arena* nil)
+;; The payloads the arena holds at handles 0, 1, ...: the article's bytes at
+;; handle 0, as after the host's seal of the POST (the store prepares the
+;; ROW, fn-intern-row-at at the arena's count before the seal).
+(defconst *sr-arena* *cet-payloads*)
 (bpr-lift fn-own-run 2)
 (bpr-lift fn-own-step 2)
 (defconst *cet-begun* (in-arena-fn-own-step *sr-arena* (in-arena-fn-own-step *sr-arena* *cet-a* '(:open)) '(:begin 1)))
-(defconst *cet-completing* (in-arena-fn-own-run *sr-arena* *cet-begun* (butlast (cet-post-events *cet-w0*) 1)))
+(defconst *cet-completing* (in-arena-fn-own-run *sr-arena* *cet-begun* (butlast (cet-post-events *cet-r0*) 1)))
 (defconst *cet-s* (fn-own-store *cet-completing*))
 (defconst *cet-records* (fn-sf-records (fn-sn-files *cet-s*)))
 
-; The store-side antecedent: :completing with the article record the newest
-; (and only) article of the history; the (empty) catalog covers all before it.
+; The store-side antecedent: :completing with the article's row the newest
+; (and only) article of the history, alpha of it the wire record; the
+; (empty) catalog covers all before it.
 (assert-event (fn-sn-completion-enabledp *cet-s*))
-(assert-event (equal (fn-sn-completion-record *cet-s*) *cet-w0*))
-(assert-event (equal (fn-sf-article-records *cet-records*)
+(assert-event (equal (fn-sn-completion-record *cet-s*) *cet-r0*))
+(assert-event (equal (cet-wires *cet-payloads* (list (fn-sn-completion-record *cet-s*)))
+                     (list *cet-w0*)))
+(assert-event (equal (fn-sf-article-records (cet-wires *cet-payloads* *cet-records*))
                      (append (fn-sf-article-records nil) (list *cet-w0*))))
 (assert-event (fn-record-p *cet-w0*))
+;; The octet record's prepare is refused: the store stays short of :completing.
+(assert-event (not (fn-sn-completion-enabledp
+                    (fn-own-store (in-arena-fn-own-run *sr-arena* *cet-begun*
+                                                       (butlast (cet-post-events *cet-w0*) 1))))))
+;; FINDING (as above): the T2 keystone's antecedent reads the store's records
+;; through fn-sf-article-records, which sees no article in the row history,
+;; so it cannot equal (append ... (list w)) on the flipped store.
+(assert-event (equal (fn-sf-article-records *cet-records*) nil))
 
 ; The store-side conclusion: the host's finish keeps the records and leaves
 ; the store idle.
@@ -175,32 +281,37 @@
 (assert-event (fn-own-store-idlep (fn-own-store *cet-finished*)))
 (assert-event (equal (fn-own-view-version (fn-own-view *cet-finished*)) 1))
 
-; The catalog side, on the logical side: the pending PreparedCommit over the
-; interned record, completed by its token at expected 0, materializes the
-; history's articles; a stale token or a mismatched expected leaves the
-; catalog behind the history (the equality fails; the prefix form still
-; holds: the state before T2).
+; The catalog side, on the logical side: the pending PreparedCommit the POST
+; stages (fn-cat-prepare-sealed over the row the store prepared, after the
+; seal), completed by its token at expected 0, materializes the history's
+; articles (ALPHA of the store's rows); a stale token or a mismatched
+; expected leaves the catalog behind the history (the equality fails; the
+; prefix form still holds: the state before T2).
 ; (The intern takes the arena stobj, so the held record and its arena are
 ; built on the logical side, inside the theorem.)
 (defthm cet-w-article-finish-catalog-side
   (mv-let (held arena)
     (fn-cat-intern-list *cet-w0* nil 0 nil)
-    (let ((pending (fn-pc-make (cons 0 0) 0 held nil nil)))
-      (and (fn-cat-history-relation nil arena nil)
+    (let ((pending (fn-cat-prepare-sealed *cet-w0* (fn-sn-completion-record *cet-s*)
+                                          nil nil nil arena nil))
+          (history (fn-rows-wire-of *cet-records* arena)))
+      (and (equal held (fn-sn-completion-record *cet-s*))
+           (equal pending (fn-pc-make (cons 0 0) 0 held nil nil))
+           (fn-cat-history-relation nil arena nil)
            (fn-pc-p pending)
            (equal (fn-pc-expected pending) (fn-cat-count nil))
            (< (fn-record-payload (fn-pc-held pending)) (fn-arena-count arena))
            (equal (fn-held-wire-of (fn-pc-held pending) arena) *cet-w0*)
-           (fn-cat-history-relation *cet-records* arena
+           (fn-cat-history-relation history arena
                                     (mv-nth 2 (fn-cat-complete (fn-pc-token pending) pending nil)))
            ; stale token: refused, the catalog stays behind the history (the
            ; prefix form, the state before T2, still holds)
-           (not (fn-cat-history-relation *cet-records* arena
+           (not (fn-cat-history-relation history arena
                                          (mv-nth 2 (fn-cat-complete (cons 9 0) pending nil))))
-           (fn-cat-history-prefix-relation *cet-records* arena
+           (fn-cat-history-prefix-relation history arena
                                            (mv-nth 2 (fn-cat-complete (cons 9 0) pending nil)))
            ; mismatched expected: refused likewise
-           (not (fn-cat-history-relation *cet-records* arena
+           (not (fn-cat-history-relation history arena
                                          (mv-nth 2 (fn-cat-complete (cons 0 0)
                                                                     (fn-pc-make (cons 0 0) 1 held nil nil)
                                                                     nil)))))))
