@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1277 |
-| Certification roots in the Makefile | 1230 |
-| Books inside the root closure | 1266 |
-| `defthm` and `defthmd` events | 18980 |
-| `defun` events | 12990 |
+| Books read | 1279 |
+| Certification roots in the Makefile | 1232 |
+| Books inside the root closure | 1268 |
+| `defthm` and `defthmd` events | 18990 |
+| `defun` events | 12997 |
 | Functions with verified guards | 2480 |
-| Functions declared `:verify-guards nil` and never verified | 1546 |
+| Functions declared `:verify-guards nil` and never verified | 1553 |
 | Functions left at the default with an explicit guard | 7162 |
 | Functions left at the default with no guard | 1802 |
-| `assert-event` checks | 18522 |
+| `assert-event` checks | 18531 |
 | `must-fail` checks | 2182 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 99 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 224 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 221 |
-| Include-hygiene warnings | 1364 |
+| Include-hygiene warnings | 1367 |
 | Host-names warnings | 1398 |
 | Hand-written-record warnings | 18 |
 
@@ -718,6 +718,7 @@ that `make certify` requests.
 | `books/store-log-extend.lisp` | root | 62 | 10 | 0/7/3/0 | 0 | 0 | 0 |
 | `books/store-log-kernel-concrete.lisp` | root | 55 | 48 | 3/6/39/0 | 0 | 0 | 1 |
 | `books/store-log-kernel.lisp` | root | 51 | 20 | 0/7/13/0 | 0 | 0 | 1 |
+| `books/store-log-open-barriers.lisp` | root | 10 | 5 | 0/5/0/0 | 0 | 0 | 0 |
 | `books/store-log-programs.lisp` | root | 6 | 13 | 0/8/5/0 | 0 | 0 | 0 |
 | `books/store-log-reclaim.lisp` | root | 3 | 2 | 0/2/0/0 | 0 | 0 | 1 |
 | `books/store-log-recover.lisp` | root | 40 | 4 | 0/0/0/4 | 0 | 0 | 0 |
@@ -1287,6 +1288,7 @@ that `make certify` requests.
 | `tests/acl2/store-log-extend-tests.lisp` | root | 0 | 23 | 0/18/5/0 | 17 | 0 | 0 |
 | `tests/acl2/store-log-kernel-concrete-tests.lisp` | root | 0 | 10 | 0/5/4/1 | 13 | 0 | 0 |
 | `tests/acl2/store-log-kernel-tests.lisp` | root | 0 | 20 | 0/15/5/0 | 11 | 0 | 0 |
+| `tests/acl2/store-log-open-barriers-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 9 | 0 | 0 |
 | `tests/acl2/store-log-programs-tests.lisp` | root | 0 | 23 | 0/19/4/0 | 19 | 0 | 0 |
 | `tests/acl2/store-log-reclaim-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 3 | 0 |
 | `tests/acl2/store-log-route-programs-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 5 | 0 | 0 |

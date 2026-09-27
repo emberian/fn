@@ -10015,7 +10015,12 @@
         "fn-lg-reserve-program-keeps-the-relation",
         "fn-lg-order-program-keeps-the-relation",
         "fn-lg-open-suffix-keeps-the-relation",
-        "fn-lg-open-program-is-recover-then-the-suffix-by-definition"
+        "fn-lg-open-program-is-recover-then-the-suffix-by-definition",
+        "fn-lgob-duplicate-segment-fence-is-identity",
+        "fn-lgob-recovered-segment-fence-is-identity",
+        "fn-lgob-file-fence-keeps-entry-operations",
+        "fn-lgob-one-barrier-loses-a-rotated-segment",
+        "fn-lgob-journal-fence-keeps-the-rotated-segment"
       ]
     },
     {

@@ -1154,6 +1154,8 @@
     "tests/acl2/owner-reader-view-tests",
     "books/store-log-route-programs",
     "tests/acl2/store-log-route-programs-tests",
+    "books/store-log-open-barriers",
+    "tests/acl2/store-log-open-barriers-tests",
     "books/owner-open-carried",
     "tests/acl2/owner-open-carried-tests",
     "books/reader-open-carried",
@@ -1234,18 +1236,18 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1277,
-    "books_in_root_closure": 1266,
-    "roots": 1230,
-    "theorems": 18980,
-    "functions": 12990,
-    "assert_events": 18522,
+    "books": 1279,
+    "books_in_root_closure": 1268,
+    "roots": 1232,
+    "theorems": 18990,
+    "functions": 12997,
+    "assert_events": 18531,
     "must_fails": 2182,
     "prover_refusals": 0,
     "encapsulates": 99,
     "guards": {
       "verified": 2480,
-      "declared-off": 1546,
+      "declared-off": 1553,
       "default-guarded": 7162,
       "default-unguarded": 1802
     },
@@ -1253,7 +1255,7 @@
     "export_hygiene_warnings": 224,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 221,
-    "include_hygiene_warnings": 1364,
+    "include_hygiene_warnings": 1367,
     "host_names_warnings": 1398,
     "hand_written_record_warnings": 18
   },
@@ -18928,6 +18930,32 @@
       "read_error": null
     },
     {
+      "book": "books/store-log-open-barriers.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 10,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-log-programs"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/store-log-programs.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -35186,6 +35214,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-log-open-barriers-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 2,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 9,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-log-open-barriers",
+        "store-log-kernel-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-log-programs-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -40890,13 +40945,14 @@
           "books/owner-reader-view.lisp",
           "books/store-log-extend.lisp",
           "books/store-log-kernel-concrete.lisp",
+          "books/store-log-open-barriers.lisp",
           "books/store-log-programs.lisp",
           "books/store-log-recover.lisp",
           "books/store-log-route-programs.lisp",
           "books/store-log-route.lisp",
           "books/store-log-txid.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 9 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 10 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-phase",
@@ -45656,6 +45712,13 @@
         "line": 43,
         "include": "store-log-extend",
         "included": "books/store-log-extend.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-log-open-barriers.lisp",
+        "line": 42,
+        "include": "store-log-programs",
+        "included": "books/store-log-programs.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -51074,6 +51137,20 @@
         "line": 15,
         "include": "../../books/store-log-recover",
         "included": "books/store-log-recover.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-log-open-barriers-tests.lisp",
+        "line": 5,
+        "include": "../../books/store-log-open-barriers",
+        "included": "books/store-log-open-barriers.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-log-open-barriers-tests.lisp",
+        "line": 6,
+        "include": "store-log-kernel-tests",
+        "included": "tests/acl2/store-log-kernel-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
