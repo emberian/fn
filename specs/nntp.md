@@ -357,6 +357,18 @@ not move either; successful numeric retrieval updates the current article number
 Use the specified 412/420/423/430 cases and error precedence. Later expiry can
 invalidate a once-valid cursor; do not bake eternal existence into the invariant.
 
+Local article numbers follow the committed history. RFC 3977 §6 requires one
+article per number within a group, one number per article within a group, and
+numbers issued in arrival order; it constrains the numbers a server issues to
+clients. A local article number held by a submission that was never
+acknowledged and never became durable may be assigned to the next committed
+article after recovery; numbers are assigned by the committed history, and a
+client observes a number only after a 240 or a served view, both after
+durability. This is the reading the power-loss campaign measured
+(`planning/evidence/power-loss-2026-09-26.md`, "a lost POST's number is used
+again": at 258 cuts the fresh POST after recovery took the lost in-flight
+POST's number, and no acknowledged or served number moved or was issued twice).
+
 NNT-042: a reader connection's view of the store is a VERSION (the public
 concept is the ViewId: the committed count when the view was taken, until the
 catalog names it otherwise): the connection sees the articles committed below

@@ -41,6 +41,7 @@
 ; fn-rcl-existing-action: the duplicate-versus-tombstone decision
 ; fn-store-sn-prepare and the retention prepare call.
 (include-book "../books/store-reclaim")
+(include-book "../books/acceptance-payload-ref")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-host.lisp defines, so a session that loads this file alone
@@ -1002,23 +1003,19 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (if (not (fn-store-msgid-octetsp msgid-octets))
       (value nil)
-    (let ((article (fn-find-article
-                    (fn-store-octets->string msgid-octets)
-                    (fn-state-articles
-                     (fn-node-acceptance
-                      (fn-sn-node (f-get-global 'fn-store-sn state)))))))
-      (value (if article (fn-article-payload article) nil)))))
+    ; The record's payload through the event index, not the acceptance
+    ; state's article (fn-apr-payload-of-is-the-article-payload,
+    ; books/acceptance-payload-ref.lisp: equal at rest).
+    (value (fn-apr-payload-of (fn-store-octets->string msgid-octets)
+                              (f-get-global 'fn-store-sn state)))))
 
 (defun fn-store-sn-lookup-foundp (msgid-octets state)
   (declare (xargs :stobjs state :mode :program))
   (if (not (fn-store-msgid-octetsp msgid-octets))
       (value nil)
-    (value (if (fn-find-article
-                (fn-store-octets->string msgid-octets)
-                (fn-state-articles
-                 (fn-node-acceptance
-                  (fn-sn-node (f-get-global 'fn-store-sn state)))))
-               t nil))))
+    ; fn-apr-foundp-is-article-found (books/acceptance-payload-ref.lisp).
+    (value (fn-apr-foundp (fn-store-octets->string msgid-octets)
+                          (f-get-global 'fn-store-sn state)))))
 
 ; -----------------------------------------------------------------------------
 ; The served statement query (decision D21)
