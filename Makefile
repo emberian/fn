@@ -514,6 +514,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-job-offer \
 	books/bp-node-job-offer-progress \
 	tests/acl2/bp-node-job-offer-tests \
+	books/bp-node-job-cursor \
+	tests/acl2/bp-node-job-cursor-tests \
 	books/bp-node-run-class \
 	tests/acl2/bp-run-class-tests \
 	tests/acl2/outcome-class-tests \

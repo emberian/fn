@@ -417,6 +417,10 @@
 (defthm fn-bpnjc-nfix-nfix
   (equal (nfix (nfix x)) (nfix x)))
 
+(defthm fn-bpnjc-position-is-natural
+  (and (natp (nfix x))
+       (equal (nfix (+ (nfix x) (len l))) (+ (nfix x) (len l)))))
+
 ;; The cursor scan's answers at the job-list level.
 (defthm fn-bpnjc-scan-answers-the-head-scan
   (implies (fn-bpnjc-cursor-relp jobs peer routing offered c held)
@@ -721,6 +725,77 @@
   (implies (and (member-equal k y) (subsetp-equal x y))
            (subsetp-equal (cons k x) y)))
 
+; The positions after an offer: the new prefix is the old one and the
+; examined segment, and it stays within the list.
+(defthm fn-bpnjc-offer-prefix
+  (let ((seg (fn-bpnjc-scan-seg (fn-bpnjc-drop c jobs) peer routing)))
+    (implies (and (natp c) (<= c (len jobs)))
+             (and (equal (fn-bpnjc-prefix (+ c (len seg)) jobs)
+                         (append (fn-bpnjc-prefix c jobs) seg))
+                  (<= (+ c (len seg)) (len jobs)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnjc-prefix-of-sum (a c) (l jobs)
+                  (b (len (fn-bpnjc-scan-seg (fn-bpnjc-drop c jobs) peer routing))))
+                 (:instance fn-bpnjc-segment-is-a-prefix (rest (fn-bpnjc-drop c jobs)))
+                 (:instance fn-bpnjc-len-of-drop (n c) (l jobs))
+                 (:instance fn-bpnjc-segment-is-no-longer-than-the-rest
+                  (rest (fn-bpnjc-drop c jobs))))
+           :in-theory (union-theories '(natp (:t len)) (theory 'minimal-theory))))
+  :rule-classes nil)
+
+; The answers over the new prefix, with the offered key.
+(defthm fn-bpnjc-offer-answers
+  (let* ((suf (fn-bpnjc-drop c jobs))
+         (pre (fn-bpnjc-prefix c jobs))
+         (found (mv-nth 0 (fn-bpnjc-find suf peer routing held)))
+         (seg (fn-bpnjc-scan-seg suf peer routing))
+         (k (fn-bpn-job-key found)))
+    (implies (and (fn-bpn-job-listp jobs)
+                  (not (fn-bpnjc-first-ready pre peer routing offered))
+                  (equal held (fn-bpnjc-first-held pre peer routing offered))
+                  (fn-bpnjc-unoffered-p suf offered)
+                  found)
+             (and (not (fn-bpnjc-first-ready (append pre seg) peer routing (cons k offered)))
+                  (equal (fn-bpnjc-first-held (append pre seg) peer routing (cons k offered))
+                         (mv-nth 1 (fn-bpnjc-find suf peer routing held)))
+                  (member-equal k (fn-bpnjc-keys seg)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnjc-keys-of-drop-are-distinct)
+                 (:instance fn-bpnjc-offered-segment (rest (fn-bpnjc-drop c jobs)))
+                 (:instance fn-bpnjc-find-found-is-a-member (rest (fn-bpnjc-drop c jobs)))
+                 (:instance fn-bpnjc-find-found-is-in-the-segment (rest (fn-bpnjc-drop c jobs)))
+                 (:instance fn-bpnjc-member-key
+                  (x (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop c jobs) peer routing held)))
+                  (l (fn-bpnjc-drop c jobs)))
+                 (:instance fn-bpnjc-member-key
+                  (x (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop c jobs) peer routing held)))
+                  (l (fn-bpnjc-scan-seg (fn-bpnjc-drop c jobs) peer routing)))
+                 (:instance fn-bpnjc-prefix-key-is-not-a-drop-key
+                  (key (fn-bpn-job-key
+                        (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop c jobs) peer routing held)))))
+                 (:instance fn-bpnjc-first-ready-with-more-offered
+                  (l (fn-bpnjc-prefix c jobs))
+                  (k (fn-bpn-job-key
+                      (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop c jobs) peer routing held)))))
+                 (:instance fn-bpnjc-first-held-without-the-key
+                  (l (fn-bpnjc-prefix c jobs))
+                  (k (fn-bpn-job-key
+                      (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop c jobs) peer routing held)))))
+                 (:instance fn-bpnjc-first-ready-of-append
+                  (a (fn-bpnjc-prefix c jobs))
+                  (b (fn-bpnjc-scan-seg (fn-bpnjc-drop c jobs) peer routing))
+                  (offered (cons (fn-bpn-job-key
+                                  (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop c jobs) peer routing held)))
+                                 offered)))
+                 (:instance fn-bpnjc-first-held-of-append
+                  (a (fn-bpnjc-prefix c jobs))
+                  (b (fn-bpnjc-scan-seg (fn-bpnjc-drop c jobs) peer routing))
+                  (offered (cons (fn-bpn-job-key
+                                  (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop c jobs) peer routing held)))
+                                 offered))))
+           :in-theory (theory 'minimal-theory)))
+  :rule-classes nil)
+
 ; The relation after an offer: the cursor one past the offered job, the
 ; held job the scan carried, OFFERED with the offered key.
 (defthm fn-bpnjc-offer-keeps-the-cursor-relation
@@ -734,48 +809,8 @@
                                    (mv-nth 1 (fn-bpnjc-find suf peer routing held)))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bpnjc-head-answers-at-the-cursor)
-                 (:instance fn-bpnjc-keys-of-drop-are-distinct (c (nfix c)))
-                 (:instance fn-bpnjc-offered-segment (rest (fn-bpnjc-drop (nfix c) jobs)))
-                 (:instance fn-bpnjc-prefix-of-sum (a (nfix c)) (l jobs)
-                  (b (len (fn-bpnjc-scan-seg (fn-bpnjc-drop (nfix c) jobs) peer routing))))
-                 (:instance fn-bpnjc-segment-is-a-prefix (rest (fn-bpnjc-drop (nfix c) jobs)))
-                 (:instance fn-bpnjc-len-of-drop (n (nfix c)) (l jobs))
-                 (:instance fn-bpnjc-segment-is-no-longer-than-the-rest
-                  (rest (fn-bpnjc-drop (nfix c) jobs)))
-                 (:instance fn-bpnjc-find-found-is-a-member (rest (fn-bpnjc-drop (nfix c) jobs)))
-                 (:instance fn-bpnjc-find-found-is-in-the-segment
-                  (rest (fn-bpnjc-drop (nfix c) jobs)))
-                 (:instance fn-bpnjc-member-key
-                  (x (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop (nfix c) jobs) peer routing held)))
-                  (l (fn-bpnjc-drop (nfix c) jobs)))
-                 (:instance fn-bpnjc-member-key
-                  (x (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop (nfix c) jobs) peer routing held)))
-                  (l (fn-bpnjc-scan-seg (fn-bpnjc-drop (nfix c) jobs) peer routing)))
-                 (:instance fn-bpnjc-prefix-key-is-not-a-drop-key (c (nfix c))
-                  (key (fn-bpn-job-key
-                        (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop (nfix c) jobs) peer routing held)))))
-                 (:instance fn-bpnjc-first-ready-with-more-offered
-                  (l (fn-bpnjc-prefix (nfix c) jobs))
-                  (k (fn-bpn-job-key
-                      (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop (nfix c) jobs) peer routing held)))))
-                 (:instance fn-bpnjc-first-held-without-the-key
-                  (l (fn-bpnjc-prefix (nfix c) jobs))
-                  (k (fn-bpn-job-key
-                      (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop (nfix c) jobs) peer routing held)))))
-                 (:instance fn-bpnjc-first-ready-of-append
-                  (a (fn-bpnjc-prefix (nfix c) jobs))
-                  (b (fn-bpnjc-scan-seg (fn-bpnjc-drop (nfix c) jobs) peer routing))
-                  (offered (cons (fn-bpn-job-key
-                                  (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop (nfix c) jobs)
-                                                           peer routing held)))
-                                 offered)))
-                 (:instance fn-bpnjc-first-held-of-append
-                  (a (fn-bpnjc-prefix (nfix c) jobs))
-                  (b (fn-bpnjc-scan-seg (fn-bpnjc-drop (nfix c) jobs) peer routing))
-                  (offered (cons (fn-bpn-job-key
-                                  (mv-nth 0 (fn-bpnjc-find (fn-bpnjc-drop (nfix c) jobs)
-                                                           peer routing held)))
-                                 offered)))
+                 (:instance fn-bpnjc-offer-prefix (c (nfix c)))
+                 (:instance fn-bpnjc-offer-answers (c (nfix c)))
                  (:instance fn-bpnjc-keys-of-append
                   (a (fn-bpnjc-prefix (nfix c) jobs))
                   (b (fn-bpnjc-scan-seg (fn-bpnjc-drop (nfix c) jobs) peer routing)))
@@ -794,7 +829,8 @@
                   (y (append (fn-bpnjc-keys (fn-bpnjc-prefix (nfix c) jobs))
                              (fn-bpnjc-keys (fn-bpnjc-scan-seg (fn-bpnjc-drop (nfix c) jobs)
                                                                peer routing))))))
-           :in-theory (union-theories '(fn-bpnjc-cursor-relp nfix (:t len) natp)
+           :in-theory (union-theories '(fn-bpnjc-cursor-relp fn-bpnjc-nfix-nfix
+                                        fn-bpnjc-position-is-natural)
                                       (theory 'minimal-theory)))))
 
 (defthm fn-bpnjc-nth-of-a-cursor
