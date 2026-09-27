@@ -9,8 +9,8 @@
 ; Read-only projection for the callback that WorkflowJournal invokes only after
 ; its bridge.take_submit gate has consumed the one-shot external-action permit.
 ; Building bytes is not a second permission gate and does not mutate effects.
-(defun fn-bpo-host-request-adu (work-id state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-bpo-host-request-adu (work-id fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((workflow (f-get-global 'fn-workflow-state state))
          (work (fn-bp-find-work work-id (fn-bp-state-works workflow)))
          (attempt (fn-bp-work-attempt work))
@@ -19,7 +19,7 @@
          (result
          (fn-bpo-request-adu
           workflow
-          work-id attempt-id attempt-generation)))
+          work-id attempt-id attempt-generation fn-arena)))
     (value (if (fn-bpo-result-okp result)
                (fn-bpo-result-value result)
              nil))))

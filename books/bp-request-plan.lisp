@@ -91,8 +91,8 @@
 ; nil is a refusal: no admissible attempt, no single :submit, or no request
 ; (fn-bpo-request-adu refuses a work that is not outstanding, not bound to a
 ; committed article, or whose image is pending or fenced).
-(defun fn-bprq-plan (s work-id attempt-id)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-bprq-plan (s work-id attempt-id fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let* ((retry (fn-bprq-retry-record s work-id))
          (s1 (fn-bprq-pre-state s retry))
          (txid (fn-bprq-next-txid s1))
@@ -105,7 +105,7 @@
                   (fn-bp-journal-nth 1 a1) outcome))
              (generation (fn-bp-journal-nth 5 attempt))
              (result (fn-bpo-request-adu (fn-bp-journal-nth 1 a2)
-                                         work-id attempt-id generation)))
+                                         work-id attempt-id generation fn-arena)))
         (if (and (car a2)
                  (fn-bprq-submit-effectsp (fn-bp-journal-nth 2 a2)
                                           work-id attempt-id generation)
@@ -127,15 +127,15 @@
 
 ; The request exists only for a work the image holds.
 (defthm fn-bprq-request-message-finds-its-work
-  (implies (consp (fn-bpo-request-message s work-id attempt-id generation))
+  (implies (consp (fn-bpo-request-message s work-id attempt-id generation fn-arena))
            (fn-bp-find-work work-id (fn-bp-state-works s)))
   :hints (("Goal" :in-theory (enable fn-bpo-request-message
                                      fn-bp-work-outstandingp))))
 
 (defthm fn-bprq-request-message-names-its-work
-  (implies (consp (fn-bpo-request-message s work-id attempt-id generation))
+  (implies (consp (fn-bpo-request-message s work-id attempt-id generation fn-arena))
            (equal (fn-bpa-request-work-id
-                   (fn-bpo-request-message s work-id attempt-id generation))
+                   (fn-bpo-request-message s work-id attempt-id generation fn-arena))
                   work-id))
   :hints (("Goal"
            :use ((:instance fn-bpo-request-success-preserves-context-and-article
@@ -153,7 +153,7 @@
 ;; The request ADU over any image, stated over that image's work WORK-ID.
 (defthm fn-bprq-request-adu-is-the-works-request
   (implies
-   (fn-bpo-result-okp (fn-bpo-request-adu s work-id attempt-id generation))
+   (fn-bpo-result-okp (fn-bpo-request-adu s work-id attempt-id generation fn-arena))
    (let* ((work (fn-bp-find-work work-id (fn-bp-state-works s)))
           (article
            (fn-find-article
@@ -165,10 +165,10 @@
             (fn-bp-config-local-eid (fn-bp-state-config s))
             (fn-bp-work-peer-eid work) (fn-bp-work-policy-id work)
             (fn-bp-work-incarnation work) (fn-bp-work-auth-context work)
-            (fn-bp-work-terms-id work) (fn-article-payload article))))
+            (fn-bp-work-terms-id work) (fn-bpo-article-octets article fn-arena))))
      (and (equal (fn-bpa-decode-exact
                   (fn-bpo-result-value
-                   (fn-bpo-request-adu s work-id attempt-id generation)))
+                   (fn-bpo-request-adu s work-id attempt-id generation fn-arena)))
                  (list :ok request))
           (fn-bpa-requestp request)
           (equal (fn-bpa-request-work-id request) work-id))))
@@ -196,12 +196,12 @@
                                fn-bp-work-peer-eid fn-bp-work-policy-id
                                fn-bp-work-incarnation fn-bp-work-auth-context
                                fn-bp-work-terms-id fn-bp-config-local-eid
-                               fn-article-payload
+                               fn-article-payload fn-bpo-article-octets
                                fn-bp-work-msgid fn-state-articles
                                fn-node-acceptance fn-find-article))))
 
 (defthm fn-bprq-plan-unfolds
-  (implies (fn-bprq-plan s work-id attempt-id)
+  (implies (fn-bprq-plan s work-id attempt-id fn-arena)
            (let* ((retry (fn-bprq-retry-record s work-id))
                   (s1 (fn-bprq-pre-state s retry))
                   (txid (fn-bprq-next-txid s1))
@@ -209,7 +209,7 @@
                   (outcome (list :outcome txid 0 :ordinary :durable))
                   (generation (fn-bp-journal-nth 5 attempt))
                   (s2 (fn-bprq-published-state s retry attempt outcome))
-                  (plan (fn-bprq-plan s work-id attempt-id)))
+                  (plan (fn-bprq-plan s work-id attempt-id fn-arena)))
              (and attempt
                   (equal (fn-bprq-plan-retry plan) retry)
                   (equal (fn-bprq-plan-attempt plan) attempt)
@@ -217,11 +217,11 @@
                   (equal (fn-bprq-plan-key plan)
                          (list work-id attempt-id generation))
                   (fn-bpo-result-okp
-                   (fn-bpo-request-adu s2 work-id attempt-id generation))
+                   (fn-bpo-request-adu s2 work-id attempt-id generation fn-arena))
                   (equal (fn-bprq-plan-adu plan)
                          (fn-bpo-result-value
                           (fn-bpo-request-adu s2 work-id attempt-id
-                                              generation)))
+                                              generation fn-arena)))
                   (equal (fn-bprq-plan-destination plan)
                          (fn-bp-work-peer-eid
                           (fn-bp-find-work work-id (fn-bp-state-works s2)))))))
@@ -257,8 +257,8 @@
 ; and the carrier's destination is that work's peer EID, the request's own.
 (defthm fn-bprq-plan-is-the-works-request
   (implies
-   (fn-bprq-plan s work-id attempt-id)
-   (let* ((plan (fn-bprq-plan s work-id attempt-id))
+   (fn-bprq-plan s work-id attempt-id fn-arena)
+   (let* ((plan (fn-bprq-plan s work-id attempt-id fn-arena))
           (attempt (fn-bprq-plan-attempt plan))
           (generation (fn-bp-journal-nth 5 attempt))
           (s2 (fn-bprq-published-state s (fn-bprq-plan-retry plan) attempt
@@ -274,7 +274,7 @@
             (fn-bp-config-local-eid (fn-bp-state-config s2))
             (fn-bp-work-peer-eid work) (fn-bp-work-policy-id work)
             (fn-bp-work-incarnation work) (fn-bp-work-auth-context work)
-            (fn-bp-work-terms-id work) (fn-article-payload article))))
+            (fn-bp-work-terms-id work) (fn-bpo-article-octets article fn-arena))))
      (and (equal (fn-bp-journal-nth 0 attempt) :attempt)
           (equal (fn-bp-journal-nth 3 attempt) work-id)
           (equal (fn-bp-journal-nth 4 attempt) attempt-id)

@@ -35,20 +35,20 @@
 (defun fn-bpiw-observations (ion) (declare (xargs :guard t :verify-guards nil)) (cadr ion))
 (defun fn-bpiw-initial () (declare (xargs :guard t :verify-guards nil)) (list nil nil))
 
-(defun fn-bpiw-route-admissiblep (bp ion record)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-bpiw-route-admissiblep (bp ion record fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (not (fn-bpiw-route-recordp record)) nil
     (let ((request (fn-bpo-request-message
-                    bp (nth 1 record) (nth 2 record) (nth 3 record))))
+                    bp (nth 1 record) (nth 2 record) (nth 3 record) fn-arena)))
       (and (consp request)
            (not (fn-bpiw-find-key (fn-bpiw-key record)
                                    (fn-bpiw-routes ion)))
            (equal (nth 4 record)
                   (fn-bpa-request-destination-eid request))))))
 
-(defun fn-bpiw-observation-admissiblep (bp ion record)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (not (fn-bpio-bound-recordp bp record)) nil
+(defun fn-bpiw-observation-admissiblep (bp ion record fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (if (not (fn-bpio-bound-recordp bp record fn-arena)) nil
     (let ((route (fn-bpiw-find-key (fn-bpiw-key record)
                                     (fn-bpiw-routes ion))))
       (and (consp route)
@@ -73,22 +73,22 @@
         record nil)))
 
 (defun fn-bpiw-route-record (bp ion work-id attempt-id generation
-                                bp-destination own-bp-eid)
-  (declare (xargs :guard t :verify-guards nil))
+                                bp-destination own-bp-eid fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let* ((work (fn-bp-find-work work-id (fn-bp-state-works bp)))
          (record (list :ion-route work-id attempt-id generation
                        (fn-bp-work-peer-eid work)
                        bp-destination own-bp-eid)))
-    (if (fn-bpiw-route-admissiblep bp ion record) record nil)))
+    (if (fn-bpiw-route-admissiblep bp ion record fn-arena) record nil)))
 
 (defun fn-bpiw-observation-record (bp ion work-id attempt-id generation
-                                     bp-destination own-bp-eid line)
-  (declare (xargs :guard t :verify-guards nil))
+                                     bp-destination own-bp-eid line fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((result (fn-bpio-bound-observation
                  bp work-id attempt-id generation
-                 bp-destination own-bp-eid line)))
+                 bp-destination own-bp-eid line fn-arena)))
     (if (and (equal (car result) :ok)
-             (fn-bpiw-observation-admissiblep bp ion (cadr result)))
+             (fn-bpiw-observation-admissiblep bp ion (cadr result) fn-arena))
         (cadr result) nil)))
 
 (defun fn-bpiw-status (ion work-id attempt-id generation)
@@ -102,17 +102,17 @@
 
 ; Result: (okp next-bp effects next-ion). Existing FNWF records use the
 ; unchanged application-work interpreter. Rejected ION records never mutate.
-(defun fn-bpiw-apply (bp ion record)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-bpiw-apply (bp ion record fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (cond
    ((equal (car record) :ion-route)
-    (if (fn-bpiw-route-admissiblep bp ion record)
+    (if (fn-bpiw-route-admissiblep bp ion record fn-arena)
         (list t bp nil
               (list (cons record (fn-bpiw-routes ion))
                     (fn-bpiw-observations ion)))
       (list nil bp nil ion)))
    ((equal (car record) :ion-observed)
-    (if (fn-bpiw-observation-admissiblep bp ion record)
+    (if (fn-bpiw-observation-admissiblep bp ion record fn-arena)
         (list t bp nil
               (list (fn-bpiw-routes ion)
                     (cons record (fn-bpiw-observations ion))))
@@ -141,33 +141,33 @@
                        (fn-bp-journal-nth 2 record) :indeterminate)))
     bp))
 
-(defun fn-bpiw-replay-records (bp ion records effects)
-  (declare (xargs :guard t :verify-guards nil :measure (acl2-count records)))
+(defun fn-bpiw-replay-records (bp ion records effects fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil :measure (acl2-count records)))
   (if (endp records)
       (let ((restarted (fn-bp-step bp (fn-bp-restart-event))))
         (list t (fn-bp-result-state restarted)
               (append effects (fn-bp-result-effects restarted)) ion))
     (let ((answer (fn-bpiw-apply (fn-bpiw-replay-fence bp (car records))
-                                 ion (car records))))
+                                 ion (car records) fn-arena)))
       (if (not (car answer))
           (list nil bp effects ion)
         (fn-bpiw-replay-records
          (nth 1 answer) (nth 3 answer) (cdr records)
-         (append effects (nth 2 answer)))))))
+         (append effects (nth 2 answer)) fn-arena)))))
 
-(defun fn-bpiw-replay-journal (node records)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-bpiw-replay-journal (node records fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (or (endp records) (not (fn-bp-config-recordp (car records))))
       (list nil nil nil (fn-bpiw-initial))
     (let ((bp (fn-bp-initial-state
                node (fn-bp-config-from-record (car records)))))
       (if (not (fn-bp-statep bp))
           (list nil nil nil (fn-bpiw-initial))
-        (fn-bpiw-replay-records bp (fn-bpiw-initial) (cdr records) nil)))))
+        (fn-bpiw-replay-records bp (fn-bpiw-initial) (cdr records) nil fn-arena)))))
 
 (defthm fn-bpiw-ion-record-keeps-bp-state
   (implies (member-equal (car record) '(:ion-route :ion-observed))
-           (equal (nth 1 (fn-bpiw-apply bp ion record)) bp))
+           (equal (nth 1 (fn-bpiw-apply bp ion record fn-arena)) bp))
   :hints (("Goal" :in-theory
            (e/d (fn-bpiw-apply)
                 (fn-bpiw-route-admissiblep
@@ -175,7 +175,7 @@
 
 (defthm fn-bpiw-ion-record-emits-no-effects
   (implies (member-equal (car record) '(:ion-route :ion-observed))
-           (equal (nth 2 (fn-bpiw-apply bp ion record)) nil))
+           (equal (nth 2 (fn-bpiw-apply bp ion record fn-arena)) nil))
   :hints (("Goal" :in-theory
            (e/d (fn-bpiw-apply)
                 (fn-bpiw-route-admissiblep

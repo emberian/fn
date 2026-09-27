@@ -9,10 +9,22 @@
 (defconst *bpo-node-prepared*
   (fn-node-prepare
    (fn-node-initial-state *bpo-groups* 32)
-   4 *bpo-msgid* *bpo-article* *bpo-groups*
+   4 *bpo-msgid* 0 *bpo-groups*
    "archive:out" "subject:out" "release:out" 1 841000000))
 (defconst *bpo-node*
   (fn-node-complete *bpo-node-prepared* 0 4 :durable))
+;; Since the acceptance flip (c5808cd72) the committed article holds a HANDLE
+;; at its payload position (0 here, as the Store's intern assigns it); the
+;; payload arena holds the article's bytes at that handle.  The request reads
+;; them through the arena (fn-bpo-article-octets).
+(defconst *bpo-payloads* (list *bpo-article*))
+(include-book "arena-lift")
+(bpr-lift fn-bpo-request-adu 4)
+(bpr-lift fn-bpo-request-message 4)
+(bpr-lift fn-bpo-article-octets 1)
+(assert-event (equal (fn-article-payload
+                      (fn-find-article *bpo-msgid* (fn-state-articles (fn-node-acceptance *bpo-node*))))
+                     0))
 (defconst *bpo-config-record*
   '(:config "dtn://source/" "dtn://destination/" "policy:out"
     "dtn://receipt-authority/" 3600 "source-incarnation:7" "auth:out"))
@@ -48,10 +60,10 @@
 (assert-event (fn-bp-statep *bpo-state*))
 (assert-event
  (fn-bpo-result-okp
-  (fn-bpo-request-adu *bpo-state* "work:out" "attempt:out" 0)))
+  (in-arena-fn-bpo-request-adu *bpo-payloads* *bpo-state* "work:out" "attempt:out" 0)))
 (defconst *bpo-request-octets*
   (fn-bpo-result-value
-   (fn-bpo-request-adu *bpo-state* "work:out" "attempt:out" 0)))
+   (in-arena-fn-bpo-request-adu *bpo-payloads* *bpo-state* "work:out" "attempt:out" 0)))
 (defconst *bpo-request-message*
   (fn-bpa-result-message (fn-bpa-decode-exact *bpo-request-octets*)))
 
@@ -77,10 +89,10 @@
 ; Stale attempt identity and missing work are refused.
 (assert-event
  (not (fn-bpo-result-okp
-       (fn-bpo-request-adu *bpo-state* "work:out" "attempt:old" 0))))
+       (in-arena-fn-bpo-request-adu *bpo-payloads* *bpo-state* "work:out" "attempt:old" 0))))
 (assert-event
  (not (fn-bpo-result-okp
-       (fn-bpo-request-adu *bpo-state* "work:missing" "attempt:out" 0))))
+       (in-arena-fn-bpo-request-adu *bpo-payloads* *bpo-state* "work:missing" "attempt:out" 0))))
 
 ; A hand-constructed state can satisfy fn-bp-statep while omitting the
 ; stronger workflow-to-node binding relation; outbound composition rechecks it.
@@ -93,8 +105,7 @@
 (assert-event (fn-bp-statep *bpo-unbound-state*))
 (assert-event
  (not (fn-bpo-result-okp
-       (fn-bpo-request-adu
-        *bpo-unbound-state* "work:out" "attempt:out" 0))))
+       (in-arena-fn-bpo-request-adu *bpo-payloads* *bpo-unbound-state* "work:out" "attempt:out" 0))))
 
 ; The workflow admits strings larger than the portable 256-octet metadata
 ; profile.  Such a work remains a logical workflow state but cannot form an ADU.
@@ -114,8 +125,7 @@
 (assert-event (fn-bp-statep *bpo-long-state*))
 (assert-event
  (not (fn-bpo-result-okp
-       (fn-bpo-request-adu
-        *bpo-long-state* *bpo-long-work-id* "attempt:out" 0))))
+       (in-arena-fn-bpo-request-adu *bpo-payloads* *bpo-long-state* *bpo-long-work-id* "attempt:out" 0))))
 
 ; A matching returned receipt produces the actual local journal intent.  The
 ; caller's transaction pair appears in that record, never in the receipt ADU.
@@ -167,3 +177,34 @@
  (not (fn-bpo-result-okp
        (fn-bpo-receipt-intent-record
         *bpo-state* 12 0 '(0 1 2) t))))
+
+; -----------------------------------------------------------------------------
+; The flipped request (lane audit-fixes, sub-lane bpo).  Before this, the
+; request carried the article's payload position -- the handle 0 -- and every
+; request was refused (fn-bpa-requestp's article gate): the positive witness
+; above is the fix's reachable witness (the committed article's bytes cross
+; exactly).  fn-bpo-request-success-preserves-context-and-article's article
+; conjunct, literally: the request's article is fn-bpo-article-octets of the
+; work's article over the same arena.
+(assert-event
+ (equal (fn-bpa-request-article *bpo-request-message*)
+        (in-arena-fn-bpo-article-octets
+         *bpo-payloads*
+         (fn-find-article *bpo-msgid* (fn-state-articles (fn-node-acceptance *bpo-node*))))))
+; The arena is what is read: over an arena whose handle 0 holds other bytes,
+; the request carries those bytes.
+(defconst *bpo-other-bytes* '(66 121 101 13 10))
+(assert-event
+ (equal (fn-bpa-request-article
+         (fn-bpa-result-message
+          (fn-bpa-decode-exact
+           (fn-bpo-result-value
+            (in-arena-fn-bpo-request-adu (list *bpo-other-bytes*) *bpo-state*
+                                         "work:out" "attempt:out" 0)))))
+        *bpo-other-bytes*))
+; A handle outside the arena denotes no bytes and the request is refused (an
+; arena that never interned the article; the host's arena always has).  It
+; is not answered with an empty article.
+(assert-event
+ (equal (in-arena-fn-bpo-request-adu nil *bpo-state* "work:out" "attempt:out" 0)
+        '(:error :request-refused)))

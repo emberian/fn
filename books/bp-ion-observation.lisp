@@ -86,11 +86,11 @@
        (fn-bp-u64p (nth 7 record))
        (natp (nth 8 record)) (< (nth 8 record) 4294967296)))
 
-(defun fn-bpio-bound-recordp (bpo-state record)
-  (declare (xargs :guard t))
+(defun fn-bpio-bound-recordp (bpo-state record fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (not (fn-bpio-recordp record)) nil
     (let ((request (fn-bpo-request-message
-                    bpo-state (nth 1 record) (nth 2 record) (nth 3 record))))
+                    bpo-state (nth 1 record) (nth 2 record) (nth 3 record) fn-arena)))
       (and (consp request)
            (equal (nth 4 record)
                   (fn-bpa-request-destination-eid request))))))
@@ -98,11 +98,11 @@
 ; The destination route is supplied independently from trusted configuration.
 ; It is deliberately distinct from the durable work's application peer EID.
 (defun fn-bpio-bound-observation (bpo-state work-id attempt-id generation
-                                       configured-bp-destination own-bp-eid line)
-  (declare (xargs :guard t))
+                                       configured-bp-destination own-bp-eid line fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let* ((observation (fn-bpio-decode line))
          (request (fn-bpo-request-message
-                   bpo-state work-id attempt-id generation)))
+                   bpo-state work-id attempt-id generation fn-arena)))
     (if (and (consp observation) (consp request)
              (fn-bp-journal-textp work-id)
              (fn-bp-journal-textp attempt-id)
@@ -122,9 +122,9 @@
 (defthm fn-bpio-bound-observation-binds-current-request-and-route
   (implies (equal (car (fn-bpio-bound-observation
                          bpo-state work-id attempt-id generation
-                         bp-destination own-eid line)) :ok)
+                         bp-destination own-eid line fn-arena)) :ok)
            (let ((request (fn-bpo-request-message
-                           bpo-state work-id attempt-id generation))
+                           bpo-state work-id attempt-id generation fn-arena))
                  (observed (fn-bpio-decode line)))
              (and (consp request)
                   (consp observed)
