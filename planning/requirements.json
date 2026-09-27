@@ -3453,7 +3453,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-186"
+        "PRF-186",
+        "PRF-209"
       ],
       "verification": [
         "proof",
@@ -3463,9 +3464,10 @@
         "books/node-config.lisp",
         "books/config-physical-replay.lisp",
         "books/store-checkpoint-open.lisp",
-        "planning/evidence/caps-to-profile-2026-09-26.md"
+        "planning/evidence/caps-to-profile-2026-09-26.md",
+        "books/config-carried-candidate.lisp"
       ],
-      "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). Open: a configuration checkpoint so an open reads only the records after it (PKT-510)."
+      "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). An offline request authorizes from its open's carried fold (PRF-209, SCN-140): one open and one candidate open per request. Open: a configuration checkpoint so an open reads only the records after it, and the candidate open extended from the open (PKT-510, PKT-601)."
     },
     {
       "id": "REP-013",

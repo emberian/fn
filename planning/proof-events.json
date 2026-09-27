@@ -7292,6 +7292,31 @@
           "name": "fn-bphh-octets-at-p-is-equal-payload"
         }
       ]
+    },
+    {
+      "id": "PRF-209",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-config-replay-of-one-more"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-cpr-replay-of-one-more"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-candidate-open-result-is-the-replayed-candidate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-publication-authorize-is-the-replayed-authorization"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization"
+        }
+      ]
     }
   ]
 }

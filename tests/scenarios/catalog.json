@@ -4232,6 +4232,32 @@
         "log": "planning/evidence/hostile-input-2-2026-09-26/tls-report.json",
         "record": "planning/evidence/hostile-input-2-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-140",
+      "title": "An offline configuration request authorizes from the fold its open computed: 300 separate `peer carries` requests timed against the image before PRF-209",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-025"
+      ],
+      "steps": [
+        "`operator CONFIG init`; `peer add far ...`; FN_PEER_ROWS_REQUESTS=300 separate `peer carries far HEX`, timed, on the image before and after PRF-209 on the same box; `operator CONFIG group create` answers `verification=VERIFIED` (tests.test_native_admin)."
+      ],
+      "expected": [
+        "Every request exits 0 and the listing names the principals in request order; the total time is recorded before and after (planning/evidence/config-consumer-catalog-2026-09-26.md)."
+      ],
+      "evidence": [
+        "planning/evidence/config-consumer-catalog-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_rows_growth",
+        "cases": [
+          "test_a_peer_carries_more_than_the_old_row_cap"
+        ],
+        "native": true,
+        "record": "planning/evidence/config-consumer-catalog-2026-09-26.md"
+      }
     }
   ]
 }

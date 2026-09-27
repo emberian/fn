@@ -371,6 +371,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-capacity-vector-tests \
 	books/store-capacity-config \
 	tests/acl2/store-capacity-config-tests \
+	books/config-carried-candidate \
+	tests/acl2/config-carried-candidate-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-primary-cbor \

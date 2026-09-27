@@ -7784,6 +7784,36 @@
         "fn-bphh-request-article-matches-is-wire",
         "fn-bphh-octets-at-p-is-equal-payload"
       ]
+    },
+    {
+      "id": "PRF-209",
+      "title": "An offline configuration request authorizes its one record from the fold its open computed: the candidate's folds are one step from the open's, never a replay",
+      "statement": "The configuration-only fold over CONFIGS ++ (R) is fn-cfgc-config-extend of the fold over CONFIGS (fn-cfgc-config-replay-of-one-more, from fn-cnode-replay-loop-splits-at-any-prefix); the physical fold fn-cpr-replay over CONFIGS ++ (R) and EVENTS is fn-cfgc-cpr-extend of the fold over CONFIGS and EVENTS, one fn-cpr-loop step, when both lists are true lists and every event's txid is below R's (fn-cfgc-cpr-replay-of-one-more); an observed history is below its frontier, so a record at or past the frontier is filed after every event. Hence the candidate from the open's carried folds is fn-native-admin-candidate-open-result of the appended history (fn-cfgc-candidate-open-result-is-the-replayed-candidate) and the authorization the host calls, fn-cfgc-cvec-native-admin-authorize, is EQUAL to fn-cvec-native-admin-authorize on every arm whenever the carried fold is fn-cpr-replay of the same histories and the configuration history is a true list (fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization), so every keystone of the replaying authorization (the lock, the generation, the occupied name, the group-name bound, the candidate) carries. The carried fold is established by the open: host/store-node-host.lisp fn-store-sn-open-extended keeps (E replayed opened) and the configuration history it folded, and fn-sco-store-open-of-extended-capture is the theorem that replayed is fn-cpr-replay of those configurations and E's records, on the full and the checkpoint open. Host: host/native/admin.lisp fnn-admin-execute -> fnn-admin-authorize-carried -> host/store-node-host.lisp fn-store-cfg-native-admin-authorize-carried (NIL, and the replaying authorization, when the observed configuration history is not the open's). Scope: the candidate open fn-cpo-open-observed is still computed over the whole history, and the open itself replays it: per offline request one open and one candidate open remain (PKT-601).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025"
+      ],
+      "depends_on": [
+        "PRF-186"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "certified",
+      "evidence": [
+        "books/config-carried-candidate.lisp",
+        "tests/acl2/config-carried-candidate-tests.lisp",
+        "planning/evidence/config-consumer-catalog-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T221758Z-3334374.json"
+      ],
+      "progress_note": "Provisional id (lane config-consumer-catalog; the deputy confirms or renumbers at merge). Not done: the candidate open extended from the open (fn-cpo-open-observed of CONFIGS ++ (R) from the open's state), the configuration root persisted by the checkpoint pipeline, the verify-under-lock reopen (PKT-601).",
+      "events": [
+        "fn-cfgc-config-replay-of-one-more",
+        "fn-cfgc-cpr-replay-of-one-more",
+        "fn-cfgc-candidate-open-result-is-the-replayed-candidate",
+        "fn-cfgc-publication-authorize-is-the-replayed-authorization",
+        "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization"
+      ]
     }
   ]
 }
