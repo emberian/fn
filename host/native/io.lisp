@@ -5157,7 +5157,7 @@ the records at or after the checkpoint's S (the log holds every record)."
       (let* ((s (second choice))
              (suffix (nthcdr s records)))
         (unless (eq (fnn-action
-                     (fnn-core-state 'fn-store-sn-recover-from-checkpoint
+                     (fnn-core-arena-state 'fn-store-sn-recover-from-checkpoint
                                      (mapcar #'fnn-octet-list suffix)
                                      (fnn-store-frontier store)
                                      (mapcar #'fnn-octet-list config-records)))
@@ -5167,7 +5167,7 @@ the records at or after the checkpoint's S (the log holds every record)."
           (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
           (return-from fnn-recover-log-from-state-checkpoint nil))
         (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
-        (append (mapcar #'fnn-as-octets (fnn-core-state 'fn-store-sco-prefix-octets))
+        (append (mapcar #'fnn-as-octets (fnn-core-arena-state 'fn-store-sco-prefix-octets))
                 suffix)))))
 
 (defun fnn-store-recovery-barriers (store)
