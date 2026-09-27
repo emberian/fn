@@ -72,6 +72,13 @@
    :hints (("Goal" :in-theory (enable fn-bp-statep fn-bp-state-fenced)))))
 
 (local
+ (defthm fn-bpiw-restart-works-of-cons
+   (equal (fn-bp-restart-works (cons w ws))
+          (cons (fn-bp-restart-work w) (fn-bp-restart-works ws)))
+   :hints (("Goal" :in-theory (e/d (fn-bp-restart-works)
+                                   (fn-bp-restart-work))))))
+
+(local
  (defthm fn-bpiw-fenced-recovery-restarts-as-live-on-a-state
    (implies (and (fn-bp-statep f)
                  (fn-bpiw-recovery-outcomep r)
