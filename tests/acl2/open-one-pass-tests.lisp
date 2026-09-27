@@ -60,7 +60,10 @@
 
 ; -----------------------------------------------------------------------------
 ; A reachable node: twelve articles committed through fn-node-prepare and
-; fn-node-complete, each in both groups.
+; fn-node-complete, each in both groups.  The acceptance payload is a handle
+; into the arena (records-flip, books/held-record.lisp): each article's bytes
+; (72 105 13 10) are interned in commit order, so its handle is its txid.  No
+; check below reads the bytes.
 
 (defconst *opt-groups* '("fn.letters" "fn.test"))
 (defconst *opt-keys* '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l"))
@@ -71,7 +74,7 @@
       (opt-commit-all
        (fn-node-complete
         (fn-node-prepare s 9 (concatenate 'string "<" (car keys) "@example.invalid>")
-                         '(72 105 13 10) *opt-groups*
+                         txid *opt-groups*
                          (concatenate 'string "archive-" (car keys))
                          (concatenate 'string "content-" (car keys))
                          (concatenate 'string "release-" (car keys))

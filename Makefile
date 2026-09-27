@@ -183,6 +183,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-node-invariants \
 	books/acceptance-stamp-invariants \
 	tests/acl2/acceptance-stamp-tests \
+	tests/acl2/held-rows-tests \
+	tests/acl2/held-rows-intern-tests \
 	tests/acl2/store-node-tests \
 	tests/acl2/consumer-store-node-tests \
 	tests/acl2/store-node-existing-tests \

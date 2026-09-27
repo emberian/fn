@@ -12,6 +12,7 @@
 ; and held by the real Store; the tombstone is fn-rcl-tombstone-of's, placed
 ; by fn-rcl-reclaim-state.
 (in-package "ACL2")
+(include-book "held-rows-tests")
 (include-book "../../books/source-routes")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
@@ -80,23 +81,75 @@
 ; A Store holding one payload under *srt-msgid*, through the real Store.
 
 (defconst *srt-groups* '("fn.test"))
-(defun srt-store (payload)
+; The store retains held rows (records-flip, books/held-record.lisp): the
+; record the entry interns on a fresh arena (handle 0).  An ARENA SPEC is
+; (PRIOR . SEALED): the wire records the arena interned, then the byte lists
+; sealed after them (a reclaimed article's tombstone, sealed by the reclaim
+; entry: books/store-reclaim.lisp fn-rcl-reclaim-state takes its handle).
+(defun srt-record-wire (msgid payload)
+  (fn-record-make 0 0 0 msgid payload *srt-groups*
+                  "srt-pin" "srt-subject" "srt-release" 2 841000000))
+(defun srt-spec (payload) (list (list (srt-record-wire *srt-msgid* payload))))
+(defun srt-store-row (row)
   (fn-sn-finish
    (fn-sn-io (fn-sn-io (fn-sn-io
      (fn-sn-prepare
       (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io
         (fn-sn-initial *srt-groups* 10) :start-frontier nil)
         :frontier-file :ok) :frontier-replace :ok) :frontier-directory :ok)
-      (fn-record-make 0 0 0 *srt-msgid* payload *srt-groups*
-                      "srt-pin" "srt-subject" "srt-release" 2 841000000))
+      row)
      :record-file :ok) :record-link :ok) :record-directory :ok)))
+(defun srt-store (payload)
+  (declare (xargs :verify-guards nil))
+  (srt-store-row (car (fn-hrt-rows (car (srt-spec payload)) nil 0))))
 (defun srt-held (s)
   (fn-find-article *srt-msgid* (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
+
+; The arena of SPEC, and alpha (handles to bytes) read through it.
+(defun srt-seal-all (xs fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (if (atom xs)
+      fn-arena
+    (let ((fn-arena (fn-arena-seal-list (car xs) fn-arena)))
+      (srt-seal-all (cdr xs) fn-arena))))
+(defun srt-bytes-in (spec h fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-hrt-events (car spec) nil 0 fn-arena)
+    (declare (ignore rows))
+    (let ((fn-arena (srt-seal-all (cdr spec) fn-arena)))
+      (mv (fn-hrt-handle-bytes h fn-arena) fn-arena))))
+(defun srt-bytes (spec h)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (bytes fn-arena) (srt-bytes-in spec h fn-arena) bytes)))
+(defun srt-alpha-in (spec articles fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-hrt-events (car spec) nil 0 fn-arena)
+    (declare (ignore rows))
+    (let ((fn-arena (srt-seal-all (cdr spec) fn-arena)))
+      (mv (fn-hrt-articles-alpha articles fn-arena) fn-arena))))
+(defun srt-alpha (spec articles)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (as fn-arena) (srt-alpha-in spec articles fn-arena) as)))
+; by specification: the flip -- the stored payload is a handle, so the
+; verdict the host asks is D25's over alpha of the acceptance articles
+; (books/store-intern.lisp fn-store-existing-action, keystone
+; fn-store-existing-action-is-the-verdict-over-alpha); fn-rcl-existing-action
+; on the alpha state is that verdict.  With nothing sealed it is
+; held-rows-tests' fn-hrt-existing-action (asserted below).
+(defun srt-action (spec msgid payload groups s)
+  (declare (xargs :verify-guards nil))
+  (fn-rcl-action-over msgid payload groups
+                      (srt-alpha spec (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
 
 (defun srt-index-of (x xs i)
   (declare (xargs :guard (natp i) :verify-guards nil))
   (if (consp xs) (if (equal (car xs) x) i (srt-index-of x (cdr xs) (1+ i))) nil))
-; S with the held payload replaced by `tomb', as `store reclaim' would.
+; S with the held payload replaced by `tomb' (the handle of the sealed
+; tombstone bytes), as `store reclaim' would.
 (defun srt-reclaimed (s tomb)
   (let* ((node (fn-sn-node s))
          (acc (fn-node-acceptance node))
@@ -110,10 +163,31 @@
                    (fn-sn-statep *srt-s-pathed*)))
 (defconst *srt-tomb-dateless* (fn-rcl-tombstone-of (srt-o *srt-dateless* *srt-a*) *srt-mo*))
 (defconst *srt-tomb-pathed* (fn-rcl-tombstone-of (srt-o *srt-pathed* *srt-a*) *srt-mo*))
-(defconst *srt-t-dateless* (srt-reclaimed *srt-s-dateless* *srt-tomb-dateless*))
-(defconst *srt-t-pathed* (srt-reclaimed *srt-s-pathed* *srt-tomb-pathed*))
-(assert-event (and (equal (fn-article-payload (srt-held *srt-t-dateless*)) *srt-tomb-dateless*)
-                   (equal (fn-article-payload (srt-held *srt-t-pathed*)) *srt-tomb-pathed*)))
+; by specification: the flip -- the tombstone is sealed after the record
+; (handle 1) and the held payload is that handle; the bytes under it are the
+; tombstone, the old expected value.
+(defconst *srt-s-dated-spec* (srt-spec (srt-o *srt-dated* *srt-a*)))
+(defconst *srt-s-dateless-spec* (srt-spec (srt-o *srt-dateless* *srt-a*)))
+(defconst *srt-s-pathed-spec* (srt-spec (srt-o *srt-pathed* *srt-a*)))
+(defconst *srt-t-dateless-spec* (cons (car *srt-s-dateless-spec*) (list *srt-tomb-dateless*)))
+(defconst *srt-t-pathed-spec* (cons (car *srt-s-pathed-spec*) (list *srt-tomb-pathed*)))
+(defconst *srt-t-dateless* (srt-reclaimed *srt-s-dateless* 1))
+(defconst *srt-t-pathed* (srt-reclaimed *srt-s-pathed* 1))
+(assert-event (and (equal (fn-article-payload (srt-held *srt-t-dateless*)) 1)
+                   (equal (fn-article-payload (srt-held *srt-t-pathed*)) 1)))
+(assert-event (and (equal (srt-bytes *srt-t-dateless-spec* (fn-article-payload (srt-held *srt-t-dateless*)))
+                          *srt-tomb-dateless*)
+                   (equal (srt-bytes *srt-t-pathed-spec* (fn-article-payload (srt-held *srt-t-pathed*)))
+                          *srt-tomb-pathed*)))
+; The unreclaimed stores hold their injection under handle 0, and the
+; verdict here is held-rows-tests' fn-hrt-existing-action when nothing is sealed.
+(assert-event (and (equal (fn-article-payload (srt-held *srt-s-dated*)) 0)
+                   (equal (srt-bytes *srt-s-dated-spec* 0) (srt-o *srt-dated* *srt-a*))
+                   (equal (srt-action *srt-s-dated-spec* *srt-msgid* (srt-o *srt-dated* *srt-b*)
+                                      *srt-groups* *srt-s-dated*)
+                          (fn-hrt-existing-action (car *srt-s-dated-spec*) *srt-msgid*
+                                                  (srt-o *srt-dated* *srt-b*)
+                                                  *srt-groups* *srt-s-dated*))))
 
 ; -----------------------------------------------------------------------------
 ; fn-sr-an-injection-is-not-a-tombstone: every decision, injected or refused.
@@ -128,28 +202,43 @@
 ; -----------------------------------------------------------------------------
 ; fn-sr-a-retry-is-already-stored: the complete antecedent and the conclusion,
 ; for a supplied Date, a generated Date and a supplied Path.
-(defun srt-retry-antecedent (s msgid source a b groups)
+; by specification: the flip -- the held payload hypothesis reads the bytes
+; under the held handle through the arena of SPEC.
+(defun srt-retry-antecedent (spec s msgid source a b groups)
+  (declare (xargs :verify-guards nil))
   (let ((held (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
         (da (srt-d source a)) (db (srt-d source b)))
-    (and (equal (fn-article-payload held) (fn-inj-decision-octets da))
+    (and (equal (srt-bytes spec (fn-article-payload held)) (fn-inj-decision-octets da))
          (fn-inj-injectedp da) (fn-inj-injectedp db)
          (equal (fn-inj-decision-msgid da) (fn-record-string-octets msgid))
          (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid))
          (equal groups (fn-article-groups held)))))
 (assert-event
- (and (srt-retry-antecedent *srt-s-dated* *srt-msgid* *srt-dated* *srt-a* *srt-b* *srt-groups*)
-      (equal (fn-rcl-existing-action *srt-msgid* (srt-o *srt-dated* *srt-b*) *srt-groups*
+ (and (srt-retry-antecedent *srt-s-dated-spec* *srt-s-dated* *srt-msgid* *srt-dated* *srt-a* *srt-b* *srt-groups*)
+      (equal (srt-action *srt-s-dated-spec* *srt-msgid* (srt-o *srt-dated* *srt-b*) *srt-groups*
                                      *srt-s-dated*) :duplicate)
-      (srt-retry-antecedent *srt-s-dateless* *srt-msgid* *srt-dateless* *srt-a* *srt-b*
+      (srt-retry-antecedent *srt-s-dateless-spec* *srt-s-dateless* *srt-msgid* *srt-dateless* *srt-a* *srt-b*
                             *srt-groups*)
-      (equal (fn-rcl-existing-action *srt-msgid* (srt-o *srt-dateless* *srt-b*) *srt-groups*
+      (equal (srt-action *srt-s-dateless-spec* *srt-msgid* (srt-o *srt-dateless* *srt-b*) *srt-groups*
                                      *srt-s-dateless*) :duplicate)
-      (srt-retry-antecedent *srt-s-pathed* *srt-msgid* *srt-pathed* *srt-a* *srt-b* *srt-groups*)
-      (equal (fn-rcl-existing-action *srt-msgid* (srt-o *srt-pathed* *srt-b*) *srt-groups*
+      (srt-retry-antecedent *srt-s-pathed-spec* *srt-s-pathed* *srt-msgid* *srt-pathed* *srt-a* *srt-b* *srt-groups*)
+      (equal (srt-action *srt-s-pathed-spec* *srt-msgid* (srt-o *srt-pathed* *srt-b*) *srt-groups*
                                      *srt-s-pathed*) :duplicate)))
 ; The byte-identity decision D25 replaced answers conflict on the same retry.
-(assert-event (equal (fn-sn-existing-action *srt-msgid* (srt-o *srt-dateless* *srt-b*)
-                                            *srt-groups* *srt-s-dateless*)
+; by specification: the flip -- fn-sn-existing-action's comparison, with the
+; stored bytes read through the arena.
+(defun srt-bytes-action (spec msgid payload groups s)
+  (declare (xargs :verify-guards nil))
+  (let ((article (fn-find-article
+                  msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
+    (if article
+        (if (and (equal payload (srt-bytes spec (fn-article-payload article)))
+                 (equal groups (fn-article-groups article)))
+            :duplicate
+          :conflict)
+      nil)))
+(assert-event (equal (srt-bytes-action *srt-s-dateless-spec* *srt-msgid* (srt-o *srt-dateless* *srt-b*)
+                                       *srt-groups* *srt-s-dateless*)
                      :conflict))
 
 ; Hypothesis removed: the held payload is not the injection at A (it is
@@ -157,16 +246,17 @@
 (assert-event
  (let ((held (srt-held *srt-s-dated*)) (da (srt-d *srt-changed* *srt-a*))
        (db (srt-d *srt-changed* *srt-b*)))
-   (and (not (equal (fn-article-payload held) (fn-inj-decision-octets da)))
+   (and (not (equal (srt-bytes *srt-s-dated-spec* (fn-article-payload held))
+                    (fn-inj-decision-octets da)))
         (fn-inj-injectedp da) (fn-inj-injectedp db)
         (equal (fn-inj-decision-msgid da) *srt-mo*) (equal (fn-inj-decision-msgid db) *srt-mo*)
         (equal *srt-groups* (fn-article-groups held))
-        (equal (fn-rcl-existing-action *srt-msgid* (fn-inj-decision-octets db) *srt-groups*
+        (equal (srt-action *srt-s-dated-spec* *srt-msgid* (fn-inj-decision-octets db) *srt-groups*
                                        *srt-s-dated*) :conflict))))
 ; Hypothesis removed: other groups; the verdict is conflict.
 (assert-event
  (and (not (equal '("fn.other") (fn-article-groups (srt-held *srt-s-dated*))))
-      (equal (fn-rcl-existing-action *srt-msgid* (srt-o *srt-dated* *srt-b*) '("fn.other")
+      (equal (srt-action *srt-s-dated-spec* *srt-msgid* (srt-o *srt-dated* *srt-b*) '("fn.other")
                                      *srt-s-dated*) :conflict)))
 ; Hypothesis removed: the Message-ID at A is not the held one.  A source
 ; with no Message-ID gets a generated one per clock; the Store holds the A
@@ -176,27 +266,22 @@
   (declare (xargs :verify-guards nil))
   (if (consp xs) (cons (code-char (nfix (car xs))) (srt-chars (cdr xs))) nil))
 (defconst *srt-idless-msgid-b* (coerce (srt-chars *srt-idless-mo-b*) 'string))
+(defconst *srt-s-idless-spec*
+  (list (list (srt-record-wire *srt-idless-msgid-b* (srt-o *srt-idless* *srt-a*)))))
 (defconst *srt-s-idless*
-  (fn-sn-finish
-   (fn-sn-io (fn-sn-io (fn-sn-io
-     (fn-sn-prepare
-      (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io
-        (fn-sn-initial *srt-groups* 10) :start-frontier nil)
-        :frontier-file :ok) :frontier-replace :ok) :frontier-directory :ok)
-      (fn-record-make 0 0 0 *srt-idless-msgid-b* (srt-o *srt-idless* *srt-a*) *srt-groups*
-                      "srt-pin" "srt-subject" "srt-release" 2 841000000))
-     :record-file :ok) :record-link :ok) :record-directory :ok)))
+  (srt-store-row (car (fn-hrt-rows (car *srt-s-idless-spec*) nil 0))))
 (assert-event
  (let ((held (fn-find-article *srt-idless-msgid-b*
                               (fn-state-articles (fn-node-acceptance (fn-sn-node *srt-s-idless*)))))
        (da (srt-d *srt-idless* *srt-a*)) (db (srt-d *srt-idless* *srt-b*)))
    (and (equal (fn-record-string-octets *srt-idless-msgid-b*) *srt-idless-mo-b*)
-        (equal (fn-article-payload held) (fn-inj-decision-octets da))
+        (equal (srt-bytes *srt-s-idless-spec* (fn-article-payload held))
+               (fn-inj-decision-octets da))
         (fn-inj-injectedp da) (fn-inj-injectedp db)
         (not (equal (fn-inj-decision-msgid da) *srt-idless-mo-b*))
         (equal (fn-inj-decision-msgid db) *srt-idless-mo-b*)
         (equal *srt-groups* (fn-article-groups held))
-        (equal (fn-rcl-existing-action *srt-idless-msgid-b* (fn-inj-decision-octets db)
+        (equal (srt-action *srt-s-idless-spec* *srt-idless-msgid-b* (fn-inj-decision-octets db)
                                        *srt-groups* *srt-s-idless*) :conflict))))
 
 (must-fail
@@ -239,12 +324,12 @@
 ; supplied Path tail (D32), an authored Date removed.
 (assert-event
  (and (not (equal *srt-changed* *srt-dated*))
-      (equal (fn-rcl-existing-action *srt-msgid* (srt-o *srt-changed* *srt-b*) *srt-groups*
+      (equal (srt-action *srt-s-dated-spec* *srt-msgid* (srt-o *srt-changed* *srt-b*) *srt-groups*
                                      *srt-s-dated*) :conflict)
       (not (equal *srt-repathed* *srt-pathed*))
-      (equal (fn-rcl-existing-action *srt-msgid* (srt-o *srt-repathed* *srt-b*) *srt-groups*
+      (equal (srt-action *srt-s-pathed-spec* *srt-msgid* (srt-o *srt-repathed* *srt-b*) *srt-groups*
                                      *srt-s-pathed*) :conflict)
-      (equal (fn-rcl-existing-action *srt-msgid* (srt-o *srt-dateless* *srt-b*) *srt-groups*
+      (equal (srt-action *srt-s-dated-spec* *srt-msgid* (srt-o *srt-dateless* *srt-b*) *srt-groups*
                                      *srt-s-dated*) :conflict)))
 ; Hypothesis removed: the sources are equal; the verdict is duplicate (the
 ; retry witness above, every other hypothesis kept).
@@ -279,21 +364,21 @@
 ; fn-sr-a-retry-after-reclaim-is-already-stored and
 ; fn-sr-a-changed-source-after-reclaim-is-a-conflict.
 (assert-event
- (and (equal (fn-rcl-existing-action *srt-msgid* (srt-o *srt-dateless* *srt-b*) *srt-groups*
+ (and (equal (srt-action *srt-t-dateless-spec* *srt-msgid* (srt-o *srt-dateless* *srt-b*) *srt-groups*
                                      *srt-t-dateless*) :duplicate)
-      (equal (fn-rcl-existing-action *srt-msgid* (srt-o *srt-pathed* *srt-b*) *srt-groups*
+      (equal (srt-action *srt-t-pathed-spec* *srt-msgid* (srt-o *srt-pathed* *srt-b*) *srt-groups*
                                      *srt-t-pathed*) :duplicate)
-      (equal (fn-rcl-existing-action *srt-msgid* (srt-o *srt-repathed* *srt-b*) *srt-groups*
+      (equal (srt-action *srt-t-pathed-spec* *srt-msgid* (srt-o *srt-repathed* *srt-b*) *srt-groups*
                                      *srt-t-pathed*) :conflict)
       (not (fn-rcl-collisionp *srt-repathed* *srt-pathed*))
-      (equal (fn-rcl-existing-action *srt-msgid* (srt-o *srt-pathed* *srt-b*) '("fn.other")
+      (equal (srt-action *srt-t-pathed-spec* *srt-msgid* (srt-o *srt-pathed* *srt-b*) '("fn.other")
                                      *srt-t-pathed*) :conflict)))
 ; Hypothesis removed: the tombstone is another source's; conflict.
 (assert-event
- (equal (fn-rcl-existing-action *srt-msgid* (srt-o *srt-changed* *srt-b*) *srt-groups*
-                                (srt-reclaimed *srt-s-dated*
-                                               (fn-rcl-tombstone-of (srt-o *srt-dated* *srt-a*)
-                                                                    *srt-mo*)))
+ (equal (srt-action (cons (car *srt-s-dated-spec*)
+                         (list (fn-rcl-tombstone-of (srt-o *srt-dated* *srt-a*) *srt-mo*)))
+                   *srt-msgid* (srt-o *srt-changed* *srt-b*) *srt-groups*
+                   (srt-reclaimed *srt-s-dated* 1))
         :conflict))
 (must-fail
  (defthm srt-conflict-after-reclaim-without-distinct-sources
@@ -341,24 +426,25 @@
                   *srt-signed-source* *srt-principal* *srt-keys* *srt-sigs*
                   (fn-inj-make-config nil *srt-agent* (list (srt-text "fn.test")) 32768)
                   *srt-b*)))
+(defconst *srt-s-signed-spec* (srt-spec *srt-carrier-a*))
 (defconst *srt-s-signed* (srt-store *srt-carrier-a*))
 (assert-event
  (let ((held (srt-held *srt-s-signed*)))
    (and *srt-carrier-a* *srt-carrier-b*
-        (equal (fn-article-payload held) *srt-carrier-a*)
+        (equal (srt-bytes *srt-s-signed-spec* (fn-article-payload held)) *srt-carrier-a*)
         (equal *srt-carrier-msgids* (list *srt-mo* *srt-mo*))
         (equal *srt-groups* (fn-article-groups held))
-        (equal (fn-rcl-existing-action *srt-msgid* *srt-carrier-b* *srt-groups* *srt-s-signed*)
+        (equal (srt-action *srt-s-signed-spec* *srt-msgid* *srt-carrier-b* *srt-groups* *srt-s-signed*)
                :duplicate))))
 ; Hypothesis removed: the carrier of another source is held; conflict.
 (assert-event
  (and (not (equal *srt-carrier-changed-a* *srt-carrier-a*))
-      (equal (fn-rcl-existing-action *srt-msgid* *srt-carrier-b* *srt-groups*
-                                     (srt-store *srt-carrier-changed-a*))
+      (equal (srt-action (srt-spec *srt-carrier-changed-a*) *srt-msgid* *srt-carrier-b* *srt-groups*
+                         (srt-store *srt-carrier-changed-a*))
              :conflict)))
 ; Hypothesis removed: other groups; conflict.
 (assert-event
- (equal (fn-rcl-existing-action *srt-msgid* *srt-carrier-b* '("fn.other") *srt-s-signed*)
+ (equal (srt-action *srt-s-signed-spec* *srt-msgid* *srt-carrier-b* '("fn.other") *srt-s-signed*)
         :conflict))
 ; Hypothesis removed: no octets at B (injection disabled).
 (assert-event (null *srt-carrier-disabled*))
