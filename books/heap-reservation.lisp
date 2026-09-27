@@ -1088,12 +1088,22 @@
             (and (equal (fn-heap-request-transactions
                          (fn-heap-friend-candidate request h))
                         (floor (nfix h) 512))
-                 (equal (fn-heap-request-history
-                         (fn-heap-friend-candidate request h))
-                        (nfix h))))))
+                 (<= (nfix h)
+                     (fn-heap-request-history
+                      (fn-heap-friend-candidate request h)))))))
 
 (local (in-theory (disable fn-heap-request-transactions fn-heap-request-history
                            fn-heap-friend-candidate)))
+
+;; A rung's H is at least the rung (the larger of it and R, batch AV).
+(local
+ (defthm fn-heap-friend-candidate-history-is-at-least-the-rung
+   (implies (fn-heap-capacity-free-fieldsp (cadr (true-list-fix request)))
+            (<= (nfix h)
+                (fn-heap-request-history (fn-heap-friend-candidate request h))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-heap-request-history fn-heap-friend-candidate)
+                   :use ((:instance fn-heap-friend-candidate-sets))))))
 
 (local
  (defthm fn-heap-friend-ladder-holds-the-floor
