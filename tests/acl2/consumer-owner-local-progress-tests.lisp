@@ -199,9 +199,11 @@
     (mv (fn-col-poll-report-over (fn-own-start *colp-after-article* 2) *colp-id*
                                  fn-arena)
         fn-arena)))
-(defconst *colp-report*
+(defun colp-report-run ()
+  (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
     (mv-let (r fn-arena) (colp-report-over '(65 66) fn-arena) r)))
+(make-event `(defconst *colp-report* ',(colp-report-run)))
 (defconst *colp-poll-wire*
   (fn-record-make 2 2 2 "<poll@fn.test>" '(65 66)
                   '("fn.test") "poll-pin" "poll-content" "poll-release"
