@@ -179,7 +179,8 @@ def claim_notes(base, merged, ours, theirs, conflicts: list[str]) -> list[str]:
     """
     try:
         import next_id  # noqa: PLC0415 (a sibling tool; the driver runs from tools/)
-    except ImportError:
+        next_id.ledger_path, next_id.claims_by_id  # noqa: B018 (an older next_id has neither)
+    except (ImportError, AttributeError):
         return []
     path = next_id.ledger_path(Path.cwd())
     if path is None or not path.is_file():
