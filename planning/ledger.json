@@ -852,6 +852,7 @@
     "books/owner-checkpoint-writer",
     "books/owner-checkpoint-pipeline",
     "books/store-checkpoint-arena",
+    "books/store-checkpoint-share",
     "books/store-checkpoint-arena-load",
     "books/store-checkpoint-arena-writer",
     "tests/acl2/octets-stobj-tests",
@@ -1178,27 +1179,27 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1221,
-    "books_in_root_closure": 1210,
-    "roots": 1174,
-    "theorems": 17954,
-    "functions": 12425,
-    "assert_events": 17857,
+    "books": 1222,
+    "books_in_root_closure": 1211,
+    "roots": 1175,
+    "theorems": 17980,
+    "functions": 12441,
+    "assert_events": 17861,
     "must_fails": 2149,
     "prover_refusals": 0,
     "encapsulates": 92,
     "guards": {
-      "verified": 2441,
-      "declared-off": 1434,
-      "default-guarded": 6842,
+      "verified": 2446,
+      "declared-off": 1437,
+      "default-guarded": 6850,
       "default-unguarded": 1708
     },
-    "suspect_theorems": 193,
+    "suspect_theorems": 194,
     "export_hygiene_warnings": 205,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 207,
     "include_hygiene_warnings": 1316,
-    "host_names_warnings": 1371,
+    "host_names_warnings": 1376,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -17345,7 +17346,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "store-checkpoint-arena"
+        "store-checkpoint-arena",
+        "store-checkpoint-share"
       ],
       "system_includes": [
         "arithmetic/top"
@@ -17360,15 +17362,15 @@
       "book": "books/store-checkpoint-arena-writer.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 40,
-      "functions": 11,
+      "theorems": 60,
+      "functions": 20,
       "guards": {
-        "verified": 4,
+        "verified": 9,
         "declared-off": 2,
-        "default-guarded": 5,
+        "default-guarded": 9,
         "default-unguarded": 0
       },
-      "verify_guards_events": 6,
+      "verify_guards_events": 11,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -17382,7 +17384,9 @@
       "system_includes": [
         "arithmetic/top"
       ],
-      "suspects": [],
+      "suspects": [
+        "fn-scka-payload-of-record"
+      ],
       "read_error": null
     },
     {
@@ -17523,6 +17527,30 @@
       "system_includes": [
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-checkpoint-share.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 6,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -32968,15 +32996,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 3,
-      "functions": 13,
+      "functions": 16,
       "guards": {
         "verified": 0,
-        "declared-off": 13,
+        "declared-off": 16,
         "default-guarded": 0,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
+      "assert_events": 19,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 14,
@@ -36942,15 +36970,23 @@
     {
       "theorem": "fn-scka-car-run-segments",
       "book": "books/store-checkpoint-arena-load.lisp",
-      "line": 371,
+      "line": 372,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
     },
     {
+      "theorem": "fn-scka-payload-of-record",
+      "book": "books/store-checkpoint-arena-writer.lisp",
+      "line": 318,
+      "reasons": [
+        "branch-of-definition: the hypothesis is a branch test of fn-scka-payload-of and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-scka-select-named-unfolds",
       "book": "books/store-checkpoint-arena-load.lisp",
-      "line": 705,
+      "line": 708,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-scka-select-named and the conclusion is that branch's value"
       ]
@@ -55273,133 +55309,133 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3046,
+        "line": 3068,
         "name": "functionp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3680,
+        "line": 3702,
         "name": "search",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4746,
+        "line": 4768,
         "name": "find-if",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4770,
+        "line": 4792,
         "name": "find-class",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4770,
+        "line": 4792,
         "name": "slot-value",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5034,
+        "line": 5056,
         "name": "char/=",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5043,
+        "line": 5065,
         "name": "read-line",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5618,
+        "line": 5640,
         "name": "*fn-lg-genesis*",
         "source": "books/store-log.lisp",
         "reason": "defined in books/store-log.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5925,
+        "line": 5947,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6087,
+        "line": 6109,
         "name": "open",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6087,
+        "line": 6109,
         "name": "*standard-input*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6087,
+        "line": 6109,
         "name": "*error-output*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6087,
+        "line": 6109,
         "name": "logandc2",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6121,
+        "line": 6143,
         "name": "fnn-tls-send-all",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6121,
+        "line": 6143,
         "name": "fnn-tls-read",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6121,
+        "line": 6143,
         "name": "fnn-tls-open-client-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6121,
+        "line": 6143,
         "name": "fnn-tls-connect",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6121,
+        "line": 6143,
         "name": "fnn-tls-close-channel",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6121,
+        "line": 6143,
         "name": "fnn-tls-close-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -57213,6 +57249,13 @@
       {
         "host": "host/native/owner.lisp",
         "line": 2725,
+        "name": "fnn-checkpoint-walk",
+        "source": "host/native/io.lisp",
+        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/native/owner.lisp",
+        "line": 2725,
         "name": "fnn-state-checkpoint-write",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -57247,126 +57290,126 @@
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2901,
+        "line": 2902,
         "name": "*fnn-sighup-count*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2901,
+        "line": 2902,
         "name": "*fnn-owner-log-path*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2901,
+        "line": 2902,
         "name": "fnn-log-swap-fd",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2982,
+        "line": 2983,
         "name": "*fnn-sigterm-owner-active*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2982,
+        "line": 2983,
         "name": "*fnn-sigterm-requested*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2982,
+        "line": 2983,
         "name": "*fnn-sigterm-wakeup-fd*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2982,
+        "line": 2983,
         "name": "fnn-log-writer-start",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2982,
+        "line": 2983,
         "name": "fnn-mux-budget-install",
         "source": "host/native/mux.lisp",
         "reason": "defined in host/native/mux.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2982,
+        "line": 2983,
         "name": "fnn-mux-start",
         "source": "host/native/mux.lisp",
         "reason": "defined in host/native/mux.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2982,
+        "line": 2983,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2982,
+        "line": 2983,
         "name": "fnn-listen",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2982,
+        "line": 2983,
         "name": "fnn-socket-shut",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 2982,
+        "line": 2983,
         "name": "fnn-log-writer-stop",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3135,
+        "line": 3136,
         "name": "fnn-tls-context-p",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3135,
+        "line": 3136,
         "name": "fnn-octets-string",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3135,
+        "line": 3136,
         "name": "fnn-post-entry-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3135,
+        "line": 3136,
         "name": "fnn-state-checkpoint-test-fault",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/owner.lisp",
-        "line": 3199,
+        "line": 3200,
         "name": "fnn-register-developer-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -58948,49 +58991,63 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 658,
+        "line": 573,
+        "name": "atom",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 573,
+        "name": "reverse",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/owner-host.lisp",
+        "line": 662,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 893,
+        "line": 897,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 996,
+        "line": 1000,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 996,
+        "line": 1000,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1767,
+        "line": 1771,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2697,
+        "line": 2701,
         "name": "fn-scar-ocfg-read-span",
         "source": "books/served-span.lisp",
         "reason": "defined in books/served-span.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2839,
+        "line": 2843,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -59095,14 +59152,28 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 894,
+        "line": 680,
+        "name": "atom",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 719,
+        "name": "reverse",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/store-node-host.lisp",
+        "line": 934,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 1056,
+        "line": 1096,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

@@ -3686,7 +3686,9 @@
         "books/store-checkpoint-arena-load.lisp",
         "books/store-checkpoint-arena-writer.lisp",
         "tests/acl2/store-checkpoint-arena-tests.lisp",
-        "planning/evidence/checkpoint-arena-2-2026-09-27.md"
+        "planning/evidence/checkpoint-arena-2-2026-09-27.md",
+        "books/store-checkpoint-share.lisp",
+        "planning/evidence/checkpoint-arena-3-2026-09-27.md"
       ],
       "progress_note": "Open items: K0 coverage of the publish program's :root rename and :root fsync (fn-bs-k0-step-inputp admits neither; the profile program has the same gap); the whole-file statement over the host's range loop; the publication keystone's history hypothesis has no must-fail (the identity fold's fault is absorbing); the pack, compaction and export verbs still re-encode the covered prefix's octets after a checkpoint open (fn-store-sco-prefix-octets; the owner's open no longer does, checkpoint-arena-2) and the Store open and the owner open each replay the suffix.",
       "events": [
@@ -3713,7 +3715,11 @@
         "fn-scka-recover-rows-rii-is-recover-rows",
         "fn-scka-write-run-is-run-segments",
         "fn-scka-next-checkpoint-is-capture",
-        "fn-scka-select-named-refuses-the-arena-by-name"
+        "fn-scka-select-named-refuses-the-arena-by-name",
+        "fn-sshr-share-is-identity",
+        "fn-scka-src-payloads-of-canon-srcs",
+        "fn-scka-srcs-n-compose",
+        "fn-scka-srcs-n-complete"
       ]
     },
     {
