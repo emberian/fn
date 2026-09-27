@@ -1231,16 +1231,16 @@
     "books_in_root_closure": 1259,
     "roots": 1223,
     "theorems": 18851,
-    "functions": 12983,
-    "assert_events": 18676,
+    "functions": 12986,
+    "assert_events": 18685,
     "must_fails": 2135,
     "prover_refusals": 0,
     "encapsulates": 94,
     "guards": {
       "verified": 2480,
-      "declared-off": 1533,
+      "declared-off": 1535,
       "default-guarded": 7223,
-      "default-unguarded": 1747
+      "default-unguarded": 1748
     },
     "suspect_theorems": 220,
     "export_hygiene_warnings": 227,
@@ -24287,7 +24287,7 @@
       "assert_events": 29,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 23,
+      "defconsts": 24,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -24572,7 +24572,7 @@
       "assert_events": 86,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 35,
+      "defconsts": 36,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -32039,7 +32039,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 67,
+      "assert_events": 68,
       "must_fails": 6,
       "prover_refusals": 0,
       "defconsts": 18,
@@ -32645,18 +32645,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 8,
+      "functions": 11,
       "guards": {
         "verified": 0,
-        "declared-off": 2,
+        "declared-off": 4,
         "default-guarded": 0,
-        "default-unguarded": 6
+        "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 17,
+      "assert_events": 19,
       "must_fails": 7,
       "prover_refusals": 0,
-      "defconsts": 25,
+      "defconsts": 26,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -33022,10 +33022,10 @@
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 65,
+      "assert_events": 68,
       "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 18,
+      "defconsts": 20,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -34430,7 +34430,7 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 56,
+      "assert_events": 58,
       "must_fails": 11,
       "prover_refusals": 0,
       "defconsts": 18,
@@ -35899,10 +35899,10 @@
         "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 13,
+      "assert_events": 14,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 11,
+      "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -50002,7 +50002,7 @@
       },
       {
         "book": "tests/acl2/owner-store-indexed-tests.lisp",
-        "line": 57,
+        "line": 64,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -50345,7 +50345,7 @@
       },
       {
         "book": "tests/acl2/records-concrete-tests.lisp",
-        "line": 196,
+        "line": 206,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -50779,7 +50779,7 @@
       },
       {
         "book": "tests/acl2/store-events-carried-tests.lisp",
-        "line": 139,
+        "line": 149,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
