@@ -9396,6 +9396,43 @@
           "name": "fn-mvb-plan-unfolds"
         }
       ]
+    },
+    {
+      "id": "PRF-259",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-waits-at-most-one"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-in-flight-admits-only-inspect-and-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-next-otherwise-is-ocm-next"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-pick-keeps-the-ocm"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-complete-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-barrier-only-from-a-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-staged-only-by-a-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-in-flight-until-completed"
+        }
+      ]
     }
   ]
 }

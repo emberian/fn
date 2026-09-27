@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../books/native-health")
 ; HST-023: the owner's scheduler lines on `health' (books/owner-scheduler.lisp).
-(include-book "../books/owner-commit-class")
+(include-book "../books/owner-commit-steps")
 ; PKT-209: `control log' and `control evidence MSGID' (books/control-evidence.lisp).
 (include-book "../books/control-evidence")
 
@@ -85,7 +85,7 @@
                            ;; the verdict's whatever follows the eight states.
                            (append (fn-owner-exposure-health state)
                                    (if log-sink (fn-nh-log-sink-line log-sink) nil)
-                                   (fn-ocm-health-lines sched)))
+                                   (fn-ocs-health-lines sched)))
                           ;; PRF-211: `status' ends with the capacity line
                           ;; (books/public-exposure.lisp fn-exp-capacity-line).
                           ((equal kind :status)

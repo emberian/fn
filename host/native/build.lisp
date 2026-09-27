@@ -37,6 +37,9 @@
 (include-book "books/served-plan")
 (include-book "books/owner-scheduler")
 (include-book "books/owner-commit-class")
+;; PKT-688 (4) slice 2 (PRF-259): the gate calls fn-ocs-next and the committer
+;; fn-ocs-commit-event (host/native/owner.lisp fnn-owner-commit-batch).
+(include-book "books/owner-commit-steps")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")
