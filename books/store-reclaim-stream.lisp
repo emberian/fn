@@ -1,32 +1,23 @@
-; fn: the reclaim decision streamed one record at a time (lane compact-arena,
+; fn: the reclaim's rewrite streamed one record at a time (lane compact-arena,
 ; 2026-09-27; PKT-686 item 2).
 ;
-; `store reclaim' asked books/store-reclaim-pack.lisp `fn-rclp-decide' over
-; every committed record as an octet list: one list copy of the history
-; (sixteen octets per octet, twice with the collector's copy) for every
-; decision, and the verb asks twice (before and after the compaction it runs
-; first).  The decision reads each record once and keeps, besides counts,
-; only (a) the Message-IDs it rewrites, (b) the octets it frees and (c) the
-; rewritten history -- which it publishes only when that fits one link
-; (*fn-cc-max-events* events, *fn-cc-max-octets* octets), refusing
-; :spans-links otherwise.
+; `store reclaim' reads each committed record once and keeps, besides
+; counts, only (a) the Message-IDs it rewrites, (b) the octets it frees and
+; (c) the rewritten history while it fits one unit (*fn-cc-max-events*
+; events, *fn-cc-max-octets* octets; SPANS records that it passed one).
+; `fn-rcls-step' reads ONE record and carries (USED MSGIDS-REVERSED FREED
+; NEW-REVERSED SIZE SPANS), so the host hands ACL2 one record at a time and
+; holds, beside its own octet vectors, one record's list.
 ;
-; Here the same decision is a fold: `fn-rcls-step' reads ONE record and
-; carries (USED MSGIDS-REVERSED FREED NEW-REVERSED SIZE SPANS); NEW stops
-; growing (and is dropped) the moment the rewritten prefix passes one link,
-; since length and size only grow along the history.  So the host hands
-; ACL2 one record at a time and holds, beside its own octet vectors, one
-; record's list and at most one link.
-;
-; KEYSTONE fn-rcls-decide-is-rclp-decide: over the fold of the records from
-; `fn-rcls-init' under the store's context, `fn-rcls-decide' answers exactly
-; what `fn-rclp-decide' answers over the records, so every theorem of
-; store-reclaim-pack.lisp about the decision (it publishes the rewrite and
-; nothing else, the pack fits the disk, the reclaiming pack is a first link,
-; keep-forever writes nothing) holds of what the host calls.
+; `fn-rcls-fold-of-init': over the fold of the records from `fn-rcls-init'
+; under a context, the carried quantities are the whole-history ones of
+; books/store-reclaim-pack.lisp (`fn-rclp-rewritten-msgids',
+; `fn-rclp-freed', `fn-rclp-events').  books/store-log-reclaim.lisp's
+; keystone `fn-lgr-decide-stream-is-lgr-decide' rests on it.
 ; Host: host/checkpoint-host.lisp `fn-store-reclaim-context',
-; `fn-store-reclaim-step', `fn-store-reclaim-decide-stream', from
-; host/native/checkpoint.lisp `fnn-reclaim-observe'.
+; `fn-store-reclaim-init', `fn-store-reclaim-step', from
+; host/native/checkpoint.lisp `fnn-log-reclaim-steps'.  (The pack decision
+; this fold once fed, `fn-rcls-decide', went with the pack layer.)
 (in-package "ACL2")
 (include-book "store-reclaim-pack")
 
@@ -166,39 +157,7 @@
             :in-theory (disable fn-rcls-fold-spans)))))
 
 ; -----------------------------------------------------------------------------
-; The decision over the fold (store-reclaim-pack.lisp `fn-rclp-decide').
-
-(defun fn-rcls-decide (profile rule now s acc frontier lower names generations
-                               selected disk-free dry fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (let* ((used (nfix (nth 0 acc)))
-         (reclaim (fn-bs-pack-reclaim-plan
-                   names (fn-bs-profile-max-transactions profile) lower))
-         (counts (fn-rcl-store-counts rule now s fn-arena))
-         (msgids (rev (nth 1 acc)))
-         (freed (nth 2 acc)))
-    (cond ((not (fn-bs-profile-admittedp profile)) (list :refused :profile))
-          ((or (not (natp lower)) (< used lower) (equal reclaim :invalid))
-           (list :refused :observation))
-          ((and (atom msgids) (not dry)
-                (posp (fn-cverb-older-count generations selected)))
-           (list :resume-retire counts))
-          ((atom msgids) (list :none counts))
-          (dry (list :dry-run msgids freed counts))
-          ((or (not (equal lower used)) (consp reclaim) (null selected))
-           (list :compact-first))
-          ((nth 5 acc) (list :refused :spans-links))
-          (t
-           (let ((new (rev (nth 3 acc))))
-             (cond
-              ((not (fn-cverb-disk-admitsp disk-free (fn-cverb-pack-octets new)))
-               (list :refused :temporary-space))
-              (t
-               (let ((captured (fn-cc-capture new frontier)))
-                 (if (not (equal (car captured) :ok))
-                     (list :refused :capture)
-                   (list :reclaim *fn-rclp-steps* msgids freed
-                         (fn-cc-encode (cadr captured)) counts))))))))))
+; The fold read as the whole-history quantities.
 
 (local
  (defthm fn-rcls-rev-of-revappend-nil
@@ -250,16 +209,3 @@
            :use ((:instance fn-rcls-size-is-event-octets-size (events records)))
            :in-theory (disable fn-rcls-fold fn-rcls-size-is-event-octets-size
                                fn-cc-event-octets-size))))
-
-; KEYSTONE.  Over the fold of the history, the streamed decision is the
-; decision over the whole history.
-(defthm fn-rcls-decide-is-rclp-decide
-  (implies (and (true-listp records)
-                (equal acc (fn-rcls-fold records (fn-rclp-ctx rule now s) (fn-rcls-init))))
-           (equal (fn-rcls-decide profile rule now s acc frontier lower names generations
-                                  selected disk-free dry fn-arena)
-                  (fn-rclp-decide profile rule now s records frontier lower names
-                                  generations selected disk-free dry fn-arena)))
-  :hints (("Goal" :use ((:instance fn-rcls-fold-of-init (ctx (fn-rclp-ctx rule now s))))
-           :in-theory (union-theories '(fn-rcls-decide fn-rclp-decide)
-                                      (theory 'minimal-theory)))))

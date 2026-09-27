@@ -305,8 +305,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-observation-scan-tests \
 	tests/acl2/byte-store-scan-tests \
 	tests/acl2/byte-store-sweep-tests \
-	books/byte-store-compaction-correspondence \
-	tests/acl2/byte-store-compaction-correspondence-tests \
 	books/byte-store-programs \
 	tests/acl2/byte-store-tests \
 	books/byte-store-frame \
@@ -335,23 +333,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-codec-tests \
 	books/checkpoint-publish \
 	tests/acl2/checkpoint-publish-tests \
-	books/checkpoint-pack-retire \
-	tests/acl2/checkpoint-pack-retire-tests \
 	books/checkpoint-compaction \
 	tests/acl2/checkpoint-compaction-tests \
-	books/checkpoint-compaction-preservation \
-	tests/acl2/checkpoint-compaction-preservation-tests \
-	books/checkpoint-pack-chain \
-	tests/acl2/checkpoint-pack-chain-tests \
 	books/store-event-fields \
-	books/checkpoint-pack-chain-once \
-	tests/acl2/checkpoint-pack-chain-once-tests \
 	books/catalog-load-index \
 	tests/acl2/catalog-load-index-tests \
-	books/store-compact-verb \
-	tests/acl2/store-compact-verb-tests \
-	books/store-compact-window \
-	tests/acl2/store-compact-window-tests \
 	books/reclaim-tombstone \
 	books/reclaim-rule \
 	books/store-reclaim \
@@ -494,8 +480,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
-	books/owner-store-indexed \
-	tests/acl2/owner-store-indexed-tests \
 	books/bp-fnbs-delivery-codec \
 	tests/acl2/bp-fnbs-delivery-codec-tests \
 	books/bp-fnbs-delivery-replay \
@@ -578,6 +562,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-retire \
 	tests/acl2/bp-node-retire-tests \
 	tests/acl2/bp-node-counterexamples-tests \
+	books/bp-node-rotation-due \
+	tests/acl2/bp-node-rotation-due-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-node-forward-retry \
@@ -859,6 +845,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-refresh \
 	books/served-catalog-join-step \
 	books/served-catalog-join \
+	books/served-catalog-join-number \
+	books/served-catalog-join-open \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -892,13 +880,18 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-scan-tests \
 	tests/acl2/served-catalog-owner-tests \
 	tests/acl2/served-catalog-join-tests \
+	tests/acl2/served-catalog-join-open-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
+	books/payload-kinds \
+	tests/acl2/payload-kinds-tests \
 	books/owner-feed-article \
 	tests/acl2/owner-feed-article-tests \
 	tests/acl2/catalog-number-index-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
+	books/sha256-range \
+	tests/acl2/sha256-range-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -1038,6 +1031,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
 	books/history-columns \
+	books/history-columns-relation \
+	tests/acl2/history-columns-relation-tests \
 	tests/acl2/history-columns-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
@@ -1045,8 +1040,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/snapshot-segments-tests \
 	books/consumer-poll-index \
 	tests/acl2/consumer-poll-index-tests \
-	books/consumer-event-index-store-invariants \
-	tests/acl2/consumer-event-index-store-invariants-tests \
 	books/consumer-owner-local \
 	tests/acl2/consumer-owner-local-tests \
 	books/consumer-owner-local-progress \
@@ -1186,7 +1179,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reader-view-tests \
 	books/owner-reader-read \
 	tests/acl2/owner-reader-read-tests \
+	books/clock-wall-reading \
 	books/owner-time-model \
+	books/owner-time-journal \
+	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
 	books/state-digest \
 	tests/acl2/state-digest-tests \
@@ -1271,7 +1267,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-index-tests \
 	tests/acl2/store-node-composite-index-tests \
 	books/scheduler-peers \
-	tests/acl2/scheduler-peers-tests
+	tests/acl2/scheduler-peers-tests \
+	books/proto/adt-lib \
+	books/proto/adt \
+	books/proto/adt-consumer-position \
+	tests/acl2/proto-adt-tests
 
 .PHONY: site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
@@ -1423,6 +1423,9 @@ check:
 # `--convert` rewrites bare ones after a merge.  Static, no ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/must_fail_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_must_fail_check
+# A retained payload is a HANDLE (books/payload-kinds.lisp); every definition
+# that reads one declares which kind it takes (lane entry-guards, 2026-09-27).
+	@$(CHECK_STEP) $(PYTHON) tools/payload_kind_check.py
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make
@@ -1446,6 +1449,11 @@ check:
 # function call (batch AW: every format-9 restart faulted; lane ops-fixes).
 	@$(CHECK_STEP) $(PYTHON) tools/host_macro_order_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_macro_order_check
+# The raw files loaded in build.lisp's order into one bare ACL2 with SBCL's
+# warnings on (seconds, no image build): errors, arity, macro order and names
+# nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_load.ClassifyTests
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
@@ -1576,7 +1584,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check \
-	    tests.test_farm tests.test_merge_registry tests.test_wait_for tests.test_native_program_check \
+	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_check_steps tests.test_cert_cache_sync
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)

@@ -206,6 +206,12 @@
 (defun fn-rcl-payload-tomb-length (p fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (fn-rcl-tomb-length (fn-rcl-payload-bytes p fn-arena)))
+; The kinds they take (books/payload-kinds.lisp; tools/payload_kind_check.py):
+; each reads the arena at a handle, and an octet payload is its own.
+(fn-payload-kind fn-rcl-payload-bytes :handle "the octets at a handle (an octet payload is its own)")
+(fn-payload-kind fn-rcl-payload-len :handle "the length at a handle, read in place")
+(fn-payload-kind fn-rcl-payload-tombstonep :handle "the tombstone's fixed head at a handle, read in place")
+(fn-payload-kind fn-rcl-payload-tomb-length :handle "a tombstone's length field at a handle")
 
 (defun fn-rcl-verdict-in (rule now h verdicts a fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
@@ -307,10 +313,9 @@
                             fn-rcl-article-alpha)))))
 
 ; KEYSTONE.  The counts the host calls (status's reclaim line,
-; books/native-live-status.lisp fn-nls-reclaim-words; the reclaim verbs'
-; decisions, books/store-reclaim-pack.lisp fn-rclp-decide,
-; books/store-reclaim-stream.lisp fn-rcls-decide, books/store-log-reclaim.lisp
-; fn-lgr-decide(-stream)) are the octet-list model's summary and held count
+; books/native-live-status.lisp fn-nls-reclaim-words; the reclaim verb's
+; decision, books/store-log-reclaim.lisp fn-lgr-decide(-stream)) are the
+; octet-list model's summary and held count
 ; over ALPHA of the Store's articles: each reclaimable article counts its
 ; stored octets, each tombstone its freed octets.
 (defthm fn-rcl-store-counts-is-the-model-over-alpha

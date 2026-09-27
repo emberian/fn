@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "replay")
 (include-book "consumer-event-index")
+(include-book "history-columns")
 
 ; A poll inspects at most sixteen consecutive committed Store events and
 ; stops at its first group-matching accepted article.  Its cursor names the
@@ -77,23 +78,30 @@
 ; The Store carries this rebuildable index from the exact committed journal.
 ; Materialize only the bounded scan window, then use the original article
 ; selector.  No acknowledged-prefix walk occurs on the served path.
-(defun fn-col-poll-index-window (index position frontier budget)
-  (declare (xargs :guard (and (natp position) (natp frontier) (natp budget))
+; The window of committed events from POSITION, read from the history stobj
+; fn-hist (books/history-columns.lisp: one array read per event), which
+; replaced the store node's event index (retired field 13, lane
+; history-columns-3).  Past the history's count the event is nil, as the
+; list's (fn-col-poll-index-window-is-committed-prefix).
+(defun fn-col-poll-index-window (fn-hist position frontier budget)
+  (declare (xargs :stobjs fn-hist
+                  :guard (and (natp position) (natp frontier) (natp budget))
                   :measure (nfix budget)))
   (if (or (zp budget) (<= (nfix frontier) (nfix position)))
       nil
-    (cons (fn-cei-get position index)
-          (fn-col-poll-index-window index (1+ position) frontier
+    (cons (if (< position (fn-hist-count fn-hist))
+              (fn-hist-at position fn-hist)
+            nil)
+          (fn-col-poll-index-window fn-hist (1+ position) frontier
                                     (1- budget)))))
-(verify-guards fn-col-poll-index-window)
 
 (defthm fn-col-poll-index-window-length-bound
   (implies (natp budget)
            (<= (len (fn-col-poll-index-window
-                     index position frontier budget))
+                     fn-hist position frontier budget))
                budget))
   :hints (("Goal" :induct (fn-col-poll-index-window
-                            index position frontier budget))))
+                            fn-hist position frontier budget))))
 
 (defthm fn-col-poll-drop-one
   (implies (natp position)
@@ -187,13 +195,10 @@
 ; committed Store event at its dense sequence, including any unknown kind
 ; that the selector explicitly refuses.
 (defthm fn-col-poll-index-window-is-committed-prefix
-  (implies (and (fn-cei-correspondencep index events)
-                (true-listp events)
-                (<= (len events) (1+ *fn-cbor-max-uint*))
-                (natp position) (natp frontier) (natp budget))
-           (equal (fn-col-poll-index-window index position frontier budget)
+  (implies (and (equal fn-hist events)
+                (natp position))
+           (equal (fn-col-poll-index-window fn-hist position frontier budget)
                   (fn-col-poll-list-window events position frontier budget)))
   :hints (("Goal" :induct (fn-col-poll-index-window
-                            index position frontier budget)
-           :in-theory (disable fn-cei-correspondencep fn-cei-build
-                               fn-cei-build-aux fn-cei-get))))
+                            fn-hist position frontier budget)
+           :in-theory (enable fn-col-poll-drop-head-is-nth))))

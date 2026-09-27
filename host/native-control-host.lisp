@@ -14,7 +14,8 @@
   (fn-thlc-request-encode operation sequence quota))
 
 (defun fn-native-control-host-topic-request-decode (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-thlc-request-decode octets))
 
 (defun fn-native-control-host-topic-reply-encode (status)
@@ -22,7 +23,8 @@
   (fn-thlc-reply-encode status))
 
 (defun fn-native-control-host-topic-reply-decode (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-thlc-reply-decode octets))
 
 (defun fn-native-control-host-topic-status-exit-code (status)
@@ -108,7 +110,8 @@
   (fn-native-control-moderation-encode op login id reason))
 
 (defun fn-native-control-host-moderation-decode (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-native-control-moderation-decode octets))
 
 (defun fn-native-control-host-admin-encode (argv)
@@ -124,7 +127,8 @@
   (fn-native-control-reply-encode status))
 
 (defun fn-native-control-host-reply-decode (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-native-control-reply-decode octets))
 
 (defun fn-native-control-host-status-class (status)
@@ -147,7 +151,8 @@
   (fn-cwait-request-encode kind first second))
 
 (defun fn-native-control-host-consumer-request-decode (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-cwait-request-decode octets))
 
 (defun fn-native-control-host-consumer-reply-encode (status cursor)
@@ -196,7 +201,8 @@
 
 ;; PRF-234: the password a bound consumer's secret file holds.
 (defun fn-native-control-host-consumer-secret-of-file (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-ncl-secret-of-file octets))
 
 ;; PKT-453 (a): the refusal reason on the wire (books/native-control-reason).
@@ -219,7 +225,8 @@
 (defun fn-native-control-host-reasoned-framep (octets)
   ;; PKT-709: a reasoned consumer request (kind 22) is answered, however its
   ;; handling ends, with the reasoned reply too (books/consumer-reason.lisp).
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (or (fn-native-control-reasoned-framep octets)
       (fn-ncr-framep octets)))
 
@@ -230,7 +237,8 @@
 (defun fn-native-control-host-reasoned-client-step (octets)
   ; What the client does with the reply to a reasoned request: (:status
   ; STATUS WORD), (:resend) or (:transport).
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-native-control-reasoned-client-step
    (fn-native-control-reasoned-reply-read octets)))
 
@@ -252,12 +260,14 @@
   (fn-ncr-request-encode kind first second))
 
 (defun fn-native-control-host-consumer-reasoned-request-decode (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-ncr-request-decode octets))
 
 (defun fn-native-control-host-consumer-client-read (operation octets)
   ;; (:status STATUS WORD), (:reply REPLY), (:resend) or (:transport).
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-ncr-client-read operation octets))
 
 (defun fn-native-control-host-consumer-cli-after (operation status word)
@@ -265,7 +275,8 @@
   (fn-ncr-cli-after operation status word))
 
 (defun fn-native-control-host-consumer-report-summary (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-ncr-report-summary octets))
 
 (defun fn-native-control-host-consumer-json-line (operation status word counts summary)

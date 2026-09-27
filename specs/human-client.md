@@ -181,3 +181,22 @@ one address in fifteen minutes, and the per-request display bounds (one
 window of 200 numbers per group page, 1,000 per thread page, 80 articles
 per thread) bound this client's work per request and never what the node
 stores (D27).
+
+### The reader in the release
+
+WEB-004: The release carries the friends' web reader as its own service
+beside the node, and it reaches the node only as an NNTP client. It is
+`clients/bin/fn-reader` (HST-029), installed by `install.sh --reader` under
+its own account and folder, which the node folder (store, control socket,
+logins, keys) does not admit; the systemd unit also makes the node folder
+inaccessible. It dials the node's implicit-TLS port (`tls_port`, RFC 8143;
+port 563 or `--tls`) or its reader port with STARTTLS (RFC 4642), verifying
+the certificate before any login octet. It listens on loopback behind an
+HTTPS proxy (`--proxied`: the proxy's last `X-Forwarded-For` entry is the
+browser's address, cookies are `Secure`). A friend with an invitation code
+makes the account through the node's own `fn redeem` (ACL2's
+`fn-redeem-step`; the code and login shape-checked so neither is an option,
+the password on standard input), and the reader never sends more than
+`--node-failures-per-minute` refused logins or codes a minute, below the
+node's `exposure-auth-failures`, because every friend shares its address.
+The threat model is docs/operator-internals.md, "The friends' web reader".

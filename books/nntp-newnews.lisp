@@ -108,6 +108,7 @@
 ; Since D13 a tombstone is kept (STO-014): whether an article was reclaimed
 ; is the one payload fact the scan reads, through `fn-rcl-tombstonep', which
 ; walks at most the tombstone's fixed head and parses nothing.
+(fn-payload-kind fn-nntp-newnews-without-payload :handle "keeps a tombstone's handle, drops the rest (read by fn-nntp-payload-bytes)")
 (defun fn-nntp-newnews-without-payload (articles fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (if (consp articles)

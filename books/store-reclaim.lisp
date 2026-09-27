@@ -556,6 +556,7 @@
 ; The duplicate-versus-conflict verdict (D25) the host calls,
 ; `fn-pb-existing-action', read over the article list.
 
+(fn-payload-kind fn-rcl-action-over :wire "D25's verdict over an article list; applied over fn-articles-wire-of")
 (defun fn-rcl-action-over (msgid payload groups articles)
   (declare (xargs :guard t :verify-guards nil))
   (let ((article (fn-find-article msgid articles)))

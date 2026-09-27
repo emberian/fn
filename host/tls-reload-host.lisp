@@ -35,7 +35,8 @@
   (fn-tlsr-request-encode verb))
 
 (defun fn-tlsr-host-request-decode (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-tlsr-request-decode octets))
 
 (defun fn-tlsr-host-reply-encode (status reason line)
@@ -43,7 +44,8 @@
   (fn-tlsr-reply-encode status reason line))
 
 (defun fn-tlsr-host-reply-read (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-tlsr-reply-read octets))
 
 (defun fn-tlsr-host-status-client-line (read)

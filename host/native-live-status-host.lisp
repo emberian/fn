@@ -102,7 +102,8 @@
               (if stored cached (fn-nls-cache-put kind buffer cached)))))))
 
 (defun fn-native-live-status-host-requestp (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (equal (car (fn-cev-any-request-decode octets)) :live-status))
 
 (defun fn-native-live-status-host-request-encode (kind offset)

@@ -530,34 +530,84 @@ observations back.  Nil when there is nothing to observe."
            (fnn-bps-exit-code bp))
       (fnn-bps-release bp))))
 
-;;; `bp-node profile JOURNAL NODE-ID ROWS OCTETS [ADU BUNDLE]': raise the
+;;; Natural rotation (lane bp-rotation; books/bp-node-rotation-due).  At the
+;;; open of a node verb (bp-node serve, dispatch) the host asks ACL2 whether
+;;; the journal is due to rotate: fn-bpnrd-due-rotation-event over the
+;;; recovered state, the profile (its rotation threshold, profile 3), the
+;;; selected generation, the root's names and the recovery event the open
+;;; drove.  Its answer is the event `bp-node checkpoint' drives, or NIL.
+;;; As `bp-node checkpoint' does, a due rotation first finishes a retirement
+;;; a death or a failed step left (the selection is already durable;
+;;; fn-bpnr-retirement-cut-keeps-open-view); an open that does not rotate
+;;; changes nothing on disk, so a kill's leftovers stay until the next
+;;; rotation.
+;;; Answers T when it drove a rotation: the caller reopens the journal,
+;;; which recovers from whatever is durable (the new selection, or the old
+;;; one after a refusal), so the service never writes into a generation it
+;;; did not open.  An uncertain publication fences, as every publication.
+(defun fnn-bps-rotate-when-due (bp)
+  (let* ((root (fnn-bps-root bp))
+         (names (fnn-list-directory-bounded
+                 root (fnn-core 'fn-bpnf-namespace-max-entries)
+                 "bp journal root"))
+         (selected (fnn-core 'fn-bpnr-plan-generation (fnn-bps-plan bp)))
+         (event (fnn-core 'fn-bpnrd-due-rotation-event
+                          (fnn-bps-state bp) (fnn-bps-node-profile bp)
+                          selected names (fnn-bps-recovery-event bp))))
+    (when event
+      (when (plusp selected)
+        (fnn-bps-retire-generations bp selected))
+      (fnn-out "BP journal rotation generation=~d records=~d threshold=~d"
+               (second event)
+               (fnn-core 'fn-bpnp-used (fnn-bps-state bp))
+               (fnn-core 'fn-bpnpf-rotate-records (fnn-bps-node-profile bp)))
+      (fnn-bps-drive-effects bp (fnn-bps-foundation-step bp event))
+      (when (eq (fnn-bps-outcome bp) :fenced)
+        (fnn-indeterminate "bp-service: journal rotation uncertain; recovery required"))
+      t)))
+
+(defun fnn-bps-open-node (journal config wall wall-error)
+  "fnn-bps-open for a node verb: open, rotate when ACL2 says it is due, and
+reopen after a rotation (without asking again)."
+  (let ((bp (fnn-bps-open journal config wall wall-error)))
+    (if (handler-case (fnn-bps-rotate-when-due bp)
+          (error (e) (fnn-bps-release bp) (error e)))
+        (progn (fnn-bps-release bp)
+               (fnn-bps-open journal config wall wall-error))
+      bp)))
+
+;;; `bp-node profile JOURNAL NODE-ID ROWS OCTETS [ADU BUNDLE [ROTATE]]': raise the
 ;;; node's profile: the held rows and held octets its FNBS machine may hold,
 ;;; the largest ADU it admits and the largest bundle it decodes (D27; books/
 ;;; bp-node-profile.lisp, PRF-131, PRF-134).  ADU and BUNDLE omitted keep the
-;;; values in force.  ACL2 reads the profile in force and answers the frame to
-;;; publish, or refuses a write that lowers a field or leaves the machine's
-;;; limits (fn-bpnpf-profile-write-octets).  The next open of the journal runs
+;;; values in force.  ROTATE is the rotation threshold (records in the
+;;; selected generation; profile 3, books/bp-node-rotation-due): omitted, the
+;;; one in force; it may be lowered.  ACL2 reads the profile in force and
+;;; answers the frame to publish, or refuses a write that lowers a held or
+;;; codec field or leaves the machine's limits
+;;; (fn-bpnpf-node-profile-write-octets).  The next open of the journal runs
 ;;; under it.  Run it with the node stopped: it takes the FNBS lifecycle lock
 ;;; as `bp-node serve' does.
 (defun fnn-command-bp-node-profile (journal-root node-id rows octets
-                                    &optional adu bundle)
+                                    &optional adu bundle rotate)
   (let* ((config (fnn-bp-config node-id +fnn-bp-lifetime+ +fnn-bp-crc-type+
                                 +fnn-bp-hop-limit+ +fnn-tcl-transfer-mru+))
          (bp (fnn-bps-open journal-root config nil 0)))
     (unwind-protect
          (let* ((root (fnn-bps-root bp))
-                (in-force (fnn-bps-profile bp))
+                (in-force (fnn-bps-node-profile bp))
                 (adu (or adu (third in-force)))
                 (bundle (or bundle (fourth in-force)))
-                (frame (fnn-core 'fn-bpnpf-profile-write-octets in-force
-                                 rows octets adu bundle))
+                (rotate (or rotate (fifth in-force)))
+                (frame (fnn-core 'fn-bpnpf-node-profile-write-octets in-force
+                                 rows octets adu bundle rotate))
                 (final (fnn-join root (fnn-core 'fn-bpnpf-file-name)))
                 (stage (fnn-join root (format nil ".bp-node-profile-~d-~a"
                                               (sb-posix:getpid)
                                               (fnn-random-hex 12)))))
            (unless frame
-             (fnn-refuse "bp-node profile: ACL2 refused max-held-rows=~a max-held-octets=~a max-adu-octets=~a max-bundle-octets=~a (in force ~{~a~^ ~})"
-                         rows octets adu bundle in-force))
+             (fnn-refuse "bp-node profile: ACL2 refused max-held-rows=~a max-held-octets=~a max-adu-octets=~a max-bundle-octets=~a rotate-records=~a (in force ~{~a~^ ~})"
+                         rows octets adu bundle rotate in-force))
            (fnn-write-staged stage (fnn-octets frame))
            (fnn-replace stage final)
            ;; The rename is visible: from here a failed barrier leaves the
@@ -565,8 +615,8 @@ observations back.  Nil when there is nothing to observe."
            (handler-case (fnn-fsync-dir root)
              (fnn-os-error (e)
                (fnn-indeterminate "bp-node profile: directory barrier failed: ~a" e)))
-           (fnn-out "BP node profile max-held-rows=~d max-held-octets=~d max-adu-octets=~d max-bundle-octets=~d"
-                    rows octets adu bundle)
+           (fnn-out "BP node profile max-held-rows=~d max-held-octets=~d max-adu-octets=~d max-bundle-octets=~d rotate-records=~d"
+                    rows octets adu bundle rotate)
            +fnn-exit-ok+)
       (fnn-bps-release bp))))
 
@@ -862,7 +912,7 @@ uncertain, as it does everywhere else."
   (let* ((config (fnn-bp-config node-id lifetime crc-type hop-limit transfer-mru))
          ;; FNBS (and its clock-domain gate) opens before any Store/FNRJ or
          ;; sequence operation.  There is exactly one BP lifecycle owner.
-         (bp (fnn-bps-open journal-root config wall wall-error))
+         (bp (fnn-bps-open-node journal-root config wall wall-error))
          (owner nil)
          (listener nil)
          (session-word nil))
@@ -990,17 +1040,18 @@ uncertain, as it does everywhere else."
        (and (fourth args) (parse-integer (fourth args)))
        (if (fifth args) (parse-integer (fifth args)) 0))))
   (when (string= command "profile")
-    ;; JOURNAL NODE-ID ROWS OCTETS [ADU BUNDLE]
-    (unless (member (length args) '(4 6))
+    ;; JOURNAL NODE-ID ROWS OCTETS [ADU BUNDLE [ROTATE]]
+    (unless (member (length args) '(4 6 7))
       (error 'fnn-usage-error
-             :message "bp-node profile: JOURNAL NODE-ID MAX-HELD-ROWS MAX-HELD-OCTETS [MAX-ADU-OCTETS MAX-BUNDLE-OCTETS]"))
+             :message "bp-node profile: JOURNAL NODE-ID MAX-HELD-ROWS MAX-HELD-OCTETS [MAX-ADU-OCTETS MAX-BUNDLE-OCTETS [ROTATE-RECORDS]]"))
     (return-from fnn-dispatch-bp-node
       (fnn-command-bp-node-profile
        (first args) (second args)
        (fnn-bpc-u64-argument (third args) "max held rows")
        (fnn-bpc-u64-argument (fourth args) "max held octets")
        (and (fifth args) (fnn-bpc-u64-argument (fifth args) "max ADU octets"))
-       (and (sixth args) (fnn-bpc-u64-argument (sixth args) "max bundle octets")))))
+       (and (sixth args) (fnn-bpc-u64-argument (sixth args) "max bundle octets"))
+       (and (seventh args) (fnn-bpc-u64-argument (seventh args) "rotate records")))))
   (when (string= command "checkpoint")
     ;; JOURNAL NODE-ID [WALL WALL-ERROR]
     (when (< (length args) 2)

@@ -273,11 +273,6 @@
       "packet": "PKT-448 (g)",
       "note": "closed on every served entry by PRF-220 (hot-path-fixes-bp): fn-bpr-host-accept and fn-bpreq-existing-record look the record up through the event index (fn-bpaj-record-lookup-fast); what remains is the recovery replay at fn-bprj-install (cold)"
     },
-    "fn-cei-build-aux recursion N": {
-      "class": "cold",
-      "packet": "PKT-448 (d)",
-      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
-    },
     "fn-cev-find-article recursion N": {
       "class": "unexpected",
       "packet": "PKT-504 (c)"
@@ -374,6 +369,16 @@
     "fn-gac-restrict-articles recursion N": {
       "class": "unexpected",
       "packet": "PKT-643"
+    },
+    "fn-hist-load-events recursion N": {
+      "class": "cold",
+      "packet": "PKT-448 (d)",
+      "note": "lane history-columns-3: replaces fn-cei-build-aux (the retired store-node event index's open build). The history stobj's load at every open/install (fn-owner-install-extended) and the refresh's reload arm after a store open or reset (fn-host-hist-sync -> fn-hist-refresh, flag fn-store-sn-hist-reload): once per open, O(N) at about 0.34 us/record; every other read syncs only the rows committed since."
+    },
+    "fn-hist-refresh true-list-fix N": {
+      "class": "cold",
+      "packet": "PKT-448 (d)",
+      "note": "lane history-columns-3: replaces fn-cei-build-aux (the retired store-node event index's open build). The history stobj's load at every open/install (fn-owner-install-extended) and the refresh's reload arm after a store open or reset (fn-host-hist-sync -> fn-hist-refresh, flag fn-store-sn-hist-reload): once per open, O(N) at about 0.34 us/record; every other read syncs only the rows committed since."
     },
     "fn-index-build recursion N": {
       "class": "unexpected",
@@ -666,29 +671,24 @@
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it",
       "packet": "PKT-324 (8)"
     },
-    "fn-scka-next-checkpoint nthcdr N": {
-      "class": "unexpected",
-      "packet": "PKT-041",
-      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command"
-    },
-    "fn-sco-drop recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-041",
-      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command"
-    },
-    "fn-store-sco-publish-setup len N": {
-      "class": "unexpected",
-      "packet": "PKT-041",
-      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command"
-    },
     "fn-scka-canon-rows recursion N": {
       "class": "unexpected",
       "packet": "PKT-041",
       "note": "checkpoint-arena-2 (2026-09-27): the state checkpoint publication's setup canonicalizes the live rows (alpha of each row through the arena, interned at the canonical handle) and reads each canonical payload's length for the arena run's batches: one walk of the history per publication, where fn-sco-capture's walk was; reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex (fn-owner-sco-prepare), never from a served command"
     },
+    "fn-scka-next-checkpoint nthcdr N": {
+      "class": "unexpected",
+      "packet": "PKT-041",
+      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command"
+    },
     "fn-sco-cpr-prefix recursion N": {
       "class": "unexpected",
       "packet": "PKT-041"
+    },
+    "fn-sco-drop recursion N": {
+      "class": "unexpected",
+      "packet": "PKT-041",
+      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command"
     },
     "fn-sf-candidatep len N": {
       "class": "unexpected",
@@ -754,6 +754,11 @@
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (a)"
+    },
+    "fn-store-sco-publish-setup len N": {
+      "class": "unexpected",
+      "packet": "PKT-041",
+      "note": "checkpoint-arena-3 (2026-09-27): the state checkpoint verb takes NEXT as the owner does, the open's E extended over the rows after it (fn-scka-next-checkpoint), instead of canonicalizing every row again to compare with E; the extension walks E's prefix once (the drop to the suffix, the rows' count) per publication, reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex, never from a served command"
     },
     "fn-store-sn-article-count len N": {
       "class": "unexpected",

@@ -32,8 +32,12 @@
   ;; ACL2's reading of the node's profile, (ROWS OCTETS ADU BUNDLE): the held
   ;; rows and held octets the machine may hold, the largest ADU it admits and
   ;; the largest bundle it decodes (fn-bpnpf-profile-read,
-  ;; books/bp-node-profile; PRF-131, PRF-134).
-  (profile nil)
+  ;; books/bp-node-profile; PRF-131, PRF-134).  NODE-PROFILE is the whole
+  ;; reading, (ROWS OCTETS ADU BUNDLE ROTATE) (fn-bpnpf-node-profile-read):
+  ;; ROTATE is the rotation threshold a node verb's open consults
+  ;; (fnn-bps-rotate-when-due); PROFILE is its base, ACL2's
+  ;; fn-bpnpf-node-profile-base.
+  (profile nil) (node-profile nil)
   ;; Each peer's contact frontier, ACL2's table (fn-bpnjc-contact-close,
   ;; books/bp-node-job-cursor.lisp): carried between contacts, empty at
   ;; open, where every frontier is 0 (fn-bpnjc-frontier-zero).
@@ -43,13 +47,14 @@
 (defun fnn-bps-max-octets (service) (second (fnn-bps-profile service)))
 
 (defun fnn-bps-read-profile (root)
-  "ACL2's reading of ROOT's `bp-node-profile' (fn-bpnpf-profile-read): the
-default when the file is absent, the operator's (ROWS OCTETS ADU BUNDLE) when
-it is one valid profile frame (a format-1 frame takes the default ADU and
-bundle octets); anything else is refused before the journal is opened."
+  "ACL2's reading of ROOT's `bp-node-profile' (fn-bpnpf-node-profile-read):
+the default when the file is absent, the operator's (ROWS OCTETS ADU BUNDLE
+ROTATE) when it is one valid profile frame (a format-1 or format-2 frame
+takes the default ADU and bundle octets and the default rotation threshold);
+anything else is refused before the journal is opened."
   (let* ((path (fnn-join root (fnn-core 'fn-bpnpf-file-name)))
          (present (fnn-check-regular path))
-         (profile (fnn-core 'fn-bpnpf-profile-read (and present t)
+         (profile (fnn-core 'fn-bpnpf-node-profile-read (and present t)
                             (and present
                                  (fnn-octet-list
                                   (fnn-read-regular-bounded
@@ -1122,10 +1127,11 @@ fn-bpnr-selection-plan over the buffer's octets
          (spool-lock (fnn-tcl-spool-acquire root))
          ;; The selected generation names the lifecycle namespace this
          ;; process reads and publishes into; generation 0 is "lifecycle".
-         (profile (handler-case (fnn-bps-read-profile root)
-                    (error (e)
-                      (fnn-tcl-spool-release spool-lock)
-                      (error e))))
+         (node-profile (handler-case (fnn-bps-read-profile root)
+                         (error (e)
+                           (fnn-tcl-spool-release spool-lock)
+                           (error e))))
+         (profile (fnn-core 'fn-bpnpf-node-profile-base node-profile))
          (plan (handler-case (fnn-bps-selection-plan root profile)
                  (error (e)
                    (fnn-tcl-spool-release spool-lock)
@@ -1154,7 +1160,7 @@ fn-bpnr-selection-plan over the buffer's octets
                 (make-fnn-bps
                  :root root :lifecycle life :tally tally
                  :spool-lock spool-lock :lock-fd (fnn-bps-lock root)
-                 :plan plan :profile profile
+                 :plan plan :profile profile :node-profile node-profile
                  :state (fnn-core 'fn-bpnf-initial-state
                                   config (first profile) (second profile))))
           (unless (eq (fnn-core 'fn-bpn-machine-invariantp

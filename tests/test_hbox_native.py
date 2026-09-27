@@ -155,5 +155,98 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertNotIn("FN_RUN_HYBRID_E2E", line)
 
 
+class IdentityTests(unittest.TestCase):
+    """The production image's four identity variables (wire-bounds typed them)."""
+
+    def test_identity_hashes_launcher_core_and_the_runtime_it_execs(self):
+        import hashlib
+        import sys
+        import tempfile
+        sys.path.insert(0, str(ROOT))
+        from tools import native_env
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            runtime = base / "sbcl"
+            runtime.write_bytes(b"runtime")
+            image = base / "fn-host"
+            image.write_text(f'#!/bin/sh\nexec "{runtime}" --core "$0.core" "$@"\n')
+            Path(str(image) + ".core").write_bytes(b"core")
+            found = native_env.image_identity(image, "abc123")
+            answer = subprocess.run(
+                [sys.executable, str(ROOT / "tools" / "native_env.py"), "identity",
+                 "--image", str(image), "--source", "abc123", "--export"],
+                capture_output=True, text=True, timeout=30)
+        sha = lambda data: hashlib.sha256(data).hexdigest()  # noqa: E731
+        self.assertEqual(found, {
+            "FN_NATIVE_LAUNCHER_SHA256": sha(image_text(runtime).encode()),
+            "FN_NATIVE_RUNTIME_SHA256": sha(b"runtime"),
+            "FN_NATIVE_CORE_SHA256": sha(b"core"),
+            "FN_NATIVE_IMAGE_SOURCE_SHA": "abc123"})
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        self.assertIn(f"export FN_NATIVE_CORE_SHA256={sha(b'core')}", answer.stdout)
+        self.assertEqual(len(answer.stdout.splitlines()), 4)
+
+    def test_the_box_computes_identity_with_the_worktrees_source(self):
+        answer = dry("--images", "developer,production", ".", "tests.test_native_peering")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        line = next(line for line in answer.stdout.splitlines()
+                    if "native_env.py identity" in line)
+        self.assertIn('--image "build/fn-host"', line)
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+                              text=True).stdout.strip()
+        self.assertIn(f"--source {head}", line)
+        self.assertNotIn("FN_NATIVE_IMAGE_SOURCE_SHA=.", answer.stdout)
+
+    def test_a_reader_of_identity_without_a_production_image_is_refused(self):
+        answer = dry("--images", "developer", "HEAD", "tests.test_native_admin")
+        self.assertEqual(answer.returncode, 2)
+        self.assertIn("reads FN_NATIVE_LAUNCHER_SHA256: build the production image",
+                      answer.stderr)
+
+    def test_the_run_is_a_copy_so_an_edit_mid_run_cannot_reach_it(self):
+        # The script's head up to HERE=, then two probes, in a scratch tree:
+        # it runs from a private copy, HERE is still the tree, and the copy
+        # is gone when it exits.
+        import os
+        import shutil
+        text = SCRIPT.read_text()
+        head = text[:text.index("\nHERE=") + 1] + text[text.index("\nHERE=") + 1:].split("\n", 1)[0]
+        tree = ROOT / "build" / "hbox-native-copy-test"
+        (tree / "tools").mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, tree, True)
+        (tree / "tools" / "hbox_native.sh").write_text(
+            head + '\necho "COPY=$FN_HBOX_NATIVE_COPY"\necho "RUNNING=$0"\necho "HERE=$HERE"\n')
+        shutil.copy(ROOT / "tools" / "wait_for.sh", tree / "tools" / "wait_for.sh")
+        env = {k: v for k, v in os.environ.items() if not k.startswith("FN_HBOX_NATIVE_")}
+        probe = subprocess.run(["sh", str(tree / "tools" / "hbox_native.sh")], cwd=ROOT,
+                               capture_output=True, text=True, timeout=30, env=env)
+        fields = dict(line.split("=", 1) for line in probe.stdout.splitlines() if "=" in line)
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertTrue(fields["RUNNING"].startswith(fields["COPY"] + "/"), fields)
+        self.assertNotIn(str(tree), fields["COPY"])
+        self.assertEqual(fields["HERE"], str(tree.resolve()))
+        self.assertFalse(Path(fields["COPY"]).exists())
+
+
+class HarnessBudgetTests(unittest.TestCase):
+    def test_one_place_names_the_harness_stores_budget(self):
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from tools import native_env
+        self.assertEqual(native_env.harness_store_env({})["FN_INIT_BUDGET_MB"],
+                         native_env.HARNESS_INIT_BUDGET_MB)
+        self.assertEqual(native_env.harness_store_env({"FN_INIT_BUDGET_MB": "5"})
+                         ["FN_INIT_BUDGET_MB"], "5")
+        # No harness types the figure itself (four did, 2026-09-27).
+        typed = subprocess.run(["git", "grep", "-n", "-E", "FN_INIT_BUDGET_MB.{0,40}9830[4]",
+                                "--", "tools", "tests"],
+                               cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(typed.stdout, "")
+
+
+def image_text(runtime):
+    return f'#!/bin/sh\nexec "{runtime}" --core "$0.core" "$@"\n'
+
+
 if __name__ == "__main__":
     unittest.main()

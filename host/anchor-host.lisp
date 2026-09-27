@@ -60,6 +60,7 @@
                            values)))))
 
 (defun fn-anchor-host-decode (octets digest)
+  (declare (xargs :guard (fn-cbor-octet-listp octets)))
   (let ((result (fn-anchor-decode octets digest)))
     (if (or (not (fn-frame-result-okp result))
             (not (equal (fn-frame-result-kind result) :incarnation)))

@@ -38,15 +38,17 @@ class ReaderTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.temporary.cleanup()
 
-    def start(self, **node):
+    def start(self, reader=None, tls=False, fn=None, tls_cert=None, **node):
         self.node = FakeNode(self.cert, self.key, groups=("fn.test",), **node)
         self.node.start()
         self.state = tempfile.TemporaryDirectory()
         args = SimpleNamespace(host="127.0.0.1", port=self.node.port, timeout=5.0,
-                               plain_node=False, tls_cert=str(self.cert))
+                               plain_node=False, tls_cert=str(tls_cert or self.cert),
+                               tls=tls, fn=fn)
         self.server = fn_reader.Reader(("127.0.0.1", 0), fn_reader.Node(args),
                                        Path(self.state.name), site="Test news",
-                                       mail_domain="example.invalid", secure=False)
+                                       mail_domain="example.invalid",
+                                       **dict({"secure": False}, **(reader or {})))
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.cookies = {}
@@ -78,6 +80,7 @@ class ReaderTests(unittest.TestCase):
         text = response.read().decode("utf-8")
         for name, value in response.getheaders():
             if name.lower() == "set-cookie":
+                self.set_cookies = getattr(self, "set_cookies", []) + [value]
                 key, _, rest = value.partition("=")
                 content = rest.split(";")[0]
                 if "Max-Age=0" in value:
@@ -243,6 +246,133 @@ class ReaderTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             fn_reader.main(["--node", "127.0.0.1:1", "--tls-cert", str(self.cert),
                             "--state", tempfile.mkdtemp(), "--listen", "0.0.0.0:0"])
+
+
+    # --------------------------------------------------- the release's reader
+
+    def test_implicit_tls_signs_in_without_starttls(self):
+        # The node's tls_port (563): TLS from the first octet, then AUTHINFO.
+        self.start(password=PASSWORD, implicit_tls=True, tls=True)
+        status, where, _ = self.sign_in()
+        self.assertEqual((status, where), (303, "/"))
+        self.assertNotIn("STARTTLS", self.node.seen)
+        self.assertIn("AUTHINFO PASS *", self.node.seen)
+        self.assertIn("fn.test", self.request("GET", "/")[2])
+
+    def test_implicit_tls_with_the_wrong_certificate_sends_no_password(self):
+        other = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, other)
+        wrong, _ = make_pair(other)
+        self.start(password=PASSWORD, implicit_tls=True, tls=True, tls_cert=wrong)
+        status, _, page = self.sign_in()
+        self.assertEqual(status, 502)
+        self.assertIn("password was not sent", page)
+        self.assertEqual(self.node.seen, [])
+
+    def test_port_563_is_implicit_tls_without_the_flag(self):
+        self.assertTrue(fn_reader.fn_client.implicit_tls(
+            SimpleNamespace(port=563, tls=False, plain=False)))
+        self.assertFalse(fn_reader.fn_client.implicit_tls(
+            SimpleNamespace(port=119, tls=False, plain=False)))
+        self.assertTrue(fn_reader.fn_client.implicit_tls(
+            SimpleNamespace(port=11563, tls=True, plain=False)))
+
+    def test_proxied_counts_each_browser_and_marks_cookies_secure(self):
+        self.start(password=PASSWORD, reader={"secure": True, "proxied": True,
+                                              "node_failures": 100})
+        for _ in range(fn_reader.FAILED_SIGNINS):
+            self.cookies = {}
+            self.request_as("198.51.100.1", "wrong")
+        self.cookies = {}
+        self.assertEqual(self.request_as("198.51.100.1", PASSWORD)[0], 429)
+        # another browser behind the same proxy is not held back by the first
+        self.cookies = {}
+        status, where, _ = self.request_as("198.51.100.2", PASSWORD)
+        self.assertEqual((status, where), (303, "/"))
+        # a browser that writes its own X-Forwarded-For is still the proxy's last entry
+        self.cookies = {}
+        self.assertEqual(self.request_as("203.0.113.9, 198.51.100.1", PASSWORD)[0], 429)
+        self.assertTrue(all("Secure" in value for value in self.set_cookies))
+
+    def request_as(self, forwarded, password):
+        _, _, page = self.request("GET", "/signin")
+        pre = re.search(r"name='pre' value='([^']+)'", page).group(1)
+        return self.request("POST", "/signin", {"pre": pre, "next": "/", "user": "alice",
+                                                "password": password},
+                            headers={"X-Forwarded-For": forwarded})
+
+    def test_refused_logins_reaching_the_node_are_paced_for_everyone(self):
+        self.start(password=PASSWORD, reader={"proxied": True, "node_failures": 3})
+        for n in range(3):
+            self.cookies = {}
+            self.assertEqual(self.request_as("198.51.100.%d" % (n + 10), "wrong")[0], 401)
+        passes = self.node.seen.count("AUTHINFO PASS *")
+        self.cookies = {}
+        status, _, page = self.request_as("198.51.100.50", PASSWORD)
+        self.assertEqual(status, 429)
+        self.assertIn("wait a minute", page)
+        self.assertEqual(self.node.seen.count("AUTHINFO PASS *"), passes)
+
+    def fake_fn(self, exit_code, said):
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, directory)
+        script = directory / "fn"
+        script.write_text("#!/bin/sh\nprintf '%%s\\n' \"$@\" > %s/argv\ncat > %s/stdin\n"
+                          "echo '%s'\nexit %d\n" % (directory, directory, said, exit_code))
+        script.chmod(0o755)
+        return directory, script
+
+    def redeem(self, code="0a1b2c", user="carol", password="new-pass", again=None):
+        _, _, page = self.request("GET", "/redeem")
+        pre = re.search(r"name='pre' value='([^']+)'", page).group(1)
+        return self.request("POST", "/redeem", {"pre": pre, "code": code, "user": user,
+                                                "password": password,
+                                                "again": password if again is None else again})
+
+    def test_an_invitation_is_redeemed_by_the_nodes_own_command(self):
+        directory, script = self.fake_fn(0, "redeemed: the account carol is ready")
+        self.start(password="new-pass", implicit_tls=True, tls=True, fn=str(script))
+        status, where, _ = self.redeem()
+        self.assertEqual((status, where), (303, "/"))
+        argv = (directory / "argv").read_text().split("\n")
+        self.assertEqual(argv[:4], ["redeem", "127.0.0.1:%d" % self.node.port, "0a1b2c", "carol"])
+        self.assertIn("--tls", argv)
+        self.assertIn("--cafile", argv)
+        self.assertNotIn("new-pass", argv)
+        self.assertEqual((directory / "stdin").read_text(), "new-pass\n")
+        self.assertIn("fnr_session", self.cookies)
+        self.assertIn("fn.test", self.request("GET", "/")[2])
+
+    def test_a_refused_code_says_the_nodes_words_and_signs_nobody_in(self):
+        _, script = self.fake_fn(1, "refused redeem code: the invitation code or the "
+                                    "login was refused")
+        self.start(password=PASSWORD, fn=str(script))
+        status, _, page = self.redeem()
+        self.assertEqual(status, 403)
+        self.assertIn("the invitation code or the login was refused", page)
+        self.assertNotIn("fnr_session", self.cookies)
+
+    def test_redeem_shapes_never_reach_the_command_line_as_options(self):
+        directory, script = self.fake_fn(0, "redeemed")
+        self.start(password=PASSWORD, fn=str(script))
+        self.assertEqual(self.redeem(code="--tls")[0], 400)
+        self.assertEqual(self.redeem(user="--cafile")[0], 400)
+        self.assertEqual(self.redeem(again="different")[0], 400)
+        self.assertFalse((directory / "argv").exists())
+
+    def test_settings_file_is_the_command_line(self):
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, directory)
+        settings = directory / "reader.conf"
+        settings.write_text("# comment\nnode = news.example.org:563\nsite = 'Our news'\n"
+                            "system-ca = yes\nproxied = yes\nstate = /var/lib/fn-reader\n")
+        parser = fn_reader.build_parser()
+        self.assertEqual(fn_reader.settings_words(str(settings), parser),
+                         ["--node", "news.example.org:563", "--site", "Our news",
+                          "--system-ca", "--proxied", "--state", "/var/lib/fn-reader"])
+        settings.write_text("listen = 0.0.0.0:80\nbogus = 1\n")
+        with self.assertRaises(SystemExit):
+            fn_reader.settings_words(str(settings), parser)
 
 
 class TextTests(unittest.TestCase):

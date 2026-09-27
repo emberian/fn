@@ -54,6 +54,10 @@
 ;; Lane time-model (PRF-311): the gate's value with the disk's deadline
 ;; (fn-otm-*), over fn-ocp-*.
 (include-book "books/owner-time-model")
+;; Lane time-model-2: the decision journal (fn-otm-disk-step, fn-otm-note-step,
+;; fn-otm-start-line) and the 440 at the POST command (fn-otm-read-span).
+(include-book "books/owner-time-journal")
+(include-book "books/owner-time-admission")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")
@@ -74,18 +78,6 @@
 (include-book "books/store-observed-traces")
 (include-book "books/store-node")
 (include-book "books/checkpoint-publish")
-(include-book "books/checkpoint-pack-retire")
-; The native pack-reclaim command calls fn-bs-pack-reclaim-plan from this
-; guard-verified book; checkpoint-publish does not include it.
-(include-book "books/byte-store-compaction-correspondence")
-; Recovery after a reclaim calls fn-ccp-observe-framed and fn-ccp-coverage-framed
-; through host/checkpoint-host.lisp.
-(include-book "books/checkpoint-compaction-preservation")
-; The pack chain the open walks and compaction extends (P5).
-(include-book "books/checkpoint-pack-chain")
-; Each link decoded once per open (PRF-240): host/checkpoint-host.lisp's
-; chain step, coverage and observation call fn-ccco-*.
-(include-book "books/checkpoint-pack-chain-once")
 (include-book "books/node-config")
 (include-book "books/nntp")
 (include-book "books/served")
@@ -131,7 +123,8 @@
 (include-book "books/history-columns-store")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
-;; tries and the one-dispatch history recognizer).
+;; tries and the one-dispatch history recognizer), and the store's recover
+;; entries their fusion fn-rii-sco-extend-open (PRF-321).
 (include-book "books/replay-identity-index")
 ;; lane proto-determinism: `store ROOT digest' (host/store-node-host.lisp
 ;; fn-store-sn-replay-digest-report) calls books/state-digest (fn-sdg-).
@@ -233,6 +226,9 @@
 ;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
 (include-book "books/bp-held-projection")
 (include-book "books/bp-node-retire")
+;; Natural rotation at a node verb's open (fnn-bps-rotate-when-due calls
+;; fn-bpnrd-due-rotation-event; profile 3).
+(include-book "books/bp-node-rotation-due")
 (include-book "books/bp-report-observe")
 (include-book "books/bp-report-guards")
 (include-book "books/bp-handoff-status")

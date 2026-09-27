@@ -149,8 +149,3 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
 
 (defun acl2_*1*_acl2::fn-durable-realize-octets (file eoff elen poff plen trailer)
   (fn-durable-realize-octets file eoff elen poff plen trailer))
-
-(defun fnn-extent-reset ()
-  "Forget the cache (a store close or a reopen); descriptors stay open."
-  (sb-thread:with-mutex (*fnn-extent-lock*)
-    (setq *fnn-extent-cache* nil)))

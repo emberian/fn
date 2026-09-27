@@ -158,9 +158,13 @@
   (declare (xargs :guard t))
   (fn-store-event-nth 12 s))
 
-; This is an in-memory lookup accelerator derived from fn-sf-records.  It is
-; never a checkpoint or journal authority.  Its agreement is a proof-only
-; invariant, not a served-state recognizer.
+; RETIRED (lane history-columns-3, 2026-09-27): field 13 held an in-memory
+; event index derived from fn-sf-records (about 690 B per record).  No
+; transition writes it any more (every constructor and open puts nil), and no
+; reader reads it: the history's readers read the history stobj fn-hist
+; (books/history-columns.lisp) under R (books/history-columns-relation.lisp).
+; The slot stays so that the in-memory tuple's arity and the accessor
+; vocabulary of existing hints are unchanged; it is never persisted.
 (defun fn-sn-event-index (s)
   (declare (xargs :guard t))
   (fn-store-event-nth 13 s))
@@ -1448,17 +1452,12 @@
 (defun fn-sn-io (s operation result)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (mbe :logic (fn-sn-statep s) :exec t)
-      (let* ((old-files (fn-sn-files s))
-             (files (fn-sn-file-step old-files operation result))
-             (updated (fn-sn-update s files (fn-sn-node s))))
-        (if (and (eq operation :record-directory) (eq result :ok)
-                 (eq (fn-sf-phase old-files) :record-attempted))
-            (let* ((candidate (fn-sf-record-candidate old-files))
-                   (sequence (fn-store-event-sequence candidate)))
-              (fn-sn-with-event-index
-               updated (fn-cei-put sequence candidate
-                                   (fn-sn-event-index s))))
-          updated))
+      ; The record-directory append no longer extends a store-node event
+      ; index: field 13 is retired (lane history-columns-3).  The history's
+      ; readers read the history stobj fn-hist (books/history-columns.lisp)
+      ; under R (books/history-columns-relation.lisp).
+      (fn-sn-update s (fn-sn-file-step (fn-sn-files s) operation result)
+                    (fn-sn-node s))
     s))
 
 (verify-guards fn-sn-io
@@ -1555,7 +1554,8 @@
               (fn-sn-index-of-rows (fn-sf-records files))
               identity-context)
               (fn-cp-nth 1 consumer-replay))
-             (fn-cei-build (fn-sf-records files)))
+             ; field 13 retired (lane history-columns-3)
+             nil)
              topic-replay)
           ; The article replay and the identity replay are both required.
           ; Never leave :recovering visible when only the former succeeded:
@@ -1646,7 +1646,8 @@
                       (fn-sn-verdicts s) (fn-sn-keyring-snapshots s)
                       (fn-sn-identity-next s) (fn-sn-config-history s)
                       (fn-sn-consumer s) (fn-sn-topic s)
-                      (fn-cei-build rows))))
+                      ; field 13 retired (lane history-columns-3)
+                      nil)))
     s))
 
 (verify-guards fn-sn-set-keyring

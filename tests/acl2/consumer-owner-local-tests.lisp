@@ -3,6 +3,16 @@
 (include-book "must-fail-checked")
 (include-book "../../books/consumer-owner-local")
 
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-col-poll-h (o consumer)
+  ; fn-col-poll over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-col-poll o consumer fn-hist) fn-hist))
+      ans)))
+
 (defun colt-reserve (s)
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
                                 :frontier-file :ok)
@@ -95,7 +105,7 @@
                      (list (fn-cpe-make 0 0 0 '(:bootstrap (1) (2)))
                            (cadr *colt-register*) *colt-article*)))
 (defconst *colt-poll*
-  (fn-col-poll (fn-own-start *colt-after-article* 2) *colt-id*))
+  (fn-col-poll-h (fn-own-start *colt-after-article* 2) *colt-id*))
 (assert-event (eq (car *colt-poll*) :poll))
 (assert-event (equal (caddr *colt-poll*) *colt-article*))
 (assert-event

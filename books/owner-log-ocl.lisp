@@ -449,7 +449,6 @@
 (defthm fn-lgoc-pidx-sbud-prepare-preserves-invariant
   (implies (and (fn-lgoc-invariantp oc)
                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                (fn-ceis-indexedp (fn-sbud-oc-store oc))
                 (implies (fn-held-p record)
                          (fn-cnode-selection-servedp (fn-ocfg-config oc)
                                                      (fn-record-groups record))))

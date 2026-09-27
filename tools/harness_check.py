@@ -60,7 +60,16 @@ no further -- a verdict that reached a guard through a helper, a JSON file or
 another process is beyond a static reader, and those need the triage in
 `tests/README.md` instead.
 
-    python3 tools/harness_check.py            # all three, human output
+**entry-guards** (2026-09-27) asks that every entry the raw host
+dispatches names the KIND of each byte-carrying formal in its guard (the host
+entry guard, host/native/io.lisp fnn-entry-guard, refuses a handle there by
+name), and that the raw host reaches ACL2 only through a dispatcher.
+**test-stubs** asks that a raw test harness's stubs accept the arities the host
+functions it extracts call them with; **test-harness-reach** (report only)
+lists the calls an extracted function makes that the harness neither stubs
+nor extracts.
+
+    python3 tools/harness_check.py            # every lint, human output
     python3 tools/harness_check.py --json build/harness.json
     python3 tools/harness_check.py --lint signatures
 
@@ -772,6 +781,8 @@ RAW_DISPATCHERS = {"fnn-call": 0, "fnn-core": 0, "fnn-core-state": 1,
 # filled from the tree's formals by raw_arity_findings.
 ARENA_STATE_DISPATCHERS = {"fnn-core-state", "fnn-owner-core", "fnn-owner-action"}
 ARENA_ENTRIES: dict[str, int] = {}
+# The arena dispatchers (+2 above: the arena and state) pass the whole run.
+ARENA_RUN_DISPATCHERS = {"fnn-core-arena-state", "fnn-owner-feed-arena-step"}
 
 RAW_LAMBDA_KEYWORDS = {"&optional", "&rest", "&body", "&key", "&aux",
                        "&allow-other-keys", "&whole", "&environment"}
@@ -915,7 +926,12 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset()) -> No
             found.append(("'" + callee,
                           len(form) - 2 + RAW_DISPATCHERS[name]
                           + (ARENA_ENTRIES.get(callee, 0)
-                             if name in ARENA_STATE_DISPATCHERS else 0)))
+                             if name in ARENA_STATE_DISPATCHERS else 0)
+                          # an arena dispatcher counts the arena in its 2;
+                          # it passes the entry's whole trailing run
+                          # (fnn-arena-then-state), so add the rest of it
+                          + (max(ARENA_ENTRIES.get(callee, 1) - 1, 0)
+                             if name in ARENA_RUN_DISPATCHERS else 0)))
     if name not in shadowed and not name.startswith((":", "&")):
         found.append((name, len(form) - 1))
     walk(form[1:])
@@ -1337,6 +1353,321 @@ def _enclosing_test(parsed: ast.Module, call: ast.Call, lines: list[str]) -> str
 
 
 # --------------------------------------------------------------------------
+# entry guards (lane entry-guards, 2026-09-27)
+# --------------------------------------------------------------------------
+#
+# Every call from the raw host into ACL2 goes through `fnn-call'
+# (host/native/io.lisp), which runs `fnn-entry-guard' first: the entry's
+# arity, and the KIND conjuncts of the entry's own guard -- (R v) with R one
+# of books/payload-kinds.lisp's *fn-entry-guard-kinds* -- on the actual
+# arguments, refused by name ("host-entry-guard").  Six defects on
+# 2026-09-27 handed an arena HANDLE where an entry meant OCTETS (or passed
+# the wrong number of arguments) and surfaced as silent refusals downstream;
+# the check only bites where the entry's guard NAMES the kind.  So:
+#
+# **entry-guards** asks, of every entry a dispatcher names, that each formal
+# whose name says it carries bytes (`octets', `payload', `frame', `-records',
+# ...) is covered by a kind conjunct in the entry's guard, or that the
+# entry's body tests that kind first and refuses by name (the bp entries'
+# `:host-arguments'), or that ENTRY_KIND_EXEMPT names why not.  It also asks
+# that the raw host reaches ACL2 only through a dispatcher: a raw application
+# of an ACL2 function bypasses the entry guard (ENTRY_DIRECT_ALLOWED names
+# the two that must: a stobj primitive and the exit-code classifier).
+#
+# **test-stubs** asks, of every raw test harness under tests/*.lisp, that a
+# function it stubs has the lambda-list range the host defines today: a stub
+# that takes other arguments than the entry it stands for is the test-side
+# twin of the same defect (bp-sender, 2026-09-27: the transit identity
+# harness's stubs had drifted from host/native/owner.lisp).
+
+ENTRY_KIND_FORMAL = re.compile(
+    r"(^|-)(octets|payload|frame|octet-records|octet-suffix|octets-list)$")
+# A formal that COUNTS octets is a number, not bytes.
+ENTRY_KIND_COUNT = re.compile(r"^(max|min|budget|sizing|limit|bound|prospective-payload)-")
+ENTRY_KIND_EXEMPT = {
+    ("fn-native-operator-host-inspect-report", "msgid-octets"):
+        "the host passes a LIST of Message-IDs (msgid-list); the name is historical",
+    ("fn-native-operator-host-mission-run", "argv-octets"):
+        "a list of argument octet lists, preflighted by fn-native-operator-host-preflight",
+    ("fn-native-operator-host-preflight", "argv-octets"):
+        "the argv preflight is the check: it refuses a malformed argv by name",
+    ("fn-native-operator-host-run", "argv-octets"):
+        "a list of argument octet lists, preflighted (fn-native-operator-host-preflight)",
+    ("fn-native-operator-host-run", "config-octets"):
+        "read by fnn-operator-read-config, bounded; NIL when absent",
+    ("fn-owner-control-submit", "payload"):
+        "the received article's buffer (host/native/hybrid-control.lisp)",
+    ("fn-store-sco-publish-setup", "segment-octets"):
+        "a segment descriptor, not bytes",
+    ("fn-native-health-host-exit", "octets"):
+        "the health report's summary structure (fnn-operator-health-report)",
+    # Counts named after octets.
+    ("fn-srs-chunk-fullp", "octets"): "a count of octets (natp in the body)",
+    ("fn-ockp-segment-octets", "record-octets"): "a count of octets (nfix)",
+    ("fn-lgc-take", "octets"): "the open batch's running octet count",
+    # Total decoders over any value: a non-octet argument decodes to the
+    # decoder's own refusal, which the host names.
+    ("fn-ns-file-parse", "octets"): "total parser; NIL is refused by fnn-node-secret-read-entry",
+    ("fn-pull-journal-scan", "frame"): "total journal scan (guard t)",
+    ("fn-bpnf-inspect-adu", "frame"): "total unframe (fn-bpnf-stored-recordp gates it)",
+    ("fn-bpnpf-node-profile-write-octets", "octets"): "a count (the octets limit), gated by fn-bpnpf-profile-upgradep (bp-rotation: the format-3 writer the host dispatches)",
+    ("fn-heap-limit-of-octets", "octets"): "total parser of a limit file (true-listp tested)",
+}
+ENTRY_DIRECT_ALLOWED = {
+    "fn-octets$c-reserve": "the octet buffer's stobj primitive (host/native/io.lisp fnn-live-octets)",
+    "fn-outcome-host-condition-exit-code": "runs in handlers, where a dispatcher's own fault would recurse",
+}
+
+
+def entry_guard_kinds(root: Path) -> set[str]:
+    """The recognizers books/payload-kinds.lisp names in *fn-entry-guard-kinds*."""
+    source = root / "books" / "payload-kinds.lisp"
+    kinds: set[str] = set()
+    if not source.is_file():
+        return kinds
+    from tools import ledger
+    for form, _line in ledger.Reader(source.read_text(encoding="utf-8")).top_level():
+        if (ledger.head(form) == "defconst" and len(form) >= 3
+                and str(form[1]).lower() == "*fn-entry-guard-kinds*"):
+            value = form[2]
+            if ledger.head(value) == "quote":
+                value = value[1]
+            for pair in value if isinstance(value, list) else []:
+                if isinstance(pair, list) and pair:
+                    kinds.add(str(pair[0]).lower())
+    return kinds
+
+
+def _acl2_definition_forms(tree, raw: set[str]) -> dict[str, tuple[list, str]]:
+    from tools import ledger
+    found: dict[str, tuple[list, str]] = {}
+
+    def visit(form, where):
+        name = ledger.head(form)
+        if name in ("progn", "encapsulate", "local", "with-output", "defsection",
+                    "mutual-recursion"):
+            for item in form[1:]:
+                visit(item, where)
+            return
+        if (name in ("defun", "defund", "defun-nx", "defun-inline") and len(form) >= 4
+                and isinstance(form[1], ledger.Sym)):
+            found.setdefault(str(form[1]).lower(), (form, where))
+    for relative, host in sorted(tree.hosts.items()):
+        if relative in raw:
+            continue
+        for form, line in host.forms:
+            visit(form, "{}:{}".format(relative, line))
+    for path in sorted((ROOT / "books").glob("*.lisp")):
+        relative = path.relative_to(ROOT).as_posix()
+        for form, line in ledger.Reader(path.read_text(encoding="utf-8")).top_level():
+            visit(form, "{}:{}".format(relative, line))
+    return found
+
+
+def _xargs(form) -> tuple[object, list[str]]:
+    from tools import ledger
+    guard = None
+    stobjs: list[str] = []
+    for item in form[3:-1]:
+        if ledger.head(item) != "declare":
+            continue
+        for spec in item[1:]:
+            if ledger.head(spec) != "xargs":
+                continue
+            pairs = spec[1:]
+            for index in range(0, len(pairs) - 1, 2):
+                key = str(pairs[index]).lower()
+                if key == ":guard":
+                    guard = pairs[index + 1]
+                elif key == ":stobjs":
+                    value = pairs[index + 1]
+                    stobjs = [str(v).lower() for v in (value if isinstance(value, list) else [value])]
+    return guard, stobjs
+
+
+def _unary_kind_conjuncts(term, kinds: set[str]) -> set[str]:
+    from tools import ledger
+    covered: set[str] = set()
+    for conjunct in ledger.conjuncts(term) if term is not None else []:
+        if (isinstance(conjunct, list) and len(conjunct) == 2
+                and isinstance(conjunct[1], ledger.Sym)
+                and str(ledger.head(conjunct) or "").lower() in kinds):
+            covered.add(str(conjunct[1]).lower())
+    return covered
+
+
+def _body_checks(body, kinds: set[str]) -> set[str]:
+    """Formals the body's first `if` tests with a kind recognizer."""
+    from tools import ledger
+    if ledger.head(body) != "if" or len(body) < 2:
+        return set()
+    test = body[1]
+    found: set[str] = set()
+    if ledger.head(test) == "or":
+        for item in test[1:]:
+            if ledger.head(item) == "not" and len(item) == 2:
+                found |= _unary_kind_conjuncts(item[1], kinds)
+        return found
+    if ledger.head(test) == "not" and len(test) == 2:
+        test = test[1]
+    return _unary_kind_conjuncts(test, kinds)
+
+
+def entry_guard_findings(root: Path) -> tuple[list[dict], dict]:
+    from tools import ledger
+    tree = ledger.load_tree()
+    raw = ledger.raw_host_paths(tree)
+    kinds = entry_guard_kinds(root)
+    definitions = _acl2_definition_forms(tree, raw)
+    rawdefs, _ambiguous = raw_definitions({r: tree.hosts[r].forms for r in raw})
+    callees: dict[str, str] = {}
+    direct: list[tuple[str, str]] = []
+    for relative in sorted(raw):
+        for form, line in tree.hosts[relative].forms:
+            applications: list = []
+            raw_applications(form, applications)
+            for name, _count in applications:
+                if name.startswith("'"):
+                    callees.setdefault(name[1:], "{}:{}".format(relative, line))
+                elif name in tree.functions and name not in rawdefs:
+                    direct.append((name, "{}:{}".format(relative, line)))
+    findings: list[dict] = []
+    counts = {"entries": len(callees), "kind_formals": 0, "guarded": 0,
+              "body_checked": 0, "exempt": 0, "direct_calls_allowed": 0}
+    if not kinds:
+        findings.append({"lint": "entry-guards", "where": "books/payload-kinds.lisp",
+                         "problem": "*fn-entry-guard-kinds* not found: the host "
+                                    "entry guard has no kinds to check"})
+    seen_exempt: set = set()
+    for callee, site in sorted(callees.items()):
+        entry = definitions.get(callee)
+        if entry is None:
+            continue
+        form, where = entry
+        guard, stobjs = _xargs(form)
+        formals = [str(f).lower() for f in (form[2] if isinstance(form[2], list) else [])]
+        data = [f for f in formals if f not in stobjs
+                and f not in ("state", "fn-arena", "fn-cat", "fn-hist", "fn-octets")]
+        covered = _unary_kind_conjuncts(guard, kinds)
+        checked = _body_checks(form[-1], kinds)
+        for formal in data:
+            if not ENTRY_KIND_FORMAL.search(formal) or ENTRY_KIND_COUNT.search(formal):
+                continue
+            counts["kind_formals"] += 1
+            if formal in covered:
+                counts["guarded"] += 1
+            elif formal in checked:
+                counts["body_checked"] += 1
+            elif (callee, formal) in ENTRY_KIND_EXEMPT:
+                counts["exempt"] += 1
+                seen_exempt.add((callee, formal))
+            else:
+                findings.append({
+                    "lint": "entry-guards", "where": where, "callee": callee,
+                    "problem": "formal {} carries bytes but the entry's guard names no "
+                               "kind for it (books/payload-kinds.lisp "
+                               "*fn-entry-guard-kinds*): the host entry guard cannot "
+                               "refuse a handle there; dispatched at {}".format(formal, site)})
+    for key, why in sorted(ENTRY_KIND_EXEMPT.items()):
+        if key not in seen_exempt:
+            findings.append({"lint": "entry-guards", "where": "tools/harness_check.py",
+                             "callee": key[0],
+                             "problem": "stale ENTRY_KIND_EXEMPT row ({}: {})".format(
+                                 key[1], why)})
+    for name, site in direct:
+        if name in ENTRY_DIRECT_ALLOWED:
+            counts["direct_calls_allowed"] += 1
+            continue
+        findings.append({"lint": "entry-guards", "where": site, "callee": name,
+                         "problem": "the raw host applies an ACL2 function directly, "
+                                    "bypassing fnn-call's entry guard; dispatch it "
+                                    "(fnn-core) or name it in ENTRY_DIRECT_ALLOWED"})
+    return findings, counts
+
+
+def test_stub_findings(root: Path) -> tuple[list[dict], dict]:
+    """A raw test harness EXTRACTS named host functions (it reads the host
+    file's forms and evaluates the defuns it names) and STUBS the rest.  Each
+    call an extracted function makes to a raw host function must reach a
+    stub or another extracted function, with an arity the stub accepts."""
+    from tools import ledger
+    tree = ledger.load_tree()
+    raw = ledger.raw_host_paths(tree)
+    sources = {r: tree.hosts[r].forms for r in raw}
+    rawdefs, _ambiguous = raw_definitions(sources)
+    bodies: dict[str, object] = {}
+    for relative, forms in sources.items():
+        for form, _line in forms:
+            if (ledger.head(form) == "defun" and len(form) >= 3
+                    and isinstance(form[1], ledger.Sym)):
+                bodies.setdefault(str(form[1]).lower(), form)
+    findings: list[dict] = []
+    counts = {"stub_files": 0, "extracted": 0, "stubs": 0, "calls_checked": 0}
+    for path in sorted((root / "tests").glob("*.lisp")):
+        relative = path.relative_to(root).as_posix()
+        text = path.read_text(encoding="utf-8")
+        if re.search(r'\(load\s+"host/', text):
+            continue  # it loads whole host files: nothing is stubbed in their place
+        forms = ledger.Reader(text).top_level()
+        stubs, _ = raw_definitions({relative: forms})
+        mentioned = {m.lower() for m in re.findall(r"\b(fnn-[A-Za-z0-9*+%-]+)", text)}
+        extracted = {name for name in mentioned
+                     if name in bodies and name not in stubs}
+        if not extracted:
+            continue
+        counts["stub_files"] += 1
+        counts["extracted"] += len(extracted)
+        counts["stubs"] += len(stubs)
+        for name in sorted(extracted):
+            applications: list = []
+            raw_applications(bodies[name], applications)
+            for callee, count in applications:
+                if not callee.startswith("fnn-") or callee not in rawdefs:
+                    continue
+                counts["calls_checked"] += 1
+                if (relative, callee) in STUB_ARITY_DECLARED:
+                    continue
+                if callee in stubs:
+                    low, high, where = stubs[callee]
+                    if count < low or (high is not None and count > high):
+                        findings.append({
+                            "lint": "test-stubs", "where": where, "callee": callee,
+                            "defined": rawdefs[callee][2],
+                            "problem": "stale stub: the extracted {} calls it with {} "
+                                       "argument(s); the stub takes {}".format(
+                                           name, count, low if high == low else
+                                           "{} to {}".format(low, "any" if high is None else high))})
+                elif callee not in extracted:
+                    findings.append({
+                        "lint": "test-stubs", "where": relative, "callee": callee,
+                        "defined": rawdefs[callee][2],
+                        "problem": "stale harness: the extracted {} calls {}, which "
+                                   "the harness neither stubs nor extracts".format(name, callee)})
+    unique = {(row["where"], row["callee"], row["problem"]): row for row in findings}
+    rows = sorted(unique.values(), key=lambda row: (row["where"], row["callee"]))
+    TEST_HARNESS_REACH[:] = [row for row in rows if "stale harness" in row["problem"]]
+    return [row for row in rows if "stale stub" in row["problem"]], counts
+
+
+# The calls an extracted host function makes that the harness neither stubs
+# nor extracts: an undefined function at run time IF that branch runs (a
+# stale harness, the bp-sender finding of 2026-09-27: fnn-owner-commit-
+# queued-locked), or a branch the test never takes.  A static reader cannot
+# tell which, so this lint reports and does not gate.
+TEST_HARNESS_REACH: list[dict] = []
+
+
+def test_harness_reach_findings(root: Path) -> tuple[list[dict], dict]:
+    test_stub_findings(root)
+    return list(TEST_HARNESS_REACH), {"unresolved_calls": len(TEST_HARNESS_REACH)}
+
+
+# A stub that deliberately narrows the host's lambda list (it answers only the
+# calls its test makes) names why.
+STUB_ARITY_DECLARED: dict[tuple[str, str], str] = {}
+
+
+# --------------------------------------------------------------------------
 
 
 LINTS = {
@@ -1345,6 +1676,9 @@ LINTS = {
     "raw-arity": (raw_arity_findings, True),
     "duplicate-defun": (duplicate_defun_findings, True),
     "waivers": (waiver_findings, True),
+    "entry-guards": (entry_guard_findings, True),
+    "test-stubs": (test_stub_findings, True),
+    "test-harness-reach": (test_harness_reach_findings, False),
 }
 
 

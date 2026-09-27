@@ -413,10 +413,12 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
 
     def test_ten_mebibyte_article_through_four_kib_fragments(self):
         # SCN-077: under a profile that admits it (4,096 held rows, 16 MiB
-        # held, an 11 MiB ADU), a 10 MiB article's ADU is cut into fragments
-        # whose bundles are at most 4 KiB; the receiver is killed with
-        # SIGKILL halfway through the family, the journal rotates while the
-        # family is in flight, and the rest arrive at a restarted receiver.
+        # held, an 11 MiB ADU) and rotates every 1,000 records, a 10 MiB
+        # article's ADU is cut into fragments whose bundles are at most 4 KiB;
+        # the receiver is killed with SIGKILL halfway through the family, the
+        # journal rotates by itself twice while the family is in flight (at
+        # the opens that find a half's records in the generation; books/
+        # bp-node-rotation-due), and the rest arrive at a restarted receiver.
         started = time.monotonic()
         paths, total = self.author_large_fragments(10 * 1024 * 1024, 4000)
         authored = time.monotonic()
@@ -426,9 +428,10 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertGreater(count, 2560)
         raised = self.invoke("bp-node", "profile", self.journal,
                              "dtn://receiver/", 4096, 16777216,
-                             11 * 1024 * 1024, 1048576)
+                             11 * 1024 * 1024, 1048576, 1000)
         self.assertEqual(raised.returncode, 0, raised.stderr)
         self.assertIn(b"max-adu-octets=11534336", raised.stdout)
+        self.assertIn(b"rotate-records=1000", raised.stdout)
         order = list(reversed(range(count)))
         half = count // 2
         first, port = self.start_receiver(once=False)
@@ -439,10 +442,14 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertNotIn(b"BP fragment family durable", out)
         killed = time.monotonic()
         print(f"SCN-077 first-half-seconds={killed - authored:.1f}", flush=True)
-        # The journal rotates with the family's first half held.
-        rotated = self.rotate()
-        self.assertIn(b"BP journal generation retired", rotated)
-        self.assertEqual(self.recovered_held(), half)
+        # The next open finds the first half's records in the generation
+        # and rotates with the family's first half held.
+        held, rotated = self.recovered_held(output=True)
+        self.assertIn(b"BP journal generation selected generation=1", rotated)
+        self.assertIn(b"BP journal generation retired name=lifecycle", rotated)
+        self.assertEqual(held, half)
+        self.assertEqual([self.generation_number(path)
+                          for path in self.generation_directories()], [1])
         second, port = self.start_receiver(once=False)
         second_out = self.drain(second)
         self.send_many(port, order[half:-1], paths)
@@ -463,6 +470,13 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         print(f"SCN-077 reassembly-and-handoff-seconds={done - before_last:.1f}",
               flush=True)
         self.assertEqual(third.returncode, 0, (out[-4000:], err[-4000:]))
+        # The third open found the second half's records: the journal
+        # rotated again, with all but the last fragment held.  (Its open's
+        # lines precede the listening announcement, which start_receiver
+        # consumes; the durable state says it: generation 2 is the only
+        # generation directory left.)
+        self.assertEqual([self.generation_number(path)
+                          for path in self.generation_directories()], [2])
         self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
         self.assertEqual(out.count(b"BP application handoff durable"), 1,
                          (out, err))
@@ -530,22 +544,23 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         profile.write_bytes(saved)
         self.assertEqual(self.recovered_held(), 70)
 
-    def rotate(self, stop=None):
-        """`bp-node checkpoint` on the stopped receiver; with STOP, the
-        developer cut stops it there and the test kills it with SIGKILL."""
-        env = dict(self.env)
-        if stop:
-            env["FN_BP_ROTATION_TEST_STOP"] = stop
+    def kill_at_rotation(self):
+        """Start `bp-node serve'; as soon as its open announces a rotation,
+        kill it with SIGKILL.  No developer cut: the kill lands wherever
+        the publication or retirement program is, and every such point is
+        a crash point of the model (fn-bpnr-rotation-crash-recovers-old-
+        or-new, fn-bpnr-retirement-cut-keeps-open-view).  Returns what the
+        process printed."""
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "bp-node", "checkpoint",
-             str(self.journal), "dtn://receiver/"],
-            cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            bufsize=0)
-        if not stop:
-            out, err = process.communicate(timeout=120)
-            self.assertEqual(process.returncode, 0, (out, err))
-            return out
-        marker = b"BP journal rotation stopped at=" + stop.encode()
+            [str(IMAGE), "--fn", "bp-node", "serve", str(self.port),
+             str(self.journal), str(self.store), str(self.receipts),
+             str(self.workflow), "dtn://receiver/", "dtn://sender/",
+             "dtn://receiver/", "native-policy", "dtn://receiver/",
+             "127.0.0.1", "9", "1", "3600000", "2", "32",
+             "1048576", "1000", "0"],
+            cwd=ROOT, env=self.env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, bufsize=0)
+        marker = b"BP journal rotation generation="
         seen = b""
         deadline = time.monotonic() + 120
         while marker not in seen and time.monotonic() < deadline:
@@ -555,14 +570,28 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                 if not chunk:
                     break
                 seen += chunk
-        self.assertIn(marker, seen, seen)
         process.kill()
         process.wait(timeout=15)
         process.stdout.close()
         process.stderr.close()
+        self.assertIn(marker, seen, seen)
         return seen
 
-    def recovered_held(self):
+    @staticmethod
+    def generation_number(path):
+        """The generation a directory name carries: `lifecycle' is 0, and
+        `lifecycle-gNNNN' (books/bp-node-rotation-codec.lisp
+        fn-bpnr-generation-directory) is NNNN."""
+        name = path.name
+        return 0 if name == "lifecycle" else int(name[len("lifecycle-g"):])
+
+    def generation_directories(self):
+        return sorted(path for path in self.journal.iterdir()
+                      if path.is_dir() and path.name.startswith("lifecycle"))
+
+    def recovered_held(self, output=False):
+        """The held count the node's open recovers (`bp-node dispatch');
+        after a rotation the open reopens, and the last reading counts."""
         reopened = self.invoke(
             "bp-node", "dispatch", self.journal, self.store,
             self.receipts, self.workflow, "dtn://receiver/", "dtn://sender/",
@@ -570,33 +599,81 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             "127.0.0.1", 9, 1, 3600000, 2, 32, 1048576, 1000, 0,
         )
         self.assertEqual(reopened.returncode, 0, reopened.stderr)
+        held = None
         for line in reopened.stdout.splitlines():
             if line.startswith(b"BP FNBS recovered held="):
-                return int(line.split(b"=", 1)[1])
-        self.fail(reopened.stdout)
+                held = int(line.split(b"=", 1)[1])
+        if held is None:
+            self.fail(reopened.stdout)
+        return (held, reopened.stdout) if output else held
 
     def test_rotation_with_a_family_in_flight_loses_no_fragment(self):
-        # N16 under load (item 5): seven of eight fragments are held when
-        # the journal rotates, killed after the rename, killed inside the
-        # retirement program, then clean.  Every reopen recovers the seven;
-        # the offset-zero fragment then completes the family once.
+        # N16 under load, on every image (F7): no developer cut.  Under a
+        # profile whose rotation threshold is one record, every open of a
+        # node verb that finds a record in its generation rotates (books/
+        # bp-node-rotation-due), with a family of eight in flight: killed
+        # inside that rotation, then a retirement step that fails (the
+        # state a death after the selection leaves), then clean.  Every
+        # reopen recovers the held fragments; the offset-zero fragment then
+        # completes the family once.
+        self.assertNotEqual(os.geteuid(), 0,
+                            "the failed retirement step needs a non-root run")
+        raised = self.invoke("bp-node", "profile", self.journal,
+                             "dtn://receiver/", 64, 16777216, 65538, 1048576, 1)
+        self.assertEqual(raised.returncode, 0, raised.stderr)
+        self.assertIn(b"rotate-records=1", raised.stdout)
         fragments = self.author_fragments(8)
         first, port = self.start_receiver(once=False)
-        for number in range(7, 0, -1):
+        for number in range(7, 3, -1):
             sent = self.send_fragment(port, fragments[number], number)
             self.assertEqual(sent.returncode, 0,
                              (number, sent.stdout, sent.stderr))
         first.terminate()
         out, err = first.communicate(timeout=120)
         self.assertNotIn(b"BP fragment family durable", out)
-        self.assertEqual(self.recovered_held(), 7)
-        for stop in ("replace", "retire-2"):
-            self.rotate(stop)
-            self.assertEqual(self.recovered_held(), 7, stop)
-        out = self.rotate()
-        self.assertIn(b"BP journal generation retired name=lifecycle", out)
-        self.assertEqual(self.recovered_held(), 7)
-        self.assertFalse((self.journal / "lifecycle").exists())
+        # The next open rotates (four records): killed there.
+        killed = self.kill_at_rotation()
+        self.assertIn(b"BP journal rotation generation=1 records=", killed)
+        held, recovered = self.recovered_held(output=True)
+        self.assertEqual(held, 4, (killed, recovered))
+        print("rotation kill: killed output ends "
+              + repr(killed[-300:]) + "; recovery printed "
+              + repr([line for line in recovered.splitlines()
+                      if b"journal" in line]), flush=True)
+        # A kill after the selection became durable leaves "lifecycle" for
+        # the next rotation to remove; before it, the reopen rotated.
+        print("rotation kill: generation directories "
+              + repr([path.name for path in self.generation_directories()]),
+              flush=True)
+        second, port = self.start_receiver(once=False)
+        for number in range(3, 0, -1):
+            sent = self.send_fragment(port, fragments[number], number)
+            self.assertEqual(sent.returncode, 0,
+                             (number, sent.stdout, sent.stderr))
+        second.terminate()
+        out, err = second.communicate(timeout=120)
+        self.assertNotIn(b"BP fragment family durable", out)
+        # The selected generation's directory cannot be emptied: the next
+        # open rotates, the new selection is durable, and retirement fails
+        # at the selected directory.  Recovery reads the new generation;
+        # the old one stays until the next rotation finishes the removal.
+        old = max(self.generation_directories(), key=self.generation_number)
+        os.chmod(old, 0o555)
+        try:
+            held, blocked = self.recovered_held(output=True)
+            self.assertEqual(held, 7, blocked)
+            self.assertIn(b"BP journal generation selected", blocked)
+            self.assertIn(b"BP journal generation retirement incomplete step=",
+                          blocked)
+            self.assertTrue(old.exists())
+            self.assertEqual(self.recovered_held(), 7)
+        finally:
+            os.chmod(old, 0o755)
+        # An open that does not rotate leaves the journal as it found it.
+        held, reopened = self.recovered_held(output=True)
+        self.assertEqual(held, 7)
+        self.assertNotIn(b"BP journal generation retired", reopened)
+        self.assertTrue(old.exists())
         last, port = self.start_receiver()
         sent = self.send_fragment(port, fragments[0], 0)
         self.assertEqual(sent.returncode, 0, (sent.stdout, sent.stderr))
@@ -606,6 +683,13 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertEqual(out.count(b"BP application handoff durable"), 1,
                          (out, err))
         self.assertEqual(self.article_count(), 1)
+        # The last fragment's records make the next open rotate; it first
+        # finishes the removal the failed step left.
+        _held, finished = self.recovered_held(output=True)
+        self.assertIn(b"BP journal generation retired name=" + old.name.encode(),
+                      finished)
+        self.assertFalse(old.exists())
+        self.assertEqual(len(self.generation_directories()), 1)
 
 if __name__ == "__main__":
     unittest.main()

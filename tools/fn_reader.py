@@ -6,8 +6,12 @@ created, and reads and writes in the node's groups from any browser, phone
 included. It is a client, like tin or Thunderbird:
 
 - Every page is made from what the node answers over NNTP (RFC 3977), on a
-  STARTTLS connection whose certificate is verified (--tls-cert), logged in
-  with the friend's own AUTHINFO USER/PASS (RFC 4643). The node checks the
+  TLS connection whose certificate is verified (--tls-cert, or --system-ca
+  for a public certificate): STARTTLS (RFC 4642) on the node's reader port,
+  or TLS from the first octet (RFC 8143) on its `tls_port' (563, or --tls),
+  logged in with the friend's own AUTHINFO USER/PASS (RFC 4643).  A friend
+  with an invitation code makes the account here: the reader runs the
+  node's own `fn redeem' (--fn), which decides every step. The node checks the
   password, decides which groups the login may see or post to, accepts,
   refuses or holds each post, decides who may approve and whose cancel
   withdraws what. This process decides none of it and adds no authority:
@@ -25,7 +29,11 @@ included. It is a client, like tin or Thunderbird:
 Pages are server-rendered HTML with no JavaScript and nothing loaded from
 another site. The browser side is HTTPS (--https-cert/--https-key); plain
 HTTP is accepted only when the listener is loopback (a TLS proxy or an ssh
-tunnel in front of it).
+tunnel in front of it; --proxied when that proxy is Caddy on this machine).
+
+A release carries it as clients/bin/fn-reader with a service that reads
+--settings FILE (docs/web.md); the threat model is docs/operator-internals.md,
+"The friends' web reader".
 
     python3 tools/fn_reader.py --node news.example.net:1119 --tls-cert node-cert.pem \\
         --state ~/.fn-reader --listen 0.0.0.0:8443 \\
@@ -49,6 +57,7 @@ import quopri
 import re
 import secrets
 import ssl
+import subprocess
 import sys
 import threading
 import time
@@ -73,6 +82,17 @@ SESSION_IDLE = 12 * 3600
 CONNECTION_IDLE = 90
 KEEP_CONNECTIONS = True  # one cached NNTP connection per signed-in session
 FAILED_SIGNINS = 8      # per address per 15 minutes, then a pause
+# Wrong passwords this reader lets reach the node per minute, from everyone
+# together.  Every friend's connection comes from this machine's one address,
+# and the node closes that address to NEW connections after its own
+# `exposure-auth-failures' 481s in a minute (10 on a public listener,
+# books/public-exposure.lisp): past it, every signed-in friend would lose the
+# node too.  So this reader stops short of the node's figure, and a guesser
+# costs other people only new sign-ins for the rest of that minute.  It is
+# this client's pacing; the node's rule stands whatever this is.
+NODE_FAILURES_PER_MINUTE = 5
+REDEEM_TIMEOUT = 120    # seconds for one `fn redeem' (the node's own command)
+MAX_SETTINGS = 16384    # octets of a --settings file
 ENVELOPE = "application/news-transmission"
 STATE_FORMAT = "fn-reader-account-v1"
 RECORD_FORMAT = "fn-reader-submission-v1"
@@ -368,8 +388,50 @@ class Account:
 class Node:
     def __init__(self, args):
         self.args = SimpleNamespace(host=args.host, port=args.port, timeout=args.timeout,
-                                    plain=args.plain_node, cafile=args.tls_cert)
+                                    plain=args.plain_node, cafile=args.tls_cert,
+                                    tls=bool(getattr(args, "tls", False)))
         self.name = fn_client.node_name(args.host, args.port)
+        self.fn = getattr(args, "fn", None)
+        self.redeeming = threading.Lock()
+
+    def redeem(self, code: str, login: str, password: str):
+        """Run the node's own `fn redeem' (ACL2's fn-redeem-step decides each
+        step; host/native/io.lisp fnn-command-redeem): (word, the line it said).
+
+        The code and login are argv words (so both are shape-checked by the
+        caller and can never be read as an option); the password goes on
+        standard input, never argv.  One at a time: each runs the node image.
+        """
+        if not self.fn:
+            return REFUSED, "this reader was started without --fn, so it cannot redeem codes"
+        words = [self.fn, "redeem", fn_client.node_name(self.args.host, self.args.port),
+                 code, login]
+        if fn_client.implicit_tls(self.args):
+            words.append("--tls")
+        if self.args.cafile:
+            words += ["--cafile", self.args.cafile]
+        with self.redeeming:
+            try:
+                # A new session: no controlling terminal, so `fn redeem' reads
+                # the password from standard input and never from a terminal
+                # the reader was started in.
+                done = subprocess.run(words, input=(password + "\n").encode("utf-8"),
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                      timeout=REDEEM_TIMEOUT, check=False,
+                                      start_new_session=True)
+            except subprocess.TimeoutExpired:
+                return UNCERTAIN, "fn redeem did not finish in %d s" % REDEEM_TIMEOUT
+            except OSError as exc:
+                return UNCERTAIN, "fn redeem could not start: %s" % exc
+        said = (done.stdout + done.stderr).decode("utf-8", "replace").strip().splitlines()
+        said = said[-1] if said else ""
+        # fn's exit codes: 0 redeemed (only on the node's 281), 1 refused by
+        # name, anything else a fault or a usage error of this reader's.
+        if done.returncode == 0:
+            return fn_client.DONE, said
+        if done.returncode == 1:
+            return REFUSED, said
+        return UNCERTAIN, said or "fn redeem exited %d" % done.returncode
 
     def connect(self, user: str, password: str):
         client = fn_client.Client(self.args, user, password, session_factory=BoundedSession)
@@ -565,14 +627,20 @@ class Reader(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(self, address, node: Node, state_root: Path, *, site: str,
-                 mail_domain: str, secure: bool):
+                 mail_domain: str, secure: bool, proxied: bool = False,
+                 node_failures: int = NODE_FAILURES_PER_MINUTE):
         super().__init__(address, Handler)
         self.node, self.state_root = node, state_root
         self.site, self.mail_domain, self.secure = site, mail_domain, secure
+        # Behind a TLS proxy on this machine (Caddy): the browser's address is
+        # the proxy's X-Forwarded-For, and the browser side is HTTPS.
+        self.proxied = proxied
+        self.node_failures = node_failures
         self.sessions: dict = {}
         self.states: dict = {}
         self.lock = threading.Lock()
         self.failures: dict = {}
+        self.refusals: list = []
 
     def state_for(self, user: str) -> AccountState:
         with self.lock:
@@ -604,11 +672,28 @@ class Reader(ThreadingHTTPServer):
     def failed(self, address: str, add: bool = False) -> int:
         now = time.time()
         with self.lock:
+            # Addresses whose window has passed are forgotten, so the table
+            # holds only the last 15 minutes' failing addresses.
+            for other in [a for a, ts in self.failures.items()
+                          if a != address and not any(now - t < 900 for t in ts)]:
+                del self.failures[other]
             recent = [t for t in self.failures.get(address, []) if now - t < 900]
             if add:
                 recent.append(now)
-            self.failures[address] = recent
+            if recent:
+                self.failures[address] = recent
+            else:
+                self.failures.pop(address, None)
             return len(recent)
+
+    def node_refused(self, add: bool = False) -> int:
+        """Refused logins and codes this reader carried to the node in the last minute."""
+        now = time.time()
+        with self.lock:
+            self.refusals = [t for t in self.refusals if now - t < 60]
+            if add:
+                self.refusals.append(now)
+            return len(self.refusals)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -642,6 +727,17 @@ class Handler(BaseHTTPRequestHandler):
     def theme(self) -> str:
         value = self.cookies().get("fnr_theme", "auto")
         return value if value in ("light", "dark", "auto") else "auto"
+
+    def address(self) -> str:
+        """The browser's address: the socket peer, or, behind a proxy on this
+        machine (--proxied), the last X-Forwarded-For entry, which is the one
+        the proxy itself saw (a browser's own X-Forwarded-For is to its left)."""
+        peer = self.client_address[0]
+        if self.server.proxied and peer in ("127.0.0.1", "::1"):
+            forwarded = (self.headers.get("X-Forwarded-For") or "").split(",")[-1].strip()
+            if forwarded and len(forwarded) <= 64:
+                return forwarded
+        return peer
 
     def cookie(self, name: str, value: str, max_age=None) -> str:
         parts = ["%s=%s" % (name, value), "Path=/", "HttpOnly", "SameSite=Lax"]
@@ -756,6 +852,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/signin":
             self.signin_page()
             return
+        if path == "/redeem":
+            self.redeem_page()
+            return
         account = self.account()
         if account is None:
             self.redirect(href("/signin", next=self.path if path != "/" else None))
@@ -795,6 +894,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/signin":
             self.signin(fields)
             return
+        if path == "/redeem":
+            self.redeem(fields)
+            return
         account = self.account()
         if account is None or not hmac.compare_digest(fields.get("csrf", ""), account.csrf):
             self.redirect("/signin")
@@ -829,6 +931,8 @@ class Handler(BaseHTTPRequestHandler):
                   "<label for='password'>Password</label><input type='password' id='password' "
                   "name='password' autocomplete='current-password' required>"
                   "<p><button type='submit'>Sign in</button></p></form>"
+                  "<p class='soft'>New here, with an invitation code? "
+                  "<a href='/redeem'>Make your account</a>.</p>"
                   % (warn, e(pre), e(nxt), e(user)),
                   code=code, headers=[("Set-Cookie", self.cookie("fnr_pre", pre, 3600))])
 
@@ -841,10 +945,14 @@ class Handler(BaseHTTPRequestHandler):
         if not pre or not hmac.compare_digest(pre, fields.get("pre", "")):
             self.signin_page("Something went wrong. Please try again.", user, 400, nxt)
             return
-        address = self.client_address[0]
+        address = self.address()
         if self.server.failed(address) >= FAILED_SIGNINS:
             self.signin_page("Too many tries. Please wait a few minutes and try again.",
                              user, 429, nxt)
+            return
+        if self.server.node_refused() >= self.server.node_failures:
+            self.signin_page("Too many wrong passwords here just now. Please wait a minute "
+                             "and try again.", user, 429, nxt)
             return
         if not user or not re.fullmatch(r"[\x21-\x7e]{1,64}", user) or \
                 not password or any(c in password for c in "\r\n\0"):
@@ -859,6 +967,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         if word == REFUSED and detail.startswith("481"):
             self.server.failed(address, add=True)
+            self.server.node_refused(add=True)
             self.signin_page("That name and password don't match.", user, 401, nxt)
         elif word == REFUSED and detail.startswith("the certificate"):
             self.signin_page("We couldn't confirm the server is the real one, so your "
@@ -869,6 +978,84 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.signin_page("We can't reach the server right now. Please try again in a "
                              "minute.", user, 503, nxt)
+
+    # ---------------------------------------------------------- invitation
+
+    def redeem_page(self, message: str = "", code_text: str = "", user: str = "",
+                    status: int = 200):
+        pre = self.cookies().get("fnr_pre") or secrets.token_urlsafe(18)
+        warn = ("<p class='note no' role='alert'>%s</p>" % e(message)) if message else ""
+        self.page("Make your account",
+                  "<h1>Make your account</h1><p class='soft'>Type the invitation code you "
+                  "were given, then choose a name and a password. The code works once.</p>%s"
+                  "<form method='post' action='/redeem'>"
+                  "<input type='hidden' name='pre' value='%s'>"
+                  "<label for='code'>Invitation code</label><input type='text' id='code' "
+                  "name='code' value='%s' autocomplete='off' autocapitalize='none' "
+                  "spellcheck='false' required>"
+                  "<label for='user'>Your name for signing in</label><input type='text' "
+                  "id='user' name='user' value='%s' autocomplete='username' "
+                  "autocapitalize='none' spellcheck='false' required>"
+                  "<p class='soft'>Letters, digits, dots, dashes and underscores.</p>"
+                  "<label for='password'>Password</label><input type='password' id='password' "
+                  "name='password' autocomplete='new-password' required>"
+                  "<label for='again'>The same password again</label><input type='password' "
+                  "id='again' name='again' autocomplete='new-password' required>"
+                  "<p><button type='submit'>Make my account</button></p></form>"
+                  "<p class='soft'>Already have one? <a href='/signin'>Sign in</a>.</p>"
+                  % (warn, e(pre), e(code_text), e(user)),
+                  code=status, headers=[("Set-Cookie", self.cookie("fnr_pre", pre, 3600))])
+
+    def redeem(self, fields: dict):
+        code_text = fields.get("code", "").strip()
+        user = fields.get("user", "").strip()
+        password, again = fields.get("password", ""), fields.get("again", "")
+        pre = self.cookies().get("fnr_pre", "")
+        if not pre or not hmac.compare_digest(pre, fields.get("pre", "")):
+            self.redeem_page("Something went wrong. Please try again.", code_text, user, 400)
+            return
+        address = self.address()
+        if self.server.failed(address) >= FAILED_SIGNINS or \
+                self.server.node_refused() >= self.server.node_failures:
+            self.redeem_page("Too many tries. Please wait a few minutes and try again.",
+                             code_text, user, 429)
+            return
+        # Shapes only, so that neither word can be read as an option by
+        # `fn redeem'; the node decides whether the code and the name are good.
+        if not re.fullmatch(r"[A-Za-z0-9]{1,128}", code_text):
+            self.redeem_page("That code doesn't look right: it is letters and digits only.",
+                             code_text, user, 400)
+            return
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", user):
+            self.redeem_page("Please choose a name of letters, digits, dots, dashes or "
+                             "underscores, starting with a letter or digit.",
+                             code_text, user, 400)
+            return
+        if not password or len(password.encode("utf-8")) > 512 or \
+                any(c in password for c in "\r\n\0"):
+            self.redeem_page("Please choose a password (at most 512 characters).",
+                             code_text, user, 400)
+            return
+        if not hmac.compare_digest(password, again):
+            self.redeem_page("The two passwords are different. Please type them again.",
+                             code_text, user, 400)
+            return
+        word, said = self.server.node.redeem(code_text, user, password)
+        if word == fn_client.DONE:
+            token = self.server.open_session(user, password)
+            self.redirect("/", [("Set-Cookie", self.cookie("fnr_session", token)),
+                                ("Set-Cookie", self.cookie("fnr_pre", "", 0))])
+            return
+        if word == REFUSED:
+            self.server.failed(address, add=True)
+            self.server.node_refused(add=True)
+            self.redeem_page("The server did not accept that. The code may be used up or "
+                             "expired, or the name may be taken. The server said: %s" % said,
+                             code_text, user, 403)
+            return
+        self.redeem_page("We can't reach the server right now. Please try again in a "
+                         "minute. (If it keeps happening, the code may already be used: "
+                         "try signing in.)", code_text, user, 503)
 
     def signout(self, account, fields):
         self.server.drop(self.cookies().get("fnr_session", ""))
@@ -1518,25 +1705,98 @@ class Handler(BaseHTTPRequestHandler):
 # ------------------------------------------------------------------ main
 
 
+SETTINGS = {"node": True, "tls-cert": True, "system-ca": False, "tls": False,
+            "plain-node": False, "listen": True, "https-cert": True, "https-key": True,
+            "proxied": False, "state": True, "site": True, "mail-domain": True,
+            "timeout": True, "fn": True, "node-failures-per-minute": True}
+
+
+def settings_words(path: str, parser) -> list:
+    """A settings file as command-line words: one `name = value' per line.
+
+    The names are the long options without `--' (SETTINGS); a switch is
+    `name = yes' (or `no').  `#' starts a comment line.  The file is what a
+    service unit names (packaging's fn-reader.service.in), so a site name
+    with spaces needs no shell quoting.  Words given on the command line
+    after --settings win.
+    """
+    try:
+        raw = Path(path).expanduser().read_bytes()
+    except OSError as exc:
+        parser.error("--settings %s: %s" % (path, exc))
+    if len(raw) > MAX_SETTINGS:
+        parser.error("--settings %s is larger than %d octets" % (path, MAX_SETTINGS))
+    words = []
+    for number, line in enumerate(raw.decode("utf-8", "replace").splitlines(), 1):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        name, equals, value = line.partition("=")
+        name, value = name.strip(), value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+            value = value[1:-1]
+        if not equals or name not in SETTINGS:
+            parser.error("--settings %s line %d: expected one of %s = VALUE"
+                         % (path, number, ", ".join(sorted(SETTINGS))))
+        if SETTINGS[name]:
+            words += ["--" + name, value]
+        elif value.lower() in ("yes", "true", "on"):
+            words.append("--" + name)
+        elif value.lower() not in ("no", "false", "off"):
+            parser.error("--settings %s line %d: %s is yes or no" % (path, number, name))
+    return words
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--node", required=True, help="the node's NNTP address, HOST:PORT")
+    parser.add_argument("--settings", help="a file of `name = value' lines, one per option")
+    parser.add_argument("--node", help="the node's NNTP address, HOST:PORT")
     parser.add_argument("--tls-cert", help="the node's certificate (or its CA) to verify")
+    parser.add_argument("--system-ca", action="store_true",
+                        help="verify the node's certificate against this system's "
+                             "certificate authorities (a public certificate, e.g. "
+                             "Let's Encrypt) instead of --tls-cert")
+    parser.add_argument("--tls", action="store_true",
+                        help="TLS from the first octet (the node's tls_port); the default "
+                             "on port 563, STARTTLS on any other port")
     parser.add_argument("--plain-node", action="store_true",
                         help="no TLS to the node: loopback development only")
     parser.add_argument("--listen", default="127.0.0.1:8920", help="HOST:PORT to serve on")
     parser.add_argument("--https-cert", help="certificate for the browser side")
     parser.add_argument("--https-key", help="its key")
-    parser.add_argument("--state", required=True, help="directory for read marks and records")
+    parser.add_argument("--proxied", action="store_true",
+                        help="behind an HTTPS proxy on this machine (Caddy): loopback "
+                             "listener only; the proxy's X-Forwarded-For is the browser's "
+                             "address and cookies are marked Secure")
+    parser.add_argument("--state", help="directory for read marks and records")
     parser.add_argument("--site", default="Our news", help="the name shown on every page")
     parser.add_argument("--mail-domain", help="domain for From and Message-ID (default: node host)")
     parser.add_argument("--timeout", type=float, default=30.0)
+    parser.add_argument("--fn", help="the node's `fn' command, for invitation codes "
+                                     "(default: bin/fn of the release this reader is in)")
+    parser.add_argument("--node-failures-per-minute", type=int,
+                        default=NODE_FAILURES_PER_MINUTE,
+                        help="refused sign-ins this reader carries to the node per minute "
+                             "(keep it below the node's exposure-auth-failures)")
     return parser
+
+
+def default_fn() -> str:
+    """bin/fn of the release this reader was installed in (PREFIX/clients/lib/)."""
+    candidate = Path(__file__).resolve().parents[2] / "bin" / "fn"
+    return str(candidate) if os.access(candidate, os.X_OK) else ""
 
 
 def main(argv=None) -> int:
     parser = build_parser()
+    argv = list(sys.argv[1:] if argv is None else argv)
+    first = parser.parse_args(argv)
+    if first.settings:
+        argv = settings_words(first.settings, parser) + argv
     args = parser.parse_args(argv)
+    for required in ("node", "state"):
+        if not getattr(args, required):
+            parser.error("--%s is required (on the command line or in --settings)" % required)
     host_text, port_text = fn_client.split_node(args.node)
     if not host_text or not (port_text or "").isdigit():
         parser.error("--node must be HOST:PORT")
@@ -1546,28 +1806,43 @@ def main(argv=None) -> int:
     loopback = host in ("127.0.0.1", "::1", "localhost")
     if args.plain_node and args.host not in ("127.0.0.1", "::1", "localhost"):
         parser.error("--plain-node is for a loopback node only; use --tls-cert")
-    if not args.plain_node and not args.tls_cert:
-        parser.error("--tls-cert is required: the node's certificate is verified")
+    if args.plain_node and (args.tls or args.tls_cert or args.system_ca):
+        parser.error("--plain-node is a node without TLS; it takes no --tls, --tls-cert "
+                     "or --system-ca")
+    if args.tls_cert and args.system_ca:
+        parser.error("--tls-cert and --system-ca are two ways to trust the node; give one")
+    if not args.plain_node and not args.tls_cert and not args.system_ca:
+        parser.error("--tls-cert (the node's own certificate) or --system-ca (a public "
+                     "certificate) is required: the node's certificate is verified")
     if bool(args.https_cert) != bool(args.https_key):
         parser.error("--https-cert and --https-key go together")
+    if args.proxied and (args.https_cert or not loopback):
+        parser.error("--proxied listens on loopback behind the proxy, without --https-cert")
     if not args.https_cert and not loopback:
         parser.error("passwords cross this listener: serve HTTPS (--https-cert/--https-key) "
                      "or listen on loopback behind a TLS proxy")
+    if not 0 < args.node_failures_per_minute:
+        parser.error("--node-failures-per-minute must be at least 1")
+    args.fn = args.fn or default_fn()
     state = Path(args.state).expanduser()
     state.mkdir(mode=0o700, parents=True, exist_ok=True)
     os.chmod(state, 0o700)
     node = Node(args)
     server = Reader((host, int(port)), node, state, site=args.site,
-                    mail_domain=args.mail_domain or args.host, secure=bool(args.https_cert))
+                    mail_domain=args.mail_domain or args.host,
+                    secure=bool(args.https_cert) or args.proxied, proxied=args.proxied,
+                    node_failures=args.node_failures_per_minute)
     if args.https_cert:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.minimum_version = ssl.TLSVersion.TLSv1_2
         context.load_cert_chain(args.https_cert, args.https_key)
         server.socket = context.wrap_socket(server.socket, server_side=True,
                                             do_handshake_on_connect=False)
-    print("fn reader: %s for %s; open %s://%s:%s/" % (
-        node.name, args.site, "https" if args.https_cert else "http", host,
-        server.server_address[1]), flush=True)
+    print("fn reader: %s (%s) for %s; open %s://%s:%s/%s" % (
+        node.name, "TLS" if fn_client.implicit_tls(node.args) else
+        ("plain" if args.plain_node else "STARTTLS"), args.site,
+        "https" if args.https_cert else "http", host, server.server_address[1],
+        " behind the HTTPS proxy" if args.proxied else ""), flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

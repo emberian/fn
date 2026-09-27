@@ -54,6 +54,7 @@
 
 (in-package "ACL2")
 (include-book "store-checkpoint-buffer")
+(include-book "frame-digest-buffer")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -530,10 +531,51 @@
   :hints (("Goal" :expand ((fn-sccr-planp plan pos fn-octets))
            :in-theory (enable fn-octets-len))))
 
+; The frame's seal over its window of the buffer (lane snapshot-open-2):
+; the executable digests the window in place (books/frame-digest-buffer.lisp
+; fn-frame-digest-range), never slicing it into a list; it is the list seal
+; on every frame the reader admits (fn-sccr-window-seal-is-seal).
+(defun fn-sccr-window-seal (prev header a b fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (true-listp prev) (fn-scc-octet-listp header)
+                              (natp a) (natp b) (<= a b)
+                              (<= b (fn-octets-len fn-octets)))))
+  (if (and (fn-scc-octet-listp prev) (fn-scc-octet-listp header))
+      (fn-frame-digest-range (append prev header) a (- b a) fn-octets)
+    :bad))
+
+(local
+ (defthm fn-sccr-scc-octet-listp-is-cbor
+   (implies (fn-scc-octet-listp x) (fn-cbor-octet-listp x))
+   :hints (("Goal" :in-theory (enable fn-scc-octet-listp fn-scc-octetp
+                                      fn-cbor-octet-listp fn-cbor-octetp)))))
+
+(local
+ (defthm fn-sccr-cbor-octet-listp-of-append
+   (equal (fn-cbor-octet-listp (append x y))
+          (and (fn-cbor-octet-listp (true-list-fix x)) (fn-cbor-octet-listp y)))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
+(local
+ (defthm fn-sccr-window-slice-octets
+   (implies (and (fn-octets-p fn-octets) (natp b) (<= b (len fn-octets)))
+            (fn-cbor-octet-listp (fn-oct-slice-list a b fn-octets)))
+   :hints (("Goal" :in-theory (disable fn-sccr-slice-octets)
+            :use ((:instance fn-sccr-slice-octets (i a) (n b)))))))
+
+(defthm fn-sccr-window-seal-is-seal
+  (implies (and (fn-octets-p fn-octets) (true-listp prev) (fn-scc-octet-listp header)
+                (natp a) (natp b) (<= a b) (<= b (len fn-octets)))
+           (equal (fn-sccr-window-seal prev header a b fn-octets)
+                  (fn-scc-seal prev header (fn-sccb-slice-acc a b nil fn-octets))))
+  :hints (("Goal" :in-theory (enable fn-scc-seal fn-frame-trailer)
+           :use ((:instance fn-shr-win-is-slice (wn (- b a)) (l fn-octets))))))
+
 ; One frame against the chain: the trailer (the next PREV), or nil.
 (defun fn-sccr-open-frame (frame index count sequence prev fn-octets)
   (declare (xargs :stobjs fn-octets
-                  :guard (and (fn-sccr-framep frame fn-octets) (true-listp prev))))
+                  :guard (and (fn-sccr-framep frame fn-octets) (true-listp prev))
+                  :guard-hints (("Goal" :in-theory (e/d (fn-octets-len) (fn-sccr-window-seal))))))
   (let* ((header (nth 0 frame)) (a (nth 1 frame)) (b (nth 2 frame))
          (trailer (nth 3 frame))
          (h (fn-scc-parse-header header)))
@@ -543,7 +585,8 @@
          (equal (nth 3 h) sequence)
          (equal (nth 2 h) (- b a))
          (equal trailer
-                (fn-scc-seal prev header (fn-sccb-slice-acc a b nil fn-octets)))
+                (mbe :logic (fn-scc-seal prev header (fn-sccb-slice-acc a b nil fn-octets))
+                     :exec (fn-sccr-window-seal prev header a b fn-octets)))
          trailer)))
 
 ; The chain over the plan: (:ok END) with END the last frame's B, or the

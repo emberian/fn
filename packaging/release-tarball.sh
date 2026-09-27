@@ -56,9 +56,18 @@
 #                                (libsodium, libfn-mldsa65; libzstd on
 #                                OpenBSD).  TLS is the system's libssl.
 #   fn/share/fn/                 fn.toml.example, systemd/fn.service.in or
-#                                rc.d/fn.rc.in, docs/install.md,
-#                                native-artifacts.txt, release-gate.txt,
-#                                runpath-check.txt
+#                                rc.d/fn.rc.in, docs/install.md, web.md and
+#                                agents.md, native-artifacts.txt,
+#                                release-gate.txt, runpath-check.txt
+#   fn/clients/                  fn's client programs, separate from the node
+#                                (packaging/install-clients.sh): the friends'
+#                                web reader with its service template, its
+#                                settings example and a Caddy snippet, and
+#                                fn-web, fn-client, fn-agent, fn-consumer,
+#                                fn-verify.  They need Python 3.9+
+#                                (clients/README.txt); the node never runs
+#                                them, and the runpath check holds the rest
+#                                of the tree to that (its clients rule).
 #
 # Building the OpenBSD release (openbsd-amd64).  It is built on OpenBSD 7.9
 # amd64 itself, with SBCL (pkg_add sbcl), libsodium, zstd and python3, and an
@@ -223,6 +232,7 @@ FN_NATIVE_HOST=$frozen/fn-host FN_NATIVE_CORE=$frozen/fn-host.core \
   FN_NATIVE_SOURCE_REVISION=$rev DESTDIR=$stage PREFIX=$base/fn \
   sh packaging/install-native.sh
 top=$stage$base/fn
+sh packaging/install-clients.sh "$top"
 mkdir -p "$top/share/fn/docs"
 install -m 0644 packaging/fn.toml.example "$top/share/fn/fn.toml.example"
 install -m 0644 docs/install.md "$top/share/fn/docs/install.md"
@@ -232,7 +242,7 @@ printed=$(env -i PATH=/usr/bin:/bin "$top/bin/fn" --version)
   echo "release-tarball: bin/fn --version printed '$printed', not 'fn $version ($short)'" >&2; exit 4; }
 "${PYTHON:-python3}" tools/runpath_check.py --tree "$top" --platform "${platform%%-*}" > "$stage/runpath-check.txt" 2>&1 || {
   cat "$stage/runpath-check.txt" >&2
-  echo 'release-tarball: the runpath check failed (Python on the deployed path, or a bundled object above the glibc floor: --runtime-from)' >&2; exit 4; }
+  echo 'release-tarball: the runpath check failed (Python on the deployed path, a client the node could run, or a bundled object above the glibc floor: --runtime-from)' >&2; exit 4; }
 install -m 0644 "$stage/runpath-check.txt" "$top/share/fn/runpath-check.txt"
 tail -1 "$stage/runpath-check.txt"
 (cd "$top" && find . -type f ! -name SHA256SUMS | LC_ALL=C sort | xargs $sums > SHA256SUMS)

@@ -41,6 +41,10 @@
    "fn-bp-profile-2": [
     "specs/storage.md"
    ],
+   "fn-bp-profile-3": [
+    "specs/bp-node-machine.md",
+    "specs/storage.md"
+   ],
    "fn-bp-receipt-overduep": [
     "specs/bp-node-machine.md"
    ],
@@ -730,18 +734,6 @@
    ],
    "fnn-transaction-name": [
     "specs/host.md"
-   ],
-   "fnn-pack-extend-chain": [
-    "specs/storage.md"
-   ],
-   "fnn-pack-recover-records": [
-    "specs/storage.md"
-   ],
-   "fnn-pack-walk": [
-    "specs/storage.md"
-   ],
-   "fnn-pack-prefix-reclaim": [
-    "specs/checkpoint.md"
    ]
   }
  }

@@ -4,14 +4,7 @@
 ; suffix in fn-checkpoint-restore.
 (in-package "ACL2")
 (include-book "../books/checkpoint-publish")
-(include-book "../books/checkpoint-compaction")
-(include-book "../books/checkpoint-pack-retire")
 (include-book "../books/checkpoint-auxiliary")
-(include-book "../books/checkpoint-compaction-preservation")
-(include-book "../books/store-compact-verb")
-(include-book "../books/store-compact-window")
-(include-book "../books/checkpoint-pack-chain-once")
-(include-book "../books/store-reclaim-pack")
 (include-book "../books/store-reclaim-stream")
 (include-book "../books/store-log-reclaim")
 ;
@@ -54,7 +47,8 @@
   (fn-cpa-clone-input-pathp path))
 
 (defun fn-store-checkpoint-clone-phase (marker-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp marker-octets)))
   (value (fn-cpa-clone-phase-of-octets
           (f-get-global 'fn-store-sn state) marker-octets)))
 
@@ -74,7 +68,8 @@
 ; checkpoint frame carries the arena's bytes (the same open item as the state
 ; checkpoint, host/store-node-host.lisp fn-store-sco-decode).
 (defun fn-store-checkpoint-protected (octet-records frontier state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-octet-list-listp octet-records)))
   (let* ((decoded (fn-store-decode-records octet-records))
          (records (if (equal decoded :bad) :bad
                     (fn-store-intern-records-local decoded))))
@@ -95,7 +90,8 @@
   (fn-cpc-selection-protected generation))
 
 (defun fn-store-checkpoint-selection-decode (octets digest)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-cpc-selection-decode octets digest))
 
 ; ACL2 owns the complete checkpoint directory vocabulary, its finite
@@ -145,7 +141,8 @@
     (if (null names) nil :bad)))
 
 (defun fn-store-checkpoint-namespace-plan (name-octets values)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-octet-list-listp name-octets)))
   (let ((names (fn-store-checkpoint-names-octets->chars name-octets)))
     (if (equal names :bad) '(:error :octets)
       (fn-cpp-namespace-plan names
@@ -158,100 +155,14 @@
   (fn-cpp-next-generation generations
                           (fn-store-checkpoint-generation-capacity values)))
 
-; Pack generations may have gaps after ACL2-authorized retirement.  The
-; selected generation stays present and fixes a monotone next number.
-(defun fn-store-checkpoint-pack-next-generation (generations values)
-  (declare (xargs :mode :program))
-  (fn-cprt-next-generation generations
-                           (fn-store-checkpoint-generation-capacity values)))
-
-(defun fn-store-checkpoint-pack-publication-initial
-  (generations proposed-generation exclusivep final-absentp values)
-  (declare (xargs :mode :program))
-  (fn-cprt-publication-initial generations proposed-generation
-                               exclusivep final-absentp
-                               (fn-store-checkpoint-generation-capacity values)))
-
-(defun fn-store-checkpoint-pack-retire-plan (generations selected)
-  (declare (xargs :mode :program))
-  (fn-cprt-retire-plan generations selected))
-
-; Native compaction/recovery boundary.  The returned octet records are the
-; exact prefix held by the selected summary followed by the observed suffix;
-; the native host does not interpret, merge or recreate any transaction fact.
-(defun fn-store-checkpoint-compaction-capture (octet-records frontier)
-  (declare (xargs :mode :program))
-  (let ((captured (fn-cc-capture octet-records frontier)))
-    (if (not (equal (car captured) :ok)) captured
-      (list :ok (fn-cc-encode (car (cdr captured)))))))
-
-(defun fn-store-checkpoint-compaction-expand (summary-octets octet-suffix frontier)
-  (declare (xargs :mode :program))
-  (let ((decoded (fn-cc-decode-exact summary-octets)))
-    (if (not (equal (car decoded) :ok)) decoded
-      (fn-cc-expand (car (cdr decoded)) octet-suffix frontier))))
-
-(defun fn-store-checkpoint-compaction-open (framed digest octet-suffix frontier)
-  (declare (xargs :mode :program))
-  (if (or (not (fn-cbor-octet-listp framed))
-          (< (len framed) *fn-frame-trailer-octets*))
-      '(:error :frame)
-    (let* ((n (- (len framed) *fn-frame-trailer-octets*))
-           (payload (take n framed))
-           (trailer (nthcdr n framed)))
-      (if (not (equal trailer digest)) '(:error :integrity)
-        (fn-store-checkpoint-compaction-expand payload octet-suffix frontier)))))
-
-(defun fn-store-checkpoint-compaction-max-octets ()
-  (declare (xargs :mode :program))
-  *fn-cc-max-octets*)
-
-;; `operator CONFIG store compact' (host/native/checkpoint.lisp
-;; `fnn-command-compact'): the whole decision, over the verb's one
-;; observation.  The subject of books/store-compact-verb's keystones.
-(defun fn-store-compact-decide (profile octet-records lower names generations
-                                        selected disk-free)
-  (declare (xargs :mode :program))
-  (fn-cverb-decide profile octet-records lower names generations selected
-                   disk-free))
-
-;; The same decision over the history's length and one link's window
-;; (books/store-compact-window.lisp, PKT-686 item 2): what the host calls.
-;; `fn-cverb-decide-window-is-cverb-decide' equates it with the one above
-;; when WINDOW is what `fn-store-compact-window-count' named.
-(defun fn-store-compact-window-count (lens lower)
-  (declare (xargs :mode :program))
-  (fn-scw-window-count lens lower))
-
-(defun fn-store-compact-decide-window (profile used lower window names generations
-                                               selected disk-free)
-  (declare (xargs :mode :program))
-  (fn-cverb-decide-window profile used lower window names generations selected
-                          disk-free))
-
-;; `operator CONFIG store reclaim [--dry-run]' (host/native/checkpoint.lisp
-;; `fnn-reclaim-steps'): the whole decision over the Store this process
-;; replayed and the compact verb's observation.  The subject of
-;; books/store-reclaim-pack's keystones (`fn-rclp-decide').  The rule is the
-;; configuration's; the instant is the clock observation's stamp, derived as
-;; an article's stamp is (`fn-record-stamp-of-observation').
-(defun fn-store-reclaim-decide (profile clock octet-records frontier lower names
-                                        generations selected disk-free dry fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (let* ((s (f-get-global 'fn-store-sn state))
-         (cfg (f-get-global 'fn-store-cfg state))
-         (rule (fn-rcl-config-rule (fn-cfg-value cfg)))
-         (stamp (fn-record-stamp-of-observation clock)))
-    (value (fn-rclp-decide profile rule (if (natp stamp) stamp nil) s
-                           octet-records frontier lower names generations
-                           selected disk-free dry fn-arena))))
-
-;; The same decision streamed one record at a time
-;; (books/store-reclaim-stream.lisp, PKT-686 item 2): the host folds
-;; `fn-store-reclaim-step' over the records under `fn-store-reclaim-context'
-;; from `fn-store-reclaim-init', then asks `fn-store-reclaim-decide-stream'
-;; with the same clock observation.  `fn-rcls-decide-is-rclp-decide' equates
-;; the answer with `fn-store-reclaim-decide''s.
+;; `operator CONFIG store reclaim [--dry-run]' over the record log
+;; (host/native/checkpoint.lisp `fnn-log-reclaim-steps'): the host folds
+;; `fn-store-reclaim-step' (books/store-reclaim-stream.lisp's fn-rcls-step)
+;; over the log's records under `fn-store-reclaim-context' from
+;; `fn-store-reclaim-init', then asks `fn-store-log-reclaim-decide-stream'
+;; with the same clock observation.  The rule is the configuration's; the
+;; instant is the clock observation's stamp, derived as an article's stamp is
+;; (`fn-record-stamp-of-observation').
 (defun fn-store-reclaim-rule-and-stamp (clock state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((cfg (f-get-global 'fn-store-cfg state))
@@ -269,40 +180,22 @@
   (fn-rcls-init))
 
 (defun fn-store-reclaim-step (acc octets ctx)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-rcls-step acc octets ctx))
-
-(defun fn-store-reclaim-decide-stream (profile clock acc frontier lower names
-                                               generations selected disk-free dry fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
-    (value (fn-rcls-decide profile rule now (f-get-global 'fn-store-sn state)
-                           acc frontier lower names generations selected
-                           disk-free dry fn-arena))))
 
 ;; The streamed reclaim over the record log (books/store-log-reclaim.lisp
 ;; fn-lgr-decide-stream, over compact-arena's fold fn-rcls-*): one record's
 ;; rewrite, and the decision over the fold.
 (defun fn-store-log-reclaim-event (octets ctx)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-rclp-event octets ctx))
 
 (defun fn-store-log-reclaim-decide-stream (profile clock acc dry fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
     (value (fn-lgr-decide-stream profile rule now (f-get-global 'fn-store-sn state) acc dry fn-arena))))
-
-;; The subjects of books/checkpoint-compaction-preservation: the reclaim
-;; preservation theorems are stated over these two functions.
-(defun fn-store-checkpoint-compaction-observe (framed digest observed frontier)
-  (declare (xargs :mode :program))
-  (fn-ccp-observe-framed framed digest observed frontier))
-
-; Inspect the selected authority before the host slices its bounded physical
-; observation.  ACL2 returns the only accepted coverage boundary.
-(defun fn-store-checkpoint-compaction-coverage (framed digest observed-count frontier)
-  (declare (xargs :mode :program))
-  (fn-ccp-coverage-framed framed digest observed-count frontier))
 
 (defun fn-store-checkpoint-publication-initial
   (generations proposed-generation exclusivep final-absentp values)
@@ -331,7 +224,8 @@
 ; installed for the restore call; the reply carries only its sequence and
 ; frontier so the host can slice the suffix ACL2 will revalidate.
 (defun fn-store-checkpoint-decode (octets digest max-frontier max-sequence state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (let ((decoded (fn-cpc-frame-decode octets digest (fn-store-sn-domain state)
                                       (fn-store-sn-capacity state) max-frontier
                                       max-sequence)))
@@ -347,7 +241,8 @@
 ; (fn-checkpoint-plus-suffix-equals-full-replay); its result node is kept for
 ; the differential comparison below.
 (defun fn-store-checkpoint-restore (octet-suffix frontier state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-octet-list-listp octet-suffix)))
   (let* ((decoded (fn-store-decode-records octet-suffix))
          (suffix (if (equal decoded :bad) :bad
                    (fn-store-intern-records-local decoded))))
@@ -384,103 +279,3 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cpa-store-auxiliary-agrees
           (f-get-global 'fn-store-sn state))))
-
-;; Chained packs (books/checkpoint-pack-chain.lisp, P5).  The native walk
-;; (host/native/checkpoint.lisp `fnn-pack-walk') reads one link at a time,
-;; each within `fn-ccc-link-octet-bound' of the profile, and asks ACL2 for its
-;; lower bound and predecessor; the open, the coverage, the capture of the
-;; next link and the retirement are ACL2's answers over the walked chain.
-(defun fn-store-checkpoint-chain-link-bound (profile)
-  (declare (xargs :mode :program))
-  (fn-ccc-link-octet-bound profile))
-
-(defun fn-store-checkpoint-chain-walk-bound (profile)
-  (declare (xargs :mode :program))
-  (fn-ccc-walk-bound profile))
-
-;; Each link is decoded once per open (books/checkpoint-pack-chain-once.lisp,
-;; PRF-240): inside the host's `fnn-with-pack-memo' scope (an open, a
-;; compaction, a status) the decodes are remembered by content in the global
-;; `fn-store-pack-memo', and every answer is the reference's
-;; (`fn-ccco-entry-step-is-entry-step', `-coverage-chain-is-coverage-chain',
-;; `-observe-chain-is-observe-chain' under `fn-ccco-memo-soundp', which the
-;; empty memo, `fn-ccco-remember' and `fn-ccco-remember-all' keep).  Outside
-;; a scope the memo is empty and nothing is remembered.
-(defun fn-store-pack-memo-activep (state)
-  (declare (xargs :stobjs state :mode :program))
-  (and (boundp-global 'fn-store-pack-memo-active state)
-       (f-get-global 'fn-store-pack-memo-active state)
-       (boundp-global 'fn-store-pack-memo state)))
-
-(defun fn-store-pack-memo (state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (fn-store-pack-memo-activep state) (f-get-global 'fn-store-pack-memo state) nil))
-
-; The scope's two ends: ACTIVEP t opens it with the empty memo, nil closes
-; it and drops what it remembered.
-(defun fn-store-pack-memo-scope (activep state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-store-pack-memo nil state))
-         (state (f-put-global 'fn-store-pack-memo-active (if activep t nil) state)))
-    (value (if activep :open :closed))))
-
-(defun fn-store-checkpoint-chain-step (framed digest bound state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (fn-store-pack-memo-activep state)
-      (let* ((memo (fn-ccco-remember framed digest bound (fn-store-pack-memo state)))
-             (state (f-put-global 'fn-store-pack-memo memo state)))
-        (value (fn-ccco-entry-step framed digest bound memo)))
-    (value (fn-ccco-entry-step framed digest bound nil))))
-
-(defun fn-store-checkpoint-chain-observe (chain observed frontier bound state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-ccco-observe-chain chain observed frontier bound (fn-store-pack-memo state))))
-
-(defun fn-store-checkpoint-chain-coverage (chain observed-count frontier bound state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (fn-store-pack-memo-activep state)
-      (let* ((memo (fn-ccco-remember-all chain bound (fn-store-pack-memo state)))
-             (state (f-put-global 'fn-store-pack-memo memo state)))
-        (value (fn-ccco-coverage-headers chain observed-count frontier bound memo)))
-    (value (fn-ccco-coverage-headers chain observed-count frontier bound nil))))
-
-; The line `checkpoint pack' prints for the no-op (exit 0, nothing written).
-(defun fn-store-checkpoint-pack-nothing-line (boundary count)
-  (declare (xargs :mode :program))
-  (concatenate 'string "packed nothing-uncovered boundary="
-               (coerce (explode-nonnegative-integer (nfix boundary) 10 nil) 'string)
-               " records="
-               (coerce (explode-nonnegative-integer (nfix count) 10 nil) 'string)))
-
-(defun fn-store-checkpoint-chain-capture (records lower lower-frontier
-                                                  pred-generation pred-digest)
-  (declare (xargs :mode :program))
-  (let ((captured (fn-ccc-capture-link records lower lower-frontier
-                                       pred-generation pred-digest)))
-    (cond ((equal (car captured) :ok)
-           (list :ok (fn-ccc-encode-link (cadr captured))
-                 (fn-ccc-boundary (cadr captured))))
-          ((equal (car captured) :nothing-uncovered)
-           (list :nothing-uncovered
-                 (fn-store-checkpoint-pack-nothing-line (cadr captured)
-                                                        (len records))))
-          (t captured))))
-
-;; The capture over the history's length and the link's window
-;; (`fn-ccc-capture-link-window-is-capture-link'): what the host calls.
-(defun fn-store-checkpoint-chain-capture-window (used window lower lower-frontier
-                                                     pred-generation pred-digest)
-  (declare (xargs :mode :program))
-  (let ((captured (fn-ccc-capture-link-window used window lower lower-frontier
-                                              pred-generation pred-digest)))
-    (cond ((equal (car captured) :ok)
-           (list :ok (fn-ccc-encode-link (cadr captured))
-                 (fn-ccc-boundary (cadr captured))))
-          ((equal (car captured) :nothing-uncovered)
-           (list :nothing-uncovered
-                 (fn-store-checkpoint-pack-nothing-line (cadr captured) used)))
-          (t captured))))
-
-(defun fn-store-checkpoint-chain-retire-plan (generations chain bound)
-  (declare (xargs :mode :program))
-  (fn-ccc-retire-plan generations chain bound))

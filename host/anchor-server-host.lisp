@@ -10,6 +10,7 @@
   (fn-anchor-server-find name-octets))
 
 (defun fn-anchor-server-host-select (name-octets timeout-seconds)
+  (declare (xargs :guard (fn-cbor-octet-listp name-octets)))
   (fn-anchor-server-select name-octets timeout-seconds))
 
 (logic)

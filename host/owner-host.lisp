@@ -156,8 +156,12 @@
 ; fn-orr-read-span-at-a-captured-view-restores-the-owner restates the relation
 ; after it (books/owner-reader-read.lisp).
 (include-book "../books/owner-reader-view")
-; Lane time-model (PRF-311): the barrier's deadline and the shed POST.
-(include-book "../books/owner-time-model")
+; Lane time-model (PRF-311): the barrier's deadline and the shed POST;
+; lane time-model-2: the decision journal (books/owner-time-journal.lisp,
+; PRF-322) and the 440 at the POST command (books/owner-time-admission.lisp,
+; PRF-323).
+(include-book "../books/owner-time-journal")
+(include-book "../books/owner-time-admission")
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
@@ -215,7 +219,10 @@
 ;; fn-owner-reconfigure-authorizedp (PRF-287) answered for the staged record.
 (defun fn-owner-cfg-native-admin-authorize
     (config-octet-records record-octets lock-owned observed-name-octets profile state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (and (fn-cbor-octet-listp record-octets)
+                              (fn-octet-list-listp config-octet-records)
+                              (fn-octet-list-listp observed-name-octets))))
   (let* ((config-records (fn-store-cfg-decode-records config-octet-records))
          (parsed (fn-cfg-decode-exact record-octets))
          (names (fn-store-octet-lists->strings observed-name-octets)))
@@ -245,9 +252,20 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-ocfg-config (fn-owner-ocfg state)))
 
+;; The injection configuration the owner has installed (fn-own-config): the
+;; one served POST and control submission read, whose bound is the store
+;; profile's A with its header limits (`fn-owner-posting-configure',
+;; `fn-owner-served-post-bound').  host/native/hybrid-control.lisp
+;; `fnn-hybrid-control-author' injects the signed carrier under it, so a
+;; carrier past A is the injection's :oversize, answered
+;; ARTICLE-EXCEEDS-PROFILE-BOUND (books/native-hybrid-control.lisp
+;; fn-nhc-author-refusal), as for `operator post'.  Before 2026-09-27 this
+;; was `fn-owner-post-config' at the codec's payload bound, so the carrier
+;; passed injection and the owner's admission refused it with no name
+;; (PKT-codex-003's native case).
 (defun fn-owner-live-post-config (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-owner-post-config (fn-owner-config state))))
+  (value (fn-own-config (fn-owner-core state))))
 
 (defun fn-owner-install-ocfg (oc state)
   (declare (xargs :stobjs state :mode :program))
@@ -1059,6 +1077,17 @@
   (value (fn-otm-deadline-of-limit
           (fn-cfg-limit (fn-cfg-value (fn-owner-config state)) "barrier-deadline-ms"))))
 
+;; Lane time-model-2: the three disk rows, (D H C) as the operator set them
+;; (`policy set barrier-deadline-ms|barrier-stall-ms|clock-event-ms N'); the
+;; barrier's :issue event normalizes them (fn-otm-limits: defaults for
+;; absent rows, H at least D).
+(defun fn-owner-barrier-limits (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((v (fn-cfg-value (fn-owner-config state))))
+    (value (fn-otm-limits (list (fn-cfg-limit v "barrier-deadline-ms")
+                                (fn-cfg-limit v "barrier-stall-ms")
+                                (fn-cfg-limit v "clock-event-ms"))))))
+
 ;; Whether the oldest queued submission is a served POST's (not a control
 ;; submission, not a peer transit): the only kind a slow disk sheds.
 (defun fn-owner-queue-head-served-p (state)
@@ -1352,7 +1381,10 @@
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :mode :program
+                  :guard (and (fn-cbor-octet-listp id-octets)
+                              (fn-cbor-octet-listp subject-octets)
+                              (fn-cbor-octet-listp evidence-octets))))
   (let* ((s (fn-owner-store state))
          (node (fn-sn-node s)))
     ; books/post-fields.lisp fn-pfld-retention-inputsp.
@@ -1497,7 +1529,8 @@
 ; (books/consumer-bound.lisp fn-cbind-plain-ack-of-an-unbound-consumer-is-
 ; the-consumer-ack).
 (defun fn-owner-consumer-local-ack (cursor-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp cursor-octets)))
   (value (fn-cbind-plain-ack (fn-owner-ocfg state) cursor-octets)))
 
 (defun fn-owner-consumer-local-position (consumer state)
@@ -1508,8 +1541,8 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-status (fn-owner-core state) consumer)))
 
-(defun fn-owner-consumer-local-poll (consumer fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-consumer-local-poll (consumer fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   ;; PKT-254: ACL2 encodes the selected event and refuses a report the
   ;; poll reply cannot carry by name (books/consumer-owner-local.lisp
   ;; fn-col-poll-report; fn-col-poll-report-fits-or-refuses-by-name,
@@ -1525,16 +1558,20 @@
   ;; PKT-710: the page is that answer with the view's withdrawals in it
   ;; (books/consumer-withdrawal.lisp fn-cwd-page; the answer itself while
   ;; nothing is withdrawn, fn-cwd-page-without-withdrawals-is-the-answer).
-  (value (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
-                      (fn-cbind-plain-poll-over (fn-owner-ocfg state) consumer
-                                                fn-arena))))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv nil (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
+                         (fn-cbind-plain-poll-over (fn-owner-ocfg state) consumer
+                                                   fn-arena fn-hist)
+                         fn-hist)
+        fn-hist state)))
 
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-col-unregister (fn-owner-core state) consumer)))
 
 (defun fn-owner-checkpoint-clone-phase (marker-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp marker-octets)))
   (value (fn-cpa-clone-phase-of-octets
           (fn-owner-store state) marker-octets)))
 
@@ -1570,7 +1607,9 @@
 ; (`fn-owner-install-profile'); without one the payload bound is 0.
 (defun fn-owner-post-boundary (msgid-octets payload-length group-count charge
                                             state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (and (fn-cbor-octet-listp msgid-octets)
+                              (natp payload-length))))
   ; PRF-284: fn-pvc-post-boundary-carried-is-sbud-post-boundary.
   (value (fn-pvc-post-boundary-carried (fn-owner-profile-carry state)
                                        (fn-owner-store-profile state)
@@ -1593,12 +1632,12 @@
 ;; fn-sn-finish searched the whole history and re-recognized the record for
 ;; every field it read.  The signed POST's composite, keyring snapshots,
 ;; retention, consumer and topic events complete here.
-(defun fn-owner-finish (state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-finish-synced (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let* ((before (fn-owner-core state))
          (before-files (fn-sn-files (fn-own-store before)))
          (state (fn-owner-install-ocfg
-                 (fn-rix-ocfg-complete (fn-owner-ocfg state)) state))
+                 (fn-rix-ocfg-complete (fn-owner-ocfg state) fn-hist) state))
          (after (fn-owner-core state))
          (after-files (fn-sn-files (fn-own-store after))))
     (if (and (equal (fn-sf-phase before-files) :completing)
@@ -1607,6 +1646,16 @@
                     (1+ (fn-own-ledger-count before))))
         (value :durable)
       (value :fault))))
+
+; The completion over the history stobj refreshed against the owner's Store
+; (R at the read: fn-hist-refresh-is-the-history; the finish keeps the
+; history, fn-ceis-finish-keeps-records), so fn-rix-ocfg-complete is
+; fn-ccar-ocfg-complete (fn-rix-ocfg-complete-is-ccar-ocfg-complete).
+(defun fn-owner-finish (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv-let (erp val state) (fn-owner-finish-synced fn-hist state)
+      (mv erp val fn-hist state))))
 
 ; The article completion of the submission in flight (served POST, control
 ; post): the word is fn-own-finish's (books/owner-served-invariants.lisp),
@@ -1639,8 +1688,8 @@
 ; named through ALPHA of the completing row, read through the arena
 ; (fn-ccar-own-finish takes it); then T4-then-T2 over the catalog
 ; (books/served-catalog-owner.lisp fn-sca-finish).
-(defun fn-owner-finish-submission (fn-arena fn-cat state)
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
+(defun fn-owner-finish-submission-synced (fn-arena fn-cat fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
   (let ((oc (fn-owner-ocfg state)))
     (if (fn-ocfg-staged oc)
         (mv nil :fault fn-cat state)
@@ -1655,7 +1704,7 @@
              ; read from the take's parse and the completion's refresh over the
              ; Store's event index (post-alloc-2).
              (result (fn-apc-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc)
-                                        fn-arena (fn-owner-parse-carry state)))
+                                        fn-arena fn-hist (fn-owner-parse-carry state)))
              (state (fn-owner-replace-core (cdr result) state))
              (pending (f-get-global 'fn-owner-cat-pending state)))
         (if (not (and (equal (car result) :durable) pending (consp completion)))
@@ -1679,6 +1728,16 @@
                     (mv nil :fault fn-cat state)
                   (mv nil (car result) fn-cat state))))))))))
 
+; The POST's completion over the history stobj refreshed against the owner's
+; Store (R at the read), so fn-apc-own-finish is fn-own-finish
+; (fn-apc-own-finish-is-own-finish).
+(defun fn-owner-finish-submission (fn-arena fn-cat fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv-let (erp val fn-cat state)
+      (fn-owner-finish-submission-synced fn-arena fn-cat fn-hist state)
+      (mv erp val fn-cat fn-hist state))))
+
 ;; The completion of an identity event that carried an article (a signed
 ;; composite: signed-post), with the catalog's T4 then T2 over the pending
 ;; row fn-owner-cat-prepare-sealed prepared after the host's seal, exactly as
@@ -1687,16 +1746,16 @@
 ;; the article the history's rows serve, fn-cat-history-articles, which
 ;; reads a composite row's held article).  Without a pending row it is
 ;; fn-owner-finish.  (mv nil WORD fn-cat state).
-(defun fn-owner-finish-identity (fn-arena fn-cat state)
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program)
+(defun fn-owner-finish-identity (fn-arena fn-cat fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program)
            (ignorable fn-arena))
   (let ((completion (fn-sf-completion (fn-sn-files (fn-owner-store state)))))
-    (mv-let (erp word state)
-      (fn-owner-finish state)
+    (mv-let (erp word fn-hist state)
+      (fn-owner-finish fn-hist state)
       (declare (ignore erp))
       (let ((pending (f-get-global 'fn-owner-cat-pending state)))
         (if (not (and (equal word :durable) pending (consp completion)))
-            (mv nil word fn-cat state)
+            (mv nil word fn-cat fn-hist state)
           (let ((view (fn-own-view (fn-owner-core state))))
             (mv-let (cword pending2 fn-cat)
               (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
@@ -1706,8 +1765,8 @@
                              fn-cat)
               (let ((state (f-put-global 'fn-owner-cat-pending pending2 state)))
                 (if (or (equal (car cword) :stale-token) (equal (car cword) :expected-mismatch))
-                    (mv nil :fault fn-cat state)
-                  (mv nil word fn-cat state))))))))))
+                    (mv nil :fault fn-cat fn-hist state)
+                  (mv nil word fn-cat fn-hist state))))))))))
 
 ; fn-pout-begin (books/owner-prepare-outcome.lisp): :begun exactly when the
 ; begin's gate fn-pout-begin-admitsp holds (KEYSTONE
@@ -1775,7 +1834,9 @@
 ; queues the same submission record fn-own-take-submission consumes for
 ; served POST.
 (defun fn-owner-control-submit (msgid-octets group-octets payload fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :mode :program
+                  :guard (and (fn-cbor-octet-listp msgid-octets)
+                              (fn-octet-list-listp group-octets))))
   (let* ((owner (fn-owner-core state))
          (result (fn-own-control-submit-result owner msgid-octets
                                                 group-octets payload))
@@ -1876,7 +1937,10 @@
 ; (`fn-native-control-refusal-status'), so an article past the profile's A
 ; reaches the operator as `article-exceeds-profile-bound', not a bare refusal.
 (defun fn-owner-operator-refusal-reason (msgid-octets group-octets payload fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :mode :program
+                  :guard (and (fn-cbor-octet-listp msgid-octets)
+                              (fn-cbor-octet-listp payload)
+                              (fn-octet-list-listp group-octets))))
   (let ((decision (fn-own-operator-decision-of
                    (fn-owner-core state) msgid-octets group-octets payload
                    (fn-own-operator-stored-octets (fn-owner-core state) msgid-octets
@@ -1937,15 +2001,18 @@
 ; fn-cbind-ack-is-the-consumer-ack-or-a-refusal).  The host carries the
 ; decoded consumer id or cursor and the password octets; it compares
 ; nothing.
-(defun fn-owner-consumer-local-bound-poll (consumer secret fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-consumer-local-bound-poll (consumer secret fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   ;; Over the live arena (records flip): fn-cbind-poll-over-delivers-only-
   ;; readable-events, fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal.
   ;; PKT-710: with the withdrawals in it (a refusal of the gate is served
   ;; unchanged, fn-cwd-page-of-a-refusal).
-  (value (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
-                      (fn-cbind-poll-over (fn-owner-ocfg state) (fn-owner-auth state)
-                                          consumer secret fn-arena))))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv nil (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
+                         (fn-cbind-poll-over (fn-owner-ocfg state) (fn-owner-auth state)
+                                             consumer secret fn-arena fn-hist)
+                         fn-hist)
+        fn-hist state)))
 
 ;; PRF-252: one step of a consumer wait (books/consumer-wait.lisp
 ;; fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page): the poll a
@@ -1953,20 +2020,23 @@
 ;; when that is an empty page before the deadline.  The admission of one
 ;; more waiter.  host/native/owner.lisp fnn-owner-consumer-local-wait calls
 ;; both under the owner mutex.
-(defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   ;; Over the live arena (records flip), and PKT-710: a wait answers the
   ;; page (fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page),
   ;; so a withdrawal wakes it as an article does.
-  (value (fn-cwd-wait-step-over (fn-owner-ocfg state) (fn-owner-auth state)
-                                consumer secret elapsed seconds fn-arena)))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv nil (fn-cwd-wait-step-over (fn-owner-ocfg state) (fn-owner-auth state)
+                                   consumer secret elapsed seconds fn-arena fn-hist)
+        fn-hist state)))
 
 (defun fn-owner-consumer-local-wait-admit (waiters state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cwait-admit waiters)))
 
 (defun fn-owner-consumer-local-bound-ack (cursor-octets secret state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp cursor-octets)))
   (value (fn-cbind-ack (fn-owner-ocfg state) (fn-owner-auth state)
                        cursor-octets secret)))
 
@@ -2039,7 +2109,8 @@
         (t (value nil))))
 
 (defun fn-owner-open-peer (peer-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value nil)
@@ -2071,7 +2142,9 @@
 ; and the subject are the host's digests, as for POST (fn-frame-digest is
 ; constrained and unattached).
 (defun fn-owner-transit-decide (id-octets subject-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (and (fn-cbor-octet-listp id-octets)
+                              (fn-cbor-octet-listp subject-octets))))
   (let* ((owner (fn-owner-core state))
          (sub (fn-own-inflight owner)))
     (if (not (fn-own-transit-subp sub))
@@ -2447,7 +2520,8 @@
   ; Resolve submitted names against the owner's current allocation domain.
   ; The separate Store bridge's replayed global does not follow live owner
   ; reconfiguration.  This is the same ACL2 resolver as fn-store-group-codes.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-octet-list-listp name-octets)))
   (let ((names (fn-store-octet-lists->strings name-octets)))
     (value (if (equal names :bad) :bad
              (fn-store-codes-from-groups
@@ -2528,7 +2602,8 @@
 ;; table fn-owner-group-codes resolves against).  (:file GROUPS) or
 ;; (:refused REASON); the host uses GROUPS in place of its own.
 (defun fn-owner-control-filing (received group-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-octet-list-listp group-octets)))
   ; fn-apc-filing-plan-is-reference (books/owner-parse-carried.lisp).
   (value (fn-apc-filing-plan
           received group-octets
@@ -2555,7 +2630,8 @@
 ;; asks before it calls a commit callback (books/owner-bound-commit.lisp
 ;; fn-obc-commit-gate; KEYSTONE fn-obc-commit-only-after-filing).
 (defun fn-owner-bound-commit-gate (received group-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-octet-list-listp group-octets)))
   (value (fn-obc-commit-gate
           received group-octets
           (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
@@ -2758,7 +2834,8 @@
 ;; OCTETS are that record as the open read it; the answer is the decoded
 ;; event for fnn-owner-key-statement, or nil.
 (defun fn-owner-key-statement-pending (octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (let ((records (fn-store-decode-records (list octets))))
     (value (if (and (consp records) (null (cdr records)))
                (fn-ks-pending (car records))
@@ -3083,7 +3160,8 @@
 ;; greeting, or the 400 a refused connection is sent before it is closed
 ;; (`fn-owner-closep' is then T).
 (defun fn-owner-exposure-open (family address peer-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
   (let* ((peer (and peer-octets (fn-store-octets->string peer-octets)))
          (peer (if (equal peer :bad) nil peer))
          (before (fn-owner-core state))
@@ -3220,7 +3298,7 @@
 ; are the render plan (books/served-plan.lisp), which the host renders into
 ; the connection's own buffer after the mutex is released.  The owner and
 ; exposure states are installed exactly as fn-owner-chunk installs them.
-(defun fn-owner-chunk-span-at (id start end fn-octets fn-arena fn-cat state)
+(defun fn-owner-chunk-span-at (id start end admit fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
@@ -3231,9 +3309,15 @@
         ;; PKT-828: at the reader view while the committer holds a capture,
         ;; the working view put back after it (books/owner-reader-read.lisp
         ;; fn-orr-read-span; with no capture it is fn-scr-ocfg-read-span).
-        (let* ((result (fn-orr-read-span
+        ;; Lane time-model-2 (PRF-323): ADMIT is the disk's write admission
+        ;; at this read's recorded time; while it sheds, the read runs with
+        ;; posting not permitted, so a POST command is answered 440 before
+        ;; its article (books/owner-time-admission.lisp fn-otm-read-span;
+        ;; admitted it is fn-orr-read-span, fn-otm-read-span-when-admitted-
+        ;; unfolds).
+        (let* ((result (fn-otm-read-span
                         (fn-owner-ocfg state) (fn-owner-reader-views state)
-                        id start end fn-octets fn-arena fn-cat))
+                        id start end admit fn-octets fn-arena fn-cat))
                (effects (fn-own-tls-result-effects result))
                (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg
@@ -3251,9 +3335,9 @@
                   (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
                   (f-get-global 'fn-owner-exposure-close state))))))))
 
-(defun fn-owner-chunk-span (id start end fn-octets fn-arena fn-cat state)
+(defun fn-owner-chunk-span (id start end admit fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
-  (fn-owner-chunk-span-at id start end fn-octets fn-arena fn-cat state))
+  (fn-owner-chunk-span-at id start end admit fn-octets fn-arena fn-cat state))
 
 (defun fn-owner-close (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
@@ -3365,7 +3449,8 @@
 ; Where to dial: the peer record's transport row, read by ACL2.  The host
 ; does not parse the configuration.
 (defun fn-owner-feed-host (peer-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
   (let ((transport (fn-cfg-peer-transport (fn-owner-feed-record peer-octets state))))
     (value (if (and (consp transport) (equal (car transport) :nntp))
                (fn-record-string-octets
@@ -3374,7 +3459,8 @@
              nil))))
 
 (defun fn-owner-feed-port (peer-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
   (let ((transport (fn-cfg-peer-transport (fn-owner-feed-record peer-octets state))))
     (value (if (and (consp transport) (equal (car transport) :nntp))
                (nfix (if (equal (len transport) 5) (cadddr transport)
@@ -3383,19 +3469,22 @@
 
 (defun fn-owner-feed-security (peer-octets state)
   "ACL2-owned outbound security tuple; old records are clear by definition."
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
   (let ((transport (fn-cfg-peer-transport (fn-owner-feed-record peer-octets state))))
     (value (if (and (equal (car transport) :nntp) (equal (len transport) 5))
                (car (cddddr transport))
              '(:clear)))))
 
 (defun fn-owner-feed-auth-policy (peer-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
   (value (fn-cfg-peer-outbound-auth
           (fn-owner-feed-record peer-octets state))))
 
 (defun fn-owner-feed-profile-decode (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-fap-decode octets))
 
 (defun fn-owner-feed-profile-max-octets ()
@@ -3419,7 +3508,8 @@
 ; queued: 9,479 refused connections in one two-node gate run, all of them in
 ; the window where one node was restarting.
 (defun fn-owner-feed-backoff-ms (peer-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
   (let ((record (fn-owner-feed-record peer-octets state)))
     (value (if (and record (natp (fn-cfg-peer-backoff record)))
                (fn-cfg-peer-backoff record)
@@ -3447,7 +3537,8 @@
     nil))
 
 (defun fn-owner-feed-has-queued (peer-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value nil)
@@ -3489,7 +3580,8 @@
 FN-OWNER-RECOVER installs the carried table invariant, and this is its only
 constructor thereafter.  It deliberately does not rescan every peer/framer on
 a dial: the selected peer entry is the owner-feed boundary being opened."
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (or (equal peer :bad) (not (natp conn)))
         (value :invalid)
@@ -3576,8 +3668,8 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
 ; One reply line from one peer.  The article of a 335/238 is the row's bytes
 ; read through the arena (books/owner-feed-article.lisp fn-ofa-feed-article,
 ; fn-ofa-feed-article-is-the-feed-article-over-alpha), never its handle.
-(defun fn-owner-feed-octets (peer-octets line monotonic fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-feed-octets (peer-octets line monotonic fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
         (value (fn-owner-feed-word-publication nil nil nil))
@@ -3592,14 +3684,15 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
           (let ((result (fn-own-feed-port-observe-peer
                          peer (fn-own-feeds owner) response
                          ; The record's bytes by Message-ID: its handle
-                         ; through the Store's event index
+                         ; through the history stobj (R holds: the entry
+                         ; fn-owner-feed-reply-chunk refreshed it)
                          ; (fn-apr-feed-article-is-own-feed-article,
                          ; books/acceptance-payload-ref.lisp) read through
                          ; the arena (fn-ofa-feed-article-is-the-feed-
                          ; article-over-alpha).  Since the records flip the
                          ; row holds a handle; handing it to the port sent
                          ; an empty command (lane feed-fault).
-                         (fn-ofa-feed-article owner msgid fn-arena) obs)))
+                         (fn-ofa-feed-article owner msgid fn-arena fn-hist) obs)))
             ; The sender's one line for this reply (nil for a 335/238),
             ; books/owner-log.lisp fn-olog-feed-reply-line, is the
             ; publication's log line.
@@ -3624,12 +3717,14 @@ it is :CONNECTION-REFUSED and the raw adapter must close this peer without
 flushing the previous peer's pending projection."
   (if (equal (fn-fc-kind step) :refused) :connection-refused (fn-fc-kind step)))
 
-(defun fn-owner-feed-reply-chunk (peer-octets octets monotonic fn-arena state)
+(defun fn-owner-feed-reply-chunk-synced (peer-octets octets monotonic fn-arena fn-hist state)
   "Consume one ACL2 connection/reply event; nil drains retained input.
 
 Greeting and MODE replies stay inside fn-fc.  A normal feed reply reaches the
 existing port only after fn-fc has made this connection ready."
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program
+                  :guard (and (fn-cbor-octet-listp octets)
+                              (fn-cbor-octet-listp peer-octets))))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (or (equal peer :bad) (not (fn-wire-octet-listp octets)))
         (value (fn-owner-feed-word-publication :invalid nil nil))
@@ -3690,7 +3785,7 @@ existing port only after fn-fc has made this connection ready."
                                                                 (and (equal word :ok) fallback-line))))))
                   (:reply
                    (fn-owner-feed-octets peer-octets (fn-fc-line step)
-                                         monotonic fn-arena state))
+                                         monotonic fn-arena fn-hist state))
                   (:streaming-refused
                    (value (fn-owner-feed-word-publication :streaming-refused nil stop-line)))
                   (:need-input
@@ -3702,6 +3797,18 @@ existing port only after fn-fc has made this connection ready."
                    (value (fn-owner-feed-word-publication
                            kind nil (fn-peer-feed-failure-line peer input step octets))))
                   (otherwise (value (fn-owner-feed-word-publication :fault nil nil))))))))))
+
+; The feed reply entry: the history stobj refreshed against the owner's Store
+; first (host/store-node-host.lisp fn-host-hist-sync; R by
+; fn-hist-refresh-is-the-history), then the reply read through it.
+(defun fn-owner-feed-reply-chunk (peer-octets octets monotonic fn-arena fn-hist state)
+  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program
+                  :guard (and (fn-cbor-octet-listp octets)
+                              (fn-cbor-octet-listp peer-octets))))
+  (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+    (mv-let (erp val state)
+      (fn-owner-feed-reply-chunk-synced peer-octets octets monotonic fn-arena fn-hist state)
+      (mv erp val fn-hist state))))
 
 
 ; The connection to ONE peer is gone.  The host reports the event and the
@@ -3745,7 +3852,9 @@ existing port only after fn-fc has made this connection ready."
 ; One bounded read from the physical journal. The scanner owns acceptance,
 ; the exact safe offset and the entry fed to the existing replay transition.
 (defun fn-owner-feed-journal-scan (peer-octets prefix frame fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :mode :program
+                  :guard (and (fn-cbor-octet-listp frame)
+                              (fn-cbor-octet-listp peer-octets))))
   (let* ((peer (fn-store-octets->string peer-octets))
          (result (fn-feed-journal-scan peer-octets prefix frame
                    (f-get-global 'fn-owner-feed-safe-offset state))))

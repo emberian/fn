@@ -22,8 +22,9 @@ Three checks over docs/*.md and docs/nodes/*.md (NNT-032):
    verdict certified is the verdict for these docs.
 
 2. Python tools.  Every `bin/fn`/`fn --config`, `fn_client.py`,
-   `fn_consumer.py`, `fn_web.py` and `fn_reader.py` invocation is parsed by that tool's own
-   argparse parser (`build_parser()`), without running it.
+   `fn_consumer.py`, `fn_web.py` and `fn_reader.py` invocation (or its
+   release launcher's, `clients/bin/fn-client` ... `fn-reader`) is parsed by
+   that tool's own argparse parser (`build_parser()`), without running it.
 
 3. Reply lines.  Every line a doc presents as fn's output in a code block
    (`accepted ...`, `refused ...`, `usage ...`, `uncertain ...`, `fault ...`,
@@ -90,8 +91,12 @@ PLACEHOLDERS = {
 OPERATOR = re.compile(
     r"^(?:\$\s+)?(?:\S*/)?(?:fn|fn-native|fn-host)(?:\s+--fn)?\s+operator\s+(\S+)(?:\s+(.*))?$")
 BIN_FN = re.compile(r"^(?:\$\s+)?(?:\S*/)?(?:bin/)?fn\s+(--config\s+\S+.*)$")
+# A client as the source names it (tools/fn_reader.py) or as a release
+# installs it (clients/bin/fn-reader, packaging/fn-client-launcher).
 PY_TOOL = re.compile(
-    r"^(?:\$\s+)?(?:[A-Z_]+=\S+\s+)*(?:python3\s+)?(?:\S*/)?(fn_client|fn_consumer|fn_web|fn_reader)\.py(?:\s+(.*))?$")
+    r"^(?:\$\s+)?(?:[A-Z_]+=\S+\s+)*(?:python3\s+)?(?:\S*/)?"
+    r"(?:(fn_client|fn_consumer|fn_web|fn_reader)\.py|(fn-client|fn-consumer|fn-web|fn-reader))"
+    r"(?:\s+(.*))?$")
 REPLY = re.compile(
     r"^(?:\$\s+)?((?:accepted|refused|usage|uncertain|fault)\s+operator\s+\S.*"
     r"|[1-5][0-9][0-9]\s+\S.*)$")
@@ -206,10 +211,11 @@ def inventory():
                 continue
             match = PY_TOOL.match(line)
             if match:
-                if not match.group(2) and not block:
+                if not match.group(3) and not block:
                     continue            # the tool's name in prose, not an invocation
-                argv, why = expand(shell_words(match.group(2) or "", arrays))
-                found.append((match.group(1), rel, number, line, argv, why))
+                argv, why = expand(shell_words(match.group(3) or "", arrays))
+                tool = match.group(1) or match.group(2).replace("-", "_")
+                found.append((tool, rel, number, line, argv, why))
                 continue
             match = REPLY.match(line)
             if match:

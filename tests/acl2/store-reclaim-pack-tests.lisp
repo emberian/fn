@@ -1,5 +1,5 @@
 ; fn: witnesses and teeth for books/store-reclaim-pack.lisp (STO-017,
-; PRF-119): the reclaiming pack `store reclaim' publishes.
+; PRF-119): the per-article rewrite `store reclaim' checkpoints.
 (in-package "ACL2")
 (include-book "../../books/store-reclaim-pack")
 (include-book "must-fail-checked")
@@ -22,7 +22,6 @@
           (cons b (rcl-prior-payloads prior (+ 1 i) (- fuel 1)))
         nil))))
 (defconst *rpt-payloads* (rcl-prior-payloads *osi-completing-prior* 0 64))
-(bpr-lift fn-rclp-decide 12)
 (bpr-lift fn-rcl-store-counts 3)
 (defun rpt-encode-all (rs)
   (declare (xargs :mode :program))
@@ -134,7 +133,7 @@
 
 ; fn-rclp-rewritten-charge-is-the-history-unit (step 2): the rewritten
 ; article's pin keeps one unit of the charge it had, so the ledger's reserved
-; charge falls by the rest once the pack is replayed; the witness charge is
+; charge falls by the rest once the rewrite is replayed; the witness charge is
 ; above the unit, so the release is non-degenerate.
 (assert-event (and (< 1 (fn-record-charge (rpt-old)))
                    (equal (fn-rclp-charge-of (nth (rpt-i) (rpt-new))) 1)
@@ -152,80 +151,8 @@
                                                  (fn-rclp-ctx '(:keep-forever) 0 *rpt-s*))))
                    1)))
 
-; The decision.  The fixture's profile: the development preset.
+; The fixture's profile (the development preset) and a history past one
+; unit of work, for store-log-reclaim-tests.
 (defconst *rpt-profile* *fn-bs-profile-development*)
 (assert-event (fn-bs-profile-admittedp *rpt-profile*))
-(defmacro rpt-n () '(len (rpt-events)))
-; Fully packed (lower = n, no name, a selected generation): it reclaims.
-(defmacro rpt-d () '(in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
-                                  (rpt-n) (rpt-n) nil '(0) 0 1000000 nil))
-(assert-event (and (equal (car (rpt-d)) :reclaim)
-                   (equal (nth 2 (rpt-d)) (rpt-msgids))
-                   (equal (nth 4 (rpt-d))
-                          (fn-cc-encode (cadr (fn-cc-capture (rpt-new) (rpt-n)))))))
-; fn-rclp-pack-fits-the-disk (PKT-169): the reclaiming pack file fits the
-; free octets observed (a reachable witness), and a disk one octet short of
-; it is refused :temporary-space before a byte is written (the tooth: the
-; conclusion fails at that disk without the :reclaim answer), as is a disk
-; the host could not observe.
-(defmacro rpt-pack-file ()
-  '(+ (len (nth 4 (rpt-d))) *fn-frame-trailer-octets*))
-(assert-event (<= (rpt-pack-file) 1000000))
-(assert-event (equal (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
-                                     (rpt-n) (rpt-n) nil '(0) 0 (1- (rpt-pack-file)) nil)
-                     '(:refused :temporary-space)))
-(assert-event (equal (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
-                                     (rpt-n) (rpt-n) nil '(0) 0 nil nil)
-                     '(:refused :temporary-space)))
-(must-fail-checked (assert-event (<= (rpt-pack-file) (1- (rpt-pack-file)))))
-;; fn-rclp-reclaiming-pack-is-a-first-link (pack-chain-join): the summary the
-;; reclaim publishes is a version-0 pack, the first link of a new chain with
-;; no predecessor covering what the selected chain covered; its bytes decode
-;; as that link under the profile's link read bound (a reachable witness).
-(defmacro rpt-link () '(fn-ccc-link-of-summary (cadr (fn-cc-capture (rpt-new) (rpt-n)))))
-(assert-event (and (fn-ccc-linkp (rpt-link))
-                   (equal (fn-ccc-lower (rpt-link)) 0)
-                   (equal (fn-ccc-pred-digest (rpt-link)) nil)
-                   (equal (fn-ccc-boundary (rpt-link)) (rpt-n))))
-(assert-event (equal (fn-ccc-decode-link (nth 4 (rpt-d))
-                                         (fn-ccc-link-octet-bound *rpt-profile*))
-                     (list :ok (rpt-link))))
-;; Tooth: without the :reclaim answer (the history not packed, lower 0) the
-;; link does not cover the chain's boundary.
-(assert-event (equal (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
-                                     (rpt-n) 0 nil nil nil 1000000 nil)
-                     '(:compact-first)))
-(must-fail-checked (assert-event (equal (fn-ccc-boundary (rpt-link)) 0)))
-;; A rewritten history past one quantum is refused by name, nothing written
-;; (PKT-332: the chain of rewritten links is not built): the fixture's
-;; history followed by 4096 more records (bytes the rewrite keeps as they
-;; are) under the same packed observation.
 (defmacro rpt-long () '(append (rpt-events) (make-list 4096 :initial-element '(1 2 3))))
-(assert-event (equal (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-long)
-                                     (len (rpt-long)) (len (rpt-long)) nil '(0) 0 1000000 nil)
-                     '(:refused :spans-links)))
-; --dry-run writes nothing and names the same article.
-(assert-event (equal (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
-                                     (rpt-n) (rpt-n) nil '(0) 0 1000000 t)
-                     (list :dry-run (rpt-msgids) (rpt-freed)
-                           (in-arena-fn-rcl-store-counts *rpt-payloads* *rpt-rule* 0 *rpt-s*))))
-; Not packed: compact first.
-(assert-event (equal (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
-                                     (rpt-n) 0 nil nil nil nil nil)
-                     '(:compact-first)))
-; fn-rclp-keep-forever-writes-nothing: witness.
-(assert-event (equal (car (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* '(:keep-forever) 0 *rpt-s*
-                                          (rpt-events) (rpt-n) (rpt-n) nil '(0) 0 1000000 nil))
-                     :none))
-
-; After a cut between the selection and the retirement the history holds
-; only tombstones (nothing to rewrite) and generation 0 survives under the
-; selected 1: the rerun retires it.  Tooth: with no older generation it is
-; :none.
-(assert-event (equal (car (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-new)
-                                          (rpt-n) (rpt-n) nil '(0 1) 1 1000000 nil))
-                     :resume-retire))
-(must-fail-checked (assert-event
-            (equal (car (in-arena-fn-rclp-decide *rpt-payloads* *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-new)
-                                        (rpt-n) (rpt-n) nil '(1) 1 1000000 nil))
-                   :resume-retire)))
