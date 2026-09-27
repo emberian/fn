@@ -1111,7 +1111,8 @@ unread, and decides nothing about them."
                                 (fnn-core 'fn-srs-rows acc) frontier configs))))
 
 (defun fnn-recover-record-chunks (records)
-  "A chunk source over RECORDS (octet vectors, checked already): each call
+  "A chunk source over RECORDS (octet vectors, or octet lists: the log
+kernel's committed records, taken as they are; checked already): each call
 converts the next chunk to octet lists and answers ACL2's decode of it; a
 chunk closes where ACL2 says (`fn-srs-chunk-fullp', a work quantum: one
 record is always taken first, so no record is refused or split for its size)."
@@ -5343,8 +5344,12 @@ positive extent is kept: a re-run init completes, never truncates."
 
 (defun fnn-recover-log-replay (store records config-records)
   "The replay the per-file open runs (fnn-recover-full-replay), over the
-log's records; the history's COUNT (the open keeps no records, PKT-823)."
-  (let ((action (fnn-bridge-recover records (fnn-store-frontier store) config-records)))
+log's records (the kernel's committed octet lists), in the chunks ACL2 closes
+(`fnn-recover-record-chunks', as the pack path: PRF-261's
+fn-srs-steps-are-one-step-of-the-concatenation, any chunking opens the same
+Store); the history's COUNT (the open keeps no records, PKT-823)."
+  (let ((action (fnn-bridge-recover (fnn-recover-record-chunks records)
+                                    (fnn-store-frontier store) config-records)))
     (when (eq action :refused)
       (let ((text (fnn-core-state 'fn-store-open-refusal-text)))
         (unless (stringp text)
@@ -5421,8 +5426,9 @@ journal/, the root and its parent.  Answers the history's record COUNT, as
                        (fnn-log-recover path (fnn-log-observed-extent path) unit max)
                      (fnn-log-open-read-only path unit max))))
           (fnn-log-batch-reset log)
-          (setq records (mapcar #'fnn-octets
-                                (fnn-core 'fn-lgk-committed (fnn-log-kernel log))))
+          ;; The kernel's committed records as the kernel holds them (octet
+          ;; lists), not copied: the replay's chunks read them in place.
+          (setq records (fnn-core 'fn-lgk-committed (fnn-log-kernel log)))
           ;; The frontier: one past the largest txid of every record the log
           ;; holds, of every event kind (ACL2's fn-store-log-next-txid), and
           ;; the log kernel caught up to it (fn-olr-consume-to).
