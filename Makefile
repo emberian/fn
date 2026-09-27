@@ -1049,6 +1049,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/tls-reload-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
+	books/control-visible-indexed \
+	tests/acl2/control-visible-indexed-tests \
+	books/owner-refresh-indexed \
+	tests/acl2/owner-refresh-indexed-tests \
 	books/node-secret \
 	tests/acl2/node-secret-tests \
 	books/cancel-lock-lines \
