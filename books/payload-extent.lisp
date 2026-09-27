@@ -5,8 +5,8 @@
 ; The open of a format-9 store scans each log segment (host/native/io.lisp
 ; fnn-log-scan-segments).  While the segment's octets are in hand, ACL2
 ; answers each committed record's PLACE: its entry's start and frame length,
-; where the record starts in it and its length (`fn-arx-text-places', read
-; from the entries the scan read: a batch's records share chunk entries).  The replay
+; where the record starts in it and its length (`fn-arx-list-places' over
+; each entry the stream reads: a batch's records share chunk entries).  The replay
 ; then interns each chunk with its positions (`fn-arx-intern-step'): a
 ; record whose payload the entry holds contiguously -- found by the codec's
 ; suffix length and VERIFIED octet for octet against the decoded payload
@@ -62,9 +62,10 @@
 ; Kind 1: the body is one record, at P + 42, of L - 32 octets.  Kind 2: the
 ; body is the packed records (fn-lg-pack), each a u32 length then the record.
 ; A record's PLACE is (START N ROFF RLEN): its entry's start and frame
-; length, where the record starts, its length.  The walkers read the octets
-; the scan read (the segment's text, fn-arx-text-places) or the octets the
-; commit wrote (fn-arx-list-places), COUNT records; anything that is not
+; length, where the record starts, its length.  The walker reads an entry's
+; octets as the open's stream reads them (host/native/io.lisp
+; fnn-log-stream-segment: one entry at a time, at its offset) or the octets
+; the commit wrote (fn-arx-list-places), COUNT records; anything that is not
 ; such an entry, or a count the entries do not hold, answers nil (every
 ; record stays resident).  The places decide nothing by themselves: the
 ; extent check (fn-arx-extent-of) requires the place's length to be the
@@ -140,60 +141,6 @@
 
 (verify-guards fn-arx-list-places
   :hints (("Goal" :in-theory (disable fn-lg-pad-len nthcdr fn-arx-u32-list nth))))
-
-; The walk over the segment's text (one character per octet, as the scan
-; reads it: fnn-log-read-string), by index.
-(defun fn-arx-text-octet (text i)
-  (declare (xargs :guard (and (stringp text) (natp i))))
-  (if (< i (length text)) (char-code (char text i)) 0))
-
-(defun fn-arx-u32-text (text i)
-  (declare (xargs :guard (and (stringp text) (natp i))))
-  (+ (* 16777216 (fn-arx-text-octet text i)) (* 65536 (fn-arx-text-octet text (+ 1 i)))
-     (* 256 (fn-arx-text-octet text (+ 2 i))) (fn-arx-text-octet text (+ 3 i))))
-
-(defun fn-arx-text-places (text p count unit ep en q qend acc)
-  (declare (xargs :guard (and (stringp text) (natp p) (natp count) (natp ep) (natp en)
-                              (natp q) (natp qend) (true-listp acc))
-                  :measure (nfix count)
-                  :hints (("Goal" :in-theory (disable fn-lg-pad-len fn-arx-u32-text
-                                                      fn-arx-text-octet)))
-                  :guard-hints (("Goal" :in-theory (disable fn-lg-pad-len fn-arx-u32-text
-                                                            fn-arx-text-octet)))))
-  (cond ((zp count) (revappend acc nil))
-        ((and (natp q) (natp qend) (< q qend))
-         (let* ((rlen (fn-arx-u32-text text q))
-                (r (+ q 4))
-                (q2 (+ r rlen))
-                (acc (cons (list (nfix ep) (nfix en) r rlen) acc)))
-           (cond ((< qend q2) nil)
-                 ((equal q2 qend)
-                  (fn-arx-text-places text (+ (nfix ep) (nfix en) (fn-lg-pad-len en unit))
-                                      (1- count) unit 0 0 0 0 acc))
-                 (t (fn-arx-text-places text p (1- count) unit ep en q2 qend acc)))))
-        (t
-         (let* ((p (nfix p))
-                (kind (fn-arx-text-octet text (+ p 5)))
-                (l (fn-arx-u32-text text (+ p 6)))
-                (n (+ 10 l *fn-frame-trailer-octets*)))
-           (cond ((< (length text) (+ p n)) nil)
-                 ((< l 32) nil)
-                 ((equal kind 1)
-                  (fn-arx-text-places text (+ p n (fn-lg-pad-len n unit)) (1- count) unit 0 0 0 0
-                                      (cons (list p n (+ p *fn-arx-record-at*) (- l 32)) acc)))
-                 ((and (equal kind 2) (<= 4 (- l 32)))
-                  (let* ((q (+ p *fn-arx-record-at*))
-                         (qend (+ q (- l 32)))
-                         (rlen (fn-arx-u32-text text q))
-                         (r (+ q 4))
-                         (q2 (+ r rlen))
-                         (acc (cons (list p n r rlen) acc)))
-                    (cond ((< qend q2) nil)
-                          ((equal q2 qend)
-                           (fn-arx-text-places text (+ p n (fn-lg-pad-len n unit)) (1- count) unit
-                                               0 0 0 0 acc))
-                          (t (fn-arx-text-places text p (1- count) unit p n q2 qend acc)))))
-                 (t nil))))))
 
 ; -----------------------------------------------------------------------------
 ; 3. The extent of one record, verified.

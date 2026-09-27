@@ -2186,8 +2186,8 @@ What differs from the design above, and why:
   name, `:ihave`/`:takethis`, the RFC 5537 §3.2.1 Path diagnostic,
   configuration generation --- and `fn-peer-transit-evidence` is its wire
   form: `"fnprov1:"` and the canonical CBOR in lowercase hexadecimal, which
-  is printable (the host boundary guard `fn-store-text-octetsp` admits octets
-  33 to 126 only) and inside `fn-record-metadata-bytes-p`'s 256, so it rides
+  is printable (the Store prepare's field check `fn-pfld-textp`,
+  `books/post-fields.lisp`, admits octets 33 to 126 only) and inside `fn-record-metadata-bytes-p`'s 256, so it rides
   in the record's existing `release-evidence` field with no change to the
   record grammar. `fn-peer-evidence-is-the-legacy-rendering`
   (`books/peer-inbound-invariants`) is the equation between the record and

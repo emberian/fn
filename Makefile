@@ -46,6 +46,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/article-work-tests \
 	books/article-fields \
 	tests/acl2/article-fields-tests \
+	books/post-fields \
+	tests/acl2/post-fields-tests \
 	books/store-config \
 	books/sha256 \
 	tests/acl2/sha256-tests \
@@ -394,6 +396,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-programs-tests \
 	books/store-log-route \
 	tests/acl2/store-log-route-tests \
+	books/store-log-kernel-concrete \
+	tests/acl2/store-log-kernel-concrete-tests \
+	books/store-log-stream \
+	tests/acl2/store-log-stream-tests \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
 	books/store-log-reclaim \
@@ -901,6 +907,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
 	tests/acl2/served-catalog-chain-tests \
+	tests/acl2/served-catalog-scan-tests \
 	tests/acl2/served-catalog-owner-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
@@ -965,6 +972,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-prepare-served \
 	books/owner-prepare-served-ocl \
 	tests/acl2/owner-prepare-served-tests \
+	tests/acl2/owner-prepare-served-events-tests \
+	tests/acl2/owner-identity-served-tests \
+	tests/acl2/owner-prepare-served-abort-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \
@@ -1027,6 +1037,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-bound-commit \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
+	books/history-columns \
+	tests/acl2/history-columns-tests \
+	books/history-columns-store \
+	tests/acl2/history-columns-store-tests \
 	books/consumer-poll-index \
 	tests/acl2/consumer-poll-index-tests \
 	books/consumer-event-index-store-invariants \
@@ -1093,6 +1107,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-carriage \
 	books/owner-parse-carried \
 	tests/acl2/owner-parse-carried-tests \
+	books/owner-identity-intern \
+	tests/acl2/owner-identity-intern-tests \
+	books/owner-identity-served \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \
@@ -1154,8 +1171,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-commit-pipeline-tests \
 	books/owner-reader-view \
 	tests/acl2/owner-reader-view-tests \
+	books/owner-reader-read \
+	tests/acl2/owner-reader-read-tests \
 	books/store-log-route-programs \
 	tests/acl2/store-log-route-programs-tests \
+	books/store-log-open-barriers \
+	tests/acl2/store-log-open-barriers-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \
@@ -1383,6 +1404,10 @@ check:
 # Static, under a second, with its teeth test.
 	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
 	@$(CHECK_STEP) $(PYTHON) tools/host_defun_check.py
+# A host macro used before its definition in load order compiles as a
+# function call (batch AW: every format-9 restart faulted; lane ops-fixes).
+	@$(CHECK_STEP) $(PYTHON) tools/host_macro_order_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_macro_order_check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).

@@ -29,7 +29,7 @@ After you post, the page says one of three things:
 
 If you moderate a group, its waiting posts are in a group of their own.
 Open one and press **Approve and publish**. Turning a post down is not
-possible from the web yet; leave it where it is.
+possible from the web yet. The person running the node can do it.
 
 Groups you are not allowed to see do not appear, and their addresses say
 "We couldn't find that group". The server decides that, not this page.
@@ -48,8 +48,9 @@ Without `--https-cert` it serves plain HTTP on `127.0.0.1` only, for a TLS
 proxy or an ssh tunnel in front of it. It refuses to serve plain HTTP on
 any other address.
 
-Invite each friend as usual (`account invite`); they redeem the code once
-over TLS and then sign in here. The reader adds no accounts and no
+Invite each friend as usual (`account invite`). They redeem the code once
+with `fn redeem` ([how](operator.md#accounts-and-invitation-codes)) and
+then sign in here. The reader adds no accounts and no
 permissions of its own: the node checks every password and decides every
 group, post, approval and removal. The reader keeps, per login, only what
 the friend has read, their display name and a record of what they sent, in

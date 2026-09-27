@@ -228,6 +228,11 @@
   (declare (xargs :mode :program))
   (fn-native-control-reply-detail status word))
 
+(defun fn-native-control-host-transport-word (stage)
+  ; The reason word of an exchange no reply ended: no-owner before submission.
+  (declare (xargs :mode :program))
+  (fn-native-control-transport-word stage))
+
 ;; PKT-709, PKT-710 (books/consumer-reason.lisp): the reasoned consumer
 ;; request (FNCT kind 22), the client's read of the owner's answer, the
 ;; register retry, the report summary and the JSON lines.

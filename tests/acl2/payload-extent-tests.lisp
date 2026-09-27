@@ -15,7 +15,6 @@
 
 (assert-event
  (and (eq (symbol-class 'fn-arx-list-places (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arx-text-places (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arx-extent-of (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arx-intern-event (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arx-intern-events (w state)) :common-lisp-compliant)
@@ -186,8 +185,8 @@
 ;; fn-lg-log writes them (the second chained from the first's last trailer),
 ;; the first of three small records (one kind-2 chunk entry: their u32
 ;; lengths packed), the second of one record (a kind-1 entry).  Every place
-;; the walkers answer holds its record, over the octet list (the commit's)
-;; and over the text (the open's).
+;; the walker answers holds its record, over the whole written octets (the
+;; commit's) and over each entry alone at its offset (the open's stream).
 (defconst *pxt-b1* (list (make-list 5 :initial-element 1) (make-list 7 :initial-element 2)
                          (make-list 300 :initial-element 3)))
 (defconst *pxt-b2* (list (make-list 900 :initial-element 4)))
@@ -206,9 +205,6 @@
          (equal (take (len (car records)) (nthcdr (nth 2 (car places)) octets)) (car records))
          (pxt-places-hold (cdr places) (cdr records) octets))))
 
-(defun pxt-octets-string (xs)
-  (coerce (loop$ for x in xs collect (code-char x)) 'string))
-
 (assert-event
  (let ((ps (fn-arx-list-places (pxt-log) 0 4 4096 0 0 nil 0 0 nil)))
    (and (equal (len ps) 4)
@@ -217,11 +213,15 @@
         (equal (nth 0 (nth 0 ps)) 0) (equal (nth 0 (nth 2 ps)) 0)
         (equal (nth 0 (nth 3 ps)) 4096))))
 
+;; Each entry alone at its offset, as the stream reads it: the first entry
+;; (the three-record chunk, 398 octets) at 0, the second at 4096.
 (assert-event
- (equal (fn-arx-text-places (pxt-octets-string (pxt-log)) 0 4 4096 0 0 0 0 nil)
-        (fn-arx-list-places (pxt-log) 0 4 4096 0 0 nil 0 0 nil)))
+ (and (equal (fn-arx-list-places (take 398 (pxt-log)) 0 3 4096 0 0 nil 0 0 nil)
+             (take 3 (fn-arx-list-places (pxt-log) 0 4 4096 0 0 nil 0 0 nil)))
+      (equal (fn-arx-list-places (nthcdr 4096 (pxt-log)) 4096 1 4096 0 0 nil 0 0 nil)
+             (nthcdr 3 (fn-arx-list-places (pxt-log) 0 4 4096 0 0 nil 0 0 nil)))))
 
 ; More records than the entries hold, or a count of zero entries' worth past
 ; the end: nil (every record stays resident).
 (assert-event (null (fn-arx-list-places (pxt-log) 0 5 4096 0 0 nil 0 0 nil)))
-(assert-event (null (fn-arx-text-places (pxt-octets-string (pxt-log1)) 0 4 4096 0 0 0 0 nil)))
+(assert-event (null (fn-arx-list-places (pxt-log1) 0 4 4096 0 0 nil 0 0 nil)))
