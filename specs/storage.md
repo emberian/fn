@@ -919,6 +919,19 @@ Message-ID. OVER answers 503 for it and NEWNEWS still lists it (open).
 
 STO-017: Packing, history compaction and content reclamation are distinct operations; `store reclaim` removes released payload octets through a reclaiming pack and returns them to the file system.
 
+On a `fn-store-9` store (the record log, STO-034) there are no packs:
+`store compact` is the checkpoint's rotation and the drop, and `store
+reclaim` rewrites the history exactly as the reclaiming pack would (the same
+per-article decision over every holder, STO-014: `fn-lgr-decide`,
+books/store-log-reclaim.lisp, KEYSTONE `fn-lgr-decide-checkpoints-the-rewrite`),
+replays the rewritten history, publishes its state checkpoint with the log
+rotated and drops the segments it covers: the released payload octets leave
+the disk with those segments. A death before the checkpoint's install
+reopens the history as it was and a rerun reclaims again; from the install
+on the open reads the rewritten history and a rerun reclaims nothing more
+(`fn-rclp-events-idempotent`). The pack path below is the `fn-store-8`
+layout's.
+
 The three operations (the Fable mandate, section 8):
 
 - **Packing** (`store compact`, books/store-compact-verb.lisp) reduces

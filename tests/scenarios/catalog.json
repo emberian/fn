@@ -5232,7 +5232,7 @@
       "id": "SCN-179",
       "title": "Compaction over the record log: a checkpoint rotates the log and the covered segments are dropped; every article is served as before, and a process death at each rotation and drop cut reopens to the same history; a missing, spliced or uncovered segment is refused by name",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-034",
         "STO-007"
@@ -5262,7 +5262,7 @@
       "id": "SCN-180",
       "title": "Export and import over the record log: a compacted format-9 store exports the checkpoint's records then the log's; the import writes a format-9 store whose export is the same archive; a death at the import's log cuts publishes no store",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-028",
         "STO-034"

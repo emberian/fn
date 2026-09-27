@@ -16,6 +16,10 @@ segments it covers.  The cases, each over a store the served node filled:
   drop-unlinked | drop-durable): the next writable open (`store recover`)
   serves every article as before, finishes an interrupted drop, and a later
   compaction succeeds;
+* content reclamation: `store reclaim` under released-by-all-holders
+  rewrites the history (books/store-log-reclaim.lisp), checkpoints it with
+  the log rotated and drops the covered segment: no file of the store holds
+  a released article's body, and a rerun reclaims nothing;
 * the open's refusals by name: a segment missing between the checkpoint's
   first segment and the active one (history-short-of-checkpoint), the
   checkpoint gone after a drop (checkpoint-damaged), a stale segment after
@@ -111,6 +115,33 @@ class LogCompactionMixin:
         files = lambda d: {p.relative_to(d): p.read_bytes() for p in sorted(d.rglob("*")) if p.is_file()}
         self.assertEqual(files(again), files(archive))
         self.assertEqual(self.inspect_all(node, range(18), store=imported_root), before)
+
+    def store_holds(self, node: Node, needle: bytes) -> bool:
+        return any(needle in p.read_bytes() for p in node.store.rglob("*") if p.is_file())
+
+    def test_reclaim_over_the_log_removes_the_released_payloads(self):
+        """`store reclaim` on a format-9 store (books/store-log-reclaim.lisp):
+        the rewritten history's checkpoint with the log rotated, then the drop;
+        the released articles' payload octets are on no file of the store."""
+        node = self.filled(0, 8)
+        self.assertTrue(self.store_holds(node, b"body of 3\r\n"))
+        rule = node.fn("operator", str(node.config), "retention", "set", "released-by-all-holders")
+        self.assertEqual(rule.returncode, 0, rule.stderr[-600:])
+        dry = node.fn("operator", str(node.config), "store", "reclaim", "--dry-run")
+        self.assertEqual(dry.returncode, 0, dry.stderr[-600:])
+        self.assertIn(b"dry-run would-reclaim=8", dry.stdout)
+        self.assertEqual(segments(node.store), ["000001.log"])
+        done = node.fn("operator", str(node.config), "store", "reclaim")
+        self.assertEqual(done.returncode, 0, done.stderr[-800:])
+        self.assertIn(b"reclaimed=8", done.stdout)
+        self.assertEqual(segments(node.store), ["000002.log"])
+        for i in range(8):
+            self.assertFalse(self.store_holds(node, b"body of %d\r\n" % i), i)
+        again = node.fn("operator", str(node.config), "store", "reclaim")
+        self.assertEqual(again.returncode, 0, again.stderr[-800:])
+        self.assertIn(b"reclaimed=0", again.stdout)
+        recovered = node.fn("store", str(node.store), "recover")
+        self.assertEqual(recovered.returncode, 0, recovered.stderr[-800:])
 
     def test_refusals_by_name(self):
         node = self.filled(0, 6)

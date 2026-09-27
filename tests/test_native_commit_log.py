@@ -297,17 +297,19 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
         self.assertTrue(all(r.startswith(b"240") for r in replies.values()), replies)
         self.assertEqual(len(node.transaction_files()), 4)
 
-    def test_format_9_refuses_what_the_log_does_not_do_yet_by_name(self):
-        # `store compact' (rotation and drop) and `store export' run over the
-        # log (lane log-recovery: tests.test_native_log_compaction,
-        # tests.test_native_store_export); content reclamation does not yet.
+    def test_format_9_compact_reclaim_and_export_run_over_the_log(self):
+        # Lane log-recovery: `store compact' (rotation and drop), `store
+        # reclaim' (the rewritten history's checkpoint and the drop) and
+        # `store export' run over the log (tests.test_native_log_compaction,
+        # tests.test_native_store_export); on a fresh store each exits 0.
         node = Node(self.image, self.root)
         node.init()
-        for argv in (("operator", str(node.config), "store", "reclaim"),):
+        for argv in (("operator", str(node.config), "store", "reclaim"),
+                     ("operator", str(node.config), "store", "compact"),
+                     ("store", str(node.store), "export", str(self.root / "archive"))):
             with self.subTest(argv=argv[-2:]):
                 result = node.fn(*argv)
-                self.assertEqual(result.returncode, 1, (argv, result.stdout, result.stderr))
-                self.assertIn(b"reason=record-log", result.stdout + result.stderr)
+                self.assertEqual(result.returncode, 0, (argv, result.stdout, result.stderr[-600:]))
 
 
 @unittest.skipUnless(PRODUCTION, "FN_NATIVE_HOST names the production image")

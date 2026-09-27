@@ -7291,6 +7291,11 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-sxp-log-profile-is-a-valid-log-profile",
+          "note": "The migration (D34): every valid archive profile, format 8 included, imports as a valid format-9 profile with the archive fields. Host: host/native/io.lisp fnn-command-store-import through fn-sxp-import-plan. Teeth: tests/acl2/store-export-tests.lisp (lane log-recovery)."
+        },
+        {
+          "kind": "theorem",
           "name": "fn-spo-config-open-store-format-is-exactly-a-foreign-frame",
           "note": "KEYSTONE (D34, one format). Host: host/native/io.lisp fnn-metadata-config-decode via fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp."
         }
@@ -9770,6 +9775,51 @@
         {
           "kind": "theorem",
           "name": "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
+        }
+      ]
+    },
+    {
+      "id": "PRF-270",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-segment-drop-preserves-the-open",
+          "note": "KEYSTONE T8. Host: host/native/io.lisp fnn-log-scan-segments calls fn-lgs-open-chain-records and fn-lgs-open-chain-last per closed segment; fnn-recover-log-from-log-checkpoint replays the checkpoint then that suffix. Teeth: tests/acl2/store-log-segments-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgs-open-chain-records-of-append",
+          "note": "The host fold splits at any segment boundary."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgs-open-chain-is-the-chain",
+          "note": "The host fold (fn-lg-open-kernel per segment string) is the model chain over the segments octets."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgs-open-plan-scan-ignores-covered",
+          "note": "The drop cuts: host/native/io.lisp fnn-recover-log calls fn-lgs-open-plan; fnn-log-drop cuts drop-unlinked, drop-durable. Teeth: tests/acl2/store-log-segments-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgs-rotate-is-the-recovered-kernel",
+          "note": "Host: host/native/io.lisp fnn-log-rotate sets the kernel to fn-lgs-rotate."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgs-chain-records-of-append",
+          "note": "The model chain splits at any segment boundary."
+        }
+      ]
+    },
+    {
+      "id": "PRF-271",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgr-decide-checkpoints-the-rewrite",
+          "note": "KEYSTONE. Host: host/checkpoint-host.lisp fn-store-log-reclaim-decide, called by host/native/checkpoint.lisp fnn-log-reclaim-steps. Teeth: tests/acl2/store-log-reclaim-tests.lisp."
         }
       ]
     }

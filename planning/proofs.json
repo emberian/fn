@@ -3697,7 +3697,15 @@
         "fn-ock-one-publication-in-flight",
         "fn-ock-publication-next-decides-by-the-rule",
         "fn-ock-finish-binds-the-captured-prefix",
-        "fn-ock-fast-path-within-k-by-definition"
+        "fn-ock-fast-path-within-k-by-definition",
+        "fn-intern-events-is-intern-at",
+        "fn-intern-events-arena-is-payloads",
+        "fn-scka-load-of-written-file",
+        "fn-scka-seal-n-compose",
+        "fn-scka-recover-from-checkpoint-is-full-recover",
+        "fn-scka-recover-rows-rii-is-recover-rows",
+        "fn-scka-write-run-is-run-segments",
+        "fn-scka-next-checkpoint-is-capture"
       ]
     },
     {
@@ -9740,8 +9748,7 @@
       "statement": "books/store-log-segments.lisp. KEYSTONE fn-lg-segment-drop-preserves-the-open: over the host's fold (fn-lgs-open-chain-records / fn-lgs-open-chain-last: fn-lg-open-kernel per segment read as a string, the genesis carried; host/native/io.lisp fnn-log-scan-segments calls both per closed segment), when the checkpoint's prefix is the covered segments' records and the F row's genesis their last trailer, the checkpoint's records followed by the fold over the remaining segments from that genesis are the fold over every segment (fn-lgs-open-chain-is-the-chain: the fold is the model chain fn-lgs-chain-records over the segments' octets; the replay of that split is the full replay by fn-sn-recover-from-checkpoint-equals-full-recover). fn-lgs-open-plan-scan-ignores-covered: at the drop's cuts (fnn-log-drop: drop-unlinked, drop-durable) the open's plan (fn-lgs-open-plan, called by fnn-recover-log) scans the same segments and refuses the same stores whatever covered segments remain. fn-lgs-rotate-is-the-recovered-kernel: the rotated kernel (fnn-log-rotate) is the kernel recovery derives from the new segment's durable zeros with the closed segment's last trailer, so R holds for the new segment by the fact that establishes it at log-recovered. fn-lgs-chain-records-of-append: the chain splits at any segment boundary.",
       "milestone": "M5",
       "requirements": [
-        "STO-034",
-        "STO-007"
+        "STO-034"
       ],
       "depends_on": [],
       "assumptions": [],
@@ -9761,6 +9768,33 @@
         "fn-lgs-open-plan-scan-ignores-covered",
         "fn-lgs-rotate-is-the-recovered-kernel",
         "fn-lgs-chain-records-of-append"
+      ]
+    },
+    {
+      "id": "PRF-271",
+      "title": "Content reclamation over the record log checkpoints exactly the reclaiming pack's rewrite of the committed history",
+      "statement": "books/store-log-reclaim.lisp KEYSTONE fn-lgr-decide-checkpoints-the-rewrite: when fn-lgr-decide (host: host/checkpoint-host.lisp fn-store-log-reclaim-decide, called by host/native/checkpoint.lisp fnn-log-reclaim-steps) answers :reclaim, the run is not a dry run, the profile is admitted, some article is rewritten, the Message-IDs it reports are fn-rclp-rewritten-msgids and the history the host replays and checkpoints (with the log rotated, then the covered segments dropped: PRF-270) is exactly fn-rclp-events of the committed history under the store's context (fn-rclp-ctx: STO-014's per-article decision over every holder), so books/store-reclaim-pack.lisp's theorems about that list (a held article is never touched, a reclaimed event stays reclaimed, a rerun rewrites nothing) are about what the log's checkpoint holds.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017",
+        "STO-034"
+      ],
+      "depends_on": [
+        "PRF-270"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-reclaim.lisp",
+        "tests/acl2/store-log-reclaim-tests.lisp",
+        "host/checkpoint-host.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_log_compaction.py",
+        "planning/evidence/log-recovery-2026-09-27.md"
+      ],
+      "progress_note": "Lane log-recovery 2026-09-27: admitted in the persvati REPL with its test book; certification is the batch's.",
+      "events": [
+        "fn-lgr-decide-checkpoints-the-rewrite"
       ]
     }
   ]

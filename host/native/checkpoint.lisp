@@ -665,8 +665,8 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 (defun fnn-refuse-on-log-route (store verb)
   (when (fnn-store-logp store)
     (fnn-store-close store)
-    (fnn-refuse "~a refused reason=record-log: a format-9 store has no packs (~a over the log is the checkpoint's rotation and drop: `store compact'; content reclamation over the log is PKT-750's remainder)"
-                verb verb)))
+    (fnn-refuse "~a refused reason=record-log: a format-9 store has no packs (compaction and content reclamation over the log are `store compact' and `store reclaim')"
+                verb)))
 
 (defun fnn-checkpoint-command-publish (root selectp)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
@@ -981,11 +981,55 @@ then the covered segments are unlinked.  Format 8: the pack chain."
                    (length msgids) freed generation (length retired) msgids))))
       (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision")))))
 
+(defun fnn-log-reclaim-steps (store records dry)
+  "`store reclaim' on a format-9 store (books/store-log-reclaim.lisp): ACL2's
+decision over the recovered history (fn-lgr-decide: the reclaiming pack's
+per-article context, STO-014); on :reclaim the rewritten history is replayed
+into the store node (the ordinary replay, fnn-recover-log-replay) and its
+state checkpoint published with the log rotated, then the segments it covers
+are dropped (fnn-state-checkpoint-publish-steps: T8): the released payloads'
+octets leave the disk with them.  Returns the report line."
+  (let ((decision (fnn-core-state 'fn-store-log-reclaim-decide
+                                  (fnn-store-config store)
+                                  (fnn-store-prepare-observation)
+                                  (mapcar #'fnn-octet-list records)
+                                  (if dry t nil))))
+    (unless (and (consp decision) (member (first decision) '(:refused :none :dry-run :reclaim)))
+      (fnn-fault "ACL2 returned no reclaim decision"))
+    (case (first decision)
+      (:refused (fnn-refuse "reclaim refused: ~(~a~)" (second decision)))
+      (:none (format nil "reclaimed=0 ~a" (fnn-reclaim-counts-line (second decision))))
+      (:dry-run
+       (destructuring-bind (msgids freed counts) (rest decision)
+         (format nil "dry-run would-reclaim=~d freed-octets=~d ~a~{~%would-reclaim ~a~}"
+                 (length msgids) freed (fnn-reclaim-counts-line counts)
+                 (mapcar (lambda (m) (if (stringp m) m (fnn-fault "malformed msgid")))
+                         msgids))))
+      (:reclaim
+       (destructuring-bind (msgids freed rewritten counts) (rest decision)
+         (declare (ignore counts))
+         (unless (and (listp rewritten) (every #'fnn-octet-list-p rewritten)
+                      (= (length rewritten) (length records)))
+           (fnn-fault "ACL2 returned a malformed rewritten history"))
+         (fnn-checkpoint-require-mutation-ready store)
+         (let ((history (mapcar #'fnn-octets rewritten)))
+           ;; The store node becomes the rewritten history's (the replay every
+           ;; open runs), and the checkpoint the open will read is its capture.
+           (fnn-core-state 'fn-store-sco-clear)
+           (fnn-bridge-reset)
+           (fnn-recover-log-replay store history (fnn-config-records store))
+           (format nil "reclaimed=~d freed-octets=~d ~a~{~%reclaimed ~a~}"
+                   (length msgids) freed
+                   (fnn-state-checkpoint-publish-steps store history)
+                   msgids))))
+      (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision")))))
+
 (defun fnn-command-reclaim (root dry)
   (multiple-value-bind (store records) (fnn-open-live-store root (not dry))
-    (fnn-refuse-on-log-route store "reclaim")
     (unwind-protect
-         (progn (fnn-out "~a" (fnn-reclaim-steps store records dry))
+         (progn (fnn-out "~a" (if (fnn-store-logp store)
+                                  (fnn-log-reclaim-steps store records dry)
+                                (fnn-reclaim-steps store records dry)))
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 
