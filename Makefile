@@ -800,6 +800,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-events-carried \
 	books/owner-commit-carried \
 	books/owner-prepare-carried \
+	books/store-prepare-carried \
 	books/records-concrete \
 	books/records-concrete-owner \
 	books/records-attach-concrete \
@@ -881,6 +882,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-guard-carried-tests \
 	tests/acl2/owner-commit-carried-tests \
 	tests/acl2/owner-prepare-carried-tests \
+	tests/acl2/store-prepare-carried-tests \
 	tests/acl2/records-concrete-tests \
 	tests/acl2/msgid-index-concrete-tests \
 	tests/acl2/owner-advance-carried-tests \

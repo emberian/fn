@@ -38,6 +38,9 @@
 ; (fn-pcar-spc-prepare, fn-ccar-sn-finish): neither walks the history.
 (include-book "../books/owner-commit-carried")
 (include-book "../books/owner-prepare-carried")
+; fn-store-sn-prepare stages the interned row through the carried prepare
+; (fn-store-prepare-interned-carried-is-prepare-interned under fn-snt-relation).
+(include-book "../books/store-prepare-carried")
 (include-book "../books/store-checkpoint-codec")
 ; fn-bs-scp-program: the checkpoint file name is its rename target.
 (include-book "../books/byte-store-state-checkpoint-program")
@@ -897,6 +900,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; bytes through the arena (books/store-intern.lisp fn-store-existing-action,
 ; KEYSTONE fn-store-existing-action-is-the-verdict-over-alpha: D25's verdict
 ; over alpha of the acceptance articles), and the prepare is
+; fn-store-prepare-interned-carried, which on a related store is
 ; fn-store-prepare-interned (KEYSTONES -is-intern-then-prepare,
 ; -refusal-keeps-the-arena, -acceptance-seals-one-payload): the row is
 ; interned at the arena's count and the payload sealed only when the store
@@ -930,17 +934,15 @@ reopen predicate, writer-lock observation and observed final namespace."
                           (fn-store-octets->string subject-octets)
                           (fn-store-octets->string evidence-octets)
                           charge)))
-            ; Before the flip this called the carried prepare
-            ; fn-pcar-spc-prepare (books/owner-prepare-carried.lisp, equal to
-            ; fn-spc-prepare), whose record test is still the WIRE record's:
-            ; it refuses every row.  Until it is restated over rows the entry
-            ; calls fn-sn-prepare itself (through fn-store-prepare-interned),
-            ; whose fn-sf-next-lower folds the history per POST (the cost
-            ; bounds-p5 measured; named in the flip-L6 record).
+            ; The carried entry (books/store-prepare-carried.lisp): the
+            ; intern, then fn-pcar-spc-prepare over the row; no replay of the
+            ; history.  KEYSTONE fn-store-prepare-interned-carried-is-prepare-
+            ; interned: under fn-snt-relation it is fn-store-prepare-interned
+            ; (books/store-intern.lisp), whose keystones say what it does.
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena state)
               (mv-let (next fn-arena)
-                (fn-store-prepare-interned s record fn-arena)
+                (fn-store-prepare-interned-carried s record fn-arena)
                 (if (equal next s)
                     (mv nil :refused fn-arena state)
                   (let ((state (f-put-global 'fn-store-sn next state)))
