@@ -239,6 +239,6 @@
           (and stable-under-simplificationp
                '(:expand ((fn-scar-feed-counted conn
                                                 (fn-oct-slice-list i end fn-octets)
-                                                live trie arts))))))
+                                                live trie arts fn-arena))))))
 
 (in-theory (disable fn-scar-scan-span))
