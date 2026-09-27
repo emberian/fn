@@ -8,7 +8,7 @@ written (batch AY) is here first and folds into the articles next.
 
 This page takes you from the download to a running node that others can
 reach safely. Words you may not know are in
-[the short glossary](README.md#words-you-will-meet).
+[the short glossary](articles/fn-faq-1.txt).
 
 ## What you need
 

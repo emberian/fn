@@ -11657,9 +11657,10 @@
         "tests/acl2/payload-lz-record-tests.lisp",
         "planning/evidence/compression-extents-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T213338Z-2661898.json",
-        "planning/evidence/manifests/certify-20260927T221728Z-2829003.json"
+        "planning/evidence/manifests/certify-20260927T221728Z-2829003.json",
+        "planning/evidence/manifests/certify-20260927T230447Z-2819876.json"
       ],
-      "progress_note": "Lane compression-extents (Opus 5.5, 2026-09-27). Certified on hbox: the 656 affected roots (679 books, certify-20260927T213338Z-2661898, passed) and, after splitting the replay into books/payload-lz-replay.lisp, its 3 roots (certify-20260927T221728Z-2829003, passed, no book over 10 s). Teeth: tests/acl2/payload-lz-record-tests.lisp on codec-c1's real 1993 article and its liblz4-HC blocks (without and with a 2,749-octet dictionary): the seal frames the record (136 and 334 octets shorter), expands to it and replays to the record through the attached codec; per keystone a reachable witness, ground counterexamples (a missing or wrong dictionary, a non-u32 id, an improper record) and must-fails per hypothesis.",
+      "progress_note": "Batch AY (2026-09-27): books/payload-arena, payload-lz-record and payload-lz-replay re-certified at the merged batch digests in the union cite, persvati certify-20260927T230447Z-2819876 (404 passed, 0 failed). Lane compression-extents (Opus 5.5, 2026-09-27). Certified on hbox: the 656 affected roots (679 books, certify-20260927T213338Z-2661898, passed) and, after splitting the replay into books/payload-lz-replay.lisp, its 3 roots (certify-20260927T221728Z-2829003, passed, no book over 10 s). Teeth: tests/acl2/payload-lz-record-tests.lisp on codec-c1's real 1993 article and its liblz4-HC blocks (without and with a 2,749-octet dictionary): the seal frames the record (136 and 334 octets shorter), expands to it and replays to the record through the attached codec; per keystone a reachable witness, ground counterexamples (a missing or wrong dictionary, a non-u32 id, an improper record) and must-fails per hypothesis.",
       "events": [
         "fn-lzr-expand-of-seal",
         "fn-lzr-replay-reads-the-sealed-record",

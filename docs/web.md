@@ -11,7 +11,7 @@ a browser: nothing to install, and they make their own account from an
 invitation code.
 
 Words you may not know are in
-[the short glossary](README.md#words-you-will-meet). How to use the pages
+[the short glossary](articles/fn-faq-1.txt). How to use the pages
 once they are up is in [the friends' reader](reader.md).
 
 ## What you need

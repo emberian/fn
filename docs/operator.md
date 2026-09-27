@@ -12,7 +12,7 @@ written (batch AY) is here first and folds into the articles next.
 
 This page is for the person who looks after an fn node. It assumes you set
 the node up with [Installing fn](install.md). Words you may not know are in
-[the short glossary](README.md#words-you-will-meet). The exact details, and
+[the short glossary](articles/fn-faq-1.txt). The exact details, and
 material for developers, are in [the engineers' reference](operator-internals.md).
 
 In the commands, `CONFIG` is your settings file, for example
