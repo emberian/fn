@@ -5794,9 +5794,9 @@ fenced (fn-lgk-fence-failed) and the store with it."
 5.3): the fresh segment of the staged STORE (profile VALUES) receives
 RECORDS, a list of (SEQUENCE . OCTETS) in increasing sequence, from the
 genesis, through the kernel the open recovered from it and the commit
-route's own steps: per record the kernel catches up to its txid
-(fn-store-log-record-txid; fn-olr-consume-to: the archive's burned
-reservations stay burned) and takes it (fn-olr-take, at the bounds of a configuration naming none: fn-olr-bmax,
+route's own steps: per record the take (fn-olr-take at the kernel's own next
+txid: the import allocates nothing; the open derives the frontier from the
+records, so the archive's burned reservations stay burned) (fn-olr-take, at the bounds of a configuration naming none: fn-olr-bmax,
 fn-olr-omax); a full batch, and the last, is P-BATCH's append and barrier
 (fnn-log-commit-open-batch, cuts log-written and log-fenced) and is
 acknowledged.  The stage is unpublished throughout: a death here leaves
@@ -5811,16 +5811,15 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
     (unwind-protect
          (let ((*fnn-log-batch* t))
            (dolist (record records)
-             ;; The record's own txid (every event kind: ACL2's decode), as
-             ;; the owner reserved it when it committed.
-             (let ((txid (fnn-core 'fn-store-log-record-txid (cdr record))))
-               (unless (and (integerp txid) (>= txid 0))
-                 (fnn-fault "ACL2 found no txid in an archived record"))
-               (setf (fnn-log-kernel log)
-                     (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) txid)
-                     (fnn-log-reserved log) txid)
-               (fnn-log-take store (cdr record))
-               (fnn-log-batch-finish store)))
+             ;; The import appends the archive's records in their order and
+             ;; allocates nothing: each is taken at the kernel's own next txid
+             ;; (an archived history may hold several records of one
+             ;; transaction, as the per-file layout's did); the ordinary open
+             ;; that admits the stage derives the frontier from the records
+             ;; (fn-store-log-next-txid).
+             (setf (fnn-log-reserved log) (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log)))
+             (fnn-log-take store (cdr record))
+             (fnn-log-batch-finish store))
            (fnn-log-commit-open-batch store)
            (fnn-log-batch-finish store))
       (fnn-close (fnn-log-fd log))
