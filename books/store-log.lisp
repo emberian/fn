@@ -5,8 +5,14 @@
 ; FNLG frame (books/frame-fields.lisp: MAGIC VERSION KIND LENGTH, payload,
 ; the 32-octet trailer `fn-frame-digest' over the protected prefix) padded
 ; with zeros to the write unit, and its payload is the previous entry's
-; trailer (the CHAIN, 32 octets) followed by the committed record's bytes
-; (the FNST record frame of books/frame.lisp, unchanged).  The SCAN reads
+; trailer (the CHAIN, 32 octets) followed by a CHUNK of committed records:
+; kind 1 is one record's bytes (the FNST record frame of books/frame.lisp,
+; unchanged); kind 2 is two or more records, each after its length in four
+; octets (PKT-749, lane log-2-pad: a batch is one entry padded once, not
+; one padded entry per record; -37.5 percent of the log for eight 2 KiB
+; articles at the 4 KiB unit).  A batch's log is its greedy chunks under the
+; frame's payload bound (fn-lg-chunk-len), so any batch below four GiB is
+; one entry.  The SCAN reads
 ; entries from the front while each one is complete (its declared length
 ; lies within the octets), validates (`fn-frame-open'), carries this log's
 ; magic and kind, and names the previous trailer; it stops at the first
@@ -27,7 +33,7 @@
 ;   fn-lg-scan-of-torn-entry   the scan of a TORN entry (a crash image of the
 ;                              one pending write that appends it, the byte
 ;                              model's fn-bs-torn-variantp) is the empty
-;                              history, or exactly the one record, or the
+;                              history, or exactly its chunk, or the
 ;                              first slice validates as a chained frame that
 ;                              is not the written one (fn-lg-forgeryp: the
 ;                              event A-CRYPTO-TRAILER excludes; the design
