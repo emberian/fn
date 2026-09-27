@@ -234,6 +234,123 @@ def msgid(i):
     return m.msgid(i)
 
 
+# Lane ack-before-barrier: the key-statement workload (--statements K).  K
+# successions of one principal P, a chain (statement j is signed by key set j
+# and its proof of possession by key set j+1), posted at K positions of the
+# POST phases (all by one poster, so they are accepted in order and each
+# acts).  The oracle adds, per cut, after recovery and the owner's open (whose
+# key-statement recovery, fn-ks-recover-recorded, makes a change a cut lost):
+# the key history (`hybrid-key-history') has exactly one generation per
+# statement the store serves beyond the enrollment, newest active and the rest
+# retired -- a statement that is durable has its change, and a change never
+# outlives its statement.
+KEYS_GROUP = "fn.keys"
+PRINCIPAL = bytes([85]) * 32
+POP_TAG = b"fn-key-succession-pop-v1"
+
+
+def openssl_bin():
+    return os.environ.get("FN_TEST_OPENSSL_BIN") or os.environ.get("FN_TEST_OPENSSL") or "openssl"
+
+
+def statement_key_sets(work, n):
+    d = work / "keys"
+    d.mkdir(exist_ok=True)
+    ossl = openssl_bin()
+    sets = []
+    for k in range(n):
+        ed = d / ("ed%d.pem" % k)
+        sh(ossl, "genpkey", "-algorithm", "ED25519", "-out", ed)
+        seed = sh(ossl, "pkey", "-in", ed, "-outform", "DER", stdout=subprocess.PIPE).stdout[-32:]
+        pub = sh(ossl, "pkey", "-in", ed, "-pubout", "-outform", "DER",
+                 stdout=subprocess.PIPE).stdout[-32:]
+        (d / ("ed%d.pub" % k)).write_bytes(pub)
+        (d / ("ed%d.sec" % k)).write_bytes(seed + pub)
+        ml = d / ("ml%d.pem" % k)
+        mlpub = d / ("ml%d.pub.pem" % k)
+        sh(ossl, "genpkey", "-algorithm", "ML-DSA-65", "-out", ml)
+        sh(ossl, "pkey", "-in", ml, "-pubout", "-out", mlpub)
+        der = sh(ossl, "pkey", "-pubin", "-in", mlpub, "-outform", "DER",
+                 stdout=subprocess.PIPE).stdout
+        sets.append({"ed_public": d / ("ed%d.pub" % k), "ed_secret": d / ("ed%d.sec" % k),
+                     "ed_raw": pub, "ml_public": mlpub, "ml_private": ml, "ml_raw": der[-1952:]})
+    return sets
+
+
+def _hex_lines(name, octets):
+    text = octets.hex()
+    return b"".join(("%s: %s\r\n" % (name, text[i:i + 64])).encode("ascii")
+                    for i in range(0, len(text), 64))
+
+
+def statement_articles(image, work, positions):
+    """Message-ID msgid(I) -> the dot-stuffed carrier of the succession
+    posted at I, for each I of POSITIONS in order."""
+    keys = statement_key_sets(work, len(positions) + 1)
+    pfile = work / "keys" / "principal.bin"
+    pfile.write_bytes(PRINCIPAL)
+    arts = {}
+    for j, i in enumerate(positions):
+        old, new = keys[j], keys[j + 1]
+        mid = msgid(i)
+        popsrc = work / "keys" / ("pop%d.src" % j)
+        popsrc.write_bytes(POP_TAG + b"\n" + mid.encode("ascii") + b"\n" + old["ed_raw"])
+        code, so, se = native(image, "hybrid-sign", pfile, new["ed_public"], new["ed_secret"],
+                              new["ml_public"], new["ml_private"], popsrc)
+        if code:
+            raise SystemExit("hybrid-sign %d: %s" % (j, se[-300:]))
+        sigs = dict(line.split() for line in so.splitlines())
+        source = (("From: keys@example.invalid\r\nDate: Fri, 25 Sep 2026 12:00:00 +0000\r\n"
+                   "Newsgroups: %s\r\nSubject: fn-key-statement\r\nMessage-ID: %s\r\n\r\n"
+                   % (KEYS_GROUP, mid)).encode("ascii")
+                  + b"FN-Key-Statement: succession-v1\r\n"
+                  + _hex_lines("FN-Key-Principal", PRINCIPAL)
+                  + _hex_lines("FN-Key-Old-Ed25519", old["ed_raw"])
+                  + _hex_lines("FN-Key-New-Ed25519", new["ed_raw"])
+                  + _hex_lines("FN-Key-New-ML-DSA-65", new["ml_raw"])
+                  + _hex_lines("FN-Key-PoP-Ed25519", bytes.fromhex(sigs["ed25519"]))
+                  + _hex_lines("FN-Key-PoP-ML-DSA-65", bytes.fromhex(sigs["ml-dsa-65"])))
+        src = work / "keys" / ("statement%d.src" % j)
+        src.write_bytes(source)
+        out = work / "keys" / ("statement%d.carrier" % j)
+        code, so, se = native(image, "hybrid-sign-carrier", pfile, old["ed_public"],
+                              old["ed_secret"], old["ml_public"], old["ml_private"], src, out)
+        if code:
+            raise SystemExit("hybrid-sign-carrier %d: %s" % (j, se[-300:]))
+        carrier = out.read_bytes()
+        arts[i] = b"".join(b"." + l if l.startswith(b".") else l
+                           for l in carrier.splitlines(keepends=True))
+    return keys[0], pfile, arts
+
+
+def key_history(image, store):
+    code, so, se = native(image, "hybrid-key-history", store)
+    return code, [l for l in so.splitlines() if l.startswith("generation=")]
+
+
+def check_statements(image, store, phase, got, stmts, ref_history, violations):
+    """The statement oracle (see KEYS_GROUP): run with the owner stopped."""
+    code, hist = key_history(image, store)
+    rec = {"key_history": len(hist)}
+    if code:
+        violations.append("key-history-exit-%d" % code)
+        return rec
+    present = [i for i in stmts if i < len(got) and got[i].startswith(b"220")]
+    rec["statements_present"] = len(present)
+    if hist:
+        states = [re.search(r"state=(\S+)", l).group(1) for l in hist]
+        if states[0] != "active" or any(x != "retired" for x in states[1:]):
+            violations.append("key-history-states:%s" % states)
+        if hist != ref_history[len(ref_history) - len(hist):]:
+            violations.append("key-history-not-a-prefix-of-the-reference")
+    if present and len(hist) != 1 + len(present):
+        violations.append("statement-change-mismatch:present-%d:generations-%d"
+                          % (len(present), len(hist)))
+    if not present and len(hist) > 1:
+        violations.append("change-without-statement:generations-%d" % len(hist))
+    return rec
+
+
 def read_article(c, mid):
     """The full answer to ARTICLE: the reply line and, for a 220, every line
     through the terminating dot."""
@@ -273,6 +390,16 @@ def workload(a):
     if a.history_octets:
         init += ["--max-groups-per-article", "16", "--max-record-octets", "262144", "--max-history-octets", str(a.history_octets)]
     init.append(GROUP)
+    stmts = []
+    if a.statements:
+        init.append(KEYS_GROUP)
+        slots = [i for i in range(a.posts) if i % max(1, a.posters) == 0 and i > 0]
+        step = max(1, len(slots) // (a.statements + 1))
+        stmts = slots[step::step][:a.statements]
+        first_keys, pfile, stmt_art = statement_articles(image, work, stmts)
+        out_line(log, tag="statements", positions=stmts)
+    else:
+        stmt_art = {}
     mark("phase:init")
     code, so, se = native(image, "operator", cfg, "init", *init)
     out_line(log, tag="init", exit=code, stdout=so[-400:], stderr=se[-400:], argv=init)
@@ -285,7 +412,24 @@ def workload(a):
     # anything is published).  An over-size article would do too, but the
     # node closes the connection after it (it stops reading the body).
     refuse = {i for i in range(a.posts)
-              if a.refuse_every and i % a.refuse_every == a.refuse_every // 2}
+              if a.refuse_every and i % a.refuse_every == a.refuse_every // 2
+              and i not in stmt_art}
+    enrolled = []
+
+    def enrol():
+        # The principal enrolled over the control socket and granted `keys'
+        # (tests/test_native_key_statements.py enrol_and_grant), once.
+        if not stmt_art or enrolled:
+            return
+        code, so, se = native(image, "hybrid-enroll", work / "c.sock", "1", pfile,
+                              first_keys["ed_public"], first_keys["ml_public"])
+        out_line(log, tag="enrol", exit=code, stderr=se[-300:])
+        code2, so2, se2 = native(image, "operator", cfg, "control", "grant", PRINCIPAL.hex(),
+                                 "keys", KEYS_GROUP)
+        out_line(log, tag="grant", exit=code2, stderr=se2[-300:])
+        if code or code2:
+            raise SystemExit("enrol/grant failed: %s %s" % (se[-200:], se2[-200:]))
+        enrolled.append(True)
     attempted = 0
 
     import threading
@@ -297,6 +441,7 @@ def workload(a):
         nonlocal attempted
         p, err = start_owner(image, cfg, work / errname)
         seen = 0
+        enrol()
         try:
             i = lo
             while i < hi:
@@ -310,7 +455,7 @@ def workload(a):
                     r = c.line("POST")
                     if not r.startswith(b"340"):
                         raise SystemExit("POST %d: %r" % (i, r))
-                    art = article_bytes(i, sizes[i])
+                    art = stmt_art.get(i) or article_bytes(i, sizes[i])
                     if i in refuse:
                         art = art.replace(b"Newsgroups: fn.test", b"Newsgroups: fn.not-carried")
                     c.stream.write(art + b".\r\n")
@@ -343,6 +488,7 @@ def workload(a):
         nonlocal attempted
         p, err = start_owner(image, cfg, work / errname)
         errors = []
+        enrol()
 
         def poster(t):
             nonlocal attempted
@@ -355,7 +501,7 @@ def workload(a):
                     r = c.line("POST")
                     if not r.startswith(b"340"):
                         raise SystemExit("POST %d: %r" % (i, r))
-                    art = article_bytes(i, sizes[i])
+                    art = stmt_art.get(i) or article_bytes(i, sizes[i])
                     if i in refuse:
                         art = art.replace(b"Newsgroups: fn.test", b"Newsgroups: fn.not-carried")
                     c.stream.write(art + b".\r\n")
@@ -410,6 +556,10 @@ def workload(a):
         c.close()
     finally:
         stop_owner(p, err)
+    ref_history = key_history(image, store)[1] if stmts else []
+    if stmts and len(ref_history) != 1 + len(stmts):
+        raise SystemExit("the reference key history has %d generations for %d statements"
+                         % (len(ref_history), len(stmts)))
     mark("phase:retention")
     code, so, se = native(image, "operator", cfg, "retention", "set", "released-by-all-holders")
     out_line(log, tag="retention", exit=code, stdout=so[-400:], stderr=se[-400:])
@@ -444,6 +594,7 @@ def workload(a):
     (refdir / "ref.json").write_text(json.dumps([x.decode("latin-1") for x in ref]))
     (refdir / "ref2.json").write_text(json.dumps([x.decode("latin-1") for x in ref2]))
     (refdir / "over.json").write_text(json.dumps({mid: n for n, mid in ref_over}))
+    (refdir / "keys.json").write_text(json.dumps(ref_history))
     ckpt = [l for l in b"".join((work / f).read_bytes() for f in ("owner-1.stderr", "owner-2.stderr", "owner-3.stderr"))
             .decode("utf-8", "replace").splitlines() if "CHECKPOINT" in l]
     out_line(log, tag="done", posts=a.posts, attempted=attempted, sizes=sizes, checkpoints=ckpt,
@@ -451,7 +602,7 @@ def workload(a):
              ref2_220=sum(1 for x in ref2 if x.startswith(b"220")),
              ref2_heads=sorted(set(x.split(b"\r\n")[0][:3].decode() for x in ref2)),
              store_path=str(store), port=port, log_route=bool(a.log_route),
-             posters=a.posters)
+             posters=a.posters, statements=stmts)
 
 
 # ---------------------------------------------------------------------------
@@ -689,8 +840,10 @@ def cuts(a):
     image = a.image
     logf = open(rig["log"], "rb")
     print("cuts planned: %d" % len(chosen), flush=True)
+    keys_ref = work / "reference" / "keys.json"
     ctx = {"image": image, "cfg": cfg, "port": port, "work": work, "ref": ref, "ref2": ref2,
-           "mnt": mnt, "store": store, "rig": rig}
+           "mnt": mnt, "store": store, "rig": rig, "statements": done.get("statements", []),
+           "ref_history": json.loads(keys_ref.read_text()) if keys_ref.exists() else []}
     rrng = random.Random(a.seed + 2)
     for n, (cut, phase, mode, seed) in enumerate(chosen):
         base_upto, tail = build_image(ents, logf, base, base_upto, cut, mode, seed, ss, img)
@@ -770,7 +923,8 @@ def evaluate(ctx, img, rec, phase, acked, refused, attempted, violations):
                 violations.append("store-absent-with-acks")
             return
         rec.update(check_store(ctx["image"], ctx["cfg"], ctx["port"], ctx["work"], phase, acked,
-                               attempted, ctx["ref"], ctx["ref2"], violations, refused))
+                               attempted, ctx["ref"], ctx["ref2"], violations, refused,
+                               ctx.get("statements") or (), ctx.get("ref_history") or []))
     except Exception as e:  # a harness failure is not a verdict
         rec["harness_error"] = repr(e)[-400:]
     finally:
@@ -925,7 +1079,8 @@ def second_cut(ctx, img, rng, violations):
     return rec
 
 
-def check_store(image, cfg, port, work, phase, acked, attempted, ref, ref2, violations, refused=()):
+def check_store(image, cfg, port, work, phase, acked, attempted, ref, ref2, violations, refused=(),
+                stmts=(), ref_history=()):
     rec = {}
     acked_set = set(acked)
     code, so, se = native(image, "operator", cfg, "recover")
@@ -951,6 +1106,20 @@ def check_store(image, cfg, port, work, phase, acked, attempted, ref, ref2, viol
     finally:
         rec["owner_stop"] = stop_owner(p, err)
     rec.update(classify(got, phase, acked_set, ref, ref2, violations))
+    if stmts:
+        # Before the reclaim the served statements are the durable ones;
+        # from the reference on every statement was acknowledged long before
+        # (and the reclaim may withdraw the articles, never the keyring).
+        store = Path(re.search(r'path = "([^"]+)"', cfg.read_text()).group(1))
+        if phase in ("reclaim", "reference-reclaimed", "end", "export", "import",
+                     "reference", "retention"):
+            code, hist = key_history(image, store)
+            rec["key_history"] = len(hist)
+            if code or hist != list(ref_history):
+                violations.append("key-history-not-the-reference:%d" % len(hist))
+        else:
+            rec.update(check_statements(image, store, phase, got, stmts, list(ref_history),
+                                        violations))
     for i in refused:
         if not got[i].startswith(b"430"):
             violations.append("refused-became-accepted:%d:%r" % (i, got[i][:40]))
@@ -1417,6 +1586,8 @@ def main(argv=None):
     # owner commits them in batches), each client marking after its own 240.
     w.add_argument("--log-route", action="store_true")
     w.add_argument("--posters", type=int, default=1)
+    w.add_argument("--statements", type=int, default=0,
+                   help="K key successions of one principal among the POSTs (lane ack-before-barrier)")
     i = sub.add_parser("index")
     i.add_argument("work")
     c = sub.add_parser("cuts")
