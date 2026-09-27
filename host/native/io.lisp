@@ -264,6 +264,7 @@ return the index the bytes begin at."
 ;;; handle), and one thread owns it, as it owns the Store.
 
 (defvar *fnn-arena* nil)
+(defvar *fnn-cat* nil)
 
 (defun fnn-live-arena ()
   (or *fnn-arena*
@@ -271,29 +272,44 @@ return the index the bytes begin at."
             (or (cdr (assoc 'fn-arena (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the payload arena stobj is not in this image")))))
 
-;;; Which state-returning entries take the live arena just before state: the
-;;; owner and reader entries whose served reads read an article's bytes
-;;; through it (books/nntp-session.lisp fn-nntp-article-bytes; lane
-;;; served-readers, 2026-09-27).  Read off the entry's own STOBJS-IN (a
-;;; property the image keeps: host/native/strip-world.lisp), once per name,
-;;; so a wrapper never carries a list that could go stale.
-(defvar *fnn-arena-entries* (make-hash-table :test 'eq))
+;;; The trailing stobjs of a state-returning entry: the live payload arena
+;;; and catalog (books/payload-arena.lisp fn-arena, books/catalog.lisp fn-cat)
+;;; when the entry's STOBJS-IN end in (fn-arena state) or (fn-arena fn-cat
+;;; state): the served readers read an article's bytes through the arena
+;;; (books/nntp-session.lisp fn-nntp-article-bytes; lane served-readers) and
+;;; the catalog's served chain and maintenance take both.  Read off the
+;;; entry's own STOBJS-IN (a property the image keeps: host/native/
+;;; strip-world.lisp), once per name, so a wrapper never carries a list that
+;;; could go stale.
+(defvar *fnn-trailing-stobjs* (make-hash-table :test 'eq))
 
-(defun fnn-arena-entry-p (name)
-  (multiple-value-bind (known found) (gethash name *fnn-arena-entries*)
+(defun fnn-live-cat ()
+  (or *fnn-cat*
+      (setq *fnn-cat*
+            (or (cdr (assoc 'fn-cat (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the catalog stobj is not in this image")))))
+
+(defun fnn-trailing-kind (name)
+  (multiple-value-bind (known found) (gethash name *fnn-trailing-stobjs*)
     (if found
         known
-      (setf (gethash name *fnn-arena-entries*)
+      (setf (gethash name *fnn-trailing-stobjs*)
             (let ((ins (stobjs-in name (w *the-live-state*))))
-              (and (>= (length ins) 2)
-                   (eq (car (last ins)) 'state)
-                   (eq (car (last ins 2)) 'fn-arena)))))))
+              (cond ((and (>= (length ins) 3) (eq (car (last ins)) 'state)
+                          (eq (car (last ins 2)) 'fn-cat)
+                          (eq (car (last ins 3)) 'fn-arena))
+                     :arena-cat)
+                    ((and (>= (length ins) 2) (eq (car (last ins)) 'state)
+                          (eq (car (last ins 2)) 'fn-arena))
+                     :arena)
+                    (t nil)))))))
 
 (defun fnn-arena-then-state (name)
   "The trailing stobj arguments of the state-returning entry NAME."
-  (if (fnn-arena-entry-p name)
-      (list (fnn-live-arena) *the-live-state*)
-    (list *the-live-state*)))
+  (case (fnn-trailing-kind name)
+    (:arena-cat (list (fnn-live-arena) (fnn-live-cat) *the-live-state*))
+    (:arena (list (fnn-live-arena) *the-live-state*))
+    (t (list *the-live-state*))))
 
 (defun fnn-core-arena-state (name &rest args)
   "A wrapper over the arena and state, the live arena passed before state:
@@ -6398,12 +6414,11 @@ of standard input; at most 512 octets (the XREDEEM PASS line's bound)."
 (defun fnn-main ()
   ;; Invariant-risk mode T (ACL2 :doc set-check-invariant-risk): the same
   ;; protection as the default :WARNING -- a :program-mode host wrapper that
-  ;; updates the arena stobj (host/owner-host.lisp's recoveries,
-  ;; host/reader-host.lisp fn-reader-use-seed) still runs with the guard
-  ;; checks that keep every stobj update well-guarded -- but no warning text
-  ;; on standard output, which carries the LISTENING line and the `model'
-  ;; verb's reply octets and nothing else (catalog-slice's step-8 fix; the
-  ;; served readers' seed hit it: served_differential).  Never NIL (unsafe).
+  ;; updates the catalog or arena stobjs (host/owner-host.lisp: the recovery
+  ;; load, fn-owner-prepare-buffer, fn-owner-finish-submission) still runs
+  ;; with the guard checks that keep every stobj update well-guarded -- but no
+  ;; warning text on standard output, which carries the LISTENING line and
+  ;; the `model' verb's reply octets and nothing else.  Never NIL (unsafe).
   (f-put-global 'check-invariant-risk t *the-live-state*)
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   (fnn-open-streams)
