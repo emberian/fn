@@ -18934,7 +18934,7 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-sbud-count-is-used",
+        "fn-sbud-count-is-used-by-definition",
         "fn-sbud-row-octets-of-wire-row"
       ],
       "read_error": null
@@ -43927,7 +43927,7 @@
       ]
     },
     {
-      "theorem": "fn-sbud-count-is-used",
+      "theorem": "fn-sbud-count-is-used-by-definition",
       "book": "books/store-budget.lisp",
       "line": 399,
       "reasons": [
@@ -48268,7 +48268,7 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
-        "theorem": "fn-sbud-count-is-used",
+        "theorem": "fn-sbud-count-is-used-by-definition",
         "book": "books/store-budget.lisp",
         "line": 399,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"

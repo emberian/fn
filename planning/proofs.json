@@ -6728,7 +6728,6 @@
       ],
       "events": [
         "fn-cei-count-of-correspondence",
-        "fn-sbud-count-is-used",
         "fn-sbud-lookup-of-correspondence",
         "fn-sbud-octets-advance-is-the-suffix-fold",
         "fn-sbud-bytes-carried-is-the-fold",
@@ -9100,7 +9099,6 @@
         "fn-event-fields-of-rows-is-the-dispatchers",
         "fn-rii-sf-record-listp-is-sf-record-listp",
         "fn-rii-sco-finalize-from-is-sco-finalize-from",
-        "fn-sbud-count-is-used",
         "fn-pidx-sbud-prepare-is-pcar-sbud-prepare"
       ]
     },
