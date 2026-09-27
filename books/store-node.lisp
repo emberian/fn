@@ -1087,6 +1087,12 @@
            (null (fn-node-stage (fn-sn-node s)))
            (fn-held-p record)
            (not (equal (fn-record-stamp record) :legacy))
+           ; The row's context must be of the generation in force: the
+           ; finish consumes it only then (fn-sn-completion-core-enabledp),
+           ; so a row interned under an older keyring would stage and then
+           ; wedge the transaction.  The entry re-interns it instead.
+           (equal (fn-hc-generation (fn-held-context record))
+                  (fn-sn-keyring-generation s))
            (eq (car (fn-cpe-projection-step
                      (fn-sn-consumer s) record (fn-sn-identity-next s))) :ok))
       (let* ((node (fn-sn-prepare-node (fn-sn-node s) record))

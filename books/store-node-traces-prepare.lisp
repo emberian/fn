@@ -327,7 +327,12 @@
           ; and the arm agree.
           ((fn-sf-record-phasep phase)
            (if (fn-held-p (fn-sf-record-candidate files))
-               (fn-snt-pending-linkp groups capacity files node)
+               (and (fn-snt-pending-linkp groups capacity files node)
+                    ; the staged row's context is of the generation in force
+                    ; (fn-sn-prepare's gate), which the finish requires
+                    (equal (fn-hc-generation
+                            (fn-held-context (fn-sf-record-candidate files)))
+                           (fn-sn-keyring-generation s)))
              (fn-snt-deferred-linkp s)))
           ; Before `6ab2c783' and `4bb7bb3d' the completing arm had one
           ; kind and nothing had to say which; this book has not certified

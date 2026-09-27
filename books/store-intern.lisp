@@ -748,3 +748,61 @@
                         (:instance fn-stx-index-of-store-is-from-empty
                          (articles (fn-rows-articles-newest-first rows fn-arena))))
            :in-theory '(fn-sn-index-of-rows))))
+
+; -----------------------------------------------------------------------------
+; 5. THE PREPARE ENTRY (POST, transit): stage the row the intern WOULD make,
+; and seal its bytes only when the store took it.  The row's handle is the
+; arena's count before the seal, which is the handle the seal then returns
+; (fn-arena-seal-new-handle): a refused prepare leaves the arena as it was,
+; so no refused article's bytes are retained.
+
+(defun fn-intern-row-at (w keyring generation h)
+  (declare (xargs :guard (and (fn-record-p w) (fn-prin-keyringp keyring)
+                              (natp generation) (natp h))
+                  :guard-hints (("Goal" :in-theory (enable fn-record-p fn-record-payloadp)))))
+  (let ((bytes (fn-record-payload w)))
+    (fn-held-make (fn-record-sequence w) (fn-record-txid w)
+                  (fn-record-generation w) (fn-record-msgid w) h
+                  (fn-record-groups w) (fn-record-obligation-id w)
+                  (fn-record-content-subject w) (fn-record-release-evidence w)
+                  (fn-record-charge w) (fn-record-stamp w)
+                  (fn-held-facts-of bytes)
+                  (fn-held-context-of bytes keyring generation)
+                  nil nil)))
+
+; The intern is the row at the old count, and the seal.
+(defthm fn-cat-intern-list-is-row-at-count
+  (and (equal (mv-nth 0 (fn-cat-intern-list w keyring generation fn-arena))
+              (fn-intern-row-at w keyring generation (fn-arena-count fn-arena)))
+       (equal (mv-nth 1 (fn-cat-intern-list w keyring generation fn-arena))
+              (fn-arena-seal-list (fn-record-payload w) fn-arena)))
+  :hints (("Goal" :in-theory (enable fn-cat-intern-list fn-intern-row-at))))
+
+(defun fn-store-prepare-interned (s w fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep s) :verify-guards nil))
+  (if (and (fn-record-p w) (fn-prin-keyringp (fn-sn-keyring s))
+           (natp (fn-sn-keyring-generation s)))
+      (let* ((row (fn-intern-row-at w (fn-sn-keyring s) (fn-sn-keyring-generation s)
+                                    (fn-arena-count fn-arena)))
+             (next (fn-sn-prepare s row)))
+        (if (equal next s)
+            (mv s fn-arena)
+          (let ((fn-arena (fn-arena-seal-list (fn-record-payload w) fn-arena)))
+            (mv next fn-arena))))
+    (mv s fn-arena)))
+
+; KEYSTONE (the prepare entry): the entry is the intern followed by the
+; store's prepare, except that a refused prepare does not seal.
+(defthm fn-store-prepare-interned-is-intern-then-prepare
+  (implies (and (fn-record-p w) (fn-prin-keyringp (fn-sn-keyring s))
+                (natp (fn-sn-keyring-generation s)))
+           (let* ((k (fn-sn-keyring s)) (g (fn-sn-keyring-generation s))
+                  (row (mv-nth 0 (fn-cat-intern-list w k g fn-arena)))
+                  (next (fn-sn-prepare s row)))
+             (and (equal (mv-nth 0 (fn-store-prepare-interned s w fn-arena)) next)
+                  (equal (mv-nth 1 (fn-store-prepare-interned s w fn-arena))
+                         (if (equal next s)
+                             fn-arena
+                           (mv-nth 1 (fn-cat-intern-list w k g fn-arena)))))))
+  :hints (("Goal" :in-theory (e/d (fn-store-prepare-interned)
+                                  (fn-sn-prepare fn-intern-row-at)))))

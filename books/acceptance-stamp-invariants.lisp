@@ -13,7 +13,7 @@
                 (not (fn-store-retention-event-p (fn-sn-completion-record s)))
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
-                (not (fn-stxa-p (fn-sn-completion-record s)))
+                (not (fn-hstxa-p (fn-sn-completion-record s)))
                 (not (fn-cpe-eventp (fn-sn-completion-record s)))
                 (not (fn-th-topic-eventp (fn-sn-completion-record s))))
            (and
@@ -33,7 +33,7 @@
                             fn-sn-finish
                             fn-sn-completion-enabledp
                             fn-sn-completion-record
-                            fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
+                            fn-stxe-p fn-stxk-p fn-hstxa-p fn-cpe-eventp
                             fn-store-retention-event-p
                             fn-th-topic-eventp)))))
 

@@ -130,6 +130,24 @@
 
 ; A row below version V, not withdrawn or withdrawn at a version V does
 ; not exceed.
+;
+; The one field fact the guards over a row's withdrawal need, without opening
+; the closed held recognizer: a present withdrawal is an (at . by) pair of
+; naturals.
+(local
+ (defthm fn-ctg-withdrawn-present-is-pair
+   (implies (and (fn-held-withdrawnp w) w)
+            (and (consp w) (natp (car w)) (natp (cdr w))))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn-held-withdrawnp)))))
+
+; And the withdrawal a cancel writes, (at . by), is one.
+(local
+ (defthm fn-ctg-withdrawnp-of-pair
+   (implies (and (natp at) (natp by))
+            (fn-held-withdrawnp (cons at by)))
+   :hints (("Goal" :in-theory (enable fn-held-withdrawnp)))))
+
 (defun fn-cat-visiblep (seq v c)
   (declare (xargs :guard (and (natp seq) (natp v) (fn-held-listp c) (< seq (len c)))))
   (and (< seq v)
@@ -617,7 +635,8 @@
    (implies (fn-held-numbersp ns)
             (or (null (cdr (fn-cat-assoc g ns)))
                 (posp (cdr (fn-cat-assoc g ns)))))
-   :rule-classes :type-prescription))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-held-numbersp)))))
 
 (local
  (defthm fn-ctg-number-in-type
@@ -625,7 +644,16 @@
             (or (null (fn-held-number-in g h))
                 (posp (fn-held-number-in g h))))
    :rule-classes :type-prescription
-   :hints (("Goal" :in-theory (enable fn-held-number-in)))))
+   :hints (("Goal" :in-theory (enable fn-held-number-in)
+                   :use ((:instance fn-ctg-assoc-of-numbersp (ns (fn-held-numbers h))))))))
+
+; The same fact as a rewrite: a present number is a positive integer.
+(local
+ (defthm fn-ctg-assoc-of-numbersp-rewrite
+   (implies (and (fn-held-numbersp ns) (cdr (fn-cat-assoc g ns)))
+            (and (integerp (cdr (fn-cat-assoc g ns)))
+                 (< 0 (cdr (fn-cat-assoc g ns)))))
+   :hints (("Goal" :use fn-ctg-assoc-of-numbersp))))
 
 ; A number above the group's high names no row.
 (local
@@ -996,7 +1024,8 @@
 
 (local
  (defthm fn-ctg-numbersp-of-assign-numbers
-   (fn-held-numbersp (fn-cat-assign-numbers groups c))))
+   (fn-held-numbersp (fn-cat-assign-numbers groups c))
+   :hints (("Goal" :in-theory (enable fn-held-numbersp)))))
 
 (local
  (defthm fn-ctg-held-p-of-assign
@@ -1367,6 +1396,22 @@
    (implies (fn-cat$corr fn-cat$c fn-cat)
             (fn-cat$c-wfp fn-cat$c))
    :hints (("Goal" :in-theory (enable fn-ctg-open)))))
+
+; The committed row with its numbers replaced, as the commit's goals meet it
+; (fn-cat-assign and fn-held-with-numbers opened): still a held row.
+(local
+ (defthm fn-ctg-held-p-of-renumbered-make
+   (implies (and (fn-held-p h) (fn-held-numbersp ns))
+            (fn-held-p (fn-held-make (fn-record-sequence h) (fn-record-txid h)
+                                     (fn-record-generation h) (fn-record-msgid h)
+                                     (fn-record-payload h) (fn-record-groups h)
+                                     (fn-record-obligation-id h)
+                                     (fn-record-content-subject h)
+                                     (fn-record-release-evidence h)
+                                     (fn-record-charge h) (fn-record-stamp h)
+                                     (fn-held-facts h) (fn-held-context h)
+                                     ns (fn-held-withdrawn h))))
+   :hints (("Goal" :in-theory (enable fn-held-p fn-record-internals fn-held-internals)))))
 
 (defthm fn-cat-commit{correspondence}
   (implies (and (fn-cat$corr fn-cat$c fn-cat) (fn-held-p h) (fn-cat$ap fn-cat))

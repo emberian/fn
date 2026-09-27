@@ -59,11 +59,18 @@
   (append (fn-nntp-string-octets "Message-ID: <teeth@example.invalid>")
           '(13 10) (fn-nntp-string-octets "Subject: teeth") '(13 10 13 10)
           (fn-nntp-string-octets "Hello") '(13 10)))
+; The acceptance machine holds the payload's arena HANDLE, never its octets
+; (books/acceptance.lisp, PKT-635): the entry seals *aut-payload* first, and
+; the first seal into an empty arena returns handle 0 (books/payload-arena.lisp
+; fn-arena-seal-new-handle: the new handle is the old count).  Nothing here
+; reads the article's bytes.
+(defconst *aut-handle* 0)
 (defconst *aut-archive*
   (fn-accept-complete
-   (fn-accept-prepare (fn-initial-state *aut-groups*) 1 *aut-id* *aut-payload*
+   (fn-accept-prepare (fn-initial-state *aut-groups*) 1 *aut-id* *aut-handle*
                       *aut-groups* 841000000)
    0 1 :durable))
+(assert-event (fn-acceptedp *aut-id* (fn-state-articles *aut-archive*)))
 (defconst *aut-obs* (fn-clock-observation 1000000 843004800000 500 t))
 (defconst *aut-agent* (fn-nntp-string-octets "fn.example.invalid"))
 
