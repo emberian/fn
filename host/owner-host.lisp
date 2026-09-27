@@ -929,6 +929,18 @@
   (let ((v (fn-owner-config state)))
     (value (list (fn-olr-bmax v) (fn-olr-omax v)))))
 
+;; The carried obligation-id trie (books/post-retain-carried.lisp): the
+;; global's writers are fn-owner-prepare-buffer and fn-owner-prepare, which stores
+;; fn-prc-refresh of the value read here, so it always satisfies
+;; fn-prc-carryp (fn-prc-carryp-of-refresh; nil, before the first POST,
+;; by fn-prc-carryp-when-atom).  The recognizer names no owner state, so no
+;; owner step between two POSTs can falsify it.
+(defun fn-owner-retain-carry (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-retain-carry state)
+      (f-get-global 'fn-owner-retain-carry state)
+    nil))
+
 ; THE OWNER'S POST ENTRY (records-flip).  The duplicate test is the Store's
 ; entry over the arena (fn-store-existing-action, KEYSTONE
 ; fn-store-existing-action-is-the-verdict-over-alpha); the budget is sized on
@@ -1051,17 +1063,6 @@
 ; fn-pidx-existing-action-is-store-existing-action) and the payload sealed
 ; from the buffer (fn-arena-seal-buffer: no list is retained; the wire
 ; record's list payload lives only for the facts, the context and the budget).
-;; The carried obligation-id trie (books/post-retain-carried.lisp): the
-;; global's only writer is fn-owner-prepare-buffer, which stores
-;; fn-prc-refresh of the value read here, so it always satisfies
-;; fn-prc-carryp (fn-prc-carryp-of-refresh; nil, before the first POST,
-;; by fn-prc-carryp-when-atom).  The recognizer names no owner state, so no
-;; owner step between two POSTs can falsify it.
-(defun fn-owner-retain-carry (state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (boundp-global 'fn-owner-retain-carry state)
-      (f-get-global 'fn-owner-retain-carry state)
-    nil))
 
 (defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
                                  subject-octets evidence-octets charge
