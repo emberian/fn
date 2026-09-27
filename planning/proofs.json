@@ -11161,7 +11161,7 @@
       ],
       "depends_on": [],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/payload-kinds.lisp",
         "tests/acl2/payload-kinds-tests.lisp",
@@ -11171,7 +11171,11 @@
         "tools/payload_kind_check.py",
         "planning/evidence/entry-guards-2026-09-27.md"
       ],
-      "progress_note": "Lane entry-guards (2026-09-27). The two keystones are proved; the host entry guard is host code, witnessed by tests/test_native_entry_guard.py on the developer image (a handle, an octet vector, a wrong count, a handle in the second position: each the named fault; octets reach the entry)."
+      "progress_note": "Lane entry-guards (2026-09-27). The two keystones are proved; the host entry guard is host code, witnessed by tests/test_native_entry_guard.py on the developer image (a handle, an octet vector, a wrong count, a handle in the second position: each the named fault; octets reach the entry).",
+      "events": [
+        "fn-payload-handle-is-not-octets",
+        "fn-payload-octets-are-not-a-handle"
+      ]
     }
   ]
 }

@@ -10967,10 +10967,6 @@
         {
           "kind": "theorem",
           "name": "fn-payload-octets-are-not-a-handle"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-payload-handle-p-is-natp"
         }
       ]
     }
