@@ -608,7 +608,7 @@ $ fn-native operator fn.toml health
 health exit=22 state=unqualified-profile
 fenced clear
 exhausted clear
-unqualified-profile held format=8 development
+unqualified-profile held format=9 development
 space-pressure clear
 no-route clear
 stranded-transfer clear
@@ -621,7 +621,7 @@ accepted operator health
 |---|---|---|---|
 | 20 | `fenced` | a clone fence awaits its incarnation rollover (`reason=clone-fence`); a process holds the store's writer lock and nothing answers on the configured control socket yet (`reason=starting`: an owner recovering its store before it listens, or an offline command); a process holds the lock and no control socket is configured, or the lock could not be probed (`reason=store-held`); or the socket accepted and did not answer (`reason=owner-unanswering`) | `starting`: wait and ask again, `status` answers once the owner listens; otherwise find the process (`fuser store/writer.lock`); a clone finishes its rollover; never delete the lock |
 | 21 | `exhausted` | transactions used reached the transaction-id codec ceiling (2^32 - 1), or the retention ledger's reserved charge its uint32 count | terminal for this store format: no profile raises it |
-| 22 | `unqualified-profile` | the persisted profile is not valid (`fn-bs-profile-validp`), or it is the development profile. The line prints `format=8` for every valid profile, a format-9 store included (hard-coded in books/native-health.lisp `fn-nh-profile-words`; `status` prints the true `format=9`) | reinstall: `store export`, then `store import --FIELD N` (or `init --profile scale`) |
+| 22 | `unqualified-profile` | the persisted profile is not valid (`fn-bs-profile-validp`), or it is the development profile. The line prints the store's format (`format=9` for the record log) | reinstall: `store export`, then `store import --FIELD N` (or `init --profile scale`) |
 | 23 | `space-pressure` | free headroom below `[alerts] headroom_min_percent` (default 10) on transactions, history octets or retention charge | a reinstall with a larger field (`store export`, `store import --FIELD N`), `capacity`, or release obligations |
 | 24 | `no-route` | forwarding obligations are held and the configuration has no `bp-route` | `bp-route add PATTERN BOUNDARY` |
 | 25 | `stranded-transfer` | an outbound feed entry was dropped at its retry bound; nothing re-offers it | fix the peer, then re-feed the article |
@@ -2335,12 +2335,11 @@ each on hbox (shared, loaded), one lane each, each figure with its scope:
   (planning/evidence/log-recovery-2026-09-27.md section 4). A compaction's
   memory is not yet bounded by the step.
 
-`operator CONFIG health` prints `format=8` for every valid profile,
-including a format-9 store's: the word is fixed in `fn-nh-profile-words`
-(books/native-health.lisp) and does not read the store's format. Since
-every image refuses a format-8 store at the open by name
-(`open refused reason=store-format`), a store `health` opened is format 9
-(its root holds `journal/`).
+`operator CONFIG health` prints the store's format: `format=9` for the
+record log (`fn-nh-profile-words`, books/native-health.lisp, reads it from
+the profile). Every image refuses a format-8 store at the open by name
+(`open refused reason=store-format`), so a store `health` opened is format
+9 (its root holds `journal/`).
 
 ### The 2026-09-26 envelope (per-file image)
 

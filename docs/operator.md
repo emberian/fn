@@ -143,7 +143,7 @@ You will see one line for each possible problem, then `accepted operator health`
 health exit=22 state=unqualified-profile
 fenced clear
 exhausted clear
-unqualified-profile held format=8 development
+unqualified-profile held format=9 development
 space-pressure clear
 no-route clear
 stranded-transfer clear
