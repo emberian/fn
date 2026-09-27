@@ -1008,51 +1008,93 @@ the state).  Format 8: the pack chain."
                    (length msgids) freed generation (length retired) msgids))))
       (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision")))))
 
+(defconstant +fnn-log-reclaim-prefix-chunk+ 1024
+  "Covered-prefix records encoded per ACL2 call while the reclaim streams the
+history (a work quantum per call, never a bound on the store).")
+
+(defun fnn-log-history-each (store records fn)
+  "Call FN on each record of the history the open recovered, in order, as
+octets: the covered prefix encoded from the checkpoint's rows a chunk at a
+time (fn-store-sco-prefix-octets-range), then RECORDS (the suffix the open
+read; the whole history after a full replay).  No list of the history's
+octet lists is built."
+  (let ((mode (fnn-store-open-mode store)))
+    (when (eq (first mode) :checkpoint)
+      (let ((s (second mode)))
+        (loop for start from 0 below s by +fnn-log-reclaim-prefix-chunk+ do
+          (let ((chunk (fnn-core-arena-state 'fn-store-sco-prefix-octets-range start
+                                             (min +fnn-log-reclaim-prefix-chunk+ (- s start)))))
+            (dolist (octets chunk)
+              (funcall fn (fnn-as-octets octets)))))))
+    (dolist (record records)
+      (funcall fn record))))
+
 (defun fnn-log-reclaim-steps (store records dry)
-  "`store reclaim' on a format-9 store (books/store-log-reclaim.lisp): ACL2's
-decision over the recovered history (fn-lgr-decide: the reclaiming pack's
-per-article context, STO-014); on :reclaim the rewritten history is replayed
-into the store node (the ordinary replay, fnn-recover-log-replay) and its
-state checkpoint published with the log rotated, then the segments it covers
-are dropped (fnn-state-checkpoint-publish-steps: T8): the released payloads'
+  "`store reclaim' on a format-9 store (books/store-log-reclaim.lisp): the
+history streamed one record at a time into ACL2's fold (fn-rcls-step under the
+store's context, compact-arena's books/store-reclaim-stream.lisp) with each
+record's rewrite (fn-rclp-event) kept as an octet vector, then ACL2's decision
+over the fold (fn-lgr-decide-stream; KEYSTONE fn-lgr-decide-stream-is-lgr-
+decide: the whole-history decision, whose rewritten history is those
+rewrites).  On :reclaim the rewritten history is replayed into the store node
+(the chunked replay every open runs, fnn-recover-log-replay) and its state
+checkpoint published with the log rotated, then the segments it covers are
+dropped (fnn-state-checkpoint-publish-steps: T8): the released payloads'
 octets leave the disk with them.  Returns the report line."
-  (let ((decision (fnn-core-state 'fn-store-log-reclaim-decide
-                                  (fnn-store-config store)
-                                  (fnn-store-prepare-observation)
-                                  (mapcar #'fnn-octet-list records)
-                                  (if dry t nil))))
-    (unless (and (consp decision) (member (first decision) '(:refused :none :dry-run :reclaim)))
-      (fnn-fault "ACL2 returned no reclaim decision"))
-    (case (first decision)
-      (:refused (fnn-refuse "reclaim refused: ~(~a~)" (second decision)))
-      (:none (format nil "reclaimed=0 ~a" (fnn-reclaim-counts-line (second decision))))
-      (:dry-run
-       (destructuring-bind (msgids freed counts) (rest decision)
-         (format nil "dry-run would-reclaim=~d freed-octets=~d ~a~{~%would-reclaim ~a~}"
-                 (length msgids) freed (fnn-reclaim-counts-line counts)
-                 (mapcar (lambda (m) (if (stringp m) m (fnn-fault "malformed msgid")))
-                         msgids))))
-      (:reclaim
-       (destructuring-bind (msgids freed rewritten counts) (rest decision)
-         (declare (ignore counts))
-         (unless (and (listp rewritten) (every #'fnn-octet-list-p rewritten)
-                      (= (length rewritten) (length records)))
-           (fnn-fault "ACL2 returned a malformed rewritten history"))
-         (fnn-checkpoint-require-mutation-ready store)
-         (let ((history (mapcar #'fnn-octets rewritten)))
-           ;; The store node becomes the rewritten history's (the replay every
-           ;; open runs), and the checkpoint the open will read is its capture.
-           (fnn-core-state 'fn-store-sco-clear)
-           (fnn-bridge-reset)
-           (fnn-recover-log-replay store history (fnn-config-records store))
-           (format nil "reclaimed=~d freed-octets=~d ~a~{~%reclaimed ~a~}"
-                   (length msgids) freed
-                   (fnn-state-checkpoint-publish-steps store (length history))
-                   msgids))))
-      (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision")))))
+  (let* ((clock (fnn-store-prepare-observation))
+         (ctx (fnn-core-state 'fn-store-reclaim-context clock))
+         (acc (fnn-core 'fn-store-reclaim-init))
+         (count 0)
+         (rewritten nil))
+    (fnn-log-history-each
+     store records
+     (lambda (record)
+       (let ((octets (fnn-octet-list record)))
+         (incf count)
+         (setq acc (fnn-core 'fn-store-reclaim-step acc octets ctx))
+         (unless dry
+           (let ((event (fnn-core 'fn-store-log-reclaim-event octets ctx)))
+             (unless (fnn-octet-list-p event)
+               (fnn-fault "ACL2 returned a malformed rewritten record"))
+             (push (fnn-octets event) rewritten))))))
+    (let ((decision (fnn-core-state 'fn-store-log-reclaim-decide-stream
+                                    (fnn-store-config store) clock acc (if dry t nil))))
+      (unless (and (consp decision) (member (first decision) '(:refused :none :dry-run :reclaim)))
+        (fnn-fault "ACL2 returned no reclaim decision"))
+      (case (first decision)
+        (:refused (fnn-refuse "reclaim refused: ~(~a~)" (second decision)))
+        (:none (format nil "reclaimed=0 ~a" (fnn-reclaim-counts-line (second decision))))
+        (:dry-run
+         (destructuring-bind (msgids freed counts) (rest decision)
+           (format nil "dry-run would-reclaim=~d freed-octets=~d ~a~{~%would-reclaim ~a~}"
+                   (length msgids) freed (fnn-reclaim-counts-line counts)
+                   (mapcar (lambda (m) (if (stringp m) m (fnn-fault "malformed msgid")))
+                           msgids))))
+        (:reclaim
+         (destructuring-bind (msgids freed counts) (rest decision)
+           (declare (ignore counts))
+           (let ((history (nreverse rewritten)))
+             (unless (= (length history) count)
+               (fnn-fault "the rewritten history is not the history's length"))
+             (setq rewritten nil)
+             (fnn-checkpoint-require-mutation-ready store)
+             ;; The store node becomes the rewritten history's (the chunked
+             ;; replay every open runs), and the checkpoint the open will read
+             ;; is its capture.
+             (fnn-core-state 'fn-store-sco-clear)
+             (fnn-bridge-reset)
+             (fnn-recover-log-replay store history (fnn-config-records store))
+             (setf (fnn-store-open-mode store) (list :full-replay :reclaim))
+             (format nil "reclaimed=~d freed-octets=~d ~a~{~%reclaimed ~a~}"
+                     (length msgids) freed
+                     (fnn-state-checkpoint-publish-steps store count)
+                     msgids))))
+        (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision"))))))
 
 (defun fnn-command-reclaim (root dry)
-  (multiple-value-bind (store records) (fnn-open-live-store root (not dry))
+  ;; The open keeps the covered prefix in the arena; the reclaim streams it
+  ;; (fnn-log-history-each).
+  (multiple-value-bind (store records) (fnn-open-live-store root (not dry) nil nil)
     (unwind-protect
          (progn (fnn-out "~a" (if (fnn-store-logp store)
                                   (fnn-log-reclaim-steps store records dry)
