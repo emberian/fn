@@ -230,6 +230,7 @@
                                       fn-bs-profile-admittedp
                                       fn-bs-profile-max-history-octets
                                       fn-bs-profile-max-record-octets
+                                      fn-bs-profile-field
                                       fn-heap-profile-word))
            :use ((:instance fn-heap-mb-of-covers
                             (octets (fn-heap-figure-octets profile core nursery)))))))

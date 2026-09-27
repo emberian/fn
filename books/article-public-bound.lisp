@@ -75,7 +75,8 @@
 (defthm fn-aw-parse-lines-cost-natural
   (natp (fn-aw-c (fn-aw-parse-lines octets limits lines-left header-bytes nfields fields-rev current header-rev)))
   :hints (("Goal" :induct (fn-aw-parse-lines octets limits lines-left header-bytes nfields fields-rev current header-rev)
-           :in-theory (enable fn-aw-parse-lines)))
+           :in-theory (e/d (fn-aw-parse-lines)
+                           (fn-article-limit-fields fn-article-limit-lines fn-article-limit-octets))))
   :rule-classes :type-prescription)
 (defthm fn-aw-parse-lines-cost-bound
   (implies (and (true-listp octets) (true-listp fields-rev) (true-listp header-rev))
@@ -83,19 +84,22 @@
                (fn-aw-budget lines-left (len octets)
                              (fn-aw-state-size fields-rev current header-rev))))
   :hints (("Goal" :induct (fn-aw-parse-lines octets limits lines-left header-bytes nfields fields-rev current header-rev)
-            :in-theory (enable fn-aw-parse-lines fn-aw-state-size fn-aw-current-size))
+            :in-theory (e/d (fn-aw-parse-lines fn-aw-state-size fn-aw-current-size)
+                            (fn-article-limit-fields fn-article-limit-lines fn-article-limit-octets)))
           ("Subgoal *1/11" :use
             ((:instance fn-aw-budget-step (fuel lines-left) (n (len octets)) (s (fn-aw-state-size fields-rev current header-rev)) (n2 (len (fn-article-line-rest (fn-article-next-line octets)))) (s2 (fn-aw-state-size (if current (cons current fields-rev) fields-rev) (fn-article-line-value (fn-article-new-field (fn-article-line-value (fn-article-next-line octets)))) (fn-article-header-rev-add-line header-rev (fn-article-line-value (fn-article-next-line octets))))))
              (:instance fn-aw-new-state-growth (line (fn-article-line-value (fn-article-next-line octets)))))
              :in-theory (e/d (fn-aw-state-size fn-aw-current-size)
                (fn-aw-budget-step fn-aw-new-state-growth fn-aw-fold-state-growth
-                fn-article-field-raw-lines fn-article-field-unfolded-value)))
+                fn-article-field-raw-lines fn-article-field-unfolded-value
+                fn-article-limit-fields fn-article-limit-lines fn-article-limit-octets)))
           ("Subgoal *1/8" :use
             ((:instance fn-aw-budget-step (fuel lines-left) (n (len octets)) (s (fn-aw-state-size fields-rev current header-rev)) (n2 (len (fn-article-line-rest (fn-article-next-line octets)))) (s2 (fn-aw-state-size fields-rev (fn-article-add-fold current (fn-article-line-value (fn-article-next-line octets))) (fn-article-header-rev-add-line header-rev (fn-article-line-value (fn-article-next-line octets))))))
              (:instance fn-aw-fold-state-growth (line (fn-article-line-value (fn-article-next-line octets)))))
              :in-theory (e/d (fn-aw-state-size fn-aw-current-size)
                (fn-aw-budget-step fn-aw-new-state-growth fn-aw-fold-state-growth
-                fn-article-field-raw-lines fn-article-field-unfolded-value)))
+                fn-article-field-raw-lines fn-article-field-unfolded-value
+                fn-article-limit-fields fn-article-limit-lines fn-article-limit-octets)))
           ("Subgoal *1/1" :in-theory (enable fn-aw-budget))))
 
 ; Public preflight caps traversed input even for non-octet and improper objects.

@@ -7884,7 +7884,7 @@
     {
       "id": "PRF-230",
       "title": "The header limits of one article are the operator's: the parse under a profile's limits admits exactly the headers within them and refuses the next by name, and readers parse under the ceiling so raising a limit never changes an admitted article",
-      "statement": "For any limits WIDER under which OCTETS parses, fn-article-parse-under OCTETS LIMITS is that same article exactly when the input's header census (fields, physical lines, octets before the blank line, read by the parser's own line scanner) is within LIMITS, and otherwise a refusal whose code is :header-fields-limit, :header-lines-limit or :header-octets-limit (fn-article-parse-under-admits-exactly-the-limits); by instance a success is within its limits (fn-article-parse-under-within-its-limits) and a success under LIMITS is the same article under any wider limits (fn-article-parse-under-raised-limits-agree). fn-article-parse, which every reader of a stored or received article calls, is the ceiling limits' instance (fn-article-parse-is-the-ceiling-limits-by-definition). For an input the reading parser admits, fn-article-census-refusal of the census against LIMITS is NIL exactly when the parse under LIMITS admits it (and then equals the reading parse), and otherwise a limit's name while that parse refuses by a limit's name (fn-article-census-refusal-is-the-parse); fn-inj-decide (books/injection.lisp, called by the served POST through the owner's configuration, whose header limits host/owner-host.lisp fn-owner-served-post-bound takes from the opened profile's fields 15 to 17, fn-bs-profile-header-limits) refuses by exactly that census refusal. The parse's work under any limits is bounded by fn-article-parse-under-work-budget (fn-article-parse-under-work-input-bound).",
+      "statement": "For any limits WIDER under which OCTETS parses, fn-article-parse-under OCTETS LIMITS is that same article exactly when the input's header census (fields, physical lines, octets before the blank line, read by the parser's own line scanner) is within LIMITS, and otherwise a refusal whose code is :header-fields-limit, :header-lines-limit or :header-octets-limit (fn-article-parse-under-admits-exactly-the-limits); by instance a success is within its limits (fn-article-parse-under-within-its-limits) and a success under LIMITS is the same article under any wider limits (fn-article-parse-under-raised-limits-agree). fn-article-parse, which every reader of a stored or received article calls, is the ceiling limits' instance (fn-article-parse-is-the-ceiling-limits-by-definition). For an input the reading parser admits, fn-article-census-refusal of the census against LIMITS is NIL exactly when the parse under LIMITS admits it (and then equals the reading parse), and otherwise a limit's name while that parse refuses by a limit's name (fn-article-census-refusal-is-the-parse); fn-inj-decide (books/injection.lisp, called by the served POST through the owner's configuration, whose header limits host/owner-host.lisp fn-owner-served-post-bound takes from the opened profile's fields 15 to 17, fn-bs-profile-header-limits) refuses by exactly that census refusal. The parse's work under any limits is bounded by fn-article-parse-under-work-budget (fn-article-parse-under-work-input-bound). PKT-660 (the coordinator's default): the peer transfer decision the host calls, fn-peer-decide-transfer-under (host/owner-host.lisp fn-owner-transit-decide, with the owner's limits fn-own-config-header-limits), admits a relayed article exactly when the parse of the octets it would store (fn-peer-relayed-octets) under the limits admits them, and otherwise refuses by a limit's name (437/439) where fn-peer-decide-transfer wanted or deferred (fn-peer-decide-transfer-under-admits-exactly-the-limits), and wants only what fn-peer-decide-transfer wants (fn-peer-decide-transfer-under-wants-only-what-transfer-wants); the owner's BP transit delivery fn-own-bp-transit-submit-result submits only within the limits and is refused past them (fn-own-bp-transit-submits-only-within-the-limits, fn-own-bp-transit-refuses-past-the-limits); the owner's control delivery fn-own-control-decision (BP application and CLI articles) injects only within the limits and past them refuses by a limit's name (fn-own-control-decision-injects-only-within-the-limits, fn-own-control-decision-refuses-past-the-limits-by-name).",
       "milestone": "M5",
       "requirements": [
         "STO-030"
@@ -7903,15 +7903,27 @@
         "tests/acl2/article-header-limits-tests.lisp",
         "tests/acl2/byte-store-frame-tests.lisp",
         "tests/test_native_header_limits.py",
+        "books/peer-inbound.lisp",
+        "books/owner.lisp",
+        "books/transit-header-limits.lisp",
+        "tests/acl2/transit-header-limits-tests.lisp",
+        "books/heap-figure.lisp",
+        "tests/acl2/heap-figure-tests.lisp",
         "planning/evidence/header-limits-profile-2026-09-27.md"
       ],
-      "progress_note": "Open: the peer (IHAVE/TAKETHIS) and BP ingress decisions parse under the ceiling and do not yet read the profile's header limits (PKT-660); the heap figure does not yet carry a header term; the fold append is quadratic per field (bounded by max-header-octets).",
+      "progress_note": "Open: the fold append (fn-article-add-fold) is quadratic per field in its length (bounded by max-header-octets; the work budget charges it); the lab BP ingress host (host/bp-ingress-host.lisp) refuses by the same census with no theorem over its program-mode verdict.",
       "events": [
         "fn-article-parse-under-admits-exactly-the-limits",
         "fn-article-parse-under-within-its-limits",
         "fn-article-parse-under-raised-limits-agree",
         "fn-article-census-refusal-is-the-parse",
-        "fn-article-parse-under-work-input-bound"
+        "fn-article-parse-under-work-input-bound",
+        "fn-peer-decide-transfer-under-admits-exactly-the-limits",
+        "fn-peer-decide-transfer-under-wants-only-what-transfer-wants",
+        "fn-own-bp-transit-submits-only-within-the-limits",
+        "fn-own-bp-transit-refuses-past-the-limits",
+        "fn-own-control-decision-injects-only-within-the-limits",
+        "fn-own-control-decision-refuses-past-the-limits-by-name"
       ]
     }
   ]

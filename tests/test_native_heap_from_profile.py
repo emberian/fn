@@ -21,7 +21,7 @@ name, outside a limit of at most 2 GiB.
   figure, takes 100 POSTs of 2 KiB, serves them (ARTICLE, OVER), publishes
   one automatic checkpoint (K = 128: at 64), stops, reopens from the
   checkpoint and serves them again.  Each run's VmHWM is printed.
-* The refusal: the development profile (figure 2,671 MB on the 69046a76
+* The refusal: the development profile (figure 2,673 MB on the 69046a76
   core) is refused by name at `init' and, for a store made without the
   launcher, at `run' and `status'.
 """

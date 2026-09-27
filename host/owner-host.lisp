@@ -1125,6 +1125,17 @@
   (let* ((owner (fn-owner-core state))
          (result (fn-own-control-submit-result owner msgid-octets
                                                 group-octets payload))
+         ; A refused submission keeps the decision's reason (a header
+         ; limit's name, PRF-230) for the delivery's refusal line.
+         (state (if (equal result :refused)
+                    (f-put-global
+                     'fn-owner-app-refusal-reason
+                     (fn-inj-decision-reason
+                      (fn-own-control-decision (fn-own-config owner)
+                                               msgid-octets group-octets
+                                               payload))
+                     state)
+                  state))
          (state (fn-owner-step (list :control-submit msgid-octets
                                      group-octets payload)
                                state)))
@@ -1143,9 +1154,10 @@
                     (f-put-global
                      'fn-owner-app-refusal-reason
                      (fn-peer-decision-reason
-                      (fn-peer-decide-transfer
+                      (fn-peer-decide-transfer-under
                        (fn-sn-node (fn-own-store owner)) cfg peer msgid-octets
-                       payload (fn-own-clock owner) id subject))
+                       payload (fn-own-clock owner) id subject
+                       (fn-own-config-header-limits (fn-own-config owner))))
                      state)
                   state))
          (state (fn-owner-step
@@ -1357,8 +1369,11 @@
              (subject (fn-store-octets->string subject-octets)))
         (if (or (equal id :bad) (equal subject :bad))
             (value :not-transit)
-          (let* ((d (fn-peer-decide-transfer node cfg peer msgid octets
-                                             (fn-own-clock owner) id subject))
+          ; PRF-230/PKT-660: under the opened profile's header limits, the
+          ; owner's injection configuration's, exactly as a POST.
+          (let* ((d (fn-peer-decide-transfer-under
+                     node cfg peer msgid octets (fn-own-clock owner) id subject
+                     (fn-own-config-header-limits (fn-own-config owner))))
                  (args (fn-peer-injection-arguments node cfg peer msgid octets
                                                     0 id subject
                                                     (fn-own-clock owner)))
