@@ -7986,7 +7986,14 @@
         "fn-lgt-fence-preserves-okp",
         "fn-lgt-fence-failed-preserves-okp",
         "fn-lgt-finish-one-preserves-okp",
-        "fn-lgt-prepare-preserves-relation"
+        "fn-lgt-prepare-preserves-relation",
+        "fn-lg-decode-is-the-scan",
+        "fn-lgd-loop-is-the-scan",
+        "fn-lg-append-program-keeps-the-relation",
+        "fn-lg-append-program-appends",
+        "fn-lg-fence-program-keeps-the-relation",
+        "fn-lg-recover-program-establishes-the-relation",
+        "fn-lg-open-kernel-is-the-recovered-kernel"
       ]
     },
     {
