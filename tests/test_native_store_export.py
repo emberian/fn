@@ -7,6 +7,10 @@ fnn-command-store-import read and write.  On the image under test:
 * a store with articles served by the owner is exported (the owner stopped),
   a fresh node imports the archive, and the two stores' `status` and
   `store inspect` observations are equal, article for article;
+* the imported store holds the history in the record log (format 9) and
+  exports to the same archive, file for file; a process death at the
+  import's log cuts (FN_NATIVE_LOG_FAULT=log-written|log-fenced) publishes
+  no store;
 * the import refuses by name, exit 1, writing no store: a MANIFEST with one
   octet changed (manifest-mismatch NAME), an existing store (store-exists)
   and a raised field that breaks a relation (profile REASON); a raised field
@@ -93,9 +97,16 @@ class StoreExportTests(ProfileFixture):
         config2 = self.second_config(store2)
         imported = self.operator_with(config2, "store", "import", str(archive))
         self.assertEqual(imported.returncode, EXIT_OK, imported.stderr.decode())
-        self.assertEqual(sorted(p.name for p in (store2 / "transactions").iterdir()),
-                         sorted(p.name for p in (self.store / "transactions").iterdir()
-                                if p.is_file()))
+        # Format 9: the imported history is in the record log (journal/),
+        # never in transaction files, and exporting it again gives the same
+        # archive, file for file: the same profile, frontier, configuration
+        # records and records (PRF-205 over the log).
+        self.assertTrue((store2 / "journal" / "000001.log").is_file())
+        self.assertEqual([p for p in (store2 / "transactions").iterdir() if p.is_file()], [])
+        again_archive = self.root / "archive-again"
+        reexported = self.operator_with(config2, "store", "export", str(again_archive))
+        self.assertEqual(reexported.returncode, EXIT_OK, reexported.stderr.decode())
+        self.assertEqual(tree(again_archive), tree(archive))
         for mid in ids:
             a = self.op("store", "inspect", mid)
             b = self.operator_with(config2, "store", "inspect", mid)
@@ -128,6 +139,42 @@ class StoreExportTests(ProfileFixture):
         raised = self.operator_with(config2, "store", "import", str(archive),
                                     "--max-transactions", "1000")
         self.assertEqual(raised.returncode, EXIT_OK, raised.stderr.decode())
+
+    def test_an_import_killed_in_the_log_publishes_no_store(self):
+        """The import's log writes (P-BATCH's append and barrier into the
+        unpublished stage): a process death at log-written or log-fenced
+        leaves ROOT.import-XXXX and no store at ROOT; the next import is
+        refused by name (interrupted-import) until the stage is removed, then
+        succeeds."""
+        if not verbs.executable(verbs.DEVELOPER):
+            self.skipTest("the developer image is required (FN_NATIVE_LOG_FAULT)")
+        self.served_store()
+        archive = self.root / "archive"
+        self.assertEqual(self.op("store", "export", str(archive)).returncode, EXIT_OK)
+        for cut in ("log-written", "log-fenced"):
+            store2 = self.root / ("store-" + cut)
+            config2 = self.second_config(store2)
+            env = dict(verbs.environment(), FN_NATIVE_LOG_FAULT=cut)
+            saved = self.config
+            try:
+                self.config = config2
+                killed = self.operator("store", "import", str(archive),
+                                       image=verbs.DEVELOPER, env=env)
+            finally:
+                self.config = saved
+            self.assertNotIn(killed.returncode, (EXIT_OK, EXIT_REFUSED),
+                             killed.stderr.decode())
+            self.assertFalse(store2.exists(), cut)
+            stages = [p for p in store2.parent.iterdir()
+                      if p.name.startswith(store2.name + ".import-")]
+            self.assertEqual(len(stages), 1, cut)
+            refused = self.operator_with(config2, "store", "import", str(archive))
+            self.assertEqual(refused.returncode, EXIT_REFUSED)
+            self.assertIn(b"import refused reason=interrupted-import",
+                          refused.stderr + refused.stdout)
+            shutil.rmtree(stages[0])
+            done = self.operator_with(config2, "store", "import", str(archive))
+            self.assertEqual(done.returncode, EXIT_OK, done.stderr.decode())
 
     def refused_by_name(self, kind):
         made, config, _ = older.make_store(kind, self.image, self.root / "older",
