@@ -6967,10 +6967,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cat-ocl-relation-before-article-finish"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cat-ocl-relation-of-other-finish"
         },
         {
@@ -6980,10 +6976,6 @@
         {
           "kind": "theorem",
           "name": "fn-cat-ocl-relation-of-redecide"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cat-ocl-relation-of-article-finish-by"
         },
         {
           "kind": "theorem",
@@ -7141,10 +7133,6 @@
         {
           "kind": "theorem",
           "name": "fn-scr-ocfg-read-span-is-reference-under-ocl-relation"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cat-relation-of-complete-hidden"
         },
         {
           "kind": "theorem",
