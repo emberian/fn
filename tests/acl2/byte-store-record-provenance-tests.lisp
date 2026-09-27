@@ -1223,12 +1223,13 @@
 ; The shared native owner installs fn-owner-io as its observation callback.
 ; Its exact :store/:io event chain projects to the same four Store-node
 ; callbacks and reaches the same byte interpreter pair 12/pair 14.
-(defun bsk0-owner-frontier-returnp (bs oc stage octets)
+(defun bsk0-owner-frontier-returnp (bs oc stage octets fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let* ((s (fn-own-store (fn-ocfg-owner oc)))
-         (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok))))
-         (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok))))
-         (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok))))
-         (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :ok))))
+         (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok)) fn-arena))
+         (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok)) fn-arena))
+         (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok)) fn-arena))
+         (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :ok)) fn-arena))
          (run (fn-bs-run bs (fn-sn-files s)
                          (fn-bs-frontier-program stage octets)
                          nil (fn-sn-groups s) (fn-sn-capacity s)))
@@ -1253,6 +1254,14 @@
                      (list *fn-cfg-default-record*))
    nil nil))
 
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift bsk0-owner-frontier-eio-applied-conclusionp 4)
+(bpr-lift bsk0-owner-frontier-eio-appliedp 4)
+(bpr-lift bsk0-owner-frontier-eio-choice-conclusionp 5)
+(bpr-lift bsk0-owner-frontier-returnp 4)
+(bpr-lift fn-ocfg-step 2)
 (assert-event
  (let* ((bs (bsk5-initial))
         (oc (bsk0-owner-frontier-entry))
@@ -1266,10 +1275,9 @@
         (not (fn-bs-lookup bs :staging stage))
         (equal (fn-own-store
                 (fn-ocfg-owner
-                 (fn-ocfg-step oc '(:store (:io :start-frontier :ok)))))
+                 (in-arena-fn-ocfg-step *sr-arena* oc '(:store (:io :start-frontier :ok)))))
                (fn-sn-io s :start-frontier :ok))
-        (bsk0-owner-frontier-returnp
-         bs oc stage (fn-bs-frontier-encode 1)))))
+        (in-arena-bsk0-owner-frontier-returnp *sr-arena* bs oc stage (fn-bs-frontier-encode 1)))))
 
 (must-fail
  (assert-event
@@ -1279,8 +1287,7 @@
          (s0 (fn-own-store o))
          (s (fn-sn-update s0 (fn-sn-files s0) :bad))
          (oc (fn-ocfg-make (fn-own-start s 2) nil nil nil)))
-    (bsk0-owner-frontier-returnp bs oc ".allocation-owner-k0"
-                                  (fn-bs-frontier-encode 1)))))
+    (in-arena-bsk0-owner-frontier-returnp *sr-arena* bs oc ".allocation-owner-k0" (fn-bs-frontier-encode 1)))))
 
 (must-fail
  (assert-event
@@ -1289,38 +1296,32 @@
                           (fn-bs-put-assoc 0 '(65) (fn-bs-inodes bs))
                           (fn-bs-dirs bs) (fn-bs-pending bs)
                           (fn-bs-next-ino bs))))
-    (bsk0-owner-frontier-returnp bad (bsk0-owner-frontier-entry)
-                                  ".allocation-owner-k0"
-                                  (fn-bs-frontier-encode 1)))))
+    (in-arena-bsk0-owner-frontier-returnp *sr-arena* bad (bsk0-owner-frontier-entry) ".allocation-owner-k0" (fn-bs-frontier-encode 1)))))
 
 (must-fail
  (assert-event
-  (bsk0-owner-frontier-returnp
-   (bsk5-initial) (bsk0-owner-frontier-entry)
-   ".allocation-owner-k0" (fn-bs-frontier-encode 0))))
+  (in-arena-bsk0-owner-frontier-returnp *sr-arena* (bsk5-initial) (bsk0-owner-frontier-entry) ".allocation-owner-k0" (fn-bs-frontier-encode 0))))
 
 (must-fail
  (assert-event
-  (bsk0-owner-frontier-returnp
-   (mv-nth 1 (fn-bs-create (bsk5-initial) :staging
-                           ".allocation-owner-k0" :ok))
-   (bsk0-owner-frontier-entry)
-   ".allocation-owner-k0" (fn-bs-frontier-encode 1))))
+  (in-arena-bsk0-owner-frontier-returnp *sr-arena* (mv-nth 1 (fn-bs-create (bsk5-initial) :staging
+                           ".allocation-owner-k0" :ok)) (bsk0-owner-frontier-entry) ".allocation-owner-k0" (fn-bs-frontier-encode 1))))
 
 ; The same predicate is the finite-choice owner theorem's exact conclusion.
 ; The old applied wrapper below keeps the four existing premise teeth on the
 ; new theorem's :apply arm, while a second positive witness reaches :drop.
-(defun bsk0-owner-frontier-eio-choice-conclusionp (bs oc stage octets choice)
+(defun bsk0-owner-frontier-eio-choice-conclusionp (bs oc stage octets choice fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let* ((s (fn-own-store (fn-ocfg-owner oc)))
          (run (fn-bs-run bs (fn-sn-files s)
                          (fn-bs-frontier-program stage octets)
                          (fn-bs-k0-root-error-outcomes choice)
                          (fn-sn-groups s) (fn-sn-capacity s)))
          (failed (car (nth 12 run)))
-         (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok))))
-         (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok))))
-         (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok))))
-         (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error))))
+         (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok)) fn-arena))
+         (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok)) fn-arena))
+         (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok)) fn-arena))
+         (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error)) fn-arena))
          (k3 (fn-sn-files (fn-own-store (fn-ocfg-owner oc3))))
          (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
     (and (equal (len run) 13)
@@ -1331,26 +1332,28 @@
                     (fn-sf-frontier-candidate k3)
                   (fn-bs-durable-frontier bs))))))
 
-(defun bsk0-owner-frontier-eio-applied-conclusionp (bs oc stage octets)
-  (bsk0-owner-frontier-eio-choice-conclusionp bs oc stage octets :apply))
+(defun bsk0-owner-frontier-eio-applied-conclusionp (bs oc stage octets fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (bsk0-owner-frontier-eio-choice-conclusionp bs oc stage octets :apply fn-arena))
 
 ; The called owner path classifies a root-directory EIO after rename as a
 ; recovery fence.  The byte interpreter stops at the failing fsync (pair 12),
 ; even when the pending replacement actually landed.  No :reserved callback
 ; or publication success is inferred from that physical landing.
-(defun bsk0-owner-frontier-eio-appliedp (bs oc stage octets)
+(defun bsk0-owner-frontier-eio-appliedp (bs oc stage octets fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let* ((s (fn-own-store (fn-ocfg-owner oc)))
          (run (fn-bs-run bs (fn-sn-files s)
                          (fn-bs-frontier-program stage octets)
                          (fn-bs-k0-root-error-outcomes :apply)
                          (fn-sn-groups s) (fn-sn-capacity s)))
          (failed (car (nth 12 run)))
-         (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok))))
-         (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok))))
-         (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok))))
-         (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error))))
+         (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok)) fn-arena))
+         (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok)) fn-arena))
+         (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok)) fn-arena))
+         (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error)) fn-arena))
          (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
-    (and (bsk0-owner-frontier-eio-applied-conclusionp bs oc stage octets)
+    (and (bsk0-owner-frontier-eio-applied-conclusionp bs oc stage octets fn-arena)
          (equal (len run) 13)
          (fn-bs-dir-quietp failed :root)
          (equal (fn-sf-frontier k4) (fn-sf-frontier (fn-sn-files s))))))
@@ -1366,8 +1369,8 @@
         (fn-bs-store-relation bs (fn-sn-files s) *bsk5-arena*)
         (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
         (not (fn-bs-lookup bs :staging stage))
-        (bsk0-owner-frontier-eio-appliedp bs oc stage octets)
-        (bsk0-owner-frontier-eio-applied-conclusionp bs oc stage octets))))
+        (in-arena-bsk0-owner-frontier-eio-appliedp *sr-arena* bs oc stage octets)
+        (in-arena-bsk0-owner-frontier-eio-applied-conclusionp *sr-arena* bs oc stage octets))))
 
 ; The opposite legal fsync-error choice is reachable from the same owner and
 ; byte entry.  It also fences, but leaves the old durable frontier.  Thus
@@ -1385,16 +1388,14 @@
                             (fn-bs-frontier-program stage (fn-bs-frontier-encode 1))
                             (fn-bs-k0-root-error-outcomes :drop)
                             (fn-sn-groups s) (fn-sn-capacity s)))
-        (oc1 (fn-ocfg-step oc '(:store (:io :start-frontier :ok))))
-        (oc2 (fn-ocfg-step oc1 '(:store (:io :frontier-file :ok))))
-        (oc3 (fn-ocfg-step oc2 '(:store (:io :frontier-replace :ok))))
-        (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error))))
+        (oc1 (in-arena-fn-ocfg-step *sr-arena* oc '(:store (:io :start-frontier :ok))))
+        (oc2 (in-arena-fn-ocfg-step *sr-arena* oc1 '(:store (:io :frontier-file :ok))))
+        (oc3 (in-arena-fn-ocfg-step *sr-arena* oc2 '(:store (:io :frontier-replace :ok))))
+        (oc4 (in-arena-fn-ocfg-step *sr-arena* oc3 '(:store (:io :frontier-directory :error))))
         (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
    (and (equal (len applied) 13) (equal (len dropped) 13)
-        (bsk0-owner-frontier-eio-choice-conclusionp
-         bs oc stage (fn-bs-frontier-encode 1) :apply)
-        (bsk0-owner-frontier-eio-choice-conclusionp
-         bs oc stage (fn-bs-frontier-encode 1) :drop)
+        (in-arena-bsk0-owner-frontier-eio-choice-conclusionp *sr-arena* bs oc stage (fn-bs-frontier-encode 1) :apply)
+        (in-arena-bsk0-owner-frontier-eio-choice-conclusionp *sr-arena* bs oc stage (fn-bs-frontier-encode 1) :drop)
         (equal (fn-bs-durable-frontier (car (nth 12 applied))) 1)
         (equal (fn-bs-durable-frontier (car (nth 12 dropped))) 0)
         (fn-bs-store-relation (car (nth 12 applied)) k4 *bsk5-arena*)
@@ -1416,8 +1417,7 @@
         (fn-bs-store-relation bs (fn-sn-files s) *bsk5-arena*)
         (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
         (not (fn-bs-lookup bs :staging stage))
-        (not (bsk0-owner-frontier-eio-applied-conclusionp
-              bs oc stage octets))))))
+        (not (in-arena-bsk0-owner-frontier-eio-applied-conclusionp *sr-arena* bs oc stage octets))))))
 (must-fail
  (assert-event
   (with-guard-checking :none
@@ -1427,8 +1427,7 @@
          (s0 (fn-own-store o))
          (s (fn-sn-update s0 (fn-sn-files s0) :bad))
          (oc (fn-ocfg-make (fn-own-start s 2) nil nil nil)))
-     (bsk0-owner-frontier-eio-applied-conclusionp
-      bs oc ".allocation-owner-eio-k0" (fn-bs-frontier-encode 1))))))
+     (in-arena-bsk0-owner-frontier-eio-applied-conclusionp *sr-arena* bs oc ".allocation-owner-eio-k0" (fn-bs-frontier-encode 1))))))
 (assert-event
  (let* ((bs (bsk5-initial))
         (oc (bsk0-owner-frontier-entry))
@@ -1443,8 +1442,7 @@
         (not (fn-bs-store-relation bad (fn-sn-files s) *bsk5-arena*))
         (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
         (not (fn-bs-lookup bad :staging stage))
-        (not (bsk0-owner-frontier-eio-applied-conclusionp
-              bad oc stage octets)))))
+        (not (in-arena-bsk0-owner-frontier-eio-applied-conclusionp *sr-arena* bad oc stage octets)))))
 (must-fail
  (assert-event
   (let* ((bs (bsk5-initial))
@@ -1452,9 +1450,7 @@
                           (fn-bs-put-assoc 0 '(65) (fn-bs-inodes bs))
                           (fn-bs-dirs bs) (fn-bs-pending bs)
                           (fn-bs-next-ino bs))))
-    (bsk0-owner-frontier-eio-applied-conclusionp
-     bad (bsk0-owner-frontier-entry)
-     ".allocation-owner-eio-k0" (fn-bs-frontier-encode 1)))))
+    (in-arena-bsk0-owner-frontier-eio-applied-conclusionp *sr-arena* bad (bsk0-owner-frontier-entry) ".allocation-owner-eio-k0" (fn-bs-frontier-encode 1)))))
 (assert-event
  (let* ((bs (bsk5-initial))
         (oc (bsk0-owner-frontier-entry))
@@ -1465,13 +1461,10 @@
         (fn-bs-store-relation bs (fn-sn-files s) *bsk5-arena*)
         (not (fn-bs-frontier-inputp (fn-sn-files s) stage octets))
         (not (fn-bs-lookup bs :staging stage))
-        (not (bsk0-owner-frontier-eio-applied-conclusionp
-              bs oc stage octets)))))
+        (not (in-arena-bsk0-owner-frontier-eio-applied-conclusionp *sr-arena* bs oc stage octets)))))
 (must-fail
  (assert-event
-  (bsk0-owner-frontier-eio-applied-conclusionp
-   (bsk5-initial) (bsk0-owner-frontier-entry)
-   ".allocation-owner-eio-k0" (fn-bs-frontier-encode 0))))
+  (in-arena-bsk0-owner-frontier-eio-applied-conclusionp *sr-arena* (bsk5-initial) (bsk0-owner-frontier-entry) ".allocation-owner-eio-k0" (fn-bs-frontier-encode 0))))
 (assert-event
  (mv-let (result bs)
    (fn-bs-create (bsk5-initial) :staging ".allocation-owner-eio-k0" :ok)
@@ -1484,13 +1477,10 @@
           (fn-bs-store-relation bs (fn-sn-files s) *bsk5-arena*)
           (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
           (fn-bs-lookup bs :staging stage)
-          (not (bsk0-owner-frontier-eio-applied-conclusionp
-                bs oc stage octets))))))
+          (not (in-arena-bsk0-owner-frontier-eio-applied-conclusionp *sr-arena* bs oc stage octets))))))
 (must-fail
  (assert-event
   (mv-let (result bs)
     (fn-bs-create (bsk5-initial) :staging ".allocation-owner-eio-k0" :ok)
     (declare (ignore result))
-    (bsk0-owner-frontier-eio-applied-conclusionp
-     bs (bsk0-owner-frontier-entry)
-     ".allocation-owner-eio-k0" (fn-bs-frontier-encode 1)))))
+    (in-arena-bsk0-owner-frontier-eio-applied-conclusionp *sr-arena* bs (bsk0-owner-frontier-entry) ".allocation-owner-eio-k0" (fn-bs-frontier-encode 1)))))

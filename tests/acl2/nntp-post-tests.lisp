@@ -8,10 +8,12 @@
 
 (defconst *fn-tp-groups* '("fn.letters"))
 (defconst *fn-tp-seed* '(77 101 115 115 97 103 101 45 73 68 58 32 60 115 101 101 100 64 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 83 117 98 106 101 99 116 58 32 115 101 101 100 13 10 13 10 83 101 101 100 32 98 111 100 121 13 10))
+;; by specification: the flip -- the acceptance payload is an arena handle;
+;; *fn-tp-seed* is the bytes under handle 0.
 (defconst *fn-tp-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *fn-tp-groups*) 1
-                      "<seed@example.invalid>" *fn-tp-seed* *fn-tp-groups* 841000000)
+                      "<seed@example.invalid>" 0 *fn-tp-groups* 841000000)
    0 1 :durable))
 (defconst *fn-tp-agent* '(102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100))
 (defconst *fn-tp-cfg*
@@ -36,9 +38,13 @@
 
 ; POST with posting configured: 340 and the one framing effect, and the
 ; session now awaits the article.
+(include-book "arena-lift")
+;; The arena: handle 0 = *fn-tp-seed*.
+(defconst *sr-arena* (list *fn-tp-seed*))
+(bpr-lift fn-nntp-post-step 6)
+(bpr-lift fn-nntp-step 4)
 (defconst *fn-tp-r1*
-  (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs*
-                     *fn-tp-post-event*))
+  (in-arena-fn-nntp-post-step *sr-arena* *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* *fn-tp-post-event*))
 (assert-event
  (equal (fn-post-result-effects *fn-tp-r1*)
         (list (fn-nntp-reply-effect
@@ -55,8 +61,7 @@
 
 ; POST with posting refused by configuration: 440, and no article mode.
 (defconst *fn-tp-r440*
-  (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg-closed* *fn-tp-obs* *fn-tp-obs*
-                     *fn-tp-post-event*))
+  (in-arena-fn-nntp-post-step *sr-arena* *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg-closed* *fn-tp-obs* *fn-tp-obs* *fn-tp-post-event*))
 (assert-event
  (equal (fn-post-result-effects *fn-tp-r440*)
         (list (fn-nntp-reply-effect
@@ -68,27 +73,22 @@
 ; POST takes no argument.
 (assert-event
  (equal (fn-post-result-effects
-         (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs*
-                            *fn-tp-post-arg-event*))
+         (in-arena-fn-nntp-post-step *sr-arena* *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* *fn-tp-post-arg-event*))
         (list (fn-nntp-reply-effect
                (fn-nntp-crlf (fn-nntp-string-octets "501 syntax error"))))))
 
 ; Every command that is not POST is the reader profile, unchanged.
 (assert-event
  (equal (fn-post-result-effects
-         (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs*
-                            *fn-tp-quit-event*))
+         (in-arena-fn-nntp-post-step *sr-arena* *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* *fn-tp-quit-event*))
         (fn-nntp-result-effects
-         (fn-nntp-step (fn-post-session-base *fn-tp-s0*) *fn-tp-archive*
-                       (fn-nntp-env *fn-tp-obs* nil
-                                    (and (fn-inj-config-allow *fn-tp-cfg*) t))
-                       *fn-tp-quit-event*))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-post-session-base *fn-tp-s0*) *fn-tp-archive* (fn-nntp-env *fn-tp-obs* nil
+                                    (and (fn-inj-config-allow *fn-tp-cfg*) t)) *fn-tp-quit-event*))))
 
 ; The terminated body: injected, so a submission and no reply yet.  240 is not
 ; reachable from this step at all.
 (defconst *fn-tp-r2*
-  (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
-                     *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :article *fn-tp-good-lines*)))
+  (in-arena-fn-nntp-post-step *sr-arena* (fn-post-result-session *fn-tp-r1*) *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :article *fn-tp-good-lines*)))
 (assert-event (equal (fn-post-result-effects *fn-tp-r2*) nil))
 (assert-event (fn-inj-injectedp (fn-post-result-submission *fn-tp-r2*)))
 (assert-event (not (fn-post-session-awaiting
@@ -101,8 +101,7 @@
 
 ; A refused body: 441 carrying the injection reason, and nothing submitted.
 (defconst *fn-tp-r3*
-  (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
-                     *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :article *fn-tp-bad-lines*)))
+  (in-arena-fn-nntp-post-step *sr-arena* (fn-post-result-session *fn-tp-r1*) *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :article *fn-tp-bad-lines*)))
 (assert-event
  (equal (fn-post-result-effects *fn-tp-r3*)
         (list (fn-nntp-reply-effect
@@ -116,8 +115,7 @@
 ; silent acceptance.
 (assert-event
  (equal (fn-post-result-effects
-         (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
-                            *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :reject :too-long)))
+         (in-arena-fn-nntp-post-step *sr-arena* (fn-post-result-session *fn-tp-r1*) *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :reject :too-long)))
         (list (fn-nntp-reply-effect
                (fn-nntp-crlf
                 (fn-nntp-string-octets
@@ -127,18 +125,14 @@
 ; an injection :oversize refusal gives, not "not received".
 (assert-event
  (equal (fn-post-result-effects
-         (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
-                            *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs*
-                            (list :reject :body-overlimit)))
+         (in-arena-fn-nntp-post-step *sr-arena* (fn-post-result-session *fn-tp-r1*) *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :reject :body-overlimit)))
         (list (fn-nntp-reply-effect
                (fn-nntp-crlf
                 (fn-nntp-string-octets
                  "441 posting failed; the article exceeds the configured size"))))))
 (assert-event
  (equal (fn-post-result-submission
-         (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
-                            *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs*
-                            (list :reject :body-overlimit)))
+         (in-arena-fn-nntp-post-step *sr-arena* (fn-post-result-session *fn-tp-r1*) *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :reject :body-overlimit)))
         nil))
 
 ; The three durable observations stay distinct out to the wire.
@@ -247,9 +241,7 @@
         nil
         (fn-nntp-string-octets "Hello once more, news.")))
 (defconst *fn-tp-r2b*
-  (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
-                     *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs2*
-                     (list :article *fn-tp-good2-lines*)))
+  (in-arena-fn-nntp-post-step *sr-arena* (fn-post-result-session *fn-tp-r1*) *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs2* (list :article *fn-tp-good2-lines*)))
 (assert-event (fn-inj-injectedp (fn-post-result-submission *fn-tp-r2b*)))
 
 ; The keystone's conclusion on this pair: a second post on the connection
@@ -267,9 +259,7 @@
  (equal (fn-inj-decision-msgid (fn-post-result-submission *fn-tp-r2*))
         (fn-inj-decision-msgid
          (fn-post-result-submission
-          (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*)
-                             *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs*
-                             *fn-tp-obs* (list :article *fn-tp-good2-lines*))))))
+          (in-arena-fn-nntp-post-step *sr-arena* (fn-post-result-session *fn-tp-r1*) *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :article *fn-tp-good2-lines*))))))
 
 ; The retry rule the other way (books/injection-invariants.lisp,
 ; fn-inj-generated-identity-is-the-clock-identity): the same body under the
@@ -278,9 +268,7 @@
  (equal (fn-inj-decision-octets (fn-post-result-submission *fn-tp-r2*))
         (fn-inj-decision-octets
          (fn-post-result-submission
-          (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*)
-                             *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs*
-                             *fn-tp-obs* (list :article *fn-tp-good-lines*))))))
+          (in-arena-fn-nntp-post-step *sr-arena* (fn-post-result-session *fn-tp-r1*) *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* *fn-tp-obs* (list :article *fn-tp-good-lines*))))))
 
 ; The pinned reader observation does not enter the identity at all: moving
 ; it and holding the injection clock gives the same identity.
@@ -288,9 +276,7 @@
  (equal (fn-inj-decision-msgid (fn-post-result-submission *fn-tp-r2b*))
         (fn-inj-decision-msgid
          (fn-post-result-submission
-          (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*)
-                             *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs2*
-                             *fn-tp-obs2* (list :article *fn-tp-good2-lines*))))))
+          (in-arena-fn-nntp-post-step *sr-arena* (fn-post-result-session *fn-tp-r1*) *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs2* *fn-tp-obs2* (list :article *fn-tp-good2-lines*))))))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for the fourth outcome: a malformed session
@@ -402,9 +388,7 @@
 ; and each case below drops one hypothesis and shows the conclusion fail.
 
 (defconst *fn-tp-clockless*
-  (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
-                     *fn-tp-cfg* *fn-tp-obs* nil
-                     (list :article *fn-tp-good-lines*)))
+  (in-arena-fn-nntp-post-step *sr-arena* (fn-post-result-session *fn-tp-r1*) *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* nil (list :article *fn-tp-good-lines*)))
 (assert-event
  (equal (fn-post-result-effects *fn-tp-clockless*)
         (list (fn-nntp-reply-effect
@@ -439,25 +423,21 @@
 (assert-event (not (fn-post-session-awaiting *fn-tp-s0*)))
 (assert-event
  (not (equal (fn-post-result-effects
-              (fn-nntp-post-step *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg*
-                                 *fn-tp-obs* nil (list :article *fn-tp-good-lines*)))
+              (in-arena-fn-nntp-post-step *sr-arena* *fn-tp-s0* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* nil (list :article *fn-tp-good-lines*)))
              (fn-post-result-effects *fn-tp-clockless*))))
 
 ; Hypothesis (fn-post-sessionp ps) dropped: one wrapper too shallow answers
 ; with no effects at all, which is neither refusal.
 (assert-event
  (equal (fn-post-result-effects
-         (fn-nntp-post-step *fn-tp-too-shallow* *fn-tp-archive* *fn-tp-cfg*
-                            *fn-tp-obs* nil (list :article *fn-tp-good-lines*)))
+         (in-arena-fn-nntp-post-step *sr-arena* *fn-tp-too-shallow* *fn-tp-archive* *fn-tp-cfg* *fn-tp-obs* nil (list :article *fn-tp-good-lines*)))
         nil))
 
 ; Hypothesis (fn-inj-config-allow config) dropped: a connection whose pinned
 ; configuration forbids posting is refused for THAT reason, with no clock.
 (assert-event
  (equal (fn-post-result-effects
-         (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
-                            *fn-tp-cfg-closed* *fn-tp-obs* nil
-                            (list :article *fn-tp-good-lines*)))
+         (in-arena-fn-nntp-post-step *sr-arena* (fn-post-result-session *fn-tp-r1*) *fn-tp-archive* *fn-tp-cfg-closed* *fn-tp-obs* nil (list :article *fn-tp-good-lines*)))
         (list (fn-nntp-reply-effect
                (fn-nntp-crlf
                 (fn-nntp-string-octets
@@ -469,8 +449,7 @@
 (assert-event (not (fn-inj-configp 7)))
 (assert-event
  (equal (fn-post-result-effects
-         (fn-nntp-post-step (fn-post-result-session *fn-tp-r1*) *fn-tp-archive*
-                            7 *fn-tp-obs* nil (list :article *fn-tp-good-lines*)))
+         (in-arena-fn-nntp-post-step *sr-arena* (fn-post-result-session *fn-tp-r1*) *fn-tp-archive* 7 *fn-tp-obs* nil (list :article *fn-tp-good-lines*)))
         (list (fn-nntp-reply-effect
                (fn-nntp-crlf (fn-nntp-string-octets "441 posting failed"))))))
 

@@ -193,9 +193,13 @@
 ; store is :record-attempted with the article record staged.  The encoder,
 ; the staged sequence and the observation each run on it through the twin.
 
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-step 2)
+(bpr-lift fn-own-run 2)
 (defconst *rcon-t-attempted*
-  (fn-own-run *own-taken*
-              (osi-drop-last
+  (in-arena-fn-own-run *sr-arena* *own-taken* (osi-drop-last
                (osi-drop-last (own-post-events (osi-sub-record 2 2 *osi-sub*))))))
 (defconst *rcon-t-staged*
   (fn-sf-record-candidate (fn-sn-files (fn-own-store *rcon-t-attempted*))))
@@ -236,7 +240,7 @@
 (defconst *rcon-t-oc* (fn-ocfg-make *rcon-t-attempted* *osi-cfg* nil nil))
 (defconst *rcon-t-io* (fn-rcon-ocfg-io *rcon-t-oc* :record-directory :ok))
 (assert-event (equal *rcon-t-io*
-                     (fn-ocfg-step *rcon-t-oc* '(:store (:io :record-directory :ok)))))
+                     (in-arena-fn-ocfg-step *sr-arena* *rcon-t-oc* '(:store (:io :record-directory :ok)))))
 (assert-event (equal (fn-ocfg-owner *rcon-t-io*) *osi-completing*))
 (assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store (fn-ocfg-owner *rcon-t-io*))))
                      :completing))
@@ -244,7 +248,7 @@
                      (cons (fn-record-sequence *rcon-t-r*) (fn-record-txid *rcon-t-r*))))
 ; An :error observation fences the record, the same in both.
 (assert-event (equal (fn-rcon-ocfg-io *rcon-t-oc* :record-directory :error)
-                     (fn-ocfg-step *rcon-t-oc* '(:store (:io :record-directory :error)))))
+                     (in-arena-fn-ocfg-step *sr-arena* *rcon-t-oc* '(:store (:io :record-directory :error)))))
 (assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store
                                                  (fn-ocfg-owner
                                                   (fn-rcon-ocfg-io *rcon-t-oc* :record-directory :error)))))
@@ -252,7 +256,7 @@
 ; Another operation, and the same observation in a phase that does not take
 ; it, leave the twin and the reference equal.
 (assert-event (equal (fn-rcon-ocfg-io *rcon-t-oc* :record-file :ok)
-                     (fn-ocfg-step *rcon-t-oc* '(:store (:io :record-file :ok)))))
+                     (in-arena-fn-ocfg-step *sr-arena* *rcon-t-oc* '(:store (:io :record-file :ok)))))
 (assert-event (equal (fn-rcon-sn-io (fn-own-store *own-taken*) :record-directory :ok)
                      (fn-sn-io (fn-own-store *own-taken*) :record-directory :ok)))
 

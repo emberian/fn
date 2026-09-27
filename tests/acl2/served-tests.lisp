@@ -109,19 +109,27 @@
                      *fn-t-served-greeting*))
 
 ; A reachable, non-degenerate run: three commands, three replies, a close.
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-served-run 2)
+(bpr-lift fn-served-step 2)
+(bpr-lift fn-served-step-nntp-steps 2)
+(bpr-lift fn-t-served-line 2)
+(bpr-lift fn-t-served-login 1)
 (assert-event (equal (fn-served-reply-octets
                       (fn-served-result-effects
-                       (fn-served-step *fn-t-served-conn* *fn-t-served-command*)))
+                       (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-command*)))
                      *fn-t-served-reply*))
 (assert-event (fn-served-closingp
                (fn-served-result-effects
-                (fn-served-step *fn-t-served-conn* *fn-t-served-command*))))
+                (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-command*))))
 (assert-event (fn-served-effectsp
                (fn-served-result-effects
-                (fn-served-step *fn-t-served-conn* *fn-t-served-command*))))
+                (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-command*))))
 (assert-event (fn-served-connp
                (fn-served-result-conn
-                (fn-served-step *fn-t-served-conn* *fn-t-served-command*))))
+                (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-command*))))
 
 ; -----------------------------------------------------------------------------
 ; The two-chunk witness
@@ -141,8 +149,7 @@
 
 (assert-event (equal (fn-served-reply-octets
                       (fn-served-result-effects
-                       (fn-served-step *fn-t-served-conn*
-                         '(71 82 79 85 80 32 102 110 46 108 101 116 116 101
+                       (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* '(71 82 79 85 80 32 102 110 46 108 101 116 116 101
                            114 115 13 10 83 84))))
                      *fn-t-served-group-reply*))
 
@@ -153,10 +160,10 @@
 
 ; fn-served-run-is-the-concatenated-step, evaluated on both cuts and on the
 ; bytewise partition: the whole result, state and effects, not only the bytes.
-(assert-event (equal (fn-served-run *fn-t-served-conn* *fn-t-served-cut-a*)
-                     (fn-served-step *fn-t-served-conn* *fn-t-served-command*)))
-(assert-event (equal (fn-served-run *fn-t-served-conn* *fn-t-served-cut-b*)
-                     (fn-served-step *fn-t-served-conn* *fn-t-served-command*)))
+(assert-event (equal (in-arena-fn-served-run *sr-arena* *fn-t-served-conn* *fn-t-served-cut-a*)
+                     (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-command*)))
+(assert-event (equal (in-arena-fn-served-run *sr-arena* *fn-t-served-conn* *fn-t-served-cut-b*)
+                     (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-command*)))
 (defconst *fn-t-served-bytewise*
   (list '(71)
         '(82)
@@ -188,11 +195,11 @@
         '(84)
         '(13)
         '(10)))
-(assert-event (equal (fn-served-run *fn-t-served-conn* *fn-t-served-bytewise*)
-                     (fn-served-step *fn-t-served-conn* *fn-t-served-command*)))
+(assert-event (equal (in-arena-fn-served-run *sr-arena* *fn-t-served-conn* *fn-t-served-bytewise*)
+                     (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-command*)))
 (assert-event (equal (fn-served-reply-octets
                       (fn-served-result-effects
-                       (fn-served-run *fn-t-served-conn* *fn-t-served-bytewise*)))
+                       (in-arena-fn-served-run *sr-arena* *fn-t-served-conn* *fn-t-served-bytewise*)))
                      *fn-t-served-reply*))
 
 ; -----------------------------------------------------------------------------
@@ -202,11 +209,9 @@
 ; for thirty octets: the bound is pessimistic by a factor of ten on this
 ; transcript, which is the honest distance to quote beside it.  The per-step
 ; cost of fn-nntp-step is still OPEN (books/served.lisp records the obligation).
-(assert-event (equal (fn-served-step-nntp-steps *fn-t-served-conn*
-                                                *fn-t-served-command*)
+(assert-event (equal (in-arena-fn-served-step-nntp-steps *sr-arena* *fn-t-served-conn* *fn-t-served-command*)
                      3))
-(assert-event (<= (fn-served-step-nntp-steps *fn-t-served-conn*
-                                             *fn-t-served-command*)
+(assert-event (<= (in-arena-fn-served-step-nntp-steps *sr-arena* *fn-t-served-conn* *fn-t-served-command*)
                   (len *fn-t-served-command*)))
 
 ; -----------------------------------------------------------------------------
@@ -238,8 +243,7 @@
 (assert-event (not (fn-served-connp *fn-t-served-forged*)))
 (assert-event (not (fn-served-connp
                     (fn-served-result-conn
-                     (fn-served-step *fn-t-served-forged*
-                                     *fn-t-served-group-command*)))))
+                     (in-arena-fn-served-step *sr-arena* *fn-t-served-forged* *fn-t-served-group-command*)))))
 
 ; (2) fn-wire-octet-listp octets.  NO violating value found, recorded open
 ; rather than faked.  The reason is structural: fn-wire-drive re-checks
@@ -266,8 +270,7 @@
 ; replies.  Measured here so the claim is not taken on trust:
 (assert-event (fn-served-effectsp
                (fn-served-result-effects
-                (fn-served-step *fn-t-served-forged*
-                                *fn-t-served-group-command*))))
+                (in-arena-fn-served-step *sr-arena* *fn-t-served-forged* *fn-t-served-group-command*))))
 
 ; -----------------------------------------------------------------------------
 ; POST through the served step: 340, the article, a submission, then the
@@ -289,9 +292,9 @@
 (defconst *fn-t-served-offer*
   (fn-served-reply-octets
    (fn-served-result-effects
-    (fn-served-step *fn-t-served-conn* *fn-t-served-post-command*))))
+    (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-post-command*))))
 (defconst *fn-t-served-post-result*
-  (fn-served-step *fn-t-served-conn* *fn-t-served-post-read*))
+  (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-post-read*))
 (defconst *fn-t-served-post-effects*
   (fn-served-result-effects *fn-t-served-post-result*))
 (defconst *fn-t-served-post-conn*
@@ -302,8 +305,7 @@
 (assert-event (equal (fn-wire-state-mode
                       (fn-served-conn-wire
                        (fn-served-result-conn
-                        (fn-served-step *fn-t-served-conn*
-                                        *fn-t-served-post-command*))))
+                        (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-post-command*))))
                      :article))
 ; The whole read replies with the offer alone: an injected article is a
 ; submission, not a reply.  The wire is back in command mode and the session
@@ -321,8 +323,7 @@
                     (fn-auth-post-session
                      (fn-served-conn-session *fn-t-served-post-conn*)))))
 (assert-event (fn-served-connp *fn-t-served-post-conn*))
-(assert-event (equal (fn-served-step-nntp-steps *fn-t-served-conn*
-                                                *fn-t-served-post-read*)
+(assert-event (equal (in-arena-fn-served-step-nntp-steps *sr-arena* *fn-t-served-conn* *fn-t-served-post-read*)
                      2))
 
 ; A cut between the offer and the body, and one inside the body, are the
@@ -334,7 +335,7 @@
 (assert-event (fn-served-chunk-listp *fn-t-served-post-cut*))
 (assert-event (equal (fn-served-concat *fn-t-served-post-cut*)
                      *fn-t-served-post-read*))
-(assert-event (equal (fn-served-run *fn-t-served-conn* *fn-t-served-post-cut*)
+(assert-event (equal (in-arena-fn-served-run *sr-arena* *fn-t-served-conn* *fn-t-served-post-cut*)
                      *fn-t-served-post-result*))
 
 ; The outcome, fed back as one more served input: 240 from :durable and from
@@ -373,8 +374,7 @@
           '(46 13 10)))
 (defconst *fn-t-served-refused-effects*
   (fn-served-result-effects
-   (fn-served-step *fn-t-served-conn*
-                   (append *fn-t-served-post-command* *fn-t-served-bad-article*))))
+   (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* (append *fn-t-served-post-command* *fn-t-served-bad-article*))))
 (assert-event (equal (take (len *fn-t-served-offer*)
                            (fn-served-reply-octets *fn-t-served-refused-effects*))
                      *fn-t-served-offer*))
@@ -390,12 +390,10 @@
   (fn-inj-make-config nil *fn-t-served-agent*
                       (list '(102 110 46 108 101 116 116 101 114 115)) 32768))
 (defconst *fn-t-served-440-result*
-  (fn-served-step
-   (fn-served-result-conn
+  (in-arena-fn-served-step *sr-arena* (fn-served-result-conn
     (fn-served-open *fn-t-served-archive* 510 8192
                     *fn-t-served-closed-config* *fn-t-served-observation*
-                    *fn-t-served-observation* (fn-auth-open-config)))
-   *fn-t-served-post-command*))
+                    *fn-t-served-observation* (fn-auth-open-config))) *fn-t-served-post-command*))
 (assert-event (equal (take 4 (fn-served-reply-octets
                               (fn-served-result-effects *fn-t-served-440-result*)))
                      '(52 52 48 32)))
@@ -442,7 +440,7 @@
 (defconst *fn-t-served-pipelined-read*
   (append *fn-t-served-post-read* *fn-t-served-group-command*))
 (defconst *fn-t-served-pipelined-result*
-  (fn-served-step *fn-t-served-conn* *fn-t-served-pipelined-read*))
+  (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-pipelined-read*))
 (defconst *fn-t-served-pipelined-effects*
   (fn-served-result-effects *fn-t-served-pipelined-result*))
 
@@ -469,7 +467,7 @@
 ; The single read equals the two sequential reads, effects and connection:
 ; the theorem instantiated on this transcript.
 (defconst *fn-t-served-pipelined-sequential*
-  (fn-served-step *fn-t-served-post-conn* *fn-t-served-group-command*))
+  (in-arena-fn-served-step *sr-arena* *fn-t-served-post-conn* *fn-t-served-group-command*))
 (assert-event (equal (fn-served-reply-octets *fn-t-served-pipelined-effects*)
                      (append (fn-served-reply-octets *fn-t-served-post-effects*)
                              (fn-served-reply-octets
@@ -510,7 +508,7 @@
 (assert-event (fn-served-chunk-listp *fn-t-served-pipelined-cut*))
 (assert-event (equal (fn-served-concat *fn-t-served-pipelined-cut*)
                      *fn-t-served-pipelined-read*))
-(assert-event (equal (fn-served-run *fn-t-served-conn* *fn-t-served-pipelined-cut*)
+(assert-event (equal (in-arena-fn-served-run *sr-arena* *fn-t-served-conn* *fn-t-served-pipelined-cut*)
                      *fn-t-served-pipelined-result*))
 
 ; -----------------------------------------------------------------------------
@@ -706,32 +704,33 @@
 ; What that is worth on the wire, through fn-served-step -- the function
 ; host/owner-host.lisp fn-owner-chunk reaches through fn-own-read.  Two
 ; reads, because RFC 4643 section 2.3.2 caches the name on the first.
-(defun fn-t-served-line (conn text)
-  (fn-served-step conn (append (fn-nntp-string-octets text) '(13 10))))
+(defun fn-t-served-line (conn text fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-served-step conn (append (fn-nntp-string-octets text) '(13 10)) fn-arena))
 (defun fn-t-served-said (result)
   (take 4 (fn-served-reply-octets (fn-served-result-effects result))))
-(defun fn-t-served-login (conn)
+(defun fn-t-served-login (conn fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-t-served-line
-   (fn-served-result-conn (fn-t-served-line conn "AUTHINFO USER reader"))
-   "AUTHINFO PASS correct-horse"))
+   (fn-served-result-conn (fn-t-served-line conn "AUTHINFO USER reader" fn-arena))
+   "AUTHINFO PASS correct-horse" fn-arena))
 
 ; 281 authentication accepted, on a connection the owner resolved to a peer.
-(assert-event (equal (fn-t-served-said (fn-t-served-login *fn-t-served-peer*))
+(assert-event (equal (fn-t-served-said (in-arena-fn-t-served-login *sr-arena* *fn-t-served-peer*))
                      '(50 56 49 32)))
 ; 481 authentication failed, with the SAME secret, when the connection is
 ; opened with no policy.  This is the reply tools/v0_matrix.py recorded on
 ; both nodes at c3b99f8.
 (assert-event (equal (fn-t-served-said
-                      (fn-t-served-login *fn-t-served-peer-unpolicied*))
+                      (in-arena-fn-t-served-login *sr-arena* *fn-t-served-peer-unpolicied*))
                      '(52 56 49 32)))
 ; 480 before the login and 340 after it: the gate is the operator's policy
 ; and it reaches this connection (RFC 4643 section 2.2, RFC 3977 6.3.1.1).
-(assert-event (equal (fn-t-served-said (fn-t-served-line *fn-t-served-peer* "POST"))
+(assert-event (equal (fn-t-served-said (in-arena-fn-t-served-line *sr-arena* *fn-t-served-peer* "POST"))
                      '(52 56 48 32)))
 (assert-event (equal (fn-t-served-said
-                      (fn-t-served-line
-                       (fn-served-result-conn
-                        (fn-t-served-login *fn-t-served-peer*)) "POST"))
+                      (in-arena-fn-t-served-line *sr-arena* (fn-served-result-conn
+                        (in-arena-fn-t-served-login *sr-arena* *fn-t-served-peer*)) "POST"))
                      '(51 52 48 32)))
 ; And the capability block says both of the things RFC 4643 section 2.1 and
 ; RFC 4642 section 2.1 make it say, off the same policy.
@@ -785,4 +784,4 @@
                      (fn-auth-postingp
                       (fn-served-conn-session
                        (fn-served-result-conn
-                        (fn-t-served-login *fn-t-served-peer*))))))))
+                        (in-arena-fn-t-served-login *sr-arena* *fn-t-served-peer*))))))))

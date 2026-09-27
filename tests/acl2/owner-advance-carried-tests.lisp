@@ -30,14 +30,19 @@
 ; opened; after the commit the store's node is a new one, so the served
 ; lane's comparison with the live node would miss, and the carried advance
 ; compares with the node the session already carries.
-(defun acar-t-ocfg-run (oc events)
-  (declare (xargs :mode :program))
+(defun acar-t-ocfg-run (oc events fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil :mode :program))
   (if (consp events)
-      (acar-t-ocfg-run (fn-ocfg-step oc (car events)) (cdr events))
+      (acar-t-ocfg-run (fn-ocfg-step oc (car events) fn-arena) (cdr events) fn-arena)
     oc))
 (defconst *acar-t-record* (own-record 2 8 "<ocmt@example>"))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift acar-t-ocfg-run 2)
+(bpr-lift fn-ccar-own-finish 2)
 (defconst *acar-t-completing*
-  (acar-t-ocfg-run *scar-t-oc* (osi-drop-last (own-post-events *acar-t-record*))))
+  (in-arena-acar-t-ocfg-run *sr-arena* *scar-t-oc* (osi-drop-last (own-post-events *acar-t-record*))))
 (defconst *acar-t-committed*
   (fn-ocfg-with-owner *acar-t-completing*
                       (fn-ccar-own-complete (fn-ocfg-owner *acar-t-completing*))))
@@ -265,6 +270,4 @@
  (defthm fn-acar-t-commit-ocl-without-relation
    (fn-ocl-relation
     (fn-ocfg-with-owner *acar-t-bad-completing*
-                        (cdr (fn-ccar-own-finish (fn-ocfg-owner *acar-t-bad-completing*)
-                                                 (fn-ocfg-config *acar-t-bad-completing*)
-                                                 fn-arena))))))
+                        (cdr (fn-ccar-own-finish (fn-ocfg-owner *acar-t-bad-completing*) (fn-ocfg-config *acar-t-bad-completing*) fn-arena))))))

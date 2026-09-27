@@ -81,12 +81,14 @@
 (assert-event
  (fn-auth-fold-no-local-effectsp
   (fn-served-result-effects (aft-served-read))))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-served-step 2)
 (assert-event
  (fn-auth-fold-no-local-effectsp
   (fn-served-result-effects
-   (fn-served-step
-    (fn-served-result-conn *aft-open*)
-    (append (aft-line "AUTHINFO USER reader")
+   (in-arena-fn-served-step *sr-arena* (fn-served-result-conn *aft-open*) (append (aft-line "AUTHINFO USER reader")
             (aft-line "AUTHINFO PASS correct-horse")
             (aft-line "POST"))))))
 
@@ -142,8 +144,7 @@
   (defthm aft-step-without-safe-connection-premise
     (fn-auth-fold-no-local-effectsp
      (fn-served-result-effects
-      (fn-served-step (fn-served-result-conn *aft-poster-open*)
-                      *aft-post-read*))))))
+      (fn-served-step (fn-served-result-conn *aft-poster-open*) *aft-post-read* fn-arena))))))
 
 ; The awaiting hypothesis is independent as a state claim: after a real 340
 ; offer, replacing only the pinned credential policy with a no-posters policy
@@ -188,7 +189,7 @@
  (fn-inj-injectedp
   (fn-served-submission
    (fn-served-result-effects
-    (fn-served-step (aft-forged-pending-conn) *aft-post-body*)))))
+    (in-arena-fn-served-step *sr-arena* (aft-forged-pending-conn) *aft-post-body*)))))
 (local
  (must-fail
   (defthm aft-step-without-no-pending-post-premise
@@ -199,5 +200,4 @@
             (fn-served-conn-session (aft-forged-pending-conn)))))
      (fn-auth-fold-no-local-effectsp
       (fn-served-result-effects
-       (fn-served-step (aft-forged-pending-conn)
-                       *aft-post-body*)))))))
+       (fn-served-step (aft-forged-pending-conn) *aft-post-body* fn-arena)))))))

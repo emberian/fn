@@ -31,9 +31,7 @@
 (defmacro nlc-t-in (group)
   `(fn-nntp-result-session (fn-nntp-group-result *nlc-t-open* *nlc-t-a2* ,group)))
 (defmacro nlc-t-cmd (session index keyword args)
-  `(fn-nntp-archive-command-pinned ,session *nlc-t-a2* ,index nil nil
-                                   (fn-nntp-string-octets ,keyword)
-                                   (list ,@(pairlis-x1 'fn-nntp-string-octets
+  `(in-arena-fn-nntp-archive-command-pinned *sr-arena* ,session *nlc-t-a2* ,index nil nil (fn-nntp-string-octets ,keyword) (list ,@(pairlis-x1 'fn-nntp-string-octets
                                                       (pairlis$ args nil)))))
 (defmacro nlc-t-lines (&rest lines)
   `(list ,@(pairlis-x1 'fn-nntp-string-octets (pairlis$ lines nil))))
@@ -44,6 +42,13 @@
 (assert-event (fn-nntp-projectionp *nlc-t-a2*))
 (assert-event (equal (len (fn-state-articles *nlc-t-a2*)) 2))
 
+(include-book "arena-lift")
+;; The arena: handle 0 = article one's bytes, 1 = article two's.
+(defconst *sr-arena*
+  (list (nlc-t-payload "<one@t.invalid>") (nlc-t-payload "<two@t.invalid>")))
+(bpr-lift fn-nntp-article-response 6)
+(bpr-lift fn-nntp-number-retrieval 4)
+(bpr-lift fn-nntp-archive-command-pinned 7)
 ; LIST COUNTS: name high low count status, exact counts, the empty group's
 ; watermark pair, through the pinned buckets; the wildmat form; 501 on two
 ; arguments.
@@ -169,10 +174,8 @@
         (nlc-t-in "fn.letters")))
 ; The second command with that number retrieves the same article.
 (assert-event
- (equal (fn-nntp-number-retrieval (nlc-t-in "fn.letters") *nlc-t-a2* :article
-                                  (fn-nntp-string-octets "2"))
-        (fn-nntp-article-response (nlc-t-in "fn.letters") *nlc-t-art2* 2
-                                  :article t "fn.letters")))
+ (equal (in-arena-fn-nntp-number-retrieval *sr-arena* (nlc-t-in "fn.letters") *nlc-t-a2* :article (fn-nntp-string-octets "2"))
+        (in-arena-fn-nntp-article-response *sr-arena* (nlc-t-in "fn.letters") *nlc-t-art2* 2 :article t "fn.letters")))
 
 ; fn-nntp-msgid-number-retrieves-the-same-article, hypothesis 1 (fn-statep):
 ; an earlier article holding the same (group . number) is what the number
@@ -197,10 +200,8 @@
                                      (fn-state-articles *nlc-t-clash*)))
         2))
 (assert-event
- (not (equal (fn-nntp-number-retrieval (nlc-t-in "fn.letters") *nlc-t-clash*
-                                       :stat (fn-nntp-string-octets "2"))
-             (fn-nntp-article-response (nlc-t-in "fn.letters") *nlc-t-art2* 2
-                                       :stat t "fn.letters"))))
+ (not (equal (in-arena-fn-nntp-number-retrieval *sr-arena* (nlc-t-in "fn.letters") *nlc-t-clash* :stat (fn-nntp-string-octets "2"))
+             (in-arena-fn-nntp-article-response *sr-arena* (nlc-t-in "fn.letters") *nlc-t-art2* 2 :stat t "fn.letters"))))
 (must-fail
  (with-prover-step-limit
   200000
@@ -211,17 +212,14 @@
      (implies (and (posp n)
                    (fn-nntp-number-tokenp number-token)
                    (equal (fn-nntp-decimal-value number-token) n))
-              (equal (fn-nntp-number-retrieval session archive kind number-token)
-                     (fn-nntp-article-response
-                      session article n kind t
-                      (fn-nntp-session-group session))))))))
+              (equal (fn-nntp-number-retrieval session archive kind number-token fn-arena)
+                     (fn-nntp-article-response session article n kind t (fn-nntp-session-group session) fn-arena)))))))
 
 ; Hypothesis 2 (posp n): with no group selected the number is 0, and a
 ; number command then answers 412, not the article.
 (assert-event
- (not (equal (fn-nntp-number-retrieval *nlc-t-open* *nlc-t-a2* :stat
-                                       (fn-nntp-string-octets "0"))
-             (fn-nntp-article-response *nlc-t-open* *nlc-t-art2* 0 :stat t nil))))
+ (not (equal (in-arena-fn-nntp-number-retrieval *sr-arena* *nlc-t-open* *nlc-t-a2* :stat (fn-nntp-string-octets "0"))
+             (in-arena-fn-nntp-article-response *sr-arena* *nlc-t-open* *nlc-t-art2* 0 :stat t nil))))
 (must-fail
  (with-prover-step-limit
   200000
@@ -232,18 +230,14 @@
      (implies (and (fn-statep archive)
                    (fn-nntp-number-tokenp number-token)
                    (equal (fn-nntp-decimal-value number-token) n))
-              (equal (fn-nntp-number-retrieval session archive kind number-token)
-                     (fn-nntp-article-response
-                      session article n kind t
-                      (fn-nntp-session-group session))))))))
+              (equal (fn-nntp-number-retrieval session archive kind number-token fn-arena)
+                     (fn-nntp-article-response session article n kind t (fn-nntp-session-group session) fn-arena)))))))
 
 ; Hypotheses 3 and 4 (the token reads as n): a token for another number
 ; retrieves another article; a token that is not a number is 501.
 (assert-event
- (not (equal (fn-nntp-number-retrieval (nlc-t-in "fn.letters") *nlc-t-a2* :stat
-                                       (fn-nntp-string-octets "1"))
-             (fn-nntp-article-response (nlc-t-in "fn.letters") *nlc-t-art2* 2
-                                       :stat t "fn.letters"))))
+ (not (equal (in-arena-fn-nntp-number-retrieval *sr-arena* (nlc-t-in "fn.letters") *nlc-t-a2* :stat (fn-nntp-string-octets "1"))
+             (in-arena-fn-nntp-article-response *sr-arena* (nlc-t-in "fn.letters") *nlc-t-art2* 2 :stat t "fn.letters"))))
 (must-fail
  (with-prover-step-limit
   200000
@@ -253,13 +247,10 @@
           (n (fn-nntp-msgid-local-number session article)))
      (implies (and (fn-statep archive) (posp n)
                    (fn-nntp-number-tokenp number-token))
-              (equal (fn-nntp-number-retrieval session archive kind number-token)
-                     (fn-nntp-article-response
-                      session article n kind t
-                      (fn-nntp-session-group session))))))))
+              (equal (fn-nntp-number-retrieval session archive kind number-token fn-arena)
+                     (fn-nntp-article-response session article n kind t (fn-nntp-session-group session) fn-arena)))))))
 (assert-event
- (equal (fn-nntp-number-retrieval (nlc-t-in "fn.letters") *nlc-t-a2* :stat
-                                  (fn-nntp-string-octets "2x"))
+ (equal (in-arena-fn-nntp-number-retrieval *sr-arena* (nlc-t-in "fn.letters") *nlc-t-a2* :stat (fn-nntp-string-octets "2x"))
         (fn-nntp-single (nlc-t-in "fn.letters") "501 syntax error")))
 (must-fail
  (with-prover-step-limit
@@ -270,7 +261,5 @@
           (n (fn-nntp-msgid-local-number session article)))
      (implies (and (fn-statep archive) (posp n)
                    (equal (fn-nntp-decimal-value number-token) n))
-              (equal (fn-nntp-number-retrieval session archive kind number-token)
-                     (fn-nntp-article-response
-                      session article n kind t
-                      (fn-nntp-session-group session))))))))
+              (equal (fn-nntp-number-retrieval session archive kind number-token fn-arena)
+                     (fn-nntp-article-response session article n kind t (fn-nntp-session-group session) fn-arena)))))))

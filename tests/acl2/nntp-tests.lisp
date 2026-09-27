@@ -67,9 +67,21 @@
 (assert-event (equal (len (fn-nntp-decimal-field 2147483647)) 10))
 
 ; Exact selected-group transcript; mixed case changes only the command keyword.
+(include-book "arena-lift")
+;; The arena: handle 0 = *fn-nntp-payload*, 1 = the unframed *fn-nntp-broken-payload*,
+;; 2 = the unsafe payload, 3 = the NUL payload.
+(defconst *sr-arena*
+  (list *fn-nntp-payload*
+        '(111 112 97 113 117 101 32 98 121 116 101 115)
+        '(72 101 97 100 58 32 120 13 10 13 10 66)
+        '(72 58 32 120 13 10 13 10 0 13 10)))
+(bpr-lift fn-nntp-article-framedp 1)
+(bpr-lift fn-nntp-hdr-content 2)
+(bpr-lift fn-nntp-projection-articlep 1)
+(bpr-lift fn-nntp-run-session 4)
+(bpr-lift fn-nntp-step 4)
 (defconst *fn-nntp-group*
-  (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                '(:command (103 82 111 85 112 32 102 110 46 108 101 116 116 101 114 115))))
+  (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (103 82 111 85 112 32 102 110 46 108 101 116 116 101 114 115))))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-group*)
         '((:reply (50 49 49 32 49 32 49 32 49 32 102 110 46 108 101 116 116 101 114 115 13 10)))))
@@ -79,16 +91,14 @@
 ; HEAD excludes the separator and BODY excludes it, while BODY dot-stuffs the
 ; stored dot-prefixed line.  Their expected wire octets include every CRLF.
 (defconst *fn-nntp-head*
-  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0*
-                '(:command (72 69 65 68))))
+  (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (72 69 65 68))))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-head*)
         '((:reply (50 50 49 32 49 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 32 104 101 97 100 101 114 115 32 102 111 108 108 111 119 13 10
                    77 101 115 115 97 103 101 45 73 68 58 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 13 10
                    83 117 98 106 101 99 116 58 32 84 101 115 116 13 10 46 13 10)))))
 (defconst *fn-nntp-body*
-  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0*
-                '(:command (66 79 68 89))))
+  (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (66 79 68 89))))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-body*)
         '((:reply (50 50 50 32 49 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 32 98 111 100 121 32 102 111 108 108 111 119 115 13 10
@@ -97,8 +107,7 @@
 ; Message-ID is exact-case and leaves group/cursor unchanged; numeric retrieval
 ; without a group is 412, and no-current is 420.
 (defconst *fn-nntp-by-id*
-  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0*
-                '(:command (83 84 65 84 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62))))
+  (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62))))
 (assert-event (equal (fn-nntp-result-session *fn-nntp-by-id*)
                      (fn-nntp-result-session *fn-nntp-group*)))
 ; RFC 3977 section 6.2.1.2: a group is selected and the article is in it,
@@ -108,19 +117,17 @@
         '((:reply (50 50 51 32 49 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 32 114 101 116 114 105 101 118 101 100 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0*
-                       '(:command (83 84 65 84 32 60 99 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 60 99 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62))))
         '((:reply (52 51 48 32 110 111 32 97 114 116 105 99 108 101 32 119 105 116 104 32 116 104 97 116 32 109 101 115 115 97 103 101 45 105 100 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 49))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 49))))
         '((:reply (52 49 50 32 110 111 32 110 101 119 115 103 114 111 117 112 32 115 101 108 101 99 116 101 100 13 10)))))
 (defconst *fn-nntp-empty-group*
-  (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                '(:command (71 82 79 85 80 32 102 110 46 101 109 112 116 121))))
+  (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32 102 110 46 101 109 112 116 121))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-empty-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (83 84 65 84))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-empty-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (83 84 65 84))))
         '((:reply (52 50 48 32 110 111 32 99 117 114 114 101 110 116 32 97 114 116 105 99 108 101 13 10)))))
 
 ; Error and capability transcript: no TLS/auth claim; bad syntax is 501 and an
@@ -132,46 +139,45 @@
 ; permitted here (section 3.2.1's 502), never 500; the peer connection's
 ; transit is books/peer-inbound.lisp (w6/peering-inbound).
 (assert-event (equal (fn-nntp-result-effects
-                      (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                                    '(:command (73 72 65 86 69))))
+                      (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (73 72 65 86 69))))
                      (list (fn-nntp-reply-effect
                             (fn-nntp-crlf (fn-nntp-string-octets
                                            "502 transit is not permitted on this connection"))))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (80 79 83 84))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (80 79 83 84))))
         '((:reply (51 52 48 32 115 101 110 100 32 97 114 116 105 99 108 101 32 116 111 32 98 101 32 112 111 115 116 101 100 13 10))
           (:begin-article))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (32 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (32 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 48))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 48))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 ; RFC 3977 section 9.8 keywords contain at least three ASCII characters.
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (78 79))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (78 79))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 65))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 65))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 65 66))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 65 66))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (defconst *fn-nntp-caps*
-  (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83))))
+  (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 70 79 79))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 70 79 79))))
         (fn-nntp-result-effects *fn-nntp-caps*)))
 ; Pinned from an `ld' of the book, never typed.  RFC 3977 section 5.2.2:
 ; POST appears exactly when this connection's configuration allows posting,
@@ -186,8 +192,7 @@
                    77 84 13 10 73 77 80 76 69 77 69 78 84 65 84 73 79 78 32
                    102 110 45 110 110 116 112 45 108 97 98 13 10 46 13 10)))))
 (defconst *fn-nntp-caps-posting*
-  (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0-posting*
-                '(:command (67 65 80 65 66 73 76 73 84 73 69 83))))
+  (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0-posting* '(:command (67 65 80 65 66 73 76 73 84 73 69 83))))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-caps-posting*)
         '((:reply (49 48 49 32 99 97 112 97 98 105 108 105 116 121 32 108 105
@@ -207,20 +212,17 @@
 ; bit.
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                       '(:command (77 79 68 69 32 82 69 65 68 69 82))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (77 79 68 69 32 82 69 65 68 69 82))))
         '((:reply (50 48 49 32 112 111 115 116 105 110 103 32 112 114 111
                    104 105 98 105 116 101 100 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0-posting*
-                       '(:command (77 79 68 69 32 82 69 65 68 69 82))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0-posting* '(:command (77 79 68 69 32 82 69 65 68 69 82))))
         '((:reply (50 48 48 32 112 111 115 116 105 110 103 32 97 108 108 111
                    119 101 100 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                       '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 65 85 84 79 85 80 68 65 84 69))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83 32 65 85 84 79 85 80 68 65 84 69))))
         (fn-nntp-result-effects *fn-nntp-caps*)))
 
 ; -----------------------------------------------------------------------------
@@ -243,11 +245,11 @@
                  (list *fn-nntp-mixed-broken* *fn-nntp-mixed-good*) 0 nil nil))
 (assert-event (fn-statep *fn-nntp-mixed-archive*))
 (assert-event (fn-articlep '("fn.letters") *fn-nntp-mixed-broken*))
-(assert-event (fn-nntp-projection-articlep *fn-nntp-mixed-good*))
-(assert-event (not (fn-nntp-projection-articlep *fn-nntp-mixed-broken*)))
+(assert-event (in-arena-fn-nntp-projection-articlep *sr-arena* *fn-nntp-mixed-good*))
+(assert-event (not (in-arena-fn-nntp-projection-articlep *sr-arena* *fn-nntp-mixed-broken*)))
 (assert-event (fn-nntp-article-idp *fn-nntp-mixed-broken*))
-(assert-event (fn-nntp-article-framedp *fn-nntp-mixed-good*))
-(assert-event (not (fn-nntp-article-framedp *fn-nntp-mixed-broken*)))
+(assert-event (in-arena-fn-nntp-article-framedp *sr-arena* *fn-nntp-mixed-good*))
+(assert-event (not (in-arena-fn-nntp-article-framedp *sr-arena* *fn-nntp-mixed-broken*)))
 ; The configuration is still projectable, so the reader opens and serves.
 (assert-event (fn-nntp-projectionp *fn-nntp-mixed-archive*))
 (defconst *fn-nntp-mixed-session* (fn-nntp-open-session *fn-nntp-mixed-archive*))
@@ -255,18 +257,15 @@
 
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-mixed-session* *fn-nntp-mixed-archive* *fn-nntp-env0*
-                       '(:command (67 65 80 65 66 73 76 73 84 73 69 83))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-mixed-session* *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83))))
         (fn-nntp-result-effects *fn-nntp-caps*)))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-mixed-session* *fn-nntp-mixed-archive* *fn-nntp-env0*
-                       '(:command (81 85 73 84))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-mixed-session* *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (81 85 73 84))))
         '((:reply (50 48 53 32 99 108 111 115 105 110 103 32 99 111 110 110 101 99 116 105 111 110 13 10)) (:close))))
 ; GROUP counts both articles: an unframed payload is still an article number.
 (defconst *fn-nntp-mixed-group*
-  (fn-nntp-step *fn-nntp-mixed-session* *fn-nntp-mixed-archive* *fn-nntp-env0*
-                '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))
+  (in-arena-fn-nntp-step *sr-arena* *fn-nntp-mixed-session* *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-mixed-group*)
         '((:reply (50 49 49 32 50 32 49 32 50 32 102 110 46 108 101 116 116 101 114 115 13 10)))))
@@ -275,19 +274,16 @@
 ; STAT reads only the stored identifier, so it answers for the unframed article.
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-mixed-group*)
-                       *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 50))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-mixed-group*) *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 50))))
         '((:reply (50 50 51 32 50 32 60 98 114 111 107 101 110 64 109 105 120 101 100 46 105 110 118 97 108 105 100 62 32 114 101 116 114 105 101 118 101 100 13 10)))))
 ; ARTICLE, HEAD and BODY need the bytes, and say so for that article only.
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-mixed-group*)
-                       *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (65 82 84 73 67 76 69 32 50))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-mixed-group*) *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (65 82 84 73 67 76 69 32 50))))
         '((:reply (53 48 51 32 115 116 111 114 101 100 32 97 114 116 105 99 108 101 32 102 114 97 109 105 110 103 32 117 110 97 118 97 105 108 97 98 108 101 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-mixed-group*)
-                       *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (65 82 84 73 67 76 69 32 49))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-mixed-group*) *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (65 82 84 73 67 76 69 32 49))))
         '((:reply (50 50 48 32 49 32 60 103 111 111 100 64 109 105 120 101 100 46 105 110 118 97 108 105 100 62 32 97 114 116 105 99 108 101 32 102 111 108 108 111 119 115 13 10
                    77 101 115 115 97 103 101 45 73 68 58 32 60 67 97 115 101 64 73 100 46 105 110 118 97 108 105 100 62 13 10
                    83 117 98 106 101 99 116 58 32 84 101 115 116 13 10 13 10
@@ -295,8 +291,7 @@
 ; The unframed article keeps its cursor position, so NEXT still reaches it.
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-mixed-group*)
-                       *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (78 69 88 84))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-mixed-group*) *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (78 69 88 84))))
         '((:reply (50 50 51 32 50 32 60 98 114 111 107 101 110 64 109 105 120 101 100 46 105 110 118 97 108 105 100 62 32 114 101 116 114 105 101 118 101 100 13 10)))))
 
 ; An article whose stored identifier cannot be rendered is excluded from the
@@ -316,22 +311,19 @@
 (assert-event (equal (fn-nntp-article-number "fn.letters" *fn-nntp-bad-id-article*) 0))
 (defconst *fn-nntp-bad-id-session* (fn-nntp-open-session *fn-nntp-bad-id-archive*))
 (defconst *fn-nntp-bad-id-group*
-  (fn-nntp-step *fn-nntp-bad-id-session* *fn-nntp-bad-id-archive* *fn-nntp-env0*
-                '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))
+  (in-arena-fn-nntp-step *sr-arena* *fn-nntp-bad-id-session* *fn-nntp-bad-id-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-bad-id-group*)
         '((:reply (50 49 49 32 49 32 49 32 49 32 102 110 46 108 101 116 116 101 114 115 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10
                    49 13 10 46 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-bad-id-group*)
-                       *fn-nntp-bad-id-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 50))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-bad-id-group*) *fn-nntp-bad-id-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 50))))
         '((:reply (53 48 51 32 115 116 111 114 101 100 32 97 114 116 105 99 108 101 32 105 100 101 110 116 105 102 105 101 114 32 117 110 97 118 97 105 108 97 98 108 101 13 10)))))
 ; NEXT from the first article does not move onto it.
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-bad-id-group*)
-                       *fn-nntp-bad-id-archive* *fn-nntp-env0* '(:command (78 69 88 84))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-bad-id-group*) *fn-nntp-bad-id-archive* *fn-nntp-env0* '(:command (78 69 88 84))))
         '((:reply (52 50 49 32 110 111 32 110 101 120 116 32 97 114 116 105 99 108 101 13 10)))))
 
 ; -----------------------------------------------------------------------------
@@ -356,8 +348,7 @@
 (assert-event
  (fn-nntp-effectsp
   (fn-nntp-result-effects
-   (fn-nntp-step (fn-nntp-open-session *fn-nntp-wide-archive*) *fn-nntp-wide-archive* *fn-nntp-env0*
-                 (list :command (append '(76 73 83 84 71 82 79 85 80 32)
+   (in-arena-fn-nntp-step *sr-arena* (fn-nntp-open-session *fn-nntp-wide-archive*) *fn-nntp-wide-archive* *fn-nntp-env0* (list :command (append '(76 73 83 84 71 82 79 85 80 32)
                                         (fn-nntp-string-octets *fn-nntp-group-460*)))))))
 ; A group name a response cannot render refuses the configuration, and the
 ; session still answers every command that does not read the archive.
@@ -372,18 +363,15 @@
 (assert-event (null (fn-nntp-session-projected *fn-nntp-degraded-session*)))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-degraded-session* *fn-nntp-unsafe-group-archive* *fn-nntp-env0*
-                       '(:command (76 73 83 84))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-degraded-session* *fn-nntp-unsafe-group-archive* *fn-nntp-env0* '(:command (76 73 83 84))))
         '((:reply (53 48 51 32 97 114 99 104 105 118 101 32 112 114 111 106 101 99 116 105 111 110 32 117 110 97 118 97 105 108 97 98 108 101 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-degraded-session* *fn-nntp-unsafe-group-archive* *fn-nntp-env0*
-                       '(:command (67 65 80 65 66 73 76 73 84 73 69 83))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-degraded-session* *fn-nntp-unsafe-group-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83))))
         (fn-nntp-result-effects *fn-nntp-caps*)))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-degraded-session* *fn-nntp-unsafe-group-archive* *fn-nntp-env0*
-                       '(:command (81 85 73 84))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-degraded-session* *fn-nntp-unsafe-group-archive* *fn-nntp-env0* '(:command (81 85 73 84))))
         '((:reply (50 48 53 32 99 108 111 115 105 110 103 32 99 111 110 110 101 99 116 105 111 110 13 10)) (:close))))
 
 ; -----------------------------------------------------------------------------
@@ -392,16 +380,13 @@
 ; fn-nntp-step-preserves-carried-projection is unconditional, so its teeth are
 ; the two reachable verdicts and a trace that keeps each one.
 (assert-event (equal (fn-nntp-session-projected
-                      (fn-nntp-run-session *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                                           '((:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))
+                      (in-arena-fn-nntp-run-session *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '((:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))
                                              (:command (83 84 65 84))
                                              (:command (81 85 73 84))
                                              (:command (83 84 65 84)))))
                      t))
 (assert-event (equal (fn-nntp-session-projected
-                      (fn-nntp-run-session *fn-nntp-degraded-session*
-                                           *fn-nntp-unsafe-group-archive* *fn-nntp-env0*
-                                           '((:command (76 73 83 84))
+                      (in-arena-fn-nntp-run-session *sr-arena* *fn-nntp-degraded-session* *fn-nntp-unsafe-group-archive* *fn-nntp-env0* '((:command (76 73 83 84))
                                              (:command (67 65 80 65 66 73 76 73 84 73 69 83)))))
                      nil))
 ; Without the carried verdict the two sessions would be indistinguishable; they
@@ -412,19 +397,15 @@
 ; fn-nntp-archive-free-step-ignores-the-archive: the hypothesis has force.
 ; GROUP is archive-dependent, and its answer does change with the archive.
 (assert-event
- (equal (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (81 85 73 84)))
-        (fn-nntp-step *fn-nntp-session0* *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (81 85 73 84)))))
+ (equal (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (81 85 73 84)))
+        (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (81 85 73 84)))))
 (assert-event
- (equal (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                      '(:command (67 65 80 65 66 73 76 73 84 73 69 83)))
-        (fn-nntp-step *fn-nntp-session0* *fn-nntp-mixed-archive* *fn-nntp-env0*
-                      '(:command (67 65 80 65 66 73 76 73 84 73 69 83)))))
+ (equal (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83)))
+        (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (67 65 80 65 66 73 76 73 84 73 69 83)))))
 (assert-event (fn-nntp-archive-keywordp '(71 82 79 85 80)))
 (assert-event
- (not (equal (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                           '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115)))
-             (fn-nntp-step *fn-nntp-session0* *fn-nntp-mixed-archive* *fn-nntp-env0*
-                           '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))))
+ (not (equal (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115)))
+             (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))))
 ; fn-nntp-step-preserves-consistent-session: dropping the hypothesis fails on a
 ; reachable-shaped session whose cursor names no available article.
 (defconst *fn-nntp-stale-session* (fn-nntp-make-session t "fn.letters" 99 t))
@@ -433,7 +414,7 @@
 (assert-event
  (not (fn-nntp-session-consistentp
        (fn-nntp-result-session
-        (fn-nntp-step *fn-nntp-stale-session* *fn-nntp-archive* *fn-nntp-env0* '(:command (83 84 65 84))))
+        (in-arena-fn-nntp-step *sr-arena* *fn-nntp-stale-session* *fn-nntp-archive* *fn-nntp-env0* '(:command (83 84 65 84))))
        *fn-nntp-archive*)))
 ; fn-nntp-step-effects-well-formed: a session that claims a projection the
 ; archive does not have escapes the 460-octet group cap, which is the only
@@ -461,8 +442,7 @@
 (assert-event
  (not (fn-nntp-effectsp
        (fn-nntp-result-effects
-        (fn-nntp-step *fn-nntp-forged-session* *fn-nntp-oversize-group-archive* *fn-nntp-env0*
-                      (list :command
+        (in-arena-fn-nntp-step *sr-arena* *fn-nntp-forged-session* *fn-nntp-oversize-group-archive* *fn-nntp-env0* (list :command
                             (append (fn-nntp-string-octets "LISTGROUP ")
                                     (fn-nntp-string-octets *fn-nntp-group-497*))))))))
 ; The CRLF-bearing group name is not a witness on this axis, and the honest
@@ -475,19 +455,17 @@
 (assert-event
  (fn-nntp-effectsp
   (fn-nntp-result-effects
-   (fn-nntp-step *fn-nntp-forged-session* *fn-nntp-unsafe-group-archive* *fn-nntp-env0*
-                 '(:command (76 73 83 84))))))
+   (in-arena-fn-nntp-step *sr-arena* *fn-nntp-forged-session* *fn-nntp-unsafe-group-archive* *fn-nntp-env0* '(:command (76 73 83 84))))))
 ; The same session against a projectable archive is well formed, so the
 ; separating witness separates on more than the weakest clause.
 (assert-event
  (fn-nntp-effectsp
   (fn-nntp-result-effects
-   (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84))))))
+   (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84))))))
 (assert-event
  (fn-nntp-effectsp
   (fn-nntp-result-effects
-   (fn-nntp-step (fn-nntp-result-session *fn-nntp-mixed-group*) *fn-nntp-mixed-archive* *fn-nntp-env0*
-                 '(:command (65 82 84 73 67 76 69 32 49))))))
+   (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-mixed-group*) *fn-nntp-mixed-archive* *fn-nntp-env0* '(:command (65 82 84 73 67 76 69 32 49))))))
 (assert-event
  (fn-nntp-replyp
   (fn-nntp-crlf (fn-nntp-string-octets "501 syntax error"))))
@@ -500,8 +478,7 @@
 ; fn-nntp-group-selects-the-first-available-article: both hypotheses have force.
 (assert-event
  (equal (fn-nntp-result-session
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                       '(:command (71 82 79 85 80 32 110 111 46 115 117 99 104))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32 110 111 46 115 117 99 104))))
         *fn-nntp-session0*))
 (assert-event
  (null (fn-nntp-session-current (fn-nntp-result-session *fn-nntp-empty-group*))))
@@ -536,28 +513,19 @@
   (fn-nntp-open-session *fn-nntp-unsafe-id-archive*))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step
-          (fn-nntp-result-session
-           (fn-nntp-step *fn-nntp-unsafe-id-session* *fn-nntp-unsafe-id-archive* *fn-nntp-env0*
-                         '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))
-          *fn-nntp-unsafe-id-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 49))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session
+           (in-arena-fn-nntp-step *sr-arena* *fn-nntp-unsafe-id-session* *fn-nntp-unsafe-id-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115)))) *fn-nntp-unsafe-id-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 49))))
         '((:reply (53 48 51 32 115 116 111 114 101 100 32 97 114 116 105 99 108 101 32 105 100 101 110 116 105 102 105 101 114 32 117 110 97 118 97 105 108 97 98 108 101 13 10)))))
 (defconst *fn-nntp-unsafe-payload-session*
   (fn-nntp-open-session *fn-nntp-unsafe-payload-archive*))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step
-          (fn-nntp-result-session
-           (fn-nntp-step *fn-nntp-unsafe-payload-session* *fn-nntp-unsafe-payload-archive* *fn-nntp-env0*
-                         '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115))))
-          *fn-nntp-unsafe-payload-archive* *fn-nntp-env0* '(:command (65 82 84 73 67 76 69))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session
+           (in-arena-fn-nntp-step *sr-arena* *fn-nntp-unsafe-payload-session* *fn-nntp-unsafe-payload-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115)))) *fn-nntp-unsafe-payload-archive* *fn-nntp-env0* '(:command (65 82 84 73 67 76 69))))
         '((:reply (53 48 51 32 115 116 111 114 101 100 32 97 114 116 105 99 108 101 32 102 114 97 109 105 110 103 32 117 110 97 118 97 105 108 97 98 108 101 13 10)))))
 ; A payload carrying NUL cannot be sent in a multi-line block (RFC 3977 3.1.1).
 (assert-event
- (not (fn-nntp-article-framedp
-       ; by specification: the flip -- the NUL payload
-       ; '(72 58 32 120 13 10 13 10 0 13 10) is carried as its handle, 3.
-       (fn-make-article "<nul@invalid>" 3
+ (not (in-arena-fn-nntp-article-framedp *sr-arena* (fn-make-article "<nul@invalid>" 3
                         '("fn.letters") '(("fn.letters" . 1)) t 841000000))))
 
 ; -----------------------------------------------------------------------------
@@ -565,20 +533,18 @@
 ; supported variants accept one parsed wildmat and preserve session state.
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84))))
         '((:reply (50 49 53 32 108 105 115 116 32 111 102 32 97 99 116 105 118 101 32 110 101 119 115 103 114 111 117 112 115 32 102 111 108 108 111 119 115 13 10
                    102 110 46 108 101 116 116 101 114 115 32 49 32 49 32 121 13 10
                    102 110 46 101 109 112 116 121 32 48 32 49 32 121 13 10 46 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                       '(:command (76 73 83 84 32 65 67 84 73 86 69 32 102 110 46 101 109 112 116 121))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 65 67 84 73 86 69 32 102 110 46 101 109 112 116 121))))
         '((:reply (50 49 53 32 108 105 115 116 32 111 102 32 97 99 116 105 118 101 32 110 101 119 115 103 114 111 117 112 115 32 102 111 108 108 111 119 115 13 10
                    102 110 46 101 109 112 116 121 32 48 32 49 32 121 13 10 46 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                       '(:command (76 73 83 84 32 78 69 87 83 71 82 79 85 80 83 32 102 110 46 108 101 116 116 101 114 115))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 78 69 87 83 71 82 79 85 80 83 32 102 110 46 108 101 116 116 101 114 115))))
         ; Re-pinned from `ld` 2026-09-20: w5/legacy-commands made LIST
         ; NEWSGROUPS render `name TAB (no description)' (RFC 3977 section
         ; 7.6.6; an empty description makes nntplib drop the group), and this
@@ -588,16 +554,14 @@
                    102 110 46 108 101 116 116 101 114 115 9 40 110 111 32 100 101 115 99 114 105 112 116 105 111 110 41 13 10 46 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                       '(:command (76 73 83 84 32 65 67 84 73 86 69 32 110 111 46 42))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 65 67 84 73 86 69 32 110 111 46 42))))
         '((:reply (50 49 53 32 108 105 115 116 32 111 102 32 97 99 116 105 118 101 32 110 101 119 115 103 114 111 117 112 115 32 102 111 108 108 111 119 115 13 10 46 13 10)))))
 
 ; The pattern is parsed once before it is applied to configured groups.  Bad
 ; UTF-8, a command-line BOM, reserved wildmat punctuation, and non-ASCII in a
 ; command keyword all reject without changing an already selected session.
 (defconst *fn-nntp-list-invalid*
-  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0*
-                '(:command (76 73 83 84 32 65 67 84 73 86 69 32 91))))
+  (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 65 67 84 73 86 69 32 91))))
 (assert-event (equal (fn-nntp-result-session *fn-nntp-list-invalid*)
                      (fn-nntp-result-session *fn-nntp-group*)))
 (assert-event
@@ -605,21 +569,19 @@
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0*
-                       '(:command (76 73 83 84 32 65 67 84 73 86 69 32 192 160))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 65 67 84 73 86 69 32 192 160))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0*
-                       '(:command (76 73 83 84 32 65 67 84 73 86 69 32 239 187 191 42))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 65 67 84 73 86 69 32 239 187 191 42))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (195 163 66 67))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (195 163 66 67))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32 194 163))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32 194 163))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 
 ; Unknown LIST variants are 501.  Known but unmaintained variants use 503 only
@@ -627,11 +589,11 @@
 ; syntax errors.
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 88 46 68 65 84 65))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 88 46 68 65 84 65))))
         '((:reply (53 48 49 32 117 110 115 117 112 112 111 114 116 101 100 32 76 73 83 84 32 118 97 114 105 97 110 116 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 65 67 84 73 86 69 46 84 73 77 69 83 32 102 110 46 42))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 65 67 84 73 86 69 46 84 73 77 69 83 32 102 110 46 42))))
         ; Re-pinned from `ld' 2026-09-20: w5/legacy-commands implemented LIST
         ; ACTIVE.TIMES (RFC 3977 section 7.6.4) out of the environment's
         ; creation facts, so this is 215 and two lines, not the old 503.
@@ -640,11 +602,11 @@
                    102 110 46 101 109 112 116 121 32 49 55 53 56 52 49 50 56 48 48 32 117 110 97 116 116 114 105 98 117 116 101 100 13 10 46 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 68 73 83 84 82 73 66 46 80 65 84 83 32 120))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 68 73 83 84 82 73 66 46 80 65 84 83 32 120))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 72 69 65 68 69 82 83 32 77 83 71 73 68))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 32 72 69 65 68 69 82 83 32 77 83 71 73 68))))
         ; Re-pinned from `ld' 2026-09-20: LIST HEADERS (RFC 3977 section 8.6)
         ; is implemented, so MSGID gets the field list, not the old 503.
         '((:reply (50 49 53 32 102 105 101 108 100 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10
@@ -659,31 +621,28 @@
     (cons byte (fn-nntp-test-repeat (1- n) byte))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                       (list :command
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* (list :command
                              (append '(76 73 83 84 32 65 67 84 73 86 69 32)
                                      (fn-nntp-test-repeat 497 97)))))
         '((:reply (50 49 53 32 108 105 115 116 32 111 102 32 97 99 116 105 118 101 32 110 101 119 115 103 114 111 117 112 115 32 102 111 108 108 111 119 115 13 10 46 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                       (list :command
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* (list :command
                              (append '(76 73 83 84 32 65 67 84 73 86 69 32)
                                      (fn-nntp-test-repeat 498 97)))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                       (list :command (fn-nntp-test-repeat 511 65))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* (list :command (fn-nntp-test-repeat 511 65))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 
 ; NEXT at the only article and QUIT have defined state/effect behavior.
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (78 69 88 84))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (78 69 88 84))))
         '((:reply (52 50 49 32 110 111 32 110 101 120 116 32 97 114 116 105 99 108 101 13 10)))))
 (defconst *fn-nntp-quit*
-  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (81 85 73 84))))
+  (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (81 85 73 84))))
 (assert-event (equal (fn-nntp-result-effects *fn-nntp-quit*)
                      '((:reply (50 48 53 32 99 108 111 115 105 110 103 32 99 111 110 110 101 99 116 105 111 110 13 10)) (:close))))
 (assert-event (equal (fn-nntp-session-openp (fn-nntp-result-session *fn-nntp-quit*)) nil))
@@ -692,24 +651,21 @@
 ; RFC 3977 section 6.1.2 LISTGROUP selects the current group when omitted and
 ; resets its cursor to the group's first article even when a range excludes it.
 (defconst *fn-nntp-listgroup-current*
-  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0*
-                '(:command (76 73 83 84 71 82 79 85 80))))
+  (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80))))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-listgroup-current*)
         '((:reply (50 49 49 32 49 32 49 32 49 32 102 110 46 108 101 116 116 101 114 115 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10 49 13 10 46 13 10)))))
 (assert-event (equal (fn-nntp-session-current
                       (fn-nntp-result-session *fn-nntp-listgroup-current*)) 1))
 (defconst *fn-nntp-listgroup-open-empty*
-  (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115 32 50 45))))
+  (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115 32 50 45))))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-listgroup-open-empty*)
         '((:reply (50 49 49 32 49 32 49 32 49 32 102 110 46 108 101 116 116 101 114 115 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10 46 13 10)))))
 (assert-event (equal (fn-nntp-session-current
                       (fn-nntp-result-session *fn-nntp-listgroup-open-empty*)) 1))
 (defconst *fn-nntp-listgroup-empty-group*
-  (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 101 109 112 116 121))))
+  (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 101 109 112 116 121))))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-listgroup-empty-group*)
         '((:reply (50 49 49 32 48 32 49 32 48 32 102 110 46 101 109 112 116 121 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10 46 13 10)))))
@@ -717,11 +673,10 @@
                       (fn-nntp-result-session *fn-nntp-listgroup-empty-group*)) nil))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80))))
         '((:reply (52 49 50 32 110 111 32 110 101 119 115 103 114 111 117 112 32 115 101 108 101 99 116 101 100 13 10)))))
 (defconst *fn-nntp-listgroup-unknown*
-  (fn-nntp-step (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0*
-                '(:command (76 73 83 84 71 82 79 85 80 32 110 111 46 115 117 99 104))))
+  (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-group*) *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80 32 110 111 46 115 117 99 104))))
 (assert-event (equal (fn-nntp-result-session *fn-nntp-listgroup-unknown*)
                      (fn-nntp-result-session *fn-nntp-group*)))
 (assert-event
@@ -730,12 +685,12 @@
 (defconst *fn-nntp-gone-session* (fn-nntp-make-session t "gone.group" 1 t))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-gone-session* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-gone-session* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80))))
         '((:reply (52 49 50 32 110 111 32 110 101 119 115 103 114 111 117 112 32 115 101 108 101 99 116 101 100 13 10)))))
 ; There is no bare-range LISTGROUP form: the one argument is a group name.
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80 32 49 45))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80 32 49 45))))
         '((:reply (52 49 49 32 110 111 32 115 117 99 104 32 110 101 119 115 103 114 111 117 112 13 10)))))
 
 ; Sparse local allocation remains scoped to fn.sparse and is filtered
@@ -754,24 +709,21 @@
 (assert-event (fn-nntp-projectionp *fn-nntp-sparse-archive*))
 (defconst *fn-nntp-sparse-session* (fn-nntp-open-session *fn-nntp-sparse-archive*))
 (defconst *fn-nntp-listgroup-sparse*
-  (fn-nntp-step *fn-nntp-sparse-session* *fn-nntp-sparse-archive* *fn-nntp-env0*
-                '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 115 112 97 114 115 101 32 50 45 51))))
+  (in-arena-fn-nntp-step *sr-arena* *fn-nntp-sparse-session* *fn-nntp-sparse-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 115 112 97 114 115 101 32 50 45 51))))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-listgroup-sparse*)
         '((:reply (50 49 49 32 50 32 49 32 51 32 102 110 46 115 112 97 114 115 101 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10 51 13 10 46 13 10)))))
 (assert-event (equal (fn-nntp-session-current
                       (fn-nntp-result-session *fn-nntp-listgroup-sparse*)) 1))
 (defconst *fn-nntp-listgroup-reversed*
-  (fn-nntp-step *fn-nntp-sparse-session* *fn-nntp-sparse-archive* *fn-nntp-env0*
-                '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 115 112 97 114 115 101 32 51 45 49))))
+  (in-arena-fn-nntp-step *sr-arena* *fn-nntp-sparse-session* *fn-nntp-sparse-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 115 112 97 114 115 101 32 51 45 49))))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-listgroup-reversed*)
         '((:reply (50 49 49 32 50 32 49 32 51 32 102 110 46 115 112 97 114 115 101 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10 46 13 10)))))
 ; The LISTGROUP block is in numerical order even though the committed article
 ; list is not (RFC 3977 section 6.1.2.2).
 (defconst *fn-nntp-listgroup-all-sparse*
-  (fn-nntp-step *fn-nntp-sparse-session* *fn-nntp-sparse-archive* *fn-nntp-env0*
-                '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 115 112 97 114 115 101))))
+  (in-arena-fn-nntp-step *sr-arena* *fn-nntp-sparse-session* *fn-nntp-sparse-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 115 112 97 114 115 101))))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-listgroup-all-sparse*)
         '((:reply (50 49 49 32 50 32 49 32 51 32 102 110 46 115 112 97 114 115 101 32 108 105 115 116 32 102 111 108 108 111 119 115 13 10 49 13 10 51 13 10 46 13 10)))))
@@ -780,28 +732,24 @@
                     "fn.sparse" 1 2147483647 (fn-state-articles *fn-nntp-sparse-archive*))))
 ; NEXT and LAST move the cursor to an available number and nowhere else.
 (defconst *fn-nntp-sparse-next*
-  (fn-nntp-step (fn-nntp-result-session *fn-nntp-listgroup-all-sparse*)
-                *fn-nntp-sparse-archive* *fn-nntp-env0* '(:command (78 69 88 84))))
+  (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-listgroup-all-sparse*) *fn-nntp-sparse-archive* *fn-nntp-env0* '(:command (78 69 88 84))))
 (assert-event (equal (fn-nntp-session-current
                       (fn-nntp-result-session *fn-nntp-sparse-next*)) 3))
 (assert-event
  (equal (fn-nntp-result-effects *fn-nntp-sparse-next*)
         '((:reply (50 50 51 32 51 32 60 116 104 114 101 101 64 115 112 97 114 115 101 46 105 110 118 97 108 105 100 62 32 114 101 116 114 105 101 118 101 100 13 10)))))
 (defconst *fn-nntp-sparse-last*
-  (fn-nntp-step (fn-nntp-result-session *fn-nntp-sparse-next*)
-                *fn-nntp-sparse-archive* *fn-nntp-env0* '(:command (76 65 83 84))))
+  (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-sparse-next*) *fn-nntp-sparse-archive* *fn-nntp-env0* '(:command (76 65 83 84))))
 (assert-event (equal (fn-nntp-session-current
                       (fn-nntp-result-session *fn-nntp-sparse-last*)) 1))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-sparse-last*)
-                       *fn-nntp-sparse-archive* *fn-nntp-env0* '(:command (76 65 83 84))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-sparse-last*) *fn-nntp-sparse-archive* *fn-nntp-env0* '(:command (76 65 83 84))))
         '((:reply (52 50 50 32 110 111 32 112 114 101 118 105 111 117 115 32 97 114 116 105 99 108 101 13 10)))))
 ; A number inside the gap is 423, not a silent success.
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step (fn-nntp-result-session *fn-nntp-listgroup-all-sparse*)
-                       *fn-nntp-sparse-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 50))))
+         (in-arena-fn-nntp-step *sr-arena* (fn-nntp-result-session *fn-nntp-listgroup-all-sparse*) *fn-nntp-sparse-archive* *fn-nntp-env0* '(:command (83 84 65 84 32 50))))
         '((:reply (52 50 51 32 110 111 32 97 114 116 105 99 108 101 32 119 105 116 104 32 116 104 97 116 32 110 117 109 98 101 114 13 10)))))
 
 ; Parser boundaries: single, open, leading-zero, reversed-empty, malformed,
@@ -814,13 +762,11 @@
 (assert-event (not (fn-nntp-range-okp (fn-nntp-parse-range '(49 45 50 45 51)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                       '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115 32 45 49))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115 32 45 49))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 (assert-event
  (equal (fn-nntp-result-effects
-         (fn-nntp-step *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0*
-                       '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115 32 49 32 50))))
+         (in-arena-fn-nntp-step *sr-arena* *fn-nntp-session0* *fn-nntp-archive* *fn-nntp-env0* '(:command (76 73 83 84 71 82 79 85 80 32 102 110 46 108 101 116 116 101 114 115 32 49 32 50))))
         '((:reply (53 48 49 32 115 121 110 116 97 120 32 101 114 114 111 114 13 10)))))
 
 ; -----------------------------------------------------------------------------
@@ -839,4 +785,4 @@
         (list (fn-nntp-hdr-line
                '(65 13 66)
                (fn-nntp-hdr-octets
-                (fn-nntp-hdr-content '(58 98 121 116 101 115) nil))))))))
+                (in-arena-fn-nntp-hdr-content *sr-arena* '(58 98 121 116 101 115) nil))))))))

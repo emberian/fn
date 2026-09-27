@@ -156,44 +156,51 @@
 (defconst *ptf-lines*
   (list (ptf-o "Newsgroups: fn.test") (ptf-o "Message-ID: <s1@example.invalid>")
         (ptf-o "") (ptf-o "body")))
-(defun ptf-sub (kind)
+(defun ptf-sub (kind fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-submission
    (fn-peer-step-pinned (fn-peer-with-transfer *ptf-ps* (list kind *ptf-id*) 0)
-                        *ptf-archive* nil nil nil nil nil (list :article *ptf-lines*))))
+                        *ptf-archive* nil nil nil nil nil (list :article *ptf-lines*) fn-arena)))
 (assert-event (fn-peer-sessionp (fn-peer-with-transfer *ptf-ps* (list :takethis *ptf-id*) 0)))
-(assert-event (equal (ptf-sub :takethis)
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-peer-step-pinned 8)
+(bpr-lift ptf-step 2)
+(bpr-lift ptf-sub 1)
+(assert-event (equal (in-arena-ptf-sub *sr-arena* :takethis)
                      (fn-peer-make-submission "innA" :takethis *ptf-id*
                                               (fn-post-body-octets *ptf-lines*))))
-(assert-event (equal (ptf-sub :ihave)
+(assert-event (equal (in-arena-ptf-sub *sr-arena* :ihave)
                      (fn-peer-make-submission "innA" :ihave *ptf-id*
                                               (fn-post-body-octets *ptf-lines*))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE 3 (fn-peer-step-pinned-keeps-outstanding-offers-within-the-peer-bound)
 
-(defun ptf-step (ps line)
-  (fn-peer-step-pinned ps *ptf-archive* nil nil nil nil nil (list :command (ptf-o line))))
+(defun ptf-step (ps line fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-peer-step-pinned ps *ptf-archive* nil nil nil nil nil (list :command (ptf-o line)) fn-arena))
 (defun ptf-inflight (r) (fn-peer-session-inflight (fn-post-result-session r)))
 ; A pipeline at the bound: the fifteenth-to-sixteenth CHECK is promised
 ; (238, count 16 = max-inflight), the next is 431 and the count stays 16;
 ; a TAKETHIS retires one promise.
-(assert-event (equal (ptf-inflight (ptf-step *ptf-ps15* "CHECK <s1@example.invalid>")) 16))
-(assert-event (equal (fn-post-result-effects (ptf-step *ptf-ps15* "CHECK <s1@example.invalid>"))
+(assert-event (equal (ptf-inflight (in-arena-ptf-step *sr-arena* *ptf-ps15* "CHECK <s1@example.invalid>")) 16))
+(assert-event (equal (fn-post-result-effects (in-arena-ptf-step *sr-arena* *ptf-ps15* "CHECK <s1@example.invalid>"))
                      (list (fn-nntp-reply-effect (fn-nntp-crlf (append (ptf-o "238 ") *ptf-id*))))))
-(assert-event (equal (ptf-inflight (ptf-step *ptf-ps16* "CHECK <s1@example.invalid>")) 16))
-(assert-event (equal (fn-post-result-effects (ptf-step *ptf-ps16* "CHECK <s1@example.invalid>"))
+(assert-event (equal (ptf-inflight (in-arena-ptf-step *sr-arena* *ptf-ps16* "CHECK <s1@example.invalid>")) 16))
+(assert-event (equal (fn-post-result-effects (in-arena-ptf-step *sr-arena* *ptf-ps16* "CHECK <s1@example.invalid>"))
                      (list (fn-nntp-reply-effect (fn-nntp-crlf (append (ptf-o "431 ") *ptf-id*))))))
-(assert-event (equal (ptf-inflight (ptf-step *ptf-ps16* "TAKETHIS <s1@example.invalid>")) 15))
+(assert-event (equal (ptf-inflight (in-arena-ptf-step *sr-arena* *ptf-ps16* "TAKETHIS <s1@example.invalid>")) 15))
 ; No hypothesis.  Tooth: the stronger claim that no event raises the count
 ; is false; the counterexample is the witness above (the 238 raised it from
 ; 15 to 16), and the claim is not a theorem.
-(assert-event (not (<= (ptf-inflight (ptf-step *ptf-ps15* "CHECK <s1@example.invalid>"))
+(assert-event (not (<= (ptf-inflight (in-arena-ptf-step *sr-arena* *ptf-ps15* "CHECK <s1@example.invalid>"))
                        (fn-peer-session-inflight *ptf-ps15*))))
 (must-fail
  (defthm ptf-k3-never-raises
    (<= (nfix (fn-peer-session-inflight
               (fn-post-result-session
-               (fn-peer-step-pinned ps archive index verdicts config observation
-                                    injection wire-event))))
+               (fn-peer-step-pinned ps archive index verdicts config observation injection wire-event fn-arena))))
        (nfix (fn-peer-session-inflight ps)))
    :hints (("Goal" :in-theory (disable fn-peer-step-pinned)))))

@@ -5,8 +5,12 @@
 
 (assert-event (fn-ocri-relation *ocl-t-new-open*))
 (assert-event (fn-ocri-relation *ocla-t-advanced*))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-step 2)
 (assert-event
- (equal (fn-ocfg-step *ocl-t-new-open* (list :advance 0))
+ (equal (in-arena-fn-ocfg-step *sr-arena* *ocl-t-new-open* (list :advance 0))
         *ocla-t-advanced*))
 (assert-event
  (let* ((conn (fn-own-find-conn

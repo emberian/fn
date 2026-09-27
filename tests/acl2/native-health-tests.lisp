@@ -27,11 +27,11 @@
 ; store as the row the entry interns (store-intern fn-intern-row-at,
 ; keyring nil at generation 0), its handle its place in the run's arena.
 (defconst *nht-first* (fn-hrt-row-at *nht-first-wire* 0))
-(defun nht-run (oc events)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+(defun nht-run (oc events fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
                   :verify-guards nil))
   (if (consp events)
-      (nht-run (fn-ocfg-step oc (car events)) (cdr events))
+      (nht-run (fn-ocfg-step oc (car events) fn-arena) (cdr events) fn-arena)
     oc))
 (defconst *nht-reserve-events*
   '((:store (:io :start-frontier nil))
@@ -43,13 +43,15 @@
    (fn-own-configure (fn-own-start (fn-sn-initial *nht-groups* 10) 3)
                      *nht-post-config*)
    *nht-config* nil nil))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-step 2)
+(bpr-lift nht-run 2)
 (defconst *nht-oc*
-  (fn-ocfg-step
-   (nht-run (fn-opc-prepare (nht-run *nht-0* *nht-reserve-events*) *nht-first*)
-             '((:store (:io :record-file :ok))
+  (in-arena-fn-ocfg-step *sr-arena* (in-arena-nht-run *sr-arena* (fn-opc-prepare (in-arena-nht-run *sr-arena* *nht-0* *nht-reserve-events*) *nht-first*) '((:store (:io :record-file :ok))
                (:store (:io :record-link :ok))
-               (:store (:io :record-directory :ok))))
-   '(:complete)))
+               (:store (:io :record-directory :ok)))) '(:complete)))
 (defconst *nht-s* (fn-own-store (fn-ocfg-owner *nht-oc*)))
 (defconst *nht-profile* (fn-bs-config-for-profile :development))
 (defconst *nht-obs* '(nil nil (:full-replay :no-checkpoint)))

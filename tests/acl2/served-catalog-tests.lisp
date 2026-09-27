@@ -162,7 +162,7 @@
                 ,group (fn-scat-range-numbers ,group 1 10 ,v ,c) ,v ,a ,c)
                (fn-nov-lines-for-numbers
                 ,group (fn-nntp-group-range-numbers ,group 1 10 (fn-cat-view-articles ,v ,a ,c))
-                (fn-cat-view-articles ,v ,a ,c)))
+                (fn-cat-view-articles ,v ,a ,c) fn-arena))
         (equal (fn-scat-group-low ,group ,v ,c)
                (fn-nntp-group-low ,group (fn-cat-view-articles ,v ,a ,c)))))
 
@@ -259,7 +259,7 @@
                               (fn-cat-view-articles 3 *sct-a* *sct-c*) 0 nil nil))
          (s (sct-session "fn.test")))
     (and (equal (fn-nntp-over-range-cat s 3 "1-10" nil *sct-a* *sct-c*)
-                (fn-nntp-over-range s arch "1-10"))
+                (fn-nntp-over-range s arch "1-10" fn-arena))
          (equal (fn-nntp-listgroup-command-cat s arch nil 3 *sct-c*)
                 (fn-nntp-listgroup-command s arch nil))
          (equal (fn-nntp-group-result-cat s arch "fn.test" 3 *sct-c*)
@@ -267,9 +267,9 @@
          (equal (fn-nntp-list-counts-command-cat s arch nil 3 *sct-c*)
                 (fn-nntp-list-counts-command s arch nil))
          (equal (fn-nntp-hdr-command-cat s '("Subject" "1-10") 3 nil *sct-a* *sct-c*)
-                (fn-nntp-hdr-command s arch '("Subject" "1-10") nil))
+                (fn-nntp-hdr-command s arch '("Subject" "1-10") nil fn-arena))
          (equal (fn-nntp-xpat-response-cat s '("Subject" "1-10" "*b*") 3 *sct-a* *sct-c*)
-                (fn-nntp-xpat-response s arch '("Subject" "1-10" "*b*")))))
+                (fn-nntp-xpat-response s arch '("Subject" "1-10" "*b*") fn-arena))))
   :rule-classes nil)
 
 ;;; Teeth for KEYSTONE N (fn-scat-range-numbers-is-group-range-numbers).

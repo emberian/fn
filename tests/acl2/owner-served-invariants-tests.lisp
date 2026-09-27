@@ -117,9 +117,21 @@
 
 ; Witness: connection 4's injected article, staged as itself, at :completing.
 (defconst *osi-sub* (fn-own-inflight *own-taken*))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-read-step 3)
+(bpr-lift fn-ocfg-read-tls-prefix 3)
+(bpr-lift fn-ocfg-run 2)
+(bpr-lift fn-own-run 2)
+(bpr-lift fn-own-step 2)
+(bpr-lift osi-after-post 4)
+(bpr-lift osi-p3-pin-conclusion 5)
+(bpr-lift osi-p3-read-conclusion 6)
+(bpr-lift osi-p3-step-conclusion 6)
+(bpr-lift osi-transit-completing 1)
 (defconst *osi-completing*
-  (fn-own-run *own-taken*
-              (osi-drop-last (own-post-events (osi-sub-record 2 2 *osi-sub*)))))
+  (in-arena-fn-own-run *sr-arena* *own-taken* (osi-drop-last (own-post-events (osi-sub-record 2 2 *osi-sub*)))))
 (defconst *osi-completing-prior*
   (osi-prior (osi-record-of-wire 2 2 *osi-sub* (fn-own-sub-octets *osi-sub*))))
 (assert-event (fn-own-relation *osi-completing*))
@@ -141,7 +153,7 @@
                                                     (fn-own-node-secret *osi-completing*)))))
 ; The finish is the (:complete) event on the owner.
 (assert-event (equal (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*))
-                     (fn-own-step *osi-completing* '(:complete))))
+                     (in-arena-fn-own-step *sr-arena* *osi-completing* '(:complete))))
 
 ; FINDING (P2).  With the host's word, 240 is rendered over a completion of
 ; another record.  owner-tests' *own-p-done* completed <three@example> for
@@ -149,10 +161,9 @@
 ; the 240.  fn-own-finish over the same state answers :fault, so the outcome
 ; is the uncertain 441.
 (defconst *osi-mismatch-completing*
-  (fn-own-run *own-taken*
-              (osi-drop-last (own-post-events (own-record 2 2 "<three@example>")))))
+  (in-arena-fn-own-run *sr-arena* *own-taken* (osi-drop-last (own-post-events (own-record 2 2 "<three@example>")))))
 (defconst *osi-mismatch-prior* (osi-prior (own-record-wire 2 2 "<three@example>")))
-(assert-event (equal (fn-own-step *osi-mismatch-completing* '(:complete)) *own-p-done*))
+(assert-event (equal (in-arena-fn-own-step *sr-arena* *osi-mismatch-completing* '(:complete)) *own-p-done*))
 (assert-event (equal (fn-served-reply-octets (car *own-240*))
                      (append (fn-nntp-string-octets "240 article received OK") '(13 10))))
 (assert-event (equal (fn-record-msgid (fn-sn-completion-record
@@ -223,16 +234,17 @@
 (assert-event (equal (take 18 *osi-transit-stored*)
                      (fn-nntp-string-octets "Path: own.example!")))
 
-(defun osi-transit-completing (payload)
+(defun osi-transit-completing (payload fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-own-run (own-with-inflight *own-taken* *osi-transit-sub*)
               (osi-drop-last
                (own-post-events
-                (osi-record-of 2 2 *osi-transit-sub* payload)))))
+                (osi-record-of 2 2 *osi-transit-sub* payload))) fn-arena))
 
 ; Witness: the Store completes the record carrying the staged octets.  The
 ; finish is :durable, the reply is the 240 expression, and the keystone's
 ; conclusion holds.
-(defconst *osi-transit-completing* (osi-transit-completing *osi-transit-stored*))
+(defconst *osi-transit-completing* (in-arena-osi-transit-completing *sr-arena* *osi-transit-stored*))
 (defconst *osi-transit-prior*
   (osi-prior (osi-record-of-wire 2 2 *osi-transit-sub* *osi-transit-stored*)))
 (assert-event (fn-own-relation *osi-transit-completing*))
@@ -260,7 +272,7 @@
 ; Negative: the Store completes a record carrying the received octets, which
 ; is not what the owner staged.  The finish is :fault (uncertain), no 240 is
 ; rendered, and the conclusion fails.
-(defconst *osi-transit-unstaged* (osi-transit-completing *osi-transit-received*))
+(defconst *osi-transit-unstaged* (in-arena-osi-transit-completing *sr-arena* *osi-transit-received*))
 (defconst *osi-unstaged-prior*
   (osi-prior (osi-record-of-wire 2 2 *osi-transit-sub* *osi-transit-received*)))
 (assert-event (fn-own-relation *osi-transit-unstaged*))
@@ -273,8 +285,7 @@
 ; Negative: a completion for a different article.  The record carries the
 ; staged octets but another Message-ID; the finish still faults.
 (defconst *osi-transit-other*
-  (fn-own-run (own-with-inflight *own-taken* *osi-transit-sub*)
-              (osi-drop-last
+  (in-arena-fn-own-run *sr-arena* (own-with-inflight *own-taken* *osi-transit-sub*) (osi-drop-last
                (own-post-events
                 (fn-hrt-row-at
                  (fn-record-make 2 2 2 "<other@example.invalid>"
@@ -318,31 +329,35 @@
 
 (defun osi-oc (o) (fn-ocfg-make o *own-config* nil nil))
 
-(defun osi-after-post (oc events sub-id word)
-  (let ((oc1 (fn-ocfg-run oc events)))
+(defun osi-after-post (oc events sub-id word fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((oc1 (fn-ocfg-run oc events fn-arena)))
     (fn-ocfg-with-owner oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word)))))
 
 ; The chunk read answers as before (the pre-NNT-042 conclusion; now the
 ; not-yet-proved chunk form for chunks framing no selection).
-(defun osi-p3-read-conclusion (oc events sub-id word id octets)
-  (let ((oc2 (osi-after-post oc events sub-id word)))
-    (and (equal (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc2 id octets))
-                (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc id octets)))
-         (equal (fn-own-tls-result-consumed (fn-ocfg-read-tls-prefix oc2 id octets))
-                (fn-own-tls-result-consumed (fn-ocfg-read-tls-prefix oc id octets))))))
+(defun osi-p3-read-conclusion (oc events sub-id word id octets fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((oc2 (osi-after-post oc events sub-id word fn-arena)))
+    (and (equal (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc2 id octets fn-arena))
+                (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc id octets fn-arena)))
+         (equal (fn-own-tls-result-consumed (fn-ocfg-read-tls-prefix oc2 id octets fn-arena))
+                (fn-own-tls-result-consumed (fn-ocfg-read-tls-prefix oc id octets fn-arena))))))
 
 ; The theorem's conclusion: the connection record and the clock survive.
-(defun osi-p3-pin-conclusion (oc events sub-id word id)
-  (let ((oc2 (osi-after-post oc events sub-id word)))
+(defun osi-p3-pin-conclusion (oc events sub-id word id fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((oc2 (osi-after-post oc events sub-id word fn-arena)))
     (and (equal (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))
                 (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
          (equal (fn-own-clock (fn-ocfg-owner oc2)) (fn-own-clock (fn-ocfg-owner oc))))))
 
 ; The corollary's conclusion: one framed event answers as before.
-(defun osi-p3-step-conclusion (oc events sub-id word id event)
-  (let ((oc2 (osi-after-post oc events sub-id word)))
-    (equal (car (fn-ocfg-read-step oc2 id event))
-           (car (fn-ocfg-read-step oc id event)))))
+(defun osi-p3-step-conclusion (oc events sub-id word id event fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((oc2 (osi-after-post oc events sub-id word fn-arena)))
+    (equal (car (fn-ocfg-read-step oc2 id event fn-arena))
+           (car (fn-ocfg-read-step oc id event fn-arena)))))
 
 (defun osi-reader-p (oc id)
   (not (fn-peer-session-cfg
@@ -355,7 +370,7 @@
 (defconst *osi-group* *own-group-octets*)
 (defconst *osi-group-event* (list :command (butlast *own-group-octets* 2)))
 (defconst *osi-stat-event* (list :command (butlast *own-stat-octets* 2)))
-(defconst *osi-after* (osi-after-post *osi-q* *osi-post-events* 4 :durable))
+(defconst *osi-after* (in-arena-osi-after-post *sr-arena* *osi-q* *osi-post-events* 4 :durable))
 
 ; Witness: reader 3 pinned at version 2; connection 4's POST is taken,
 ; staged, completed and answered 240; the view the store publishes moves to
@@ -368,10 +383,10 @@
 (assert-event (equal (fn-own-view-version (fn-own-view (fn-ocfg-owner *osi-after*))) 3))
 (assert-event (equal (fn-own-take 4 (fn-served-reply-octets
                                      (car (fn-own-outcome
-                                           (fn-ocfg-owner (fn-ocfg-run *osi-q* *osi-post-events*))
+                                           (fn-ocfg-owner (in-arena-fn-ocfg-run *sr-arena* *osi-q* *osi-post-events*))
                                            4 :durable))))
                      (fn-nntp-string-octets "240 ")))
-(assert-event (osi-p3-pin-conclusion *osi-q* *osi-post-events* 4 :durable 3))
+(assert-event (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 3))
 (assert-event (equal (fn-own-conn-version
                       (fn-own-find-conn 3 (fn-own-conns (fn-ocfg-owner *osi-after*))))
                      2))
@@ -382,31 +397,31 @@
 ; evidence).
 (assert-event (fn-served-advance-eventp *osi-group-event*))
 (assert-event (not (fn-served-advance-eventp *osi-stat-event*)))
-(assert-event (not (osi-p3-read-conclusion *osi-q* *osi-post-events* 4 :durable 3 *osi-group*)))
+(assert-event (not (in-arena-osi-p3-read-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 3 *osi-group*)))
 (assert-event (consp (fn-served-reply-octets
                       (fn-own-tls-result-effects
-                       (fn-ocfg-read-tls-prefix *osi-after* 3 *osi-group*)))))
-(assert-event (osi-p3-step-conclusion *osi-q* *osi-post-events* 4 :durable 3 *osi-stat-event*))
-(assert-event (consp (fn-served-reply-octets (car (fn-ocfg-read-step *osi-q* 3 *osi-stat-event*)))))
-(assert-event (osi-p3-read-conclusion *osi-q* *osi-post-events* 4 :durable 3 *own-stat-octets*))
+                       (in-arena-fn-ocfg-read-tls-prefix *sr-arena* *osi-after* 3 *osi-group*)))))
+(assert-event (in-arena-osi-p3-step-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 3 *osi-stat-event*))
+(assert-event (consp (fn-served-reply-octets (car (in-arena-fn-ocfg-read-step *sr-arena* *osi-q* 3 *osi-stat-event*)))))
+(assert-event (in-arena-osi-p3-read-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 3 *own-stat-octets*))
 
 ; Hypothesis (not (fn-served-advance-eventp event)) of the corollary: the
 ; GROUP event is answered from the fresh view.
-(assert-event (not (osi-p3-step-conclusion *osi-q* *osi-post-events* 4 :durable 3 *osi-group-event*)))
-(must-fail (assert-event (osi-p3-step-conclusion *osi-q* *osi-post-events* 4 :durable 3 *osi-group-event*)))
+(assert-event (not (in-arena-osi-p3-step-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 3 *osi-group-event*)))
+(must-fail (assert-event (in-arena-osi-p3-step-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 3 *osi-group-event*)))
 
 ; Hypothesis (not (equal id sub-id)).  The poster itself is re-pinned by
 ; the 240: its record changes.
 (assert-event (osi-reader-p *osi-q* 4))
-(assert-event (not (osi-p3-pin-conclusion *osi-q* *osi-post-events* 4 :durable 4)))
-(must-fail (assert-event (osi-p3-pin-conclusion *osi-q* *osi-post-events* 4 :durable 4)))
+(assert-event (not (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 4)))
+(must-fail (assert-event (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 4)))
 
 ; Hypothesis (fn-ocfg-writer-eventsp events).  An (:advance 3) among the
 ; events re-pins reader 3 itself.
 (defconst *osi-advance-events* (append *osi-post-events* '((:advance 3))))
 (assert-event (not (fn-ocfg-writer-eventsp *osi-advance-events*)))
-(assert-event (not (osi-p3-pin-conclusion *osi-q* *osi-advance-events* 4 :durable 3)))
-(must-fail (assert-event (osi-p3-pin-conclusion *osi-q* *osi-advance-events* 4 :durable 3)))
+(assert-event (not (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-q* *osi-advance-events* 4 :durable 3)))
+(must-fail (assert-event (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-q* *osi-advance-events* 4 :durable 3)))
 
 ; A peer connection's record survives another post too (P3 no longer needs
 ; the reader hypothesis), but its chunk read is not pin-stable: IHAVE answers
@@ -418,11 +433,9 @@
 (assert-event (fn-ocfg-writer-eventsp *osi-peer-events*))
 (assert-event (not (osi-reader-p *osi-peered* *own-peer-id*)))
 (assert-event (not (equal *own-peer-id* 1)))
-(assert-event (osi-p3-pin-conclusion *osi-peered* *osi-peer-events* 1 :durable *own-peer-id*))
-(assert-event (not (osi-p3-read-conclusion *osi-peered* *osi-peer-events* 1 :durable
-                                           *own-peer-id* *own-ihave-octets*)))
-(must-fail (assert-event (osi-p3-read-conclusion *osi-peered* *osi-peer-events* 1 :durable
-                                                 *own-peer-id* *own-ihave-octets*)))
+(assert-event (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-peered* *osi-peer-events* 1 :durable *own-peer-id*))
+(assert-event (not (in-arena-osi-p3-read-conclusion *sr-arena* *osi-peered* *osi-peer-events* 1 :durable *own-peer-id* *own-ihave-octets*)))
+(must-fail (assert-event (in-arena-osi-p3-read-conclusion *sr-arena* *osi-peered* *osi-peer-events* 1 :durable *own-peer-id* *own-ihave-octets*)))
 
 ; -----------------------------------------------------------------------------
 ; P5: the bound, and the fault wrapper.

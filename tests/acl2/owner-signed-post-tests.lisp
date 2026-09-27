@@ -33,20 +33,29 @@
                      (list *ospt-enrollment*)))
 
 ; Reader A (connection 0) before the post; the poster is connection 1.
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-own-read 3)
+(bpr-lift fn-own-run 2)
+(bpr-lift fn-own-step 2)
+(bpr-lift ospt-finish-conclusion 3)
+(bpr-lift ospt-reader-verdict 1)
+(bpr-lift ospt-submit 2)
 (make-event
  `(defconst *ospt-open*
-    ',(let* ((o (fn-own-run (fn-own-start *ospt-enrolled* 4)
-                            (list (list :configure *ospt-config*)
+    ',(let* ((o (in-arena-fn-own-run *sr-arena* (fn-own-start *ospt-enrolled* 4) (list (list :configure *ospt-config*)
                                   (list :observe *ospt-obs*))))
              (o (cdr (fn-own-open o nil))))
         (cdr (fn-own-open o nil)))))
 (defconst *ospt-poster* 1)
-(defun ospt-submit (o octets)
-  (let* ((offered (cdr (fn-own-read o *ospt-poster* *ospt-post-command*))))
-    (cdr (fn-own-read offered *ospt-poster* (append octets '(46 13 10))))))
+(defun ospt-submit (o octets fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((offered (cdr (fn-own-read o *ospt-poster* *ospt-post-command* fn-arena))))
+    (cdr (fn-own-read offered *ospt-poster* (append octets '(46 13 10)) fn-arena))))
 (make-event
  `(defconst *ospt-taken*
-    ',(fn-own-step (ospt-submit *ospt-open* *tha-received*) '(:take))))
+    ',(in-arena-fn-own-step *sr-arena* (in-arena-ospt-submit *sr-arena* *ospt-open* *tha-received*) '(:take))))
 (assert-event (equal (fn-own-sub-id (fn-own-inflight *ospt-taken*)) *ospt-poster*))
 
 ; The octets the host attempts are the staged injected ones; the carrier
@@ -93,16 +102,17 @@
         '(:store (:io :record-directory :ok))))
 (make-event
  `(defconst *ospt-completing*
-    ',(fn-own-run *ospt-taken* (ospt-store-events *ospt-event*))))
+    ',(in-arena-fn-own-run *sr-arena* *ospt-taken* (ospt-store-events *ospt-event*))))
 (make-event
- `(defconst *ospt-finished* ',(fn-own-step *ospt-completing* '(:complete))))
+ `(defconst *ospt-finished* ',(in-arena-fn-own-step *sr-arena* *ospt-completing* '(:complete))))
 
 ; ---------------------------------------------------------------------------
 ; fn-osp-signed-post-finish-records-its-verdict: reachable witness.
-(defun ospt-finish-conclusion (o received snapshots)
+(defun ospt-finish-conclusion (o received snapshots fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let* ((e (ospt-event received snapshots))
          (v (fn-hls-kind4-verdict-event e)))
-    (equal (fn-sn-verdict-lookup (fn-own-store (fn-own-step o '(:complete)))
+    (equal (fn-sn-verdict-lookup (fn-own-store (fn-own-step o '(:complete) fn-arena))
                                  *ospt-msgid*)
            (fn-stx-make-verdict (fn-stxe-token v) (fn-stxe-detail v)
                                 (nth 6 (fn-pa-current-plan received snapshots nil nil))))))
@@ -112,8 +122,7 @@
                      *ospt-event*))
 (assert-event (null (fn-sn-verdict-lookup (fn-own-store *ospt-completing*)
                                           *ospt-msgid*)))
-(assert-event (ospt-finish-conclusion *ospt-completing* *ospt-staged*
-                                      *ospt-snapshots*))
+(assert-event (in-arena-ospt-finish-conclusion *sr-arena* *ospt-completing* *ospt-staged* *ospt-snapshots*))
 ; The recorded token on this trace is :verified, bound to the principal.
 (assert-event (equal (fn-stxe-token (fn-hls-kind4-verdict-event *ospt-event*))
                      :verified))
@@ -125,16 +134,14 @@
 ; nil event either; an enabled completion always has a record, so this
 ; hypothesis cannot fail alone.
 (assert-event (null (ospt-event *ospt-staged* nil)))
-(must-fail (assert-event (ospt-finish-conclusion *ospt-completing*
-                                                 *ospt-staged* nil)))
+(must-fail (assert-event (in-arena-ospt-finish-conclusion *sr-arena* *ospt-completing* *ospt-staged* nil)))
 ; Without completion-record = event: another authorized event (the same
 ; carrier under a generation-2 enrollment) is not the record completing.
 (make-event `(defconst *ospt-g2*
                ',(list (fn-hsig-keyring-event 0 0 0 2 *tha-principal* *tha-keys*))))
 (assert-event (ospt-event *ospt-staged* *ospt-g2*))
 (assert-event (not (equal (ospt-event *ospt-staged* *ospt-g2*) *ospt-event*)))
-(must-fail (assert-event (ospt-finish-conclusion *ospt-completing*
-                                                 *ospt-staged* *ospt-g2*)))
+(must-fail (assert-event (in-arena-ospt-finish-conclusion *sr-arena* *ospt-completing* *ospt-staged* *ospt-g2*)))
 ; Without fn-sn-completion-enabledp: the same completion record with the
 ; identity sequence one ahead; the gate is closed and nothing is recorded.
 (defun ospt-with-store (o s)
@@ -150,8 +157,7 @@
 (assert-event (not (fn-sn-completion-enabledp (fn-own-store *ospt-off*))))
 (assert-event (equal (fn-hstxa-stxa (fn-sn-completion-record (fn-own-store *ospt-off*)))
                      *ospt-event*))
-(must-fail (assert-event (ospt-finish-conclusion *ospt-off* *ospt-staged*
-                                                 *ospt-snapshots*)))
+(must-fail (assert-event (in-arena-ospt-finish-conclusion *sr-arena* *ospt-off* *ospt-staged* *ospt-snapshots*)))
 
 ; ---------------------------------------------------------------------------
 ; The served outcome: 240 after the finish (fn-osp-finished-post-outcome-is-
@@ -164,13 +170,14 @@
 (assert-event (equal (fn-served-reply-octets (car *ospt-240*))
                      (append (fn-nntp-string-octets "240 article received OK")
                              '(13 10))))
-(defun ospt-reader-verdict (o)
-  (let* ((o2 (cdr (fn-own-open (fn-own-step o '(:complete)) nil)))
+(defun ospt-reader-verdict (o fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((o2 (cdr (fn-own-open (fn-own-step o '(:complete) fn-arena) nil)))
          (conn (fn-own-find-conn (fn-own-next-id o) (fn-own-conns o2))))
     (and conn
          (fn-stx-reader-verdict *ospt-msgid* (fn-own-conn-verdicts conn)))))
 (assert-event
- (equal (ospt-reader-verdict *ospt-completing*)
+ (equal (in-arena-ospt-reader-verdict *sr-arena* *ospt-completing*)
         (fn-stx-reader-item
          (fn-stx-make-verdict :verified *tha-principal* 1))))
 (make-event
@@ -179,7 +186,7 @@
   (append (fn-nntp-string-octets
            "HDR :fn-verified <topic-binding@example.invalid>") '(13 10)))
 (defconst *ospt-read-b*
-  (fn-own-read *ospt-reader-b* (fn-own-next-id (cdr *ospt-240*)) *ospt-hdr*))
+  (in-arena-fn-own-read *sr-arena* *ospt-reader-b* (fn-own-next-id (cdr *ospt-240*)) *ospt-hdr*))
 (assert-event
  (equal (fn-served-reply-octets (car *ospt-read-b*))
         (append (fn-nntp-string-octets "225 headers follow")
@@ -190,7 +197,7 @@
                 '(13 10 46 13 10))))
 ; Reader A, open before the post, keeps its pin and has no verdict.
 (assert-event
- (not (equal (ospt-reader-verdict *ospt-completing*)
+ (not (equal (in-arena-ospt-reader-verdict *sr-arena* *ospt-completing*)
              (fn-stx-reader-verdict
               *ospt-msgid*
               (fn-own-conn-verdicts
@@ -205,11 +212,11 @@
                    (fn-own-clock *ospt-completing*) (fn-own-facts *ospt-completing*)
                    (fn-own-config *ospt-completing*) (fn-own-queue *ospt-completing*)
                    (fn-own-inflight *ospt-completing*) (fn-own-feeds *ospt-completing*) (fn-own-node-secret *ospt-completing*) (fn-own-refused *ospt-completing*))))
-(must-fail (assert-event (ospt-reader-verdict *ospt-full*)))
+(must-fail (assert-event (in-arena-ospt-reader-verdict *sr-arena* *ospt-full*)))
 ; The other three hypotheses of the reader theorem are the finish theorem's:
 ; with the gate closed the reader's pin has no verdict for the Message-ID.
 (must-fail
- (assert-event (equal (ospt-reader-verdict *ospt-off*)
+ (assert-event (equal (in-arena-ospt-reader-verdict *sr-arena* *ospt-off*)
                       (fn-stx-reader-item
                        (fn-stx-make-verdict :verified *tha-principal* 1)))))
 
@@ -271,7 +278,7 @@
 (must-fail (assert-event (ospt-refusal-conclusion *ospt-taken* 0 :signature)))
 ; Without an in-flight submission: the queued POST before the take.
 (must-fail (assert-event (ospt-refusal-conclusion
-                          (ospt-submit *ospt-open* *tha-received*)
+                          (in-arena-ospt-submit *sr-arena* *ospt-open* *tha-received*)
                           *ospt-poster* :signature)))
 ; Without the connection: the in-flight submission's connection is gone.
 (must-fail
@@ -292,14 +299,13 @@
 ; host-called functions; the delivering boundary's list is *pat-carries*.
 (make-event
  `(defconst *ospt-bare-open*
-    ',(let* ((o (fn-own-run (fn-own-start (fn-sn-initial *ospt-groups* 32) 4)
-                            (list (list :configure *ospt-config*)
+    ',(let* ((o (in-arena-fn-own-run *sr-arena* (fn-own-start (fn-sn-initial *ospt-groups* 32) 4) (list (list :configure *ospt-config*)
                                   (list :observe *ospt-obs*))))
              (o (cdr (fn-own-open o nil))))
         (cdr (fn-own-open o nil)))))
 (make-event
  `(defconst *ospt-bare-taken*
-    ',(fn-own-step (ospt-submit *ospt-bare-open* *tha-received*) '(:take))))
+    ',(in-arena-fn-own-step *sr-arena* (in-arena-ospt-submit *sr-arena* *ospt-bare-open* *tha-received*) '(:take))))
 (defconst *ospt-bare-staged*
   (fn-inj-decision-octets
    (fn-own-sub-decision (fn-own-inflight *ospt-bare-taken*))))
@@ -355,18 +361,18 @@
 ; HDR :fn-verified `carried <principal>' (fn-osp-carried-record-reads-carried).
 (make-event
  `(defconst *ospt-carried-completing*
-    ',(fn-own-run *ospt-bare-taken* (ospt-store-events *ospt-carried*))))
+    ',(in-arena-fn-own-run *sr-arena* *ospt-bare-taken* (ospt-store-events *ospt-carried*))))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *ospt-carried-completing*)))
 (assert-event (equal (fn-hstxa-stxa (fn-sn-completion-record
                                      (fn-own-store *ospt-carried-completing*)))
                      *ospt-carried*))
 (assert-event
- (equal (ospt-reader-verdict *ospt-carried-completing*)
+ (equal (in-arena-ospt-reader-verdict *sr-arena* *ospt-carried-completing*)
         (append (fn-nntp-string-octets "carried ")
                 (fn-stx-hex-octets *tha-principal*))))
 (must-fail
  (assert-event
-  (equal (ospt-reader-verdict *ospt-carried-completing*)
+  (equal (in-arena-ospt-reader-verdict *sr-arena* *ospt-carried-completing*)
          (fn-stx-reader-item
           (fn-stx-make-verdict :verified *tha-principal* 0)))))
 

@@ -69,9 +69,14 @@
 
 (defconst *crt-0* (fn-own-start (fn-sn-initial *crt-groups* 10) 4))
 (defconst *crt-a* (cdr (fn-own-open *crt-0* nil)))
-(defconst *crt-begun* (fn-own-step (fn-own-step *crt-a* '(:open)) '(:begin 1)))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-own-run 2)
+(bpr-lift fn-own-step 2)
+(defconst *crt-begun* (in-arena-fn-own-step *sr-arena* (in-arena-fn-own-step *sr-arena* *crt-a* '(:open)) '(:begin 1)))
 (defconst *crt-completing*
-  (fn-own-run *crt-begun* (butlast (crt-post-events (crt-record 0 0 "<one@example>")) 1)))
+  (in-arena-fn-own-run *sr-arena* *crt-begun* (butlast (crt-post-events (crt-record 0 0 "<one@example>")) 1)))
 (assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store *crt-completing*))) :completing))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *crt-completing*)))
 

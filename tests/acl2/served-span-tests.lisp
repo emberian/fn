@@ -43,12 +43,17 @@
 
 ; Without (fn-ocl-relation oc): the carried read is not the reference read for
 ; an arbitrary configuration.
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-read-tls-prefix 3)
+(bpr-lift fn-scar-ocfg-read-span 5)
 (must-fail
  (defthm sst-read-span-needs-ocl-relation
    (implies (and (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (natp i) (natp end))
-            (equal (fn-scar-ocfg-read-span oc id i end fn-octets)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))
+            (equal (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)
+                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))))
 
 ; Without (fn-scar-view-indexedp (fn-ocfg-owner oc)): the Message-ID view trie
 ; premise the carried fold needs is dropped.
@@ -56,8 +61,8 @@
  (defthm sst-read-span-needs-view-indexedp
    (implies (and (fn-ocl-relation oc)
                  (natp i) (natp end))
-            (equal (fn-scar-ocfg-read-span oc id i end fn-octets)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))
+            (equal (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)
+                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))))
 
 ; Without (natp i): a non-natural start does not index the buffer as the
 ; reference's octet list is indexed.
@@ -66,5 +71,5 @@
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (natp end))
-            (equal (fn-scar-ocfg-read-span oc id i end fn-octets)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))
+            (equal (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)
+                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))))

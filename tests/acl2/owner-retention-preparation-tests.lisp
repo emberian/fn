@@ -17,14 +17,20 @@
     *orpr-post-config*)
    *orpr-config* nil nil))
 
-(defun orpr-run (oc events)
+(defun orpr-run (oc events fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp events)
-      (orpr-run (fn-ocfg-step oc (car events)) (cdr events))
+      (orpr-run (fn-ocfg-step oc (car events) fn-arena) (cdr events) fn-arena)
     oc))
 
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-step 2)
+(bpr-lift orpr-conclusionp 3)
+(bpr-lift orpr-run 2)
 (defconst *orpr-reserved*
-  (orpr-run *orpr-0*
-            '((:store (:io :start-frontier nil))
+  (in-arena-orpr-run *sr-arena* *orpr-0* '((:store (:io :start-frontier nil))
               (:store (:io :frontier-file :ok))
               (:store (:io :frontier-replace :ok))
               (:store (:io :frontier-directory :ok)))))
@@ -38,11 +44,12 @@
      (fn-record-octets-string '(115 117 98))
      (fn-record-octets-string '(101 118 105)) charge)))
 
-(defun orpr-conclusionp (oc kind charge)
+(defun orpr-conclusionp (oc kind charge fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let* ((s (fn-own-store (fn-ocfg-owner oc)))
          (event (orpr-event oc kind charge))
          (next (fn-ocfg-step oc
-                             (list :store (list :prepare-retention event))))
+                             (list :store (list :prepare-retention event)) fn-arena))
          (prepared (fn-own-store (fn-ocfg-owner next))))
     (and (equal prepared (fn-sn-prepare-retention s event))
          (if (equal prepared s)
@@ -61,42 +68,34 @@
         :reserved))
 (assert-event
  (let* ((event (orpr-event *orpr-reserved* :undertake 1))
-        (prepared (fn-ocfg-step
-                   *orpr-reserved*
-                   (list :store (list :prepare-retention event))))
+        (prepared (in-arena-fn-ocfg-step *sr-arena* *orpr-reserved* (list :store (list :prepare-retention event))))
         (s (fn-own-store (fn-ocfg-owner prepared))))
    (and (fn-store-retention-event-p event)
         (not (equal s (fn-own-store (fn-ocfg-owner *orpr-reserved*))))
-        (orpr-conclusionp *orpr-reserved* :undertake 1)
+        (in-arena-orpr-conclusionp *sr-arena* *orpr-reserved* :undertake 1)
         (equal (fn-sf-record-candidate (fn-sn-files s)) event))))
 
 ; A syntactically valid release with no undertaking is refused by the model.
 (assert-event
  (let* ((event (orpr-event *orpr-reserved* :release 0))
-        (next (fn-ocfg-step
-               *orpr-reserved*
-               (list :store (list :prepare-retention event)))))
+        (next (in-arena-fn-ocfg-step *sr-arena* *orpr-reserved* (list :store (list :prepare-retention event)))))
    (and (fn-store-retention-event-p event)
         (equal (fn-own-store (fn-ocfg-owner next))
                (fn-own-store (fn-ocfg-owner *orpr-reserved*)))
-        (orpr-conclusionp *orpr-reserved* :release 0))))
+        (in-arena-orpr-conclusionp *sr-arena* *orpr-reserved* :release 0))))
 
 ; The reserved-phase premise matters: on an already staged owner, refusal
 ; leaves :record-staged in place and the unconditional conclusion is false.
 (assert-event
  (let* ((event (orpr-event *orpr-reserved* :undertake 1))
-        (staged (fn-ocfg-step
-                 *orpr-reserved*
-                 (list :store (list :prepare-retention event)))))
+        (staged (in-arena-fn-ocfg-step *sr-arena* *orpr-reserved* (list :store (list :prepare-retention event)))))
    (and (not (equal
               (fn-sf-phase
                (fn-sn-files (fn-own-store (fn-ocfg-owner staged))))
               :reserved))
-        (not (orpr-conclusionp staged :undertake 1)))))
+        (not (in-arena-orpr-conclusionp *sr-arena* staged :undertake 1)))))
 (must-fail
  (assert-event
   (let* ((event (orpr-event *orpr-reserved* :undertake 1))
-         (staged (fn-ocfg-step
-                  *orpr-reserved*
-                  (list :store (list :prepare-retention event)))))
-    (orpr-conclusionp staged :undertake 1))))
+         (staged (in-arena-fn-ocfg-step *sr-arena* *orpr-reserved* (list :store (list :prepare-retention event)))))
+    (in-arena-orpr-conclusionp *sr-arena* staged :undertake 1))))

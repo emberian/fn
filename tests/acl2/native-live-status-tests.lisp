@@ -27,11 +27,11 @@
 ; store as the row the entry interns (store-intern fn-intern-row-at,
 ; keyring nil at generation 0), its handle its place in the run's arena.
 (defconst *nlst-first* (fn-hrt-row-at *nlst-first-wire* 0))
-(defun nlst-run (oc events)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+(defun nlst-run (oc events fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
                   :verify-guards nil))
   (if (consp events)
-      (nlst-run (fn-ocfg-step oc (car events)) (cdr events))
+      (nlst-run (fn-ocfg-step oc (car events) fn-arena) (cdr events) fn-arena)
     oc))
 (defconst *nlst-reserve-events*
   '((:store (:io :start-frontier nil))
@@ -43,13 +43,15 @@
    (fn-own-configure (fn-own-start (fn-sn-initial *nlst-groups* 10) 3)
                      *nlst-post-config*)
    *nlst-config* nil nil))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-step 2)
+(bpr-lift nlst-run 2)
 (defconst *nlst-oc*
-  (fn-ocfg-step
-   (nlst-run (fn-opc-prepare (nlst-run *nlst-0* *nlst-reserve-events*) *nlst-first*)
-             '((:store (:io :record-file :ok))
+  (in-arena-fn-ocfg-step *sr-arena* (in-arena-nlst-run *sr-arena* (fn-opc-prepare (in-arena-nlst-run *sr-arena* *nlst-0* *nlst-reserve-events*) *nlst-first*) '((:store (:io :record-file :ok))
                (:store (:io :record-link :ok))
-               (:store (:io :record-directory :ok))))
-   '(:complete)))
+               (:store (:io :record-directory :ok)))) '(:complete)))
 (defconst *nlst-s* (fn-own-store (fn-ocfg-owner *nlst-oc*)))
 (defconst *nlst-profile* (fn-bs-config-for-profile :development))
 (defconst *nlst-obs* '(nil nil (:full-replay :no-checkpoint)))

@@ -22,7 +22,8 @@
 
 (assert-event (equal (symbol-class 'fn-auth-step (w state))
                      :common-lisp-compliant))
-(assert-event (equal (guard 'fn-auth-step nil (w state)) *t*))
+;; The flip: its one guard conjunct is the arena stobj's recognizer.
+(assert-event (equal (guard 'fn-auth-step nil (w state)) '(fn-arena-p fn-arena)))
 (assert-event (equal (symbol-class 'fn-auth-command (w state))
                      :common-lisp-compliant))
 (assert-event (equal (guard 'fn-auth-command nil (w state)) *t*))
@@ -40,9 +41,11 @@
   (append (fn-nntp-string-octets "Message-ID: <auth@example.invalid>")
           '(13 10) (fn-nntp-string-octets "Subject: hello") '(13 10 13 10)
           (fn-nntp-string-octets "Hello") '(13 10)))
+;; by specification: the flip -- the acceptance payload is an arena handle;
+;; *au-payload* is the bytes under handle 0.
 (defconst *au-archive*
   (fn-accept-complete
-   (fn-accept-prepare (fn-initial-state *au-groups*) 1 *au-id* *au-payload*
+   (fn-accept-prepare (fn-initial-state *au-groups*) 1 *au-id* 0
                       *au-groups* 841000000)
    0 1 :durable))
 (defconst *au-obs* (fn-clock-observation 1000000 843004800000 500 t))
@@ -181,20 +184,25 @@
 (assert-event (null (fn-peer-session-peer
                      (fn-auth-session-base *au-s-principal-reader*))))
 
-(defun au-step (as text)
+(defun au-step (as text fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-auth-step as *au-archive* *au-config* *au-obs* *au-obs*
-                (list :command (fn-nntp-string-octets text))))
-(defun au-reply (as text)
-  (fn-post-result-effects (au-step as text)))
-(defun au-after (as text)
-  (fn-post-result-session (au-step as text)))
+                (list :command (fn-nntp-string-octets text)) fn-arena))
+(defun au-reply (as text fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-post-result-effects (au-step as text fn-arena)))
+(defun au-after (as text fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-post-result-session (au-step as text fn-arena)))
 
-(defun au-peer-step (as text)
+(defun au-peer-step (as text fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-auth-step as (fn-node-acceptance *au-peer-node*) *au-config*
                 *au-obs* *au-obs*
-                (list :command (fn-nntp-string-octets text))))
-(defun au-peer-reply (as text)
-  (fn-post-result-effects (au-peer-step as text)))
+                (list :command (fn-nntp-string-octets text)) fn-arena))
+(defun au-peer-reply (as text fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-post-result-effects (au-peer-step as text fn-arena)))
 
 ; The expected-reply assembler: its own CRLFs, no stuffing, independent of
 ; fn-nntp-single.
@@ -214,30 +222,39 @@
 
 ; Section 2.3.2: AUTHINFO USER is answered 381 unconditionally, so whether
 ; the name is configured is not disclosed.  Both a known and an unknown name.
-(assert-event (equal (au-reply *au-s-req* "AUTHINFO USER reader")
+(include-book "arena-lift")
+;; The arena: handle 0 = *au-payload*.
+(defconst *sr-arena* (list *au-payload*))
+(bpr-lift au-after 2)
+(bpr-lift au-peer-reply 2)
+(bpr-lift au-reply 2)
+(bpr-lift au-step 2)
+(bpr-lift fn-auth-step 6)
+(bpr-lift fn-peer-step 6)
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO USER reader")
                      (au-single "381 password required")))
-(assert-event (equal (au-reply *au-s-req* "AUTHINFO USER nobody")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO USER nobody")
                      (au-single "381 password required")))
-(assert-event (equal (au-reply *au-s-req* "AUTHINFO USER reader")
-                     (au-reply *au-s-req* "AUTHINFO USER nobody")))
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO USER reader")
+                     (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO USER nobody")))
 
 ; Section 2.3.2: AUTHINFO PASS with no cached username is 482.
-(assert-event (equal (au-reply *au-s-req* "AUTHINFO PASS correct-horse")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO PASS correct-horse")
                      (au-single "482 authentication commands issued out of sequence")))
 
 ; The accepted exchange: 381 then 281, and the session now names the
 ; principal -- not the login string.
-(defconst *au-after-user* (au-after *au-s-req* "AUTHINFO USER reader"))
+(defconst *au-after-user* (in-arena-au-after *sr-arena* *au-s-req* "AUTHINFO USER reader"))
 (assert-event (equal (fn-auth-session-pending *au-after-user*) *au-name*))
 (assert-event (null (fn-auth-session-subject *au-after-user*)))
-(assert-event (equal (au-reply *au-after-user* "AUTHINFO PASS correct-horse")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-after-user* "AUTHINFO PASS correct-horse")
                      (au-single "281 authentication accepted")))
 ; Macros, not constants: the accepting branch runs fn-authsec-checkp, whose
 ; digest is an ATTACHMENT, and ACL2 refuses to call one while computing a
 ; `defconst' (:DOC ignored-attachment).  Inside an assert-event top-level
 ; evaluation applies and the real SHA-256 runs, which is what these are for.
 (defmacro au-authed ()
-  '(au-after *au-after-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-au-after *sr-arena* *au-after-user* "AUTHINFO PASS correct-horse"))
 (assert-event (equal (fn-auth-session-subject (au-authed)) *au-principal*))
 (assert-event (fn-auth-sessionp (au-authed)))
 (assert-event (fn-auth-session-consistentp (au-authed) *au-archive*))
@@ -359,65 +376,64 @@
 
 ; A wrong secret is 481, the session stays unauthenticated, and the cached
 ; name is cleared so the password cannot be retried without a fresh USER.
-(assert-event (equal (au-reply *au-after-user* "AUTHINFO PASS wrong")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-after-user* "AUTHINFO PASS wrong")
                      (au-single "481 authentication failed")))
-(defmacro au-failed () '(au-after *au-after-user* "AUTHINFO PASS wrong"))
+(defmacro au-failed () '(in-arena-au-after *sr-arena* *au-after-user* "AUTHINFO PASS wrong"))
 (assert-event (null (fn-auth-session-subject (au-failed))))
 (assert-event (null (fn-auth-session-pending (au-failed))))
-(assert-event (equal (au-reply (au-failed) "AUTHINFO PASS correct-horse")
+(assert-event (equal (in-arena-au-reply *sr-arena* (au-failed) "AUTHINFO PASS correct-horse")
                      (au-single "482 authentication commands issued out of sequence")))
 
 ; An unknown username reaches 481 and never 281: the 381 above disclosed
 ; nothing and the PASS is where it fails.
-(assert-event (equal (au-reply (au-after *au-s-req* "AUTHINFO USER nobody")
-                               "AUTHINFO PASS anything")
+(assert-event (equal (in-arena-au-reply *sr-arena* (in-arena-au-after *sr-arena* *au-s-req* "AUTHINFO USER nobody") "AUTHINFO PASS anything")
                      (au-single "481 authentication failed")))
 
 ; Section 2.3.1 note [2]: once authenticated the command is unavailable.
 ; Never 480 -- section 2.3.2 forbids it here.
-(assert-event (equal (au-reply (au-authed) "AUTHINFO USER reader")
+(assert-event (equal (in-arena-au-reply *sr-arena* (au-authed) "AUTHINFO USER reader")
                      (au-single "502 already authenticated")))
 
 ; Section 2.4: SASL is deferred, not refused.  502, and the capability block
 ; never carries a SASL argument.
-(assert-event (equal (au-reply *au-s-req* "AUTHINFO SASL PLAIN")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO SASL PLAIN")
                      (au-single "502 no SASL mechanism is offered")))
-(assert-event (equal (au-reply *au-s-req* "AUTHINFO")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO")
                      (au-single "501 syntax error")))
-(assert-event (equal (au-reply *au-s-req* "AUTHINFO USER")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO USER")
                      (au-single "501 syntax error")))
-(assert-event (equal (au-reply *au-s-req* "AUTHINFO USER a b")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "AUTHINFO USER a b")
                      (au-single "501 syntax error")))
 
 ; Section 2.3.2's 483: a cleartext mechanism on an unprotected connection.
-(assert-event (equal (au-reply *au-s-prot* "AUTHINFO USER reader")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-prot* "AUTHINFO USER reader")
                      (au-single "483 a protected channel is required; use STARTTLS")))
-(assert-event (equal (au-reply (au-session *au-protected* t) "AUTHINFO USER reader")
+(assert-event (equal (in-arena-au-reply *sr-arena* (au-session *au-protected* t) "AUTHINFO USER reader")
                      (au-single "381 password required")))
 
 ; -----------------------------------------------------------------------------
 ; RFC 4643 section 2.2: 480 before authentication, and the command is not
 ; performed.  The keystone, witnessed on a real command.
 
-(assert-event (equal (au-reply *au-s-req* "GROUP fn.letters")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "GROUP fn.letters")
                      (au-single "480 authentication required")))
-(assert-event (equal (au-reply *au-s-req* "POST")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "POST")
                      (au-single "480 authentication required")))
-(assert-event (equal (au-reply *au-s-req* "ARTICLE 1")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "ARTICLE 1")
                      (au-single "480 authentication required")))
 ; Not performed: the session is untouched, so no group was selected.
-(assert-event (equal (au-after *au-s-req* "GROUP fn.letters") *au-s-req*))
+(assert-event (equal (in-arena-au-after *sr-arena* *au-s-req* "GROUP fn.letters") *au-s-req*))
 ; ... and the wire was never offered article mode.
-(assert-event (not (fn-post-offeredp (au-reply *au-s-req* "POST"))))
-(assert-event (null (fn-post-result-submission (au-step *au-s-req* "POST"))))
+(assert-event (not (fn-post-offeredp (in-arena-au-reply *sr-arena* *au-s-req* "POST"))))
+(assert-event (null (fn-post-result-submission (in-arena-au-step *sr-arena* *au-s-req* "POST"))))
 
 ; The control: the same commands DO run once authenticated, so the
 ; assertions above are not vacuous.
-(assert-event (not (equal (au-reply (au-authed) "GROUP fn.letters")
+(assert-event (not (equal (in-arena-au-reply *sr-arena* (au-authed) "GROUP fn.letters")
                           (au-single "480 authentication required"))))
-(assert-event (fn-post-offeredp (au-reply (au-authed) "POST")))
+(assert-event (fn-post-offeredp (in-arena-au-reply *sr-arena* (au-authed) "POST")))
 ; ... and they run with no configuration requiring authentication at all.
-(assert-event (not (equal (au-reply *au-s-open* "GROUP fn.letters")
+(assert-event (not (equal (in-arena-au-reply *sr-arena* *au-s-open* "GROUP fn.letters")
                           (au-single "480 authentication required"))))
 
 ; The four commands an unauthenticated client keeps: it can still discover
@@ -436,23 +452,20 @@
 (assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "IHAVE"))))
 (assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "CHECK"))))
 (assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "TAKETHIS"))))
-(assert-event (equal (au-peer-reply *au-s-peer-req*
-                                    "IHAVE <auth-peer@example.invalid>")
+(assert-event (equal (in-arena-au-peer-reply *sr-arena* *au-s-peer-req* "IHAVE <auth-peer@example.invalid>")
                      (append (au-single "335 send it; end with <CR-LF>.<CR-LF>")
                              (list (fn-nntp-begin-article-effect)))))
-(assert-event (equal (au-peer-reply *au-s-peer-req*
-                                    "CHECK <auth-peer@example.invalid>")
+(assert-event (equal (in-arena-au-peer-reply *sr-arena* *au-s-peer-req* "CHECK <auth-peer@example.invalid>")
                      (list (fn-nntp-reply-effect
                             (fn-nntp-crlf
                              (append (fn-nntp-string-octets "238 ")
                                      (fn-nntp-string-octets
                                       "<auth-peer@example.invalid>")))))))
-(assert-event (equal (au-peer-reply *au-s-peer-req*
-                                    "TAKETHIS <auth-peer@example.invalid>")
+(assert-event (equal (in-arena-au-peer-reply *sr-arena* *au-s-peer-req* "TAKETHIS <auth-peer@example.invalid>")
                      (list (fn-nntp-begin-article-effect))))
 ; The reader control is the separating witness: it has the same required
 ; AUTHINFO policy, no configured source role, and fn-peer-step refuses it.
-(assert-event (equal (au-reply *au-s-req* "IHAVE <auth-peer@example.invalid>")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "IHAVE <auth-peer@example.invalid>")
                      (au-single "502 transit is not permitted on this connection")))
 
 ; -----------------------------------------------------------------------------
@@ -460,7 +473,7 @@
 
 (assert-event (fn-auth-postingp (au-authed)))
 (defmacro au-authed-ro ()
-  '(au-after (au-after *au-s-req* "AUTHINFO USER guest")
+  '(in-arena-au-after *sr-arena* (in-arena-au-after *sr-arena* *au-s-req* "AUTHINFO USER guest")
              "AUTHINFO PASS guest-pass"))
 (assert-event (equal (fn-auth-session-subject (au-authed-ro)) *au-principal-ro*))
 (assert-event (not (fn-auth-postingp (au-authed-ro))))
@@ -471,18 +484,18 @@
 ; 480 gate -- it is authenticated -- and is still refused, with RFC 3977
 ; section 6.3.1.1's 440 and no 340 offer, so no body can follow and no
 ; submission can leave.
-(assert-event (equal (au-reply (au-authed-ro) "POST")
+(assert-event (equal (in-arena-au-reply *sr-arena* (au-authed-ro) "POST")
                      (au-single "440 posting not permitted for this principal")))
-(assert-event (not (fn-post-offeredp (au-reply (au-authed-ro) "POST"))))
+(assert-event (not (fn-post-offeredp (in-arena-au-reply *sr-arena* (au-authed-ro) "POST"))))
 (assert-event (null (fn-post-result-submission
-                     (au-step (au-authed-ro) "POST"))))
-(assert-event (equal (fn-post-result-session (au-step (au-authed-ro) "POST"))
+                     (in-arena-au-step *sr-arena* (au-authed-ro) "POST"))))
+(assert-event (equal (fn-post-result-session (in-arena-au-step *sr-arena* (au-authed-ro) "POST"))
                      (au-authed-ro)))
 ; Hypothesis (not (fn-auth-postingp as)): drop it -- the same command on the
 ; principal that MAY post -- and the conclusion fails, so the theorem is not
 ; vacuous.
 (assert-event (fn-auth-postingp (au-authed)))
-(assert-event (fn-post-offeredp (au-reply (au-authed) "POST")))
+(assert-event (fn-post-offeredp (in-arena-au-reply *sr-arena* (au-authed) "POST")))
 ; Hypothesis (fn-nntp-keywordp keyword "POST"): drop it -- any other
 ; keyword on the same session -- and the first conjunct fails, because the
 ; book does not answer that command at all and delegates it.
@@ -497,7 +510,7 @@
 ; RFC 4642 section 2.2: STARTTLS
 
 ; 382 and the one effect the host acts on.
-(defconst *au-starttls* (au-step *au-s-req* "STARTTLS"))
+(defconst *au-starttls* (in-arena-au-step *sr-arena* *au-s-req* "STARTTLS"))
 (assert-event (equal (fn-post-result-effects *au-starttls*)
                      (append (au-single "382 continue with TLS negotiation")
                              (list (list :starttls)))))
@@ -513,45 +526,39 @@
 (assert-event
  (fn-auth-session-tlsp
   (fn-post-result-session
-   (fn-auth-step (fn-post-result-session *au-starttls*) *au-archive*
-                 *au-config* *au-obs* *au-obs* (list :tls-established)))))
+   (in-arena-fn-auth-step *sr-arena* (fn-post-result-session *au-starttls*) *au-archive* *au-config* *au-obs* *au-obs* (list :tls-established)))))
 (assert-event
  (not (fn-auth-session-handshakingp
        (fn-post-result-session
-        (fn-auth-step (fn-post-result-session *au-starttls*) *au-archive*
-                      *au-config* *au-obs* *au-obs* (list :tls-established))))))
+        (in-arena-fn-auth-step *sr-arena* (fn-post-result-session *au-starttls*) *au-archive* *au-config* *au-obs* *au-obs* (list :tls-established))))))
 ; And a handshaking connection answers nothing at all.
 (assert-event
  (null (fn-post-result-effects
-        (fn-auth-step (fn-post-result-session *au-starttls*) *au-archive*
-                      *au-config* *au-obs* *au-obs*
-                      (list :command (fn-nntp-string-octets "CAPABILITIES"))))))
+        (in-arena-fn-auth-step *sr-arena* (fn-post-result-session *au-starttls*) *au-archive* *au-config* *au-obs* *au-obs* (list :command (fn-nntp-string-octets "CAPABILITIES"))))))
 ; Section 2.2.2: the protocol state is reset across the handshake.  Nothing
 ; cached before it survives.
 (assert-event (null (fn-auth-session-pending
                      (fn-post-result-session
-                      (au-step *au-after-user* "STARTTLS")))))
+                      (in-arena-au-step *sr-arena* *au-after-user* "STARTTLS")))))
 (assert-event (null (fn-auth-session-subject
                      (fn-post-result-session
-                      (au-step (au-authed) "STARTTLS")))))
+                      (in-arena-au-step *sr-arena* (au-authed) "STARTTLS")))))
 
 ; Section 2.2.2: once a TLS layer is active STARTTLS is not a valid command.
 ; 502, never 480 or 483, and no second handshake effect.
-(assert-event (equal (au-reply *au-s-req-tls* "STARTTLS")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req-tls* "STARTTLS")
                      (au-single "502 a TLS layer is already active")))
 (assert-event (not (member-equal (fn-auth-starttls-effect)
-                                 (au-reply *au-s-req-tls* "STARTTLS"))))
+                                 (in-arena-au-reply *sr-arena* *au-s-req-tls* "STARTTLS"))))
 (assert-event (not (member-equal (fn-auth-starttls-effect)
-                                 (au-reply
-                                  (fn-post-result-session *au-starttls*)
-                                  "STARTTLS"))))
+                                 (in-arena-au-reply *sr-arena* (fn-post-result-session *au-starttls*) "STARTTLS"))))
 
 ; Section 2.2.2: unable to initiate, for a configuration reason, is 580.
-(assert-event (equal (au-reply *au-s-open* "STARTTLS")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-open* "STARTTLS")
                      (au-single "580 can not initiate TLS negotiation")))
 (assert-event (not (member-equal (fn-auth-starttls-effect)
-                                 (au-reply *au-s-open* "STARTTLS"))))
-(assert-event (equal (au-reply *au-s-req* "STARTTLS x")
+                                 (in-arena-au-reply *sr-arena* *au-s-open* "STARTTLS"))))
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "STARTTLS x")
                      (au-single "501 syntax error")))
 
 ; -----------------------------------------------------------------------------
@@ -574,35 +581,35 @@
 
 ; Unauthenticated, no TLS, a certificate configured: both labels.
 (assert-event
- (equal (au-reply *au-s-req* "CAPABILITIES")
+ (equal (in-arena-au-reply *sr-arena* *au-s-req* "CAPABILITIES")
         (au-block "101 capability list follows"
                   (append *au-reader-lines*
                           '("STARTTLS" "AUTHINFO USER")))))
 ; Under TLS, still unauthenticated: STARTTLS gone, AUTHINFO USER kept.
 (assert-event
- (equal (au-reply *au-s-req-tls* "CAPABILITIES")
+ (equal (in-arena-au-reply *sr-arena* *au-s-req-tls* "CAPABILITIES")
         (au-block "101 capability list follows"
                   (append *au-reader-lines* '("AUTHINFO USER")))))
 ; Authenticated: AUTHINFO USER gone, POST present because this principal may
 ; post, STARTTLS still offered because this connection is not yet protected.
 (assert-event
- (equal (au-reply (au-authed) "CAPABILITIES")
+ (equal (in-arena-au-reply *sr-arena* (au-authed) "CAPABILITIES")
         (au-block "101 capability list follows"
                   (append *au-reader-lines-posting* '("STARTTLS")))))
 ; Authenticated as the read-only principal: no POST label.
 (assert-event
- (equal (au-reply (au-authed-ro) "CAPABILITIES")
+ (equal (in-arena-au-reply *sr-arena* (au-authed-ro) "CAPABILITIES")
         (au-block "101 capability list follows"
                   (append *au-reader-lines* '("STARTTLS")))))
 ; No certificate and nothing required: the reader's own block, unchanged
 ; from before this book existed.
 (assert-event
- (equal (au-reply *au-s-open* "CAPABILITIES")
+ (equal (in-arena-au-reply *sr-arena* *au-s-open* "CAPABILITIES")
         (au-block "101 capability list follows" *au-reader-lines-posting*)))
 ; Protected-only and unprotected: AUTHINFO USER is NOT advertised, because
 ; the server will not accept it now (RFC 4643 section 2.1).
 (assert-event
- (equal (au-reply *au-s-prot* "CAPABILITIES")
+ (equal (in-arena-au-reply *sr-arena* *au-s-prot* "CAPABILITIES")
         (au-block "101 capability list follows"
                   (append *au-reader-lines* '("STARTTLS")))))
 ; The real composed path takes its base list from the peer record pinned at
@@ -610,37 +617,31 @@
 ; The peer is unauthenticated as a reader, but its configured source role
 ; makes IHAVE and STREAMING honest promises.
 (assert-event
- (equal (au-peer-reply *au-s-peer-req* "CAPABILITIES")
+ (equal (in-arena-au-peer-reply *sr-arena* *au-s-peer-req* "CAPABILITIES")
         (au-block "101 capability list follows"
                   (append *au-peer-lines* '("STARTTLS" "AUTHINFO USER")))))
 ; The optional keyword argument of section 5.2.1 is accepted and changes
 ; nothing.
-(assert-event (equal (au-reply *au-s-req* "CAPABILITIES READER")
-                     (au-reply *au-s-req* "CAPABILITIES")))
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-s-req* "CAPABILITIES READER")
+                     (in-arena-au-reply *sr-arena* *au-s-req* "CAPABILITIES")))
 
 ; -----------------------------------------------------------------------------
 ; Delegation: every command this book does not claim is the peer/reader
 ; profile, value for value.
 
 (assert-event
- (equal (fn-post-result-effects (au-step *au-s-open* "HELP"))
+ (equal (fn-post-result-effects (in-arena-au-step *sr-arena* *au-s-open* "HELP"))
         (fn-post-result-effects
-         (fn-peer-step (fn-auth-session-base *au-s-open*) *au-archive*
-                       *au-config* *au-obs* *au-obs*
-                       (list :command (fn-nntp-string-octets "HELP"))))))
+         (in-arena-fn-peer-step *sr-arena* (fn-auth-session-base *au-s-open*) *au-archive* *au-config* *au-obs* *au-obs* (list :command (fn-nntp-string-octets "HELP"))))))
 (assert-event
- (equal (fn-post-result-effects (au-step *au-s-open* "GROUP fn.letters"))
+ (equal (fn-post-result-effects (in-arena-au-step *sr-arena* *au-s-open* "GROUP fn.letters"))
         (fn-post-result-effects
-         (fn-peer-step (fn-auth-session-base *au-s-open*) *au-archive*
-                       *au-config* *au-obs* *au-obs*
-                       (list :command
+         (in-arena-fn-peer-step *sr-arena* (fn-auth-session-base *au-s-open*) *au-archive* *au-config* *au-obs* *au-obs* (list :command
                              (fn-nntp-string-octets "GROUP fn.letters"))))))
 (assert-event
- (equal (fn-post-result-effects (au-step *au-s-open* "NOSUCHCOMMAND"))
+ (equal (fn-post-result-effects (in-arena-au-step *sr-arena* *au-s-open* "NOSUCHCOMMAND"))
         (fn-post-result-effects
-         (fn-peer-step (fn-auth-session-base *au-s-open*) *au-archive*
-                       *au-config* *au-obs* *au-obs*
-                       (list :command
+         (in-arena-fn-peer-step *sr-arena* (fn-auth-session-base *au-s-open*) *au-archive* *au-config* *au-obs* *au-obs* (list :command
                              (fn-nntp-string-octets "NOSUCHCOMMAND"))))))
 
 ; -----------------------------------------------------------------------------
@@ -657,19 +658,19 @@
 ; (1) fn-auth-config-requiredp.  With it false the same command is performed:
 ; the group IS selected.
 (assert-event (not (fn-auth-config-requiredp *au-open*)))
-(assert-event (not (equal (au-after *au-s-open* "GROUP fn.letters")
+(assert-event (not (equal (in-arena-au-after *sr-arena* *au-s-open* "GROUP fn.letters")
                           *au-s-open*)))
 
 ; (2) (not (fn-auth-session-subject as)).  Authenticated, the same command is
 ; performed against the same required configuration.
 (assert-event (fn-auth-session-subject (au-authed)))
-(assert-event (not (equal (au-after (au-authed) "GROUP fn.letters")
+(assert-event (not (equal (in-arena-au-after *sr-arena* (au-authed) "GROUP fn.letters")
                           (au-authed))))
 
 ; (3) fn-auth-restricted-keywordp.  HELP is not restricted and answers its
 ; own 100 block rather than 480, under the required configuration.
 (assert-event (not (fn-auth-restricted-keywordp (fn-nntp-string-octets "HELP"))))
-(assert-event (not (equal (au-reply *au-s-req* "HELP")
+(assert-event (not (equal (in-arena-au-reply *sr-arena* *au-s-req* "HELP")
                           (au-single "480 authentication required"))))
 
 ; (4) fn-nntp-command-inputp.  A line carrying NUL is not command input, so
@@ -677,9 +678,7 @@
 (defconst *au-nul-line* (list 71 0 82))
 (assert-event (not (fn-nntp-command-inputp *au-nul-line*)))
 (assert-event (not (equal (fn-post-result-effects
-                           (fn-auth-step *au-s-req* *au-archive* *au-config*
-                                         *au-obs* *au-obs*
-                                         (list :command *au-nul-line*)))
+                           (in-arena-fn-auth-step *sr-arena* *au-s-req* *au-archive* *au-config* *au-obs* *au-obs* (list :command *au-nul-line*)))
                           (au-single "480 authentication required"))))
 
 ; fn-auth-starttls-is-not-advertised-under-tls.  Hypothesis tlsp: with it
@@ -706,7 +705,7 @@
 ; cached name with the configured secret is 281 and with any other octet
 ; string is 481.  A secret that differs in one octet:
 (assert-event (not (equal (fn-nntp-string-octets "correct-horsf") *au-secret*)))
-(assert-event (equal (au-reply *au-after-user* "AUTHINFO PASS correct-horsf")
+(assert-event (equal (in-arena-au-reply *sr-arena* *au-after-user* "AUTHINFO PASS correct-horsf")
                      (au-single "481 authentication failed")))
 ; ... and fn-auth-checkp itself, on a credential that is not found at all.
 (assert-event (null (fn-auth-find-cred (fn-nntp-string-octets "nobody")

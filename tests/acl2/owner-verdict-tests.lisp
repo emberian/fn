@@ -13,7 +13,13 @@
 (defconst *ov-before* (fn-own-start *sit-after-enrollment* 4))
 (defconst *ov-reader-a* (cdr (fn-own-open *ov-before* nil)))
 (defconst *ov-writer* (cdr (fn-own-open *ov-reader-a* nil)))
-(defconst *ov-begun* (fn-own-step *ov-writer* '(:begin 1)))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-own-read 3)
+(bpr-lift fn-own-run 2)
+(bpr-lift fn-own-step 2)
+(defconst *ov-begun* (in-arena-fn-own-step *sr-arena* *ov-writer* '(:begin 1)))
 (defconst *ov-post-events*
   (list '(:store (:io :start-frontier nil))
         '(:store (:io :frontier-file :ok))
@@ -24,7 +30,7 @@
         '(:store (:io :record-link :ok))
         '(:store (:io :record-directory :ok))
         '(:complete)))
-(make-event `(defconst *ov-posted* ',(fn-own-run *ov-begun* *ov-post-events*)))
+(make-event `(defconst *ov-posted* ',(in-arena-fn-own-run *sr-arena* *ov-begun* *ov-post-events*)))
 
 ; Owner emits the same Store event and pins it only for newly opened readers.
 (assert-event (equal (fn-own-store *ov-posted*) *sit-after-carried*))
@@ -37,8 +43,8 @@
         (fn-sn-verdicts *sit-after-carried*)))
 
 ; These replies are produced through the host-called fn-own-read byte fold.
-(defconst *ov-read-a* (fn-own-read *ov-reader-b* 0 *ov-hdr*))
-(defconst *ov-read-b* (fn-own-read *ov-reader-b* 2 *ov-hdr*))
+(defconst *ov-read-a* (in-arena-fn-own-read *sr-arena* *ov-reader-b* 0 *ov-hdr*))
+(defconst *ov-read-b* (in-arena-fn-own-read *sr-arena* *ov-reader-b* 2 *ov-hdr*))
 (assert-event
  (equal (fn-served-reply-octets (car *ov-read-a*))
         (append (fn-nntp-string-octets
@@ -64,8 +70,7 @@
 (assert-event (fn-stxk-p *ov-second-enrollment*))
 (assert-event (equal (fn-sn-identity-next (fn-own-store *ov-reader-b*)) 2))
 (assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store
-                                                (fn-own-step *ov-reader-b*
-                                                             '(:begin 1)))))
+                                                (in-arena-fn-own-step *sr-arena* *ov-reader-b* '(:begin 1)))))
                      :ready))
 (assert-event
  (equal (fn-stxk-context-kind
@@ -84,8 +89,7 @@
         '(:store (:io :record-directory :ok))
         '(:complete)))
 (make-event `(defconst *ov-rotated*
-               ',(fn-own-run (fn-own-step *ov-reader-b* '(:begin 1))
-                             *ov-rotation-events*)))
+               ',(in-arena-fn-own-run *sr-arena* (in-arena-fn-own-step *sr-arena* *ov-reader-b* '(:begin 1)) *ov-rotation-events*)))
 (assert-event (equal (fn-stxk-keyring-generation
                       (car (fn-sn-keyring-snapshots (fn-own-store *ov-rotated*))))
                      2))
@@ -95,12 +99,12 @@
         (fn-own-conn-verdicts
          (fn-own-find-conn 2 (fn-own-conns *ov-reader-b*)))))
 (defconst *ov-read-b-after-rotation*
-  (fn-own-read *ov-rotated* 2 *ov-hdr*))
+  (in-arena-fn-own-read *sr-arena* *ov-rotated* 2 *ov-hdr*))
 (assert-event
  (equal (fn-served-reply-octets (car *ov-read-b-after-rotation*))
         (fn-served-reply-octets (car *ov-read-b*))))
 (defconst *ov-reader-c* (cdr (fn-own-open *ov-rotated* nil)))
 (assert-event
  (equal (fn-served-reply-octets
-         (car (fn-own-read *ov-reader-c* 3 *ov-hdr*)))
+         (car (in-arena-fn-own-read *sr-arena* *ov-reader-c* 3 *ov-hdr*)))
         (fn-served-reply-octets (car *ov-read-b*))))

@@ -92,10 +92,14 @@
   (fn-cnode-domain-of (fn-ocfg-conn-config *ocl-t-new-open* 1))))
 (defconst *ocl-t-live-group-command*
   (append (fn-nntp-string-octets "GROUP fn.live") '(13 10)))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-read 3)
 (defconst *ocl-t-old-read*
-  (cdr (fn-ocfg-read *ocl-t-new-open* 0 *ocl-t-live-group-command*)))
+  (cdr (in-arena-fn-ocfg-read *sr-arena* *ocl-t-new-open* 0 *ocl-t-live-group-command*)))
 (defconst *ocl-t-new-read*
-  (cdr (fn-ocfg-read *ocl-t-new-open* 1 *ocl-t-live-group-command*)))
+  (cdr (in-arena-fn-ocfg-read *sr-arena* *ocl-t-new-open* 1 *ocl-t-live-group-command*)))
 (assert-event (fn-ocl-relation *ocl-t-old-read*))
 (assert-event (fn-ocl-relation *ocl-t-new-read*))
 ; BY SPECIFICATION (NNT-042, 2026-09-27): a successful GROUP acquires the
@@ -122,7 +126,7 @@
 (defconst *ocl-t-stat-command*
   (append (fn-nntp-string-octets "STAT 1") '(13 10)))
 (defconst *ocl-t-old-stat*
-  (cdr (fn-ocfg-read *ocl-t-new-open* 0 *ocl-t-stat-command*)))
+  (cdr (in-arena-fn-ocfg-read *sr-arena* *ocl-t-new-open* 0 *ocl-t-stat-command*)))
 (assert-event (fn-ocl-relation *ocl-t-old-stat*))
 (assert-event
  (equal
@@ -168,18 +172,18 @@
 ; theorem's hypothesis).
 (assert-event
  (not (fn-ocl-relation
-       (cdr (fn-ocfg-read *ocl-t-forged-old-pin* 0 *ocl-t-stat-command*)))))
+       (cdr (in-arena-fn-ocfg-read *sr-arena* *ocl-t-forged-old-pin* 0 *ocl-t-stat-command*)))))
 ; BY SPECIFICATION (NNT-042, 2026-09-27): a successful GROUP re-pins the
 ; connection to the committed view under the current configuration, so the
 ; forged pin is replaced by a coherent one and the relation holds again.
 ; Before NNT-042 the GROUP kept the forged pin and the state stayed outside.
 (assert-event
  (fn-ocl-relation
-  (cdr (fn-ocfg-read *ocl-t-forged-old-pin* 0 *ocl-t-live-group-command*))))
+  (cdr (in-arena-fn-ocfg-read *sr-arena* *ocl-t-forged-old-pin* 0 *ocl-t-live-group-command*))))
 (local
  (must-fail
   (defthm fn-ocl-read-without-historical-input-is-not-preserved
-    (fn-ocl-relation (cdr (fn-ocfg-read oc id octets)))
+    (fn-ocl-relation (cdr (fn-ocfg-read oc id octets fn-arena)))
     :rule-classes nil)))
 (assert-event
  (equal (fn-ocfg-conn-config *ocl-t-new-open* 1)
