@@ -396,14 +396,18 @@
    (implies (fn-cbud-fits-figure machine hneed core threads stack)
             (<= (fn-cbud-bound machine hneed core threads stack article tlsp)
                 (fn-cbud-limit machine dynamic hneed core threads stack article tlsp)))
-   :hints (("Goal" :in-theory (enable fn-cbud-limit)))))
+   :hints (("Goal" :in-theory (e/d (fn-cbud-limit)
+                                   (fn-cbud-bound fn-cbud-capped-bound
+                                    fn-cbud-fits-figure fn-cbud-fits-dynamic))))))
 
 (local
  (defthm fn-cbud-limit-at-least-the-capped-bound
    (implies (fn-cbud-fits-dynamic machine dynamic core threads stack)
             (<= (fn-cbud-capped-bound machine dynamic core threads stack tlsp)
                 (fn-cbud-limit machine dynamic hneed core threads stack article tlsp)))
-   :hints (("Goal" :in-theory (enable fn-cbud-limit)))))
+   :hints (("Goal" :in-theory (e/d (fn-cbud-limit)
+                                   (fn-cbud-bound fn-cbud-capped-bound
+                                    fn-cbud-fits-figure fn-cbud-fits-dynamic))))))
 
 (local
  (defthm fn-cbud-past-the-limit-exceeds-the-figure
@@ -462,7 +466,9 @@
   :hints (("Goal"
            :in-theory (disable fn-cbud-resident-above-when-both-exceed
                                fn-cbud-past-the-limit-exceeds-the-figure
-                               fn-cbud-past-the-limit-exceeds-the-dynamic-space)
+                               fn-cbud-past-the-limit-exceeds-the-dynamic-space
+                               fn-cbud-limit fn-cbud-base-octets
+                               fn-cbud-rest-octets)
            :use ((:instance fn-cbud-resident-above-when-both-exceed
                             (n (+ 1 (fn-cbud-limit machine dynamic hneed core threads
                                                    stack article tlsp))))
@@ -507,7 +513,10 @@
   (<= (fn-heap-decision-mb decision)
       (fn-heap-decision-mb (fn-cbud-launch-decide decision profile core
                                                   threads stack observations)))
-  :hints (("Goal" :in-theory (enable fn-heap-decision-mb))))
+  :hints (("Goal" :in-theory (e/d (fn-cbud-launch-decide fn-heap-decision-mb)
+                                  (fn-cbud-launch-count fn-heap-mb-of
+                                   fn-heap-machine-octets fn-bs-profile-admittedp
+                                   fn-bs-profile-max-article-octets)))))
 
 ; -----------------------------------------------------------------------------
 ; The run's decision.  CAPACITY is the live configuration's
