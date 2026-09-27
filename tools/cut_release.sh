@@ -439,6 +439,11 @@ vm 'cat $W/release/$tb' > $R/out/$tb 2>/dev/null
 v=\$(vm '$W/fresh/usr/local/fn/bin/fn --version' 2>&1)
 echo \"fn --version (root's login limits: \$(vm 'ulimit -d')): \$v\"
 [ \"\$v\" = 'fn $VERSION ($SHORT)' ] || { echo \"the installed fn --version is not 'fn $VERSION ($SHORT)'\"; exit 1; }
+# A node keeps OpenBSD's stock daemon class (datasize 4096M), which the
+# build VM lifted: the same smoke under it.
+v=\$(vm 'ulimit -d 4194304; $W/fresh/usr/local/fn/bin/fn --version' 2>&1)
+echo \"fn --version (the stock daemon class, datasize 4194304 KiB): \$v\"
+[ \"\$v\" = 'fn $VERSION ($SHORT)' ] || { echo \"under the stock 4 GiB datasize fn --version is not 'fn $VERSION ($SHORT)'\"; exit 1; }
 cd $R/out && sha256sum $tb && grep -F $tb SHA256SUMS"
   if [ "$DRY" = yes ]; then
     would "git archive --format=tar $REV | ssh $HOST 'cat > $S/source.tar'"
