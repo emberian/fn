@@ -31,9 +31,13 @@
 ;
 ; The gate's pick is books/owner-commit-steps.lisp's fn-ocs-next unchanged
 ; (fn-ocp-next-is-ocs-next), and a next batch is open only while the ocs
-; phase is in flight (fn-ocp-next-open-only-in-flight), so no reader, poster,
-; transit or mutating control quantum runs while any prepared record is not
-; yet durable (fn-ocs-in-flight-admits-only-inspect-and-commit).
+; phase is in flight (fn-ocp-next-open-only-in-flight), so while any
+; prepared record is not yet durable only :inspect, :commit and :reader
+; quanta run (fn-ocs-in-flight-admits-only-inspect-commit-and-reader), and a
+; reader reads at the view captured before the batch in flight was prepared
+; (books/owner-reader-view.lisp, coordinator decision PKT-828): no control-
+; socket poster, transit or mutating control quantum runs, and no read
+; reveals a record of either batch before its COMPLETE.
 (in-package "ACL2")
 (include-book "owner-commit-steps")
 
@@ -201,10 +205,11 @@
   :rule-classes nil)
 
 ; KEYSTONE.  A next batch is open only while the ocs phase is in flight, so
-; the gate (fn-ocs-next, fn-ocp-next-is-ocs-next) admits only :inspect and
-; :commit while any prepared record -- of the batch in flight or of the next
-; one -- is not yet durable: no reader, poster, transit or mutating control
-; quantum can reveal it.  The subject is fn-ocp-commit-event, which
+; the gate (fn-ocs-next, fn-ocp-next-is-ocs-next) admits only :inspect,
+; :commit and :reader while any prepared record -- of the batch in flight or
+; of the next one -- is not yet durable, and the readers read at the reader
+; view (books/owner-reader-view.lisp fn-ocv-reader-view-is-the-completed-
+; prefix): no quantum can reveal it.  The subject is fn-ocp-commit-event, which
 ; host/native/owner.lisp fnn-owner-commit-event calls inside the committer's
 ; :commit quanta.
 (defthm fn-ocp-next-open-only-in-flight
@@ -213,10 +218,10 @@
             (fn-ocs-phase (fn-ocp-ocs (mv-nth 1 (fn-ocp-commit-event s event))))))
   :hints (("Goal" :in-theory (enable fn-ocs-phase))))
 
-(defthm fn-ocp-in-flight-admits-only-inspect-and-commit
+(defthm fn-ocp-in-flight-admits-only-inspect-commit-and-reader
   (implies (fn-ocs-in-flight-p (fn-ocs-phase (fn-ocp-ocs s)))
-           (member-equal (mv-nth 0 (fn-ocp-next s w)) '(:inspect :commit nil)))
-  :hints (("Goal" :use ((:instance fn-ocs-in-flight-admits-only-inspect-and-commit
+           (member-equal (mv-nth 0 (fn-ocp-next s w)) '(:inspect :commit :reader nil)))
+  :hints (("Goal" :use ((:instance fn-ocs-in-flight-admits-only-inspect-commit-and-reader
                                    (s (fn-ocp-ocs s)))))))
 
 (in-theory (disable fn-ocp-next fn-ocp-commit-event fn-ocp-observe fn-ocp-health-lines

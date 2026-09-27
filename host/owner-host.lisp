@@ -127,6 +127,9 @@
 ; since HST-023 the host renders the step's plan off the mutex instead).
 (include-book "../books/served-reply-buffer")
 (include-book "../books/owner-open-carried")
+; PKT-828: a reader quantum during a batch's barrier runs at the reader view
+; (fn-owner-at-reader-view, fn-ocfg-with-view; fn-ocv-capture).
+(include-book "../books/owner-reader-view")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
 ;
@@ -936,8 +939,7 @@
 ;; The operator's bounds on one log batch, from the live configuration.
 (defun fn-owner-log-bounds (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((v (fn-owner-config state)))
-    (value (list (fn-olr-bmax v) (fn-olr-omax v)))))
+  (value (fn-olr-bounds (fn-owner-config state))))
 
 ; THE OWNER'S POST ENTRY (records-flip).  The duplicate test is the Store's
 ; entry over the arena (fn-store-existing-action, KEYSTONE
@@ -2630,7 +2632,48 @@
 ; (fn-own-open); the greeting is the effect list it returns.  A refused open
 ; (bound reached) installs no connection and returns NIL so the host closes
 ; the socket without a reply.
-(defun fn-owner-open (state)
+; PKT-828 (books/owner-reader-view.lisp).  The reader views the committer
+; captured: nil (none held: readers read the working view), (D) or (D N).
+(defun fn-owner-reader-views (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-reader-views state)
+      (f-get-global 'fn-owner-reader-views state)
+    nil))
+
+; The committer's capture at EVENT (:start before a START's drain, :next
+; before a START-NEXT's, :unnext when that START-NEXT took nobody, :complete
+; after a COMPLETE's replies, :drop when a START took nobody or the owner
+; stops): fn-ocv-capture of the owner's working view.  Answers whether a
+; capture is held after it.
+(defun fn-owner-reader-views-capture (event state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((views (fn-ocv-capture (fn-owner-reader-views state) event
+                                (fn-own-view (fn-owner-core state))))
+         (state (f-put-global 'fn-owner-reader-views views state)))
+    (value (if (consp views) t nil))))
+
+; A reader entry at the reader view: while a capture is held the entry runs
+; on the owner with the reader view in place of the working view
+; (fn-ocfg-at-reader-view; fn-ocl-relation-of-a-view-captured-before-appends:
+; a related owner, whose reads are the served machine's over at most the
+; records the Store held at the capture), and the working view is put back
+; after it (fn-ocfg-with-view).  Only the view is exchanged: the connections,
+; the queue a POST joins and every other field are the entry's.
+(defun fn-owner-at-reader-view (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((views (fn-owner-reader-views state)))
+    (if (consp views)
+        (fn-owner-install-ocfg (fn-ocfg-at-reader-view (fn-owner-ocfg state) views)
+                               state)
+      state)))
+
+(defun fn-owner-at-working-view (working state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (consp (fn-owner-reader-views state))
+      (fn-owner-install-ocfg (fn-ocfg-with-view (fn-owner-ocfg state) working) state)
+    state))
+
+(defun fn-owner-open-at (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-core state))
          (id (fn-own-next-id before))
@@ -2651,6 +2694,16 @@
     (if (fn-own-find-conn id (fn-own-conns (fn-owner-core state)))
         (value id)
       (value nil))))
+
+(defun fn-owner-open (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((working (fn-own-view (fn-owner-core state)))
+         (state (fn-owner-at-reader-view state)))
+    (mv-let (erp val state)
+      (fn-owner-open-at state)
+      (let ((state (fn-owner-at-working-view working state)))
+        (mv erp val state)))))
+
 
 ; One observed socket region is one ACL2 prefix transition.  Its effects and
 ; configured-owner state equal fn-ocfg-read over the prefix it consumed
@@ -2884,7 +2937,7 @@
 ; are the render plan (books/served-plan.lisp), which the host renders into
 ; the connection's own buffer after the mutex is released.  The owner and
 ; exposure states are installed exactly as fn-owner-chunk installs them.
-(defun fn-owner-chunk-span (id start end fn-octets fn-arena fn-cat state)
+(defun fn-owner-chunk-span-at (id start end fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
@@ -2910,6 +2963,15 @@
                   ; fn-olog-served-refusal-lines-one-per-441).
                   (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
                   (f-get-global 'fn-owner-exposure-close state))))))))
+
+(defun fn-owner-chunk-span (id start end fn-octets fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
+  (let* ((working (fn-own-view (fn-owner-core state)))
+         (state (fn-owner-at-reader-view state)))
+    (mv-let (erp val state)
+      (fn-owner-chunk-span-at id start end fn-octets fn-arena fn-cat state)
+      (let ((state (fn-owner-at-working-view working state)))
+        (mv erp val state)))))
 
 (defun fn-owner-close (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))

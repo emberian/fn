@@ -78,7 +78,7 @@ CHECKPOINT_BUFFER_INCLUDES = (
 # carry (books/post-retain-carried), which replaced fn-pidx-sbud-prepare.
 # commit-onto-log: the bare copy drops books/owner-log-route too, so the
 # owner's four log-route names are findings in any loader.
-LOG_ROUTE_NAMES = ("fn-olr-bmax", "fn-olr-ocfg-order", "fn-olr-ocfg-reserve", "fn-olr-omax")
+LOG_ROUTE_NAMES = ("fn-olr-bounds", "fn-olr-ocfg-order", "fn-olr-ocfg-reserve")
 BUFFER_FINDINGS = [
     f"included: host/owner-host.lisp uses {name}, defined in "
     "books/owner-log-route.lisp, which host/native/build-dtn.lisp has not "

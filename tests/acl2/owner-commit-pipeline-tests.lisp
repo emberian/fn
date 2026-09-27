@@ -35,9 +35,12 @@
 ; With a next batch open, a queued member waits: one batch behind at most.
 (assert-event (equal (fn-ocp-committer-wake *ocpt-s2* nil t) :wait))
 (assert-event (equal (ocpt-action *ocpt-s2* :next-started) :fault))
-; Readers wait while the next batch is open: the pick admits the commit.
+; While the next batch is open the commit goes first, then the readers
+; (PKT-828: they read at the reader view, books/owner-reader-view.lisp);
+; control waits for the COMPLETE.
 (assert-event (equal (ocpt-class *ocpt-s2* *ocpt-readers-commit*) :commit))
-(assert-event (equal (ocpt-class *ocpt-s2* *ocpt-readers*) nil))
+(assert-event (equal (ocpt-class *ocpt-s2* *ocpt-readers*) :reader))
+(assert-event (equal (ocpt-class *ocpt-s2* '(1 0 0 0 0 0)) nil))
 (assert-event (equal (fn-ocp-committer-wake *ocpt-s2* t t) :collect))
 (assert-event (equal (ocpt-action *ocpt-s2* :fenced) :complete))
 (defconst *ocpt-s3* (ocpt-event *ocpt-s2* :fenced))

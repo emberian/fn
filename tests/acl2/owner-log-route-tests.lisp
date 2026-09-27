@@ -11,3 +11,16 @@
 (assert-event (equal (fn-olr-bmax nil) 64))
 (assert-event (equal (fn-olr-omax nil) 16777216))
 (assert-event (posp (fn-olr-bmax '(1 2 3))))
+
+; fn-olr-bounds (the host's call): a configuration record after `policy set
+; log-batch-records 2' (the :set-limit delta native-admin plans) bounds a batch
+; at 2.  Mutation witness (labelled): the call the host made before, the
+; record itself given to fn-olr-bmax, reads the default 64.
+(defconst *olrt-v2*
+  (fn-cfg-apply-delta (fn-cfg-value-make-full nil nil nil nil nil nil nil nil nil nil nil)
+                      2 0 (fn-cfg-set-limit "log-batch-records" 2)))
+(defconst *olrt-cfg2* (fn-cfg-make 2 *olrt-v2*))
+(assert-event (equal (fn-olr-bounds *olrt-cfg2*) (list 2 16777216)))
+(assert-event (equal (fn-olr-bmax *olrt-cfg2*) 64))
+(assert-event (equal (fn-olr-bounds (fn-cfg-make 1 (fn-cfg-value-make-full nil nil nil nil nil nil nil nil nil nil nil)))
+                     (list 64 16777216)))
