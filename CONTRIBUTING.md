@@ -114,8 +114,10 @@ explains why.
 Maintainers and agents work on this tree in parallel; if your PR clashes
 with something newer, we will help you rebase.
 
-The repository has no licence file yet. Before you put a lot of work in,
-ask in an issue.
+fn is free software under the GNU Affero General Public License, version 3
+(see `LICENSE`). By contributing you agree your work is released under it.
+If you run a modified fn as a service others use, the AGPL asks you to offer
+them your changes.
 
 ## Where to ask
 
