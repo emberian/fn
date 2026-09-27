@@ -19,6 +19,13 @@
 ; Intents pin digests (PKT-646): fn-frame-digest runs through its attachment.
 (include-book "../../books/crypto-attach")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "arena-lift")
+(bpr-lift fn-bpaj-article-event 2)
+(bpr-lift fn-bpaj-dispatch-fast 4)
+(bpr-lift fn-bpaj-replay 2)
+(bpr-lift fn-bpr-store-record-acceptedp 2)
+(bpr-lift fn-row-wire-of 1)
+
 
 (defun bsb-o (s) (fn-record-string-octets s))
 (defun bsb-lines (strings)
@@ -46,6 +53,7 @@
  `(defconst *bsb-stored*
     ',(fn-pu-relay-article *bsb-article* (bsb-o "b.mission.invalid")
                            (bsb-o "y.mission.invalid"))))
+(defconst *bsb-payloads* (list *bsb-stored*))
 ; The durable transit intent the host persists before any Store attempt:
 ; planned transaction 1 (the Store's next after the enrollment), :accepted;
 ; the request by reference and the stored projection by length and digest
@@ -64,8 +72,7 @@
   '(:config "dtn://fn.lab/inbox" "receiver-policy" "dtn://fn.lab/issuer"))
 (make-event
  `(defconst *bsb-joined*
-    ',(fn-bpaj-nth 1 (fn-bpaj-replay (fn-sn-initial '("fn.letters" "fn.test") 10)
-                                     (list *bsb-config* *bsb-intent*)))))
+    ',(fn-bpaj-nth 1 (in-arena-fn-bpaj-replay *bsb-payloads* (fn-sn-initial '("fn.letters" "fn.test") 10) (list *bsb-config* *bsb-intent*)))))
 (assert-event
  (equal (fn-bpaj-request-status-fast *bsb-joined* *bsb-request-octets*) :intent))
 (assert-event
@@ -115,18 +122,31 @@
        :verified :verified)))
 (assert-event (fn-stxa-p *bsb-composite*))
 (assert-event (fn-stxa-bindsp *bsb-composite*))
+;; The Store retains the composite as a composite ROW (records-flip): its
+;; article is the held row the intern makes of the composite's article record
+;; at handle 0 (the arena of this test holds the stored projection there).
 (make-event
- `(defconst *bsb-store* ',(bsb-commit *bsb-enrolled* *bsb-composite*)))
+ `(defconst *bsb-row*
+    ',(fn-intern-row-at *bsb-record* (fn-sn-keyring *bsb-enrolled*)
+                        (fn-sn-keyring-generation *bsb-enrolled*) 0)))
+(defconst *bsb-row-composite* (fn-hstxa-make *bsb-composite* *bsb-row*))
+
+(assert-event (fn-hstxa-p *bsb-row-composite*))
+(make-event
+ `(defconst *bsb-store* ',(bsb-commit *bsb-enrolled* *bsb-row-composite*)))
 (assert-event (fn-sn-statep *bsb-store*))
 (assert-event (equal (fn-sf-phase (fn-sn-files *bsb-store*)) :ready))
 (assert-event
- (member-equal *bsb-composite* (fn-sf-records (fn-sn-files *bsb-store*))))
+ (member-equal *bsb-row-composite* (fn-sf-records (fn-sn-files *bsb-store*))))
 (assert-event (equal (fn-bpr-event-article *bsb-composite*) *bsb-record*))
+(assert-event (equal (fn-bpr-event-article *bsb-row-composite*) *bsb-row*))
 (assert-event (fn-record-p *bsb-record*))
+(assert-event (fn-held-p *bsb-row*))
+(assert-event (equal (in-arena-fn-row-wire-of *bsb-payloads* *bsb-row*) *bsb-record*))
 (assert-event
- (member-equal *bsb-record*
+ (member-equal *bsb-row*
                (fn-bpr-article-records (fn-sf-records (fn-sn-files *bsb-store*)))))
-(assert-event (fn-bpr-store-record-acceptedp *bsb-store* *bsb-record*))
+(assert-event (in-arena-fn-bpr-store-record-acceptedp *bsb-payloads* *bsb-store* *bsb-record*))
 
 ; -----------------------------------------------------------------------------
 ; Reachable positive witness.  Before the commit the dispatcher asks for the
@@ -134,10 +154,10 @@
 ; composite, it binds the composite's article record.  Both keystones'
 ; antecedents and conclusions are asserted literally.
 (assert-event
- (equal (fn-bpaj-dispatch-fast *bsb-joined* *bsb-enrolled* *bsb-request-octets* 1)
+ (equal (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-joined* *bsb-enrolled* *bsb-request-octets* 1)
         '(:submit)))
 (assert-event
- (equal (fn-bpaj-dispatch-fast *bsb-joined* *bsb-store* *bsb-request-octets* 1)
+ (equal (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-joined* *bsb-store* *bsb-request-octets* 1)
         (list :bind *bsb-record*)))
 
 ; The index premise (PRF-144) holds of both Stores: built by the Store's own
@@ -146,41 +166,44 @@
 (assert-event (fn-ceis-indexedp *bsb-store*))
 (assert-event (equal (fn-cei-msgid-records *bsb-msgid*
                                            (fn-sn-event-index *bsb-store*))
-                     (list *bsb-record*)))
+                     (list *bsb-row*)))
 
 ; fn-bpaj-dispatch-never-resubmits-under-index
 (assert-event
  (and (fn-ceis-indexedp *bsb-store*)
-      (member-equal *bsb-record*
+      (member-equal *bsb-row*
                     (fn-bpr-article-records (fn-sf-records (fn-sn-files *bsb-store*))))
-      (fn-record-p *bsb-record*)
-      (equal (fn-record-msgid *bsb-record*)
+      (fn-held-p *bsb-row*)
+      (equal (fn-record-msgid *bsb-row*)
              (fn-bpaj-dispatch-msgid *bsb-joined* *bsb-request-octets*))
-      (not (equal (fn-bpaj-dispatch-fast *bsb-joined* *bsb-store*
-                                         *bsb-request-octets* 1)
+      (not (equal (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-joined* *bsb-store* *bsb-request-octets* 1)
                   (list :submit)))))
 
 ; fn-bpaj-dispatch-binds-the-stores-own-record-under-index
-(defun bsb-binds-own-record-conclusion (joined store octets generation)
-  (let* ((record (cadr (fn-bpaj-dispatch-fast joined store octets generation)))
+(defun bsb-binds-own-record-conclusion (joined store octets generation fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((record (cadr (fn-bpaj-dispatch-fast joined store octets generation fn-arena)))
          (events (fn-sf-records (fn-sn-files store)))
-         (event (fn-bpaj-article-event record events)))
+         (event (fn-bpaj-article-event record events fn-arena)))
     (and (fn-record-p record)
          (equal (fn-record-msgid record) (fn-bpaj-dispatch-msgid joined octets))
-         (fn-bpaj-store-record-accepted-fast store record)
+         (fn-bpaj-store-record-accepted-fast store record fn-arena)
          (member-equal event events)
-         (equal (fn-bpr-event-article event) record)
-         (implies (fn-stxa-p event) (fn-stxa-bindsp event)))))
+         (fn-bpr-row-stands-for (fn-bpr-event-article event) record fn-arena)
+         (implies (and (fn-hstxa-p event)
+                       (fn-record-p (fn-bpr-event-article (fn-hstxa-stxa event))))
+                  (fn-stxa-bindsp (fn-hstxa-stxa event))))))
+(bpr-lift bsb-binds-own-record-conclusion 4)
 (assert-event
- (equal (car (fn-bpaj-dispatch-fast *bsb-joined* *bsb-store* *bsb-request-octets* 1))
+ (equal (car (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-joined* *bsb-store* *bsb-request-octets* 1))
         :bind))
 (assert-event
- (bsb-binds-own-record-conclusion *bsb-joined* *bsb-store* *bsb-request-octets* 1))
+ (in-arena-bsb-binds-own-record-conclusion *bsb-payloads* *bsb-joined* *bsb-store* *bsb-request-octets* 1))
 ; The event it names is the signed composite itself, whose verdict event is
 ; the Store's own kind-2 :verified verdict for this Message-ID.
 (assert-event
- (equal (fn-bpaj-article-event *bsb-record* (fn-sf-records (fn-sn-files *bsb-store*)))
-        *bsb-composite*))
+ (equal (in-arena-fn-bpaj-article-event *bsb-payloads* *bsb-record* (fn-sf-records (fn-sn-files *bsb-store*)))
+        *bsb-row-composite*))
 (assert-event
  (let ((verdict (fn-stmt-value (fn-stxe-decode-exact
                                 (fn-stxa-verdict-event *bsb-composite*)))))
@@ -197,15 +220,14 @@
 (assert-event *bsb-context*)
 (make-event
  `(defconst *bsb-context-replay*
-    ',(fn-bpaj-replay *bsb-store* (list *bsb-config* *bsb-intent* *bsb-context*))))
+    ',(in-arena-fn-bpaj-replay *bsb-payloads* *bsb-store* (list *bsb-config* *bsb-intent* *bsb-context*))))
 (assert-event (car *bsb-context-replay*))
 (assert-event
  (equal (fn-bpaj-request-status-fast (fn-bpaj-nth 1 *bsb-context-replay*)
                                      *bsb-request-octets*)
         :context))
 (assert-event
- (equal (fn-bpaj-dispatch-fast (fn-bpaj-nth 1 *bsb-context-replay*) *bsb-store*
-                               *bsb-request-octets* 1)
+ (equal (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* (fn-bpaj-nth 1 *bsb-context-replay*) *bsb-store* *bsb-request-octets* 1)
         '(:prepare-receipt)))
 
 ; -----------------------------------------------------------------------------
@@ -228,7 +250,7 @@
 (assert-event
  (equal (fn-bpaj-record-for-msgid *bsb-msgid*
                                   (fn-sf-records (fn-sn-files *bsb-store*)))
-        (list *bsb-record*)))
+        (list *bsb-row*)))
 
 ; -----------------------------------------------------------------------------
 ; Hypothesis removal, fn-bpaj-dispatch-never-resubmits-under-index.
@@ -238,19 +260,18 @@
 ; Message-ID, it is not in that Store's article records, and the dispatcher
 ; submits.
 (assert-event
- (and (fn-record-p *bsb-record*)
-      (equal (fn-record-msgid *bsb-record*)
+ (and (fn-held-p *bsb-row*)
+      (equal (fn-record-msgid *bsb-row*)
              (fn-bpaj-dispatch-msgid *bsb-joined* *bsb-request-octets*))
-      (not (member-equal *bsb-record*
+      (not (member-equal *bsb-row*
                          (fn-bpr-article-records
                           (fn-sf-records (fn-sn-files *bsb-enrolled*)))))))
 (must-fail
  (assert-event
-  (not (equal (fn-bpaj-dispatch-fast *bsb-joined* *bsb-enrolled*
-                                     *bsb-request-octets* 1)
+  (not (equal (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-joined* *bsb-enrolled* *bsb-request-octets* 1)
               (list :submit)))))
 
-; (2) Without fn-record-p: a constructed (unreachable) Store whose history
+; (2) Without fn-held-p (fn-record-p before the records flip): a constructed (unreachable) Store whose history
 ; holds a non-record carrying the Message-ID at the record's position.  It
 ; is a member of the article records with the dispatcher's Message-ID, it
 ; is not an article record, and the dispatcher submits.
@@ -269,11 +290,10 @@
                      (fn-sf-records (fn-sn-files *bsb-forged-store*))))
       (equal (fn-record-msgid *bsb-non-record*)
              (fn-bpaj-dispatch-msgid *bsb-joined* *bsb-request-octets*))
-      (not (fn-record-p *bsb-non-record*))))
+      (not (fn-held-p *bsb-non-record*))))
 (must-fail
  (assert-event
-  (not (equal (fn-bpaj-dispatch-fast *bsb-joined* *bsb-forged-store*
-                                     *bsb-request-octets* 1)
+  (not (equal (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-joined* *bsb-forged-store* *bsb-request-octets* 1)
               (list :submit)))))
 
 ; (2b) Without the index premise (PRF-144): a CORRUPTED Store, the committed
@@ -285,14 +305,13 @@
   (fn-sn-with-event-index *bsb-store* (fn-sn-event-index *bsb-enrolled*)))
 (assert-event
  (and (not (fn-ceis-indexedp *bsb-stale-index-store*))
-      (member-equal *bsb-record*
+      (member-equal *bsb-row*
                     (fn-bpr-article-records
                      (fn-sf-records (fn-sn-files *bsb-stale-index-store*))))
-      (fn-record-p *bsb-record*)
-      (equal (fn-record-msgid *bsb-record*)
+      (fn-held-p *bsb-row*)
+      (equal (fn-record-msgid *bsb-row*)
              (fn-bpaj-dispatch-msgid *bsb-joined* *bsb-request-octets*))
-      (equal (fn-bpaj-dispatch-fast *bsb-joined* *bsb-stale-index-store*
-                                    *bsb-request-octets* 1)
+      (equal (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-joined* *bsb-stale-index-store* *bsb-request-octets* 1)
              '(:submit))))
 
 ; (3) Without the Message-ID agreement: a second signed request (another
@@ -329,29 +348,26 @@
 (assert-event (fn-bpaj-transit-intentp *bsb-other-intent*))
 (make-event
  `(defconst *bsb-other-joined*
-    ',(fn-bpaj-nth 1 (fn-bpaj-replay *bsb-store0*
-                                     (list *bsb-config* *bsb-other-intent*)))))
+    ',(fn-bpaj-nth 1 (in-arena-fn-bpaj-replay *bsb-payloads* *bsb-store0* (list *bsb-config* *bsb-other-intent*)))))
 (assert-event
- (and (member-equal *bsb-record*
+ (and (member-equal *bsb-row*
                     (fn-bpr-article-records (fn-sf-records (fn-sn-files *bsb-store*))))
-      (fn-record-p *bsb-record*)
-      (not (equal (fn-record-msgid *bsb-record*)
+      (fn-held-p *bsb-row*)
+      (not (equal (fn-record-msgid *bsb-row*)
                   (fn-bpaj-dispatch-msgid *bsb-other-joined*
                                           *bsb-other-request-octets*)))))
 (must-fail
  (assert-event
-  (not (equal (fn-bpaj-dispatch-fast *bsb-other-joined* *bsb-store*
-                                     *bsb-other-request-octets* 1)
+  (not (equal (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-other-joined* *bsb-store* *bsb-other-request-octets* 1)
               (list :submit)))))
 
 ; Hypothesis removal, fn-bpaj-dispatch-binds-the-stores-own-record-under-index: without
 ; a :bind answer (the Store before the commit, where the dispatcher submits)
 ; the conclusion fails: nothing bound is an article record.
 (assert-event
- (not (equal (car (fn-bpaj-dispatch-fast *bsb-joined* *bsb-enrolled*
-                                         *bsb-request-octets* 1))
+ (not (equal (car (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-joined* *bsb-enrolled* *bsb-request-octets* 1))
              :bind)))
 (must-fail
  (assert-event
-  (bsb-binds-own-record-conclusion *bsb-joined* *bsb-enrolled*
+  (in-arena-bsb-binds-own-record-conclusion *bsb-payloads* *bsb-joined* *bsb-enrolled*
                                    *bsb-request-octets* 1)))

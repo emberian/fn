@@ -3,21 +3,24 @@
 (include-book "../../books/index")
 
 (defconst *index-groups* '("comp.lang" "fn.test"))
+; by specification: the flip -- an article's payload is an arena handle
+; (books/acceptance fn-statep demands natp payloads), so the three articles'
+; distinct payloads (65), (66), (67) are the distinct handles 0, 1, 2.
 (defconst *index-article-a*
-  (fn-make-article "<a@example.invalid>" '(65)
+  (fn-make-article "<a@example.invalid>" 0
                    '("comp.lang" "fn.test")
                    (list (cons "comp.lang" 1)
                          (cons "fn.test" 7))
                    t 841000000))
 (defconst *index-article-b*
-  (fn-make-article "<b@example.invalid>" '(66)
+  (fn-make-article "<b@example.invalid>" 1
                    '("comp.lang")
                    (list (cons "comp.lang" 4))
                    t 841000000))
 ; The same local number 4 is valid in fn.test and comp.lang: group is part
 ; of the index key, so no global number namespace is introduced.
 (defconst *index-article-c*
-  (fn-make-article "<c@example.invalid>" '(67)
+  (fn-make-article "<c@example.invalid>" 2
                    '("fn.test")
                    (list (cons "fn.test" 4))
                    t 841000000))

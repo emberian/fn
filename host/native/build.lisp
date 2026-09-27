@@ -9,6 +9,12 @@
 ; tools/run_reader.py ld today.  The one trust tag names the raw-Lisp adapter,
 ; host/native/io.lisp, and is retired before the image is saved.
 
+;; The records flip: `(attach-stobj fn-arena fn-arena-bytes)'
+;; (books/payload-arena-attach.lisp) must precede the first include whose
+;; closure holds books/payload-arena's defstobj, and books/served and
+;; books/bp-receipt-records hold it since batch AU: the attachment is the
+;; image's FIRST include.
+(include-book "books/payload-arena-attach")
 ; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
 (include-book "books/outcome-class")
 (include-book "books/replay")
@@ -217,11 +223,6 @@
 ;; `operator init` publishes the empty store by the same program (PKT-647):
 ;; fnn-command-init-published asks fn-bs-init-pub-admission.
 (include-book "books/store-init-publication")
-;; The records flip: host/store-host.lisp includes books/store-intern (the
-;; intern at the entries), which names the payload arena `fn-arena'; the
-;; byte-array attachment (books/payload-arena-attach.lisp) must precede the
-;; first include that introduces the generic, so it comes here.
-(include-book "books/payload-arena-attach")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.

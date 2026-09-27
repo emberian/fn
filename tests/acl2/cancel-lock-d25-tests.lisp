@@ -9,6 +9,7 @@
 ; injected by the real fn-inj-decide at two clock readings 37 s apart and
 ; held by the real Store (the tests/acl2/source-routes-tests.lisp fixture).
 (in-package "ACL2")
+(include-book "held-rows-tests")
 (include-book "../../books/cancel-lock-d25")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
@@ -55,36 +56,59 @@
   (fn-own-sub-stored-octets nil (cdt-sub source obs login account) ring))
 
 ; A Store holding one payload under *cdt-msgid*, through the real Store.
+; by specification: the flip -- the store retains the held row the entry
+; interns from the wire record on a fresh arena (handle 0,
+; tests/acl2/held-rows-tests.lisp fn-hrt-rows); the bytes under a handle are
+; read through that arena (cdt-bytes), and the verdict over alpha of the
+; acceptance articles (fn-hrt-existing-action, store-intern's
+; fn-store-existing-action by its keystone) is cdt-alpha-action.
 (defconst *cdt-groups* '("fn.test"))
+(defun cdt-wire (payload)
+  (fn-record-make 0 0 0 *cdt-msgid* payload *cdt-groups*
+                  "cdt-pin" "cdt-subject" "cdt-release" 2 841000000))
 (defun cdt-store (payload)
+  (declare (xargs :verify-guards nil))
   (fn-sn-finish
    (fn-sn-io (fn-sn-io (fn-sn-io
      (fn-sn-prepare
       (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io
         (fn-sn-initial *cdt-groups* 10) :start-frontier nil)
         :frontier-file :ok) :frontier-replace :ok) :frontier-directory :ok)
-      (fn-record-make 0 0 0 *cdt-msgid* payload *cdt-groups*
-                      "cdt-pin" "cdt-subject" "cdt-release" 2 841000000))
+      (car (fn-hrt-rows (list (cdt-wire payload)) nil 0)))
      :record-file :ok) :record-link :ok) :record-directory :ok)))
+(defun cdt-bytes (stored h)
+  (declare (xargs :verify-guards nil))
+  (fn-hrt-bytes (list (cdt-wire stored)) h))
+(defun cdt-alpha-action (stored msgid payload groups s)
+  (declare (xargs :verify-guards nil))
+  (fn-hrt-existing-action (list (cdt-wire stored)) msgid payload groups s))
 (defun cdt-held (s)
   (fn-find-article *cdt-msgid* (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
 
 ; Alice posted at A under epoch 1.
 (defconst *cdt-held-octets* (cdt-stored *cdt-plain* *cdt-a* "alice" *cdt-alice* *cdt-ring1*))
 (defconst *cdt-s* (cdt-store *cdt-held-octets*))
+; by specification: the flip -- the held payload is handle 0; the bytes
+; under it are the stored octets.
 (assert-event (and (fn-sn-statep *cdt-s*)
-                   (equal (fn-article-payload (cdt-held *cdt-s*)) *cdt-held-octets*)))
+                   (equal (fn-article-payload (cdt-held *cdt-s*)) 0)
+                   (equal (cdt-bytes *cdt-held-octets* (fn-article-payload (cdt-held *cdt-s*)))
+                          *cdt-held-octets*)))
 (assert-event (equal (fn-ctl-locks-octets *cdt-held-octets*)
                      (list (fn-cl-lock *cdt-e1* *cdt-alice* (cdt-text *cdt-msgid*)))))
 
 ; The complete antecedent of fn-cld-a-retry-by-any-account-or-epoch-is-
 ; already-stored.
-(defun cdt-retry-antecedent (s sub-a sub-b ring-a source a b groups)
+; by specification: the flip -- the held-payload hypothesis reads the bytes
+; under the held handle through the arena that interned STORED.
+(defun cdt-retry-antecedent (stored s sub-a sub-b ring-a source a b groups)
+  (declare (xargs :verify-guards nil))
   (let ((held (cdt-held s))
         (da (cdt-d source a)) (db (cdt-d source b)))
     (and (equal (fn-own-sub-decision sub-a) da)
          (equal (fn-own-sub-decision sub-b) db)
-         (equal (fn-article-payload held) (fn-own-sub-stored-octets nil sub-a ring-a))
+         (equal (cdt-bytes stored (fn-article-payload held))
+                (fn-own-sub-stored-octets nil sub-a ring-a))
          (fn-inj-injectedp da) (fn-inj-injectedp db)
          (equal (fn-inj-decision-msgid da) (cdt-text *cdt-msgid*))
          (equal (fn-inj-decision-msgid db) (cdt-text *cdt-msgid*))
@@ -95,39 +119,55 @@
 ; :duplicate.
 (defconst *cdt-bob-octets* (cdt-stored *cdt-plain* *cdt-b* "bob" *cdt-bob* *cdt-ring1*))
 (assert-event
- (and (cdt-retry-antecedent *cdt-s* (cdt-sub *cdt-plain* *cdt-a* "alice" *cdt-alice*)
+ (and (cdt-retry-antecedent *cdt-held-octets* *cdt-s* (cdt-sub *cdt-plain* *cdt-a* "alice" *cdt-alice*)
                             (cdt-sub *cdt-plain* *cdt-b* "bob" *cdt-bob*)
                             *cdt-ring1* *cdt-plain* *cdt-a* *cdt-b* *cdt-groups*)
       (not (equal *cdt-bob-octets* *cdt-held-octets*))
       (equal (fn-rcl-existing-action *cdt-msgid* *cdt-bob-octets* *cdt-groups* *cdt-s*)
              :duplicate)))
+; The same verdict over alpha (the bytes under the held handle).
+(assert-event
+ (equal (cdt-alpha-action *cdt-held-octets* *cdt-msgid* *cdt-bob-octets* *cdt-groups* *cdt-s*)
+        :duplicate))
 ; Witness 2: alice resends after a key rotation (epoch 2).
 (defconst *cdt-alice-e2-octets*
   (cdt-stored *cdt-plain* *cdt-b* "alice" *cdt-alice* *cdt-ring2*))
 (assert-event
- (and (cdt-retry-antecedent *cdt-s* (cdt-sub *cdt-plain* *cdt-a* "alice" *cdt-alice*)
+ (and (cdt-retry-antecedent *cdt-held-octets* *cdt-s* (cdt-sub *cdt-plain* *cdt-a* "alice" *cdt-alice*)
                             (cdt-sub *cdt-plain* *cdt-b* "alice" *cdt-alice*)
                             *cdt-ring1* *cdt-plain* *cdt-a* *cdt-b* *cdt-groups*)
       (not (equal *cdt-alice-e2-octets* *cdt-held-octets*))
       (equal (fn-rcl-existing-action *cdt-msgid* *cdt-alice-e2-octets* *cdt-groups* *cdt-s*)
              :duplicate)))
+(assert-event
+ (equal (cdt-alpha-action *cdt-held-octets* *cdt-msgid* *cdt-alice-e2-octets* *cdt-groups*
+                          *cdt-s*)
+        :duplicate))
 ; A duplicate writes nothing: the held article keeps alice's lock, and the
 ; retrying account's cancel key opens nothing in it.
+; by specification: the flip -- the locks are read from the bytes under the
+; held handle.
 (assert-event
- (and (equal (fn-ctl-locks-octets (fn-article-payload (cdt-held *cdt-s*)))
+ (and (equal (fn-ctl-locks-octets
+              (cdt-bytes *cdt-held-octets* (fn-article-payload (cdt-held *cdt-s*))))
              (list (fn-cl-lock *cdt-e1* *cdt-alice* (cdt-text *cdt-msgid*))))
       (not (fn-ctl-some-key-opens-p
             (fn-cl-ring-keys *cdt-ring2* *cdt-bob* (cdt-text *cdt-msgid*))
-            (fn-ctl-locks-octets (fn-article-payload (cdt-held *cdt-s*)))))
+            (fn-ctl-locks-octets
+             (cdt-bytes *cdt-held-octets* (fn-article-payload (cdt-held *cdt-s*))))))
       (fn-ctl-some-key-opens-p
        (fn-cl-ring-keys *cdt-ring2* *cdt-alice* (cdt-text *cdt-msgid*))
-       (fn-ctl-locks-octets (fn-article-payload (cdt-held *cdt-s*))))))
+       (fn-ctl-locks-octets
+        (cdt-bytes *cdt-held-octets* (fn-article-payload (cdt-held *cdt-s*)))))))
 
 ; Removal of "the same groups": the same source filed elsewhere is a conflict.
 (assert-event
  (and (not (equal '("fn.other") (fn-article-groups (cdt-held *cdt-s*))))
       (equal (fn-rcl-existing-action *cdt-msgid* *cdt-bob-octets* '("fn.other") *cdt-s*)
              :conflict)))
+(assert-event
+ (equal (cdt-alpha-action *cdt-held-octets* *cdt-msgid* *cdt-bob-octets* '("fn.other") *cdt-s*)
+        :conflict))
 ; Removal of "injected at B": no wall clock, the decision is a refusal and
 ; its stored octets (none) are not the held article.
 (assert-event
@@ -136,10 +176,20 @@
                    *cdt-msgid* (cdt-stored *cdt-plain* *cdt-no-wall* "bob" *cdt-bob* *cdt-ring1*)
                    *cdt-groups* *cdt-s*)
                   :duplicate))))
+(assert-event
+ (not (equal (cdt-alpha-action
+              *cdt-held-octets* *cdt-msgid*
+              (cdt-stored *cdt-plain* *cdt-no-wall* "bob" *cdt-bob* *cdt-ring1*)
+              *cdt-groups* *cdt-s*)
+             :duplicate)))
 ; Removal of "the held article is this source's": a store holding nothing
 ; under the Message-ID answers nil.
 (assert-event
  (equal (fn-rcl-existing-action "<other@example.invalid>" *cdt-bob-octets* *cdt-groups* *cdt-s*)
+        nil))
+(assert-event
+ (equal (cdt-alpha-action *cdt-held-octets* "<other@example.invalid>" *cdt-bob-octets*
+                          *cdt-groups* *cdt-s*)
         nil))
 (must-fail
  (defthm cdt-retry-needs-the-same-source
@@ -181,6 +231,18 @@
               *cdt-msgid* (cdt-stored *cdt-locked* *cdt-b* "bob" *cdt-bob* *cdt-ring2*)
               *cdt-groups* *cdt-s2*)
              :duplicate)))
+; The same two verdicts over alpha.
+(assert-event
+ (and (equal (cdt-alpha-action
+              *cdt-locked-octets* *cdt-msgid*
+              (cdt-stored *cdt-relocked* *cdt-b* "alice" *cdt-alice* *cdt-ring1*)
+              *cdt-groups* *cdt-s2*)
+             :conflict)
+      (equal (cdt-alpha-action
+              *cdt-locked-octets* *cdt-msgid*
+              (cdt-stored *cdt-locked* *cdt-b* "bob" *cdt-bob* *cdt-ring2*)
+              *cdt-groups* *cdt-s2*)
+             :duplicate)))
 ; Removal of "different sources": the node's own lock line differs between
 ; alice's and bob's copies of *cdt-plain*, and that is no conflict (the
 ; generated lines are not the source).
@@ -190,3 +252,7 @@
                   (fn-ctl-locks-octets *cdt-held-octets*)))
       (not (equal (fn-rcl-existing-action *cdt-msgid* *cdt-bob-octets* *cdt-groups* *cdt-s*)
                   :conflict))))
+(assert-event
+ (not (equal (cdt-alpha-action *cdt-held-octets* *cdt-msgid* *cdt-bob-octets* *cdt-groups*
+                               *cdt-s*)
+             :conflict)))

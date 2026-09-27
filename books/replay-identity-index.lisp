@@ -56,13 +56,15 @@
 ; The second keystone is the history recognizer's: fn-sf-record-listp asked
 ; fn-store-event-p, -sequence, -txid (three times) and -generation of every
 ; record, and each of those dispatchers re-runs the record recognizers from
-; fn-record-p, which walks the payload.  fn-rii-event-fields reads the four
-; answers in one dispatch (fn-rii-event-fields-are-the-dispatchers), and the
+; fn-record-p, which walks the payload.  fn-event-fields reads the four
+; answers in one dispatch (books/store-event-fields.lisp,
+; fn-event-fields-of-rows-is-the-dispatchers), and the
 ; recognizer, the file kernel's and the Store's whole-state recognizers and
 ; the open's finalization are twins over it, each EQUAL to its reference.
 
 (in-package "ACL2")
 (include-book "store-open-pre-c1")
+(include-book "store-event-fields")
 (include-book "msgid-index-concrete")
 (local (include-book "arithmetic/top" :dir :system))
 
@@ -290,7 +292,7 @@
             (consp (fn-state-pending s))
             (not (natp generation))
             (not (stringp msgid))
-            (not (fn-octet-listp payload))
+            (not (natp payload))
             (not (fn-record-stampp stamp))
             (not (fn-selection-validp groups (fn-state-groups s)))
             (fn-rii-acceptedp msgid (fn-state-articles s) mtrie))
@@ -451,14 +453,14 @@
           (fn-replay-apply-identity-neutral node record))
       (if (not (null (fn-node-stage node)))
           nil
-        (let* ((article (if (fn-stxa-p record)
-                            (fn-replay-composite-record record)
+        (let* ((article (if (fn-hstxa-p record)
+                            (fn-replay-composite-held record)
                           record))
                (advanced (fn-replay-advance-txid node (fn-store-event-txid record))))
           (if (not (equal (fn-state-next-txid (fn-node-acceptance advanced))
                           (fn-store-event-txid record)))
               nil
-            (if (not (fn-record-p article)) nil
+            (if (not (fn-held-p article)) nil
               (let ((prepared
                      (fn-rii-node-prepare advanced
                                           (fn-record-generation article)
@@ -492,9 +494,9 @@
                                    fn-rii-apply-retention-event
                                    fn-node-pending-matchesp fn-node-complete
                                    fn-replay-apply-identity-neutral
-                                   fn-replay-composite-record
-                                   fn-store-event-p fn-record-p fn-stxe-p
-                                   fn-stxk-p fn-stxa-p fn-store-retention-event-p
+                                   fn-replay-composite-held
+                                   fn-store-event-p fn-held-p fn-stxe-p
+                                   fn-stxk-p fn-hstxa-p fn-store-retention-event-p
                                    fn-cpe-eventp fn-th-topic-eventp)))))
 
 (defthm fn-rii-admissiblep-has-charge-and-state
@@ -776,7 +778,7 @@
            :use ((:instance fn-replay-apply-record-non-nil-is-node-state
                             (node (fn-cnode-node cn)) (record event)))
            :in-theory (e/d (fn-cnode-statep)
-                           (fn-cpr-event-servedp fn-record-p fn-stxa-p
+                           (fn-cpr-event-servedp fn-held-p fn-hstxa-p
                             fn-store-event-p fn-node-statep
                             fn-replay-apply-record
                             fn-replay-apply-record-non-nil-is-node-state)))))
@@ -951,41 +953,10 @@
 ; -----------------------------------------------------------------------------
 ; 7. The history recognizer, one dispatch per record.
 
-; kind-recognized, sequence, txid and generation of a Store event, from one
-; dispatch over the event recognizers (each fn-store-event-* dispatcher
-; re-runs them from fn-record-p).
-(defun fn-rii-event-fields (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (cond ((fn-record-p x)
-         (list t (fn-record-sequence x) (fn-record-txid x) (fn-record-generation x)))
-        ((fn-store-retention-event-p x)
-         (list t (fn-store-event-nth 2 x) (fn-store-event-nth 3 x)
-               (fn-store-event-nth 4 x)))
-        ((fn-stxe-p x) (list t (fn-stxe-sequence x) (fn-stxe-txid x)
-                             (fn-stxe-generation x)))
-        ((fn-stxk-p x) (list t (fn-stxk-sequence x) (fn-stxk-txid x)
-                             (fn-stxk-generation x)))
-        ((fn-stxa-p x) (list t (fn-stxa-sequence x) (fn-stxa-txid x)
-                             (fn-stxa-generation x)))
-        ((fn-cpe-eventp x) (list t (fn-cpe-sequence x) (fn-cpe-txid x)
-                                 (fn-cpe-generation x)))
-        ((fn-th-topic-eventp x) (list t (fn-th-at 1 x) (fn-th-at 2 x)
-                                      (fn-th-at 3 x)))
-        (t (list nil nil nil nil))))
-
-(verify-guards fn-rii-event-fields)
-
-(defthm fn-rii-event-fields-are-the-dispatchers
-  (equal (fn-rii-event-fields x)
-         (list (if (fn-store-event-p x) t nil) (fn-store-event-sequence x)
-               (fn-store-event-txid x) (fn-store-event-generation x)))
-  :hints (("Goal" :in-theory (e/d (fn-store-event-p fn-store-event-sequence
-                                   fn-store-event-txid fn-store-event-generation)
-                                  (fn-record-p fn-store-retention-event-p fn-stxe-p
-                                   fn-stxk-p fn-stxa-p fn-cpe-eventp
-                                   fn-th-topic-eventp)))))
-
-(in-theory (disable fn-rii-event-fields))
+; The four readings of a retained row come from one dispatch:
+; books/store-event-fields.lisp fn-event-fields with WIREP nil
+; (fn-event-fields-of-rows-is-the-dispatchers; the pack-chain link check reads
+; the wire vocabulary through the same function, PKT-721).
 
 (local
  (defthm fn-rii-event-txid-is-natural
@@ -998,7 +969,7 @@
   (declare (xargs :guard (and (natp sequence) (natp lower) (natp frontier))
                   :verify-guards nil))
   (if (consp records)
-      (let* ((f (fn-rii-event-fields (car records)))
+      (let* ((f (fn-event-fields (car records) nil))
              (txid (nth 2 f)))
         (and (nth 0 f)
              (equal (nth 1 f) sequence)

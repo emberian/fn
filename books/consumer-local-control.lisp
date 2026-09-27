@@ -444,6 +444,9 @@
         (third (fn-cp-nth 2 argv))
         (fourth (fn-cp-nth 3 argv)))
     (cond
+     ; PKT-709: `fn consumer' and `fn consumer help' print the grammar
+     ; (fn-ncl-usage-text), not `missing arguments'.
+     ((equal command '(104 101 108 112)) (list :help)) ; help
      ((not (fn-ncl-absolute-pathp control)) (list :usage :control-path))
      ((equal command '(98 111 111 116 115 116 114 97 112)) ; bootstrap
       (if (equal (len argv) 1)
@@ -506,6 +509,43 @@
           (list :run :unregister control id nil nil)
         (list :usage :unregister)))
      (t (list :usage :command)))))
+
+;; PKT-709 (the stranger rehearsal, 2026-09-27): the grammar this plan
+;; accepts, as the one usage text the host prints for `help', for no words
+;; and after every usage refusal.  CONTROL is the node's control socket
+;; ([control] path in fn.toml).
+(defun fn-ncl-usage-text ()
+  (declare (xargs :guard t))
+  "usage: fn consumer COMMAND CONTROL ...  (CONTROL is the node's control socket, [control] path in fn.toml; every path is absolute)
+  register CONTROL NAME GROUP CURSOR-OUT   declare consumer NAME for GROUP (bootstraps the node's consumer history first when needed) and write its first cursor
+  position CONTROL NAME CURSOR-OUT         write NAME's committed cursor again
+  poll CONTROL NAME CURSOR-OUT REPORT-OUT  write the next event's report and its cursor (read-only; nothing is acknowledged)
+  ack CONTROL CURSOR-FILE                  acknowledge up to the cursor a poll wrote
+  bound-poll CONTROL NAME SECRET-FILE CURSOR-OUT REPORT-OUT   poll as a consumer bound to an account (operator: consumer bind NAME --account LOGIN)
+  bound-ack CONTROL CURSOR-FILE SECRET-FILE
+  status CONTROL NAME                      committed ack, journal frontier and the distance between them
+  unregister CONTROL NAME
+  bootstrap CONTROL                        make the node's consumer history (register does this itself)
+docs/agents.md, Local consumers")
+
+;; PKT-709: `register' on a node whose consumer history was never made.
+;; The host sends the command once; when OPERATION is :register and its
+;; STATUS is :refused (the owner's refusal of an unbootstrapped register,
+;; books/consumer-owner-local.lisp fn-col-register, and every other register
+;; refusal alike), it then sends these steps, bootstrap and the register
+;; again, and the last one's outcome is the command's.  A bootstrap on a node
+;; already bootstrapped is the refused duplicate and changes nothing; a
+;; register refused for another reason is refused again.  Any other outcome,
+;; an uncertain one above all, sends nothing more.
+(defun fn-ncl-cli-after (operation status)
+  (declare (xargs :guard t))
+  (if (and (equal operation :register) (equal status :refused))
+      (list :bootstrap :register)
+    nil))
+
+(defthm fn-ncl-cli-after-retries-only-a-refused-register
+  (iff (fn-ncl-cli-after operation status)
+       (and (equal operation :register) (equal status :refused))))
 
 ; PRF-234: the password a secret file holds: its octets less one final
 ; line end (LF or CRLF), so `echo PASSWORD > FILE' holds PASSWORD.

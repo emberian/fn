@@ -201,9 +201,13 @@ the owner resolved the source address to, or nil for a reader."
 
 ; The completion fn-own-transit-outcome renders with: the owner's completion
 ; for the host word when the transfer decision was :want, else none.
+;; PKT-711: the rendering, as fn-own-transit-outcome passes it to the reply
+;; (fn-own-outcome-rendering: the completion, except that a refusal keeps
+;; the Store's word), so the logged code is the code the peer was sent: a
+;; full Store's :unaffordable is 436 on the wire and in the log alike.
 (defun fn-olog-transit-completion (o kind word)
   (declare (xargs :guard t))
-  (if (equal kind :want) (fn-own-outcome-completion o word) nil))
+  (if (equal kind :want) (fn-own-outcome-rendering o word) nil))
 
 (defun fn-olog-transit-code (o kind reason word)
   (declare (xargs :guard t))
@@ -264,6 +268,17 @@ the owner resolved the source address to, or nil for a reader."
                           (cons 32 (fn-olog-field
                                     "verdict" (fn-olog-symbol-text verdict)))))))
 
+;; PKT-711: the reason a transfer line names.  The offer's own reason, else,
+;; when the Store refused the article (a full Store's :unaffordable above
+;; all: `reason=unaffordable'), the Store's word, so the receiver's log
+;; says why it answered 436 or 437/439 (the rehearsal read `reason=none').
+(defun fn-olog-transit-reason (o kind reason word)
+  (declare (xargs :guard t))
+  (let ((c (fn-olog-transit-completion o kind word)))
+    (cond (reason reason)
+          ((and (symbolp c) (not (equal c :refused)) (fn-post-store-refusalp c)) c)
+          (t nil))))
+
 (defun fn-olog-transit-line (o id kind reason word detail verdict)
   "The line for transit submission ID completing with KIND, REASON and WORD.
 
@@ -282,7 +297,8 @@ fn-pcb-transit-verdict (PKT-473), or nil."
            (fn-olog-field "code"
                           (fn-olog-decimal (fn-olog-transit-code o kind reason word)))
            (fn-olog-field "decision" (fn-olog-symbol-text kind))
-           (fn-olog-field "reason" (fn-olog-symbol-text reason))
+           (fn-olog-field "reason" (fn-olog-symbol-text
+                                    (fn-olog-transit-reason o kind reason word)))
            (fn-olog-detail-fields detail verdict)
            (fn-olog-field "time" (fn-olog-time (fn-own-clock o)))))))
 

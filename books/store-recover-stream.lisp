@@ -8,20 +8,21 @@
 ; events live together (planning/evidence/recover-memory-2026-09-27.md).
 ;
 ; The open now takes the history in chunks: `fn-srs-step' decodes one chunk
-; of framed-record octets and interns it into the arena, accumulating the
-; rows (newest first); the host calls it once per chunk
-; (host/store-node-host.lisp fn-store-sn-recover-step, called from
-; host/native/io.lisp fnn-bridge-recover), and the finish opens over the
-; accumulated rows.  A chunk ends where `fn-srs-chunk-fullp' says (a work
+; of record octets and interns it into the arena (`fn-srs-intern-step'),
+; accumulating the rows newest first.  The host makes the step's two calls
+; once per chunk (host/native/io.lisp fnn-bridge-recover:
+; fn-store-decode-records, which is fn-srs-decode, then the guard-verified
+; fn-srs-intern-step with the live arena), then opens over `fn-srs-rows'
+; (host/store-node-host.lisp fn-store-sn-recover-rows).  A chunk ends where `fn-srs-chunk-fullp' says (a work
 ; quantum: at least one record, whatever its size; never a bound on data).
 ;
 ; KEYSTONE `fn-srs-steps-are-one-step-of-the-concatenation': folding the
 ; step over ANY split of the history into chunks answers what one step over
 ; the whole history answers: :bad exactly when it is :bad, and otherwise the
 ; same rows and the same arena.  One step over the whole history is the
-; open the host ran before (host/store-node-host.lisp fn-store-sn-recover is
-; begin, one step, finish), so the chunking the host picks cannot change
-; the opened Store.
+; intern of the decoded history (fn-srs-one-step-is-the-intern-of-the-decode),
+; which is what the open computed before the chunking, so the chunking the
+; host picks cannot change the opened Store.
 (in-package "ACL2")
 (include-book "store-intern")
 (include-book "records-concrete")
@@ -93,20 +94,41 @@
 ; -----------------------------------------------------------------------------
 ; 3. The step, its fold, and the chunk quantum.
 
+(defthm fn-srs-intern-events-true-listp
+  (implies (not (eq (mv-nth 0 (fn-intern-events ws keyring generation fn-arena)) :bad))
+           (true-listp (mv-nth 0 (fn-intern-events ws keyring generation fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-intern-events) (fn-intern-event)))))
+
 ; ACC is the rows so far, newest first, or :bad once a chunk was refused.
 ; The intern is the open's: keyring NIL, generation 0 (store-intern's note).
+; The host calls this directly with the live arena (guard-verified, so no
+; :program entry updates the arena: flip-L6-2's invariant-risk finding).
+(defun fn-srs-intern-step (acc ws fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t
+                  :guard-hints (("Goal" :use ((:instance fn-srs-intern-events-true-listp
+                                                 (keyring nil) (generation 0)))
+                                 :in-theory (disable fn-intern-events
+                                                     fn-srs-intern-events-true-listp)))))
+  (if (or (eq acc :bad) (eq ws :bad))
+      (mv :bad fn-arena)
+    (mv-let (rows fn-arena)
+      (fn-intern-events ws nil 0 fn-arena)
+      (if (eq rows :bad)
+          (mv :bad fn-arena)
+        (mv (revappend rows acc) fn-arena)))))
+
+; One chunk of record octets: its decode, then the intern step.  The host
+; makes exactly these two calls per chunk (host/native/io.lisp
+; fnn-bridge-recover: fn-store-decode-records, which is fn-srs-decode, then
+; fn-srs-intern-step).
 (defun fn-srs-step (acc octet-records fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (if (eq acc :bad)
-      (mv :bad fn-arena)
-    (let ((ws (fn-srs-decode octet-records)))
-      (if (eq ws :bad)
-          (mv :bad fn-arena)
-        (mv-let (rows fn-arena)
-          (fn-intern-events ws nil 0 fn-arena)
-          (if (eq rows :bad)
-              (mv :bad fn-arena)
-            (mv (revappend rows acc) fn-arena)))))))
+  (fn-srs-intern-step acc (fn-srs-decode octet-records) fn-arena))
+
+; The rows oldest first, what the open (fn-store-sn-recover-rows) takes.
+(defun fn-srs-rows (acc)
+  (declare (xargs :guard t))
+  (reverse (true-list-fix acc)))
 
 (defun fn-srs-steps (chunks acc fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
@@ -208,19 +230,13 @@
                                       (theory 'minimal-theory)))))
 
 ; The one step from no rows is the open's intern of the decoded history, the
-; rows oldest first once reversed (what fn-store-sn-recover-finish opens
-; over): the value the one-shot open computed before the chunking.
-(local
- (defthm fn-srs-intern-events-true-listp
-   (implies (not (eq (mv-nth 0 (fn-intern-events ws keyring generation fn-arena)) :bad))
-            (true-listp (mv-nth 0 (fn-intern-events ws keyring generation fn-arena))))
-   :hints (("Goal" :in-theory (e/d (fn-intern-events) (fn-intern-event))))))
-
+; rows oldest first (fn-srs-rows, what fn-store-sn-recover-rows opens over):
+; the value the one-shot open computed before the chunking.
 (defthm fn-srs-one-step-is-the-intern-of-the-decode
   (let ((ws (fn-srs-decode octet-records)))
     (implies (not (eq (mv-nth 0 (fn-srs-step nil octet-records fn-arena)) :bad))
              (and (not (eq ws :bad))
-                  (equal (reverse (mv-nth 0 (fn-srs-step nil octet-records fn-arena)))
+                  (equal (fn-srs-rows (mv-nth 0 (fn-srs-step nil octet-records fn-arena)))
                          (mv-nth 0 (fn-intern-events ws nil 0 fn-arena)))
                   (equal (mv-nth 1 (fn-srs-step nil octet-records fn-arena))
                          (mv-nth 1 (fn-intern-events ws nil 0 fn-arena))))))

@@ -166,7 +166,7 @@
 ;; article in a moderated group only when it carries Approved.
 (defthm fn-peer-transfer-never-stages-an-unapproved-moderated-article
   (implies (not (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets
-                                                   clock generation id subject))
+                                                   clock generation id subject h))
                        node))
            (or (fn-peer-article-approvedp octets)
                (not (fn-peer-moderated-namesp
@@ -175,7 +175,7 @@
                        (fn-node-acceptance
                         (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets
                                                     clock generation id
-                                                    subject)))))
+                                                    subject h)))))
                      (fn-cfg-value cfg) (fn-cfg-generation cfg)))))
   :rule-classes nil
   :hints (("Goal" :use (fn-peer-refused-transfer-leaves-the-node

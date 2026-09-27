@@ -22,9 +22,14 @@
             nil)
           '(13 10)
           (fn-nntp-string-octets "Hi") '(13 10)))
+;; by specification: the flip -- an accepted article's payload is an arena
+;; handle (natp), not its octets.  The article accepted at SEQ carries handle
+;; SEQ-1 (0, 1, 2: distinct payloads, distinct handles); (ss-payload msgid
+;; subject refs) stays the bytes that handle stands for.
 (defun ss-add (st seq msgid subject refs groups)
+  (declare (ignore subject refs))
   (fn-accept-complete
-   (fn-accept-prepare st 1 msgid (ss-payload msgid subject refs) groups
+   (fn-accept-prepare st 1 msgid (nfix (- seq 1)) groups
                       841000000)
    (- seq 1) 1 :durable))
 (defconst *ss-archive*

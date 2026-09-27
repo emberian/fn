@@ -1,7 +1,8 @@
 ; fn: witnesses and teeth for books/store-recover-stream.lisp (lane
 ; recover-memory, PKT-823): the chunked full replay the host runs
-; (host/native/io.lisp fnn-bridge-recover -> host/store-node-host.lisp
-; fn-store-sn-recover-step -> fn-srs-step).
+; (host/native/io.lisp fnn-bridge-recover: per chunk fn-store-decode-records,
+; which is fn-srs-decode, then fn-srs-intern-step; the two calls of
+; fn-srs-step's body; then fn-srs-rows into fn-store-sn-recover-rows).
 ;
 ; The history is three real journal records (fn-rcon-record-encode-impl of
 ; records the codec decodes back exactly); the arena is a local one.
@@ -98,7 +99,7 @@
 (assert-event
  (let ((one (srst-one (list *srst-history*)))
        (ref (srst-intern-of-decode *srst-history*)))
-   (and (equal (reverse (car one)) (car ref))
+   (and (equal (fn-srs-rows (car one)) (car ref))
         (equal (cadr one) (cadr ref))
         (equal (cadr one) '((65 66 67) (68 69) (70)))
         (equal (len (car one)) 3))))

@@ -232,7 +232,8 @@
 ; record, the store returns to :ready with the history kept, the node moves.
 (defconst *acar-t-st* (fn-own-store (fn-ocfg-owner *acar-t-completing*)))
 (assert-event (fn-sn-completion-enabledp *acar-t-st*))
-(assert-event (fn-record-p (fn-sn-completion-record *acar-t-st*)))
+; by specification: the flip: the article completion is a held row.
+(assert-event (fn-held-p (fn-sn-completion-record *acar-t-st*)))
 (assert-event (fn-cst-relation *acar-t-st*))
 (assert-event (fn-cst-relation (fn-sn-finish *acar-t-st*)))
 (assert-event (equal (fn-sf-phase (fn-sn-files (fn-sn-finish *acar-t-st*))) :ready))

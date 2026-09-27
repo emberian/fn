@@ -265,3 +265,11 @@
 (assert-event (equal (fn-ncl-secret-of-file '(112 119 10)) '(112 119)))
 (assert-event (equal (fn-ncl-secret-of-file '(112 119 13 10)) '(112 119)))
 (assert-event (equal (fn-ncl-secret-of-file '(112 119)) '(112 119)))
+
+; PKT-709: help and the register steps.
+(assert-event (equal (fn-ncl-cli-plan '(104 101 108 112) nil) (list :help)))
+(assert-event (stringp (fn-ncl-usage-text)))
+(assert-event (equal (fn-ncl-cli-after :register :refused) (list :bootstrap :register)))
+(assert-event (null (fn-ncl-cli-after :register :uncertain)))
+(assert-event (null (fn-ncl-cli-after :register :accepted)))
+(assert-event (null (fn-ncl-cli-after :poll :refused)))

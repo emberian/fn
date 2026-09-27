@@ -28,9 +28,12 @@
 
 (make-event `(defconst *bprt-journal* ',(list *bprr-config-record* *bprr-request-record*
         *bprr-intent-record* *bprr-decision-record*)))
-(make-event `(defconst *bprt-state* ',(cadr (fn-bprr-replay *bpr-recovered-ready-store* *bprt-journal*))))
+(bpr-lift fn-bprr-replay 2)
+(bpr-lift fn-bprv-find-record 4)
 
-(assert-event (car (fn-bprr-replay *bpr-recovered-ready-store* *bprt-journal*)))
+(make-event `(defconst *bprt-state* ',(cadr (in-arena-fn-bprr-replay *bpr-payloads* *bpr-recovered-ready-store* *bprt-journal*))))
+
+(assert-event (car (in-arena-fn-bprr-replay *bpr-payloads* *bpr-recovered-ready-store* *bprt-journal*)))
 (assert-event (fn-sn-statep *bpr-recovered-ready-store*))
 (assert-event (equal (fn-sf-phase (fn-sn-files *bpr-recovered-ready-store*)) :ready))
 
@@ -45,15 +48,17 @@
 ; identities that a witness conflating them would not separate.
 (make-event `(defconst *bprt-context* ',(fn-bpr-find-context (fn-bpa-request-work-id *bpr-request*)
                        (fn-bpr-state-contexts *bprt-state*))))
-(make-event `(defconst *bprt-record* ',(fn-bprv-find-record *bpr-recovered-ready-store*
-                       (fn-bpr-state-config *bprt-state*) *bprt-context*
-                       (fn-sf-records (fn-sn-files *bpr-recovered-ready-store*)))))
+(make-event `(defconst *bprt-record* ',(in-arena-fn-bprv-find-record *bpr-payloads* *bpr-recovered-ready-store* (fn-bpr-state-config *bprt-state*) *bprt-context* (fn-sf-records (fn-sn-files *bpr-recovered-ready-store*)))))
 (assert-event (fn-record-p *bprt-record*))
+;; The found record is the WIRE form of the retained row (records-flip).
+(bpr-lift fn-bpi-node-wire-committedp 2)
+(bpr-lift fn-bpr-rows-stand-for 2)
+
 (assert-event
- (member-equal *bprt-record*
-               (fn-sf-records (fn-sn-files *bpr-recovered-ready-store*))))
+ (in-arena-fn-bpr-rows-stand-for *bpr-payloads* *bprt-record* (fn-sf-records (fn-sn-files *bpr-recovered-ready-store*))))
+(assert-event (equal *bprt-record* *bpr-record*))
 (assert-event
- (fn-bpi-node-record-committedp (fn-sn-node *bpr-recovered-ready-store*) *bprt-record*))
+ (in-arena-fn-bpi-node-wire-committedp *bpr-payloads* (fn-sn-node *bpr-recovered-ready-store*) *bprt-record*))
 (assert-event
  (equal *bprt-context* (fn-bpr-context-from-request *bprt-record* *bpr-request*)))
 (assert-event
@@ -89,7 +94,7 @@
 ; finished its barriers.
 (assert-event
  (null (fn-bpr-receipt-adu
-        (cadr (fn-bprr-replay *bpr-recovering-store* *bprt-journal*))
+        (cadr (in-arena-fn-bprr-replay *bpr-payloads* *bpr-recovering-store* *bprt-journal*))
         *bpr-request*)))
 (assert-event
  (not (equal (fn-sf-phase (fn-sn-files *bpr-recovering-store*)) :ready)))
@@ -100,13 +105,13 @@
     (let* ((store *bpr-recovering-store*)
            (records *bprt-journal*)
            (request *bpr-request*)
-           (st (cadr (fn-bprr-replay store records)))
+           (st (cadr (fn-bprr-replay store records fn-arena)))
            (context (fn-bpr-find-context (fn-bpa-request-work-id request)
                                          (fn-bpr-state-contexts st)))
            (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
                                        (fn-bpr-state-receipts st)))
            (record (fn-bprv-find-record store (fn-bpr-state-config st) context
-                                        (fn-sf-records (fn-sn-files store)))))
+                                        (fn-sf-records (fn-sn-files store)) fn-arena)))
       (and (fn-sn-statep store)
            (equal (fn-sf-phase (fn-sn-files store)) :ready)
            (fn-record-p record)
@@ -131,13 +136,12 @@
 (assert-event (not (let* ((store *bpr-recovering-store*)
            (records *bprt-journal*)
            (request *bpr-request*)
-           (st (cadr (fn-bprr-replay store records)))
+           (st (cadr (in-arena-fn-bprr-replay *bpr-payloads* store records)))
            (context (fn-bpr-find-context (fn-bpa-request-work-id request)
                                          (fn-bpr-state-contexts st)))
            (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
                                        (fn-bpr-state-receipts st)))
-           (record (fn-bprv-find-record store (fn-bpr-state-config st) context
-                                        (fn-sf-records (fn-sn-files store)))))
+           (record (in-arena-fn-bprv-find-record *bpr-payloads* store (fn-bpr-state-config st) context (fn-sf-records (fn-sn-files store)))))
       (and (fn-sn-statep store)
            (equal (fn-sf-phase (fn-sn-files store)) :ready)
            (fn-record-p record)
@@ -167,7 +171,7 @@
 (make-event `(defconst *bprt-intent-only* ',(list *bprr-config-record* *bprr-request-record* *bprr-intent-record*)))
 (assert-event
  (null (fn-bpr-receipt-adu
-        (cadr (fn-bprr-replay *bpr-recovered-ready-store* *bprt-intent-only*))
+        (cadr (in-arena-fn-bprr-replay *bpr-payloads* *bpr-recovered-ready-store* *bprt-intent-only*))
         *bpr-request*)))
 
 (local
@@ -176,13 +180,13 @@
     (let* ((store *bpr-recovered-ready-store*)
            (records *bprt-intent-only*)
            (request *bpr-request*)
-           (st (cadr (fn-bprr-replay store records)))
+           (st (cadr (fn-bprr-replay store records fn-arena)))
            (context (fn-bpr-find-context (fn-bpa-request-work-id request)
                                          (fn-bpr-state-contexts st)))
            (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
                                        (fn-bpr-state-receipts st)))
            (record (fn-bprv-find-record store (fn-bpr-state-config st) context
-                                        (fn-sf-records (fn-sn-files store)))))
+                                        (fn-sf-records (fn-sn-files store)) fn-arena)))
       (and (fn-sn-statep store)
            (equal (fn-sf-phase (fn-sn-files store)) :ready)
            (fn-record-p record)
@@ -207,13 +211,12 @@
 (assert-event (not (let* ((store *bpr-recovered-ready-store*)
            (records *bprt-intent-only*)
            (request *bpr-request*)
-           (st (cadr (fn-bprr-replay store records)))
+           (st (cadr (in-arena-fn-bprr-replay *bpr-payloads* store records)))
            (context (fn-bpr-find-context (fn-bpa-request-work-id request)
                                          (fn-bpr-state-contexts st)))
            (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
                                        (fn-bpr-state-receipts st)))
-           (record (fn-bprv-find-record store (fn-bpr-state-config st) context
-                                        (fn-sf-records (fn-sn-files store)))))
+           (record (in-arena-fn-bprv-find-record *bpr-payloads* store (fn-bpr-state-config st) context (fn-sf-records (fn-sn-files store)))))
       (and (fn-sn-statep store)
            (equal (fn-sf-phase (fn-sn-files store)) :ready)
            (fn-record-p record)

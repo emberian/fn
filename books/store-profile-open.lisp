@@ -152,17 +152,92 @@
   (equal (fn-bs-profile-invalid-reason saved)
          :max-record-octets-above-the-poll-reply))
 
+;; PKT-705 (D34): the profile's layout.  A store's config.json is a sealed
+;; profile frame of the format word fn-store-8 followed by the frontier text and
+;; a run of u64 fields; header-limits-profile (batch AS) grew that run from
+;; 13 fields to 16 under the same word, so the width of the run is how the open
+;; tells a store made by another release.  No such store is translated
+;; (D34): it is refused by name, with the way out.
+
+(defun fn-spo-nat-specs (n)
+  (declare (xargs :guard (natp n)))
+  (if (zp n) nil (cons :nat (fn-spo-nat-specs (1- n)))))
+
+; The profile layout of N u64 fields: the spec a release whose profile had N
+; fields sealed its config.json under.  (fn-spo-layout-spec 16) is
+; *fn-bs-meta-profile-spec*; (fn-spo-layout-spec 13) is the layout before
+; batch AS.
+(defun fn-spo-layout-spec (n)
+  (declare (xargs :guard (natp n)))
+  (list* :text :text (fn-spo-nat-specs n)))
+
+(defconst *fn-spo-release-layout-fields*
+  (- (len *fn-bs-meta-profile-spec*) 2))
+
+; The frame a release whose profile layout has N fields wrote for VALUES.
+(defun fn-spo-layout-frame (n values)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version*
+                 *fn-bs-meta-config-kind*
+                 (fn-frame-fields-octets (fn-spo-layout-spec (nfix n)) values)))
+
+; The layout of a config.json: the number of u64 fields after the format word
+; fn-store-8 and a second text field, when the sealed profile frame is exactly
+; that; NIL for any other octets (no sealed profile frame, another format
+; word, or a tail that is no run of u64 fields).
+(defun fn-spo-layout-fields (octets)
+  (declare (xargs :guard t))
+  (if (not (fn-cbor-octet-listp octets))
+      nil
+    (let ((frame (fn-frame-open octets *fn-bs-meta-max-config-payload*)))
+      (if (not (fn-bs-meta-frame-okp frame *fn-bs-meta-config-kind*
+                                      (fn-frame-result-payload frame)
+                                      *fn-bs-meta-max-config-payload*))
+          nil
+        (let ((head (fn-frame-fields-parse-aux
+                     '(:text :text) (fn-frame-result-payload frame))))
+          (if (not (and (fn-frame-parse-okp head)
+                        (consp (fn-frame-parse-value head))
+                        (equal (car (fn-frame-parse-value head))
+                               *fn-bs-meta-format-8*)))
+              nil
+            (let ((width (len (fn-frame-parse-rest head))))
+              (if (equal (mod width 8) 0)
+                  (floor width 8)
+                nil))))))))
+
 ; The open the host calls (host/native/io.lisp `fnn-metadata-config-decode').
 (defun fn-spo-config-open (octets)
   (declare (xargs :guard t))
-  (let ((saved (fn-spo-saved-format-8 octets)))
-    (if (and saved (fn-spo-in-the-windowp saved))
-        (list :refused :max-record-octets-above-the-poll-reply)
-      (let ((decoded (fn-bs-config-decode octets)))
-        (cond ((and decoded (fn-bs-profile-admittedp decoded))
-               (list :opened decoded))
-              ((fn-spo-foreign-formatp octets) (list :refused :store-format))
-              (t (list :rejected)))))))
+  (let ((fields (fn-spo-layout-fields octets)))
+    (if (and fields (not (equal fields *fn-spo-release-layout-fields*)))
+        (list :refused :profile-layout fields)
+      (let ((saved (fn-spo-saved-format-8 octets)))
+        (if (and saved (fn-spo-in-the-windowp saved))
+            (list :refused :max-record-octets-above-the-poll-reply)
+          (let ((decoded (fn-bs-config-decode octets)))
+            (cond ((and decoded (fn-bs-profile-admittedp decoded))
+                   (list :opened decoded))
+                  ((fn-spo-foreign-formatp octets) (list :refused :store-format))
+                  (t (list :rejected)))))))))
+
+(local
+ (defthm fn-spo-explode-is-characters
+   (implies (character-listp acc)
+            (character-listp (explode-nonnegative-integer n base acc)))
+   :hints (("Goal" :in-theory (disable floor mod)))))
+
+(defun fn-spo-decimal (n)
+  (declare (xargs :guard (natp n)))
+  (coerce (explode-nonnegative-integer n 10 nil) 'string))
+
+(defun fn-spo-profile-layout-refusalp (verdict)
+  (declare (xargs :guard t))
+  (and (true-listp verdict)
+       (equal (len verdict) 3)
+       (equal (first verdict) :refused)
+       (equal (second verdict) :profile-layout)
+       (natp (third verdict))))
 
 ; The line every open path prints for the refusal (the pre-C1 pattern:
 ; ACL2 renders it, the host carries it).
@@ -172,6 +247,18 @@
          "open refused reason=max-record-octets-above-the-poll-reply: the profile record bound exceeds the poll reply width; reinstall from the release and import")
         ((equal verdict (list :refused :store-format))
          "open refused reason=store-format: reinstall from the release and import")
+        ((fn-spo-profile-layout-refusalp verdict)
+         (let ((older (< (third verdict) *fn-spo-release-layout-fields*)))
+           (concatenate 'string
+                        "open refused reason="
+                        (if older "older-release" "newer-release")
+                        ": store made by "
+                        (if older "an older" "a newer")
+                        " release (profile layout "
+                        (fn-spo-decimal (third verdict))
+                        " fields, this release expects "
+                        (fn-spo-decimal *fn-spo-release-layout-fields*)
+                        "): export it with the release that made it, then import it here")))
         (t nil)))
 
 ; -----------------------------------------------------------------------------
@@ -374,6 +461,329 @@
             (not (fn-spo-in-the-windowp values)))
    :hints (("Goal" :in-theory '(fn-bs-profile-validp fn-spo-in-the-windowp)))))
 
+;; -----------------------------------------------------------------------------
+;; The layout (PKT-705): every frame the decoder reads has this release's
+;; layout, and a frame of any other layout reads as that layout.
+
+(local
+ (defthm fn-spo-nat-specs-all-nat
+   (fn-spo-all-nat-specp (fn-spo-nat-specs n))
+   :hints (("Goal" :induct (fn-spo-nat-specs n)
+            :in-theory (disable floor mod)))))
+
+(local
+ (defthm fn-spo-nat-specs-spec-listp
+   (fn-frame-spec-listp (fn-spo-nat-specs n))
+   :hints (("Goal" :induct (fn-spo-nat-specs n)
+            :in-theory '(fn-spo-nat-specs fn-frame-spec-listp
+                         (:e fn-frame-specp) car-cons cdr-cons
+                         (:t fn-spo-nat-specs) (:e fn-frame-spec-listp))))))
+
+(local
+ (defthm fn-spo-nat-specs-len
+   (equal (len (fn-spo-nat-specs n)) (nfix n))
+   :hints (("Goal" :induct (fn-spo-nat-specs n)
+            :in-theory (disable floor mod)))))
+
+(local
+ (encapsulate ()
+   (local (include-book "arithmetic/top" :dir :system))
+   (defthm fn-spo-eight-fields-width
+     (implies (natp n)
+              (and (equal (mod (* 8 n) 8) 0)
+                   (equal (floor (* 8 n) 8) n))))))
+
+(local
+ (defthm fn-spo-split-eight-len
+   (implies (fn-frame-split 8 x)
+            (equal (len (cdr (fn-frame-split 8 x))) (- (len x) 8)))
+   :hints (("Goal" :use ((:instance fn-frame-split-suffix-len (n 8) (xs x)))
+            :in-theory (disable fn-frame-split-suffix-len fn-frame-split)))))
+
+; A run of u64 fields consumes eight octets a field.
+(local
+ (defthm fn-spo-nat-run-consumes-eight-a-field
+   (implies (and (fn-spo-all-nat-specp specs)
+                 (fn-frame-parse-okp (fn-frame-fields-parse-aux specs x)))
+            (equal (len x)
+                   (+ (* 8 (len specs))
+                      (len (fn-frame-parse-rest
+                            (fn-frame-fields-parse-aux specs x))))))
+   :hints (("Goal" :induct (fn-frame-fields-parse-aux specs x)
+            :in-theory (enable fn-frame-fields-parse-aux fn-frame-field-parse)))))
+
+; The head (the two texts) of a payload that parses under this release's
+; layout: the same format word, and 128 octets before the parse's rest.
+(local
+ (defthm fn-spo-head-of-a-profile-parse
+   (implies (fn-frame-parse-okp
+             (fn-frame-fields-parse-aux *fn-bs-meta-profile-spec* p))
+            (and (fn-frame-parse-okp (fn-frame-fields-parse-aux '(:text :text) p))
+                 (consp (fn-frame-parse-value
+                         (fn-frame-fields-parse-aux '(:text :text) p)))
+                 (equal (car (fn-frame-parse-value
+                              (fn-frame-fields-parse-aux '(:text :text) p)))
+                        (car (fn-frame-parse-value
+                              (fn-frame-fields-parse-aux
+                               *fn-bs-meta-profile-spec* p))))
+                 (equal (len (fn-frame-parse-rest
+                              (fn-frame-fields-parse-aux '(:text :text) p)))
+                        (+ 128 (len (fn-frame-parse-rest
+                                     (fn-frame-fields-parse-aux
+                                      *fn-bs-meta-profile-spec* p)))))))
+   :hints (("Goal"
+            :expand ((fn-frame-fields-parse-aux *fn-bs-meta-profile-spec* p)
+                     (fn-frame-fields-parse-aux (cdr *fn-bs-meta-profile-spec*)
+                                                (fn-frame-parse-rest
+                                                 (fn-frame-field-parse :text p)))
+                     (fn-frame-fields-parse-aux '(:text :text) p)
+                     (fn-frame-fields-parse-aux '(:text)
+                                                (fn-frame-parse-rest
+                                                 (fn-frame-field-parse :text p)))
+                     (fn-frame-fields-parse-aux
+                      nil
+                      (fn-frame-parse-rest
+                       (fn-frame-field-parse
+                        :text (fn-frame-parse-rest (fn-frame-field-parse :text p))))))
+            :use ((:instance fn-spo-nat-run-consumes-eight-a-field
+                             (specs (cddr *fn-bs-meta-profile-spec*))
+                             (x (fn-frame-parse-rest
+                                 (fn-frame-field-parse
+                                  :text (fn-frame-parse-rest
+                                         (fn-frame-field-parse :text p)))))))
+            :in-theory (disable fn-frame-fields-parse-aux fn-frame-field-parse
+                                fn-spo-nat-run-consumes-eight-a-field)))))
+
+; Every frame that parses under this release's layout with the format word
+; fn-store-8 has this release's layout.
+(local
+ (defthm fn-spo-layout-fields-of-a-saved-format-8
+   (implies (and (fn-spo-saved-format-8 octets)
+                 (equal (car (fn-spo-saved-format-8 octets))
+                        *fn-bs-meta-format-8*))
+            (equal (fn-spo-layout-fields octets)
+                   *fn-spo-release-layout-fields*))
+   :hints (("Goal"
+            :use ((:instance fn-spo-head-of-a-profile-parse
+                             (p (fn-frame-result-payload
+                                 (fn-frame-open octets
+                                                *fn-bs-meta-max-config-payload*)))))
+            :in-theory (e/d (fn-spo-saved-format-8 fn-spo-layout-fields
+                             fn-frame-fields-parse)
+                            (fn-spo-head-of-a-profile-parse
+                             fn-frame-fields-parse-aux fn-frame-open
+                             fn-bs-meta-frame-okp))))))
+
+(local
+ (defthm fn-spo-decoded-is-saved-format-8
+   (implies (fn-bs-config-decode octets)
+            (equal (fn-spo-saved-format-8 octets) (fn-bs-config-decode octets)))
+   :hints (("Goal" :in-theory (e/d (fn-spo-saved-format-8 fn-bs-config-decode)
+                                   (fn-bs-profile-validp fn-frame-fields-parse
+                                    fn-frame-open fn-bs-meta-frame-okp))))))
+
+(local
+ (defthm fn-spo-valid-names-format-8
+   (implies (fn-bs-profile-validp values)
+            (equal (car values) *fn-bs-meta-format-8*))
+   :hints (("Goal" :in-theory (e/d (fn-bs-profile-validp fn-bs-profile-invalid-reason
+                                    fn-bs-meta-nth)
+                                   (fn-bs-pf fn-frame-values-okp
+                                    fn-record-encoded-octets-ceiling))))))
+
+(local
+ (defthm fn-spo-decoded-is-valid
+   (implies (fn-bs-config-decode octets)
+            (fn-bs-profile-validp (fn-bs-config-decode octets)))
+   :hints (("Goal" :in-theory (e/d (fn-bs-config-decode)
+                                   (fn-bs-profile-validp))))))
+
+; Every frame the profile decoder decodes has this release's layout.
+(local
+ (defthm fn-spo-layout-fields-of-a-decoded-frame
+   (implies (fn-bs-config-decode octets)
+            (equal (fn-spo-layout-fields octets)
+                   *fn-spo-release-layout-fields*))
+   :hints (("Goal" :use (fn-spo-decoded-is-saved-format-8
+                         fn-spo-decoded-is-valid
+                         (:instance fn-spo-valid-names-format-8
+                                    (values (fn-bs-config-decode octets)))
+                         fn-spo-layout-fields-of-a-saved-format-8)
+            :in-theory (theory 'minimal-theory)))))
+
+; A frame of another format word has no fn-store-8 layout.
+(local
+ (defthm fn-spo-foreign-frame-has-no-layout
+   (implies (fn-spo-foreign-formatp octets)
+            (not (fn-spo-layout-fields octets)))
+   :hints (("Goal"
+            :expand ((fn-frame-fields-parse-aux
+                      '(:text :text)
+                      (fn-frame-result-payload
+                       (fn-frame-open octets *fn-bs-meta-max-config-payload*)))
+                     (fn-frame-fields-parse-aux
+                      '(:text)
+                      (fn-frame-parse-rest
+                       (fn-frame-field-parse
+                        :text (fn-frame-result-payload
+                               (fn-frame-open octets
+                                              *fn-bs-meta-max-config-payload*)))))
+                     (fn-frame-fields-parse-aux
+                      nil
+                      (fn-frame-parse-rest
+                       (fn-frame-field-parse
+                        :text
+                        (fn-frame-parse-rest
+                         (fn-frame-field-parse
+                          :text (fn-frame-result-payload
+                                 (fn-frame-open
+                                  octets *fn-bs-meta-max-config-payload*))))))))
+            :in-theory (e/d (fn-spo-foreign-formatp fn-spo-saved-format-word
+                             fn-spo-layout-fields)
+                            (fn-frame-fields-parse-aux fn-frame-field-parse
+                             fn-frame-open fn-bs-meta-frame-okp))))))
+
+; The frame of N u64 fields reads back as N fields.
+(local
+ (defthm fn-spo-layout-spec-spec-listp
+   (fn-frame-spec-listp (fn-spo-layout-spec n))
+   :hints (("Goal" :in-theory '(fn-spo-layout-spec fn-frame-spec-listp
+                                (:e fn-frame-specp) car-cons cdr-cons
+                                fn-spo-nat-specs-spec-listp)))))
+
+(local
+ (defthm fn-spo-layout-frame-inputp
+   (implies (and (fn-frame-values-okp (fn-spo-layout-spec n) values)
+                 (<= (len (fn-frame-fields-octets (fn-spo-layout-spec n) values))
+                     *fn-bs-meta-max-config-payload*))
+            (fn-frame-inputp *fn-bs-meta-magic* *fn-bs-meta-version*
+                             *fn-bs-meta-config-kind*
+                             (fn-frame-fields-octets (fn-spo-layout-spec n) values)
+                             *fn-bs-meta-max-config-payload*))
+   :hints (("Goal"
+            :use ((:instance fn-frame-fields-octets-are-octets
+                             (specs (fn-spo-layout-spec n))))
+            :in-theory (e/d (fn-frame-inputp fn-frame-magicp)
+                            (fn-frame-fields-octets-are-octets
+                             fn-spo-layout-spec fn-frame-fields-octets
+                             fn-frame-values-okp))))))
+
+(local
+ (defthm fn-spo-head-of-a-layout-payload
+   (implies (and (fn-frame-spec-listp specs)
+                 (fn-frame-values-okp (list* :text :text specs) values))
+            (equal (fn-frame-fields-parse-aux
+                    '(:text :text)
+                    (fn-frame-fields-octets (list* :text :text specs) values))
+                   (fn-frame-parse-ok
+                    (list (car values) (cadr values))
+                    (fn-frame-fields-octets specs (cddr values)))))
+   :hints (("Goal"
+            :use ((:instance fn-frame-field-parse-of-octets-text
+                             (value (car values))
+                             (rest (append (fn-frame-field-octets :text (cadr values))
+                                           (fn-frame-fields-octets specs (cddr values)))))
+                  (:instance fn-frame-field-parse-of-octets-text
+                             (value (cadr values))
+                             (rest (fn-frame-fields-octets specs (cddr values))))
+                  (:instance fn-frame-fields-octets-are-octets
+                             (specs specs) (values (cddr values)))
+                  (:instance fn-frame-field-octets-are-octets
+                             (spec :text) (value (cadr values))))
+            :expand ((fn-frame-fields-octets (list* :text :text specs) values)
+                     (fn-frame-fields-octets (cons :text specs) (cdr values))
+                     (fn-frame-fields-parse-aux
+                      '(:text :text)
+                      (append (fn-frame-field-octets :text (car values))
+                              (fn-frame-field-octets :text (cadr values))
+                              (fn-frame-fields-octets specs (cddr values))))
+                     (fn-frame-fields-parse-aux
+                      '(:text)
+                      (append (fn-frame-field-octets :text (cadr values))
+                              (fn-frame-fields-octets specs (cddr values))))
+                     (fn-frame-fields-parse-aux
+                      nil (fn-frame-fields-octets specs (cddr values)))
+                     (fn-frame-values-okp (list* :text :text specs) values)
+                     (fn-frame-values-okp (cons :text specs) (cdr values))
+                     (fn-frame-field-okp :text (car values))
+                     (fn-frame-field-okp :text (cadr values)))
+            :in-theory (e/d (fn-cbor-octet-listp-append)
+                            (fn-frame-field-parse-of-octets-text
+                             fn-frame-fields-octets-are-octets
+                             fn-frame-field-octets-are-octets
+                             fn-frame-field-parse fn-frame-field-octets
+                             fn-frame-fields-octets fn-frame-values-okp
+                             fn-frame-field-okp fn-frame-fields-parse-aux))))))
+
+(local
+ (defthm fn-spo-layout-frame-opens
+   (implies (and (natp n)
+                 (fn-frame-values-okp (fn-spo-layout-spec n) values)
+                 (<= (len (fn-frame-fields-octets (fn-spo-layout-spec n) values))
+                     *fn-bs-meta-max-config-payload*))
+            (and (fn-cbor-octet-listp (fn-spo-layout-frame n values))
+                 (equal (fn-frame-open (fn-spo-layout-frame n values)
+                                       *fn-bs-meta-max-config-payload*)
+                        (fn-frame-ok *fn-bs-meta-magic* *fn-bs-meta-version*
+                                     *fn-bs-meta-config-kind*
+                                     (fn-frame-fields-octets
+                                      (fn-spo-layout-spec n) values)))))
+   :hints (("Goal"
+            :use ((:instance fn-spo-layout-frame-inputp)
+                  (:instance fn-frame-open-of-seal
+                             (magic *fn-bs-meta-magic*)
+                             (version *fn-bs-meta-version*)
+                             (kind *fn-bs-meta-config-kind*)
+                             (payload (fn-frame-fields-octets
+                                       (fn-spo-layout-spec n) values))
+                             (max-payload *fn-bs-meta-max-config-payload*))
+                  (:instance fn-spo-seal-octet-listp
+                             (magic *fn-bs-meta-magic*)
+                             (version *fn-bs-meta-version*)
+                             (kind *fn-bs-meta-config-kind*)
+                             (payload (fn-frame-fields-octets
+                                       (fn-spo-layout-spec n) values))
+                             (max-payload *fn-bs-meta-max-config-payload*)))
+            :in-theory '(fn-spo-layout-frame nfix natp)))))
+
+(local
+ (defthm fn-spo-head-of-a-layout-frame-payload
+   (implies (fn-frame-values-okp (fn-spo-layout-spec n) values)
+            (equal (fn-frame-fields-parse-aux
+                    '(:text :text)
+                    (fn-frame-fields-octets (fn-spo-layout-spec n) values))
+                   (fn-frame-parse-ok
+                    (list (car values) (cadr values))
+                    (fn-frame-fields-octets (fn-spo-nat-specs n) (cddr values)))))
+   :hints (("Goal" :use ((:instance fn-spo-head-of-a-layout-payload
+                                    (specs (fn-spo-nat-specs n))))
+            :in-theory '(fn-spo-layout-spec fn-spo-nat-specs-spec-listp)))))
+
+(local
+ (defthm fn-spo-layout-values-tail
+   (implies (fn-frame-values-okp (fn-spo-layout-spec n) values)
+            (fn-frame-values-okp (fn-spo-nat-specs n) (cddr values)))
+   :hints (("Goal"
+            :expand ((fn-frame-values-okp (list* :text :text (fn-spo-nat-specs n))
+                                          values)
+                     (fn-frame-values-okp (cons :text (fn-spo-nat-specs n))
+                                          (cdr values)))
+            :in-theory '(fn-spo-layout-spec car-cons cdr-cons)))))
+
+(defthm fn-spo-layout-fields-of-a-layout-frame
+  (implies (and (natp n)
+                (fn-frame-values-okp (fn-spo-layout-spec n) values)
+                (equal (car values) *fn-bs-meta-format-8*)
+                (<= (len (fn-frame-fields-octets (fn-spo-layout-spec n) values))
+                    *fn-bs-meta-max-config-payload*))
+           (equal (fn-spo-layout-fields (fn-spo-layout-frame n values)) n))
+  :hints (("Goal"
+           :in-theory (e/d (fn-spo-layout-fields fn-bs-meta-frame-okp)
+                           (fn-spo-layout-spec fn-spo-layout-frame
+                            fn-frame-fields-octets fn-frame-fields-parse-aux
+                            fn-frame-seal fn-frame-open fn-frame-values-okp
+                            floor mod)))))
+
 (local
  (defthm fn-spo-open-of-a-valid-frame
    (implies (fn-bs-profile-validp values)
@@ -382,9 +792,20 @@
    :hints (("Goal" :use (fn-spo-saved-format-8-of-encode
                          fn-bs-config-decode-of-encode
                          fn-spo-validp-is-admitted
-                         fn-spo-valid-is-not-in-the-window)
+                         fn-spo-valid-is-not-in-the-window
+                         (:instance fn-spo-layout-fields-of-a-decoded-frame
+                                    (octets (fn-bs-config-encode values))))
             :in-theory (union-theories '(fn-spo-config-open (:e fn-bs-profile-validp))
                                        (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-spo-v2-valid-names-format-8
+   (implies (fn-bs-profile-v2-validp values)
+            (equal (car values) *fn-bs-meta-format-8*))
+   :hints (("Goal" :use fn-bs-profile-v2-valid-shape
+            :in-theory (e/d (fn-bs-meta-nth)
+                            (fn-bs-profile-v2-valid-shape fn-bs-profile-v2-validp
+                             fn-frame-values-okp))))))
 
 (local
  (defthm fn-spo-open-of-a-window-frame
@@ -394,9 +815,15 @@
                    (list :refused :max-record-octets-above-the-poll-reply)))
    :hints (("Goal" :use (fn-bs-profile-v2-valid-above-the-width-is-in-the-window
                          fn-spo-saved-format-8-of-saved-frame
-                         fn-spo-v2-valid-is-shape)
+                         fn-spo-v2-valid-is-shape
+                         fn-spo-v2-valid-names-format-8
+                         (:instance fn-spo-layout-fields-of-a-saved-format-8
+                                    (octets (fn-spo-saved-frame values))))
             :in-theory (e/d (fn-spo-config-open)
-                            (fn-bs-profile-v2-valid-above-the-width-is-in-the-window
+                            (fn-spo-v2-valid-names-format-8
+                             fn-spo-layout-fields-of-a-saved-format-8
+                             fn-spo-layout-fields
+                             fn-bs-profile-v2-valid-above-the-width-is-in-the-window
                              fn-spo-saved-format-8-of-saved-frame
                              fn-spo-v2-valid-is-shape
                              fn-spo-in-the-windowp
@@ -483,13 +910,6 @@
                                    fn-frame-fields-parse fn-frame-field-parse
                                    fn-frame-open)))))
 
-(local
- (defthm fn-spo-decode-is-valid
-   (implies (fn-bs-config-decode octets)
-            (fn-bs-profile-validp (fn-bs-config-decode octets)))
-   :hints (("Goal" :in-theory (e/d (fn-bs-config-decode)
-                                   (fn-bs-profile-validp))))))
-
 ; KEYSTONE (D34, one format).  The open answers `:store-format' exactly for a
 ; frame outside the window that the profile decoder does not decode and that
 ; is a sealed profile frame naming a format other than fn-store-8.  So the
@@ -500,13 +920,72 @@
                         (fn-spo-in-the-windowp (fn-spo-saved-format-8 octets))))
               (not (fn-bs-config-decode octets))
               (fn-spo-foreign-formatp octets)))
-  :hints (("Goal" :use ((:instance fn-spo-decode-is-valid))
+  :hints (("Goal" :use (fn-spo-decoded-is-valid
+                        fn-spo-foreign-frame-has-no-layout
+                        fn-spo-layout-fields-of-a-decoded-frame)
            :in-theory (e/d (fn-spo-config-open fn-bs-profile-admittedp
                             fn-bs-profile-of)
                            (fn-spo-in-the-windowp fn-spo-saved-format-8
                             fn-spo-foreign-formatp fn-bs-config-decode
-                            fn-bs-profile-validp fn-spo-decode-is-valid)))))
+                            fn-bs-profile-validp fn-spo-decoded-is-valid
+                            fn-spo-foreign-frame-has-no-layout
+                            fn-spo-layout-fields-of-a-decoded-frame
+                            fn-spo-layout-fields)))))
+
+;; -----------------------------------------------------------------------------
+;; KEYSTONE (PKT-705, the layout).  Every profile frame a release wrote under a
+;; layout of N u64 fields other than this release's (13 before batch AS) is
+;; refused at the open the host calls by the name of its layout, with N; never
+;; the generic fault (:rejected), and never opened or translated (D34).  With
+;; fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name (this
+;; release's layout), a sealed fn-store-8 profile frame of any layout opens or
+;; is refused by name.
+(defthm fn-spo-open-of-another-layout-refuses-by-name
+  (implies (and (natp n)
+                (not (equal n *fn-spo-release-layout-fields*))
+                (fn-frame-values-okp (fn-spo-layout-spec n) values)
+                (equal (car values) *fn-bs-meta-format-8*)
+                (<= (len (fn-frame-fields-octets (fn-spo-layout-spec n) values))
+                    *fn-bs-meta-max-config-payload*))
+           (equal (fn-spo-config-open (fn-spo-layout-frame n values))
+                  (list :refused :profile-layout n)))
+  :hints (("Goal" :use fn-spo-layout-fields-of-a-layout-frame
+           :in-theory (e/d (fn-spo-config-open)
+                           (fn-spo-layout-fields-of-a-layout-frame
+                            fn-spo-layout-fields fn-spo-layout-frame
+                            fn-spo-layout-spec fn-spo-saved-format-8
+                            fn-spo-in-the-windowp fn-bs-config-decode
+                            fn-spo-foreign-formatp fn-frame-values-okp
+                            fn-frame-fields-octets)))))
+
+; KEYSTONE (the refinement, PKT-705).  The layout refusal is never a frame the
+; decoder decodes: every store this release's open opened before opens the
+; same.
+(defthm fn-spo-config-open-layout-refusal-is-never-a-decoded-frame
+  (implies (equal (fn-spo-config-open octets) (list :refused :profile-layout n))
+           (not (fn-bs-config-decode octets)))
+  :hints (("Goal" :use fn-spo-layout-fields-of-a-decoded-frame
+           :in-theory (e/d (fn-spo-config-open)
+                           (fn-spo-layout-fields-of-a-decoded-frame
+                            fn-spo-layout-fields fn-spo-saved-format-8
+                            fn-spo-in-the-windowp fn-bs-config-decode
+                            fn-spo-foreign-formatp fn-bs-profile-admittedp)))))
+
+; The generic fault is left to octets with this release's layout or with no
+; layout (no sealed fn-store-8 profile frame whose tail is a run of u64
+; fields): a corrupted file, as before.
+(defthm fn-spo-config-open-rejected-has-this-layout-or-none-by-definition
+  (implies (equal (fn-spo-config-open octets) '(:rejected))
+           (or (not (fn-spo-layout-fields octets))
+               (equal (fn-spo-layout-fields octets)
+                      *fn-spo-release-layout-fields*)))
+  :hints (("Goal" :in-theory (e/d (fn-spo-config-open)
+                                  (fn-spo-layout-fields fn-spo-saved-format-8
+                                   fn-spo-in-the-windowp fn-bs-config-decode
+                                   fn-spo-foreign-formatp
+                                   fn-bs-profile-admittedp)))))
 
 (in-theory (disable fn-spo-config-open fn-spo-saved-format-word
+                    fn-spo-layout-fields fn-spo-layout-frame
                     fn-spo-saved-format-8 fn-spo-saved-frame
                     fn-bs-profile-v2-invalid-reason))

@@ -151,9 +151,11 @@
   (let ((state (f-put-global 'fn-owner-app-refusal-reason reason state)))
     (value :busy)))
 
+;; The records flip (flip-L4): the transit lookup reads the owner Store's rows
+;; through the live arena (read-only).
 (defun fn-owner-app-plan-install
-  (inbound-id request-octets node-id bundle-identity ingress source-eid state)
-  (declare (xargs :stobjs state :mode :program)
+  (inbound-id request-octets node-id bundle-identity ingress source-eid fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program)
            ; The provenance is the transit plan's (its evidence, element 6).
            (ignorable node-id bundle-identity))
   (let* ((joined (f-get-global 'fn-bpaj-state state))
@@ -202,7 +204,7 @@
              (intent (or existing new-intent))
              (lookup (and request intent
                           (fn-bpaj-transit-record-lookup-fast
-                           (fn-owner-store state) request intent)))
+                           (fn-owner-store state) request intent fn-arena)))
              (bindingp (equal (car lookup) :found))
              (freshp (and (equal status :new) new-intent
                           (or (and (equal (car plan) :submit)
@@ -281,14 +283,14 @@
 
 (defun fn-owner-app-plan
   (inbound-id request-octets node-id bundle-identity ingress
-              bundle-source bundle-destination state)
-  (declare (xargs :stobjs state :mode :program))
+              bundle-source bundle-destination fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((state (f-put-global 'fn-owner-app-bundle-source bundle-source state))
          (state (f-put-global 'fn-owner-app-bundle-destination
                               bundle-destination state))
          (state (f-put-global 'fn-owner-app-refusal-reason nil state)))
     (fn-owner-app-plan-install inbound-id request-octets node-id
-                               bundle-identity ingress bundle-source state)))
+                               bundle-identity ingress bundle-source fn-arena state)))
 
 ; The receiver's line for transfer XFER-ID that fnn-bpapp-accept-locked
 ; answered RESULT, with the reason the last plan left (nil when the plan was
@@ -341,13 +343,13 @@
 ; Sole ACL2 application admission event.  The request intent must already be
 ; durable: fn-bpaj-dispatch-fast is called over the same bound owner Store, and
 ; only its :submit action reaches the ordinary control submission transition.
-(defun fn-owner-app-submit (state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-app-submit (fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((request (f-get-global 'fn-owner-app-request state))
          (generation (f-get-global 'fn-owner-app-generation state))
          (action (fn-bpaj-dispatch-fast
                   (f-get-global 'fn-bpaj-state state)
-                  (fn-owner-store state) request generation)))
+                  (fn-owner-store state) request generation fn-arena)))
     (if (not (equal action (list :submit)))
         ; The dispatcher's own reason is the refusal's (or the deferral's).
         (let ((state (f-put-global 'fn-owner-app-refusal-reason
@@ -369,14 +371,14 @@
          (f-get-global 'fn-owner-app-groups state)
          (f-get-global 'fn-owner-app-article state) state)))))
 
-(defun fn-owner-app-record (state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-app-record (fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((request-octets (f-get-global 'fn-owner-app-request state))
          (request (fn-bpaj-request request-octets))
          (intent (fn-bpaj-request-intent
                   (f-get-global 'fn-bpaj-state state) request-octets))
          (answer (fn-bpaj-transit-record-lookup-fast
-                  (fn-owner-store state) request intent))
+                  (fn-owner-store state) request intent fn-arena))
          (record (and (equal (car answer) :found) (cadr answer)))
          (state (f-put-global 'fn-owner-app-record
                               (and record (fn-record-encode record)) state))
