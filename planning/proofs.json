@@ -11163,13 +11163,22 @@
         "PRF-297"
       ],
       "assumptions": [],
-      "status": "planned",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/store-log-damage.lisp",
         "tests/acl2/store-log-damage-tests.lisp",
         "tests/test_native_log_damage.py",
         "tests/test_native_fuzz_nntp.py",
         "planning/evidence/log-corruption-2026-09-27.md"
+      ],
+      "events": [
+        "fn-lgdm-open-verdict-is-the-classification",
+        "fn-lgdm-no-silent-prefix",
+        "fn-lgdm-damage-lies-in-the-last-write",
+        "fn-lgdm-repair-is-only-the-confirmed-damage",
+        "fn-lgdm-run-first-is-the-least-valid",
+        "fn-lgdm-least-valid-finds-any-witness",
+        "fn-lgdm-least-valid-is-valid"
       ]
     }
   ]
