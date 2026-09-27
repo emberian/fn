@@ -251,10 +251,10 @@
       "name": "keep until release, refuse the unaffordable",
       "contract": "An article prepare at the store profile's transaction budget is refused `unaffordable` by name, and below it is exactly the owner's prepare.",
       "host": {
-        "function": "fn-pcar-sbud-prepare",
+        "function": "fn-psrv-prepare",
         "file": "host/owner-host.lisp"
       },
-      "bridge": "fn-pcar-sbud-prepare-is-sbud-prepare",
+      "bridge": "fn-psrv-prepare-is-sbud-prepare-when-served",
       "keystone": "fn-sbud-prepare-refuses-at-budget",
       "tested": {
         "image": "69046a76",

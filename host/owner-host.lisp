@@ -54,6 +54,10 @@
 ; The retention admission of a POST through a carried obligation-id trie
 ; (fn-prc-refresh, fn-prc-sbud-prepare; fn-owner-prepare-buffer).
 (include-book "../books/post-retain-carried")
+;; lane prepare-served: the served decision inside the prepares the host calls
+;; (fn-psrv-prepare, fn-psrv-refusal-kind, fn-psrv-prepare-identity,
+;; fn-psrv-prepare-topic) and the configuration un-stage (fn-psrv-unstage).
+(include-book "../books/owner-prepare-served")
 ; PRF-180: the per-POST caches advanced through the derived event index.
 (include-book "../books/store-carried-folds")
 (include-book "../books/owner-log-route")
@@ -846,6 +850,19 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-oclc-live-authorizep (fn-owner-ocfg state))))
 
+;; lane prepare-served: a live request refused BEFORE its record was written
+;; (the authorization above, the candidate open, or the immutable publisher's
+;; :refused; host/native/admin.lisp fnn-owner-live-reconfigure-locked) drops
+;; the staged record, ACL2's fn-psrv-unstage (KEYSTONE
+;; fn-psrv-unstage-preserves-invariant).  Before it the staged record stayed:
+;; the configuration lock held and :begin/:take refused every POST until a
+;; restart.  Answers :unstaged, or :none when nothing was staged.
+(defun fn-owner-reconfigure-unstage (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((before (fn-owner-ocfg state))
+         (state (fn-owner-install-ocfg (fn-psrv-unstage before) state)))
+    (value (if (fn-ocfg-staged before) :unstaged :none))))
+
 (defun fn-owner-config-generation (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cfg-generation (fn-owner-config state))))
@@ -937,9 +954,8 @@
             (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
         (mv nil :invalid fn-arena state)
       ; A name in the domain but not served at the live generation (a retired
-      ; group) is refused by the predicate fn-cnode-prepare applies.
-      (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
-          (mv nil :refused fn-arena state)
+      ; group) is refused by the prepare itself (fn-psrv-prepare, lane
+      ; prepare-served): the host makes no served test of its own.
       (let* ((msgid (fn-store-octets->string msgid-octets))
              (existing (fn-store-existing-action msgid payload groups s fn-arena)))
         (if existing
@@ -984,20 +1000,26 @@
                                               (fn-sn-keyring-generation s)
                                               (fn-arena-count fn-arena)
                                               (fn-owner-parse-carry state))))
+                 (carry (fn-prc-refresh (fn-owner-retain-carry state)
+                                        (fn-node-retention (fn-sn-node s))))
                  (state (if (equal record :clock-unusable)
                             state
-                          (fn-owner-install-ocfg
-                           (fn-pcar-sbud-prepare before row budget)
-                           state))))
+                          (let ((state (f-put-global 'fn-owner-retain-carry
+                                                     carry state)))
+                            ; fn-psrv-prepare: the served test, then
+                            ; fn-prc-sbud-prepare, as the buffer entry below.
+                            (fn-owner-install-ocfg
+                             (fn-psrv-prepare before row budget carry)
+                             state)))))
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
-                (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
+                (mv nil (fn-psrv-refusal-kind before row budget) fn-arena state)
               ; The entry reads the arena only (no invariant-risk: it runs
               ; compiled, no callee re-checks its guard); it names the payload
               ; and the host seals it with one fn-arena-seal-list call
               ; (tools/run_owner.py prepare), exactly when the Store changed.
-              (mv nil (list :seal payload) fn-arena state))))))))))))
+              (mv nil (list :seal payload) fn-arena state)))))))))))
 
 (defun fn-owner-refuse-reservation (fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
@@ -1055,8 +1077,9 @@
             (not (fn-store-text-octetsp subject-octets))
             (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
         (mv nil :invalid fn-arena state)
-      (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
-          (mv nil :refused fn-arena state)
+      ; A retired group (in the domain, not served at the live generation)
+      ; is refused by the prepare below (fn-psrv-prepare, lane
+      ; prepare-served): the host makes no served test of its own.
       (let* ((msgid (fn-store-octets->string msgid-octets))
              ; PRF-191: the held article through the view trie
              ; (books/post-identity-index.lisp
@@ -1109,18 +1132,22 @@
                            ; sbud-prepare): the duplicate test reads the view
                            ; trie and the retention admission the carried id
                            ; trie, decided once.
-                           (fn-prc-sbud-prepare before row budget carry)
+                           ; fn-psrv-prepare (lane prepare-served): the
+                           ; served test is the prepare's own, then
+                           ; fn-prc-sbud-prepare (KEYSTONE
+                           ; fn-psrv-prepare-preserves-invariant).
+                           (fn-psrv-prepare before row budget carry)
                            state)))))
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
-                (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
+                (mv nil (fn-psrv-refusal-kind before row budget) fn-arena state)
               ; Reads the arena and the buffer only (no invariant-risk; see
               ; fn-owner-prepare): :seal-buffer tells the host to seal the
               ; buffer's payload with one fn-arena-seal-buffer call
               ; (host/native/owner.lisp fnn-owner-attempt), exactly when the
               ; Store changed.
-              (mv nil :seal-buffer fn-arena state))))))))))))
+              (mv nil :seal-buffer fn-arena state)))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge fn-arena state)
@@ -1159,8 +1186,12 @@
       ;; fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record).
       ;; Guard-verified under fn-sn-statep of the store, which fn-ocl-relation
       ;; carries.
+      ;; fn-psrv-prepare-identity (lane prepare-served) is this prepare
+      ;; when the signed composite's article groups are served, and the
+      ;; owner unchanged otherwise (KEYSTONE
+      ;; fn-psrv-prepare-identity-preserves-invariant).
       (let ((state (fn-owner-install-ocfg
-                    (fn-ccar-ocfg-prepare-identity (fn-owner-ocfg state) event)
+                    (fn-psrv-prepare-identity (fn-owner-ocfg state) event)
                     state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
 
@@ -1178,12 +1209,18 @@
 ; ACL2 constructs the exact topic event before this host boundary. Store's
 ; carried historical projection decides whether it may be staged.
 (defun fn-owner-prepare-topic (event fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :mode :program)
+           (ignorable fn-arena))
   (let ((s (fn-owner-store state)))
     (if (not (fn-th-topic-eventp event))
         (value :invalid)
-      (let ((state (fn-owner-step
-                    (list :store (list :prepare-topic event)) fn-arena state)))
+      ; fn-psrv-prepare-topic (lane prepare-served): (:store (:prepare-topic
+      ; E)) when the consumer projection accepts E, which its completion
+      ; needs (fn-psrv-prepare-topic-is-ocfg-step-when-admitted,
+      ; fn-psrv-prepare-topic-preserves-invariant).
+      (let ((state (fn-owner-install-ocfg
+                    (fn-psrv-prepare-topic (fn-owner-ocfg state) event)
+                    state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
 
 ; This is the one owner-side proposal read. ACL2 selects an exact earlier T10
