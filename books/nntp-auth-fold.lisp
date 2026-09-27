@@ -493,7 +493,8 @@
                            (fn-peer-step-pinned fn-nntp-tokenize
                             fn-nntp-keywordp))
            :use ((:instance fn-auth-fold-peer-step-starts-post-awaiting-only-on-post
-                            (ps (fn-auth-session-base as)))))))
+                            (ps (fn-auth-session-base as))
+                            (config (fn-auth-moderation-config as config)))))))
 
 (defun fn-auth-fold-post-awaiting (as)
   (declare (xargs :guard t))
@@ -688,7 +689,8 @@
                 (fn-peer-step-pinned fn-auth-command
                  fn-nntp-tokenize fn-nntp-keywordp))
            :use ((:instance fn-auth-fold-peer-step-no-local-submission
-                            (ps (fn-auth-session-base as)))))))
+                            (ps (fn-auth-session-base as))
+                            (config (fn-auth-moderation-config as config)))))))
 
 (defun fn-auth-fold-safe-connp (conn)
   (declare (xargs :guard t :verify-guards nil))

@@ -243,6 +243,10 @@
                 (append (fn-cfg-rows-without-binding (fn-cfg-accounts v)
                                                      (fn-cfg-delta-a d))
                         (fn-cfg-delta-rows d)))
+               ((equal (fn-cfg-delta-kind d) :set-group-moderation)
+                (append (fn-cfg-rows-without-moderation (fn-cfg-accounts v)
+                                                        (fn-cfg-delta-a d))
+                        (fn-cfg-delta-rows d)))
                (t (fn-cfg-accounts v))))
   :hints (("Goal" :in-theory (enable fn-cfg-apply-delta fn-cfg-set-groups))))
 
@@ -258,6 +262,20 @@
                        (car (fn-cfg-rows-with-key rows k)))))
   :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
                                      fn-cfg-rows-without-binding)))))
+
+; The slot's moderation writer (P3, PRF-228, code 23): it removes only
+; moderation and moderator rows (marks 5 and 4).
+(local (defthm fn-acct-rows-with-key-of-rows-without-moderation
+  (implies (and (consp (fn-cfg-rows-with-key rows k))
+                (not (fn-cfg-moderation-rowp (car (fn-cfg-rows-with-key rows k))))
+                (not (fn-cfg-moderator-rowp (car (fn-cfg-rows-with-key rows k)))))
+           (and (consp (fn-cfg-rows-with-key
+                        (fn-cfg-rows-without-moderation rows l) k))
+                (equal (car (fn-cfg-rows-with-key
+                             (fn-cfg-rows-without-moderation rows l) k))
+                       (car (fn-cfg-rows-with-key rows k)))))
+  :hints (("Goal" :in-theory (enable fn-cfg-rows-with-key
+                                     fn-cfg-rows-without-moderation)))))
 
 ; -----------------------------------------------------------------------------
 ; Once only
@@ -276,6 +294,8 @@
                                      fn-cfg-account-redeemedp
                                      fn-cfg-account-row
                                      fn-cfg-binding-rowp
+                                     fn-cfg-moderation-rowp
+                                     fn-cfg-moderator-rowp
                                      fn-cfg-ag-car)
            :cases ((equal (fn-cfg-delta-a d) digest)))))
 

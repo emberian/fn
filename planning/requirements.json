@@ -3898,6 +3898,39 @@
         "planning/evidence/transit-pipelining-2026-09-27.md"
       ],
       "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
+    },
+    {
+      "id": "NNT-047",
+      "title": "A moderated group holds an unapproved local post for its moderators (never posting it), commits an article carrying Approved from a moderator's login, refuses an Approved from anyone else by name, lists the group with status m, and a relay refuses an unapproved article in it",
+      "specification": "specs/nntp.md#moderated-groups-nnt-047",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-228"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/accounts.lisp",
+        "books/account-list.lisp",
+        "books/moderation.lisp",
+        "books/nntp-post.lisp",
+        "books/nntp-responses.lisp",
+        "books/nntp-auth.lisp",
+        "books/owner-agent.lisp",
+        "books/peer-inbound.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/moderation-tests.lisp",
+        "tests/test_native_moderation.py",
+        "planning/evidence/moderated-groups-2026-09-27.md",
+        "host/native-admin-host.lisp"
+      ],
+      "implementation_note": "RFC 5537 section 3.5 item 7 and 3.5.1 (forward, never post; method 1, application/news-transmission; usage=moderate), section 7 (verify the approver by transport authentication), sections 3.6 item 6 and 3.7 item 5 (relay/serving refusal); RFC 6048 section 2.1.1 (m). fn has no mail path: the forward is an envelope article into the group's queue group (an ordinary Store article: no new persistence domain). The moderator is an account with a role (accounts slot, marks 4 and 5; delta code 23). The 441 texts naming the reason are a stronger fn guarantee. A control message is not gated. Not done: `moderation list/approve/reject` verbs (PKT-657), a PGPMoose-style signed approval, excluding the queue group from feeds and from non-moderator readers (PKT-658)."
     }
   ]
 }

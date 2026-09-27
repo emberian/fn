@@ -1225,9 +1225,67 @@
      nil))
    (t nil)))
 
+;; Moderated groups (P3, PRF-228; books/moderation.lisp).  The posting
+;; configuration a delegated command is served: the connection's, with each
+;; moderated group whose moderators include this connection's login seen as
+;; :approver.  The login is the AUTHINFO USER name once the connection
+;; authenticated (the pending slot keeps it, as books/login-binding.lisp
+;; reads it); a connection that has not authenticated approves nothing.
+(defun fn-auth-moderation-login (as)
+  (declare (xargs :guard t))
+  (and (fn-auth-session-subject as) (fn-auth-session-pending as)))
+
+(defun fn-auth-moderation-config (as config)
+  (declare (xargs :guard t))
+  (let ((login (fn-auth-moderation-login as)))
+    (if (and login (fn-inj-config-shapep config))
+        (fn-inj-make-config-full
+         (fn-inj-config-allow config) (fn-inj-config-agent config)
+         (fn-inj-config-groups config) (fn-inj-config-max-octets config)
+         (fn-inj-config-listing config)
+         (fn-mod-session-entries (fn-inj-config-closed config) login))
+      config)))
+
+; The view changes nothing but the status list, and there only which
+; moderated entries this login approves (books/moderation.lisp
+; `fn-mod-session-entries-approver-iff-moderator').
+(defthm fn-auth-moderation-config-closed
+  (equal (fn-inj-config-closed (fn-auth-moderation-config as config))
+         (if (and (fn-auth-moderation-login as) (fn-inj-config-shapep config))
+             (fn-mod-session-entries (fn-inj-config-closed config)
+                                     (fn-auth-moderation-login as))
+           (fn-inj-config-closed config))))
+
+(defthm fn-auth-moderation-config-keeps-the-rest
+  (implies (fn-inj-config-shapep config)
+           (and (equal (fn-inj-config-allow (fn-auth-moderation-config as config))
+                       (fn-inj-config-allow config))
+                (equal (fn-inj-config-agent (fn-auth-moderation-config as config))
+                       (fn-inj-config-agent config))
+                (equal (fn-inj-config-groups (fn-auth-moderation-config as config))
+                       (fn-inj-config-groups config))
+                (equal (fn-inj-config-max-octets
+                        (fn-auth-moderation-config as config))
+                       (fn-inj-config-max-octets config))
+                (equal (fn-inj-config-listing
+                        (fn-auth-moderation-config as config))
+                       (fn-inj-config-listing config))
+                (fn-inj-config-shapep (fn-auth-moderation-config as config)))))
+
+(defthm fn-auth-moderation-config-agent
+  (equal (fn-inj-config-agent (fn-auth-moderation-config as config))
+         (fn-inj-config-agent config)))
+
+(defthm fn-auth-moderation-config-without-a-login
+  (implies (not (fn-auth-moderation-login as))
+           (equal (fn-auth-moderation-config as config) config)))
+
+(in-theory (disable fn-auth-moderation-login fn-auth-moderation-config))
+
 (defun fn-auth-delegate (as archive config observation injection wire-event)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((r (fn-peer-step (fn-auth-session-base as) archive config observation
+  (let ((r (fn-peer-step (fn-auth-session-base as) archive
+                         (fn-auth-moderation-config as config) observation
                          injection wire-event)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
@@ -1688,7 +1746,8 @@
                             fn-peer-step-preserves-consistent-session
                             fn-nntp-printable-tokenp fn-prin-idp))
            :use ((:instance fn-peer-step-preserves-consistent-session
-                            (ps (fn-auth-session-base as))))))))
+                            (ps (fn-auth-session-base as))
+                            (config (fn-auth-moderation-config as config))))))))
 
 (defthm fn-auth-step-preserves-consistent-session
   (implies (fn-auth-session-consistentp as archive)
@@ -1822,7 +1881,8 @@
                    (fn-auth-step as archive config observation injection
                                  wire-event))
                   (fn-post-result-submission
-                   (fn-peer-step (fn-auth-session-base as) archive config
+                   (fn-peer-step (fn-auth-session-base as) archive
+                                 (fn-auth-moderation-config as config)
                                  observation injection wire-event))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-auth-step fn-auth-delegate
@@ -1888,7 +1948,8 @@
                             fn-peer-step-submission-is-typed))
            :use ((:instance fn-auth-submission-is-the-delegated-submission)
                  (:instance fn-peer-step-submission-is-typed
-                            (ps (fn-auth-session-base as))))))
+                            (ps (fn-auth-session-base as))
+                            (config (fn-auth-moderation-config as config))))))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
@@ -3076,7 +3137,8 @@
     (as archive index verdicts config observation injection wire-event)
   (declare (xargs :guard t :verify-guards nil))
   (let ((r (fn-peer-step-pinned
-            (fn-auth-session-base as) archive index verdicts config
+            (fn-auth-session-base as) archive index verdicts
+            (fn-auth-moderation-config as config)
             observation injection wire-event)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
@@ -3131,7 +3193,8 @@
                             fn-peer-step-pinned-preserves-consistent-session
                             fn-nntp-printable-tokenp fn-prin-idp))
            :use ((:instance fn-peer-step-pinned-preserves-consistent-session
-                            (ps (fn-auth-session-base as)))))))
+                            (ps (fn-auth-session-base as))
+                            (config (fn-auth-moderation-config as config)))))))
 
 (defthm fn-auth-step-pinned-preserves-consistent-session
   (implies (and (fn-auth-session-consistentp as archive)
@@ -3195,7 +3258,8 @@
                                         observation injection wire-event))
                   (fn-post-result-submission
                    (fn-peer-step-pinned
-                    (fn-auth-session-base as) archive index verdicts config
+                    (fn-auth-session-base as) archive index verdicts
+                    (fn-auth-moderation-config as config)
                     observation injection wire-event))))
   :rule-classes nil
   :hints (("Goal" :in-theory
@@ -3228,7 +3292,8 @@
            :use ((:instance
                   fn-auth-pinned-submission-is-the-delegated-submission)
                  (:instance fn-peer-step-pinned-submission-is-typed
-                            (ps (fn-auth-session-base as))))))
+                            (ps (fn-auth-session-base as))
+                            (config (fn-auth-moderation-config as config))))))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------

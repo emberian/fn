@@ -237,6 +237,8 @@ A refused POST is answered `441` with the reply below, and the log line for it s
 | --- | --- |
 | `unparsable` | `441 posting failed; the article is not valid syntax` |
 | `group-read-only` | `441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)` |
+| `approval-not-moderator` | `441 posting failed; Approved is accepted only from a moderator of each moderated group named (LIST ACTIVE status m)` |
+| `moderation-unavailable` | `441 posting failed; a moderated group is named and the article could not be forwarded to its moderation queue` |
 | `injection-info` | `441 posting failed; Injection-Info must not be supplied` |
 | `xref` | `441 posting failed; Xref must not be supplied` |
 | `injection-date-present` | `441 posting failed; Injection-Date must not be supplied` |

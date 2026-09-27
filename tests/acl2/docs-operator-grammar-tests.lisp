@@ -104,6 +104,9 @@
     ("docs/operator.md#expose-a-node-to-strangers" 8 "policy" "set" "anonymous" "none")
     ("docs/operator.md#expose-a-node-to-strangers" 9 "policy" "set" "exposure-trusted" "192.168.1.0/24")
     ("docs/operator.md#add-a-group" 2 "group" "retire" "peer1")
+    ("docs/operator.md#moderate-a-group" 1 "group" "create" "fn.announce.moderation")
+    ("docs/operator.md#moderate-a-group" 2 "group" "moderate" "fn.announce" "--moderators" "alice,bob")
+    ("docs/operator.md#moderate-a-group" 3 "group" "moderate" "fn.announce" "--off")
     ("docs/operator.md#accounts-for-friends-invitation-codes" 2 "account" "list")))
 
 (assert-event (null (fn-docs-operator-rejected *fn-docs-operator-argv*))

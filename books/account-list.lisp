@@ -13,6 +13,8 @@
 ;   pending expires EXPIRY
 ;   redeemed LOGIN PRINCIPAL-HEX
 ;   binding LOGIN PRINCIPAL-HEX
+;   moderator LOGIN GROUP           (P3: LOGIN moderates GROUP)
+;   moderation GROUP QUEUE [ADDRESS]
 ;   unknown                         (a mark no writer makes)
 ;
 ; Never a digest or a verifier.
@@ -25,6 +27,9 @@
     (cond ((equal mark 0) :pending)
           ((equal mark 1) :redeemed)
           ((equal mark 2) :binding)
+          ;; P3 (PRF-228): a moderator role and a group's moderation.
+          ((equal mark 4) :moderator)
+          ((equal mark 5) :moderation)
           (t :unknown))))
 
 (defun fn-acct-kind-word (kind)
@@ -32,6 +37,8 @@
   (cond ((equal kind :pending) "pending ")
         ((equal kind :redeemed) "redeemed ")
         ((equal kind :binding) "binding ")
+        ((equal kind :moderator) "moderator ")
+        ((equal kind :moderation) "moderation ")
         (t "unknown")))
 
 (defun fn-acct-list-text (x)
@@ -50,6 +57,17 @@
                       (fn-acct-list-text (fn-cfg-row-b row))))
         ((equal kind :pending)
          (concatenate 'string "expires " (fn-acct-list-text (fn-cfg-row-c row))))
+        ; moderator LOGIN GROUP
+        ((equal kind :moderator)
+         (concatenate 'string (fn-acct-list-text (fn-cfg-row-a row)) " "
+                      (fn-acct-list-text (fn-cfg-row-b row))))
+        ; moderation GROUP QUEUE [ADDRESS]
+        ((equal kind :moderation)
+         (concatenate 'string (fn-acct-list-text (fn-cfg-row-a row)) " "
+                      (fn-acct-list-text (fn-cfg-row-b row))
+                      (if (equal (fn-cfg-row-c row) "") ""
+                        (concatenate 'string " "
+                                     (fn-acct-list-text (fn-cfg-row-c row))))))
         (t "")))
 
 (defun fn-acct-list-line (row)

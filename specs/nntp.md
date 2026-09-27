@@ -737,8 +737,8 @@ NNT-040: a group the operator sets read-only (`group policy NAME n`) refuses a l
 
 RFC 3977 section 7.6.3 gives LIST ACTIVE a status field: `y` (posting
 permitted) or `n` (posting not permitted). RFC 6048 section 2.1 names the
-other values; fn serves `y` and `n` only (`m` is moderation, deferred with
-P3; `x`, `j` and `=` are not served). `n` means *local* postings are not
+other values; fn serves `y`, `n` and `m` (moderation, NNT-047); `x`, `j`
+and `=` are not served. `n` means *local* postings are not
 permitted: articles relayed by peers (IHAVE, TAKETHIS, BP) still arrive,
 which is the RFC's meaning of the flag and not a stronger fn guarantee.
 
@@ -777,6 +777,89 @@ which is the RFC's meaning of the flag and not a stronger fn guarantee.
 - **The claim.** Keystone `fn-gst-post-gate-refuses-exactly-a-listed-n-group`:
   the gate refuses exactly when the article names a group whose listed
   status is `n`. LIST COUNTS still reports `y` for every group (PKT-575).
+
+### Moderated groups (NNT-047)
+
+NNT-047: A moderated group holds an unapproved local post for its moderators (never posting it), commits an article carrying Approved from a moderator's login, refuses an Approved from anyone else by name, lists the group with status m, and a relay refuses an unapproved article in it
+
+RFC 5537 section 3.5 item 7: an injecting agent that receives a
+proto-article naming a moderated group without an Approved header field
+MUST forward it to a moderator (section 3.5.1) or, if that is not possible,
+reject it; section 7: an injecting agent SHOULD verify that an approval
+comes from the moderator by the transport's authentication. Section 3.6
+item 6 lets a relaying agent reject an unapproved article in a moderated
+group ("strongly encouraged"); section 3.7 item 5 requires a serving agent
+to. RFC 6048 section 2.1.1 lists such a group with status `m`.
+
+- **Configuration.** `operator CONFIG group moderate NAME --moderators
+  LOGIN[,LOGIN...] [--queue QUEUE] [--submission ADDRESS]` and `group
+  moderate NAME --off` (offline, or live through the control socket) stage
+  `(:set-group-moderation NAME QUEUE 0 ROWS)`, configuration delta code 23
+  (`books/config.lisp`). A moderator is an account with a role: ROWS are
+  the accounts slot's `(NAME QUEUE ADDRESS 5)` (the group's moderation) and
+  one `(LOGIN NAME "" 4)` per moderator; `--off` removes them. QUEUE
+  defaults to `NAME.moderation`, and must be a live group other than NAME
+  that is not itself moderated, and NAME must not be another moderated
+  group's queue (`:moderation-queue`), so a forwarded article never lands
+  in a moderated group. `account list` prints `moderation NAME QUEUE
+  [ADDRESS]` and `moderator LOGIN NAME`. Keystone
+  `fn-cfg-set-group-moderation-sets-the-moderation`
+  (`books/config-invariants.lisp`) over `fn-cfg-apply-delta`.
+- **One list.** The owner installs one entry `(:moderated G QUEUE LOGINS)`
+  per live moderated group in the posting configuration's status list
+  beside the read-only groups (`books/owner-agent.lisp`
+  `fn-oag-moderation-entries`). A connection authenticated as one of G's
+  moderators sees that entry as `(:approver G QUEUE)`
+  (`books/nntp-auth.lisp` `fn-auth-moderation-config`, applied in
+  `fn-auth-delegate-pinned`); the owner never installs an approver entry
+  (`fn-mod-session-entries-approver-iff-moderator`). LIST and LIST ACTIVE
+  render `m` for G from that list on every connection (`n` wins when the
+  group is also read-only).
+- **POST** (`books/moderation.lisp` `fn-mod-gate`, run by
+  `fn-post-gated-decision` after the read-only gate on an article the
+  injection accepts). An ordinary article naming no moderated group is
+  unchanged. One carrying an Approved field is committed as posted when
+  every moderated group it names is an approver entry on this connection,
+  else refused `441 posting failed; Approved is accepted only from a
+  moderator of each moderated group named (LIST ACTIVE status m)`. One
+  without Approved is forwarded, RFC 5537 section 3.5.1 method 1, to the
+  queue of its leftmost moderated group: the node injects an envelope
+  article (`From: moderation@PATH-IDENTITY`, `Subject: held for moderation
+  in G`, `Newsgroups: QUEUE`, `Message-ID: <fn-moderate.LEFT@RIGHT>` for the
+  proto-article's `<LEFT@RIGHT>`, `Content-Type:
+  application/news-transmission; usage=moderate`) whose body is the
+  proto-article with the Message-ID and Date lines the node added, before
+  any Path, Injection-Info or Injection-Date (section 3.5 item 7). The
+  poster's 240 is the envelope's durable acceptance, exactly as for any
+  POST; the proto-article's own Message-ID is never stored, so the
+  moderator approves by posting the envelope's body with an Approved field
+  from their own login (section 3.9's "moderator ... injecting it"). When
+  the envelope is not injected (the queue is no longer carried, the
+  envelope exceeds the article bound) the POST is refused `441 posting
+  failed; a moderated group is named and the article could not be
+  forwarded to its moderation queue`. A control message (a cancel) is not a
+  posting to the group and is not gated (section 5.3); Supersedes is.
+- **The claims.** Over `fn-post-gated-decision`:
+  `fn-post-unapproved-article-is-never-in-a-moderated-group` (what is
+  committed of an ordinary unapproved article names no moderated group:
+  the committed memberships are the decision's groups),
+  `fn-post-moderator-approved-article-is-committed` and
+  `fn-post-forged-approval-is-refused-by-name`. The envelope never takes a
+  direct submission's identity (`fn-mod-envelope-msgid-is-not-a-generated-id`).
+- **Relay.** `fn-peer-decide-transfer` refuses an article that would be
+  stored in a group moderated here and carries no Approved field,
+  `:unapproved-moderated` ("no Approved header field for a moderated
+  newsgroup", 437/439): IHAVE, TAKETHIS and BP transit alike. An Approved
+  field from a peer is taken as the peer's assertion (RFC 5537 has no
+  standard approval authentication; section 7).
+- **Not done.** The operator verbs `moderation list GROUP`, `moderation
+  approve ID` and `moderation reject ID` (PKT-657): the queue is read and
+  approved over NNTP today. The queue group is an ordinary group: a peer
+  whose feed pattern matches it is offered the envelopes, and every reader
+  can read it until the operator restricts it with `account access`
+  (PKT-658). No PGPMoose-style signed approval. A poster who omits Date gets
+  a node-added Date in the forwarded body, so a resend is a different
+  envelope (D25 conflict), not a duplicate.
 
 ### Own-post cancel and Cancel-Lock (SEC-006)
 
@@ -828,8 +911,8 @@ the lock is fixed before the forger chooses), an assumption to be named in
 ### Not yet true of POST
 
 There is no
-freshness window on a supplied `Date` (RFC 5537 §3.5 item 3), no
-trusted-source check (item 1) and no moderated-group handling (item 7).
+freshness window on a supplied `Date` (RFC 5537 §3.5 item 3) and no
+trusted-source check (item 1). Moderated groups (item 7) are NNT-047.
 
 An earlier version of this section said RFC 3977 §3.5 forbids pipelining
 after POST's article. It does not, and the claim is withdrawn: §3.5 requires
