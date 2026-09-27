@@ -79,6 +79,7 @@
 (include-book "injection-shape")
 (include-book "injection-path")
 (include-book "article-fields")
+(include-book "article-header-census")
 (include-book "mailbox")
 (include-book "clock")
 (local (include-book "arithmetic/top" :dir :system))
@@ -421,17 +422,35 @@
 ; `fn-inj-make-config-closed' one with no listing.
 (defun fn-inj-config-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 6)))
+  (and (true-listp x) (equal (len x) 7)))
 (defun fn-inj-config-allow (x) (declare (xargs :guard t)) (fn-inj-nth 0 x))
 (defun fn-inj-config-agent (x) (declare (xargs :guard t)) (fn-inj-nth 1 x))
 (defun fn-inj-config-groups (x) (declare (xargs :guard t)) (fn-inj-nth 2 x))
 (defun fn-inj-config-max-octets (x) (declare (xargs :guard t)) (fn-inj-nth 3 x))
 (defun fn-inj-config-listing (x) (declare (xargs :guard t)) (fn-inj-nth 4 x))
 (defun fn-inj-config-closed (x) (declare (xargs :guard t)) (fn-inj-nth 5 x))
+; The header limits of one POST (D27, PRF-230): the store profile's fields
+; 15 to 17 (books/byte-store-frame `fn-bs-profile-header-limits').
+(defun fn-inj-config-header-limits (x) (declare (xargs :guard t)) (fn-inj-nth 6 x))
+
+; The posting bound the host hands the configuration: the profile's article
+; octets, or the pair (OCTETS . HEADER-LIMITS) of the profile's admission
+; bounds for one article (host/owner-host.lisp `fn-owner-served-post-bound').
+; A bare natural carries the default header limits.
+(defun fn-inj-post-bound (octets header-limits)
+  (declare (xargs :guard t))
+  (cons octets header-limits))
+(defun fn-inj-bound-octets (bound)
+  (declare (xargs :guard t))
+  (if (consp bound) (car bound) bound))
+(defun fn-inj-bound-header-limits (bound)
+  (declare (xargs :guard t))
+  (if (consp bound) (cdr bound) *fn-article-default-limits*))
 
 (defun fn-inj-make-config-full (allow agent groups max-octets listing closed)
   (declare (xargs :guard t))
-  (list allow agent groups max-octets listing closed))
+  (list allow agent groups (fn-inj-bound-octets max-octets) listing closed
+        (fn-inj-bound-header-limits max-octets)))
 
 (defun fn-inj-make-config-listed (allow agent groups max-octets listing)
   (declare (xargs :guard t))
@@ -458,7 +477,7 @@
          groups))
 (defthm fn-inj-config-max-octets-of-fn-inj-make-config-full
   (equal (fn-inj-config-max-octets (fn-inj-make-config-full allow agent groups max listing closed))
-         max))
+         (fn-inj-bound-octets max)))
 (defthm fn-inj-config-listing-of-fn-inj-make-config-full
   (equal (fn-inj-config-listing (fn-inj-make-config-full allow agent groups max listing closed))
          listing))
@@ -479,7 +498,7 @@
          groups))
 (defthm fn-inj-config-max-octets-of-fn-inj-make-config-listed
   (equal (fn-inj-config-max-octets (fn-inj-make-config-listed allow agent groups max listing))
-         max))
+         (fn-inj-bound-octets max)))
 (defthm fn-inj-config-listing-of-fn-inj-make-config-listed
   (equal (fn-inj-config-listing (fn-inj-make-config-listed allow agent groups max listing))
          listing))
@@ -500,7 +519,7 @@
          groups))
 (defthm fn-inj-config-max-octets-of-fn-inj-make-config-closed
   (equal (fn-inj-config-max-octets (fn-inj-make-config-closed allow agent groups max closed))
-         max))
+         (fn-inj-bound-octets max)))
 (defthm fn-inj-config-listing-of-fn-inj-make-config-closed
   (equal (fn-inj-config-listing (fn-inj-make-config-closed allow agent groups max closed))
          nil))
@@ -521,7 +540,7 @@
          groups))
 (defthm fn-inj-config-max-octets-of-fn-inj-make-config
   (equal (fn-inj-config-max-octets (fn-inj-make-config allow agent groups max))
-         max))
+         (fn-inj-bound-octets max)))
 (defthm fn-inj-config-listing-of-fn-inj-make-config
   (equal (fn-inj-config-listing (fn-inj-make-config allow agent groups max))
          nil))
@@ -529,7 +548,28 @@
   (equal (fn-inj-config-closed (fn-inj-make-config allow agent groups max))
          nil))
 
+(defthm fn-inj-config-header-limits-of-fn-inj-make-config-full
+  (equal (fn-inj-config-header-limits
+          (fn-inj-make-config-full allow agent groups max listing closed))
+         (fn-inj-bound-header-limits max)))
+(defthm fn-inj-config-header-limits-of-fn-inj-make-config-listed
+  (equal (fn-inj-config-header-limits
+          (fn-inj-make-config-listed allow agent groups max listing))
+         (fn-inj-bound-header-limits max)))
+(defthm fn-inj-config-header-limits-of-fn-inj-make-config-closed
+  (equal (fn-inj-config-header-limits
+          (fn-inj-make-config-closed allow agent groups max closed))
+         (fn-inj-bound-header-limits max)))
+(defthm fn-inj-config-header-limits-of-fn-inj-make-config
+  (equal (fn-inj-config-header-limits
+          (fn-inj-make-config allow agent groups max))
+         (fn-inj-bound-header-limits max)))
+(defthm fn-inj-bound-octets-of-an-atom
+  (implies (not (consp max)) (equal (fn-inj-bound-octets max) max)))
+
 (in-theory (disable (:d fn-inj-config-shapep) (:d fn-inj-make-config)
+                    (:d fn-inj-config-header-limits)
+                    fn-inj-bound-octets fn-inj-bound-header-limits
                     (:d fn-inj-make-config-full)
                     (:d fn-inj-make-config-listed) (:d fn-inj-config-listing)
                     (:d fn-inj-config-allow) (:d fn-inj-config-agent)
@@ -796,6 +836,10 @@
         :no)
     x))
 
+; Nothing strips from :no, the failure word: every strip of it is :no.
+(defthm fn-inj-strip-of-no
+  (equal (fn-inj-strip prefix :no) :no))
+
 (defun fn-inj-take (n x)
   (declare (xargs :guard t :measure (nfix n)))
   (let ((n (nfix n)))
@@ -814,17 +858,56 @@
   (let ((r (fn-inj-strip line x)))
     (if (equal r :no) x r)))
 
+; The Injection-Info line this agent writes, with parameters (PKT-597):
+; "Injection-Info: " AGENT PARAMS CRLF, where PARAMS is empty or a run of
+; "; attribute=value" parameters (RFC 5536 section 3.2.8) with no CR or LF.
+; books/injection-info-params.lisp builds PARAMS and puts this line in
+; place of the plain one in the octets the owner stores.
+(defun fn-inj-injection-info-line-with (agent params)
+  (declare (xargs :guard t))
+  (fn-inj-append *fn-inj-injection-info-field*
+                 (fn-inj-append agent (fn-inj-append params *fn-inj-crlf*))))
+
+; What follows the first CRLF of x when no CR or LF stands alone before it,
+; else :no: the rest of a parameter line after its parameters.
+(defun fn-inj-param-rest (x)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (if (equal (car x) 13)
+          (if (and (consp (cdr x)) (equal (car (cdr x)) 10)) (cdr (cdr x)) :no)
+        (if (equal (car x) 10) :no (fn-inj-param-rest (cdr x))))
+    :no))
+
+; This agent's Injection-Info line stripped from the front of x, with or
+; without parameters: x after the plain line, else x after
+; "Injection-Info: " AGENT, a parameter run opening with ";", and its CRLF;
+; else :no.  The inverse below reads the line through this, so an article
+; stored with a posting-account or mail-complaints-to parameter gives back
+; the same source as the article without them (D25's comparison and the
+; operator's retry test are unchanged by the parameters,
+; books/injection-info-params.lisp).  A line naming a longer identity that
+; begins with AGENT is not this agent's: after AGENT comes CRLF or ";".
+(defun fn-inj-strip-info (agent x)
+  (declare (xargs :guard t))
+  (let ((r (fn-inj-strip (fn-inj-injection-info-line agent) x)))
+    (if (equal r :no)
+        (let ((p (fn-inj-strip (fn-inj-append *fn-inj-injection-info-field* agent) x)))
+          (if (and (consp p) (equal (car p) 59))
+              (fn-inj-param-rest p)
+            :no))
+      r)))
+
 (defun fn-inj-source-after-stamp (r2 date agent msgid)
   ; r2 is what follows an Injection-Date line carrying `date'.
   (declare (xargs :guard t))
-  (let ((v1 (fn-inj-strip (fn-inj-injection-info-line agent) r2)))
+  (let ((v1 (fn-inj-strip-info agent r2)))
     (if (not (equal v1 :no))
         (if (or (not (equal (fn-inj-strip (fn-inj-message-id-line msgid) v1) :no))
                 (not (equal (fn-inj-strip (fn-inj-date-line date) v1) :no)))
             nil
           (cons t v1))
-      (let ((s (fn-inj-strip
-                (fn-inj-injection-info-line agent)
+      (let ((s (fn-inj-strip-info
+                agent
                 (fn-inj-strip-optional
                  (fn-inj-date-line date)
                  (fn-inj-strip-optional (fn-inj-message-id-line msgid) r2)))))
@@ -835,7 +918,7 @@
   (let ((r1 (fn-inj-strip (fn-inj-path-line agent) stored)))
     (cond ((equal r1 :no) nil)
           ((equal (fn-inj-strip *fn-inj-injection-date-field* r1) :no)
-           (let ((s (fn-inj-strip (fn-inj-injection-info-line agent) r1)))
+           (let ((s (fn-inj-strip-info agent r1)))
              (if (equal s :no) nil (cons t s))))
           (t
            (let* ((date (fn-inj-take 31 (fn-inj-drop
@@ -892,7 +975,15 @@
               (let ((article (fn-article-result-article parsed)))
                 (if (not (fn-article-syntax-p article))
                     (fn-inj-refuse :unparsable)
-                  (let ((check (fn-af-proto-article-check article)))
+                  ; The profile's header limits (PRF-230): the census of the
+                  ; header against `fn-inj-config-header-limits', refused by
+                  ; the limit's name; exactly the parse under those limits
+                  ; (`fn-article-census-refusal-is-the-parse').
+                  (let ((limit (fn-article-census-refusal
+                                (fn-article-header-census source)
+                                (fn-inj-config-header-limits config)))
+                        (check (fn-af-proto-article-check article)))
+                   (if limit (fn-inj-refuse limit)
                     (if (fn-inj-proto-reason check)
                         (fn-inj-refuse (fn-inj-proto-reason check))
                       (let ((mandatory
@@ -942,7 +1033,7 @@
                                       (fn-inj-refuse :oversize)
                                     (fn-inj-make-decision
                                      :injected nil msgid groups
-                                     octets))))))))))))))))))))
+                                     octets)))))))))))))))))))))
 
 (verify-guards fn-inj-car)
 (verify-guards fn-inj-cdr)
@@ -1010,6 +1101,9 @@
 (verify-guards fn-inj-take)
 (verify-guards fn-inj-drop)
 (verify-guards fn-inj-strip-optional)
+(verify-guards fn-inj-injection-info-line-with)
+(verify-guards fn-inj-param-rest)
+(verify-guards fn-inj-strip-info)
 (verify-guards fn-inj-source-after-stamp)
 (verify-guards fn-inj-source-of-v2)
 (verify-guards fn-inj-source-of)
@@ -1065,7 +1159,9 @@
                                fn-inj-config-allow-of-fn-inj-make-config-listed
                                fn-inj-config-agent-of-fn-inj-make-config-listed
                                fn-inj-config-groups-of-fn-inj-make-config-listed
-                               fn-inj-config-max-octets-of-fn-inj-make-config-listed))))
+                               fn-inj-config-max-octets-of-fn-inj-make-config-listed
+                               fn-inj-config-header-limits-of-fn-inj-make-config-listed
+                               fn-inj-config-header-limits-of-fn-inj-make-config))))
 
 ; Nor is the closed-group list (PRF-196): the configuration the served
 ; connection carries, built by `fn-inj-make-config-full', decides every POST
@@ -1086,8 +1182,11 @@
                                fn-inj-config-agent-of-fn-inj-make-config-full
                                fn-inj-config-groups-of-fn-inj-make-config-full
                                fn-inj-config-max-octets-of-fn-inj-make-config-full
+                               fn-inj-config-header-limits-of-fn-inj-make-config-full
                                fn-inj-config-shapep-of-fn-inj-make-config-listed
                                fn-inj-config-allow-of-fn-inj-make-config-listed
                                fn-inj-config-agent-of-fn-inj-make-config-listed
                                fn-inj-config-groups-of-fn-inj-make-config-listed
-                               fn-inj-config-max-octets-of-fn-inj-make-config-listed))))
+                               fn-inj-config-max-octets-of-fn-inj-make-config-listed
+                               fn-inj-config-header-limits-of-fn-inj-make-config-listed
+                               fn-inj-config-header-limits-of-fn-inj-make-config))))

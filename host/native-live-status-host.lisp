@@ -6,6 +6,8 @@
 ; octets and prints them; it renders no field.
 (in-package "ACL2")
 (include-book "../books/native-health")
+; HST-023: the owner's scheduler lines on `health' (books/owner-scheduler.lisp).
+(include-book "../books/owner-scheduler")
 ; PKT-209: `control log' and `control evidence MSGID' (books/control-evidence.lisp).
 (include-book "../books/control-evidence")
 
@@ -21,7 +23,7 @@
                            (f-get-global 'fn-store-cfg state)
                            obs)))
 
-(defun fn-native-live-status-host-answer (request cached obs min log-sink state)
+(defun fn-native-live-status-host-answer (request cached obs min log-sink sched state)
   ; The running owner's page for one FNLS request, under its mutex
   ; (host/native/control.lisp `fnn-control-live-status-answer'): (REPLY
   ; CACHED').  A request from offset 0 renders the report once into a
@@ -31,7 +33,8 @@
   ; chosen here.  The carried octet sum is read, not extended in place:
   ; `fn-owner-headroom' stores its extension, this does not.  LOG-SINK is
   ; the owner's service-log sink (books/log-sink.lisp, PKT-508), NIL when no
-  ; writer runs; `health' ends with its line.
+  ; writer runs; SCHED the owner's scheduler value (books/owner-scheduler.lisp,
+  ; HST-023): `health' ends with the sink's line and the scheduler's.
   (declare (xargs :stobjs state :mode :program))
   ;; PKT-209: FNLS frame kind 3 carries a control report kind and its
   ;; argument (fn-cev-any-request-decode reads either frame).
@@ -81,7 +84,8 @@
                            ;; fn-nh-report-exit-of-render-and-more: the exit is
                            ;; the verdict's whatever follows the eight states.
                            (append (fn-owner-exposure-health state)
-                                   (if log-sink (fn-nh-log-sink-line log-sink) nil)))
+                                   (if log-sink (fn-nh-log-sink-line log-sink) nil)
+                                   (fn-osch-health-lines sched)))
                           ;; PRF-211: `status' ends with the capacity line
                           ;; (books/public-exposure.lisp fn-exp-capacity-line).
                           ((equal kind :status)

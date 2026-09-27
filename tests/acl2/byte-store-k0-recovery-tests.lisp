@@ -12,14 +12,24 @@
 (defconst *bsk0r-configs* (list *fn-cfg-default-record*))
 
 (defun bsk0r-scan-f (image) (fn-bs-scan-frontier (fn-bs-scan-store image)))
-(defun bsk0r-scan-r (image) (fn-bs-scan-records (fn-bs-scan-store image)))
+;; The records flip: the scan reads wire events; the recover entry interns them
+;; into rows (here the fixture's rows over *bsk5-arena*), and the kernel and the
+;; host's open run over the rows.
+(defun bsk0r-scan-w (image) (fn-bs-scan-records (fn-bs-scan-store image)))
+(defun bsk0r-row-of (w)
+  (cond ((equal w *bsk5-record*) *bsk5-row*)
+        ((equal w *bsk5-record-2*) *bsk5-row-2*)
+        (t w)))
+(defun bsk0r-rows-of (ws)
+  (if (atom ws) nil (cons (bsk0r-row-of (car ws)) (bsk0r-rows-of (cdr ws)))))
+(defun bsk0r-scan-r (image) (bsk0r-rows-of (bsk0r-scan-w image)))
 (defun bsk0r-open (configs image)
   (fn-cpo-open-observed configs (bsk0r-scan-f image) (bsk0r-scan-r image)))
 (defun bsk0r-host (configs image) (fn-sn-files (fn-sn-open-state (bsk0r-open configs image))))
 (defun bsk0r-run (image k groups capacity)
   (fn-bs-run image k (fn-bs-recover-program) nil groups capacity))
 (defun bsk0r-related-at (run k)
-  (fn-bs-store-relation (car (nth k run)) (cdr (nth k run))))
+  (fn-bs-store-relation (car (nth k run)) (cdr (nth k run)) *bsk5-arena*))
 ; The six recovery-program cuts: recover-replayed, recover-barrier 1..5.
 (defun bsk0r-cuts-related (run)
   (and (bsk0r-related-at run 1) (bsk0r-related-at run 4) (bsk0r-related-at run 7)
@@ -41,20 +51,21 @@
 (defun bsk0r-lose (pair) (fn-bs-crash (car pair) nil))
 
 (defun bsk0r-witness-okp (pair image)
-  (let* ((entry (fn-bs-recovery-entry-kernel image))
+  (let* ((entry (fn-bs-recovery-entry-kernel image (bsk0r-scan-r image)))
          (seed-run (bsk0r-run image entry *bsk5-groups* *bsk5-capacity*))
          (host (bsk0r-host *bsk0r-configs* image))
          (host-run (bsk0r-run image host *bsk5-groups* *bsk5-capacity*)))
-    (and (fn-bs-store-relation (car pair) (cdr pair))
-         (fn-bs-store-relation image entry)
+    (and (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*)
+         (fn-bs-recovered-rowsp image (bsk0r-scan-r image) *bsk5-arena*)
+         (fn-bs-store-relation image entry *bsk5-arena*)
          (fn-sf-history-recoverablep *bsk5-groups* *bsk5-capacity*
                                      (bsk0r-scan-r image) (bsk0r-scan-f image))
          (equal (len seed-run) 17) (bsk0r-cuts-related seed-run)
-         (fn-bs-run-relatedp seed-run)
+         (fn-bs-run-relatedp seed-run *bsk5-arena*)
          (equal (fn-sf-phase (cdr (nth 16 seed-run))) :ready)
          (fn-sn-open-okp (bsk0r-open *bsk0r-configs* image))
          (equal host (fn-bs-recovered-kernel (bsk0r-scan-f image) (bsk0r-scan-r image) 0))
-         (fn-bs-store-relation image host)
+         (fn-bs-store-relation image host *bsk5-arena*)
          (equal (len host-run) 17) (bsk0r-cuts-related host-run)
          (equal (car (nth 16 host-run)) image)
          (equal (fn-sf-phase (cdr (nth 16 host-run))) :ready))))
@@ -101,15 +112,15 @@
 ; kernel is related to it; its scan faults and so does its entry.
 (assert-event
  (and (equal (fn-bs-crash *fn-bs-empty-store* nil) *fn-bs-empty-store*)
-      (not (fn-bs-store-relation *fn-bs-empty-store* (fn-sf-initial-state)))))
+      (not (fn-bs-store-relation *fn-bs-empty-store* (fn-sf-initial-state) *bsk5-arena*))))
 (must-fail
  (assert-event
   (fn-bs-store-relation *fn-bs-empty-store*
-                        (fn-bs-recovery-entry-kernel *fn-bs-empty-store*))))
+                        (fn-bs-recovery-entry-kernel *fn-bs-empty-store* nil) *bsk5-arena*)))
 (must-fail
  (assert-event
   (bsk0r-cuts-related (bsk0r-run *fn-bs-empty-store*
-                                 (fn-bs-recovery-entry-kernel *fn-bs-empty-store*)
+                                 (fn-bs-recovery-entry-kernel *fn-bs-empty-store* nil)
                                  *bsk5-groups* *bsk5-capacity*))))
 
 ; Drop the crash-image premise.  A store whose first transaction is torn:
@@ -124,13 +135,13 @@
 (assert-event
  (let* ((bs (car (bsk0r-linked)))
         (ino (fn-bs-durable-entry bs :transactions (fn-bs-txn-name 0))))
-   (and (fn-bs-store-relation bs (cdr (bsk0r-linked)))
+   (and (fn-bs-store-relation bs (cdr (bsk0r-linked)) *bsk5-arena*)
         (fn-bs-fencedp bs ino)
         (equal (fn-bs-lookup (bsk0r-torn) :transactions (fn-bs-txn-name 0)) ino)
         (not (equal (fn-bs-content (bsk0r-torn) ino) (fn-bs-durable-content bs ino))))))
 (must-fail
  (assert-event
-  (fn-bs-store-relation (bsk0r-torn) (fn-bs-recovery-entry-kernel (bsk0r-torn)))))
+  (fn-bs-store-relation (bsk0r-torn) (fn-bs-recovery-entry-kernel (bsk0r-torn) (bsk0r-scan-r (bsk0r-torn))) *bsk5-arena*)))
 
 ; Drop recoverability (the model's entry).  With no groups the scanned
 ; history does not replay and (:recover) lands in :fault, so the program never
@@ -143,14 +154,14 @@
                                   (bsk0r-scan-f (bsk0r-keep (bsk0r-linked))))))
 (assert-event
  (let* ((image (bsk0r-keep (bsk0r-linked)))
-        (run (bsk0r-run image (fn-bs-recovery-entry-kernel image) nil *bsk5-capacity*)))
-   (and (fn-bs-run-relatedp run)
+        (run (bsk0r-run image (fn-bs-recovery-entry-kernel image (bsk0r-scan-r image)) nil *bsk5-capacity*)))
+   (and (fn-bs-run-relatedp run *bsk5-arena*)
         (equal (fn-sf-phase (cdr (nth 16 run))) :fault))))
 (must-fail
  (assert-event
   (let* ((image (bsk0r-keep (bsk0r-linked)))
-         (run (bsk0r-run image (fn-bs-recovery-entry-kernel image) nil *bsk5-capacity*)))
-    (and (fn-bs-run-relatedp run)
+         (run (bsk0r-run image (fn-bs-recovery-entry-kernel image (bsk0r-scan-r image)) nil *bsk5-capacity*)))
+    (and (fn-bs-run-relatedp run *bsk5-arena*)
          (equal (fn-sf-phase (cdr (nth 16 run))) :ready)))))
 
 ; Drop the host's open success.  With no configuration history the open
@@ -160,7 +171,7 @@
 (must-fail
  (assert-event
   (let ((image (bsk0r-keep (bsk0r-linked))))
-    (fn-bs-store-relation image (bsk0r-host nil image)))))
+    (fn-bs-store-relation image (bsk0r-host nil image) *bsk5-arena*))))
 (must-fail
  (assert-event
   (let ((image (bsk0r-keep (bsk0r-linked))))
@@ -171,7 +182,7 @@
 ; The link error arm.  Start: the second record, staged.
 (defun bsk0r-l-start () (bsk5-frontier-2))
 (defun bsk0r-l-prepared ()
-  (fn-sf-prepare-record (cdr (bsk0r-l-start)) *bsk5-record-2*
+  (fn-sf-prepare-record (cdr (bsk0r-l-start)) *bsk5-row-2*
                         *bsk5-groups* *bsk5-capacity*))
 (defun bsk0r-l-arm (bs ks frame outcome)
   (let ((p6 (nth 6 (fn-bs-run bs ks (fn-bs-record-program ".stage-k5-2" (fn-bs-txn-name 1) frame)
@@ -179,13 +190,13 @@
     (mv-let (r bs7)
       (fn-bs-link (car p6) :staging ".stage-k5-2" :transactions (fn-bs-txn-name 1) outcome)
       (declare (ignore r))
-      (fn-bs-store-relation bs7 (fn-sf-record-link-result (cdr p6) :error)))))
+      (fn-bs-store-relation bs7 (fn-sf-record-link-result (cdr p6) :error) *bsk5-arena*))))
 ; Witness: an issued link that reported EIO (the pending link is in the
 ; byte state), and one refused before issue (it is not).
 (assert-event
  (let ((bs (car (bsk0r-l-start))) (ks (bsk0r-l-prepared)))
-   (and (fn-bs-store-relation bs ks)
-        (fn-bs-record-inputp ks ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
+        (fn-bs-record-inputp ks ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*)
         (not (fn-bs-lookup bs :staging ".stage-k5-2"))
         (bsk0r-l-arm bs ks (bsk5-frame-2) '(:eio . :issued))
         (bsk0r-l-arm bs ks (bsk5-frame-2) '(:eio . 0)))))
@@ -194,7 +205,7 @@
  (assert-event (bsk0r-l-arm (bsk5-initial) (bsk0r-l-prepared) (bsk5-frame-2) '(:eio . :issued))))
 ; Drop the input contract: the first record's frame for the second record.
 (assert-event
- (not (fn-bs-record-inputp (bsk0r-l-prepared) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame))))
+ (not (fn-bs-record-inputp (bsk0r-l-prepared) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame) *bsk5-arena*)))
 (must-fail
  (assert-event (bsk0r-l-arm (car (bsk0r-l-start)) (bsk0r-l-prepared) (bsk5-frame) '(:eio . :issued))))
 ; Drop the absent stage: O_EXCL fails, the run stops before pair 6.

@@ -13,10 +13,24 @@ these local resource limits:
 | Limit | Value | Status |
 | --- | ---: | --- |
 | complete source | 32,768 octets | local policy |
-| header section before the blank separator | 16,384 octets | local policy |
+| header section before the blank separator | profile field 17 `max-header-octets` (default 16,384) | operator's (D27, STO-030) |
 | physical header line excluding CRLF | 998 octets | local policy, aligned with RFC 5536 §2.2's generation limit |
-| physical header lines | 256 | local policy |
-| header fields | 64 | local policy |
+| physical header lines | profile field 16 `max-header-lines` (default 256) | operator's (D27, STO-030) |
+| header fields | profile field 15 `max-header-fields` (default 64) | operator's (D27, STO-030) |
+
+The three header limits are the store profile's (lane header-limits-profile,
+2026-09-27; PRF-230). `fn-article-parse-under OCTETS LIMITS` is the parser
+under LIMITS = (FIELDS LINES OCTETS), each refused by its own name
+(`:header-fields-limit`, `:header-lines-limit`, `:header-octets-limit`); the
+injection decision refuses a POST whose header census passes the opened
+profile's limits by that name, and the 441 line names the profile field.
+`fn-article-parse`, which every reader of a stored or received article
+calls, is the parse under the widest limits a profile may write (each the
+article codec's ceiling), so an article some profile admitted always reads
+back as the article it was admitted as
+(`fn-article-parse-under-raised-limits-agree`). The parse does work per
+header line, and starting a field is one comparison (the field count is
+carried).
 
 The input uses CRLF line framing throughout.  A bare CR or bare LF anywhere in
 the source is an `:invalid-header` syntax error.  Body bytes otherwise remain

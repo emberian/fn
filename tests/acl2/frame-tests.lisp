@@ -276,48 +276,35 @@
                      (list '(119 111 114 107 58 97)
                            '(114 99 112 116 45 49) :committed))))
 
-; Append-only native application ingress kinds.  Their numeric kind codes are
-; after every deployed FNRJ record, and both new result fields round-trip.
+; Native application ingress kinds (PKT-646, D34): the transit intent and
+; context carry the request's reference (HEAD, article LENGTH and DIGEST),
+; the intent the projection's LENGTH and DIGEST, the context the Store
+; record's identity; each round-trips, and a digest is exactly 32 octets.
 (assert-event
- (equal (fn-frame-result-payload
-         (fn-frame-receipt-decode
-          (fn-frame-receipt-encode
-           :request-intent
-           (list '(98) '(1 2 3) 7 9 :accepted) *fn-frame-test-digest*)
-          *fn-frame-test-digest*))
-        (list '(98) '(1 2 3) 7 9 :accepted)))
+ (let ((fields (list '(98) '(1 2 3) 7 9 :accepted
+                     '(112) '(108) '(101) 11 (make-list 32 :initial-element 7) 13 (make-list 32 :initial-element 9))))
+   (equal (fn-frame-result-payload
+           (fn-frame-receipt-decode
+            (fn-frame-receipt-encode :request-transit-intent fields
+                                     *fn-frame-test-digest*)
+            *fn-frame-test-digest*))
+          fields)))
 (assert-event
- (equal (fn-frame-result-payload
-         (fn-frame-receipt-decode
-          (fn-frame-receipt-encode
-           :request-context-v2
-           (list '(98) '(1 2 3) '(4 5) 7 9 9 :authorized :duplicate)
-           *fn-frame-test-digest*)
-          *fn-frame-test-digest*))
-        (list '(98) '(1 2 3) '(4 5) 7 9 9 :authorized :duplicate)))
-
-; Transit records retain the authored request separately from its pinned
-; local relay projection, and their kinds remain after the legacy grammar.
+ (let ((fields (list '(98) '(1 2 3) '(60 97 62) 7 9 10 :duplicate 11 (make-list 32 :initial-element 7))))
+   (equal (fn-frame-result-payload
+           (fn-frame-receipt-decode
+            (fn-frame-receipt-encode :request-transit-context fields
+                                     *fn-frame-test-digest*)
+            *fn-frame-test-digest*))
+          fields)))
+; A digest wider than its 32 octets is refused (the old projection blob).
 (assert-event
- (equal (fn-frame-result-payload
-         (fn-frame-receipt-decode
-          (fn-frame-receipt-encode
-           :request-transit-intent
-           (list '(98) '(1 2 3) 7 9 :accepted
-                 '(112) '(108) '(101) '(4 5 6))
-           *fn-frame-test-digest*)
-          *fn-frame-test-digest*))
-        (list '(98) '(1 2 3) 7 9 :accepted
-              '(112) '(108) '(101) '(4 5 6))))
-(assert-event
- (equal (fn-frame-result-payload
-         (fn-frame-receipt-decode
-          (fn-frame-receipt-encode
-           :request-transit-context
-           (list '(98) '(1 2 3) '(4 5 6) 7 9 10 :duplicate)
-           *fn-frame-test-digest*)
-          *fn-frame-test-digest*))
-        (list '(98) '(1 2 3) '(4 5 6) 7 9 10 :duplicate)))
+ (equal (fn-frame-receipt-encode
+         :request-transit-context
+         (list '(98) '(1 2 3) '(60 97 62) 7 9 10 :duplicate 11
+               (make-list 33 :initial-element 7))
+         *fn-frame-test-digest*)
+        :bad))
 (assert-event
  (equal (fn-frame-receipt-encode
          :request-transit-intent

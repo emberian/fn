@@ -337,6 +337,68 @@ like every delta, `fn-cfg-transport-only-deltasp` continues to hold of it
 reconfiguration should carry: *a peer delta changes future transit decisions
 and no committed state*. Theorem K7 in §4 states it.
 
+#### 1.2.4 Peer hosts by name and the TLS check (PKT-613)
+
+NNT-048: A peer's host may be an RFC 1123 host name as well as an IPv4 literal; the node resolves a name on every connection attempt and never hands a literal to the resolver; a TLS transport verifies the certificate against its configured name under either a pinned anchor file or the system's public roots, the default for a named peer; a name mismatch is refused by name and a resolution failure is a named, retried condition, never a fault
+
+A transport's host (`(:nntp 1 HOST PORT SECURITY)`) is text; which texts are
+hosts, and how one connection attempt reaches it, is
+`fn-peer-dial-target` (books/peer-host.lisp, PRF-231), called by the host's
+one peer dial `fnn-peer-connect` (host/native/io.lisp) for the push feed and
+the pull:
+
+- an IPv4 dotted quad (RFC 1123 section 2.1's "#.#.#.#") is dialled as the four
+  octets it spells, with no resolver;
+- an RFC 1123 section 2.1 host name (labels of letters, digits and hyphens, 1
+  to 63 octets, no leading or trailing hyphen, at most 253 octets in all, the
+  last label not all digits) is resolved by one `getaddrinfo` on that attempt
+  and the first IPv4 address it answers is dialled; nothing is cached by fn
+  (the OS's resolver may cache), so a renumbered peer is reached at its new
+  address on the next attempt;
+- anything else, an IPv6 literal included (the peer dial opens AF_INET
+  sockets only), is refused by name (`host-syntax`) before any socket.
+
+`peer add` and `peer invite` (its `Host` and `Inviter-Host` lines) admit only
+hosts of the first two kinds (local policy: a stronger check than a label).
+A durable record written before this rule keeps decoding; its dial is
+refused by name if its host is neither.
+
+A failed resolution (`EAI_NONAME`, `EAI_AGAIN`, ...: `unresolved`), a name
+with no IPv4 address (`no-ipv4-address`), a refused TLS check and a refused
+connect each write one ACL2-rendered service-log line
+`peer dial via=feed|pull peer=NAME host=HOST outcome=OUTCOME retry=yes`
+(`fn-peer-dial-log-line`) and are a peer-local loss: the feed requeues
+through `fn-feed-lost` and its backoff, the pull fails its round and tries
+again at its interval.  None is a fault.
+
+The TLS check a transport `(:tls MODE SERVER-NAME TRUST)` selects is
+`fn-peer-tls-verification`, asked by `fnn-feed-enable-tls` and the pull's
+`(:tls ...)` effect before any `SSL_CTX` exists: the chain must verify and
+match SERVER-NAME (`SSL_set1_host`); SERVER-NAME is sent as SNI only when it
+is a DNS name (RFC 6066 section 3 forbids an address literal there); TRUST is
+a pinned anchor file (`SSL_CTX_load_verify_locations`) or `:system-roots`, the
+library's default store (`SSL_CTX_set_default_verify_paths`, the system
+bundle on OpenSSL and LibreSSL).  A peer whose certificate is renewed by a
+public CA (Let's Encrypt changes the leaf every ~60 days) is anchored on the
+roots, not the leaf.  A certificate that does not match the name fails the
+handshake and is reported `name-mismatch` (`X509_V_ERR_HOSTNAME_MISMATCH`);
+any other verification failure `certificate`.
+
+In `peer add ... starttls|implicit SERVER-NAME ANCHOR`, `-` as SERVER-NAME is
+the host's own DNS name (refused for a numeric host, which has none), and `-`
+as ANCHOR is the system's public roots (`fn-peer-tls-select`).  The durable
+row is `(name "transport-trust-anchor" PATH 0)` for a pinned file, as every
+earlier record wrote it, and `(name "transport-trust-anchor" "" 1)` for the
+roots; no wire, delta or format code changes.
+
+What is not claimed: that DNS answers are authentic (the TLS check against
+the name is what authenticates the destination, and only under the chosen
+anchors), that the system bundle is trustworthy, or anything about inbound
+connections (a `(:source-address addr)` peer is still matched by its source
+address and needs re-adding after a renumbering; `(:principal id)` peers are
+not affected).  RFC 1123 section 2.1 allows a trailing root dot in some
+contexts; fn refuses it.
+
 ### 1.3 Limits and capacity
 
 Per-peer inbound limits are checked in this order, and the first failing
@@ -735,6 +797,70 @@ recognizer, so the served-path rule is not violated; but a CHECK storm at
 `O(A)` each is the cost node-functionality §3.2 must quote, and packet K5
 carries a history index twin (`fn-nntp-index-` style, `books/nntp-index.lisp`)
 with the equality theorem `fn-peer-history-index-agrees-with-history`.
+
+### Refused-offer memory (NNT-049)
+
+NNT-049: An article refused for a reason its octets decide is remembered, within the operator's bound, and a later offer of its Message-ID from any peer is refused from the memory without a transfer
+
+The octet-decided refusals are `fn-peer-intrinsic-refusal`'s
+(books/peer-inbound.lisp): not a valid article, the Message-ID the article
+carries is not the one offered, no Injection-Date or Date, a date that is not
+an RFC 5322 date-time, a malformed Path. They depend on the octets and the
+offered Message-ID only, so the refusal is the one every later transfer of
+the same octets draws from any peer. The owner records one at the transit
+outcome (books/owner.lisp `fn-own-transit-refused`), recomputing the reason
+from the in-flight octets rather than trusting the host's word, into a list
+bounded by the operator's `refused-offer-capacity` (`policy set
+refused-offer-capacity N`, default 4096, 0 turns it off) that evicts the
+oldest entry first (books/refused-offers.lisp). Every peer session reads it,
+re-pinned per read with the node, after the history test: CHECK answers 438,
+IHAVE `435 not wanted; <reason>`. A future date is never remembered (it is
+acceptable later) and neither is a missing Path (the operator's to require).
+The memory is in memory only and is not persisted: a restart costs one
+re-parse per refused article and changes no answer. Its soundness is
+PRF-235 (books/peer-refused-offers.lisp `fn-prof-offer-answer-is-the-reparse`).
+
+### Relay date and Path checks (NNT-050)
+
+NNT-050: A relayed article dated more than the operator's skew (at most 24 hours) into the future, with an unreadable date, with a malformed Path, or with no Path when the operator requires one, is refused by name
+
+RFC 5537 section 3.6 step 2 is `:date-future` (437 / 439 "dated in the
+future"): the Injection-Date, or if absent the Date, read by
+books/relay-checks.lisp `fn-rck-date-instant`, is more than the operator's
+`relay-date-skew` seconds after the owner's clock reading (`policy set
+relay-date-skew SECONDS`, at most 86400, which is also the default). Without
+a usable clock reading the transfer defers (`:no-clock`). Step 4:
+`:date-syntax` for a date field that is not a date-time, `:path-syntax` for a
+Path that is not RFC 5536 section 3.1.5's grammar (the tail entry may also
+be a dotted name), and `:no-path` for a missing Path when the operator set
+`relay-require-path 1`. Requiring Path is off by default: this node's own
+authored submissions (the hybrid-signed author path and the BP application
+path) store and feed exact octets without Path, and a peer fn node requiring
+one would refuse them (PKT-674).
+
+### Per-peer Distribution filtering (NNT-051)
+
+NNT-051: An article whose Distribution names no distribution a peer's feed is configured for is not fed to that peer
+
+RFC 5537 section 3.6 paragraph 2: an article SHOULD NOT be relayed unless
+the sending agent is configured to supply at least one of the <dist-name>s
+in its Distribution header field (if present). A peer's feed configuration
+names its distributions with `peer distributions NAME WILDMAT` (one
+single-valued `outbound-distributions` row of the peer's group, published
+through the existing `:extend-peer` plan: `:add-peer-rows`, then
+`:remove-peer-rows` of the row it replaces; no new delta kind). The wildmat
+(RFC 3977 section 4) is matched against each <dist-name> of the article
+(RFC 5536 section 3.2.4 grammar, case-folded, as <dist-name>s are
+case-insensitive). The decision is ACL2's: books/owner-feed.lisp
+`fn-own-feed-distribution-admitsp`, applied per peer by
+`fn-own-feed-distribution-targets` inside `fn-own-submission-targets`
+(the intent and the durable enqueue), with the filter carried in the feed
+table entry and set from the rows at every reconfiguration. Local policy
+where the RFC is silent: a peer with no row is fed every distribution; an
+article with no Distribution is fed to every peer (absence means "world");
+an article whose Distribution is malformed (two fields, an empty or
+ill-formed name) matches no filter. `local` has no built-in meaning here:
+`peer distributions far *,!local` keeps it home. PRF-237.
 
 ## 3. The outbound feed machine
 
@@ -1487,6 +1613,27 @@ principal the verb over a namespace covering every group involved; a cancel
 withdraws its target from newly published reader views only for the
 target's author or an authority whose grant covers every group the target
 is served in, decided once under the configuration it committed under.
+
+**The node's own withdrawal (PKT-575, CT3; PRF-256).** A fourth basis
+beside author, authority and poster: `article withdraw ID --reason TEXT`
+(and `moderation reject`, specs/nntp.md) writes the configuration row
+(CAUSE ID REASON 1) in the authorities slot (delta code 26,
+`fn-cfg-withdraw-article-authorizes-the-cause`), then the node injects the
+cancel CAUSE (`<fn-withdraw.` then ID after its `<`; `Control: cancel ID`)
+into ID's groups through the operator submission. The refresh that first
+publishes CAUSE decides it under the configuration in force at CAUSE's
+txid, which holds the row, so the record is `(:withdrawal ID CAUSE :node
+nil GEN)` whatever CAUSE's verdict and keys, and it withdraws exactly ID
+from every view holding CAUSE (`fn-ctl-node-withdrawal-withdraws-exactly-
+its-target`); `control evidence` names it `principal=node`, HDR :fn-control
+`executed withdrawal ID node`. The decision is durable configuration the
+operator wrote, never the cause's octets: a peer's article with that
+Message-ID withdraws ID only because the row already says so. The cause is
+filed in `control.cancel` like every cancel (NNT-010: the owner's commit
+gate files a control article only in its filing group, and the plan
+refuses `control-not-filed` before writing the row when the operator has
+not created it). A stronger fn guarantee: RFC 5537 section 5.3 leaves
+cancel authority to local policy.
 
 **Filing (implemented, C1).** `fn-ctl-classify`
 (`books/control-classify.lisp`) reads only the `Control` field, and the
@@ -2303,7 +2450,7 @@ Open at the end of this lane, with the obligation each needs:
 | The owner's feed keystones stated over `fn-own-step` | open | `books/owner-invariants.lisp` needs `fn-own-feed-durable-is-the-target-enqueue` (the subject rule for the `(:outcome id :durable)` arm) and the preservation of `fn-own-relation` by the five new arms. Not written: a theorem that cannot be admitted is not a theorem. |
 | `fn-own-feed-group-matchp` vs `fn-peer-wildmat-matchp` | a named twin | One `:rule-classes nil` equality in `books/owner-invariants.lisp`, where both are visible. `books/owner-feed` cannot include `books/peer-inbound` without inheriting the served chain's blocker. |
 | fn does not prepend its own path-identity to a transit article's Path (RFC 5537 §3.2.1) | open, inbound lane's | `fn-peer-injection-arguments` stages the peer's octets verbatim. The outbound loop check still refuses a target already in Path and refuses the origin outright, but on the return leg loop suppression rests on the peer's history answer (435/438) rather than on Path. |
-| RFC 3977 §3.1.1 dot stuffing of an outgoing article block | executable ACL2, transported by host | `fn-wire-render-feed-command` in `books/wire.lisp` accepts only bounded, exact CRLF source octets; it stuffs every line-leading dot and appends `.` CRLF. `host/owner-host.lisp`'s `fn-owner-feed-render-command` and `fn-owner-feed-install-feed` project those ACL2-produced octets and their explicit status. `tools/run_owner.py::feed_write` preserves its uncertain-feed fence and gives the projected octets to `tools/feed_wire.py::Session.send_block`, whose only operation is `sock.sendall`. It does not split, trim, normalize, dot-stuff, or append a terminator. `tests/acl2/wire-tests.lisp` proves a bounded actual-reader `fn-wire-drive` round trip for literal leading dots, a dot-only line, empty lines, and trailing empty lines; `tests/test_feed.py::SessionTests` witnesses one socket write of that already-rendered byte vector. Bare LF, malformed CR, improper lists, and exhausted source or command bounds are explicit ACL2 refusals. |
+| RFC 3977 §3.1.1 dot stuffing of an outgoing article block | executable ACL2, transported by host | `fn-wire-render-feed-command` in `books/wire.lisp` accepts only bounded, exact CRLF source octets; it stuffs every line-leading dot and appends `.` CRLF. `books/owner-results.lisp`'s `fn-ores-feed-port-publication` projects those ACL2-produced octets and their explicit status into the step's FeedPublication (HST-019). `tools/run_owner.py::feed_write` preserves its uncertain-feed fence and gives the projected octets to `tools/feed_wire.py::Session.send_block`, whose only operation is `sock.sendall`. It does not split, trim, normalize, dot-stuff, or append a terminator. `tests/acl2/wire-tests.lisp` proves a bounded actual-reader `fn-wire-drive` round trip for literal leading dots, a dot-only line, empty lines, and trailing empty lines; `tests/test_feed.py::SessionTests` witnesses one socket write of that already-rendered byte vector. Bare LF, malformed CR, improper lists, and exhausted source or command bounds are explicit ACL2 refusals. |
 | The two-node outbound evidence | **harness written, not run** | `tools/twonode_gate.py` gains `scenario_owner_feed` (A posts, A's own feed offers it to B, then B to A, with the byte-identity check and the 435/438 second offer) and `scenario_feed_restart` (B down, A posts, `kill -9` A, both restart, B ends with exactly one copy: K5). `tests/test_twonode_gate.py` is green (19 tests) against the fake; no run on persvati in this lane. |
 
 ## Status (wave 11, `w11/twonode-feed`, the first crossing)

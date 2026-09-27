@@ -390,7 +390,7 @@
                    (let ((rec (fn-sn-completion-record s)))
                      (cond ((fn-store-retention-event-p rec)
                             (fn-replay-apply-retention-event (fn-sn-node s) rec))
-                           ((or (fn-stxe-p rec) (fn-stxk-p rec) (fn-stxa-p rec)
+                           ((or (fn-stxe-p rec) (fn-stxk-p rec) (fn-hstxa-p rec)
                                 (fn-cpe-eventp rec) (fn-th-topic-eventp rec))
                             (fn-replay-apply-record (fn-sn-node s) rec))
                            (t (fn-node-complete (fn-sn-node s) (fn-record-txid rec)
@@ -400,7 +400,7 @@
                                    (fn-sn-completion-enabledp fn-sn-statep
                                     fn-sn-completion-record
                                     fn-store-retention-event-p
-                                    fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-stxe-p fn-stxk-p fn-hstxa-p
                                     fn-cpe-eventp fn-th-topic-eventp
                                     fn-replay-apply-record
                                     fn-replay-apply-retention-event
@@ -424,7 +424,7 @@
                  (implies (and (not (fn-store-retention-event-p (fn-sn-completion-record s)))
                                (or (fn-stxe-p (fn-sn-completion-record s))
                                    (fn-stxk-p (fn-sn-completion-record s))
-                                   (fn-stxa-p (fn-sn-completion-record s))
+                                   (fn-hstxa-p (fn-sn-completion-record s))
                                    (fn-cpe-eventp (fn-sn-completion-record s))
                                    (fn-th-topic-eventp (fn-sn-completion-record s))))
                           (consp (fn-replay-apply-record
@@ -434,7 +434,7 @@
                                     fn-sn-completion-core-enabledp fn-sn-statep)
                                    (fn-sn-completion-record
                                     fn-store-retention-event-p
-                                    fn-stxe-p fn-stxk-p fn-stxa-p
+                                    fn-stxe-p fn-stxk-p fn-hstxa-p
                                     fn-cpe-eventp fn-th-topic-eventp
                                     fn-replay-apply-record
                                     fn-replay-apply-retention-event
@@ -458,7 +458,7 @@
                            (fn-sn-finish fn-sn-completion-enabledp
                             fn-sn-completion-record fn-node-statep
                             fn-store-retention-event-p
-                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-stxe-p fn-stxk-p fn-hstxa-p
                             fn-cpe-eventp fn-th-topic-eventp
                             fn-replay-apply-record
                             fn-replay-apply-retention-event fn-node-complete))
@@ -491,7 +491,7 @@
                            (fn-sn-finish fn-sn-completion-enabledp
                             fn-sn-completion-record fn-node-statep
                             fn-store-retention-event-p
-                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-stxe-p fn-stxk-p fn-hstxa-p
                             fn-cpe-eventp fn-th-topic-eventp
                             fn-retain-matching-releasep
                             fn-replay-apply-record

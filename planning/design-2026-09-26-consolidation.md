@@ -739,6 +739,15 @@ plans against pinned versions, I/O consuming plans).
 | the release is the product (D35) | the developer's checkout as the deployment; Python on the node | `tools/*.py` from the runpath (a check: `tools/runpath_check.py`, lane release-openbsd) | `packaging/release-tarball.sh` per platform; `packaging/install-native.sh` |
 | a public node (D36) | the LAN-only node | | the exposure limits (PRF-161), the certificate and tier from ember |
 
+### 4.8 The open's list decodes (lane open-by-index, 2026-09-26)
+
+| Replaces | Callers that move | Removed from execution | Kept (reference) |
+| --- | --- | --- | --- |
+| DONE (PRF-240): the per-call re-decode of every pack-chain link (`fn-ccc-entry-step`, `fn-ccc-coverage-chain`, `fn-ccc-observe-chain` each decoding the whole chain) and the second event check in `fn-ccc-links-okp` | host/checkpoint-host.lisp `fn-store-checkpoint-chain-step`, `-coverage`, `-observe` (now `fn-ccco-*` over the memo), under `fnn-with-pack-memo` in `fnn-recover`, `fnn-pack-publish`, `fnn-pack-chain-report` | seven decodes and ten link checks per link per full-replay open to one decode; six event recognitions per packed event to one (`fn-ccco-framed-link-fast`) | `fn-ccc-framed-link`, `fn-ccc-decode-link`, `fn-ccc-linkp`, `fn-cc-octet-event-listp`, `fn-ccc-*-chain` as the meaning (PRF-085's theorems are over them) |
+| OPEN (PKT-680): the link as an octet list (`fnn-octet-list` of each file) | `fnn-pack-walk` | the list of each link file; `fn-cbor-octet-listp` over it | the list decode as the reference of a by-index decode |
+| OPEN (PKT-680): the checkpoint load's payload lists (`fn-sct-load` builds every P row as an octet list, `fn-sct-capture-of-tables` the 7-tuple) | host/store-node-host.lisp `fn-store-sco-decode` | P rows as lists (P extents become arena handles: records-freeze's range seal); the E row's tree decode (E as metadata columns, a schema change) | `fn-sct-decode-file`, `fn-sco-capture` |
+| OPEN (PKT-680): the replay's per-record list decode and the history recognizer's dispatch re-recognition (`fn-store-decode-records`, `fn-sf-record-listp` via `fn-store-event-txid`/`-sequence`/`-generation`) | host/store-node-host.lisp `fn-store-sn-recover`, `-from-checkpoint`; `fnn-bridge-record-sequence` (a second full decode per record to compare its sequence with the file name) | the second decode per record; three of four recognitions per record in the history check | `fn-store-event-decode-exact`, `fn-sf-record-listp` |
+
 ## 5. The wave-5 briefs
 
 Eight briefs, in gpt-6's order, in `planning/briefs-wave5/` (the coordinator

@@ -14,17 +14,27 @@
 
 (defconst *xrt-groups* '("fn.one" "fn.two" "fn.three"))
 ; A: cross-posted to fn.one (2) and fn.two (70).  B: fn.three only.
-(defconst *xrt-a*
+; The acceptance payload is a handle into the arena (records-flip,
+; books/held-record.lisp): A's bytes are interned first (handle 0), B's
+; second (handle 1).  *xrt-a-wire* is A with its bytes (alpha of *xrt-a*):
+; the served overview is A's bytes' overview, so every expected line below
+; is computed from it, as before the flip.
+(defconst *xrt-a-wire*
   (fn-make-article "<xrt-a@example.invalid>"
                    (fn-xrt-payload "<xrt-a@example.invalid>" "A")
                    '("fn.one" "fn.two")
                    (list (cons "fn.one" 2) (cons "fn.two" 70))
                    t 841000000))
+(defconst *xrt-a*
+  (fn-make-article "<xrt-a@example.invalid>" 0
+                   '("fn.one" "fn.two")
+                   (list (cons "fn.one" 2) (cons "fn.two" 70))
+                   t 841000000))
 (defconst *xrt-b*
-  (fn-make-article "<xrt-b@example.invalid>"
-                   (fn-xrt-payload "<xrt-b@example.invalid>" "B")
+  (fn-make-article "<xrt-b@example.invalid>" 1
                    '("fn.three") (list (cons "fn.three" 9))
                    t 841000000))
+(assert-event (equal (car (fn-nov-overview *xrt-a-wire*)) :ok))
 (defconst *xrt-articles* (list *xrt-a* *xrt-b*))
 (defconst *xrt-state*
   (fn-make-state *xrt-groups*
@@ -52,7 +62,7 @@
                       "Xref: news.example.org fn.one:2 fn.two:70")))
 
 (defconst *xrt-a-line*
-  (append (fn-nov-line 70 (fn-nov-overview *xrt-a*))
+  (append (fn-nov-line 70 (fn-nov-overview *xrt-a-wire*))
           (cons 9 (fn-nntp-string-octets
                    "Xref: news.example.org fn.one:2 fn.two:70"))))
 
@@ -76,7 +86,7 @@
          (list (fn-nntp-string-octets "<xrt-a@example.invalid>")))
         (fn-nntp-multi
          *xrt-session* *xrt-224*
-         (list (append (fn-nov-line 0 (fn-nov-overview *xrt-a*))
+         (list (append (fn-nov-line 0 (fn-nov-overview *xrt-a-wire*))
                        (cons 9 (fn-nntp-string-octets
                                 "Xref: news.example.org fn.one:2 fn.two:70")))))))
 ; XOVER has no message-id form (RFC 2980 section 2.8): still 501.
@@ -96,8 +106,8 @@
          *xrt-session*
          (fn-nntp-string-octets "215 order of fields in overview database")
          (fn-nov-fmt-octet-lines
-          '("Subject:" "From:" "Date:" "Message-ID:" "References:" ":bytes"
-            ":lines" "Xref:full")))))
+          '("Subject:" "From:" "Date:" "Message-ID:" "References:" "Bytes:"
+            "Lines:" "Xref:full")))))
 ; A blind environment answers the eight-field lines and the seven-line
 ; format exactly as before (the without-a-server theorems).
 (assert-event
@@ -105,7 +115,7 @@
          *xrt-session* *xrt-state* *xrt-pin* nil *xrt-blind*
          (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
         (fn-nntp-multi *xrt-session* *xrt-224*
-                       (list (fn-nov-line 70 (fn-nov-overview *xrt-a*))))))
+                       (list (fn-nov-line 70 (fn-nov-overview *xrt-a-wire*))))))
 (assert-event
  (equal (fn-nntp-archive-command-pinned
          *xrt-session* *xrt-state* *xrt-pin* nil *xrt-blind*
@@ -150,7 +160,7 @@
 ; server carrying LF would split the line).
 (assert-event
  (not (fn-nov-clean-linep
-       (fn-nov-served-line 1 (fn-nov-overview *xrt-a*) '(97 10 98) *xrt-a*))))
+       (fn-nov-served-line 1 (fn-nov-overview *xrt-a-wire*) '(97 10 98) *xrt-a-wire*))))
 (must-fail
  (defthm fn-xrt-served-line-clean-without-server-word
    (implies (fn-nov-overviewp over)

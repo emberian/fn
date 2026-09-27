@@ -122,7 +122,7 @@
 
 (defun fn-pix-decide-offer (node cfg peer session msgid clock inflight trie arts)
   (declare (xargs :guard (fn-node-statep node) :verify-guards nil)
-           (ignorable session clock))
+           (ignorable clock))
   (let ((record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))))
     (cond ((not record) (fn-peer-decision :refuse :not-a-peer))
           ((null (fn-cfg-peer-inbound record))
@@ -131,6 +131,9 @@
            (fn-peer-decision :refuse :message-id-syntax))
           ((fn-pix-history-hasp (fn-record-octets-string msgid) node trie arts)
            (fn-peer-decision :have :history))
+          ; PRF-235: the refused-offer memory, as fn-peer-decide-offer.
+          ((fn-peer-remembered-reason msgid session)
+           (fn-peer-decision :refuse (fn-peer-remembered-reason msgid session)))
           ((fn-peer-stagedp (fn-record-octets-string msgid) node)
            (fn-peer-decision :defer :staged))
           ((equal (fn-state-fenced (fn-node-acceptance node)) t)
@@ -375,6 +378,9 @@
              (fn-nntp-message-id-tokenp (car args))
              (fn-nntp-msgid-withdrawn-p index (car args)))
         (fn-nntp-withdrawn-reply session t))
+       ;; PRF-243: the served compatibility arms, as in the dispatcher.
+       ((fn-rcompat-reply session archive index env keyword args)
+        (fn-rcompat-reply session archive index env keyword args))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
                  (fn-nntp-keywordp keyword "BODY")

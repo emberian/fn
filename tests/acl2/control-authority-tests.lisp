@@ -209,22 +209,22 @@
 ; fn-ctl-cancel-executes-only-for-author-or-authority.  Hypothesis: the
 ; effect withdraws.  Witnesses: the author case and the authority case.
 (assert-event
- (and (equal (fn-ctl-withdrawal-effect *cat-w-a* (list "fn.misc") *cat-p-verified*)
+ (and (equal (fn-ctl-withdrawal-effect *cat-w-a* (list "fn.misc") *cat-p-verified* nil)
              :author)
       (equal (fn-ctl-named-principal *cat-p-verified*) (fn-ctl-w-principal *cat-w-a*))))
 (assert-event
- (and (equal (fn-ctl-withdrawal-effect *cat-w-t* (list "fn.mod.a") nil) :authority)
+ (and (equal (fn-ctl-withdrawal-effect *cat-w-t* (list "fn.mod.a") nil nil) :authority)
       (fn-ctl-covers-every-p (fn-ctl-w-scope *cat-w-t*) (list "fn.mod.a"))))
 ; Removal: the wrong principal (Q, no grant) on P's article, and the
 ; cross-post outside the grant: neither withdraws, and neither disjunct holds.
 (assert-event
- (and (equal (fn-ctl-withdrawal-effect *cat-w-q* (list "fn.misc") *cat-p-verified*)
+ (and (equal (fn-ctl-withdrawal-effect *cat-w-q* (list "fn.misc") *cat-p-verified* nil)
              (list :decline :no-grant))
       (not (equal (fn-ctl-named-principal *cat-p-verified*)
                   (fn-ctl-w-principal *cat-w-q*)))
       (not (consp (fn-ctl-w-scope *cat-w-q*)))))
 (assert-event
- (and (equal (fn-ctl-withdrawal-effect *cat-w-x* *cat-cross* nil)
+ (and (equal (fn-ctl-withdrawal-effect *cat-w-x* *cat-cross* nil nil)
              (list :decline :outside-namespace))
       (null (fn-ctl-named-principal nil))
       (not (fn-ctl-covers-every-p (fn-ctl-w-scope *cat-w-x*) *cat-cross*))))
@@ -237,7 +237,7 @@
       (fn-ctl-withdrawalp *cat-w-t*)
       (equal (fn-ctl-w-target *cat-w-t*) (fn-article-msgid *cat-t*))
       (fn-ctl-has-msgid-p (fn-ctl-w-cause *cat-w-t*) *cat-early*)
-      (fn-ctl-effect-withdrawsp (fn-ctl-withdrawal-effect *cat-w-t* (list "fn.mod.a") nil))
+      (fn-ctl-effect-withdrawsp (fn-ctl-withdrawal-effect *cat-w-t* (list "fn.mod.a") nil nil))
       (equal (fn-ctl-visible-articles *cat-early* (list *cat-w-t*) *cat-verdicts*)
              (list *cat-c* *cat-other*))))
 ; Removal of "the cause is in the view": a view pinned before C.
@@ -251,7 +251,7 @@
    (and (fn-ctl-has-msgid-p "<c@example.invalid>" view)
         (equal (fn-ctl-w-target *cat-w-x*) (fn-article-msgid *cat-x*))
         (not (fn-ctl-effect-withdrawsp
-              (fn-ctl-withdrawal-effect *cat-w-x* *cat-cross* nil)))
+              (fn-ctl-withdrawal-effect *cat-w-x* *cat-cross* nil nil)))
         (member-equal *cat-x* (fn-ctl-visible-articles view (list *cat-w-x*)
                                                        *cat-verdicts*)))))
 ; Removal of "the target matches": another article in the same group stays.

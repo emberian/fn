@@ -237,6 +237,11 @@ class Consumer:
         self.image = self.config["image"]
         self.control = self.config["control"]
         self.name = self.config["consumer"]
+        # PRF-234: a consumer the node binds to an account (`fn operator CONFIG
+        # consumer bind NAME --account LOGIN`) polls and acks with that
+        # account's password, read by the native image from this file.
+        # Absent: the operator's unbound consumer, exactly as before.
+        self.secret_file = self.config.get("secret_file")
         self.work = Path(self.config["work"])
         self.work.mkdir(parents=True, exist_ok=True)
         self.lock = lock_database(self.config["db"])
@@ -282,13 +287,22 @@ class Consumer:
     def ack(self, cursor):
         path = self.scratch("ack")
         path.write_bytes(cursor)
-        code, out, err = self.native("consumer", "ack", self.control, path)
+        if self.secret_file:
+            code, out, err = self.native("consumer", "bound-ack", self.control,
+                                         path, self.secret_file)
+        else:
+            code, out, err = self.native("consumer", "ack", self.control, path)
         return code
 
     def poll(self):
         cursor_path, report_path = self.scratch("cursor"), self.scratch("report")
-        code, out, err = self.native("consumer", "poll", self.control, self.name,
-                                     cursor_path, report_path)
+        if self.secret_file:
+            code, out, err = self.native("consumer", "bound-poll", self.control,
+                                         self.name, self.secret_file,
+                                         cursor_path, report_path)
+        else:
+            code, out, err = self.native("consumer", "poll", self.control,
+                                         self.name, cursor_path, report_path)
         if code != 0:
             raise Stop(code if code in (1, 3) else 4,
                        "poll: %s %s" % (out.decode(), err.decode()))

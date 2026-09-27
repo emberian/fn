@@ -33,7 +33,11 @@
   ;; rows and held octets the machine may hold, the largest ADU it admits and
   ;; the largest bundle it decodes (fn-bpnpf-profile-read,
   ;; books/bp-node-profile; PRF-131, PRF-134).
-  (profile nil))
+  (profile nil)
+  ;; Each peer's contact frontier, ACL2's table (fn-bpnjc-contact-close,
+  ;; books/bp-node-job-cursor.lisp): carried between contacts, empty at
+  ;; open, where every frontier is 0 (fn-bpnjc-frontier-zero).
+  (cursors nil))
 
 (defun fnn-bps-max-rows (service) (first (fnn-bps-profile service)))
 (defun fnn-bps-max-octets (service) (second (fnn-bps-profile service)))
@@ -706,11 +710,25 @@ its outcome, which is the refusal to the offering ingress."
       (:deliver
        (fnn-fault "bp-service: application delivery requires the owner caller"))
       (:delivery-answer
-       (case (second effect)
-         (:durable (fnn-out "BP application handoff durable"))
+       ;; PRF-224: ACL2's report (fn-bpah-handoff-report) names the
+       ;; application's disposition the durable kind 7 holds: durable only
+       ;; when the application committed, refused by name otherwise.
+       (case (fnn-core 'fn-bpah-handoff-report effect)
+         (:durable
+          (fnn-out "BP application handoff durable disposition=~(~a~)"
+                   (third effect)))
          (:refused
-          (fnn-bps-note service :refused)
-          (fnn-out "BP application handoff refused"))
+          ;; A durable kind 7 recording the application's refusal completes
+          ;; the delivery: the run's evidence is unchanged (the transfer was
+          ;; accepted and its disposition is durable), as before PRF-224.
+          ;; Only a refused publication or callback (no disposition) is the
+          ;; run's refusal.
+          (if (third effect)
+              (fnn-out "BP application handoff refused disposition=~(~a~) (kind 7 durable)"
+                       (third effect))
+            (progn
+              (fnn-bps-note service :refused)
+              (fnn-out "BP application handoff refused"))))
          (otherwise
           (fnn-bps-note service :fenced)
           (fnn-indeterminate "bp-service: application handoff uncertain"))))
@@ -1253,19 +1271,29 @@ address the verb was given."
 
 (defun fnn-bpc-drive-contact (service event)
   "Drive one contact EVENT, (:contact PEER OPEN).  An opening contact asks
-ACL2 before every offer (fn-bpnj-contact-next, books/bp-node-job-offer.lisp: the first READY queued job, so a held or already-offered older job never starves a younger one): it names the event to drive
+ACL2 before every offer (fn-bpnjc-contact-next, books/bp-node-job-cursor.lisp:
+the answer of fn-bpnj-contact-next, the first READY queued job, so a held or
+already-offered older job never starves a younger one, read from the
+contact's cursor instead of the head of the job list,
+fn-bpnjc-contact-next-is-the-head-scan): it names the event to drive
 through fn-bpnp-step and the hop's node ID, holds a job its routing refuses,
-or closes the contact.  ACL2 threads the keys this contact has offered, so a
-job whose transfer was not accepted (requeued) waits for the next contact
-(fn-bpnp-contact-offers-each-job-at-most-once).  Answers the list of ACL2's
-answers, first first."
+or closes the contact.  ACL2 threads the keys this contact has offered and
+the cursor, so a job whose transfer was not accepted (requeued) waits for the
+next contact (fn-bpnp-contact-offers-each-job-at-most-once) and the contact
+examines each job once (fn-bpnjc-drain-visits-are-linear).  The contact
+opens at the peer's frontier (fn-bpnjc-contact-cursor) and its close
+advances it (fn-bpnjc-contact-close).  Answers the list of ACL2's answers,
+first first."
   (setf (fnn-bps-transfer service) nil)
-  (let ((peer (second event)) (offered nil) (answers nil))
+  (let ((peer (second event)) (offered nil) (answers nil) (cursor nil))
     (when (third event)
+      (setq cursor (fnn-core 'fn-bpnjc-contact-cursor (fnn-bps-cursors service) peer))
       (loop repeat (fnn-bps-max-rows service)
-            for answer = (fnn-core 'fn-bpnj-contact-next (fnn-bps-state service)
-                                   peer (fnn-bps-routing service) offered)
-            do (push answer answers)
+            for result = (fnn-core 'fn-bpnjc-contact-next (fnn-bps-state service)
+                                   peer (fnn-bps-routing service) offered cursor)
+            for answer = (car result)
+            do (setq cursor (cdr result))
+               (push answer answers)
                (case (first answer)
                  (:offer
                   (setq offered (third answer))
@@ -1281,7 +1309,10 @@ answers, first first."
                   (fnn-out "BP queued job held destination=~a decision=~(~a~) (the job and its obligation stay)"
                            (fnn-core 'fn-bpaj-eid-text peer) (third answer))
                   (loop-finish))
-                 (t (loop-finish)))))
+                 (t (loop-finish))))
+      (setf (fnn-bps-cursors service)
+            (fnn-core 'fn-bpnjc-contact-close (fnn-bps-cursors service)
+                      (fnn-bps-state service) peer cursor)))
     (fnn-bps-drive-effects service (fnn-bps-step service (list :contact peer nil)))
     (reverse answers)))
 

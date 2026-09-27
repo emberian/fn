@@ -390,14 +390,14 @@
 ; submission (fn-auth-step-pinned-effects-well-formed), and at most the one
 ; :submit fn-served-dispatch appends.
 (local
- (defthm fn-served-dispatch-carries-at-most-one-submission
+ (defthm fn-served-dispatch-core-carries-at-most-one-submission
    (implies (fn-served-connp conn)
             (<= (len (fn-served-submissions
-                      (fn-served-result-effects (fn-served-dispatch conn event))))
+                      (fn-served-result-effects (fn-served-dispatch-core conn event))))
                 1))
    :rule-classes :linear
    :hints (("Goal"
-            :in-theory (e/d (fn-served-dispatch fn-served-submit-effect)
+            :in-theory (e/d (fn-served-dispatch-core fn-served-submit-effect)
                             (fn-auth-step-pinned fn-served-connp fn-auth-effectsp
                              fn-post-offeredp fn-auth-session-consistentp
                              fn-wire-begin-article-with-line-limit
@@ -418,6 +418,30 @@
                              (observation (fn-served-conn-observation conn))
                              (injection (fn-served-conn-injection conn))
                              (wire-event event)))))))
+
+; NNT-042: on a GROUP or LISTGROUP line the dispatch's effects are the
+; dispatch proper's over the re-pinned connection, itself a connection
+; (books/served.lisp fn-served-repin-preserves-connp); otherwise it is the
+; dispatch proper.
+(local
+ (defthm fn-served-dispatch-carries-at-most-one-submission
+   (implies (fn-served-connp conn)
+            (<= (len (fn-served-submissions
+                      (fn-served-result-effects (fn-served-dispatch conn event))))
+                1))
+   :rule-classes :linear
+   :hints (("Goal"
+            :cases ((fn-served-advance-eventp event))
+            :use ((:instance fn-served-dispatch-core-carries-at-most-one-submission)
+                  (:instance fn-served-dispatch-core-carries-at-most-one-submission
+                             (conn (fn-served-repin conn)))
+                  (:instance fn-served-repin-preserves-connp))
+            :in-theory (e/d (fn-served-dispatch-effects-are-the-repinned-dispatch-effects
+                             fn-served-dispatch-without-advance-is-core)
+                            (fn-served-dispatch fn-served-dispatch-core fn-served-connp
+                             fn-served-repin fn-served-advance-eventp
+                             fn-served-dispatch-core-carries-at-most-one-submission
+                             fn-served-repin-preserves-connp))))))
 
 (local
  (defthm fn-served-tls-fed-conn-is-a-connection

@@ -4,6 +4,7 @@
 (include-book "../../books/owner-prepare-correspondence")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "held-rows-tests")
 
 (defconst *opc-groups* '("fn.letters" "fn.test"))
 (defconst *opc-config*
@@ -16,14 +17,20 @@
          (fn-nntp-string-octets "fn.test"))
    32768))
 
-(defconst *opc-first*
+(defconst *opc-first-wire*
   (fn-record-make 0 0 0 "<opc-first@example.invalid>" '(65 66)
                   *opc-groups* "opc-pin-1" "opc-subject-1"
                   "opc-release-1" 2 841000000))
-(defconst *opc-second*
+; The store retains held rows (records-flip): each record reaches the
+; owner's prepare as the row the entry interns (store-intern
+; fn-intern-row-at, keyring nil at generation 0): the first at handle 0,
+; a second prepare at handle 1.
+(defconst *opc-first* (fn-hrt-row-at *opc-first-wire* 0))
+(defconst *opc-second-wire*
   (fn-record-make 1 1 1 "<opc-second@example.invalid>" '(67 68)
                   '("fn.test") "opc-pin-2" "opc-subject-2"
                   "opc-release-2" 1 841000000))
+(defconst *opc-second* (fn-hrt-row-at *opc-second-wire* 1))
 
 (defun opc-run (oc events)
   (declare (xargs :guard (fn-sn-statep
@@ -106,10 +113,11 @@
 
 ; A malformed next sequence is refused before either implementation can
 ; expose pending record bytes.
-(defconst *opc-wrong-sequence*
+(defconst *opc-wrong-sequence-wire*
   (fn-record-make 9 1 1 "<opc-second@example.invalid>" '(67 68)
                   '("fn.test") "opc-pin-2" "opc-subject-2"
                   "opc-release-2" 1 841000000))
+(defconst *opc-wrong-sequence* (fn-hrt-row-at *opc-wrong-sequence-wire* 1))
 (assert-event
  (equal (fn-opc-prepare *opc-second-reserved* *opc-wrong-sequence*)
         *opc-second-reserved*))
@@ -121,10 +129,11 @@
 ; This candidate has correct counters but conflicts with the durable first
 ; article's Message-ID.  Binding rejects it, and both owner transitions are
 ; exact no-ops with no candidate bytes.
-(defconst *opc-conflict*
+(defconst *opc-conflict-wire*
   (fn-record-make 1 1 1 "<opc-first@example.invalid>" '(67 68)
                   '("fn.test") "opc-pin-2" "opc-subject-2"
                   "opc-release-2" 1 841000000))
+(defconst *opc-conflict* (fn-hrt-row-at *opc-conflict-wire* 1))
 (assert-event
  (fn-sf-candidatep
   *opc-conflict*
@@ -165,7 +174,7 @@
    (fn-own-config *opc-related-owner*)
    (fn-own-queue *opc-related-owner*)
    (fn-own-inflight *opc-related-owner*)
-   (fn-own-feeds *opc-related-owner*)))
+   (fn-own-feeds *opc-related-owner*) (fn-own-node-secret *opc-related-owner*) (fn-own-refused *opc-related-owner*)))
 (defconst *opc-stale*
   (fn-ocfg-make *opc-stale-owner*
                 (fn-ocfg-config *opc-second-reserved*)

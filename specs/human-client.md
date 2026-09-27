@@ -141,3 +141,43 @@ quoted reply line to be printable by the code. A client left unresolved
 because its re-send met the login or posting gate has one privileged
 resolution: the operator's `store inspect MESSAGE-ID` on the stopped store,
 whose accepted/absent answer is the store node's lookup (PRF-162).
+
+## The friends' reader
+
+WEB-003: The friends' web reader signs a person in only with the node's own
+answer to their AUTHINFO login over a verified TLS channel, adds no account,
+permission or decision of its own, and keeps accepted, refused, not sent and
+not sure apart on every page.
+
+`tools/fn_reader.py` is a hosted client: one process serves many signed-in
+browsers, each on its own NNTP connection logged in with that person's
+credentials (RFC 4643 section 2.3, after RFC 4642 STARTTLS with the node's
+certificate verified). A `281` is the only way in; `481` is "name and
+password don't match"; a connection or handshake failure is "can't reach
+the server" and never a wrong password. The browser side is HTTPS, or plain
+HTTP bound to loopback behind a TLS proxy; the process refuses anything
+else. The password is held in memory for the session and never written to
+a file, URL, page or log.
+
+The node decides and the reader shows: which groups the login is served
+(LIST ACTIVE, LIST COUNTS, LIST NEWSGROUPS, GROUP; an access rule, NNT-046,
+hides a group exactly as an absent one), whether a post is accepted, held
+for a moderator (the group's LIST ACTIVE status `m`, NNT-047), refused with
+the node's reason, or uncertain (books/nntp-post.lisp's 441 lines), whether
+an approval (the moderator's POST of the envelope's proto-article with
+Approved, RFC 5537 section 3.5.1) is taken, and whether a cancel withdraws
+(the same account, SEC-006: after the node's `240` the reader asks `STAT`
+of the target and reports `430` as removed, anything else as still shown).
+Threading (References, RFC 5536 section 3.2.10), the unread marks and the
+display name are the reader's own and decide nothing. Each submission's
+exact lines and Message-ID are written to the reader's state before the
+POST; a lost answer is settled only by re-sending those lines under the
+same Message-ID (NNT-019), and a failure before any byte of the article
+was sent is "not sent" and may be retried with the same lines.
+
+Local policy, not an RFC requirement: the form token on every POST, the
+Origin and Sec-Fetch-Site checks, a pause after eight failed sign-ins from
+one address in fifteen minutes, and the per-request display bounds (one
+window of 200 numbers per group page, 1,000 per thread page, 80 articles
+per thread) bound this client's work per request and never what the node
+stores (D27).

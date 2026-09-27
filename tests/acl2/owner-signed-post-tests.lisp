@@ -76,12 +76,18 @@
      snapshots *tha-ml-key* :verified :verified *ospt-obs*)))
 (make-event `(defconst *ospt-event* ',(ospt-event *ospt-staged* *ospt-snapshots*)))
 (assert-event (fn-stxa-p *ospt-event*))
+; After the records flip the Store retains the composite as a ROW beside its
+; interned article (books/held-record.lisp fn-hstxa-p; the entry that makes it
+; is books/store-intern.lisp fn-intern-event; the plain context here, which
+; neither the identity fold nor the finish of a composite reads).
+(defun ospt-row (w)
+  (fn-hstxa-make w (fn-held-plain (fn-replay-composite-record w) 0)))
 (defun ospt-store-events (event)
   (list '(:store (:io :start-frontier nil))
         '(:store (:io :frontier-file :ok))
         '(:store (:io :frontier-replace :ok))
         '(:store (:io :frontier-directory :ok))
-        (list :store (list :prepare-identity event))
+        (list :store (list :prepare-identity (ospt-row event)))
         '(:store (:io :record-file :ok))
         '(:store (:io :record-link :ok))
         '(:store (:io :record-directory :ok))))
@@ -101,7 +107,8 @@
            (fn-stx-make-verdict (fn-stxe-token v) (fn-stxe-detail v)
                                 (nth 6 (fn-pa-current-plan received snapshots nil nil))))))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *ospt-completing*)))
-(assert-event (equal (fn-sn-completion-record (fn-own-store *ospt-completing*))
+(assert-event (fn-hstxa-p (fn-sn-completion-record (fn-own-store *ospt-completing*))))
+(assert-event (equal (fn-hstxa-stxa (fn-sn-completion-record (fn-own-store *ospt-completing*)))
                      *ospt-event*))
 (assert-event (null (fn-sn-verdict-lookup (fn-own-store *ospt-completing*)
                                           *ospt-msgid*)))
@@ -134,14 +141,14 @@
   (fn-own-make s (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))
+               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
 (make-event
  `(defconst *ospt-off*
     ',(ospt-with-store *ospt-completing*
                        (fn-sn-advance-identity-next
                         (fn-own-store *ospt-completing*)))))
 (assert-event (not (fn-sn-completion-enabledp (fn-own-store *ospt-off*))))
-(assert-event (equal (fn-sn-completion-record (fn-own-store *ospt-off*))
+(assert-event (equal (fn-hstxa-stxa (fn-sn-completion-record (fn-own-store *ospt-off*)))
                      *ospt-event*))
 (must-fail (assert-event (ospt-finish-conclusion *ospt-off* *ospt-staged*
                                                  *ospt-snapshots*)))
@@ -197,7 +204,7 @@
                    (fn-own-pending *ospt-completing*) (fn-own-ledger *ospt-completing*)
                    (fn-own-clock *ospt-completing*) (fn-own-facts *ospt-completing*)
                    (fn-own-config *ospt-completing*) (fn-own-queue *ospt-completing*)
-                   (fn-own-inflight *ospt-completing*) (fn-own-feeds *ospt-completing*))))
+                   (fn-own-inflight *ospt-completing*) (fn-own-feeds *ospt-completing*) (fn-own-node-secret *ospt-completing*) (fn-own-refused *ospt-completing*))))
 (must-fail (assert-event (ospt-reader-verdict *ospt-full*)))
 ; The other three hypotheses of the reader theorem are the finish theorem's:
 ; with the gate closed the reader's pin has no verdict for the Message-ID.
@@ -276,7 +283,7 @@
                 (fn-own-pending *ospt-taken*) (fn-own-ledger *ospt-taken*)
                 (fn-own-clock *ospt-taken*) (fn-own-facts *ospt-taken*)
                 (fn-own-config *ospt-taken*) (fn-own-queue *ospt-taken*)
-                (fn-own-inflight *ospt-taken*) (fn-own-feeds *ospt-taken*))
+                (fn-own-inflight *ospt-taken*) (fn-own-feeds *ospt-taken*) (fn-own-node-secret *ospt-taken*) (fn-own-refused *ospt-taken*))
    *ospt-poster* :signature)))
 
 ; ---------------------------------------------------------------------------
@@ -323,11 +330,11 @@
 (defconst *ospt-bare-ctx* (fn-sn-identity-context (fn-own-store *ospt-bare-taken*)))
 (assert-event (equal (fn-stxk-context-kind *ospt-bare-ctx*) :ok))
 (assert-event
- (equal (fn-replay-identity-step *ospt-bare-ctx* *ospt-carried*)
+ (equal (fn-replay-identity-step *ospt-bare-ctx* (ospt-row *ospt-carried*))
         (fn-replay-apply-carried-verdict
          *ospt-bare-ctx* (fn-hls-kind4-verdict-event *ospt-carried*))))
 (assert-event (equal (fn-stxk-context-kind
-                      (fn-replay-identity-step *ospt-bare-ctx* *ospt-carried*))
+                      (fn-replay-identity-step *ospt-bare-ctx* (ospt-row *ospt-carried*)))
                      :ok))
 ; Tooth (the sequence): the same event one identity sequence late faults.
 (must-fail
@@ -338,7 +345,7 @@
                             nil nil
                             (fn-stxk-context-current-generation *ospt-bare-ctx*)
                             nil)
-           *ospt-carried*))
+           (ospt-row *ospt-carried*)))
          :ok)))
 ; Tooth (the carried binding): the forged :verified composite at generation
 ; 0 is refused by replay for want of a snapshot.
@@ -350,8 +357,8 @@
  `(defconst *ospt-carried-completing*
     ',(fn-own-run *ospt-bare-taken* (ospt-store-events *ospt-carried*))))
 (assert-event (fn-sn-completion-enabledp (fn-own-store *ospt-carried-completing*)))
-(assert-event (equal (fn-sn-completion-record
-                      (fn-own-store *ospt-carried-completing*))
+(assert-event (equal (fn-hstxa-stxa (fn-sn-completion-record
+                                     (fn-own-store *ospt-carried-completing*)))
                      *ospt-carried*))
 (assert-event
  (equal (ospt-reader-verdict *ospt-carried-completing*)
@@ -379,7 +386,7 @@
                                   (fn-peer-make-submission
                                    "p" kind (fn-nntp-string-octets *ospt-msgid*)
                                    *tha-received*))
-                 (fn-own-feeds o))))
+                 (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (defconst *ospt-transit* (ospt-with-transit *ospt-taken* :ihave))
 (assert-event (fn-own-transit-subp (fn-own-inflight *ospt-transit*)))
 (assert-event (not (fn-own-completion-consumedp *ospt-transit*)))
@@ -450,7 +457,7 @@
                 (fn-own-pending *ospt-transit*) (fn-own-ledger *ospt-transit*)
                 (fn-own-clock *ospt-transit*) (fn-own-facts *ospt-transit*)
                 (fn-own-config *ospt-transit*) (fn-own-queue *ospt-transit*)
-                (fn-own-inflight *ospt-transit*) (fn-own-feeds *ospt-transit*))
+                (fn-own-inflight *ospt-transit*) (fn-own-feeds *ospt-transit*) (fn-own-node-secret *ospt-transit*) (fn-own-refused *ospt-transit*))
    *ospt-poster* :want :control-not-filed)))
 
 ; ---------------------------------------------------------------------------
@@ -461,16 +468,16 @@
   (fn-stxk-context :ok 2 *pat-after-revocation* nil 5 nil))
 (assert-event
  (equal (fn-stxk-context-kind
-         (fn-replay-identity-step *ospt-revoked-ctx* *pat-revoked-event*))
+         (fn-replay-identity-step *ospt-revoked-ctx* (ospt-row *pat-revoked-event*)))
         :ok))
 (assert-event
  (equal (fn-stxk-context-snapshots
-         (fn-replay-identity-step *ospt-revoked-ctx* *pat-revoked-event*))
+         (fn-replay-identity-step *ospt-revoked-ctx* (ospt-row *pat-revoked-event*)))
         *pat-after-revocation*))
 (assert-event
  (equal (fn-replay-verdict-pairs
          (fn-stxk-context-verdicts
-          (fn-replay-identity-step *ospt-revoked-ctx* *pat-revoked-event*)))
+          (fn-replay-identity-step *ospt-revoked-ctx* (ospt-row *pat-revoked-event*))))
         (list (cons "<topic-binding@example.invalid>"
                     (fn-stx-make-verdict :revoked *tha-principal* 5)))))
 ; Tooth (the tombstone): the same composite over the history without the
@@ -480,7 +487,7 @@
   (equal (fn-stxk-context-kind
           (fn-replay-identity-step
            (fn-stxk-context :ok 2 *pat-snapshots* nil 4 nil)
-           *pat-revoked-event*))
+           (ospt-row *pat-revoked-event*)))
          :ok)))
 ; Tooth (the sequence): at another cursor it faults.
 (must-fail
@@ -488,7 +495,7 @@
   (equal (fn-stxk-context-kind
           (fn-replay-identity-step
            (fn-stxk-context :ok 3 *pat-after-revocation* nil 5 nil)
-           *pat-revoked-event*))
+           (ospt-row *pat-revoked-event*)))
          :ok)))
 
 ; PRF-177 (a): fn-osp-authorized-event-keeps-the-carried-source-and-signatures.

@@ -97,6 +97,9 @@
          (ns (fn-post-session-base pst))
          (tokens (fn-nntp-tokenize line)))
     (implies (and (fn-auth-sessionp as)
+                  ;; PRF-222: a session without a group-access rule (a
+                  ;; restricted one is served the view: books/group-access.lisp).
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
@@ -124,7 +127,7 @@
                           (fn-served-result-conn
                            (fn-served-dispatch conn (list :command line))))
                          (fn-served-conn-wire conn)))))
-  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-auth-step-pinned
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
                                    fn-peer-step-pinned fn-peer-delegate-pinned
                                    fn-nntp-post-step-pinned fn-nntp-step-pinned
@@ -189,6 +192,7 @@
                   (fn-nntp-session-projected ns)
                   (fn-nntp-projectionp (fn-served-conn-archive conn))
                   (fn-olc-buckets-okp conn)
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (fn-nntp-command-inputp line)
                   (fn-nntp-command-arguments-at-mostp tokens)
                   (consp (cdr tokens))
@@ -227,20 +231,22 @@
                             fn-nntp-command-inputp
                             fn-nntp-command-arguments-at-mostp)))))
 
-;; ARTICLE, HEAD, BODY and STAT with a Message-ID argument.
+;; BODY and STAT with a Message-ID argument.  Since PRF-243 (lane
+;; reader-compat, 2026-09-27) ARTICLE and HEAD on the served path answer
+;; the article's served representation, which carries its Xref line
+;; (books/nntp-reader-compat.lisp; at the dispatcher,
+;; fn-nntp-archive-command-pinned-article-head-is-served in
+;; books/nntp-pinned-msgid.lisp); the served-step composition for them is
+;; an open item of that lane, recorded in its evidence.
 
 (defun fn-olc-retrieval-kind (keyword)
   (declare (xargs :guard t :verify-guards nil))
-  (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
-        ((fn-nntp-keywordp keyword "HEAD") :head)
-        ((fn-nntp-keywordp keyword "BODY") :body)
+  (cond ((fn-nntp-keywordp keyword "BODY") :body)
         (t :stat)))
 
 (defun fn-olc-retrieval-keywordp (keyword)
   (declare (xargs :guard t :verify-guards nil))
-  (or (fn-nntp-keywordp keyword "ARTICLE")
-      (fn-nntp-keywordp keyword "HEAD")
-      (fn-nntp-keywordp keyword "BODY")
+  (or (fn-nntp-keywordp keyword "BODY")
       (fn-nntp-keywordp keyword "STAT")))
 
 (local
@@ -270,6 +276,9 @@
          (ns (fn-post-session-base pst))
          (tokens (fn-nntp-tokenize line)))
     (implies (and (fn-auth-sessionp as)
+                  ;; PRF-222: a session without a group-access rule (a
+                  ;; restricted one is served the view: books/group-access.lisp).
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
@@ -301,7 +310,7 @@
                           (fn-served-result-conn
                            (fn-served-dispatch conn (list :command line))))
                          (fn-served-conn-wire conn)))))
-  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-auth-step-pinned
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
                                    fn-peer-step-pinned fn-peer-delegate-pinned
                                    fn-nntp-post-step-pinned fn-nntp-step-pinned
@@ -361,6 +370,7 @@
                   (equal (fn-nntp-session-openp ns) t)
                   (fn-nntp-session-projected ns)
                   (fn-olc-buckets-okp conn)
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (fn-nntp-command-inputp line)
                   (fn-nntp-command-arguments-at-mostp tokens)
                   (consp (cdr tokens)) (null (cddr tokens))

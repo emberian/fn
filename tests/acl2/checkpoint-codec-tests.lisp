@@ -9,14 +9,24 @@
 (include-book "../../books/checkpoint-codec")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "held-rows-tests")
 
 (defconst *cpc-groups* '("fn.letters" "fn.test"))
-(defconst *cpc-r0*
+(defconst *cpc-r0-wire*
   (fn-record-make 0 0 0 "<cp0@example.invalid>" '(65 13 10)
                   '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2 841000000))
-(defconst *cpc-r1*
+(defconst *cpc-r1-wire*
   (fn-record-make 1 4 4 "<cp1@example.invalid>" '(66 13 10)
                   '("fn.test") "cp-pin-1" "cp-content-1" "cp-release-1" 3 841000000))
+
+; The store retains held rows (records-flip, books/held-record.lisp): each
+; journal record reaches capture, replay and validation as the row the
+; entry interns (keyring nil at generation 0, as the open does), its payload
+; a handle into the arena.  The two records intern in order (handles 0, 1).
+(defconst *cpc-rows* (fn-hrt-rows (list *cpc-r0-wire* *cpc-r1-wire*) nil 0))
+(defconst *cpc-r0* (car *cpc-rows*))
+(defconst *cpc-r1* (cadr *cpc-rows*))
+(assert-event (and (fn-held-p *cpc-r0*) (fn-held-p *cpc-r1*)))
 (defconst *cpc-prefix* (list *cpc-r0*))
 (defconst *cpc-capture* (fn-checkpoint-capture *cpc-groups* 10 *cpc-prefix* 3))
 (defconst *cpc-value* (fn-checkpoint-capture-value *cpc-capture*))
@@ -53,7 +63,10 @@
 (defconst *cpc-prestamp-expected*
   (fn-checkpoint-capture-value
    (fn-checkpoint-capture *cpc-groups* 10
-                          (list (fn-record-with-stamp *cpc-r0* :legacy)) 3)))
+                          (fn-hrt-rows
+                           (list (fn-record-with-stamp *cpc-r0-wire* :legacy))
+                           nil 0)
+                          3)))
 (assert-event
  (and (equal (fn-cpc-decode *cpc-prestamp-octets* *cpc-groups* 10 3 1)
              (list :ok *cpc-prestamp-expected*))
@@ -254,9 +267,11 @@
 ; *CPC-R0-BAD-GENERATION* is *CPC-R0* with the generation it consumed moved
 ; off its txid 0 to 1, so it is not a journal record and
 ; FN-CHECKPOINT-CAPTURE refuses the one-record prefix as :history.
-(defconst *cpc-r0-bad-generation*
+(defconst *cpc-r0-bad-generation-wire*
   (fn-record-make 0 0 1 "<cp0@example.invalid>" '(65 13 10)
                   '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2 841000000))
+(defconst *cpc-r0-bad-generation*
+  (fn-hrt-row-after nil *cpc-r0-bad-generation-wire* nil 0))
 (defconst *cpc-bad-prefix* (list *cpc-r0-bad-generation*))
 (assert-event (not (equal (fn-store-event-generation *cpc-r0-bad-generation*)
                           (fn-store-event-txid *cpc-r0-bad-generation*))))
@@ -319,7 +334,7 @@
                                           *cpc-groups* 10 3 1)
                      '(:error :integrity)))
 (assert-event (equal (fn-cpc-frame-decode
-                      (fn-frame-store-encode (fn-record-encode *cpc-r0*) *cpc-digest*)
+                      (fn-frame-store-encode (fn-record-encode *cpc-r0-wire*) *cpc-digest*)
                       *cpc-digest* *cpc-groups* 10 3 1)
                      '(:error :magic)))
 ; The selection marker: its own kind under the same magic.

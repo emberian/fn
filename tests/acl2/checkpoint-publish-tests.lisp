@@ -8,14 +8,24 @@
 (include-book "../../books/checkpoint-publish")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "held-rows-tests")
 
 (defconst *cpp-groups* '("fn.letters" "fn.test"))
-(defconst *cpp-r0*
+(defconst *cpp-r0-wire*
   (fn-record-make 0 0 0 "<cp0@example.invalid>" '(65 13 10)
                   '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2 841000000))
-(defconst *cpp-r1*
+(defconst *cpp-r1-wire*
   (fn-record-make 1 4 4 "<cp1@example.invalid>" '(66 13 10)
                   '("fn.test") "cp-pin-1" "cp-content-1" "cp-release-1" 3 841000000))
+; The store retains held rows (records-flip, books/held-record.lisp): each
+; journal record reaches capture and restore as the row the entry interns
+; (keyring nil at generation 0, as the open does), its payload a handle into
+; the arena.  The journal's two records intern in order (handles 0 and 1); an
+; off-journal record is the row interned after *CPP-R0-WIRE* (handle 1).
+(defconst *cpp-rows* (fn-hrt-rows (list *cpp-r0-wire* *cpp-r1-wire*) nil 0))
+(defconst *cpp-r0* (car *cpp-rows*))
+(defconst *cpp-r1* (cadr *cpp-rows*))
+(assert-event (and (fn-held-p *cpp-r0*) (fn-held-p *cpp-r1*)))
 (defconst *cpp-digest* (make-list 32 :initial-element 0))
 (defconst *cpp-prefix-0* (list *cpp-r0*))
 (defconst *cpp-prefix-1* (list *cpp-r0* *cpp-r1*))
@@ -369,10 +379,11 @@
 ; below the checkpoint's frontier is not an admissible split, and restore
 ; refuses it while full replay of the same records is a replay fault, so the
 ; two sides are not equal.
-(defconst *cpp-stale*
+(defconst *cpp-stale-wire*
   (fn-record-make 1 2 2 "<stale@example.invalid>" '(83 13 10)
                   '("fn.test") "cp-pin-stale" "cp-content-stale"
                   "cp-release-stale" 1 841000000))
+(defconst *cpp-stale* (fn-hrt-row-after (list *cpp-r0-wire*) *cpp-stale-wire* nil 0))
 (assert-event (not (fn-checkpoint-admissible-splitp *cpp-groups* 10 *cpp-prefix-0* 3
                                                     (list *cpp-stale*) 6)))
 (assert-event

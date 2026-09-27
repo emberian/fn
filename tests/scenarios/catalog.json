@@ -2349,9 +2349,10 @@
       "id": "SCN-077",
       "title": "A 10 MiB article carried by BP through 4 KiB fragments, under a node profile that admits it, is reassembled once and handed to the Store once",
       "milestone": "M4",
-      "status": "specified",
+      "status": "validated",
       "requirements": [
         "REP-008",
+        "REP-015",
         "STO-015"
       ],
       "steps": [
@@ -2360,16 +2361,27 @@
         "Kill the receiver with SIGKILL halfway through the family, restart it on the same journal, and send the rest."
       ],
       "expected": [
-        "The receiver publishes one kind-18 family, logs `BP application handoff durable` once, and the Store holds one article whose bytes are the ADU.",
-        "Arrivals no longer block it (PRF-136, bp-lifecycle-5): a bp-node serve session costs about 60 ms at 64 to 256 held rows (3.7 to 15.9 s before) and the first 1,311 fragments arrive in 90 s. Blocked now by the open: a journal of 1,311 held rows opens in 51.9 s (three re-encodings per row, an unverified bundle decode, a quadratic held-octet sum), so the restarted receiver misses the harness's waits in the second half. PKT-308."
+        "The receiver publishes one kind-18 family, logs `BP application handoff durable disposition=request-accepted` once, and the Store holds one article whose bytes are the ADU. Under the development-base Store (32,768-octet articles) the Store refuses the article as oversize and the handoff is reported refused (PKT-630 (7), PRF-224): the harness raises the Store profile (--max-article-octets 11534336 --max-record-octets 33554432 --max-history-octets 268435456).",
+        "Arrivals no longer block it (PRF-136, bp-lifecycle-5): a bp-node serve session costs about 60 ms at 64 to 256 held rows (3.7 to 15.9 s before) and the first 1,311 fragments arrive in 90 s. Blocked now by the open: a journal of 1,311 held rows opens in 51.9 s (three re-encodings per row, an unverified bundle decode, a quadratic held-octet sum), so the restarted receiver misses the harness's waits in the second half. PKT-308. 2026-09-27 (bp-fragments-10mib): the reopen and the family pass; with the Store and the neighbour's inbound bound raised the delivery is refused by FNRJ, whose request-ADU :blob is 131,072 octets (PKT-646, open), and reported `BP application handoff refused disposition=request-refused (kind 7 durable)`. Reassembly and handoff 280.3 s -> 117.2 s with the table-driven CRC-16 (PRF-225). 2026-09-27 (bp-fragments-10mib-4): PKT-646 closed; accepted, `disposition=request-accepted`, and the Store's own open reads one article byte-equal to the authored one (`store PATH status`, `store PATH inspect`), on the developer and production images at be7e5cb17 (tests.test_bp_fragment_node_native)."
       ],
       "evidence": [
         "planning/evidence/bp-lifecycle-3-2026-09-26.md",
         "books/bp-node-profile.lisp",
         "planning/evidence/bp-lifecycle-4-2026-09-26.md",
         "books/bp-node-profile-admission.lisp",
-        "planning/evidence/bp-lifecycle-5-2026-09-26.md"
-      ]
+        "planning/evidence/bp-lifecycle-5-2026-09-26.md",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md",
+        "tests/test_bp_fragment_node_native.py"
+      ],
+      "implementation": {
+        "test": "tests.test_bp_fragment_node_native",
+        "cases": [
+          "test_ten_mebibyte_article_through_four_kib_fragments"
+        ],
+        "native": true,
+        "log": "planning/evidence/bp-fragments-10mib-2026-09-27/scn077-developer-be7e5cb17.log",
+        "record": "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      }
     },
     {
       "id": "SCN-073",
@@ -3138,7 +3150,7 @@
       ],
       "expected": [
         "Every row is recorded with the owner's OWNER-OPEN line, owner CPU, VmHWM, disk octets and inodes, the box load and (ZFS) zfs/zpool state; a row past its time budget says `capped`; a case that cannot run (the 40G ceiling, a unit's 30 minutes) is recorded with why, never replaced by a smaller N.",
-        "docs/operator.md publishes the table and the weaker tier where storage misses the targets (250 ms p95, 10 POST/s)."
+        "docs/operator-internals.md publishes the table (docs/operator.md its plain summary) and the weaker tier where storage misses the targets (250 ms p95, 10 POST/s)."
       ],
       "evidence": [
         "tools/service_envelope.py",
@@ -3702,9 +3714,11 @@
         "NNT-042"
       ],
       "steps": [
-        "tests.test_native_catalog_view (to write): connection A selects a group and lists it; connection B posts an article and then a cancel for it; A issues ARTICLE by number (visible: pinned before the cancel), then GROUP, then ARTICLE by number again (withdrawn).",
+        "tests.test_native_reader_freshness (catalog-slice-5, 2026-09-26; the freshness half): a long-lived reader selects the group before the article exists; another connection POSTs (store A) or a peer IHAVEs (store B); the reader's next GROUP reports the new count and its STAT/ARTICLE by Message-ID answer 223/220 as a fresh connection's do (asserted since NNT-042).",
+        "tests/acl2/owner-tests.lisp (catalog-slice-5): the reader pinned at version 0 lists the posted article after LISTGROUP and after GROUP and is pinned at the view afterwards; STAT on the reader still at version 0 answers 430 and moves no pin; fn-own-read-repinned says which.",
         "ACL2 half (catalog-slice-2): tests/acl2/catalog-delta-tests.lisp cdt-exec: on the live catalog over the live arena, connection A advances to version 2 before the cancel; the cancel's :withdraw delta and its own row commit; connection B advances to version 3; fn-view-sees at A's and B's versions of row 0 and of the cancel's row.",
-        "ACL2 half over the view (catalog-slice-4): tests/acl2/catalog-view-tests.lisp cvt-run: the view at version 2 over the mixed history (two articles, a retention event skipped) built on live stobjs; the machine's own lookups (fn-midx-lookup of fn-midx-build, fn-gidx-number-article of fn-gidx-build) equal the walks fn-cat-view-find / fn-cat-view-bound-find; a cancel of row 0 committed at count 2 leaves row 0 in the view at version 2 (2 articles) and out of the view at version 3 (1 article)."
+        "ACL2 half over the view (catalog-slice-4): tests/acl2/catalog-view-tests.lisp cvt-run: the view at version 2 over the mixed history (two articles, a retention event skipped) built on live stobjs; the machine's own lookups (fn-midx-lookup of fn-midx-build, fn-gidx-number-article of fn-gidx-build) equal the walks fn-cat-view-find / fn-cat-view-bound-find; a cancel of row 0 committed at count 2 leaves row 0 in the view at version 2 (2 articles) and out of the view at version 3 (1 article).",
+        "Cancel-after-target over two native connections (A pinned before the cancel reads the article; A's GROUP; A reads it withdrawn) is 7b's module with the crossed-view arms (PKT-585)."
       ],
       "expected": "A's first read returns the article (223/220), the GROUP reply's count advances, the second read returns 423. ACL2 half: A (version 2) sees row 0 and not the cancel's row; B (version 3) does not see row 0 and sees the cancel's row; a delta does not move A's version.",
       "evidence": [
@@ -3712,9 +3726,12 @@
         "planning/evidence/manifests/certify-20260926T212645Z-2809134.json",
         "tests/acl2/catalog-view-tests.lisp",
         "planning/evidence/manifests/certify-20260926T222802Z-3457759.json",
-        "planning/evidence/manifests/certify-20260926T224259Z-3607880.json"
+        "planning/evidence/manifests/certify-20260926T224259Z-3607880.json",
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_reader_freshness.py",
+        "books/served.lisp"
       ],
-      "note": "Lane catalog-slice (2026-09-26): the native module is not written (PKT-585); the ACL2 half runs in catalog-delta-tests (catalog-slice-2)."
+      "note": "Lane catalog-slice (2026-09-26): the ACL2 half runs in catalog-delta-tests (catalog-slice-2) and catalog-view-tests (-4); the freshness half runs natively in tests.test_native_reader_freshness (catalog-slice-5); the cancel-after-target native half is 7b (PKT-585)."
     },
     {
       "id": "SCN-123",
@@ -4322,6 +4339,28 @@
       "expected": "No acknowledged POST missing or changed, no refused POST served, lost-reply POSTs whole or absent, recover/owner/status without fault, bindings and numbers stable, reclaim accounting whole, every control caught; on barrier=0 acknowledged POSTs are lost (the assumption broken, not fn)."
     },
     {
+      "id": "SCN-154",
+      "title": "Draining a contact of N ready base jobs examines each job record once and answers the head scan's offers in order",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-009"
+      ],
+      "steps": [
+        "Queue N base jobs for one peer on its routed hop (N = 1,000 through the machine's own :enqueue records; N = 10,000 as copies of one queued job, above the 4,096-record ceiling).",
+        "Drain one contact, asking before every offer, with the head scan (fn-bpnj-contact-next) and with the cursor (fn-bpnjc-contact-next), driving each offer's outcome.",
+        "Count the job records each drain's asks examine and time both drains and the transitions alone (tools/bench/bp-drain-bench.lisp)."
+      ],
+      "expected": [
+        "Both drains offer the same N jobs in the same order.",
+        "The cursor's asks examine N records in all (the head scan's about 2N^2), and the cursor drain's wall less the transitions' is a small constant share."
+      ],
+      "evidence": [
+        "tools/bench/bp-drain-bench.lisp",
+        "planning/evidence/bp-cursors-2026-09-27.md"
+      ]
+    },
+    {
       "id": "SCN-149",
       "title": "Articles of 2,000,000 lines and of one 4 MiB line are posted, served (ARTICLE, BODY), reopened and served again byte-identical at 1 MiB of control stack per thread and at the image's own 64 MiB, on the production and developer images",
       "milestone": "M5",
@@ -4357,7 +4396,400 @@
       }
     },
     {
+      "id": "SCN-157",
+      "title": "A peer named by a DNS name: the feed dials `localhost` under the system roots, a name mismatch is refused by name and retried, an unresolvable name is reported and retried, and peer add refuses a non-host",
+      "milestone": "M3",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peer_by_name",
+        "cases": [
+          "test_feed_by_name_under_the_system_roots",
+          "test_name_mismatch_is_refused_by_name_and_retried",
+          "test_resolution_failure_is_named_and_retried",
+          "test_peer_add_refuses_a_host_that_is_not_a_host"
+        ],
+        "native": true,
+        "record": "planning/evidence/peers-by-name-2026-09-27.md",
+        "log": "planning/evidence/peers-by-name-2026-09-27/native-peer-by-name-production.log"
+      },
+      "requirements": [
+        "NNT-048"
+      ],
+      "steps": [
+        "Scratch CA; nodes A and B with CA-signed certificates; A started with SSL_CERT_FILE=CA; A's peer B added as host localhost, starttls - - (the host's name, the system roots); post on A.",
+        "Same, B's certificate names other.test.",
+        "A's peer B at no-such-peer.invalid; post on A.",
+        "peer add with host bad_host.example, and with 127.0.0.1 and server name `-`."
+      ],
+      "evidence": [
+        "tests/acl2/peer-host-tests.lisp",
+        "tests/test_native_peer_by_name.py"
+      ],
+      "expected": [
+        "The article arrives on B byte-identical; no dial failure line.",
+        "At least two `peer dial via=feed ... host=localhost outcome=name-mismatch retry=yes` lines; nothing arrives; both nodes alive.",
+        "At least two `outcome=unresolved retry=yes` lines; A alive and serving the article.",
+        "Both refused with a nonzero exit; no record written."
+      ]
+    },
+    {
+      "id": "SCN-159",
+      "title": "A store is opened on the filesystem it was made on, refused by name when its path now lands on another filesystem (the node volume missing) or holds no record, rebound deliberately and opened; a store requiring durable storage is refused at start on tmpfs and starts once the risk is accepted",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests/test_native_store_mount_identity.py",
+        "cases": [],
+        "native": true,
+        "record": "planning/evidence/store-mount-identity-2026-09-27.md",
+        "log": "planning/evidence/store-mount-identity-2026-09-27/native-run.log"
+      },
+      "requirements": [
+        "STO-031"
+      ],
+      "steps": [
+        "init a store in a temporary directory; recover opens it; a copy on the same filesystem opens.",
+        "copy it onto another filesystem (tmpfs to ZFS on hbox): recover and status are refused with `store filesystem changed: expected ..., found ...`; `store rebind-filesystem` records the move and recover opens it.",
+        "an empty directory at the store path is refused as `store filesystem unrecorded` and nothing is created there; a corrupted record is refused as `record invalid`, a removed one as `unrecorded`; rebind opens it.",
+        "an operator store on tmpfs (policy 0) warns at status and starts; with `--storage-require-durable on` its start is refused by name; with `off` it starts again.",
+        "by hand on hbox (root): a loop-mounted ext4 volume opens; unmounted, the empty directory underneath is refused by name; rebind works (the record)."
+      ],
+      "evidence": [
+        "planning/evidence/store-mount-identity-2026-09-27.md",
+        "planning/evidence/store-mount-identity-2026-09-27/native-run.log",
+        "planning/evidence/store-mount-identity-2026-09-27/loop-mount.log",
+        "tests/test_native_store_mount_identity.py"
+      ],
+      "expected": "Opens on the filesystem it was made on; on another filesystem, on an empty directory, or with a missing or corrupted record every open exits 1 with ACL2's named line and writes nothing; rebind-filesystem records the move and the store opens; a policy-1 store on tmpfs or nobarrier is refused at start by name and a policy-0 one warns and starts."
+    },
+    {
+      "id": "SCN-169",
+      "title": "An image whose saved world is the execution world starts, serves and refuses exactly as before: a guard violation at the host boundary is the same fault line and exit code, the start with ACL2_SYSTEM_BOOKS set works, a fresh node serves from a 256 MB dynamic space, and the served transcript is byte-identical",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-025"
+      ],
+      "steps": [
+        "Build the developer and production images of the lane (tools/hbox_native.sh --images developer,production) and, in scratch, the same source without the strip (the comparison image).",
+        "Run `--fn guard-probe` on both developer images, and on the stripped one with ACL2_SYSTEM_BOOKS set; run it on the production image.",
+        "Read each production core's dynamic requirement (node_measure.py core) and start a fresh development store's owner with --dynamic-space-size 256MB: one POST, then ARTICLE.",
+        "On today's image and the new one: 1,000 POSTs of 2,048 octets on a fresh scale store, the fixed served transcript (node_measure.py run --transcript), stop and reopen; a development store until the owner publishes a checkpoint, then the reopen."
+      ],
+      "expected": [
+        "guard-probe exits 4 with the one stderr line `store: ACL2 error in fn-sha256-of-string: (EV-FNCALL-GUARD-ER FN-SHA256-OF-STRING (42) (STRINGP S) (NIL) NIL)` on both developer images and with ACL2_SYSTEM_BOOKS set; the production image refuses the verb with exit 5.",
+        "The stripped core needs under 192 MiB of dynamic space (today's 271 MiB); the 256 MB node answers 240 and 220.",
+        "The transcripts of today's image and the new one are byte-identical; the qualifying native modules pass on the new images."
+      ],
+      "evidence": [
+        "planning/evidence/image-floor-2026-09-26.md",
+        "tests/test_native_image_floor.py"
+      ],
+      "implementation": {
+        "test": "tests/test_native_image_floor.py",
+        "native": true,
+        "record": "planning/evidence/image-floor-2026-09-26.md",
+        "log": "planning/evidence/image-floor-2026-09-26/native/test-tests.test_native_image_floor.log"
+      }
+    },
+    {
+      "id": "SCN-153",
+      "title": "Served connections cost no thread and a bounded resident figure, and a capacity past the machine's bound is refused by name at start and live, on the developer and production images",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "HST-024"
+      ],
+      "steps": [
+        "Per image: `store init fn.test`; `policy set exposure-connections 4000000`; `run`.",
+        "`policy set exposure-connections 320`; `run`; read the service log; hold 300 connections; read Threads and VmRSS before and after; GROUP on each.",
+        "Live `policy set exposure-connections B+1` (B the bound the log named); `status`; live `policy set exposure-connections 325`; 25 more connections, then one more."
+      ],
+      "expected": [
+        "exit 1 with `refused connections-exceed-memory capacity=4000000 holds=B per-connection=K KiB machine=M MB` on stderr and in the service log; nothing listens.",
+        "The log names `connections holds=B per-connection=K KiB` with B >= 320; the thread count does not grow with the 299 connections; each costs under 64 KiB resident; every GROUP answers 211.",
+        "The raise to B+1 is refused naming connections-exceed-memory and status still shows capacity=320; the raise to 325 is published; the 25 are admitted and the next reads `400 too many connections; try again later`."
+      ],
+      "implementation": {
+        "test": "tests.test_native_mux",
+        "cases": [
+          "DeveloperImageMux.test_a_capacity_the_machine_cannot_hold_is_refused_at_start",
+          "DeveloperImageMux.test_connections_cost_no_thread_and_the_bound_is_kept_live",
+          "ProductionImageMux.test_a_capacity_the_machine_cannot_hold_is_refused_at_start",
+          "ProductionImageMux.test_connections_cost_no_thread_and_the_bound_is_kept_live"
+        ],
+        "native": true,
+        "record": "planning/evidence/connection-multiplexing-2026-09-26.md"
+      }
+    },
+    {
       "id": "SCN-152",
+      "title": "Two accounts, one private group: the restricted login cannot list, select, read by number or Message-ID, or post to it; the other can; after a restart too; on both images",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "NNT-046",
+        "SEC-007"
+      ],
+      "steps": [
+        "`init local.general`; `group create fn.public`, `group create fn.private.x`; start the owner (implicit TLS, protected_only).",
+        "Invite and redeem alice and bob (XREDEEM); alice posts <secret> to fn.private.x, <pub> to fn.public, <cross> to both.",
+        "Live `account access bob --read 'fn.[' --post '*'` (refused), then `account access bob --read 'fn.*,!fn.private.*' --post fn.public`; `account access show`.",
+        "bob on a new connection: LIST ACTIVE, LIST NEWSGROUPS, LIST COUNTS; GROUP fn.absent, GROUP fn.private.x, LISTGROUP fn.private.x; STAT <nothere>, STAT <secret>, ARTICLE <secret>, STAT <cross>; GROUP fn.public; OVER <cross>; POST to fn.private.x and to fn.absent; POST to fn.public.",
+        "alice on a new connection: LIST ACTIVE, GROUP fn.private.x, ARTICLE <secret>, POST to fn.private.x.",
+        "Restart the owner and repeat the two connections."
+      ],
+      "expected": [
+        "The refused pattern exits non-zero; the rule exits 0; `show` prints `access bob read fn.*,!fn.private.* post fn.public`.",
+        "bob's LIST variants omit fn.private.x and list fn.public; GROUP fn.private.x answers the same line as GROUP fn.absent (411); LISTGROUP 411; STAT <secret> answers the same line as STAT <nothere> (430); ARTICLE <secret> 430; STAT <cross> 223; GROUP fn.public 211; OVER <cross> 224 without fn.private.x; the POST to fn.private.x answers the 441 a POST to fn.absent answers; the POST to fn.public 240.",
+        "alice lists fn.private.x, GROUP 211, ARTICLE 220, POST 240.",
+        "After the restart, the same."
+      ],
+      "implementation": {
+        "test": "tests.test_native_group_access",
+        "cases": [
+          "NativeGroupAccessTests.test_two_accounts_one_private_group"
+        ],
+        "native": true,
+        "record": "planning/evidence/group-access-2026-09-27.md",
+        "log": "planning/evidence/group-access-2026-09-27/native-a3-test_native_group_access.log"
+      },
+      "evidence": [
+        "tests/test_native_group_access.py",
+        "planning/evidence/group-access-2026-09-27.md",
+        "planning/evidence/group-access-2026-09-27/native-a3-test_native_group_access.log"
+      ]
+    },
+    {
+      "id": "SCN-155",
+      "title": "A moderated group: an unapproved post is queued and not visible, a moderator's approval makes it visible, a forged Approved is refused, status m across a restart, and --off live",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "NNT-047"
+      ],
+      "steps": [
+        "`init fn.test`; `group create fn.mod`, `group create fn.mod.moderation`; offline `group moderate fn.absent --moderators alice` and `group moderate fn.test --moderators alice --queue fn.absent` (refused), `group moderate fn.mod --moderators alice`.",
+        "Start the owner (implicit TLS, protected_only); accounts alice and carol by invitation; `account list`.",
+        "carol: LIST ACTIVE; POST to fn.mod without Approved; STAT its Message-ID; GROUP fn.mod; POST to fn.mod with `Approved: carol@...`.",
+        "alice: GROUP fn.mod.moderation; ARTICLE <fn-moderate.ID>; POST the envelope's body with `Approved: alice@...`; a new carol connection GROUP fn.mod and STAT the Message-ID.",
+        "Restart; carol: LIST ACTIVE; cross-post fn.test,fn.mod without Approved and STAT it.",
+        "Live `group moderate fn.mod --off`; a new carol connection: LIST ACTIVE; POST to fn.mod; STAT."
+      ],
+      "expected": [
+        "The two refusals exit non-zero; the moderation exits 0.",
+        "`account list` shows `moderator alice fn.mod` and `moderation fn.mod fn.mod.moderation`.",
+        "LIST ACTIVE: fn.mod m, fn.mod.moderation y, fn.test y; the unapproved POST answers 240, its STAT 430, GROUP fn.mod 0 articles; carol's Approved answers `441 posting failed; Approved is accepted only from a moderator of each moderated group named (LIST ACTIVE status m)` and is not stored.",
+        "The queue holds 1 envelope with `Content-Type: application/news-transmission; usage=moderate` and `Newsgroups: fn.mod.moderation`, whose body is the proto-article with its Message-ID and a node-added Date; alice's approved POST answers 240; GROUP fn.mod shows 1 and STAT 223.",
+        "After the restart fn.mod is still m; the cross-post answers 240 and STAT 430.",
+        "After --off fn.mod is y; the POST answers 240 and STAT 223."
+      ],
+      "implementation": {
+        "test": "tests.test_native_moderation",
+        "cases": [
+          "NativeModerationTests.test_moderated_group_holds_approves_and_refuses"
+        ],
+        "native": true,
+        "record": "planning/evidence/moderated-groups-2026-09-27.md",
+        "log": "planning/evidence/moderated-groups-2026-09-27/native-m3-test_native_moderation.log"
+      },
+      "evidence": [
+        "tests/test_native_moderation.py",
+        "planning/evidence/moderated-groups-2026-09-27/native-m3-test_native_moderation.log",
+        "planning/evidence/moderated-groups-2026-09-27.md"
+      ]
+    },
+    {
+      "id": "SCN-160",
+      "title": "Two accounts with different access, four local consumers over a mixed stream: each bound consumer is served only its account's groups, with its account's password; the unbound one everything; cursors survive a restart; a widened rule resumes a refused consumer without a skip; on both images",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-006"
+      ],
+      "steps": [
+        "`init local.general`; `group create fn.public`, `group create fn.private.x`; start the owner (implicit TLS, protected_only); invite and redeem alice and bob; `account access bob --read 'fn.*,!fn.private.*' --post 'fn.*'`.",
+        "`fn consumer bootstrap`; register bob-pub (fn.public), bob-priv, alice-priv and operator (fn.private.x); `consumer bind bob-pub --account 'b b'` (refused); bind bob-pub and bob-priv to bob, alice-priv to alice; `consumer show`.",
+        "alice posts secret1 (fn.private.x), pub1 (fn.public), secret2, pub2, cross (both).",
+        "bound-poll bob-pub with a wrong password; plain poll of bob-pub; bound-poll of the unbound operator; bound-poll bob-priv; bound-poll alice-priv with bob's password.",
+        "bob-pub bound-poll (pub1), bound-ack with a wrong password, plain ack, bound-ack; alice-priv bound-poll (secret1, not acked); restart the owner.",
+        "Drain bob-pub, alice-priv (bound) and operator (plain); bound-poll bob-priv; `account access bob --read '*' --post '*'`; drain bob-priv; `consumer unbind bob-pub`; bound-poll and plain poll of bob-pub."
+      ],
+      "expected": [
+        "The malformed binding exits non-zero; `consumer show` prints `consumer bob-pub account bob` and `consumer alice-priv account alice`.",
+        "Every refusal in step 4 exits 1 and writes no cursor.",
+        "bob-pub is served pub1; the wrong-password and plain acks exit 1, the bound ack 0.",
+        "After the restart: bob-pub pub2, cross; alice-priv secret1 (re-served), secret2, cross; operator secret1, secret2, cross; bob-priv refused, then after the widened rule secret1, secret2, cross (nothing skipped); unbound bob-pub: bound-poll exits 1, plain poll an empty page."
+      ],
+      "implementation": {
+        "test": "tests.test_native_consumer_identity",
+        "cases": [
+          "NativeConsumerIdentityTests.test_two_accounts_two_bound_consumers"
+        ],
+        "native": true,
+        "record": "planning/evidence/consumer-identity-2026-09-27.md",
+        "log": "planning/evidence/consumer-identity-2026-09-27/native-a3-test_native_consumer_identity.log"
+      },
+      "evidence": [
+        "tests/test_native_consumer_identity.py",
+        "planning/evidence/consumer-identity-2026-09-27.md",
+        "planning/evidence/consumer-identity-2026-09-27/native-a3-test_native_consumer_identity.log"
+      ]
+    },
+    {
+      "id": "SCN-161",
+      "title": "Refused-offer memory: one article with a malformed Path offered by three peers is transferred and parsed once",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_transit_hygiene_refused_offer_memory_and_relay_checks"
+        ],
+        "native": true,
+        "record": "planning/evidence/transit-hygiene-2026-09-27.md",
+        "log": "planning/evidence/transit-hygiene-2026-09-27/native-peering.log"
+      },
+      "requirements": [
+        "NNT-049"
+      ],
+      "steps": [
+        "Node T with peers hyg1, hyg2, hyg3 (source addresses 127.0.0.1, .2, .3): hyg1 CHECK then TAKETHIS the article.",
+        "hyg2 and hyg3: CHECK and IHAVE the same Message-ID."
+      ],
+      "evidence": [
+        "tests/acl2/transit-hygiene-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "238 then 439 for hyg1.",
+        "438 and '435 not wanted; malformed Path' for hyg2 and hyg3; no transfer."
+      ]
+    },
+    {
+      "id": "SCN-162",
+      "title": "Relay date and Path checks: a future-dated article and a Path-less article are refused by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_transit_hygiene_refused_offer_memory_and_relay_checks"
+        ],
+        "native": true,
+        "record": "planning/evidence/transit-hygiene-2026-09-27.md",
+        "log": "planning/evidence/transit-hygiene-2026-09-27/native-peering.log"
+      },
+      "requirements": [
+        "NNT-050"
+      ],
+      "steps": [
+        "Operator: policy set relay-date-skew 3600; policy set relay-require-path 1.",
+        "Peer hyg2 IHAVEs an article dated two hours ahead, one with no Path, and one dated 30 minutes ahead with a Path."
+      ],
+      "evidence": [
+        "tests/acl2/transit-hygiene-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "437 transfer rejected; dated in the future",
+        "437 transfer rejected; no Path",
+        "235"
+      ]
+    },
+    {
+      "id": "SCN-163",
+      "title": "Per-peer Distribution filtering: an article whose Distribution the peer's filter does not name is not fed to that peer",
+      "milestone": "M5",
+      "status": "specified",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_feed_distribution_filter"
+        ],
+        "native": true,
+        "record": "planning/evidence/transit-hygiene-2026-09-27.md"
+      },
+      "requirements": [
+        "NNT-051"
+      ],
+      "steps": [
+        "Operator: peer distributions NAME fn on an outbound peer.",
+        "A local POST with Distribution: world, one with Distribution: fn, and one with none."
+      ],
+      "evidence": [
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "the peer receives the fn and the unmarked articles",
+        "the peer never receives the world article"
+      ]
+    },
+    {
+      "id": "SCN-141",
+      "title": "A friend cancels their own unsigned post with RFC 8315 Cancel-Lock/Cancel-Key (as tin writes them): gone from ARTICLE and OVER on their node and on two peers in either arrival order, kept gone after SIGKILL; another login's cancel with its own key is filed and withdraws nothing",
+      "milestone": "M4",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_own_cancel",
+        "cases": [
+          "test_a_login_cancels_its_own_post_here_and_on_peers"
+        ],
+        "native": true,
+        "log": "planning/evidence/newsreader-cancel-2026-09-26/native-own-cancel.log",
+        "record": "planning/evidence/newsreader-cancel-2026-09-26.md"
+      },
+      "requirements": [
+        "SEC-006"
+      ],
+      "steps": [
+        "Node H requires AUTHINFO with logins alice and bob; nodes A and B take IHAVE from a configured peer.",
+        "alice POSTs T with `Cancel-Lock: sha256:Base64(SHA-256(K))`; bob POSTs `Control: cancel T` with a Cancel-Key of his own; alice POSTs `Control: cancel T` with `Cancel-Key: sha256:K`; ARTICLE T and OVER after each; SIGKILL H and restart.",
+        "Relay T, bob's cancel and alice's cancel (as H stored them) to A (target first) and to B (cancels first)."
+      ],
+      "evidence": [
+        "tests/acl2/cancel-lock-tests.lisp",
+        "tests/test_native_own_cancel.py"
+      ],
+      "expected": [
+        "T as stored carries alice's Cancel-Lock unchanged; each cancel carries its Cancel-Key.",
+        "After bob's cancel (240) T answers 220; after alice's cancel (240) T answers 430 withdrawn and OVER no longer lists it; after the restart T still answers 430.",
+        "A serves T after T and bob's cancel, and answers 430 after alice's cancel; B answers 430 and its OVER omits T."
+      ]
+    },
+    {
+      "id": "SCN-164",
+      "title": "slrn and pan against a scratch native owner over TLS: NEWGROUPS lists a group created live, slrn --create subscribes from LIST SUBSCRIPTIONS, slrn reads with XOVER and marks a cross-post read in its other group, on the production and developer images",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-052"
+      ],
+      "steps": [
+        "tools/reader_clients_phase.py: init local.general local.crosspost control.cancel over implicit TLS with a redeemed account; seed a cross-post; run slrn 1.0.3 (--create, read, follow-up, post, cancel) and pan 0.162 in the container; `fn operator CONFIG group create local.later` on the running node; NEWGROUPS and LIST ACTIVE.TIMES from a day before."
+      ],
+      "expected": [
+        "LIST SUBSCRIPTIONS 215 and slrn --create reaches its group list; slrn's read sends XOVER answered 224; the cross-post read in local.general shows 0 unread in local.crosspost; NEWGROUPS (yymmdd and yyyymmdd) and LIST ACTIVE.TIMES list local.general, local.crosspost, control.cancel and local.later; a day ahead lists none."
+      ],
+      "evidence": [
+        "tests/test_native_reader_clients.py"
+      ],
+      "implementation": {
+        "test": "tests.test_native_reader_clients",
+        "cases": [
+          "test_newgroups_lists_the_groups_created_since_the_instant",
+          "test_slrn_create_subscribes_from_list_subscriptions",
+          "test_slrn_reads_overview_with_xover",
+          "test_slrn_marks_a_cross_post_read_in_the_other_group"
+        ],
+        "native": true,
+        "record": "planning/evidence/reader-compat-2026-09-27.md",
+        "log": "planning/evidence/reader-compat-2026-09-27/module.log"
+      }
+    },
+    {
+      "id": "SCN-167",
       "title": "The arena's generic runs over the attached byte array: a record interned into the live arena materializes to itself, a pinned row list reads the same bytes across later seals and a reclaim, and the catalog loaded from a mixed history answers the store's identity index from its contexts",
       "milestone": "M5",
       "status": "specified",
@@ -4378,6 +4810,314 @@
         "tests/acl2/payload-arena-tests.lisp"
       ],
       "note": "Lane records-freeze (2026-09-26/27). The native half (the node's arena holding the served payloads) waits on the join with catalog-slice-5 step 8 and acceptance-payload-arena; no native module is owed by this lane."
+    },
+    {
+      "id": "SCN-148",
+      "title": "store import or operator init killed or failed at every cut of its publication program leaves no store or the complete (empty) store, and the next import or init says exactly what to do",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-029"
+      ],
+      "steps": [
+        "Export a served store; for every cut of tests/campaign/native_cuts.py IMPORT_CUTS and each of SIGKILL and EIO (FN_NATIVE_IMPORT_FAULT on the developer image), import it to a fresh ROOT.",
+        "Observe ROOT and any ROOT.import-* beside it; import again.",
+        "For every cut of tests/campaign/native_cuts.py INIT_PUB_CUTS and each of SIGKILL and EIO (FN_NATIVE_INIT_FAULT on the developer image), run operator init on a fresh ROOT; observe ROOT and any ROOT.init-*; init again."
+      ],
+      "expected": [
+        "Before the rename: exit 1 (EIO) or death, ROOT absent, the next import refuses reason=interrupted-import naming the staged directory; after its removal the import succeeds.",
+        "At and after the rename: ROOT, when present, opens to the exported history article for article; a staged directory beside a present ROOT is refused reason=publication-uncertain, never treated as no store.",
+        "An existing unrelated ROOT is never replaced (reason=store-exists).",
+        "init: before the rename ROOT is absent and the next init refuses reason=interrupted-init naming the staged directory, after whose removal init succeeds; at and after the rename a present ROOT is the empty store (status transactions=0) and init refuses STORE-EXISTS; an existing empty ROOT is refused reason=store-path-exists."
+      ]
+    },
+    {
+      "id": "SCN-156",
+      "title": "a store whose profile raises max-header-fields to 1,000 accepts a 900-field POST and refuses 1,001 by name; the default profile refuses the 65th field and a 258-line header by name; a peer's IHAVE/TAKETHIS of the 65th field is refused 437 by name / 439 (PKT-660)",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-030"
+      ],
+      "steps": [
+        "`store ROOT init --max-header-fields 1000 --max-header-lines 2000 --max-header-octets 1048576 fn.test`; run the owner; POST a 900-field article; ARTICLE it; POST 1,000 and 1,001 fields.",
+        "`store ROOT init fn.test`; POST 64, 65 and 900 fields and a 258-physical-line header.",
+        "`store ROOT init fn.test`; `operator CONFIG peer add src ... 127.0.0.1 true`; from 127.0.0.1 IHAVE a 64-field and a 65-field relayed article, TAKETHIS a 65-field one."
+      ],
+      "expected": [
+        "240 for 900 and 1,000 fields, ARTICLE serves the 896 X- fields back; 441 naming max-header-fields for 1,001.",
+        "240 for 64 fields; 441 naming max-header-fields for 65 and 900; 441 naming max-header-lines for the 258-line header.",
+        "235 for 64 fields; `437 transfer rejected; the header has more fields than the profile's max-header-fields` for IHAVE of 65; `439 <id>` for TAKETHIS of 65."
+      ],
+      "evidence": [
+        "planning/evidence/header-limits-profile-2026-09-27.md",
+        "planning/evidence/header-limits-profile/native-header-limits.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_header_limits",
+        "cases": [
+          "test_a_raised_profile_accepts_900_fields_and_refuses_1001_by_name",
+          "test_the_default_profile_is_unchanged",
+          "test_peer_transit_is_refused_past_the_profile_limits_by_name"
+        ],
+        "native": true,
+        "record": "planning/evidence/header-limits-profile-2026-09-27.md",
+        "log": "planning/evidence/header-limits-profile/native-header-limits.log"
+      }
+    },
+    {
+      "id": "SCN-139",
+      "title": "An article posted on a node with two configured feed peers, by served POST or by `operator post`, is journaled to both peers' FNFD journals, in the plan's order, before the offer; a malformed typed result stops the owner by fault",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-019"
+      ],
+      "steps": [
+        "Start a native owner with two feed peers configured; POST one article.",
+        "Post a second article with `operator post` to the running owner (the control submission, in-flight id :control).",
+        "Read both peers' FNFD journals; let each feed tick offer the article.",
+        "(Raw harness) hand fnn-owner-feed-flush a publication whose plan names an unconfigured peer; hand the staging step a malformed ConfigResult."
+      ],
+      "expected": [
+        "240; each journal holds the enqueue frame for the article (sealed, trailer verifying) before its peer sees the offer.",
+        "exit 0 and `ok operator post`; the owner keeps running; both journals hold the second article's enqueue frame (batch AM faulted here: 54d23d01).",
+        "The offer and the reply follow the journal append; nothing on the wire differs from before.",
+        "fnn-fault (exit 4) naming the step; nothing appended for the unknown peer."
+      ],
+      "evidence": [
+        "planning/evidence/adapter-retirement-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_owner tests.test_native_peer_pull",
+        "cases": [],
+        "native": true,
+        "record": "planning/evidence/adapter-retirement-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-158",
+      "title": "A request the receiving Store refuses is reported as a refused BP handoff naming the disposition, never a durable one",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-015"
+      ],
+      "steps": [
+        "Start a receiving bp-node whose channel is admitted but whose policy grants no inbound scope (tests.test_bp_node_native test_admitted_channel_without_inbound_scope_refuses_store_request).",
+        "Send one request bundle; the application refuses it and kind 7 records :request-refused durably."
+      ],
+      "expected": [
+        "The node logs `BP application handoff refused disposition=request-refused (kind 7 durable)` and `BP node delivery request-refused`, never `BP application handoff durable`, and the Store holds no article."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "books/bp-handoff-report.lisp",
+        "tests/acl2/bp-handoff-report-tests.lisp"
+      ]
+    },
+    {
+      "id": "SCN-166",
+      "title": "Power is cut (qemu SIGKILL) under an OpenBSD 7.9 node while a client outside the VM posts, compacts, captures checkpoints, reclaims, initializes, imports and recovers; after reboot, fsck, recover and the owner, every acknowledged article answers exactly as first read, a refused one stays refused, local numbers are never reassigned",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "FLR-001",
+        "NNT-005"
+      ],
+      "steps": [
+        "Clone the release-openbsd VM and install the release under test (tools/power_loss_openbsd.py install NAME TARBALL; first run fn-a04213276edf, the continuation fn-c5d7b5b3fd9f); give it a store disk (raw: completed writes survive the cut; qcow2 writeback: unflushed allocations are lost) with FFS1 or FFS2; the node listens on the guest loopback behind a pf redirect.",
+        "Per epoch: `operator init` cut at a random point, then cycles of: boot, `fsck -y`, mount, `operator recover`, the owner, the oracle (ARTICLE of every attempted Message-ID, OVER), `status`, then the phase's work and a SIGKILL of qemu: posting on two connections (every seventh POST names an uncarried group), posting across the automatic checkpoint capture, `store compact` with the owner stopped, an interrupted `recover`, `store export` (owner stopped) then `store import` of that archive into a second store ROOT2, cut, and `retention set released-by-all-holders` then `store reclaim`.",
+        "tools/power_loss_openbsd.py campaign NAME / initcuts NAME; the client's record (oracle.jsonl) and the cut record (cuts.jsonl) stay on hbox."
+      ],
+      "expected": [
+        "recover exits 0, the owner reaches LISTENING, status exits 0 after every cut.",
+        "Every 240 answers 220 with the posted body and headers, byte-identical at every later cut until a reclaim starts; every 441 answers 430; an attempt with no reply answers 220 (then pinned) or 430.",
+        "A local number once observed keeps its Message-ID; a newly listed article takes a number above every number observed before.",
+        "A rerun of an interrupted compact or reclaim succeeds; after a completed reclaim every article answers 430.",
+        "After an init cut the store is absent (at most one ROOT.init-*, which the next init names as interrupted-init, and init succeeds once it is removed) or the complete empty store (status 0, transactions=0); after an import cut ROOT2 is absent (at most one ROOT2.import-*, named by the next import, which then succeeds) or the complete imported store (the exported transaction count, sampled `store inspect` answers equal the source's)."
+      ],
+      "implementation": {
+        "tool": "tools/power_loss_openbsd.py",
+        "native": true,
+        "record": "planning/evidence/power-loss-openbsd-2026-09-26.md"
+      },
+      "evidence": [
+        "tools/power_loss_openbsd.py",
+        "planning/evidence/power-loss-openbsd-2026-09-26.md"
+      ]
+    },
+    {
+      "id": "SCN-173",
+      "title": "Friends sign in on the web, read, reply, post, remove their own post, approve a held post, and do not see a private group",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "WEB-003",
+        "NNT-046",
+        "NNT-047"
+      ],
+      "steps": [
+        "On a scratch production-image node with STARTTLS and protected_only, three invitation accounts redeemed over TLS: alice moderates fn.mod, bob has the access rule read and post fn.*,!fn.private.*, carol has none; tools/fn_reader.py serves HTTPS in front of it.",
+        "In a headless browser: a wrong password, then alice signs in, reads fn.friends, replies, posts and removes her own post, approves carol's held post from the queue, switches to the dark theme and signs out; bob signs in and opens fn.private.club by address; carol posts to the moderated group from a 390-pixel phone viewport."
+      ],
+      "expected": [
+        "The wrong password is refused as not matching and no session is made; alice's groups carry the node's descriptions and unread counts; the reply is threaded under its parent; the removal leaves the target answered 430; the approved post appears in fn.mod; carol is told a moderator will look.",
+        "bob's group list omits fn.private.club and the queue, and its address answers not found; no page carries a password or a script, every page sends default-src 'none', and no page scrolls sideways at 390 pixels."
+      ],
+      "evidence": [
+        "tests/test_fn_reader.py",
+        "tests/fn_reader_scratch.py",
+        "tests/fn_reader_drive.mjs",
+        "planning/evidence/web-reader-2-2026-09-27/drive.json"
+      ],
+      "execution_scope": "One scratch node on hbox (production image of batch AS, 4c5cc6213) and Chromium 1.62.1 on the laptop over an ssh tunnel. Not a public deployment, not a load test, not an external security audit.",
+      "implementation": {
+        "test": "tests.test_fn_reader",
+        "cases": [
+          "test_sign_in_is_the_nodes_answer_and_the_password_stays_out",
+          "test_unreachable_node_is_not_a_wrong_password",
+          "test_a_post_from_another_site_or_without_the_token_does_nothing",
+          "test_post_once_read_unread_and_remove_own",
+          "test_refused_shows_the_nodes_reason_and_offers_an_edit",
+          "test_not_sure_is_settled_by_the_same_article_never_a_new_one",
+          "test_state_is_per_login",
+          "test_plain_http_off_loopback_is_refused"
+        ],
+        "native": false,
+        "log": "planning/evidence/web-reader-2-2026-09-27/drive.log",
+        "record": "planning/evidence/web-reader-2-2026-09-27.md"
+      }
+    },
+    {
+      "id": "SCN-172",
+      "title": "Two agents bound to two accounts wait at once: a post wakes exactly the right one within a bound; a timeout answers the empty page; twelve waiters and the thirteenth refused; a restart keeps both cursors; fn_agent reads, replies and acks without NNTP in the agent; on both images",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-007"
+      ],
+      "steps": [
+        "`init local.general`; `group create fn.alice`, `group create fn.bob`; start the owner (implicit TLS and STARTTLS, protected_only); invite and redeem alice and bob; `account access LOGIN --read fn.LOGIN --post 'fn.*'` for each; bootstrap; register alice-inbox (fn.alice) and bob-inbox (fn.bob); bind each to its account.",
+        "alice-inbox and bob-inbox each `bound-wait --timeout 60`; after 4 s alice posts to fn.bob; 2 s after bob's wait returns, bob posts to fn.alice; bob acks.",
+        "bob-inbox `bound-wait --timeout 3`; bob-inbox with alice's password.",
+        "Twelve bob-inbox waits; a thirteenth; a post to fn.bob; ack.",
+        "Restart the owner; bob-inbox wait 3 s; alice-inbox wait.",
+        "fn_agent: alice next/ack; alice posts `question` to fn.bob; bob next, reply --group fn.alice, ack; alice next, ack; bob next --timeout 1."
+      ],
+      "expected": [
+        "bob's wait exits 0 with for-bob within 5 s of the 240 while alice's still sleeps; alice's then exits 0 with for-alice within 5 s.",
+        "The 3 s wait exits 0 with an empty report after at least 3 s; the wrong password exits 1 at once.",
+        "The thirteenth exits 1 at once; the post wakes all twelve with for-all.",
+        "After the restart bob's wait times out empty (his ack kept); alice's answers for-alice again (not acked: at-least-once).",
+        "bob's next prints the question as JSON (Message-ID, groups, From, Subject, body); the reply is accepted; alice's next prints it with the question's Message-ID in References; bob's last next prints {\"kind\": \"empty\"}."
+      ],
+      "implementation": {
+        "test": "tests.test_native_agent_wait",
+        "cases": [
+          "NativeAgentWaitTests.test_two_agents_wait_for_their_own_news"
+        ],
+        "native": true,
+        "record": "planning/evidence/agent-wait-2026-09-27.md",
+        "log": "planning/evidence/agent-wait-2026-09-27/native-a2-test_native_agent_wait.log"
+      },
+      "evidence": [
+        "tests/test_native_agent_wait.py",
+        "planning/evidence/agent-wait-2026-09-27.md",
+        "planning/evidence/agent-wait-2026-09-27/native-a2-test_native_agent_wait.log"
+      ]
+    },
+    {
+      "id": "SCN-174",
+      "title": "The batch's crash cuts (log-written, log-fenced, finish per member): an acknowledged member's record is in every admissible image's scan, an unacknowledged one may be absent and is never answered durable",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-033"
+      ],
+      "steps": [
+        "Prepare a batch of three members against one catalog (fn-owb-take within log-batch-records and log-batch-octets), append it (fn-owb-append: the kernel's batch becomes the batch in flight and the store's pending list is the segment's one write) and fence it (fn-owb-fence); acknowledge the first member (fn-owb-finish-member).",
+        "Take the crash image at each cut: after the append (log-written: every admissible selection over the pending write, fn-bs-crash), after the barrier (log-fenced) and after each member's finish; recover each image (fn-owb-recover, fn-lgk-recover) and scan its content.",
+        "Remove each hypothesis of T1 in turn (the alignment, R at the cut, the admissible image, the platform's tear) with a ground witness of the conclusion's failure; label the corrupted-state witnesses separately."
+      ],
+      "expected": [
+        "At log-written the scan reads the committed records then a prefix of the batch (fn-lg-crash-verdictp); at log-fenced and after every finish it reads the committed records and the whole batch; the acknowledged member's record is in every image's scan (fn-owb-acknowledged-record-survives-crash).",
+        "A member not yet acknowledged may be absent after a log-written crash and is answered :durable by no cut before the barrier; a member acknowledged before the cut is absent from no image.",
+        "Every removed hypothesis has a witness whose conclusion fails, with the retained hypotheses checked affirmatively."
+      ],
+      "evidence": [
+        "tests/acl2/owner-batch-tests.lisp",
+        "books/owner-batch.lisp"
+      ],
+      "implementation": {
+        "test": "tests/acl2/owner-batch-tests.lisp",
+        "native": false,
+        "record": "planning/evidence/w6-log-owner-2026-09-27.md"
+      },
+      "note": "Lane w6-log-owner (2026-09-27): no native module exercises these cuts yet; the ACL2 witnesses of tests/acl2/owner-batch-tests.lisp are the executable evidence. The served crash campaign at the log cuts and the power-loss rig's run are PKT-748, after the store node's article commit moves onto the log kernel (PKT-698)."
+    },
+    {
+      "id": "SCN-170",
+      "title": "The fsync error: every member of the batch is uncertain, the store is fenced, and recovery admits the committed records then a prefix of the batch",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-033"
+      ],
+      "steps": [
+        "Prepare and append a batch of three members; answer the barrier :eio under an admissible selection over the pending write (fn-bs-fsync-file bs ino (cons :eio choices)); apply fn-owb-fence-failed to the layer.",
+        "Read the layer's words (fn-owb-fault-words) and attempt fn-owb-finish-member; recover the kernel from the store the failure left (fn-lgk-recover of its durable content) and compare with the committed records and the batch in flight, for each admissible selection.",
+        "Retry the barrier on the same store (fn-bs-refence-after-error-fences-nothing) and read the words again."
+      ],
+      "expected": [
+        "The kernel is :fault; every member in flight or waiting is answered :uncertain and none :durable; the finish acknowledges nothing (fn-owb-fence-failed-answers-uncertain).",
+        "The recovered kernel holds the committed records followed by a prefix of the batch in flight under every admissible selection (fn-owb-uncertain-batch-recovers-to-a-prefix); the store stays fenced until recovery (STO-004).",
+        "The retry fences nothing further and answers no member the failed barrier covered :durable."
+      ],
+      "evidence": [
+        "tests/acl2/owner-batch-tests.lisp",
+        "books/owner-batch.lisp"
+      ],
+      "implementation": {
+        "test": "tests/acl2/owner-batch-tests.lisp",
+        "native": false,
+        "record": "planning/evidence/w6-log-owner-2026-09-27.md"
+      },
+      "note": "Lane w6-log-owner (2026-09-27): no native module exercises these cuts yet; the ACL2 witnesses of tests/acl2/owner-batch-tests.lisp are the executable evidence. The served crash campaign at the log cuts and the power-loss rig's run are PKT-748, after the store node's article commit moves onto the log kernel (PKT-698)."
+    },
+    {
+      "id": "SCN-171",
+      "title": "The mixed hour before and after the scheduler gate and the render plans on the same box: control p99, POST p99, the greeting under 40 readers, and the owner's hold-time distribution",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Build the developer image of the base (connection-multiplexing's branch 077f9b583, batch AR's: the tree without this lane) as the before, and of the lane's tree as the after, on hbox; run planning/evidence/owner-scheduler-2026-09-26/mixed.py on each for the same duration, concurrently (the same box state), on a 4 MiB-article profile (the default 16 MiB profile's per-connection figure under PKT-605 does not fit a 24 GB scope): 3 tight-loop readers (GROUP / OVER / ARTICLE / XPAT), 1 unsigned POST every 0.5 s, a hybrid-signed report every 20 s, a consumer wake every 30 s, a live group create and control grant every 120 s, status and health every 30 s.",
+        "Run greeting40.py on each image: a 2,000-article store (1 MiB profile, exposure capacity 64), 40 readers looping GROUP / ARTICLE, 60 fresh connections timed to their 200 line and 60 control-socket status requests timed.",
+        "Read the after image's `health': the sched lines (holds per class in five buckets, hold-max, wait-max, waits over 1 s).",
+        "tests/test_native_owner_scheduler.py on both images: the sched lines count the classes that ran; a multi-megabyte ARTICLE, rendered as a plan window off the mutex, is the posted article; status under three tight-loop readers is answered within 10 s every time."
+      ],
+      "expected": [
+        "Before: control requests queue past the client's 10 s deadline (PKT-321's shape). After: every control request is answered within its deadline; the control p99 and the greeting p99 under 40 readers fall; POST p99 does not rise; correctness holds on both (recover rc 0, every outcome classified).",
+        "After: no held quantum of any class exceeds the longest single step; the control class's wait-max is bounded by three quanta of the other classes."
+      ],
+      "evidence": [
+        "planning/evidence/owner-scheduler-2026-09-26.md",
+        "planning/evidence/owner-scheduler-2026-09-26/mixed.py",
+        "planning/evidence/owner-scheduler-2026-09-26/greeting40.py",
+        "tests/test_native_owner_scheduler.py"
+      ],
+      "implementation": {
+        "test": "tests.test_native_owner_scheduler",
+        "cases": [
+          "SchedulerSourceTests",
+          "SchedulerNativeTests"
+        ],
+        "native": true,
+        "record": "planning/evidence/owner-scheduler-2026-09-26.md"
+      }
     }
   ]
 }

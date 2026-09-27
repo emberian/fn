@@ -636,11 +636,21 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual((room["transactions-used"], room["transactions-budget"]), (0, 1000))
         self.assertEqual((room["bytes-used"], room["history-bound"]), (0, 1 << 40))
 
-    def test_bare_init_is_the_default_profile(self):
+    def test_bare_init_takes_the_budgeted_preset(self):
+        # PKT-582 (image-floor, batch AR): a capacity-free init sizes within
+        # the process budget, conservatively, and prints the decision
+        # (books/heap-reservation.lisp fn-heap-init-decide): development when
+        # the budget holds its reservation, else small; never the default
+        # preset's 1 TiB history.
         created = self.operator("init", "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        line = re.search(rb"init: profile=(\w+) sizing=conservative ", created.stdout)
+        self.assertIsNotNone(line, created.stdout.decode())
         fields = self.profile_line()
-        self.assertEqual((fields["format"], fields["max-transactions"]), (8, 4294967295))
+        expected = {b"development": 128, b"small": 16384}
+        self.assertIn(line.group(1), expected, created.stdout.decode())
+        self.assertEqual((fields["format"], fields["max-transactions"]),
+                         (8, expected[line.group(1)]))
 
     def test_init_refuses_a_profile_by_the_relation_it_breaks(self):
         refused = self.operator("init", "--max-record-octets", "100", "fn.test")

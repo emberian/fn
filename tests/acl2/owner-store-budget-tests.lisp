@@ -8,6 +8,7 @@
 (include-book "../../books/owner-store-budget")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "held-rows-tests")
 
 (defconst *osbt-groups* '("fn.letters" "fn.test"))
 (defconst *osbt-config*
@@ -19,14 +20,19 @@
    (list (fn-nntp-string-octets "fn.letters")
          (fn-nntp-string-octets "fn.test"))
    32768))
-(defconst *osbt-first*
+(defconst *osbt-first-wire*
   (fn-record-make 0 0 0 "<osbt-first@example.invalid>" '(65 66)
                   *osbt-groups* "osbt-pin-1" "osbt-subject-1"
                   "osbt-release-1" 2 841000000))
-(defconst *osbt-second*
+; The store retains held rows (records-flip): each record reaches the
+; store as the row the entry interns (store-intern fn-intern-row-at,
+; keyring nil at generation 0), its handle its place in the run's arena.
+(defconst *osbt-first* (fn-hrt-row-at *osbt-first-wire* 0))
+(defconst *osbt-second-wire*
   (fn-record-make 1 1 1 "<osbt-second@example.invalid>" '(67 68)
                   '("fn.test") "osbt-pin-2" "osbt-subject-2"
                   "osbt-release-2" 1 841000000))
+(defconst *osbt-second* (fn-hrt-row-at *osbt-second-wire* 1))
 
 (defun osbt-run (oc events)
   (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))

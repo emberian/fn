@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-budget")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 (include-book "std/testing/must-fail" :dir :system)
 
 (defconst *sbudt-dev* (fn-bs-config-for-profile :development))
@@ -71,14 +72,20 @@
 
 ; fn-sbud-bytes-used-is-kernel-sum: a valid carried prefix sum extends to the
 ; kernel's sum; a cache that is not the prefix's sum does not.
+; The kernel holds retained rows (records-flip): the two wire records
+; interned in order on a fresh arena (handles 0 and 1).
+(defconst *sbudt-two-wire*
+  (list (fn-record-make 0 0 0 "<a@example.invalid>" '(65)
+                        '("fn.letters") "p" "s" "r" 2 1)
+        (fn-record-make 1 1 1 "<b@example.invalid>" '(66 67)
+                        '("fn.letters") "p" "s" "r" 2 1)))
 (defconst *sbudt-two*
   (list nil nil
         (list :store-files :ready 2 nil
-              (list (fn-record-make 0 0 0 "<a@example.invalid>" '(65)
-                                    '("fn.letters") "p" "s" "r" 2 1)
-                    (fn-record-make 1 1 1 "<b@example.invalid>" '(66 67)
-                                    '("fn.letters") "p" "s" "r" 2 1))
+              (fn-hrt-rows *sbudt-two-wire* nil 0)
               nil nil nil 0)))
+(assert-event (and (fn-held-p (car (fn-sf-records (fn-sn-files *sbudt-two*))))
+                   (fn-held-p (cadr (fn-sf-records (fn-sn-files *sbudt-two*))))))
 (defconst *sbudt-two-records* (fn-sf-records (fn-sn-files *sbudt-two*)))
 (assert-event (< 0 (fn-sbud-bytes-used *sbudt-two*)))
 (assert-event (equal (fn-sbud-bytes-extend
@@ -102,8 +109,11 @@
 (defconst *sbudt-misnumbered*
   (list nil nil
         (list :store-files :ready 1 nil
-              (list (fn-record-make 1 0 0 "<a@example.invalid>" '(65)
-                                    '("fn.letters") "p" "s" "r" 2 1))
+              ; the retained row (records-flip), handle 0
+              (list (fn-hrt-row-at
+                     (fn-record-make 1 0 0 "<a@example.invalid>" '(65)
+                                     '("fn.letters") "p" "s" "r" 2 1)
+                     0))
               nil nil nil 0)))
 (assert-event (not (equal (fn-sbud-sequences
                            (fn-sf-records (fn-sn-files *sbudt-misnumbered*)))

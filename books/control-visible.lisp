@@ -41,7 +41,8 @@
                  (fn-ctl-effect-withdrawsp
                   (fn-ctl-withdrawal-effect
                    w (fn-article-groups x)
-                   (fn-ctl-lookup-verdict (fn-article-msgid x) verdicts))))
+                   (fn-ctl-lookup-verdict (fn-article-msgid x) verdicts)
+                   (fn-article-payload x))))
             (fn-ctl-withdrawn-via-p x (cdr ws) cause verdicts)))
     nil))
 
@@ -293,12 +294,18 @@
 ; article record a signed acceptance composite carries (decoded as replay
 ; decodes it, `fn-replay-composite-record').  Cost: a composite is decoded
 ; (its article record's octets) when the walk reaches it.
+; E is a history event: after the records flip a plain article is a HELD row
+; and a signed article's composite is the ROW `fn-hstxa-p' whose interned
+; article carries the Message-ID (books/held-record.lisp); the wire forms (a
+; record, a composite) read as before.  Refinement over alpha:
+; books/history-fold-refinement.lisp fn-ctl-event-msgid-over-alpha.
 (defun fn-ctl-event-msgid (e)
   (declare (xargs :guard t))
-  (if (fn-record-p e)
-      (fn-record-msgid e)
-    (let ((r (fn-replay-composite-record e)))
-      (if (fn-record-p r) (fn-record-msgid r) nil))))
+  (cond ((fn-held-p e) (fn-record-msgid e))
+        ((fn-hstxa-p e) (fn-record-msgid (fn-hstxa-held e)))
+        ((fn-record-p e) (fn-record-msgid e))
+        (t (let ((r (fn-replay-composite-record e)))
+             (if (fn-record-p r) (fn-record-msgid r) nil)))))
 
 ; The txid of MSGID's acceptance event, nil when RECORDS holds none.
 ; Pessimistic cost: a walk of RECORDS decoding every signed composite before
@@ -322,6 +329,7 @@
                          (fn-article-msgid a)
                          (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts)
                          target
+                         (fn-ctl-keys-octets (fn-article-payload a))
                          (fn-ctl-config-at
                           (fn-ctl-record-txid (fn-article-msgid a) records)
                           configs))))
@@ -377,12 +385,13 @@
 (defthm fn-ctl-causes-all-p-of-article-withdrawals
   (fn-ctl-causes-all-p (fn-ctl-article-withdrawals a verdicts records configs) (fn-article-msgid a))
   :hints (("Goal" :in-theory (disable fn-ctl-withdrawal-plan fn-ctl-withdrawalp
-                                      fn-ctl-target-octets fn-ctl-config-at
+                                      fn-ctl-target-octets fn-ctl-keys-octets fn-ctl-config-at
                                       fn-ctl-record-txid)
-           :use ((:instance fn-ctl-withdrawal-plan-record-is-bound
+           :use ((:instance fn-ctl-withdrawal-plan-names-its-cause
                   (cause (fn-article-msgid a))
                   (verdict (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts))
                   (target (fn-ctl-target-octets (fn-article-payload a)))
+                  (keys (fn-ctl-keys-octets (fn-article-payload a)))
                   (cfg (fn-ctl-config-at
                         (fn-ctl-record-txid (fn-article-msgid a) records)
                         configs)))))))
@@ -467,7 +476,7 @@
 
 ; -----------------------------------------------------------------------------
 ; Recovery decides each record under its own txid (brief control-c3d step 2).
-; The journal a Store holds: one entry (TXID CAUSE VERDICT TARGET) per
+; The journal a Store holds: one entry (TXID CAUSE VERDICT TARGET KEYS) per
 ; withdrawing article of ARTS, newest first, the shape
 ; `fn-ctl-journal-withdrawals' (books/control-authority.lisp) decides.
 
@@ -482,7 +491,8 @@
             (cons (list (fn-ctl-record-txid (fn-article-msgid a) records)
                         (fn-article-msgid a)
                         (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts)
-                        target)
+                        target
+                        (fn-ctl-keys-octets (fn-article-payload a)))
                   rest)
           rest))
     nil))
@@ -502,7 +512,7 @@
                                      configs))
   :hints (("Goal" :induct (fn-ctl-archive-entries arts verdicts records)
            :in-theory (disable fn-ctl-withdrawal-plan fn-ctl-withdrawalp
-                               fn-ctl-config-at fn-ctl-target-octets
+                               fn-ctl-config-at fn-ctl-target-octets fn-ctl-keys-octets
                                fn-ctl-record-txid fn-ctl-lookup-verdict))))
 
 ; Stability of the entries as the Store grows.  (1) A record already found
@@ -526,7 +536,7 @@
   (implies (fn-ctl-all-recorded-p arts records)
            (equal (fn-ctl-archive-entries arts verdicts (append records more))
                   (fn-ctl-archive-entries arts verdicts records)))
-  :hints (("Goal" :in-theory (disable fn-ctl-target-octets fn-ctl-record-txid))))
+  :hints (("Goal" :in-theory (disable fn-ctl-target-octets fn-ctl-keys-octets fn-ctl-record-txid))))
 
 ; (2) A verdict recorded for a Message-ID outside ARTS changes no entry.
 (defthm fn-ctl-lookup-verdict-of-other-cons
@@ -538,7 +548,7 @@
   (implies (not (member-equal m (fn-article-msgids arts)))
            (equal (fn-ctl-archive-entries arts (cons (cons m v) verdicts) records)
                   (fn-ctl-archive-entries arts verdicts records)))
-  :hints (("Goal" :in-theory (disable fn-ctl-target-octets fn-ctl-record-txid
+  :hints (("Goal" :in-theory (disable fn-ctl-target-octets fn-ctl-keys-octets fn-ctl-record-txid
                                       fn-ctl-lookup-verdict))))
 
 ; (3) Configuration records appended later carry larger txids than every

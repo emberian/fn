@@ -160,6 +160,7 @@
                                    fn-record-p fn-stxe-p fn-stxk-p fn-stxa-p
                                    fn-store-retention-event-p fn-cpe-eventp
                                    fn-th-topic-eventp fn-replay-composite-record
+                                   fn-hstxa-p fn-held-p fn-replay-composite-held
                                    fn-node-prepare fn-node-complete fn-node-pending-matchesp
                                    fn-retain-admissiblep fn-retain-admit fn-retain-release
                                    fn-retain-matching-releasep fn-retain-find-id
@@ -167,17 +168,17 @@
            :use ((:instance fn-own-node-complete-grows
                             (s (fn-node-prepare
                                 (fn-replay-advance-txid node (fn-store-event-txid record))
-                                (fn-record-generation (if (fn-stxa-p record) (fn-replay-composite-record record) record))
-                                (fn-record-msgid (if (fn-stxa-p record) (fn-replay-composite-record record) record))
-                                (fn-record-payload (if (fn-stxa-p record) (fn-replay-composite-record record) record))
-                                (fn-record-groups (if (fn-stxa-p record) (fn-replay-composite-record record) record))
-                                (fn-record-obligation-id (if (fn-stxa-p record) (fn-replay-composite-record record) record))
-                                (fn-record-content-subject (if (fn-stxa-p record) (fn-replay-composite-record record) record))
-                                (fn-record-release-evidence (if (fn-stxa-p record) (fn-replay-composite-record record) record))
-                                (fn-record-charge (if (fn-stxa-p record) (fn-replay-composite-record record) record))
-                                (fn-record-stamp (if (fn-stxa-p record) (fn-replay-composite-record record) record))))
-                            (txid (fn-record-txid (if (fn-stxa-p record) (fn-replay-composite-record record) record)))
-                            (generation (fn-record-generation (if (fn-stxa-p record) (fn-replay-composite-record record) record)))
+                                (fn-record-generation (if (fn-hstxa-p record) (fn-replay-composite-held record) record))
+                                (fn-record-msgid (if (fn-hstxa-p record) (fn-replay-composite-held record) record))
+                                (fn-record-payload (if (fn-hstxa-p record) (fn-replay-composite-held record) record))
+                                (fn-record-groups (if (fn-hstxa-p record) (fn-replay-composite-held record) record))
+                                (fn-record-obligation-id (if (fn-hstxa-p record) (fn-replay-composite-held record) record))
+                                (fn-record-content-subject (if (fn-hstxa-p record) (fn-replay-composite-held record) record))
+                                (fn-record-release-evidence (if (fn-hstxa-p record) (fn-replay-composite-held record) record))
+                                (fn-record-charge (if (fn-hstxa-p record) (fn-replay-composite-held record) record))
+                                (fn-record-stamp (if (fn-hstxa-p record) (fn-replay-composite-held record) record))))
+                            (txid (fn-record-txid (if (fn-hstxa-p record) (fn-replay-composite-held record) record)))
+                            (generation (fn-record-generation (if (fn-hstxa-p record) (fn-replay-composite-held record) record)))
                             (status :durable))))))
 )
 
@@ -347,14 +348,14 @@
                                             (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                                             (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
                                             (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-                                            (fn-own-inflight o) (fn-own-feeds o))))
+                                            (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
                  (:instance fn-own-refresh-view-is-kept-or-the-idle-node
                             (o (fn-own-make (fn-sn-finish (fn-own-store o)) (fn-own-view o) (fn-own-conns o)
                                             (fn-own-next-id o) (fn-own-max-conns o) nil
                                             (append (fn-own-ledger o)
                                                           (list (fn-sf-completion (fn-sn-files (fn-own-store o)))))
                                             (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-                                            (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o))))))))
+                                            (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))))))
 )
 
 (local (defthm fn-own-finish-keeps-store-configuration

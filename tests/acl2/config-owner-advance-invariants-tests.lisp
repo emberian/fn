@@ -15,11 +15,28 @@
  (member-equal "fn.live" (fn-ocfg-served *ocla-t-advanced* 0)))
 (defconst *ocla-t-live-group-command*
   (append (fn-nntp-string-octets "GROUP fn.live") '(13 10)))
+; BY SPECIFICATION (NNT-042, 2026-09-27): a successful GROUP acquires the
+; committed view whether or not the connection was advanced first, so the
+; un-advanced and the advanced connection answer GROUP fn.live alike.  Before
+; NNT-042 only the advanced one could name fn.live (411 against 211).  The
+; advance is still observable through a read that is not a selection: STAT 1
+; is answered from the pin, and the two pins differ (the archive domain).
 (assert-event
- (not (equal (car (fn-ocfg-read *ocl-t-new-open* 0
-                                 *ocla-t-live-group-command*))
-             (car (fn-ocfg-read *ocla-t-advanced* 0
-                                 *ocla-t-live-group-command*)))))
+ (equal (car (fn-ocfg-read *ocl-t-new-open* 0 *ocla-t-live-group-command*))
+        (car (fn-ocfg-read *ocla-t-advanced* 0 *ocla-t-live-group-command*))))
+(defconst *ocla-t-stat-command*
+  (append (fn-nntp-string-octets "STAT 1") '(13 10)))
+(assert-event
+ (not (equal (fn-state-groups
+              (fn-own-conn-archive
+               (fn-own-find-conn 0
+                (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-read *ocl-t-new-open* 0
+                                                                 *ocla-t-stat-command*)))))))
+             (fn-state-groups
+              (fn-own-conn-archive
+               (fn-own-find-conn 0
+                (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-read *ocla-t-advanced* 0
+                                                                 *ocla-t-stat-command*))))))))))
 (assert-event
  (equal (fn-own-conn-archive
          (fn-own-find-conn 0

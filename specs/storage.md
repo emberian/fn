@@ -77,6 +77,16 @@ rises. Open: the group-name bound (field 7) is not yet read on the served
 path and the name width is 256, below the NNTP wire's 460 (PKT-451); a
 peer's configuration rows are now data (STO-023).
 
+STO-030: the header limits of one article are profile fields, and admission refuses exactly past them by name.
+Fields 15 `max-header-fields`, 16 `max-header-lines` and 17
+`max-header-octets` (defaults 64, 256 and 16,384, the parser's constants
+before D27) bound one article's header; `init` and `store import` take
+them as `--max-header-fields N` and so on. The relation is 1 <= fields <=
+lines <= octets <= the article codec's ceiling, each failure refused by
+name. The served POST refuses a header past them with a 441 naming the
+field (books/injection.lisp `fn-inj-decide`, PRF-230); readers parse
+under the ceiling, so raising a limit never changes an admitted article.
+
 STO-023: stored data is bounded by the operator's profile or by the records that built it, never by a lifetime constant.
 Two constants that capped data are gone (D27;
 planning/evidence/caps-to-profile-2026-09-26.md). A peer's row group grows
@@ -245,6 +255,60 @@ duplicate-history effects, all local group allocations, and any obligations or
 reservations accepted in that operation. No partially committed cross-post or
 promised-but-unaccounted retention can become visible.
 
+### The store's filesystem (STO-031)
+
+STO-031: A Store opens only on the filesystem its record names: `init` records the identity of the filesystem the store root is on, every open observes it again and is refused by name when the record is absent, invalid or names another filesystem, and `store rebind-filesystem` records a deliberate move; the owner's start is refused by name when the store requires durable storage and its mount observably disables it.
+
+A node's Store belongs on a provisioned volume (PKT-579). When the volume is
+not mounted, the store path resolves into the directory underneath, on the
+filesystem holding the mount point, and an open there would serve, or begin,
+a different history. This is a local fn guarantee; no RFC speaks to it.
+
+- **The record.** `filesystem-identity.fnmi` in the store root: an FN frame
+  (magic `FNMI`, version 1, kind 1, ACL2's trailer) whose payload is five
+  u16-length fields: the kernel's filesystem id (statfs `f_fsid`), the
+  filesystem type, the mount point containing the store root, the mount's
+  source, and the durability policy (0 or 1). `init` (operator and
+  developer), `store import` and the developer probe write it once, by stage,
+  fsync, rename and a root fsync (books/store-mount-identity.lisp
+  `fn-smid-record-plan`; host/native/io.lisp `fnn-record-filesystem-at-init`).
+- **The observation.** Linux: `f_fsid` from statfs, and the line of
+  `/proc/self/mountinfo` whose mount point is the longest component prefix of
+  the root's resolved path (a later line wins a tie), parsed and selected in
+  ACL2 (`fn-smid-mountinfo-step`; a line past 65,536 octets makes the
+  observation unobserved, never guessed). OpenBSD and macOS: statfs's
+  `f_fsid`, `f_fstypename`, `f_mntonname`, `f_mntfromname`.
+- **Same filesystem** (`fn-smid-same-filesystemp`): type and mount point
+  agree and, where both fsids are reported (nonzero), the fsids agree; where
+  either is not (OpenBSD reports zeros to an unprivileged process) the
+  sources agree. A remount of the same volume on another loop device is the
+  same filesystem; another volume at the same mount point is not.
+- **The open** (`fn-smid-open-decision`, called by `fnn-acquire` before any
+  other read, so by every open; it is `fn-smid-open-verdict` wherever a
+  record is present): `:open`, or refused by name as `store filesystem
+  unobserved`, `store filesystem unrecorded` (a root with neither record nor
+  `config.json`: the empty directory where the volume should be), `store
+  filesystem record invalid`, or `store filesystem changed: expected ...,
+  found ...; mount the node volume or run `store rebind-filesystem` after
+  moving the store deliberately`. Nothing is created or written at a refused
+  open. A complete store with no record (made before the record, or whose
+  `init` died before writing it) opens offline with a warning naming the
+  remedy, and its owner's start is refused (`fn-smid-start-verdict`).
+- **Rebind** (`store rebind-filesystem [--storage-require-durable on|off]`,
+  operator; `store ROOT rebind-filesystem [on|off]`, developer): under the
+  writer lock, with the profile and frontier loaded but the identity not
+  checked, records the current observation, keeping the store's policy or
+  setting it (`fn-smid-rebind-plan`).
+- **The durability policy** (PKT-648, `fn-smid-start-verdict`): the owner's
+  start of a store with policy 1 is refused by name when its mount carries
+  `nobarrier` or `barrier=0` or is tmpfs or ramfs; with policy 0 it starts.
+  The owner's start, `status` and `health` print the warning for such a
+  mount (`fn-smid-durability-warning`); an ordinary open does not. `init` and `store import` record policy 1
+  under a mission's configuration (the release and public node) and 0
+  otherwise (`fn-smid-init-policy`). ZFS `sync=disabled` and a drive's
+  volatile cache are not observable here and remain the operator's
+  obligation (docs/operator.md, Storage requirements).
+
 ## Commit protocol
 
 The semantic phases are:
@@ -263,6 +327,22 @@ duplicate, or unrelated completions cannot publish another transaction.
 Only one shared-state commit is in flight initially. Network input may continue
 within quotas. A disconnected requester does not cancel an already durable
 transaction. If it retries, history prevents repeated allocation/effects.
+
+STO-033: The commit batch and the close rule. One batch of prepared commits is
+in flight at a time (the storage-log design of 2026-09-27, section 3.3: the
+batch of PreparedCommit tokens over the record log), and its members are
+ordered by their prepare. A member is acknowledged only after the batch's
+barrier, and in order. The batch closes when the log thread returns from the
+previous barrier or at the operator's live bounds `log-batch-records` and
+`log-batch-octets` (`:set-limit` slots of the running configuration: a work
+bound per scheduling step, never a profile field), and never on a timer: at one
+poster the batch is one entry and its latency one barrier. A failed barrier
+makes every member in flight or waiting uncertain and fences the store; recovery
+holds the committed records followed by a prefix of the batch, so an
+acknowledged member is never lost and an unacknowledged one may appear
+(STO-004, STO-005). The batch layer is `books/owner-batch.lisp`; no host line
+calls it until the store node's article commit moves onto the token and the log
+kernel.
 
 STO-004: a known abort and an indeterminate I/O result are distinct. After an
 indeterminate result, fence shared-state mutations and recover before continuing.
@@ -399,10 +479,26 @@ stays authoritative, and the file may be deleted at any time.
   open of the whole history (`fn-sn-recover-from-checkpoint-equals-full-recover`).
   Otherwise it replays in full. Status prints `open=checkpoint:S suffix=k`
   or `open=full-replay reason=R` (absent, corrupt, ahead-of-history,
-  suffix-exceeds-k).
+  suffix-exceeds-k). **K is the fast path's threshold, not a guaranteed
+  maximum suffix** (decided 2026-09-26, gpt-6's review section 2; ember may
+  choose the guarantee later): a suffix within K is served from the
+  checkpoint, a longer one is the full replay, the honest fallback to the
+  same state (`fn-ock-fast-path-within-k-by-definition`,
+  books/owner-checkpoint-open.lisp). The suffix a publication leaves is
+  about the commits made while it ran, which no due rule can bound; when it
+  exceeds K the remedies are a cheaper publication, reserved service or
+  admission limiting, never a second capture meanwhile.
 - **Not yet.** K0 coverage of the publish program's root rename is open.
   (The owner opens from the checkpoint and publishes at K/2 since
-  owner-checkpoint-open, PRF-083.)
+  owner-checkpoint-open, PRF-083. The recovery-lag policy since
+  checkpoint-pipeline-5, `fn-ock-publication-next`: ONE publication in
+  flight, a due observation meanwhile ONE coalesced request (recorded, and
+  nothing else: no second capture, no second estimate, no cancellation of
+  the publication running), and when it finishes the owner decides again at
+  the newest committed frontier by the same rule, at once rather than at
+  the next accept; the durable S a finish records is the count the capture
+  was handed, never the count when the write returned
+  (`fn-ock-one-publication-in-flight`, `fn-ock-finish-binds-the-captured-prefix`).)
 
 STO-016: The checkpoint open costs less than the full replay it replaces,
 and a publication does not hold served commands.
@@ -437,7 +533,7 @@ encoded and encodes through the octet buffer, never as octet lists.
 
 - **The estimate and the budget.** Before any encode ACL2 computes the
   file's length from the tables' metadata, allocating nothing and touching
-  no payload octet (`fn-ockp-estimate`, books/owner-checkpoint-pipeline.lisp;
+  no payload octet (`fn-ockp-estimate`, books/owner-checkpoint-writer.lisp;
   equal to the table codec's file length,
   `fn-ockp-estimate-is-len-file-octets`), and compares it with the
   profile's checkpoint budget, the file bound an open refuses a checkpoint
@@ -454,7 +550,7 @@ encoded and encodes through the octet buffer, never as octet lists.
   by the operator's declared history (D27), not the data a store holds.
 - **The stream.** The publication thread encodes the tables step by step
   into its own octet buffer (the abstract stobj fn-octets-pub of
-  books/owner-checkpoint-pipeline.lisp, a second stobj congruent to the
+  books/owner-checkpoint-writer.lisp, a second stobj congruent to the
   served attempt's `fn-octets`, so nothing is shared off the mutex), the
   buffer holding one step's rows and one segment's residue, never the file,
   and writes each step's frames straight from that buffer through the
@@ -492,7 +588,7 @@ journal replays.
   (`fn-sccr-admit-segment`) are reused, and the admission refuses another
   schema by name: `open=full-replay reason=checkpoint-schema`
   (`fn-sco-select-named`). One store format (D34): no schema-2 reader.
-- **The pipeline** (books/owner-checkpoint-pipeline.lisp). Capture (O(1)
+- **The pipeline** (books/owner-checkpoint-writer.lisp: the definitions and the step-level twins; books/owner-checkpoint-pipeline.lisp: the loop keystone and the invariants). Capture (O(1)
   under the mutex: the base, the configuration history, the record list by
   pointer, the frontier, the free space, the source revision); the estimate
   from the tables' metadata without encoding or touching a payload octet,
@@ -1051,4 +1147,35 @@ record out of sequence and a profile the codec cannot represent by name, and
 admits it by the ordinary open (full replay) before it appears at its path.
 The import of an export replays the same history under the same profile
 (PRF-205). The MANIFEST is a transport check: the digest seam is abstract.
+
+STO-029: `store import` publishes by an explicit program (P-IMPORT,
+books/store-import-publication.lisp): the staged `ROOT.import-XXXX` is
+created beside ROOT, every file of the plan is written and fsynced, every
+subdirectory and the staged directory are fsynced, the ordinary open admits
+it, it is renamed onto ROOT without replacing an existing destination
+(renameat2 RENAME_NOREPLACE; an existing ROOT is `store-exists`, exit 1) and
+the parent is fsynced. A crash at any cut, or an ambiguous rename or barrier
+outcome, leaves no store at ROOT or the complete imported store (PRF-217).
+Recovery classifies what it observes (ACL2 `fn-bs-imp-classify`): a staged
+directory without ROOT is `interrupted-import` (no store was published;
+remove it by name and import again); a staged directory beside ROOT is
+`publication-uncertain` (run recover on ROOT, then remove the staged
+directory), never "no store was created". `store export` is Store-history
+export, not a node backup (docs/operator.md).
+
+`operator init` publishes the empty store by the same program (P-INIT-PUB,
+books/store-init-publication.lisp `fn-bs-init-pub-program`: init's plan --
+the three subdirectories, `config.json`, the allocation frontier and the
+generation-1 configuration record -- staged in `ROOT.init-XXXX`, init's cut
+names). A crash leaves no store at ROOT or the complete empty store, nothing
+named in `transactions/` (PRF-217,
+`fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store`).
+Before writing, ACL2's admission (`fn-bs-init-pub-admission`) refuses a
+leftover staged directory by name (`interrupted-init`: remove it and init
+again; `publication-uncertain`) and an existing ROOT without the store's
+entries (`store-path-exists`). On OpenBSD, which has no renameat2, import
+and init hold an exclusive flock on `ROOT.lock` for the whole program and
+re-check ROOT's absence under it immediately before rename(2); the residual
+(a process ignoring the lock creates an empty directory at ROOT in that
+window) is an operator constraint (docs/operator.md).
 

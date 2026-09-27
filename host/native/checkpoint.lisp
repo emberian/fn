@@ -154,7 +154,11 @@ covers (the chain's coverage for SUMMARY)."
   "`checkpoint pack ROOT [select]': with select, extend the selected chain
 until it covers RECORDS; without, publish the next link unselected.  Returns
 the generation, or :NOTHING-UNCOVERED and ACL2's line when the selected chain
-already covers RECORDS (nothing written)."
+already covers RECORDS (nothing written).  Each link is decoded once
+(fnn-with-pack-memo)."
+  (fnn-with-pack-memo (fnn-pack-publish-memo store records selectp)))
+
+(defun fnn-pack-publish-memo (store records selectp)
   (if selectp
       (multiple-value-bind (generation links line)
           (fnn-pack-extend-chain store records)
@@ -197,7 +201,7 @@ written and ACL2's no-op line."
                  (setq generation next selected next
                        chain (cons (list next (fnn-octet-list frame) (fnn-digest-of frame))
                                    chain))
-                 (let ((c (fnn-core 'fn-store-checkpoint-chain-coverage
+                 (let ((c (fnn-core-state 'fn-store-checkpoint-chain-coverage
                                     chain (fnn-config-max-transactions store)
                                     (fnn-store-frontier store)
                                     (fnn-pack-link-bound store))))
@@ -295,7 +299,7 @@ profile's max-transactions links (every link covers a record)."
         (let* ((raw (fnn-read-regular-bounded path (+ (fnn-constant :trailer) bound)))
                (octets (fnn-octet-list raw))
                (digest (fnn-digest-of raw))
-               (step (fnn-core 'fn-store-checkpoint-chain-step octets digest bound)))
+               (step (fnn-core-state 'fn-store-checkpoint-chain-step octets digest bound)))
           (unless (and (listp step) (eq (first step) :ok)
                        (integerp (second step)) (>= (second step) 0)
                        (integerp (third step)) (>= (third step) 0))
@@ -318,7 +322,7 @@ coverage (:ok BOUNDARY FRONTIER) and the selected generation."
   (let ((generation (fnn-pack-selected-generation store)))
     (unless generation (return-from fnn-pack-selected-raw-and-coverage (values nil nil)))
     (let* ((chain (fnn-pack-walk store generation))
-           (coverage (fnn-core 'fn-store-checkpoint-chain-coverage
+           (coverage (fnn-core-state 'fn-store-checkpoint-chain-coverage
                                chain
                                (fnn-config-max-transactions store)
                                (fnn-store-frontier store)
@@ -343,7 +347,7 @@ coverage (:ok BOUNDARY FRONTIER) and the selected generation."
            (observed (mapcar (lambda (number record)
                                (list number (fnn-octet-list record)))
                              sequences records))
-           (answer (fnn-core 'fn-store-checkpoint-chain-observe
+           (answer (fnn-core-state 'fn-store-checkpoint-chain-observe
                              chain observed
                              (fnn-store-frontier store)
                              (fnn-pack-link-bound store))))
@@ -354,7 +358,8 @@ coverage (:ok BOUNDARY FRONTIER) and the selected generation."
 (defun fnn-pack-chain-report (store)
   "The `status' line for the selected pack chain: its links, newest first,
 and the boundary ACL2 computed over them."
-  (multiple-value-bind (chain coverage) (fnn-pack-selected-raw-and-coverage store)
+  (multiple-value-bind (chain coverage)
+      (fnn-with-pack-memo (fnn-pack-selected-raw-and-coverage store))
     (if (null coverage)
         "pack-chain none"
       (format nil "pack-chain links=~d boundary=~d generations=~{~d~^,~}"

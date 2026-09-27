@@ -164,14 +164,23 @@
 ; the watermarks unchanged.  Teeth, the one hypothesis: a record that is
 ; not a state (duplicate group names) has a visible state that is not one.
 (assert-event
- (let* ((c3 (fn-make-article "<c2@example.invalid>" (fn-article-payload *cvt-c2*)
+ ;; After the records flip the acceptance state's articles carry HANDLES
+ ;; (PKT-635): C3 and T3 below, at handles 0 and 1.  The withdrawals are
+ ;; decided over their wire forms (the bytes the handles name: C3B, T3B);
+ ;; that the served refresh reads them through the arena is the readers'
+ ;; lane (flip-L3 LANEDUMP REQUEST).
+ (let* ((c3b (fn-make-article "<c2@example.invalid>" (fn-article-payload *cvt-c2*)
+                              (list "control.cancel") (list (cons "control.cancel" 1)) t :legacy))
+        (t3b (fn-make-article "<t@example.invalid>" nil (list "fn.mod.a")
+                              (list (cons "fn.mod.a" 1)) t :legacy))
+        (c3 (fn-make-article "<c2@example.invalid>" 0
                              (list "control.cancel") (list (cons "control.cancel" 1)) t :legacy))
-        (t3 (fn-make-article "<t@example.invalid>" nil (list "fn.mod.a")
+        (t3 (fn-make-article "<t@example.invalid>" 1 (list "fn.mod.a")
                              (list (cons "fn.mod.a" 1)) t :legacy))
         (st (fn-make-state (list "control.cancel" "fn.mod.a")
                            (list (cons "control.cancel" 2) (cons "fn.mod.a" 2))
                            (list c3 t3) 2 nil nil))
-        (ws (fn-ctl-articles-withdrawals (list c3 t3) *cvt-v1* nil nil))
+        (ws (fn-ctl-articles-withdrawals (list c3b t3b) *cvt-v1* nil nil))
         (vis (fn-ctl-visible-state st ws *cvt-v1*)))
    (and (fn-statep st)
         (equal (len ws) 1)
@@ -230,8 +239,11 @@
 ; control-c3d.  fn-ctl-refresh-withdrawals-is-the-journal: live equals
 ; recovery.  Journal: T accepted at txid 4, P's cancel C2 at txid 5, O at 6;
 ; a grant (P, cancel, fn.mod.*) at txid 1; a revoke appended at txid 9.
+; The journal's records are the history's retained rows (a held row: the
+; payload a handle; books/held-record.lisp).
 (defun cvt-rec (seq txid msgid groups)
-  (fn-record-make seq txid 1 msgid '(65) groups "a" "s" "e" 2 :legacy))
+  (fn-held-plain (fn-record-make seq txid 1 msgid '(65) groups "a" "s" "e" 2 :legacy)
+                 seq))
 (defconst *cvt-rt* (cvt-rec 0 4 "<t@example.invalid>" '("fn.mod.a")))
 (defconst *cvt-rc2* (cvt-rec 1 5 "<c2@example.invalid>" '("control.cancel")))
 (defconst *cvt-ro* (cvt-rec 2 6 "<o@example.invalid>" '("fn.mod.a")))

@@ -112,7 +112,7 @@
                                          (fn-own-conn-observation *oat-conn*)))
                  0 1 (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
                  (fn-own-facts o) *oat-post-config* (fn-own-queue o)
-                 (fn-own-inflight o) (fn-own-feeds o))))
+                 (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (defconst *oat-stale-oc* (fn-ocfg-make *oat-stale-owner* *oat-cfg* nil nil))
 (defconst *oat-stale-found*
   (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner

@@ -57,6 +57,8 @@
 
 (in-package "ACL2")
 (include-book "peer-inbound")
+; PRF-222: the restricted view a login's access rule serves.
+(include-book "group-access")
 (include-book "principal")
 (include-book "accounts")
 (include-book "auth-secret")
@@ -710,7 +712,8 @@
              (fn-node-statep (fn-peer-session-node ps)))
         (fn-auth-with-base
          as (fn-peer-make-session (fn-peer-session-base ps) peer nil 0
-                                  (fn-peer-session-node ps) cfg))
+                                  (fn-peer-session-node ps) cfg
+                                  (fn-peer-session-refused ps)))
       as)))
 
 (defun fn-auth-clear-principal-peer (as)
@@ -721,7 +724,8 @@
         (fn-auth-with-base
          as (fn-peer-make-session (fn-peer-session-base ps) nil nil 0
                                   (fn-peer-session-node ps)
-                                  (fn-peer-session-cfg ps)))
+                                  (fn-peer-session-cfg ps)
+                                  (fn-peer-session-refused ps)))
       as)))
 
 ; -----------------------------------------------------------------------------
@@ -1225,9 +1229,71 @@
      nil))
    (t nil)))
 
+;; Moderated groups (P3, PRF-228; books/moderation.lisp).  The posting
+;; configuration a delegated command is served: the connection's, with each
+;; moderated group whose moderators include this connection's login seen as
+;; :approver.  The login is the AUTHINFO USER name once the connection
+;; authenticated (the pending slot keeps it, as books/login-binding.lisp
+;; reads it); a connection that has not authenticated approves nothing.
+(defun fn-auth-moderation-login (as)
+  (declare (xargs :guard t))
+  (and (fn-auth-session-subject as) (fn-auth-session-pending as)))
+
+(defun fn-auth-moderation-config (as config)
+  (declare (xargs :guard t))
+  (let ((login (fn-auth-moderation-login as)))
+    (if (and login (fn-inj-config-shapep config))
+        (fn-inj-make-config-full
+         (fn-inj-config-allow config) (fn-inj-config-agent config)
+         (fn-inj-config-groups config)
+         ;; The article bound and the header limits (PRF-230) as the
+         ;; configuration carries them.
+         (fn-inj-post-bound (fn-inj-config-max-octets config)
+                            (fn-inj-config-header-limits config))
+         (fn-inj-config-listing config)
+         (fn-mod-session-entries (fn-inj-config-closed config) login))
+      config)))
+
+; The view changes nothing but the status list, and there only which
+; moderated entries this login approves (books/moderation.lisp
+; `fn-mod-session-entries-approver-iff-moderator').
+(defthm fn-auth-moderation-config-closed
+  (equal (fn-inj-config-closed (fn-auth-moderation-config as config))
+         (if (and (fn-auth-moderation-login as) (fn-inj-config-shapep config))
+             (fn-mod-session-entries (fn-inj-config-closed config)
+                                     (fn-auth-moderation-login as))
+           (fn-inj-config-closed config))))
+
+(defthm fn-auth-moderation-config-keeps-the-rest
+  (implies (fn-inj-config-shapep config)
+           (and (equal (fn-inj-config-allow (fn-auth-moderation-config as config))
+                       (fn-inj-config-allow config))
+                (equal (fn-inj-config-agent (fn-auth-moderation-config as config))
+                       (fn-inj-config-agent config))
+                (equal (fn-inj-config-groups (fn-auth-moderation-config as config))
+                       (fn-inj-config-groups config))
+                (equal (fn-inj-config-max-octets
+                        (fn-auth-moderation-config as config))
+                       (fn-inj-config-max-octets config))
+                (equal (fn-inj-config-listing
+                        (fn-auth-moderation-config as config))
+                       (fn-inj-config-listing config))
+                (fn-inj-config-shapep (fn-auth-moderation-config as config)))))
+
+(defthm fn-auth-moderation-config-agent
+  (equal (fn-inj-config-agent (fn-auth-moderation-config as config))
+         (fn-inj-config-agent config)))
+
+(defthm fn-auth-moderation-config-without-a-login
+  (implies (not (fn-auth-moderation-login as))
+           (equal (fn-auth-moderation-config as config) config)))
+
+(in-theory (disable fn-auth-moderation-login fn-auth-moderation-config))
+
 (defun fn-auth-delegate (as archive config observation injection wire-event)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((r (fn-peer-step (fn-auth-session-base as) archive config observation
+  (let ((r (fn-peer-step (fn-auth-session-base as) archive
+                         (fn-auth-moderation-config as config) observation
                          injection wire-event)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
@@ -1688,7 +1754,8 @@
                             fn-peer-step-preserves-consistent-session
                             fn-nntp-printable-tokenp fn-prin-idp))
            :use ((:instance fn-peer-step-preserves-consistent-session
-                            (ps (fn-auth-session-base as))))))))
+                            (ps (fn-auth-session-base as))
+                            (config (fn-auth-moderation-config as config))))))))
 
 (defthm fn-auth-step-preserves-consistent-session
   (implies (fn-auth-session-consistentp as archive)
@@ -1822,7 +1889,8 @@
                    (fn-auth-step as archive config observation injection
                                  wire-event))
                   (fn-post-result-submission
-                   (fn-peer-step (fn-auth-session-base as) archive config
+                   (fn-peer-step (fn-auth-session-base as) archive
+                                 (fn-auth-moderation-config as config)
                                  observation injection wire-event))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-auth-step fn-auth-delegate
@@ -1888,7 +1956,8 @@
                             fn-peer-step-submission-is-typed))
            :use ((:instance fn-auth-submission-is-the-delegated-submission)
                  (:instance fn-peer-step-submission-is-typed
-                            (ps (fn-auth-session-base as))))))
+                            (ps (fn-auth-session-base as))
+                            (config (fn-auth-moderation-config as config))))))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
@@ -3072,11 +3141,210 @@
 
 (in-theory (disable fn-auth-vocabulary))
 
+;; -----------------------------------------------------------------------------
+;; Group access (PRF-222, NNT-046; books/group-access.lisp).
+;;
+;; A reader connection's rule is its login's access row in the listing the
+;; connection pinned (books/owner-agent.lisp `fn-oag-listing'): the login is
+;; the AUTHINFO USER name once the connection authenticated (the pending
+;; slot keeps it, as books/login-binding.lisp reads it), and the rule of a
+;; connection that has not authenticated is the row keyed on "".  A peer
+;; connection has no rule: what a peer is fed is its feed patterns', not
+;; this node's reader view.  The READ text restricts only a projected
+;; session (an unprojected one answers 503 to every archive command).
+
+(defun fn-auth-access-login (as)
+  (declare (xargs :guard t))
+  (and (fn-auth-session-subject as) (fn-auth-session-pending as)))
+
+;; PKT-658 (PRF-228): the READ rule of a login that moderates none of a
+;; moderated group's groups also hides that group's queue
+;; (books/moderation.lisp `fn-mod-hidden-queues' over the owner's status
+;; entries); an unrestricted login's rule is then "*" with the queues hidden.
+(defun fn-auth-access-text (as config field)
+  (declare (xargs :guard t))
+  (and (null (fn-auth-session-peer as))
+       (let ((base (fn-gac-pattern
+                    (fn-gac-listing-table (fn-inj-config-listing config))
+                    (fn-auth-access-login as) field))
+             (hidden (and (equal field 1)
+                          (fn-mod-hidden-queues (fn-inj-config-closed config)
+                                                (fn-auth-access-login as)))))
+         (if (consp hidden)
+             (list* :hide (or base "*") hidden)
+           base))))
+
+(defun fn-auth-access-read (as config)
+  (declare (xargs :guard t))
+  (and (fn-nntp-session-projected (fn-auth-reader-session as))
+       (fn-auth-access-text as config 1)))
+
+(defun fn-auth-access-post (as config)
+  (declare (xargs :guard t))
+  (fn-auth-access-text as config 2))
+
+(defun fn-auth-access-restrictedp (as config)
+  (declare (xargs :guard t))
+  (if (or (fn-auth-access-read as config) (fn-auth-access-post as config))
+      t
+    nil))
+
+; The four inputs the delegated step is served: the view's session, store,
+; index and posting configuration.  Each is its argument when the session
+; is not restricted.
+(defun fn-auth-view-session (as config)
+  (declare (xargs :guard t))
+  (let ((read (fn-auth-access-read as config)))
+    (if read
+        (fn-gac-deselect read (fn-auth-session-base as))
+      (fn-auth-session-base as))))
+
+(defun fn-auth-view-archive (as config archive)
+  (declare (xargs :guard t))
+  (let ((read (fn-auth-access-read as config)))
+    (if read (fn-gac-restrict-state read archive) archive)))
+
+(defun fn-auth-view-index (as config archive index)
+  (declare (xargs :guard t))
+  (let ((read (fn-auth-access-read as config)))
+    (if read
+        (fn-gac-restrict-index
+         read index (fn-state-articles (fn-gac-restrict-state read archive)))
+      index)))
+
+(defun fn-auth-view-config (as config archive)
+  (declare (xargs :guard t))
+  (let ((read (fn-auth-access-read as config))
+        (post (fn-auth-access-post as config)))
+    (if (or read post)
+        (fn-gac-post-config read post (fn-state-groups archive) config)
+      config)))
+
+(defthm fn-auth-view-when-unrestricted
+  (implies (not (fn-auth-access-restrictedp as config))
+           (and (equal (fn-auth-view-session as config) (fn-auth-session-base as))
+                (equal (fn-auth-view-archive as config archive) archive)
+                (equal (fn-auth-view-index as config archive index) index)
+                (equal (fn-auth-view-config as config archive) config))))
+
+; The view's posting configuration differs from the connection's only in its
+; served and closed groups.
+(defthm fn-auth-view-config-keeps
+  (and (equal (fn-inj-config-allow (fn-auth-view-config as config archive))
+              (fn-inj-config-allow config))
+       (equal (fn-inj-config-agent (fn-auth-view-config as config archive))
+              (fn-inj-config-agent config))
+       (equal (fn-inj-config-max-octets (fn-auth-view-config as config archive))
+              (fn-inj-config-max-octets config))
+       (equal (fn-inj-config-listing (fn-auth-view-config as config archive))
+              (fn-inj-config-listing config)))
+  :hints (("Goal" :in-theory '(fn-auth-view-config fn-gac-post-config
+                                fn-inj-config-allow-of-fn-inj-make-config-full
+                                fn-inj-config-agent-of-fn-inj-make-config-full
+                                fn-inj-config-max-octets-of-fn-inj-make-config-full
+                                fn-inj-config-listing-of-fn-inj-make-config-full
+                                fn-inj-post-bound fn-gac-bound-octets-of-post-bound))))
+
+;; PKT-658 (PRF-228).  The connection's moderation view
+;; (`fn-auth-moderation-config', the posting configuration the delegate
+;; composes under the access view) reads the same rule: it keeps the listing
+;; and turns into :approver entries only entries whose queues the login may
+;; read anyway (books/moderation.lisp fn-mod-hidden-queues-of-session-entries).
+(defthm fn-auth-access-text-of-moderation-config
+  (equal (fn-auth-access-text as (fn-auth-moderation-config as config) field)
+         (fn-auth-access-text as config field))
+  :hints (("Goal" :in-theory (enable fn-auth-access-text fn-auth-access-login
+                                     fn-auth-moderation-config
+                                     fn-auth-moderation-login))))
+
+(defthm fn-auth-access-restrictedp-of-moderation-config
+  (equal (fn-auth-access-restrictedp as (fn-auth-moderation-config as config))
+         (fn-auth-access-restrictedp as config))
+  :hints (("Goal" :in-theory (enable fn-auth-access-restrictedp
+                                     fn-auth-access-read fn-auth-access-post))))
+
+(defun fn-auth-arts-name-groupp (g arts)
+  (declare (xargs :guard t))
+  (if (consp arts)
+      (or (and (consp (car arts))
+               (member-equal g (true-list-fix (fn-article-groups (car arts))))
+               t)
+          (fn-auth-arts-name-groupp g (cdr arts)))
+    nil))
+
+(local (defthm fn-auth-all-readablep-member
+  (implies (and (fn-gac-all-readablep text gs) (member-equal g gs))
+           (fn-gac-readablep text g))))
+
+(local (defthm fn-auth-articles-readablep-exclude
+  (implies (and (fn-gac-articles-readablep text arts)
+                (not (fn-gac-readablep text g)))
+           (not (fn-auth-arts-name-groupp g arts)))
+  :hints (("Goal" :in-theory (enable fn-gac-article-readablep)))))
+
+(local (defthm fn-auth-hidden-queue-is-unreadable
+  (implies (and (consp text) (equal (car text) :hide) (consp (cdr text))
+                (member-equal (fn-gac-text-octets g) (cddr text)))
+           (not (fn-gac-readablep text g)))
+  :hints (("Goal" :in-theory (enable fn-gac-readablep)))))
+
+(local (defthm fn-auth-restrict-articles-exclude
+  (implies (not (fn-gac-readablep text g))
+           (not (fn-auth-arts-name-groupp g (fn-gac-restrict-articles text arts))))
+  :hints (("Goal" :use (fn-gac-restrict-articles-memberships-readable
+                        (:instance fn-auth-articles-readablep-exclude
+                                   (arts (fn-gac-restrict-articles text arts))))
+           :in-theory (disable fn-gac-restrict-articles-memberships-readable
+                               fn-auth-articles-readablep-exclude
+                               fn-gac-restrict-articles fn-gac-readablep)))))
+
+;; KEYSTONE (PKT-658).  The store a reader connection is served
+;; (`fn-auth-view-archive', which `fn-auth-delegate-pinned' passes to the
+;; reader machine; host: books/served.lisp through host/reader-host.lisp)
+;; holds neither a moderation queue G whose moderated group the login does
+;; not moderate (or any queue, before AUTHINFO) nor any article filed in it:
+;; GROUP answers as for a group the node does not carry, and ARTICLE by
+;; Message-ID finds no envelope.
+(defthm fn-auth-view-hides-the-queue-from-a-non-moderator
+  (implies (and (fn-mod-queue-hiddenp (fn-gac-text-octets g)
+                                      (fn-inj-config-closed config)
+                                      (fn-auth-access-login as))
+                (null (fn-auth-session-peer as))
+                (fn-nntp-session-projected (fn-auth-reader-session as)))
+           (and (not (member-equal g (fn-state-groups
+                                      (fn-auth-view-archive as config archive))))
+                (not (fn-auth-arts-name-groupp
+                      g (fn-state-articles
+                         (fn-auth-view-archive as config archive))))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-view-archive fn-auth-access-read
+                                   fn-auth-access-text)
+                                  (fn-gac-restrict-state fn-mod-queue-hiddenp
+                                   fn-mod-hidden-queues fn-gac-pattern
+                                   fn-mod-hidden-queues-is-hiddenp
+                                   fn-gac-text-octets))
+           :use ((:instance fn-mod-hidden-queues-is-hiddenp
+                            (g (fn-gac-text-octets g))
+                            (closed (fn-inj-config-closed config))
+                            (login (fn-auth-access-login as)))
+                 (:instance fn-gac-restrict-state-groups-are-readable
+                            (text (fn-auth-access-text as config 1))
+                            (s archive))
+))))
+
+(in-theory (disable fn-auth-access-login fn-auth-access-text fn-auth-access-read
+                    fn-auth-access-post fn-auth-access-restrictedp
+                    fn-auth-view-session fn-auth-view-archive fn-auth-view-index
+                    fn-auth-view-config))
+
 (defun fn-auth-delegate-pinned
     (as archive index verdicts config observation injection wire-event)
   (declare (xargs :guard t :verify-guards nil))
   (let ((r (fn-peer-step-pinned
-            (fn-auth-session-base as) archive index verdicts config
+            (fn-auth-view-session as config)
+            (fn-auth-view-archive as config archive)
+            (fn-auth-view-index as config archive index)
+            verdicts
+            (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
             observation injection wire-event)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
@@ -3115,6 +3383,63 @@
 (verify-guards fn-auth-delegate-pinned)
 (verify-guards fn-auth-step-pinned)
 
+;; The view keeps the served relation: the session the view serves is
+;; consistent with the view's store and the view's index is the one built
+;; from it (books/group-access.lisp fn-gac-deselected-consistent,
+;; fn-gac-restrict-index-corresponds), and a session consistent with the
+;; view's store is consistent with the store (fn-gac-consistent-back).
+(defthm fn-auth-view-consistent
+  (implies (and (fn-auth-session-consistentp as archive)
+                (fn-gidx-pin-correspondencep index archive))
+           (and (fn-peer-session-consistentp
+                 (fn-auth-view-session as config)
+                 (fn-auth-view-archive as config archive))
+                (fn-gidx-pin-correspondencep
+                 (fn-auth-view-index as config archive index)
+                 (fn-auth-view-archive as config archive))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-view-session fn-auth-view-archive
+                                   fn-auth-view-index fn-auth-access-read
+                                   fn-auth-session-consistentp)
+                                  (fn-peer-session-consistentp fn-auth-sessionp
+                                   fn-gac-deselect fn-gac-restrict-state
+                                   fn-gac-restrict-index fn-auth-access-text
+                                   fn-gidx-pin-correspondencep)))))
+
+; A rule reads only through a projected session, and a projected session
+; consistent with the store makes the store a projection.
+(defthm fn-auth-access-read-gives-projection
+  (implies (and (fn-auth-session-consistentp as archive)
+                (fn-auth-access-read as config))
+           (fn-nntp-projectionp archive))
+  :hints (("Goal" :in-theory (e/d (fn-auth-access-read fn-auth-session-consistentp
+                                   fn-peer-session-consistentp
+                                   fn-post-session-consistentp
+                                   fn-nntp-session-consistentp)
+                                  (fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                                   fn-nntp-projectionp fn-auth-access-text)))))
+
+(defthm fn-auth-view-consistent-back
+  (implies (and (fn-auth-session-consistentp as archive)
+                (fn-peer-session-consistentp
+                 ps (fn-auth-view-archive as config archive)))
+           (fn-peer-session-consistentp ps archive))
+  :hints (("Goal" :cases ((fn-auth-access-read as config))
+           :in-theory '(fn-auth-view-archive)
+           :use ((:instance fn-auth-access-read-gives-projection)
+                 (:instance fn-gac-consistent-back
+                            (text (fn-auth-access-read as config))
+                            (s archive))))))
+
+(defthm fn-auth-with-base-consistent
+  (implies (and (fn-auth-sessionp as)
+                (fn-peer-session-consistentp base archive))
+           (fn-auth-session-consistentp (fn-auth-with-base as base) archive))
+  :hints (("Goal" :in-theory (e/d (fn-auth-with-base fn-auth-session-consistentp
+                                   fn-auth-sessionp fn-peer-session-consistentp)
+                                  (fn-peer-sessionp fn-post-session-consistentp
+                                   fn-auth-configp fn-nntp-printable-tokenp
+                                   fn-prin-idp)))))
+
 (defthm fn-auth-delegate-pinned-preserves-consistentp
   (implies (and (fn-auth-session-consistentp as archive)
                 (fn-gidx-pin-correspondencep index archive))
@@ -3124,14 +3449,33 @@
                                       observation injection wire-event))
             archive))
   :hints (("Goal"
-           :in-theory (e/d (fn-auth-delegate-pinned fn-auth-with-base
-                            fn-auth-session-consistentp fn-auth-sessionp)
-                           (fn-peer-step-pinned fn-peer-sessionp
-                            fn-peer-session-consistentp fn-auth-configp
-                            fn-peer-step-pinned-preserves-consistent-session
-                            fn-nntp-printable-tokenp fn-prin-idp))
-           :use ((:instance fn-peer-step-pinned-preserves-consistent-session
-                            (ps (fn-auth-session-base as)))))))
+           :in-theory '(fn-auth-delegate-pinned
+                        fn-post-result-session-of-fn-post-make-result)
+           :use ((:instance fn-auth-consistent-forward)
+                 (:instance fn-auth-view-consistent)
+                 (:instance fn-peer-step-pinned-preserves-consistent-session
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config as (fn-auth-moderation-config as config) archive)))
+                 (:instance fn-auth-view-consistent-back
+                            (ps (fn-post-result-session
+                                 (fn-peer-step-pinned
+                                  (fn-auth-view-session as config)
+                                  (fn-auth-view-archive as config archive)
+                                  (fn-auth-view-index as config archive index)
+                                  verdicts
+                                  (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
+                                  observation injection wire-event))))
+                 (:instance fn-auth-with-base-consistent
+                            (base (fn-post-result-session
+                                 (fn-peer-step-pinned
+                                  (fn-auth-view-session as config)
+                                  (fn-auth-view-archive as config archive)
+                                  (fn-auth-view-index as config archive index)
+                                  verdicts
+                                  (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
+                                  observation injection wire-event))))))))
 
 (defthm fn-auth-step-pinned-preserves-consistent-session
   (implies (and (fn-auth-session-consistentp as archive)
@@ -3152,6 +3496,18 @@
                             fn-nntp-tokenize
                             fn-nntp-command-arguments-at-mostp)))))
 
+; The view's trie is the one built from the view's articles.
+(defthm fn-auth-view-trie-corresponds
+  (implies (fn-midx-correspondencep (fn-gidx-pin-trie index)
+                                    (fn-state-articles archive))
+           (fn-midx-correspondencep
+            (fn-gidx-pin-trie (fn-auth-view-index as config archive index))
+            (fn-state-articles (fn-auth-view-archive as config archive))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-view-index fn-auth-view-archive
+                                   fn-gac-restrict-index fn-midx-correspondencep)
+                                  (fn-gidx-pinp fn-midx-build fn-gidx-build
+                                   fn-gac-restrict-articles fn-auth-access-read)))))
+
 (defthm fn-auth-delegate-pinned-effects-well-formed
   (implies (and (fn-auth-session-consistentp as archive)
                 (fn-midx-correspondencep (fn-gidx-pin-trie index)
@@ -3165,7 +3521,15 @@
            (e/d (fn-auth-delegate-pinned fn-auth-session-consistentp)
                 (fn-peer-step-pinned fn-peer-session-consistentp
                  fn-nntp-effectsp fn-auth-effectsp fn-post-result-effects
-                 fn-midx-correspondencep)))))
+                 fn-midx-correspondencep fn-peer-step-pinned-effects-well-formed
+                 fn-auth-view-consistent fn-auth-view-trie-corresponds))
+           :use ((:instance fn-auth-view-consistent)
+                 (:instance fn-auth-view-trie-corresponds)
+                 (:instance fn-peer-step-pinned-effects-well-formed
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config as (fn-auth-moderation-config as config) archive)))))))
 
 (defthm fn-auth-step-pinned-effects-well-formed
   (implies (and (fn-auth-session-consistentp as archive)
@@ -3195,7 +3559,11 @@
                                         observation injection wire-event))
                   (fn-post-result-submission
                    (fn-peer-step-pinned
-                    (fn-auth-session-base as) archive index verdicts config
+                    (fn-auth-view-session as config)
+                    (fn-auth-view-archive as config archive)
+                    (fn-auth-view-index as config archive index)
+                    verdicts
+                    (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
                     observation injection wire-event))))
   :rule-classes nil
   :hints (("Goal" :in-theory
@@ -3205,6 +3573,65 @@
                  fn-nntp-tokenize fn-nntp-command-inputp
                  fn-auth-tls-eventp fn-nntp-keyword-tokenp
                  fn-nntp-command-arguments-at-mostp)))))
+
+(defthm fn-auth-view-session-is-a-session
+  (implies (fn-auth-sessionp as)
+           (fn-peer-sessionp (fn-auth-view-session as config)))
+  :hints (("Goal" :in-theory (e/d (fn-auth-view-session fn-auth-sessionp)
+                                  (fn-peer-sessionp fn-gac-deselect)))))
+
+; Deselection keeps the POST state (books/nntp-auth-fold.lisp reads it).
+(defthm fn-auth-view-session-keeps-awaiting
+  (equal (fn-post-session-awaiting
+          (fn-peer-session-base (fn-auth-view-session as config)))
+         (fn-post-session-awaiting
+          (fn-peer-session-base (fn-auth-session-base as))))
+  :hints (("Goal" :in-theory (enable fn-auth-view-session fn-gac-deselect))))
+
+; A session is within its view when its rule restricts nothing or its
+; selected group (if any) is one the rule reads: the view session is then the
+; session itself.  A session selected outside its view (a login changed
+; under a selection) is deselected by its next delegated command, which is a
+; change of state (books/nntp-help.lisp states "changes nothing" in view).
+(defun fn-auth-selection-in-viewp (as config)
+  (declare (xargs :guard t))
+  (let ((read (fn-auth-access-read as config))
+        (group (fn-nntp-session-group
+                (fn-post-session-base
+                 (fn-peer-session-base (fn-auth-session-base as))))))
+    (or (null read) (null group) (fn-gac-readablep read group))))
+
+(defthm fn-auth-view-session-when-selection-in-view
+  (implies (fn-auth-selection-in-viewp as config)
+           (equal (fn-auth-view-session as config)
+                  (fn-auth-session-base as)))
+  :hints (("Goal" :in-theory (enable fn-auth-selection-in-viewp
+                                     fn-auth-view-session fn-gac-deselect))))
+
+(in-theory (disable fn-auth-selection-in-viewp))
+
+; The view session keeps the connection's role and its reader session's
+; open and projected flags (books/owner-verdict-read.lisp reads them).
+(defthm fn-auth-view-session-keeps-role
+  (and (equal (fn-peer-session-peer (fn-auth-view-session as config))
+              (fn-peer-session-peer (fn-auth-session-base as)))
+       (equal (fn-peer-session-transfer (fn-auth-view-session as config))
+              (fn-peer-session-transfer (fn-auth-session-base as)))
+       (equal (fn-nntp-session-openp
+               (fn-post-session-base
+                (fn-peer-session-base (fn-auth-view-session as config))))
+              (fn-nntp-session-openp
+               (fn-post-session-base
+                (fn-peer-session-base (fn-auth-session-base as)))))
+       (equal (fn-nntp-session-projected
+               (fn-post-session-base
+                (fn-peer-session-base (fn-auth-view-session as config))))
+              (fn-nntp-session-projected
+               (fn-post-session-base
+                (fn-peer-session-base (fn-auth-session-base as))))))
+  :hints (("Goal" :in-theory (enable fn-auth-view-session fn-gac-deselect fn-peer-with-base
+                                     fn-nntp-make-session fn-nntp-session-openp
+                                     fn-nntp-session-projected))))
 
 (defthm fn-auth-step-pinned-submission-is-typed
   (implies (and (fn-auth-sessionp as)
@@ -3228,7 +3655,11 @@
            :use ((:instance
                   fn-auth-pinned-submission-is-the-delegated-submission)
                  (:instance fn-peer-step-pinned-submission-is-typed
-                            (ps (fn-auth-session-base as))))))
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config as (fn-auth-moderation-config as config) archive)))
+                 (:instance fn-auth-view-session-is-a-session))))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------

@@ -19,6 +19,8 @@
 (include-book "nntp-syntax")
 ; PRF-099: the opaque-carriage budget rows and the row extension.
 (include-book "peer-carriage-rows")
+; PKT-613 (PRF-231): the host's syntax and the TLS check the words select.
+(include-book "peer-host")
 
 ; A decimal word is a string, which is all the guards below need of it; with
 ; this the guard proofs keep the decimal recognizer and its value closed.
@@ -58,6 +60,8 @@ decoded as source-address for durable command compatibility."
     (if (and (member-equal count '(10 11 13 14 16))
              (equal (car words) "peer")
              (equal (cadr words) "add")
+             ; PKT-613: an IPv4 literal or an RFC 1123 host name.
+             (fn-peer-hostp (fn-record-string-octets (nth 4 words)))
              (fn-native-admin-decimalp (nth 5 words))
              (<= 1 (fn-native-admin-decimal-value
                     (coerce (nth 5 words) 'list)))
@@ -80,8 +84,11 @@ decoded as source-address for durable command compatibility."
                       (if (equal (nth security-index words) "clear")
                           (and (equal (nth (+ 1 security-index) words) "-")
                                (equal (nth (+ 2 security-index) words) "-"))
-                        (and (not (equal (nth (+ 1 security-index) words) "-"))
-                             (not (equal (nth (+ 2 security-index) words) "-")))))))
+                        ; PKT-613: `-' names the host's own DNS name,
+                        ; `-' as the anchor the system's public roots.
+                        (fn-peer-tls-select (nth 4 words)
+                                            (nth (+ 1 security-index) words)
+                                            (nth (+ 2 security-index) words))))))
         (let* ((inbound (if (equal (nth 6 words) "-") nil
                           (list (nth 6 words) *fn-record-max-payload* 16)))
                (outbound (if (equal (nth 7 words) "-") nil
@@ -100,11 +107,14 @@ decoded as source-address for durable command compatibility."
                                     (and v2p (equal count 13))
                                     (equal (nth security-index words) "clear"))
                                 '(:clear)
-                              (list :tls
-                                    (if (equal (nth security-index words) "implicit")
-                                        :implicit :starttls)
-                                    (nth (+ 1 security-index) words)
-                                    (nth (+ 2 security-index) words))))
+                              (let ((sel (fn-peer-tls-select
+                                          (nth 4 words)
+                                          (nth (+ 1 security-index) words)
+                                          (nth (+ 2 security-index) words))))
+                                (list :tls
+                                      (if (equal (nth security-index words) "implicit")
+                                          :implicit :starttls)
+                                      (car sel) (cadr sel)))))
                       inbound outbound
                       (list (if (equal auth-kind "principal")
                                 :principal :source-address)
@@ -248,6 +258,18 @@ decoded as source-address for durable command compatibility."
              :accepted nil :extend-peer
              (fn-record-string-octets (nth 2 words)) 0 nil rows)
           (fn-native-admin-result :refused :pull nil nil 0 nil nil))))
+     ; PRF-237 (PKT-675): `peer distributions NAME WILDMAT', the peer's
+     ; outbound Distribution filter (books/owner-feed.lisp
+     ; `fn-own-feed-distribution-admitsp'); one single-valued row, so a
+     ; second request replaces the first.
+     ((equal (nth 1 words) "distributions")
+      (if (and (equal (len words) 4) (fn-cfg-wildmatp (nth 3 words)))
+          (fn-native-admin-result
+           :accepted nil :extend-peer
+           (fn-record-string-octets (nth 2 words)) 0 nil
+           (list (fn-cfg-row-make (nth 2 words) *fn-pcb-distributions-slot*
+                                  (nth 3 words) 0)))
+        (fn-native-admin-result :refused :distributions nil nil 0 nil nil)))
      ((equal (nth 1 words) "carries")
       (let ((rows (fn-native-admin-carries-rows (nth 2 words)
                                                 (nthcdr 3 words))))

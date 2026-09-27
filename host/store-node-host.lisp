@@ -20,7 +20,7 @@
 (include-book "../books/retention-figures")
 (include-book "../books/store-capacity-config")
 ; PKT-510 (1): the offline request authorizes from the open's carried fold.
-(include-book "../books/config-carried-candidate")
+(include-book "../books/config-carried-open")
 (include-book "../books/node-config")
 (include-book "../books/native-admin")
 ; D27, PRF-102: the operator's namespace counts.
@@ -31,6 +31,9 @@
 (include-book "../books/owner-checkpoint-pipeline")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
 (include-book "../books/store-open-pre-c1")
+; PRF-242: the open's replay answers its identity questions from tries it
+; builds as it advances, and the history recognizer dispatches once per record.
+(include-book "../books/replay-identity-index")
 ; fn-store-sn-prepare and fn-store-sn-finish call the owner's carried twins
 ; (fn-pcar-spc-prepare, fn-ccar-sn-finish): neither walks the history.
 (include-book "../books/owner-commit-carried")
@@ -201,13 +204,15 @@ reopen predicate, writer-lock observation and observed final namespace."
        lock-owned names profile))))
 
 ;; PKT-510 (1): the offline request's authorization from the open's carried
-;; fold (books/config-carried-candidate.lisp
+;; fold (books/config-carried-open.lisp
 ;; fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization: EQUAL to
 ;; fn-cvec-native-admin-authorize whenever the carried fold is the replay of
 ;; the same histories).  The records are the extended capture's (the history
-;; the open replayed, fn-sco-records of E); the fold is E's
-;; (fn-sco-store-open-of-extended-capture); the configuration history must be
-;; the one the open folded, compared here.  NIL when there is no carried open
+;; the open replayed, fn-sco-records of E); the fold and the open's result are
+;; E's (fn-sco-store-open-of-extended-capture); the configuration history and
+;; the frontier must be the ones the open used, compared here.  The candidate
+;; open is not recomputed (PKT-601 (1),
+;; fn-cfgc-candidate-open-carried-is-the-replayed-candidate).  NIL when there is no carried open
 ;; or the configuration history is not the open's: the caller then runs
 ;; fn-store-cfg-native-admin-authorize over the history it read.  The live
 ;; owner never calls this: its Store advanced past its open.
@@ -224,7 +229,12 @@ reopen predicate, writer-lock observation and observed final namespace."
          (names (fn-store-octet-lists->strings observed-name-octets)))
     (cond ((or (not (consp carried)) (null opened-configs)
                (equal config-records :bad)
-               (not (equal config-records opened-configs)))
+               (not (equal config-records opened-configs))
+               ; PKT-601 (1): the candidate open is decided from the open's
+               ; result, which names the frontier it opened at.
+               (not (equal frontier
+                           (fn-sf-frontier
+                            (fn-sn-files (fn-sn-open-state (caddr carried)))))))
            (value nil))
           ((or (null config-records) (equal names :bad)
                (not (fn-record-parse-okp parsed)))
@@ -232,7 +242,7 @@ reopen predicate, writer-lock observation and observed final namespace."
           (t (value (fn-cfgc-cvec-native-admin-authorize
                      (fn-sco-records (car carried)) frontier config-records
                      (fn-record-parse-value parsed) lock-owned names profile
-                     (cadr carried)))))))
+                     (cadr carried) (caddr carried)))))))
 
 ; The same authorization flattened for a caller that reads one form:
 ; (status reason generation name).  The generation and the filename are
@@ -265,10 +275,13 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; filed under its Newsgroups is refused by name (:refused, the refusal kept
 ; in the global `fn-store-open-refusal' for fn-store-open-refusal-text);
 ; every other history is `fn-sco-store-open' of E, as before
-; (fn-sopc-classified-open-is-the-open-without-a-pre-c1-record).
+; (fn-sopc-classified-open-is-the-open-without-a-pre-c1-record).  The call is
+; its twin `fn-rii-classified-open' (books/replay-identity-index.lisp, PRF-242:
+; the history recognizer reads each record's kind once), EQUAL with no
+; hypothesis (fn-rii-classified-open-is-classified-open).
 (defun fn-store-sn-open-extended (e config-records frontier state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((classified (fn-sopc-classified-open e config-records frontier))
+  (let* ((classified (fn-rii-classified-open e config-records frontier))
          (refused (equal (car classified) :refused))
          (state (f-put-global 'fn-store-open-refusal
                               (if refused classified nil) state))
@@ -322,9 +335,11 @@ reopen predicate, writer-lock observation and observed final namespace."
       ; opened once (fn-store-sn-open-extended below).  It is the full open
       ; fn-cpo-open-observed and the full replay fn-cpr-replay by
       ; fn-sco-store-open-of-extended-capture (books/owner-checkpoint-open.lisp)
-      ; with PREFIX = NIL.
+      ; with PREFIX = NIL.  The extension is fn-rii-sco-extend: the fold
+      ; carries the replay's identity tries (PRF-242), EQUAL to fn-sco-extend
+      ; with no hypothesis (fn-rii-sco-extend-is-sco-extend).
       (fn-store-sn-open-extended
-       (fn-sco-extend (fn-sco-capture config-records nil) config-records records)
+       (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records records)
        config-records frontier state))))
 
 ;; ---------------------------------------------------------------------------
@@ -448,7 +463,8 @@ reopen predicate, writer-lock observation and observed final namespace."
       ; open and the configuration are read off it (fn-sco-open is
       ; fn-sco-finalize of E; fn-sco-replay-result is E's fold finished).
       (fn-store-sn-open-extended
-       (fn-sco-extend checkpoint config-records records)
+       ; fn-rii-sco-extend-is-sco-extend (PRF-242).
+       (fn-rii-sco-extend checkpoint config-records records)
        config-records frontier state))))
 
 (defun fn-store-sco-encode-records (records)

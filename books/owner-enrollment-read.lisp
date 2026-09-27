@@ -77,6 +77,7 @@
                          (list (list :command line)))
                   (not (equal (fn-wire-state-mode w2) :closed))
                   (fn-octl-reader-hyps as tokens line)
+                  (not (fn-auth-access-restrictedp as (fn-own-conn-config conn)))
                   (consp (cddr tokens)) (null (cdddr tokens))
                   (fn-nntp-keywordp (car tokens) "HDR")
                   (fn-nntp-keywordp (cadr tokens) ":FN-ENROLLMENT")
@@ -113,9 +114,15 @@
                   (verdicts (fn-served-conn-verdicts
                              (fn-octl-served-conn
                               o (fn-own-find-conn id (fn-own-conns o)))))
-                  (env (fn-post-reader-env (fn-served-conn-config
-                               (fn-octl-served-conn
-                                o (fn-own-find-conn id (fn-own-conns o)))) (fn-served-conn-observation
+                  (env (fn-post-reader-env
+                        (fn-auth-moderation-config
+                         (fn-served-conn-session
+                          (fn-octl-served-conn
+                           o (fn-own-find-conn id (fn-own-conns o))))
+                         (fn-served-conn-config
+                          (fn-octl-served-conn
+                           o (fn-own-find-conn id (fn-own-conns o)))))
+                        (fn-served-conn-observation
                          (fn-octl-served-conn
                           o (fn-own-find-conn id (fn-own-conns o))))))
                   (keyword (car (fn-nntp-tokenize line)))

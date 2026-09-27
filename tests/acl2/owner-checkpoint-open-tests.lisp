@@ -158,3 +158,53 @@
                              *ock-t-configs* 8)))
    (and (equal (fn-sn-open-kind (cadr r)) :error)
         (equal (car r) (fn-cpr-replay *ock-t-configs* (cons 5 *ock-t-suffix*))))))
+
+; -----------------------------------------------------------------------------
+; The recovery-lag policy (checkpoint-pipeline-5, PKT-583 (b)):
+; fn-ock-publication-next.  K = 4 as above.  Nothing in flight: the rule's
+; word (:due at suffix 2, :idle at 1, :idle when the count is the last
+; attempt's), :blocked over a recorded deferral; one in flight (the count it
+; captured): never :due, the rule's observation is :coalesce, else :inflight.
+(assert-event
+ (and (equal (fn-ock-publication-next 0 2 4 nil nil nil) :due)
+      (equal (fn-ock-publication-next 0 1 4 nil nil nil) :idle)
+      (equal (fn-ock-publication-next 0 2 4 2 nil nil) :idle)
+      (equal (fn-ock-publication-next 0 2 4 nil nil t) :blocked)
+      (equal (fn-ock-publication-next 0 2 4 nil 2 nil) :coalesce)
+      (equal (fn-ock-publication-next 0 1 4 nil 1 nil) :inflight)
+      (equal (fn-ock-publication-next 0 5 4 nil 2 t) :coalesce)
+      ; the finish binds S to the prefix the capture was handed
+      (equal (fn-sco-sequence (fn-ock-next-checkpoint (fn-sco-capture *ock-t-configs* *ock-t-prefix*)
+                                                      *ock-t-configs* *ock-t-events*))
+             (len *ock-t-events*))
+      ; K the fast path's threshold: suffix K served from the checkpoint, K + 1 the full replay
+      (equal (car (fn-sco-select :ok 2 6 4)) :checkpoint)
+      (equal (fn-sco-select :ok 2 7 4) (list :full-replay :suffix-exceeds-k))))
+
+; fn-ock-one-publication-in-flight without its hypothesis: nothing in flight
+; and the rule true is :due.
+(must-fail
+ (defthm ock-t-one-in-flight-without-inflight
+   (not (equal (fn-ock-publication-next durable count k attempted inflight blockedp) :due))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-ock-one-publication-in-flight)))))
+
+; fn-ock-publication-next-decides-by-the-rule without its hypothesis: in
+; flight, the rule true, the decision is :coalesce, not :due.
+(must-fail
+ (defthm ock-t-decides-by-the-rule-without-not-inflight
+   (iff (equal (fn-ock-publication-next durable count k attempted inflight blockedp) :due)
+        (and (not blockedp) (fn-ock-publication-duep durable count k attempted)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable fn-ock-publication-next-decides-by-the-rule)))))
+
+; fn-ock-fast-path-within-k-by-definition without (<= s count): S ahead of the
+; count is :ahead-of-history though the difference is within K.
+(assert-event (and (<= (- 3 5) 4) (equal (fn-sco-select :ok 5 3 4) (list :full-replay :ahead-of-history))))
+(must-fail
+ (defthm ock-t-fast-path-without-order
+   (implies (and (natp s) (natp count) (natp k))
+            (iff (equal (car (fn-sco-select :ok s count k)) :checkpoint)
+                 (<= (- count s) k)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-sco-select) (fn-ock-fast-path-within-k-by-definition))))))

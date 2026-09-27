@@ -4,19 +4,26 @@
 (include-book "../../books/store-prepare-correspondence")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "held-rows-tests")
 
 ; A reachable, non-degenerate witness with one durable record already in the
 ; history.  The second prepare therefore separates the projection from an
 ; empty-history special case.
 (defconst *spc-groups* '("fn.letters" "fn.test"))
-(defconst *spc-first*
+(defconst *spc-first-wire*
   (fn-record-make 0 0 0 "<spc-first@example.invalid>" '(65 66)
                   *spc-groups* "spc-pin-1" "spc-subject-1"
                   "spc-release-1" 2 841000000))
-(defconst *spc-second*
+; The store retains held rows (records-flip): each record reaches the
+; prepare as the row the entry interns (store-intern fn-intern-row-at,
+; keyring nil at generation 0): the first at handle 0, a second prepare
+; at handle 1.
+(defconst *spc-first* (fn-hrt-row-at *spc-first-wire* 0))
+(defconst *spc-second-wire*
   (fn-record-make 1 1 1 "<spc-second@example.invalid>" '(67 68)
                   '("fn.test") "spc-pin-2" "spc-subject-2"
                   "spc-release-2" 1 841000000))
+(defconst *spc-second* (fn-hrt-row-at *spc-second-wire* 1))
 
 (defun spc-reserve (s)
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
@@ -47,10 +54,11 @@
 
 ; The exact candidate predicate remains executable.  A wrong sequence is a
 ; no-op in both implementations and never becomes pending bytes.
-(defconst *spc-wrong-sequence*
+(defconst *spc-wrong-sequence-wire*
   (fn-record-make 9 1 1 "<spc-second@example.invalid>" '(67 68)
                   '("fn.test") "spc-pin-2" "spc-subject-2"
                   "spc-release-2" 1 841000000))
+(defconst *spc-wrong-sequence* (fn-hrt-row-at *spc-wrong-sequence-wire* 1))
 (assert-event
  (equal (fn-spc-prepare *spc-second-reserved* *spc-wrong-sequence*)
         *spc-second-reserved*))
@@ -61,10 +69,11 @@
 ; Candidate shape alone is insufficient.  This record has the exact next
 ; counters but reuses the committed Message-ID, so the prepared live node has
 ; no matching proposal and both transitions refuse it.
-(defconst *spc-duplicate*
+(defconst *spc-duplicate-wire*
   (fn-record-make 1 1 1 "<spc-first@example.invalid>" '(67 68)
                   '("fn.test") "spc-pin-2" "spc-subject-2"
                   "spc-release-2" 1 841000000))
+(defconst *spc-duplicate* (fn-hrt-row-at *spc-duplicate-wire* 1))
 (assert-event
  (fn-sf-candidatep *spc-duplicate*
                    (fn-sf-records (fn-sn-files *spc-second-reserved*))

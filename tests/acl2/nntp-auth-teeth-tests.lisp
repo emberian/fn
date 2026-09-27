@@ -1214,7 +1214,7 @@
                     (fn-served-conn-wire conn)))
     :hints (("Goal"
              :do-not-induct t
-             :in-theory (e/d (fn-served-dispatch fn-served-post-command-eventp)
+             :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-served-post-command-eventp)
                              (fn-auth-step fn-auth-sessionp fn-auth-postingp
                               fn-wire-begin-article fn-post-offeredp
                               fn-served-submission fn-served-connp
@@ -1255,7 +1255,7 @@
                     (fn-served-conn-wire conn)))
     :hints (("Goal"
              :do-not-induct t
-             :in-theory (e/d (fn-served-dispatch fn-served-post-command-eventp)
+             :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-served-post-command-eventp)
                              (fn-auth-step fn-auth-sessionp fn-auth-postingp
                               fn-wire-begin-article fn-post-offeredp
                               fn-served-submission fn-served-connp
@@ -1490,7 +1490,7 @@
        (fn-auth-with-base
         *aut-r-one*
         (fn-peer-make-session (fn-peer-session-base (fn-auth-session-base *aut-r-one*))
-                              "shadow" nil 0 *aut-node* *aut-cfg-shadow*)))))
+                              "shadow" nil 0 *aut-node* *aut-cfg-shadow* nil)))))
 (defconst *aut-r-shadow-user*
   (aut-role-after (aut-reader *aut-cfg-shadow* *aut-role-policy* nil)
                   "AUTHINFO USER reader"))

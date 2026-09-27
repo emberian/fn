@@ -107,15 +107,16 @@ unlinked; the lease is released before the verb runs."
       (replace joined chunk :start1 offset)
       (incf offset (length chunk)))))
 
-(defun fnn-control-read-frame (socket maximum)
-  "Read one half-closed frame under one deadline and retained-input bound."
+(defun fnn-control-read-frame (socket maximum
+                               &optional (seconds +fnn-control-io-seconds+))
+  "Read one half-closed frame under one deadline and retained-input bound.
+SECONDS is the deadline; a consumer wait's client allows its timeout more."
   (unless (and (integerp maximum) (>= maximum 0))
     (fnn-fault "invalid local-control frame maximum"))
   (let ((fd (fnn-socket-fd socket))
         (chunks nil) (total 0)
         (deadline (+ (fnn-now)
-                     (* +fnn-control-io-seconds+
-                        internal-time-units-per-second))))
+                     (* seconds internal-time-units-per-second))))
     (loop
       (let ((remaining-seconds (fnn-seconds-to-deadline deadline)))
         (when (<= remaining-seconds 0) (return :timeout))
@@ -312,25 +313,30 @@ configuration and the connection pins the owner carries once per request
 answering changes nothing the owner holds; the host keeps the buffers ACL2
 returns.  The mutex keeps a render from observing a half-applied
 transition."
-  (fnn-with-owner (service)
-    (when (fnn-owner-service-stopping service)
-      (fnn-refuse "owner service is stopping"))
-    (let ((answer (fnn-core 'fn-native-live-status-host-answer request
-                            *fnn-live-status-buffers*
-                            (fnn-store-observation
-                             (fnn-owner-service-store service))
-                            *fnn-health-min-percent*
-                            ;; PKT-508: the log sink's counts for `health'.
-                            (fnn-log-sink-snapshot)
-                            *the-live-state*)))
-      (unless (and (consp answer) (consp (cdr answer))
-                   (fnn-octet-list-p (first answer)))
-        (fnn-fault "ACL2 returned a malformed live status page"))
-      (setf *fnn-live-status-buffers* (second answer))
-      (first answer))))
+  (fnn-owner-serialized
+   service nil
+   (lambda ()
+     (let ((answer (fnn-core 'fn-native-live-status-host-answer request
+                             *fnn-live-status-buffers*
+                             (fnn-store-observation
+                              (fnn-owner-service-store service))
+                             *fnn-health-min-percent*
+                             ;; PKT-508: the log sink's counts for `health'.
+                             (fnn-log-sink-snapshot)
+                             ;; HST-023: the scheduler's hold and wait fold
+                             ;; (books/owner-scheduler.lisp fn-osch-health-lines).
+                             (fnn-owner-sched-snapshot service)
+                             *the-live-state*)))
+       (unless (and (consp answer) (consp (cdr answer))
+                    (fnn-octet-list-p (first answer)))
+         (fnn-fault "ACL2 returned a malformed live status page"))
+       (setf *fnn-live-status-buffers* (second answer))
+       (first answer)))
+   :control))
 
 (defun fnn-control-handle-client (control socket)
-  (let* ((service (fnn-control-state-service control))
+  (let* ((*fnn-owner-measure-label* :control)
+         (service (fnn-control-state-service control))
          (maximum (fnn-control-state-read-maximum control))
          ;; PKT-453 (a): a frame of the reasoned kinds (13, 17) is answered
          ;; with the reasoned reply however its handling ends; ACL2 says
@@ -358,6 +364,11 @@ transition."
                              (fnn-core (if reasoned-frame
                                            'fn-native-control-host-reasoned-admin-decode
                                          'fn-native-control-host-admin-decode)
+                                       frame-list)))
+                      ;; PKT-657, PKT-575: the moderation request (kind 21).
+                      (moderation
+                        (and frame-list
+                             (fnn-core 'fn-native-control-host-moderation-decode
                                        frame-list)))
                       (topic
                         (and (typep frame 'fnn-octets)
@@ -389,11 +400,18 @@ transition."
                         (list :topic-reply :refused))))
                    ((and (consp consumer) (eq (car consumer) :consumer))
                       (if (fnn-control-peer-is-owner-p socket)
-                        (fnn-owner-consumer-local-serialized
-                         service (second consumer) (third consumer)
-                         (fourth consumer))
+                        (if (member (second consumer) '(:wait :bound-wait))
+                            ;; PRF-252: a wait sleeps outside the owner
+                            ;; mutex and answers a poll's reply.
+                            (fnn-owner-consumer-local-wait
+                             service (second consumer) (third consumer)
+                             (fourth consumer))
+                          (fnn-owner-consumer-local-serialized
+                           service (second consumer) (third consumer)
+                           (fourth consumer)))
                       (case (second consumer)
-                        (:poll (list :consumer-poll-reply :refused nil nil))
+                        ((:poll :bound-poll :wait :bound-wait)
+                         (list :consumer-poll-reply :refused nil nil))
                         (:status (list :consumer-status-reply :refused nil nil nil))
                         (otherwise (list :consumer-reply :refused nil)))))
                    ((and (consp request) (eq (car request) :request))
@@ -410,6 +428,10 @@ transition."
                       (mapcar #'fnn-octets groups) (fnn-octets article))))
                    ((and (consp admin) (eq (car admin) :admin))
                     (fnn-owner-live-admin-serialized service (second admin)))
+                   ((and (consp moderation) (eq (car moderation) :moderation))
+                    (fnn-owner-moderation-serialized
+                     service (second moderation) (third moderation)
+                     (fourth moderation) (fifth moderation)))
                    (t :refused)))
              ;; The owner has already fenced itself on these two (exit 3 and
              ;; exit 4, `fnn-owner-shared-action-locked'); the reason goes to
@@ -639,8 +661,10 @@ transition."
     ;; the store opens, so a malformed value never surfaces on a worker after
     ;; a durable submission.
     (fnn-control-stop-cut-armed-p)
-    (fnn-owner-run-normalized store-octets listener-host-octets listener-port
-                              oncep max-connections tls-context tls-port)))
+    ;; PKT-605: the connection budget counts these clients' threads.
+    (let ((*fnn-mux-control-clients* max-clients))
+      (fnn-owner-run-normalized store-octets listener-host-octets listener-port
+                                oncep max-connections tls-context tls-port))))
 
 (defun fnn-control-connect (path)
   (let ((socket (make-instance 'sb-bsd-sockets:local-socket
@@ -778,16 +802,22 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                  (let* ((frame (fnn-control-read-frame
                                 socket (fnn-core
                                         (case operation
-                                          (:poll
+                                          ((:poll :bound-poll :wait :bound-wait)
                                            'fn-native-control-host-consumer-poll-max-frame)
                                           (:status
                                            'fn-native-control-host-consumer-status-max-frame)
                                           (otherwise
-                                           'fn-native-control-host-max-frame)))))
+                                           'fn-native-control-host-max-frame)))
+                                ;; PRF-252: a wait answers after its timeout.
+                                (+ +fnn-control-io-seconds+
+                                   (case operation
+                                     (:wait second)
+                                     (:bound-wait (first second))
+                                     (otherwise 0)))))
                         (reply (and (typep frame 'fnn-octets)
                                     (fnn-core
                                      (case operation
-                                       (:poll
+                                       ((:poll :bound-poll :wait :bound-wait)
                                         'fn-native-control-host-consumer-poll-reply-decode)
                                        (:status
                                         'fn-native-control-host-consumer-status-reply-decode)
@@ -801,7 +831,7 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                    (if (and (consp reply)
                             (eq (first reply)
                                 (case operation
-                                  (:poll :consumer-poll-reply)
+                                  ((:poll :bound-poll :wait :bound-wait) :consumer-poll-reply)
                                   (:status :consumer-status-reply)
                                   (otherwise :consumer-reply)))
                             (member (second reply)
@@ -817,12 +847,14 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                                          (null (fourth reply))
                                          (null (fifth reply))))
                               (and (fnn-octet-list-p (third reply))
-                                   (or (not (eq operation :poll))
+                                   (or (not (member operation
+                                                    '(:poll :bound-poll
+                                                      :wait :bound-wait)))
                                        (fnn-octet-list-p (fourth reply)))))
                             )
                        reply
                      (list (case operation
-                             (:poll :consumer-poll-reply)
+                             ((:poll :bound-poll :wait :bound-wait) :consumer-poll-reply)
                              (:status :consumer-status-reply)
                              (otherwise :consumer-reply))
                            (if (member ordinary-status
@@ -833,7 +865,7 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                            nil nil nil)))))
            (error ()
              (list (case operation
-                     (:poll :consumer-poll-reply)
+                     ((:poll :bound-poll :wait :bound-wait) :consumer-poll-reply)
                      (:status :consumer-status-reply)
                      (otherwise :consumer-reply))
                    (fnn-control-transport-outcome stage) nil nil nil)))

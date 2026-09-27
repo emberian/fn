@@ -86,7 +86,7 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                   (result nil)
                   (receipt nil))
              (multiple-value-setq (result receipt)
-               (fnn-owner-serialized
+               (fnn-owner-transit-serialized
                 owner nil
                 (lambda ()
                   ;; Config can change after preflight and before this lock.
@@ -160,7 +160,7 @@ observations back.  Nil when there is nothing to observe."
     (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs) t)
       (return-from fnn-bpnode-receipt-result
         (values :receipt-refused (fnn-bpnode-receipt-detail view obs))))
-    (fnn-owner-serialized
+    (fnn-owner-transit-serialized
      owner nil
      (lambda ()
        (unless (eq (fnn-owner-core 'fn-owner-bp-receipt-gatep view obs) t)
@@ -820,7 +820,8 @@ an operator's `bp-route' change applies to the next queue and contact."
   "Send the owed receipts `fnn-bpnode-queue-outboxes' queued for PEER-ID on
 this node's own base contact, so `bp-contact tick' is not the only path
 (spec bp-node-machine 9.4).  ACL2 decides each offer of the contact
-(fn-bpnj-contact-next, books/bp-node-job-offer.lisp): a queued job for
+(fn-bpnjc-contact-next, books/bp-node-job-cursor.lisp, the answer of
+fn-bpnj-contact-next from the peer's frontier): a queued job for
 the peer with nothing issued, fenced or pending, routed by the owner's table
 to the hop its durable route names, not yet offered on this contact.  The
 send drives the same effects as `bp-contact tick', with one difference of
@@ -835,8 +836,10 @@ uncertain, as it does everywhere else."
     (fnn-indeterminate "BP node lifecycle is uncertain; recovery required"))
   (fnn-bpnode-route-by-owner bp)
   (let* ((peer (fnn-bp-eid peer-id))
-         (first-answer (fnn-core 'fn-bpnj-contact-next (fnn-bps-state bp)
-                                 peer (fnn-bps-routing bp) nil)))
+         (first-answer
+           (car (fnn-core 'fn-bpnjc-contact-next (fnn-bps-state bp)
+                          peer (fnn-bps-routing bp) nil
+                          (fnn-core 'fn-bpnjc-contact-cursor (fnn-bps-cursors bp) peer)))))
     (unless (eq (first first-answer) :close)
       (fnn-out "BP node receipt contact peer=~a" peer-id)
       (setf (fnn-bps-transfer-scope bp) :connection)

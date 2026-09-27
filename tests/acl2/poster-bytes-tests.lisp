@@ -12,6 +12,7 @@
 ; authored Date, another injecting identity, a recipe v1 record, and a
 ; second identical post under a new Message-ID.
 (in-package "ACL2")
+(include-book "held-rows-tests")
 (include-book "../../books/poster-bytes-invariants")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
@@ -193,9 +194,15 @@
 
 (defconst *pbt-groups* '("fn.letters"))
 (defconst *pbt-msgid* "<d25@example.invalid>")
-(defconst *pbt-record*
+(defconst *pbt-record-wire*
   (fn-record-make 0 0 0 *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-a*) *pbt-groups*
                   "pbt-pin" "pbt-subject" "pbt-release" 2 841000000))
+; The store retains held rows (records-flip, books/held-record.lisp): the
+; row the entry interns on a fresh arena (handle 0).  *pbt-prior* is what
+; the arena interned, so the bytes under a handle read through it.
+(defconst *pbt-prior* (list *pbt-record-wire*))
+(defconst *pbt-record* (car (fn-hrt-rows *pbt-prior* nil 0)))
+(assert-event (fn-held-p *pbt-record*))
 (defconst *pbt-reserved*
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io
               (fn-sn-initial *pbt-groups* 10) :start-frontier nil)
@@ -209,37 +216,67 @@
              :record-directory :ok)))
 
 (assert-event (fn-sn-statep *pbt-store*))
+; by specification: the flip -- the held article's payload is its handle
+; (0); the bytes under it in the arena, and alpha of the held article, are
+; the injection at A, the old expected value.
+(defconst *pbt-held*
+  (fn-find-article *pbt-msgid*
+                   (fn-state-articles (fn-node-acceptance (fn-sn-node *pbt-store*)))))
+(assert-event (equal (fn-article-payload *pbt-held*) 0))
+(assert-event (equal (fn-hrt-bytes *pbt-prior* (fn-article-payload *pbt-held*))
+                     (pbt-octets *pbt-dateless* *pbt-a*)))
 (assert-event (equal (fn-article-payload
                       (fn-find-article *pbt-msgid*
-                                       (fn-state-articles
-                                        (fn-node-acceptance (fn-sn-node *pbt-store*)))))
+                                       (fn-hrt-articles-wire-of
+                                        *pbt-prior*
+                                        (fn-state-articles
+                                         (fn-node-acceptance (fn-sn-node *pbt-store*))))))
                      (pbt-octets *pbt-dateless* *pbt-a*)))
+
+; by specification: the flip -- the stored payload is a handle, so the two
+; decisions are restated over the arena that interned PRIOR.  The source
+; decision (D25) is fn-hrt-existing-action, the host's entry
+; (books/store-intern.lisp fn-store-existing-action, keystone
+; fn-store-existing-action-is-the-verdict-over-alpha).  The byte-identity
+; decision K1 replaced is fn-sn-existing-action's comparison with the stored
+; bytes read through the arena (fn-hrt-bytes PRIOR handle).  Every expected
+; verdict is the pre-flip one.
+(defun pbt-bytes-action (prior msgid payload groups s)
+  (declare (xargs :verify-guards nil))
+  (let ((article (fn-find-article
+                  msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
+    (if article
+        (if (and (equal payload (fn-hrt-bytes prior (fn-article-payload article)))
+                 (equal groups (fn-article-groups article)))
+            :duplicate
+          :conflict)
+      nil)))
 
 
 ; The held article is the Date-less source injected at A (the v0 matrix's
 ; shape).  K1 on the byte-identity decision it replaces, and D25 on the new.
 (defconst *pbt-resend* (pbt-octets *pbt-dateless* *pbt-b*))
 (defconst *pbt-other* (pbt-octets *pbt-other-source* *pbt-b*))
-(assert-event (equal (fn-sn-existing-action *pbt-msgid* *pbt-resend* *pbt-groups* *pbt-store*)
+(assert-event (equal (pbt-bytes-action *pbt-prior* *pbt-msgid* *pbt-resend* *pbt-groups* *pbt-store*)
                      :conflict))
-(assert-event (equal (fn-pb-existing-action *pbt-msgid* *pbt-resend* *pbt-groups* *pbt-store*)
+(assert-event (equal (fn-hrt-existing-action *pbt-prior* *pbt-msgid* *pbt-resend* *pbt-groups* *pbt-store*)
                      :duplicate))
-(assert-event (equal (fn-pb-existing-action *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-a*)
+(assert-event (equal (fn-hrt-existing-action *pbt-prior* *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-a*)
                                             *pbt-groups* *pbt-store*)
                      :duplicate))
-(assert-event (equal (fn-pb-existing-action *pbt-msgid* *pbt-other* *pbt-groups* *pbt-store*)
+(assert-event (equal (fn-hrt-existing-action *pbt-prior* *pbt-msgid* *pbt-other* *pbt-groups* *pbt-store*)
                      :conflict))
-(assert-event (equal (fn-pb-existing-action *pbt-msgid* (pbt-octets *pbt-dated-at-a* *pbt-b*)
+(assert-event (equal (fn-hrt-existing-action *pbt-prior* *pbt-msgid* (pbt-octets *pbt-dated-at-a* *pbt-b*)
                                             *pbt-groups* *pbt-store*)
                      :conflict))
-(assert-event (equal (fn-pb-existing-action *pbt-msgid* *pbt-resend* '("fn.other") *pbt-store*)
+(assert-event (equal (fn-hrt-existing-action *pbt-prior* *pbt-msgid* *pbt-resend* '("fn.other") *pbt-store*)
                      :conflict))
 ; A second identical post under a new Message-ID is not answered from the
 ; Store: the host prepares a new article.
-(assert-event (null (fn-pb-existing-action "<d25-second@example.invalid>"
+(assert-event (null (fn-hrt-existing-action *pbt-prior* "<d25-second@example.invalid>"
                                            (pbt-octets *pbt-new-id* *pbt-b*)
                                            *pbt-groups* *pbt-store*)))
-(must-fail (assert-event (null (fn-pb-existing-action *pbt-msgid* *pbt-resend*
+(must-fail (assert-event (null (fn-hrt-existing-action *pbt-prior* *pbt-msgid* *pbt-resend*
                                                       *pbt-groups* *pbt-store*))))
 
 ; -----------------------------------------------------------------------------
@@ -254,7 +291,7 @@
   (fn-own-make nil nil (list *pbt-conn*) 1 4 nil ledger *pbt-b* nil
                *pbt-config* nil
                (fn-own-sub-make id 0 0 (fn-inj-decide *pbt-dateless* *pbt-config* *pbt-b*))
-               nil))
+               nil nil nil))
 (defconst *pbt-owner* (pbt-owner 0 nil))
 (defconst *pbt-consumed* (pbt-owner 0 '(committed)))
 
@@ -265,8 +302,10 @@
 (defconst *pbt-conflict-line*
   (pbt-line "441 posting failed; a different article with this Message-ID is stored here"))
 
+; by specification: the flip -- the verdict is the one over the arena
+; (fn-hrt-existing-action, the host's entry fn-store-existing-action).
 (defun pbt-reply (o id payload groups)
-  (car (fn-own-outcome o id (fn-pb-existing-action *pbt-msgid* payload groups
+  (car (fn-own-outcome o id (fn-hrt-existing-action *pbt-prior* *pbt-msgid* payload groups
                                                    *pbt-store*))))
 
 (assert-event (equal (fn-pb-served-reply *pbt-owner* 0 :duplicate) *pbt-duplicate-line*))
@@ -290,15 +329,15 @@
  (assert-event
   (equal (car (fn-own-outcome
                (fn-own-make nil nil (list *pbt-conn*) 1 4 nil nil *pbt-b* nil
-                            *pbt-config* nil nil nil)
-               0 (fn-pb-existing-action *pbt-msgid* *pbt-resend* *pbt-groups*
+                            *pbt-config* nil nil nil nil nil)
+               0 (fn-hrt-existing-action *pbt-prior* *pbt-msgid* *pbt-resend* *pbt-groups*
                                         *pbt-store*)))
          *pbt-duplicate-line*)))
 ; The in-flight submission is another connection's.
 (must-fail (assert-event (equal (car (fn-own-outcome
                                       (pbt-owner 3 nil) 0
-                                      (fn-pb-existing-action
-                                       *pbt-msgid* *pbt-resend* *pbt-groups* *pbt-store*)))
+                                      (fn-hrt-existing-action
+                                       *pbt-prior* *pbt-msgid* *pbt-resend* *pbt-groups* *pbt-store*)))
                                 *pbt-duplicate-line*)))
 ; A completion consumed after the take: the reply is the uncertain line.
 (must-fail (assert-event (equal (pbt-reply *pbt-consumed* 0 *pbt-resend* *pbt-groups*)
@@ -307,7 +346,7 @@
 (must-fail
  (assert-event
   (equal (car (fn-own-outcome *pbt-owner* 0
-                              (fn-pb-existing-action "<missing@example.invalid>"
+                              (fn-hrt-existing-action *pbt-prior* "<missing@example.invalid>"
                                                      *pbt-resend* *pbt-groups*
                                                      *pbt-store*)))
          *pbt-duplicate-line*)))
@@ -336,7 +375,8 @@
 
 ; The refinement: a byte-identical resend stays a duplicate, and every
 ; Message-ID the byte decision answers the source decision answers.
-(assert-event (equal (fn-sn-existing-action *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-a*)
+; by specification: the flip -- the byte decision over the arena, as above.
+(assert-event (equal (pbt-bytes-action *pbt-prior* *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-a*)
                                             *pbt-groups* *pbt-store*)
                      :duplicate))
 
@@ -371,9 +411,11 @@
                                         (pbt-octets *pbt-dateless* *pbt-a*))))
 
 ; Through the real Store: the tin article held, then resent.
-(defconst *pbt-tin-record*
+(defconst *pbt-tin-record-wire*
   (fn-record-make 0 0 0 *pbt-msgid* (pbt-octets *pbt-tin* *pbt-a*) *pbt-groups*
                   "pbt-pin" "pbt-subject" "pbt-release" 2 841000000))
+(defconst *pbt-tin-prior* (list *pbt-tin-record-wire*))
+(defconst *pbt-tin-record* (car (fn-hrt-rows *pbt-tin-prior* nil 0)))
 (defconst *pbt-tin-store*
   (fn-sn-finish
    (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-prepare *pbt-reserved* *pbt-tin-record*)
@@ -384,16 +426,17 @@
 ; The byte decision it replaces calls the resend a conflict; D25 over the
 ; recovered source calls it a duplicate.  A changed supplied Path is the
 ; conflict line.
-(assert-event (equal (fn-sn-existing-action *pbt-msgid* (pbt-octets *pbt-tin* *pbt-b*)
+; by specification: the flip -- both decisions over the arena, as above.
+(assert-event (equal (pbt-bytes-action *pbt-tin-prior* *pbt-msgid* (pbt-octets *pbt-tin* *pbt-b*)
                                             *pbt-groups* *pbt-tin-store*)
                      :conflict))
-(assert-event (equal (fn-pb-existing-action *pbt-msgid* (pbt-octets *pbt-tin* *pbt-b*)
+(assert-event (equal (fn-hrt-existing-action *pbt-tin-prior* *pbt-msgid* (pbt-octets *pbt-tin* *pbt-b*)
                                             *pbt-groups* *pbt-tin-store*)
                      :duplicate))
-(assert-event (equal (fn-pb-existing-action *pbt-msgid*
+(assert-event (equal (fn-hrt-existing-action *pbt-tin-prior* *pbt-msgid*
                                             (pbt-octets *pbt-tin-other-path* *pbt-b*)
                                             *pbt-groups* *pbt-tin-store*)
                      :conflict))
-(assert-event (equal (fn-pb-existing-action *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-b*)
+(assert-event (equal (fn-hrt-existing-action *pbt-tin-prior* *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-b*)
                                             *pbt-groups* *pbt-tin-store*)
                      :conflict))

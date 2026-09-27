@@ -20,14 +20,15 @@
     (fnn-fault "BP application could not bind the canonical owner Store")))
 
 (defun fnn-bpapp-request-intent (journal inbound-id request generation txid result)
+  ;; Every request is planned as a transit request (D34, PKT-646): the
+  ;; intent ACL2 built from the plan, by reference, never the bytes.
+  (declare (ignore inbound-id request generation txid result))
+  (unless (fnn-global 'fn-owner-app-transitp)
+    (fnn-fault "BP application intent without a transit plan"))
   (let ((record
-          (if (fnn-global 'fn-owner-app-transitp)
-              (fnn-bpapp-core-record
-               'fn-bprj-request-transit-intent-record
-               (fnn-global 'fn-owner-app-intent-v3))
-            (fnn-bpapp-core-record
-             'fn-bprj-request-intent-record inbound-id (fnn-octet-list request)
-             generation txid result))))
+          (fnn-bpapp-core-record
+           'fn-bprj-request-transit-intent-record
+           (fnn-global 'fn-owner-app-intent-v3))))
     (fnn-app-publish journal record)))
 
 (defun fnn-bpapp-bind-context (journal request application-result)
@@ -56,16 +57,10 @@
                  (integerp record-generation) (>= record-generation 0))
       (fnn-fault "BP application result disagrees with durable request intent"))
     (let ((context
-            (if (eq (fnn-core-state 'fn-bprj-request-transitp
-                                     (fnn-octet-list request)) t)
-                (fnn-bpapp-core-record
-                 'fn-bprj-request-transit-context-record
-                 inbound-id (fnn-octet-list request) record generation txid
-                 record-generation application-result)
-              (fnn-bpapp-core-record
-               'fn-bprj-request-context-v2-record
-               inbound-id (fnn-octet-list request) record generation txid
-               record-generation application-result))))
+            (fnn-bpapp-core-record
+             'fn-bprj-request-transit-context-record
+             inbound-id (fnn-octet-list request) record generation txid
+             record-generation application-result)))
       (fnn-app-publish journal context))))
 
 (defun fnn-bpapp-receipt (journal request)
@@ -221,7 +216,7 @@ finds the transit principal in that ingress."
               (receipt nil)
               (class nil))
          (multiple-value-setq (app-result receipt class)
-           (fnn-owner-serialized
+           (fnn-owner-transit-serialized
             service nil
             (lambda ()
               (multiple-value-bind (result adu)
@@ -278,7 +273,7 @@ finds the transit principal in that ingress."
        (list :uncertain reason)))))
 
 (defun fnn-bpapp-open-journal (service receipt-root destination policy issuer)
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
      (fnn-bpapp-bind-owner-store)

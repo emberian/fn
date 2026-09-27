@@ -16,6 +16,8 @@
 (in-package "ACL2")
 (include-book "../../books/bp-signed-binding")
 (include-book "../../books/codec-attach")
+; Intents pin digests (PKT-646): fn-frame-digest runs through its attachment.
+(include-book "../../books/crypto-attach")
 (include-book "std/testing/must-fail" :dir :system)
 
 (defun bsb-o (s) (fn-record-string-octets s))
@@ -44,12 +46,17 @@
  `(defconst *bsb-stored*
     ',(fn-pu-relay-article *bsb-article* (bsb-o "b.mission.invalid")
                            (bsb-o "y.mission.invalid"))))
-; The durable v3 transit intent the host persists before any Store attempt:
-; planned transaction 1 (the Store's next after the enrollment), :accepted.
-(defconst *bsb-intent*
-  (list :request-transit-intent "bundle-a-report" *bsb-request-octets* 1 1
-        :accepted "y-boundary" "b.mission.invalid" "y.mission.invalid"
-        *bsb-stored*))
+; The durable transit intent the host persists before any Store attempt:
+; planned transaction 1 (the Store's next after the enrollment), :accepted;
+; the request by reference and the stored projection by length and digest
+; (PKT-646).
+(make-event
+ `(defconst *bsb-intent*
+    ',(let ((ref (fn-bpaj-request-ref *bsb-request*)))
+        (list :request-transit-intent "bundle-a-report" (car ref) 1 1
+              :accepted "y-boundary" "b.mission.invalid" "y.mission.invalid"
+              (cadr ref) (caddr ref)
+              (len *bsb-stored*) (fn-frame-digest *bsb-stored*)))))
 (assert-event (fn-bpaj-transit-intentp *bsb-intent*))
 (assert-event
  (equal (car (fn-bpaj-transit-article-fields *bsb-request*)) :ok))
@@ -182,9 +189,12 @@
 
 ; The bound record carries on through the receiver: the transit context the
 ; host publishes for it replays against the Store and the request is bound.
-(defconst *bsb-context*
-  (list :request-transit-context "bundle-a-report" *bsb-request-octets*
-        (fn-record-encode-impl *bsb-record*) 1 1 1 :accepted))
+(make-event
+ `(defconst *bsb-context*
+    ',(fn-bpaj-transit-context-record "bundle-a-report" *bsb-request-octets*
+                                      (fn-record-encode-impl *bsb-record*)
+                                      1 1 1 :accepted)))
+(assert-event *bsb-context*)
 (make-event
  `(defconst *bsb-context-replay*
     ',(fn-bpaj-replay *bsb-store* (list *bsb-config* *bsb-intent* *bsb-context*))))
@@ -308,10 +318,15 @@
         "incarnation" "auth" "terms" *bsb-other-article*))))
 (make-event
  `(defconst *bsb-other-intent*
-    ',(list :request-transit-intent "bundle-a-second" *bsb-other-request-octets*
-            1 2 :accepted "y-boundary" "b.mission.invalid" "y.mission.invalid"
-            (fn-pu-relay-article *bsb-other-article* (bsb-o "b.mission.invalid")
-                                 (bsb-o "y.mission.invalid")))))
+    ',(let ((ref (fn-bpaj-request-ref
+                  (fn-bpaj-request *bsb-other-request-octets*)))
+            (stored (fn-pu-relay-article *bsb-other-article*
+                                         (bsb-o "b.mission.invalid")
+                                         (bsb-o "y.mission.invalid"))))
+        (list :request-transit-intent "bundle-a-second" (car ref)
+              1 2 :accepted "y-boundary" "b.mission.invalid" "y.mission.invalid"
+              (cadr ref) (caddr ref) (len stored) (fn-frame-digest stored)))))
+(assert-event (fn-bpaj-transit-intentp *bsb-other-intent*))
 (make-event
  `(defconst *bsb-other-joined*
     ',(fn-bpaj-nth 1 (fn-bpaj-replay *bsb-store0*

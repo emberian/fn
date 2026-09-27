@@ -139,7 +139,7 @@
   (fn-own-make (fn-own-store o) v (fn-own-conns o) (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))
+               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
 
 (defun pit-existing (msgid payload groups o)
   (declare (xargs :guard (fn-cbor-octet-listp payload) :verify-guards nil))
@@ -214,6 +214,13 @@
 (defun pit-phase (oc)
   (fn-sf-phase (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
 
+; The third hypothesis (PRF-242): the owner's Store is indexed, so the count
+; the prepare reads is the committed record count.
+(assert-event
+ (and (fn-ceis-indexedp (fn-sbud-oc-store *pit-oc*))
+      (equal (fn-sbud-count (fn-sbud-oc-store *pit-oc*))
+             (fn-sbud-used (fn-sbud-oc-store *pit-oc*)))))
+
 (assert-event
  (let ((a (fn-pidx-sbud-prepare *pit-oc* *pit-record* 100))
        (b (fn-pidx-sbud-prepare *pit-oc* *pit-fresh-record* 100))
@@ -264,6 +271,8 @@
 (assert-event
  (and (not (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner *pit-bad-visible-oc*))))
       (fn-scar-view-indexedp (fn-ocfg-owner *pit-bad-visible-oc*))
+      (fn-ceis-indexedp (fn-sbud-oc-store *pit-bad-visible-oc*))
+      (fn-ceis-indexedp (fn-sbud-oc-store *pit-bad-index-oc*))
       (equal *pit-bad-visible-prepared* *pit-bad-visible-oc*)
       (equal (pit-phase (fn-pcar-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100))
              :record-staged)
@@ -280,6 +289,37 @@
  (defthm pit-prepare-without-index
    (equal (fn-pidx-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100)
           (fn-pcar-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100))))
+
+; Removal of the third hypothesis, CORRUPTED (no Store transition builds it):
+; the reachable owner whose Store's event index claims 100 records while the
+; history holds fewer.  Both view facts hold; the index does not describe the
+; history; the prepare refuses at budget 100 (the carried count says the
+; budget is spent) where the reference, counting the history, stages.
+(defun pit-owner-with-store (o s)
+  (fn-own-make s (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
+               (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+               (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+               (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))
+(defconst *pit-bad-count-store*
+  (let* ((s (fn-sbud-oc-store *pit-oc*))
+         (index (fn-sn-event-index s)))
+    (fn-sn-with-event-index s (cons (car index) (cons (cadr index) 100)))))
+(defconst *pit-bad-count-oc*
+  (fn-ocfg-with-owner *pit-oc* (pit-owner-with-store *pit-o* *pit-bad-count-store*)))
+(assert-event
+ (and (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner *pit-bad-count-oc*)))
+      (fn-scar-view-indexedp (fn-ocfg-owner *pit-bad-count-oc*))
+      (not (fn-ceis-indexedp (fn-sbud-oc-store *pit-bad-count-oc*)))
+      (equal (fn-sbud-count (fn-sbud-oc-store *pit-bad-count-oc*)) 100)
+      (< (fn-sbud-used (fn-sbud-oc-store *pit-bad-count-oc*)) 100)
+      (equal (fn-pidx-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100)
+             *pit-bad-count-oc*)
+      (equal (pit-phase (fn-pcar-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100))
+             :record-staged)))
+(must-fail
+ (defthm pit-prepare-without-indexed-store
+   (equal (fn-pidx-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100)
+          (fn-pcar-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100))))
 
 ; -----------------------------------------------------------------------------
 ; The host's calls run compiled code: every function is guard-verified; the

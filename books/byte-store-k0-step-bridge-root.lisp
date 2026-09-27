@@ -138,20 +138,20 @@
                               (fn-bs-unit b2)))))
 (defthm fn-bs-k0r-step-inputs
   (implies (fn-bs-k0r-hyps)
-           (and (fn-bs-k0-step-inputp bs ks (list :create :staging stage) outcome)
-                (implies (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks)
+           (and (fn-bs-k0-step-inputp bs ks (list :create :staging stage) outcome arena)
+                (implies (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s1 bs stage) ks
-                                               (list :write-all :staging stage octets) outcome))
-                (implies (and (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks)
+                                               (list :write-all :staging stage octets) outcome arena))
+                (implies (and (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks arena)
                               (fn-bs-k0r-fsync-outcomep bs stage octets outcome))
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s2 bs stage octets) ks
-                                               (list :fsync-file :staging stage) outcome))
-                (implies (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks)
+                                               (list :fsync-file :staging stage) outcome arena))
+                (implies (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s3 bs stage octets) ks
-                                               (list :rename :staging stage :root name) outcome))
-                (implies (fn-bs-k0s-root-rename-pendingp (fn-bs-k0r-s4 bs stage octets name) ks)
+                                               (list :rename :staging stage :root name) outcome arena))
+                (implies (fn-bs-k0s-root-rename-pendingp (fn-bs-k0r-s4 bs stage octets name) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0r-s4 bs stage octets name) ks
-                                               (list :fsync-dir :root) outcome))))
+                                               (list :fsync-dir :root) outcome arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-unfolds)
@@ -164,11 +164,11 @@
                             fn-bs-crash-choicesp fn-bs-ops-for-ino fn-bs-k0-observation-inputp)))))
 (defthm fn-bs-k0r-pairs-by-step
   (implies (fn-bs-k0r-hyps)
-           (and (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks)
-                (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks)
-                (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks)
-                (fn-bs-k0s-root-rename-pendingp (fn-bs-k0r-s4 bs stage octets name) ks)
-                (fn-bs-store-relation (fn-bs-k0r-s5 bs stage octets name) ks)))
+           (and (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks arena)
+                (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks arena)
+                (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks arena)
+                (fn-bs-k0s-root-rename-pendingp (fn-bs-k0r-s4 bs stage octets name) ks arena)
+                (fn-bs-store-relation (fn-bs-k0r-s5 bs stage octets name) ks arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0p-stage-pairs-by-step
@@ -192,11 +192,11 @@
 ; kernel throughout.
 (defmacro fn-bs-k0r-cuts-body (program)
   `(let ((run (fn-bs-run bs ks (,program stage octets) nil groups capacity)))
-     (and (fn-bs-store-relation (car (nth 1 run)) ks)
-          (fn-bs-store-relation (car (nth 3 run)) ks)
-          (fn-bs-store-relation (car (nth 5 run)) ks)
-          (fn-bs-k0s-root-rename-pendingp (car (nth 7 run)) ks)
-          (fn-bs-store-relation (car (nth 9 run)) ks)
+     (and (fn-bs-store-relation (car (nth 1 run)) ks arena)
+          (fn-bs-store-relation (car (nth 3 run)) ks arena)
+          (fn-bs-store-relation (car (nth 5 run)) ks arena)
+          (fn-bs-k0s-root-rename-pendingp (car (nth 7 run)) ks arena)
+          (fn-bs-store-relation (car (nth 9 run)) ks arena)
           (equal (cdr (nth 1 run)) ks) (equal (cdr (nth 3 run)) ks) (equal (cdr (nth 5 run)) ks)
           (equal (cdr (nth 7 run)) ks) (equal (cdr (nth 9 run)) ks))))
 (defthm fn-bs-k0-state-checkpoint-cuts-relation-by-step
@@ -213,26 +213,26 @@
 ; Every step of the program, from the pair the successful run reaches
 ; before it, with any outcome (the stage fsync with :ok or a well-formed crash
 ; selection of its writes): the result is covered and the kernel unchanged.
-(defun fn-bs-k0r-step-coveredp (pre step outcome ks groups capacity)
+(defun fn-bs-k0r-step-coveredp (pre step outcome ks groups capacity arena)
   (declare (xargs :guard t :verify-guards nil))
   (mv-let (r bs1 ks1) (fn-bs-step (car pre) (cdr pre) step outcome groups capacity)
     (declare (ignore r))
-    (and (fn-bs-k0-coveredp bs1 ks1) (equal ks1 ks))))
+    (and (fn-bs-k0-coveredp bs1 ks1 arena) (equal ks1 ks))))
 (defmacro fn-bs-k0r-any-outcome-body (program)
   `(let ((run (fn-bs-run bs ks (,program stage octets) nil groups capacity))
          (prog (,program stage octets)))
-     (and (fn-bs-k0r-step-coveredp (cons bs ks) (nth 0 prog) outcome ks groups capacity)
-          (fn-bs-k0r-step-coveredp (nth 1 run) (nth 2 prog) outcome ks groups capacity)
-          (fn-bs-k0r-step-coveredp (nth 3 run) (nth 4 prog) outcome ks groups capacity)
-          (fn-bs-k0r-step-coveredp (nth 5 run) (nth 6 prog) outcome ks groups capacity)
-          (fn-bs-k0r-step-coveredp (nth 7 run) (nth 8 prog) outcome ks groups capacity))))
+     (and (fn-bs-k0r-step-coveredp (cons bs ks) (nth 0 prog) outcome ks groups capacity arena)
+          (fn-bs-k0r-step-coveredp (nth 1 run) (nth 2 prog) outcome ks groups capacity arena)
+          (fn-bs-k0r-step-coveredp (nth 3 run) (nth 4 prog) outcome ks groups capacity arena)
+          (fn-bs-k0r-step-coveredp (nth 5 run) (nth 6 prog) outcome ks groups capacity arena)
+          (fn-bs-k0r-step-coveredp (nth 7 run) (nth 8 prog) outcome ks groups capacity arena))))
 (defthm fn-bs-k0r-pair-steps-covered
   (implies (and (fn-bs-k0r-hyps) (fn-bs-k0r-fsync-outcomep bs stage octets outcome))
-           (and (fn-bs-k0r-step-coveredp (cons bs ks) (list :create :staging stage) outcome ks groups capacity)
-                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0p-s1 bs stage) ks) (list :write-all :staging stage octets) outcome ks groups capacity)
-                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0p-s2 bs stage octets) ks) (list :fsync-file :staging stage) outcome ks groups capacity)
-                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0p-s3 bs stage octets) ks) (list :rename :staging stage :root name) outcome ks groups capacity)
-                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0r-s4 bs stage octets name) ks) (list :fsync-dir :root) outcome ks groups capacity)))
+           (and (fn-bs-k0r-step-coveredp (cons bs ks) (list :create :staging stage) outcome ks groups capacity arena)
+                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0p-s1 bs stage) ks) (list :write-all :staging stage octets) outcome ks groups capacity arena)
+                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0p-s2 bs stage octets) ks) (list :fsync-file :staging stage) outcome ks groups capacity arena)
+                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0p-s3 bs stage octets) ks) (list :rename :staging stage :root name) outcome ks groups capacity arena)
+                (fn-bs-k0r-step-coveredp (cons (fn-bs-k0r-s4 bs stage octets name) ks) (list :fsync-dir :root) outcome ks groups capacity arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0r-pairs-by-step fn-bs-k0r-step-inputs
