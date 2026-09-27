@@ -3615,6 +3615,10 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-nntp-hdr-fn-control-status-is-the-model-status"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-own-read-archive-command-is-the-pinned-dispatcher"
         },
         {
@@ -8314,6 +8318,10 @@
         {
           "kind": "theorem",
           "name": "fn-mvb-approve-commits-the-held-article-approved"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-held-article-is-the-model-body"
         },
         {
           "kind": "theorem",

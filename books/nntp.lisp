@@ -307,8 +307,12 @@
            (fn-nntp-control-cleanp (cdr bytes)))
     (null bytes)))
 
-(defun fn-nntp-control-hdr-response (session archive index verdicts args)
-  (declare (xargs :guard t))
+;; The withdrawing article C's octets are read through the arena
+;; (fn-nntp-article-bytes): its payload position is a handle since the
+;; records flip.  Lane matrix-reds (the served `0 none' for every executed
+;; withdrawal: the kernel parsed the handle).
+(defun fn-nntp-control-hdr-response (session archive index verdicts args fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (and (consp args) (consp (cdr args)) (null (cddr args))
            (fn-nntp-message-id-tokenp (cadr args))
            (fn-octet-listp (cadr args)))
@@ -320,11 +324,12 @@
                                     trie visible withdrawn)))
         (if (not (consp c))
             (fn-nntp-single session "430 no article with that message-id")
-          (let ((item (fn-nntp-string-octets
-                       (fn-ctl-control-item
-                        (fn-ctl-served-status c trie visible withdrawn
-                                              (fn-ctl-pin-ws control) verdicts)
-                        (fn-ctl-target-octets (fn-article-payload c))))))
+          (let* ((cbytes (fn-nntp-article-bytes c fn-arena))
+                 (item (fn-nntp-string-octets
+                        (fn-ctl-control-item
+                         (fn-ctl-served-status c cbytes trie visible withdrawn
+                                               (fn-ctl-pin-ws control) verdicts)
+                         (fn-ctl-target-octets cbytes)))))
             (if (fn-nntp-control-cleanp item)
                 (fn-nntp-multi
                  session (fn-nntp-hdr-initial nil)
@@ -397,7 +402,7 @@
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-CONTROL"))
-        (fn-nntp-control-hdr-response session archive index verdicts args))
+        (fn-nntp-control-hdr-response session archive index verdicts args fn-arena))
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
              (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
@@ -443,7 +448,7 @@
 
 (defthm fn-nntp-control-hdr-response-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-control-hdr-response session archive index verdicts args))
+          (fn-nntp-control-hdr-response session archive index verdicts args fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response)
                                   (fn-ctl-control-item fn-ctl-served-status

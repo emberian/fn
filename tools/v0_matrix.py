@@ -229,13 +229,18 @@ class Spec:
     `-A`/`-B`) or "direction" (one per feed direction, `-AB`/`-BA`).
     `expected` is the outcome class the row is designed to observe, or None
     for a probe whose result is the finding rather than a pass or a fail.
+    `since` is the UTC time (ISO 8601, `Z`) of the commit that put the row in
+    PLAN, or None for a row planned before the first archived matrix
+    (2026-09-21): an archived file is validated against the plan as of its
+    own `generated_at` (`planned_ids_as_of`, `validate(doc, historical=True)`),
+    so a row added later never makes history invalid.
     """
 
     __slots__ = ("key", "feature", "title", "requirements", "scenarios",
-                 "expected", "scope", "limit", "expected_usage")
+                 "expected", "scope", "limit", "expected_usage", "since")
 
     def __init__(self, key, feature, title, requirements, scenarios, expected,
-                 scope="single", limit="", expected_usage=None):
+                 scope="single", limit="", expected_usage=None, since=None):
         self.key = key
         self.feature = feature
         self.title = title
@@ -245,6 +250,7 @@ class Spec:
         self.scope = scope
         self.limit = limit
         self.expected_usage = expected_usage
+        self.since = since
 
     def ids(self):
         if self.scope == "node":
@@ -686,7 +692,8 @@ PLAN = (
       "3.4.1 and 3.2.1)",
       ("NNT-012",), ("SCN-050",), ACCEPTED, "single",
       "read from inn_lab's fn-post-supplied-path-240, which checks the 240 and the "
-      "ARTICLE 220 of the read-back; the Path prefix itself is the post book's"),
+      "ARTICLE 220 of the read-back; the Path prefix itself is the post book's",
+      since="2026-09-26T09:52:59Z"),
 
     # -- F-CLIENT --------------------------------------------------------
     S("V0-CLIENT-NNTPLIB", "F-CLIENT",
@@ -702,17 +709,21 @@ PLAN = (
     S("V0-CLIENT-TIN-READ", "F-CLIENT",
       "tin opens a group and reads an article",
       ("NNT-002", "NNT-003"), ("SCN-014",), ACCEPTED, "single",
-      "tin's own OVER, HDR and ARTICLE use; one node, one group"),
+      "tin's own OVER, HDR and ARTICLE use; one node, one group",
+      since="2026-09-25T10:29:54Z"),
     S("V0-CLIENT-TIN-REPLY", "F-CLIENT", "tin posts a followup (References set by tin)",
       ("NNT-002", "NNT-012"), ("SCN-014", "SCN-050"), ACCEPTED, "single",
-      "tin always sends Path: not-for-mail; D32 accepts a supplied Path"),
+      "tin always sends Path: not-for-mail; D32 accepts a supplied Path",
+      since="2026-09-25T10:29:54Z"),
     S("V0-CLIENT-TIN-POST", "F-CLIENT", "tin posts a new article",
-      ("NNT-002", "NNT-012"), ("SCN-014", "SCN-050"), ACCEPTED, "single"),
+      ("NNT-002", "NNT-012"), ("SCN-014", "SCN-050"), ACCEPTED, "single",
+      since="2026-09-25T10:29:54Z"),
     S("V0-CLIENT-TIN-CANCEL", "F-CLIENT",
       "the node accepts tin's cancel of its own article (cmsg cancel)",
       ("NNT-002", "NNT-012"), ("SCN-014", "SCN-050"), ACCEPTED, "single",
       "the 240 is the node filing the control article; whether it withdraws the "
-      "target is the control work's (PKT-109), not this row's"),
+      "target is the control work's (PKT-109), not this row's",
+      since="2026-09-25T10:29:54Z"),
     # pan and Thunderbird over implicit TLS with an invitation-code account
     # (reader-clients lane): tools/reader_clients_phase.py stands up a scratch
     # owner (`[auth] required`, `protected_only`, a scratch CA), runs `account
@@ -721,14 +732,17 @@ PLAN = (
     # is the node's reply line in the client's wire log.
     S("V0-CLIENT-THUNDERBIRD-READ", "F-CLIENT",
       "Thunderbird, logged in over TLS with a redeemed account, opens a group and reads an article",
-      ("NNT-002", "NNT-003", "NNT-034"), ("SCN-014", "SCN-094"), ACCEPTED, "single"),
+      ("NNT-002", "NNT-003", "NNT-034"), ("SCN-014", "SCN-094"), ACCEPTED, "single",
+      since="2026-09-26T18:34:15Z"),
     S("V0-CLIENT-THUNDERBIRD-REPLY", "F-CLIENT",
       "Thunderbird posts a followup over TLS (References set by Thunderbird)",
       ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
-      "single"),
+      "single",
+      since="2026-09-26T18:34:15Z"),
     S("V0-CLIENT-THUNDERBIRD-POST", "F-CLIENT", "Thunderbird posts a new article over TLS",
       ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
-      "single"),
+      "single",
+      since="2026-09-26T18:34:15Z"),
     S("V0-CLIENT-THUNDERBIRD-CANCEL", "F-CLIENT",
       "Thunderbird cancels its own article and it is gone: the cancel's POST answers 240, "
       "then ARTICLE of the target answers 430 and OVER no longer lists it",
@@ -737,23 +751,28 @@ PLAN = (
       "single",
       "SEC-006: the login is the principal of its unsigned post; the node's Cancel-Lock "
       "and the matching Cancel-Key it writes into the login's cancel withdraw it "
-      "(PRF-210); a 240 with the target still served is refused, not accepted"),
+      "(PRF-210); a 240 with the target still served is refused, not accepted",
+      since="2026-09-26T18:34:15Z"),
     S("V0-CLIENT-PAN-READ", "F-CLIENT",
       "pan, logged in over TLS with a redeemed account, opens a group and reads an article",
-      ("NNT-002", "NNT-003", "NNT-034"), ("SCN-014", "SCN-094"), ACCEPTED, "single"),
+      ("NNT-002", "NNT-003", "NNT-034"), ("SCN-014", "SCN-094"), ACCEPTED, "single",
+      since="2026-09-26T18:34:15Z"),
     S("V0-CLIENT-PAN-REPLY", "F-CLIENT",
       "pan posts a followup over TLS (References set by pan)",
       ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
-      "single"),
+      "single",
+      since="2026-09-26T18:34:15Z"),
     S("V0-CLIENT-PAN-POST", "F-CLIENT", "pan posts a new article over TLS",
       ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
-      "single"),
+      "single",
+      since="2026-09-26T18:34:15Z"),
     S("V0-CLIENT-PAN-CANCEL", "F-CLIENT",
       "the node files pan's cancel of its own article (control.cancel configured)",
       ("NNT-002", "NNT-012", "NNT-034"), ("SCN-014", "SCN-050", "SCN-094"), ACCEPTED,
       "single",
       "the 240 is the node filing the control article; an unsigned cancel carries "
-      "no authority (C2), so the target stays served"),
+      "no authority (C2), so the target stays served",
+      since="2026-09-26T18:34:15Z"),
 )
 
 PLAN_BY_KEY = {spec.key: spec for spec in PLAN}
@@ -824,6 +843,17 @@ def inn_rows(findings: dict) -> list:
                         + observed))
     return out
 PLANNED_IDS = [rid for spec in PLAN for rid in spec.ids()]
+
+
+def planned_ids_as_of(stamp: str) -> list:
+    """The planned row ids as PLAN stood at UTC time STAMP (ISO 8601, `Z`).
+
+    A row whose `since` is later than STAMP was not yet planned then.  Both
+    are fixed-width `YYYY-MM-DDTHH:MM:SSZ` strings, so they compare in order.
+    """
+    return [rid for spec in PLAN
+            if spec.since is None or spec.since <= stamp
+            for rid in spec.ids()]
 assert len(PLANNED_IDS) == len(set(PLANNED_IDS)), "duplicate row id in PLAN"
 
 
@@ -6377,14 +6407,27 @@ def add_planned_rows(doc: dict) -> list:
     return missing
 
 
-def validate(doc) -> list:
+def validate(doc, historical=False) -> list:
     """Every way `planning/v0-matrix.json` can be wrong, including by hand.
 
     `make check` runs this.  The digest is the part a typed verdict cannot
     survive: change one row's word and the recorded digest no longer matches
     the rows, and no tool but this one recomputes it.
+
+    HISTORICAL (an archived file kept byte-identical as evidence): the rows
+    it must hold are the plan as of its own `generated_at`
+    (`planned_ids_as_of`), not today's; everything else is checked alike.
     """
     problems = []
+    planned = PLANNED_IDS
+    if historical:
+        stamp = doc.get("generated_at")
+        if not (isinstance(stamp, str) and re.fullmatch(
+                r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", stamp)):
+            problems.append("a historical file needs generated_at as "
+                            "YYYY-MM-DDTHH:MM:SSZ, not {!r}".format(stamp))
+            return problems
+        planned = planned_ids_as_of(stamp)
     schema = doc.get("schema_version")
     if schema not in (LEGACY_SCHEMA_VERSION, SCHEMA_VERSION):
         problems.append("schema_version is {!r}, not legacy {} or current {}".format(
@@ -6417,10 +6460,10 @@ def validate(doc) -> list:
     ids = [r.get("id") for r in rows]
     if len(ids) != len(set(ids)):
         problems.append("duplicate row ids")
-    unplanned = sorted(set(ids) - set(PLANNED_IDS))
+    unplanned = sorted(set(ids) - set(planned))
     if unplanned:
         problems.append("rows not in the tool's PLAN: {}".format(unplanned))
-    absent = sorted(set(PLANNED_IDS) - set(ids))
+    absent = sorted(set(planned) - set(ids))
     if absent:
         problems.append("planned rows missing from the file: {}".format(absent))
     for row in rows:
