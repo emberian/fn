@@ -2663,7 +2663,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-119"
+        "PRF-119",
+        "PRF-271"
       ],
       "verification": [
         "proof",
@@ -2675,7 +2676,9 @@
         "tests/acl2/store-reclaim-pack-tests.lisp",
         "tests/reclaim_lifecycle_native.py",
         "planning/evidence/reclaim-lifecycle-2026-09-25.md",
-        "planning/evidence/reclaim-lifecycle-2-2026-09-26.md"
+        "planning/evidence/reclaim-lifecycle-2-2026-09-26.md",
+        "books/store-log-reclaim.lisp",
+        "tests/test_native_log_compaction.py"
       ],
       "implementation_note": "`operator CONFIG store reclaim [--dry-run]` and `operator CONFIG retention set RULE`. The decision is fn-rclp-decide; the program drops the derived state checkpoint, publishes the reclaiming generation, selects it and retires the older one, reusing the pack publication, selection and retirement cuts and adding five reclaim-* cuts. Lane reclaim-lifecycle-2: the maintenance reservation (PKT-169) is STO-019/PRF-129; a reclaimed article's retention charge falls to the one permanent history unit. Not implemented: a per-article release verb, BP/feed holders, chained packs."
     },
@@ -3668,9 +3671,10 @@
         "host/native/io.lisp",
         "tests/test_native_store_export.py",
         "tests/test_native_older_release_open.py",
-        "planning/evidence/fixtures-refresh-2026-09-27.md"
+        "planning/evidence/fixtures-refresh-2026-09-27.md",
+        "planning/evidence/log-recovery-2026-09-27.md"
       ],
-      "implementation_note": "D34. The open refuses a profile frame of another format (:store-format) with the line naming the reinstall and import; store export writes the archive (ACL2's names and MANIFEST), store import builds a new store from it and admits it by the ordinary open."
+      "implementation_note": "D34. The open refuses a profile frame of another format (:store-format) with the line naming the reinstall and import; store export writes the archive (ACL2's names and MANIFEST), store import builds a new store from it and admits it by the ordinary open. Lane log-recovery (2026-09-27): export of a format-9 store reads the recovered history (the checkpoint's records then the log's); import writes a format-9 store (fn-sxp-log-profile: a format-8 archive migrates) with the records written into journal/000001.log through the log's append and barrier."
     },
     {
       "id": "HST-014",
@@ -4577,6 +4581,33 @@
       ],
       "implementation_note": "PKT-709: FNCT kind 22 (the reasoned consumer request, the kind-4 payload) answered on refusal with the reasoned reply kind 18 (PKT-453's pattern; an old owner is resent kind 4 once). `fn consumer --json COMMAND ...`, `fn consumer-article [--json] REPORT`, `fn consumer help`.",
       "note": "A client contract, not an RFC requirement."
+    },
+    {
+      "id": "STO-034",
+      "title": "The record log's segments: a checkpoint rotates the log, the segments it covers are dropped after its install, and the open scans from the segment its F row names, refusing a missing or spliced segment by name",
+      "specification": "specs/storage.md#checkpointing-and-compaction",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-270",
+        "PRF-271"
+      ],
+      "verification": [
+        "proof",
+        "scenario",
+        "integration"
+      ],
+      "evidence": [
+        "books/store-log-segments.lisp",
+        "tests/acl2/store-log-segments-tests.lisp",
+        "books/store-checkpoint-tables.lisp",
+        "host/native/io.lisp",
+        "host/native/owner.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_log_compaction.py",
+        "planning/evidence/log-recovery-2026-09-27.md"
+      ],
+      "implementation_note": "Lane log-recovery (2026-09-27; design 2026-09-27 storage-log section 6). The checkpoint's F row carries the log position (fn-sct-log-positionp); fnn-log-rotate (P-ROTATE) at the capture of the checkpoint verb, of store compact and of the owner's automatic checkpoint; fnn-log-drop (P-DROP) after the install; fnn-recover-log's plan (fn-lgs-open-plan) and chain-broken check (fn-lgs-chain-broken-string-p). store reclaim over the log: the rewritten history's checkpoint then the drop (PRF-271). Not done: the recovery's five barriers down to one, the streaming open (the segment is still read into one string, PKT-COL-7)."
     }
   ]
 }

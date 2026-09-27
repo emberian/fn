@@ -283,15 +283,19 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
         self.assertEqual(probe.returncode, 0, probe.stderr[-800:])
         self.assertTrue((probe_root / "journal" / "000001.log").is_file())
 
-    def test_format_9_refuses_what_the_log_does_not_do_yet_by_name(self):
+    def test_format_9_compact_reclaim_and_export_run_over_the_log(self):
+        # Lane log-recovery: `store compact' (rotation and drop), `store
+        # reclaim' (the rewritten history's checkpoint and the drop) and
+        # `store export' run over the log (tests.test_native_log_compaction,
+        # tests.test_native_store_export); on a fresh store each exits 0.
         node = Node(self.image, self.root)
         node.init()
-        for argv in (("operator", str(node.config), "store", "compact"),
-                     ("operator", str(node.config), "store", "reclaim")):
+        for argv in (("operator", str(node.config), "store", "reclaim"),
+                     ("operator", str(node.config), "store", "compact"),
+                     ("store", str(node.store), "export", str(self.root / "archive"))):
             with self.subTest(argv=argv[-2:]):
                 result = node.fn(*argv)
-                self.assertEqual(result.returncode, 1, (argv, result.stdout, result.stderr))
-                self.assertIn(b"reason=record-log", result.stdout + result.stderr)
+                self.assertEqual(result.returncode, 0, (argv, result.stdout, result.stderr[-600:]))
 
 
 @unittest.skipUnless(PRODUCTION, "FN_NATIVE_HOST names the production image")

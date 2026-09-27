@@ -163,8 +163,8 @@ class StoreExportTests(ProfileFixture):
                                        image=verbs.DEVELOPER, env=env)
             finally:
                 self.config = saved
-            self.assertNotIn(killed.returncode, (EXIT_OK, EXIT_REFUSED),
-                             killed.stderr.decode())
+            # SIGKILL at the cut (fnn-log-at), nothing else.
+            self.assertEqual(killed.returncode, -9, killed.stderr.decode())
             self.assertFalse(store2.exists(), cut)
             stages = [p for p in store2.parent.iterdir()
                       if p.name.startswith(store2.name + ".import-")]

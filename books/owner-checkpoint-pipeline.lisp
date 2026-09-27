@@ -807,8 +807,8 @@
                                     fn-sccb-chunk-count fn-ockp-counts fn-cei-msgid-trie))))))
 
 (defthm fn-ockp-run-writes-the-file
-  (let* ((setup (fn-ockp-setup next frontier revision seg budget free))
-         (tables (fn-sct-tables-of-capture next frontier revision))
+  (let* ((setup (fn-ockp-setup next frontier revision log seg budget free))
+         (tables (fn-sct-tables-of-capture next frontier revision log))
          (run (fn-ockp-run setup (fn-ockp-initial-state tables fn-octets)
                            b bytes seg s segment-bound file-bound fuel fn-octets)))
     (implies (and (fn-ockp-tables-encodablep tables)
@@ -842,8 +842,8 @@
                             fn-ockp-state-encodablep fn-sccb-plan-octets)))))
 
 (defthm fn-ockp-setup-not-unencodable-never-refuses-a-row
-  (let* ((setup (fn-ockp-setup next frontier revision seg budget free))
-         (tables (fn-sct-tables-of-capture next frontier revision)))
+  (let* ((setup (fn-ockp-setup next frontier revision log seg budget free))
+         (tables (fn-sct-tables-of-capture next frontier revision log)))
     (implies (not (equal (car setup) :unencodable))
              (not (equal (car (fn-ockp-run setup (fn-ockp-initial-state tables fn-octets)
                                            b bytes seg s segment-bound file-bound fuel fn-octets))

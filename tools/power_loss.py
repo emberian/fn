@@ -384,40 +384,13 @@ def workload(a):
         finally:
             out_line(log, tag="owner-stop", exit=stop_owner(p, err))
 
-    if a.log_route:
-        # Three posting windows with a restart between them (each open
-        # recovers the log: P-LOG-RECOVER's zeroing and fence); then the
-        # reference.  No compact, reclaim or export: refused by name.
-        bounds = [0, a.posts // 2, (3 * a.posts) // 4, a.posts]
-        for k in range(3):
-            mark("phase:post")
-            post_range(bounds[k], bounds[k + 1], "owner-%d.stderr" % (k + 1))
-        mark("phase:reference")
-        p, err = start_owner(image, cfg, work / "owner-ref.stderr")
-        try:
-            ref = read_all(port, a.posts)
-            c = m.Conn(port)
-            ref_over = read_overview(c)
-            c.close()
-        finally:
-            stop_owner(p, err)
-        code, so, se = native(image, "operator", cfg, "status")
-        out_line(log, tag="status", exit=code, stdout=so, stderr=se[-400:])
-        mark("phase:end")
-        refdir = work / "reference"
-        refdir.mkdir(exist_ok=True)
-        (refdir / "ref.json").write_text(json.dumps([x.decode("latin-1") for x in ref]))
-        (refdir / "ref2.json").write_text(json.dumps([x.decode("latin-1") for x in ref]))
-        (refdir / "over.json").write_text(json.dumps({mid: n for n, mid in ref_over}))
-        out_line(log, tag="done", posts=a.posts, attempted=attempted, sizes=sizes, checkpoints=[],
-                 ref_220=sum(1 for x in ref if x.startswith(b"220")), ref2_220=None,
-                 ref2_heads=[], store_path=str(store), port=port, log_route=True,
-                 posters=a.posters)
-        return
-
     # Two compactions: the first packs the history, the second packs it again
     # with the records since (on this image: a new pack generation, the
-    # selection moving from generation 0 to 1).
+    # selection moving from generation 0 to 1).  On the record log
+    # (--log-route, lane log-recovery) each is the checkpoint's rotation and
+    # the drop of the segments it covers, and the reclaim below is the
+    # rewritten history's checkpoint and the drop; export and import run over
+    # the log too.
     bounds = [0, a.posts // 2, (3 * a.posts) // 4, a.posts]
     for k in range(3):
         mark("phase:post")
@@ -477,7 +450,8 @@ def workload(a):
              ref_220=sum(1 for x in ref if x.startswith(b"220")),
              ref2_220=sum(1 for x in ref2 if x.startswith(b"220")),
              ref2_heads=sorted(set(x.split(b"\r\n")[0][:3].decode() for x in ref2)),
-             store_path=str(store), port=port)
+             store_path=str(store), port=port, log_route=bool(a.log_route),
+             posters=a.posters)
 
 
 # ---------------------------------------------------------------------------
