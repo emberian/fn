@@ -91,7 +91,7 @@ One process owns one store. It holds the exclusive writer lock
 (`run_store.Store`, `writable=True`), reopens the store through
 `fn-sn-open-observed` exactly as the CLI does, and then drives the owner
 machine `fn-own-step` over the state `fn-own-start` built from that reopen
-(`fn-owner-recover`). The owner state carries the live `fn-sn` composition,
+(`fn-owner-recover-rows`). The owner state carries the live `fn-sn` composition,
 the committed view, the open connections, the pending transaction owner, a
 proof-only completion ledger, the latest clock observation and the group
 configuration facts.
@@ -142,7 +142,7 @@ that order. Counts live in the generated ledger.
 | `fn-own-connections-bounded-after-any-trace` | At most `max-conns` connections; each session is `fn-nntp-sessionp` with a configured group name or nil and a cursor inside RFC 3977 section 6's range or nil | `fn-own-relation` | Every reachable owner state; a step whose session leaves the bound closes that connection |
 | `fn-own-completed-post-survives-close-and-any-trace` | A pair the owner consumed as a completion has a record in the durable history after any finite trace: close, crash, reopen through `fn-sn-open-observed` under `fn-sf-crash-imagep`, more posts | `fn-own-relation`, the pair is in the ledger | Post-then-disconnect durability; A-DURABILITY enters as the `fn-sf-crash-imagep` hypothesis of `(:reopen ...)` |
 | `fn-own-run-preserves-relation`, `fn-own-run-preserves-store-relation` | Every step and every finite trace keeps `fn-own-relation`, hence `fn-snt-relation` on the embedded store | `fn-own-relation` | All ten events |
-| `fn-own-open-observed-start-relation` | The owner started over a successful `fn-sn-open-observed` satisfies the relation | `fn-sn-open-okp`, `natp max-conns` | The host root, `fn-owner-recover` |
+| `fn-own-open-observed-start-relation` | The owner started over a successful `fn-sn-open-observed` satisfies the relation | `fn-sn-open-okp`, `natp max-conns` | The host root, `fn-owner-recover-rows` |
 | `fn-own-every-fact-is-clock-stamped`, `fn-own-declare-group-without-clock-is-refused`, `fn-own-declared-group-is-replayed` | A group-configuration fact carries the clock observation current when it was created; none is created without one; the live group view is the replay of the fact log | `fn-own-relation`; a clock observation present | The fact record kind and its replay |
 
 Witnesses (`tests/acl2/owner-tests.lisp`): two readers at versions 0 and 1
@@ -165,7 +165,7 @@ connections are served one socket read per `fn-owner-chunk`, which is one
 projections of the effect list (`fn-served-reply-octets`,
 `fn-served-closingp`). A peer that does not consume its output stops being
 read once its backlog reaches 64 KiB and costs nothing else, so a stalled
-reader cannot block a post. The process root `fn-owner-recover` dispatches
+reader cannot block a post. The process root `fn-owner-recover-rows` dispatches
 on `fn-sn-open-kind` under `fn-own-open-kind-ok-is-okp`, never on
 `fn-sn-open-okp`, so no whole-state recognizer runs per recovery. The control
 channel is a Unix socket with one request line per connection: `POST`,
