@@ -422,16 +422,21 @@
 
 (defun pgs-alloc (n m alloc)
   ; (RUN-START SINGLES FREE2 HWM2) for a commit of N singles and an M-page
-  ; directory run over the allocator state ALLOC = (FREE HWM).
+  ; directory run over the allocator state ALLOC = (FREE HWM).  A one-page
+  ; run (below 116,281 logical pages) is the first of N+1 singles, so the
+  ; common commit costs O(N); a longer run is searched in FREE.
   (declare (xargs :guard (and (natp n) (natp m))))
   (let* ((free (true-list-fix (car (true-list-fix alloc))))
-         (hwm (nfix (cadr (true-list-fix alloc))))
-         (a (pgs-find-free-run free m free)))
-    (if (natp a)
-        (mv-let (s f h) (pgs-take-singles n (pgs-remove-all (pgs-run a m) free) hwm)
-          (list a s f h))
-      (mv-let (s f h) (pgs-take-singles n free (+ hwm (nfix m)))
-        (list hwm s f h)))))
+         (hwm (nfix (cadr (true-list-fix alloc)))))
+    (if (<= (nfix m) 1)
+        (mv-let (s f h) (pgs-take-singles (+ 1 (nfix n)) free hwm)
+          (list (car s) (cdr s) f h))
+      (let ((a (pgs-find-free-run free m free)))
+        (if (natp a)
+            (mv-let (s f h) (pgs-take-singles n (pgs-remove-all (pgs-run a m) free) hwm)
+              (list a s f h))
+          (mv-let (s f h) (pgs-take-singles n free (+ hwm (nfix m)))
+            (list hwm s f h)))))))
 
 ; -----------------------------------------------------------------------------
 ; The commit.

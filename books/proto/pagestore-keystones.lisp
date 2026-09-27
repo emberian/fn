@@ -343,18 +343,21 @@
            (pgs-asc-above (pgs-touched ls prev) prev))
   :hints (("Goal" :induct (list (pgs-lpages-ok ls n lo) (pgs-touched ls prev)))))
 
+(defthm pgs-grown-len-monotone
+  (<= (nfix n) (pgs-grown-len ls n))
+  :rule-classes :linear)
+
 (defthm pgs-lpages-below-grown
   (implies (and (pgs-lpages-ok ls n lo) (member-equal l ls))
            (< l (pgs-grown-len ls n)))
   :rule-classes nil
-  :hints (("Goal" :induct (pgs-lpages-ok ls n lo))))
+  :hints (("Goal" :induct (pgs-lpages-ok ls n lo))
+          ("Subgoal *1/2" :use ((:instance pgs-grown-len-monotone
+                                           (ls (cdr ls))
+                                           (n (if (equal (car ls) (nfix n)) (+ 1 (nfix n)) n)))))))
 
 (defun pgs-all-below (s bound)
   (if (atom s) t (and (< (car s) bound) (pgs-all-below (cdr s) bound))))
-
-(defthm pgs-grown-len-monotone
-  (<= (nfix n) (pgs-grown-len ls n))
-  :rule-classes :linear)
 
 (defthm pgs-touched-below-gen
   (implies (and (pgs-lpages-ok ls n lo)
@@ -425,7 +428,8 @@
   :hints (("Goal" :induct (pgs-agree c c2 (cons s0 rest) i))))
 
 (defthm pgs-covers-step
-  (implies (and (natp lo) (pgs-covers s lo hi)) (pgs-covers s (+ 1 lo) hi)))
+  (implies (and (natp lo) (pgs-covers s lo hi)) (pgs-covers s (+ 1 lo) hi))
+  :hints (("Goal" :expand ((pgs-covers s (+ 1 lo) hi) (pgs-covers s lo hi)))))
 
 (defthm pgs-covers-drop
   (implies (and (pgs-covers (cons s0 rest) lo hi) (natp lo) (natp s0) (< s0 lo))
@@ -600,3 +604,1117 @@
                                    (c2 (pgs-chunk (pgs-plan-ptab p ls fresh digests txid)))
                                    (s (pgs-touched ls nil)))
                         (:instance pgs-agree-at-chunks (i 0))))))
+
+; -----------------------------------------------------------------------------
+; Writes and the addresses they touch.
+
+(defun pgs-write-addrs (writes)
+  (if (atom writes)
+      nil
+    (if (consp (car writes))
+        (cons (caar writes) (pgs-write-addrs (cdr writes)))
+      (pgs-write-addrs (cdr writes)))))
+
+(defun pgs-avoids (xs ys)
+  ; No element of XS is in YS.
+  (if (atom xs) t (and (not (member-equal (car xs) ys)) (pgs-avoids (cdr xs) ys))))
+
+(defthm pgs-lookup-of-apply-pages-outside
+  (implies (not (member-equal a (pgs-write-addrs writes)))
+           (equal (pgs-lookup a (pgs-apply-pages writes keep pages))
+                  (pgs-lookup a pages))))
+
+(defthm pgs-lookup-of-cons
+  (equal (pgs-lookup a (cons (cons b c) pages))
+         (if (equal a b) c (pgs-lookup a pages))))
+
+(in-theory (disable pgs-lookup))
+
+; -----------------------------------------------------------------------------
+; Locality: a record's try reads only the addresses it keeps.
+
+(defthm pgs-check-pages-of-apply-pages
+  (implies (pgs-avoids (pgs-ptab-physes ptab) (pgs-write-addrs writes))
+           (equal (pgs-check-pages ptab txid mode (pgs-apply-pages writes keep pages) i tag)
+                  (pgs-check-pages ptab txid mode pages i tag))))
+
+(defthm pgs-contents-of-apply-pages
+  (implies (pgs-avoids (pgs-ptab-physes ptab) (pgs-write-addrs writes))
+           (equal (pgs-contents ptab (pgs-apply-pages writes keep pages))
+                  (pgs-contents ptab pages)))
+  :hints (("Goal" :induct (pgs-ptab-physes ptab))))
+
+(defthm pgs-avoids-append
+  (equal (pgs-avoids (append xs ys) zs)
+         (and (pgs-avoids xs zs) (pgs-avoids ys zs))))
+
+(defthm pgs-run-first
+  (implies (not (zp m)) (member-equal a (pgs-run a m))))
+
+(defthm pgs-avoids-member
+  (implies (and (pgs-avoids xs ys) (member-equal a xs))
+           (not (member-equal a ys))))
+
+(defthm pgs-ptab-run-pages-posp
+  (and (integerp (pgs-ptab-run-pages n)) (< 0 (pgs-ptab-run-pages n)))
+  :rule-classes ((:type-prescription :corollary (integerp (pgs-ptab-run-pages n)))
+                 (:linear :corollary (< 0 (pgs-ptab-run-pages n)))))
+
+(defthm pgs-rec-keeps-avoids-addr
+  (implies (pgs-avoids (pgs-rec-keeps rec dir tables) w)
+           (not (member-equal (pgs-rec-dir-addr rec) w)))
+  :hints (("Goal" :in-theory (disable pgs-run-first pgs-avoids-member pgs-rec-dir-addr)
+                  :use ((:instance pgs-run-first
+                                   (a (pgs-rec-dir-addr rec))
+                                   (m (pgs-dir-run-pages (pgs-rec-npages rec))))
+                        (:instance pgs-avoids-member
+                                   (a (pgs-rec-dir-addr rec)) (ys w)
+                                   (xs (pgs-run (pgs-rec-dir-addr rec)
+                                                (pgs-dir-run-pages (pgs-rec-npages rec)))))))))
+
+(defthm pgs-rec-keeps-avoids-dir
+  (implies (and (pgs-ptab-p dir) (pgs-avoids (pgs-rec-keeps rec dir tables) w))
+           (pgs-avoids (pgs-ptab-physes dir) w)))
+
+(defthm pgs-rec-keeps-avoids-table
+  (implies (and (pgs-ptab-p dir) (pgs-ptab-p (pgs-flatten tables))
+                (pgs-avoids (pgs-rec-keeps rec dir tables) w))
+           (pgs-avoids (pgs-ptab-physes (pgs-flatten tables)) w)))
+
+(in-theory (disable pgs-rec-keeps))
+
+(defthm pgs-dir-verdict-when-not-ptab-p
+  (implies (not (pgs-ptab-p dir))
+           (pgs-dir-verdict rec dir observed)))
+
+(defthm pgs-try-of-apply-pages
+  (implies (pgs-avoids (pgs-rec-keeps-in rec pages) (pgs-write-addrs writes))
+           (equal (pgs-try rec (pgs-apply-pages writes keep pages) mode)
+                  (pgs-try rec pages mode)))
+  :hints (("Goal" :in-theory (disable pgs-check-pages pgs-contents pgs-dir-verdict pgs-tables-verdict
+                                      pgs-ptab-p pgs-apply-pages pgs-flatten
+                                      pgs-rec-dir-addr pgs-rec-txid pgs-rec-npages
+                                      pgs-rec-dir-digest pgs-rec-keeps-avoids-addr)
+                  :cases ((pgs-ptab-p (pgs-lookup (pgs-rec-dir-addr rec) pages)))
+                  :use ((:instance pgs-rec-keeps-avoids-addr
+                                   (dir (pgs-lookup (pgs-rec-dir-addr rec) pages))
+                                   (tables (if (pgs-ptab-p (pgs-lookup (pgs-rec-dir-addr rec) pages))
+                                               (pgs-contents (pgs-lookup (pgs-rec-dir-addr rec) pages) pages)
+                                             nil))
+                                   (w (pgs-write-addrs writes)))))))
+
+(defun pgs-order-valid (order slots)
+  (if (atom order)
+      t
+    (and (member-equal (car order) '(0 1))
+         (pgs-rec-valid (pgs-slot (car order) slots))
+         (pgs-order-valid (cdr order) slots))))
+
+(defthm pgs-order-valid-of-open-order
+  (pgs-order-valid (pgs-open-order (pgs-slot 0 slots) (pgs-rec-valid (pgs-slot 0 slots))
+                                   (pgs-slot 1 slots) (pgs-rec-valid (pgs-slot 1 slots)))
+                   slots))
+
+(defthm pgs-slot-keeps-avoid
+  (implies (and (pgs-avoids (pgs-slots-keeps slots pages) w)
+                (member-equal k '(0 1))
+                (pgs-rec-valid (pgs-slot k slots)))
+           (pgs-avoids (pgs-rec-keeps-in (pgs-slot k slots) pages) w))
+  :hints (("Goal" :in-theory (disable pgs-rec-valid pgs-slot pgs-rec-keeps-in))))
+
+(defthm pgs-try-slot-of-apply-pages
+  (implies (and (member-equal k '(0 1))
+                (pgs-rec-valid (pgs-slot k slots))
+                (pgs-avoids (pgs-slots-keeps slots pages) (pgs-write-addrs writes)))
+           (equal (pgs-try (pgs-slot k slots) (pgs-apply-pages writes keep pages) mode)
+                  (pgs-try (pgs-slot k slots) pages mode)))
+  :hints (("Goal" :in-theory (disable pgs-try pgs-rec-valid pgs-slot pgs-slots-keeps
+                                      pgs-rec-keeps-in pgs-apply-pages
+                                      pgs-slot-keeps-avoid pgs-try-of-apply-pages)
+                  :use ((:instance pgs-slot-keeps-avoid (w (pgs-write-addrs writes)))
+                        (:instance pgs-try-of-apply-pages (rec (pgs-slot k slots)))))))
+
+(defthm pgs-try-in-order-of-apply-pages
+  (implies (and (pgs-order-valid order slots)
+                (pgs-avoids (pgs-slots-keeps slots pages) (pgs-write-addrs writes)))
+           (equal (pgs-try-in-order order slots (pgs-apply-pages writes keep pages) mode refusals)
+                  (pgs-try-in-order order slots pages mode refusals)))
+  :hints (("Goal" :induct (pgs-try-in-order order slots pages mode refusals)
+                  :in-theory (disable pgs-try pgs-rec-valid pgs-slot pgs-slots-keeps
+                                      pgs-rec-keeps-in pgs-apply-pages pgs-rec-shape-p
+                                      pgs-slot-keeps-avoid pgs-try-of-apply-pages))))
+
+(defthm pgs-open-slots-of-apply-pages
+  (implies (pgs-avoids (pgs-slots-keeps slots pages) (pgs-write-addrs writes))
+           (equal (pgs-open-slots slots (pgs-apply-pages writes keep pages) mode)
+                  (pgs-open-slots slots pages mode)))
+  :hints (("Goal" :in-theory (disable pgs-try-in-order pgs-rec-valid pgs-slot pgs-slots-keeps
+                                      pgs-rec-keeps-in pgs-apply-pages pgs-open-order))))
+
+(defthm pgs-slots-keeps-of-nil
+  (equal (pgs-slots-keeps nil pages) nil))
+
+(defthm pgs-roots-keeps-cover
+  (implies (pgs-avoids (pgs-roots-keeps roots pages) w)
+           (pgs-avoids (pgs-slots-keeps (cdr (hons-assoc-equal r roots)) pages) w))
+  :hints (("Goal" :induct (pgs-roots-keeps roots pages)
+                  :in-theory (disable pgs-slots-keeps))))
+
+; -----------------------------------------------------------------------------
+; Set facts for the commit's addresses.
+
+(defthm pgs-avoids-cons
+  (equal (pgs-avoids xs (cons y ys))
+         (and (not (member-equal y xs)) (pgs-avoids xs ys))))
+
+(defthm pgs-avoids-nil
+  (pgs-avoids xs nil))
+
+(defthm pgs-avoids-symmetric
+  (equal (pgs-avoids xs ys) (pgs-avoids ys xs))
+  :rule-classes nil)
+
+(defthm pgs-write-addrs-append
+  (equal (pgs-write-addrs (append a b))
+         (append (pgs-write-addrs a) (pgs-write-addrs b))))
+
+(defthm pgs-write-addrs-of-page-writes
+  (implies (equal (len fresh) (len dirty))
+           (equal (pgs-write-addrs (pgs-page-writes dirty fresh))
+                  (true-list-fix fresh))))
+
+(defthm pgs-member-append
+  (iff (member-equal x (append a b))
+       (or (member-equal x a) (member-equal x b))))
+
+(defthm pgs-member-true-list-fix
+  (iff (member-equal x (true-list-fix a)) (member-equal x a)))
+
+(defthm pgs-avoids-append-right
+  (equal (pgs-avoids xs (append ys zs))
+         (and (pgs-avoids xs ys) (pgs-avoids xs zs))))
+
+(defthm pgs-avoids-true-list-fix
+  (equal (pgs-avoids xs (true-list-fix ys)) (pgs-avoids xs ys)))
+
+; -----------------------------------------------------------------------------
+; Where the writes land.
+
+(defun pgs-lands (dirty fresh pages)
+  ; Each dirty page's content is at its fresh address.
+  (if (atom dirty)
+      t
+    (and (equal (pgs-lookup (car fresh) pages) (cdar dirty))
+         (pgs-lands (cdr dirty) (cdr fresh) pages))))
+
+(defun pgs-content-of (a ws)
+  (if (atom ws)
+      nil
+    (if (and (consp (car ws)) (equal (caar ws) a))
+        (cdar ws)
+      (pgs-content-of a (cdr ws)))))
+
+(defthm pgs-lookup-of-apply-pages-all
+  (implies (and (no-duplicatesp-equal (pgs-write-addrs ws))
+                (member-equal a (pgs-write-addrs ws)))
+           (equal (pgs-lookup a (pgs-apply-pages ws nil pages))
+                  (pgs-content-of a ws))))
+
+(defthm pgs-lookup-of-apply-pages-some
+  (implies (and (no-duplicatesp-equal (pgs-write-addrs ws))
+                (member-equal a (pgs-write-addrs ws)))
+           (or (equal (pgs-lookup a (pgs-apply-pages ws keep pages))
+                      (pgs-content-of a ws))
+               (equal (pgs-lookup a (pgs-apply-pages ws keep pages))
+                      (pgs-lookup a pages))))
+  :rule-classes nil)
+
+; With distinct write addresses, a crash image holds at each address either
+; what the complete commit holds there or what was there before.
+(defthm pgs-lookup-of-apply-pages-crash
+  (implies (no-duplicatesp-equal (pgs-write-addrs writes))
+           (or (equal (pgs-lookup a (pgs-apply-pages writes keep pages))
+                      (pgs-lookup a (pgs-apply-pages writes nil pages)))
+               (equal (pgs-lookup a (pgs-apply-pages writes keep pages))
+                      (pgs-lookup a pages))))
+  :rule-classes nil
+  :hints (("Goal" :cases ((member-equal a (pgs-write-addrs writes)))
+                  :use ((:instance pgs-lookup-of-apply-pages-some (ws writes))))))
+
+(defun pgs-lands-in (dirty fresh ws)
+  ; Each dirty page's content is what WS writes at its fresh address.
+  (if (atom dirty)
+      t
+    (and (member-equal (car fresh) (pgs-write-addrs ws))
+         (equal (pgs-content-of (car fresh) ws) (cdar dirty))
+         (pgs-lands-in (cdr dirty) (cdr fresh) ws))))
+
+(defthm pgs-lands-from-lands-in
+  (implies (and (no-duplicatesp-equal (pgs-write-addrs ws))
+                (pgs-lands-in dirty fresh ws))
+           (pgs-lands dirty fresh (pgs-apply-pages ws nil pages))))
+
+(defthm pgs-content-of-append
+  (equal (pgs-content-of a (append x y))
+         (if (member-equal a (pgs-write-addrs x))
+             (pgs-content-of a x)
+           (pgs-content-of a y))))
+
+(defthm pgs-lands-in-of-append-left
+  (implies (and (pgs-lands-in dirty fresh x) (no-duplicatesp-equal (pgs-write-addrs (append x y))))
+           (pgs-lands-in dirty fresh (append x y))))
+
+(defthm pgs-no-dups-append
+  (equal (no-duplicatesp-equal (append a b))
+         (and (no-duplicatesp-equal a) (no-duplicatesp-equal b) (pgs-avoids a b))))
+
+(defthm pgs-lands-in-of-append-right
+  (implies (and (pgs-lands-in dirty fresh y) (pgs-avoids (pgs-write-addrs x) (pgs-write-addrs y)))
+           (pgs-lands-in dirty fresh (append x y)))
+  :hints (("Goal" :induct (pgs-lands-in dirty fresh y))))
+
+(defthm pgs-lands-in-of-page-writes
+  (implies (and (no-duplicatesp-equal (true-list-fix fresh)) (equal (len fresh) (len dirty)))
+           (pgs-lands-in dirty fresh (pgs-page-writes dirty fresh)))
+  :hints (("Goal" :induct (pgs-page-writes dirty fresh))))
+
+; -----------------------------------------------------------------------------
+; Table predicates, entry by entry, and what the planner keeps of them
+; (each for the flat table and, the same, for the directory).
+
+(defun pgs-entries-good (ptab txid mode pages)
+  ; Every entry the mode checks verifies.
+  (if (atom ptab)
+      t
+    (and (not (eq (pgs-entry-verdict (car ptab) txid mode
+                                     (pgs-digest (pgs-lookup (first (car ptab)) pages)))
+                  :damaged))
+         (pgs-entries-good (cdr ptab) txid mode pages))))
+
+(defthm pgs-check-pages-iff-good
+  (iff (pgs-check-pages ptab txid mode pages i tag)
+       (not (pgs-entries-good ptab txid mode pages))))
+
+(defun pgs-entry-sound (e txid mode p1 p2)
+  ; Reading entry E's page in P2 either gives what P1 holds there, or the
+  ; check refuses it.
+  (or (equal (pgs-lookup (first e) p2) (pgs-lookup (first e) p1))
+      (and (pgs-entry-checked-p e txid mode)
+           (not (equal (pgs-digest (pgs-lookup (first e) p2)) (third e))))))
+
+(defun pgs-entries-sound (ptab txid mode p1 p2)
+  (if (atom ptab)
+      t
+    (and (pgs-entry-sound (car ptab) txid mode p1 p2)
+         (pgs-entries-sound (cdr ptab) txid mode p1 p2))))
+
+(defthm pgs-contents-when-sound-and-good
+  (implies (and (pgs-entries-sound ptab txid mode p1 p2)
+                (pgs-entries-good ptab txid mode p2))
+           (equal (pgs-contents ptab p2) (pgs-contents ptab p1))))
+
+(defthm pgs-entries-good-of-update-nth
+  (implies (and (pgs-entries-good ptab txid mode pages)
+                (not (eq (pgs-entry-verdict e txid mode (pgs-digest (pgs-lookup (first e) pages)))
+                         :damaged))
+                (< (nfix i) (len ptab)))
+           (pgs-entries-good (update-nth i e ptab) txid mode pages))
+  :hints (("Goal" :induct (update-nth i e ptab))))
+
+(defthm pgs-entries-sound-of-update-nth
+  (implies (and (pgs-entries-sound ptab txid mode p1 p2)
+                (pgs-entry-sound e txid mode p1 p2)
+                (< (nfix i) (len ptab)))
+           (pgs-entries-sound (update-nth i e ptab) txid mode p1 p2))
+  :hints (("Goal" :induct (update-nth i e ptab) :in-theory (disable pgs-entry-sound))))
+
+(defthm pgs-ptab-p-of-update-nth
+  (implies (and (pgs-ptab-p ptab) (pgs-entry-p e) (< (nfix i) (len ptab)))
+           (pgs-ptab-p (update-nth i e ptab)))
+  :hints (("Goal" :induct (update-nth i e ptab))))
+
+(defthm pgs-txids-ok-of-update-nth
+  (implies (and (pgs-ptab-txids-ok ptab txid) (pgs-entry-p e) (<= (second e) (nfix txid))
+                (< (nfix i) (len ptab)))
+           (pgs-ptab-txids-ok (update-nth i e ptab) txid))
+  :hints (("Goal" :induct (update-nth i e ptab))))
+
+(defthm pgs-entries-good-of-append
+  (equal (pgs-entries-good (append a b) txid mode pages)
+         (and (pgs-entries-good a txid mode pages) (pgs-entries-good b txid mode pages))))
+
+(defthm pgs-entries-sound-of-append
+  (equal (pgs-entries-sound (append a b) txid mode p1 p2)
+         (and (pgs-entries-sound a txid mode p1 p2) (pgs-entries-sound b txid mode p1 p2)))
+  :hints (("Goal" :in-theory (disable pgs-entry-sound))))
+
+(defthm pgs-contents-of-update-nth
+  (implies (< (nfix i) (len ptab))
+           (equal (pgs-contents (update-nth i e ptab) pages)
+                  (update-nth i (pgs-lookup (first e) pages) (pgs-contents ptab pages))))
+  :hints (("Goal" :induct (update-nth i e ptab))))
+
+(defthm pgs-len-of-contents
+  (equal (len (pgs-contents ptab pages)) (len ptab)))
+
+(defthm pgs-contents-of-append
+  (equal (pgs-contents (append a b) pages)
+         (append (pgs-contents a pages) (pgs-contents b pages))))
+
+(defthm pgs-contents-of-update-entry
+  (equal (pgs-contents (pgs-update-entry i e ptab) pages)
+         (cond ((< (nfix i) (len ptab))
+                (update-nth (nfix i) (pgs-lookup (first e) pages) (pgs-contents ptab pages)))
+               ((equal (nfix i) (len ptab))
+                (append (pgs-contents ptab pages) (list (pgs-lookup (first e) pages))))
+               (t (pgs-contents ptab pages)))))
+
+(defun pgs-plan-ind (ptab dirty fresh contents txid)
+  (if (atom dirty)
+      (list ptab fresh contents txid)
+    (pgs-plan-ind (pgs-update-entry (nfix (caar dirty))
+                                    (list (nfix (car fresh)) (nfix txid)
+                                          (nfix (pgs-digest (cdar dirty))))
+                                    ptab)
+                  (cdr dirty) (cdr fresh)
+                  (let ((i (nfix (caar dirty))))
+                    (cond ((< i (len contents)) (update-nth i (cdar dirty) contents))
+                          ((equal i (len contents)) (append contents (list (cdar dirty))))
+                          (t contents)))
+                  txid)))
+
+; The planner over the model's dirty list: the table after the commit, read
+; where the dirty pages landed, is the state with the dirty pages replaced
+; (or appended).
+(defthm pgs-contents-of-plan-ptab
+  (implies (and (pgs-lands dirty fresh pages) (nat-listp fresh) (<= (len dirty) (len fresh)))
+           (equal (pgs-contents (pgs-plan-ptab ptab (pgs-dirty-lpages dirty) fresh
+                                               (pgs-dirty-digests dirty) txid)
+                                pages)
+                  (pgs-apply-dirty (pgs-contents ptab pages) dirty)))
+  :hints (("Goal" :induct (pgs-plan-ind ptab dirty fresh (pgs-contents ptab pages) txid)
+                  :in-theory (disable pgs-update-entry))))
+
+(defthm pgs-entries-good-of-update-entry
+  (implies (and (pgs-entries-good ptab txid mode pages)
+                (not (eq (pgs-entry-verdict e txid mode (pgs-digest (pgs-lookup (first e) pages)))
+                         :damaged)))
+           (pgs-entries-good (pgs-update-entry i e ptab) txid mode pages)))
+
+(defthm pgs-entries-sound-of-update-entry
+  (implies (and (pgs-entries-sound ptab txid mode p1 p2)
+                (pgs-entry-sound e txid mode p1 p2))
+           (pgs-entries-sound (pgs-update-entry i e ptab) txid mode p1 p2))
+  :hints (("Goal" :in-theory (disable pgs-entry-sound))))
+
+(defthm pgs-ptab-p-of-update-entry
+  (implies (and (pgs-ptab-p ptab) (pgs-entry-p e))
+           (pgs-ptab-p (pgs-update-entry i e ptab))))
+
+(defthm pgs-txids-ok-of-update-entry
+  (implies (and (pgs-ptab-txids-ok ptab txid) (pgs-entry-p e) (<= (second e) (nfix txid)))
+           (pgs-ptab-txids-ok (pgs-update-entry i e ptab) txid)))
+
+(in-theory (disable pgs-update-entry))
+
+(defthm pgs-entries-good-of-plan-ptab
+  (implies (and (pgs-entries-good ptab txid mode pages)
+                (pgs-lands dirty fresh pages) (nat-listp fresh) (<= (len dirty) (len fresh))
+                (natp txid))
+           (pgs-entries-good (pgs-plan-ptab ptab (pgs-dirty-lpages dirty) fresh
+                                            (pgs-dirty-digests dirty) txid)
+                             txid mode pages))
+  :hints (("Goal" :induct (pgs-plan-ind ptab dirty fresh nil txid))))
+
+(defthm pgs-ptab-p-of-plan-ptab
+  (implies (pgs-ptab-p ptab)
+           (pgs-ptab-p (pgs-plan-ptab ptab lpages fresh digests txid))))
+
+(defthm pgs-txids-ok-of-plan-ptab
+  (implies (pgs-ptab-txids-ok ptab txid)
+           (pgs-ptab-txids-ok (pgs-plan-ptab ptab lpages fresh digests txid) txid)))
+
+(defthm pgs-txids-ok-monotone
+  (implies (and (pgs-ptab-txids-ok ptab t0) (<= (nfix t0) (nfix t1)))
+           (pgs-ptab-txids-ok ptab t1)))
+
+(defthm pgs-entries-good-at-later-txid
+  (implies (and (pgs-entries-good ptab t0 mode pages)
+                (pgs-ptab-txids-ok ptab t0)
+                (natp t0) (< t0 t1))
+           (pgs-entries-good ptab t1 mode pages)))
+
+(defthm pgs-entries-good-of-apply-pages
+  (implies (pgs-avoids (pgs-ptab-physes ptab) (pgs-write-addrs writes))
+           (equal (pgs-entries-good ptab txid mode (pgs-apply-pages writes keep pages))
+                  (pgs-entries-good ptab txid mode pages)))
+  :hints (("Goal" :induct (pgs-ptab-physes ptab))))
+
+; Soundness of a crash image against the complete commit.
+(defthm pgs-entries-sound-of-unwritten
+  (implies (pgs-avoids (pgs-ptab-physes ptab) (pgs-write-addrs writes))
+           (pgs-entries-sound ptab txid mode
+                              (pgs-apply-pages writes nil pages)
+                              (pgs-apply-pages writes keep pages))))
+
+(defthm pgs-dirty-lpages-of-table-dirty
+  (implies (nat-listp tl)
+           (equal (pgs-dirty-lpages (pgs-table-dirty tl cs)) tl)))
+
+(defthm pgs-len-of-table-dirty
+  (equal (len (pgs-table-dirty tl cs)) (len tl)))
+
+; -----------------------------------------------------------------------------
+; What a successful try and a successful open say.
+
+(defthm pgs-true-listp-of-contents
+  (true-listp (pgs-contents ptab pages)))
+
+(defthm pgs-try-ok-facts
+  (implies (equal (car (pgs-try rec pages mode)) :ok)
+           (let* ((dir (pgs-lookup (pgs-rec-dir-addr rec) pages))
+                  (cs (pgs-contents dir pages))
+                  (ptab (pgs-flatten cs)))
+             (and (pgs-ptab-p dir)
+                  (equal (len dir) (pgs-ntables (pgs-rec-npages rec)))
+                  (pgs-ptab-txids-ok dir (pgs-rec-txid rec))
+                  (equal (pgs-digest dir) (pgs-rec-dir-digest rec))
+                  (pgs-entries-good dir (pgs-rec-txid rec) mode pages)
+                  (not (pgs-tables-verdict cs (pgs-rec-npages rec) (pgs-rec-txid rec) 0))
+                  (pgs-ptab-p ptab)
+                  (equal (pgs-chunk ptab) cs)
+                  (equal (len ptab) (pgs-rec-npages rec))
+                  (pgs-ptab-txids-ok ptab (pgs-rec-txid rec))
+                  (pgs-entries-good ptab (pgs-rec-txid rec) mode pages)
+                  (equal (pgs-try rec pages mode)
+                         (list :ok (pgs-rec-txid rec) (pgs-contents ptab pages))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable pgs-check-pages pgs-contents pgs-tables-verdict pgs-flatten
+                                      pgs-chunk pgs-ptab-p pgs-ptab-txids-ok pgs-entries-good
+                                      pgs-ntables pgs-rec-txid pgs-rec-dir-addr pgs-rec-npages
+                                      pgs-rec-dir-digest pgs-lookup pgs-tables-ok-join)
+                  :use ((:instance pgs-tables-ok-join
+                                   (cs (pgs-contents (pgs-lookup (pgs-rec-dir-addr rec) pages) pages))
+                                   (rem (pgs-rec-npages rec)) (txid (pgs-rec-txid rec)) (i 0))))))
+
+(defthm pgs-try-when-facts
+  (let* ((dir (pgs-lookup (pgs-rec-dir-addr rec) pages))
+         (cs (pgs-contents dir pages))
+         (ptab (pgs-flatten cs)))
+    (implies (and (pgs-ptab-p dir)
+                  (equal (len dir) (pgs-ntables (pgs-rec-npages rec)))
+                  (pgs-ptab-txids-ok dir (pgs-rec-txid rec))
+                  (equal (pgs-digest dir) (pgs-rec-dir-digest rec))
+                  (pgs-entries-good dir (pgs-rec-txid rec) mode pages)
+                  (not (pgs-tables-verdict cs (pgs-rec-npages rec) (pgs-rec-txid rec) 0))
+                  (pgs-entries-good ptab (pgs-rec-txid rec) mode pages))
+             (equal (pgs-try rec pages mode)
+                    (list :ok (pgs-rec-txid rec) (pgs-contents ptab pages)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable pgs-check-pages pgs-contents pgs-tables-verdict pgs-flatten
+                                      pgs-chunk pgs-ptab-p pgs-ptab-txids-ok pgs-entries-good
+                                      pgs-ntables pgs-rec-txid pgs-rec-dir-addr pgs-rec-npages
+                                      pgs-rec-dir-digest pgs-lookup))))
+
+(defthm pgs-try-shape
+  (implies (equal (car (pgs-try rec pages mode)) :ok)
+           (equal (list :ok (cadr (pgs-try rec pages mode)) (caddr (pgs-try rec pages mode)))
+                  (pgs-try rec pages mode)))
+  :hints (("Goal" :in-theory (disable pgs-check-pages pgs-contents pgs-tables-verdict pgs-flatten
+                                      pgs-chunk pgs-ptab-p pgs-ptab-txids-ok pgs-entries-good
+                                      pgs-ntables pgs-rec-txid pgs-rec-dir-addr pgs-rec-npages
+                                      pgs-rec-dir-digest pgs-lookup pgs-dir-verdict
+                                      pgs-check-pages-iff-good))))
+
+(defthm pgs-try-in-order-ok
+  (let ((o (pgs-try-in-order order slots pages mode refs)))
+    (implies (and (equal (car o) :ok) (pgs-order-valid order slots))
+             (and (member-equal (second o) '(0 1))
+                  (pgs-rec-valid (pgs-slot (second o) slots))
+                  (equal (pgs-try (pgs-slot (second o) slots) pages mode)
+                         (list :ok (third o) (fourth o)))
+                  (true-listp o))))
+  :hints (("Goal" :induct (pgs-try-in-order order slots pages mode refs)
+                  :in-theory (disable pgs-try pgs-rec-valid pgs-slot)))
+  :rule-classes nil)
+
+(defthm pgs-open-slots-ok
+  (let ((o (pgs-open-slots slots pages mode)))
+    (implies (equal (car o) :ok)
+             (and (member-equal (second o) '(0 1))
+                  (pgs-rec-valid (pgs-slot (second o) slots))
+                  (equal (pgs-try (pgs-slot (second o) slots) pages mode)
+                         (list :ok (third o) (fourth o)))
+                  (true-listp o))))
+  :hints (("Goal" :in-theory (disable pgs-try pgs-rec-valid pgs-slot pgs-try-in-order
+                                      pgs-open-order pgs-order-valid-of-open-order)
+                  :use ((:instance pgs-order-valid-of-open-order)
+                        (:instance pgs-try-in-order-ok
+                                   (order (pgs-open-order (pgs-slot 0 slots)
+                                                          (pgs-rec-valid (pgs-slot 0 slots))
+                                                          (pgs-slot 1 slots)
+                                                          (pgs-rec-valid (pgs-slot 1 slots))))
+                                   (refs (pgs-slot-refusals (pgs-slot 0 slots)
+                                                            (pgs-rec-valid (pgs-slot 0 slots))
+                                                            (pgs-slot 1 slots)
+                                                            (pgs-rec-valid (pgs-slot 1 slots))))))))
+  :rule-classes nil)
+
+; The record a commit writes.
+(defthm pgs-make-rec-fields
+  (implies (and (natp txid) (natp a) (natp n))
+           (and (pgs-rec-valid (pgs-make-rec txid a n (pgs-digest x)))
+                (equal (pgs-rec-txid (pgs-make-rec txid a n d)) txid)
+                (equal (pgs-rec-dir-addr (pgs-make-rec txid a n d)) a)
+                (equal (pgs-rec-npages (pgs-make-rec txid a n d)) n)
+                (equal (pgs-rec-dir-digest (pgs-make-rec txid a n (pgs-digest x))) (pgs-digest x))
+                (pgs-rec-shape-p (pgs-make-rec txid a n (pgs-digest x))))))
+
+(defthm pgs-len-of-apply-dirty
+  (equal (len (pgs-apply-dirty c d))
+         (pgs-grown-len (pgs-dirty-lpages d) (len c)))
+  :hints (("Goal" :induct (pgs-apply-dirty c d))))
+
+; -----------------------------------------------------------------------------
+; One commit step, over a root's slots (the disk-level keystones instantiate
+; it).  CUR is the slot the open used; the commit writes the dirty pages to
+; FRESH, the touched table pages to TFRESH, the directory DIR2 to RS and the
+; record to the other slot.
+
+(in-theory (disable pgs-rec-txid pgs-rec-dir-addr pgs-rec-npages pgs-rec-dir-digest))
+
+(defthm pgs-rec-keeps-in-when-dir
+  (implies (pgs-ptab-p (pgs-lookup (pgs-rec-dir-addr rec) pages))
+           (equal (pgs-rec-keeps-in rec pages)
+                  (pgs-rec-keeps rec (pgs-lookup (pgs-rec-dir-addr rec) pages)
+                                 (pgs-contents (pgs-lookup (pgs-rec-dir-addr rec) pages) pages)))))
+
+(defun pgs-step-ptab (cur pages)
+  (pgs-flatten (pgs-contents (pgs-lookup (pgs-rec-dir-addr cur) pages) pages)))
+(defun pgs-step-ptab2 (ptab dirty fresh txid)
+  (pgs-plan-ptab ptab (pgs-dirty-lpages dirty) fresh (pgs-dirty-digests dirty) txid))
+(defun pgs-step-tl (dirty) (pgs-touched (pgs-dirty-lpages dirty) nil))
+(defun pgs-step-tdirty (dirty ptab2) (pgs-table-dirty (pgs-step-tl dirty) (pgs-chunk ptab2)))
+(defun pgs-step-dir2 (dir dirty tdirty tfresh txid)
+  (pgs-plan-ptab (true-list-fix dir) (pgs-step-tl dirty) tfresh (pgs-dirty-digests tdirty) txid))
+(defun pgs-step-writes (dirty fresh tdirty tfresh rs dir2)
+  (append (pgs-page-writes dirty fresh) (pgs-page-writes tdirty tfresh) (list (cons rs dir2))))
+
+(defun pgs-step-hyps (cur pages mode dirty fresh tfresh rs txid)
+  (and (pgs-rec-valid cur)
+       (equal (car (pgs-try cur pages mode)) :ok)
+       (natp txid) (< (pgs-rec-txid cur) txid)
+       (pgs-lpages-ok (pgs-dirty-lpages dirty) (len (pgs-step-ptab cur pages)) 0)
+       (nat-listp fresh) (nat-listp tfresh) (natp rs)
+       (equal (len fresh) (len dirty))
+       (equal (len tfresh) (len (pgs-step-tl dirty)))
+       (no-duplicatesp-equal (append fresh tfresh (list rs)))
+       (pgs-avoids (pgs-rec-keeps-in cur pages) (append fresh tfresh (list rs)))))
+
+(defthm pgs-step-hyps-facts
+  (implies (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+           (let* ((dir (pgs-lookup (pgs-rec-dir-addr cur) pages))
+                  (cs (pgs-contents dir pages))
+                  (ptab (pgs-flatten cs)))
+             (and (pgs-rec-valid cur)
+                  (natp txid) (< (pgs-rec-txid cur) txid)
+                  (pgs-lpages-ok (pgs-dirty-lpages dirty) (len ptab) 0)
+                  (nat-listp fresh) (nat-listp tfresh) (natp rs)
+                  (equal (len fresh) (len dirty))
+                  (equal (len tfresh) (len (pgs-step-tl dirty)))
+                  (no-duplicatesp-equal fresh) (no-duplicatesp-equal tfresh)
+                  (pgs-avoids fresh tfresh)
+                  (not (member-equal rs fresh)) (not (member-equal rs tfresh))
+                  (pgs-ptab-p dir)
+                  (equal (len dir) (pgs-ntables (pgs-rec-npages cur)))
+                  (pgs-ptab-txids-ok dir (pgs-rec-txid cur))
+                  (pgs-entries-good dir (pgs-rec-txid cur) mode pages)
+                  (pgs-ptab-p ptab)
+                  (equal (pgs-chunk ptab) cs)
+                  (equal (len ptab) (pgs-rec-npages cur))
+                  (pgs-ptab-txids-ok ptab (pgs-rec-txid cur))
+                  (pgs-entries-good ptab (pgs-rec-txid cur) mode pages)
+                  (equal (pgs-try cur pages mode)
+                         (list :ok (pgs-rec-txid cur) (pgs-contents ptab pages)))
+                  (pgs-avoids (pgs-ptab-physes dir) (append fresh tfresh (list rs)))
+                  (pgs-avoids (pgs-ptab-physes ptab) (append fresh tfresh (list rs)))
+                  (pgs-avoids (pgs-rec-keeps-in cur pages) (append fresh tfresh (list rs))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(pgs-step-hyps pgs-step-ptab pgs-no-dups-append
+                                               pgs-avoids-append-right pgs-avoids-cons pgs-avoids-nil
+                                               pgs-avoids-append no-duplicatesp-equal
+                                               member-equal pgs-avoids car-cons cdr-cons
+                                               pgs-rec-keeps-in-when-dir)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-try-ok-facts (rec cur))
+                        (:instance pgs-rec-keeps-avoids-dir
+                                   (rec cur) (dir (pgs-lookup (pgs-rec-dir-addr cur) pages))
+                                   (tables (pgs-contents (pgs-lookup (pgs-rec-dir-addr cur) pages) pages))
+                                   (w (append fresh tfresh (list rs))))
+                        (:instance pgs-rec-keeps-avoids-table
+                                   (rec cur) (dir (pgs-lookup (pgs-rec-dir-addr cur) pages))
+                                   (tables (pgs-contents (pgs-lookup (pgs-rec-dir-addr cur) pages) pages))
+                                   (w (append fresh tfresh (list rs))))))))
+
+(defthm pgs-write-addrs-of-step-writes
+  (implies (and (equal (len fresh) (len dirty)) (equal (len tfresh) (len tdirty)))
+           (equal (pgs-write-addrs (pgs-step-writes dirty fresh tdirty tfresh rs dir2))
+                  (append (true-list-fix fresh) (true-list-fix tfresh) (list rs)))))
+
+(defthm pgs-no-dups-true-list-fix
+  (equal (no-duplicatesp-equal (true-list-fix xs)) (no-duplicatesp-equal xs)))
+
+(defthm pgs-avoids-true-list-fix-left
+  (equal (pgs-avoids (true-list-fix xs) ys) (pgs-avoids xs ys)))
+
+(defthm pgs-step-lands
+  ; The complete commit: every write is where the plan put it.
+  (implies (and (nat-listp fresh) (nat-listp tfresh)
+                (equal (len fresh) (len dirty)) (equal (len tfresh) (len tdirty))
+                (no-duplicatesp-equal (append fresh tfresh (list rs))))
+           (let ((p1 (pgs-apply-pages (pgs-step-writes dirty fresh tdirty tfresh rs dir2) nil pages)))
+             (and (pgs-lands dirty fresh p1)
+                  (pgs-lands tdirty tfresh p1)
+                  (equal (pgs-lookup rs p1) dir2))))
+  :hints (("Goal" :in-theory (disable pgs-apply-pages pgs-lookup-of-apply-pages-all)
+                  :use ((:instance pgs-lookup-of-apply-pages-all
+                                   (a rs) (ws (pgs-step-writes dirty fresh tdirty tfresh rs dir2)))))))
+
+(defthm pgs-nat-listp-of-touched
+  (nat-listp (pgs-touched ls prev)))
+
+(defthm pgs-nat-listp-true-listp
+  (implies (nat-listp x) (true-listp x))
+  :rule-classes :forward-chaining)
+
+; The step's objects, named (and closed) so that each fact below is small.
+(defun pgs-sd (cur pages) (pgs-lookup (pgs-rec-dir-addr cur) pages))
+(defun pgs-sp (cur pages) (pgs-flatten (pgs-contents (pgs-sd cur pages) pages)))
+(defun pgs-sp2 (cur pages dirty fresh txid) (pgs-step-ptab2 (pgs-sp cur pages) dirty fresh txid))
+(defun pgs-std (cur pages dirty fresh txid) (pgs-step-tdirty dirty (pgs-sp2 cur pages dirty fresh txid)))
+(defun pgs-sd2 (cur pages dirty fresh tfresh txid)
+  (pgs-step-dir2 (pgs-sd cur pages) dirty (pgs-std cur pages dirty fresh txid) tfresh txid))
+(defun pgs-swr (cur pages dirty fresh tfresh rs txid)
+  (pgs-step-writes dirty fresh (pgs-std cur pages dirty fresh txid) tfresh rs
+                   (pgs-sd2 cur pages dirty fresh tfresh txid)))
+(defun pgs-srec (cur pages dirty fresh tfresh rs txid)
+  (pgs-make-rec txid rs (len (pgs-sp2 cur pages dirty fresh txid))
+                (pgs-digest (pgs-sd2 cur pages dirty fresh tfresh txid))))
+
+(defthm pgs-s-facts
+  (implies (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+           (let ((dir (pgs-sd cur pages)) (ptab (pgs-sp cur pages)))
+             (and (pgs-rec-valid cur)
+                  (natp txid) (< (pgs-rec-txid cur) txid)
+                  (pgs-lpages-ok (pgs-dirty-lpages dirty) (len ptab) 0)
+                  (nat-listp fresh) (nat-listp tfresh) (natp rs)
+                  (equal (len fresh) (len dirty))
+                  (equal (len tfresh) (len (pgs-step-tl dirty)))
+                  (no-duplicatesp-equal (append fresh tfresh (list rs)))
+                  (pgs-ptab-p dir)
+                  (pgs-ptab-txids-ok dir (pgs-rec-txid cur))
+                  (pgs-entries-good dir (pgs-rec-txid cur) mode pages)
+                  (pgs-ptab-p ptab)
+                  (equal (pgs-chunk ptab) (pgs-contents dir pages))
+                  (pgs-ptab-txids-ok ptab (pgs-rec-txid cur))
+                  (pgs-entries-good ptab (pgs-rec-txid cur) mode pages)
+                  (equal (pgs-try cur pages mode)
+                         (list :ok (pgs-rec-txid cur) (pgs-contents ptab pages)))
+                  (pgs-avoids (pgs-ptab-physes dir) (append fresh tfresh (list rs)))
+                  (pgs-avoids (pgs-ptab-physes ptab) (append fresh tfresh (list rs)))
+                  (pgs-avoids (pgs-rec-keeps-in cur pages) (append fresh tfresh (list rs))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(pgs-sd pgs-sp pgs-step-hyps)
+                  :use ((:instance pgs-step-hyps-facts)))))
+
+(in-theory (disable pgs-rec-valid pgs-step-hyps pgs-sd pgs-sp pgs-sp2 pgs-std pgs-sd2 pgs-swr pgs-srec
+                    pgs-step-ptab2 pgs-step-tdirty pgs-step-dir2 pgs-step-writes))
+
+(defthm pgs-len-of-std
+  (equal (len (pgs-std cur pages dirty fresh txid)) (len (pgs-step-tl dirty)))
+  :hints (("Goal" :in-theory (enable pgs-std pgs-step-tdirty))))
+
+(defthm pgs-s-lands
+  (implies (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+           (let ((p1 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages)))
+             (and (pgs-lands dirty fresh p1)
+                  (pgs-lands (pgs-std cur pages dirty fresh txid) tfresh p1)
+                  (equal (pgs-lookup rs p1) (pgs-sd2 cur pages dirty fresh tfresh txid)))))
+  :hints (("Goal" :in-theory (e/d (pgs-swr) (pgs-step-lands pgs-apply-pages pgs-lands pgs-lookup))
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-step-lands
+                                   (tdirty (pgs-std cur pages dirty fresh txid))
+                                   (dir2 (pgs-sd2 cur pages dirty fresh tfresh txid)))))))
+
+(defthm pgs-s-writes-avoid
+  (implies (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+           (equal (pgs-write-addrs (pgs-swr cur pages dirty fresh tfresh rs txid))
+                  (append fresh tfresh (list rs))))
+  :hints (("Goal" :in-theory (e/d (pgs-swr) (pgs-write-addrs))
+                  :use ((:instance pgs-s-facts)))))
+
+(defthm pgs-s-old-in-image
+  ; The old directory and table read the same, and still verify at the new
+  ; txid, in any image of the commit's writes.
+  (implies (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+           (let ((p2 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)))
+             (and (equal (pgs-contents (pgs-sd cur pages) p2) (pgs-contents (pgs-sd cur pages) pages))
+                  (equal (pgs-contents (pgs-sp cur pages) p2) (pgs-contents (pgs-sp cur pages) pages))
+                  (pgs-entries-good (pgs-sd cur pages) txid mode p2)
+                  (pgs-entries-good (pgs-sp cur pages) txid mode p2))))
+  :hints (("Goal" :in-theory (disable pgs-apply-pages pgs-contents pgs-entries-good pgs-avoids
+                                      pgs-entries-good-at-later-txid)
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-entries-good-at-later-txid
+                                   (ptab (pgs-sd cur pages)) (t0 (pgs-rec-txid cur)) (t1 txid))
+                        (:instance pgs-entries-good-at-later-txid
+                                   (ptab (pgs-sp cur pages)) (t0 (pgs-rec-txid cur)) (t1 txid))))))
+
+(defthm pgs-s-dir2-contents
+  (implies (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+           (equal (pgs-contents (pgs-sd2 cur pages dirty fresh tfresh txid)
+                                (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages))
+                  (pgs-chunk (pgs-sp2 cur pages dirty fresh txid))))
+  :hints (("Goal" :in-theory (e/d (pgs-sd2 pgs-step-dir2 pgs-std pgs-step-tdirty pgs-sp2 pgs-step-ptab2 pgs-step-tl)
+                                  (pgs-apply-pages pgs-contents pgs-chunk pgs-plan-ptab pgs-touched
+                                   pgs-table-dirty pgs-apply-dirty pgs-s-old-in-image pgs-s-lands
+                                   pgs-tables-after-plan pgs-contents-of-plan-ptab))
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-s-lands)
+                        (:instance pgs-s-old-in-image (keep nil))
+                        (:instance pgs-tables-after-plan
+                                   (p (pgs-sp cur pages)) (ls (pgs-dirty-lpages dirty))
+                                   (digests (pgs-dirty-digests dirty)))
+                        (:instance pgs-contents-of-plan-ptab
+                                   (ptab (pgs-sd cur pages))
+                                   (dirty (pgs-std cur pages dirty fresh txid))
+                                   (fresh tfresh)
+                                   (pages (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages)))))))
+
+(defthm pgs-s-new-shapes
+  (implies (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+           (and (pgs-ptab-p (pgs-sd2 cur pages dirty fresh tfresh txid))
+                (pgs-ptab-txids-ok (pgs-sd2 cur pages dirty fresh tfresh txid) txid)
+                (pgs-ptab-p (pgs-sp2 cur pages dirty fresh txid))
+                (pgs-ptab-txids-ok (pgs-sp2 cur pages dirty fresh txid) txid)))
+  :hints (("Goal" :in-theory (e/d (pgs-sd2 pgs-step-dir2 pgs-sp2 pgs-step-ptab2)
+                                  (pgs-plan-ptab pgs-ptab-p pgs-ptab-txids-ok))
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-txids-ok-monotone (ptab (pgs-sd cur pages))
+                                   (t0 (pgs-rec-txid cur)) (t1 txid))
+                        (:instance pgs-txids-ok-monotone (ptab (pgs-sp cur pages))
+                                   (t0 (pgs-rec-txid cur)) (t1 txid))))))
+
+(defthm pgs-sd2-is-plan
+  (equal (pgs-sd2 cur pages dirty fresh tfresh txid)
+         (pgs-plan-ptab (true-list-fix (pgs-sd cur pages))
+                        (pgs-dirty-lpages (pgs-std cur pages dirty fresh txid))
+                        tfresh (pgs-dirty-digests (pgs-std cur pages dirty fresh txid)) txid))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(pgs-sd2 pgs-step-dir2 pgs-std pgs-step-tdirty pgs-step-tl
+                                               pgs-dirty-lpages-of-table-dirty pgs-nat-listp-of-touched)
+                                             (theory 'minimal-theory)))))
+
+(defthm pgs-sp2-is-plan
+  (equal (pgs-sp2 cur pages dirty fresh txid)
+         (pgs-plan-ptab (pgs-sp cur pages) (pgs-dirty-lpages dirty) fresh (pgs-dirty-digests dirty) txid))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable pgs-sp2 pgs-step-ptab2))))
+
+(defthm pgs-s-new-good
+  (implies (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+           (let ((p1 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages)))
+             (and (pgs-entries-good (pgs-sd2 cur pages dirty fresh tfresh txid) txid mode p1)
+                  (pgs-entries-good (pgs-sp2 cur pages dirty fresh txid) txid mode p1)
+                  (equal (pgs-contents (pgs-sp2 cur pages dirty fresh txid) p1)
+                         (pgs-apply-dirty (pgs-contents (pgs-sp cur pages) pages) dirty)))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-len-of-std pgs-step-tl pgs-ptab-p-of-true-list-fix)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-s-lands)
+                        (:instance pgs-s-old-in-image (keep nil))
+                        (:instance pgs-sd2-is-plan)
+                        (:instance pgs-sp2-is-plan)
+                        (:instance pgs-entries-good-of-plan-ptab
+                                   (ptab (pgs-sd cur pages)) (dirty (pgs-std cur pages dirty fresh txid))
+                                   (fresh tfresh)
+                                   (pages (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages)))
+                        (:instance pgs-entries-good-of-plan-ptab
+                                   (ptab (pgs-sp cur pages))
+                                   (pages (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages)))
+                        (:instance pgs-contents-of-plan-ptab
+                                   (ptab (pgs-sp cur pages))
+                                   (pages (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages)))))
+          (and stable-under-simplificationp
+               '(:in-theory (enable nat-listp natp true-listp)))))
+
+(defthm pgs-s-dir2-len
+  (implies (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+           (equal (len (pgs-sd2 cur pages dirty fresh tfresh txid))
+                  (pgs-ntables (len (pgs-sp2 cur pages dirty fresh txid)))))
+  :hints (("Goal" :in-theory (disable pgs-s-dir2-contents pgs-len-of-contents)
+                  :use ((:instance pgs-s-dir2-contents)
+                        (:instance pgs-len-of-contents
+                                   (ptab (pgs-sd2 cur pages dirty fresh tfresh txid))
+                                   (pages (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid)
+                                                           nil pages)))))))
+
+; The complete commit's image opens, through the new record, on the next
+; transaction and the state with the dirty pages replaced.
+(defthm pgs-step-try-new
+  (implies (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+           (equal (pgs-try (pgs-srec cur pages dirty fresh tfresh rs txid)
+                           (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages)
+                           mode)
+                  (list :ok txid (pgs-apply-dirty (pgs-contents (pgs-sp cur pages) pages) dirty))))
+  :hints (("Goal" :in-theory (e/d (pgs-srec)
+                                  (pgs-try pgs-apply-pages pgs-contents pgs-entries-good pgs-chunk
+                                   pgs-flatten pgs-ptab-p pgs-ptab-txids-ok pgs-tables-verdict
+                                   pgs-make-rec pgs-apply-dirty pgs-lookup))
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-try-when-facts
+                                   (rec (pgs-srec cur pages dirty fresh tfresh rs txid))
+                                   (pages (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid)
+                                                           nil pages)))
+                        (:instance pgs-tables-verdict-of-chunk
+                                   (p (pgs-sp2 cur pages dirty fresh txid)) (i 0))))))
+
+; -----------------------------------------------------------------------------
+; A crash image read through the new record: what it verifies is what the
+; complete commit holds.
+
+(defun pgs-writes-faithful (writes pages)
+  ; A-CRYPTO, instantiated: an address a write targets holds, before the
+  ; write, either the written content or content with another digest.
+  (if (atom writes)
+      t
+    (and (or (atom (car writes))
+             (not (equal (pgs-digest (pgs-lookup (caar writes) pages))
+                         (pgs-digest (cdar writes))))
+             (equal (pgs-lookup (caar writes) pages) (cdar writes)))
+         (pgs-writes-faithful (cdr writes) pages))))
+
+(defthm pgs-writes-faithful-append
+  (equal (pgs-writes-faithful (append a b) pages)
+         (and (pgs-writes-faithful a pages) (pgs-writes-faithful b pages))))
+
+(defun pgs-crash-local (xs p1 p2 p0)
+  (if (atom xs)
+      t
+    (and (or (equal (pgs-lookup (car xs) p2) (pgs-lookup (car xs) p1))
+             (equal (pgs-lookup (car xs) p2) (pgs-lookup (car xs) p0)))
+         (pgs-crash-local (cdr xs) p1 p2 p0))))
+
+(defthm pgs-crash-local-of-apply
+  (implies (no-duplicatesp-equal (pgs-write-addrs writes))
+           (pgs-crash-local xs (pgs-apply-pages writes nil pages)
+                            (pgs-apply-pages writes keep pages) pages))
+  :hints (("Goal" :induct (len xs))
+          ("Subgoal *1/1" :use ((:instance pgs-lookup-of-apply-pages-crash (a (car xs)))))))
+
+(defun pgs-new-sound (dirty fresh txid mode p1 p2)
+  (if (atom dirty)
+      t
+    (and (pgs-entry-sound (list (nfix (car fresh)) (nfix txid) (nfix (pgs-digest (cdar dirty))))
+                          txid mode p1 p2)
+         (pgs-new-sound (cdr dirty) (cdr fresh) txid mode p1 p2))))
+
+(defthm pgs-new-sound-from-faithful
+  (implies (and (pgs-lands dirty fresh p1)
+                (pgs-crash-local fresh p1 p2 p0)
+                (pgs-writes-faithful (pgs-page-writes dirty fresh) p0)
+                (nat-listp fresh) (natp txid)
+                (<= (len dirty) (len fresh)))
+           (pgs-new-sound dirty fresh txid mode p1 p2))
+  :hints (("Goal" :induct (pgs-page-writes dirty fresh))))
+
+(defthm pgs-entries-sound-of-plan-ptab
+  (implies (and (pgs-entries-sound ptab txid mode p1 p2)
+                (pgs-new-sound dirty fresh txid mode p1 p2))
+           (pgs-entries-sound (pgs-plan-ptab ptab (pgs-dirty-lpages dirty) fresh
+                                             (pgs-dirty-digests dirty) txid)
+                              txid mode p1 p2))
+  :hints (("Goal" :induct (pgs-plan-ind ptab dirty fresh nil txid)
+                  :in-theory (disable pgs-entry-sound))))
+
+(defthm pgs-crash-local-append
+  (equal (pgs-crash-local (append a b) p1 p2 p0)
+         (and (pgs-crash-local a p1 p2 p0) (pgs-crash-local b p1 p2 p0))))
+
+(defthm pgs-s-crash-sound
+  ; In any image of the commit's writes, the new directory and table read
+  ; either what the complete commit holds or fail their checks.
+  (implies (and (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+                (pgs-writes-faithful (pgs-swr cur pages dirty fresh tfresh rs txid) pages))
+           (let ((p1 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages))
+                 (p2 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)))
+             (and (pgs-entries-sound (pgs-sd2 cur pages dirty fresh tfresh txid) txid mode p1 p2)
+                  (pgs-entries-sound (pgs-sp2 cur pages dirty fresh txid) txid mode p1 p2))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-len-of-std pgs-step-tl pgs-ptab-p-of-true-list-fix
+                                               pgs-writes-faithful-append pgs-crash-local-append
+                                               pgs-swr pgs-step-writes pgs-s-writes-avoid)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-s-lands)
+                        (:instance pgs-s-writes-avoid)
+                        (:instance pgs-sd2-is-plan)
+                        (:instance pgs-sp2-is-plan)
+                        (:instance pgs-crash-local-of-apply
+                                   (xs (append fresh tfresh (list rs)))
+                                   (writes (pgs-swr cur pages dirty fresh tfresh rs txid)))
+                        (:instance pgs-entries-sound-of-unwritten
+                                   (ptab (pgs-sd cur pages))
+                                   (writes (pgs-swr cur pages dirty fresh tfresh rs txid)))
+                        (:instance pgs-entries-sound-of-unwritten
+                                   (ptab (pgs-sp cur pages))
+                                   (writes (pgs-swr cur pages dirty fresh tfresh rs txid)))
+                        (:instance pgs-new-sound-from-faithful
+                                   (dirty (pgs-std cur pages dirty fresh txid)) (fresh tfresh)
+                                   (p1 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages))
+                                   (p2 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages))
+                                   (p0 pages))
+                        (:instance pgs-new-sound-from-faithful
+                                   (p1 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages))
+                                   (p2 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages))
+                                   (p0 pages))
+                        (:instance pgs-entries-sound-of-plan-ptab
+                                   (ptab (true-list-fix (pgs-sd cur pages)))
+                                   (dirty (pgs-std cur pages dirty fresh txid)) (fresh tfresh)
+                                   (p1 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages))
+                                   (p2 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)))
+                        (:instance pgs-entries-sound-of-plan-ptab
+                                   (ptab (pgs-sp cur pages))
+                                   (p1 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages))
+                                   (p2 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)))))
+          (and stable-under-simplificationp
+               '(:in-theory (enable nat-listp natp true-listp)))))
+
+(defthm pgs-s-dir-in-crash
+  ; The directory the new record names, read from a crash image, is the
+  ; planned one or has another digest.
+  (implies (and (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+                (pgs-writes-faithful (pgs-swr cur pages dirty fresh tfresh rs txid) pages)
+                (equal (pgs-digest (pgs-lookup rs (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid)
+                                                                   keep pages)))
+                       (pgs-digest (pgs-sd2 cur pages dirty fresh tfresh txid))))
+           (equal (pgs-lookup rs (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages))
+                  (pgs-sd2 cur pages dirty fresh tfresh txid)))
+  :hints (("Goal" :in-theory (e/d (pgs-swr pgs-step-writes)
+                                  (pgs-apply-pages pgs-sd2 pgs-page-writes pgs-s-lands
+                                   pgs-s-writes-avoid))
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-s-lands)
+                        (:instance pgs-s-writes-avoid)
+                        (:instance pgs-lookup-of-apply-pages-crash
+                                   (a rs) (writes (pgs-swr cur pages dirty fresh tfresh rs txid)))))))
+
+(defthm pgs-step-try-crash
+  (implies (and (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+                (pgs-writes-faithful (pgs-swr cur pages dirty fresh tfresh rs txid) pages)
+                (equal (car (pgs-try (pgs-srec cur pages dirty fresh tfresh rs txid)
+                                     (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)
+                                     mode))
+                       :ok))
+           (equal (pgs-try (pgs-srec cur pages dirty fresh tfresh rs txid)
+                           (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)
+                           mode)
+                  (list :ok txid (pgs-apply-dirty (pgs-contents (pgs-sp cur pages) pages) dirty))))
+  :hints (("Goal" :in-theory (union-theories '(pgs-srec pgs-flatten-of-chunk
+                                               pgs-true-listp-of-contents pgs-ptab-p-true-listp)
+                                             (theory 'minimal-theory))
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-make-rec-fields
+                                   (a rs) (n (len (pgs-sp2 cur pages dirty fresh txid)))
+                                   (x (pgs-sd2 cur pages dirty fresh tfresh txid))
+                                   (d (pgs-digest (pgs-sd2 cur pages dirty fresh tfresh txid))))
+                        (:instance pgs-s-new-shapes)
+                        (:instance pgs-s-new-good)
+                        (:instance pgs-s-dir2-contents)
+                        (:instance pgs-s-crash-sound)
+                        (:instance pgs-s-dir-in-crash)
+                        (:instance pgs-try-ok-facts
+                                   (rec (pgs-srec cur pages dirty fresh tfresh rs txid))
+                                   (pages (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)))
+                        (:instance pgs-contents-when-sound-and-good
+                                   (ptab (pgs-sd2 cur pages dirty fresh tfresh txid))
+                                   (p1 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages))
+                                   (p2 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)))
+                        (:instance pgs-contents-when-sound-and-good
+                                   (ptab (pgs-sp2 cur pages dirty fresh txid))
+                                   (p1 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages))
+                                   (p2 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)))))
+          (and stable-under-simplificationp
+               '(:in-theory (enable natp (:type-prescription len))))))
+
+(defthm pgs-step-try-cur-crash
+  (implies (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+           (equal (pgs-try cur (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages) mode)
+                  (list :ok (pgs-rec-txid cur) (pgs-contents (pgs-sp cur pages) pages))))
+  :hints (("Goal" :in-theory (disable pgs-try pgs-apply-pages pgs-try-of-apply-pages)
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-s-writes-avoid)
+                        (:instance pgs-try-of-apply-pages
+                                   (rec cur) (writes (pgs-swr cur pages dirty fresh tfresh rs txid)))))))
+
+(defthm pgs-s-rec-facts
+  (implies (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+           (and (pgs-rec-valid (pgs-srec cur pages dirty fresh tfresh rs txid))
+                (pgs-rec-shape-p (pgs-srec cur pages dirty fresh tfresh rs txid))
+                (equal (pgs-rec-txid (pgs-srec cur pages dirty fresh tfresh rs txid)) txid)))
+  :hints (("Goal" :in-theory (e/d (pgs-srec) (pgs-make-rec pgs-make-rec-fields))
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-make-rec-fields
+                                   (a rs) (n (len (pgs-sp2 cur pages dirty fresh txid)))
+                                   (x (pgs-sd2 cur pages dirty fresh tfresh txid))
+                                   (d (pgs-digest (pgs-sd2 cur pages dirty fresh tfresh txid))))))))
+
+(defthm pgs-rec-valid-shape
+  (implies (pgs-rec-valid x)
+           (and (pgs-rec-shape-p x) (true-listp x) (consp x)))
+  :hints (("Goal" :in-theory (enable pgs-rec-valid)))
+  :rule-classes :forward-chaining)
+
+(defthm pgs-step-open-complete
+  (let ((rec (pgs-srec cur pages dirty fresh tfresh rs txid))
+        (p1 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) nil pages)))
+    (implies (and (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+                  (or (equal slots2 (cons cur rec)) (equal slots2 (cons rec cur))))
+             (equal (pgs-view (pgs-open-slots slots2 p1 mode))
+                    (list txid (pgs-apply-dirty (pgs-contents (pgs-sp cur pages) pages) dirty)))))
+  :hints (("Goal" :in-theory (disable pgs-try pgs-apply-pages pgs-rec-shape-p pgs-step-try-cur-crash)
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-s-rec-facts)
+                        (:instance pgs-step-try-new)
+                        (:instance pgs-step-try-cur-crash (keep nil))))))
+
+(defthm pgs-step-open-crash
+  (let ((rec (pgs-srec cur pages dirty fresh tfresh rs txid))
+        (p2 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)))
+    (implies (and (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+                  (pgs-writes-faithful (pgs-swr cur pages dirty fresh tfresh rs txid) pages)
+                  (or (equal sv rec) (not (pgs-rec-valid sv)))
+                  (or (equal slots2 (cons cur sv)) (equal slots2 (cons sv cur))))
+             (member-equal (pgs-view (pgs-open-slots slots2 p2 mode))
+                           (list (list txid (pgs-apply-dirty (pgs-contents (pgs-sp cur pages) pages) dirty))
+                                 (list (pgs-rec-txid cur) (pgs-contents (pgs-sp cur pages) pages))))))
+  :hints (("Goal" :in-theory (disable pgs-try pgs-apply-pages pgs-rec-shape-p pgs-step-try-cur-crash
+                                      pgs-step-try-crash)
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-s-rec-facts)
+                        (:instance pgs-step-try-crash)
+                        (:instance pgs-step-try-cur-crash))
+                  :cases ((equal (car (pgs-try sv (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid)
+                                                                   keep pages)
+                                               mode))
+                                 :ok)))))
+
+(defthm pgs-step-open-torn
+  (let ((p2 (pgs-apply-pages (pgs-swr cur pages dirty fresh tfresh rs txid) keep pages)))
+    (implies (and (pgs-step-hyps cur pages mode dirty fresh tfresh rs txid)
+                  (not (pgs-rec-valid sv))
+                  (or (equal slots2 (cons cur sv)) (equal slots2 (cons sv cur))))
+             (equal (pgs-view (pgs-open-slots slots2 p2 mode))
+                    (list (pgs-rec-txid cur) (pgs-contents (pgs-sp cur pages) pages)))))
+  :hints (("Goal" :in-theory (disable pgs-try pgs-apply-pages pgs-rec-shape-p pgs-step-try-cur-crash)
+                  :use ((:instance pgs-s-facts)
+                        (:instance pgs-step-try-cur-crash)))))
