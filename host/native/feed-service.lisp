@@ -106,7 +106,7 @@ closed by this worker, preserving the one-closer rule."
   (fnn-owner-serialized
    service nil
    (lambda ()
-     (fnn-owner-name-list (fnn-owner-core 'fn-owner-feed-peers)))))
+     (fnn-owner-names 'fn-owner-feed-peers))))
 
 (defun fnn-feed-read-limit (service)
   (declare (ignore service))
@@ -190,12 +190,13 @@ closed by this worker, preserving the one-closer rule."
   (fnn-owner-serialized
    service nil
    (lambda ()
-     (let ((word (fnn-feed-checked-word
-                  (fnn-owner-action 'fn-owner-feed-tls-established
-                                    (fnn-feed-link-peer-octets link))
-                  '(:auth-user :mode :ready :need-input) 'fn-owner-feed-tls-established)))
+     (let* ((publication (fnn-owner-feed-step 'fn-owner-feed-tls-established
+                                              (fnn-feed-link-peer-octets link)))
+            (word (fnn-feed-checked-word
+                   (fnn-owner-feed-word publication)
+                   '(:auth-user :mode :ready :need-input) 'fn-owner-feed-tls-established)))
        (values word (if (member word '(:auth-user :mode))
-                        (fnn-owner-octets-global 'fn-owner-feed-command)
+                        (fnn-owner-feed-command publication)
                       (fnn-make-octets 0)))))))
 
 (defun fnn-feed-enable-tls (runtime link security)
@@ -234,14 +235,15 @@ closed by this worker, preserving the one-closer rule."
   (fnn-owner-serialized
    service nil
    (lambda ()
-     (let ((word (fnn-feed-checked-word
-                  (fnn-owner-action 'fn-owner-feed-tick
-                                    (fnn-feed-link-peer-octets link) now)
-                  '(:offer :idle :refused) 'fn-owner-feed-tick)))
-       (fnn-owner-feed-flush service)
+     (let* ((publication (fnn-owner-feed-step 'fn-owner-feed-tick
+                                              (fnn-feed-link-peer-octets link) now))
+            (word (fnn-feed-checked-word
+                   (fnn-owner-feed-word publication)
+                   '(:offer :idle :refused) 'fn-owner-feed-tick)))
+       (fnn-owner-feed-flush service publication)
        (values word
                (if (eq word :offer)
-                   (let ((command (fnn-owner-octets-global 'fn-owner-feed-command)))
+                   (let ((command (fnn-owner-feed-command publication)))
                      (when (zerop (length command))
                        (fnn-fault "feed tick authorized an empty command"))
                      command)
@@ -252,10 +254,11 @@ closed by this worker, preserving the one-closer rule."
   (fnn-owner-serialized
    service nil
    (lambda ()
-     (let ((word (fnn-feed-checked-word
-                  (fnn-owner-action 'fn-owner-feed-reply-chunk
-                                    (fnn-feed-link-peer-octets link)
-                                    (fnn-octet-list octets) now)
+     (let* ((publication (fnn-owner-feed-step 'fn-owner-feed-reply-chunk
+                                              (fnn-feed-link-peer-octets link)
+                                              (fnn-octet-list octets) now))
+            (word (fnn-feed-checked-word
+                  (fnn-owner-feed-word publication)
                   '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :refused :connection-refused :streaming-refused :need-input :closed :invalid :fault)
                   'fn-owner-feed-reply-chunk)))
        (when (eq word :fault)
@@ -264,20 +267,20 @@ closed by this worker, preserving the one-closer rule."
        ;; its FNFD projection.  MODE is a connection-phase command, not a
        ;; delivery effect, and :ready has no socket bytes.
        (when (member word '(:send :quiet :refused))
-         (fnn-owner-feed-flush service)
+         (fnn-owner-feed-flush service publication)
          ;; A reply outcome (not a 335/238 prompt) has one ACL2-rendered
          ;; line: a peer's refusal or deferral is never silent.
-         (fnn-owner-log 'fn-owner-feed-log-line t))
+         (fnn-owner-feed-log publication))
        ;; The peer refused MODE STREAM: ACL2 recorded the stop and its line.
        (when (eq word :streaming-refused)
-         (fnn-owner-log 'fn-owner-feed-log-line t))
+         (fnn-owner-feed-log publication))
        ;; Ready: after a 500/501 to MODE STREAM ACL2 rendered the IHAVE
-       ;; fallback line (PRF-207); otherwise there is none.
+       ;; fallback line (PRF-207) into the publication; otherwise there is none.
        (when (eq word :ready)
-         (fnn-owner-log 'fn-owner-feed-log-line t))
+         (fnn-owner-feed-log publication))
        (values word
                (if (member word '(:starttls :auth-user :auth-pass :mode :send))
-                   (let ((command (fnn-owner-octets-global 'fn-owner-feed-command)))
+                   (let ((command (fnn-owner-feed-command publication)))
                      (when (zerop (length command))
                        (fnn-fault "feed connection/reply authorized an empty command"))
                      command)
@@ -288,11 +291,12 @@ closed by this worker, preserving the one-closer rule."
   (fnn-owner-serialized
    service nil
    (lambda ()
-     (let ((word (fnn-feed-checked-word
-                  (fnn-owner-action 'fn-owner-feed-lost
-                                    (fnn-feed-link-peer-octets link) now)
-                  '(:ok :refused) 'fn-owner-feed-lost)))
-       (fnn-owner-feed-flush service)
+     (let* ((publication (fnn-owner-feed-step 'fn-owner-feed-lost
+                                              (fnn-feed-link-peer-octets link) now))
+            (word (fnn-feed-checked-word
+                   (fnn-owner-feed-word publication)
+                   '(:ok :refused) 'fn-owner-feed-lost)))
+       (fnn-owner-feed-flush service publication)
        word))))
 
 (defun fnn-feed-publish-socket (runtime link socket fd)
