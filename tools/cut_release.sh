@@ -234,20 +234,25 @@ g_runpath() {
 }
 
 # Every image-gated module: tests/test_*native*.py and tests/test_bp_*.py,
-# less planning/release-module-exclusions.txt (MODULE, then its reason).
+# less the `exclude' lines of planning/release-native-gate.txt; its `env'
+# lines are the opt-ins the gate passes (NAME=VALUE, tab-separated).
+NATIVE_GATE=planning/release-native-gate.txt
 modules() {
-  excl=planning/release-module-exclusions.txt
   for f in $(git ls-tree --name-only "$REV" tests/ | grep -E '^tests/test_(.*native.*|bp_.*)\.py$'); do
     m=tests.$(basename "$f" .py)
-    if git show "$REV:$excl" 2>/dev/null | grep -q "^${m}[[:space:]]"; then continue; fi
+    if git show "$REV:$NATIVE_GATE" 2>/dev/null | awk -F'\t' -v m="$m" '$1 == "exclude" && $2 == m { f = 1 } END { exit !f }'; then continue; fi
     printf '%s\n' "$m"
   done
+}
+gate_envs() {
+  git show "$REV:$NATIVE_GATE" 2>/dev/null | awk -F'\t' '$1 == "env" { printf "--env %s ", $2 }'
 }
 
 g_native() {
   mods=$(modules | tr '\n' ' ')
+  # shellcheck disable=SC2046
   set -- --name "cut-$VERSION" --label "$SHORT" --images developer,production,dtn,dtn-developer \
-    --deadline 43200 "$REV"
+    --deadline 43200 $(gate_envs) "$REV"
   echo "modules ($(echo $mods | wc -w | tr -d ' ')): $mods"
   if [ "$DRY" = yes ]; then
     # shellcheck disable=SC2086

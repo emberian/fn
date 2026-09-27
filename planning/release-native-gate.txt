@@ -1,0 +1,18 @@
+# The cut's native gate (tools/cut_release.sh gate 09): what it runs besides
+# every tests/test_*native*.py and tests/test_bp_*.py module at REV on the
+# four images.  One entry per line, fields separated by a TAB:
+#
+#   exclude<TAB>MODULE<TAB>REASON      the gate does not run MODULE
+#   env<TAB>NAME=VALUE<TAB>REASON      passed to tools/hbox_native.sh --env
+#
+# A module that FAILS or is wholly SKIPPED on the gate's images is red.  An
+# entry belongs here only with a reason a reviewer can check; "it is red" is
+# never one (classify the red in the release's qualification record).
+exclude	tests.test_build_native_host	a tool test of tools/build_native_host.sh (laptop, make tooling-test); it builds no image under test
+exclude	tests.test_hbox_native	a tool test of tools/hbox_native.sh itself (laptop, make tooling-test)
+exclude	tests.test_native_frozen_relocation	its only case needs FN_RUN_RELOCATION_E2E and a second OpenSSL build (FN_BUILD_OPENSSL_PREFIX) from before the system libssl (HST-016); the release's relocation evidence is gate 12 (a fresh install to a new prefix, test_release_tarball) and gate 13; revisit at the cut
+env	FN_RUN_CONSUMER_E2E=1	the consumer E2 gate against the image this cut built (tests.test_native_consumer_e2)
+env	FN_RUN_CONSUMER_POLL_E2E=1	the signed-poll case of tests.test_native_consumer_e2
+env	FN_RUN_CONSUMER_INSPECT=1	tests.test_native_consumer_inspect against this cut's developer image
+env	FN_RUN_CONSUMER_PROJECT_BOUNDS=1	tests.test_native_consumer_project_bounds against this cut's image
+env	FN_RUN_NATIVE_CLONE=1	tests.test_native_checkpoint's clone cases against this cut's developer image

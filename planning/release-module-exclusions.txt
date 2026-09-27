@@ -1,8 +1,0 @@
-# Modules the cut's native gate (tools/cut_release.sh gate 09) does NOT run,
-# one per line: the unittest name, whitespace, the reason.  Every other
-# tests/test_*native*.py and tests/test_bp_*.py module at REV runs on the
-# four images, and a module that FAILS or is wholly SKIPPED there is red.
-# A module belongs here only with a reason a reviewer can check; "it is red"
-# is never one (classify the red in the release's qualification record).
-tests.test_build_native_host	a tool test of tools/build_native_host.sh (laptop, make tooling-test); it builds no image under test
-tests.test_hbox_native	a tool test of tools/hbox_native.sh itself (laptop, make tooling-test)
