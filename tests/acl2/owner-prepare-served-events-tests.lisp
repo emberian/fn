@@ -236,3 +236,108 @@
                      :record-staged))
 (assert-event (not (fn-lgoc-invariantp
                     (fn-ccar-ocfg-prepare-identity *pse-t2-reserved* *pse-t-crow*))))
+
+; =============================================================================
+; Audit packets G2-P5 and G1-4 residue (lane audit-fixes, sub-lane g12b).
+; Hypotheses with no counterexample, decided by proof: each weakened theorem
+; below is the keystone without the hypothesis, proved, so no removal tooth
+; exists and the hypothesis is redundant (the library statement is left as
+; it is; its book is not re-certified for this).
+;
+; fn-psrv-rcon-io-preserves-invariant (PRF-290) without (fn-psrv-io-safep
+; operation), and hence fn-lgoc-rcon-io-preserves-invariant (PRF-286)
+; without (fn-lgoc-io-safep ...): the same conclusion under the invariant
+; alone.  An operation fn-sn-file-step does not name leaves the Store as it
+; is (fn-snt-unknown-io-is-no-op), and the owner over its own Store keeps
+; the invariant (fn-psrv-owner-with-store-preserves-invariant).
+(defthm g12b-rcon-ocfg-io-is-owner-with-store
+  (equal (fn-rcon-ocfg-io oc operation result)
+         (fn-ocfg-with-owner oc (fn-ocl-owner-with-store
+                                 (fn-ocfg-owner oc)
+                                 (fn-sn-io (fn-own-store (fn-ocfg-owner oc)) operation result))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-rcon-ocfg-io fn-rcon-own-store-io fn-ocl-owner-with-store
+                               fn-rcon-sn-io-is-sn-io))))
+(defthm g12b-psrv-rcon-io-preserves-invariant-without-io-safep
+  (implies (fn-lgoc-invariantp oc)
+           (fn-lgoc-invariantp (fn-rcon-ocfg-io oc operation result)))
+  :rule-classes nil
+  :hints (("Goal"
+           :cases ((fn-psrv-io-safep operation))
+           :use (fn-psrv-rcon-io-preserves-invariant
+                 g12b-rcon-ocfg-io-is-owner-with-store
+                 (:instance fn-snt-unknown-io-is-no-op (s (fn-own-store (fn-ocfg-owner oc))))
+                 (:instance fn-psrv-owner-with-store-preserves-invariant
+                            (st (fn-own-store (fn-ocfg-owner oc))))
+                 fn-lgoc-ocl-relation-cst)
+           :in-theory '(fn-psrv-io-safep fn-cstp-reserve-opp fn-lgoc-invariantp
+                        member-equal (:executable-counterpart equal)
+                        (:executable-counterpart member-equal)))))
+(defthm g12b-lgoc-rcon-io-preserves-invariant-without-io-safep
+  (implies (fn-lgoc-invariantp oc)
+           (fn-lgoc-invariantp (fn-rcon-ocfg-io oc operation result)))
+  :rule-classes nil
+  :hints (("Goal" :use g12b-psrv-rcon-io-preserves-invariant-without-io-safep)))
+
+; fn-lgoc-log-order-preserves-invariant (PRF-286) without
+; (fn-lgoc-article-stagedp ...): the weakened statement is the registered
+; fn-psrv-log-order-preserves-invariant (PRF-290); restated here by name.
+(defthm g12b-lgoc-log-order-preserves-invariant-without-article-stagedp
+  (implies (fn-lgoc-invariantp oc)
+           (fn-lgoc-invariantp (fn-olr-ocfg-order oc)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-psrv-log-order-preserves-invariant)))
+
+; fn-lgoc-pidx-sbud-prepare-preserves-invariant (PRF-286) without
+; (fn-ceis-indexedp (fn-sbud-oc-store oc)): that premise equates the budget's
+; committed count with the history's length; the invariant does not read the
+; budget, so a prepare the miscounted budget admits is still fn-opc-prepare,
+; which fn-lgoc-sbud-prepare-preserves-invariant covers at any admitting
+; budget.  The view premise (fn-scar-view-indexedp) is NOT shown redundant:
+; it is the bridge's (fn-pidx = fn-pcar); owner-log-ocl-tests' blind-trie
+; owner shows the prepare refusing without it, and no weakened theorem is
+; claimed.
+(defthm g12b-lgoc-pidx-sbud-prepare-without-ceis-indexedp
+  (implies (and (fn-lgoc-invariantp oc)
+                (fn-scar-view-indexedp (fn-ocfg-owner oc))
+                (implies (fn-held-p record)
+                         (fn-cnode-selection-servedp (fn-ocfg-config oc)
+                                                     (fn-record-groups record))))
+           (fn-lgoc-invariantp (fn-pidx-sbud-prepare oc record budget)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-lgoc-sbud-prepare-preserves-invariant
+                            (budget (+ 1 (fn-sbud-used (fn-sbud-oc-store oc)))))
+                 (:instance fn-pidx-opc-prepare-is-pcar-opc-prepare)
+                 fn-pcar-opc-prepare-is-opc-prepare
+                 (:instance fn-ocl-view-historyp-is-visible (o (fn-ocfg-owner oc))))
+           :in-theory '(fn-pidx-sbud-prepare fn-sbud-prepare fn-sbud-admitp fn-sbud-used
+                        fn-pidx-view-okp fn-scar-view-indexedp fn-lgoc-invariantp fn-ocl-relation
+                        fn-sbud-oc-store
+                        (:type-prescription len) natp (:executable-counterpart natp) (:executable-counterpart binary-+) (:executable-counterpart <)))))
+
+; fn-psrv-prepare-topic-is-ocfg-step-when-admitted (PRF-290): its two
+; hypotheses (a Store event; the carried projection admits it) have no
+; removal witness on a reached owner.  With either removed -- the topic
+; event at sequence 7 (not the Store's next: the projection refuses) and a
+; non-event -- the host's topic prepare and the configured owner's
+; (:store (:prepare-topic E)) BOTH leave *lgt-reserved* as it is, so the
+; conclusion holds (evaluated below).  The weakened theorem needs the
+; configured step's refusal to be the identity on every related owner, which
+; was not attempted.
+(defconst *g12b-topic-refused* (list* :topic-admin-install 7 (cddr *pse-topic-event*)))
+(assert-event
+ (let ((s (lgt-store *lgt-reserved*)))
+   (and (fn-store-event-p *g12b-topic-refused*)
+        (not (eq (car (fn-cpe-projection-step (fn-sn-consumer s) *g12b-topic-refused*
+                                              (fn-sn-identity-next s)))
+                 :ok))
+        (equal (fn-psrv-prepare-topic *lgt-reserved* *g12b-topic-refused*) *lgt-reserved*)
+        (equal (in-arena-acar-t-ocfg-run *sr-arena* *lgt-reserved*
+                                         (list (list :store (list :prepare-topic *g12b-topic-refused*))))
+               *lgt-reserved*)
+        (not (fn-store-event-p '(:bogus 1 2)))
+        (equal (fn-psrv-prepare-topic *lgt-reserved* '(:bogus 1 2)) *lgt-reserved*)
+        (equal (in-arena-acar-t-ocfg-run *sr-arena* *lgt-reserved*
+                                         (list (list :store (list :prepare-topic '(:bogus 1 2)))))
+               *lgt-reserved*))))
