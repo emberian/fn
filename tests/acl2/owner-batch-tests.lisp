@@ -1,4 +1,4 @@
-; owner-batch-tests.lisp -- teeth for books/owner-batch.lisp (PRF-249, PRF-250, PRF-251).
+; owner-batch-tests.lisp -- teeth for books/owner-batch.lisp (PRF-253, PRF-254, PRF-255).
 ;
 ; The served sequence from a recovered log: recover, take three members (three
 ; connections), append, fence, finish each in order; the layer aligned with the

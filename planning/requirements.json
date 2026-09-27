@@ -378,9 +378,9 @@
         "PRF-244",
         "PRF-245",
         "PRF-246",
-        "PRF-249",
-        "PRF-250",
-        "PRF-251"
+        "PRF-253",
+        "PRF-254",
+        "PRF-255"
       ],
       "verification": [
         "proof",
@@ -429,7 +429,7 @@
         "PRF-007",
         "PRF-027",
         "PRF-043",
-        "PRF-251"
+        "PRF-255"
       ],
       "verification": [
         "proof",
@@ -484,9 +484,9 @@
         "PRF-244",
         "PRF-245",
         "PRF-246",
-        "PRF-249",
-        "PRF-250",
-        "PRF-251"
+        "PRF-253",
+        "PRF-254",
+        "PRF-255"
       ],
       "verification": [
         "proof",
@@ -4062,9 +4062,9 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-249",
-        "PRF-250",
-        "PRF-251"
+        "PRF-253",
+        "PRF-254",
+        "PRF-255"
       ],
       "verification": [
         "proof",
@@ -4075,7 +4075,7 @@
         "tests/acl2/owner-batch-tests.lisp",
         "planning/evidence/w6-log-owner-2026-09-27.md"
       ],
-      "implementation_note": "Lane w6-log-owner (2026-09-27; design planning/design-2026-09-27-storage-log.md section 3.3). One batch in flight; its members are ordered by their prepare; each member's acknowledgement follows the batch's barrier, in order (fn-owb-fence fills WAITING from the fenced batch, fn-owb-finish-member acknowledges its head); the batch closes when the log thread returns from the previous barrier or at the operator's live bounds log-batch-records and log-batch-octets (:set-limit slots, fn-owb-bmax and fn-owb-omax; an unset slot means 64 records and the batch buffer's size), never a timer; a failed barrier makes every member in flight or waiting :uncertain and fences the store (fn-owb-fence-failed). Proved over the batch layer books/owner-batch.lisp: PRF-249 (T1), PRF-250 (T4, the bounds, the sole-pending-writer discharge), PRF-251 (T7); the scenarios are SCN-169 (the batch's crash cuts) and SCN-170 (the fsync error). Open: no host line calls the layer; the store node's article commit still runs the file kernel of books/store-files.lisp (PKT-698, the decision packet), and the batch layer with the log thread and the mutex discipline is PKT-697."
+      "implementation_note": "Lane w6-log-owner (2026-09-27; design planning/design-2026-09-27-storage-log.md section 3.3). One batch in flight; its members are ordered by their prepare; each member's acknowledgement follows the batch's barrier, in order (fn-owb-fence fills WAITING from the fenced batch, fn-owb-finish-member acknowledges its head); the batch closes when the log thread returns from the previous barrier or at the operator's live bounds log-batch-records and log-batch-octets (:set-limit slots, fn-owb-bmax and fn-owb-omax; an unset slot means 64 records and the batch buffer's size), never a timer; a failed barrier makes every member in flight or waiting :uncertain and fences the store (fn-owb-fence-failed). Proved over the batch layer books/owner-batch.lisp: PRF-253 (T1), PRF-254 (T4, the bounds, the sole-pending-writer discharge), PRF-255 (T7); the scenarios are SCN-174 (the batch's crash cuts) and SCN-170 (the fsync error). Open: no host line calls the layer; the store node's article commit still runs the file kernel of books/store-files.lisp (PKT-698, the decision packet), and the batch layer with the log thread and the mutex discipline is PKT-748."
     }
   ]
 }

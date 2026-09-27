@@ -4590,7 +4590,7 @@
       "expected": "Opens on the filesystem it was made on; on another filesystem, on an empty directory, or with a missing or corrupted record every open exits 1 with ACL2's named line and writes nothing; rebind-filesystem records the move and the store opens; a policy-1 store on tmpfs or nobarrier is refused at start by name and a policy-0 one warns and starts."
     },
     {
-      "id": "SCN-169",
+      "id": "SCN-174",
       "title": "The batch's crash cuts (log-written, log-fenced, finish per member): an acknowledged member's record is in every admissible image's scan, an unacknowledged one may be absent and is never answered durable",
       "milestone": "M5",
       "status": "specified",
@@ -4616,7 +4616,7 @@
         "native": false,
         "record": "planning/evidence/w6-log-owner-2026-09-27.md"
       },
-      "note": "Lane w6-log-owner (2026-09-27): no native module exercises these cuts yet; the ACL2 witnesses of tests/acl2/owner-batch-tests.lisp are the executable evidence. The served crash campaign at the log cuts and the power-loss rig's run are PKT-697, after the store node's article commit moves onto the log kernel (PKT-698)."
+      "note": "Lane w6-log-owner (2026-09-27): no native module exercises these cuts yet; the ACL2 witnesses of tests/acl2/owner-batch-tests.lisp are the executable evidence. The served crash campaign at the log cuts and the power-loss rig's run are PKT-748, after the store node's article commit moves onto the log kernel (PKT-698)."
     },
     {
       "id": "SCN-170",
@@ -4645,7 +4645,7 @@
         "native": false,
         "record": "planning/evidence/w6-log-owner-2026-09-27.md"
       },
-      "note": "Lane w6-log-owner (2026-09-27): no native module exercises these cuts yet; the ACL2 witnesses of tests/acl2/owner-batch-tests.lisp are the executable evidence. The served crash campaign at the log cuts and the power-loss rig's run are PKT-697, after the store node's article commit moves onto the log kernel (PKT-698)."
+      "note": "Lane w6-log-owner (2026-09-27): no native module exercises these cuts yet; the ACL2 witnesses of tests/acl2/owner-batch-tests.lisp are the executable evidence. The served crash campaign at the log cuts and the power-loss rig's run are PKT-748, after the store node's article commit moves onto the log kernel (PKT-698)."
     }
   ]
 }
