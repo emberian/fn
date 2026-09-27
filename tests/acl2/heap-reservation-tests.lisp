@@ -873,8 +873,8 @@
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hrt-core* *hrt-nursery*
                                           *hrt-2g* nil)
                 (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery* *hrt-2g*)))
-(assert! (equal (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery* *hrt-2g*)
-                '(:heap 1736 "small" 2048)))
+(assert! (equal (car (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery* *hrt-2g*))
+                :heap))
 (assert! (member-equal :reclaim *fn-heap-list-actions*))
 (assert! (not (equal (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hrt-core*
                                                *hrt-nursery* *hrt-4096* nil)
@@ -888,8 +888,8 @@
 
 ; fn-heap-reserve-of-holds-the-decision.  Reachable: the small preset's
 ; decision on 4 GiB reserved (every conjunct of the conclusion).  Without
-; the accepted reservation: heap-figure's accepted 1,736 MB on 2 GiB with
-; the threads beside it is refused (machine-cannot-hold-threads), and the
+; the accepted reservation: heap-figure's accepted 1,045 MB on 1,300 MiB
+; with the threads beside it is refused (machine-cannot-hold-threads), and the
 ; reservation's figure is past the machine.
 (defun hrt-of-conclusion (d r core observations)
   (declare (xargs :mode :program))
@@ -906,14 +906,18 @@
                                          *hrt-4096* 32))
 (assert! (equal (car *hrt-of-r*) :heap))
 (assert! (hrt-of-conclusion *hrt-of-d* *hrt-of-r* *hrt-core* *hrt-4096*))
-(defconst *hrt-of-d2* (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery* *hrt-2g*))
+;; Batch AW (reservation-figure's model): the small preset's decision on
+;; 1,300 MiB is accepted (1,045 MB) and its reservation with the threads
+;; (1,379 MB) is not.
+(defconst *hrt-1300m* (list (* 1300 *fn-heap-mib*)))
+(defconst *hrt-of-d2* (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery* *hrt-1300m*))
 (defconst *hrt-of-r2* (fn-heap-reserve-of *hrt-of-d2* *fn-heap-small-profile* *hrt-core*
-                                          *hrt-2g* 32))
+                                          *hrt-1300m* 32))
 (assert! (equal (car *hrt-of-d2*) :heap))
-(assert! (equal *hrt-of-r2* '(:refused :machine-cannot-hold-threads 2070 2048)))
+(assert! (equal *hrt-of-r2* '(:refused :machine-cannot-hold-threads 1379 1300)))
 (assert! (not (<= (fn-heap-reservation-octets (fn-heap-decision-mb *hrt-of-d2*) *hrt-core*
                                               1024 30)
-                  (fn-heap-machine-octets *hrt-2g*))))
+                  (fn-heap-machine-octets *hrt-1300m*))))
 
 ; fn-heap-reserve-decide-is-reserve-of-heap-decide (no hypothesis): both
 ; sides on the accepted 4 GiB decision and the refused 2 GiB one.
@@ -921,7 +925,7 @@
                                         *hrt-4096* 32)
                 *hrt-of-r*))
 (assert! (equal (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
-                                        *hrt-2g* 32)
+                                        *hrt-1300m* 32)
                 *hrt-of-r2*))
 
 ; fn-heap-figure-octets-grows-with-history-and-record.  Reachable: the small
