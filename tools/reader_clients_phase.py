@@ -46,6 +46,7 @@ import ssl
 import subprocess
 import sys
 import threading
+import tempfile
 import time
 from pathlib import Path
 
@@ -263,12 +264,17 @@ class Node:
         self.cert, self.key = cert, key
         self.port, self.tls_port = free_port(), free_port()
         self.config = work / "fn.toml"
+        # A Unix socket path is at most 104 to 108 octets (sun_path); a deep
+        # scratch tree overflows it and the owner cannot bind its control
+        # socket (batch AR's image tree), so the socket lives in a short
+        # private directory.
+        self.control = Path(tempfile.mkdtemp(prefix="fnrc-", dir="/tmp")) / "control.sock"
         self.config.write_text(
             '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
             'tls_port = {}\ntls_cert = "{}"\ntls_key = "{}"\n[control]\npath = "{}"\n'
             '[auth]\nrequired = true\nprotected_only = true\n'.format(
                 work / "store", self.port, self.tls_port, cert, key,
-                work / "control.sock"), encoding="ascii")
+                self.control), encoding="ascii")
         self.process = None
 
     def operator(self, *words, timeout=300):

@@ -4,10 +4,31 @@
   "tolerance": 0.25,
   "max_jobs": 2,
   "books": {
+    "books/bp-node-forward-plan": {
+      "seconds": 11.336,
+      "run": "certify-20260927T060355Z-186023",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/config-owner-live": {
+      "seconds": 11.137,
+      "run": "certify-20260927T060355Z-186023",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
     "books/consumer-store-invariants": {
       "seconds": 10.087,
       "run": "certify-20260927T043101Z-713885",
       "host": "hbox",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/heap-reservation": {
+      "seconds": 10.235,
+      "run": "certify-20260927T060355Z-186023",
+      "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
     },
@@ -18,9 +39,30 @@
       "jobs": 2,
       "verdict": "passed"
     },
+    "books/nntp-auth": {
+      "seconds": 11.438,
+      "run": "certify-20260927T060355Z-186023",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/nntp-auth-fold": {
+      "seconds": 10.884,
+      "run": "certify-20260927T060355Z-186023",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "books/nntp-post": {
+      "seconds": 10.684,
+      "run": "certify-20260927T060355Z-186023",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
     "books/owner-invariants": {
-      "seconds": 13.55,
-      "run": "certify-20260927T050619Z-3728043",
+      "seconds": 16.545,
+      "run": "certify-20260927T060355Z-186023",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
@@ -28,6 +70,13 @@
     "tests/acl2/native-admin-tests": {
       "seconds": 11.487,
       "run": "certify-20260927T045756Z-3635405",
+      "host": "persvati",
+      "jobs": 2,
+      "verdict": "passed"
+    },
+    "tests/acl2/source-routes-tests": {
+      "seconds": 11.034,
+      "run": "certify-20260927T060355Z-186023",
       "host": "persvati",
       "jobs": 2,
       "verdict": "passed"
