@@ -245,3 +245,197 @@
                                    (keyring nil) (generation 0)))
            :in-theory (disable fn-intern-events fn-srs-decode
                                fn-srs-intern-events-true-listp))))
+
+; -----------------------------------------------------------------------------
+; 5. The numbered chunk (lane recover-memory-2, PKT-823 item 1): the open
+; reads a transaction file and hands its record to the step with the file's
+; number; the step's one decode also checks that number.  Before, the host
+; decoded every record a second time only to read its sequence
+; (fn-store-record-sequence; 5.4 GB consed and 8 s on the 32 KiB fixture,
+; planning/evidence/recover-memory-2026-09-27.md section 1).
+;
+; `fn-srs-record-sequence' is that per-file check's function (host/store-host.lisp
+; fn-store-record-sequence calls it); `fn-srs-checked-decode' is the step's
+; decode of a numbered chunk, a list of (NUMBER . OCTETS): :bad when a record
+; does not decode, :sequence when a decoded record's sequence is not its
+; file's number, and otherwise the decode of the chunk's records.  KEYSTONE
+; `fn-srs-checked-decode-is-the-per-file-check': the chunk check is exactly
+; the old per-file check of every record, and the decoded chunk is the
+; unchecked decode, so the fold's keystone above carries over unchanged
+; (`fn-srs-checked-step-is-the-step').
+
+(defun fn-srs-record-sequence (octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((decoded (fn-store-event-decode-exact octets)))
+    (if (and (consp decoded) (equal (car decoded) :ok)
+             (consp (cdr decoded)) (fn-rcon-wire-event-p (car (cdr decoded))))
+        (fn-rcon-wire-event-sequence (car (cdr decoded)))
+      -1)))
+
+(defun fn-srs-pair-octets (pairs)
+  (declare (xargs :guard t))
+  (if (atom pairs)
+      nil
+    (cons (if (consp (car pairs)) (cdr (car pairs)) nil)
+          (fn-srs-pair-octets (cdr pairs)))))
+
+(defun fn-srs-numbers-agreep (pairs ws)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom pairs)
+      t
+    (and (consp ws) (consp (car pairs))
+         (equal (fn-rcon-wire-event-sequence (car ws)) (car (car pairs)))
+         (fn-srs-numbers-agreep (cdr pairs) (cdr ws)))))
+
+(defun fn-srs-checked-decode (pairs)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((ws (fn-srs-decode (fn-srs-pair-octets pairs))))
+    (cond ((equal ws :bad) :bad)
+          ((fn-srs-numbers-agreep pairs ws) ws)
+          (t :sequence))))
+
+; The old per-file check, every file: each record's sequence is its number.
+(defun fn-srs-numberedp (pairs)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom pairs)
+      t
+    (and (consp (car pairs))
+         (equal (fn-srs-record-sequence (cdr (car pairs))) (car (car pairs)))
+         (fn-srs-numberedp (cdr pairs)))))
+
+(local
+ (defthm fn-srs-numbers-agree-iff-numbered
+   (implies (not (equal (fn-srs-decode (fn-srs-pair-octets pairs)) :bad))
+            (equal (fn-srs-numbers-agreep pairs (fn-srs-decode (fn-srs-pair-octets pairs)))
+                   (fn-srs-numberedp pairs)))
+   :hints (("Goal" :induct (fn-srs-numberedp pairs)
+            :expand ((fn-srs-decode (fn-srs-pair-octets pairs))
+                     (fn-srs-pair-octets pairs))))))
+
+; KEYSTONE.
+(defthm fn-srs-checked-decode-is-the-per-file-check
+  (let ((ws (fn-srs-decode (fn-srs-pair-octets pairs))))
+    (equal (fn-srs-checked-decode pairs)
+           (cond ((equal ws :bad) :bad)
+                 ((fn-srs-numberedp pairs) ws)
+                 (t :sequence))))
+  :hints (("Goal" :in-theory (disable fn-srs-decode fn-srs-numbers-agreep fn-srs-numberedp))))
+
+; The host's two calls per numbered chunk (fn-srs-checked-decode, then
+; fn-srs-intern-step unless it answered :sequence) are the step over the
+; chunk's records, so the fold keystone applies to the records of the chunks.
+(defthm fn-srs-checked-step-is-the-step
+  (implies (not (equal (fn-srs-checked-decode pairs) :sequence))
+           (equal (fn-srs-intern-step acc (fn-srs-checked-decode pairs) fn-arena)
+                  (fn-srs-step acc (fn-srs-pair-octets pairs) fn-arena)))
+  :hints (("Goal" :in-theory (disable fn-srs-decode fn-srs-numbers-agreep fn-srs-intern-step))))
+
+; -----------------------------------------------------------------------------
+; 6. The unframe without a payload copy (lane recover-memory-2, PKT-823 item
+; 1).  The host used to hand the frame decode the whole transaction file as
+; one octet list and the digest of its protected prefix computed over a second
+; one; the decode then copied the payload out twice (fn-frame-split's
+; accumulator and its reverse): on the 32 KiB fixture 10.2 GB consed by the
+; decode and about as much by the host's two conversions (the allocation
+; profile, planning/evidence/recover-memory-2026-09-27.md section 6).
+;
+; `fn-srs-unframe' takes the file as the host reads it, split where the frame
+; says the trailer begins: PREFIX, the protected octets (header and payload),
+; one octet list, and TRAILER, the last *fn-frame-trailer-octets* octets.  It
+; computes the digest over PREFIX itself (fn-frame-trailer, the one owner) and
+; answers the payload as PREFIX's own tail past the header, so nothing of the
+; payload is copied.  KEYSTONE `fn-srs-unframe-is-the-frame-decode': for every
+; PREFIX and TRAILER it answers what the frame decode answers for their
+; concatenation and PREFIX's trailer, which is what the host computed before
+; (fnn-unframe: fn-store-frame-store-decode of the file, fnn-digest-of the
+; file, which is fn-frame-trailer of all but its last 32 octets).
+
+(defun fn-srs-unframe (prefix trailer)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :use ((:instance fn-frame-head-fields-shape
+                                                          (head (car (fn-frame-split 10 prefix))))
+                                               (:instance fn-frame-split-prefix-octets
+                                                          (n 10) (xs prefix)))
+                                 :in-theory (disable fn-cbor-u32-from fn-frame-head-fields
+                                                     fn-frame-head-fields-shape
+                                                     fn-frame-split-prefix-octets)))))
+  (if (and (fn-cbor-octet-listp prefix) (fn-cbor-octet-listp trailer)
+           (equal (len trailer) *fn-frame-trailer-octets*))
+      (let* ((head (fn-frame-split *fn-frame-header-octets* prefix))
+             (fields (and head (fn-frame-head-fields (car head)))))
+        (if (not fields)
+            (fn-frame-store-decode (append prefix trailer) (fn-frame-trailer prefix))
+          (let ((rest (cdr head))
+                (declared (nfix (fn-cbor-u32-from (fn-frame-item 3 fields)))))
+            (if (not (and (<= declared *fn-frame-max-store-payload*)
+                          (equal (len rest) declared)))
+                (fn-frame-store-decode (append prefix trailer) (fn-frame-trailer prefix))
+              (let ((digest (fn-frame-trailer prefix)))
+                (if (not (fn-frame-digestp digest))
+                    (fn-frame-error :digest)
+                  (if (not (equal trailer digest))
+                      (fn-frame-error :integrity)
+                    (let ((frame (fn-frame-ok (fn-frame-item 0 fields) (fn-frame-item 1 fields)
+                                              (fn-frame-item 2 fields) rest)))
+                      (if (not (and (equal (fn-frame-result-magic frame) *fn-frame-magic-store*)
+                                    (equal (fn-frame-result-version frame) *fn-frame-version*)
+                                    (equal (fn-frame-result-kind frame) *fn-frame-store-kind*)))
+                          (fn-frame-error :magic)
+                        frame)))))))))
+    (fn-frame-store-decode (append (true-list-fix prefix) trailer) (fn-frame-trailer prefix))))
+
+(local
+ (defthm fn-srs-append-true-list-fix
+   (equal (append (true-list-fix x) y) (append x y))))
+
+(local
+ (defthm fn-srs-at-mostp-is-len
+   (implies (natp n)
+            (equal (fn-cbor-at-mostp xs n) (<= (len xs) n)))
+   :hints (("Goal" :in-theory (enable fn-cbor-at-mostp)))))
+
+(local
+ (defthm fn-srs-split-of-append-after
+   (implies (fn-frame-split n prefix)
+            (equal (fn-frame-split n (append prefix trailer))
+                   (cons (car (fn-frame-split n prefix))
+                         (append (cdr (fn-frame-split n prefix)) trailer))))
+   :hints (("Goal" :induct (fn-frame-split n prefix)
+            :in-theory (enable fn-frame-split)))))
+
+(local
+ (defthm fn-srs-split-zero
+   (implies (zp n) (equal (fn-frame-split n xs) (cons nil xs)))
+   :hints (("Goal" :in-theory (enable fn-frame-split)))))
+
+(local
+ (defthm fn-srs-split-suffix-nil
+   (implies (and (true-listp xs) (equal (len xs) (nfix n)))
+            (equal (cdr (fn-frame-split n xs)) nil))
+   :hints (("Goal" :in-theory (enable fn-frame-split)))))
+
+(local
+ (defthm fn-srs-body-split
+   (implies (and (true-listp prefix) (<= 10 (len prefix)))
+            (equal (fn-frame-split (+ -10 (len prefix))
+                                   (append (cdr (fn-frame-split 10 prefix)) trailer))
+                   (cons (cdr (fn-frame-split 10 prefix)) trailer)))
+   :hints (("Goal" :use ((:instance fn-frame-split-of-append (n (+ -10 (len prefix)))
+                                    (a (cdr (fn-frame-split 10 prefix))) (b trailer))
+                         (:instance fn-frame-split-suffix-len (n 10) (xs prefix))
+                         (:instance fn-frame-split-suffix-true-listp (n 10) (xs prefix))
+                         (:instance fn-frame-split-exists (n 10) (xs prefix)))
+            :do-not-induct t
+            :in-theory (disable fn-frame-split-of-append fn-frame-split-suffix-len
+                                fn-frame-split-suffix-true-listp fn-frame-split-exists)))))
+
+; KEYSTONE.
+(defthm fn-srs-unframe-is-the-frame-decode
+  (equal (fn-srs-unframe prefix trailer)
+         (fn-frame-store-decode (append prefix trailer) (fn-frame-trailer prefix)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-frame-split-suffix-len (n 10) (xs prefix))
+                 (:instance fn-frame-split-suffix-true-listp (n 10) (xs prefix))
+                 (:instance fn-frame-octet-listp-true-listp (xs prefix)))
+           :in-theory (e/d (fn-frame-store-decode fn-frame-decode)
+                           (fn-frame-head-fields fn-frame-ok fn-frame-item fn-cbor-u32-from)))))

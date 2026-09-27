@@ -66,6 +66,23 @@
    :hints (("Goal" :in-theory '(fn-rcl-tombstonep fn-nntp-rcl-at-leastp-is-len
                                  (:e natp))))))
 
+;; An article's octet count, read through the arena in O(1) (the arena keeps
+;; each payload's length; lane served-readers: OVER 1-2000 spent a third of
+;; its time walking every payload to count it).  Logically the length of the
+;; article's bytes.
+(defun fn-nntp-article-length (article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t
+                  :guard-hints (("Goal" :in-theory '(fn-nntp-payload-bytes
+                                                     fn-nntp-article-bytes
+                                                     fn-arena-payload-is-nth
+                                                     fn-arena-count-is-len
+                                                     fn-arena-payload-len-is-len-nth)))))
+  (mbe :logic (len (fn-nntp-article-bytes article fn-arena))
+       :exec (let ((p (fn-article-payload article)))
+               (if (and (natp p) (< p (fn-arena-count fn-arena)))
+                   (fn-arena-payload-len p fn-arena)
+                 (len (fn-nntp-article-bytes article fn-arena))))))
+
 (defun fn-nntp-article-tombstonep (article fn-arena)
   (declare (xargs :stobjs fn-arena :guard t
                   :guard-hints (("Goal" :in-theory '(fn-nntp-tombstonep-unfolds
@@ -1214,7 +1231,7 @@
               (fn-nov-header-content view *fn-nov-date-name*)
               (fn-nov-header-content view *fn-nov-message-id-name*)
               (fn-nov-header-content view *fn-nov-references-name*)
-              (fn-ng-len payload)
+              (fn-nntp-article-length article fn-arena)
               (fn-nov-body-line-count payload))))))
 
 (defun fn-nov-okp (x)
@@ -1736,7 +1753,7 @@
       (list :ok
             (fn-nntp-decimal-field
              (if (fn-nntp-keywordp field ":BYTES")
-                 (fn-ng-len (fn-nntp-article-bytes article fn-arena))
+                 (fn-nntp-article-length article fn-arena)
                (fn-nov-body-line-count (fn-nntp-article-bytes article fn-arena)))))
     (let* ((payload (fn-nntp-article-bytes article fn-arena))
            (parsed (fn-article-parse payload)))

@@ -42,6 +42,7 @@ import sys
 import tempfile
 import time
 import unittest
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 PRODUCTION = os.environ.get("FN_NATIVE_HOST")
@@ -209,7 +210,7 @@ class NativeAgentWaitTests(unittest.TestCase):
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
         raw = socket.create_connection(("127.0.0.1", node["tls_port"]), timeout=60)
-        stream = context.wrap_socket(raw).makefile("rwb", buffering=0)
+        stream = whole_stream(context.wrap_socket(raw))
         self.addCleanup(stream.close)
         stream.readline()
         return stream

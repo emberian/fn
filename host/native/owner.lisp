@@ -91,6 +91,11 @@
   ;; AWAITING maps a connection id to the mux connection waiting for its
   ;; completion, DONE a completion that arrived before its connection
   ;; registered; SPARING the member sockets a failed batch's stop spares.
+  ;; The octets the next served read may take: ACL2's
+  ;; fn-cbud-step-read-octets (host/owner-host.lisp fn-owner-read-octets),
+  ;; read under the owner mutex (fnn-owner-refresh-read-octets) and read
+  ;; here, without the mutex, by the I/O loops (host/native/mux.lisp).
+  (read-octets nil)
   (batching nil) (committer nil) (queued 0)
   ;; SYNCED: the syncer thread returned (lane log-2; fnn-owner-start-syncer).
   (synced nil)
@@ -200,6 +205,15 @@ SBCL's SB-UNIX may lack the internal clock symbols."
 
 (defun fnn-owner-core (name &rest args)
   (apply #'fnn-core-state name args))
+
+(defun fnn-owner-refresh-read-octets (service)
+  "Install ACL2's read size for the next served read (under the owner mutex:
+the exposure install, and every served step, so a live change of the step
+rate reaches the next read)."
+  (let ((octets (fnn-owner-core 'fn-owner-read-octets)))
+    (unless (and (integerp octets) (> octets 0))
+      (fnn-fault "owner returned a malformed read size"))
+    (setf (fnn-owner-service-read-octets service) octets)))
 
 (defun fnn-owner-octets-global (name)
   (let ((value (fnn-global name)))
@@ -718,10 +732,7 @@ checkpoint's S, or NIL."
                   (fnn-node-secret-directory store)))))
 
 (defun fnn-owner-install (root max-connections &optional fault)
-  ;; The owner does not take the history's octets (fnn-owner-recover-core
-  ;; installs from the Store open's extension): after a state-checkpoint open
-  ;; the covered prefix is not re-encoded (checkpoint-arena-2).
-  (multiple-value-bind (store records) (fnn-open-live-store root t fault nil)
+  (multiple-value-bind (store count) (fnn-open-live-store root t fault)
     (let ((service nil))
       (handler-case
           (progn
@@ -729,7 +740,7 @@ checkpoint's S, or NIL."
             ;; (books/store-mount-identity.lisp fn-smid-start-verdict),
             ;; before the owner serves anything.
             (fnn-check-filesystem-identity store t)
-            (fnn-owner-recover-core store records max-connections)
+            (fnn-owner-recover-core store count max-connections)
             (fnn-err "OWNER-OPEN ~a" (fnn-open-report store))
             ;; The persisted profile ACL2 decoded at open, handed back once:
             ;; the owner's transaction budget is derived from it there.
@@ -778,13 +789,18 @@ checkpoint's S, or NIL."
                     (unless (eq (fnn-owner-feed-word restart) :restarted)
                       (fnn-fault "owner refused the feed restart"))
                     (fnn-owner-feed-flush service restart))))
+              ;; The open keeps no records (PKT-823): the pending key
+              ;; statement is read off the newest record alone.
               (fnn-owner-key-statement-recover
-               service (let ((last (fnn-open-last-record store records))) (and last (list last))))
+               service (and (plusp count) (list (fnn-history-last-record store))))
               ;; The Store open's loaded checkpoint is consumed (the owner's
               ;; base is the open's extension, fn-owner-sco-base): release it,
               ;; so the reopened owner does not hold the checkpoint's capture
-              ;; beside the extension (checkpoint-arena-2's reopen heap).
+              ;; beside the extension (checkpoint-arena-2's reopen heap).  A
+              ;; later read of a format-9 history whose prefix was the
+              ;; checkpoint's then faults by name (fnn-log-history-plan).
               (fnn-core-state 'fn-store-sco-clear)
+              (fnn-log-history-release-prefix store)
               service))
         (error (e)
           (when service (fnn-owner-feed-close-all service))
@@ -2222,7 +2238,7 @@ members."
   "ACL2's action for the commit's PHASE and EVENT (fn-ocs-commit-step), for
 the inline commit, which holds no gate phase (only at an idle owner: while a
 batch is in flight the gate admits no class that commits inline)."
-  (let ((action (first (fnn-core 'fn-ocs-commit-step phase event))))
+  (let ((action (fnn-core 'fn-ocs-commit-step phase event)))
     (unless (member action '(:barrier :complete :stop :none :fault))
       (fnn-fault "owner returned a malformed commit step ~a" action))
     action))
@@ -2844,6 +2860,7 @@ EPIPE and the client saw a bare close)."
        (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming))))
          (when (eq step :unknown)
            (fnn-refuse "owner no longer knows connection ~d" cid))
+         (fnn-owner-refresh-read-octets service)
          (unless (fnn-core 'fn-splan-step-p step)
            (fnn-fault "owner returned a malformed served step"))
          ;; One ACL2-rendered line per 441 this read sends (books/owner-log.lisp
@@ -3296,6 +3313,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                                                   more-addresses)))
                                   '(:public :loopback))
                     (fnn-fault "owner refused the exposure install"))
+                  (fnn-owner-refresh-read-octets service)
                   (setf (fnn-owner-service-tls-context service) tls-context
                         (fnn-owner-service-connection-fault-operation service)
                         connection-fault-operation)

@@ -653,9 +653,19 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (fn-store-sco-encode-records (fn-sco-records (fn-store-sco-current state))
                                       fn-arena)))
 
-; The covered prefix's LAST record's octets, or NIL: an open that does not
-; take the history (the owner) reads its pending key statement off the
-; history's last record (host/native/io.lisp fnn-open-last-record).
+; The covered prefix's records START .. START+COUNT-1, encoded as
+; fn-store-sco-prefix-octets encodes them all: a streamed reader of the prefix
+; (host/native/checkpoint.lisp fnn-log-reclaim-steps) takes a chunk at a time.
+(defun fn-store-sco-prefix-octets-range (start count fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (value (fn-store-sco-encode-records
+          (take (nfix count) (nthcdr (nfix start) (fn-sco-records (fn-store-sco-current state))))
+          fn-arena)))
+
+; The covered prefix's LAST record's octets, or NIL: the owner reads its
+; pending key statement off the history's last record, which after a log
+; checkpoint open with an empty suffix is the prefix's (host/native/io.lisp
+; fnn-history-last-record).
 (defun fn-store-sco-last-record-octets (fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((records (fn-sco-records (fn-store-sco-current state))))

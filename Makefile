@@ -219,6 +219,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-carried-folds \
 	tests/acl2/store-carried-folds-tests \
 	books/store-profile-facts \
+	books/store-replay-bound \
+	tests/acl2/store-replay-bound-tests \
 	books/store-export \
 	tests/acl2/store-export-tests \
 	books/store-import-publication \
@@ -364,6 +366,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-holders-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
+	books/store-reclaim-stream \
+	tests/acl2/store-reclaim-stream-tests \
 	books/reclaim-admission \
 	tests/acl2/reclaim-admission-tests \
 	tests/acl2/store-history-marker-tests \
@@ -850,6 +854,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/msgid-index-concrete \
 	books/octets-stobj \
 	books/payload-arena-bytes \
+	books/payload-arena-paged \
 	books/payload-arena \
 	books/payload-arena-attach \
 	books/records-freeze \
@@ -876,6 +881,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/payload-arena-tests \
+	tests/acl2/payload-arena-paged-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \
@@ -942,6 +948,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/config-owner-publish-tests \
 	books/config-owner-carried \
 	tests/acl2/config-owner-carried-tests \
+	books/config-store-steps \
+	books/owner-log-ocl \
+	tests/acl2/owner-log-ocl-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \

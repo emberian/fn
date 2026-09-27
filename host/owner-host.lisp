@@ -834,6 +834,18 @@
     (let ((state (fn-owner-install-ocfg next state)))
       (value verdict))))
 
+;; PKT-827 (b), PRF-287: the live request's authorization from the owner's
+;; carried state, asked after staging and before publication
+;; (host/native/admin.lisp fnn-owner-live-reconfigure-locked).  ACL2's
+;; fn-oclc-live-authorizep: the staged record applies to the carried node and
+;; configuration; an authorized record's completion is :durable
+;; (fn-oclc-live-authorizep-is-durable-completion) and under the owner's
+;; invariant the history reopens to the state it installs
+;; (fn-oclc-authorized-record-reopens).  It reads no record.
+(defun fn-owner-reconfigure-authorizedp (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-oclc-live-authorizep (fn-owner-ocfg state))))
+
 (defun fn-owner-config-generation (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cfg-generation (fn-owner-config state))))
@@ -2615,6 +2627,15 @@
                  (fn-own-max-conns (fn-owner-core state))
                  (fn-owner-exposure-publicp state)
                  (fn-auth-config-requiredp (fn-owner-auth state))))
+
+;; The octets one served step may read (books/connection-budget.lisp
+;; fn-cbud-step-read-octets): 512 under a step rate, 4 KiB without one.
+;; host/native/owner.lisp fnn-owner-refresh-read-octets reads it under the
+;; owner mutex after the exposure install and after every served step, so a
+;; live change of the rate reaches the next read.
+(defun fn-owner-read-octets (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cbud-step-read-octets (fn-owner-exposure-limits state))))
 
 ;; Once per run, after recovery and before listen: the listener the owner is
 ;; about to bind (FAMILY, ADDRESS-LIST as ACL2 projected them) decides the

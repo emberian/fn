@@ -48,6 +48,7 @@ from tests.native_process import wait_for_announcement
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import fn_web  # noqa: E402
+from tools.wire_stream import whole_stream
 from tests import native_log_observation
 
 # A developer image: the lost reply is FN_NATIVE_POST_FAULT, a developer
@@ -162,7 +163,7 @@ class NativeVisibilityJoinTests(unittest.TestCase):
 
     def first_line(self, node, command):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
-            stream = client.makefile("rwb", buffering=0)
+            stream = whole_stream(client)
             self.assertTrue(stream.readline().startswith(b"200 "))
             stream.write(command)
             return stream.readline().decode().strip()
@@ -488,12 +489,12 @@ class NativeVisibilityJoinTests(unittest.TestCase):
         import ssl
         context = ssl.create_default_context(cafile=str(node["cert"]))
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as raw:
-            stream = raw.makefile("rwb", buffering=0)
+            stream = whole_stream(raw)
             self.assertTrue(stream.readline().startswith(b"20"))
             stream.write(b"STARTTLS\r\n")
             self.assertTrue(stream.readline().startswith(b"382"))
             with context.wrap_socket(raw, server_hostname="127.0.0.1") as tls:
-                secure = tls.makefile("rwb", buffering=0)
+                secure = whole_stream(tls)
                 secure.write(b"AUTHINFO USER " + user.encode() + b"\r\n")
                 self.assertTrue(secure.readline().startswith(b"381"))
                 secure.write(b"AUTHINFO PASS " + secret.encode() + b"\r\n")

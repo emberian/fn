@@ -11,6 +11,7 @@ import unittest
 
 
 from tests.native_process import wait_for_announcement
+from tools.wire_stream import whole_stream
 
 ROOT = Path(__file__).resolve().parent.parent
 IMAGE = Path(os.environ.get("FN_NATIVE_HOST", ROOT / "build" / "fn-host"))
@@ -120,7 +121,7 @@ class NativeOperatorCliTests(unittest.TestCase):
                              "unexpected listener announcement; process status={!r}".format(
                                  process.poll()))
             with socket.create_connection((host, port), timeout=30) as client:
-                stream = client.makefile("rwb", buffering=0)
+                stream = whole_stream(client)
                 self.assertTrue(stream.readline().startswith(b"200 "))
                 stream.write(b"QUIT\r\n")
                 self.assertTrue(stream.readline().startswith(b"205 "))
