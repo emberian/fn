@@ -289,7 +289,7 @@
                        bs :transactions
                        (fn-bs-txn-name
                         (len (fn-bs-durable-names bs :transactions)))))
-                  (fn-sf-record-candidate ks)))
+                  (fn-bs-row-wire (fn-sf-record-candidate ks) arena)))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-store-relation-window-unfolds
@@ -310,11 +310,11 @@
 (defthm fn-bs-k8-one-record-read
   (implies (and (natp n)
                 (fn-bs-inop (fn-bs-lookup s :transactions (fn-bs-txn-name n)))
-                (fn-store-event-p
+                (fn-wire-event-p
                  (fn-bs-record-of s
                                   (fn-bs-lookup s :transactions
                                                 (fn-bs-txn-name n))))
-                (equal (fn-store-event-sequence
+                (equal (fn-wire-event-sequence
                         (fn-bs-record-of s
                                          (fn-bs-lookup s :transactions
                                                        (fn-bs-txn-name n))))
@@ -334,7 +334,7 @@
            (equal (fn-bs-read-records
                    bs (len (fn-bs-durable-names bs :transactions))
                    (1+ (len (fn-bs-durable-names bs :transactions))))
-                  (list (fn-sf-record-candidate ks))))
+                  (list (fn-bs-row-wire (fn-sf-record-candidate ks) arena))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-k8-pending-link-view-record-is-candidate
@@ -345,6 +345,17 @@
                  fn-bs-kernel-candidates-are-typed
                  fn-bs-durable-records-length
                  fn-bs-shape-at-the-pending-link-name
+                 (:instance fn-bs-row-wire-of-a-store-event-is-a-cons
+                            (row (fn-sf-record-candidate ks)))
+                 (:instance fn-bs-row-wire-keeps-the-sequence
+                            (row (fn-sf-record-candidate ks)))
+                 (:instance fn-bs-record-of-octets-is-a-wire-event-or-nil
+                            (octets (fn-bs-content
+                                     bs (fn-bs-lookup
+                                         bs :transactions
+                                         (fn-bs-txn-name
+                                          (len (fn-bs-durable-names
+                                                bs :transactions)))))))
                  (:instance fn-bs-k8-one-record-read
                             (s bs) (n (len (fn-bs-durable-names bs :transactions))))
                  (:instance fn-bs-lookup-of-a-pending-target
@@ -364,7 +375,7 @@
            (equal (fn-bs-read-records
                    bs 0 (len (fn-bs-names bs :transactions)))
                   (append (fn-bs-durable-records bs)
-                          (list (fn-sf-record-candidate ks)))))
+                          (list (fn-bs-row-wire (fn-sf-record-candidate ks) arena)))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-view-reads-the-durable-records
@@ -386,7 +397,7 @@
            (equal (fn-bs-durable-records
                    (fn-bs-fence-dir bs :transactions))
                   (append (fn-bs-durable-records bs)
-                          (list (fn-sf-record-candidate ks)))))
+                          (list (fn-bs-row-wire (fn-sf-record-candidate ks) arena)))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-k8-fenced-durable-records-are-pre-fence-view-read
@@ -572,8 +583,8 @@
                 (fn-bs-crash-imagep
                  (fn-bs-fence-dir bs :transactions) image))
            (equal (fn-bs-scan-records (fn-bs-scan-store image))
-                  (append (fn-sf-records ks)
-                          (list (fn-sf-record-candidate ks)))))
+                  (append (fn-bs-rows-wire (fn-sf-records ks) arena)
+                          (list (fn-bs-row-wire (fn-sf-record-candidate ks) arena)))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-k8-pending-link-fence-preserves-relation
