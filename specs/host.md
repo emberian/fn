@@ -585,9 +585,17 @@ fault, exit 4), reads fields through ACL2's accessors, appends each pair's
 frame to that peer's journal before it writes the command, and splits no
 name list: a list of names is a list of strings. PRF-208's keystone equates
 the plan with the by-index fetch it replaced. Nothing on the wire or on disk
-changes. The submission-taken, served-step and capture results are defined
-there and move off their globals in the next step (the adapter-retirement
-continuation).
+changes. The take returns a SubmissionTaken (word, id, message-id, stored
+octets, groups; the host reads those five) in place of six globals; the
+submission path's FeedPublication carries the in-flight id as its token,
+and that id is one of the owner's two submission ids, a connection number or
+the control id `*fn-own-control-id*` (an `operator post`, a BP application
+or transit submission): PRF-208's keystones say the host's check holds of
+the intent's and the resolution's value for every outcome word, given that
+and a codec that accepts each journal record. A recognizer checks only the
+fields the host reads. The capture result carries the checkpoint
+pipeline's ten fields in its order; the served step's result is the owner
+scheduler's render plan (not this section's).
 
 ### Differential evidence and measurements
 

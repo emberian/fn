@@ -76,6 +76,55 @@
       (fnn-refuse "owner startup hook refused")))
   :accepted)
 
+;;; Measurement (adapter-retirement-2; opt-in, FN_OWNER_MEASURE=1 at start):
+;;; per label, how many times the owner mutex was held, for how long, and
+;;; how many octets SBCL allocated while it was (sb-ext:get-bytes-consed is
+;;; process-wide: a measurement run keeps other threads quiet).  The label
+;;; is the dynamic *fnn-owner-measure-label*: :control inside a control
+;;; request (an operator post), :feed-flush for the flush's own cost (nested
+;;; in a hold), :other otherwise.  Off, it costs one special-variable test
+;;; per hold.  The totals go to stderr when the owner stops
+;;; (fnn-owner-measure-report).  It decides nothing and changes no state the
+;;; owner reads.
+(defvar *fnn-owner-measure* nil)
+(defvar *fnn-owner-measure-label* :other)
+(defvar *fnn-owner-measure-table*
+  (make-hash-table :test 'eq :synchronized t))
+
+(defun fnn-owner-measure-note (label start bytes)
+  (let* ((held (- (get-internal-real-time) start))
+         (consed (- (sb-ext:get-bytes-consed) bytes))
+         (row (or (gethash label *fnn-owner-measure-table*)
+                  (setf (gethash label *fnn-owner-measure-table*)
+                        (list 0 0 0 0)))))
+    (incf (first row))
+    (incf (second row) held)
+    (setf (third row) (max (third row) held))
+    (incf (fourth row) consed)))
+
+(defmacro fnn-owner-measured ((label) &body body)
+  (let ((start (gensym "START")) (bytes (gensym "BYTES")))
+    `(if *fnn-owner-measure*
+         (let ((,start (get-internal-real-time))
+               (,bytes (sb-ext:get-bytes-consed)))
+           (unwind-protect (progn ,@body)
+             (fnn-owner-measure-note ,label ,start ,bytes)))
+       (progn ,@body))))
+
+(defun fnn-owner-measure-report ()
+  (when *fnn-owner-measure*
+    (maphash
+     (lambda (label row)
+       (destructuring-bind (count held most consed) row
+         (format *error-output*
+                 "~&fn-owner-measure ~(~a~) holds=~d held-us=~d max-us=~d bytes=~d~%"
+                 label count
+                 (round (* held 1000000) internal-time-units-per-second)
+                 (round (* most 1000000) internal-time-units-per-second)
+                 consed)))
+     *fnn-owner-measure-table*)
+    (finish-output *error-output*)))
+
 (defun fnn-owner-core (name &rest args)
   (apply #'fnn-core-state name args))
 
@@ -579,55 +628,6 @@ checkpoint's S, or NIL."
           (when service (fnn-owner-feed-close-all service))
           (fnn-store-close store)
           (error e))))))
-
-;;; Measurement (adapter-retirement-2; opt-in, FN_OWNER_MEASURE=1 at start):
-;;; per label, how many times the owner mutex was held, for how long, and
-;;; how many octets SBCL allocated while it was (sb-ext:get-bytes-consed is
-;;; process-wide: a measurement run keeps other threads quiet).  The label
-;;; is the dynamic *fnn-owner-measure-label*: :control inside a control
-;;; request (an operator post), :feed-flush for the flush's own cost (nested
-;;; in a hold), :other otherwise.  Off, it costs one special-variable test
-;;; per hold.  The totals go to stderr when the owner stops
-;;; (fnn-owner-measure-report).  It decides nothing and changes no state the
-;;; owner reads.
-(defvar *fnn-owner-measure* nil)
-(defvar *fnn-owner-measure-label* :other)
-(defvar *fnn-owner-measure-table*
-  (make-hash-table :test 'eq :synchronized t))
-
-(defun fnn-owner-measure-note (label start bytes)
-  (let* ((held (- (get-internal-real-time) start))
-         (consed (- (sb-ext:get-bytes-consed) bytes))
-         (row (or (gethash label *fnn-owner-measure-table*)
-                  (setf (gethash label *fnn-owner-measure-table*)
-                        (list 0 0 0 0)))))
-    (incf (first row))
-    (incf (second row) held)
-    (setf (third row) (max (third row) held))
-    (incf (fourth row) consed)))
-
-(defmacro fnn-owner-measured ((label) &body body)
-  (let ((start (gensym "START")) (bytes (gensym "BYTES")))
-    `(if *fnn-owner-measure*
-         (let ((,start (get-internal-real-time))
-               (,bytes (sb-ext:get-bytes-consed)))
-           (unwind-protect (progn ,@body)
-             (fnn-owner-measure-note ,label ,start ,bytes)))
-       (progn ,@body))))
-
-(defun fnn-owner-measure-report ()
-  (when *fnn-owner-measure*
-    (maphash
-     (lambda (label row)
-       (destructuring-bind (count held most consed) row
-         (format *error-output*
-                 "~&fn-owner-measure ~(~a~) holds=~d held-us=~d max-us=~d bytes=~d~%"
-                 label count
-                 (round (* held 1000000) internal-time-units-per-second)
-                 (round (* most 1000000) internal-time-units-per-second)
-                 consed)))
-     *fnn-owner-measure-table*)
-    (finish-output *error-output*)))
 
 (defmacro fnn-with-owner ((service) &body body)
   `(sb-thread:with-mutex ((fnn-owner-service-lock ,service))

@@ -3916,15 +3916,18 @@
       ],
       "evidence": [
         "books/owner-results.lisp",
-        "tests/acl2/owner-results-tests.lisp",
-        "host/owner-host.lisp",
-        "host/native/owner.lisp",
         "host/native/feed-service.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/adapter-retirement-2026-09-26.md",
+        "tests/acl2/owner-results-tests.lisp",
+        "tests/native_bp_transit_identity_raw.lisp",
         "tests/native_feed_service_raw.lisp",
         "tests/native_live_config_cache_raw.lisp",
-        "planning/evidence/adapter-retirement-2026-09-26.md"
+        "tests/native_owner_bound_commit_raw.lisp",
+        "tools/run_owner.py"
       ],
-      "implementation_note": "First half (lane adapter-retirement): the feed results (FeedPublication) and the configuration staging results (ConfigResult) are typed; fnn-owner-name-list and fnn-owner-config-names are deleted and the feed flush consumes one sealed frame plan. The submission-taken, served-step and capture results are defined in books/owner-results.lisp and still travel through their globals until the continuation wires them (and the catalog slice's completion token)."
+      "implementation_note": "Lane adapter-retirement: FeedPublication and ConfigResult typed; fnn-owner-name-list and fnn-owner-config-names deleted; the feed flush consumes one sealed frame plan. Lane adapter-retirement-2: the submission path's publication admits the owner's two submission ids (the batch AM fault: the operator post's :control), with keystones for every outcome; the take returns a SubmissionTaken (six fn-owner-submit-* mailboxes retired; the transit decision's memberships are its own fn-owner-transit-groups); Capture takes checkpoint-pipeline-5's field names. ServedStep is fenced to lane owner-scheduler (its render plan replaces the served step's return)."
     }
   ]
 }

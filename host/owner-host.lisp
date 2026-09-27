@@ -1452,11 +1452,13 @@
   ; (books/owner-results.lisp; well-formed by
   ; fn-ores-submission-intent-publication-is-well-formed): the token is the
   ; in-flight id, a connection number or the control id.
+  ; (fn-ores-submission-intent-publication-unfolds: these two calls are it.)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-owner-shared-resolution-id nil state)))
-    (value (fn-ores-submission-intent-publication
-            (fn-owner-core state) (fn-owner-intent-carry state)
-            evidence generation txid))))
+  (let* ((owner (fn-owner-core state))
+         (intent (fn-icar-submission-intent owner (fn-owner-intent-carry state)
+                                            evidence generation txid))
+         (state (f-put-global 'fn-owner-shared-resolution-id nil state)))
+    (value (fn-ores-intent-publication intent (fn-ores-inflight-token owner)))))
 
 ; Project commit/abort while the same submission is still in flight.  The
 ; caller durably appends these records before invoking fn-owner-outcome (or

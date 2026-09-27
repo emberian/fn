@@ -192,11 +192,26 @@
   (let ((sub (fn-own-inflight o)))
     (and sub (fn-own-sub-id sub))))
 
+; The publication of an intent pair (result . records); the wrapper calls
+; fn-icar-submission-intent itself (the subject capability P7 names) and hands
+; its value here.
+(defun fn-ores-intent-publication (intent token)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-ores-feed-port-publication (car intent) (cdr intent) nil token nil))
+
 (defun fn-ores-submission-intent-publication (o carry evidence generation txid)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((intent (fn-icar-submission-intent o carry evidence generation txid)))
-    (fn-ores-feed-port-publication (car intent) (cdr intent) nil
-                                   (fn-ores-inflight-token o) nil)))
+  (fn-ores-intent-publication
+   (fn-icar-submission-intent o carry evidence generation txid)
+   (fn-ores-inflight-token o)))
+
+; What host/owner-host.lisp fn-owner-submission-intent computes (two calls)
+; is the keystone's subject.
+(defthm fn-ores-submission-intent-publication-unfolds
+  (equal (fn-ores-intent-publication
+          (fn-icar-submission-intent o carry evidence generation txid)
+          (fn-ores-inflight-token o))
+         (fn-ores-submission-intent-publication o carry evidence generation txid)))
 
 (defun fn-ores-resolution-word (o word records)
   (declare (xargs :guard t))
@@ -643,7 +658,8 @@
                  (cdr (fn-icar-submission-intent o carry evidence generation txid))))
            (fn-ores-feed-publication-p
             (fn-ores-submission-intent-publication o carry evidence generation txid)))
-  :hints (("Goal" :in-theory (e/d (fn-ores-records-sealp fn-ores-tokenp)
+  :hints (("Goal" :in-theory (e/d (fn-ores-records-sealp fn-ores-tokenp
+                                   fn-ores-intent-publication)
                                   (fn-icar-submission-intent fn-ores-feed-port-publication
                                    fn-ores-feed-publication-p fn-ores-sealed-plan
                                    fn-ores-sealed-plan-p
