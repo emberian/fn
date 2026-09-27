@@ -45,3 +45,24 @@
   (declare (xargs :guard (fn-arn-extent-guardp file eoff elen poff plen trailer))
            (ignore eoff elen trailer))
   (fn-oct-snoc fn-arena$a (fn-durable-octets file poff plen)))
+
+; The RESEAT (lane arena-offheap-3, PRF-296): handle H is re-pointed at the
+; extent the log wrote its payload to, once the log's barrier made it
+; durable.  The logical value at H becomes the extent's durable octets; when
+; those are the payload H held (the faithful write, which ACL2 checks before
+; the owner asks: books/payload-commit-extent.lisp), the arena is unchanged
+; (fn-arena-reseat-extent-keeps-a-faithful-arena, books/payload-arena.lisp).
+(defun fn-arena$a-reseat-extent (h file eoff elen poff plen trailer fn-arena$a)
+  (declare (xargs :guard (and (natp h) (< h (fn-arena$a-count fn-arena$a))
+                              (fn-arn-extent-guardp file eoff elen poff plen trailer)))
+           (ignore eoff elen trailer))
+  (if (and (natp h) (< h (len fn-arena$a)))
+      (fn-oct-update h (fn-durable-octets file poff plen) fn-arena$a)
+    fn-arena$a))
+
+; The RELEASE: the staged copy of a reseated handle is freed.  Logically
+; nothing changes (an extent handle's payload is its extent's).
+(defun fn-arena$a-release (h fn-arena$a)
+  (declare (xargs :guard (natp h))
+           (ignore h))
+  fn-arena$a)
