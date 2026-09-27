@@ -201,9 +201,10 @@
 ; form read through the arena (books/consumer-bound.lisp fn-cbind-poll-over,
 ; fn-cbind-plain-poll-over); the arena-free poll refuses it (:refused
 ; :report).  The host's step switches to fn-cwait-step-over with the live
-; arena (flip-bridge REQUEST to the host lane).  KEYSTONE 2's run is a model
-; over owner states whose poll is the arena-free one: restating it over the
-; arena needs the arena each observation saw (an open item).
+; arena (flip-bridge REQUEST to the host lane).  KEYSTONE 2 is restated over
+; the arena below (fn-cwait-run-over): each observation carries the payloads
+; the owner sealed since the one before it, so the arena each poll reads is
+; the arena at that observation.
 
 (defun fn-cwait-poll-over (oc acfg consumer secret fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
@@ -257,3 +258,77 @@
   :hints (("Goal" :in-theory (e/d (fn-cwait-step-over fn-cwait-decide
                                    fn-cwait-empty-pagep-is-a-list)
                                   (fn-cwait-poll-over fn-cwait-empty-pagep)))))
+
+; The wait loop over the arena, as a model.  An observation is
+; (OWNER-CONFIG ELAPSED . SEALS): the owner configuration and elapsed
+; milliseconds at which the host polls, and the payloads the owner sealed
+; into the arena since the previous observation (a durable publication seals
+; its article's octets, then raises the commit signal the waiter sleeps on).
+; The run seals them, steps over the arena, and answers the first step that
+; answers, with the arena as it stood then; nil when the observations run
+; out before one does.
+(defun fn-cwait-seal-all (seals fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (if (consp seals)
+      (let ((fn-arena (fn-arena-seal-list (car seals) fn-arena)))
+        (fn-cwait-seal-all (cdr seals) fn-arena))
+    fn-arena))
+
+(defun fn-cwait-run-over (observations acfg consumer secret seconds fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (if (consp observations)
+      (let* ((o (car observations))
+             (fn-arena (fn-cwait-seal-all (cddr o) fn-arena)))
+        (let ((r (fn-cwait-step-over (car o) acfg consumer secret (cadr o) seconds
+                                     fn-arena)))
+          (if (equal (car r) :answer)
+              (mv (list :answer (cadr r) (car o) (cadr o)) fn-arena)
+            (fn-cwait-run-over (cdr observations) acfg consumer secret seconds
+                               fn-arena))))
+    (mv nil fn-arena)))
+
+; KEYSTONE 2 over the arena (the loop the host runs over fn-cwait-step-over).
+; When the wait answers, it answers the poll over the arena of the owner
+; configuration at its return point, read through the arena as it stood
+; there (the run's returned arena); and an empty answer is given only at or
+; after the deadline.
+(defthm fn-cwait-run-over-answers-the-poll-at-its-return-point
+  (let* ((run (fn-cwait-run-over observations acfg consumer secret seconds fn-arena))
+         (r (mv-nth 0 run)))
+    (implies r
+             (and (equal (car r) :answer)
+                  (equal (cadr r)
+                         (fn-cwait-poll-over (caddr r) acfg consumer secret
+                                             (mv-nth 1 run)))
+                  (implies (and (natp (cadddr r))
+                                (fn-cwait-empty-pagep (cadr r)))
+                           (<= (fn-cwait-deadline-ms seconds) (cadddr r))))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-cwait-run-over observations acfg consumer secret seconds
+                                             fn-arena)
+           :in-theory (e/d (fn-cwait-run-over fn-cwait-step-over fn-cwait-decide)
+                           (fn-cwait-poll-over fn-cwait-empty-pagep
+                            fn-cwait-seal-all)))))
+
+; Every observation the wait slept over was an empty page before the
+; deadline: a step that does not answer is one, and the run continues from
+; the next observation over the arena with this one's seals.
+(defthm fn-cwait-run-over-sleeps-only-over-empty-pages
+  (let* ((o (car observations))
+         (a (fn-cwait-seal-all (cddr o) fn-arena)))
+    (implies (and (consp observations)
+                  (not (equal (car (fn-cwait-step-over (car o) acfg consumer secret
+                                                       (cadr o) seconds a))
+                              :answer)))
+             (and (fn-cwait-empty-pagep
+                   (fn-cwait-poll-over (car o) acfg consumer secret a))
+                  (natp (cadr o))
+                  (< (cadr o) (fn-cwait-deadline-ms seconds))
+                  (equal (fn-cwait-run-over observations acfg consumer secret seconds
+                                            fn-arena)
+                         (fn-cwait-run-over (cdr observations) acfg consumer secret
+                                            seconds a)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cwait-run-over fn-cwait-step-over fn-cwait-decide)
+                                  (fn-cwait-poll-over fn-cwait-empty-pagep
+                                   fn-cwait-seal-all)))))

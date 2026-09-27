@@ -9096,6 +9096,14 @@
         {
           "kind": "theorem",
           "name": "fn-cwait-step-over-is-step-unless-a-held-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-run-over-answers-the-poll-at-its-return-point"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-run-over-sleeps-only-over-empty-pages"
         }
       ]
     },
