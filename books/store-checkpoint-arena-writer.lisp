@@ -673,7 +673,11 @@
                                              fn-arena fn-octets)
            :in-theory (e/d () (fn-scka-write-step fn-scka-body fn-scc-header fn-scc-seal
                                fn-scka-write-step-batch fn-scka-write-step-head
-                               fn-scka-src-payloads fn-sccb-plan-octets fn-scka-srcs-okp fn-scka-chunks)))
+                               fn-scka-src-payloads fn-sccb-plan-octets fn-scka-srcs-okp fn-scka-chunks
+                               ; rules the octet buffer and the NNTP books export that
+                               ; fire on every list here and never help
+                               fn-nntp-article-idp-is-consp fn-oct-bufp-true-listp
+                               fn-octets$c-bufp)))
           ("Subgoal *1/4" :use ((:instance fn-scka-write-step-batch
                                            (count (+ (car pst) (len (nth 2 pst)))))))))
 
