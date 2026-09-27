@@ -6,6 +6,7 @@
 (in-package "ACL2")
 (include-book "bp-workflow-records")
 (include-book "bp-adu")
+(include-book "payload-arena")
 
 ; Result: (:ok value) or (:error reason).
 (defun fn-bpo-make-ok (value)
@@ -34,8 +35,24 @@
          (equal (fn-bp-attempt-generation attempt) attempt-generation)
          (equal (fn-bp-attempt-status attempt) :intent))))
 
-(defun fn-bpo-request-message (s work-id attempt-id attempt-generation)
-  (declare (xargs :guard t))
+;; The stored bytes of a held article.  Since the acceptance flip
+;; (c5808cd72) an article's payload position holds a HANDLE into the payload
+;; arena; the request carries the bytes that handle denotes.  A handle
+;; outside the arena denotes no bytes: it reads :unheld, which is no octet
+;; list, so fn-bpa-requestp's article gate refuses the request (reading NIL
+;; would send an empty article).  An octet payload (an unflipped node) is its
+;; own bytes.
+(defun fn-bpo-article-octets (article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (let ((p (fn-article-payload article)))
+    (if (natp p)
+        (if (< p (fn-arena-count fn-arena))
+            (fn-arena-payload p fn-arena)
+          :unheld)
+      p)))
+
+(defun fn-bpo-request-message (s work-id attempt-id attempt-generation fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (or (not (fn-bp-statep s))
           (consp (fn-bp-state-pending s))
           (fn-bp-state-fenced s))
@@ -62,14 +79,14 @@
                 (fn-bp-work-incarnation work)
                 (fn-bp-work-auth-context work)
                 (fn-bp-work-terms-id work)
-                (fn-article-payload article))))
+                (fn-bpo-article-octets article fn-arena))))
           ; This is also the portable metadata and exact article-size gate.
           (if (fn-bpa-requestp request) request nil))))))
 
-(defun fn-bpo-request-adu (s work-id attempt-id attempt-generation)
-  (declare (xargs :guard t))
+(defun fn-bpo-request-adu (s work-id attempt-id attempt-generation fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((request
-         (fn-bpo-request-message s work-id attempt-id attempt-generation)))
+         (fn-bpo-request-message s work-id attempt-id attempt-generation fn-arena)))
     (if (consp request)
         (fn-bpo-make-ok (fn-bpa-encode request))
       (fn-bpo-make-error :request-refused))))
@@ -154,10 +171,10 @@
 (defthm fn-bpo-request-message-is-request
   (implies
    (consp (fn-bpo-request-message
-           s work-id attempt-id attempt-generation))
+           s work-id attempt-id attempt-generation fn-arena))
    (fn-bpa-requestp
     (fn-bpo-request-message
-     s work-id attempt-id attempt-generation)))
+     s work-id attempt-id attempt-generation fn-arena)))
   :hints (("Goal"
            :in-theory
            (e/d (fn-bpo-request-message)
@@ -171,9 +188,9 @@
 (defthm fn-bpo-request-result-okp
   (equal
    (fn-bpo-result-okp
-    (fn-bpo-request-adu s work-id attempt-id attempt-generation))
+    (fn-bpo-request-adu s work-id attempt-id attempt-generation fn-arena))
    (consp (fn-bpo-request-message
-           s work-id attempt-id attempt-generation)))
+           s work-id attempt-id attempt-generation fn-arena)))
   :hints (("Goal"
            :in-theory
            (e/d (fn-bpo-request-adu fn-bpo-result-okp
@@ -183,13 +200,13 @@
 (defthm fn-bpo-request-result-value
   (implies
    (consp (fn-bpo-request-message
-           s work-id attempt-id attempt-generation))
+           s work-id attempt-id attempt-generation fn-arena))
    (equal
     (fn-bpo-result-value
-     (fn-bpo-request-adu s work-id attempt-id attempt-generation))
+     (fn-bpo-request-adu s work-id attempt-id attempt-generation fn-arena))
     (fn-bpa-encode
      (fn-bpo-request-message
-      s work-id attempt-id attempt-generation))))
+      s work-id attempt-id attempt-generation fn-arena))))
   :hints (("Goal"
            :in-theory
            (e/d (fn-bpo-request-adu fn-bpo-result-value fn-bpo-make-ok)
@@ -198,19 +215,19 @@
 (defthm fn-bpo-request-success-decodes-exactly
   (implies
    (fn-bpo-result-okp
-    (fn-bpo-request-adu s work-id attempt-id attempt-generation))
+    (fn-bpo-request-adu s work-id attempt-id attempt-generation fn-arena))
    (equal
     (fn-bpa-decode-exact
      (fn-bpo-result-value
-      (fn-bpo-request-adu s work-id attempt-id attempt-generation)))
+      (fn-bpo-request-adu s work-id attempt-id attempt-generation fn-arena)))
     (list :ok
           (fn-bpo-request-message
-           s work-id attempt-id attempt-generation))))
+           s work-id attempt-id attempt-generation fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-bpa-round-trip
                             (message
                              (fn-bpo-request-message
-                              s work-id attempt-id attempt-generation))))
+                              s work-id attempt-id attempt-generation fn-arena))))
            :in-theory (disable fn-bpa-round-trip
                                fn-bpa-decode-exact
                                fn-bpa-encode
@@ -222,7 +239,7 @@
 (defthm fn-bpo-request-message-is-exact-construction
   (implies
    (consp (fn-bpo-request-message
-           s work-id attempt-id attempt-generation))
+           s work-id attempt-id attempt-generation fn-arena))
    (let* ((work (fn-bp-find-work work-id (fn-bp-state-works s)))
           (article
            (fn-find-article
@@ -230,7 +247,7 @@
             (fn-state-articles
              (fn-node-acceptance (fn-bp-state-node s))))))
      (equal
-      (fn-bpo-request-message s work-id attempt-id attempt-generation)
+      (fn-bpo-request-message s work-id attempt-id attempt-generation fn-arena)
       (fn-bpa-make-request
        (fn-bp-work-id work)
        (fn-bp-work-subject work)
@@ -240,7 +257,7 @@
        (fn-bp-work-incarnation work)
        (fn-bp-work-auth-context work)
        (fn-bp-work-terms-id work)
-       (fn-article-payload article)))))
+       (fn-bpo-article-octets article fn-arena)))))
   :hints (("Goal"
            :in-theory
            (e/d (fn-bpo-request-message)
@@ -255,10 +272,10 @@
 (defthm fn-bpo-request-success-preserves-context-and-article
   (implies
    (fn-bpo-result-okp
-    (fn-bpo-request-adu s work-id attempt-id attempt-generation))
+    (fn-bpo-request-adu s work-id attempt-id attempt-generation fn-arena))
    (let* ((request
            (fn-bpo-request-message
-            s work-id attempt-id attempt-generation))
+            s work-id attempt-id attempt-generation fn-arena))
           (work (fn-bp-find-work work-id (fn-bp-state-works s)))
           (article
            (fn-find-article
@@ -280,7 +297,7 @@
           (equal (fn-bpa-request-terms-id request)
                  (fn-bp-work-terms-id work))
           (equal (fn-bpa-request-article request)
-                 (fn-article-payload article)))))
+                 (fn-bpo-article-octets article fn-arena)))))
   :hints (("Goal"
            :use ((:instance fn-bpo-request-message-is-exact-construction))
            :in-theory (disable fn-bpo-request-adu
