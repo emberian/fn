@@ -194,6 +194,9 @@
 (include-book "nntp-verdict")
 (include-book "nntp-range-indexed")
 (include-book "nntp-xref")
+; PRF-243 (PKT-665..668): NEWGROUPS, LIST ACTIVE.TIMES, LIST SUBSCRIPTIONS,
+; and the Xref field of ARTICLE, HEAD, HDR and XHDR on the served path.
+(include-book "nntp-reader-compat")
 
 ; LIST COUNTS (RFC 6048 section 2.2) on the served path.  Each group's
 ; line reads that group's pinned membership bucket only: at most
@@ -354,6 +357,10 @@
              (fn-nntp-message-id-tokenp (car args))
              (fn-nntp-msgid-withdrawn-p index (car args)))
         (fn-nntp-withdrawn-reply session t))
+       ;; PRF-243: the served compatibility arms (books/nntp-reader-compat.lisp),
+       ;; after the withdrawn arms so a withdrawn article stays `withdrawn'.
+       ((fn-rcompat-reply session archive index env keyword args)
+        (fn-rcompat-reply session archive index env keyword args))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
                  (fn-nntp-keywordp keyword "BODY")

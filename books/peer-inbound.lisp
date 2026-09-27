@@ -44,13 +44,19 @@
 ; arguments and fn-peer-injection-arguments bundles them.  The transaction
 ; generation is the store's and enters the same way.
 ;
-; RFC 5537 section 3.6 step 2 (a date more than 24 hours in the future) is
-; OPEN: the tree has no certified RFC 5322 date-time reader
-; (fn-inj-date-decode reads back only the injector's own rendering), so the
-; reasons :date-future and :no-clock are reserved and no arm emits them; the
-; clock argument is carried for that arm.  :date-cutoff is reserved for D13
-; and unreachable by design; :unknown-group is reserved (an unknown group is
-; not a refusal by itself, section 2.2).
+; RFC 5537 section 3.6 step 2 (a date more than the operator's margin, at
+; most 24 hours, in the future) is the :date-future arm since PRF-236, read
+; by books/relay-checks.lisp from the clock argument; a date field that is
+; not an RFC 5322 date-time is :date-syntax, a malformed Path (RFC 5536
+; section 3.1.5, RFC 5537 section 3.6 step 4) is :path-syntax, and a missing
+; one is :no-path when the operator requires Path (`relay-require-path').
+; of the octets and the offered Message-ID alone, are
+; `fn-peer-intrinsic-refusal-of'; they are what the refused-offer memory
+; (PRF-235, books/refused-offers.lisp) remembers and what
+; `fn-peer-decide-offer' answers from it.  :no-clock is the transfer's
+; deferral without a clock reading.  :date-cutoff is reserved for D13 and
+; unreachable by design; :unknown-group is reserved (an unknown group is not
+; a refusal by itself, section 2.2).
 
 (in-package "ACL2")
 ; books/node-config.lisp's own includes, not node-config: this book names
@@ -69,6 +75,10 @@
 ; fn-pu-relay-article: the Path update and Xref removal of RFC 5537 3.6/3.7.
 (include-book "path-update")
 (include-book "records-stamp")
+; PRF-236: the date reader, the Path grammar and the transit limits.
+(include-book "relay-checks")
+; PRF-235: the refused-offer memory.
+(include-book "refused-offers")
 
 ; fn-cfg-peer-vocabulary (books/peer-config) stays closed here: no proof in
 ; this book needs the peer table open, and with it open the guard proof of
@@ -91,6 +101,8 @@
   '(:not-a-peer :no-inbound :message-id-syntax :history :staged :busy :fenced
     :inflight-limit :capacity :out-of-scope :loop :no-date :date-future :no-clock
     :proto-article :oversize :unknown-group :date-cutoff
+    :unapproved-moderated
+    :no-path :path-syntax :date-syntax
     ; PRF-230: the store profile's header limits, each by its field's name.
     :header-fields-limit :header-lines-limit :header-octets-limit))
 
@@ -145,6 +157,12 @@
         ((equal reason :no-date) "no Injection-Date or Date")
         ((equal reason :proto-article) "not a valid article")
         ((equal reason :oversize) "article exceeds the configured size")
+        ((equal reason :unapproved-moderated)
+         "no Approved header field for a moderated newsgroup")
+        ((equal reason :no-path) "no Path")
+        ((equal reason :path-syntax) "malformed Path")
+        ((equal reason :date-syntax) "unreadable Injection-Date or Date")
+        ((equal reason :date-future) "dated in the future")
         ((equal reason :header-fields-limit)
          "the header has more fields than the profile's max-header-fields")
         ((equal reason :header-lines-limit)
@@ -189,6 +207,19 @@
                  (not (member-equal name rest)))
             (cons name rest)
           rest))
+    nil))
+
+;; Moderated groups (P3, PRF-228).  RFC 5537 section 3.6 item 6 (a relaying
+;; agent "MAY reject any article without an Approved header field posted to
+;; a newsgroup known to be moderated.  This practice is strongly
+;; encouraged") and section 3.7 item 5 (a serving agent "MUST reject" one):
+;; whether a group NAMES would store the article under is moderated here
+;; (books/config.lisp `fn-cfg-group-moderation').
+(defun fn-peer-moderated-namesp (names v gen)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (or (consp (fn-cfg-group-moderation v gen (car names)))
+          (fn-peer-moderated-namesp (cdr names) v gen))
     nil))
 
 ; The provenance of a transit acceptance (specs/peering.md section 2.4).
@@ -271,11 +302,126 @@
   "peer-probe")
 
 ; -----------------------------------------------------------------------------
+; The refusals the octets decide alone (PRF-235, PRF-236)
+;
+; RFC 5537 section 3.6 steps 1 and 4 and the proto-article check, each a
+; function of the received octets and the offered Message-ID and of nothing
+; else: not the peer, the node, the configuration or the clock.  So a
+; refusal for one of these reasons is the refusal every later transfer of
+; the same octets under the same Message-ID draws, from any peer; that is
+; what makes it safe to remember (books/peer-refused-offers.lisp).  The
+; future-date check (step 2) reads the clock and is NOT here: an article
+; dated tomorrow is acceptable tomorrow, so it is never remembered.
+
+(defun fn-peer-check-msgid (check)
+  (declare (xargs :guard t))
+  (fn-inj-nth 1 check))
+(defun fn-peer-check-groups (check)
+  (declare (xargs :guard t))
+  (fn-inj-nth 2 check))
+
+(defconst *fn-peer-intrinsic-reasons*
+  '(:proto-article :message-id-syntax :no-date :path-syntax :date-syntax))
+
+(defun fn-peer-intrinsic-refusal-of (msgid okp article check)
+  ; OKP, ARTICLE and CHECK are what fn-peer-decide-transfer binds from the
+  ; octets; nil when the article passes.
+  (declare (xargs :guard (or (not okp)
+                             (and (fn-article-syntax-p article)
+                                  (true-listp check)))))
+  (cond ((not okp) :proto-article)
+        ; 3.6 step 1: Newsgroups, Message-ID, and Injection-Date or Date.
+        ; The proto-article check permits a missing Message-ID for POST;
+        ; transit requires it, and requires it to equal the offered one.
+        ((not (equal (fn-af-status-kind check) :ok)) :proto-article)
+        ((not (fn-af-message-id-equalp (fn-peer-check-msgid check) msgid))
+         :message-id-syntax)
+        ((not (fn-path-date-presentp article)) :no-date)
+        ; 3.6 step 4 (valid contents): a Path present once is RFC 5536
+        ; section 3.1.5's.  An absent Path (or one present more than once,
+        ; which has no single value) is fn-peer-path-requiredp's, below: it
+        ; is the operator's to require, so it is not decided here.
+        ((and (fn-af-path-field-value article)
+              (not (fn-rck-path-wellformedp (fn-af-path-field-value article))))
+         :path-syntax)
+        ; 3.6 step 4 (valid contents): the date step 2 examines must be read.
+        ((not (fn-rck-article-instant article)) :date-syntax)
+        (t nil)))
+
+(defun fn-peer-article-of (octets)
+  (declare (xargs :guard t))
+  (let ((parsed (fn-article-parse octets)))
+    (if (and (fn-article-result-okp parsed) (true-listp parsed))
+        (fn-article-result-article parsed)
+      nil)))
+
+; The same refusal from the octets: the one parse, then the arms above.
+(defun fn-peer-intrinsic-refusal (msgid octets)
+  (declare (xargs :guard t))
+  (let* ((article (fn-peer-article-of octets))
+         (okp (and article (fn-article-syntax-p article)))
+         (check (if okp (fn-af-relayed-article-check article) nil)))
+    (fn-peer-intrinsic-refusal-of msgid okp article check)))
+
+; The offer-time answer of the memory the session carries: a remembered
+; reason, only when it is one the octets decide (so a memory built by
+; anything else can say nothing else).
+(defun fn-peer-session-refused (x)
+  (declare (xargs :guard t))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
+
+(defun fn-peer-remembered-reason (msgid session)
+  (declare (xargs :guard t))
+  (let ((r (fn-rof-lookup (fn-record-octets-string msgid)
+                          (fn-peer-session-refused session))))
+    (if (member-equal r *fn-peer-intrinsic-reasons*) r nil)))
+
+; What the owner remembers after a transfer: the intrinsic refusal of the
+; octets, under the operator's capacity (books/relay-checks.lisp).
+(defun fn-peer-refused-record (mem cfg msgid octets)
+  (declare (xargs :guard t))
+  (if (fn-af-message-idp msgid)
+      (fn-rof-record mem (fn-rck-refused-capacity cfg)
+                     (fn-record-octets-string msgid)
+                     (fn-peer-intrinsic-refusal msgid octets))
+    mem))
+
+; RFC 5537 section 3.6 step 4 ("SHOULD reject any article that does not
+; include all the mandatory header fields"; Path is mandatory, RFC 5536
+; section 3.1) as the operator's `relay-require-path' limit (1 requires it).
+; It is not required by default: this node's own authored submissions
+; (fn-own-control-submit: the hybrid-signed author path, the BP application
+; path) store and feed exact octets that carry no Path, and a peer fn node
+; that required one would refuse them (PKT in the transit-hygiene record).
+(defun fn-peer-path-missingp (article cfg)
+  (declare (xargs :guard (fn-article-syntax-p article)))
+  (and (fn-rck-require-pathp cfg)
+       (null (fn-af-path-field-value article))))
+
+; RFC 5537 section 3.6 step 2 over the article: its instant is more than the
+; operator's margin after the clock reading.  No usable reading, no decision
+; here (fn-peer-transfer then defers :no-clock).  The reading is DTN time
+; (books/clock.lisp: seconds since 2000-01-01, the record stamp); the date
+; reader answers seconds since 1970, so the stamp is moved by the 10957 days
+; between the two epochs.  (The first native run, which compared them
+; unconverted, refused every article dated within 30 years.)
+(defun fn-peer-clock-unix-seconds (clock)
+  (declare (xargs :guard t))
+  (let ((stamp (fn-record-stamp-of-observation clock)))
+    (if (natp stamp) (+ stamp *fn-rck-dtn-epoch-unix-seconds*) nil)))
+
+(defun fn-peer-date-futurep (article cfg clock)
+  (declare (xargs :guard (fn-article-syntax-p article)))
+  (fn-rck-date-futurep (fn-rck-article-instant article)
+                       (fn-peer-clock-unix-seconds clock)
+                       (fn-rck-skew cfg)))
+
+; -----------------------------------------------------------------------------
 ; Offer-time decision: only what the Message-ID and the connection decide
 
 (defun fn-peer-decide-offer (node cfg peer session msgid clock inflight)
   (declare (xargs :guard (fn-node-statep node) :verify-guards nil)
-           (ignorable session clock))
+           (ignorable clock))
   (let ((record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))))
     (cond ((not record) (fn-peer-decision :refuse :not-a-peer))
           ((null (fn-cfg-peer-inbound record))
@@ -284,6 +430,9 @@
            (fn-peer-decision :refuse :message-id-syntax))
           ((fn-peer-history-hasp (fn-record-octets-string msgid) node)
            (fn-peer-decision :have :history))
+          ; PRF-235: refused before, for a reason the octets decide.
+          ((fn-peer-remembered-reason msgid session)
+           (fn-peer-decision :refuse (fn-peer-remembered-reason msgid session)))
           ((fn-peer-stagedp (fn-record-octets-string msgid) node)
            (fn-peer-decision :defer :staged))
           ((equal (fn-state-fenced (fn-node-acceptance node)) t)
@@ -303,16 +452,9 @@
 ; -----------------------------------------------------------------------------
 ; Transfer-time decision: the whole article is here
 
-(defun fn-peer-check-msgid (check)
-  (declare (xargs :guard t))
-  (fn-inj-nth 1 check))
-(defun fn-peer-check-groups (check)
-  (declare (xargs :guard t))
-  (fn-inj-nth 2 check))
 
 (defun fn-peer-decide-transfer (node cfg peer msgid octets clock id subject)
-  (declare (xargs :guard (fn-node-statep node) :verify-guards nil)
-           (ignorable clock))
+  (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
   (let* ((record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))
          (parsed (fn-article-parse octets))
          (article (if (and (fn-article-result-okp parsed)
@@ -334,17 +476,20 @@
            (fn-peer-decision :refuse :message-id-syntax))
           ((< (fn-cfg-peer-inbound-max-octets record) (len octets))
            (fn-peer-decision :refuse :oversize))
-          ((not okp) (fn-peer-decision :refuse :proto-article))
-          ; 3.6 step 1: Newsgroups, Message-ID, and Injection-Date or Date.
-          ; The proto-article check permits a missing Message-ID for POST;
-          ; transit requires it, and requires it to equal the offered one.
-          ((not (equal (fn-af-status-kind check) :ok))
-           (fn-peer-decision :refuse :proto-article))
-          ((not (fn-af-message-id-equalp (fn-peer-check-msgid check) msgid))
-           (fn-peer-decision :refuse :message-id-syntax))
-          ((not (fn-path-date-presentp article))
-           (fn-peer-decision :refuse :no-date))
-          ; 3.6 step 2 (date-future): OPEN, see the header.
+          ; 3.6 steps 1 and 4 and the proto-article check: the refusals the
+          ; octets decide (PRF-235, PRF-236; the arms are
+          ; fn-peer-intrinsic-refusal-of's).
+          ((fn-peer-intrinsic-refusal-of msgid okp article check)
+           (fn-peer-decision :refuse
+                             (fn-peer-intrinsic-refusal-of msgid okp article
+                                                           check)))
+          ; 3.6 step 2: more than the operator's margin (at most 24 hours)
+          ; into the future (PRF-236).
+          ((fn-peer-date-futurep article cfg clock)
+           (fn-peer-decision :refuse :date-future))
+          ; 3.6 step 4: Path, when the operator requires it (PRF-236).
+          ((fn-peer-path-missingp article cfg)
+           (fn-peer-decision :refuse :no-path))
           ; 3.6 step 3 / 3.7 step 3: already accepted.  Re-checked here
           ; because the offer may be stale (RFC 4644 section 2.4.2).
           ((fn-peer-history-hasp (fn-record-octets-string msgid) node)
@@ -357,6 +502,14 @@
           ; live now.
           ((null (fn-peer-scope-groups (fn-peer-check-groups check) record cfg))
            (fn-peer-decision :refuse :out-of-scope))
+          ; P3: a group it would be stored under is moderated here and the
+          ; article carries no Approved header field (RFC 5537 sections
+          ; 3.6 item 6 and 3.7 item 5): refused by name, never stored.
+          ((and (fn-peer-moderated-namesp
+                 (fn-peer-scope-groups (fn-peer-check-groups check) record cfg)
+                 (fn-cfg-value cfg) (fn-cfg-generation cfg))
+                (fn-inj-absentp article *fn-mod-approved-name*))
+           (fn-peer-decision :refuse :unapproved-moderated))
           ; RFC 5537 section 3.6 step 7: the Path update is part of
           ; accepting the article.  If the updated article no longer fits
           ; the article bounds (books/article.lisp: a header line, the
@@ -534,7 +687,7 @@
 
 (defun fn-peer-session-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 6)))
+  (and (true-listp x) (equal (len x) 7)))
 (defun fn-peer-session-base (x)
   (declare (xargs :guard t))
   (fn-ag-car x))
@@ -553,30 +706,37 @@
 (defun fn-peer-session-cfg (x)
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-(defun fn-peer-make-session (base peer transfer inflight node cfg)
+; PRF-235: the seventh field is the refused-offer memory the offer decision
+; reads (books/refused-offers.lisp), re-pinned from the owner with the node
+; (books/owner.lisp fn-own-conn-live-session).  A session built by
+; fn-peer-make-session starts with none.
+(defun fn-peer-make-session (base peer transfer inflight node cfg refused)
   (declare (xargs :guard t))
-  (list base peer transfer inflight node cfg))
+  (list base peer transfer inflight node cfg refused))
 
 (defthm fn-peer-session-shapep-of-fn-peer-make-session
-  (fn-peer-session-shapep (fn-peer-make-session base peer transfer inflight node cfg)))
+  (fn-peer-session-shapep (fn-peer-make-session base peer transfer inflight node cfg refused)))
 (defthm fn-peer-session-base-of-fn-peer-make-session
-  (equal (fn-peer-session-base (fn-peer-make-session base peer transfer inflight node cfg))
+  (equal (fn-peer-session-base (fn-peer-make-session base peer transfer inflight node cfg refused))
          base))
 (defthm fn-peer-session-peer-of-fn-peer-make-session
-  (equal (fn-peer-session-peer (fn-peer-make-session base peer transfer inflight node cfg))
+  (equal (fn-peer-session-peer (fn-peer-make-session base peer transfer inflight node cfg refused))
          peer))
 (defthm fn-peer-session-transfer-of-fn-peer-make-session
-  (equal (fn-peer-session-transfer (fn-peer-make-session base peer transfer inflight node cfg))
+  (equal (fn-peer-session-transfer (fn-peer-make-session base peer transfer inflight node cfg refused))
          transfer))
 (defthm fn-peer-session-inflight-of-fn-peer-make-session
-  (equal (fn-peer-session-inflight (fn-peer-make-session base peer transfer inflight node cfg))
+  (equal (fn-peer-session-inflight (fn-peer-make-session base peer transfer inflight node cfg refused))
          inflight))
 (defthm fn-peer-session-node-of-fn-peer-make-session
-  (equal (fn-peer-session-node (fn-peer-make-session base peer transfer inflight node cfg))
+  (equal (fn-peer-session-node (fn-peer-make-session base peer transfer inflight node cfg refused))
          node))
 (defthm fn-peer-session-cfg-of-fn-peer-make-session
-  (equal (fn-peer-session-cfg (fn-peer-make-session base peer transfer inflight node cfg))
+  (equal (fn-peer-session-cfg (fn-peer-make-session base peer transfer inflight node cfg refused))
          cfg))
+(defthm fn-peer-session-refused-of-fn-peer-make-session
+  (equal (fn-peer-session-refused (fn-peer-make-session base peer transfer inflight node cfg refused))
+         refused))
 (defthm fn-peer-session-shapep-forward-shape
   (implies (fn-peer-session-shapep x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining)
@@ -584,7 +744,8 @@
 (in-theory (disable (:d fn-peer-session-shapep) (:d fn-peer-session-base)
                     (:d fn-peer-session-peer) (:d fn-peer-session-transfer)
                     (:d fn-peer-session-inflight) (:d fn-peer-session-node)
-                    (:d fn-peer-session-cfg) (:d fn-peer-make-session)))
+                    (:d fn-peer-session-cfg) (:d fn-peer-session-refused)
+                    (:d fn-peer-make-session)))
 
 ; The reader session under a transit session, named ONCE.  The served command
 ; chain is four records deep -- auth over peer over post over the reader
@@ -637,21 +798,23 @@
 (defun fn-peer-open-session (archive peer node cfg)
   (declare (xargs :guard t :verify-guards nil))
   (if (and (or (null peer) (stringp peer)) (fn-node-statep node) (fn-cfgp cfg))
-      (fn-peer-make-session (fn-post-open-session archive) peer nil 0 node cfg)
-    (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil)))
+      (fn-peer-make-session (fn-post-open-session archive) peer nil 0 node cfg nil)
+    (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil nil)))
 
 (defun fn-peer-with-base (ps base)
   (declare (xargs :guard t))
   (fn-peer-make-session base (fn-peer-session-peer ps)
-                        (fn-peer-session-transfer ps)
-                        (fn-peer-session-inflight ps)
-                        (fn-peer-session-node ps) (fn-peer-session-cfg ps)))
+                                (fn-peer-session-transfer ps)
+                                (fn-peer-session-inflight ps)
+                                (fn-peer-session-node ps) (fn-peer-session-cfg ps)
+                                (fn-peer-session-refused ps)))
 
 (defun fn-peer-with-transfer (ps transfer inflight)
   (declare (xargs :guard t))
   (fn-peer-make-session (fn-peer-session-base ps) (fn-peer-session-peer ps)
-                        transfer inflight
-                        (fn-peer-session-node ps) (fn-peer-session-cfg ps)))
+                                transfer inflight
+                                (fn-peer-session-node ps) (fn-peer-session-cfg ps)
+                                (fn-peer-session-refused ps)))
 
 ; Re-pin the node the offer decision reads.  `fn-peer-decide-offer' answers
 ; from the node the session carries, and only `fn-peer-open-session' ever set
@@ -668,9 +831,20 @@
 (defun fn-peer-with-node (ps node)
   (declare (xargs :guard t))
   (fn-peer-make-session (fn-peer-session-base ps) (fn-peer-session-peer ps)
-                        (fn-peer-session-transfer ps)
-                        (fn-peer-session-inflight ps)
-                        node (fn-peer-session-cfg ps)))
+                                (fn-peer-session-transfer ps)
+                                (fn-peer-session-inflight ps)
+                                node (fn-peer-session-cfg ps)
+                                (fn-peer-session-refused ps)))
+
+; PRF-235: re-pin the refused-offer memory, as fn-peer-with-node re-pins the
+; node (books/owner.lisp fn-own-conn-live-session does both per read).
+(defun fn-peer-with-refused (ps refused)
+  (declare (xargs :guard t))
+  (fn-peer-make-session (fn-peer-session-base ps) (fn-peer-session-peer ps)
+                                (fn-peer-session-transfer ps)
+                                (fn-peer-session-inflight ps)
+                                (fn-peer-session-node ps) (fn-peer-session-cfg ps)
+                                refused))
 
 ; -----------------------------------------------------------------------------
 ; Replies, exactly per RFC (the two tables of section 2.2)
@@ -1169,9 +1343,9 @@
 ; books/nntp-auth.lisp carries through AUTHINFO.
 (defthm fn-peer-session-consistentp-of-make-session
   (equal (fn-peer-session-consistentp
-          (fn-peer-make-session base peer transfer inflight node cfg) archive)
+          (fn-peer-make-session base peer transfer inflight node cfg refused) archive)
          (and (fn-peer-sessionp
-               (fn-peer-make-session base peer transfer inflight node cfg))
+               (fn-peer-make-session base peer transfer inflight node cfg refused))
               (fn-post-session-consistentp base archive)
               t))
   :hints (("Goal" :in-theory (e/d (fn-peer-session-consistentp)
@@ -1240,7 +1414,7 @@
                 (fn-peer-transferp transfer)
                 (natp inflight))
            (fn-peer-sessionp
-            (fn-peer-make-session base nil transfer inflight nil nil)))
+            (fn-peer-make-session base nil transfer inflight nil nil refused)))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp)))))))
@@ -1256,7 +1430,7 @@
                 (fn-node-statep node)
                 (fn-cfgp cfg))
            (fn-peer-sessionp
-            (fn-peer-make-session base nil transfer inflight node cfg)))
+            (fn-peer-make-session base nil transfer inflight node cfg refused)))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp))))))
@@ -1273,7 +1447,7 @@
            (fn-peer-sessionp
             (fn-peer-make-session base nil transfer inflight
                                   (fn-peer-session-node ps)
-                                  (fn-peer-session-cfg ps))))
+                                  (fn-peer-session-cfg ps) refused)))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp)))))))
@@ -1290,7 +1464,7 @@
                 (fn-peer-transferp transfer)
                 (natp inflight))
            (fn-peer-sessionp
-            (fn-peer-make-session base peer transfer inflight node cfg)))
+            (fn-peer-make-session base peer transfer inflight node cfg refused)))
   :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
                                   ((:d fn-post-sessionp) (:d fn-peer-transferp)
                                    (:d fn-node-statep) (:d fn-cfgp))))))
@@ -1460,6 +1634,37 @@
                                    (:d fn-post-session-consistentp)
                                    (:d fn-node-statep))))))
 
+;; PRF-235: re-pinning the refused-offer memory replaces only that field.
+(defthm fn-peer-session-refused-of-fn-peer-with-node
+  (equal (fn-peer-session-refused (fn-peer-with-node ps node))
+         (fn-peer-session-refused ps))
+  :hints (("Goal" :in-theory (enable (:d fn-peer-with-node)))))
+
+(defthm fn-peer-session-fields-of-fn-peer-with-refused
+  (and (equal (fn-peer-session-base (fn-peer-with-refused ps r)) (fn-peer-session-base ps))
+       (equal (fn-peer-session-peer (fn-peer-with-refused ps r)) (fn-peer-session-peer ps))
+       (equal (fn-peer-session-node (fn-peer-with-refused ps r)) (fn-peer-session-node ps))
+       (equal (fn-peer-session-transfer (fn-peer-with-refused ps r)) (fn-peer-session-transfer ps))
+       (equal (fn-peer-session-inflight (fn-peer-with-refused ps r)) (fn-peer-session-inflight ps))
+       (equal (fn-peer-session-cfg (fn-peer-with-refused ps r)) (fn-peer-session-cfg ps))
+       (equal (fn-peer-session-refused (fn-peer-with-refused ps r)) r))
+  :hints (("Goal" :in-theory (enable (:d fn-peer-with-refused)))))
+
+(defthm fn-peer-sessionp-of-fn-peer-with-refused
+  (implies (fn-peer-sessionp ps)
+           (fn-peer-sessionp (fn-peer-with-refused ps r)))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp) (:d fn-peer-with-refused))
+                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp))))))
+
+(defthm fn-peer-session-consistentp-of-fn-peer-with-refused
+  (implies (fn-peer-session-consistentp ps archive)
+           (fn-peer-session-consistentp (fn-peer-with-refused ps r) archive))
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-session-consistentp))
+                                  ((:d fn-peer-sessionp) (:d fn-peer-with-refused)
+                                   (:d fn-post-session-consistentp)
+                                   (:d fn-node-statep))))))
+
 ; -----------------------------------------------------------------------------
 ; Guard verification of the served chain
 ;
@@ -1532,10 +1737,14 @@
     (:d fn-peer-probe-obligation-id) (:d fn-peer-probe-subject)
     (:d fn-peer-decide-offer) (:d fn-peer-check-msgid) (:d fn-peer-check-groups)
     (:d fn-peer-decide-transfer) (:d fn-peer-injection-arguments)
+    (:d fn-peer-intrinsic-refusal-of) (:d fn-peer-intrinsic-refusal)
+    (:d fn-peer-article-of) (:d fn-peer-remembered-reason)
+    (:d fn-peer-refused-record) (:d fn-peer-date-futurep)
+    (:d fn-peer-path-missingp) (:d fn-peer-clock-unix-seconds)
     (:d fn-peer-transfer) (:d fn-peer-submissionp) (:d fn-peer-transferp)
     (:d fn-peer-sessionp) (:d fn-peer-session-consistentp)
     (:d fn-peer-open-session) (:d fn-peer-with-base) (:d fn-peer-with-transfer)
-    (:d fn-peer-with-node)
+    (:d fn-peer-with-node) (:d fn-peer-with-refused)
     (:d fn-peer-single) (:d fn-peer-echo-reply) (:d fn-peer-ihave-offer-line)
     (:d fn-peer-check-code) (:d fn-peer-transit-code) (:d fn-peer-offer-code)
     (:d fn-peer-transit-refusal-line)

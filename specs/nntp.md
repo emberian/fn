@@ -113,8 +113,10 @@ guess. `facts` is a list of `(:fn-nntp-group-fact name created-at-dtn-ms
 observation)` records: the group's name, the DTN time (RFC 9171 §4.2.6) at
 which it was created, and the clock observation under which that time was
 established, so a creation time carries its own provenance and can never be
-back-filled from the reader's current clock. The mutable-owner lane persists
-these records; the reader consumes the shape and stores none of its own. The
+back-filled from the reader's current clock. On the served path the facts
+are the configuration's (PRF-243, below): each served group's entry keeps
+the stamp of the record that created it, and the reader consumes the shape
+and stores none of its own. The
 POSIX-to-DTN epoch shift is `fn-nntp-unix-dtn-ms` in ACL2, not in the adapter.
 
 fn's reader has no timezone database. Its local time zone **is** Coordinated
@@ -167,7 +169,7 @@ NNT-016: XPAT is listed in the capability block and answers RFC 2980 section 2.9
   wildmat in one bounded `XPAT` window; it builds no pattern.
 
 `LIST ACTIVE.TIMES` reads the same persisted creation facts `NEWGROUPS`
-reads, so §7.6.4's "the results SHOULD be consistent" is true by construction.
+reads, so RFC 6048 §2.3's "the results SHOULD be consistent" is true by construction.
 Its third field is the plain text `unattributed`: a configuration record
 records who may reconfigure the node, not a mailbox to attribute a group to,
 and fn does not fabricate one. `LIST NEWSGROUPS` shows each group's description when the operator has set
@@ -339,14 +341,69 @@ distinction:
   unset, the `.invalid` agent); the eight fields are the eight-field
   renderer's (`fn-nov-served-lines-numbered-extend-the-eight-fields`). Local
   numbers are never merged across nodes: a peer's Xref is not read.
-- Local policy: Xref is overview metadata only. ARTICLE and HEAD serve the
-  stored octets as held (no Xref header is spliced in); a proto-article
-  carrying Xref is refused at injection (RFC 5537 §3.5 item 2), but an
-  article a peer relayed is stored as offered, so its HEAD may carry the
-  peer's Xref with the peer's numbers (PKT-597 (c)); the overview field is
-  the one naming this node's. A group whose name carries a colon is not listed (none is
+- Local policy: since PRF-243 (2026-09-27, below) ARTICLE and HEAD of an
+  article this node numbers carry the same field as the last header line,
+  generated at serve time; the stored octets are unchanged. A
+  proto-article carrying Xref is refused at injection (RFC 5537 §3.5 item
+  2) and a relayed article's Xref is deleted on receipt
+  (`fn-peer-relayed-octets`), so the served field is the one naming this
+  node's numbers. A group whose name carries a colon is not listed (none is
   admitted). Without a server name (a blind environment, not the served
   path) the eight fields and seven format lines of before are answered.
+
+## Reader compatibility: NEWGROUPS, LIST SUBSCRIPTIONS, OVERVIEW.FMT and Xref (NNT-052)
+
+NNT-052: NEWGROUPS and LIST ACTIVE.TIMES list the groups the configuration created, LIST SUBSCRIPTIONS answers a list, LIST OVERVIEW.FMT uses the compatibility form, and ARTICLE, HEAD and HDR carry this node's Xref
+
+Measured with slrn 1.0.3 and pan 0.162 over TLS (lane reader-clients-2,
+PKT-665 to PKT-668); decided on the served path by
+`books/nntp-reader-compat.lisp` `fn-rcompat-reply`, which
+`fn-nntp-archive-command-pinned` asks after the withdrawn arms (PRF-243).
+Every arm needs the environment's server name, which the served
+environment always carries; a blind environment answers as before.
+
+- **NEWGROUPS and LIST ACTIVE.TIMES** (RFC 3977 §7.3; RFC 6048 §2.3).
+  RFC requirement: the groups created since the instant. fn guarantee:
+  the creation time is the stamp of the configuration record that created
+  the group, durable with that record, never the reader's clock: `fn
+  operator CONFIG init` now stamps its record with the host clock, and `fn
+  operator CONFIG group create` (live or offline) with the owner's
+  (`fn-oag-group-facts`, `fn-oag-group-facts-has-the-created-stamp`). A
+  group is listed only when the connection's view holds it
+  (`fn-rcompat-newgroups-names-member`), so a retired group, and one a
+  per-login view excludes, is never named. Local policy: a group of a store
+  initialized before 2026-09-27 has a record with no wall reading and so no
+  creation time; both commands omit it rather than invent one. The offline
+  administrative clock was universal time (seconds since 1900) where the
+  live owner's is DTN seconds; it is DTN seconds now.
+- **LIST SUBSCRIPTIONS [wildmat]** (RFC 6048 §2.6). RFC requirement: 215
+  and one newsgroup per line, in order of importance, or 503 when not
+  maintained. Local policy (decided by the coordinator, PKT-666): the
+  operator's configured default list, set with `fn operator CONFIG group
+  subscribe-default [NAME ...]` (one `:set-default-subscriptions` record,
+  config delta kind code 25; each NAME a live group named once; no NAME
+  clears it), cut to the view's groups in the configured order; with none
+  configured, the view's groups. Never a group the view does not hold
+  (`fn-rcompat-subscription-names-member`,
+  `fn-rcompat-subscription-names-keep-the-configured-order`). slrn's
+  first run (`--create`) reads it; the 503 made slrn reconnect and leave
+  every group unsubscribed.
+- **LIST OVERVIEW.FMT** (RFC 3977 §8.4.2). The served list names the sixth
+  and seventh fields `Bytes:` and `Lines:`, the form §8.4.2 permits "for
+  compatibility with existing implementations"; the fields and their order
+  are unchanged. slrn 1.0.3 disables XOVER on `:bytes`/`:lines`.
+- **Xref on ARTICLE, HEAD, HDR and XHDR** (RFC 5536 §3.2.14; RFC 3977
+  §8.5). fn guarantee: ARTICLE and HEAD of an article this node numbers
+  serve the stored octets with the Xref field OVER carries inserted as the
+  last header line, nothing else changed
+  (`fn-rcompat-served-payload-inserts-one-line`); the session is the
+  generic retrieval's (`fn-rcompat-retrieval-session-is-the-generic-session`);
+  HDR and XHDR Xref answer that field's value
+  (`fn-rcompat-hdr-value-is-the-field-value`). The field is generated like
+  Injection-Info's path identity, outside the authored source: the stored
+  octets and the article's identity (D25) are unchanged. BODY, STAT and
+  XPAT are unchanged (XPAT Xref still matches the stored header, which has
+  none: a deferral).
 
 ## Sessions and framing
 
@@ -749,8 +806,8 @@ NNT-040: a group the operator sets read-only (`group policy NAME n`) refuses a l
 
 RFC 3977 section 7.6.3 gives LIST ACTIVE a status field: `y` (posting
 permitted) or `n` (posting not permitted). RFC 6048 section 2.1 names the
-other values; fn serves `y` and `n` only (`m` is moderation, deferred with
-P3; `x`, `j` and `=` are not served). `n` means *local* postings are not
+other values; fn serves `y`, `n` and `m` (moderation, NNT-047); `x`, `j`
+and `=` are not served. `n` means *local* postings are not
 permitted: articles relayed by peers (IHAVE, TAKETHIS, BP) still arrive,
 which is the RFC's meaning of the flag and not a stronger fn guarantee.
 
@@ -789,6 +846,106 @@ which is the RFC's meaning of the flag and not a stronger fn guarantee.
 - **The claim.** Keystone `fn-gst-post-gate-refuses-exactly-a-listed-n-group`:
   the gate refuses exactly when the article names a group whose listed
   status is `n`. LIST COUNTS still reports `y` for every group (PKT-575).
+
+### Moderated groups (NNT-047)
+
+NNT-047: A moderated group holds an unapproved local post for its moderators (never posting it), commits an article carrying Approved from a moderator's login, refuses an Approved from anyone else by name, lists the group with status m, and a relay refuses an unapproved article in it
+
+RFC 5537 section 3.5 item 7: an injecting agent that receives a
+proto-article naming a moderated group without an Approved header field
+MUST forward it to a moderator (section 3.5.1) or, if that is not possible,
+reject it; section 7: an injecting agent SHOULD verify that an approval
+comes from the moderator by the transport's authentication. Section 3.6
+item 6 lets a relaying agent reject an unapproved article in a moderated
+group ("strongly encouraged"); section 3.7 item 5 requires a serving agent
+to. RFC 6048 section 2.1.1 lists such a group with status `m`.
+
+- **Configuration.** `operator CONFIG group moderate NAME --moderators
+  LOGIN[,LOGIN...] [--queue QUEUE] [--submission ADDRESS]` and `group
+  moderate NAME --off` (offline, or live through the control socket) stage
+  `(:set-group-moderation NAME QUEUE 0 ROWS)`, configuration delta code 23
+  (`books/config.lisp`). A moderator is an account with a role: ROWS are
+  the accounts slot's `(NAME QUEUE ADDRESS 5)` (the group's moderation) and
+  one `(LOGIN NAME "" 4)` per moderator; `--off` removes them. QUEUE
+  defaults to `NAME.moderation`, and must be a live group other than NAME
+  that is not itself moderated, and NAME must not be another moderated
+  group's queue (`:moderation-queue`), so a forwarded article never lands
+  in a moderated group. `account list` prints `moderation NAME QUEUE
+  [ADDRESS]` and `moderator LOGIN NAME`. Keystone
+  `fn-cfg-set-group-moderation-sets-the-moderation`
+  (`books/config-invariants.lisp`) over `fn-cfg-apply-delta`.
+- **One list.** The owner installs one entry `(:moderated G QUEUE LOGINS)`
+  per live moderated group in the posting configuration's status list
+  beside the read-only groups (`books/owner-agent.lisp`
+  `fn-oag-moderation-entries`). A connection authenticated as one of G's
+  moderators sees that entry as `(:approver G QUEUE)`
+  (`books/nntp-auth.lisp` `fn-auth-moderation-config`, applied in
+  `fn-auth-delegate-pinned`); the owner never installs an approver entry
+  (`fn-mod-session-entries-approver-iff-moderator`). LIST and LIST ACTIVE
+  render `m` for G from that list on every connection (`n` wins when the
+  group is also read-only).
+- **POST** (`books/moderation.lisp` `fn-mod-gate`, run by
+  `fn-post-gated-decision` after the read-only gate on an article the
+  injection accepts). An ordinary article naming no moderated group is
+  unchanged. One carrying an Approved field is committed as posted when
+  every moderated group it names is an approver entry on this connection,
+  else refused `441 posting failed; Approved is accepted only from a
+  moderator of each moderated group named (LIST ACTIVE status m)`. One
+  without Approved is forwarded, RFC 5537 section 3.5.1 method 1, to the
+  queue of its leftmost moderated group: the node injects an envelope
+  article (`From: moderation@PATH-IDENTITY`, `Subject: held for moderation
+  in G`, `Newsgroups: QUEUE`, `Message-ID: <fn-moderate.LEFT@RIGHT>` for the
+  proto-article's `<LEFT@RIGHT>`, `Content-Type:
+  application/news-transmission; usage=moderate`) whose body is the
+  proto-article with the Message-ID and Date lines the node added, before
+  any Path, Injection-Info or Injection-Date (section 3.5 item 7). The
+  poster's 240 is the envelope's durable acceptance, exactly as for any
+  POST; the proto-article's own Message-ID is never stored, so the
+  moderator approves by posting the envelope's body with an Approved field
+  from their own login (section 3.9's "moderator ... injecting it"). When
+  the envelope is not injected (the queue is no longer carried, the
+  envelope exceeds the article bound) the POST is refused `441 posting
+  failed; a moderated group is named and the article could not be
+  forwarded to its moderation queue`. A control message (a cancel) is not a
+  posting to the group and is not gated (section 5.3); Supersedes is.
+- **The claims.** Over `fn-post-gated-decision`:
+  `fn-post-unapproved-article-is-never-in-a-moderated-group` (what is
+  committed of an ordinary unapproved article names no moderated group:
+  the committed memberships are the decision's groups),
+  `fn-post-moderator-approved-article-is-committed` and
+  `fn-post-forged-approval-is-refused-by-name`. The envelope never takes a
+  direct submission's identity (`fn-mod-envelope-msgid-is-not-a-generated-id`).
+- **Relay.** `fn-peer-decide-transfer` refuses an article that would be
+  stored in a group moderated here and carries no Approved field,
+  `:unapproved-moderated` ("no Approved header field for a moderated
+  newsgroup", 437/439): IHAVE, TAKETHIS and BP transit alike. An Approved
+  field from a peer is taken as the peer's assertion (RFC 5537 has no
+  standard approval authentication; section 7). Over the owner's transit
+  port: `fn-peer-transfer-never-stages-an-unapproved-moderated-article`.
+- **The queue is private (PKT-658), a stronger fn guarantee.** A
+  submission naming a queue group of the owner's posting configuration is
+  offered to no peer, whatever the feed patterns
+  (`fn-own-submission-targets-of-a-queue-by-definition`,
+  `fn-own-feed-durable-never-enqueues-a-queue`). A reader connection whose
+  login moderates none of the groups a queue serves, and every connection
+  before AUTHINFO, is served a view without the queue group and its
+  articles: the queue is added, hidden, to the login's `account access`
+  READ rule (the restricted view of NNT-046), so GROUP answers 411 and
+  ARTICLE 430 as for a group the node does not carry
+  (`fn-auth-view-hides-the-queue-from-a-non-moderator`). Posting to the
+  queue is not restricted by this rule.
+- **The operator's list (PKT-657, in part).** `moderation list GROUP`
+  prints `moderation group=G queue=Q held=N` and one line per envelope in
+  Q: `held`, `approved` (the post's own Message-ID is stored) or `rejected`
+  (a withdrawal record withdraws the envelope), with the envelope's and the
+  post's Message-IDs; live over the owner's control socket (FNLS frame
+  kind 3, report code 10) or offline over the Store, rendered by
+  `fn-cev-moderation-report`.
+- **Not done.** `moderation approve ID` and `moderation reject ID`
+  (PKT-657): approval is over NNTP today, and rejection needs an operator
+  withdrawal under the node's authority (PKT-575's CT3 verb). No PGPMoose-style signed approval. A poster who omits Date gets
+  a node-added Date in the forwarded body, so a resend is a different
+  envelope (D25 conflict), not a duplicate.
 
 ### Injection-Info parameters: posting-account and mail-complaints-to (PKT-597, 2026-09-26)
 
@@ -1014,8 +1171,8 @@ lane usenet-headers-3), a disclosure the operator's profile authorizes.
 ### Not yet true of POST
 
 There is no
-freshness window on a supplied `Date` (RFC 5537 §3.5 item 3), no
-trusted-source check (item 1) and no moderated-group handling (item 7).
+freshness window on a supplied `Date` (RFC 5537 §3.5 item 3) and no
+trusted-source check (item 1). Moderated groups (item 7) are NNT-047.
 
 An earlier version of this section said RFC 3977 §3.5 forbids pipelining
 after POST's article. It does not, and the claim is withdrawn: §3.5 requires
@@ -1298,6 +1455,67 @@ gives them.
   release with accounts, releases before it cannot open the store (an older
   image refuses delta kinds 15 and 16 at decode); roll back only from the
   pre-upgrade snapshot. The upgrade rehearsal checks that sentence.
+
+### Group access (NNT-046)
+
+NNT-046: A login's access rule restricts its connections to the groups its read wildmat admits, as if the other groups were absent, and its posts to the groups its post wildmat admits
+
+SEC-007: Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from peers the feed patterns name, or from the node's own consumer; confidentiality beyond that is the posters' own encryption
+
+fn's reference is INN's readers.conf access groups (a `read` and a `post`
+wildmat per authenticated identity); RFC 3977 section 4.2 is the wildmat, and
+RFC 4643 leaves what an authenticated identity may see to local policy, so
+this is a local policy with one stronger fn guarantee: no existence oracle.
+
+- **Configuration.** `operator CONFIG account access LOGIN|--anonymous --read
+  R --post P` stages `(:account-access LOGIN R 0 ((LOGIN R P 3)))`,
+  configuration delta code 22 (`books/config.lisp` `fn-cfg-account-access`):
+  one row per login in the accounts slot, mark 3 beside the account rows'
+  0 and 1 and the binding rows' 2; LOGIN "" is the rule of a connection
+  that has not authenticated. The verb admits only patterns that parse as
+  wildmats (`fn-wildmat-parse`); a stored pattern that does not parse admits
+  nothing (fail closed). No rule, or `*`, restricts nothing: existing
+  accounts keep their view. `account access show` is the `account list`
+  report with `access LOGIN read R post P` lines. No store record, no format
+  change.
+- **The view.** The owner projects the rows into the reader listing each
+  connection pins (`fn-oag-listing`, fourth element). A reader session
+  whose login has a read rule is served, by `fn-auth-delegate-pinned`
+  (`books/nntp-auth.lisp`, and its carried twin `fn-scar-auth-delegate-pinned`),
+  the RESTRICTED VIEW of the view it pinned (`books/group-access.lisp`): the
+  groups R admits and their watermarks; the articles with at least one such
+  group, each cut to those groups and memberships; the Message-ID trie and
+  group buckets built from those articles; the withdrawn list cut the same
+  way. The reader machine is unchanged, so GROUP and LISTGROUP of an excluded
+  group answer 411, an article with no readable group answers 430 by
+  Message-ID (and `430` rather than `430 withdrawn` when withdrawn), LIST
+  ACTIVE, NEWSGROUPS and COUNTS omit excluded groups, NEWNEWS omits their
+  articles, and Xref names readable groups only. LIST ACTIVE.TIMES and
+  NEWGROUPS read the environment's creation facts, which the served step
+  does not supply today (`fn-post-reader-env`: none); a change that supplies
+  them must cut them to the view (PKT-643). A selection the
+  view lacks is dropped before the command. PRF-222 keystones: the view is a
+  projection (`fn-gac-restrict-state-is-a-projection`) with a corresponding
+  index, no excluded group or membership is in it, an article is held
+  exactly when it has a readable group, and the view of a store with any
+  excluded groups removed is the same view (`fn-gac-restrict-absent-groups`):
+  no reply can depend on what an excluded group holds.
+- **Posting.** Groups the session may read but not post to join its closed
+  list (the read-only 441; LIST ACTIVE shows `n` to that session); groups it
+  may neither read nor post to leave its served list, so a POST naming one
+  answers the unknown-group 441 of a group the node does not carry. A group
+  it may post to but not read is a drop box.
+- **Scope.** A peer connection has no rule: peering is unchanged, and what a
+  peer is fed is its feed patterns' decision. The consumer poll is the
+  owner's local socket (one owner principal, mode 0600) and reads
+  everything, as the operator does. Not guarantees: the Newsgroups header
+  of a cross-posted article names every group it was posted to (its own
+  octets); a Message-ID is unique node-wide, so a POST of a hidden article's
+  Message-ID is refused as a duplicate; the operator reads everything, and
+  confidentiality from the operator or from a peer is the agents' own
+  encryption. Cost: a restricted session's command is served over a view
+  rebuilt per command (O(A) in the view's articles; an unrestricted session
+  pays nothing); pinning the view per connection is PKT-643.
 
 ### The posting allowance
 

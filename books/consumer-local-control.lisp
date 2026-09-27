@@ -1,6 +1,15 @@
 ; Bounded local-owner consumer command frame.  The Unix socket's 0600 path
 ; binds one local owner principal; no principal, query/view version or Store
 ; coordinates arrive in these bytes.
+;
+; PRF-234 (CNS-006): a consumer the configuration binds to an account
+; (books/consumer-bound.lisp) is driven by two more commands, `bound-poll'
+; (code 7: the consumer id and the account's password) and `bound-ack'
+; (code 8: the password, then the cursor).  The password is the account's
+; own credential, checked by ACL2 against the verifier AUTHINFO checks; it
+; is carried only in the request and never in a reply.  Its field is a
+; two-octet length and 1 to *fn-ncl-max-secret* octets: the longest
+; AUTHINFO PASS argument a 512-octet NNTP command line carries.
 (in-package "ACL2")
 (include-book "native-control")
 (include-book "consumer-position")
@@ -13,14 +22,36 @@
 (defconst *fn-ncl-max-payload* 513)
 (defconst *fn-ncl-poll-max-payload* (+ 9 346 *fn-stxa-max-octets*))
 (defconst *fn-ncl-status-max-payload* 13)
+(defconst *fn-ncl-max-secret* 496)
+(defconst *fn-ncl-bound-max-payload* 1024)
+
+(defun fn-ncl-secretp (x)
+  (and (consp x) (fn-cbor-octet-listp x) (<= (len x) *fn-ncl-max-secret*)))
+
+(defun fn-ncl-secret-bytes (x)
+  (list* (floor (len x) 256) (mod (len x) 256) x))
+
+(defun fn-ncl-read-secret (xs)
+  "Read one secret field: (:ok SECRET REST) or (:bad)."
+  (if (and (consp xs) (consp (cdr xs))
+           (fn-cbor-octetp (car xs)) (fn-cbor-octetp (cadr xs)))
+      (let ((n (+ (* 256 (car xs)) (cadr xs)))
+            (body (cddr xs)))
+        (if (and (posp n) (<= n *fn-ncl-max-secret*) (true-listp body)
+                 (<= n (len body)))
+            (list :ok (take n body) (nthcdr n body))
+          (list :bad)))
+    (list :bad)))
 
 (defun fn-ncl-command-code (kind)
   (case kind (:register 0) (:ack 1) (:position 2)
         (:unregister 3) (:bootstrap 4) (:poll 5) (:status 6)
+        (:bound-poll 7) (:bound-ack 8)
         (otherwise nil)))
 (defun fn-ncl-code-command (code)
   (case code (0 :register) (1 :ack) (2 :position)
         (3 :unregister) (4 :bootstrap) (5 :poll) (6 :status)
+        (7 :bound-poll) (8 :bound-ack)
         (otherwise nil)))
 (verify-guards fn-ncl-command-code)
 (verify-guards fn-ncl-code-command)
@@ -39,9 +70,22 @@
             ((:position :unregister :poll :status)
              (and (fn-cp-idp first) (null second)
                   (cons code (fn-cp-id-bytes first))))
+            ; PRF-234: FIRST the consumer id (bound-poll) or the cursor
+            ; (bound-ack), SECOND the account's password.
+            (:bound-poll
+             (and (fn-cp-idp first) (fn-ncl-secretp second)
+                  (append (list code) (fn-cp-id-bytes first)
+                          (fn-ncl-secret-bytes second))))
+            (:bound-ack
+             (and (fn-ncl-secretp second)
+                  (eq (fn-cp-nth 0 (fn-cp-cursor-decode first)) :ok)
+                  (append (list code) (fn-ncl-secret-bytes second) first)))
             (otherwise nil))))
     (if (and payload (fn-cbor-octet-listp payload)
-             (<= (len payload) *fn-ncl-max-payload*))
+             (<= (len payload)
+                 (if (member kind '(:bound-poll :bound-ack))
+                     *fn-ncl-bound-max-payload*
+                   *fn-ncl-max-payload*)))
         (fn-nctrl-seal *fn-ncl-request-kind* payload)
       :bad)))
 
@@ -51,7 +95,10 @@
       (let ((payload (fn-frame-result-payload opened)))
         (if (or (not (consp payload))
                 (not (fn-cbor-octet-listp payload))
-                (not (<= (len payload) *fn-ncl-max-payload*)))
+                (not (<= (len payload)
+                         (if (member (car payload) '(7 8))
+                             *fn-ncl-bound-max-payload*
+                           *fn-ncl-max-payload*))))
             (list :refused :size)
           (let ((kind (fn-ncl-code-command (car payload)))
                 (body (cdr payload)))
@@ -79,6 +126,25 @@
                         (null (fn-cp-nth 2 one)))
                    (list :consumer kind (fn-cp-nth 1 one) nil)
                  (list :refused :consumer))))
+            (:bound-poll
+             (let ((one (fn-cp-read-id body)))
+               (if (not (eq (fn-cp-nth 0 one) :ok))
+                   (list :refused :consumer)
+                 (let ((two (fn-ncl-read-secret (fn-cp-nth 2 one))))
+                   (if (and (eq (fn-cp-nth 0 two) :ok)
+                            (null (fn-cp-nth 2 two)))
+                       (list :consumer :bound-poll (fn-cp-nth 1 one)
+                             (fn-cp-nth 1 two))
+                     (list :refused :secret))))))
+            (:bound-ack
+             (let ((one (fn-ncl-read-secret body)))
+               (if (not (eq (fn-cp-nth 0 one) :ok))
+                   (list :refused :secret)
+                 (if (eq (fn-cp-nth 0 (fn-cp-cursor-decode (fn-cp-nth 2 one)))
+                         :ok)
+                     (list :consumer :bound-ack (fn-cp-nth 2 one)
+                           (fn-cp-nth 1 one))
+                   (list :refused :cursor)))))
             (otherwise (list :refused :kind)))))))))
 
 (defun fn-ncl-status-code (status)
@@ -413,6 +479,27 @@
       (if (and (equal (len argv) 2) (fn-ncl-absolute-pathp id))
           (list :run :ack control id nil nil)
         (list :usage :ack)))
+     ; PRF-234: `bound-poll CONTROL NAME SECRET-FILE CURSOR REPORT' and
+     ; `bound-ack CONTROL CURSOR-FILE SECRET-FILE'.  The password is read
+     ; from a file (never argv, which other local users can list); the
+     ; plan's seventh element names it.
+     ((equal command '(98 111 117 110 100 45 112 111 108 108)) ; bound-poll
+      (let ((fifth (fn-cp-nth 4 argv)))
+        (if (and (equal (len argv) 5)
+                 (fn-cp-idp id) (fn-ncfg-printablep id)
+                 (fn-ncl-absolute-pathp third)
+                 (fn-ncl-absolute-pathp fourth)
+                 (fn-ncl-absolute-pathp fifth)
+                 (not (equal fourth fifth))
+                 (not (equal third fourth))
+                 (not (equal third fifth)))
+            (list :run :bound-poll control id fourth fifth third)
+          (list :usage :bound-poll))))
+     ((equal command '(98 111 117 110 100 45 97 99 107)) ; bound-ack
+      (if (and (equal (len argv) 3) (fn-ncl-absolute-pathp id)
+               (fn-ncl-absolute-pathp third))
+          (list :run :bound-ack control id nil nil third)
+        (list :usage :bound-ack)))
      ((equal command '(117 110 114 101 103 105 115 116 101 114)) ; unregister
       (if (and (equal (len argv) 2)
                (fn-cp-idp id) (fn-ncfg-printablep id))
@@ -420,6 +507,21 @@
         (list :usage :unregister)))
      (t (list :usage :command)))))
 
+; PRF-234: the password a secret file holds: its octets less one final
+; line end (LF or CRLF), so `echo PASSWORD > FILE' holds PASSWORD.
+(defun fn-ncl-secret-of-file (octets)
+  (declare (xargs :guard (true-listp octets)))
+  (let ((xs (if (and (consp octets) (equal (car (last octets)) 10))
+                (butlast octets 1)
+              octets)))
+    (if (and (consp xs) (equal (car (last xs)) 13))
+        (butlast xs 1)
+      xs)))
+
+(verify-guards fn-ncl-secretp)
+(verify-guards fn-ncl-secret-bytes)
+(verify-guards fn-ncl-read-secret)
+(verify-guards fn-ncl-secret-of-file)
 (verify-guards fn-ncl-request-encode)
 (verify-guards fn-ncl-request-decode)
 (verify-guards fn-ncl-reply-encode)

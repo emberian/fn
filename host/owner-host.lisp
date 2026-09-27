@@ -70,6 +70,7 @@
 ; service log lines (fn-olog-*): both ACL2's, read here and nowhere computed.
 (include-book "../books/owner-agent")
 (include-book "../books/owner-log")
+(include-book "../books/owner-results")
 ; The served article bound installed with the profile (PKT-103).
 (include-book "../books/owner-served-bound")
 (include-book "../books/topic-history-local-proposals")
@@ -89,6 +90,7 @@
 (include-book "../books/peer-pull")
 (include-book "../books/peer-pull-session")
 (include-book "../books/consumer-owner-local")
+(include-book "../books/consumer-bound")
 (include-book "../books/acceptance-payload-ref")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
@@ -99,6 +101,9 @@
 (include-book "../books/public-exposure")
 ; fn-exp-observe-effects: the observation without building the reply.
 (include-book "../books/public-exposure-reply")
+; PKT-605 (PRF-223): the connection budget the run installs and every live
+; reconfiguration keeps (fn-owner-connection-budget, fn-owner-reconfigure-deltas).
+(include-book "../books/connection-budget")
 ; PRF-192: the served reply as a range of the octet buffer (fn-owner-reply-buffer).
 (include-book "../books/served-reply-buffer")
 (include-book "../books/owner-open-carried")
@@ -657,43 +662,79 @@
 ; exact record that the host persists.  Python carries only the kind/name
 ; request and the resulting octets.
 
-(defun fn-owner-reconfigure-deltas (id deltas state)
+(defun fn-owner-reconfigure-deltas-admitted (id deltas state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((oc (fn-owner-ocfg state))
          (reason (fn-ocfg-reconfig-refusal oc id deltas))
          (state (fn-owner-step (list :reconfigure id deltas) state))
          (staged (fn-ocfg-staged (fn-owner-ocfg state))))
-    (if staged
-        (let* ((state (f-put-global 'fn-owner-config-octets
-                                    (fn-cfg-encode staged) state))
-               (state (f-put-global 'fn-owner-config-reason nil state)))
-          (value :staged))
-      (let ((state (f-put-global 'fn-owner-config-reason reason state)))
-        (value :refused)))))
+    ; A ConfigResult (books/owner-results.lisp): :staged with exactly one
+    ; encoded configuration record, or :refused with ACL2's named reason
+    ; (fn-ores-config-staged-result-by-definition).
+    (value (fn-ores-config-staged-result staged reason))))
+
+;; PKT-605 (PRF-223): the bound the run installed (fn-owner-connection-budget)
+;; is kept by every live reconfiguration: a delta list whose configuration
+;; holds more connections than the machine does is refused by name,
+;; :connections-exceed-memory, before the owner stages anything
+;; (books/connection-budget.lisp fn-cbud-deltas-refusal-keeps-the-capacity-held).
+;; Every live path reaches this function (native-admin, peer-invite, auth).
+(defun fn-owner-connection-bound (state)
+  (declare (xargs :stobjs state :mode :program))
+  (and (boundp-global 'fn-owner-connection-bound state)
+       (f-get-global 'fn-owner-connection-bound state)))
+
+(defun fn-owner-reconfigure-deltas (id deltas state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((oc (fn-owner-ocfg state))
+         (memory (fn-cbud-deltas-refusal
+                  (fn-cfg-value (fn-ocfg-config oc))
+                  (+ 1 (fn-cfg-generation (fn-ocfg-config oc)))
+                  (fn-own-clock (fn-ocfg-owner oc))
+                  deltas (fn-owner-connection-bound state))))
+    (if memory
+        (let ((state (f-put-global 'fn-owner-config-reason memory state)))
+          (value :refused))
+      (fn-owner-reconfigure-deltas-admitted id deltas state))))
+
+(defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile
+                                           tlsp state)
+  ; Once per run, after recovery and before listen (host/native/mux.lisp
+  ; fnn-mux-budget-install, from fnn-owner-run).  MACHINE, DYNAMIC (the
+  ; dynamic space this process has), CORE, THREADS and STACK are the host's
+  ; observations; NURSERY its collection trigger;
+  ; PROFILE the store's; TLSP whether a TLS context is loaded.  The capacity
+  ; is the live configuration's.
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((capacity (fn-exp-connections-capacity (fn-cfg-value (fn-owner-config state))))
+         (article (fn-bs-profile-max-article-octets profile))
+         (hneed (fn-heap-figure-octets profile core nursery))
+         (d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack
+                                 article tlsp))
+         (state (f-put-global 'fn-owner-connection-bound
+                              (and (equal (car d) :hold) (fn-cbud-held-bound d))
+                              state))
+         (state (f-put-global 'fn-owner-connection-budget-line
+                              (fn-record-string-octets
+                               (if (equal (car d) :hold)
+                                   (fn-cbud-hold-line d article tlsp)
+                                 (fn-cbud-refusal-line d article tlsp machine)))
+                              state)))
+    (value (car d))))
 
 (defun fn-owner-reconfigure (id kind name-octets state)
-  ; :staged leaves exactly one encoded configuration record in the output
-  ; slot.  :refused leaves the named ACL2 refusal reason there.  No state is
+  ; Answers a ConfigResult: :staged with exactly one encoded configuration
+  ; record, or :refused with the named ACL2 refusal reason.  No state is
   ; published until fn-owner-reconfigure-complete follows a durable write.
   (declare (xargs :stobjs state :mode :program))
   (let ((name (if (fn-store-text-octetsp name-octets)
                   (fn-store-octets->string name-octets) :bad)))
     (if (equal name :bad)
-        (let ((state (f-put-global 'fn-owner-config-reason :group-name state)))
-          (value :refused))
+        (value (fn-ores-config-refused :group-name))
       (let ((deltas (fn-ocl-request-deltas kind name)))
         (if (null deltas)
-            (let ((state (f-put-global 'fn-owner-config-reason :delta-kind state)))
-              (value :refused))
+            (value (fn-ores-config-refused :delta-kind))
           (fn-owner-reconfigure-deltas id deltas state))))))
-
-(defun fn-owner-reconfigure-octets (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (f-get-global 'fn-owner-config-octets state)))
-
-(defun fn-owner-reconfigure-reason (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (f-get-global 'fn-owner-config-reason state)))
 
 (defun fn-owner-reconfigure-complete (generation state)
   ; This is called only after Store.write_config_record has named the record
@@ -976,9 +1017,13 @@
                            (fn-owner-store-profile state))
                           consumer group)))
 
+; PRF-234: the plain ack is today's for an unbound consumer and refused
+; (:bound) for a consumer the configuration binds to an account
+; (books/consumer-bound.lisp fn-cbind-plain-ack-of-an-unbound-consumer-is-
+; the-consumer-ack).
 (defun fn-owner-consumer-local-ack (cursor-octets state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-col-ack (fn-owner-core state) cursor-octets)))
+  (value (fn-cbind-plain-ack (fn-owner-ocfg state) cursor-octets)))
 
 (defun fn-owner-consumer-local-position (consumer state)
   (declare (xargs :stobjs state :mode :program))
@@ -996,7 +1041,10 @@
   ;; books/consumer-owner-local-progress.lisp).  The legacy record's encoder
   ;; is fn-rcon-record-encode-impl (fn-rcon-record-encode-impl-is-record-
   ;; encode-impl, books/records-codec-concrete, no hypothesis).
-  (value (fn-col-poll-report (fn-owner-core state) consumer)))
+  ;; PRF-234: fn-cbind-plain-poll is fn-col-poll-report for an unbound
+  ;; consumer and refuses (:bound) a bound one (books/consumer-bound.lisp
+  ;; fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll).
+  (value (fn-cbind-plain-poll (fn-owner-ocfg state) consumer)))
 
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :mode :program))
@@ -1116,60 +1164,37 @@
 ; through four globals read off the injection decision; the host passes them
 ; back through fn-owner-prepare exactly as the CLI passes its own.
 (defun fn-owner-take (state)
+  ; One SubmissionTaken (books/owner-results.lisp fn-ores-take-result; its
+  ; fields are what the seven fn-owner-submit-* globals held,
+  ; fn-ores-take-result-by-definition).  The octets are fn-own-sub-stored-
+  ; octets of the live configuration: a transit article is stored, served
+  ; and fed on as fn-peer-relayed-octets makes it (its Path updated with this
+  ; node's identity, its Xref removed; RFC 5537 3.6/3.7,
+  ; books/path-update.lisp); fn-owner-transit-decide stages the same function
+  ; of the same octets in fn-owner-transit-payload, which the native drain
+  ; compares with these before the store attempt, and
+  ; fn-owner-finish-submission compares the completed record with the same
+  ; function of the same configuration.
   (declare (xargs :stobjs state :mode :program))
   (let* ((before (fn-owner-core state))
          (state (fn-owner-step (list :take) state))
          (after (fn-owner-core state))
          (sub (fn-own-inflight after)))
     (if (or (equal after before) (null sub))
-        (value :idle)
-      (let* ((decision (fn-own-sub-decision sub))
-             (transitp (fn-own-transit-subp sub))
-             (state (f-put-global 'fn-owner-submit-id (fn-own-sub-id sub) state))
-             (state (f-put-global 'fn-owner-submit-transitp transitp state))
-             (state (f-put-global 'fn-owner-submit-peer
-                                  (if transitp (fn-peer-submission-peer decision) nil)
-                                  state))
-             (state (f-put-global 'fn-owner-submit-msgid
-                                  (if transitp
-                                      (fn-peer-submission-msgid decision)
-                                    (fn-inj-decision-msgid decision))
-                                  state))
-             ; A transit article is stored, served and fed on as
-             ; fn-peer-relayed-octets makes it: its Path updated with this
-             ; node's identity and its Xref removed (RFC 5537 3.6/3.7,
-             ; books/path-update.lisp).  These are the octets the host
-             ; digests and stores; fn-owner-transit-decide stages the same
-             ; function of the same octets (fn-peer-injection-arguments'
-             ; payload) and leaves it in fn-owner-transit-payload, which the
-             ; native drain compares with this before the store attempt.
-             ; fn-own-sub-stored-octets is the one definition of these
-             ; octets; fn-owner-finish-submission compares the completed
-             ; record with the same function of the same configuration and
-             ; the same owner's node secret.  A served POST under a login
-             ; gets its RFC 8315 Cancel-Lock here (SEC-006, PRF-210).
-             (state (f-put-global 'fn-owner-submit-octets
-                                  (fn-own-sub-stored-octets
-                                   (fn-owner-config state) sub
-                                   (fn-own-node-secret after))
-                                  state))
-             ; A transit submission's memberships are not in the submission:
-             ; they are fn-peer-scope-groups of the article's Newsgroups and
-             ; the peer record, computed by fn-owner-transit-decide below
-             ; over the live node, never here and never in Python.
-             (state (f-put-global 'fn-owner-submit-groups
-                                  (if transitp nil (fn-inj-decision-groups decision))
-                                  state))
-             ; The submission's intent identity, digested once here and
-             ; carried to the intent and the resolution below
-             ; (books/owner-intent-carried.lisp).  This is the only writer of
-             ; the global, so its value always satisfies fn-icar-carryp
-             ; (fn-icar-carryp-of-carry-of; nil before the first take).
-             (state (f-put-global 'fn-owner-submit-intent
-                                  (fn-icar-carry-of sub) state)))
-        (value (cond (transitp :taken-transit)
-                     ((fn-own-control-submissionp sub) :taken-control)
-                     (t :taken)))))))
+        (value *fn-ores-take-idle*)
+      ; The submission's intent identity, digested once here and carried to
+      ; the intent and the resolution (books/owner-intent-carried.lisp).  It
+      ; stays ACL2's own state: this is the only writer of the global and
+      ; only fn-owner-intent-carry reads it, so its value always satisfies
+      ; fn-icar-carryp (fn-icar-carryp-of-carry-of; nil before the first
+      ; take).  The host never sees it as an input.
+      (let ((state (f-put-global 'fn-owner-submit-intent
+                                 (fn-icar-carry-of sub) state)))
+        ; A served POST under a login gets its RFC 8315 Cancel-Lock in the
+        ; stored octets (SEC-006, PRF-210): the owner's node secret.
+        (value (fn-ores-take-result
+                sub (fn-own-sub-stored-octets (fn-owner-config state) sub
+                                              (fn-own-node-secret after))))))))
 
 ; The hybrid-signed author path and the BP application path submit an
 ; already-authored article object whose octets a signature or a journal
@@ -1309,6 +1334,25 @@
   (if (boundp-global 'fn-owner-auth state)
       (f-get-global 'fn-owner-auth state)
     (fn-auth-open-config)))
+
+; PRF-234 (CNS-006): a consumer bound to an account.  ACL2 decides the
+; binding, the credential (the account's own, against the credential table
+; AUTHINFO reads), the account's read rule and the answer, from the latest
+; configuration (books/consumer-bound.lisp fn-cbind-poll / fn-cbind-ack;
+; keystones fn-cbind-poll-delivers-only-readable-events,
+; fn-cbind-poll-is-the-consumer-poll-or-a-refusal,
+; fn-cbind-ack-is-the-consumer-ack-or-a-refusal).  The host carries the
+; decoded consumer id or cursor and the password octets; it compares
+; nothing.
+(defun fn-owner-consumer-local-bound-poll (consumer secret state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cbind-poll (fn-owner-ocfg state) (fn-owner-auth state)
+                        consumer secret)))
+
+(defun fn-owner-consumer-local-bound-ack (cursor-octets secret state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cbind-ack (fn-owner-ocfg state) (fn-owner-auth state)
+                       cursor-octets secret)))
 
 ; Install a complete ACL2-built authentication configuration.  The native
 ; auth profile parser calls this after owner recovery and before the listener
@@ -1465,7 +1509,7 @@
                  ; fixes differed only in which of two identical helpers they
                  ; called.  The duplicate is folded into ACL2:
                  ; `fn-oag-group-octets' (books/owner-agent.lisp) is the one.
-                 (state (f-put-global 'fn-owner-submit-groups
+                 (state (f-put-global 'fn-owner-transit-groups
                                       (if (equal (fn-peer-decision-kind d) :want)
                                           (fn-oag-group-octets (nth 3 args))
                                         nil)
@@ -1503,67 +1547,46 @@
 ; The transit reply.  `kind' and `reason' are the decision this image just
 ; made; `word' is the store's observed outcome (:durable, :refused,
 ; :uncertain), ignored unless the decision was :want.
-; The frames the host has to make durable, and the bytes they authorize.
-; `fn-owner-feed-frames' is a list of encoded FNFD frames, each sealed with
-; the constrained trailer (A-CRYPTO); the host writes them length-prefixed.
-; `fn-feed-encode' takes the trailer as an argument, so these frames carry a
-; ZERO trailer: tools/run_owner.py hashes the protected prefix and appends the
-; real one (A-CRYPTO).  The header, the
-; field encoding and every bound stay ACL2's; the host slices at a constant it
-; did not choose.
-(defconst *fn-owner-feed-zero-trailer*
-  '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
+;; The feed step's result is ONE value, a FeedPublication
+;; (books/owner-results.lisp fn-ores-feed-publication-p): the step's word,
+;; the peer its effect names, the sealed frame plan -- one (PEER . FRAME)
+;; pair per FNFD record, in append order, each frame sealed with the
+;; constrained trailer over its protected prefix (A-CRYPTO) -- the
+;; completion token, and the rendered outbound command with its status.
+;; The native host appends each pair's frame to that peer's journal BEFORE
+;; it writes the command (host/native/owner.lisp fnn-owner-feed-flush); it
+;; fetches nothing by index and splits no name list.  The header, the field
+;; encoding, the seal and every bound stay ACL2's
+;; (fn-ores-feed-port-publication-by-definition; the plan IS the by-index
+;; fetch it replaced: fn-ores-sealed-plan-is-indexed-fetch).
 
-(defun fn-owner-feed-encode-records (records)
+(defun fn-owner-feed-word-publication (word command log-line)
+  ; A step with no journal records: a connection-phase command (MODE,
+  ; AUTHINFO, STARTTLS), a bare word, or a refusal.
   (declare (xargs :mode :program))
-  (if (consp records)
-      (cons (fn-feed-encode (fn-feed-journal-kind (car records))
-                            (fn-feed-journal-values (car records))
-                            *fn-owner-feed-zero-trailer*)
-            (fn-owner-feed-encode-records (cdr records)))
-    nil))
-
-; This is the outbound wire boundary.  The feed machine supplies its complete
-; command/source octets; `fn-wire-render-feed-command' owns all interpretation
-; of their CRLF structure, dot quoting and terminator.  The host receives only
-; this already-rendered socket byte vector (or the separate refusal word).
-(defun fn-owner-feed-render-command (command)
-  (declare (xargs :mode :program))
-  (fn-wire-render-feed-command command *fn-nntp-max-initial-line-octets*
-                               *fn-record-max-payload*))
-
-(defun fn-owner-feed-install-feed (records effects state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((command (fn-own-feed-effect-octets effects))
-         (rendered (fn-owner-feed-render-command command))
-         (state (f-put-global 'fn-owner-feed-records records state))
-         (state (f-put-global 'fn-owner-feed-frames
-                              (fn-owner-feed-encode-records records) state))
-         (state (f-put-global 'fn-owner-feed-command
-                              (fn-wire-outbound-octets rendered) state))
-         (state (f-put-global 'fn-owner-feed-command-status
-                              (if (fn-wire-outbound-okp rendered) :ok
-                                (fn-wire-outbound-reason rendered)) state))
-         (state (f-put-global 'fn-owner-feed-peer
-                              (fn-own-feed-effect-peer effects) state)))
-    state))
+  (fn-ores-feed-publication word nil nil nil command :ok log-line))
 
 ; The only host projection of a bounded feed step.  The ACL2 subject has
 ; already selected the next table, journal records and effects together.  A
-; refusal is published as empty output and deliberately does not replace the
-; owner's core, so queued delivery intent remains available for recovery.
-(defun fn-owner-feed-install-port-result (owner result state)
+; refusal publishes no records and no command and deliberately does not
+; replace the owner's core, so queued delivery intent remains available for
+; recovery.  Answers (mv STATUS PUBLICATION STATE).
+(defun fn-owner-feed-install-port-result (owner result word-of log-line state)
   (declare (xargs :stobjs state :mode :program))
   (if (equal (fn-own-feed-port-status result) :accepted)
-      (let* ((state (fn-owner-replace-core
-                     (fn-own-with-feeds owner
-                                        (fn-own-feed-port-table result)) state))
-             (state (fn-owner-feed-install-feed
-                     (fn-own-feed-port-records result)
-                     (fn-own-feed-port-effects result) state)))
-        (mv :accepted state))
-    (let ((state (fn-owner-feed-install-feed nil nil state)))
-      (mv :refused state))))
+      (let ((state (fn-owner-replace-core
+                    (fn-own-with-feeds owner
+                                       (fn-own-feed-port-table result)) state)))
+        (mv :accepted
+            (fn-ores-feed-port-publication
+             (cdr (assoc-eq :accepted word-of))
+             (fn-own-feed-port-records result)
+             (fn-own-feed-port-effects result) nil log-line)
+            state))
+    (mv :refused
+        (fn-ores-feed-port-publication (cdr (assoc-eq :refused word-of))
+                                       nil nil nil log-line)
+        state)))
 
 ; Project the durable intent before the store is allowed to begin.  The host
 ; supplies values ACL2 itself produced (provenance, configuration generation
@@ -1584,15 +1607,17 @@
     nil))
 
 (defun fn-owner-submission-intent (evidence generation txid state)
+  ; The FeedPublication is fn-ores-submission-intent-publication's
+  ; (books/owner-results.lisp; well-formed by
+  ; fn-ores-submission-intent-publication-is-well-formed): the token is the
+  ; in-flight id, a connection number or the control id.
+  ; (fn-ores-submission-intent-publication-unfolds: these two calls are it.)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
          (intent (fn-icar-submission-intent owner (fn-owner-intent-carry state)
                                             evidence generation txid))
-         (result (car intent))
-         (records (cdr intent))
-         (state (f-put-global 'fn-owner-shared-resolution-id nil state))
-         (state (fn-owner-feed-install-feed records nil state)))
-    (value result)))
+         (state (f-put-global 'fn-owner-shared-resolution-id nil state)))
+    (value (fn-ores-intent-publication intent (fn-ores-inflight-token owner)))))
 
 ; Project commit/abort while the same submission is still in flight.  The
 ; caller durably appends these records before invoking fn-owner-outcome (or
@@ -1602,41 +1627,45 @@
 ;; fn-own-submission-resolution-records under the same carry
 ;; (fn-icar-submission-resolution-records-is-reference).
 (defun fn-owner-submission-resolution (word evidence generation txid state)
+  ; fn-ores-submission-resolution-publication (books/owner-results.lisp;
+  ; fn-ores-submission-resolution-publication-is-well-formed).
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
-         (records (fn-icar-submission-resolution-records
-                   owner (fn-owner-intent-carry state)
-                   word evidence generation txid))
-         (sub (fn-own-inflight owner))
          (state (f-put-global 'fn-owner-shared-resolution-id
-                              (and sub (fn-own-sub-id sub)) state))
-         (state (fn-owner-feed-install-feed records nil state)))
-    (value (cond ((consp records)
-                  (fn-feed-journal-kind (car records)))
-                 ((equal (fn-own-outcome-completion owner word) :uncertain)
-                  :uncertain)
-                 (t :none)))))
+                              (fn-ores-inflight-token owner) state)))
+    (value (fn-ores-submission-resolution-publication
+            owner (fn-owner-intent-carry state)
+            word evidence generation txid))))
 
 ; Startup calls this only after the store's authoritative recovery completed.
 ; The scanner accumulated exact unresolved intent values in the global.  One
 ; call projects one commit/abort frame; replaying that frame removes the exact
 ; key.  A partial binding is :uncertain and must fence startup.
+; The record for the first unresolved intent, or nil (none, or unbound).
+(defun fn-owner-feed-reconcile-record (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((values (car (f-get-global 'fn-owner-feed-intents state))))
+    (and values
+         (fn-own-feed-intent-reconcile-record
+          (fn-sn-node (fn-own-store (fn-owner-core state))) values))))
+
 (defun fn-owner-feed-reconcile-next (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((values (car (f-get-global 'fn-owner-feed-intents state))))
     (if (null values)
-        (value :done)
-      (let* ((owner (fn-owner-core state))
-             (record (fn-own-feed-intent-reconcile-record
-                      (fn-sn-node (fn-own-store owner)) values)))
+        (value (fn-owner-feed-word-publication :done nil nil))
+      (let ((record (fn-owner-feed-reconcile-record state)))
         (if (null record)
-            (value :uncertain)
-          (let ((state (fn-owner-feed-install-feed (list record) nil state)))
-            (value (fn-feed-journal-kind record))))))))
+            (value (fn-owner-feed-word-publication :uncertain nil nil))
+          (value (fn-ores-feed-port-publication
+                  (fn-feed-journal-kind record) (list record) nil nil nil)))))))
 
+; Applies the record fn-owner-feed-reconcile-next published: the same
+; function of the same intents and the same owner (the host only appended
+; frames in between), so no result crosses a mailbox.
 (defun fn-owner-feed-reconcile-apply (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((record (car (f-get-global 'fn-owner-feed-records state))))
+  (let ((record (fn-owner-feed-reconcile-record state)))
     (if (or (null record)
             (not (member-equal (fn-feed-journal-kind record)
                                '(:feed-commit :feed-abort))))
@@ -1677,11 +1706,9 @@
 (defun fn-owner-transit-outcome (id kind reason word state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
-         (records (fn-own-transit-outcome-records owner id kind word))
          (result (fn-own-transit-outcome owner id kind reason word))
          (state (fn-owner-replace-core (cdr result) state))
-         (state (fn-owner-install-effects (car result) state))
-         (state (fn-owner-feed-install-feed records nil state)))
+         (state (fn-owner-install-effects (car result) state)))
     (value :fed)))
 
 ; The service-log line for the transit outcome about to be fed, read off the
@@ -1717,12 +1744,12 @@
 ; fn-own-outcome renders the reply (240 only when a completion was consumed
 ; after the take, fn-own-durable-reply-names-a-durable-record) for that
 ; connection and installs it in fn-owner-output.
-; The FNFD records a durable acceptance owes the feed journal are read off
-; the owner BEFORE the outcome moves it and installed where the bridge
-; reads them, exactly as a tick and a reply do.  Without this the
-; `(:feed-enqueue peer msgid tick)' of specs/peering.md sec. 3.3 was never
-; written in any deployment, and an article accepted while a peer was
-; unreachable did not survive the process that accepted it.
+; The FNFD records a durable acceptance owes the feed journal are the
+; submission resolution's (fn-owner-submission-resolution, journaled by the
+; host before this outcome); this wrapper used to also compute
+; fn-own-outcome-journal-records and leave them in a global that neither
+; host read (every flush follows a fresh publication), so it no longer
+; computes them (adapter retirement; PKT in the lane record).
 (defun fn-owner-outcome (id word state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
@@ -1730,9 +1757,6 @@
          ; submission in flight (books/owner-log.lisp).
          (state (f-put-global 'fn-owner-log-line
                               (fn-olog-served-post-line owner id word) state))
-         (records (fn-own-outcome-journal-records
-                   owner id word
-                   (f-get-global 'fn-owner-shared-resolution-id state)))
          ; fn-acar-own-outcome (books/owner-advance-carried.lisp) is
          ; fn-own-outcome under fn-ocl-relation
          ; (fn-acar-own-outcome-is-reference-under-ocl-relation), which the
@@ -1745,8 +1769,7 @@
          (result (fn-acar-own-outcome owner id word))
          (state (fn-owner-replace-core (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
-         (state (f-put-global 'fn-owner-shared-resolution-id nil state))
-         (state (fn-owner-feed-install-feed records nil state)))
+         (state (f-put-global 'fn-owner-shared-resolution-id nil state)))
     (value :fed)))
 
 ; The control result is projected before the event consumes the in-flight
@@ -2590,23 +2613,23 @@
 ; (fn-own-feed-*-record).  This file frames octets and moves them; it names
 ; no code, no wildmat, no Message-ID and no FNFD field.
 ;
-; The order is "durable before the effect": every entry point below leaves
-; the records it authorizes in `fn-owner-feed-records' and the bytes in
-; `fn-owner-feed-command'; tools/run_owner.py appends the records to
-; <journal>/feed/<peer>.fnfd and fsyncs BEFORE it writes the bytes.
+; The order is "durable before the effect": every entry point below returns
+; one FeedPublication (books/owner-results.lisp) whose sealed frame plan the
+; host appends to <journal>/feed/<peer>.fnfd and fsyncs BEFORE it writes the
+; publication's command bytes.
 
 (defun fn-owner-feed-configure (state)
   ; Rebuild the feed table from the live configuration: at open and after
   ; every :set-peer / :remove-peer delta.
   (declare (xargs :stobjs state :mode :program))
+  ; Answers the peer names, a list of strings (the native host checks
+  ; string-listp once and splits nothing).
   (let ((state (fn-owner-step (list :feeds (fn-owner-config state)) state)))
-    (value (fn-store-cfg-join-names
-            (fn-own-feed-names (fn-own-feeds (fn-owner-core state)))))))
+    (value (fn-own-feed-names (fn-own-feeds (fn-owner-core state))))))
 
 (defun fn-owner-feed-peers (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-store-cfg-join-names
-          (fn-own-feed-names (fn-own-feeds (fn-owner-core state))))))
+  (value (fn-own-feed-names (fn-own-feeds (fn-owner-core state)))))
 
 (defun fn-owner-feed-record (peer-octets state)
   (declare (xargs :stobjs state :mode :program))
@@ -2776,20 +2799,18 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
          (inputs (f-get-global 'fn-owner-feed-inputs state))
          (step (and (not (equal peer :bad))
                     (fn-fc-after-tls (fn-fc-table-lookup peer inputs)))))
-    (if (null step) (value :invalid)
+    (if (null step) (value (fn-owner-feed-word-publication :invalid nil nil))
       (let ((state (f-put-global 'fn-owner-feed-inputs
                                  (fn-fc-table-put peer (fn-fc-next-state step) inputs) state)))
-        (case (fn-fc-kind step)
-          (:mode (let ((state (f-put-global 'fn-owner-feed-command
-                                            (fn-fc-mode-command) state))) (value :mode)))
-          (:auth-user
-           (let ((state (f-put-global 'fn-owner-feed-command
-                                      (fn-fc-auth-user-command
-                                       (fn-fc-next-state step)) state)))
-             (value :auth-user)))
-          (:ready (value :ready))
-          (:need-input (value :need-input))
-          (otherwise (value :invalid)))))))
+        (value
+         (case (fn-fc-kind step)
+           (:mode (fn-owner-feed-word-publication :mode (fn-fc-mode-command) nil))
+           (:auth-user
+            (fn-owner-feed-word-publication
+             :auth-user (fn-fc-auth-user-command (fn-fc-next-state step)) nil))
+           (:ready (fn-owner-feed-word-publication :ready nil nil))
+           (:need-input (fn-owner-feed-word-publication :need-input nil nil))
+           (otherwise (fn-owner-feed-word-publication :invalid nil nil))))))))
 
 (defun fn-owner-feed-read-limit ()
   "ACL2-owned upper bound for one native feed socket-read observation."
@@ -2812,22 +2833,26 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
-        (value nil)
+        (value (fn-owner-feed-word-publication nil nil nil))
       (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
              (result (fn-own-feed-port-tick-peer
                       peer (fn-own-feeds owner) obs)))
-        (mv-let (status state)
-          (fn-owner-feed-install-port-result owner result state)
-          (value (if (equal status :refused) :refused
-                   (if (fn-own-feed-port-effects result) :offer :idle))))))))
+        (mv-let (status publication state)
+          (fn-owner-feed-install-port-result
+           owner result
+           (list (cons :accepted (if (fn-own-feed-port-effects result) :offer :idle))
+                 (cons :refused :refused))
+           nil state)
+          (declare (ignore status))
+          (value publication))))))
 
 ; One reply line from one peer.
 (defun fn-owner-feed-octets (peer-octets line monotonic state)
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
-        (value nil)
+        (value (fn-owner-feed-word-publication nil nil nil))
       (let* ((owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
              (entry (fn-own-feed-entry-of peer (fn-own-feeds owner)))
@@ -2835,24 +2860,25 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
              (msgid (fn-own-feed-inflight-msgid (fn-feed-queue feed)))
              (response (fn-own-feed-parse-response line msgid)))
         (if (null response)
-            (let ((state (fn-owner-feed-install-feed nil nil state)))
-              (value :quiet))
-          (let* ((result (fn-own-feed-port-observe-peer
+            (value (fn-ores-feed-port-publication :quiet nil nil nil nil))
+          (let ((result (fn-own-feed-port-observe-peer
                          peer (fn-own-feeds owner) response
                          ; The record's payload by Message-ID through the
                          ; Store's event index, not the acceptance state's
                          ; article: fn-apr-feed-article-is-own-feed-article
                          ; (books/acceptance-payload-ref.lisp).
-                         (fn-apr-feed-article owner msgid) obs))
-                ; The sender's one line for this reply (nil for a 335/238),
-                ; books/owner-log.lisp fn-olog-feed-reply-line.
-                (state (f-put-global 'fn-owner-feed-log-line
-                                     (fn-olog-feed-reply-line owner peer response)
-                                     state)))
-            (mv-let (status state)
-              (fn-owner-feed-install-port-result owner result state)
-              (value (if (equal status :refused) :refused
-                       (if (fn-own-feed-port-effects result) :send :quiet))))))))))
+                         (fn-apr-feed-article owner msgid) obs)))
+            ; The sender's one line for this reply (nil for a 335/238),
+            ; books/owner-log.lisp fn-olog-feed-reply-line, is the
+            ; publication's log line.
+            (mv-let (status publication state)
+              (fn-owner-feed-install-port-result
+               owner result
+               (list (cons :accepted (if (fn-own-feed-port-effects result) :send :quiet))
+                     (cons :refused :refused))
+               (fn-olog-feed-reply-line owner peer response) state)
+              (declare (ignore status))
+              (value publication))))))))
 
 (defun fn-owner-feed-connection-result-kind (step)
   "Map only a connection-phase refusal away from the feed-port outcome tag.
@@ -2871,16 +2897,15 @@ existing port only after fn-fc has made this connection ready."
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (or (equal peer :bad) (not (fn-wire-octet-listp octets)))
-        (value :invalid)
+        (value (fn-owner-feed-word-publication :invalid nil nil))
       (let* ((inputs (f-get-global 'fn-owner-feed-inputs state))
              (input (fn-fc-table-lookup peer inputs)))
         ;; The table invariant is carried from recovery through only
         ;; put/remove.  This served path validates the selected connection,
         ;; never every peer's retained buffer.
         (if (not (fn-fc-statep input))
-            (value :invalid)
-          (let* ((state (f-put-global 'fn-owner-feed-log-line nil state))
-                 (step (fn-fc-step input octets))
+            (value (fn-owner-feed-word-publication :invalid nil nil))
+          (let* ((step (fn-fc-step input octets))
                  (stop (fn-fc-streaming-refusal-p input step))
                  (kind (if stop :streaming-refused
                          (fn-owner-feed-connection-result-kind step)))
@@ -2889,16 +2914,13 @@ existing port only after fn-fc has made this connection ready."
                  (state (if stop
                             (f-put-global 'fn-owner-feed-stopped stopped state)
                           state))
-                 (state (if stop
-                            (f-put-global 'fn-owner-feed-log-line
-                                          (fn-fc-stop-log-line peer) state)
-                          state))
+                 ; The stop's one line is the publication's log line.
+                 (stop-line (and stop (fn-fc-stop-log-line peer)))
                  ;; PRF-207: a 500/501 to MODE STREAM goes on in IHAVE; the
-                 ;; one line says so (no stop is recorded).
-                 (state (if (fn-fc-ihave-fallback-p input step)
-                            (f-put-global 'fn-owner-feed-log-line
-                                          (fn-fc-fallback-log-line peer) state)
-                          state))
+                 ;; one line says so (no stop is recorded): the :ready
+                 ;; publication's log line.
+                 (fallback-line (and (fn-fc-ihave-fallback-p input step)
+                                     (fn-fc-fallback-log-line peer)))
                  (state (f-put-global
                          'fn-owner-feed-inputs
                          (fn-fc-table-put peer (fn-fc-next-state step) inputs)
@@ -2906,26 +2928,21 @@ existing port only after fn-fc has made this connection ready."
             (case kind
                   (:mode
                    (let ((command (fn-fc-mode-command)))
-                     (if (null command)
-                         (value :fault)
-                       (let ((state (f-put-global 'fn-owner-feed-command command state)))
-                         (value :mode)))))
+                     (value (if (null command) (fn-owner-feed-word-publication :fault nil nil)
+                              (fn-owner-feed-word-publication :mode command nil)))))
                   (:auth-user
                    (let ((command (fn-fc-auth-user-command (fn-fc-next-state step))))
-                     (if (null command) (value :fault)
-                       (let ((state (f-put-global 'fn-owner-feed-command command state)))
-                         (value :auth-user)))))
+                     (value (if (null command) (fn-owner-feed-word-publication :fault nil nil)
+                              (fn-owner-feed-word-publication :auth-user command nil)))))
                   (:auth-pass
                    (let ((command (fn-fc-auth-pass-command (fn-fc-next-state step))))
-                     (if (null command) (value :fault)
-                       (let ((state (f-put-global 'fn-owner-feed-command command state)))
-                         (value :auth-pass)))))
+                     (value (if (null command) (fn-owner-feed-word-publication :fault nil nil)
+                              (fn-owner-feed-word-publication :auth-pass command nil)))))
                   (:starttls
                    (let ((command (fn-fc-starttls-command)))
-                     (if (null command) (value :fault)
-                       (let ((state (f-put-global 'fn-owner-feed-command command state)))
-                         (value :starttls)))))
-                  (:tls (value :tls))
+                     (value (if (null command) (fn-owner-feed-word-publication :fault nil nil)
+                              (fn-owner-feed-word-publication :starttls command nil)))))
+                  (:tls (value (fn-owner-feed-word-publication :tls nil nil)))
                   (:ready
                    (mv-let (erp word state)
                      (fn-owner-feed-connect peer-octets
@@ -2934,18 +2951,16 @@ existing port only after fn-fc has made this connection ready."
                                              (fn-fc-next-state step))
                                             state)
                      (if erp (mv erp word state)
-                       (if (equal word :ok) (value :ready) (value :fault)))))
+                       (value (fn-owner-feed-word-publication (if (equal word :ok) :ready :fault) nil
+                                                                (and (equal word :ok) fallback-line))))))
                   (:reply
-                   (mv-let (erp word state)
-                     (fn-owner-feed-octets peer-octets (fn-fc-line step)
-                                            monotonic state)
-                     (if erp (mv erp word state) (value word))))
-                  (:need-input (value :need-input))
-                  (:connection-refused (value :connection-refused))
-                  (:streaming-refused (value :streaming-refused))
-                  (:closed (value :closed))
-                  (:invalid (value :invalid))
-                  (otherwise (value :fault)))))))))
+                   (fn-owner-feed-octets peer-octets (fn-fc-line step)
+                                         monotonic state))
+                  (:streaming-refused
+                   (value (fn-owner-feed-word-publication :streaming-refused nil stop-line)))
+                  ((:need-input :connection-refused :closed :invalid)
+                   (value (fn-owner-feed-word-publication kind nil nil)))
+                  (otherwise (value (fn-owner-feed-word-publication :fault nil nil))))))))))
 
 
 ; The connection to ONE peer is gone.  The host reports the event and the
@@ -2964,7 +2979,7 @@ existing port only after fn-fc has made this connection ready."
   (declare (xargs :stobjs state :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (equal peer :bad)
-        (value nil)
+        (value (fn-owner-feed-word-publication nil nil nil))
       (let* ((inputs (f-get-global 'fn-owner-feed-inputs state))
              (owner (fn-owner-core state))
              (obs (fn-clock-observation monotonic 0 0 nil))
@@ -2972,48 +2987,19 @@ existing port only after fn-fc has made this connection ready."
                       peer (fn-own-feeds owner) obs)))
         ;; Removal is the other carried-table transition; a lost peer has no
         ;; reason to revalidate unrelated live connections or suffixes.
-        (mv-let (status state)
-          (fn-owner-feed-install-port-result owner result state)
+        (mv-let (status publication state)
+          (fn-owner-feed-install-port-result
+           owner result '((:accepted . :ok) (:refused . :refused)) nil state)
+          (declare (ignore status))
           (let ((state (f-put-global 'fn-owner-feed-inputs
                                      (fn-fc-table-remove peer inputs)
                                      state)))
-            (value (if (equal status :refused) :refused :ok))))))))
+            (value publication)))))))
 
-; Which peer's journal each pending frame belongs in, in the same order as
-; the frames: the record's own field 0, read by ACL2.
-(defun fn-owner-feed-record-peer-names (records)
-  (declare (xargs :mode :program))
-  (if (consp records)
-      (cons (fn-record-octets-string
-             (fn-feed-record-peer (fn-feed-journal-values (car records))))
-            (fn-owner-feed-record-peer-names (cdr records)))
-    nil))
-
-(defun fn-owner-feed-record-peers (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-store-cfg-join-names
-          (fn-owner-feed-record-peer-names
-           (f-get-global 'fn-owner-feed-records state)))))
-
-(defun fn-owner-feed-frames (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (f-get-global 'fn-owner-feed-frames state)))
-
-(defun fn-owner-feed-command (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (f-get-global 'fn-owner-feed-command state)))
-
-(defun fn-owner-feed-command-status (state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (f-get-global 'fn-owner-feed-command-status state)))
-
-; The protected prefix and trailer belong to ACL2, including the boundary
-; between them. Python receives the whole sealed frame and never slices it.
-(defun fn-owner-feed-sealed-frame (index state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((frame (fn-frame-item index (f-get-global 'fn-owner-feed-frames state)))
-         (prefix (fn-frame-protected-prefix frame)))
-    (value (append prefix (fn-frame-trailer prefix)))))
+; (The by-index readers fn-owner-feed-record-peers, fn-owner-feed-frames,
+; fn-owner-feed-sealed-frame, fn-owner-feed-command and
+; fn-owner-feed-command-status were retired with their globals: each feed
+; step returns its FeedPublication, books/owner-results.lisp.)
 
 ; One bounded read from the physical journal. The scanner owns acceptance,
 ; the exact safe offset and the entry fed to the existing replay transition.
@@ -3050,10 +3036,11 @@ existing port only after fn-fc has made this connection ready."
          (table (fn-own-feeds owner))
          (result (fn-own-feed-port-restart-fold
                   (fn-own-feed-names table) table table)))
-    (mv-let (status state)
-      (fn-owner-feed-install-port-result owner result state)
-      (value (if (equal status :refused) :refused
-               (len (fn-own-feed-port-records result)))))))
+    (mv-let (status publication state)
+      (fn-owner-feed-install-port-result
+       owner result '((:accepted . :restarted) (:refused . :refused)) nil state)
+      (declare (ignore status))
+      (value publication))))
 
 ; -----------------------------------------------------------------------------
 ; The NEWNEWS pull feed (PRF-100, books/peer-pull.lisp).  The pulled peers of

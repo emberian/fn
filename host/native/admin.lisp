@@ -26,9 +26,13 @@ or syntactically unsupported requests in `fn-native-admin-plan'."
   "Raw Lisp observes clock values but does not coerce or wrap them.  ACL2
 builds the record stamp and refuses values that its durable schema cannot
 represent."
+  ;; The wall reading is DTN seconds, the unit of the live owner's
+  ;; configuration stamps (books/owner-config.lisp `fn-ocfg-config-stamp').
+  ;; It was get-universal-time (seconds since 1900), so an offline record's
+  ;; stamp was 3155673600 s ahead of a live one's (PKT-665, 2026-09-27).
   (let ((result (fnn-core 'fn-native-admin-host-clock-observation
                           (floor (fnn-now) internal-time-units-per-second)
-                          (get-universal-time))))
+                          (floor (fnn-owner-wall-milliseconds) 1000))))
     (unless (eq (fnn-core 'fn-native-admin-host-clock-status result) :accepted)
       (fnn-refuse "ACL2 refused an unrepresentable clock observation"))
     (fnn-core 'fn-native-admin-host-clock-stamp result)))
@@ -181,7 +185,9 @@ it cannot continue with its old group-code table."
   "Stage, publish and complete one ACL2-constructed configuration record.
 
 The caller holds the owner mutex.  STAGE is called with a private logical
-connection id and answers the owner's staging word; only :staged continues.
+connection id and answers the owner's ConfigResult (books/owner-results.lisp,
+checked by fnn-owner-result); only :staged continues, and its octets are the
+one configuration record to publish.
 Answers :accepted once the record is durable and the owner installed it, or
 :refused before any publication."
   ;; Reuse the model's existing generation pin: a private logical
@@ -193,26 +199,24 @@ Answers :accepted once the record is durable and the owner installed it, or
   ;; (host/native/owner.lisp).  It is not an action keyword: through
   ;; `fnn-owner-action' every live request faulted here and stopped the
   ;; owner (the dabebb84 matrix run, V0-CFG-LIVE).
+  (let ((record nil))
   (let* ((cid (let ((opened (fnn-owner-core 'fn-owner-open)))
                 (unless (or (null opened) (and (integerp opened) (>= opened 0)))
                   (fnn-fault "owner returned a malformed connection id"))
                 opened))
-         (staged (and (integerp cid) (funcall stage cid))))
+         (result (and (integerp cid) (funcall stage cid)))
+         (staged (and result (fnn-core 'fn-ores-config-word result))))
     (when (integerp cid) (fnn-owner-action 'fn-owner-close cid))
     (unless (eq staged :staged)
-      ;; The second value is the staging step's reason, which ACL2 left in
-      ;; its reason slot (fn-owner-reconfigure-reason: fn-cfg-delta-reason's
-      ;; word, :no-such-grant and the rest), or NIL when nothing was staged.
+      ;; The second value is the staging step's reason, a field of its
+      ;; ConfigResult (fn-cfg-delta-reason's word, :no-such-grant and the
+      ;; rest), or NIL when nothing was staged.
       (return-from fnn-owner-live-reconfigure-locked
         (values :refused
-                (and (integerp cid) (eq staged :refused)
-                     (fnn-owner-core 'fn-owner-reconfigure-reason))))))
-  (let* ((record-list (fnn-owner-core 'fn-owner-reconfigure-octets))
-         (record (progn
-                   (unless (fnn-octet-list-p record-list)
-                     (fnn-fault "owner staged malformed configuration octets"))
-                   (fnn-octets record-list)))
-         (store (fnn-owner-service-store service))
+                (and (eq staged :refused)
+                     (fnn-core 'fn-ores-config-reason result)))))
+    (setq record (fnn-octets (fnn-core 'fn-ores-config-octets result))))
+  (let* ((store (fnn-owner-service-store service))
          (observation (fnn-config-record-observation store))
          (config-records (fnn-config-records-from-observation observation))
          (authorization
@@ -229,7 +233,7 @@ Answers :accepted once the record is durable and the owner installed it, or
          "owner rejected a durably published configuration"))
       (fnn-owner-refresh-config-cache service published)
       (fnn-owner-feed-refresh-configuration service)
-      :accepted)))
+      :accepted))))
 
 ;;; PRF-164 (PKT-439): the owner's side of XREDEEM.  The connection CID
 ;;; holds (books/nntp-auth.lisp fn-auth-redeem-waitp) after its read; the
@@ -249,7 +253,8 @@ Returns the ACL2-rendered reply octets for CID."
            (fnn-owner-live-reconfigure-locked
             service
             (lambda (pcid)
-              (fnn-owner-action 'fn-acct-host-owner-redeem-stage
+              (fnn-owner-result 'fn-ores-config-result-p
+                                'fn-acct-host-owner-redeem-stage
                                 pcid cid salt bound)))))
     (unless (member published '(:accepted :refused))
       (fnn-fault "owner returned a malformed publication word"))
@@ -284,7 +289,8 @@ Returns the ACL2-rendered reply octets for CID."
            (fnn-owner-live-reconfigure-locked
             service
             (lambda (cid)
-              (fnn-owner-action 'fn-native-admin-host-owner-reconfigure cid plan)))
+              (fnn-owner-result 'fn-ores-config-result-p
+                                'fn-native-admin-host-owner-reconfigure cid plan)))
          (if (eq word :refused) (list :reason :refused reason) word))))))
 
 (defun fnn-admin-query (root plan)

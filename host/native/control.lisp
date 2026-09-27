@@ -330,7 +330,8 @@ transition."
       (first answer))))
 
 (defun fnn-control-handle-client (control socket)
-  (let* ((service (fnn-control-state-service control))
+  (let* ((*fnn-owner-measure-label* :control)
+         (service (fnn-control-state-service control))
          (maximum (fnn-control-state-read-maximum control))
          ;; PKT-453 (a): a frame of the reasoned kinds (13, 17) is answered
          ;; with the reasoned reply however its handling ends; ACL2 says
@@ -393,7 +394,8 @@ transition."
                          service (second consumer) (third consumer)
                          (fourth consumer))
                       (case (second consumer)
-                        (:poll (list :consumer-poll-reply :refused nil nil))
+                        ((:poll :bound-poll)
+                         (list :consumer-poll-reply :refused nil nil))
                         (:status (list :consumer-status-reply :refused nil nil nil))
                         (otherwise (list :consumer-reply :refused nil)))))
                    ((and (consp request) (eq (car request) :request))
@@ -639,8 +641,10 @@ transition."
     ;; the store opens, so a malformed value never surfaces on a worker after
     ;; a durable submission.
     (fnn-control-stop-cut-armed-p)
-    (fnn-owner-run-normalized store-octets listener-host-octets listener-port
-                              oncep max-connections tls-context tls-port)))
+    ;; PKT-605: the connection budget counts these clients' threads.
+    (let ((*fnn-mux-control-clients* max-clients))
+      (fnn-owner-run-normalized store-octets listener-host-octets listener-port
+                                oncep max-connections tls-context tls-port))))
 
 (defun fnn-control-connect (path)
   (let ((socket (make-instance 'sb-bsd-sockets:local-socket
@@ -778,7 +782,7 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                  (let* ((frame (fnn-control-read-frame
                                 socket (fnn-core
                                         (case operation
-                                          (:poll
+                                          ((:poll :bound-poll)
                                            'fn-native-control-host-consumer-poll-max-frame)
                                           (:status
                                            'fn-native-control-host-consumer-status-max-frame)
@@ -787,7 +791,7 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                         (reply (and (typep frame 'fnn-octets)
                                     (fnn-core
                                      (case operation
-                                       (:poll
+                                       ((:poll :bound-poll)
                                         'fn-native-control-host-consumer-poll-reply-decode)
                                        (:status
                                         'fn-native-control-host-consumer-status-reply-decode)
@@ -801,7 +805,7 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                    (if (and (consp reply)
                             (eq (first reply)
                                 (case operation
-                                  (:poll :consumer-poll-reply)
+                                  ((:poll :bound-poll) :consumer-poll-reply)
                                   (:status :consumer-status-reply)
                                   (otherwise :consumer-reply)))
                             (member (second reply)
@@ -817,12 +821,13 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                                          (null (fourth reply))
                                          (null (fifth reply))))
                               (and (fnn-octet-list-p (third reply))
-                                   (or (not (eq operation :poll))
+                                   (or (not (member operation
+                                                    '(:poll :bound-poll)))
                                        (fnn-octet-list-p (fourth reply)))))
                             )
                        reply
                      (list (case operation
-                             (:poll :consumer-poll-reply)
+                             ((:poll :bound-poll) :consumer-poll-reply)
                              (:status :consumer-status-reply)
                              (otherwise :consumer-reply))
                            (if (member ordinary-status
@@ -833,7 +838,7 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                            nil nil nil)))))
            (error ()
              (list (case operation
-                     (:poll :consumer-poll-reply)
+                     ((:poll :bound-poll) :consumer-poll-reply)
                      (:status :consumer-status-reply)
                      (otherwise :consumer-reply))
                    (fnn-control-transport-outcome stage) nil nil nil)))

@@ -45,6 +45,7 @@ import socket
 import ssl
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -152,6 +153,104 @@ class Session:
         self.stream.close()
 
 
+class Relay:
+    """A loopback TLS-terminating relay: the client's transcript, both ways.
+
+    It presents the node's own certificate (issued by the scratch CA, so the
+    client verifies it against the CA it trusts) and opens a TLS connection
+    to the node's TLS port verifying the same CA.  Every line either way goes
+    to the client's wire log in tools/nntp_wire_log.py's format, secrets
+    redacted by `Wire.line`, with a per-connection number.  Test tool only:
+    it decides nothing and rewrites no octet.
+    """
+
+    def __init__(self, wire, node_port, cafile, cert, key):
+        self.wire, self.node_port, self.cafile = wire, node_port, cafile
+        self.server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        self.server_context.load_cert_chain(str(cert), str(key))
+        self.listener = socket.socket()
+        self.listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.listener.bind(("127.0.0.1", 0))
+        self.listener.listen(16)
+        self.port = self.listener.getsockname()[1]
+        self.lock = threading.Lock()
+        self.closed = False
+        threading.Thread(target=self.accept, daemon=True).start()
+
+    def log(self, conn, tag, text):
+        with self.lock:
+            if not self.closed:
+                self.wire.line(conn, tag, text)
+
+    def accept(self):
+        while True:
+            try:
+                raw, _ = self.listener.accept()
+            except OSError:
+                return
+            with self.lock:
+                self.wire.conn += 1
+                conn = self.wire.conn
+            threading.Thread(target=self.serve, args=(raw, conn), daemon=True).start()
+
+    def serve(self, raw, conn):
+        try:
+            client = self.server_context.wrap_socket(raw, server_side=True)
+        except (OSError, ssl.SSLError) as error:
+            with self.lock:
+                if not self.closed:
+                    self.wire.out.write("%.3f %d --- client TLS handshake failed: %s\n"
+                                        % (time.time(), conn, error))
+            raw.close()
+            return
+        context = ssl.create_default_context(cafile=str(self.cafile))
+        try:
+            upstream = context.wrap_socket(
+                socket.create_connection(("127.0.0.1", self.node_port), timeout=600),
+                server_hostname="127.0.0.1")
+        except (OSError, ssl.SSLError) as error:
+            client.close()
+            with self.lock:
+                if not self.closed:
+                    self.wire.out.write("%.3f %d --- relay could not reach the node: %s\n"
+                                        % (time.time(), conn, error))
+            return
+        with self.lock:
+            if not self.closed:
+                self.wire.out.write("%.3f %d --- connection (client TLS to the relay, relay "
+                                    "TLS to the node, both verified against the scratch "
+                                    "CA)\n" % (time.time(), conn))
+        for src, dst, tag in ((client, upstream, "C"), (upstream, client, "S")):
+            threading.Thread(target=self.pump, args=(src, dst, tag, conn),
+                             daemon=True).start()
+
+    def pump(self, src, dst, tag, conn):
+        pending = b""
+        try:
+            while True:
+                chunk = src.recv(65536)
+                if not chunk:
+                    break
+                dst.sendall(chunk)
+                pending += chunk
+                while b"\r\n" in pending:
+                    line, pending = pending.split(b"\r\n", 1)
+                    self.log(conn, tag, line.decode("utf-8", "replace"))
+        except (OSError, ssl.SSLError):
+            pass
+        finally:
+            for sock in (dst, src):
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+
+    def close(self):
+        with self.lock:
+            self.closed = True
+        self.listener.close()
+
+
 class Node:
     def __init__(self, args, work):
         self.work, self.args = work, args
@@ -161,6 +260,7 @@ class Node:
         if args.openssl_prefix:
             self.env["FN_OPENSSL_PREFIX"] = args.openssl_prefix
         self.ca, cert, key = scratch_ca(work)
+        self.cert, self.key = cert, key
         self.port, self.tls_port = free_port(), free_port()
         self.config = work / "fn.toml"
         self.config.write_text(
@@ -204,8 +304,13 @@ class Node:
         return self.process.returncode if self.process else None
 
 
-def prelude(node, wire, login, password, group, client):
-    """Invite, redeem over TLS, log in on a new connection and post a seed."""
+def prelude(node, wire, login, password, group, client, newsgroups=None, extra=()):
+    """Invite, redeem over TLS, log in on a new connection and post a seed.
+
+    `newsgroups` is the seed's Newsgroups field (default the one group; slrn
+    gets a cross-post to exercise Xref), `extra` more header lines (pan's
+    seed carries a Sender, which is what pan 0.162 matches when it cancels).
+    """
     wire.mark("invite")
     invite = node.operator("account", "invite", "--expires", "3600")
     codes = re.findall(rb"^[0-9a-f]{32}$", invite.stdout, re.M)
@@ -228,9 +333,9 @@ def prelude(node, wire, login, password, group, client):
     posted = ""
     if passed.startswith("281") and two.command("POST").startswith("340"):
         for text in ("From: {} <{}@matrix.example.invalid>".format(login, login),
-                     "Newsgroups: " + group, "Subject: seed for {}".format(client),
-                     "Message-ID: " + seed_id, "", "a seed article for {} to read".format(
-                         client), "."):
+                     "Newsgroups: " + (newsgroups or group),
+                     "Subject: seed for {}".format(client), "Message-ID: " + seed_id,
+                     *extra, "", "a seed article for {} to read".format(client), "."):
             two.send(text)
         posted = two.read()
     two.close()
@@ -275,6 +380,69 @@ def check(node, wire, login, password, mids):
     return out
 
 
+# The group the slrn row creates live before the NEWGROUPS probe (PKT-665).
+LATER_GROUP = "local.later"
+
+
+def probe_new(node, wire, login, password, groups):
+    """NEWGROUPS and NEWNEWS as the clients use them, and the RFC's other forms.
+
+    slrn sends `NEWGROUPS yymmdd hhmmss GMT` from its newsrc.time stamp
+    (group.c) and Thunderbird the four-digit form; neither slrn nor pan
+    sends NEWNEWS, so its lines are RFC 3977 section 7.4's own forms.  The
+    instants: a day before this run (every group and article here is newer)
+    and a day after (nothing is).  Only the reply lines are recorded; the
+    comparison with the RFC is the test's.
+    """
+    wire.mark("newgroups-newnews")
+    session = Session(wire, node.tls_port, node.ca)
+    session.command("AUTHINFO USER " + login)
+    session.command("AUTHINFO PASS " + password)
+    before, after = time.gmtime(time.time() - 86400), time.gmtime(time.time() + 86400)
+    lines = [
+        ("date", "DATE"),
+        ("active_times", "LIST ACTIVE.TIMES"),
+        ("newgroups_slrn", time.strftime("NEWGROUPS %y%m%d %H%M%S GMT", before)),
+        ("newgroups_4digit", time.strftime("NEWGROUPS %Y%m%d %H%M%S GMT", before)),
+        ("newgroups_future", time.strftime("NEWGROUPS %Y%m%d %H%M%S GMT", after)),
+        ("newnews_all", time.strftime("NEWNEWS * %Y%m%d %H%M%S GMT", before)),
+        ("newnews_group", time.strftime("NEWNEWS " + groups[0] + " %y%m%d %H%M%S", before)),
+        ("newnews_future", time.strftime("NEWNEWS * %Y%m%d %H%M%S GMT", after)),
+    ]
+    out = {}
+    for name, text in lines:
+        status = session.command(text)
+        block = session.block() if status[:3] in ("215", "230", "231") else []
+        out[name] = {"command": text, "status": status, "lines": block}
+    session.close()
+    return out
+
+
+def run_container(args, work, client, login, secret, wire_log):
+    """The slrn or pan driver in the newsreader container, on the host network."""
+    image = args.container
+    built = run([args.docker, "build", "-q", "-t", image,
+                 str(ROOT / "tools" / "reader_clients")], timeout=1800)
+    if built.returncode:
+        raise RuntimeError("docker build exited {}: {}".format(
+            built.returncode, built.stderr.decode()[-300:]))
+    command = [args.docker, "run", "--rm", "--network", "host",
+               "-e", "FN_HOST_UID={}".format(os.getuid()),
+               "-e", "FN_HOST_GID={}".format(os.getgid()),
+               "-v", "{}:/work".format(work),
+               "-v", "{}:/drive:ro".format(ROOT / "tools" / "reader_clients"),
+               image, "python3", "/drive/drive.py", client,
+               "--port", str(args.relay_port), "--user", login,
+               "--password-file", "/work/" + secret.name, "--group", args.group,
+               "--wire", "/work/" + wire_log.name, "--out", "/work/" + client]
+    if client == "slrn":
+        command += ["--second-group", args.second_group]
+    version = run([args.docker, "run", "--rm", "--entrypoint", "dpkg-query", image, "-W",
+                   "-f", "${Package} ${Version} ", "slrn", "pan"], timeout=120)
+    step = run(command, timeout=900)
+    return step, version.stdout.decode().strip(), built.stdout.decode().strip()
+
+
 def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest() if Path(path).exists() else ""
 
@@ -285,6 +453,11 @@ def main(argv=None):
     parser.add_argument("--work", required=True)
     parser.add_argument("--clients", default="thunderbird")
     parser.add_argument("--group", default="local.general")
+    parser.add_argument("--second-group", default="local.crosspost",
+                        help="slrn's seed is cross-posted here (the Xref row)")
+    parser.add_argument("--container", default="fn-reader-clients",
+                        help="the image tools/reader_clients/Dockerfile builds")
+    parser.add_argument("--docker", default="docker")
     parser.add_argument("--thunderbird", default="thunderbird")
     parser.add_argument("--openssl-prefix", default="")
     args = parser.parse_args(argv)
@@ -293,7 +466,7 @@ def main(argv=None):
     node = Node(args, work)
     report = {"image": str(args.image), "image_core_sha256": sha256(str(args.image) + ".core"),
               "group": args.group, "tls_port": node.tls_port, "clients": {}}
-    init = node.operator("init", args.group, "control.cancel")
+    init = node.operator("init", args.group, args.second_group, "control.cancel")
     report["init"] = [init.returncode, (init.stdout + init.stderr).decode()[-200:]]
     try:
         node.start()
@@ -306,31 +479,69 @@ def main(argv=None):
             secret.chmod(0o600)
             entry = {"log": str(log), "login": login}
             try:
-                entry["prelude"] = prelude(node, wire, login, password, args.group, client)
+                newsgroups, extra = None, ()
+                if client == "slrn":
+                    newsgroups = "{},{}".format(args.group, args.second_group)
+                if client == "pan":
+                    extra = ("Sender: {} <{}@matrix.example.invalid>".format(login, login),)
+                entry["prelude"] = prelude(node, wire, login, password, args.group, client,
+                                           newsgroups, extra)
                 wire.out.flush()
-                if client != "thunderbird":
-                    raise RuntimeError("no driver for client {!r}".format(client))
-                step = run([sys.executable, str(ROOT / "tools" / "thunderbird_drive.py"),
-                            "--thunderbird", args.thunderbird, "--work", str(work),
-                            "--port", str(node.tls_port), "--cafile", str(node.ca),
-                            "--group", args.group, "--user", login, "--password-file",
-                            str(secret), "--email",
-                            "{}@matrix.example.invalid".format(login),
-                            "--log", str(log)], timeout=900)
-                text = step.stdout.decode("utf-8", "replace").strip()
-                entry["driver_exit"] = step.returncode
-                entry["driver_stderr"] = step.stderr.decode("utf-8", "replace")[-600:]
-                try:
-                    entry["driver"] = json.loads(text.splitlines()[-1]) if text else {}
-                except ValueError:
-                    entry["driver"] = {"raw": text[-600:]}
-                actions = entry["driver"].get("actions", {}) if isinstance(
-                    entry["driver"], dict) else {}
-                cancel = actions.get("cancel") or {}
-                mids = {"reply": cancel.get("reply_mid", ""), "cancelled": cancel.get("mid", ""),
-                        "seed": entry["prelude"].get("seed_id", "")}
-                wire.out.flush()
-                entry["check"] = check(node, wire, login, password, mids)
+                if client in ("slrn", "pan"):
+                    relay = Relay(wire, node.tls_port, node.ca, node.cert, node.key)
+                    args.relay_port = relay.port
+                    try:
+                        step, versions, image_id = run_container(args, work, client, login,
+                                                                 secret, log)
+                    finally:
+                        relay.close()
+                    text = step.stdout.decode("utf-8", "replace").strip()
+                    entry.update(driver_exit=step.returncode, versions=versions,
+                                 container_image=image_id,
+                                 driver_stderr=step.stderr.decode("utf-8", "replace")[-600:])
+                    try:
+                        entry["driver"] = json.loads(text.splitlines()[-1]) if text else {}
+                    except ValueError:
+                        entry["driver"] = {"raw": text[-600:]}
+                    wire.out.flush()
+                    targets = re.findall(r" C: Control: cancel (<[^>]+>)",
+                                         log.read_text(encoding="utf-8"))
+                    entry["check"] = check(node, wire, login, password,
+                                           {"seed": entry["prelude"].get("seed_id", ""),
+                                            "cancelled": targets[0] if targets else ""})
+                    if client == "slrn":
+                        # PKT-665: a group created on the running node after
+                        # the clients' first contact; NEWGROUPS must list it.
+                        made = node.operator("group", "create", LATER_GROUP)
+                        entry["group_create"] = {
+                            "group": LATER_GROUP, "exit": made.returncode,
+                            "stdout": made.stdout.decode("utf-8", "replace")[-300:]}
+                    entry["new"] = probe_new(node, wire, login, password,
+                                             [args.group, args.second_group])
+                else:
+                    if client != "thunderbird":
+                        raise RuntimeError("no driver for client {!r}".format(client))
+                    step = run([sys.executable, str(ROOT / "tools" / "thunderbird_drive.py"),
+                                "--thunderbird", args.thunderbird, "--work", str(work),
+                                "--port", str(node.tls_port), "--cafile", str(node.ca),
+                                "--group", args.group, "--user", login, "--password-file",
+                                str(secret), "--email",
+                                "{}@matrix.example.invalid".format(login),
+                                "--log", str(log)], timeout=900)
+                    text = step.stdout.decode("utf-8", "replace").strip()
+                    entry["driver_exit"] = step.returncode
+                    entry["driver_stderr"] = step.stderr.decode("utf-8", "replace")[-600:]
+                    try:
+                        entry["driver"] = json.loads(text.splitlines()[-1]) if text else {}
+                    except ValueError:
+                        entry["driver"] = {"raw": text[-600:]}
+                    actions = entry["driver"].get("actions", {}) if isinstance(
+                        entry["driver"], dict) else {}
+                    cancel = actions.get("cancel") or {}
+                    mids = {"reply": cancel.get("reply_mid", ""), "cancelled": cancel.get("mid", ""),
+                            "seed": entry["prelude"].get("seed_id", "")}
+                    wire.out.flush()
+                    entry["check"] = check(node, wire, login, password, mids)
             except Exception as error:                  # noqa: BLE001
                 entry["error"] = "{}: {}".format(type(error).__name__, error)
             finally:

@@ -44,13 +44,58 @@
   :hints (("Goal" :in-theory (e/d (fn-own-submission-targets)
                                   (fn-own-feed-targets fn-own-sub-feed-groups
                                    fn-own-sub-origin fn-own-sub-octets
-                                   fn-own-feed-path-of fn-own-feed-new-targets))
+                                   fn-own-feed-path-of fn-own-feed-new-targets
+                                   fn-mod-names-a-queuep
+                                   fn-own-feed-distribution-targets
+                                   fn-own-feed-distributions-of))
            :use ((:instance fn-own-feed-new-targets-are-among-the-names
-                            (names (fn-own-feed-targets
+                            (names nil) (tbl (fn-own-feeds o))
+                            (msgid (fn-own-sub-msgid (fn-own-inflight o))))
+                 (:instance fn-own-feed-new-targets-are-among-the-names
+                            (names (fn-own-feed-distribution-targets
+                                    (fn-own-feed-targets
+                                     (fn-own-feeds o)
+                                     (fn-own-sub-origin (fn-own-inflight o))
+                                     (fn-own-sub-feed-groups (fn-own-inflight o))
+                                     (fn-own-feed-path-of
+                                      (fn-own-sub-octets (fn-own-inflight o))))
                                     (fn-own-feeds o)
-                                    (fn-own-sub-origin (fn-own-inflight o))
-                                    (fn-own-sub-feed-groups (fn-own-inflight o))
-                                    (fn-own-feed-path-of
+                                    (fn-own-feed-distributions-of
+                                     (fn-own-sub-octets (fn-own-inflight o)))))
+                            (tbl (fn-own-feeds o))
+                            (msgid (fn-own-sub-msgid (fn-own-inflight o))))))))
+
+; KEYSTONE (PRF-237, PKT-675), over the function the host calls.  Every peer
+; the host's intent and durable enqueue name has a Distribution filter that
+; admits the in-flight article's Distribution (RFC 5537 section 3.6
+; paragraph 2): an article whose Distribution matches none of a peer's
+; configured distributions is not fed to that peer.
+(defthm fn-own-submission-targets-respect-the-distribution
+  (implies (member-equal name (fn-own-submission-targets o))
+           (fn-own-feed-distribution-admitsp
+            (fn-own-feed-dists-of name (fn-own-feeds o))
+            (fn-own-feed-distributions-of (fn-own-sub-octets (fn-own-inflight o)))))
+  :hints (("Goal" :in-theory (e/d (fn-own-submission-targets)
+                                  (fn-own-feed-targets fn-own-sub-feed-groups
+                                   fn-own-sub-origin fn-own-sub-octets
+                                   fn-own-feed-path-of fn-own-feed-new-targets
+                                   fn-own-feed-distribution-targets
+                                   fn-own-feed-distributions-of
+                                   fn-own-feed-dists-of
+                                   fn-mod-names-a-queuep))
+           :use ((:instance fn-own-feed-new-targets-are-among-the-names
+                            (names nil) (tbl (fn-own-feeds o))
+                            (msgid (fn-own-sub-msgid (fn-own-inflight o))))
+                 (:instance fn-own-feed-new-targets-are-among-the-names
+                            (names (fn-own-feed-distribution-targets
+                                    (fn-own-feed-targets
+                                     (fn-own-feeds o)
+                                     (fn-own-sub-origin (fn-own-inflight o))
+                                     (fn-own-sub-feed-groups (fn-own-inflight o))
+                                     (fn-own-feed-path-of
+                                      (fn-own-sub-octets (fn-own-inflight o))))
+                                    (fn-own-feeds o)
+                                    (fn-own-feed-distributions-of
                                      (fn-own-sub-octets (fn-own-inflight o)))))
                             (tbl (fn-own-feeds o))
                             (msgid (fn-own-sub-msgid (fn-own-inflight o))))))))
@@ -111,6 +156,34 @@
                                fn-own-submission-never-targets-a-loop
                                fn-own-feed-durable fn-own-submission-targets
                                fn-own-feed-tablep fn-own-sub-origin))))
+
+;; PKT-658 (PRF-228).  -by-definition: a submission naming a moderation queue group
+;; of the owner's posting configuration (books/owner-agent.lisp
+;; `fn-oag-post-config' installs the (:moderated G QUEUE MODS) entries) has no
+;; target: the host's intent (host/owner-host.lisp fn-owner-submission-intent)
+;; names no peer and no feed record is written for it.
+(defthm fn-own-submission-targets-of-a-queue-by-definition
+  (implies (fn-mod-names-a-queuep (fn-own-sub-feed-groups (fn-own-inflight o))
+                                  (fn-inj-config-closed (fn-own-config o)))
+           (equal (fn-own-submission-targets o) nil))
+  :hints (("Goal" :in-theory (e/d (fn-own-submission-targets
+                                   fn-own-feed-new-targets)
+                                  (fn-own-feed-targets fn-own-sub-feed-groups
+                                   fn-mod-names-a-queuep)))))
+
+;; KEYSTONE over the durable enqueue the outcomes fold into the owner
+;; (fn-own-feed-durable; host fn-owner-outcome, fn-owner-transit-outcome,
+;; fn-owner-control-outcome): the feed table is unchanged for such a
+;; submission.
+(defthm fn-own-feed-durable-never-enqueues-a-queue
+  (implies (fn-mod-names-a-queuep (fn-own-sub-feed-groups (fn-own-inflight o))
+                                  (fn-inj-config-closed (fn-own-config o)))
+           (equal (fn-own-feed-durable o sub) (fn-own-feeds o)))
+  :hints (("Goal" :use fn-own-submission-targets-of-a-queue-by-definition
+           :in-theory (e/d (fn-own-feed-durable fn-own-feed-enqueue-all)
+                           (fn-own-submission-targets-of-a-queue-by-definition
+                            fn-own-submission-targets
+                            fn-mod-names-a-queuep fn-own-sub-feed-groups)))))
 
 ; The advance a durable outcome takes re-pins one connection and moves no feed.
 (defthm fn-own-feeds-of-fn-own-advance
@@ -237,11 +310,56 @@
            (member-equal name (fn-own-feed-new-targets names tbl msgid)))
   :hints (("Goal" :in-theory (enable fn-own-feed-new-targets))))
 
+; KEYSTONE (the other direction).  The filter removes nothing else: a peer
+; the scope decision names, whose filter admits the article's Distribution
+; whose feed does not already hold the Message-ID, of a submission that
+; names no moderation queue group (PKT-658), is a target.
+(defthm fn-own-submission-targets-keep-an-admitted-peer
+  (let* ((sub (fn-own-inflight o))
+         (tbl (fn-own-feeds o)))
+    (implies (and sub
+                  (member-equal name (fn-own-feed-targets
+                                      tbl (fn-own-sub-origin sub)
+                                      (fn-own-sub-feed-groups sub)
+                                      (fn-own-feed-path-of (fn-own-sub-octets sub))))
+                  (fn-own-feed-distribution-admitsp
+                   (fn-own-feed-dists-of name tbl)
+                   (fn-own-feed-distributions-of (fn-own-sub-octets sub)))
+                  (not (consp (fn-feed-find (fn-own-sub-msgid sub)
+                                            (fn-feed-queue (fn-own-feed-find name tbl)))))
+                  ; PKT-658: it names no moderation queue group.
+                  (not (fn-mod-names-a-queuep
+                        (fn-own-sub-feed-groups sub)
+                        (fn-inj-config-closed (fn-own-config o)))))
+             (member-equal name (fn-own-submission-targets o))))
+  :hints (("Goal" :in-theory (e/d (fn-own-submission-targets)
+                                  (fn-own-feed-targets fn-own-sub-feed-groups
+                                   fn-own-sub-origin fn-own-sub-octets
+                                   fn-own-feed-path-of fn-own-feed-new-targets
+                                   fn-own-feed-distribution-targets
+                                   fn-own-feed-distributions-of
+                                   fn-own-feed-dists-of fn-own-feed-find
+                                   fn-own-sub-msgid fn-mod-names-a-queuep))
+           :use ((:instance fn-own-feed-new-targets-keeps-an-unqueued-name
+                            (names (fn-own-feed-distribution-targets
+                                    (fn-own-feed-targets
+                                     (fn-own-feeds o)
+                                     (fn-own-sub-origin (fn-own-inflight o))
+                                     (fn-own-sub-feed-groups (fn-own-inflight o))
+                                     (fn-own-feed-path-of
+                                      (fn-own-sub-octets (fn-own-inflight o))))
+                                    (fn-own-feeds o)
+                                    (fn-own-feed-distributions-of
+                                     (fn-own-sub-octets (fn-own-inflight o)))))
+                            (tbl (fn-own-feeds o))
+                            (msgid (fn-own-sub-msgid (fn-own-inflight o))))))))
+
 ; KEYSTONE (PKT-400), over the function the host calls.  A control article
 ; in flight is a target of every peer of the table whose outbound half is
 ; configured, whose wildmat matches a group the article's Newsgroups names OR
 ; its filing group (control.cancel for a cancel), whose path-identity the
-; Path does not name, which is not the peer it came from, and whose feed does
+; Path does not name, which is not the peer it came from, whose Distribution
+; filter admits the article (PRF-237), and whose feed does
 ; not already hold the Message-ID.  Before PKT-400 a signed cancel of a
 ; local.general article was offered under control.cancel alone, so a friend
 ; whose wildmat was local.* never received it.
@@ -265,8 +383,15 @@
                                         (fn-record-string-octets
                                          (fn-cfg-peer-path-identity rec))))
                   (not (equal (fn-own-sub-origin sub) name))
+                  (fn-own-feed-distribution-admitsp
+                   (fn-own-feed-dists-of name tbl)
+                   (fn-own-feed-distributions-of octets))
                   (not (consp (fn-feed-find (fn-own-sub-msgid sub)
-                                            (fn-feed-queue (fn-own-feed-find name tbl))))))
+                                            (fn-feed-queue (fn-own-feed-find name tbl)))))
+                  ; PKT-658: it names no moderation queue group.
+                  (not (fn-mod-names-a-queuep
+                        (fn-own-sub-feed-groups sub)
+                        (fn-inj-config-closed (fn-own-config o)))))
              (member-equal name (fn-own-submission-targets o))))
   :hints (("Goal"
            :use ((:instance fn-own-feed-targets-omit-no-offerable-peer
@@ -278,17 +403,12 @@
                             (sub (fn-own-inflight o))
                             (w (fn-cfg-peer-outbound-groups
                                 (fn-own-feed-record-of name (fn-own-feeds o)))))
-                 (:instance fn-own-feed-new-targets-keeps-an-unqueued-name
-                            (names (fn-own-feed-targets
-                                    (fn-own-feeds o)
-                                    (fn-own-sub-origin (fn-own-inflight o))
-                                    (fn-own-sub-feed-groups (fn-own-inflight o))
-                                    (fn-own-feed-path-of
-                                     (fn-own-sub-octets (fn-own-inflight o)))))
-                            (tbl (fn-own-feeds o))
-                            (msgid (fn-own-sub-msgid (fn-own-inflight o)))))
-           :in-theory (e/d (fn-own-submission-targets fn-own-feed-offerablep)
-                           (fn-own-feed-targets-omit-no-offerable-peer
+                 (:instance fn-own-submission-targets-keep-an-admitted-peer))
+           :in-theory (e/d (fn-own-feed-offerablep)
+                           (fn-own-submission-targets-keep-an-admitted-peer
+                            fn-own-submission-targets
+                            fn-own-feed-distributions-of fn-own-feed-dists-of
+                            fn-own-feed-targets-omit-no-offerable-peer
                             fn-own-sub-feed-groups-match-of-a-control-article
                             fn-own-feed-new-targets-keeps-an-unqueued-name
                             fn-own-feed-targets fn-own-feed-new-targets
@@ -300,7 +420,7 @@
                             fn-own-feed-entry-of fn-own-feed-record-of
                             fn-own-feed-find fn-own-sub-octets fn-own-sub-origin
                             fn-own-sub-msgid fn-own-feed-outboundp
-                            fn-own-sub-feed-base-groups)))))
+                            fn-own-sub-feed-base-groups fn-mod-names-a-queuep)))))
 
 ; KEYSTONE (the other direction).  The widening is exactly those groups: a
 ; target of a control article matches its base groups, its Newsgroups names

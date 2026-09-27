@@ -28,7 +28,11 @@
 (include-book "nntp-control")
 (include-book "owner-invariants")
 
-;; The pinned dispatcher's reply to one command line, over connection CONN.
+;; The pinned dispatcher's reply to one command line, over connection CONN,
+;; under the posting configuration the delegate serves it: the connection's
+;; moderation view (books/nntp-auth.lisp `fn-auth-moderation-config', P3,
+;; PRF-228; the connection's own configuration when its login moderates
+;; nothing).
 (defun fn-octl-reply (conn line)
   (declare (xargs :verify-guards nil))
   (let* ((ns (fn-post-session-base
@@ -38,7 +42,9 @@
     (fn-nntp-archive-command-pinned
      ns (fn-served-conn-archive conn) (fn-served-conn-pinned-index conn)
      (fn-served-conn-verdicts conn)
-     (fn-post-reader-env (fn-served-conn-config conn) (fn-served-conn-observation conn))
+     (fn-post-reader-env (fn-auth-moderation-config (fn-served-conn-session conn)
+                                                    (fn-served-conn-config conn))
+                         (fn-served-conn-observation conn))
      (car tokens) (cdr tokens))))
 
 (defthm fn-octl-reply-of-with-wire
@@ -537,6 +543,9 @@
 (defthm fn-octl-dispatch-archive-command
   (let ((tokens (fn-nntp-tokenize line)))
     (implies (and (fn-octl-reader-hyps (fn-served-conn-session conn) tokens line)
+                  ;; PRF-222: a session without a group-access rule.
+                  (not (fn-auth-access-restrictedp (fn-served-conn-session conn)
+                                                   (fn-served-conn-config conn)))
                   (not (fn-post-offeredp
                         (fn-nntp-result-effects (fn-octl-reply conn line)))))
              (and (equal (fn-served-result-effects
@@ -575,6 +584,8 @@
                          (list (list :command line)))
                   (not (equal (fn-wire-state-mode w2) :closed))
                   (fn-octl-reader-hyps (fn-served-conn-session conn) tokens line)
+                  (not (fn-auth-access-restrictedp (fn-served-conn-session conn)
+                                                   (fn-served-conn-config conn)))
                   (not (fn-post-offeredp
                         (fn-nntp-result-effects (fn-octl-reply conn line)))))
              (equal (fn-served-result-effects
@@ -630,6 +641,8 @@
                          (list (list :command line)))
                   (not (equal (fn-wire-state-mode w2) :closed))
                   (fn-octl-reader-hyps (fn-own-conn-live-session o conn) tokens line)
+                  (not (fn-auth-access-restrictedp (fn-own-conn-live-session o conn)
+                                                   (fn-own-conn-config conn)))
                   (not (fn-post-offeredp (fn-nntp-result-effects reply))))
              (equal (car (fn-own-read o id (append prefix (list byte))))
                     (fn-nntp-result-effects reply))))

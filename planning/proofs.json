@@ -6999,78 +6999,6 @@
       ]
     },
     {
-      "id": "PRF-199",
-      "title": "Reading the schema-3 checkpoint file written for the tables of a capture gives those tables, and their value is the capture (the keystone of the one resumable pipeline; the batched loop writes that file at any batch size)",
-      "statement": "books/store-checkpoint-tables.lisp. fn-sct-decode-file-of-file-is-the-capture: for c = (fn-sco-capture configs records), tables = (fn-sct-tables-of-capture c frontier revision) and progs = (fn-sct-table-programs tables (fn-sco-event-index c)): (implies (and (fn-sct-tables-treep tables) (<= (len records) (1+ *fn-cbor-max-uint*)) (fn-sct-programs-widthp progs)) (and (equal (fn-sct-decode-file (fn-sct-file-segments progs seg (len records))) (list :ok tables)) (equal (fn-sct-capture-of-tables tables) c))), for any segment size. Built from fn-sct-run-of-program (the ref codec's stack machine pushes the program's value, with a decoder table that agrees with the encoder's below the count: fn-sct-agreep-of-build, the capture's event index against the index built from the P rows), fn-sct-run-of-rows-program (a run's stack is its rows), fn-sct-decode-programs-of-table-programs (the four programs decode to the tables), fn-sct-decode-file-of-file-segments (the four runs decode to the four programs, through the codec's fn-scc-join-of-chunks) and fn-sct-capture-of-tables-of-capture (the tables of a capture mean the capture, for every configuration history and record list; the file-local reference s is the fresh P table's index, the identity on a fresh table, never assumed for a live one). With PRF-135's fn-sct-load-is-decode-file the host's load (fn-store-sco-decode) of the file gives the capture the open extends, so fn-sn-recover-from-checkpoint-equals-full-recover and fn-sco-open transfer unchanged. PROVED (checkpoint-pipeline-2): fn-ockp-run-writes-the-file, books/owner-checkpoint-pipeline.lisp: for setup = (fn-ockp-setup next frontier revision seg budget free) and tables = (fn-sct-tables-of-capture next frontier revision), (implies (and (fn-ockp-tables-encodablep tables) (true-listp fn-octets) (natp seg) (equal (mv-nth 0 (fn-ockp-run setup (fn-ockp-initial-state tables fn-octets) b seg s segment-bound file-bound fuel fn-octets)) :ok)) (equal (mv-nth 1 (fn-ockp-run ...)) (fn-sct-file-octets (fn-sct-table-programs tables (fn-sco-event-index next)) seg s))): the octets of the host's steps (fnn-checkpoint-write-steps loops on fn-ockp-step until fn-ockp-donep; fn-ockp-run is that loop in the logic, answering :fuel when the fuel ends before the four tables), at ANY batch size and ANY segment size, from ANY initial buffer contents (fn-ockp-initial-state starts the residue at the buffer's fill), are the file the tables codec specifies whenever the loop completes with :ok. From fn-ockp-run-is-the-remaining (the residue invariant: what remains of a state is the run K from the residue [W, fill) and the rows not yet encoded, framed from INDEX with the chain at PREV, then the runs after it; each step's frames are exactly the difference: fn-ockp-batch-writes-the-remaining, split on the four tables), fn-ockp-cut-frames-is-cut (the buffer's cut is the list's cut), fn-ockp-chunks-of-append-cut, fn-ockp-frames-of-append, fn-ockp-encode-batch-is-rows-program and fn-ockp-counts-are-chunk-counts. With the decode keystone above, the file the loop writes decodes to the tables and the tables mean the capture.",
-      "milestone": "M5",
-      "requirements": [
-        "STO-026",
-        "STO-011"
-      ],
-      "depends_on": [
-        "PRF-135",
-        "PRF-133",
-        "PRF-104"
-      ],
-      "assumptions": [
-        "A-HOST"
-      ],
-      "status": "uncertified-at-current-digest",
-      "events": [
-        "fn-sct-decode-file-of-file-is-the-capture",
-        "fn-sct-capture-of-tables-of-capture",
-        "fn-sct-run-of-program",
-        "fn-sct-run-of-rows-program",
-        "fn-sct-decode-rows-of-rows-program",
-        "fn-sct-agreep-of-build",
-        "fn-sct-decode-programs-of-table-programs",
-        "fn-sct-run-decode-of-run-segments",
-        "fn-sct-decode-file-of-file-segments",
-        "fn-ockp-run-writes-the-file",
-        "fn-ockp-run-is-the-remaining",
-        "fn-ockp-encode-batch-ok-is-encodable",
-        "fn-ockp-step-preserves-statep",
-        "fn-ockp-step-preserves-encodable",
-        "fn-ockp-run-of-encodable-never-refuses-a-row",
-        "fn-ockp-setup-not-unencodable-never-refuses-a-row"
-      ],
-      "evidence": [
-        "books/store-checkpoint-tables.lisp",
-        "books/store-checkpoint-tables-reader.lisp",
-        "tests/acl2/store-checkpoint-tables-tests.lisp",
-        "tests/test_native_state_checkpoint.py",
-        "tests/test_native_checkpoint_auto.py",
-        "planning/evidence/checkpoint-pipeline-2026-09-26.md"
-      ],
-      "progress_note": "Lane checkpoint-pipeline (2026-09-26): the decode keystone; the loop keystone fn-ockp-run-writes-the-file admitted in the persvati REPL and certified by checkpoint-pipeline-2 (the manifest in planning/evidence/checkpoint-pipeline-2026-09-26.md section 4). checkpoint-pipeline-5 (2026-09-26): the loop keystone's book at 9.4 s at two jobs (was 48.4 s: the codec's leaf definitions and imported true-listp backchainers closed locally, the counts theorem as one per-run lemma, the run-step facts oriented for the rewriter); PKT-583 (a): fn-ockp-encode-batch checks each row as it writes it (B rows and BYTES octets per step), fn-ockp-statep is the O(1) shape the host's *1* entry checks, and the invariants are theorems: fn-ockp-step-preserves-statep (hypothesis: the shape alone), fn-ockp-step-preserves-encodable, fn-ockp-run-of-encodable-never-refuses-a-row, fn-ockp-setup-not-unencodable-never-refuses-a-row (a setup that did not say :unencodable is never followed by a step that does); teeth in the test book."
-    },
-    {
-      "id": "PRF-200",
-      "title": "The pipeline defers by name before any allocation exactly when the file it would write exceeds the checkpoint budget or the space, naming the estimate and the bound, and the deferral blocks a retry exactly while that bound is below the estimate",
-      "statement": "books/owner-checkpoint-writer.lisp (split from owner-checkpoint-pipeline by checkpoint-pipeline-5). fn-ockp-decide-defers-by-the-estimate: (implies (and (natp estimate) (natp budget)) (let ((verdict (fn-ockp-decide estimate budget free))) (and (iff (equal (car verdict) :deferred) (or (< budget estimate) (not (natp (fn-ockp-space free))) (< (fn-ockp-space free) estimate))) (implies (< budget estimate) (equal verdict (list :deferred :exceeds-budget estimate budget))) (implies (and (not (< budget estimate)) (natp (fn-ockp-space free)) (< (fn-ockp-space free) estimate)) (equal verdict (list :deferred :exceeds-space estimate (fn-ockp-space free)))) (implies (not (equal (car verdict) :deferred)) (equal verdict (list :plan estimate))) (implies (< budget estimate) (iff (fn-ock-publication-blockedp verdict later-budget later-space) (< (nfix later-budget) estimate))) (implies (and (not (< budget estimate)) (natp (fn-ockp-space free)) (< (fn-ockp-space free) estimate)) (iff (fn-ock-publication-blockedp verdict later-budget later-space) (or (not (natp later-space)) (< later-space estimate))))))). fn-ockp-space is the free octets the host observed by statvfs less fn-smr-reserve-octets (nil when unobserved: deferred by name). Called by fn-ockp-setup (host/native/owner.lisp fnn-owner-publish-captured; host/store-node-host.lisp fn-store-sco-publish-setup); the blocked rule on the due path (host/owner-host.lisp fn-owner-sco-due). With PRF-183's estimate theorem the estimate compared is the file's length.",
-      "milestone": "M5",
-      "requirements": [
-        "STO-026",
-        "STO-024"
-      ],
-      "depends_on": [
-        "PRF-183"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "events": [
-        "fn-ockp-decide-defers-by-the-estimate"
-      ],
-      "evidence": [
-        "books/owner-checkpoint-writer.lisp",
-        "books/owner-checkpoint-pipeline.lisp",
-        "tests/acl2/store-checkpoint-tables-tests.lisp",
-        "tests/test_native_checkpoint_auto.py",
-        "planning/evidence/checkpoint-pipeline-2026-09-26.md"
-      ],
-      "progress_note": "Lane checkpoint-pipeline (2026-09-26): admitted in the persvati REPL and certified in the lane's tree; the native deferral case (the budget) runs on hbox; the space deferral's native case is not exercised (no small disk on the box; the ACL2 witness holds the capacity figure below the estimate)."
-    },
-    {
       "id": "PRF-193",
       "title": "A signed POST's identity prepare reads the history's last record, not every record: the candidate test's txid fold no longer re-recognizes each record's octets",
       "statement": "host/owner-host.lisp fn-owner-prepare-identity (called by host/native/owner.lisp fnn-owner-identity-commit for every signed POST's kind-4 composite, every keyring snapshot and every key statement's kind-3 event) installs fn-ccar-ocfg-prepare-identity, whose store step fn-ccar-sn-prepare-identity (books/owner-commit-carried.lisp) now stages through fn-pcar-stage-record (books/owner-prepare-carried.lisp; fn-pcar-stage-record-is-stage-record, no hypothesis, PRF-014) instead of fn-spc-stage-record. The candidate test's fold fn-sf-next-lower computed fn-store-event-txid of every record, and that dispatcher runs fn-record-p over each record's octets: 69.9 percent of a signed POST's owner CPU at N = 10,000 in the before profile (planning/evidence/signed-post-linear-2026-09-26.md). fn-pcar-next-lower reads the last record's txid through the concrete twins. KEYSTONE fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record (no hypothesis but that the prepare moved the store): when (fn-ccar-sn-prepare-identity s event) differs from s, its files are :record-staged with EVENT as the record candidate, the history and the node are unchanged, EVENT's sequence is (len records), (+ 1 txid(EVENT)) is the frontier, and on a non-empty history txid(EVENT) is above the txid of (car (last records)). PRF-144's keystones fn-ccar-sn-prepare-identity-is-sn-prepare-identity-under-relation and fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation are re-proved over the new body, statements unchanged; with them the staged event is the specification's. The signed POST's verdict and served bytes are unchanged (the staging is equal to the former one on every input).",
@@ -7567,10 +7495,11 @@
     {
       "id": "PRF-198",
       "title": "The process heap is the store profile's figure: an accepted figure holds every store the profile admits and fits the observed machine; a profile the machine cannot hold is refused by name",
-      "statement": "books/heap-figure.lisp. fn-heap-decide (profile core nursery observations) is the host-called subject: host/native/heap.lisp fnn-heap-decision calls it, from fnn-command-heap (the `heap -- ARGV` probe the installed packaging/fn runs before it execs the command with --dynamic-space-size MB) and fnn-heap-print-store-line (the line `operator CONFIG status` and `health` print). The figure fn-heap-figure-octets = CORE + NURSERY + 2 x 16 x (2H + R) + 2 x fn-ock-capture-budget(profile), in SBCL megabytes rounded up (fn-heap-mb-of); the machine is fn-heap-machine-octets, the least positive observation. KEYSTONE fn-heap-decide-admits-every-store-the-profile-admits: (implies (and (fn-bs-profile-admittedp profile) (equal (car d) :heap) (<= used (fn-bs-profile-max-history-octets profile)) (natp core) (natp nursery)) (and (<= (+ core nursery (* 32 (+ used used R)) (* 2 (fn-ock-capture-budget profile))) (* 2^20 (fn-heap-decision-mb d))) (<= (* 2^20 (fn-heap-decision-mb d)) (fn-heap-machine-octets observations)))) with d = (fn-heap-decide profile core nursery observations): for every history of USED octets within H (the store budget's bound, fn-sbud-verdict-at), the image, the nursery, the lists at sixteen bytes per octet with the collector's copy, and both checkpoint buffers fit the megabytes passed, which fit the machine. (natp used) was removed after proving the weakened theorem. fn-heap-decide-refuses-exactly-past-the-machine: for an admitted profile and an observed machine the decision is (:heap MB WORD MACHINE-MB) when MB x 2^20 <= machine and (:refused :machine-cannot-hold-profile MB MACHINE-MB) otherwise; fn-heap-decision-exit-code-of-a-refusal: a refusal exits 1 (outcome-class :refused). The small preset (*fn-heap-small-request*: the development base with T 16384, H 8 MiB, R 196608, G 16, K 128) is admitted and fn-heap-small-profile-fits-a-small-machine: with core <= 512 MiB and nursery <= 64 MiB it is accepted on every machine of at least 1536 MiB (OpenBSD's default datasize); fn-heap-init-request-on-a-small-machine-is-small / -keeps-the-operators-request: `init`'s bare request on a machine under 4 GiB resolves to it (host/native/operator.lisp fnn-operator-execute-init via fnn-heap-init-request), every other request is unchanged. Scope: the 16 B per octet is the octet-list representation's cons (rep-wave-d section 1.2); the second history copy is the open's transient; the model states retained octets, not SBCL's allocator, and the native case measures VmHWM against it.",
+      "statement": "books/heap-figure.lisp. fn-heap-decide (profile core nursery observations) is the host-called subject: host/native/heap.lisp fnn-heap-decision calls it, from fnn-command-heap (the `heap -- ARGV` probe the installed packaging/fn runs before it execs the command with --dynamic-space-size MB) and fnn-heap-print-store-line (the line `operator CONFIG status` and `health` print). The figure fn-heap-figure-octets = CORE + NURSERY + 2 x 16 x (2H + R) + 2 x fn-ock-capture-budget(profile), in SBCL megabytes rounded up (fn-heap-mb-of); the machine is fn-heap-machine-octets, the least positive observation. KEYSTONE fn-heap-decide-admits-every-store-the-profile-admits: (implies (and (fn-bs-profile-admittedp profile) (equal (car d) :heap) (<= used (fn-bs-profile-max-history-octets profile)) (natp core) (natp nursery)) (and (<= (+ core nursery (* 32 (+ used used R)) (* 2 (fn-ock-capture-budget profile))) (* 2^20 (fn-heap-decision-mb d))) (<= (* 2^20 (fn-heap-decision-mb d)) (fn-heap-machine-octets observations)))) with d = (fn-heap-decide profile core nursery observations): for every history of USED octets within H (the store budget's bound, fn-sbud-verdict-at), the image, the nursery, the lists at sixteen bytes per octet with the collector's copy, and both checkpoint buffers fit the megabytes passed, which fit the machine. (natp used) was removed after proving the weakened theorem. fn-heap-decide-refuses-exactly-past-the-machine: for an admitted profile and an observed machine the decision is (:heap MB WORD MACHINE-MB) when MB x 2^20 <= machine and (:refused :machine-cannot-hold-profile MB MACHINE-MB) otherwise; fn-heap-decision-exit-code-of-a-refusal: a refusal exits 1 (outcome-class :refused). The small preset (*fn-heap-small-request*: the development base with T 16384, H 8 MiB, R 196608, G 16, K 128) is admitted and fn-heap-small-profile-fits-a-small-machine: with core <= 512 MiB and nursery <= 64 MiB it is accepted on every machine of at least 1536 MiB (OpenBSD's default datasize); (heap-figure's fn-heap-init-request and its two theorems are retired from this row, 2026-09-27: no host line calls it; init's choice is books/heap-reservation.lisp fn-heap-init-decide.) Scope: the 16 B per octet is the octet-list representation's cons (rep-wave-d section 1.2); the second history copy is the open's transient; the model states retained octets, not SBCL's allocator, and the native case measures VmHWM against it. EXTENSION (lane image-floor, HST-017): books/heap-reservation.lisp fn-heap-reserve-decide (profile core nursery observations connections), the subject host/native/heap.lisp fnn-heap-reservation calls from fnn-command-heap, is fn-heap-decide's decision and, when that accepts an admitted profile, the stack (fn-heap-stack-kib: the constant *fn-heap-stack-octets*, 1,024 KiB, since lane served-line-iterative made the served path's stack need independent of the article: least 142 KiB for 16 lines, 2,000,000 lines and one 4 MiB line; the per-line term 512 KiB + 40 x (floor(A/2) + 1024) is retired) and THREADS = connections + fn-native-control-max-active-clients + 12; the whole HEAP + CORE + THREADS x (STACK + 4 MiB) is refused by name (:machine-cannot-hold-threads) past the machine. KEYSTONE fn-heap-reserve-decide-holds-every-thread-the-node-runs: (implies (and (fn-bs-profile-admittedp profile) (equal (car r) :heap) (natp connections)) (and (equal (fn-heap-decision-mb r) (fn-heap-decision-mb (fn-heap-decide ...))) (<= (+ connections clients 12) threads) (<= *fn-heap-stack-octets* (* 1024 stack-kib)) (<= (+ (* 2^20 mb) (nfix core) (* threads (+ (* 1024 stack-kib) 4 MiB))) (fn-heap-machine-octets observations)))); fn-heap-reserve-decide-refuses-exactly-past-the-machine and -keeps-heap-figures-refusals. Scope: the stack constant rests on a measurement of compiled frames on SBCL 2.6.8 (served-line-iterative's record section 5; image-floor's section 4), pinned by tests/test_native_image_floor.py's stack witnesses, not a theorem about frames. INIT (PKT-582, in the shape of gpt-6's wave-5 review s.8): fn-heap-init-decide (request core nursery physical limits budget-octets sizing-octets), called by host/native/heap.lisp fnn-heap-init-decision (from operator.lisp fnn-operator-execute-init, which prints fn-heap-init-report-line, and from the heap probe through fnn-heap-init-request), sizes within an explicit budget: the least of the physical memory less the OS's reserve (a quarter, at least 512 MiB), each limit the process runs under (RLIMIT_DATA, RLIMIT_AS, every cgroup memory.max) and FN_INIT_BUDGET_MB. A request naming no capacity field (a bare init, every mission) takes (:development FIELDS) when the budget holds its whole reservation at the default max-connections, else the small candidate (conservative; never scale); FN_INIT_SIZING=largest takes the first of scale, development, small; the request's own fields are laid last and never lowered. When none holds it, init refuses by name (init-budget-cannot-hold-profile). Any other request (a named preset or capacity field) is the operator's: written as named, never resized, the decision's HELDP (nth 6) saying whether the budget holds it (fn-heap-init-decide-honors-the-operators-request; -sized-init-is-held: a capacity-free init is always held). KEYSTONE fn-heap-init-decide-fits-the-budget-and-the-machine: (implies (and (equal (car d) :init) (nth 6 d)) (and (fn-bs-profile-admittedp p) (<= (fn-heap-init-reservation-octets p core nursery) budget) (implies (posp (fn-heap-machine-octets (cons physical limits))) (equal (car (fn-heap-reserve-decide p core nursery (cons physical limits) 32)) :heap)))) with p the resolved written request and budget the machine octets of fn-heap-init-observations: the chosen preset's whole reservation is under the printed budget and the run's own decision on the same machine accepts it. fn-heap-init-decide-honors-the-operators-request; -sized-init-is-held; -conservative-is-development-or-small; -conservative-takes-development-when-it-fits; -largest-takes-scale-when-it-fits; fn-heap-init-budget-is-under-each-part; fn-heap-reserve-decide-accepts-on-a-larger-machine. heap-figure's fn-heap-init-request is no longer the host's init choice.",
       "milestone": "M5",
       "requirements": [
-        "HST-013"
+        "HST-013",
+        "HST-025"
       ],
       "depends_on": [
         "PRF-183"
@@ -7583,10 +7512,18 @@
         "fn-heap-decide-admits-every-store-the-profile-admits",
         "fn-heap-decide-refuses-exactly-past-the-machine",
         "fn-heap-small-profile-fits-a-small-machine",
-        "fn-heap-init-request-on-a-small-machine-is-small",
-        "fn-heap-init-request-keeps-the-operators-request",
         "fn-heap-machine-octets-is-at-most-each-observation",
-        "fn-heap-decision-exit-code-of-a-refusal"
+        "fn-heap-decision-exit-code-of-a-refusal",
+        "fn-heap-reserve-decide-holds-every-thread-the-node-runs",
+        "fn-heap-reserve-decide-refuses-exactly-past-the-machine",
+        "fn-heap-reserve-decide-keeps-heap-figures-refusals",
+        "fn-heap-reserve-thread-refusal-exits-1",
+        "fn-heap-init-decide-fits-the-budget-and-the-machine",
+        "fn-heap-init-decide-honors-the-operators-request",
+        "fn-heap-init-decide-sized-init-is-held",
+        "fn-heap-init-decide-conservative-is-development-or-small",
+        "fn-heap-init-decide-largest-takes-scale-when-it-fits",
+        "fn-heap-figure-octets-grows-with-history-and-record"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -7595,7 +7532,11 @@
         "packaging/fn",
         "tests/test_native_heap_from_profile.py",
         "tests/test_native_cli_launcher.sh",
-        "planning/evidence/heap-from-profile-2026-09-26.md"
+        "planning/evidence/heap-from-profile-2026-09-26.md",
+        "books/heap-reservation.lisp",
+        "tests/acl2/heap-reservation-tests.lisp",
+        "tests/test_native_image_floor.py",
+        "planning/evidence/image-floor-2026-09-26.md"
       ],
       "progress_note": "Lane heap-from-profile (2026-09-26): every event and the test book admitted in the persvati REPL (proof_repl, the farm toolchain w25); certification is the batch's (Validation by batch). The native case ran on hbox under MemoryMax=2G (planning/evidence/heap-from-profile-2026-09-26.md)."
     },
@@ -7703,6 +7644,78 @@
         "fn-own-feed-connect-in-ihave-form-sends-the-bare-article",
         "fn-own-feed-connect-in-stream-form-offers-check"
       ]
+    },
+    {
+      "id": "PRF-199",
+      "title": "Reading the schema-3 checkpoint file written for the tables of a capture gives those tables, and their value is the capture (the keystone of the one resumable pipeline; the batched loop writes that file at any batch size)",
+      "statement": "books/store-checkpoint-tables.lisp. fn-sct-decode-file-of-file-is-the-capture: for c = (fn-sco-capture configs records), tables = (fn-sct-tables-of-capture c frontier revision) and progs = (fn-sct-table-programs tables (fn-sco-event-index c)): (implies (and (fn-sct-tables-treep tables) (<= (len records) (1+ *fn-cbor-max-uint*)) (fn-sct-programs-widthp progs)) (and (equal (fn-sct-decode-file (fn-sct-file-segments progs seg (len records))) (list :ok tables)) (equal (fn-sct-capture-of-tables tables) c))), for any segment size. Built from fn-sct-run-of-program (the ref codec's stack machine pushes the program's value, with a decoder table that agrees with the encoder's below the count: fn-sct-agreep-of-build, the capture's event index against the index built from the P rows), fn-sct-run-of-rows-program (a run's stack is its rows), fn-sct-decode-programs-of-table-programs (the four programs decode to the tables), fn-sct-decode-file-of-file-segments (the four runs decode to the four programs, through the codec's fn-scc-join-of-chunks) and fn-sct-capture-of-tables-of-capture (the tables of a capture mean the capture, for every configuration history and record list; the file-local reference s is the fresh P table's index, the identity on a fresh table, never assumed for a live one). With PRF-135's fn-sct-load-is-decode-file the host's load (fn-store-sco-decode) of the file gives the capture the open extends, so fn-sn-recover-from-checkpoint-equals-full-recover and fn-sco-open transfer unchanged. PROVED (checkpoint-pipeline-2): fn-ockp-run-writes-the-file, books/owner-checkpoint-pipeline.lisp: for setup = (fn-ockp-setup next frontier revision seg budget free) and tables = (fn-sct-tables-of-capture next frontier revision), (implies (and (fn-ockp-tables-encodablep tables) (true-listp fn-octets) (natp seg) (equal (mv-nth 0 (fn-ockp-run setup (fn-ockp-initial-state tables fn-octets) b seg s segment-bound file-bound fuel fn-octets)) :ok)) (equal (mv-nth 1 (fn-ockp-run ...)) (fn-sct-file-octets (fn-sct-table-programs tables (fn-sco-event-index next)) seg s))): the octets of the host's steps (fnn-checkpoint-write-steps loops on fn-ockp-step until fn-ockp-donep; fn-ockp-run is that loop in the logic, answering :fuel when the fuel ends before the four tables), at ANY batch size and ANY segment size, from ANY initial buffer contents (fn-ockp-initial-state starts the residue at the buffer's fill), are the file the tables codec specifies whenever the loop completes with :ok. From fn-ockp-run-is-the-remaining (the residue invariant: what remains of a state is the run K from the residue [W, fill) and the rows not yet encoded, framed from INDEX with the chain at PREV, then the runs after it; each step's frames are exactly the difference: fn-ockp-batch-writes-the-remaining, split on the four tables), fn-ockp-cut-frames-is-cut (the buffer's cut is the list's cut), fn-ockp-chunks-of-append-cut, fn-ockp-frames-of-append, fn-ockp-encode-batch-is-rows-program and fn-ockp-counts-are-chunk-counts. With the decode keystone above, the file the loop writes decodes to the tables and the tables mean the capture.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-026",
+        "STO-011"
+      ],
+      "depends_on": [
+        "PRF-135",
+        "PRF-133",
+        "PRF-104"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-sct-decode-file-of-file-is-the-capture",
+        "fn-sct-capture-of-tables-of-capture",
+        "fn-sct-run-of-program",
+        "fn-sct-run-of-rows-program",
+        "fn-sct-decode-rows-of-rows-program",
+        "fn-sct-agreep-of-build",
+        "fn-sct-decode-programs-of-table-programs",
+        "fn-sct-run-decode-of-run-segments",
+        "fn-sct-decode-file-of-file-segments",
+        "fn-ockp-run-writes-the-file",
+        "fn-ockp-run-is-the-remaining",
+        "fn-ockp-encode-batch-ok-is-encodable",
+        "fn-ockp-step-preserves-statep",
+        "fn-ockp-step-preserves-encodable",
+        "fn-ockp-run-of-encodable-never-refuses-a-row",
+        "fn-ockp-setup-not-unencodable-never-refuses-a-row"
+      ],
+      "evidence": [
+        "books/store-checkpoint-tables.lisp",
+        "books/store-checkpoint-tables-reader.lisp",
+        "tests/acl2/store-checkpoint-tables-tests.lisp",
+        "tests/test_native_state_checkpoint.py",
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/checkpoint-pipeline-2026-09-26.md"
+      ],
+      "progress_note": "Lane checkpoint-pipeline (2026-09-26): the decode keystone; the loop keystone fn-ockp-run-writes-the-file admitted in the persvati REPL and certified by checkpoint-pipeline-2 (the manifest in planning/evidence/checkpoint-pipeline-2026-09-26.md section 4). checkpoint-pipeline-5 (2026-09-26): the loop keystone's book at 9.4 s at two jobs (was 48.4 s: the codec's leaf definitions and imported true-listp backchainers closed locally, the counts theorem as one per-run lemma, the run-step facts oriented for the rewriter); PKT-583 (a): fn-ockp-encode-batch checks each row as it writes it (B rows and BYTES octets per step), fn-ockp-statep is the O(1) shape the host's *1* entry checks, and the invariants are theorems: fn-ockp-step-preserves-statep (hypothesis: the shape alone), fn-ockp-step-preserves-encodable, fn-ockp-run-of-encodable-never-refuses-a-row, fn-ockp-setup-not-unencodable-never-refuses-a-row (a setup that did not say :unencodable is never followed by a step that does); teeth in the test book."
+    },
+    {
+      "id": "PRF-200",
+      "title": "The pipeline defers by name before any allocation exactly when the file it would write exceeds the checkpoint budget or the space, naming the estimate and the bound, and the deferral blocks a retry exactly while that bound is below the estimate",
+      "statement": "books/owner-checkpoint-writer.lisp (split from owner-checkpoint-pipeline by checkpoint-pipeline-5). fn-ockp-decide-defers-by-the-estimate: (implies (and (natp estimate) (natp budget)) (let ((verdict (fn-ockp-decide estimate budget free))) (and (iff (equal (car verdict) :deferred) (or (< budget estimate) (not (natp (fn-ockp-space free))) (< (fn-ockp-space free) estimate))) (implies (< budget estimate) (equal verdict (list :deferred :exceeds-budget estimate budget))) (implies (and (not (< budget estimate)) (natp (fn-ockp-space free)) (< (fn-ockp-space free) estimate)) (equal verdict (list :deferred :exceeds-space estimate (fn-ockp-space free)))) (implies (not (equal (car verdict) :deferred)) (equal verdict (list :plan estimate))) (implies (< budget estimate) (iff (fn-ock-publication-blockedp verdict later-budget later-space) (< (nfix later-budget) estimate))) (implies (and (not (< budget estimate)) (natp (fn-ockp-space free)) (< (fn-ockp-space free) estimate)) (iff (fn-ock-publication-blockedp verdict later-budget later-space) (or (not (natp later-space)) (< later-space estimate))))))). fn-ockp-space is the free octets the host observed by statvfs less fn-smr-reserve-octets (nil when unobserved: deferred by name). Called by fn-ockp-setup (host/native/owner.lisp fnn-owner-publish-captured; host/store-node-host.lisp fn-store-sco-publish-setup); the blocked rule on the due path (host/owner-host.lisp fn-owner-sco-due). With PRF-183's estimate theorem the estimate compared is the file's length.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-026",
+        "STO-024"
+      ],
+      "depends_on": [
+        "PRF-183"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-ockp-decide-defers-by-the-estimate"
+      ],
+      "evidence": [
+        "books/owner-checkpoint-writer.lisp",
+        "books/owner-checkpoint-pipeline.lisp",
+        "tests/acl2/store-checkpoint-tables-tests.lisp",
+        "tests/test_native_checkpoint_auto.py",
+        "planning/evidence/checkpoint-pipeline-2026-09-26.md"
+      ],
+      "progress_note": "Lane checkpoint-pipeline (2026-09-26): admitted in the persvati REPL and certified in the lane's tree; the native deferral case (the budget) runs on hbox; the space deferral's native case is not exercised (no small disk on the box; the ACL2 witness holds the capacity figure below the estimate)."
     },
     {
       "id": "PRF-206",
@@ -8007,6 +8020,105 @@
       "progress_note": "Lane acceptance-payload-arena (2026-09-26): certified on persvati, run-20260927T001950Z-505f (certify-20260927T002614Z-565053: passed 2, failed 0, no book over 10 s at two jobs); every event REPL-admitted first."
     },
     {
+      "id": "PRF-229",
+      "title": "The catalog's number lookup at a version and its clamped range are the walks of the visible rows, under the no-number-bound-twice invariant every catalog export preserves",
+      "statement": "books/catalog-number-index.lisp, over the generic fn-cat. fn-cnx-freshp (every later row's number in a group this row is numbered in is absent or larger) holds of the creator and of clear and is preserved by commit, by withdraw and redecide under their guards (fn-cnx-freshp-of-commit, -of-withdraw, -of-redecide, -of-create-and-clear, stated over fn-cat$a-* with no stobj; fn-cnx-freshp-of-cat-writers over the exports). Under it a number is bound by at most one row (fn-cnx-number-seq-unique), and KEYSTONE fn-cnx-view-seq-is-walk: fn-cnx-view-seq group n v (one probe of the (group . number) table, one row read, one visibility test) equals fn-cat-view-number-find group n count v (books/catalog-view.lisp: the walk of the rows visible at version v, newest first) for every non-nil n; KEYSTONE fn-cnx-view-range-is-walk: fn-cnx-view-range group low high v (the numbers low .. min(high, next - 1) ascending, one probe each) equals fn-cnx-walk-range group low high v, the walk per number over low .. high unclamped (a number past the group's high names no row). Hypothesis-free but for the invariant (and n non-nil for the lookup).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-013"
+      ],
+      "depends_on": [
+        "PRF-201"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/catalog-number-index.lisp",
+        "tests/acl2/catalog-number-index-tests.lisp",
+        "planning/evidence/index-stobjs-2026-09-26.md"
+      ],
+      "planning_note": "Lane index-stobjs (wave 5, 2026-09-26). The subjects are not host-called: the served machine still reads the lists (fn-gidx number trie, fn-midx trie, the archive walk for ARTICLE by number) until catalog-slice's step 7b threads fn-cat through the retrieval arms; these are the lookups 7b is asked to call (LANEDUMP request). This closes the 'number column form' PRF-204's progress note lists as not proved (fn-cat-view-bound-find's walk equals the table's row when visible, given numbers are functional).",
+      "events": [
+        "fn-cnx-view-seq-is-walk",
+        "fn-cnx-view-range-is-walk",
+        "fn-cnx-number-seq-unique",
+        "fn-cnx-freshp-of-commit",
+        "fn-cnx-freshp-of-withdraw",
+        "fn-cnx-freshp-of-redecide",
+        "fn-cnx-freshp-of-create-and-clear",
+        "fn-cnx-freshp-of-cat-writers"
+      ]
+    },
+    {
+      "id": "PRF-226",
+      "title": "A contact's drain reads each job once from a per-peer cursor and answers exactly what the head-restarting scan answers",
+      "statement": "fn-bpnjc-contact-next (books/bp-node-job-cursor.lisp; host/native/bp-service.lisp fnn-bpc-drive-contact before every base offer, and fnn-bpnode-send-receipts in host/native/bp-node.lisp) reads the job list from the cursor (F C HELD) the host threads between asks. fn-bpnjc-contact-next-is-the-head-scan (keystone): under fn-bpnjc-contact-relp (unique job keys; no job ahead of C ready on this contact; HELD the first held job ahead of C; every offered key ahead of C) its answer equals fn-bpnj-contact-next's, so PRF-120 and PRF-079 describe it. The relation is established at the contact's opening from the peer's frontier (fn-bpnjc-open-establishes-the-relation; fn-bpnjc-frontierp: every job ahead of F is another peer's or :forwarded/:expired), kept by each offer for the next ask (fn-bpnjc-offer-keeps-the-relation) and by an evolution of the jobs ahead of the cursor between asks (fn-bpnjc-evolution-keeps-the-relation; fn-bpnjc-offered-record-evolves: a lifecycle record naming an offered key, or a :queued append, is one). fn-bpnjc-drain-is-the-head-drain (keystone): along a contact's asks, threading OFFERED and the cursor, with the jobs evolving between asks (fn-bpnjc-evolving-p), the answers are the head scan's, ask for ask. fn-bpnjc-drain-visits-are-linear (keystone, work): the positions all asks examine plus the start are at most the length of the last job list asked at; an offer advances at least one (fn-bpnjc-ask-position-bounds). The frontier: fn-bpnjc-contact-close advances it over settled jobs and keeps every peer's (fn-bpnjc-close-keeps-the-frontiers); every lifecycle record keeps every frontier (fn-bpnjc-lifecycle-record-keeps-the-frontier). Covered scope: base job offers. Not covered: that every served event changes the base jobs only by fn-bpn-apply-record (the drain takes the evolution as a hypothesis); the machine's own per-offer work (find-job, replace-job) stays linear in the job's position (PKT-653).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-009"
+      ],
+      "depends_on": [
+        "PRF-120"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/bp-node-job-cursor.lisp",
+        "tests/acl2/bp-node-job-cursor-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "specs/bp-node-machine.md",
+        "tools/bench/bp-drain-bench.lisp",
+        "planning/evidence/bp-cursors-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T012321Z-4022710.json",
+        "planning/evidence/manifests/certify-20260927T013834Z-4142446.json"
+      ],
+      "progress_note": "Lane bp-cursors (Opus, 2026-09-27). Measured on hbox (tools/bench/bp-drain-bench.lisp): records examined per drain 2,002,000 -> 1,000 at 1,000 ready jobs and 200,020,000 -> 10,000 at 10,000; see the record for walls. Not done: PKT-653 (machine per-offer work linear in position), PKT-654 (4,096-record ceiling).",
+      "events": [
+        "fn-bpnjc-contact-next-is-the-head-scan",
+        "fn-bpnjc-offer-keeps-the-relation",
+        "fn-bpnjc-evolution-keeps-the-relation",
+        "fn-bpnjc-open-establishes-the-relation",
+        "fn-bpnjc-drain-is-the-head-drain",
+        "fn-bpnjc-drain-visits-are-linear",
+        "fn-bpnjc-offered-record-evolves",
+        "fn-bpnjc-lifecycle-record-keeps-the-frontier",
+        "fn-bpnjc-close-keeps-the-frontiers",
+        "fn-bpnjc-ask-position-bounds"
+      ]
+    },
+    {
+      "id": "PRF-227",
+      "milestone": "M5",
+      "title": "The reader opens every connection over the selection's recognised archive and Message-ID trie instead of rebuilding and re-recognising them per connection; a retention commit no longer re-runs the whole-node recogniser on the advanced node",
+      "statement": "(1) The reader open. KEYSTONE fn-rdc-reset-is-served-open (books/reader-open-carried.lisp; hypothesis (fn-rdc-readyp (fn-rdc-selection archive verdicts))): (fn-rdc-reset (fn-rdc-selection archive verdicts) ll bl config observation injection acfg) = (fn-served-pin-verdicts (fn-served-open archive ll bl config observation injection acfg) verdicts). host/reader-host.lisp fn-reader-reset (native host/native/io.lisp fnn-reader-reset, once per accepted connection in fnn-serve-client) calls fn-rdc-reset over the selection fn-reader-use-store / fn-reader-use-seed recorded once per process (fn-rdc-store-selection / fn-rdc-selection, through fnn-reader-select in fnn-reader-prepare). The relation carried: fn-rdc-selection-establishes (no hypothesis beyond readiness): a ready selection's archive satisfies fn-nntp-projectionp and fn-statep and its index is (fn-midx-build (fn-state-articles archive)); fn-rdc-selection-ready-iff-projectable. The reader's archive is immutable under its shared lock (it never commits), so the selection is the establishing entry and no transition needs preservation. Refinement: fn-rdc-served-open-is-served-open (hypotheses (fn-statep archive), index = the archive's trie) over PRF-188's fn-ocar-auth-open-reader-is-auth-open-session. A reset with no ready selection is unreachable in composition (both hosts refuse before any connection) and has no separate arm. (2) The retention commit. books/replay.lisp fn-replay-apply-retention-event's test (fn-node-statep advanced) is (mbt ...), discharged under its guard by fn-replay-advance-preserves-node-statep; its logical definition is unchanged, so every theorem about it stands. Host callers: host/owner-host.lisp fn-owner-finish-submission / fn-owner-finish (through fn-ccar-sn-finish-enabled), fn-owner-prepare-identity (fn-replay-apply-record), host/store-node-host.lisp fn-store-sn-finish, fn-store-sn-known-abort, and every replay at open.",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-001",
+        "PRF-188"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/reader-open-carried.lisp",
+        "tests/acl2/reader-open-carried-tests.lisp",
+        "books/replay.lisp",
+        "planning/evidence/hot-path-fixes-owner-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T010859Z-1095275.json"
+      ],
+      "progress_note": "Lane hot-path-fixes-owner (2026-09-27; PKT-448 (a), (f)). Teeth: tests/acl2/reader-open-carried-tests.lisp: a reachable one-article archive (the reader host's seed) whose selection is ready, the carried reset equal to the reference with the greeting written, the trie and verdicts pinned and the session projected; the Store selection over owner-advance-carried-tests' committed owner store; hypothesis removal for fn-rdc-served-open-is-served-open (a wrong index with fn-statep retained; a corrupted-state archive with the index hypothesis retained) and for fn-rdc-reset-is-served-open (a refused selection); the retention mbt's lemma on the committed store's node, and its failure on a non-node (corrupted-state). Measured at N = 10,000 in the record.",
+      "events": [
+        "fn-rdc-reset-is-served-open",
+        "fn-rdc-selection-establishes",
+        "fn-rdc-selection-ready-iff-projectable",
+        "fn-rdc-served-open-is-served-open",
+        "fn-rdc-projection-is-a-state",
+        "fn-replay-advance-preserves-node-statep"
+      ]
+    },
+    {
       "id": "PRF-218",
       "title": "The served path's per-line and per-octet-of-line folds run as loops: serving and posting an article uses a control stack independent of its line count and line length",
       "statement": "Three keystones, each with no hypotheses, each the :exec of an mbe whose :logic is the unchanged recursive definition, so the guard proof makes the loop the executable the host runs. fn-nntp-stuff-lines-iter-is-stuff-lines (books/nntp-session.lisp): (fn-nntp-stuff-lines-iter lines) = (fn-nntp-stuff-lines lines), the dot-stuffed CRLF block of every multi-line reply (ARTICLE, HEAD, BODY, OVER, HDR, LIST), built by a tail-recursive accumulator (fn-nntp-stuff-lines-onto) turned round once. fn-post-body-octets-iter-is-body-octets (books/nntp-post.lisp): (fn-post-body-octets-iter lines) = (fn-post-body-octets lines), the POST's article reassembled from the wire's (:article lines) event. fn-wire-list-length-onto-is-list-length (books/wire.lisp): (fn-wire-list-length-onto xs 0) = (fn-wire-list-length xs), the length fn-wire-after-line charges each article line (fn-wire-line-cost). The recursions they replaced took one control-stack frame per article line (stuff-lines, post-body-octets) or per octet of one line (fn-inj-append inside post-body-octets, fn-wire-list-length); the profile admits a line as long as the article (fn-wire-article-line-limit), so each was a remote stop. Host chain: host/native/owner.lisp fnn-owner-handle-chunk -> host/owner-host.lisp fn-owner-chunk-span -> fn-scar-ocfg-read-span, whose wire fold (fn-wire-feed-span -> fn-wire-feed-byte -> fn-wire-after-line) calls fn-wire-line-cost, whose served POST (fn-nntp-post-step-pinned -> fn-nntp-post-step) calls fn-post-body-octets, and whose retrievals (fn-nntp-article-response) call fn-nntp-stuff-lines. Scope: a measured constant, not a theorem about frames: the native witness posts, serves, reopens and serves articles of 2,000,000 lines and of one 4 MiB line at 1 MiB of control stack per thread on both images.",
@@ -8066,6 +8178,521 @@
         "fn-bpaj-ocl-relation-carries-sn-statep",
         "fn-osi-ocl-store-record-accepted-fast-is-checked",
         "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
+      ]
+    },
+    {
+      "id": "PRF-240",
+      "title": "The open decodes each pack-chain link once: the walk's step, the coverage and the observation read a content-keyed memo of link decodes and answer exactly what the reference answers, on every chain; and the catalog loaded from the checkpoint by P extents is the load fold over the rows",
+      "statement": "books/checkpoint-pack-chain-once.lisp. Over MEMO, a list of (FRAMED DIGEST MAX RESULT), with the invariant fn-ccco-memo-soundp (every RESULT is (fn-ccc-framed-link FRAMED DIGEST MAX)): fn-ccco-entry-step-is-entry-step (implies (fn-ccco-memo-soundp memo) (equal (fn-ccco-entry-step framed digest max memo) (fn-ccc-entry-step framed digest max))); fn-ccco-coverage-chain-is-coverage-chain (implies (fn-ccco-memo-soundp memo) (equal (fn-ccco-coverage-chain framed count frontier max memo) (fn-ccc-coverage-chain framed count frontier max))); fn-ccco-observe-chain-is-observe-chain (the same for fn-ccc-observe-chain). The memo starts empty (fn-ccco-memo-soundp-of-nil) and the host's two writers keep it sound (fn-ccco-remember-keeps-sound, fn-ccco-remember-all-keeps-sound). The chain check re-decodes no event: fn-ccco-links-okp-of-decoded (implies (not (equal (fn-ccc-decode-entries framed max) :bad)) (equal (fn-ccc-links-okp (fn-ccc-decode-entries framed max)) (fn-ccco-links-chainedp (fn-ccc-decode-entries framed max)))). A link missed by the memo is decoded by fn-ccco-framed-link-fast, which reads each packed event's kind, sequence, txid and generation in one dispatch (fn-ccco-event-fields-are-the-dispatchers) instead of six recognitions: fn-ccco-framed-link-fast-is-framed-link (equal (fn-ccco-framed-link-fast framed digest max) (fn-ccc-framed-link framed digest max)), with no hypothesis, through fn-ccco-octet-event-listp-is-octet-event-listp, fn-ccco-linkp-is-linkp and fn-ccco-decode-link-is-decode-link. Host: host/checkpoint-host.lisp fn-store-checkpoint-chain-step, -coverage, -observe call fn-ccco-entry-step, fn-ccco-coverage-chain, fn-ccco-observe-chain with the global fn-store-pack-memo, written only by fn-ccco-remember and fn-ccco-remember-all inside the host scope fnn-with-pack-memo (host/native/io.lisp: fnn-recover's open, fnn-pack-publish, fnn-pack-chain-report); so PRF-085's walk, coverage and reconstruction (fn-ccc-chain-reconstructs-the-history) and the publication crash theorem over fn-ccc-walk transfer unchanged. Scope: a link is still decoded as an octet list (the by-index decode is PKT-680). SECOND PART, books/catalog-load-index.lisp: fn-obi-load-is-cat-load (implies (fn-obi-extents-agreep rows extents fn-octets) (equal (fn-obi-load rows extents fn-octets keyring generation fn-arena fn-cat) (fn-cat-load rows keyring generation fn-arena fn-cat))): each article row interned with its payload sealed from its P extent in the octet buffer through the interface fn-obi-seal-range (fn-obi-seal-range-is-seal-of-slice: today the arena list seal of the slice; records-freeze attaches a copy without a list behind the same signature), fn-obi-intern-range-is-intern-list; with fn-cat-load-from-empty, fn-obi-load-from-empty-establishes-relation (R over the rows), so with books/catalog-entries.lisp fn-cat-ocl-relation-at-recover (entry E3) the catalog installed by extents is in R. Not yet host-called and the agreement is not yet discharged from the reader (PKT-680).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-012"
+      ],
+      "depends_on": [
+        "PRF-085",
+        "PRF-199"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/checkpoint-pack-chain-once.lisp",
+        "tests/acl2/checkpoint-pack-chain-once-tests.lisp",
+        "host/checkpoint-host.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_pack_chain.py",
+        "planning/evidence/open-by-index-2026-09-26.md",
+        "books/catalog-load-index.lisp",
+        "tests/acl2/catalog-load-index-tests.lisp",
+        "books/catalog-entries.lisp",
+        "planning/evidence/manifests/certify-20260927T020711Z-1880439.json"
+      ],
+      "progress_note": "Lane open-by-index (2026-09-26/27): certified by persvati farm run run-20260927T020711Z (certify-20260927T020711Z-1880439: the two books and their test books); hbox run-20260927T003414Z-f8e9 certified the chain book before its comment was renumbered.",
+      "events": [
+        "fn-ccco-entry-step-is-entry-step",
+        "fn-ccco-coverage-chain-is-coverage-chain",
+        "fn-ccco-observe-chain-is-observe-chain",
+        "fn-ccco-links-okp-of-decoded",
+        "fn-ccco-remember-keeps-sound",
+        "fn-ccco-remember-all-keeps-sound",
+        "fn-ccco-framed-link-fast-is-framed-link",
+        "fn-ccco-octet-event-listp-is-octet-event-listp",
+        "fn-ccco-event-fields-are-the-dispatchers",
+        "fn-ccco-linkp-is-linkp",
+        "fn-ccco-decode-link-is-decode-link",
+        "fn-obi-load-is-cat-load",
+        "fn-obi-intern-range-is-intern-list",
+        "fn-obi-load-from-empty-establishes-relation"
+      ]
+    },
+    {
+      "id": "PRF-241",
+      "title": "A committed delta applied in bounded steps under any schedule of quanta ends where its one-shot application does: the :policy range is re-decided exactly once, row by row",
+      "statement": "books/config-policy-delta.lisp (lane config-consumer-catalog-2, 2026-09-27; PKT-601 (6), discharging catalog-delta's OPEN). KEYSTONE fn-cfgp-apply-in-quanta-is-apply-delta: for a delta satisfying fn-delta-p and a natural cursor at or before the delta's range start, fn-cat-apply-in-quanta (the resumable run of fn-cat-apply-delta-step, each step re-deciding at most its quantum of rows, fn-cat-apply-delta-step-bounded) under ANY list of quanta equals fn-cat-apply-delta, the one-shot application. Its inductive form fn-cfgp-policy-in-quanta-is-the-range: for a :policy delta with natural bounds, from ANY natural cursor the run is fn-cat-recontext-range from the later of the cursor and the range start to the range end clipped to the count. Scope: the catalog alone; no host line calls fn-cat-apply-in-quanta yet (the catalog serves no path until PKT-585's steps 4 to 9); which configuration change emits a :policy delta is not decided (the held context carries a keyring generation only; the record's packet).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-013"
+      ],
+      "depends_on": [
+        "PRF-201"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-policy-delta.lisp",
+        "tests/acl2/config-policy-delta-tests.lisp",
+        "planning/evidence/config-consumer-catalog-2-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T014915Z-1653648.json"
+      ],
+      "pending_subject": "No host line calls fn-cat-apply-in-quanta or fn-cat-apply-delta yet: the catalog's delta is applied only by the test books until the catalog serves the view (PKT-585).",
+      "events": [
+        "fn-cfgp-recontext-range-split",
+        "fn-cfgp-policy-in-quanta-is-the-range",
+        "fn-cfgp-apply-in-quanta-is-apply-delta"
+      ]
+    },
+    {
+      "id": "PRF-231",
+      "title": "A peer named by a DNS name: the dial resolves only RFC 1123 names, each attempt, and the TLS check a transport selects is the configured name under a pinned anchor or the system's public roots",
+      "statement": "books/peer-host.lisp over the functions the host calls. fn-peer-dial-target-decides-the-path (no hypothesis; host host/native/io.lisp fnn-peer-connect, called by host/native/feed-service.lisp fnn-feed-dial and host/native/pull-service.lisp fnn-pull-round): the target is exactly one of (:address A) with A the four octets fn-native-config-ipv4-address spells and the host not a name, (:resolve HOST) with HOST exactly the configured text, an RFC 1123 section 2.1 name of at most 253 octets of letters, digits, hyphen and dot and not an IPv4 literal (fn-peer-host-name-is-not-an-ipv4-literal), or (:refused :host-syntax) for anything else. fn-peer-tls-verification-selects-one-check (no hypothesis; host fnn-feed-enable-tls and the pull's (:tls NAME TRUST) effect in fnn-pull-round): the answer is :verify or :refused only; a :verify names exactly the configured server name, which is a host, sends SNI exactly when it is a DNS name (fn-peer-tls-verification-sni-is-never-a-literal, RFC 6066 section 3), and selects the system roots iff the trust is :system-roots and a pinned file iff it is a C string; a string host name with a well-formed trust is always :verify. fn-peer-tls-select-named-default (peer add, books/native-admin-peer.lisp fn-native-admin-peer-plan-base): a named host given `-` `-` is checked against its own name under the system roots; fn-peer-tls-select-numeric-host-needs-a-name-by-definition; fn-peer-tls-select-is-a-check: every selection is one fn-peer-tls-verification accepts, the roots exactly when the anchor word is `-`. The peer record admits (:tls MODE NAME :system-roots) (books/peer-config.lisp fn-cfg-peer-transportp, row n = 1), the pull plan reads it (books/peer-pull.lisp fn-pull-security-of-rows, books/peer-pull-session.lisp fn-pull-tls-securityp), and invitations carry only hosts (books/peer-invite.lisp fn-pinv-hosts-okp). Not claimed: DNS authenticity, the system bundle's trustworthiness, OpenSSL's hostname check, IPv6 peers, inbound source-address peers after renumbering.",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-048"
+      ],
+      "depends_on": [
+        "PRF-097"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/peer-host.lisp",
+        "tests/acl2/peer-host-tests.lisp",
+        "books/peer-config.lisp",
+        "books/native-admin-peer.lisp",
+        "books/peer-invite.lisp",
+        "books/peer-pull.lisp",
+        "books/peer-pull-session.lisp",
+        "host/native/io.lisp",
+        "host/native/tls.lisp",
+        "host/native/feed-service.lisp",
+        "host/native/pull-service.lisp",
+        "tests/test_native_peer_by_name.py",
+        "planning/evidence/peers-by-name-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T013235Z-1440473.json",
+        "planning/evidence/manifests/certify-20260927T012133Z-4014708.json"
+      ],
+      "progress_note": "Lane peers-by-name 2026-09-27 (PKT-613): books/peer-host REPL-admitted on persvati (session pbn); the changed chain (16 books: peer-config, peer-host, peer-pull, peer-pull-session, native-admin-peer, peer-invite, owner-feed, feed-connection(-invariants), native-admin(-peer-budget) and the test books) certified on persvati at 2 jobs, max 8.2 s (manifest certify-20260927T013235Z-1440473); hbox certified the image's 116 affected books at 8 jobs (certify-20260927T012133Z-4014708). Native: tests.test_native_peer_by_name 4 of 4 OK on the production and the developer image (native-pbn2).",
+      "events": [
+        "fn-peer-dial-target-decides-the-path",
+        "fn-peer-tls-verification-selects-one-check",
+        "fn-peer-tls-verification-sni-is-never-a-literal",
+        "fn-peer-tls-select-named-default",
+        "fn-peer-tls-select-is-a-check",
+        "fn-peer-host-name-is-not-an-ipv4-literal"
+      ]
+    },
+    {
+      "id": "PRF-232",
+      "title": "A Store opens only on the filesystem its record names, is refused by name otherwise, and its owner's start is refused by name when it requires durable storage on a mount that observably disables it",
+      "statement": "books/store-mount-identity.lisp. The record is an FNMI frame of five u16-length fields (fsid, type, mount point, source, policy); KEYSTONE fn-smid-record-decode-of-seal: the host's fnn-seal of fn-smid-record-protected, read back with ACL2's trailer over its protected prefix, decodes to the record (under fn-smid-recordp). KEYSTONE fn-smid-mountinfo-step-preserves-best-okp: the Linux mountinfo fold only ever selects a mount that contains the store root's resolved path. KEYSTONE fn-smid-recorded-store-opens-iff-same-filesystem: a store whose record was written from observation OBS (fn-smid-record-plan) opens under an observation OBS2 exactly when fn-smid-same-filesystemp holds (type and mount point equal; fsids equal where both are reported, else sources equal). KEYSTONE fn-smid-moved-mount-point-is-refused-by-name: when the root now resolves under another mount point the open answers (:refused :filesystem-changed RECORDED OBSERVED). KEYSTONE fn-smid-absent-record-is-refused: no record, no open, whatever is observed. fn-smid-open-verdict-opens-only-on-a-match. KEYSTONE fn-smid-start-refused-iff-required-and-unsafe (PKT-648): on its recorded filesystem, the owner's start is refused as :storage-not-durable exactly when the policy is 1 and fn-smid-unsafe-reason (nobarrier, barrier=0, tmpfs, ramfs) holds, else it starts. KEYSTONE fn-smid-rebound-store-opens: after rebind-filesystem under an observation, an open under it opens. fn-smid-refusal-text-is-nil-exactly-for-open / -for-start: the host prints a refusal exactly when the verdict is not (:open) / (:start). KEYSTONE fn-smid-open-decision-is-the-verdict: the host's open decision fn-smid-open-decision is fn-smid-open-verdict wherever a record is present or the root holds no config.json; KEYSTONE fn-smid-empty-root-is-refused: no record and no config.json is refused whatever is observed; KEYSTONE fn-smid-unrecorded-store-never-starts: a store with no record (made before the record) opens offline with a warning (fn-smid-unrecorded-warning) and is never started; fn-smid-refusal-text-is-nil-exactly-for-an-open-decision. Host subjects: fn-smid-open-decision and fn-smid-start-verdict (host/native/io.lisp fnn-check-filesystem-identity, from fnn-acquire and host/native/owner.lisp fnn-owner-install), fn-smid-mountinfo-step and fn-smid-linux-observation / fn-smid-statfs-observation (fnn-filesystem-observation), fn-smid-record-plan (fnn-record-filesystem-at-init), fn-smid-rebind-plan (fnn-command-rebind-filesystem), fn-smid-refusal-text, fn-smid-durability-warning. NOT in this target: that statfs and mountinfo report the truth (A-HOST); ZFS sync=disabled and volatile write caches (not observable); the record replacement's crash cuts as a byte-model program (PKT-671).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-031"
+      ],
+      "depends_on": [],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-smid-record-decode-of-seal",
+        "fn-smid-payload-decode-of-payload",
+        "fn-smid-mountinfo-step-preserves-best-okp",
+        "fn-smid-recorded-store-opens-iff-same-filesystem",
+        "fn-smid-moved-mount-point-is-refused-by-name",
+        "fn-smid-absent-record-is-refused",
+        "fn-smid-open-verdict-opens-only-on-a-match",
+        "fn-smid-start-refused-iff-required-and-unsafe",
+        "fn-smid-rebound-store-opens",
+        "fn-smid-refusal-text-is-nil-exactly-for-open",
+        "fn-smid-refusal-text-is-nil-exactly-for-start",
+        "fn-smid-open-decision-is-the-verdict",
+        "fn-smid-empty-root-is-refused",
+        "fn-smid-unrecorded-store-never-starts",
+        "fn-smid-refusal-text-is-nil-exactly-for-an-open-decision"
+      ],
+      "evidence": [
+        "books/store-mount-identity.lisp",
+        "tests/acl2/store-mount-identity-tests.lisp",
+        "tests/test_native_store_mount_identity.py",
+        "planning/evidence/store-mount-identity-2026-09-27.md"
+      ],
+      "progress_note": "Lane store-mount-identity (2026-09-27): every event and the test book REPL-admitted on persvati (session smid); READY FOR BATCH, not certified."
+    },
+    {
+      "id": "PRF-223",
+      "title": "A served connection's memory is named and a node refuses, by name, at start and at every live change, a connection capacity the machine cannot hold beside the store's heap figure, the core and the fixed threads; every connection fn-exp-open admits under an accepted capacity, trusted sources included, fits the machine",
+      "statement": "books/connection-budget.lisp. The subjects are fn-cbud-run-decide, which host/owner-host.lisp fn-owner-connection-budget calls once per run after recovery and before listen (host/native/mux.lisp fnn-mux-budget-install, from host/native/owner.lisp fnn-owner-run), and fn-cbud-deltas-refusal, which host/owner-host.lisp fn-owner-reconfigure-deltas calls before any live reconfiguration is staged (native-admin, peer-invite and auth all reach it), over the host's observations (the machine: heap-figure's fn-heap-machine-octets; the core's length; the fixed threads, 12 + 2 I/O loops + the control clients; the thread control stack) and the store's profile (heap-figure's fn-heap-figure-octets is the base's heap; the profile's largest article A sizes the connection). The per-connection figure is fn-cbud-conn-octets: a heap part (the connection record, its input of two +fnn-max-read+ reads, the one reply of the STATED WORKLOAD -- the largest article rendered, 2A + 1,024 -- and the parser's line and body as octet lists, 32 octets per octet) and a native part (kernel socket buffers; the TLS session when a context is loaded); the record, kernel and TLS constants are measurements (tests/test_native_mux.py pins the resident cost). fn-cbud-bound-holds-its-connections: when the base (the store's heap figure, the core, the threads with their stacks and 4 MiB of runtime each) fits the machine, the base plus n connections at the whole per-connection figure fits for every n up to fn-cbud-bound; fn-cbud-bound-is-the-most: one more does not. The resident heap is at most the process's dynamic space, so fn-cbud-resident-octets of n connections is min(dynamic, figure + n x heap part) + the rest of the base + n x native part, and fn-cbud-limit is the larger of fn-cbud-bound and the dynamic space's bound (the whole dynamic space plus each connection's native part). KEYSTONE fn-cbud-limit-holds-its-connections: when either way holds the base (fn-cbud-base-fitsp), the resident figure of every n up to the limit is within the machine; fn-cbud-limit-is-the-most: of limit + 1 it is not. KEYSTONE fn-cbud-run-decide-holds-the-capacity: an accepted run (:hold L) has capacity <= L, L the limit, and the resident figure of capacity connections within the machine; fn-cbud-run-decide-refuses-exactly-past-the-limit: it refuses exactly when the capacity passes the limit or the base does not fit. KEYSTONE fn-cbud-admitted-connections-fit-the-machine: under PRF-211's hypotheses, when the live capacity is within the limit and the base fits, an admission (fn-exp-admit-decision = (:admit)) with nconns held leaves the resident figure of nconns + 1 within the machine; the trusted range exempts no connection from the capacity (fn-exp-open-refuses-exactly-at-the-capacity). fn-cbud-deltas-refusal-keeps-the-capacity-held: a delta list the refusal passes leaves the capacity of the applied configuration within the limit, so the maintained relation 'capacity <= held limit' (established by the run's decision) survives every live change. fn-cbud-launch-decide-keeps-the-store-figure: the launcher's probe (host/native/heap.lisp fnn-heap-decision) adds room for the connections' heap parts and never lowers heap-figure's figure. Not claimed: replies larger than the stated workload's (range OVER/LISTGROUP) until replies are rendered in windows (PKT-644); the measured constants as theorems; that the probe sees the live capacity (it cannot: PKT-644).",
+      "milestone": "M6",
+      "requirements": [
+        "HST-024"
+      ],
+      "depends_on": [
+        "PRF-211",
+        "PRF-198"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/connection-budget.lisp",
+        "tests/acl2/connection-budget-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/mux.lisp",
+        "host/native/owner.lisp",
+        "host/native/tls.lisp",
+        "host/native/heap.lisp",
+        "tests/test_native_mux.py",
+        "tests/native_owner_chunk_loop_raw.lisp",
+        "specs/host.md",
+        "planning/evidence/connection-multiplexing-2026-09-26.md"
+      ],
+      "progress_note": "Lane connection-multiplexing 2026-09-27: certified itself, persvati run-20260927T015456Z-53f5 (manifest certify-20260927T015536Z-1751083: book 5.2 s, tests 2.7 s).",
+      "events": [
+        "fn-cbud-bound-holds-its-connections",
+        "fn-cbud-bound-is-the-most",
+        "fn-cbud-limit-holds-its-connections",
+        "fn-cbud-limit-is-the-most",
+        "fn-cbud-run-decide-holds-the-capacity",
+        "fn-cbud-run-decide-refuses-exactly-past-the-limit",
+        "fn-cbud-admitted-connections-fit-the-machine",
+        "fn-cbud-deltas-refusal-keeps-the-capacity-held",
+        "fn-cbud-launch-decide-keeps-the-store-figure"
+      ]
+    },
+    {
+      "id": "PRF-222",
+      "title": "A restricted reader session is served the store with its excluded groups absent, and no reply can depend on what an excluded group holds",
+      "statement": "books/nntp-auth.lisp fn-auth-delegate-pinned (called by fn-auth-step-pinned, which books/served.lisp fn-served-dispatch calls per framed line; the carried twin books/served-carried.lisp fn-scar-auth-delegate-pinned, which host/owner-host.lisp reaches through fn-scar-ocfg-read-tls-prefix, calls the same view functions) delegates over (fn-auth-view-session, -archive, -index, -config): for a reader session whose login's rule (fn-auth-access-text over the pinned listing's fourth element) has READ text R and a projected session, the archive is fn-gac-restrict-state R (books/group-access.lisp), the index fn-gac-restrict-index R built from its articles, the session fn-gac-deselect R; otherwise each is its argument (fn-auth-view-when-unrestricted). KEYSTONES (books/group-access.lisp): fn-gac-restrict-state-is-a-projection (fn-nntp-projectionp preserved); fn-gac-restrict-index-corresponds (fn-gidx-pin-correspondencep of the rebuilt index); fn-gac-restrict-state-groups-are-readable (every group of the view is readable under R and a group of the store); fn-gac-restrict-articles-memberships-readable and fn-gac-restrict-index-withdrawn-are-readable (every article of the view and of its withdrawn list names only readable groups and memberships); fn-gac-restricted-article-is-held (the view holds Message-ID M exactly when the store holds an article M with a readable group); fn-gac-restrict-absent-groups (NO ORACLE: for a store fn-statep and any R2 admitting every group R admits, restricting to R2 then R is restricting to R). The served relation: fn-gac-deselected-consistent / fn-gac-consistent-back and fn-auth-view-consistent / -back carry fn-auth-session-consistentp and fn-gidx-pin-correspondencep into and out of the view, so fn-auth-delegate-pinned-preserves-consistentp and fn-auth-step-pinned-preserves-consistent-session hold for restricted sessions. Local policy (INN readers.conf); RFC 3977 section 4.2 wildmats.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-046",
+        "SEC-007"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/group-access.lisp",
+        "books/nntp-auth.lisp",
+        "books/served-carried.lisp",
+        "books/config.lisp",
+        "books/owner-agent.lisp",
+        "tests/acl2/group-access-tests.lisp",
+        "tests/test_native_group_access.py",
+        "planning/evidence/group-access-2026-09-27.md"
+      ],
+      "events": [
+        "fn-gac-restrict-state-is-a-projection",
+        "fn-gac-restrict-index-corresponds",
+        "fn-gac-restrict-state-groups-are-readable",
+        "fn-gac-restrict-articles-memberships-readable",
+        "fn-gac-restrict-index-withdrawn-are-readable",
+        "fn-gac-restricted-article-is-held",
+        "fn-gac-restrict-absent-groups",
+        "fn-gac-deselected-consistent",
+        "fn-gac-consistent-back",
+        "fn-auth-view-when-unrestricted",
+        "fn-auth-view-consistent",
+        "fn-auth-view-consistent-back",
+        "fn-auth-view-trie-corresponds",
+        "fn-auth-delegate-pinned-preserves-consistentp",
+        "fn-gac-views-find-is-restriction",
+        "fn-gac-access-views-covers-pattern"
+      ]
+    },
+    {
+      "id": "PRF-228",
+      "title": "A moderated group: an unapproved article is never visible in it, a moderator's approved article is, and an Approved field from anyone else is refused by name",
+      "statement": "fn-cfg-set-group-moderation-sets-the-moderation (books/config-invariants.lisp, KEYSTONE): an admitted (fn-cfg-set-group-moderation NAME QUEUE ADDRESS LOGINS) (code 23, `group moderate`) applied by fn-cfg-apply-delta makes fn-cfg-group-moderation of NAME (QUEUE ADDRESS LOGINS), or nil for --off, and leaves every other group's unchanged. Over fn-post-gated-decision, the served POST's decision (books/nntp-post.lisp, called by fn-nntp-post-step; host line host/reader-host.lisp fn-reader-chunk through books/served.lisp): fn-post-unapproved-article-is-never-in-a-moderated-group (KEYSTONE): an ordinary article with no Approved field is never committed with a group whose status in the connection's configuration is moderated (it is forwarded as an RFC 5537 section 3.5.1 method-1 envelope into the queue group, or refused :moderation-unavailable); fn-post-moderator-approved-article-is-committed (KEYSTONE): with Approved and every named moderated group :approver on the connection, the decision is the injection's (committed into the moderated groups); fn-post-forged-approval-is-refused-by-name (KEYSTONE): with Approved and some named moderated group not :approver, the decision is the refusal :approval-not-moderator (441 by name). fn-mod-session-entries-approver-iff-moderator (books/moderation.lisp): on the owner-installed status list (no :approver entries), a connection's view marks group G :approver exactly when its login is one of G's moderators (books/nntp-auth.lisp fn-auth-moderation-config, called by fn-auth-delegate and fn-auth-delegate-pinned). fn-post-submission-is-the-decision-or-its-envelope with fn-mod-envelope-msgid-is-not-a-generated-id keep fn-post-distinct-injection-clocks-give-distinct-identities unconditional. Relay: fn-peer-transfer-never-stages-an-unapproved-moderated-article (books/peer-inbound-invariants.lisp, KEYSTONE) over fn-peer-transfer, the owner's transit port: a transfer that changes the node stages the article in a group moderated under the configuration only when the article carries Approved (fn-peer-decide-transfer's :unapproved-moderated refusal; RFC 5537 sections 3.6 item 6, 3.7 item 5). Queue privacy (PKT-658): fn-own-submission-targets-of-a-queue-by-definition and fn-own-feed-durable-never-enqueues-a-queue (books/owner-feed-subject.lisp, KEYSTONES) over fn-own-submission-targets and fn-own-feed-durable (host fn-owner-submission-intent and the outcomes): a submission naming a moderation queue group of the owner's posting configuration has no target and leaves the feed table unchanged; fn-auth-view-hides-the-queue-from-a-non-moderator (books/nntp-auth.lisp, KEYSTONE) over fn-auth-view-archive, the store fn-auth-delegate-pinned serves: for a projected reader connection whose login moderates none of the groups a queue serves (or has not authenticated), the view holds neither the queue group nor an article filed in it (group-access's READ rule with the queue hidden, fn-gac-readablep's :hide form; fn-mod-hidden-queues). The operator's `moderation list GROUP` (PKT-657) renders the queue's envelopes held/approved/rejected (books/control-evidence.lisp fn-cev-moderation-report; FNLS frame kind 3 code 10); approve/reject verbs are not built.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-047"
+      ],
+      "depends_on": [
+        "PRF-196"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/accounts.lisp",
+        "books/account-list.lisp",
+        "books/moderation.lisp",
+        "books/nntp-post.lisp",
+        "books/nntp-responses.lisp",
+        "books/nntp-auth.lisp",
+        "books/owner-agent.lisp",
+        "books/peer-inbound.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/moderation-tests.lisp",
+        "tests/test_native_moderation.py",
+        "planning/evidence/moderated-groups-2026-09-27.md",
+        "books/peer-inbound-invariants.lisp",
+        "books/owner.lisp",
+        "books/owner-feed-subject.lisp",
+        "books/owner-intent-carried.lisp",
+        "books/group-access.lisp",
+        "books/control-evidence.lisp",
+        "books/control-evidence-grammar.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/peer-inbound-tests.lisp",
+        "tests/acl2/owner-tests.lisp"
+      ],
+      "events": [
+        "fn-cfg-set-group-moderation-sets-the-moderation",
+        "fn-post-unapproved-article-is-never-in-a-moderated-group",
+        "fn-post-moderator-approved-article-is-committed",
+        "fn-post-forged-approval-is-refused-by-name",
+        "fn-mod-session-entries-approver-iff-moderator",
+        "fn-mod-session-entries-keep-the-status",
+        "fn-mod-gate-unapproved-names-no-moderated-group",
+        "fn-post-submission-is-the-decision-or-its-envelope",
+        "fn-mod-envelope-msgid-is-not-a-generated-id",
+        "fn-auth-moderation-config-closed",
+        "fn-peer-transfer-never-stages-an-unapproved-moderated-article",
+        "fn-own-feed-durable-never-enqueues-a-queue",
+        "fn-auth-view-hides-the-queue-from-a-non-moderator",
+        "fn-mod-hidden-queues-is-hiddenp",
+        "fn-auth-access-text-of-moderation-config"
+      ]
+    },
+    {
+      "id": "PRF-234",
+      "title": "A local consumer bound to an account is served only events of a group the account reads, only with the account's credential, and otherwise exactly as the consumer poll and ack; an unbound consumer is unchanged",
+      "statement": "books/consumer-bound.lisp. Subjects: fn-cbind-poll and fn-cbind-ack (host/owner-host.lisp fn-owner-consumer-local-bound-poll / -bound-ack, reached from host/native/owner.lisp fnn-owner-consumer-local-serialized for local-control codes 7 and 8), fn-cbind-plain-poll and fn-cbind-plain-ack (fn-owner-consumer-local-poll / -ack, codes 5 and 1). The binding is the accounts slot's mark-6 row (books/config.lisp fn-cfg-consumer-bind, delta code 24) of the latest configuration; the credential check is fn-auth-checkp over fn-auth-config-with-accounts (the table AUTHINFO reads); the rule is group-access's read pattern (fn-gac-pattern / fn-gac-readablep). KEYSTONES: fn-cbind-poll-delivers-only-readable-events (a bound poll that answers a page: the consumer is bound, the password checks, the answer is fn-col-poll-report's, and the selected event's article has a group readable under the account's rule); fn-cbind-poll-is-the-consumer-poll-or-a-refusal and fn-cbind-ack-is-the-consumer-ack-or-a-refusal (every bound answer is the unbound consumer's own or a refusal, which writes nothing, so PRF-116's page-is-a-read, forward-ack-in-scope and repeated-ack-no-op guarantees hold over the delivered subsequence; an ack that is not refused had the binding, the credential and a readable query); fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll and fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack (an unbound consumer's plain answer is today's; a bound consumer's is (:refused :bound)). Local policy; no RFC requirement.",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-006"
+      ],
+      "depends_on": [
+        "PRF-116",
+        "PRF-222"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/consumer-bound.lisp",
+        "books/config.lisp",
+        "books/consumer-local-control.lisp",
+        "tests/acl2/consumer-bound-tests.lisp",
+        "tests/acl2/consumer-local-control-tests.lisp",
+        "tests/test_native_consumer_identity.py",
+        "planning/evidence/consumer-identity-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T021857Z-190087.json",
+        "planning/evidence/manifests/certify-20260927T022825Z-256887.json"
+      ],
+      "events": [
+        "fn-cbind-poll-delivers-only-readable-events",
+        "fn-cbind-poll-is-the-consumer-poll-or-a-refusal",
+        "fn-cbind-ack-is-the-consumer-ack-or-a-refusal",
+        "fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll",
+        "fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack"
+      ]
+    },
+    {
+      "id": "PRF-235",
+      "title": "The refused-offer memory is bounded, evicts oldest-first, and answers an offer with the refusal the parse of a remembered transfer gives",
+      "statement": "books/refused-offers.lisp, books/peer-inbound.lisp, books/peer-refused-offers.lisp, books/owner.lisp. The memory (Message-ID . reason) pairs, newest first, is recorded by the owner at a transit outcome (books/owner.lisp fn-own-transit-refused under fn-own-transit-outcome, the :transit-outcome event host/owner-host.lisp steps) only for a refusal whose reason the octets decide, and the reason recorded is recomputed from the in-flight octets (fn-peer-refused-record: fn-peer-intrinsic-refusal, the arms of fn-peer-decide-transfer that read only the octets and the offered Message-ID); it is re-pinned into every peer session per read (fn-own-conn-live-session) and read by the offer arm of fn-peer-decide-offer after the history test (and its served twins fn-pix-decide-offer, fn-pgc-decide-offer). KEYSTONES: fn-rof-record-within-capacity and fn-rof-record-keeps-a-bounded-memory-bounded (D27: never longer than the operator's refused-offer-capacity, default 4096); fn-rof-record-at-capacity-evicts-the-oldest; fn-peer-decide-transfer-refuses-what-the-octets-refuse (for any node and clock, a peer with an inbound half, a well-formed Message-ID and octets within the peer's size: the transfer decision is the octets' refusal); fn-prof-run-is-sound (every Message-ID a memory built by the record step holds names a transfer of it whose octets drew exactly the remembered reason); fn-prof-offer-answer-is-the-reparse (an offer of a held, not-yet-accepted Message-ID is refused for that reason, and the remembered transfer's own decision on this node from this peer is the same refusal). Not persisted (in memory only; a restart costs one re-parse per refused article and changes no answer). A future date and a missing Path are never remembered: the first depends on the clock, the second on the operator's relay-require-path.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-049"
+      ],
+      "depends_on": [
+        "PRF-207"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/refused-offers.lisp",
+        "books/peer-refused-offers.lisp",
+        "books/peer-inbound.lisp",
+        "books/owner.lisp",
+        "tests/acl2/transit-hygiene-tests.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "progress_note": "Lane transit-hygiene 2026-09-27: every form REPL-admitted on persvati (session th; relay-checks, refused-offers, peer-inbound, peer-refused-offers, owner, owner-invariants, the teeth book); READY FOR BATCH (the batch certification is the manifest this target will cite).",
+      "events": [
+        "fn-rof-record-within-capacity",
+        "fn-rof-record-keeps-a-bounded-memory-bounded",
+        "fn-rof-record-at-capacity-evicts-the-oldest",
+        "fn-peer-decide-transfer-refuses-what-the-octets-refuse",
+        "fn-prof-run-is-sound",
+        "fn-prof-offer-answer-is-the-reparse",
+        "fn-peer-decide-offer-answers-the-memory"
+      ]
+    },
+    {
+      "id": "PRF-236",
+      "title": "A relayed article dated beyond the operator's skew, with an unreadable date, with a malformed Path, or (when required) with no Path, is refused by name",
+      "statement": "books/relay-checks.lisp and books/peer-inbound.lisp fn-peer-decide-transfer (host/owner-host.lisp fn-owner-transit-decide calls it; the reply is fn-peer-transit-outcome-effects' 437/439 with fn-peer-reason-text). RFC 5537 section 3.6 step 2: :date-future when the Injection-Date (or, absent, the Date) read by fn-rck-date-instant (RFC 5322 section 3.3 with the section 4.3 obsolete forms) is more than fn-rck-skew seconds after the clock reading; the skew is the operator's relay-date-skew limit row, at most 86400 (fn-rck-skew-within-the-rfc; the admin word is refused above it, fn-rck-limit-valuep), 86400 without a row; without a usable clock the check does not decide and fn-peer-transfer defers :no-clock. Section 3.6 step 4: :date-syntax for a date field that is not a date-time, :path-syntax for a Path present once that is not RFC 5536 section 3.1.5's grammar (fn-rck-path-wellformedp), :no-path for a missing Path when the operator's relay-require-path is 1 (default 0: fn's own authored submissions carry no Path, PKT-674). Theorem subject: the concrete witnesses of tests/acl2/transit-hygiene-tests.lisp through fn-peer-decide-transfer and the keystone fn-peer-decide-transfer-refuses-what-the-octets-refuse (PRF-235) for the octet-decided reasons.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-050"
+      ],
+      "depends_on": [
+        "PRF-235"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/relay-checks.lisp",
+        "books/peer-inbound.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/transit-hygiene-tests.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "progress_note": "Lane transit-hygiene 2026-09-27: REPL-admitted on persvati; READY FOR BATCH.",
+      "events": [
+        "fn-rck-skew-within-the-rfc",
+        "fn-peer-decide-transfer-refuses-what-the-octets-refuse"
+      ]
+    },
+    {
+      "id": "PRF-237",
+      "title": "The outbound feed offers an article only to peers whose Distribution filter admits the article's Distribution",
+      "statement": "books/owner-feed-subject.lisp over fn-own-submission-targets (books/owner.lisp; host/owner-host.lisp fn-owner-submission-intent calls fn-own-submission-intent-records, which names it, and the durable enqueue fn-own-feed-durable folds it): KEYSTONE fn-own-submission-targets-respect-the-distribution, every target's filter (fn-own-feed-dists-of, the wildmat of its outbound-distributions row, set at fn-own-feed-reconfigure, fn-own-feed-dists-of-reconfigure) admits the in-flight article's Distribution (fn-own-feed-distributions-of, RFC 5536 section 3.2.4, case-folded) under fn-own-feed-distribution-admitsp; KEYSTONE fn-own-submission-targets-keep-an-admitted-peer, the filter removes nothing else (a peer the scope decision names, whose filter admits the article and whose queue lacks the Message-ID, is a target); books/owner-feed.lisp KEYSTONE fn-own-feed-distribution-targets-member (the filter is exactly the decision). The PKT-400 keystone fn-own-submission-offers-a-control-article-under-its-newsgroups-and-filing-group gains the distribution literal. RFC 5537 section 3.6 paragraph 2; local policy: no filter feeds everything, no Distribution is world, a malformed Distribution matches no filter.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-051"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-feed.lisp",
+        "books/owner-feed-subject.lisp",
+        "books/owner.lisp",
+        "books/owner-intent-carried.lisp",
+        "books/peer-carriage-rows.lisp",
+        "books/native-admin-peer.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "progress_note": "Lane transit-hygiene-2 2026-09-27.",
+      "events": [
+        "fn-own-submission-targets-respect-the-distribution",
+        "fn-own-submission-targets-keep-an-admitted-peer",
+        "fn-own-feed-distribution-targets-member",
+        "fn-own-feed-dists-of-reconfigure"
+      ]
+    },
+    {
+      "id": "PRF-210",
+      "title": "A cancel's authority is exactly a granted signed canceller or the poster: an unsigned cancel or Supersedes withdraws its target exactly when one of its RFC 8315 Cancel-Key entries opens one of the target's sha256 Cancel-Locks; the octets the owner stores for an account's POST carry exactly one Cancel-Lock keyed by that account under an HKDF purpose key, outside the D25 source",
+      "statement": "Withdrawal (unchanged): over fn-ctl-refresh-withdrawals / fn-ctl-journal-withdrawals, the record of a cause withdraws a target exactly when the cause names another target and either a verified principal P signed it or P's grants cover its groups, or no principal is verified and a Cancel-Key K of the cause has Base64(SHA-256(K)) among the target's sha256 Cancel-Locks (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster; fn-ctl-verified-cause-ignores-its-keys). Stored octets: books/owner-served-invariants.lisp fn-own-sub-stored-octets CFG SUB RING (host/owner-host.lisp fn-owner-take; the completion gate compares the same function): for a served submission by account A (fn-own-sub-account, recorded by fn-own-finish-read from the session subject) with a key ring installed (fn-ns-ringp), unsigned and with no poster Cancel-Lock, the stored octets are `Cancel-Lock: sha256:Base64(SHA-256(K))` CRLF, then on a cancel `Cancel-Key:` with one key per retained epoch, then the injected octets unchanged, K = Base64(HMAC-SHA256(key, hex(A) || MSGID)) with key the HKDF-SHA256 purpose key of the current epoch (info fn/cancel-lock/v1, salt the node identity) (fn-own-stored-octets-carry-the-account-lock, fn-cl-served-payload-writes-one-account-lock). D25: the projection fn-cll-skip that books/poster-bytes.lisp reads both compared payloads through gives the injected octets for every ring and account (fn-own-stored-octets-keep-the-injected-octets, fn-cl-served-payload-projects-to-the-injected-octets, fn-cll-skip-of-the-generated-lines), so a same-source retry by any account or key epoch is :duplicate and a different source :conflict at fn-rcl-existing-action (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored, fn-cld-a-changed-source-is-a-conflict-whatever-the-account). Rotation: a cancel's keys open a lock made under any retained epoch (fn-cl-ring-keys-open-every-retained-lock). Exactly the account's key opens its lock up to the stated collision (fn-cl-account-key-opens-exactly-its-lock). Derivation: distinct info labels never expand the same HKDF input (fn-ns-expand-input-separates-info); the key file round-trips (fn-ns-file-parse-of-render). Not theorems: that the written line parses back as the entry (teeth on parsed stored octets); that another account's key opens nothing (a SHA-256 collision of two HMAC outputs under a key the forger does not hold, about 2^128 generic work); HMAC/HKDF pseudorandomness.",
+      "milestone": "M4",
+      "requirements": [
+        "SEC-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/control-authority.lisp",
+        "books/control-visible.lisp",
+        "books/control-served.lisp",
+        "books/control-evidence.lisp",
+        "books/cancel-lock.lisp",
+        "books/cancel-lock-lines.lisp",
+        "tests/acl2/cancel-lock-tests.lisp",
+        "books/node-secret.lisp",
+        "books/owner.lisp",
+        "books/owner-served-invariants.lisp",
+        "tests/acl2/node-secret-tests.lisp",
+        "tests/acl2/owner-cancel-lock-tests.lisp",
+        "tests/test_native_own_cancel.py",
+        "planning/evidence/newsreader-cancel-2026-09-26.md",
+        "books/cancel-lock-d25.lisp",
+        "tests/acl2/cancel-lock-d25-tests.lisp",
+        "books/poster-bytes.lisp",
+        "books/poster-bytes-buffer.lisp"
+      ],
+      "progress_note": "newsreader-cancel-2 (2026-09-27): the node-written lock is in the stored octets (fn-own-sub-stored-octets under fn-own-node-secret) and the completion gate compares the same function; persvati run-20260926T231408Z-d865 green at 53dc88c1c (manifest planning/evidence/manifests/certify-20260926T231509Z-3976540.json: 175 certified incl. books/node-secret, books/cancel-lock, books/owner-served-invariants and the teeth tests/acl2/{node-secret,cancel-lock,owner-cancel-lock}-tests); tests.test_native_own_cancel OK (3 ran) on both images and test_native_control_across_peers OK on hbox native-n5; V0-CLIENT-THUNDERBIRD-CANCEL accepted on persvati. Earlier: newsreader-cancel (2026-09-26) the decision half.",
+      "events": [
+        "fn-ctl-withdrawal-authority-is-exactly-signer-or-poster",
+        "fn-ctl-verified-cause-ignores-its-keys",
+        "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets",
+        "fn-ctl-withdrawal-plan-record-is-bound",
+        "fn-ctl-cancel-executes-only-for-author-or-authority",
+        "fn-own-stored-octets-carry-the-account-lock",
+        "fn-own-stored-octets-keep-the-injected-octets",
+        "fn-cl-account-key-opens-exactly-its-lock",
+        "fn-cl-served-payload-writes-one-account-lock",
+        "fn-cl-served-payload-projects-to-the-injected-octets",
+        "fn-cl-ring-keys-open-every-retained-lock",
+        "fn-cll-skip-of-the-generated-lines",
+        "fn-ns-expand-input-separates-info",
+        "fn-ns-cancel-lock-and-posting-account-inputs-differ",
+        "fn-ns-file-parse-of-render",
+        "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored",
+        "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
+      ]
+    },
+    {
+      "id": "PRF-243",
+      "title": "The served reader answers NEWGROUPS and LIST ACTIVE.TIMES from the configuration's creation stamps, LIST SUBSCRIPTIONS from the configured default list, LIST OVERVIEW.FMT in the compatibility form, and ARTICLE, HEAD and HDR with this node's Xref",
+      "statement": "PKT-665..668 (lane reader-compat, 2026-09-27): over the pinned dispatcher the served step calls (books/nntp.lisp fn-nntp-archive-command-pinned, reached from fn-served-dispatch), fn-rcompat-reply answers, with a server name in the environment: NEWGROUPS and LIST ACTIVE.TIMES as the generic replies over the environment's facts held by the view (a name is listed exactly when the view's groups hold it and a fact dates it at or after the threshold, fn-rcompat-newgroups-names-member); the facts are the served entries' created stamps with a wall reading (fn-oag-group-facts-has-the-created-stamp, fn-oag-group-facts-are-group-facts), installed by fn-post-reader-env (fn-post-reader-env-facts); LIST SUBSCRIPTIONS 215 with the configured default list (config delta code 25) cut to the view in configured order, else the view's groups (fn-rcompat-subscription-names-member, -keep-the-configured-order); ARTICLE/HEAD the generic reply over the served representation, the stored octets with the Xref line inserted at the end of the header block and nothing else changed (fn-rcompat-served-payload-inserts-one-line, fn-nntp-archive-command-pinned-article-head-is-served), with the generic retrieval's session (fn-rcompat-retrieval-session-is-the-generic-session); HDR/XHDR Xref the value of that field (fn-rcompat-hdr-value-is-the-field-value). The served LIST OVERVIEW.FMT names Bytes:/Lines: (RFC 3977 8.4.2). Every reply is well-formed (fn-nntp-effects-rcompat-reply) and the session invariant is preserved (fn-rcompat-reply-preserves-consistent-session); without a server nothing changes (fn-rcompat-reply-without-a-server).",
+      "milestone": "M6",
+      "requirements": [
+        "NNT-052"
+      ],
+      "depends_on": [
+        "PRF-206",
+        "PRF-195"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/nntp-reader-compat.lisp",
+        "books/nntp.lisp",
+        "books/nntp-xref.lisp",
+        "books/nntp-invariants.lisp",
+        "books/nntp-pinned-effects.lisp",
+        "books/nntp-pinned-msgid.lisp",
+        "books/nntp-post.lisp",
+        "books/owner-agent.lisp",
+        "books/config.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/nntp-reader-compat-tests.lisp",
+        "tests/test_native_reader_clients.py",
+        "planning/evidence/reader-compat-2026-09-27.md"
+      ],
+      "progress_note": "reader-compat (2026-09-27): books, teeth, native slrn/pan rows; batch certification pending.",
+      "events": [
+        "fn-rcompat-newgroups-names-member",
+        "fn-rcompat-subscription-names-member",
+        "fn-rcompat-served-payload-inserts-one-line",
+        "fn-rcompat-hdr-value-is-the-field-value",
+        "fn-rcompat-article-reply-session",
+        "fn-rcompat-retrieval-session-is-the-generic-session",
+        "fn-rcompat-reply-session",
+        "fn-rcompat-reply-without-a-server",
+        "fn-rcompat-reply-only-for-its-commands",
+        "fn-rcompat-reply-preserves-consistent-session",
+        "fn-nntp-effects-rcompat-reply",
+        "fn-rcompat-hdr-lines-are-clean",
+        "fn-rcompat-xref-value-is-clean",
+        "fn-nntp-archive-command-pinned-article-head-is-served",
+        "fn-oag-group-facts-has-the-created-stamp",
+        "fn-oag-group-facts-are-group-facts",
+        "fn-post-reader-env-facts",
+        "fn-nov-fmt-xref-lines-are-clean"
       ]
     },
     {
@@ -8229,305 +8856,48 @@
       ]
     },
     {
-      "id": "PRF-210",
-      "title": "A cancel's authority is exactly a granted signed canceller or the poster: an unsigned cancel or Supersedes withdraws its target exactly when one of its RFC 8315 Cancel-Key entries opens one of the target's sha256 Cancel-Locks; the octets the owner stores for an account's POST carry exactly one Cancel-Lock keyed by that account under an HKDF purpose key, outside the D25 source",
-      "statement": "Withdrawal (unchanged): over fn-ctl-refresh-withdrawals / fn-ctl-journal-withdrawals, the record of a cause withdraws a target exactly when the cause names another target and either a verified principal P signed it or P's grants cover its groups, or no principal is verified and a Cancel-Key K of the cause has Base64(SHA-256(K)) among the target's sha256 Cancel-Locks (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster; fn-ctl-verified-cause-ignores-its-keys). Stored octets: books/owner-served-invariants.lisp fn-own-sub-stored-octets CFG SUB RING (host/owner-host.lisp fn-owner-take; the completion gate compares the same function): for a served submission by account A (fn-own-sub-account, recorded by fn-own-finish-read from the session subject) with a key ring installed (fn-ns-ringp), unsigned and with no poster Cancel-Lock, the stored octets are `Cancel-Lock: sha256:Base64(SHA-256(K))` CRLF, then on a cancel `Cancel-Key:` with one key per retained epoch, then the injected octets unchanged, K = Base64(HMAC-SHA256(key, hex(A) || MSGID)) with key the HKDF-SHA256 purpose key of the current epoch (info fn/cancel-lock/v1, salt the node identity) (fn-own-stored-octets-carry-the-account-lock, fn-cl-served-payload-writes-one-account-lock). D25: the projection fn-cll-skip that books/poster-bytes.lisp reads both compared payloads through gives the injected octets for every ring and account (fn-own-stored-octets-keep-the-injected-octets, fn-cl-served-payload-projects-to-the-injected-octets, fn-cll-skip-of-the-generated-lines), so a same-source retry by any account or key epoch is :duplicate and a different source :conflict at fn-rcl-existing-action (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored, fn-cld-a-changed-source-is-a-conflict-whatever-the-account). Rotation: a cancel's keys open a lock made under any retained epoch (fn-cl-ring-keys-open-every-retained-lock). Exactly the account's key opens its lock up to the stated collision (fn-cl-account-key-opens-exactly-its-lock). Derivation: distinct info labels never expand the same HKDF input (fn-ns-expand-input-separates-info); the key file round-trips (fn-ns-file-parse-of-render). Not theorems: that the written line parses back as the entry (teeth on parsed stored octets); that another account's key opens nothing (a SHA-256 collision of two HMAC outputs under a key the forger does not hold, about 2^128 generic work); HMAC/HKDF pseudorandomness.",
-      "milestone": "M4",
-      "requirements": [
-        "SEC-006"
-      ],
-      "depends_on": [],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/control-authority.lisp",
-        "books/control-visible.lisp",
-        "books/control-served.lisp",
-        "books/control-evidence.lisp",
-        "books/cancel-lock.lisp",
-        "books/cancel-lock-lines.lisp",
-        "tests/acl2/cancel-lock-tests.lisp",
-        "books/node-secret.lisp",
-        "books/owner.lisp",
-        "books/owner-served-invariants.lisp",
-        "tests/acl2/node-secret-tests.lisp",
-        "tests/acl2/owner-cancel-lock-tests.lisp",
-        "tests/test_native_own_cancel.py",
-        "planning/evidence/newsreader-cancel-2026-09-26.md",
-        "books/cancel-lock-d25.lisp",
-        "tests/acl2/cancel-lock-d25-tests.lisp",
-        "books/poster-bytes.lisp",
-        "books/poster-bytes-buffer.lisp"
-      ],
-      "progress_note": "newsreader-cancel-2 (2026-09-27): the node-written lock is in the stored octets (fn-own-sub-stored-octets under fn-own-node-secret) and the completion gate compares the same function; persvati run-20260926T231408Z-d865 green at 53dc88c1c (manifest planning/evidence/manifests/certify-20260926T231509Z-3976540.json: 175 certified incl. books/node-secret, books/cancel-lock, books/owner-served-invariants and the teeth tests/acl2/{node-secret,cancel-lock,owner-cancel-lock}-tests); tests.test_native_own_cancel OK (3 ran) on both images and test_native_control_across_peers OK on hbox native-n5; V0-CLIENT-THUNDERBIRD-CANCEL accepted on persvati. Earlier: newsreader-cancel (2026-09-26) the decision half.",
-      "events": [
-        "fn-ctl-withdrawal-authority-is-exactly-signer-or-poster",
-        "fn-ctl-verified-cause-ignores-its-keys",
-        "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets",
-        "fn-ctl-withdrawal-plan-record-is-bound",
-        "fn-ctl-cancel-executes-only-for-author-or-authority",
-        "fn-own-stored-octets-carry-the-account-lock",
-        "fn-own-stored-octets-keep-the-injected-octets",
-        "fn-cl-account-key-opens-exactly-its-lock",
-        "fn-cl-served-payload-writes-one-account-lock",
-        "fn-cl-served-payload-projects-to-the-injected-octets",
-        "fn-cl-ring-keys-open-every-retained-lock",
-        "fn-cll-skip-of-the-generated-lines",
-        "fn-ns-expand-input-separates-info",
-        "fn-ns-cancel-lock-and-posting-account-inputs-differ",
-        "fn-ns-file-parse-of-render",
-        "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored",
-        "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
-      ]
-    },
-    {
-      "id": "PRF-229",
-      "title": "The catalog's number lookup at a version and its clamped range are the walks of the visible rows, under the no-number-bound-twice invariant every catalog export preserves",
-      "statement": "books/catalog-number-index.lisp, over the generic fn-cat. fn-cnx-freshp (every later row's number in a group this row is numbered in is absent or larger) holds of the creator and of clear and is preserved by commit, by withdraw and redecide under their guards (fn-cnx-freshp-of-commit, -of-withdraw, -of-redecide, -of-create-and-clear, stated over fn-cat$a-* with no stobj; fn-cnx-freshp-of-cat-writers over the exports). Under it a number is bound by at most one row (fn-cnx-number-seq-unique), and KEYSTONE fn-cnx-view-seq-is-walk: fn-cnx-view-seq group n v (one probe of the (group . number) table, one row read, one visibility test) equals fn-cat-view-number-find group n count v (books/catalog-view.lisp: the walk of the rows visible at version v, newest first) for every non-nil n; KEYSTONE fn-cnx-view-range-is-walk: fn-cnx-view-range group low high v (the numbers low .. min(high, next - 1) ascending, one probe each) equals fn-cnx-walk-range group low high v, the walk per number over low .. high unclamped (a number past the group's high names no row). Hypothesis-free but for the invariant (and n non-nil for the lookup).",
+      "id": "PRF-208",
+      "title": "The native owner's feed, submission and configuration results are typed ACL2 values the host checks once; the submission path's result is well-formed for every outcome, and the feed flush's sealed frame plan is the by-index fetch it replaced",
+      "statement": "KEYSTONES (books/owner-results.lisp). fn-ores-submission-intent-publication-is-well-formed: for every owner O, carry, evidence, generation and txid, if fn-ores-inflight-idp O (the in-flight submission's id, when there is one, is a connection number or *fn-own-control-id* -- the ids every fn-own-sub-make in books/ uses) and fn-ores-records-sealp of the intent's records (the codec accepts each), then fn-ores-feed-publication-p holds of fn-ores-submission-intent-publication, the value host/owner-host.lisp fn-owner-submission-intent returns and host/native/owner.lisp fnn-owner-feed-step checks (callers fnn-owner-drain-one, fnn-owner-complete-bound-submission, fnn-owner-complete-bp-transit-submission); fn-ores-submission-resolution-publication-is-well-formed: the same for fn-owner-submission-resolution's value, every outcome word. These close the batch AM fault (dev 54d23d01): the operator post's in-flight id :control failed the token recognizer. fn-ores-sealed-plan-is-indexed-fetch (no hypotheses): (nth I (fn-ores-sealed-plan records)) is, when (nfix I) < (len records), the pair of (nth I (fn-ores-record-peers records)) and (fn-ores-seal (fn-frame-item (nfix I) (fn-ores-encode-records records))), nil past the end; fn-ores-len-of-sealed-plan: one pair per record. By-definition equations over the :logic functions the :program wrappers call: fn-ores-feed-port-publication-by-definition (FeedPublication fields = the retired fn-owner-feed-* globals), fn-ores-take-result-by-definition (host/owner-host.lisp fn-owner-take's SubmissionTaken fields = the retired fn-owner-submit-id, -msgid, -octets, -groups, -transitp, -peer; host/native/owner.lisp fnn-owner-take checks it), fn-ores-config-staged-result-by-definition (ConfigResult = fn-owner-config-octets/-reason). fn-ores-served-step-by-definition and fn-ores-capture-by-definition are in the book but NOT claimed: no host line returns those shapes (ServedStep is fenced to lane owner-scheduler's render plan; Capture takes checkpoint-pipeline-5's field names, its wrapper is that lane's). The recognizers and accessors are guard-verified; the builders are :logic with guards unverified as their callees are.",
       "milestone": "M5",
       "requirements": [
-        "REP-013"
-      ],
-      "depends_on": [
-        "PRF-201"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/catalog-number-index.lisp",
-        "tests/acl2/catalog-number-index-tests.lisp",
-        "planning/evidence/index-stobjs-2026-09-26.md"
-      ],
-      "planning_note": "Lane index-stobjs (wave 5, 2026-09-26). The subjects are not host-called: the served machine still reads the lists (fn-gidx number trie, fn-midx trie, the archive walk for ARTICLE by number) until catalog-slice's step 7b threads fn-cat through the retrieval arms; these are the lookups 7b is asked to call (LANEDUMP request). This closes the 'number column form' PRF-204's progress note lists as not proved (fn-cat-view-bound-find's walk equals the table's row when visible, given numbers are functional).",
-      "events": [
-        "fn-cnx-view-seq-is-walk",
-        "fn-cnx-view-range-is-walk",
-        "fn-cnx-number-seq-unique",
-        "fn-cnx-freshp-of-commit",
-        "fn-cnx-freshp-of-withdraw",
-        "fn-cnx-freshp-of-redecide",
-        "fn-cnx-freshp-of-create-and-clear",
-        "fn-cnx-freshp-of-cat-writers"
-      ]
-    },
-    {
-      "id": "PRF-226",
-      "title": "A contact's drain reads each job once from a per-peer cursor and answers exactly what the head-restarting scan answers",
-      "statement": "fn-bpnjc-contact-next (books/bp-node-job-cursor.lisp; host/native/bp-service.lisp fnn-bpc-drive-contact before every base offer, and fnn-bpnode-send-receipts in host/native/bp-node.lisp) reads the job list from the cursor (F C HELD) the host threads between asks. fn-bpnjc-contact-next-is-the-head-scan (keystone): under fn-bpnjc-contact-relp (unique job keys; no job ahead of C ready on this contact; HELD the first held job ahead of C; every offered key ahead of C) its answer equals fn-bpnj-contact-next's, so PRF-120 and PRF-079 describe it. The relation is established at the contact's opening from the peer's frontier (fn-bpnjc-open-establishes-the-relation; fn-bpnjc-frontierp: every job ahead of F is another peer's or :forwarded/:expired), kept by each offer for the next ask (fn-bpnjc-offer-keeps-the-relation) and by an evolution of the jobs ahead of the cursor between asks (fn-bpnjc-evolution-keeps-the-relation; fn-bpnjc-offered-record-evolves: a lifecycle record naming an offered key, or a :queued append, is one). fn-bpnjc-drain-is-the-head-drain (keystone): along a contact's asks, threading OFFERED and the cursor, with the jobs evolving between asks (fn-bpnjc-evolving-p), the answers are the head scan's, ask for ask. fn-bpnjc-drain-visits-are-linear (keystone, work): the positions all asks examine plus the start are at most the length of the last job list asked at; an offer advances at least one (fn-bpnjc-ask-position-bounds). The frontier: fn-bpnjc-contact-close advances it over settled jobs and keeps every peer's (fn-bpnjc-close-keeps-the-frontiers); every lifecycle record keeps every frontier (fn-bpnjc-lifecycle-record-keeps-the-frontier). Covered scope: base job offers. Not covered: that every served event changes the base jobs only by fn-bpn-apply-record (the drain takes the evolution as a hypothesis); the machine's own per-offer work (find-job, replace-job) stays linear in the job's position (PKT-653).",
-      "milestone": "M4",
-      "requirements": [
-        "REP-009"
-      ],
-      "depends_on": [
-        "PRF-120"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/bp-node-job-cursor.lisp",
-        "tests/acl2/bp-node-job-cursor-tests.lisp",
-        "host/native/bp-service.lisp",
-        "host/native/bp-node.lisp",
-        "specs/bp-node-machine.md",
-        "tools/bench/bp-drain-bench.lisp",
-        "planning/evidence/bp-cursors-2026-09-27.md",
-        "planning/evidence/manifests/certify-20260927T012321Z-4022710.json",
-        "planning/evidence/manifests/certify-20260927T013834Z-4142446.json"
-      ],
-      "progress_note": "Lane bp-cursors (Opus, 2026-09-27). Measured on hbox (tools/bench/bp-drain-bench.lisp): records examined per drain 2,002,000 -> 1,000 at 1,000 ready jobs and 200,020,000 -> 10,000 at 10,000; see the record for walls. Not done: PKT-653 (machine per-offer work linear in position), PKT-654 (4,096-record ceiling).",
-      "events": [
-        "fn-bpnjc-contact-next-is-the-head-scan",
-        "fn-bpnjc-offer-keeps-the-relation",
-        "fn-bpnjc-evolution-keeps-the-relation",
-        "fn-bpnjc-open-establishes-the-relation",
-        "fn-bpnjc-drain-is-the-head-drain",
-        "fn-bpnjc-drain-visits-are-linear",
-        "fn-bpnjc-offered-record-evolves",
-        "fn-bpnjc-lifecycle-record-keeps-the-frontier",
-        "fn-bpnjc-close-keeps-the-frontiers",
-        "fn-bpnjc-ask-position-bounds"
-      ]
-    },
-    {
-      "id": "PRF-227",
-      "milestone": "M5",
-      "title": "The reader opens every connection over the selection's recognised archive and Message-ID trie instead of rebuilding and re-recognising them per connection; a retention commit no longer re-runs the whole-node recogniser on the advanced node",
-      "statement": "(1) The reader open. KEYSTONE fn-rdc-reset-is-served-open (books/reader-open-carried.lisp; hypothesis (fn-rdc-readyp (fn-rdc-selection archive verdicts))): (fn-rdc-reset (fn-rdc-selection archive verdicts) ll bl config observation injection acfg) = (fn-served-pin-verdicts (fn-served-open archive ll bl config observation injection acfg) verdicts). host/reader-host.lisp fn-reader-reset (native host/native/io.lisp fnn-reader-reset, once per accepted connection in fnn-serve-client) calls fn-rdc-reset over the selection fn-reader-use-store / fn-reader-use-seed recorded once per process (fn-rdc-store-selection / fn-rdc-selection, through fnn-reader-select in fnn-reader-prepare). The relation carried: fn-rdc-selection-establishes (no hypothesis beyond readiness): a ready selection's archive satisfies fn-nntp-projectionp and fn-statep and its index is (fn-midx-build (fn-state-articles archive)); fn-rdc-selection-ready-iff-projectable. The reader's archive is immutable under its shared lock (it never commits), so the selection is the establishing entry and no transition needs preservation. Refinement: fn-rdc-served-open-is-served-open (hypotheses (fn-statep archive), index = the archive's trie) over PRF-188's fn-ocar-auth-open-reader-is-auth-open-session. A reset with no ready selection is unreachable in composition (both hosts refuse before any connection) and has no separate arm. (2) The retention commit. books/replay.lisp fn-replay-apply-retention-event's test (fn-node-statep advanced) is (mbt ...), discharged under its guard by fn-replay-advance-preserves-node-statep; its logical definition is unchanged, so every theorem about it stands. Host callers: host/owner-host.lisp fn-owner-finish-submission / fn-owner-finish (through fn-ccar-sn-finish-enabled), fn-owner-prepare-identity (fn-replay-apply-record), host/store-node-host.lisp fn-store-sn-finish, fn-store-sn-known-abort, and every replay at open.",
-      "requirements": [
+        "HST-019",
         "HST-001"
       ],
-      "depends_on": [
-        "PRF-001",
-        "PRF-188"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/reader-open-carried.lisp",
-        "tests/acl2/reader-open-carried-tests.lisp",
-        "books/replay.lisp",
-        "planning/evidence/hot-path-fixes-owner-2026-09-27.md",
-        "planning/evidence/manifests/certify-20260927T010859Z-1095275.json"
-      ],
-      "progress_note": "Lane hot-path-fixes-owner (2026-09-27; PKT-448 (a), (f)). Teeth: tests/acl2/reader-open-carried-tests.lisp: a reachable one-article archive (the reader host's seed) whose selection is ready, the carried reset equal to the reference with the greeting written, the trie and verdicts pinned and the session projected; the Store selection over owner-advance-carried-tests' committed owner store; hypothesis removal for fn-rdc-served-open-is-served-open (a wrong index with fn-statep retained; a corrupted-state archive with the index hypothesis retained) and for fn-rdc-reset-is-served-open (a refused selection); the retention mbt's lemma on the committed store's node, and its failure on a non-node (corrupted-state). Measured at N = 10,000 in the record.",
-      "events": [
-        "fn-rdc-reset-is-served-open",
-        "fn-rdc-selection-establishes",
-        "fn-rdc-selection-ready-iff-projectable",
-        "fn-rdc-served-open-is-served-open",
-        "fn-rdc-projection-is-a-state",
-        "fn-replay-advance-preserves-node-statep"
-      ]
-    },
-    {
-      "id": "PRF-240",
-      "title": "The open decodes each pack-chain link once: the walk's step, the coverage and the observation read a content-keyed memo of link decodes and answer exactly what the reference answers, on every chain; and the catalog loaded from the checkpoint by P extents is the load fold over the rows",
-      "statement": "books/checkpoint-pack-chain-once.lisp. Over MEMO, a list of (FRAMED DIGEST MAX RESULT), with the invariant fn-ccco-memo-soundp (every RESULT is (fn-ccc-framed-link FRAMED DIGEST MAX)): fn-ccco-entry-step-is-entry-step (implies (fn-ccco-memo-soundp memo) (equal (fn-ccco-entry-step framed digest max memo) (fn-ccc-entry-step framed digest max))); fn-ccco-coverage-chain-is-coverage-chain (implies (fn-ccco-memo-soundp memo) (equal (fn-ccco-coverage-chain framed count frontier max memo) (fn-ccc-coverage-chain framed count frontier max))); fn-ccco-observe-chain-is-observe-chain (the same for fn-ccc-observe-chain). The memo starts empty (fn-ccco-memo-soundp-of-nil) and the host's two writers keep it sound (fn-ccco-remember-keeps-sound, fn-ccco-remember-all-keeps-sound). The chain check re-decodes no event: fn-ccco-links-okp-of-decoded (implies (not (equal (fn-ccc-decode-entries framed max) :bad)) (equal (fn-ccc-links-okp (fn-ccc-decode-entries framed max)) (fn-ccco-links-chainedp (fn-ccc-decode-entries framed max)))). A link missed by the memo is decoded by fn-ccco-framed-link-fast, which reads each packed event's kind, sequence, txid and generation in one dispatch (fn-ccco-event-fields-are-the-dispatchers) instead of six recognitions: fn-ccco-framed-link-fast-is-framed-link (equal (fn-ccco-framed-link-fast framed digest max) (fn-ccc-framed-link framed digest max)), with no hypothesis, through fn-ccco-octet-event-listp-is-octet-event-listp, fn-ccco-linkp-is-linkp and fn-ccco-decode-link-is-decode-link. Host: host/checkpoint-host.lisp fn-store-checkpoint-chain-step, -coverage, -observe call fn-ccco-entry-step, fn-ccco-coverage-chain, fn-ccco-observe-chain with the global fn-store-pack-memo, written only by fn-ccco-remember and fn-ccco-remember-all inside the host scope fnn-with-pack-memo (host/native/io.lisp: fnn-recover's open, fnn-pack-publish, fnn-pack-chain-report); so PRF-085's walk, coverage and reconstruction (fn-ccc-chain-reconstructs-the-history) and the publication crash theorem over fn-ccc-walk transfer unchanged. Scope: a link is still decoded as an octet list (the by-index decode is PKT-680). SECOND PART, books/catalog-load-index.lisp: fn-obi-load-is-cat-load (implies (fn-obi-extents-agreep rows extents fn-octets) (equal (fn-obi-load rows extents fn-octets keyring generation fn-arena fn-cat) (fn-cat-load rows keyring generation fn-arena fn-cat))): each article row interned with its payload sealed from its P extent in the octet buffer through the interface fn-obi-seal-range (fn-obi-seal-range-is-seal-of-slice: today the arena list seal of the slice; records-freeze attaches a copy without a list behind the same signature), fn-obi-intern-range-is-intern-list; with fn-cat-load-from-empty, fn-obi-load-from-empty-establishes-relation (R over the rows), so with books/catalog-entries.lisp fn-cat-ocl-relation-at-recover (entry E3) the catalog installed by extents is in R. Not yet host-called and the agreement is not yet discharged from the reader (PKT-680).",
-      "milestone": "M5",
-      "requirements": [
-        "STO-012"
-      ],
-      "depends_on": [
-        "PRF-085",
-        "PRF-199"
-      ],
-      "assumptions": [
-        "A-HOST"
-      ],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/checkpoint-pack-chain-once.lisp",
-        "tests/acl2/checkpoint-pack-chain-once-tests.lisp",
-        "host/checkpoint-host.lisp",
-        "host/native/checkpoint.lisp",
-        "tests/test_native_pack_chain.py",
-        "planning/evidence/open-by-index-2026-09-26.md",
-        "books/catalog-load-index.lisp",
-        "tests/acl2/catalog-load-index-tests.lisp",
-        "books/catalog-entries.lisp",
-        "planning/evidence/manifests/certify-20260927T020711Z-1880439.json"
-      ],
-      "progress_note": "Lane open-by-index (2026-09-26/27): certified by persvati farm run run-20260927T020711Z (certify-20260927T020711Z-1880439: the two books and their test books); hbox run-20260927T003414Z-f8e9 certified the chain book before its comment was renumbered.",
-      "events": [
-        "fn-ccco-entry-step-is-entry-step",
-        "fn-ccco-coverage-chain-is-coverage-chain",
-        "fn-ccco-observe-chain-is-observe-chain",
-        "fn-ccco-links-okp-of-decoded",
-        "fn-ccco-remember-keeps-sound",
-        "fn-ccco-remember-all-keeps-sound",
-        "fn-ccco-framed-link-fast-is-framed-link",
-        "fn-ccco-octet-event-listp-is-octet-event-listp",
-        "fn-ccco-event-fields-are-the-dispatchers",
-        "fn-ccco-linkp-is-linkp",
-        "fn-ccco-decode-link-is-decode-link",
-        "fn-obi-load-is-cat-load",
-        "fn-obi-intern-range-is-intern-list",
-        "fn-obi-load-from-empty-establishes-relation"
-      ]
-    },
-    {
-      "id": "PRF-241",
-      "title": "A committed delta applied in bounded steps under any schedule of quanta ends where its one-shot application does: the :policy range is re-decided exactly once, row by row",
-      "statement": "books/config-policy-delta.lisp (lane config-consumer-catalog-2, 2026-09-27; PKT-601 (6), discharging catalog-delta's OPEN). KEYSTONE fn-cfgp-apply-in-quanta-is-apply-delta: for a delta satisfying fn-delta-p and a natural cursor at or before the delta's range start, fn-cat-apply-in-quanta (the resumable run of fn-cat-apply-delta-step, each step re-deciding at most its quantum of rows, fn-cat-apply-delta-step-bounded) under ANY list of quanta equals fn-cat-apply-delta, the one-shot application. Its inductive form fn-cfgp-policy-in-quanta-is-the-range: for a :policy delta with natural bounds, from ANY natural cursor the run is fn-cat-recontext-range from the later of the cursor and the range start to the range end clipped to the count. Scope: the catalog alone; no host line calls fn-cat-apply-in-quanta yet (the catalog serves no path until PKT-585's steps 4 to 9); which configuration change emits a :policy delta is not decided (the held context carries a keyring generation only; the record's packet).",
-      "milestone": "M5",
-      "requirements": [
-        "REP-013"
-      ],
-      "depends_on": [
-        "PRF-201"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/config-policy-delta.lisp",
-        "tests/acl2/config-policy-delta-tests.lisp",
-        "planning/evidence/config-consumer-catalog-2-2026-09-27.md",
-        "planning/evidence/manifests/certify-20260927T014915Z-1653648.json"
-      ],
-      "pending_subject": "No host line calls fn-cat-apply-in-quanta or fn-cat-apply-delta yet: the catalog's delta is applied only by the test books until the catalog serves the view (PKT-585).",
-      "events": [
-        "fn-cfgp-recontext-range-split",
-        "fn-cfgp-policy-in-quanta-is-the-range",
-        "fn-cfgp-apply-in-quanta-is-apply-delta"
-      ]
-    },
-    {
-      "id": "PRF-231",
-      "title": "A peer named by a DNS name: the dial resolves only RFC 1123 names, each attempt, and the TLS check a transport selects is the configured name under a pinned anchor or the system's public roots",
-      "statement": "books/peer-host.lisp over the functions the host calls. fn-peer-dial-target-decides-the-path (no hypothesis; host host/native/io.lisp fnn-peer-connect, called by host/native/feed-service.lisp fnn-feed-dial and host/native/pull-service.lisp fnn-pull-round): the target is exactly one of (:address A) with A the four octets fn-native-config-ipv4-address spells and the host not a name, (:resolve HOST) with HOST exactly the configured text, an RFC 1123 section 2.1 name of at most 253 octets of letters, digits, hyphen and dot and not an IPv4 literal (fn-peer-host-name-is-not-an-ipv4-literal), or (:refused :host-syntax) for anything else. fn-peer-tls-verification-selects-one-check (no hypothesis; host fnn-feed-enable-tls and the pull's (:tls NAME TRUST) effect in fnn-pull-round): the answer is :verify or :refused only; a :verify names exactly the configured server name, which is a host, sends SNI exactly when it is a DNS name (fn-peer-tls-verification-sni-is-never-a-literal, RFC 6066 section 3), and selects the system roots iff the trust is :system-roots and a pinned file iff it is a C string; a string host name with a well-formed trust is always :verify. fn-peer-tls-select-named-default (peer add, books/native-admin-peer.lisp fn-native-admin-peer-plan-base): a named host given `-` `-` is checked against its own name under the system roots; fn-peer-tls-select-numeric-host-needs-a-name-by-definition; fn-peer-tls-select-is-a-check: every selection is one fn-peer-tls-verification accepts, the roots exactly when the anchor word is `-`. The peer record admits (:tls MODE NAME :system-roots) (books/peer-config.lisp fn-cfg-peer-transportp, row n = 1), the pull plan reads it (books/peer-pull.lisp fn-pull-security-of-rows, books/peer-pull-session.lisp fn-pull-tls-securityp), and invitations carry only hosts (books/peer-invite.lisp fn-pinv-hosts-okp). Not claimed: DNS authenticity, the system bundle's trustworthiness, OpenSSL's hostname check, IPv6 peers, inbound source-address peers after renumbering.",
-      "milestone": "M3",
-      "requirements": [
-        "NNT-048"
-      ],
-      "depends_on": [
-        "PRF-097"
-      ],
-      "assumptions": [],
-      "status": "certified",
-      "evidence": [
-        "books/peer-host.lisp",
-        "tests/acl2/peer-host-tests.lisp",
-        "books/peer-config.lisp",
-        "books/native-admin-peer.lisp",
-        "books/peer-invite.lisp",
-        "books/peer-pull.lisp",
-        "books/peer-pull-session.lisp",
-        "host/native/io.lisp",
-        "host/native/tls.lisp",
-        "host/native/feed-service.lisp",
-        "host/native/pull-service.lisp",
-        "tests/test_native_peer_by_name.py",
-        "planning/evidence/peers-by-name-2026-09-27.md",
-        "planning/evidence/manifests/certify-20260927T013235Z-1440473.json",
-        "planning/evidence/manifests/certify-20260927T012133Z-4014708.json"
-      ],
-      "progress_note": "Lane peers-by-name 2026-09-27 (PKT-613): books/peer-host REPL-admitted on persvati (session pbn); the changed chain (16 books: peer-config, peer-host, peer-pull, peer-pull-session, native-admin-peer, peer-invite, owner-feed, feed-connection(-invariants), native-admin(-peer-budget) and the test books) certified on persvati at 2 jobs, max 8.2 s (manifest certify-20260927T013235Z-1440473); hbox certified the image's 116 affected books at 8 jobs (certify-20260927T012133Z-4014708). Native: tests.test_native_peer_by_name 4 of 4 OK on the production and the developer image (native-pbn2).",
-      "events": [
-        "fn-peer-dial-target-decides-the-path",
-        "fn-peer-tls-verification-selects-one-check",
-        "fn-peer-tls-verification-sni-is-never-a-literal",
-        "fn-peer-tls-select-named-default",
-        "fn-peer-tls-select-is-a-check",
-        "fn-peer-host-name-is-not-an-ipv4-literal"
-      ]
-    },
-    {
-      "id": "PRF-232",
-      "title": "A Store opens only on the filesystem its record names, is refused by name otherwise, and its owner's start is refused by name when it requires durable storage on a mount that observably disables it",
-      "statement": "books/store-mount-identity.lisp. The record is an FNMI frame of five u16-length fields (fsid, type, mount point, source, policy); KEYSTONE fn-smid-record-decode-of-seal: the host's fnn-seal of fn-smid-record-protected, read back with ACL2's trailer over its protected prefix, decodes to the record (under fn-smid-recordp). KEYSTONE fn-smid-mountinfo-step-preserves-best-okp: the Linux mountinfo fold only ever selects a mount that contains the store root's resolved path. KEYSTONE fn-smid-recorded-store-opens-iff-same-filesystem: a store whose record was written from observation OBS (fn-smid-record-plan) opens under an observation OBS2 exactly when fn-smid-same-filesystemp holds (type and mount point equal; fsids equal where both are reported, else sources equal). KEYSTONE fn-smid-moved-mount-point-is-refused-by-name: when the root now resolves under another mount point the open answers (:refused :filesystem-changed RECORDED OBSERVED). KEYSTONE fn-smid-absent-record-is-refused: no record, no open, whatever is observed. fn-smid-open-verdict-opens-only-on-a-match. KEYSTONE fn-smid-start-refused-iff-required-and-unsafe (PKT-648): on its recorded filesystem, the owner's start is refused as :storage-not-durable exactly when the policy is 1 and fn-smid-unsafe-reason (nobarrier, barrier=0, tmpfs, ramfs) holds, else it starts. KEYSTONE fn-smid-rebound-store-opens: after rebind-filesystem under an observation, an open under it opens. fn-smid-refusal-text-is-nil-exactly-for-open / -for-start: the host prints a refusal exactly when the verdict is not (:open) / (:start). KEYSTONE fn-smid-open-decision-is-the-verdict: the host's open decision fn-smid-open-decision is fn-smid-open-verdict wherever a record is present or the root holds no config.json; KEYSTONE fn-smid-empty-root-is-refused: no record and no config.json is refused whatever is observed; KEYSTONE fn-smid-unrecorded-store-never-starts: a store with no record (made before the record) opens offline with a warning (fn-smid-unrecorded-warning) and is never started; fn-smid-refusal-text-is-nil-exactly-for-an-open-decision. Host subjects: fn-smid-open-decision and fn-smid-start-verdict (host/native/io.lisp fnn-check-filesystem-identity, from fnn-acquire and host/native/owner.lisp fnn-owner-install), fn-smid-mountinfo-step and fn-smid-linux-observation / fn-smid-statfs-observation (fnn-filesystem-observation), fn-smid-record-plan (fnn-record-filesystem-at-init), fn-smid-rebind-plan (fnn-command-rebind-filesystem), fn-smid-refusal-text, fn-smid-durability-warning. NOT in this target: that statfs and mountinfo report the truth (A-HOST); ZFS sync=disabled and volatile write caches (not observable); the record replacement's crash cuts as a byte-model program (PKT-671).",
-      "milestone": "M5",
-      "requirements": [
-        "STO-031"
-      ],
       "depends_on": [],
-      "assumptions": [
-        "A-HOST"
-      ],
+      "assumptions": [],
       "status": "uncertified-at-current-digest",
-      "events": [
-        "fn-smid-record-decode-of-seal",
-        "fn-smid-payload-decode-of-payload",
-        "fn-smid-mountinfo-step-preserves-best-okp",
-        "fn-smid-recorded-store-opens-iff-same-filesystem",
-        "fn-smid-moved-mount-point-is-refused-by-name",
-        "fn-smid-absent-record-is-refused",
-        "fn-smid-open-verdict-opens-only-on-a-match",
-        "fn-smid-start-refused-iff-required-and-unsafe",
-        "fn-smid-rebound-store-opens",
-        "fn-smid-refusal-text-is-nil-exactly-for-open",
-        "fn-smid-refusal-text-is-nil-exactly-for-start",
-        "fn-smid-open-decision-is-the-verdict",
-        "fn-smid-empty-root-is-refused",
-        "fn-smid-unrecorded-store-never-starts",
-        "fn-smid-refusal-text-is-nil-exactly-for-an-open-decision"
-      ],
       "evidence": [
-        "books/store-mount-identity.lisp",
-        "tests/acl2/store-mount-identity-tests.lisp",
-        "tests/test_native_store_mount_identity.py",
-        "planning/evidence/store-mount-identity-2026-09-27.md"
+        "books/owner-results.lisp",
+        "host/native/admin.lisp",
+        "host/native/feed-service.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/adapter-retirement-2026-09-26.md",
+        "tests/acl2/owner-results-tests.lisp",
+        "tests/native_bp_transit_identity_raw.lisp",
+        "tests/native_owner_bound_commit_raw.lisp",
+        "tools/run_owner.py"
       ],
-      "progress_note": "Lane store-mount-identity (2026-09-27): every event and the test book REPL-admitted on persvati (session smid); READY FOR BATCH, not certified."
+      "progress_note": "Lanes adapter-retirement and adapter-retirement-2 (2026-09-26/27). Every event admitted fresh in the persvati REPL (toolchain w25, 97 forms) and every form of the test book run there; certification: the farm manifest cited in planning/evidence/adapter-retirement-2026-09-26.md section 'Continuation'. Teeth: per keystone a reachable witness (the operator post's owner with in-flight id :control; a served id 3; no submission), per hypothesis a witness with the others holding, the omitted one failing and the conclusion failing, and a must-fail; the take's SubmissionTaken witnessed for a control and a served submission and refused for a malformed id or octets.",
+      "events": [
+        "fn-ores-sealed-plan-is-indexed-fetch",
+        "fn-ores-len-of-sealed-plan",
+        "fn-ores-feed-port-publication-by-definition",
+        "fn-ores-config-staged-result-by-definition",
+        "fn-ores-config-refused-is-a-result",
+        "fn-ores-nth-of-sealed-plan",
+        "fn-ores-nth-of-record-peers",
+        "fn-ores-frame-item-of-encode-records",
+        "fn-ores-submission-intent-publication-is-well-formed",
+        "fn-ores-submission-resolution-publication-is-well-formed",
+        "fn-ores-feed-port-publication-p-without-effects",
+        "fn-ores-symbolp-of-submission-intent-word",
+        "fn-ores-symbolp-of-resolution-word",
+        "fn-ores-car-car-of-feed-resolution-records",
+        "fn-ores-take-result-by-definition",
+        "fn-ores-take-idle-is-a-result"
+      ]
     }
   ]
 }

@@ -369,9 +369,15 @@
                                    fn-nntp-multi fn-nntp-single)))))
 
 ; LIST OVERVIEW.FMT when OVER renders the Xref field (RFC 3977 section 8.4:
-; "Xref:full", the full form).
+; "Xref:full", the full form).  The sixth and seventh lines are section
+; 8.4.2's compatibility form, "Bytes:" and "Lines:" ("for compatibility
+; with existing implementations"; PKT-667, PRF-243): slrn 1.0.3 accepts
+; only that form and otherwise disables XOVER (measured 2026-09-27, lane
+; reader-clients-2).  The fields and their order are unchanged: the sixth
+; is still the :bytes metadata item and the seventh :lines.
 (defconst *fn-nov-fmt-xref-lines*
-  (append *fn-nov-fmt-lines* '("Xref:full")))
+  '("Subject:" "From:" "Date:" "Message-ID:" "References:" "Bytes:" "Lines:"
+    "Xref:full"))
 
 (defun fn-nntp-list-overview-fmt-served (session)
   (declare (xargs :guard t :verify-guards nil))
