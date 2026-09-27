@@ -74,3 +74,33 @@
 (assert-event (equal (nth 0 *spca-stale-entry*) *spc-stale*))
 (must-fail
  (assert-event (equal *spca-stale-carried* *spca-stale-entry*)))
+
+; fn-store-prepare-interned-carried-is-next-then-seal (no hypothesis): the
+; host's two steps -- the decision over the arena's count, then the seal of
+; the record's payload iff the store changed -- give the entry's results, on
+; an accepting store (the seal happens) and a refusing one (no seal).
+(defun spca-split-in (s w fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-intern-events (list *spc-first-wire*) nil 0 fn-arena)
+    (declare (ignore rows))
+    (let ((next (fn-store-prepare-carried-next s w (fn-arena-count fn-arena))))
+      (let ((fn-arena (if (equal next s) fn-arena
+                        (fn-arena-seal-list (fn-record-payload w) fn-arena))))
+        (mv (list next (fn-arena-count fn-arena)
+                  (if (< 1 (fn-arena-count fn-arena))
+                      (fn-arena-payload 1 fn-arena)
+                    :none))
+            fn-arena)))))
+
+(defun spca-split (s w)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (out fn-arena)
+      (spca-split-in s w fn-arena)
+      out)))
+
+(assert-event (equal (spca-split *spc-second-reserved* *spc-second-wire*) *spca-carried*))
+(assert-event (equal (nth 1 (spca-split *spc-second-reserved* *spc-second-wire*)) 2))
+(assert-event (equal (spca-split *spc-second-reserved* *spc-duplicate-wire*) *spca-dup-carried*))
+(assert-event (equal (nth 1 (spca-split *spc-second-reserved* *spc-duplicate-wire*)) 1))
