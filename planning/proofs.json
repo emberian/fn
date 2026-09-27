@@ -10693,6 +10693,32 @@
         "fn-lgc-extend-program-keeps-the-relation",
         "fn-lgc-sealed-extent-fits-the-batch"
       ]
+    },
+    {
+      "id": "PRF-294",
+      "title": "An operator command that does not act names why: a run whose control path cannot be bound, a verb with no owner to answer, a start whose base exceeds the machine",
+      "statement": "books/native-operator.lisp fn-native-operator-control-outcome (host/native/operator.lisp fnn-operator-store-outcome, on every plan before any action): KEYSTONE fn-native-operator-long-control-path-is-refused: a run whose control path (the [control] path, else the store path with /control.sock) is longer than 103 octets, the longest every supported platform's sun_path binds whole, is refused :control-path-too-long with the refusal code and native action :none (it had bound a truncated path and faulted ENOENT, exit 4); fn-native-operator-control-outcome-passes-a-bindable-path: every other plan is unchanged. books/native-control-reason.lisp fn-native-control-transport-word (host/native/control.lisp fnn-control-reasoned-exchange, every live operator verb): fn-native-control-transport-word-names-the-refusal: an exchange whose connect failed is refused and the operator's line names no-owner; one lost after submission is uncertain and names nothing. books/connection-budget.lisp fn-cbud-run-refusal-line (host/owner-host.lisp fn-owner-connection-budget): the run's memory refusal names base-exceeds-machine with the heap figure, the dynamic space and the fixed part when the base does not fit (holds=0), and is the old line otherwise (text; the test book's witnesses).",
+      "milestone": "M4",
+      "requirements": [
+        "HST-009"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/native-operator.lisp",
+        "books/native-control-reason.lisp",
+        "books/connection-budget.lisp",
+        "host/native/operator.lisp",
+        "host/native/control.lisp",
+        "host/owner-host.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/acl2/native-control-reason-tests.lisp",
+        "tests/acl2/connection-budget-tests.lisp",
+        "tests/test_native_control.py",
+        "tests/test_native_heap_from_profile.py"
+      ],
+      "progress_note": "Lane ops-fixes (Opus 5.5, 2026-09-27): the silent-start reports (arena-offheap-2's systemd-run --scope; AW's heap_from_profile exit 4). planning/evidence/ops-fixes-2026-09-27.md."
     }
   ]
 }
