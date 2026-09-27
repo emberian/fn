@@ -77,7 +77,7 @@
 
 (verify-guards fn-cat-wire-list
   :hints (("Goal" :in-theory (e/d (fn-held-wire-of)
-                                  (fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth))
+                                  (fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth))
            :use ((:instance fn-cat-handles-inp-at (n (fn-cat-count fn-cat)) (seq i))))))
 
 (defun fn-cat-history-relation (records fn-arena fn-cat)
@@ -171,7 +171,7 @@
             :in-theory (e/d (fn-held-wire-of)
                             (fn-arena-payload-is-nth fn-arena-count-is-len
                              fn-arena-seal-list-is-append fn-cat-at-is-nth
-                             fn-cat-count-is-len fn-cat-p-is-held-listp))))))
+                             fn-cat-count-is-len fn-cat-p-is-rowsp))))))
 
 ; The rows below the old count materialize the same after a commit.
 (local (defthm fn-cat-wire-list-of-commit-below
@@ -184,7 +184,7 @@
                      (fn-cat-wire-list (+ 1 i) fn-arena (fn-cat-commit h fn-cat)))
             :in-theory (e/d (fn-cat-commit-keeps-rows fn-cat-commit-new-row fn-cat-commit-count)
                             (fn-cat-at-is-nth fn-cat-count-is-len fn-cat-commit-is-append
-                             fn-cat-p-is-held-listp))))))
+                             fn-cat-p-is-rowsp))))))
 
 (local (defthm fn-cat-handles-inp-of-seal
    (implies (fn-cat-handles-inp n fn-arena fn-cat)
@@ -197,7 +197,7 @@
             (fn-cat-handles-inp n fn-arena (fn-cat-commit h fn-cat)))
    :hints (("Goal" :in-theory (e/d (fn-cat-commit-keeps-rows)
                                    (fn-cat-at-is-nth fn-cat-count-is-len fn-cat-commit-is-append
-                                    fn-cat-p-is-held-listp))))))
+                                    fn-cat-p-is-rowsp))))))
 
 (local (defthm fn-cat-handles-inp-extend
    (implies (and (fn-cat-handles-inp n fn-arena fn-cat) (natp n) (equal n (fn-cat-count fn-cat))
@@ -206,7 +206,7 @@
    :hints (("Goal" :expand ((fn-cat-handles-inp (+ 1 n) fn-arena (fn-cat-commit h fn-cat)))
             :in-theory (e/d (fn-cat-commit-keeps-rows fn-cat-commit-new-row fn-cat-commit-count)
                             (fn-cat-at-is-nth fn-cat-count-is-len fn-cat-commit-is-append
-                             fn-cat-p-is-held-listp))))))
+                             fn-cat-p-is-rowsp))))))
 
 ; The recognizers are kept by the two stobjs' own exports (their
 ; {preserved} obligations), and a wire record's payload is an octet list.
@@ -215,7 +215,7 @@
             (fn-cat-p (fn-cat-commit h fn-cat)))
    :hints (("Goal" :use ((:instance fn-cat-commit{preserved}))
             :in-theory (e/d (fn-cat-p fn-cat-commit)
-                            (fn-cat-p-is-held-listp fn-cat-commit-is-append))))))
+                            (fn-cat-p-is-rowsp fn-cat-commit-is-append))))))
 
 (local (defthm fn-crl-arena-p-of-seal
    (implies (and (fn-arena-p fn-arena) (fn-cbor-octet-listp xs))
@@ -244,7 +244,7 @@
                                    fn-arena-payload-is-nth fn-arena-count-is-len
                                    fn-arena-seal-list-is-append fn-arena-p-is-payload-listp
                                    fn-cat-commit-is-append fn-cat-count-is-len fn-cat-at-is-nth
-                                   fn-cat-p-is-held-listp fn-cat-handles-inp))
+                                   fn-cat-p-is-rowsp fn-cat-handles-inp))
            :use ((:instance fn-cat-intern-list-materializes)
                  (:instance fn-held-p-of-intern-list)
                  (:instance fn-intern-list-handle)
@@ -263,7 +263,7 @@
             (equal (fn-cat-history-relation (append history (list r)) fn-arena fn-cat)
                    (fn-cat-history-relation history fn-arena fn-cat)))
    :hints (("Goal" :in-theory (e/d (fn-cat-history-relation)
-                                   (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-held-listp
+                                   (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-rowsp
                                     fn-cat-handles-inp fn-cat-wire-list))))))
 
 (local (defthm fn-crl-append-assoc
@@ -282,7 +282,7 @@
             (equal (fn-cat-history-relation (append history x) fn-arena fn-cat)
                    (fn-cat-history-relation history fn-arena fn-cat)))
    :hints (("Goal" :in-theory (e/d (fn-cat-history-relation)
-                                   (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-held-listp
+                                   (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-rowsp
                                     fn-cat-handles-inp fn-cat-wire-list))))))
 
 ; The fold's induction, carrying the history it has appended so far.
@@ -310,7 +310,7 @@
            :expand ((fn-cat-load records keyring generation fn-arena fn-cat))
            :in-theory (e/d (fn-cat-load)
                            (fn-cat-history-relation fn-cat-load-row
-                            fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-held-listp)))
+                            fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-rowsp)))
           ("Subgoal *1/1" :use ((:instance fn-cat-load-row-keeps-relation
                                           (w (car records)) (records history))))))
 
@@ -344,13 +344,13 @@
             (equal (fn-held-wire-of (fn-cat-at k (fn-cat-withdraw target by fn-cat)) fn-arena)
                    (fn-held-wire-of (fn-cat-at k fn-cat) fn-arena)))
    :hints (("Goal" :in-theory (e/d (fn-cat-mark-withdrawn fn-held-wire-of)
-                                   (fn-cat-p-is-held-listp))))))
+                                   (fn-cat-p-is-rowsp))))))
 
 (local (defthm fn-crl-wire-of-at-redecide
    (implies (and (natp seq) (< seq (fn-cat-count fn-cat)) (natp k))
             (equal (fn-held-wire-of (fn-cat-at k (fn-cat-redecide seq ctx fn-cat)) fn-arena)
                    (fn-held-wire-of (fn-cat-at k fn-cat) fn-arena)))
-   :hints (("Goal" :in-theory (e/d (fn-held-wire-of) (fn-cat-p-is-held-listp))))))
+   :hints (("Goal" :in-theory (e/d (fn-held-wire-of) (fn-cat-p-is-rowsp))))))
 
 (local (defthm fn-crl-count-of-withdraw
    (implies (and (natp target) (< target (fn-cat-count fn-cat)))
@@ -363,7 +363,7 @@
                    (fn-cat-wire-list i fn-arena fn-cat)))
    :hints (("Goal" :induct (fn-cat-wire-list i fn-arena fn-cat)
             :in-theory (disable fn-cat-withdraw-is-mark fn-cat-count-is-len fn-cat-at-is-nth
-                                fn-cat-p-is-held-listp fn-held-wire-of)))))
+                                fn-cat-p-is-rowsp fn-held-wire-of)))))
 
 (local (defthm fn-cat-wire-list-of-redecide
    (implies (and (natp seq) (< seq (fn-cat-count fn-cat)) (natp i))
@@ -371,27 +371,27 @@
                    (fn-cat-wire-list i fn-arena fn-cat)))
    :hints (("Goal" :induct (fn-cat-wire-list i fn-arena fn-cat)
             :in-theory (disable fn-cat-redecide-is-update-nth fn-cat-count-is-len fn-cat-at-is-nth
-                                fn-cat-p-is-held-listp fn-held-wire-of)))))
+                                fn-cat-p-is-rowsp fn-held-wire-of)))))
 
 (local (defthm fn-crl-handles-of-withdraw
    (implies (and (natp target) (< target (fn-cat-count fn-cat)))
             (equal (fn-cat-handles-inp n fn-arena (fn-cat-withdraw target by fn-cat))
                    (fn-cat-handles-inp n fn-arena fn-cat)))
-   :hints (("Goal" :in-theory (e/d (fn-cat-mark-withdrawn) (fn-cat-p-is-held-listp))))))
+   :hints (("Goal" :in-theory (e/d (fn-cat-mark-withdrawn) (fn-cat-p-is-rowsp))))))
 
 (local (defthm fn-crl-cat-p-of-withdraw
    (implies (and (fn-cat-p fn-cat) (natp target) (< target (fn-cat-count fn-cat)) (natp by))
             (fn-cat-p (fn-cat-withdraw target by fn-cat)))
    :hints (("Goal" :use ((:instance fn-cat-withdraw{preserved}))
             :in-theory (e/d (fn-cat-p fn-cat-withdraw fn-cat-count)
-                            (fn-cat-p-is-held-listp fn-cat-withdraw-is-mark fn-cat-count-is-len))))))
+                            (fn-cat-p-is-rowsp fn-cat-withdraw-is-mark fn-cat-count-is-len))))))
 
 (local (defthm fn-crl-cat-p-of-redecide
    (implies (and (fn-cat-p fn-cat) (natp seq) (< seq (fn-cat-count fn-cat)) (fn-hc-p ctx))
             (fn-cat-p (fn-cat-redecide seq ctx fn-cat)))
    :hints (("Goal" :use ((:instance fn-cat-redecide{preserved} (context ctx)))
             :in-theory (e/d (fn-cat-p fn-cat-redecide fn-cat-count)
-                            (fn-cat-p-is-held-listp fn-cat-redecide-is-update-nth
+                            (fn-cat-p-is-rowsp fn-cat-redecide-is-update-nth
                              fn-cat-count-is-len))))))
 
 (defthm fn-cat-relation-of-withdraw
@@ -400,7 +400,7 @@
            (fn-cat-history-relation records fn-arena (fn-cat-withdraw target by fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-cat-history-relation)
                                   (fn-cat-withdraw-is-mark fn-cat-count-is-len fn-cat-at-is-nth
-                                   fn-cat-p-is-held-listp fn-cat-handles-inp fn-cat-wire-list)))))
+                                   fn-cat-p-is-rowsp fn-cat-handles-inp fn-cat-wire-list)))))
 
 (defthm fn-cat-relation-of-redecide
   (implies (and (fn-cat-history-relation records fn-arena fn-cat)
@@ -408,7 +408,7 @@
            (fn-cat-history-relation records fn-arena (fn-cat-redecide seq ctx fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-cat-history-relation)
                                   (fn-cat-redecide-is-update-nth fn-cat-count-is-len fn-cat-at-is-nth
-                                   fn-cat-p-is-held-listp fn-cat-handles-inp fn-cat-wire-list)))))
+                                   fn-cat-p-is-rowsp fn-cat-handles-inp fn-cat-wire-list)))))
 
 ; The completion: the commit of the pending's held record, whose wire (with
 ; its sealed bytes) is the record W the history appends.
@@ -425,7 +425,7 @@
   :hints (("Goal" :in-theory (e/d (fn-cat-complete fn-cat-history-relation)
                                   (fn-pc-p fn-arena-payload-is-nth fn-arena-count-is-len
                                    fn-held-wire-of fn-cat-commit-is-append fn-cat-count-is-len
-                                   fn-cat-at-is-nth fn-cat-p-is-held-listp fn-cat-handles-inp))
+                                   fn-cat-at-is-nth fn-cat-p-is-rowsp fn-cat-handles-inp))
            :use ((:instance fn-cat-handles-inp-extend
                             (n (fn-cat-count fn-cat)) (h (fn-pc-held pending))))
            :do-not-induct t)))
