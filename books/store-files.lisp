@@ -922,10 +922,8 @@
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :replaying))
       (if (fn-sf-history-recoverablep groups capacity (fn-sf-records s)
                                       (fn-sf-frontier s))
-          (fn-sf-make :recovering (fn-sf-frontier s) nil (fn-sf-records s)
-                      nil nil (fn-sf-successes s) 0)
-        (fn-sf-make :fault (fn-sf-frontier s) nil (fn-sf-records s)
-                    nil nil (fn-sf-successes s) 0))
+          (fn-sf-remake :recovering (fn-sf-frontier s) nil nil nil 0 s)
+        (fn-sf-remake :fault (fn-sf-frontier s) nil nil nil 0 s))
     s))
 
 (defun fn-sf-recovery-barrier (s result)
@@ -934,14 +932,12 @@
       (cond
        ((equal result :ok)
         (let ((next (1+ (fn-sf-barriers s))))
-          (fn-sf-make
+          (fn-sf-remake
            (if (equal next *fn-sf-recovery-barrier-count*) :ready :recovering)
-           (fn-sf-frontier s) nil (fn-sf-records s) nil nil
-           (fn-sf-successes s) next)))
+           (fn-sf-frontier s) nil nil nil next s)))
        ((equal result :uncertain)
-        (fn-sf-make :fenced-recovery (fn-sf-frontier s) nil
-                    (fn-sf-records s) nil nil (fn-sf-successes s)
-                    (fn-sf-barriers s)))
+        (fn-sf-remake :fenced-recovery (fn-sf-frontier s) nil
+                      nil nil (fn-sf-barriers s) s))
        (t s))
     s))
 
