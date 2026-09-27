@@ -187,6 +187,43 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         self.assertEqual(len(codes), 1, text(result))
         return codes[0].decode("ascii")
 
+    def fn_redeem(self, *words, password="correct-horse"):
+        # `fn redeem` (the stranger rehearsal's stop 10): no openssl, no
+        # hand-typed XREDEEM.  The password comes on standard input.
+        return subprocess.run([*self.image, "redeem", *words], cwd=ROOT,
+                              env=environment(self.image), input=(password + "\n").encode(),
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              timeout=120, check=False, start_new_session=True)
+
+    def test_fn_redeem_over_starttls_and_tls(self):
+        self.start(self.node)
+        cert = str(self.root / "cert.pem")
+        # STARTTLS on the reader port (the default), the node's own
+        # self-signed certificate trusted by --cafile.
+        code = self.invite(self.node)
+        done = self.fn_redeem("127.0.0.1:{}".format(self.port), code, "wren", "--cafile", cert)
+        self.assertEqual(done.returncode, 0, text(done))
+        self.assertIn(b"redeemed: the account wren is ready", done.stdout)
+        self.assertTrue(self.login_and_post("wren", "correct-horse",
+                                            "<wren-1@friend.example>").startswith("240"))
+        # Implicit TLS on the TLS port.
+        code = self.invite(self.node)
+        done = self.fn_redeem("127.0.0.1:{}".format(self.tls_port), code, "finch",
+                              "--tls", "--cafile", cert)
+        self.assertEqual(done.returncode, 0, text(done))
+        # A used code: refused by name, exit 1, with the server's line.
+        again = self.fn_redeem("127.0.0.1:{}".format(self.tls_port), code, "finch2",
+                               "--tls", "--cafile", cert)
+        self.assertEqual(again.returncode, 1, text(again))
+        self.assertIn(b"refused redeem code: ", again.stderr)
+        self.assertIn(b"the server said: 48", again.stderr)
+        # No trust anchor for a self-signed node: the handshake is refused,
+        # never an unchecked session.
+        untrusted = self.fn_redeem("127.0.0.1:{}".format(self.tls_port), code, "finch3", "--tls")
+        self.assertNotEqual(untrusted.returncode, 0, text(untrusted))
+        self.assertNotIn(b"redeemed", untrusted.stdout)
+        self.stop()
+
     def test_a_friend_redeems_a_code_once_across_a_crash(self):
         self.start(self.node)
         code = self.invite(self.node)

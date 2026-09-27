@@ -4851,6 +4851,8 @@ tree root), or stop the build."
                   :message "guard-probe is available only in the developer image"))
          (fnn-core 'fn-sha256-of-string 42)
          +fnn-exit-ok+)
+        ((string= verb "redeem")
+         (fnn-command-redeem (cdr args)))
         ((string= verb "model")
          (need 3)
          (fnn-command-model (second args) (fnn-dash-nil (third args))))
@@ -4892,6 +4894,129 @@ tree root), or stop the build."
 (defun fnn-gc-nursery-octets ()
   (max +fnn-gc-nursery-least-octets+
        (min +fnn-gc-nursery-octets+ (floor (sb-ext:dynamic-space-size) 16))))
+
+;;; `fn redeem HOST[:PORT] CODE LOGIN [--tls] [--cafile PEM]': a friend
+;;; redeems an invitation code (the stranger rehearsal's stop 10).  The host
+;;; dials and runs TLS; ACL2 decides each next step from the reply code
+;;; (books/peer-host.lisp fn-redeem-step), which name and trust the TLS
+;;; check uses (fn-peer-tls-verification: the typed HOST, SNI for a DNS name
+;;; only, the PEM file given or the system roots), and every line printed
+;;; (fn-redeem-text).  The password is read from the terminal without echo,
+;;; else from standard input; it never enters argv.
+(defun fnn-redeem-read-line (read-chunk pending)
+  "One reply line (without CRLF) and the octets after it, reading chunks with
+READ-CHUNK until an LF; at most 4096 octets (RFC 3977 s3.1: 512 is the
+largest reply line)."
+  (let ((buffer pending))
+    (loop
+      (let ((lf (position 10 buffer)))
+        (when lf
+          (return (values (coerce (subseq buffer 0 (if (and (> lf 0) (= (aref buffer (1- lf)) 13))
+                                                       (1- lf) lf))
+                                  'list)
+                          (subseq buffer (1+ lf))))))
+      (when (> (length buffer) 4096)
+        (fnn-refuse "refused redeem reply: the server's line exceeds 4096 octets"))
+      (let ((chunk (funcall read-chunk)))
+        (when (or (eq chunk :timeout) (zerop (length chunk)))
+          (fnn-refuse "refused redeem connection: the server closed or did not answer"))
+        (setq buffer (concatenate 'fnn-octets buffer chunk))))))
+
+(defun fnn-command-redeem (args)
+  (let ((tls nil) (cafile nil) (words nil))
+    (loop while args
+          do (let ((word (pop args)))
+               (cond ((string= word "--tls") (setq tls t))
+                     ((string= word "--cafile")
+                      (unless args (error 'fnn-usage-error :message "--cafile takes a PEM file"))
+                      (setq cafile (pop args)))
+                     (t (push word words)))))
+    (setq words (nreverse words))
+    (unless (= (length words) 3)
+      (error 'fnn-usage-error
+             :message "usage: fn redeem HOST[:PORT] CODE LOGIN [--tls] [--cafile PEM] (the password is asked for, or read from standard input)"))
+    (destructuring-bind (target code login) words
+      (let* ((colon (position #\: target :from-end t))
+             (host (if colon (subseq target 0 colon) target))
+             (port (if colon
+                       (or (ignore-errors (parse-integer target :start (1+ colon)))
+                           (error 'fnn-usage-error :message "the port after HOST: is a number"))
+                     (if tls 563 119)))
+             (verification (fnn-core 'fn-peer-tls-verification host
+                                     (or cafile :system-roots)))
+             (password (let ((tty (handler-case
+                                      (open "/dev/tty" :direction :io :element-type 'character
+                                                       :external-format :latin-1)
+                                    (error () nil))))
+                         (if tty
+                             (unwind-protect
+                                  (fnn-native-auth-admin-read-secret-from
+                                   tty "Password for the new account: " 512
+                                   (sb-sys:fd-stream-fd tty))
+                               (close tty))
+                           (fnn-native-auth-admin-read-secret-from
+                            *standard-input* "Password for the new account: " 512 nil))))
+             (socket nil) (context nil) (channel nil) (pending (fnn-make-octets 0))
+             (last nil))
+        (unless (eq (first verification) :verify)
+          (fnn-refuse "refused redeem ~a: ~a"
+                      (if (eq (second verification) :trust) "trust" "host")
+                      (if (eq (second verification) :trust)
+                          "the --cafile path is not usable"
+                        "HOST is not a host name or an IPv4 address")))
+        (flet ((send (text)
+                 (let ((octets (fnn-string-octets (fnn-concat text (coerce '(#\Return #\Newline) 'string)))))
+                   (if channel
+                       (fnn-tls-send-all channel octets 30)
+                     (fnn-send-all (fnn-socket-fd socket) octets 30))))
+               (reply ()
+                 (multiple-value-bind (line rest)
+                     (fnn-redeem-read-line
+                      (lambda () (if channel
+                                     (fnn-tls-read channel 30)
+                                   (fnn-recv (fnn-socket-fd socket) 30)))
+                      pending)
+                   (setq pending rest last line)
+                   line))
+               (finish (outcome)
+                 (let ((text (fnn-octets-string
+                              (fnn-octets (fnn-core 'fn-redeem-text outcome login last)))))
+                   (if (equal outcome '(:done))
+                       (progn (fnn-out "~a" text) +fnn-exit-ok+)
+                     (progn (fnn-err "~a" text) +fnn-exit-refused+)))))
+          (unwind-protect
+               (progn
+                 (setq socket (fnn-connect host port :timeout 30))
+                 (let ((stage (if tls :greeting-tls :greeting-starttls)))
+                   (when tls
+                     (setq context (fnn-tls-open-client-context (fourth verification))
+                           channel (fnn-tls-connect context (fnn-socket-fd socket)
+                                                    (second verification) 30
+                                                    :sni (third verification))))
+                   (loop
+                     (let ((step (fnn-core 'fn-redeem-step stage (reply))))
+                       (case (first step)
+                         (:starttls (send "STARTTLS") (setq stage :starttls))
+                         (:handshake
+                          (setq context (fnn-tls-open-client-context (fourth verification))
+                                channel (fnn-tls-connect context (fnn-socket-fd socket)
+                                                         (second verification) 30
+                                                         :sni (third verification))
+                                pending (fnn-make-octets 0))
+                          (send (format nil "XREDEEM ~a ~a" code login))
+                          (setq stage :code))
+                         (:send-code
+                          (send (format nil "XREDEEM ~a ~a" code login))
+                          (setq stage :code))
+                         (:send-password
+                          (send (format nil "XREDEEM PASS ~a"
+                                        (map 'string #'code-char password)))
+                          (setq stage :password))
+                         (t (ignore-errors (send "QUIT"))
+                            (return (finish step))))))))
+            (when channel (ignore-errors (fnn-tls-close-channel channel)))
+            (when context (ignore-errors (fnn-tls-close-context context)))
+            (when socket (ignore-errors (sb-bsd-sockets:socket-close socket)))))))))
 
 (defun fnn-main ()
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))

@@ -147,3 +147,26 @@
                      (pht "peer dial via=feed peer=far host=no-such-peer.invalid outcome=unresolved retry=yes")))
 (assert-event (equal (fn-peer-dial-log-line :pull (pht "far") (pht "a b") :name-mismatch)
                      (pht "peer dial via=pull peer=far host=- outcome=name-mismatch retry=yes")))
+
+; -----------------------------------------------------------------------------
+; fn redeem: fn-redeem-done-only-on-281-after-the-password, witnesses of both
+; arms of each iff (the keystone has no hypothesis).
+(defconst *rd-281* (fn-record-string-octets "281 account bound; authenticate with AUTHINFO on a new connection"))
+(defconst *rd-381* (fn-record-string-octets "381 send the password with XREDEEM PASS"))
+(defconst *rd-481* (fn-record-string-octets "481 invitation refused"))
+(assert-event (equal (fn-redeem-reply-code *rd-281*) 281))
+(assert-event (equal (fn-redeem-step :password *rd-281*) (list :done)))
+(assert-event (equal (fn-redeem-step :code *rd-281*) (list :refused :code)))
+(assert-event (equal (fn-redeem-step :password *rd-481*) (list :refused :password)))
+(assert-event (equal (fn-redeem-step :code *rd-381*) (list :send-password)))
+(assert-event (equal (fn-redeem-step :password *rd-381*) (list :refused :password)))
+(assert-event (equal (fn-redeem-step :greeting-starttls
+                                     (fn-record-string-octets "200 fn-nntp ready"))
+                     (list :starttls)))
+(assert-event (equal (fn-redeem-step :greeting-tls
+                                     (fn-record-string-octets "201 fn-nntp ready"))
+                     (list :send-code)))
+(assert-event (equal (fn-redeem-step :starttls (fn-record-string-octets "382 continue"))
+                     (list :handshake)))
+(assert-event (equal (fn-redeem-reply-code (fn-record-string-octets "2811 x")) nil))
+(assert-event (consp (fn-redeem-text (list :done) "carol" *rd-281*)))
