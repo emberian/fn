@@ -9396,6 +9396,35 @@
           "name": "fn-mvb-plan-unfolds"
         }
       ]
+    },
+    {
+      "id": "PRF-257",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lz-seal-form-denotes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-seal-form-of-literal-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-decode-of-literal-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-run-out-len-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-decode-buf-out-len-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-run-extends-out"
+        }
+      ]
     }
   ]
 }

@@ -3304,7 +3304,8 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-171"
+        "PRF-171",
+        "PRF-257"
       ],
       "verification": [
         "proof",

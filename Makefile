@@ -378,6 +378,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-decode-tests \
 	books/store-log-programs \
 	tests/acl2/store-log-programs-tests \
+	books/payload-lz \
+	tests/acl2/payload-lz-tests \
 	books/byte-store-k0-step-lemmas \
 	books/byte-store-k0-step-root-fence \
 	books/byte-store-k0-step \
