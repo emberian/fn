@@ -326,9 +326,9 @@ ack a forward declaration in scope whose repeat is a no-op; an unbound
 consumer is served exactly as before.
 
 ACL2 names each refusal (`:unbound`, `:credential`, `:access`, `:bound`,
-`:scope`); the kind-5 and kind-6 replies carry only the status, so the
-command line prints `consumer refused` and exits 1 (the reason on the wire
-is PKT-672).
+`:unbootstrapped`, `:unknown-consumer`, `:scope`); the command line prints
+it after the status (`consumer refused credential`) and exits 1. See
+"Refusal reasons" below.
 Why the rule refuses rather than skips: a consumer's query is one group
 (`register NAME GROUP`), so under one configuration the rule admits all of
 its events or none; skipping would move the position past events a later
@@ -381,6 +381,86 @@ this: `next` (a bound wait, printed as one JSON line), `reply` (a follow-up
 over NNTP as the consumer's account, with References) and `ack`
 ([docs/agents.md](../docs/agents.md#an-agent-in-five-minutes)).
 ([evidence](../planning/evidence/agent-wait-2026-09-27.md))
+
+## Refusal reasons and the JSON line
+
+The consumer replies (FNCT kinds 5, 6 and 9) carry a status and no reason,
+and a field appended to them would make an old client read a refusal as a
+frame it cannot decode. The reason therefore travels as PKT-453's does
+(specs/native-host.md, the reasoned reply): `fn consumer` sends every
+command as the reasoned consumer request, FNCT kind 22, whose payload is the
+kind-4 request's unchanged. The owner decides it exactly as the kind-4
+request (`fn-ncr-request-decode-is-the-plain-decode`), answers an acceptance
+with the consumer reply it always sent, and answers a refusal (or an
+uncertain or failed end) with the reasoned reply, kind 18: the status and
+ACL2's reason word. An owner that predates kind 22 answers the plain
+refusal before acting on anything, and the client sends the kind-4 request
+once more (`fn-native-control-reasoned-client-step`'s resend).
+
+CNS-009: a consumer command's refusal names the reason the owner's decision
+named, and the word the client prints is exactly that reason's
+(`fn-ncr-printed-reason-is-the-decisions`); a bind of an unregistered
+consumer name is refused by name; every consumer command can print one
+ACL2-rendered JSON line.
+
+The reasons: `unbootstrapped` (no consumer history yet; `register` then
+bootstraps it and registers once more, and only for this reason or an old
+owner's unnamed refusal, `fn-ncr-cli-after-retries-only-an-unbootstrapped-register`),
+`unknown-consumer` (no consumer of that name), `no-such-group` and `query`
+(register), `scope`, `unbound`, `credential`, `access`, `bound`, `waiters`,
+`oversize`, `report` and `not-owner` (the socket's peer is not the node's
+owner). `fn operator CONFIG consumer bind NAME --account LOGIN` of a name no
+registration declared is refused `unknown-consumer`, live and offline
+(`fn-col-bind-refusal-refuses-exactly-an-unregistered-bind`); the unbind is
+never refused.
+
+`fn consumer --json COMMAND ...` prints one line of JSON instead of the text
+line, rendered by ACL2 (`fn-ncr-json-line`; every octet printable ASCII,
+`fn-ncr-json-object-is-ascii`): `command`, `outcome`, `reason` (null for
+none), for `status` the three counts, and for a poll or wait the report's
+kind (`article`, `withdrawn`, `empty`, `unreadable`) and Message-ID.
+`fn consumer-article [--json] REPORT` decodes a report file.
+([evidence](../planning/evidence/friend-blockers-2-2026-09-27.md))
+
+## Withdrawals
+
+A consumer's query is one group, and a cancel is filed in `control.cancel`
+(RFC 5537 section 5.3), so a consumer of the cancelled article's group never
+selected the cancel, and a poll handed over an article its author had
+already cancelled with no mark (the stranger rehearsal, PKT-710). DECIDED:
+the consumer gets the withdrawal event, never the withdrawn content.
+
+CNS-008: the page a poll, bound poll or wait serves is the poll's answer
+with the view's withdrawals in it (books/consumer-withdrawal.lisp
+`fn-cwd-page`). The withdrawal decision it reads is the one NNTP's
+`430 withdrawn` reads: the owner's committed view's withdrawn articles and
+withdrawal records.
+
+- An article already withdrawn when its position is polled is delivered as
+  a withdrawal report in place of its report, at the same cursor
+  (`fn-cwd-page-never-serves-withdrawn-content`).
+- An event whose withdrawal record withdrew an article of the consumer's
+  group (a cancel, a supersession) is delivered at its own position as a
+  withdrawal report naming that article (`fn-cwd-scan-delivers-a-withdrawing-cause`,
+  `fn-cwd-page-of-a-withdrawal`); the cursor moves past it and never past
+  the journal frontier (`fn-cwd-scan-withdrawal-advances`).
+- A withdrawal report is the five octets `FNWD` 0x01 followed by the
+  withdrawn article's Message-ID (`fn-ncr-withdrawal-report`); it carries
+  nothing of the article and nothing of the cancel.
+- While nothing is withdrawn the page is exactly the poll's answer
+  (`fn-cwd-page-without-withdrawals-is-the-answer`), so every guarantee above
+  (CNS-006, CNS-007, at-least-once delivery, the ack) holds unchanged; a
+  wait answers the page and wakes for a withdrawal as for an article
+  (`fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page`).
+
+Not guarantees: a consumer that polls after the cancel can meet the same
+Message-ID twice (at the article's position and at the cancel's), as
+at-least-once delivery allows; key your effects by Message-ID. The scan
+still stops at 16 events per poll and walks the view's withdrawal records R
+and withdrawn list N for each event not of the group: 16 x (R + N)
+comparisons per poll in the worst case. On dev at 2026-09-27 the view's
+withdrawn list is empty until lane flip-L8-2's live refresh lands, so the
+page is the answer until then.
 
 ## Executable seam and obligations
 

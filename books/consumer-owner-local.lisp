@@ -45,12 +45,19 @@
 (defun fn-col-register (o max consumer group)
   (let* ((store (fn-own-store o))
          (s (fn-sn-consumer store)))
+    ;; PKT-709: the refusal names what is missing: the node's consumer
+    ;; history (`unbootstrapped', which `fn consumer register' answers by
+    ;; bootstrapping), a group name (`query') or the group (`no-such-group').
     (if (or (not s) (not (fn-af-newsgroup-namep group))
             (not (fn-cp-idp group))
             (not (true-listp (fn-sn-groups store)))
             (not (member-equal (fn-record-octets-string group)
                                (fn-sn-groups store))))
-        (list :refused :query)
+        (list :refused (cond ((not s) :unbootstrapped)
+                             ((not (and (fn-af-newsgroup-namep group)
+                                        (fn-cp-idp group)))
+                              :query)
+                             (t :no-such-group)))
       (fn-col-result-event
        o (fn-cp-register-within s max *fn-col-principal* consumer group
                                 *fn-col-query-version*
@@ -78,7 +85,11 @@
              (natp (fn-cp-nth 3 s))
              (<= (fn-cp-nth 7 entry) (fn-cp-nth 3 s)))
         (list :scope entry)
-      (list :refused :scope))))
+      ;; PKT-709: no consumer history, no consumer of that name, or an
+      ;; entry outside this owner's scope.
+      (list :refused (cond ((not s) :unbootstrapped)
+                           ((not entry) :unknown-consumer)
+                           (t :scope))))))
 
 (defun fn-col-position (o consumer)
   (let* ((s (fn-sn-consumer (fn-own-store o)))
@@ -88,6 +99,28 @@
               (fn-cp-cursor-encode
                (fn-cp-scope-cursor s (fn-cp-nth 1 scoped))))
       scoped)))
+
+;; PKT-709 (the stranger rehearsal): `fn operator CONFIG consumer bind NAME
+;; --account LOGIN' of a name no `fn consumer register' declared is refused
+;; by name, `:unknown-consumer', live (host/native-admin-host.lisp
+;; fn-native-admin-host-owner-reconfigure, over the owner's Store) and
+;; offline (fn-native-admin-host-apply, over the opened Store).  S is the
+;; Store's consumer projection (fn-sn-consumer), NAME the consumer id's
+;; octets, LOGIN the requested login's octets: empty or nil for the unbind,
+;; which is never refused here (it removes whatever row names NAME).
+(defun fn-col-bind-refusal (s name login)
+  (declare (xargs :guard t))
+  (if (and (consp login)
+           (not (and s (fn-cp-idp name)
+                     (fn-cp-find name (fn-cp-nth 5 s)))))
+      :unknown-consumer
+    nil))
+
+(defthm fn-col-bind-refusal-refuses-exactly-an-unregistered-bind
+  (iff (fn-col-bind-refusal s name login)
+       (and (consp login)
+            (not (and s (fn-cp-idp name)
+                      (fn-cp-find name (fn-cp-nth 5 s)))))))
 
 (defun fn-col-status (o consumer)
   "Return the committed ACK, journal frontier, and event-distance gap."

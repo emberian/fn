@@ -84,9 +84,10 @@
        "idempotent ack wrote a second event")
 
 (setf *proposal* '(:refused :scope) *calls* nil)
+; PKT-709: a refusal carries ACL2's reason for the reasoned reply.
 (check (equal (fnn-owner-consumer-local-serialized :service :ack '(9) nil)
-              '(:consumer-reply :refused nil))
-       "scope refusal was not preserved")
+              '(:reason (:consumer-reply :refused nil) :scope))
+       "scope refusal was not preserved with its reason")
 (check (not (member :commit *calls* :key #'car))
        "scope refusal wrote an event")
 
@@ -111,8 +112,8 @@
        "status wrote a consumer event or bypassed ACL2 decision")
 (setf *status* '(:refused :scope) *calls* nil)
 (check (equal (fnn-owner-consumer-local-serialized :service :status '(88) nil)
-              '(:consumer-status-reply :refused nil nil nil))
-       "status scope refusal was not preserved")
+              '(:reason (:consumer-status-reply :refused nil nil nil) :scope))
+       "status scope refusal was not preserved with its reason")
 (check (not (member :commit *calls* :key #'car))
        "status scope refusal wrote an event")
 (format t "native owner consumer local boundary passed~%")
