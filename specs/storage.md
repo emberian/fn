@@ -368,7 +368,7 @@ Detecting rollback of an entire otherwise valid store requires an independent
 trusted anchor and is outside the crash-only claim until D14 supplies one.
 
 The record log's open applies that distinction (lane log-corruption,
-2026-09-27, PRF-313, `books/store-log-damage.lisp`). A crash leaves at most
+2026-09-27, PRF-316, `books/store-log-damage.lisp`). A crash leaves at most
 the ONE pending write torn at the frontier over the segment's preallocated
 zeros, so after the scan stops ACL2 probes every write unit of the rest of
 the segment. An entry there that validates under the predecessor it claims
