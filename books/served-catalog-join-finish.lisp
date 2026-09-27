@@ -522,14 +522,14 @@
 ; Step 2 at the identity finish (an instance; its own teeth OPEN).  host/owner-host.lisp
 ; fn-owner-finish-identity installs fn-rix-ocfg-complete, which is the
 ; article finish's owner with no configuration record staged and the
-; store's event index carried (fn-scj-identity-finish-owner-is-article-
+; history stobj synced to the store (fn-scj-identity-finish-owner-is-article-
 ; finish-owner), then runs the same fn-sca-finish over its view: the join
 ; and the rows invariant are carried (a signed composite's EVENT loads its
 ; held row, fn-scj-load-h).
 (defthm fn-scj-joinp-at-identity-finish
   (let* ((o (fn-ocfg-owner oc))
          (view (fn-own-view o))
-         (o2 (fn-ocfg-owner (fn-rix-ocfg-complete oc)))
+         (o2 (fn-ocfg-owner (fn-rix-ocfg-complete oc fn-hist)))
          (s2 (fn-own-store o2))
          (view2 (fn-own-view o2))
          (acc2 (fn-node-acceptance (fn-sn-node s2)))
@@ -540,7 +540,7 @@
                                       (fn-sca-targets-of (fn-record-msgid held)
                                                          (fn-own-view-withdrawals view2))
                                       fn-cat))))
-    (implies (and (fn-ceis-indexedp (fn-own-store o))
+    (implies (and (fn-hist-of-storep fn-hist (fn-own-store o))
                   (not (fn-ocfg-staged oc))
                   (fn-sn-completion-enabledp (fn-own-store o))
                   (fn-scj-joinp view fn-arena fn-cat)
