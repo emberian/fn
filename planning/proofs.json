@@ -9553,6 +9553,34 @@
       ]
     },
     {
+      "id": "PRF-264",
+      "title": "The open streams the transaction files: the numbered chunk checks each file's sequence in its one decode, and the unframe answers the payload without copying it",
+      "statement": "Subjects, called by the host: fn-srs-checked-decode and fn-srs-unframe (books/store-recover-stream.lisp sections 5 and 6). host/native/io.lisp fnn-recover-full-replay (fnn-recover: every full-replay open, the store verbs and the owner start) reads the transaction files a chunk at a time as the replay takes them (fnn-recover-file-chunks): each file unframed by fnn-unframe-list, which sends the file as its protected prefix and its trailer to host/store-host.lisp fn-store-unframe-split (fn-srs-unframe), then the chunk of (FILE-NUMBER . RECORD) pairs to fn-srs-checked-decode, then its value to the guard-verified fn-srs-intern-step unless it answered :sequence (the host faults, as the per-file check did). KEYSTONE fn-srs-checked-decode-is-the-per-file-check: for every numbered chunk, fn-srs-checked-decode is :bad when a record does not decode, otherwise :sequence unless every record's sequence (fn-srs-record-sequence, which host/store-host.lisp fn-store-record-sequence is) is its file's number, and otherwise the decode of the chunk's records. fn-srs-checked-step-is-the-step: the host's two calls over a numbered chunk are fn-srs-step over its records, so PRF-261's fold keystone carries over. KEYSTONE fn-srs-unframe-is-the-frame-decode (no hypothesis, guard-verified subject): fn-srs-unframe of PREFIX and TRAILER is fn-frame-store-decode of their concatenation with fn-frame-trailer of PREFIX, which is what fnn-unframe computed for the whole file and its digest; on a well-formed frame its payload is PREFIX's own tail (no copy). Scope: the full-replay path without a selected pack (with one, the history is fnn-committed-history's and goes over in chunks by PRF-261); the open now answers the record count, and the verbs that need the records read them with fnn-history-records.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025",
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-261"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-recover-stream.lisp",
+        "tests/acl2/store-recover-stream-tests.lisp",
+        "host/native/io.lisp",
+        "host/store-host.lisp",
+        "planning/evidence/recover-memory-2026-09-27.md"
+      ],
+      "progress_note": "Lane recover-memory-2 (2026-09-27, PKT-823 items 1-4): every form REPL-admitted on hbox (sections 5 and 6 and their teeth).",
+      "events": [
+        "fn-srs-checked-decode-is-the-per-file-check",
+        "fn-srs-checked-step-is-the-step",
+        "fn-srs-unframe-is-the-frame-decode"
+      ]
+    },
+    {
       "id": "PRF-260",
       "title": "After the records flip, the store's duplicate verdict is D25's source-keyed decision over alpha (the held rows' bytes read through the arena)",
       "statement": "Subject fn-store-existing-action (books/store-intern.lisp), the entry flip-L6 routes host/store-node-host.lisp fn-store-sn-existing-action and the owner's POST duplicate test (fn-pidx-existing-action, fn-pidx-existing-action-is-store-existing-action) to; on dev at batch AV the host still calls the pre-flip forms, so the host line lands with flip-L6. fn-store-existing-action-is-pb-over-alpha (books/store-existing-alpha.lisp, KEYSTONE): for a string Message-ID whose held bytes (fn-handle-bytes of the found article's payload handle) are no tombstone, the entry equals fn-pb-action-over of the store's acceptance articles with each payload replaced by its bytes (fn-sn-alpha-articles through fn-articles-wire-of), i.e. the answer fn-pb-existing-action gave when the store retained bytes. fn-store-existing-action-refines-byte-identity-over-alpha (KEYSTONE): the entry is non-nil at exactly the Message-IDs the byte-identity decision over alpha answers, and where the held bytes are no tombstone a byte-identical resend with the same groups is :duplicate. fn-sn-existing-action-is-action-over-by-definition and fn-pb-existing-action-is-action-over-by-definition name the store forms. A tombstone's resend is decided by digest (PRF-117, fn-rcl-same-as-tombstonep). Teeth: tests/acl2/store-existing-alpha-tests.lisp (a reachable witness; per hypothesis a separating positive and a must-fail; the live-store regression: comparing offered octets with the handle answered wrongly). Id assigned by batch AV (flip-L8 took none; PRF-257 went to codec-c1 by its brief and PRF-258 to fixtures-refresh).",
