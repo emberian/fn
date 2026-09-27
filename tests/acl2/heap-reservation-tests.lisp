@@ -451,15 +451,22 @@
        (equal (nth 4 d) budget-mb)
        (equal (nth 5 d) :conservative)
        (equal (nth 6 d) t)))
+; Since friend-blockers (PKT-707, batch AV) conservative sizing takes the
+; largest friend rung the budget holds: under 24 GiB the top rung (64 MiB of
+; history, 131,072 transactions) with R raised to the 8 MiB (4 MiB) article's
+; record at 16 groups.
 (assert! (hrt-sized-at (hrt-init *hrt-a8* *hrt-hbox* *hrt-24g*)
-                       '(:development ((5 . 8388608) (3 . 25494326) (4 . 25494326)))
+                       '(:development ((2 . 131072) (3 . 67108864) (4 . 8393867)
+                                       (6 . 16) (8 . 128) (5 . 8388608)))
                        24576))
 (assert! (hrt-sized-at (hrt-init *hrt-a4* *hrt-hbox* *hrt-24g*)
-                       '(:development ((5 . 4194304) (3 . 25165824) (4 . 21300022)))
+                       '(:development ((2 . 131072) (3 . 67108864) (4 . 4199563)
+                                       (6 . 16) (8 . 128) (5 . 4194304)))
                        24576))
-; On hbox without a limit: the same development candidates.
+; On hbox without a limit: the same top rung.
 (assert! (equal (fn-heap-init-decision-request (hrt-init *hrt-a8* *hrt-hbox* nil))
-                '(:development ((5 . 8388608) (3 . 25494326) (4 . 25494326)))))
+                '(:development ((2 . 131072) (3 . 67108864) (4 . 8393867)
+                                (6 . 16) (8 . 128) (5 . 8388608)))))
 ; Under 2 GiB: the small candidate, H raised to its record.
 (assert! (equal (fn-heap-init-decision-request (hrt-init *hrt-a8* *hrt-hbox* *hrt-2g*))
                 '(:development ((2 . 16384) (3 . 8393867) (4 . 8393867) (6 . 16)
