@@ -2,16 +2,29 @@
 (in-package "ACL2")
 (include-book "../../books/checkpoint")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 (defconst *cp-groups* '("fn.letters" "fn.test"))
-(defconst *cp-r0*
+(defconst *cp-r0-wire*
   (fn-record-make 0 0 0 "<cp0@example.invalid>" '(65 13 10)
                   '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2 841000000))
 ; Allocator txids 1, 2 and 3 do not occur in the journal.  They model known
 ; aborts before the suffix record at txid 4.
-(defconst *cp-r1*
+(defconst *cp-r1-wire*
   (fn-record-make 1 4 4 "<cp1@example.invalid>" '(66 13 10)
                   '("fn.test") "cp-pin-1" "cp-content-1" "cp-release-1" 3 841000000))
+
+; The store retains held rows (records-flip, books/held-record.lisp): each
+; journal record reaches capture and restore as the row the entry interns
+; (books/store-intern.lisp fn-intern-events, keyring nil at generation 0 as
+; the open does), its payload a handle into the arena.  The journal's two
+; records are interned in order (handles 0 and 1); a refused or off-journal
+; record is the row interned after *CP-R0-WIRE* (handle 1).
+(defconst *cp-rows* (fn-hrt-rows (list *cp-r0-wire* *cp-r1-wire*) nil 0))
+(defconst *cp-r0* (car *cp-rows*))
+(defconst *cp-r1* (cadr *cp-rows*))
+(assert-event (and (fn-held-p *cp-r0*) (fn-held-p *cp-r1*)))
+(defmacro cp-row (w) `(fn-hrt-row-after (list *cp-r0-wire*) ,w nil 0))
 
 (defconst *cp-capture*
   (fn-checkpoint-capture *cp-groups* 10 (list *cp-r0*) 3))
@@ -57,10 +70,11 @@
         '(:error :checkpoint)))
 
 ; A suffix with the wrong next journal sequence is rejected before replay.
-(defconst *cp-wrong-sequence-record*
+(defconst *cp-wrong-sequence-record-wire*
   (fn-record-make 2 4 4 "<seq@example.invalid>" '(81 13 10)
                   '("fn.test") "cp-pin-seq" "cp-content-seq"
                   "cp-release-seq" 1 841000000))
+(defconst *cp-wrong-sequence-record* (cp-row *cp-wrong-sequence-record-wire*))
 (assert-event
  (equal (fn-checkpoint-restore *cp-value* *cp-groups* 10
                                (list *cp-wrong-sequence-record*) 6)
@@ -72,10 +86,11 @@
  (equal (fn-checkpoint-restore *cp-value* *cp-groups* 10
                                (list *cp-r0*) 6)
         '(:error :suffix)))
-(defconst *cp-stale-txid*
+(defconst *cp-stale-txid-wire*
   (fn-record-make 1 2 2 "<stale@example.invalid>" '(83 13 10)
                   '("fn.test") "cp-pin-stale" "cp-content-stale"
                   "cp-release-stale" 1 841000000))
+(defconst *cp-stale-txid* (cp-row *cp-stale-txid-wire*))
 (assert-event
  (equal (fn-checkpoint-restore *cp-value* *cp-groups* 10
                                (list *cp-stale-txid*) 6)
@@ -96,10 +111,11 @@
 
 ; A syntactically ordered suffix that the actual node refuses is a replay
 ; failure, preserving the distinction from stale/duplicate storage metadata.
-(defconst *cp-over-capacity*
+(defconst *cp-over-capacity-wire*
   (fn-record-make 1 4 4 "<large@example.invalid>" '(76 13 10)
                   '("fn.test") "cp-pin-large" "cp-content-large"
                   "cp-release-large" 9 841000000))
+(defconst *cp-over-capacity* (cp-row *cp-over-capacity-wire*))
 (assert-event
  (equal (fn-checkpoint-restore *cp-value* *cp-groups* 10
                                (list *cp-over-capacity*) 6)
@@ -131,9 +147,10 @@
 ; generation other than its txid is no journal interval, so the split is
 ; inadmissible, and BOTH conclusions fail on it -- the capture is the refusal
 ; and not the FN-CHECKPOINT-MAKE, and its value is not a checkpoint at all.
-(defconst *cp-r0-bad-generation*
+(defconst *cp-r0-bad-generation-wire*
   (fn-record-make 0 0 1 "<cp0@example.invalid>" '(65 13 10)
                   '("fn.letters") "cp-pin-0" "cp-content-0" "cp-release-0" 2 841000000))
+(defconst *cp-r0-bad-generation* (fn-hrt-row-after nil *cp-r0-bad-generation-wire* nil 0))
 (assert-event (not (fn-checkpoint-admissible-splitp
                     *cp-groups* 10 (list *cp-r0-bad-generation*) 3 nil 3)))
 (assert-event (not (equal (fn-checkpoint-capture *cp-groups* 10

@@ -2,6 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-node-resolution")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 (defconst *snr-groups* '("fn.letters" "fn.test"))
 
@@ -30,17 +31,30 @@
 
 ; The consumed reservation cannot be prepared.  A fresh reservation uses txid
 ; one while journal sequence zero remains available and can complete normally.
-(defconst *snr-stale-record*
+(defconst *snr-stale-wire*
   (fn-record-make 0 0 0 "<stale@example>" '(65) *snr-groups*
                   "stale-pin" "stale-content" "stale-release" 1 841000000))
+; The store takes held rows (records-flip): each record interned in the
+; order the entry sees it (the stale one at handle 0, the next at 1).
+(defconst *snr-stale-record* (fn-hrt-row-at *snr-stale-wire* 0))
+(assert-event (fn-held-p *snr-stale-record*))
 (assert-event
  (equal (fn-sn-prepare *snr-refused-zero* *snr-stale-record*)
         *snr-refused-zero*))
 
 (defconst *snr-reserved-one* (fn-snr-reserve *snr-refused-zero*))
-(defconst *snr-record-one*
+(defconst *snr-record-one-wire*
   (fn-record-make 0 1 1 "<one@example>" '(66) *snr-groups*
                   "one-pin" "one-content" "one-release" 1 841000000))
+(defconst *snr-record-one*
+  (fn-hrt-row-after (list *snr-stale-wire*) *snr-record-one-wire* nil 0))
+(assert-event (and (fn-held-p *snr-record-one*)
+                   (equal (fn-record-payload *snr-record-one*) 1)))
+; The row is admissible: prepared on a live reservation it stages.
+(assert-event
+ (equal (fn-sf-phase (fn-sn-files (fn-sn-prepare (fn-snr-reserve *snr-refused-zero*)
+                                                 *snr-record-one*)))
+        :record-staged))
 (defconst *snr-prepared-one*
   (fn-sn-prepare *snr-reserved-one* *snr-record-one*))
 (defconst *snr-finished-one*
@@ -53,9 +67,11 @@
 
 ; A staged candidate can be resolved as known absent.  The actual pending node
 ; is aborted at its exact txid/generation and the file reservation is consumed.
-(defconst *snr-abort-record*
+(defconst *snr-abort-wire*
   (fn-record-make 0 0 0 "<abort@example>" '(67) *snr-groups*
                   "abort-pin" "abort-content" "abort-release" 1 841000000))
+(defconst *snr-abort-record* (fn-hrt-row-at *snr-abort-wire* 0))
+(assert-event (fn-held-p *snr-abort-record*))
 (defconst *snr-abort-prepared*
   (fn-sn-prepare *snr-reserved-zero* *snr-abort-record*))
 (defconst *snr-aborted* (fn-sn-known-abort *snr-abort-prepared*))

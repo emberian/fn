@@ -150,9 +150,16 @@
 ; the refusal stays for a store holding an event past its own R (PKT-470).
 ; A report that is not octets at all is `:report'.  Before this function the host encoded the
 ; event itself and an oversize report faulted the reply encoder.
+; After the records flip a selected history event is a retained ROW: a
+; composite row's report is the exact encoding of the wire composite it
+; carries (no bytes of the arena are read); a held article row's bytes are
+; in the arena, so its report is `fn-col-poll-report-over'
+; (books/history-fold-refinement.lisp), which
+; encodes the row's wire form (alpha, books/store-intern.lisp).
 (defun fn-col-poll-report-octets (event)
   (declare (xargs :guard t))
-  (cond ((fn-stxa-p event) (fn-stxa-encode event))
+  (cond ((fn-hstxa-p event) (fn-stxa-encode (fn-hstxa-stxa event)))
+        ((fn-stxa-p event) (fn-stxa-encode event))
         ((fn-record-p event) (fn-rcon-record-encode-impl event))
         (t nil)))
 

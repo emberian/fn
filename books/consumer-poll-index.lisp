@@ -11,10 +11,29 @@
 ; authored source and historical verdict; legacy events remain explicitly
 ; distinguishable by their own versioned bytes.  Poll has no Store write.
 (defconst *fn-col-poll-max-scan* 16)
+; The article record a history event commits.  After the records flip the
+; history retains an accepted statement as the composite ROW (`fn-hstxa-p')
+; and a plain article as a HELD row (`fn-held-p', books/held-record.lisp): the
+; row's interned article is its article, as the wire composite's decoded
+; record was; the wire vocabulary (a composite or record handed over before
+; the intern) reads as before.  The selected event is still the event
+; itself; its report reads its bytes through the arena
+; (books/consumer-owner-local.lisp fn-col-poll-report-over).
 (defun fn-col-poll-article (event)
-  (if (fn-stxa-p event) (fn-replay-composite-record event)
-    (if (fn-record-p event) event nil)))
+  (cond ((fn-hstxa-p event) (fn-hstxa-held event))
+        ((fn-stxa-p event) (fn-replay-composite-record event))
+        ((fn-held-p event) event)
+        ((fn-record-p event) event)
+        (t nil)))
 (verify-guards fn-col-poll-article)
+; An article record in either vocabulary, and a composite in either: one
+; test each, so a proof over the scan splits as it did before the flip.
+(defun fn-col-poll-articlep (article)
+  (declare (xargs :guard t))
+  (or (fn-held-p article) (fn-record-p article)))
+(defun fn-col-poll-compositep (event)
+  (declare (xargs :guard t))
+  (or (fn-hstxa-p event) (fn-stxa-p event)))
 (defun fn-col-poll-window (events budget)
   (declare (xargs :guard (natp budget) :measure (nfix budget)))
   (if (and (posp budget) (consp events))
@@ -44,9 +63,9 @@
          ((or (not (fn-store-event-p event))
               (not (equal (fn-store-event-sequence event) position)))
           (list :refused :history))
-         ((and (fn-stxa-p event) (not article))
+         ((and (fn-col-poll-compositep event) (not article))
           (list :refused :article-binding))
-         ((and (fn-record-p article)
+         ((and (fn-col-poll-articlep article)
                (true-listp (fn-record-groups article))
                (member-equal (fn-record-octets-string group)
                              (fn-record-groups article)))

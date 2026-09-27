@@ -76,9 +76,9 @@
          (- (fn-cp-nth 2 (fn-col-status *colt-o1* '(88)))
             (fn-cp-nth 1 (fn-col-status *colt-o1* '(88)))))))
 (defconst *colt-article*
-  (fn-record-make 2 2 2 "<poll@fn.test>" '(65 66)
+  (fn-held-plain (fn-record-make 2 2 2 "<poll@fn.test>" '(65 66)
                   '("fn.test") "poll-pin" "poll-content" "poll-release"
-                  2 841000000))
+                  2 841000000) 0))
 (defconst *colt-after-article*
   (fn-sn-finish
    (fn-sn-io
@@ -105,17 +105,17 @@
  (equal (fn-col-position (fn-own-start *colt-after-article* 2) *colt-id*)
         *colt-position*))
 (defconst *colt-second-article*
-  (fn-record-make 3 3 3 "<poll-two@fn.test>" '(66)
+  (fn-held-plain (fn-record-make 3 3 3 "<poll-two@fn.test>" '(66)
                   '("fn.test") "poll-two-pin" "poll-two-content"
-                  "poll-two-release" 1 841000001))
+                  "poll-two-release" 1 841000001) 1))
 (assert-event
  (equal (fn-col-poll-scan (list *colt-article* *colt-second-article*)
                           *colt-group* 2 4 16)
         (list :scan 3 *colt-article*)))
 (defconst *colt-other-article*
-  (fn-record-make 2 2 2 "<other@fn.test>" '(67)
+  (fn-held-plain (fn-record-make 2 2 2 "<other@fn.test>" '(67)
                   '("fn.other") "other-pin" "other-content"
-                  "other-release" 1 841000000))
+                  "other-release" 1 841000000) 2))
 (assert-event
  (equal (fn-col-poll-scan (list *colt-other-article* *colt-second-article*)
                           *colt-group* 2 4 16)
