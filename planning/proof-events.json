@@ -1166,6 +1166,16 @@
           "kind": "theorem",
           "name": "fn-sn-finish-preserves-indexedp",
           "note": "The carrier obligation, and the one preservation row that does work: the store grows at fn-sn-finish by the one article fn-install-pending conses and the carried index grows by that article's delta, at most one cons. Its keystone is fn-stx-index-invariant-preserved-by-accept and its hypothesis is discharged by fn-stx-durable-completion-is-an-acceptance. 11,118 prover steps. Decision D21."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-store-statement-lookup-is-the-lace-lookup",
+          "note": "The served lookup (host/store-node-host.lisp fn-store-sn-statement -> fn-sn-statement-lookup) equals the lace lookup of the indexed rows articles, bytes read through the arena; restated over alpha after the records flip."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-store-equivocatorp-is-the-lace-equivocator",
+          "note": "The served equivocator question (fn-store-sn-equivocator -> fn-sn-equivocatorp) equals the lace equivocator of the indexed rows articles through the arena; restated over alpha after the records flip."
         }
       ]
     },
@@ -6391,6 +6401,18 @@
         {
           "kind": "theorem",
           "name": "fn-scf-usage-carried-is-the-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-record-octets-is-the-stored-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-intern-events-extents-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-intern-events-budget-octets-are-the-stored-octets"
         }
       ]
     },

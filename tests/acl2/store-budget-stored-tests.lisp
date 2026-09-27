@@ -112,9 +112,18 @@
 (assert-event (equal (nth 0 *sbst-lie*) nil))
 (assert-event (equal (nth 1 *sbst-lie*) 12))
 (assert-event (equal (nth 2 *sbst-lie*) 8))
+; The same refutation as a theorem over the arena's logical value (the two
+; payloads the open sealed): the conclusion is false at these rows, so the
+; theorem without its hypothesis fails.
+(defconst *sbst-lying-rows* (cons *sbst-lying* (cdr (nth 4 *sbst-open*))))
+(defconst *sbst-arena-value* '((1 2 3) (65 66 67 68 69)))
+(thm (not (equal (fn-sbud-record-octets *sbst-lying-rows*)
+                 (fn-sbud-stored-octets *sbst-lying-rows* *sbst-arena-value*))))
+(thm (not (fn-sbud-rows-extents-okp *sbst-lying-rows* *sbst-arena-value*)))
 (must-fail
  (defthm sbst-octets-without-the-relation
-   (equal (fn-sbud-record-octets rows) (fn-sbud-stored-octets rows fn-arena))))
+   (equal (fn-sbud-record-octets *sbst-lying-rows*)
+          (fn-sbud-stored-octets *sbst-lying-rows* *sbst-arena-value*))))
 
 ; The open keystone's other hypotheses: fn-arena-p and (natp generation) are
 ; fn-intern-events' guard (the host cannot call it outside them; a call at

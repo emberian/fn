@@ -1152,7 +1152,8 @@
         "books/store-node-invariants.lisp",
         "tests/acl2/store-node-composite-index-tests.lisp",
         "planning/evidence/store-composite-index-t4-2026-09-23.md",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "books/store-intern.lisp"
       ],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
       "note": "`books/stx-index` CERTIFIES (w10/substrate-2). The three agreements `fn-stx-index-bindings-agree`, `fn-stx-index-slots-agree` and `fn-stx-index-equivocators-agree` are the keystones; `fn-stx-index-agrees-with-lace` is their `:rule-classes nil` corollary and is cited as such, and `fn-stx-recorded-equivocation-agrees-with-lace` is a corollary of that. THE SUBJECT GAP IS CLOSED IN BOTH HALVES (w11/sn-index, decision D21). Preservation: `fn-stx-index-invariant-preserved-by-accept` hypothesises `fn-stx-acceptedp`, which `fn-stx-durable-completion-is-an-acceptance` proves of the durable branch of `fn-node-complete`, and `fn-sn-finish-preserves-indexedp` (books/store-node-invariants) is that keystone applied at `fn-sn-finish`, the only node step of the host's `fn-store-sn-finish`. Query: `fn-sn-state` carries the index and the keyring it was computed under as two new fields; `fn-sn-statement-lookup` and `fn-sn-equivocatorp` read the index and nothing else; `host/store-node-host.lisp` `fn-store-sn-statement` and `fn-store-sn-equivocator` call them on the `'fn-store-sn` global, reachable from outside as `run_store.py statement`; and `fn-sn-statement-lookup-is-the-lace-lookup` and `fn-sn-equivocatorp-is-the-lace-equivocator` equate the called function to the projection. Their hypothesis `fn-sn-indexedp` is discharged by a complete reachability chain over every transition that reaches an `f-put-global` of that global. WHY THIS IS NOT YET `certified`: (a) `fn-stx-index-slots-agree` still has no caller -- no served query walks the slot list; (b) A-CRYPTO stands behind every verification, and the only witnesses are under the toy realiser of `tests/acl2/crypto-seam-tests`; (c) the keyring is supplied per invocation and is not carried in the durable configuration history, so a restart forgets it; and (d) `fn-stx-transit-authority-ok` (books/stx-policy) still walks the whole lace per article on the ADMISSION path and has no caller, so D3 is answered at the query and not at admission. Witnesses: `tests/acl2/store-node-index-tests`, a real run of the store transitions from `fn-sn-initial` to `fn-sn-finish` with a signed `FN-Statement` article, with the same run under the empty keyring as the separating witness and a stale-index tooth. Route: planning/lanes/HANDOFF-w11-sn-index.md. CLOSED 2026-09-23 (T4): `fn-sn-finish-preserves-indexedp` no longer excludes the accepted-statement arm. Local replay lemmas establish that a non-nil composite replay from a valid idle node installs exactly one article, its payload equals the decoded composite payload, and `fn-sn-composite-delta` is that article's statement delta; `fn-sn-completion-enabledp` discharges the replay/idle premises. The host-called finish therefore preserves the carried index through retention, neutral identity, accepted composite identity, and ordinary durable acceptance. A reached composite acceptance with a nonempty statement index and a stale-index must-fail tooth are in tests/acl2/store-node-composite-index-tests. The source-book certificate and the pending test certificate are recorded in planning/evidence/store-composite-index-t4-2026-09-23.md.",
@@ -1162,9 +1163,11 @@
         "fn-stx-index-equivocators-agree",
         "fn-stx-index-invariant-preserved-by-accept",
         "fn-stx-durable-completion-is-an-acceptance",
-        "fn-sn-finish-preserves-indexedp"
+        "fn-sn-finish-preserves-indexedp",
+        "fn-store-statement-lookup-is-the-lace-lookup",
+        "fn-store-equivocatorp-is-the-lace-equivocator"
       ],
-      "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the two served-query keystones fn-sn-statement-lookup-is-the-lace-lookup and fn-sn-equivocatorp-is-the-lace-equivocator were stated over the acceptance articles BYTES; after the flip those carry handles, so records-flip-2 removed them from books/store-node-invariants.lisp and this row no longer cites them.  What holds today: the store index is the fold of the retained rows contexts (fn-sn-indexedp over fn-sn-index-of-rows, preserved by every transition in books/store-node-invariants.lisp) and that fold is the wire index of the rows bytes read through the arena (books/store-intern.lisp fn-rows-index-is-the-wire-index, under fn-rows-contexts-okp, which fn-intern-events-contexts-okp establishes at the intern).  OPEN (named): the two lookup keystones restated over alpha in books/store-intern.lisp (lookup in fn-sn-index = lookup in the lace of fn-rows-articles-newest-first)."
+      "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the two served-query keystones are RESTATED over alpha in books/store-intern.lisp: fn-store-statement-lookup-is-the-lace-lookup and fn-store-equivocatorp-is-the-lace-equivocator (hypotheses: fn-sn-indexedp s and fn-rows-contexts-okp of fn-sn-indexed-rows s under the store's keyring): fn-sn-statement-lookup / fn-sn-equivocatorp (the functions host/store-node-host.lisp fn-store-sn-statement / fn-store-sn-equivocator call) answer as the lace of fn-rows-articles-newest-first of the indexed rows, their bytes read through the arena. They replace fn-sn-statement-lookup-is-the-lace-lookup and fn-sn-equivocatorp-is-the-lace-equivocator, stated over the node's article bytes, which carry handles after the flip. The index is the fold of the retained rows' contexts (fn-sn-indexedp over fn-sn-index-of-rows, preserved by every transition in books/store-node-invariants.lisp) and that fold is the wire index of the rows' bytes (fn-rows-index-is-the-wire-index, under fn-rows-contexts-okp, which fn-intern-events-contexts-okp establishes at the intern). OPEN: teeth for the two restated keystones need a reachable composite store over an arena (the fixture of tests/acl2/store-node-composite-index-tests.lisp rebuilt through fn-store-prepare-interned); that the keyring installation keeps fn-rows-contexts-okp (fn-store-set-keyring recontexts through fn-contexts-of-rows) is stated there, not yet as a theorem over fn-sn-indexed-rows."
     },
     {
       "id": "PRF-024",
@@ -5805,7 +5808,7 @@
         "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
       ],
-      "progress_note": "Lane capacity-vector (2026-09-26). The disk component is an environmental assumption (the observed free octets are not owned; a failed write is refused or uncertain, never torn). The history-level equality of the record debt with the ledger's :forward pin count is proved per transition, not over replay. Producers outside PRF-123/126 (the signed composite, peer-carried records) meet their kind's ceiling by their codec, a premise here.",
+      "progress_note": "Lane capacity-vector (2026-09-26). The disk component is an environmental assumption (the observed free octets are not owned; a failed write is refused or uncertain, never torn). The history-level equality of the record debt with the ledger's :forward pin count is proved per transition, not over replay. Producers outside PRF-123/126 (the signed composite, peer-carried records) meet their kind's ceiling by their codec, a premise here. RECORDS FLIP (2026-09-27, flip-L1): the vector's per-record octet measure is fn-sbud-row-octets (what the row stores) in fn-cvec-record-admittedp, fn-cvec-history-admittedp and fn-cvec-record-keeps-the-vector, so it stays the measure fn-sbud-record-octets sums; on a wire event it is the encoding (fn-sbud-row-octets-of-wire-row). OPEN (found here, not changed): the article arm is unreachable after the flip: fn-store-event-kind answers :article only of a fn-held-p row while the arm asks fn-record-p, so no article is admitted by the model; restate the arm over the held row (facts octets, groups) against fn-sbud-article-figure.",
       "events": [
         "fn-cvec-admitted-history-keeps-the-vector",
         "fn-cvec-admitted-history-from-init",
@@ -6800,7 +6803,9 @@
         "host/owner-host.lisp",
         "planning/evidence/hot-path-scans-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T124600Z-1898145.json",
-        "planning/evidence/manifests/certify-20260926T125431Z-1984974.json"
+        "planning/evidence/manifests/certify-20260926T125431Z-1984974.json",
+        "books/store-budget-stored.lisp",
+        "tests/acl2/store-budget-stored-tests.lisp"
       ],
       "events": [
         "fn-cei-count-of-correspondence",
@@ -6813,8 +6818,12 @@
         "fn-scf-debt-advance-is-the-suffix-fold",
         "fn-scf-debt-carried-is-the-record-debt",
         "fn-scf-tally-advance-is-the-suffix-fold",
-        "fn-scf-usage-carried-is-the-projection"
-      ]
+        "fn-scf-usage-carried-is-the-projection",
+        "fn-sbud-record-octets-is-the-stored-octets",
+        "fn-intern-events-extents-okp",
+        "fn-intern-events-budget-octets-are-the-stored-octets"
+      ],
+      "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the record octets count a retained row by what it STORES (fn-sbud-row-octets, books/store-budget.lisp): a held article row its facts' octets, a composite row its wire composite's encoding, any other row its encoding (fn-sbud-row-octets-of-wire-row). Before this the wire encoder alone counted every held row as 0 octets against the history bound. books/store-budget-stored.lisp: under fn-sbud-rows-extents-okp (each held row's facts octets are its handle's extent in the arena) fn-sbud-record-octets is fn-sbud-stored-octets, the sum of the stored payloads' lengths (fn-sbud-record-octets-is-the-stored-octets); the open's intern establishes the relation (fn-intern-events-extents-okp) and the composed statement is fn-intern-events-budget-octets-are-the-stored-octets. Teeth: tests/acl2/store-budget-stored-tests.lisp (reachable open of two records: 8 octets where the pre-flip count was 0; a corrupted held row whose facts claim 7 for an extent of 3). OPEN: that the POST's prepare (fn-store-prepare-interned) keeps fn-sbud-rows-extents-okp over the growing history is not yet a theorem. The history bound H now bounds stored payload octets for held rows, not their wire record length (the record's metadata is not counted)."
     },
     {
       "id": "PRF-184",
