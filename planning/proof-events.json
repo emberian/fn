@@ -10858,6 +10858,52 @@
           "name": "fn-psrv-known-abort-preserves-invariant"
         }
       ]
+    },
+    {
+      "id": "PRF-301",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pout-prepare-article-answers-the-store-change"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-prepare-identity-answers-the-store-change"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-prepare-topic-answers-the-store-change"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-prepare-retention-answers-the-store-change"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-prepare-consumer-answers-the-store-change"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-refuse-reservation-answers-the-host-test"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-known-abort-answers-the-host-test"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-begin-answers-the-host-test"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-declare-group-answers-the-host-test"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-prepare-article-is-sbud-prepare-when-served",
+          "note": "planning/current-view.json P9's bridge: host/owner-host.lisp fn-owner-prepare-buffer and fn-owner-prepare call fn-pout-prepare-article."
+        }
+      ]
     }
   ]
 }

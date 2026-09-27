@@ -968,6 +968,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-prepare-served-events-tests \
 	tests/acl2/owner-identity-served-tests \
 	tests/acl2/owner-prepare-served-abort-tests \
+	books/owner-prepare-outcome \
+	tests/acl2/owner-prepare-outcome-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \

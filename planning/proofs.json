@@ -10766,6 +10766,40 @@
         "fn-lgc-extend-program-keeps-the-relation",
         "fn-lgc-sealed-extent-fits-the-batch"
       ]
+    },
+    {
+      "id": "PRF-301",
+      "title": "The owner transitions the host calls answer their own word: every prepare, the reservation refusal, the known abort, :begin and :declare-group return (mv WORD NEXT), and each word is the before/after comparison the host used to make",
+      "statement": "books/owner-prepare-outcome.lisp (prefix fn-pout-). Subjects, each the function the host line calls (host/owner-host.lisp): fn-pout-prepare-article (fn-owner-prepare, fn-owner-prepare-buffer), fn-pout-prepare-identity (fn-owner-prepare-identity), fn-pout-prepare-topic (fn-owner-prepare-topic), fn-pout-prepare-retention (fn-owner-prepare-retention), fn-pout-prepare-consumer (fn-owner-prepare-consumer), fn-pout-refuse-reservation (fn-owner-refuse-reservation), fn-pout-known-abort (fn-owner-known-abort), fn-pout-begin (fn-owner-begin), fn-pout-declare-group (fn-owner-declare-group). Each returns NEXT, the configured owner the host installed before (the same term), and WORD: a prepare is :prepared exactly when it staged a record (fn-pout-stagedp: the Store went :reserved -> :record-staged), else :refused (the article: fn-psrv-refusal-kind, :refused or :unaffordable); the reservation refusal :refused exactly when fn-sn-refuse-reservation-enabledp holds, the known abort :aborted exactly when fn-sn-known-abort-enabledp holds, else :fault; :begin :begun and :declare-group :declared exactly when their gates hold (fn-pout-begin-admitsp, fn-pout-declare-group-admitsp; fn-pout-begin-unfolds, fn-pout-declare-group-unfolds name them as the transitions' tests). KEYSTONES fn-pout-prepare-{article,identity,topic,retention,consumer}-answers-the-store-change, fn-pout-refuse-reservation-answers-the-host-test, fn-pout-known-abort-answers-the-host-test, fn-pout-declare-group-answers-the-host-test (no hypothesis) and fn-pout-begin-answers-the-host-test (hypothesis: a non-NIL connection identifier; the host's are naturals): WORD equals the comparison the host line made (Store unchanged -> refusal, owner core unchanged -> :refused, the phase-and-change test of the refusal and the abort), so the served behaviour is unchanged and the ten host comparisons are deleted. The Store lemma fn-pout-sn-prepares-stage-or-keep: every Store prepare (fn-sn-prepare-retention, -consumer, -topic, fn-ccar-sn-prepare-identity, fn-prc-spc-prepare) returns its Store or stages from :reserved. No outcome is uncertain: every entry is pure.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-290",
+        "PRF-299"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-prepare-outcome.lisp",
+        "tests/acl2/owner-prepare-outcome-tests.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/host-decisions-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane host-decisions-2 (Opus 5.5, 2026-09-27; packet A of planning/evidence/host-decisions-2026-09-27.md). Teeth: tests/acl2/owner-prepare-outcome-tests.lisp (prefix pot-): for every entry a REACHABLE witness of each word over owners the log route's host steps reach (owner-log-ocl-tests' *lgt-reserved*/*lgt-oc0*, prepare-served's and host-decisions' staged owners), asserting WORD, that NEXT is the owner the host installed (*pst-prepared*, *ois-staged*, *pse-topic-staged*, *pst-ret-staged*, *pse-consumer-staged*, *psa-topic-aborted*) and that WORD equals the former host comparison: article :prepared/:refused (retired group)/:unaffordable (budget 0)/:refused (already staged); identity :prepared/:refused (retired fn.test); topic, retention, consumer :prepared/:refused; refuse-reservation :refused/:fault; known abort :aborted (topic, article)/:fault; begin :begun/:refused (pending, unknown id); declare-group :declared/:refused (same name, no clock). CORRUPTED-STATE hypothesis-removal witness for the begin keystone: a connection whose identifier is NIL, where the gate admits and the comparison said :refused.",
+      "events": [
+        "fn-pout-prepare-article-answers-the-store-change",
+        "fn-pout-prepare-identity-answers-the-store-change",
+        "fn-pout-prepare-topic-answers-the-store-change",
+        "fn-pout-prepare-retention-answers-the-store-change",
+        "fn-pout-prepare-consumer-answers-the-store-change",
+        "fn-pout-refuse-reservation-answers-the-host-test",
+        "fn-pout-known-abort-answers-the-host-test",
+        "fn-pout-begin-answers-the-host-test",
+        "fn-pout-declare-group-answers-the-host-test",
+        "fn-pout-prepare-article-is-sbud-prepare-when-served"
+      ]
     }
   ]
 }
