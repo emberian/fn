@@ -324,7 +324,7 @@
         "fn-wire-feed-proper-of-rendered-block-lines",
         "fn-wire-drive-of-successful-render-block-preserves-source",
         "fn-wire-drive-of-host-rendered-article-preserves-source",
-        "fn-ocfg-read-tls-prefix-is-full-read"
+        "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
