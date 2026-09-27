@@ -123,7 +123,7 @@
 ; undertaking); with the empty index it is not.
 (defun scft-store (records index)
   (declare (xargs :guard t))
-  (list nil nil (list :store-files :ready 2 nil records nil nil nil 0)
+  (list nil nil (fn-sf-make :ready 2 nil records nil nil nil 0)
         nil nil nil nil nil nil nil nil nil nil index))
 (defconst *scft-debt-records* (list *cvt-undertake*))
 (defconst *scft-debt-good* (scft-store *scft-debt-records*

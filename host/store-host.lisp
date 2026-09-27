@@ -34,6 +34,8 @@
 (include-book "../books/store-log-kernel-concrete")
 (include-book "../books/store-log-stream")
 (include-book "../books/store-log-segments")
+(include-book "../books/store-log-extend")
+(include-book "../books/store-init-log-publication")
 
 (defconst *fn-store-max-text* 512)
 

@@ -1378,3 +1378,25 @@
          (fn-native-admin-plan (fn-na-test-argv '("peer" "carries" "relay"
                                                   "07"))))
         :refused))
+
+; Lane log-2: the record log's batch bounds, `policy set log-batch-records N'
+; and `policy set log-batch-octets N', each one `:set-limit' row keyed
+; (SLOT, "") that books/owner-log-route.lisp fn-olr-bmax / fn-olr-omax read.
+(defconst *fn-na-log-bound*
+  (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "log-batch-records" "2"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-log-bound*) :accepted))
+(assert-event (equal (fn-native-admin-plan-deltas *fn-na-log-bound*)
+                     (list (fn-cfg-set-limit "log-batch-records" 2))))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "log-batch-octets" "65536"))))
+                     :accepted))
+; Teeth: zero, a slot that is not a log bound, and a non-decimal are refused.
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "log-batch-records" "0"))))
+                     :refused))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "log-batch-frames" "2"))))
+                     :refused))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "log-batch-records" "x"))))
+                     :refused))

@@ -98,6 +98,16 @@
   (declare (xargs :guard t))
   (max (1+ (nfix (fn-lgt-txid record))) (nfix next)))
 
+(defun fn-lgw-next-fold (records next)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (fn-lgw-next-fold (cdr records) (fn-lgw-next-after-one (car records) next))
+    (nfix next)))
+
+(defthm fn-lgw-next-fold-natp
+  (natp (fn-lgw-next-fold records next))
+  :rule-classes :type-prescription)
+
 ; At the stop: the octets E there validate as a chained frame of this log
 ; under the predecessor they claim, which is not the chain's last trailer.
 (defun fn-lgw-broken-slice-p (e last max)
@@ -108,7 +118,8 @@
          t)))
 
 ; One entry: E is the octets fn-lgw-entry-len named, read at POS, or NIL.
-; Answers (mv TOOK RECORD ST').
+; Answers (mv TOOK RECORDS ST'): an entry holds one record (kind 1) or a
+; batch of them (kind 2, PKT-749), fn-lg-slice-records.
 (defun fn-lgw-step (e st unit max extent)
   (declare (xargs :guard (true-listp st)))
   (let ((pos (fn-lgw-pos st)) (prev (fn-lgw-prev st))
@@ -119,11 +130,11 @@
                                     (fn-lgw-broken-slice-p e prev max))))
           (t (let* ((n (len e))
                     (step (+ n (fn-lg-pad-len n unit)))
-                    (record (ec-call (fn-lg-slice-record e max)))
+                    (records (ec-call (fn-lg-slice-records e max)))
                     (last (ec-call (fn-lg-trailer e))))
-               (mv t record
-                   (fn-lgw-make (+ pos step) last (1+ count)
-                                (fn-lgw-next-after-one record next)
+               (mv t records
+                   (fn-lgw-make (+ pos step) last (+ count (len records))
+                                (fn-lgw-next-fold records next)
                                 (not (< (+ pos step) (nfix extent))) nil)))))))
 
 ; The kernel at the stop (fn-lgc-open's shape).
@@ -154,18 +165,18 @@
   (implies (mv-nth 0 (fn-lgw-step e st unit max extent))
            (< (fn-lgw-pos st) (fn-lgw-pos (mv-nth 2 (fn-lgw-step e st unit max extent)))))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-lg-entry-okp fn-lg-slice-record fn-lg-trailer
+  :hints (("Goal" :in-theory (disable fn-lg-entry-okp fn-lg-slice-records fn-lg-trailer
                                       fn-lg-pad-len fn-lgw-broken-slice-p fn-lgt-txid))))
 
 (defun fn-lgw-run (c st unit max)
   (declare (xargs :measure (nfix (- (len c) (fn-lgw-pos st)))
                   :verify-guards nil
                   :hints (("Goal" :in-theory (disable fn-lgw-step fn-lgw-window)))))
-  (mv-let (took record st2) (fn-lgw-step (fn-lgw-window c st) st unit max (len c))
+  (mv-let (took records st2) (fn-lgw-step (fn-lgw-window c st) st unit max (len c))
     (if (and took (not (fn-lgw-stop st2)) (< (fn-lgw-pos st2) (len c)))
-        (mv-let (records st3) (fn-lgw-run c st2 unit max)
-          (mv (cons record records) st3))
-      (mv (if took (list record) nil) st2))))
+        (mv-let (rest st3) (fn-lgw-run c st2 unit max)
+          (mv (append records rest) st3))
+      (mv (if took records nil) st2))))
 
 ; -----------------------------------------------------------------------------
 ; One window is the scan's slice (the host's reads are windows of C).
@@ -206,16 +217,17 @@
            (let* ((r (fn-lgw-step e st unit max extent))
                   (step (+ (len e) (fn-lg-pad-len (len e) unit))))
              (and (equal (mv-nth 0 r) t)
-                  (equal (mv-nth 1 r) (fn-lg-slice-record e max))
+                  (equal (mv-nth 1 r) (fn-lg-slice-records e max))
                   (equal (fn-lgw-pos (mv-nth 2 r)) (+ (fn-lgw-pos st) step))
                   (equal (fn-lgw-prev (mv-nth 2 r)) (fn-lg-trailer e))
-                  (equal (fn-lgw-count (mv-nth 2 r)) (+ 1 (fn-lgw-count st)))
+                  (equal (fn-lgw-count (mv-nth 2 r))
+                         (+ (fn-lgw-count st) (len (fn-lg-slice-records e max))))
                   (equal (fn-lgw-next (mv-nth 2 r))
-                         (fn-lgw-next-after-one (fn-lg-slice-record e max) (fn-lgw-next st)))
+                         (fn-lgw-next-fold (fn-lg-slice-records e max) (fn-lgw-next st)))
                   (equal (fn-lgw-stop (mv-nth 2 r)) (not (< (+ (fn-lgw-pos st) step) (nfix extent))))
                   (equal (fn-lgw-broken (mv-nth 2 r)) nil))))
-  :hints (("Goal" :in-theory (disable fn-lg-entry-okp fn-lg-slice-record fn-lg-trailer
-                                      fn-lg-pad-len fn-lgw-broken-slice-p fn-lgw-next-after-one))))
+  :hints (("Goal" :in-theory (disable fn-lg-entry-okp fn-lg-slice-records fn-lg-trailer
+                                      fn-lg-pad-len fn-lgw-broken-slice-p fn-lgw-next-fold))))
 
 (defthm fn-lgw-step-when-no-entry
   (implies (and (not (fn-lgw-stop st)) (not (fn-lg-entry-okp e (fn-lgw-prev st) max)))
@@ -249,7 +261,7 @@
                     (fn-lgs-chain-broken-p (nthcdr step x) (fn-lg-trailer slice) unit max))))
   :hints (("Goal" :expand ((fn-lg-scan x prev unit max) (fn-lg-scan-last x prev unit max))
            :in-theory (disable fn-lg-entry-okp fn-lg-slice fn-lgs-claimed-prev fn-lg-scan
-                               fn-lg-scan-last fn-lg-trailer fn-lg-pad-len fn-lg-slice-record))))
+                               fn-lg-scan-last fn-lg-trailer fn-lg-pad-len fn-lg-slice-records))))
 
 (defthm fn-lgw-chain-broken-of-atom
   (implies (atom x) (not (fn-lgs-chain-broken-p x prev unit max)))
@@ -265,11 +277,6 @@
   :hints (("Goal" :expand ((fn-lg-scan-last x prev unit max))
            :in-theory (enable fn-lg-slice fn-lg-declared-len))))
 
-(defun fn-lgw-next-fold (records next)
-  (declare (xargs :guard t))
-  (if (consp records)
-      (fn-lgw-next-fold (cdr records) (fn-lgw-next-after-one (car records) next))
-    (nfix next)))
 
 (local
  (defthm fn-lgw-next-after-of-max
@@ -289,8 +296,8 @@
   (implies (not (fn-lgw-stop st))
            (equal (car (fn-lgw-step e st unit max extent))
                   (if (fn-lg-entry-okp e (fn-lgw-prev st) max) t nil)))
-  :hints (("Goal" :in-theory (disable fn-lg-entry-okp fn-lg-slice-record fn-lg-trailer
-                                      fn-lg-pad-len fn-lgw-broken-slice-p fn-lgw-next-after-one))))
+  :hints (("Goal" :in-theory (disable fn-lg-entry-okp fn-lg-slice-records fn-lg-trailer
+                                      fn-lg-pad-len fn-lgw-broken-slice-p fn-lgw-next-fold))))
 
 (defthm fn-lgw-broken-slice-p-of-nil
   (not (fn-lgw-broken-slice-p nil prev max))
@@ -299,6 +306,26 @@
 
 ; -----------------------------------------------------------------------------
 ; The run composes the steps (the step stays closed).
+
+(defthm fn-lgw-next-after-one-of-nfix
+  (equal (fn-lgw-next-after-one r (nfix n)) (fn-lgw-next-after-one r n)))
+
+(local (defthm fn-lgw-nfix-nfix (equal (nfix (nfix n)) (nfix n))))
+
+(defthm fn-lgw-next-fold-of-atom
+  (implies (atom records) (equal (fn-lgw-next-fold records n) (nfix n))))
+
+(defthm fn-lgw-next-fold-of-nfix
+  (equal (fn-lgw-next-fold records (nfix n)) (fn-lgw-next-fold records n))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-lgw-next-fold-is-next-after fn-lgw-next-after-one nfix)
+           :expand ((fn-lgw-next-fold records (nfix n)) (fn-lgw-next-fold records n)))))
+
+(defthm fn-lgw-next-fold-of-append
+  (equal (fn-lgw-next-fold (append a b) n)
+         (fn-lgw-next-fold b (fn-lgw-next-fold a n)))
+  :hints (("Goal" :induct (fn-lgw-next-fold a n)
+           :in-theory (disable fn-lgw-next-after-one fn-lgw-next-fold-is-next-after nfix))))
 
 (defthm fn-lgw-run-is-the-scan
   (implies (and (not (fn-lgw-stop st)) (<= (fn-lgw-pos st) (len c)))
@@ -320,9 +347,9 @@
                     (fn-lg-scan-last (nthcdr (fn-lgw-pos st) c) (fn-lgw-prev st) unit max))
            :in-theory (disable fn-lgw-step fn-lgw-window fn-lg-entry-okp fn-lg-slice
                                fn-lgs-claimed-prev fn-lg-scan fn-lg-scan-last fn-lg-trailer
-                               fn-lg-pad-len fn-lg-slice-record fn-lg-declared-len
+                               fn-lg-pad-len fn-lg-slice-records fn-lg-declared-len
                                fn-lgs-chain-broken-p fn-lgw-broken-slice-p fn-lgt-txid
-                               fn-lgw-next-after-one fn-lgw-next-fold-is-next-after))))
+                               fn-lgw-next-fold fn-lgw-next-fold-is-next-after))))
 
 
 ; -----------------------------------------------------------------------------

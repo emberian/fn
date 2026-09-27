@@ -139,3 +139,121 @@
         (c1 (fn-lgc-t-prepare c0 (slc-rec 3))))
    (and (not (fn-lgc-rotate-admitsp c1))
         (equal (fn-lgc-host-step c1 (list :rotate)) c1))))
+
+; -----------------------------------------------------------------------------
+; Lane kernel-concrete-2 (PRF-282): the pipelined commit's operations, the
+; extension, and the executable framing.
+
+; (1) Every function the host calls on the served path runs as guard-verified
+; code (no *1* recursion per octet): the fit, the append's length and octets,
+; the append, the fence, the extension's decision and target, the take.
+(defun slc-verifiedp (fns wrld)
+  (declare (xargs :mode :program))
+  (or (atom fns)
+      (and (eq (symbol-class (car fns) wrld) :common-lisp-compliant)
+           (slc-verifiedp (cdr fns) wrld))))
+
+(assert-event
+ (slc-verifiedp '(fn-lgc-log-len fn-lgc-log-octets fn-lgc-last-trailer fn-lgx-log
+                  fn-lgx-last-trailer fn-lgc-append-len fn-lgc-fitsp fn-lgc-append-admitsp
+                  fn-lgc-append-octets fn-lgc-append fn-lgc-fence fn-lgc-fence-failed
+                  fn-lgc-finish-one fn-lgc-t-prepare fn-lgc-take fn-lgc-consume-to
+                  fn-lgc-extension-needed-p fn-lgc-extension-target fn-lgc-sealed-extent
+                  fn-lgc-rotate fn-lgc-rotate-admitsp fn-lgc-rotate-needed-p fn-lgc-phase
+                  fn-lgc-batch)
+                (w state)))
+
+; (1) The arithmetic length is the octets' length on a batch that is one
+; packed chunk (two records) and on one record, from genesis and from a
+; chain head of another length (no hypothesis on the head).
+(assert-event
+ (let ((b (list (slc-rec 5) (slc-rec 6))))
+   (and (equal (fn-lgc-log-len b 32 (slc-unit)) (len (fn-lg-log b *fn-lg-genesis* (slc-unit))))
+        (equal (fn-lgc-log-len (list (slc-rec 5)) 32 7)
+               (len (fn-lg-log (list (slc-rec 5)) *fn-lg-genesis* 7)))
+        (equal (fn-lgc-log-len b 3 (slc-unit)) (len (fn-lg-log b '(1 2 3) (slc-unit))))
+        (equal (fn-lgc-log-octets b *fn-lg-genesis* (slc-unit))
+               (fn-lg-log b *fn-lg-genesis* (slc-unit)))
+        (equal (fn-lgc-last-trailer b *fn-lg-genesis*) (fn-lg-last-trailer b *fn-lg-genesis*))
+        ; the fallback branch (a head that is not a digest) answers the logical value
+        (equal (fn-lgc-log-octets b '(1 2 3) (slc-unit)) (fn-lg-log b '(1 2 3) (slc-unit))))))
+
+; (1) A 3 MiB record (the article size that exhausted the owner's control
+; stack, input-loop-2 section 6): its append's length, fit and octets are
+; computed; the octets' length is the arithmetic one.
+(assert-event
+ (let* ((b (list (make-list 3145728 :initial-element 65)))
+        (c (fn-lgc-make 0 *fn-lg-genesis* 0 1 b nil 0 :ready))
+        (n (fn-lgc-append-len c 4096)))
+   (and (< 3145728 n)
+        (equal (mod n 4096) 0)
+        (fn-lgc-fitsp c 4096 n)
+        (not (fn-lgc-fitsp c 4096 (- n 4096)))
+        (equal (len (fn-lgc-append-octets c 4096)) n)
+        (equal (fn-lgc-frontier (fn-lgc-fence (fn-lgc-append c 4096 n) 4096)) n))))
+
+; (1) The pipelined commit (lane log-2), both sides of the keystone: record 3
+; taken and SEALED (the extension needed from a one-unit extent, then the
+; append into the target), record 4 taken BEHIND the batch in flight (a take
+; between the seal and its fence), the syncer's fence, COMPLETE's
+; acknowledgement; then record 4's seal and fence.  The concrete kernel holds
+; no record; the counts and frontiers agree with the logical run.
+(defun slc-pipelined-ops (extent)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (list :take (slc-rec 3) 3 0 0 64 1000000 (slc-unit))
+        (list :seal (slc-unit) extent)
+        (list :take (slc-rec 4) 4 0 0 64 1000000 (slc-unit))
+        (list :fence (slc-unit))
+        (list :finish-one)
+        (list :seal (slc-unit) extent)
+        (list :fence (slc-unit))
+        (list :finish-one)))
+
+(assert-event
+ (let* ((c0 (mv-let (records c0) (slc-open) (declare (ignore records)) c0))
+        (ks0 (fn-lgt-recover (fn-lgd-octets (slc-segment)) *fn-lg-genesis* (slc-unit) (slc-max) 1))
+        (extent (+ (fn-lgc-frontier c0) (slc-unit)))
+        (c (fn-lgc-host-run c0 (slc-pipelined-ops extent)))
+        (ks (fn-lgk-host-run ks0 (slc-pipelined-ops extent)))
+        (after-take (fn-lgc-host-run c0 (take 1 (slc-pipelined-ops extent))))
+        (behind (fn-lgc-host-run c0 (take 3 (slc-pipelined-ops extent)))))
+   (and (fn-lgc-extension-needed-p after-take extent (slc-unit))
+        (< extent (fn-lgc-sealed-extent after-take extent (slc-unit)))
+        (equal (fn-lgc-inflight behind) (list (slc-rec 3)))
+        (equal (fn-lgc-batch behind) (list (slc-rec 4)))
+        (equal (fn-lgc-phase behind) :appended)
+        (equal c (fn-lgc-of ks))
+        (equal (fn-lgk-committed ks) (list (slc-rec 1) (slc-rec 2) (slc-rec 3) (slc-rec 4)))
+        (equal (fn-lgc-count c) 4)
+        (equal (fn-lgc-acked c) 4)
+        ; two entries past the open's frontier: record 3's, then record 4's
+        ; chained from it
+        (equal (fn-lgc-frontier c)
+               (+ (fn-lgc-frontier c0)
+                  (len (fn-lg-log (list (slc-rec 3)) (fn-lgc-last c0) (slc-unit)))
+                  (len (fn-lg-log (list (slc-rec 4))
+                                  (fn-lg-last-trailer (list (slc-rec 3)) (fn-lgc-last c0))
+                                  (slc-unit)))))
+        (not (member-equal (slc-rec 3) c)))))
+
+; (1) Without the extension the seal's append is refused: the same take,
+; appended into the one-unit extent, leaves the kernel unchanged.
+(assert-event
+ (let* ((c0 (mv-let (records c0) (slc-open) (declare (ignore records)) c0))
+        (extent (+ (fn-lgc-frontier c0) (slc-unit)))
+        (c1 (cadr (fn-lgc-take c0 (slc-rec 3) 3 0 0 64 1000000 (slc-unit)))))
+   (and (not (fn-lgc-fitsp c1 (slc-unit) extent))
+        (equal (fn-lgc-append c1 (slc-unit) extent) c1)
+        (fn-lgc-fitsp c1 (slc-unit) (fn-lgc-sealed-extent c1 extent (slc-unit))))))
+
+; (2) CORRUPTED STATE: a concrete kernel whose chain head is not the
+; logical one's frames the batch differently -- the append's octets are
+; not the logical kernel's, though their length is.
+(assert-event
+ (let* ((ks0 (fn-lg-open-kernel (slc-segment) *fn-lg-genesis* (slc-unit) (slc-max) 1))
+        (ks1 (fn-lgt-prepare ks0 (slc-rec 3)))
+        (bad (fn-lgc-make 2 *fn-lg-genesis* (fn-lgk-frontier ks1) (fn-lgk-next-txid ks1)
+                          (fn-lgk-batch ks1) nil 2 :ready)))
+   (and (not (equal bad (fn-lgc-of ks1)))
+        (not (equal (fn-lgc-append-octets bad (slc-unit)) (fn-lgk-append-octets ks1 (slc-unit))))
+        (equal (fn-lgc-append-len bad (slc-unit)) (len (fn-lgk-append-octets ks1 (slc-unit)))))))

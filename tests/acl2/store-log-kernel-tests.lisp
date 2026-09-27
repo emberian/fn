@@ -76,7 +76,7 @@
 (assert-event
  (let* ((whole (fn-lg-log (list (slk-r 1)) (slk-genesis) (slk-unit)))
         (c (fn-bs-take (- (len whole) 2) whole))  ; the padding cut short
-        (frame-len (len (fn-lg-frame (slk-genesis) (slk-r 1))))
+        (frame-len (len (fn-lg-frame (slk-genesis) (list (slk-r 1)))))
         (scan (fn-lg-scan c (slk-genesis) (slk-unit) (slk-max))))
    (and (posp (slk-unit)) (true-listp c)
         (not (equal (mod (len c) (slk-unit)) 0))
@@ -223,8 +223,10 @@
 
 ; T2 lifted (fn-lgk-crash-of-related-state-is-a-prefix): crash images of the
 ; appended state, each an explicit admissible choice of fn-bs-crash.  The
-; batch's log spans U units; the selectors: every unit landed; nothing
-; landed; the first entry's units landed and the rest did not.
+; batch's log spans U units and, since PKT-749, is ONE packed entry (three
+; records): the prefix T2 allows is all or nothing.  The selectors: every
+; unit landed; nothing landed; only the first unit landed; one unit zeroed
+; and the rest landed.
 (defun slk-sels (count k sel other)
   (declare (xargs :guard t :verify-guards nil))
   (if (zp count) nil
@@ -246,8 +248,10 @@
  (let* ((ks (slk-appended-ks))
         (w (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (slk-unit)))
         (units (floor (len w) (slk-unit)))
-        (e1 (floor (len (fn-lg-entry (fn-lgk-last ks) (slk-r 3) (slk-unit))) (slk-unit))))
+        (e1 1))
    (and (consp (fn-lgk-inflight ks))
+        ; one entry for the whole batch
+        (equal (len w) (len (fn-lg-entry (fn-lgk-last ks) (slk-batch) (slk-unit))))
         ; all landed: COMMITTED ++ the whole batch
         (slk-verdictp (list (slk-sels units units :new :new)))
         (equal (car (slk-image-scan (list (slk-sels units units :new :new))))
@@ -256,19 +260,17 @@
         (slk-verdictp (list (slk-sels units 0 :new :old)))
         (equal (car (slk-image-scan (list (slk-sels units 0 :new :old))))
                (list (slk-r 1) (slk-r 2)))
-        ; the first entry landed, the rest did not: COMMITTED ++ (r3)
+        ; only the first unit landed: COMMITTED (the batch is not read in part)
         (slk-verdictp (list (slk-sels units e1 :new :old)))
         (equal (car (slk-image-scan (list (slk-sels units e1 :new :old))))
-               (list (slk-r 1) (slk-r 2) (slk-r 3)))
-        ; the second entry's first unit zeroed, the rest landed: the scan
-        ; stops after r3 (a prefix, never r4 without its predecessor... and
-        ; never r5 past the hole)
+               (list (slk-r 1) (slk-r 2)))
+        ; the second unit zeroed, the rest landed: COMMITTED
         (slk-verdictp (list (append (slk-sels e1 e1 :new :new) (list :zero)
                                     (slk-sels (- units (+ e1 1)) (- units (+ e1 1)) :new :new))))
         (equal (car (slk-image-scan (list (append (slk-sels e1 e1 :new :new) (list :zero)
                                                   (slk-sels (- units (+ e1 1)) (- units (+ e1 1))
                                                             :new :new)))))
-               (list (slk-r 1) (slk-r 2) (slk-r 3))))))
+               (list (slk-r 1) (slk-r 2))))))
 
 ; Fence, finish: R after the barrier; every record committed; the finishes
 ; acknowledge in order and never past COMMITTED.

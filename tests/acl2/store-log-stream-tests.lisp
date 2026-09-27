@@ -31,9 +31,23 @@
   (declare (xargs :guard t :verify-guards nil))
   (append log (fn-bs-zeros (- (slw-extent) (len log)))))
 
-; Records 1 .. 3 chained from genesis, zeros to the extent.
+; Records 1 .. 3 as three appends of one record each (three entries), chained
+; from genesis, zeros to the extent.
+; T1, T2, T3: the trailers after each one-record entry.
+(defun slw-t1 () (declare (xargs :guard t :verify-guards nil))
+  (fn-lg-last-trailer (list (slw-rec 1)) *fn-lg-genesis*))
+(defun slw-t2 () (declare (xargs :guard t :verify-guards nil))
+  (fn-lg-last-trailer (list (slw-rec 2)) (slw-t1)))
+(defun slw-t3 () (declare (xargs :guard t :verify-guards nil))
+  (fn-lg-last-trailer (list (slw-rec 3)) (slw-t2)))
 (defun slw-log3 () (declare (xargs :guard t :verify-guards nil))
-  (fn-lg-log (list (slw-rec 1) (slw-rec 2) (slw-rec 3)) *fn-lg-genesis* (slw-unit)))
+  (append (fn-lg-log (list (slw-rec 1)) *fn-lg-genesis* (slw-unit))
+          (fn-lg-log (list (slw-rec 2)) (slw-t1) (slw-unit))
+          (fn-lg-log (list (slw-rec 3)) (slw-t2) (slw-unit))))
+
+; The same three records as ONE append: a batch entry (kind 2, PKT-749).
+(defun slw-batch () (declare (xargs :guard t :verify-guards nil))
+  (slw-pad (fn-lg-log (list (slw-rec 1) (slw-rec 2) (slw-rec 3)) *fn-lg-genesis* (slw-unit))))
 (defun slw-seg () (declare (xargs :guard t :verify-guards nil)) (slw-pad (slw-log3)))
 
 ; The torn tail: the third entry's last eight octets zeroed.
@@ -60,8 +74,8 @@
            (h (fn-bs-take (fn-lgw-header-len st (len c)) (nthcdr pos c)))
            (n (fn-lgw-entry-len h st (len c)))
            (e (and n (fn-bs-take n (nthcdr pos c)))))
-      (mv-let (took record st2) (fn-lgw-step e st (slw-unit) (slw-max) (len c))
-        (slw-host-walk c st2 (1- fuel) (if took (cons record acc) acc))))))
+      (mv-let (took records st2) (fn-lgw-step e st (slw-unit) (slw-max) (len c))
+        (slw-host-walk c st2 (1- fuel) (if took (revappend records acc) acc))))))
 
 (defun slw-recover (c) (declare (xargs :guard t :verify-guards nil))
   (fn-lgt-recover c *fn-lg-genesis* (slw-unit) (slw-max) 1))
@@ -81,8 +95,7 @@
             (equal (fn-lgw-count st) 3)
             (equal (fn-lgw-next st) 4)
             (equal (fn-lgw-pos st) (len (slw-log3)))
-            (equal (fn-lgw-prev st) (fn-lg-last-trailer (list (slw-rec 1) (slw-rec 2) (slw-rec 3))
-                                                         *fn-lg-genesis*))
+            (equal (fn-lgw-prev st) (slw-t3))
             (fn-lgw-stop st)
             (not (fn-lgw-broken st))
             (not (fn-lgs-chain-broken-p c *fn-lg-genesis* (slw-unit) (slw-max)))
@@ -105,18 +118,33 @@
             (equal (len records) 3))))))
 
 ; (1) One step, as the host takes it: the header window names the first
-; entry's length, and the step over that window takes record 1.
+; entry's length, and the step over that window takes that entry's records
+; (record 1 first; one entry may carry a batch, PKT-749).
 (assert-event
  (let* ((c (slw-seg)) (st0 (fn-lgw-start *fn-lg-genesis* 1))
         (n (fn-lgw-entry-len (fn-bs-take (fn-lgw-header-len st0 (len c)) c) st0 (len c))))
-   (mv-let (took record st1) (fn-lgw-step (fn-bs-take n c) st0 (slw-unit) (slw-max) (len c))
+   (mv-let (took records st1) (fn-lgw-step (fn-bs-take n c) st0 (slw-unit) (slw-max) (len c))
      (and (natp n)
           (equal (fn-bs-take n c) (fn-lg-slice c))
           (equal took t)
-          (equal record (slw-rec 1))
-          (equal (fn-lgw-count st1) 1)
-          (not (fn-lgw-stop st1))
+          (consp records)
+          (equal (car records) (slw-rec 1))
+          (equal records (fn-lg-slice-records (fn-lg-slice c) (slw-max)))
+          (equal (fn-lgw-count st1) (len records))
           (equal (mod (fn-lgw-pos st1) (slw-unit)) 0)))))
+
+; (1) A batch entry: one step takes all three records; the run, the scan
+; and the counts agree.
+(assert-event
+ (let* ((c (slw-batch)) (ks (slw-recover c)))
+   (mv-let (records st) (fn-lgw-run c (fn-lgw-start *fn-lg-genesis* 1) (slw-unit) (slw-max))
+     (and (equal records (list (slw-rec 1) (slw-rec 2) (slw-rec 3)))
+          (equal records (fn-lgk-committed ks))
+          (equal (fn-lgw-kernel st) (fn-lgc-of ks))
+          (equal (fn-lgw-count st) 3)
+          (equal (fn-lgw-next st) 4)
+          (fn-lgw-stop st)
+          (not (fn-lgw-broken st))))))
 
 ; (2) The torn tail: two records, the frontier at the second entry's end,
 ; not broken; the scan says the same.
@@ -127,7 +155,8 @@
           (equal records (fn-lgk-committed ks))
           (equal (fn-lgw-kernel st) (fn-lgc-of ks))
           (equal (fn-lgw-pos st)
-                 (len (fn-lg-log (list (slw-rec 1) (slw-rec 2)) *fn-lg-genesis* (slw-unit))))
+                 (+ (len (fn-lg-log (list (slw-rec 1)) *fn-lg-genesis* (slw-unit)))
+                    (len (fn-lg-log (list (slw-rec 2)) (slw-t1) (slw-unit)))))
           (fn-lgw-stop st)
           (not (fn-lgw-broken st))))))
 
