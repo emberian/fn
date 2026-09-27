@@ -7246,6 +7246,10 @@
         {
           "kind": "theorem",
           "name": "fn-heap-storeless-decide-is-small-and-fits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-status-decide-is-the-launchers-run-reservation"
         }
       ]
     },
@@ -10719,6 +10723,237 @@
           "kind": "theorem",
           "name": "fn-olau-authorize-is-the-replayed-authorization",
           "note": "host/owner-host.lisp fn-owner-cfg-native-admin-authorize (host/native/admin.lisp fnn-admin-authorize-owner). Teeth: tests/acl2/config-owner-live-authorize-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-302",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scj-joinp-of-article-finish",
+          "note": "KEYSTONE. The join after the host's fn-sca-finish against the refreshed view (fn-crf-apply-article = fn-own-refresh, PRF-202). Row equation open. Teeth: tests/acl2/served-catalog-join-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-join-of-finish-lists",
+          "note": "KEYSTONE (list level). T4 then T2 shows at the new count exactly fn-ctl-visible-add's list. Teeth: tests/acl2/served-catalog-join-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-joinp-gives-sca-join",
+          "note": "The invariant gives the chain's fn-sca-join. Teeth: tests/acl2/served-catalog-join-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-ocl-relation-of-identity-finish",
+          "note": "KEYSTONE. T2 (fn-sca-ocl-relation-of-finish) at the owner fn-owner-finish-identity installs. Teeth: tests/acl2/served-catalog-join-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scj-identity-finish-owner-is-article-finish-owner",
+          "note": "fn-rix-ocfg-complete is the article finish's owner with no staged record and the event index carried. Teeth: tests/acl2/served-catalog-join-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-303",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pout-prepare-article-answers-the-store-change"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-prepare-identity-answers-the-store-change"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-prepare-topic-answers-the-store-change"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-prepare-retention-answers-the-store-change"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-prepare-consumer-answers-the-store-change"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-refuse-reservation-answers-the-host-test"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-known-abort-answers-the-host-test"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-begin-answers-the-host-test"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-declare-group-answers-the-host-test"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-prepare-article-is-sbud-prepare-when-served",
+          "note": "planning/current-view.json P9's bridge: host/owner-host.lisp fn-owner-prepare-buffer and fn-owner-prepare call fn-pout-prepare-article."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-staged-topic-passes-the-consumer-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-topic-entry-is-the-store-prepare-under-the-consumer-relation",
+          "note": "host/owner-host.lisp fn-owner-prepare-topic calls fn-pout-prepare-topic."
+        }
+      ]
+    },
+    {
+      "id": "PRF-304",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ncla-launch-exactly-below-the-ceiling",
+          "note": "host/native/control.lisp fnn-control-launch-client: fn-native-control-host-launch-disposition."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncla-at-the-ceiling-is-busy"
+        }
+      ]
+    },
+    {
+      "id": "PRF-305",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-clkr-observation-of-ns-decides-the-wall",
+          "note": "host/bp-ingress-host.lisp fn-bpi-host-observation: fn-clkr-observation-of-ns."
+        }
+      ]
+    },
+    {
+      "id": "PRF-306",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-provi-of-msgid-unfolds",
+          "note": "host/store-node-host.lisp fn-store-prov-for-msgid: fn-provi-of-msgid."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-provi-bad-msgid-has-no-provenance"
+        }
+      ]
+    },
+    {
+      "id": "PRF-307",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-feed-article-is-the-feed-article-over-alpha"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-publication-command-words-have-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-feed-article-is-an-octet-list"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-publication-is-well-formed"
+        }
+      ]
+    },
+    {
+      "id": "PRF-294",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-extent-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-get{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-seal-extent{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-extent-of-denotes-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-intern-step-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-ok-of-durable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-steps-are-one-step-of-the-concatenation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-295",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-frame-digest-buffer-is-the-frame-digest"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-ok-buffer-is-the-frame-check"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-ok-buffer-of-durable"
+        }
+      ]
+    },
+    {
+      "id": "PRF-309",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arena-reseat-extent-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-reseat-extent-keeps-a-faithful-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-reseat-extent{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-release{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-commit-extent-denotes-the-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-commit-reseat-keeps-the-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-commit-reseats-keep-the-arena"
         }
       ]
     }

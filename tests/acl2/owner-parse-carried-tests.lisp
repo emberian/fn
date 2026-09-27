@@ -273,3 +273,41 @@
             (equal (fn-apc-submission-intent o icar carry evidence generation txid)
                    (cons (fn-own-submission-intent-result o evidence generation txid)
                          (fn-own-submission-intent-records o evidence generation txid))))))
+
+; -----------------------------------------------------------------------------
+; keystone-audit 2026-09-27: witnesses the book's keystones lacked.
+
+; fn-apc-held-facts-of-is-reference: reachable positive (witness 1's carry),
+; and the CORRUPTED carry (a) (the cancel's parse under the served octets,
+; not fn-apc-p) gives other held facts.
+(assert-event (fn-apc-p *apc-t-carry*))
+(assert-event (equal (fn-apc-held-facts-of *apc-t-stored* *apc-t-carry*)
+                     (fn-held-facts-of *apc-t-stored*)))
+(assert-event (equal (car (fn-held-facts-of *apc-t-stored*)) 328))
+(assert-event (not (fn-apc-p *apc-t-bad-cancel*)))
+(assert-event (not (equal (fn-apc-held-facts-of *apc-t-stored* *apc-t-bad-cancel*)
+                          (fn-held-facts-of *apc-t-stored*))))
+
+; fn-apc-current-plan-is-reference: the CORRUPTED carry (b) reads a refused
+; carrier where the reference reads no carrier.
+(assert-event (not (fn-apc-p *apc-t-bad-error*)))
+(assert-event (equal (fn-apc-current-plan *apc-t-stored* nil nil t *apc-t-bad-error*)
+                     '(:refused :article)))
+(assert-event (not (equal (fn-apc-current-plan *apc-t-stored* nil nil t *apc-t-bad-error*)
+                          (fn-pa-current-plan *apc-t-stored* nil nil t))))
+
+; fn-apc-own-outcome-is-acar-own-outcome: reachable positive over the owner
+; witness 1's finish leaves (connection 4's durable POST, answered 240).
+(defun apc-t-outcome-owner ()
+  (cdr (nth 0 (apc-t-eval *apc-t-o* *apc-t-cfg* *osi-completing-prior* *apc-t-carry*))))
+(assert-event (fn-icar-carryp (apc-t-icar)))
+(assert-event (equal (fn-apc-own-outcome (apc-t-outcome-owner) (fn-own-sub-id *apc-t-sub*)
+                                         :durable (apc-t-icar) *apc-t-carry*)
+                     (fn-acar-own-outcome (apc-t-outcome-owner) (fn-own-sub-id *apc-t-sub*)
+                                          :durable)))
+(assert-event (equal (car (fn-acar-own-outcome (apc-t-outcome-owner)
+                                               (fn-own-sub-id *apc-t-sub*) :durable))
+                     (list (list :reply (fn-nntp-string-octets
+                                         (concatenate 'string "240 article received OK"
+                                                      (coerce (list (code-char 13) (code-char 10))
+                                                              'string)))))))

@@ -535,3 +535,60 @@ open-cost replay-records=")
            :in-theory (e/d (fn-nls-page fn-nls-buffer fn-nls-client-step)
                            (fn-nls-reply-decode-of-encode fn-nls-reply-decode
                             fn-nls-reply-encode (:e fn-nls-reply-encode))))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE fn-nls-articles-left-is-zero-when-full (PKT-707; host/native/io.lisp
+; fnn-out-headroom prints fn-nls-capacity-line over fn-store-sn-headroom's
+; tuple) and fn-nls-articles-left-is-at-most-the-transactions-left
+; (keystone-audit 2026-09-27: neither had a witness).  The headroom is the
+; reachable store's (fn-sbud-headroom-at, the tuple the host prints: one
+; article used of 128, 2 record octets of the history bound) under the
+; development profile, and the same store under that profile with one field
+; spent.  A lowered profile is not admitted (fn-sbud-budget answers 0 for
+; it), so the spent tuples are written in the host's shape: fnn-out-headroom
+; checks only six naturals, and fn-nls-articles-left reads nothing else.
+(defun nlst-headroom (profile)
+  (declare (xargs :verify-guards nil))
+  (fn-sbud-headroom profile *nlst-s*))
+(defconst *nlst-hr* (nlst-headroom *nlst-profile*))
+(assert-event (equal *nlst-hr* '(1 128 2 25165824 2 10)))
+; Positive witness, first disjunct: the store's tuple after 127 more
+; articles of 2 octets (128 used of 128); the second disjunct is false (the
+; history bound is far from spent); the line says 0.
+(defconst *nlst-hr-tfull* '(128 128 256 25165824 2 10))
+(assert-event (and (<= (nfix (fn-ag-car (fn-ag-cdr *nlst-hr-tfull*)))
+                       (nfix (fn-ag-car *nlst-hr-tfull*)))
+                   (< (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr *nlst-hr-tfull*))))
+                      (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr *nlst-hr-tfull*))))))
+                   (equal (fn-nls-articles-left *nlst-hr-tfull*) 0)))
+; Positive witness, second disjunct: the store's tuple with the history
+; bound at the octets used (2 of 2), articles stored (used and bytes
+; positive); the transactions are NOT spent (first disjunct false); the line
+; says 0.
+(defconst *nlst-hr-hfull* '(1 128 2 2 2 10))
+(assert-event (and (not (<= (nfix (fn-ag-car (fn-ag-cdr *nlst-hr-hfull*)))
+                            (nfix (fn-ag-car *nlst-hr-hfull*))))
+                   (posp (fn-ag-car *nlst-hr-hfull*))
+                   (posp (fn-ag-car (fn-ag-cdr (fn-ag-cdr *nlst-hr-hfull*))))
+                   (<= (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr *nlst-hr-hfull*)))))
+                       (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr *nlst-hr-hfull*)))))
+                   (equal (fn-nls-articles-left *nlst-hr-hfull*) 0)))
+; Hypothesis removal: the store as it is (both disjuncts false) promises
+; room -- the conclusion fails.
+(assert-event (and (not (<= (nfix (fn-ag-car (fn-ag-cdr *nlst-hr*)))
+                            (nfix (fn-ag-car *nlst-hr*))))
+                   (not (<= (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr *nlst-hr*)))))
+                            (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr *nlst-hr*))))))
+                   (equal (fn-nls-articles-left *nlst-hr*) 127)))
+; The second disjunct without its (posp used) and (posp bytes) conjuncts: no
+; article stored (used 0, bytes 0) under a history bound of 0 -- h <= b
+; holds, and the line still offers the transactions left (the estimate
+; needs an average).
+(assert-event (and (<= 0 0) (equal (fn-nls-articles-left '(0 128 0 0 0 10)) 128)))
+; fn-nls-articles-left-is-at-most-the-transactions-left (no hypothesis): at
+; the reachable store it is the transactions left, and under a history bound
+; of 12 octets (10 left at 2 octets an article) strictly fewer.
+(assert-event (equal (fn-nls-articles-left *nlst-hr*) (- 128 1)))
+(defconst *nlst-hr-hshort* (quote (1 128 2 12 2 10)))
+(assert-event (and (equal (fn-nls-articles-left *nlst-hr-hshort*) 5)
+                   (< (fn-nls-articles-left *nlst-hr-hshort*) (- 128 1))))

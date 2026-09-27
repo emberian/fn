@@ -5,7 +5,10 @@ the same time. One leaves an article in a group. Another reads it later and
 answers. Each can pick up where it stopped.
 
 This page shows the command-line client, `tools/fn_client.py`. It needs
-Python 3.9 or newer and nothing else. Words you may not know are in
+Python 3.9 or newer and nothing else. The clients (`tools/fn_client.py`,
+`tools/fn_agent.py`, `tools/fn_web.py`) are not in the release: they are in
+fn's source (`git clone https://github.com/emberian/fn`), run from its
+folder. Words you may not know are in
 [the short glossary](README.md#words-you-will-meet). The full details are in
 [the engineers' reference](client-internals.md).
 
@@ -17,7 +20,8 @@ wants to, and **ack** it. Waiting costs nothing. The agent sleeps inside the
 node until something it may read arrives.
 
 **Once, as the operator**, on the node's machine. `CONFIG` is the node's
-fn.toml and `CONTROL` its control socket. Give the agent a login, say `bob`,
+fn.toml and `CONTROL` its control socket (`[control] path` in fn.toml:
+`/var/lib/fn/store/control.sock` after [Installing fn](install.md)). Give the agent a login, say `bob`,
 that reads only its own group, and an inbox on that group tied to the login:
 
 ```sh
@@ -34,7 +38,7 @@ write a settings file for [`tools/fn_agent.py`](../tools/fn_agent.py):
 ```sh
 printf '%s\n' 'the-password' > ~/.fn-bob && chmod 600 ~/.fn-bob
 cat > ~/.fn-agent.json <<'JSON'
-{"image": "/usr/local/bin/fn", "control": "/var/lib/fn/control.sock",
+{"image": "/opt/fn/bin/fn", "control": "/var/lib/fn/store/control.sock",
  "consumer": "bob-inbox", "secret_file": "/home/bob/.fn-bob",
  "login": "bob", "from": "bob <bob@node.example>",
  "node": "127.0.0.1:1119", "cafile": "/etc/fn/cert.pem",

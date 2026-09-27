@@ -12,7 +12,7 @@ The examples use these values. Replace them with yours:
 | --- | --- | --- |
 | address and port | 203.0.113.7, 119 | 198.51.100.9, 119 |
 | node name (path identity) | `news.example.org` | `friend.example.net` |
-| peer name you give each other | `friend` | `me` |
+| peer name for the other node | `friend` (you choose it in `peer invite`) | `news.example.org` (`peer accept` files you under your node name) |
 
 ## 1. Both of you: set up a node
 
@@ -77,7 +77,9 @@ So far the link is set up for one direction only, and not encrypted. Now each
 of you gives the other a login and switches the link to encrypted.
 Exchange passwords and certificate files by a channel you trust.
 
-**You** do these steps. Your friend does the same, with the names swapped.
+**You** do these steps. Your friend does the same, with the names swapped:
+their peer name for you is your node name (`news.example.org`), as
+`peer list` on their node shows.
 
 1. Make a login for your friend's node, tied to its identity (the HEX from
    `peer list`). Choose a password and give it to your friend:
@@ -94,12 +96,17 @@ Exchange passwords and certificate files by a channel you trust.
    ```
 
 3. Replace the peer with its encrypted form, then start fetching from it
-   every 20 seconds. The node can stay running:
+   every 20 seconds:
 
    ```sh
    fn operator /var/lib/fn/fn.toml peer add friend friend.example.net 198.51.100.9 119 'local.*' 'local.*' principal PRINCIPAL-HEX /var/lib/fn/friend.fnauth false true starttls 198.51.100.9 /var/lib/fn/friend-cert.pem
    fn operator /var/lib/fn/fn.toml peer pull friend 20
    ```
+
+4. Restart the node (as root: `systemctl restart fn`; OpenBSD:
+   `rcctl restart fn`). The login from step 1 answered `restart-required`:
+   until the restart, your friend's node cannot log in, and both logs show
+   `pull ... round=failed cursor=held at=preamble`.
 
 The words of `peer add`, in order: peer name, node name, address, port,
 groups you take, groups you send, `principal HEX` (who logs in as this

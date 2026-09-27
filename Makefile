@@ -833,6 +833,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octets-stobj \
 	books/payload-arena-bytes \
 	books/payload-arena-paged \
+	books/payload-arena-extent-logic \
+	books/payload-arena-extent \
+	books/payload-extent \
+	books/payload-commit-extent \
+	books/frame-digest-buffer \
+	books/payload-extent-read \
 	books/payload-arena \
 	books/payload-arena-attach \
 	books/records-freeze \
@@ -848,6 +854,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog \
 	books/served-catalog-chain \
 	books/served-catalog-owner \
+	books/served-catalog-join-refresh \
+	books/served-catalog-join-step \
+	books/served-catalog-join \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -863,6 +872,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/payload-arena-paged-tests \
+	tests/acl2/payload-arena-extent-tests \
+	tests/acl2/payload-extent-tests \
+	tests/acl2/payload-commit-extent-tests \
+	tests/acl2/frame-digest-buffer-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \
@@ -876,8 +889,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-chain-tests \
 	tests/acl2/served-catalog-scan-tests \
 	tests/acl2/served-catalog-owner-tests \
+	tests/acl2/served-catalog-join-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
+	books/owner-feed-article \
+	tests/acl2/owner-feed-article-tests \
 	tests/acl2/catalog-number-index-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
@@ -944,6 +960,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-prepare-served-events-tests \
 	tests/acl2/owner-identity-served-tests \
 	tests/acl2/owner-prepare-served-abort-tests \
+	books/owner-prepare-outcome \
+	tests/acl2/owner-prepare-outcome-tests \
+	books/owner-prepare-outcome-topic \
+	tests/acl2/owner-prepare-outcome-topic-tests \
+	books/native-control-launch \
+	tests/acl2/native-control-launch-tests \
+	books/clock-reading \
+	tests/acl2/clock-reading-tests \
+	books/provenance-inspect \
+	tests/acl2/provenance-inspect-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \
@@ -1010,6 +1036,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-columns-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
+	books/snapshot-segments \
+	tests/acl2/snapshot-segments-tests \
 	books/consumer-poll-index \
 	tests/acl2/consumer-poll-index-tests \
 	books/consumer-event-index-store-invariants \
@@ -1138,6 +1166,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-commit-steps-tests \
 	books/owner-commit-pipeline \
 	tests/acl2/owner-commit-pipeline-tests \
+	books/owner-ack-after-barrier \
+	tests/acl2/owner-ack-after-barrier-tests \
 	books/owner-reader-view \
 	tests/acl2/owner-reader-view-tests \
 	books/owner-reader-read \
@@ -1225,7 +1255,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
 
-.PHONY: check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1239,6 +1269,12 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/store-prepare-correspondence books/config-records books/node-config \
 	books/checkpoint books/checkpoint-compaction books/checkpoint-publish \
 	books/records-shape books/statement books/statement-invariants
+
+# fn's static website, rendered from README.md, docs/, CONTRIBUTING.md and
+# swarmguide/ into build/site/ (open build/site/index.html); GitHub Pages
+# builds the same thing (.github/workflows/pages.yml).
+site:
+	$(PYTHON) site/build_site.py --out build/site
 
 # `make check` for a lane worktree: planning/ledger.json, ledger.md and
 # current.md are regenerated into one temporary directory and compared there
@@ -1264,6 +1300,10 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
+# The website renders from the docs (site/build_site.py, stdlib only) and every
+# internal link on every page resolves, anchors included; a doc link to a
+# repository file that does not exist fails by name.
+	@$(CHECK_STEP) $(PYTHON) site/build_site.py --check --out build/site
 # Every byte of a tracked file under books/ and host/ is ASCII (PKT-379): ACL2,
 # SBCL's compile-file and the Python tests read them with different default
 # encodings; the files that still carry a section sign are listed debt

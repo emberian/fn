@@ -297,3 +297,80 @@
 (assert-event (and (not (fn-ocs-in-flight-p (fn-ocs-phase (fn-ocs-init))))
                    (equal (car (mv-list 2 (fn-ocs-next (fn-ocs-init) '(1 0 0 0 0 0))))
                           (fn-ocs-publication-class))))
+
+; -----------------------------------------------------------------------------
+; The capture lemmas the keystone above composes (keystone-audit 2026-09-27):
+; books/owner-reader-view.lisp fn-ocl-relation-of-a-view-captured-before-
+; appends, fn-ocl-view-historyp-of-a-view-captured-before-appends and
+; fn-ocl-view-configp-of-a-view-captured-before-appends, and this book's
+; fn-orr-reader-relation-at-a-captured-view, each on the reached pair above:
+; OC0 = *lgt-oc0* (2 records, the capture), OC = *lgt-finished* (3 records,
+; the working owner), EXTRA the POST's record.
+(defconst *orrt-extra* (nthcdr 2 (orrt-records *lgt-finished*)))
+(defconst *orrt-at-capture* (fn-ocfg-with-view *lgt-finished* (orrt-view *lgt-oc0*)))
+; Reachable positive witness: every hypothesis of the four, and every
+; conclusion.  Non-degenerate: EXTRA is one record, the view is at version 2.
+(assert-event
+ (and (fn-ocl-relation *lgt-oc0*) (fn-ocl-relation *lgt-finished*)
+      (fn-ocri-relation *lgt-oc0*) (fn-ocri-relation *lgt-finished*)
+      (fn-ocl-view-historyp (fn-ocfg-owner *lgt-oc0*))
+      (fn-ocl-view-configp *lgt-oc0*)
+      (equal (orrt-records *lgt-finished*) (append (orrt-records *lgt-oc0*) *orrt-extra*))
+      (equal (len *orrt-extra*) 1)
+      (equal (orrt-history *lgt-finished*) (orrt-history *lgt-oc0*))
+      (equal (fn-ocfg-config *lgt-finished*) (fn-ocfg-config *lgt-oc0*))
+      (fn-ocl-relation *orrt-at-capture*)
+      (fn-ocri-relation *orrt-at-capture*)
+      (equal (fn-own-view-version (orrt-view *lgt-oc0*)) 2)
+      (<= (fn-own-view-version (orrt-view *lgt-oc0*)) (len (orrt-records *lgt-oc0*)))
+      (fn-ocl-view-historyp (fn-own-with-view (fn-ocfg-owner *lgt-finished*)
+                                              (orrt-view *lgt-oc0*)))
+      (fn-ocl-view-configp *orrt-at-capture*)))
+; Without the relation (history) of OC0: *orrt-bad-oc0*, whose view is the
+; working view relabelled (above).  The rest hold; the conclusions fail.
+(assert-event
+ (and (not (fn-ocl-relation *orrt-bad-oc0*))
+      (not (fn-ocri-relation *orrt-bad-oc0*))
+      (not (fn-ocl-view-historyp (fn-ocfg-owner *orrt-bad-oc0*)))
+      (fn-ocl-relation *lgt-finished*)
+      (equal (orrt-records *lgt-finished*) (append (orrt-records *orrt-bad-oc0*) *orrt-extra*))
+      (equal (orrt-history *lgt-finished*) (orrt-history *orrt-bad-oc0*))
+      (equal (fn-ocfg-config *lgt-finished*) (fn-ocfg-config *orrt-bad-oc0*))
+      (not (fn-ocl-relation (fn-ocfg-with-view *lgt-finished* (orrt-view *orrt-bad-oc0*))))
+      (not (fn-ocri-relation (fn-ocfg-with-view *lgt-finished* (orrt-view *orrt-bad-oc0*))))
+      (not (fn-ocl-view-historyp (fn-own-with-view (fn-ocfg-owner *lgt-finished*)
+                                                   (orrt-view *orrt-bad-oc0*))))))
+; Without the append: the roles swapped (a capture of 3 records over a Store
+; of 2).  Both owners are related; the conclusions fail.
+(assert-event
+ (and (fn-ocri-relation *lgt-finished*) (fn-ocri-relation *lgt-oc0*)
+      (fn-ocl-view-historyp (fn-ocfg-owner *lgt-finished*))
+      (not (equal (orrt-records *lgt-oc0*)
+                  (append (orrt-records *lgt-finished*) (nthcdr 3 (orrt-records *lgt-oc0*)))))
+      (equal (orrt-history *lgt-oc0*) (orrt-history *lgt-finished*))
+      (not (fn-ocl-relation (fn-ocfg-with-view *lgt-oc0* (orrt-view *lgt-finished*))))
+      (not (fn-ocri-relation (fn-ocfg-with-view *lgt-oc0* (orrt-view *lgt-finished*))))
+      (not (fn-ocl-view-historyp (fn-own-with-view (fn-ocfg-owner *lgt-oc0*)
+                                                   (orrt-view *lgt-finished*))))))
+; Without the configuration history: the publication pair (*ocp-closed*,
+; *ocp-new*; the same records, extra nil).  For fn-ocl-view-historyp-of-...
+; this is the one hypothesis omitted; for the relation lemmas the
+; configuration differs too (a related owner's configuration is its history's
+; replay, so the two cannot be dropped apart on ground owners).
+(assert-event
+ (and (fn-ocri-relation *ocp-closed*) (fn-ocri-relation *ocp-new*)
+      (fn-ocl-view-historyp (fn-ocfg-owner *ocp-closed*))
+      (equal (orrt-records *ocp-new*) (append (orrt-records *ocp-closed*) nil))
+      (not (equal (orrt-history *ocp-new*) (orrt-history *ocp-closed*)))
+      (not (fn-ocl-relation (fn-ocfg-with-view *ocp-new* (orrt-view *ocp-closed*))))
+      (not (fn-ocri-relation (fn-ocfg-with-view *ocp-new* (orrt-view *ocp-closed*))))
+      (not (fn-ocl-view-historyp (fn-own-with-view (fn-ocfg-owner *ocp-new*)
+                                                   (orrt-view *ocp-closed*))))))
+; No tooth on these witnesses for fn-ocl-view-configp-of-a-view-captured-
+; before-appends: its conclusion holds at each of the three removals above
+; (the configuration read at the relabelled, swapped and pre-publication
+; views is the same), recorded in planning/evidence/keystone-audit-2026-09-27.md.
+(assert-event
+ (and (fn-ocl-view-configp (fn-ocfg-with-view *lgt-finished* (orrt-view *orrt-bad-oc0*)))
+      (fn-ocl-view-configp (fn-ocfg-with-view *lgt-oc0* (orrt-view *lgt-finished*)))
+      (fn-ocl-view-configp (fn-ocfg-with-view *ocp-new* (orrt-view *ocp-closed*)))))

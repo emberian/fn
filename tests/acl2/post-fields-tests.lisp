@@ -124,3 +124,26 @@
 (must-fail (defthm pft-identity-text-without-bound
              (implies (and (fn-cbor-octet-listp identity) (consp identity))
                       (fn-pfld-textp (fn-id-text identity)))))
+
+; keystone-audit 2026-09-27: fn-pfld-group-name-requestp-is-bounded-by-the-codec,
+; its conclusion evaluated on the admitted requests (the codec's 256 and a
+; group name), and without the hypothesis: 257 octets are an octet string
+; the codec's bound refuses.
+(assert-event
+ (let ((xs (make-list 256 :initial-element 97)))
+   (and (fn-pfld-group-name-requestp xs)
+        (fn-record-octet-stringp (fn-record-octets-string xs))
+        (fn-record-nonempty-at-mostp (fn-record-string-octets (fn-record-octets-string xs))
+                                     *fn-record-max-group-name*))))
+(assert-event
+ (let ((xs '(102 110 46 116 101 115 116)))
+   (and (fn-pfld-group-name-requestp xs)
+        (fn-record-octet-stringp (fn-record-octets-string xs))
+        (fn-record-nonempty-at-mostp (fn-record-string-octets (fn-record-octets-string xs))
+                                     *fn-record-max-group-name*))))
+(assert-event
+ (let ((xs (make-list 257 :initial-element 97)))
+   (and (not (fn-pfld-group-name-requestp xs))
+        (not (fn-record-nonempty-at-mostp
+              (fn-record-string-octets (fn-record-octets-string xs))
+              *fn-record-max-group-name*)))))

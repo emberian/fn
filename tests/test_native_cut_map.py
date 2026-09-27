@@ -12,6 +12,9 @@ class NativeCutMapTests(unittest.TestCase):
         native_cuts.verify_post_log_cut_map()
         native_cuts.verify_log_segment_cut_map()
 
+    def test_statement_cut_follows_its_barrier(self):
+        native_cuts.verify_statement_cut_map()
+
     def test_checkpoint_cuts_match_native_and_compaction_is_rotation(self):
         native_cuts.verify_checkpoint_cut_map()
 

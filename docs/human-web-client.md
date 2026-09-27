@@ -65,6 +65,9 @@ If it goes wrong:
 - tin refuses to post from a machine without a domain name
   (`Bad address in From: header`). Give it one: the build's `DOMAIN_NAME`,
   or `disable_sender=ON` in the site's `tin.defaults`.
+- A cancel from tin (`D`, then `d`) withdraws your own post on a node set
+  up with a `mission` (which serves `control.cancel`): readers then get
+  `430 withdrawn`. tin may ask for a cancel secret: press Enter.
 
 ## Cancelling your own post
 

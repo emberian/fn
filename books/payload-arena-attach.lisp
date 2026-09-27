@@ -35,8 +35,8 @@
 ; ones either way; the foundation is the pages'.
 
 (in-package "ACL2")
-(include-book "payload-arena-paged")
-(attach-stobj fn-arena fn-arena-paged)
+(include-book "payload-arena-extent")
+(attach-stobj fn-arena fn-arena-extent)
 (include-book "payload-arena")
 (include-book "catalog-record")
 
