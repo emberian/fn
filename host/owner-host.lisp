@@ -58,7 +58,11 @@
 ;; (fn-psrv-prepare, fn-psrv-refusal-kind, fn-psrv-prepare-identity,
 ;; fn-psrv-prepare-topic) and the configuration un-stage (fn-psrv-unstage).
 (include-book "../books/owner-prepare-served")
-; PRF-180: the per-POST caches advanced through the derived event index.
+; Stage 2b (lane history-columns-2): the store's history as the column stobj
+; fn-hist (books/history-columns.lisp), loaded at every install and synced
+; before each carried budget read (books/history-columns-store.lisp).
+(include-book "../books/history-columns-store")
+; PRF-180: the per-POST caches (their EXTEND specifications).
 (include-book "../books/store-carried-folds")
 (include-book "../books/owner-log-route")
 (include-book "../books/owner-advance-carried")
@@ -308,10 +312,10 @@
 ;; carried served keystones to what is installed here.  The extended value is
 ;; the capture of the whole history; the owner keeps it as the base of its
 ;; next publication (`fn-owner-sco-base').
-(defun fn-owner-install-extended (oc extended fn-arena fn-cat state)
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
+(defun fn-owner-install-extended (oc extended fn-arena fn-cat fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
   (if (equal oc :fault)
-        (mv nil :fault fn-arena fn-cat state)
+        (mv nil :fault fn-arena fn-cat fn-hist state)
       (let* ((state (fn-owner-install-ocfg oc state))
              ; PRF-289: the carried obligation-id trie for the ledger the
              ; owner opens with (books/post-retain-carried.lisp
@@ -367,14 +371,21 @@
         ; byte and seals nothing (fn-sca-load-held-rows).
         (let ((fn-cat (fn-sca-load-held-rows (fn-sf-records (fn-sn-files store))
                                              (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
-                                             fn-arena fn-cat)))
-          (mv nil :recovering fn-arena fn-cat state)))))
+                                             fn-arena fn-cat))
+              ; Stage 2b: the history stobj IS the installed store's history
+              ; (KEYSTONE fn-hist-load-is-the-history,
+              ; books/history-columns.lisp): R is established here, at every
+              ; install, and the budget readers below sync it forward
+              ; (fn-hist-sync-after-run-is-the-history).  The salt keys only
+              ; the Message-ID buckets, which no reader here consults yet.
+              (fn-hist (fn-hist-load (fn-sf-records (fn-sn-files store)) 0 fn-hist)))
+          (mv nil :recovering fn-arena fn-cat fn-hist state)))))
 
-(defun fn-owner-recover-extended (extended config-records frontier max-conns fn-arena fn-cat state)
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
+(defun fn-owner-recover-extended (extended config-records frontier max-conns fn-arena fn-cat fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
   (fn-owner-install-extended
    (fn-ock-recover-extended extended config-records frontier max-conns)
-   extended fn-arena fn-cat state))
+   extended fn-arena fn-cat fn-hist state))
 
 ; The owner from the Store open this process just ran
 ; (fn-store-sn-open-extended, host/store-node-host.lisp): its extended
@@ -384,29 +395,29 @@
 ; so the keystone fn-owner-recover-from-checkpoint-equals-full-recover and
 ; fn-ock-recover-installs-ocl-relation hold of what is installed here, on
 ; both paths, with no second extension or finalization.
-(defun fn-owner-recover-from-store-open (max-conns fn-arena fn-cat state)
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
+(defun fn-owner-recover-from-store-open (max-conns fn-arena fn-cat fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
   (let ((opened (and (boundp-global 'fn-store-sco-open state)
                      (f-get-global 'fn-store-sco-open state))))
     (if (not (and (consp opened) (consp (cdr opened)) (consp (cddr opened))))
-        (mv nil :fault fn-arena fn-cat state)
+        (mv nil :fault fn-arena fn-cat fn-hist state)
       (let ((state (f-put-global 'fn-store-sco-open nil state)))
         (fn-owner-install-extended
          (fn-ock-install (cadr opened) (caddr opened) max-conns)
-         (car opened) fn-arena fn-cat state)))))
+         (car opened) fn-arena fn-cat fn-hist state)))))
 
 ; The two recoveries below are the Python bridge's (tools/run_owner.py), whose
 ; served path is fn-owner-chunk over the view's lists and reads no catalog:
 ; the catalog the install loads is a local one, dropped; the arena is the
 ; live one the open interned into (the native owner recovers through
 ; fn-owner-recover-from-store-open over the live stobjs).
-(defun fn-owner-recover-extended-arena (extended config-records frontier max-conns fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-recover-extended-arena (extended config-records frontier max-conns fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   (with-local-stobj fn-cat
-    (mv-let (erp val fn-arena fn-cat state)
+    (mv-let (erp val fn-arena fn-cat fn-hist state)
       (fn-owner-recover-extended extended config-records frontier max-conns
-                                 fn-arena fn-cat state)
-      (mv erp val fn-arena state))))
+                                 fn-arena fn-cat fn-hist state)
+      (mv erp val fn-arena fn-hist state))))
 
 ;; The records flip: both opens intern the decoded journal into the arena
 ;; first, so the extended capture is over ROWS.  The bridge (tools/run_owner.py
@@ -416,14 +427,14 @@
 ;; catalog it loads is a local one, fn-owner-recover-extended-arena).  The
 ;; native owner installs from the Store open instead
 ;; (fn-owner-recover-from-store-open).  (mv nil KEYWORD fn-arena state).
-(defun fn-owner-recover-rows (rows frontier config-octet-records max-conns fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-recover-rows (rows frontier config-octet-records max-conns fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   (let ((config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (equal rows :bad) (equal config-records :bad))
-        (mv nil :fault fn-arena state)
+        (mv nil :fault fn-arena fn-hist state)
       (fn-owner-recover-extended-arena
        (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
-       config-records frontier max-conns fn-arena state))))
+       config-records frontier max-conns fn-arena fn-hist state))))
 
 ; The open from the checkpoint the Store open loaded (`fn-store-sco-checkpoint',
 ; host/store-node-host.lisp) over the ROWS of the records after it, which the
@@ -431,15 +442,15 @@
 ; host/native/io.lisp fnn-recover-suffix-rows); the entry reads no arena.
 ; books/store-checkpoint-arena.lisp fn-scka-recover-from-checkpoint-is-full-
 ; recover: the extension is the full recover's.  (mv nil KEYWORD fn-arena state).
-(defun fn-owner-recover-from-checkpoint (rows frontier config-octet-records max-conns fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-recover-from-checkpoint (rows frontier config-octet-records max-conns fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   (let ((checkpoint (fn-store-sco-current state))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (null checkpoint) (equal rows :bad) (equal config-records :bad))
-        (mv nil :fault fn-arena state)
+        (mv nil :fault fn-arena fn-hist state)
       (fn-owner-recover-extended-arena
        (fn-rii-sco-extend checkpoint config-records rows)
-       config-records frontier max-conns fn-arena state))))
+       config-records frontier max-conns fn-arena fn-hist state))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
@@ -470,22 +481,21 @@
                ; and the carried usage are folded once here, over the Store
                ; this open replayed (valid caches: fn-sbud-full-cache-is-valid,
                ; fn-cvec-full-debt-cache-is-valid, fn-pcb-full-cache-is-valid);
-               ; every later query advances them through the derived event
-               ; index (fn-owner-record-octets, fn-owner-record-debt,
+               ; every later query advances them from the history
+               ; stobj (fn-owner-record-octets, fn-owner-record-debt,
                ; fn-owner-carried-usage).
                (s (fn-owner-store state))
                (records (fn-sf-records (fn-sn-files s)))
+               ; the count: fn-sf-records-count-is-used-by-definition
+               (count (fn-sf-records-count (fn-sn-files s)))
                (state (f-put-global 'fn-owner-record-octets
-                                    (cons (fn-sbud-count s)
-                                          (fn-sbud-bytes-used s))
+                                    (cons count (fn-sbud-bytes-used s))
                                     state))
                (state (f-put-global 'fn-owner-record-debt
-                                    (cons (fn-sbud-count s)
-                                          (fn-cvec-record-debt records))
+                                    (cons count (fn-cvec-record-debt records))
                                     state))
                (state (f-put-global 'fn-owner-carried-usage
-                                    (cons (fn-sbud-count s)
-                                          (fn-pcb-tally-records records nil))
+                                    (cons count (fn-pcb-tally-records records nil))
                                     state)))
           (value :installed))
       (value :refused))))
@@ -541,13 +551,13 @@
   (declare (xargs :stobjs state :mode :program))
   (if (boundp-global name state) (f-get-global name state) nil))
 
-; The committed record count, read from the owner store's derived event index
-; (fn-sbud-count-is-used, books/store-budget.lisp, under fn-ceis-indexedp, which
-; every host-installed owner store satisfies: fn-osi-live-owner-store-is-indexed,
-; books/owner-store-indexed.lisp), not by a len of the history.
+; The committed record count: the snoc-list's carried count, which is
+; `fn-sbud-used' by definition (books/history-columns-store.lisp
+; fn-sf-records-count-is-used-by-definition), not a len of the history and
+; not a read of the store node's event index.
 (defun fn-owner-sco-count (state)
   (declare (xargs :stobjs state :mode :program))
-  (fn-sbud-count (fn-own-store (fn-owner-core state))))
+  (fn-sf-records-count (fn-sn-files (fn-own-store (fn-owner-core state)))))
 
 ; The newest durable checkpoint the Store open verified: its S, or NIL.
 (defun fn-owner-sco-note-durable (sequence state)
@@ -642,8 +652,9 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (fn-own-store (fn-owner-core state)))
          (records (fn-sf-records (fn-sn-files st)))
-         ; (len records), read from the index: fn-sbud-count-is-used.
-         (count (fn-sbud-count st))
+         ; (len records), the snoc-list's carried count:
+         ; fn-sf-records-count-is-used-by-definition.
+         (count (fn-sf-records-count (fn-sn-files st)))
          (durable (fn-owner-sco-global 'fn-owner-sco-durable state))
          (profile (fn-owner-store-profile state))
          (state (f-put-global 'fn-owner-sco-attempted count state))
@@ -761,42 +772,47 @@
 
 ; The committed record octets of the carried Store, from the carried
 ; (K . SUM) of the first K records advanced over the records committed since
-; through the Store's derived event index (books/store-budget.lisp
-; `fn-sbud-bytes-carried': one index lookup and one record's length per
-; record committed since the last query, never a walk of the history; equal
-; to `fn-sbud-bytes-used' under `fn-ceis-indexedp' when the cache is valid,
-; `fn-sbud-bytes-carried-is-the-fold').  The cache is the fold at open
+; through the history stobj fn-hist (stage 2b, books/history-columns-store.lisp):
+; first `fn-hist-sync' appends the rows committed since the last sync (R is
+; established at install by fn-hist-load-is-the-history and preserved by
+; fn-hist-sync-after-run-is-the-history), then `fn-hist-bytes-carried' reads
+; one row per record committed since the last query, never a walk of the
+; history (fn-hist-bytes-carried-is-bytes-extend: under R it is
+; `fn-sbud-bytes-extend', which is `fn-sbud-bytes-used' for a valid cache,
+; fn-sbud-bytes-used-is-kernel-sum).  The cache is the fold at open
 ; (`fn-owner-install-profile') and stays valid while committed records only
 ; grow (`fn-sbud-octets-cache-valid-after-commit'); the count stored with it
-; is the index's (`fn-sbud-count', `fn-sbud-count-is-used').
-(defun fn-owner-record-octets (state)
-  (declare (xargs :stobjs state :mode :program))
+; is the stobj's (fn-hist-count-is-used).
+(defun fn-owner-record-octets (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let* ((s (fn-owner-store state))
+         (fn-hist (fn-hist-sync (fn-sn-files s) fn-hist))
          (cache (if (boundp-global 'fn-owner-record-octets state)
                     (f-get-global 'fn-owner-record-octets state)
                   nil))
-         (bytes (fn-sbud-bytes-carried cache s))
+         (bytes (fn-hist-bytes-carried cache s fn-hist))
          (state (f-put-global 'fn-owner-record-octets
-                              (cons (fn-sbud-count s) bytes) state)))
-    (mv bytes state)))
+                              (cons (fn-hist-count fn-hist) bytes) state)))
+    (mv bytes fn-hist state)))
 
 ; The completion debt of the carried Store (the open forward undertakings,
 ; each owing a release record), carried as (K . DEBT) and advanced over the
-; records committed since through the Store's derived event index
-; (books/store-carried-folds.lisp `fn-scf-debt-carried'; equal to
-; `fn-cvec-record-debt' under `fn-ceis-indexedp' when the cache is valid,
-; `fn-scf-debt-carried-is-the-record-debt'), reset with the octets when a
+; records committed since through the synced history stobj
+; (`fn-hist-debt-carried', fn-hist-debt-carried-is-debt-extend under R; the
+; extension is `fn-cvec-record-debt' when the cache is valid,
+; fn-cvec-debt-extend-is-the-record-debt), reset with the octets when a
 ; profile is installed at open.
-(defun fn-owner-record-debt (state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-record-debt (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let* ((s (fn-owner-store state))
+         (fn-hist (fn-hist-sync (fn-sn-files s) fn-hist))
          (cache (if (boundp-global 'fn-owner-record-debt state)
                     (f-get-global 'fn-owner-record-debt state)
                   nil))
-         (debt (fn-scf-debt-carried cache s))
+         (debt (fn-hist-debt-carried cache s fn-hist))
          (state (f-put-global 'fn-owner-record-debt
-                              (cons (fn-sbud-count s) debt) state)))
-    (mv debt state)))
+                              (cons (fn-hist-count fn-hist) debt) state)))
+    (mv debt fn-hist state)))
 
 ; The owner's verdict on one more record of KIND: the carried profile's count
 ; and history gates against the Store it carries, and the capacity vector
@@ -804,25 +820,17 @@
 ; discharges a debt or consumes the maintenance release, every other kind
 ; keeps room for every open undertaking's release, its own included, and the
 ; maintenance release, `fn-cvec-admission-keeps-the-vector').
-(defun fn-owner-publication-verdict (kind state)
-  (declare (xargs :stobjs state :mode :program))
-  (mv-let (bytes state) (fn-owner-record-octets state)
-    (mv-let (debt state) (fn-owner-record-debt state)
+(defun fn-owner-publication-verdict (kind fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
+    (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
       (let ((s (fn-owner-store state)))
-        ; PRF-180: the count read from the index (fn-sbud-count-is-used).
+        ; the count: fn-sf-records-count-is-used-by-definition.
         ; PRF-284: fn-pvc-verdict-carried-is-cvec-verdict-at.
-        (value (fn-pvc-verdict-carried (fn-owner-profile-carry state)
+        (mv nil (fn-pvc-verdict-carried (fn-owner-profile-carry state)
                                        (fn-owner-store-profile state) kind
-                                       (fn-sbud-count s) bytes debt))))))
-
-; (used budget bytes-used history-bound reserved-charge charge-capacity), all
-; read from the carried state; the host prints it and computes none of it.
-(defun fn-owner-headroom (state)
-  (declare (xargs :stobjs state :mode :program))
-  (mv-let (bytes state) (fn-owner-record-octets state)
-    ; PRF-180: fn-sbud-headroom-carried-is-headroom-at.
-    (value (fn-sbud-headroom-carried (fn-owner-store-profile state)
-                                     (fn-owner-store state) bytes))))
+                                       (fn-sf-records-count (fn-sn-files s)) bytes debt)
+               fn-hist state)))))
 
 ; The carried profile as the operator reads it (field names and values).
 (defun fn-owner-profile-report (state)
@@ -1057,8 +1065,8 @@
 ; shape; the owner's prepare is fn-pcar-sbud-prepare over the row in place of
 ; fn-sn-prepare).  (mv nil KEYWORD fn-arena state).
 (defun fn-owner-prepare (msgid-octets payload group-codes id-octets
-                          subject-octets evidence-octets charge fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+                          subject-octets evidence-octets charge fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
@@ -1069,16 +1077,16 @@
             (not (fn-pfld-article-inputsp msgid-octets (len payload) groups
                                           id-octets subject-octets
                                           evidence-octets charge)))
-        (mv nil :invalid fn-arena state)
+        (mv nil :invalid fn-arena fn-hist state)
       ; A name in the domain but not served at the live generation (a retired
       ; group) is refused by the prepare itself (fn-psrv-prepare, lane
       ; prepare-served): the host makes no served test of its own.
       (let* ((msgid (fn-store-octets->string msgid-octets))
              (existing (fn-store-existing-action msgid payload groups s fn-arena)))
         (if existing
-            (mv nil existing fn-arena state)
-          (mv-let (bytes state) (fn-owner-record-octets state)
-          (mv-let (debt state) (fn-owner-record-debt state)
+            (mv nil existing fn-arena fn-hist state)
+          (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
+          (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
           (let* ((record (fn-sn-article-record
                           s (fn-own-clock (fn-owner-core state))
                           msgid payload groups
@@ -1109,7 +1117,8 @@
                  ; article-budget-for (the carry satisfies fn-pvc-carryp).
                  (budget (fn-pvc-article-budget-carried
                           (fn-owner-profile-carry state)
-                          (fn-owner-store-profile state) (fn-sbud-count s)
+                          (fn-owner-store-profile state)
+                          (fn-sf-records-count (fn-sn-files s))
                           bytes record debt))
                  (before (fn-owner-ocfg state))
                  (row (if (equal record :clock-unusable)
@@ -1132,14 +1141,14 @@
                              (fn-psrv-prepare before row budget carry)
                              state)))))
             (if (equal record :clock-unusable)
-                (mv nil :clock-unusable fn-arena state)
+                (mv nil :clock-unusable fn-arena fn-hist state)
               (if (equal (fn-owner-store state) s)
-                (mv nil (fn-psrv-refusal-kind before row budget) fn-arena state)
+                (mv nil (fn-psrv-refusal-kind before row budget) fn-arena fn-hist state)
               ; The entry reads the arena only (no invariant-risk: it runs
               ; compiled, no callee re-checks its guard); it names the payload
               ; and the host seals it with one fn-arena-seal-list call
               ; (tools/run_owner.py prepare), exactly when the Store changed.
-              (mv nil (list :seal payload) fn-arena state)))))))))))
+              (mv nil (list :seal payload) fn-arena fn-hist state)))))))))))
 
 ; Step 8 (catalog slice) after the records flip: the host sealed the POST's
 ; payload (host/native/owner.lisp fnn-owner-attempt, after
@@ -1194,8 +1203,8 @@
 
 (defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
                                  subject-octets evidence-octets charge
-                                 fn-octets fn-arena state)
-  (declare (xargs :stobjs (fn-octets fn-arena state) :mode :program))
+                                 fn-octets fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-hist state) :mode :program))
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
@@ -1203,7 +1212,7 @@
     (if (not (fn-pfld-article-inputsp msgid-octets (fn-octets-len fn-octets)
                                       groups id-octets subject-octets
                                       evidence-octets charge))
-        (mv nil :invalid fn-arena state)
+        (mv nil :invalid fn-arena fn-hist state)
       ; A retired group (in the domain, not served at the live generation)
       ; is refused by the prepare below (fn-psrv-prepare, lane
       ; prepare-served): the host makes no served test of its own.
@@ -1214,9 +1223,9 @@
              (existing (fn-pidx-existing-action msgid fn-octets groups
                                                 (fn-owner-core state) fn-arena)))
         (if existing
-            (mv nil existing fn-arena state)
-          (mv-let (bytes state) (fn-owner-record-octets state)
-          (mv-let (debt state) (fn-owner-record-debt state)
+            (mv nil existing fn-arena fn-hist state)
+          (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
+          (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
           (let* ((record (fn-sn-article-record
                           s (fn-own-clock (fn-owner-core state))
                           msgid (fn-octets-list fn-octets) groups
@@ -1234,7 +1243,8 @@
                  ; article-budget-for (the carry satisfies fn-pvc-carryp).
                  (budget (fn-pvc-article-budget-carried
                           (fn-owner-profile-carry state)
-                          (fn-owner-store-profile state) (fn-sbud-count s)
+                          (fn-owner-store-profile state)
+                          (fn-sf-records-count (fn-sn-files s))
                           bytes record debt))
                  (before (fn-owner-ocfg state))
                  (row (if (equal record :clock-unusable)
@@ -1269,9 +1279,9 @@
                            (fn-psrv-prepare before row budget carry)
                            state)))))
             (if (equal record :clock-unusable)
-                (mv nil :clock-unusable fn-arena state)
+                (mv nil :clock-unusable fn-arena fn-hist state)
               (if (equal (fn-owner-store state) s)
-                (mv nil (fn-psrv-refusal-kind before row budget) fn-arena state)
+                (mv nil (fn-psrv-refusal-kind before row budget) fn-arena fn-hist state)
               ; Reads the arena and the buffer only (no invariant-risk; see
               ; fn-owner-prepare): :seal-buffer tells the host to seal the
               ; buffer's payload with one fn-arena-seal-buffer call
@@ -1282,7 +1292,7 @@
               ; catalog's prepare after that seal (fn-owner-cat-prepare-sealed;
               ; books/served-catalog-owner.lisp fn-cat-prepare-sealed).
               (let ((state (f-put-global 'fn-owner-cat-candidate (cons record row) state)))
-                (mv nil :seal-buffer fn-arena state))))))))))))
+                (mv nil :seal-buffer fn-arena fn-hist state))))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge fn-arena state)
@@ -2483,24 +2493,22 @@
 
 ; PRF-099: the carried usage of the boundary whose release evidence is
 ; EVIDENCE (a string), from the owner's (K . TALLY) cache over the committed
-; records, advanced over the records committed since through the Store's
-; derived event index (PRF-180, books/store-carried-folds.lisp
-; `fn-scf-usage-carried'; read at EVIDENCE it is the replay projection
-; fn-pcb-usage under `fn-ceis-indexedp' when the cache is valid,
-; `fn-scf-usage-carried-is-the-projection', and it is
+; records, advanced over the records committed since through the synced
+; history stobj (`fn-hist-usage-carried', which under R is
 ; books/peer-carriage.lisp's fn-pcb-usage-extend,
-; `fn-scf-usage-carried-is-usage-extend', so fn-pcb-extended-cache-is-valid
+; fn-hist-usage-carried-is-usage-extend, so fn-pcb-extended-cache-is-valid
 ; keeps the stored cache valid).  Reset at open (fn-owner-install-profile).
-(defun fn-owner-carried-usage (evidence state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-carried-usage (evidence fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let* ((s (fn-owner-store state))
+         (fn-hist (fn-hist-sync (fn-sn-files s) fn-hist))
          (cache (if (boundp-global 'fn-owner-carried-usage state)
                     (f-get-global 'fn-owner-carried-usage state)
                   nil))
-         (tally (fn-scf-usage-carried cache s))
+         (tally (fn-hist-usage-carried cache s fn-hist))
          (state (f-put-global 'fn-owner-carried-usage
-                              (cons (fn-sbud-count s) tally) state)))
-    (mv (fn-pcb-tally-get evidence tally) state)))
+                              (cons (fn-hist-count fn-hist) tally) state)))
+    (mv (fn-pcb-tally-get evidence tally) fn-hist state)))
 
 ; D23 and PRF-099: the carried arm's kind-4 event, for the NNTP transit
 ; attempt only, gated by the delivering boundary's opaque-carriage budget
@@ -2509,15 +2517,15 @@
 ; primitive observation is taken or claimed.
 (defun fn-owner-peer-carried-relay-event
     (coordinates msgid received group-codes obligation subject evidence charge
-                 state)
-  (declare (xargs :stobjs state :mode :program))
+                 fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes
                   (fn-state-groups (fn-node-acceptance (fn-sn-node s)))))
          (evidence-string (fn-store-octets->string evidence)))
-    (mv-let (usage state) (fn-owner-carried-usage evidence-string state)
-      (value
+    (mv-let (usage fn-hist state) (fn-owner-carried-usage evidence-string fn-hist state)
+      (mv nil
        (if (equal groups :bad) nil
          (fn-pcb-carried-event
           (first coordinates) (second coordinates) (third coordinates)
@@ -2531,7 +2539,8 @@
           (if (boundp-global 'fn-owner-transit-budget state)
               (f-get-global 'fn-owner-transit-budget state)
             nil)
-          usage))))))
+          usage))
+       fn-hist state))))
 
 ; PRF-099: the refusal class of a present carrier on transit
 ; (books/peer-carriage.lisp fn-pcb-refusal-class): :no-local-binding,

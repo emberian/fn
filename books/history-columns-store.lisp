@@ -303,3 +303,20 @@
                   (fn-pcb-usage-extend cache (fn-sf-records (fn-sn-files s)))))
   :hints (("Goal" :in-theory (e/d (fn-pcb-usage-extend)
                                   (fn-hist-tally-advance fn-pcb-tally-records)))))
+
+; The carried readers the host calls run guard-verified (stage 2b).
+(verify-guards fn-hist-octets-advance)
+(verify-guards fn-hist-bytes-carried)
+(verify-guards fn-hist-debt-advance)
+(verify-guards fn-hist-debt-carried)
+(verify-guards fn-hist-tally-advance)
+(verify-guards fn-hist-usage-carried)
+
+; The committed record count the host reads is the snoc-list's own count
+; (`fn-sf-records-count', O(1): its :exec is the carried count), which is
+; `fn-sbud-used' with no relation at all: the budget's count no longer reads
+; the store node's event index (PRF-180's `fn-sbud-count', which needed
+; `fn-ceis-indexedp').
+(defthm fn-sf-records-count-is-used-by-definition
+  (equal (fn-sf-records-count (fn-sn-files s)) (fn-sbud-used s))
+  :hints (("Goal" :in-theory (enable fn-sbud-used fn-sf-records-count))))
