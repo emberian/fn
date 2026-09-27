@@ -1009,3 +1009,34 @@
                     fn-bpaj-record-matches-request-fast-is-checked
                     fn-bpaj-record-lookup-fast-is-checked
                     fn-bpaj-dispatch-fast-is-checked))
+
+; KEYSTONE (PRF-220) for host/bp-receive-host.lisp fn-bpreq-existing-record
+; and host/bp-receipt-host.lisp fn-bpr-host-accept, which retired their own
+; walks of the history for this lookup: a record the indexed lookup finds is
+; one the retired walk's predicate selects (the request's article and
+; subject) and the receiver's checked Store predicate accepts.  The lookup
+; is stricter than the walk in two cases only, both refusals: two records
+; under the article's Message-ID (the host never picks a first), and a
+; record whose Message-ID is not the article's own.
+(defthm fn-bpaj-record-lookup-fast-found-is-an-accepted-match
+  (implies (and (fn-sn-statep store) (fn-ceis-indexedp store)
+                (equal (car (fn-bpaj-record-lookup-fast store request)) :found))
+           (let ((record (cadr (fn-bpaj-record-lookup-fast store request))))
+             (and (fn-record-p record)
+                  (equal (fn-record-payload record)
+                         (fn-bpa-request-article request))
+                  (equal (fn-record-content-subject record)
+                         (fn-bpa-request-subject request))
+                  (fn-bpr-store-record-acceptedp store record))))
+  :hints (("Goal"
+           :use ((:instance fn-bpaj-store-record-accepted-fast-is-checked
+                            (record (car (fn-cei-msgid-records
+                                          (fn-record-octets-string
+                                           (cadr (fn-bpaj-article-fields request)))
+                                          (fn-sn-event-index store))))))
+           :in-theory (e/d (fn-bpaj-record-lookup-fast
+                            fn-bpaj-record-matches-request-fast)
+                           (fn-bpaj-store-record-accepted-fast
+                            fn-bpr-store-record-acceptedp fn-record-p
+                            fn-cei-msgid-records fn-bpaj-article-fields
+                            fn-sn-statep fn-ceis-indexedp)))))
