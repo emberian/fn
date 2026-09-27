@@ -39,6 +39,9 @@ so it never overwrites keys.
    fn operator /var/lib/fn/fn.toml peer invite friend 'local.*' 198.51.100.9 119 news.example.org /var/lib/fn/keys /var/lib/fn/invitation-for-friend 203.0.113.7 119
    ```
 
+   `'local.*'` also offers a private group whose name starts `local.`.
+   Keep private groups out: `'local.*,!local.private*'`.
+
 2. Send the invitation file to your friend. It holds no secrets.
 
 3. **Your friend** accepts it. The words are: the invitation, their keys

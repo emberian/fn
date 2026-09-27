@@ -61,9 +61,11 @@
   (fn-native-operator-result-mission-octets
    (fn-native-operator-mission-run *nmt-path* (nmt-argv '("mission" "small-community")))))
 (defconst *nmt-sc-init* (fn-native-operator-run *nmt-sc-text* (nmt-argv '("init"))))
+; PKT-708: and control.cancel, where readers' own cancels are filed.
 (assert-event (equal (fn-native-operator-result-init-group-octets *nmt-sc-init*)
                      (list (fn-record-string-octets "local.general")
-                           (fn-record-string-octets "local.test"))))
+                           (fn-record-string-octets "local.test")
+                           (fn-record-string-octets "control.cancel"))))
 (assert-event (equal (fn-native-operator-result-init-profile *nmt-sc-init*)
                      (fn-native-mission-request "small-community")))
 ; A profile word is refused under a mission; relay has no default groups.

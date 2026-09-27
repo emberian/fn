@@ -5,7 +5,7 @@
 ; from the persisted profile (`fn-sbud-budget', books/store-budget.lisp).  At
 ; or over the budget it is the identity and the owner answers :unaffordable
 ; (`fn-sbud-refusal-kind'), which `fn-post-store-refusal-line' renders as
-; "441 posting failed; the store has no capacity for this article".  Below
+; "441 posting failed; the store is full: no capacity for this article (unaffordable); the node's operator can raise it".  Below
 ; it, it is `fn-opc-prepare'.
 (in-package "ACL2")
 (include-book "store-budget")
