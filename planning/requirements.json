@@ -4766,6 +4766,56 @@
         "planning/evidence/time-model-2-2026-09-27.md"
       ],
       "implementation_note": "Lane time-model-2. The journal is STORE/journal/decisions.fnj, one segment per run (a start entry), written by the service-log writer thread under ACL2's sink bound; a dropped entry is a visible gap. What a death with entries unflushed loses: those entries, i.e. the replay of decisions that stored nothing; never durable state. Not yet: a native replay verb (the replay is ACL2's fn-otm-replay; the native case checks the file's sequence and events), the served transcript replay from the :served readings."
+    },
+    {
+      "id": "WEB-004",
+      "title": "The release carries the friends' web reader as its own service beside the node, reaching the node only as an NNTP client on its TLS port or with STARTTLS, redeeming invitations through fn redeem, its account shut out of the node folder",
+      "specification": "specs/human-client.md#the-reader-in-the-release",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "packaging/install-clients.sh",
+        "packaging/install.sh",
+        "packaging/fn-reader.service.in",
+        "packaging/fn_reader.rc.in",
+        "packaging/fn-reader.caddy",
+        "tools/fn_reader.py",
+        "tools/fn_client.py",
+        "tools/nntp_session.py",
+        "tests/test_fn_reader.py",
+        "tests/test_fn_web_native.py",
+        "tests/friends_tarball.sh",
+        "docs/web.md",
+        "docs/operator-internals.md"
+      ],
+      "implementation_note": "A permitted external client (AGENTS.md): the node decides every login, account, group, post and withdrawal. The reader's own policy is local and stated as such: the pacing of refused logins below the node's exposure-auth-failures, the per-browser pause, the session and form tokens.",
+      "note": "The OpenBSD rc.d script is rendered and checked by runpath_check but was not run on an OpenBSD machine by this lane."
+    },
+    {
+      "id": "HST-029",
+      "title": "A release's clients/ (Python) is held apart from the node's path: runpath_check's clients rule and the separation",
+      "specification": "specs/host.md#the-release",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "tools/runpath_check.py",
+        "tests/test_runpath_check.py",
+        "packaging/install-clients.sh",
+        "packaging/fn-client-launcher",
+        "packaging/release-tarball.sh",
+        "tests/test_release_tarball.py"
+      ],
+      "implementation_note": "--tree skips clients/ in the node walk, checks it under clients_check, and fails any node script, launcher or service that names clients/; witnesses in tests/test_runpath_check.py (a node service starting a client, bin/fn naming clients/, object code or a foreign command in clients/, a reader service starting bin/fn)."
     }
   ]
 }

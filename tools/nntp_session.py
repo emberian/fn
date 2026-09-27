@@ -3,8 +3,10 @@
 
 This is the socket half that `tools/node_probe.py` and `tools/fn_client.py`
 share.  It frames CRLF lines, reads multi-line blocks with the dot-stuffing
-undone, performs the RFC 4642 STARTTLS upgrade against a supplied context and
-sends RFC 4643 AUTHINFO USER/PASS.  It holds no policy: it does not decide
+undone, performs the RFC 4642 STARTTLS upgrade against a supplied context (or,
+given the context at construction, opens the TLS layer before the greeting:
+RFC 8143's implicit TLS, the node's `tls_port', conventionally 563) and sends
+RFC 4643 AUTHINFO USER/PASS.  It holds no policy: it does not decide
 whether a protected channel is required, whether a status line is a refusal,
 or whether an absent reply is uncertain.  Those are the caller's, because the
 probe asserts the node's policy and the client obeys it, and the two want
@@ -27,7 +29,8 @@ class Disconnected(RuntimeError):
 class Session:
     """One NNTP connection, driven by hand so every status line is kept."""
 
-    def __init__(self, host: str, port: int, timeout: float):
+    def __init__(self, host: str, port: int, timeout: float,
+                 implicit_tls: ssl.SSLContext | None = None):
         self.host, self.port = host, port
         self.sock = socket.create_connection((host, port), timeout=timeout)
         self.sock.settimeout(timeout)
@@ -35,6 +38,11 @@ class Session:
         self.tls = None
         self.broken = False
         try:
+            if implicit_tls is not None:
+                # RFC 8143 section 3: the handshake is the first thing on the
+                # connection; the greeting arrives inside the TLS layer.  A
+                # failed handshake raises here, before any NNTP octet.
+                self.upgrade(implicit_tls)
             self.greeting = self.line()
         except BaseException:
             # The greeting is read here, so a node that accepts and then

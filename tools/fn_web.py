@@ -4,7 +4,8 @@
 This is a separate client process. It never opens the Store, changes fn's
 state directly, or treats viewing an article as a processing acknowledgement.
 The HTTP listener is always 127.0.0.1. The NNTP target is either a loopback
-development node (--plain) or any node reached over STARTTLS with a verified
+development node (--plain) or any node reached over TLS (STARTTLS, or TLS from
+the first octet on port 563 or with --tls) with a verified
 certificate (--tls-cert) and an AUTHINFO login; every accept, refuse, number
 and verdict shown is the node's answer, never this process's decision.
 
@@ -115,7 +116,7 @@ class Backend:
         return self.sender or "%s <%s@%s>" % (user, user, self.args.host)
 
     def login_check(self):
-        """Open one connection exactly as every page does: STARTTLS, verify, 281.
+        """Open one connection exactly as every page does: TLS, verify, 281.
 
         The node answers; a refusal (481, a certificate that does not verify)
         and an uncertain outcome (unreachable, handshake cut) stay distinct.
@@ -2402,7 +2403,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--port", dest="http_port", type=int, default=8919,
                         help="loopback HTTP port")
     parser.add_argument("--tls-cert", "--cafile", dest="cafile",
-                        help="the node's certificate (or its CA); STARTTLS is verified against it")
+                        help="the node's certificate (or its CA); the TLS layer is verified against it")
+    parser.add_argument("--tls", action="store_true",
+                        help="TLS from the first octet (the node's tls_port); the default "
+                             "on port 563, STARTTLS on any other port")
     parser.add_argument("--plain", action="store_true",
                         help="no TLS and no login; loopback development node only")
     parser.add_argument("--user", help="the principal to log in as")
