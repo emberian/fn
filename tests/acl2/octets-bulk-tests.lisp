@@ -258,9 +258,9 @@
   :rule-classes nil)
 (must-fail
  (defthm obt-t-rt-no-octets
-   (implies (and (natp i) (<= (+ i k) (len xs)))
-            (equal (fn-oct-word-octets (fn-oct-word-at i k xs) k)
-                   (take k (nthcdr i xs))))
+   (implies (and (natp 0) (<= (+ 0 2) (len '(256 0))))
+            (equal (fn-oct-word-octets (fn-oct-word-at 0 2 '(256 0)) 2)
+                   (take 2 (nthcdr 0 '(256 0)))))
    :hints (("Goal" :do-not-induct t))))
 
 ; Without the bound: past the end `take' pads with nil, the word with 0.
@@ -271,9 +271,9 @@
   :rule-classes nil)
 (must-fail
  (defthm obt-t-rt-no-bound
-   (implies (and (fn-cbor-octet-listp xs) (natp i))
-            (equal (fn-oct-word-octets (fn-oct-word-at i k xs) k)
-                   (take k (nthcdr i xs))))
+   (implies (and (fn-cbor-octet-listp '(5)) (natp 0))
+            (equal (fn-oct-word-octets (fn-oct-word-at 0 2 '(5)) 2)
+                   (take 2 (nthcdr 0 '(5)))))
    :hints (("Goal" :do-not-induct t))))
 
 ; Without (natp i): a negative index still reads K cells from cell 0 (the
@@ -286,7 +286,7 @@
   :rule-classes nil)
 (must-fail
  (defthm obt-t-rt-no-natp-i
-   (implies (and (fn-cbor-octet-listp xs) (<= (+ i k) (len xs)))
-            (equal (fn-oct-word-octets (fn-oct-word-at i k xs) k)
-                   (take k (nthcdr i xs))))
+   (implies (and (fn-cbor-octet-listp '(1)) (<= (+ -5 3) (len '(1))))
+            (equal (fn-oct-word-octets (fn-oct-word-at -5 3 '(1)) 3)
+                   (take 3 (nthcdr -5 '(1)))))
    :hints (("Goal" :do-not-induct t))))
