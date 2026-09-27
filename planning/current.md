@@ -16,7 +16,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 
 | capability | keystone | implemented | proved | qualified | deployed |
 | --- | --- | --- | --- | --- | --- |
-| [P1](#p1) protected channel | `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` | yes | no: source uncertified | no: source changed since 69046a76 | no: dev source not on the node |
+| [P1](#p1) protected channel | `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` | yes | no: closure moved | no: source changed since 69046a76 | no: dev source not on the node |
 | [P2](#p2) 240 after a consumed completion | `fn-own-240-follows-consumed-completion` | yes | no: source uncertified | no: source changed since 69046a76 | no: dev source not on the node |
 | [P3](#p3) reading resumes | `fn-own-pinned-view-survives-other-post` | yes | no: source uncertified | no: source changed since 69046a76 | no: dev source not on the node |
 | [P4](#p4) one owner decides duplicate versus conflict | `fn-pb-same-article-is-answered-already-stored` | yes | no: closure moved | no: source changed since 69046a76 | no: dev source not on the node |
@@ -39,7 +39,7 @@ Superseded image records: [node-hbox-47bdb9a4-2026-09-24](evidence/node-hbox-47b
 **protected channel.** A gated command before login is answered 480 and changes nothing, AUTHINFO on a clear connection under `protected_only` is 483, and POST needs the principal's posting flag.
 
 - Host-called subject: `fn-scar-ocfg-read-tls-prefix` at host/owner-host.lisp:2466, equated by `fn-scar-auth-step-pinned-is-auth-step-pinned` (books/served-carried.lisp:183).
-- Keystone: `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` (books/nntp-auth-invariants.lisp:593; PRF-031 (uncertified-at-current-digest)); no archived manifest records `books/nntp-auth-invariants.lisp` passed at its current source.
+- Keystone: `fn-served-dispatch-of-a-gated-command-is-480-and-changes-nothing` (books/nntp-auth-invariants.lisp:593; PRF-031 (uncertified-at-current-digest)); no archived manifest certifies the current closure; `certify-20260927T002638Z-3598520` passed this source of `books/nntp-auth-invariants.lisp`, and since then `books/accounts.lisp`, `books/article-fields.lisp`, `books/article-header-census.lisp` and 30 more changed.
 - Tested: image `69046a76` ([qual-69046a76-2026-09-26](evidence/qual-69046a76-2026-09-26.md), closure `certify-20260926T144826Z-2113131`), profile native-operator matrix and native modules, production and developer (qual-69046a76: deployable as the release the node is reinstalled from, D34; the modules per its record's sidecar section); changed since it: `books/nntp-auth-invariants.lisp`, `books/served-carried.lisp`, `host/owner-host.lisp`.
 - Deployed: no: node image `bbf52159`; changed since it: `books/nntp-auth-invariants.lisp`, `books/served-carried.lisp`, `host/owner-host.lisp`.
 - Latest positive result: matrix AUTH-GATED-A/B 480 before login, AUTH-LOGIN 281, AUTH-WRONG 481, every TLS/AUTHINFO transit row; auth 4/4, starttls 2/2, protected_peering 5/5 ([qual-18c91321](evidence/qual-18c91321-2026-09-24.md)).
