@@ -342,6 +342,26 @@ Returns the ACL2-rendered reply octets for CID."
                                 'fn-native-admin-host-owner-reconfigure cid plan)))
          (if (eq word :refused) (list :reason :refused reason) word))))))
 
+(defun fnn-admin-publish-record (store record)
+  "Authorize, publish and read back one configuration RECORD (ACL2's octets)
+on STORE, opened writable under the exclusive lock: the offline
+administrative path (fnn-admin-execute) and the reclaim's instant
+(host/native/checkpoint.lisp fnn-log-reclaim-steps) both take it.  Answers
+(values GENERATION NAME VERIFICATION).  The durable publisher is the
+acceptance boundary; the read-back runs under the retained exclusive lock:
+releasing it before the readback would let a later administrator make this
+already durable publication appear to fail merely by advancing the history."
+  (let* ((observation (fnn-config-record-observation store))
+         (names (mapcar #'car observation))
+         (config-records (fnn-config-records-from-observation observation))
+         (authorization
+           (or (fnn-admin-authorize-carried store config-records record names)
+               (fnn-admin-authorize store (fnn-history-records store)
+                                    config-records record names))))
+    (multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
+      (values generation name
+              (fnn-admin-verify-under-lock store record authorization)))))
+
 (defun fnn-admin-query (root plan)
   "Execute one read-only ACL2 configuration query against ROOT.
 
@@ -383,23 +403,11 @@ turning a refusal into a physical mutation."
              (multiple-value-bind (record reason) (fnn-admin-reconfigure plan (fnn-admin-clock-plan))
                (unless record
                  (fnn-refuse "administrative configuration refused: ~a" reason))
-               (let* ((observation (fnn-config-record-observation store))
-                      (names (mapcar #'car observation))
-                      (config-records (fnn-config-records-from-observation observation))
-                      (authorization
-                        (or (fnn-admin-authorize-carried store config-records record names)
-                            (fnn-admin-authorize store (fnn-history-records store)
-                                                 config-records record names))))
-                 (multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
-                 ; The durable publisher is the acceptance boundary.  Verify
-                 ; the published file under the retained exclusive lock:
-                 ; releasing it before the readback would let a later
-                 ; administrator make this already durable command appear to
-                 ; fail merely by advancing the history.
+               (multiple-value-bind (generation name verification)
+                   (fnn-admin-publish-record store record)
                  (fnn-out "configured generation=~d record=~a verification=~a"
-                          generation name
-                          (fnn-admin-verify-under-lock store record authorization))
-                 +fnn-exit-ok+))))
+                          generation name verification)
+                 +fnn-exit-ok+)))
         (when store (fnn-store-close store)))))
 
 (defun fnn-command-admin (root arguments)

@@ -1,6 +1,6 @@
 """Compaction over the record log, on the native images (lane log-recovery;
 planning/design-2026-09-27-storage-log.md sections 4 and 6; books/store-log-
-stream.lisp, T8 fn-lgw-segment-drop-preserves-the-open).
+segments.lisp, T8 fn-lg-segment-drop-preserves-the-open).
 
 A format-9 store's `store compact` publishes a state checkpoint with the log
 ROTATED (the active segment closed, the next created and fenced before the
@@ -27,7 +27,6 @@ segments it covers.  The cases, each over a store the served node filled:
 """
 from __future__ import annotations
 
-import re
 import os
 import shutil
 import tempfile
@@ -44,11 +43,10 @@ ROTATION_CUTS = ("rotate-created", "rotate-fenced", "rotate-durable",
 
 
 def segments(store: Path):
-    """journal/'s log segments (NNNNNN.log, books/store-log-segments.lisp
-    fn-lgs-segment-index); journal/ also holds the decision journal
-    decisions.fnj (time-model-2), which is not a segment."""
-    return sorted(p.name for p in (store / "journal").iterdir()
-                  if re.fullmatch(r"[0-9]{6}\.log", p.name))
+    """The log's segments in journal/ (NNNNNN.log).  journal/ also holds the
+    owner's decision journal decisions.fnj (lane time-model-2, HST-028),
+    which is not a segment."""
+    return sorted(p.name for p in (store / "journal").iterdir() if p.name.endswith(".log"))
 
 
 

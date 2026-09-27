@@ -917,8 +917,31 @@ The two operations (the Fable mandate, section 8):
 
 The verb, offline under the exclusive lock after the ordinary open:
 
-    fn operator CONFIG store reclaim [--dry-run]
+    fn operator CONFIG store reclaim [--dry-run | --recorded]
     fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS}
+
+The instant is recorded (PKT-857, books/reclaim-instant.lisp, PRF-327).
+Under `release-after DAYS` the context reads the clock; before a reclaim
+rewrites anything it publishes one configuration record whose only delta is
+the limit row `retention-reclaim-at` (the stamp plus one, 0 when the clock had
+no wall reading), through the administrative authorization, publication and
+read-back, and the report names it (`instant-record=NAME generation=G`). The
+configuration that record yields names the rule and the instant the decision
+used (KEYSTONE `fn-rci-recorded-context-is-the-decided-context`), and the
+decision over it is the decision taken (KEYSTONE
+`fn-rci-recorded-decision-is-the-decision`): the rewritten history is a
+function of the pre-reclaim history and the record, so a copy of the
+pre-reclaim store given that record reproduces the reclaim with
+`store reclaim --recorded`, which reclaims at the recorded instant, records
+nothing, and is refused by name (`no-recorded-instant`) where no reclaim was
+ever recorded. A process death after the record and before the checkpoint's
+install leaves the instant recorded and the history unrewritten: `--recorded`
+completes it; a plain rerun records a later instant. This is not a store
+format change: a `:set-limit` row of a slot no reader names is admitted by
+every image and read by none (a new record-log event kind would be one: the
+open refuses any record it cannot decode). Each reclaim takes one
+configuration generation of the profile's `max-config-generations`; a
+refused publication refuses the reclaim before any rewrite.
 
 The host streams the history one record at a time into ACL2's fold
 (`fn-rcls-step` under the store's context `fn-rclp-ctx`) and keeps each

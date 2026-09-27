@@ -11047,6 +11047,37 @@
           "name": "fn-otm-closed-posting-never-awaits-an-article"
         }
       ]
+    },
+    {
+      "id": "PRF-327",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rci-recorded-instant-reads-back"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rci-recorded-context-is-the-decided-context",
+          "note": "KEYSTONE. Host: host/checkpoint-host.lisp fn-store-reclaim-instant-record / fn-store-reclaim-context, called by host/native/checkpoint.lisp fnn-reclaim-record-instant and fnn-log-reclaim-steps. Teeth: tests/acl2/reclaim-instant-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rci-recorded-decision-is-the-decision",
+          "note": "KEYSTONE. Host: host/checkpoint-host.lisp fn-store-log-reclaim-decide-recorded (--recorded) and fn-store-log-reclaim-decide-stream, called by host/native/checkpoint.lisp fnn-log-reclaim-steps. Teeth: tests/acl2/reclaim-instant-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rci-delta-is-a-delta"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-store-reclaim-recorded-is-the-reclaim-recorded-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-operator-run-reclaim-recorded-action-is-only-store-reclaim-recorded"
+        }
+      ]
     }
   ]
 }
