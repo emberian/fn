@@ -10,17 +10,17 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1062 |
-| Certification roots in the Makefile | 1033 |
-| Books inside the root closure | 1054 |
-| `defthm` and `defthmd` events | 15124 |
-| `defun` events | 10429 |
-| Functions with verified guards | 2338 |
-| Functions declared `:verify-guards nil` and never verified | 823 |
-| Functions left at the default with an explicit guard | 5698 |
+| Books read | 1063 |
+| Certification roots in the Makefile | 1034 |
+| Books inside the root closure | 1055 |
+| `defthm` and `defthmd` events | 15158 |
+| `defun` events | 10436 |
+| Functions with verified guards | 2336 |
+| Functions declared `:verify-guards nil` and never verified | 829 |
+| Functions left at the default with an explicit guard | 5701 |
 | Functions left at the default with no guard | 1570 |
-| `assert-event` checks | 15590 |
-| `must-fail` checks | 1848 |
+| `assert-event` checks | 15594 |
+| `must-fail` checks | 1855 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 77 |
 | Theorems flagged SUSPECT by shape | 145 |
@@ -479,8 +479,9 @@ that `make certify` requests.
 | `books/owner-advance-carried.lisp` | root | 23 | 7 | 0/2/5/0 | 0 | 0 | 0 |
 | `books/owner-agent.lisp` | root | 31 | 8 | 0/0/8/0 | 0 | 0 | 0 |
 | `books/owner-bound-commit.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/owner-checkpoint-open.lisp` | root | 17 | 6 | 4/0/2/0 | 0 | 0 | 0 |
-| `books/owner-checkpoint-pipeline.lisp` | root | 97 | 35 | 4/5/25/1 | 0 | 0 | 3 |
+| `books/owner-checkpoint-open.lisp` | root | 21 | 7 | 4/0/3/0 | 0 | 0 | 0 |
+| `books/owner-checkpoint-pipeline.lisp` | root | 73 | 4 | 0/3/0/1 | 0 | 0 | 3 |
+| `books/owner-checkpoint-writer.lisp` | root | 53 | 34 | 2/5/27/0 | 0 | 0 | 0 |
 | `books/owner-commit-carried.lisp` | root | 32 | 16 | 8/0/8/0 | 0 | 0 | 0 |
 | `books/owner-commit-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-config-observe.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -987,7 +988,7 @@ that `make certify` requests.
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 47 | 11 | 0 |
 | `tests/acl2/owner-agent-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 3 | 0 |
 | `tests/acl2/owner-bound-commit-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 5 | 3 | 0 |
-| `tests/acl2/owner-checkpoint-open-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 7 | 0 |
+| `tests/acl2/owner-checkpoint-open-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 34 | 10 | 0 |
 | `tests/acl2/owner-commit-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 25 | 5 | 0 |
 | `tests/acl2/owner-config-observe-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 1 | 0 |
 | `tests/acl2/owner-config-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 149 | 1 | 0 |
@@ -1072,7 +1073,7 @@ that `make certify` requests.
 | `tests/acl2/store-capacity-vector-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 36 | 1 | 0 |
 | `tests/acl2/store-carried-folds-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 49 | 8 | 0 |
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 25 | 11 | 0 |
-| `tests/acl2/store-checkpoint-tables-tests.lisp` | root | 1 | 3 | 0/3/0/0 | 11 | 4 | 0 |
+| `tests/acl2/store-checkpoint-tables-tests.lisp` | root | 2 | 6 | 0/6/0/0 | 13 | 8 | 0 |
 | `tests/acl2/store-compact-verb-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 49 | 8 | 0 |
 | `tests/acl2/store-event-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/store-events-carried-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 56 | 11 | 0 |
@@ -1241,9 +1242,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-nov-missing-header-is-empty` | `books/nntp-overview.lisp` | 99 | branch-of-definition: the hypothesis negates a branch test of fn-nov-header-content and the conclusion is that branch's value |
 | `fn-nss-hdr-lines-of-no-numbers` | `books/nntp-search-scope.lisp` | 77 | branch-of-definition: the hypothesis negates a branch test of fn-nntp-hdr-lines-for-numbers and the conclusion is that branch's value |
 | `fn-ocfg-refused-reconfiguration-changes-nothing` | `books/owner-config.lisp` | 859 | branch-of-definition: the hypothesis negates a branch test of fn-ocfg-reconfigure and the conclusion is that branch's value |
-| `fn-ockp-later-done` | `books/owner-checkpoint-pipeline.lisp` | 1081 | branch-of-definition: the hypothesis is a branch test of fn-ockp-later and the conclusion is that branch's value |
-| `fn-ockp-remaining-done` | `books/owner-checkpoint-pipeline.lisp` | 1087 | branch-of-definition: the hypothesis is a branch test of fn-ockp-remaining and the conclusion is that branch's value |
-| `fn-ockp-rows-program-of-atom` | `books/owner-checkpoint-pipeline.lisp` | 930 | branch-of-definition: the hypothesis negates a branch test of fn-sct-rows-program and the conclusion is that branch's value |
+| `fn-ockp-later-done` | `books/owner-checkpoint-pipeline.lisp` | 377 | branch-of-definition: the hypothesis is a branch test of fn-ockp-later and the conclusion is that branch's value |
+| `fn-ockp-remaining-done` | `books/owner-checkpoint-pipeline.lisp` | 383 | branch-of-definition: the hypothesis is a branch test of fn-ockp-remaining and the conclusion is that branch's value |
+| `fn-ockp-rows-program-of-atom` | `books/owner-checkpoint-pipeline.lisp` | 226 | branch-of-definition: the hypothesis negates a branch test of fn-sct-rows-program and the conclusion is that branch's value |
 | `fn-olc-pin-trie-of-unpinned` | `books/owner-list-counts-read.lisp` | 51 | branch-of-definition: the hypothesis negates a branch test of fn-gidx-pin-trie and the conclusion is that branch's value |
 | `fn-osb-install-refuses-unadmitted-by-definition` | `books/owner-served-bound.lisp` | 96 | branch-of-definition: the hypothesis negates a branch test of fn-osb-install and the conclusion is that branch's value |
 | `fn-own-conn-live-session-of-an-unconfigured-reader-is-the-session` | `books/owner-invariants.lisp` | 947 | branch-of-definition: the hypothesis negates a branch test of fn-own-conn-live-session and the conclusion is that branch's value |
