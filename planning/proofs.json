@@ -3738,6 +3738,7 @@
         "fn-nntp-withdrawn-article-answers-430-withdrawn",
         "fn-nntp-hdr-fn-control-is-the-status",
         "fn-nntp-hdr-fn-control-executed-means-withdrawn",
+        "fn-nntp-hdr-fn-control-status-is-the-model-status",
         "fn-own-read-archive-command-is-the-pinned-dispatcher",
         "fn-own-related-conn-control",
         "fn-ctl-served-status-is-control-status"
@@ -8581,6 +8582,7 @@
         "fn-mod-hidden-queues-is-hiddenp",
         "fn-auth-access-text-of-moderation-config",
         "fn-mvb-approve-commits-the-held-article-approved",
+        "fn-mvb-held-article-is-the-model-body",
         "fn-mvb-only-a-moderator-approves-or-rejects",
         "fn-mvb-reject-withdraws-the-held-envelope"
       ]
