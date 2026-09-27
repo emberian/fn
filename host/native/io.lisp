@@ -4977,7 +4977,9 @@ tree root), or stop the build."
 ;;; path calls these yet: lane w6-log-owner moves the commit onto them.
 
 (defparameter +fnn-log-model-cuts+
-  '("log-written" "log-fenced" "log-truncated" "log-recovered"))
+  '("log-written" "log-fenced" "log-truncated" "log-recovered"
+    ;; books/store-log-extend.lisp fn-lg-extend-program (fnn-log-ensure-extent).
+    "log-extended" "log-extent-fenced"))
 
 (defstruct (fnn-log (:constructor %make-fnn-log))
   path fd kernel unit max extent
@@ -5019,19 +5021,22 @@ qualification profile).  Elsewhere the platform's durable barrier."
   (fnn-durable-barrier fd)
   nil)
 
-(defun fnn-log-preallocate (fd extent)
-  "EXTENT allocated zero octets in a new segment: posix_fallocate on Linux,
-zeros written elsewhere (OpenBSD has no fallocate)."
+(defun fnn-log-preallocate (fd extent &optional (from 0))
+  "Zero octets allocated over [FROM, EXTENT) of the segment: posix_fallocate
+on Linux (its allocated range reads zeros: A-HOST), zeros written elsewhere
+(OpenBSD has no fallocate).  FROM is the old extent when an existing segment
+grows (fnn-log-ensure-extent): the octets before it are the log and are never
+written here."
   #+linux
   (let ((r (sb-alien:alien-funcall
             (sb-alien:extern-alien "posix_fallocate"
                                    (function sb-alien:int sb-alien:int
                                              sb-alien:long sb-alien:long))
-            fd 0 extent)))
+            fd from (- extent from))))
     (unless (zerop r) (fnn-os-fail r)))
   #-linux
-  (let ((zeros (fnn-make-octets (min extent 65536))) (at 0))
-    (fnn-posix () (sb-posix:lseek fd 0 sb-posix:seek-set))
+  (let ((zeros (fnn-make-octets (min (- extent from) 65536))) (at from))
+    (fnn-posix () (sb-posix:lseek fd from sb-posix:seek-set))
     (loop while (< at extent) do
       (let ((n (min (length zeros) (- extent at))))
         (fnn-write-range fd zeros 0 n)
@@ -5372,20 +5377,26 @@ first (inside a batch quantum the batch closes at the operator's bounds)."
     (fnn-fault "the log kernel refused an empty batch's take")))
 
 (defun fnn-log-ensure-extent (log)
-  "Grow the segment when the open batch does not fit (fn-lgk-fitsp): ACL2's
-next extent (fn-olr-next-extent), posix_fallocate and one barrier.  The
-octets past the frontier stay zeros (the relation's tail).  The extension is
-not a P-BATCH step (PKT-COL-4: its program and cut): a death during it leaves
-the old extent or the new one, zeros past the frontier either way."
+  "books/store-log-extend.lisp fn-lg-extend-program: when the open batch and
+one spare unit do not fit the segment (fn-olr-extension-needed-p), grow it to
+ACL2's target (fn-olr-extension-target: whole units, past the old extent),
+then one barrier.  Runs at rest (no batch in flight); the octets before the
+old extent are never written, the new ones read zeros, and the kernel is
+unchanged (fn-lg-extend-program-keeps-the-relation).  A death at
+log-extended recovers exactly the committed records
+(fn-lg-extension-written-crash-reads-the-committed-records)."
   (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
-    (unless (fnn-core 'fn-lgk-fitsp ks unit extent)
-      (let ((next (fnn-nat (fnn-core 'fn-olr-next-extent extent
-                                     (+ (fnn-core 'fn-lgk-frontier ks) (fnn-log-octets log))
-                                     unit))))
-        (unless (fnn-core 'fn-lg-extent-okp next unit)
+    (when (fnn-core 'fn-olr-extension-needed-p (fnn-core 'fn-lgk-frontier ks)
+                    (fnn-log-octets log) extent unit)
+      (let ((next (fnn-nat (fnn-core 'fn-olr-extension-target
+                                     (fnn-core 'fn-lgk-frontier ks) (fnn-log-octets log)
+                                     extent unit))))
+        (unless (and (fnn-core 'fn-lg-extent-okp next unit) (> next extent))
           (fnn-fault "ACL2 returned an invalid log extent"))
-        (fnn-log-preallocate (fnn-log-fd log) next)
+        (fnn-log-preallocate (fnn-log-fd log) next extent)
+        (fnn-log-at :log-extended)
         (fnn-log-fdatasync (fnn-log-fd log))
+        (fnn-log-at :log-extent-fenced)
         (setf (fnn-log-extent log) next)))))
 
 (defun fnn-log-commit-open-batch (store)
