@@ -8010,6 +8010,58 @@
         "fn-rck-skew-within-the-rfc",
         "fn-peer-decide-transfer-refuses-what-the-octets-refuse"
       ]
+    },
+    {
+      "id": "PRF-210",
+      "title": "A cancel's authority is exactly a granted signed canceller or the poster: an unsigned cancel or Supersedes withdraws its target exactly when one of its RFC 8315 Cancel-Key entries opens one of the target's sha256 Cancel-Locks; the octets the owner stores for an account's POST carry exactly one Cancel-Lock keyed by that account under an HKDF purpose key, outside the D25 source",
+      "statement": "Withdrawal (unchanged): over fn-ctl-refresh-withdrawals / fn-ctl-journal-withdrawals, the record of a cause withdraws a target exactly when the cause names another target and either a verified principal P signed it or P's grants cover its groups, or no principal is verified and a Cancel-Key K of the cause has Base64(SHA-256(K)) among the target's sha256 Cancel-Locks (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster; fn-ctl-verified-cause-ignores-its-keys). Stored octets: books/owner-served-invariants.lisp fn-own-sub-stored-octets CFG SUB RING (host/owner-host.lisp fn-owner-take; the completion gate compares the same function): for a served submission by account A (fn-own-sub-account, recorded by fn-own-finish-read from the session subject) with a key ring installed (fn-ns-ringp), unsigned and with no poster Cancel-Lock, the stored octets are `Cancel-Lock: sha256:Base64(SHA-256(K))` CRLF, then on a cancel `Cancel-Key:` with one key per retained epoch, then the injected octets unchanged, K = Base64(HMAC-SHA256(key, hex(A) || MSGID)) with key the HKDF-SHA256 purpose key of the current epoch (info fn/cancel-lock/v1, salt the node identity) (fn-own-stored-octets-carry-the-account-lock, fn-cl-served-payload-writes-one-account-lock). D25: the projection fn-cll-skip that books/poster-bytes.lisp reads both compared payloads through gives the injected octets for every ring and account (fn-own-stored-octets-keep-the-injected-octets, fn-cl-served-payload-projects-to-the-injected-octets, fn-cll-skip-of-the-generated-lines), so a same-source retry by any account or key epoch is :duplicate and a different source :conflict at fn-rcl-existing-action (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored, fn-cld-a-changed-source-is-a-conflict-whatever-the-account). Rotation: a cancel's keys open a lock made under any retained epoch (fn-cl-ring-keys-open-every-retained-lock). Exactly the account's key opens its lock up to the stated collision (fn-cl-account-key-opens-exactly-its-lock). Derivation: distinct info labels never expand the same HKDF input (fn-ns-expand-input-separates-info); the key file round-trips (fn-ns-file-parse-of-render). Not theorems: that the written line parses back as the entry (teeth on parsed stored octets); that another account's key opens nothing (a SHA-256 collision of two HMAC outputs under a key the forger does not hold, about 2^128 generic work); HMAC/HKDF pseudorandomness.",
+      "milestone": "M4",
+      "requirements": [
+        "SEC-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/control-authority.lisp",
+        "books/control-visible.lisp",
+        "books/control-served.lisp",
+        "books/control-evidence.lisp",
+        "books/cancel-lock.lisp",
+        "books/cancel-lock-lines.lisp",
+        "tests/acl2/cancel-lock-tests.lisp",
+        "books/node-secret.lisp",
+        "books/owner.lisp",
+        "books/owner-served-invariants.lisp",
+        "tests/acl2/node-secret-tests.lisp",
+        "tests/acl2/owner-cancel-lock-tests.lisp",
+        "tests/test_native_own_cancel.py",
+        "planning/evidence/newsreader-cancel-2026-09-26.md",
+        "books/cancel-lock-d25.lisp",
+        "tests/acl2/cancel-lock-d25-tests.lisp",
+        "books/poster-bytes.lisp",
+        "books/poster-bytes-buffer.lisp"
+      ],
+      "progress_note": "newsreader-cancel-2 (2026-09-27): the node-written lock is in the stored octets (fn-own-sub-stored-octets under fn-own-node-secret) and the completion gate compares the same function; persvati run-20260926T231408Z-d865 green at 53dc88c1c (manifest planning/evidence/manifests/certify-20260926T231509Z-3976540.json: 175 certified incl. books/node-secret, books/cancel-lock, books/owner-served-invariants and the teeth tests/acl2/{node-secret,cancel-lock,owner-cancel-lock}-tests); tests.test_native_own_cancel OK (3 ran) on both images and test_native_control_across_peers OK on hbox native-n5; V0-CLIENT-THUNDERBIRD-CANCEL accepted on persvati. Earlier: newsreader-cancel (2026-09-26) the decision half.",
+      "events": [
+        "fn-ctl-withdrawal-authority-is-exactly-signer-or-poster",
+        "fn-ctl-verified-cause-ignores-its-keys",
+        "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets",
+        "fn-ctl-withdrawal-plan-record-is-bound",
+        "fn-ctl-cancel-executes-only-for-author-or-authority",
+        "fn-own-stored-octets-carry-the-account-lock",
+        "fn-own-stored-octets-keep-the-injected-octets",
+        "fn-cl-account-key-opens-exactly-its-lock",
+        "fn-cl-served-payload-writes-one-account-lock",
+        "fn-cl-served-payload-projects-to-the-injected-octets",
+        "fn-cl-ring-keys-open-every-retained-lock",
+        "fn-cll-skip-of-the-generated-lines",
+        "fn-ns-expand-input-separates-info",
+        "fn-ns-cancel-lock-and-posting-account-inputs-differ",
+        "fn-ns-file-parse-of-render",
+        "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored",
+        "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
+      ]
     }
   ]
 }

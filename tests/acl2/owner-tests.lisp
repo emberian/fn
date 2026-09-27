@@ -601,7 +601,7 @@
                (list :fn-clock-observation 'x 1600000000000 5000 t)
                (fn-own-facts *own-clocked*) (fn-own-config *own-clocked*)
                (fn-own-queue *own-clocked*) (fn-own-inflight *own-clocked*)
-               (fn-own-feeds *own-clocked*) (fn-own-refused *own-clocked*)))
+               (fn-own-feeds *own-clocked*) (fn-own-node-secret *own-clocked*) (fn-own-refused *own-clocked*)))
 (assert-event (not (fn-own-relation *own-clock-garbage*)))
 (assert-event (equal (fn-own-observe-outcome *own-clock-garbage* *own-obs*) :refused))
 (assert-event
@@ -842,7 +842,7 @@
                                    (fn-own-sub-make *fn-own-control-id* 0 2
                                                     (fn-own-sub-decision
                                                      (fn-own-inflight *own-p-done*)))
-                                   (fn-own-feeds *own-p-done*) (fn-own-refused *own-p-done*))
+                                   (fn-own-feeds *own-p-done*) (fn-own-node-secret *own-p-done*) (fn-own-refused *own-p-done*))
                       :duplicate)
                      :uncertain))
 ; Teeth: one violating value per hypothesis, the others holding.
@@ -863,7 +863,7 @@
   `(fn-own-make (fn-own-store ,o) (fn-own-view ,o) ,conns (fn-own-next-id ,o)
                 (fn-own-max-conns ,o) (fn-own-pending ,o) (fn-own-ledger ,o)
                 (fn-own-clock ,o) (fn-own-facts ,o) (fn-own-config ,o)
-                (fn-own-queue ,o) ,inflight (fn-own-feeds ,o) nil))
+                (fn-own-queue ,o) ,inflight (fn-own-feeds ,o) (fn-own-node-secret ,o) nil))
 (assert-event (equal (car (fn-own-outcome *own-p-done* 4 :refused))
                      (own-w2-rhs *own-p-done* 4 :refused)))
 ; mark below the ledger: *own-taken* has consumed nothing, so :refused refuses.
@@ -1094,7 +1094,7 @@
   (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                (fn-own-next-id o) (fn-own-max-conns o) (fn-own-pending o)
                (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-               (fn-own-config o) (fn-own-queue o) sub (fn-own-feeds o) (fn-own-refused o)))
+               (fn-own-config o) (fn-own-queue o) sub (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
 (defun own-fed-local-on-connection ()
   (let ((sub (fn-own-inflight *own-control-fed-done*)))
     (own-with-inflight
@@ -1415,7 +1415,7 @@
     (fn-own-make (fn-own-store *own-after*) (fn-own-view *own-after*)
                  (list (fn-own-conn-make 0 0 0 (fn-served-conn-wire sconn)
                                          (fn-served-conn-session sconn) archive nil nil))
-                 1 4 nil nil nil nil nil nil nil nil (fn-own-refused *own-after*))))
+                 1 4 nil nil nil nil nil nil nil nil nil (fn-own-refused *own-after*))))
 (assert-event (not (fn-own-relation *own-bogus*)))
 
 ; K1 (served) without (fn-own-relation o): the reply is not the served step
@@ -1501,7 +1501,7 @@
 (defconst *own-bogus-pin*
   (fn-own-make (fn-own-store *own-0*) (fn-own-view *own-0*)
                (list (fn-own-conn-make 0 7 0 nil nil nil nil nil))
-               1 4 nil nil nil nil nil nil nil nil (fn-own-refused *own-0*)))
+               1 4 nil nil nil nil nil nil nil nil nil (fn-own-refused *own-0*)))
 (assert-event
  (not (equal (fn-own-take 7 (fn-sf-records (fn-sn-files (fn-own-store
                                                          (fn-own-run *own-bogus-pin* *own-trace*)))))
@@ -1520,7 +1520,7 @@
  (with-guard-checking :none
   (let ((o (fn-own-make (fn-own-store *own-0*) (fn-own-view-make 3 0 nil)
                         (list (fn-own-conn-make 0 "seven" 0 nil nil nil nil nil))
-                        1 4 nil nil nil nil nil nil nil nil (fn-own-refused *own-0*))))
+                        1 4 nil nil nil nil nil nil nil nil nil (fn-own-refused *own-0*))))
     (not (<= (fn-own-reclaim-floor o)
              (fn-own-conn-version (fn-own-find-conn 0 (fn-own-conns o))))))))
 
@@ -1533,7 +1533,7 @@
                      (fn-own-conn-make 2 2 2 nil nil nil nil nil)
                      (fn-own-conn-make 3 2 2 nil nil nil nil nil)
                      (fn-own-conn-make 4 2 2 nil nil nil nil nil))
-               5 4 nil nil nil nil nil nil nil nil (fn-own-refused *own-after*)))
+               5 4 nil nil nil nil nil nil nil nil nil (fn-own-refused *own-after*)))
 (assert-event (not (<= (len (fn-own-conns (fn-own-run *own-over* nil)))
                        (fn-own-max-conns *own-over*))))
 (assert-event (not (fn-own-conns-boundedp (fn-own-conns (fn-own-run *own-over* nil))
@@ -1542,7 +1542,7 @@
 ; K5 without (fn-own-relation o): a ledger entry with no record.
 (defconst *own-forged*
   (fn-own-make (fn-own-store *own-0*) (fn-own-view *own-0*) nil 0 4 nil
-               (list (cons 0 0)) nil nil nil nil nil nil (fn-own-refused *own-0*)))
+               (list (cons 0 0)) nil nil nil nil nil nil nil (fn-own-refused *own-0*)))
 (assert-event
  (not (fn-sf-record-has-pairp (cons 0 0)
                               (fn-sf-records (fn-sn-files (fn-own-store
@@ -1559,7 +1559,7 @@
 (assert-event (not (fn-own-relation (fn-own-run *own-bogus* nil))))
 (assert-event
  (with-guard-checking :none
-  (not (fn-snt-relation (fn-own-store (fn-own-run (fn-own-make nil nil nil 0 4 nil nil nil nil nil nil nil nil nil)
+  (not (fn-snt-relation (fn-own-store (fn-own-run (fn-own-make nil nil nil 0 4 nil nil nil nil nil nil nil nil nil nil)
                                                   nil))))))
 
 ; Root without open-okp: a rejected image (malformed frontier) has kind
@@ -1591,7 +1591,7 @@
 ; stamped nil; without (member-equal fact facts): a fact the log never held.
 (defconst *own-unstamped*
   (fn-own-make (fn-own-store *own-0*) (fn-own-view *own-0*) nil 0 4 nil nil nil
-               (list (fn-own-group-fact-make "fn.new" nil)) nil nil nil nil (fn-own-refused *own-0*)))
+               (list (fn-own-group-fact-make "fn.new" nil)) nil nil nil nil nil (fn-own-refused *own-0*)))
 (assert-event (not (fn-own-relation *own-unstamped*)))
 (assert-event (not (fn-clock-observationp
                     (fn-own-group-fact-stamp (car (fn-own-facts *own-unstamped*))))))
@@ -1606,7 +1606,7 @@
   (fn-own-make (fn-own-store *own-p1*) (fn-own-view *own-p1*) (fn-own-conns *own-p1*)
                5 4 4 (list (cons 9 9)) (fn-own-clock *own-p1*) nil *own-config* nil
                (fn-own-sub-make 4 2 0 (fn-served-submission (car *own-submitted*)))
-               nil (fn-own-refused *own-p1*)))
+               nil nil (fn-own-refused *own-p1*)))
 (assert-event (not (fn-own-relation *own-forged-post*)))
 (assert-event
  (let ((conn (fn-own-find-conn 4 (fn-own-conns *own-forged-post*))))

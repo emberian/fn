@@ -39,16 +39,43 @@
                                             nil nil)
                       nil nil nil))
                6 8 nil nil nil nil nil nil
-               (fn-own-sub-make 5 0 0 nil) nil nil))
+               (fn-own-sub-make-author 5 0 0 nil (if authenticatedp login nil)
+                                       (if authenticatedp
+                                           (make-list 32 :initial-element 1)
+                                         nil))
+               nil nil nil))
 (defconst *lbt-o* (lbt-owner *lbt-login* t))
 (defconst *lbt-o-guest* (lbt-owner *lbt-other-login* t))
 (defconst *lbt-o-unauthenticated* (lbt-owner *lbt-login* nil))
 (defconst *lbt-o-control*
   (fn-own-make nil nil nil 6 8 nil nil nil nil nil nil
-               (fn-own-sub-make *fn-own-control-id* 0 0 nil) nil nil))
+               (fn-own-sub-make *fn-own-control-id* 0 0 nil) nil nil nil))
 (assert-event (equal (fn-lb-inflight-login *lbt-o*) *lbt-login*))
 (assert-event (null (fn-lb-inflight-login *lbt-o-unauthenticated*)))
 (assert-event (null (fn-lb-inflight-login *lbt-o-control*)))
+; PKT-619: the gate reads the login recorded on the submission, not the
+; connection: with the connection gone (no connection at all) the recorded
+; login still decides, and a connection that now says another login does
+; not change it.
+(defconst *lbt-o-gone*
+  (fn-own-make nil nil nil 6 8 nil nil nil nil nil nil
+               (fn-own-sub-make-author 5 0 0 nil *lbt-login*
+                                       (make-list 32 :initial-element 1))
+               nil nil nil))
+(assert-event (equal (fn-lb-inflight-login *lbt-o-gone*) *lbt-login*))
+(defconst *lbt-o-since*
+  (fn-own-make nil nil
+               (list (fn-own-conn-make
+                      5 0 0 nil
+                      (fn-auth-make-session nil nil *lbt-other-login*
+                                            (make-list 32 :initial-element 2)
+                                            nil nil)
+                      nil nil nil))
+               6 8 nil nil nil nil nil nil
+               (fn-own-sub-make-author 5 0 0 nil *lbt-login*
+                                       (make-list 32 :initial-element 1))
+               nil nil nil))
+(assert-event (equal (fn-lb-inflight-login *lbt-o-since*) *lbt-login*))
 
 ; A macro, not a constant: the plan decodes through attached codecs, which
 ; a defconst may not call.

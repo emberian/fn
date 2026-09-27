@@ -123,7 +123,7 @@
            (fn-ocl-view-historyp
             (fn-own-refresh
              (fn-own-make st view conns next-id max-conns pending ledger
-                          clock facts config queue inflight feeds refused))))
+                          clock facts config queue inflight feeds node-secret refused))))
   :rule-classes nil
   :hints (("Goal" :use fn-ocl-refreshed-idle-view-history
            :in-theory (disable fn-own-refresh fn-ocl-view-historyp
@@ -133,7 +133,7 @@
                  (fn-ocfg-make
                   (fn-own-refresh
                    (fn-own-make st view conns next-id max-conns pending ledger
-                                clock facts config queue inflight feeds refused))
+                                clock facts config queue inflight feeds node-secret refused))
                   cfg pins staged))
                 (equal (fn-sf-phase (fn-sn-files st)) :ready)
                 (true-listp (fn-sf-records (fn-sn-files st))))
@@ -141,7 +141,7 @@
             (fn-ocfg-make
              (fn-own-refresh
               (fn-own-make st view conns next-id max-conns pending ledger
-                           clock facts config queue inflight feeds refused))
+                           clock facts config queue inflight feeds node-secret refused))
              cfg pins staged)))
   :rule-classes nil
   :hints (("Goal"
@@ -218,6 +218,7 @@
                   (queue (fn-own-queue (fn-ocfg-owner oc)))
                   (inflight (fn-own-inflight (fn-ocfg-owner oc)))
                   (feeds (fn-own-feeds (fn-ocfg-owner oc)))
+                  (node-secret (fn-own-node-secret (fn-ocfg-owner oc)))
                   (refused (fn-own-refused (fn-ocfg-owner oc))))
                  (:instance fn-ocmt-refreshed-ready-view-config
                   (st (fn-sn-finish (fn-own-store (fn-ocfg-owner oc))))
@@ -234,6 +235,7 @@
                   (queue (fn-own-queue (fn-ocfg-owner oc)))
                   (inflight (fn-own-inflight (fn-ocfg-owner oc)))
                   (feeds (fn-own-feeds (fn-ocfg-owner oc)))
+                  (node-secret (fn-own-node-secret (fn-ocfg-owner oc)))
                   (refused (fn-own-refused (fn-ocfg-owner oc)))
                   (cfg (fn-ocfg-config oc)) (pins (fn-ocfg-pins oc))
                   (staged (fn-ocfg-staged oc))))

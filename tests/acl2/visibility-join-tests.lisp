@@ -226,7 +226,7 @@
 (vjt-441-fails *pbt-owner* 7 *vjt-t* *vjt-two*)
 ; (2) nothing in flight.
 (defconst *vjt-idle*
-  (fn-own-make nil nil (list *pbt-conn*) 1 4 nil nil *pbt-b* nil *pbt-config* nil nil nil nil))
+  (fn-own-make nil nil (list *pbt-conn*) 1 4 nil nil *pbt-b* nil *pbt-config* nil nil nil nil nil))
 (assert-event (and (fn-own-find-conn 0 (fn-own-conns *vjt-idle*))
                    (not (fn-own-inflight *vjt-idle*))))
 (vjt-441-fails *vjt-idle* 0 *vjt-t* *vjt-two*)

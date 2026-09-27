@@ -165,7 +165,7 @@
    (fn-own-config *opc-related-owner*)
    (fn-own-queue *opc-related-owner*)
    (fn-own-inflight *opc-related-owner*)
-   (fn-own-feeds *opc-related-owner*)))
+   (fn-own-feeds *opc-related-owner*) (fn-own-node-secret *opc-related-owner*) (fn-own-refused *opc-related-owner*)))
 (defconst *opc-stale*
   (fn-ocfg-make *opc-stale-owner*
                 (fn-ocfg-config *opc-second-reserved*)

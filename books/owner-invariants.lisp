@@ -1172,7 +1172,7 @@
                                             ; the first, so only one was ever seen.
                                             (fn-own-config o) (fn-own-queue o)
                                             (fn-own-inflight o)
-                                            (fn-own-feeds o) (fn-own-refused o))))
+                                            (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
                  (:instance fn-own-snrt-step-records-prefix (s (fn-own-store o))))
            :in-theory (e/d (fn-own-relation)
                            (fn-own-conns-okp fn-own-view-okp fn-own-conn-okp fn-own-refresh-preserves-relation fn-own-refresh
@@ -1193,7 +1193,7 @@
                                             (fn-own-clock o) (fn-own-facts o)
                                             (fn-own-config o) (fn-own-queue o)
                                             (fn-own-inflight o)
-                                            (fn-own-feeds o) (fn-own-refused o))))
+                                            (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
                  (:instance fn-snt-finish-preserves-relation (s (fn-own-store o)))
                  (:instance fn-snt-finish-image (s (fn-own-store o)))
                  (:instance fn-snt-finish-keeps-records (s (fn-own-store o)))
@@ -1219,7 +1219,7 @@
                                 (fn-own-view o) nil (fn-own-next-id o)
                                 (fn-own-max-conns o) nil (fn-own-ledger o) nil
                                 (fn-own-facts o) (fn-own-config o) nil nil
-                                (fn-own-feed-restart-all (fn-own-feeds o)) (fn-own-refused o))))
+                                (fn-own-feed-restart-all (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))
                  (:instance fn-sn-open-observed-success-has-live-history-relation
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o))))
@@ -1454,7 +1454,7 @@
              (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                           (fn-own-next-id o) (fn-own-max-conns o) p
                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
-                          (fn-own-config o) (fn-own-queue o) nil fds rf)))
+                          (fn-own-config o) (fn-own-queue o) nil fds (fn-own-node-secret o) rf)))
    :hints (("Goal" :in-theory (enable fn-own-relation)))))
 
 (defthm fn-own-control-outcome-preserves-relation
@@ -1591,7 +1591,7 @@
                           (fn-own-next-id o) (fn-own-max-conns o)
                           (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
                           (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-                          (fn-own-inflight o) fds rf)))
+                          (fn-own-inflight o) fds (fn-own-node-secret o) rf)))
    :hints (("Goal" :in-theory (enable fn-own-relation)))))
 
 (defthm fn-own-step-preserves-relation
@@ -1654,7 +1654,7 @@
                                                 (fn-state-articles archive))
                                                nil))
                                             nil 0 max-conns nil nil nil nil
-                                            nil nil nil nil nil))))
+                                            nil nil nil nil nil nil))))
            :in-theory (e/d (fn-own-relation fn-midx-correspondencep
                             fn-gidx-build)
                            (fn-own-view-make-group-indexed
@@ -2298,10 +2298,12 @@
                 (null (fn-own-pending o))
                 (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :ready))
            (and (equal (fn-own-inflight (fn-own-take-submission o))
-                       (fn-own-sub-make (fn-own-sub-id (car (fn-own-queue o)))
-                                        (fn-own-sub-version (car (fn-own-queue o)))
-                                        (len (fn-own-ledger o))
-                                        (fn-own-sub-decision (car (fn-own-queue o)))))
+                       (fn-own-sub-make-author (fn-own-sub-id (car (fn-own-queue o)))
+                                               (fn-own-sub-version (car (fn-own-queue o)))
+                                               (len (fn-own-ledger o))
+                                               (fn-own-sub-decision (car (fn-own-queue o)))
+                                               (fn-own-sub-login (car (fn-own-queue o)))
+                                               (fn-own-sub-account (car (fn-own-queue o)))))
                 (equal (fn-own-queue (fn-own-take-submission o))
                        (cdr (fn-own-queue o)))
                 (equal (fn-own-pending (fn-own-take-submission o))
@@ -2630,7 +2632,7 @@
                                                        :durable)
                                                 (fn-own-feed-durable
                                                  o (fn-own-inflight o))
-                                                (fn-own-feeds o)) (fn-own-refused o)))))
+                                                (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o)))))
            :in-theory (e/d (fn-own-relation fn-own-outcome)
                            (fn-own-advance fn-own-conn-boundedp
                             fn-served-post-outcome fn-own-outcome-completion

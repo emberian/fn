@@ -496,7 +496,7 @@
                   (fn-ag-append (fn-own-ledger o)
                                 (list (fn-sf-completion (fn-sn-files s))))
                   (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-                  (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-refused o)))))
+                  (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))))
 
 (defun fn-ccar-own-complete (o)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
@@ -526,7 +526,8 @@
          (fn-evc-recordp record)
          (equal (fn-record-msgid record)
                 (fn-record-octets-string (fn-own-sub-msgid sub)))
-         (equal (fn-record-payload record) (fn-own-sub-stored-octets cfg sub))
+         (equal (fn-record-payload record)
+                (fn-own-sub-stored-octets cfg sub (fn-own-node-secret o)))
          t)))
 
 (defthm fn-ccar-completion-names-submission-p-is-reference
@@ -757,7 +758,7 @@
                    (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                    (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
                    (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-refused o))))))
+                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))))
 ; KEYSTONE for the host line (PRF-144 part 2): host/owner-host.lisp
 ; fn-owner-prepare-identity installs this owner; it is the configured owner
 ; event the host used to issue, on every owner the maintained owner relation

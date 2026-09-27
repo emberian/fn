@@ -52,7 +52,7 @@
                  (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                  (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
                  (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-                 (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-refused o))))
+                 (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (defconst *scar-t-bad-oc*
   (fn-ocfg-make *scar-t-bad-o* (fn-ocfg-config *scar-t-oc*)
                 (fn-ocfg-pins *scar-t-oc*) (fn-ocfg-staged *scar-t-oc*)))

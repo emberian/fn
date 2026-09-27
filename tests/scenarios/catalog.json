@@ -4381,6 +4381,38 @@
         "437 transfer rejected; no Path",
         "235"
       ]
+    },
+    {
+      "id": "SCN-141",
+      "title": "A friend cancels their own unsigned post with RFC 8315 Cancel-Lock/Cancel-Key (as tin writes them): gone from ARTICLE and OVER on their node and on two peers in either arrival order, kept gone after SIGKILL; another login's cancel with its own key is filed and withdraws nothing",
+      "milestone": "M4",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_own_cancel",
+        "cases": [
+          "test_a_login_cancels_its_own_post_here_and_on_peers"
+        ],
+        "native": true,
+        "log": "planning/evidence/newsreader-cancel-2026-09-26/native-own-cancel.log",
+        "record": "planning/evidence/newsreader-cancel-2026-09-26.md"
+      },
+      "requirements": [
+        "SEC-006"
+      ],
+      "steps": [
+        "Node H requires AUTHINFO with logins alice and bob; nodes A and B take IHAVE from a configured peer.",
+        "alice POSTs T with `Cancel-Lock: sha256:Base64(SHA-256(K))`; bob POSTs `Control: cancel T` with a Cancel-Key of his own; alice POSTs `Control: cancel T` with `Cancel-Key: sha256:K`; ARTICLE T and OVER after each; SIGKILL H and restart.",
+        "Relay T, bob's cancel and alice's cancel (as H stored them) to A (target first) and to B (cancels first)."
+      ],
+      "evidence": [
+        "tests/acl2/cancel-lock-tests.lisp",
+        "tests/test_native_own_cancel.py"
+      ],
+      "expected": [
+        "T as stored carries alice's Cancel-Lock unchanged; each cancel carries its Cancel-Key.",
+        "After bob's cancel (240) T answers 220; after alice's cancel (240) T answers 430 withdrawn and OVER no longer lists it; after the restart T still answers 430.",
+        "A serves T after T and bob's cancel, and answers 430 after alice's cancel; B answers 430 and its OVER omits T."
+      ]
     }
   ]
 }

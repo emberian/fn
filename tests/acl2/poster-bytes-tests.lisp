@@ -254,7 +254,7 @@
   (fn-own-make nil nil (list *pbt-conn*) 1 4 nil ledger *pbt-b* nil
                *pbt-config* nil
                (fn-own-sub-make id 0 0 (fn-inj-decide *pbt-dateless* *pbt-config* *pbt-b*))
-               nil nil))
+               nil nil nil))
 (defconst *pbt-owner* (pbt-owner 0 nil))
 (defconst *pbt-consumed* (pbt-owner 0 '(committed)))
 
@@ -290,7 +290,7 @@
  (assert-event
   (equal (car (fn-own-outcome
                (fn-own-make nil nil (list *pbt-conn*) 1 4 nil nil *pbt-b* nil
-                            *pbt-config* nil nil nil nil)
+                            *pbt-config* nil nil nil nil nil)
                0 (fn-pb-existing-action *pbt-msgid* *pbt-resend* *pbt-groups*
                                         *pbt-store*)))
          *pbt-duplicate-line*)))

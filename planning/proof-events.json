@@ -7564,6 +7564,79 @@
           "note": "KEYSTONE shared with PRF-235: :path-syntax and :date-syntax are octet-decided refusals. :date-future and :no-path are witnessed through fn-peer-decide-transfer in tests/acl2/transit-hygiene-tests.lisp and natively in tests/test_native_peering.py."
         }
       ]
+    },
+    {
+      "id": "PRF-210",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-withdrawal-authority-is-exactly-signer-or-poster"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-verified-cause-ignores-its-keys"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-withdrawal-plan-record-is-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-cancel-executes-only-for-author-or-authority"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-stored-octets-carry-the-account-lock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-stored-octets-keep-the-injected-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-account-key-opens-exactly-its-lock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-served-payload-writes-one-account-lock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-served-payload-projects-to-the-injected-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cl-ring-keys-open-every-retained-lock"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cll-skip-of-the-generated-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ns-expand-input-separates-info"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ns-cancel-lock-and-posting-account-inputs-differ"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ns-file-parse-of-render"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
+        }
+      ]
     }
   ]
 }
