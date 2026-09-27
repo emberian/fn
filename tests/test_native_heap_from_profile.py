@@ -31,6 +31,8 @@ name, outside a limit of at most 2 GiB.
   FN_INIT_SIZING=largest, FN_INIT_BUDGET_MB, and the default mission
   (inits and runs, under 2 GiB too; refused by name under a 1,000 MB budget).
 """
+import base64
+import hashlib
 import os
 import re
 import shutil
@@ -256,7 +258,9 @@ class FreshInitTests(Harness, unittest.TestCase):
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         word, sizing, _, _ = self.init_line(made)
         self.assertEqual(sizing, "conservative")
-        self.assertEqual(word, "small" if SMALL else "development")
+        # PKT-707: the largest friend rung the budget holds (the word is
+        # `custom' for a rung, `small' for the floor), never development.
+        self.assertIn(word, ("custom", "small"))
         status = self.run_fn("operator", config, "status")
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         heap = HEAP_LINE.search(status.stdout.decode())
@@ -318,10 +322,64 @@ class FreshInitTests(Harness, unittest.TestCase):
         status = self.run_fn("operator", config, "status")
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         self.assertIn("max-article-octets=1048576", status.stdout.decode())
+        # PKT-707: at least the friend floor (16,384 transactions, 8 MiB of
+        # history), and the capacity named in plain words.
+        out = status.stdout.decode()
+        transactions = re.search(r"max-transactions=(\d+)", out)
+        self.assertIsNotNone(transactions, out)
+        self.assertGreaterEqual(int(transactions.group(1)), 16384)
+        left = re.search(r"^capacity articles-left=(\d+) ", out, re.M)
+        self.assertIsNotNone(left, out)
+        self.assertGreaterEqual(int(left.group(1)), 16384)
         ids = ["<mission-{}@example.invalid>".format(n) for n in range(3)]
         self.start(config, port, self.tmp / "mission.log")
         self.post(port, ids)
+        # PKT-708: the mission's init serves control.cancel, so a poster's
+        # own cancel (RFC 8315 Cancel-Lock / Cancel-Key) is filed with no
+        # `group create' first.
+        self.assertEqual(self.own_cancel(port), (b"240", b"430"))
         self.stop()
+
+    def own_cancel(self, port):
+        key = base64.b64encode(hashlib.sha256(b"friend secret").digest()).decode("ascii")
+        lock = base64.b64encode(hashlib.sha256(key.encode("ascii")).digest()).decode("ascii")
+        target, cancel = "<mission-own@example.invalid>", "<mission-cancel@example.invalid>"
+        with socket.create_connection(("127.0.0.1", port), timeout=300) as conn:
+            stream = conn.makefile("rwb")
+            self.assertTrue(stream.readline().startswith(b"20"))
+            stream.write(b"LIST ACTIVE control.cancel\r\n")
+            stream.flush()
+            self.assertTrue(stream.readline().startswith(b"215"))
+            listed = []
+            while True:
+                line = stream.readline()
+                if line in (b".\r\n", b""):
+                    break
+                listed.append(line.split(b" ")[0])
+            self.assertEqual(listed, [b"control.cancel"])
+            answers = []
+            for text in (
+                    "From: author@example.invalid\r\nNewsgroups: local.test\r\n"
+                    "Subject: mine\r\nMessage-ID: {}\r\nCancel-Lock: sha256:{}\r\n"
+                    "\r\nbody\r\n.\r\n".format(target, lock),
+                    "From: author@example.invalid\r\nNewsgroups: local.test\r\n"
+                    "Subject: cmsg cancel {0}\r\nMessage-ID: {1}\r\n"
+                    "Control: cancel {0}\r\nCancel-Key: sha256:{2}\r\n"
+                    "\r\ncancel\r\n.\r\n".format(target, cancel, key)):
+                stream.write(b"POST\r\n")
+                stream.flush()
+                self.assertTrue(stream.readline().startswith(b"340"))
+                stream.write(text.encode("ascii"))
+                stream.flush()
+                answers.append(stream.readline().rstrip(b"\r\n"))
+            self.assertTrue(answers[0].startswith(b"240"), answers)
+            self.assertTrue(answers[1].startswith(b"240"), answers)
+            stream.write("ARTICLE {}\r\n".format(target).encode("ascii"))
+            stream.flush()
+            after = stream.readline()
+            stream.write(b"QUIT\r\n")
+            stream.flush()
+        return answers[1][:3], after[:3]
 
 
 @unittest.skipUnless(READY, "set FN_NATIVE_HOST to the production image")

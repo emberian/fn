@@ -3833,7 +3833,10 @@ retention ledger's reserved charge of its capacity."
     (destructuring-bind (used budget bytes-used history reserved capacity) headroom
       (fnn-out-profile (fnn-store-config store))
       (fnn-out "headroom transactions-used=~d transactions-budget=~d bytes-used=~d history-bound=~d charge-reserved=~d charge-capacity=~d"
-               used budget bytes-used history reserved capacity))))
+               used budget bytes-used history reserved capacity)
+      ;; PKT-707: the capacity in plain words, rendered by ACL2.
+      (fnn-out "~a" (fnn-octets-string
+                     (fnn-octets (fnn-core 'fn-nls-capacity-line headroom)))))))
 
 (defun fnn-store-observation (store)
   "What this process observed at its own open, which the status report names:

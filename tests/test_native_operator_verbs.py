@@ -590,7 +590,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         refused = self.post_many(ids[127:129] + ids[:1])
         self.assertEqual(
             refused[:2],
-            ["441 posting failed; the store has no capacity for this article"] * 2)
+            ["441 posting failed; the store is full: no capacity for this article (unaffordable); the node's operator can raise it"] * 2)
         self.assertEqual(
             refused[2],
             "441 posting failed; this article is already stored here")
@@ -647,10 +647,14 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         line = re.search(rb"init: profile=(\w+) sizing=conservative ", created.stdout)
         self.assertIsNotNone(line, created.stdout.decode())
         fields = self.profile_line()
-        expected = {b"development": 128, b"small": 16384}
-        self.assertIn(line.group(1), expected, created.stdout.decode())
-        self.assertEqual((fields["format"], fields["max-transactions"]),
-                         (8, expected[line.group(1)]))
+        # PKT-707: the largest friend rung the budget holds, never
+        # development's 128 transactions (books/heap-reservation.lisp
+        # fn-heap-init-decide-conservative-holds-the-floor).
+        self.assertIn(line.group(1), (b"custom", b"small"), created.stdout.decode())
+        self.assertEqual(fields["format"], 8)
+        self.assertIn(fields["max-transactions"], (131072, 65536, 32768, 16384))
+        status = self.operator("status")
+        self.assertIn(b"capacity articles-left=", status.stdout, status.stdout.decode())
 
     def test_init_refuses_a_profile_by_the_relation_it_breaks(self):
         refused = self.operator("init", "--max-record-octets", "100", "fn.test")

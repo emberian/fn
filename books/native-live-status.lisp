@@ -334,6 +334,53 @@ freed-octets=N'."
                         (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
                                                                    (fn-ag-cdr headroom)))))))))
 
+;; PKT-707: the capacity in plain words.  HEADROOM is (USED BUDGET BYTES
+;; HISTORY RESERVED CAPACITY) as `fn-sbud-headroom-at' answers it.  The
+;; articles left is the transactions left, or, once articles are stored, the
+;; history octets left at the average record so far when that is fewer: an
+;; estimate, and the line says so.  Zero means the next post is refused.
+(defun fn-nls-articles-left (headroom)
+  (declare (xargs :guard t))
+  (let* ((u (nfix (fn-ag-car headroom)))
+         (tb (nfix (fn-ag-car (fn-ag-cdr headroom))))
+         (b (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr headroom)))))
+         (h (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr headroom))))))
+         (tleft (nfix (- tb u)))
+         (hleft (nfix (- h b))))
+    (if (and (posp u) (posp b))
+        (min tleft (floor (* hleft u) b))
+      tleft)))
+
+(defthm fn-nls-articles-left-is-at-most-the-transactions-left
+  (<= (fn-nls-articles-left headroom)
+      (nfix (- (nfix (fn-ag-car (fn-ag-cdr headroom)))
+               (nfix (fn-ag-car headroom)))))
+  :rule-classes nil)
+
+;; KEYSTONE (the capacity line never promises room that is not there).  At
+;; the transaction budget, or with the history bound spent, the line says 0.
+(defthm fn-nls-articles-left-is-zero-when-full
+  (implies (or (<= (nfix (fn-ag-car (fn-ag-cdr headroom)))
+                   (nfix (fn-ag-car headroom)))
+               (and (posp (fn-ag-car headroom))
+                    (<= (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr headroom)))))
+                        (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr headroom)))))))
+           (equal (fn-nls-articles-left headroom) 0)))
+
+(defun fn-nls-capacity-words (headroom)
+  "`capacity articles-left=N (...)': the line `status' prints under headroom."
+  (declare (xargs :guard t))
+  (append (fn-nls-text "capacity")
+          (fn-nls-field "articles-left" (fn-nls-articles-left headroom))
+          (fn-nls-text (if (equal (fn-nls-articles-left headroom) 0)
+                           " (full: posts are refused; raise it with store export, then store import --max-transactions N --max-history-octets N; docs/operator.md, When the store is full)"
+                         " (an estimate at the average article so far; at 0 posts are refused)"))))
+
+(defun fn-nls-capacity-line (headroom)
+  "The capacity line as the host prints it (host/native/io.lisp fnn-out-headroom)."
+  (declare (xargs :guard t))
+  (fn-nls-capacity-words headroom))
+
 ; `maintenance-reserve octets=R transactions=N debt=D held|short' (PRF-138,
 ; books/store-capacity-vector.lisp `fn-cvec-report'): the room the capacity
 ; vector keeps, one release record for each of the D open undertakings and
@@ -429,6 +476,7 @@ configuration pins (nil with no owner), OBS the host's open observation."
             (fn-nls-profile-words (fn-bs-profile-report profile)) *fn-nls-lf*
             (fn-nls-open-cost-words profile) *fn-nls-lf*
             (fn-nls-headroom-words (fn-sbud-headroom-at profile s bytes)) *fn-nls-lf*
+            (fn-nls-capacity-words (fn-sbud-headroom-at profile s bytes)) *fn-nls-lf*
             (fn-nls-reserve-words
              (fn-cvec-report profile (fn-sbud-used s) bytes
                              (fn-cvec-record-debt (fn-sf-records (fn-sn-files s)))))
