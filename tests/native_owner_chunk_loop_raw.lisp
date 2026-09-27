@@ -283,7 +283,7 @@ unbounded (&rest or &key)."
   (ecase name
     (fn-splan-step-p t)
     (fn-splan-step-closep (second *step*))
-    (fn-splan-step-starttlsp (third *step*))
+    (fn-splan-step-handshake-owed (third *step*))
     (fn-splan-step-submittedp (fifth *step*))
     (fn-splan-step-consumed
      (if (eq (first *step*) :all) (length (first *chunks*)) (first *step*)))
