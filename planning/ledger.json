@@ -1173,7 +1173,7 @@
     "theorems": 17687,
     "functions": 12290,
     "assert_events": 17729,
-    "must_fails": 2141,
+    "must_fails": 2138,
     "prover_refusals": 0,
     "encapsulates": 91,
     "guards": {
@@ -1185,7 +1185,7 @@
     "suspect_theorems": 190,
     "export_hygiene_warnings": 204,
     "enabled_projection_warnings": 49,
-    "teeth_form_warnings": 206,
+    "teeth_form_warnings": 203,
     "include_hygiene_warnings": 1234,
     "host_names_warnings": 1350,
     "hand_written_record_warnings": 18
@@ -35259,7 +35259,7 @@
       },
       "verify_guards_events": 0,
       "assert_events": 6,
-      "must_fails": 3,
+      "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 7,
       "defmacros": 0,
@@ -35267,9 +35267,7 @@
       "includes": [
         "../../books/wire-span"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -39841,24 +39839,6 @@
         "check": "thlt-ctl-refuse-without-past-the-limits",
         "book": "tests/acl2/transit-header-limits-tests.lisp",
         "line": 209,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "wst-keystone-needs-octets-p",
-        "book": "tests/acl2/wire-span-tests.lisp",
-        "line": 132,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "wst-keystone-needs-range-within-buffer",
-        "book": "tests/acl2/wire-span-tests.lisp",
-        "line": 142,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "wst-keystone-needs-fast-statep",
-        "book": "tests/acl2/wire-span-tests.lisp",
-        "line": 152,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       }
     ],

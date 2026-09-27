@@ -20,13 +20,13 @@ stale. Counts describe artifacts, not coverage; see
 | Functions left at the default with an explicit guard | 6767 |
 | Functions left at the default with no guard | 1788 |
 | `assert-event` checks | 17729 |
-| `must-fail` checks | 2141 |
+| `must-fail` checks | 2138 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 91 |
 | Theorems flagged SUSPECT by shape | 190 |
 | Export-hygiene warnings | 204 |
 | Enabled-projection warnings | 49 |
-| Teeth-form warnings | 206 |
+| Teeth-form warnings | 203 |
 | Include-hygiene warnings | 1234 |
 | Host-names warnings | 1350 |
 | Hand-written-record warnings | 18 |
@@ -1294,7 +1294,7 @@ that `make certify` requests.
 | `tests/acl2/wildmat-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 40 | 5 | 0 |
 | `tests/acl2/wildmat-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 61 | 0 | 0 |
 | `tests/acl2/wire-outbound-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 12 | 0 |
-| `tests/acl2/wire-span-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 6 | 3 | 0 |
+| `tests/acl2/wire-span-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 6 | 0 | 0 |
 | `tests/acl2/wire-tests.lisp` | root | 4 | 0 | 0/0/0/0 | 70 | 0 | 0 |
 
 ## Theorems flagged SUSPECT by shape
