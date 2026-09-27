@@ -48,11 +48,32 @@
           (loop (cdr cs)))))
     (apply append (reverse out))))
 
+(define (post chunks)
+  ;; posting allowed and one fixed clock observation (post-ref.lisp's)
+  (let ((arena (|f:ACL2::CREATE-FN-ARENA$X|)) (out '()))
+    (ignore-values (|f:ACL2::FN-READER-SET-POSTING| '|COMMON-LISP::T| acl2-state))
+    (call-with-values (lambda () (|f:ACL2::FN-READER-USE-SEED| arena acl2-state))
+      (lambda (erp val arena2 st) #t))
+    (ignore-values (|f:ACL2::FN-READER-OBSERVE-CLOCK| 123456 843000000000 1000 acl2-state))
+    (ignore-values (|f:ACL2::FN-READER-RESET| acl2-state))
+    (set! out (cons (global '|ACL2::FN-READER-OUTPUT|) out))
+    (let loop ((cs chunks))
+      (unless (null? cs)
+        (ignore-values (|f:ACL2::FN-READER-CHUNK| (car cs) arena acl2-state))
+        (set! out (cons (global '|ACL2::FN-READER-OUTPUT|) out))
+        (unless (null? (global '|ACL2::FN-READER-SUBMIT-OCTETS|))
+          (ignore-values (|f:ACL2::FN-READER-OUTCOME| '|KEYWORD::REFUSED| acl2-state))
+          (set! out (cons (global '|ACL2::FN-READER-OUTPUT|) out)))
+        (when (null? (global '|ACL2::FN-READER-CLOSEP|))
+          (loop (cdr cs)))))
+    (apply append (reverse out))))
+
 (define (main args)
   (let* ((verb (car args))
          (chunks (parse-chunks (read-file-u8vector (cadr args)))))
     (cond ((string=? verb "model") (write-octets (model chunks)))
           ((string=? verb "socket") (write-octets (socket chunks)))
+          ((string=? verb "post") (write-octets (post chunks)))
           ((string=? verb "bench")
            ;; the archive is selected once, as the reader selects it once
            ;; before it accepts clients; each run is one connection's model
@@ -60,11 +81,11 @@
                  (arena (|f:ACL2::CREATE-FN-ARENA$X|)))
              (select-seed arena)
              (model-octets chunks arena)
-             (let ((t0 (current-process-milliseconds)))
+             (let ((t0 (current-process-milliseconds)) (g0 (current-gc-milliseconds)))
                (do ((i 0 (+ i 1))) ((= i n)) (model-octets chunks arena))
-               (let ((t1 (current-process-milliseconds)))
-                 (fprintf (current-error-port) "bench ~a runs ~a ms ~a us/run~%"
-                          n (- t1 t0) (/ (* 1000.0 (- t1 t0)) n))))))
+               (let ((t1 (current-process-milliseconds)) (g1 (current-gc-milliseconds)))
+                 (fprintf (current-error-port) "bench ~a runs ~a ms ~a us/run gc ~a ms~%"
+                          n (- t1 t0) (/ (* 1000.0 (- t1 t0)) n) (- g1 g0))))))
           (else (error "usage: model|socket FILE | bench FILE N")))))
 
 (main (command-line-arguments))

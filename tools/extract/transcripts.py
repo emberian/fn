@@ -32,6 +32,17 @@ READER = (b"CAPABILITIES\r\nMODE READER\r\nDATE\r\nHELP\r\nLIST\r\nLIST ACTIVE f
 CASES["reader-commands"] = [READER]
 CASES["session-200"] = [(b"GROUP fn.letters\r\nSTAT\r\nARTICLE 1\r\nHEAD 1\r\n" * 50) + b"QUIT\r\n"]
 
+# POST sessions: served only with posting allowed and a clock observation,
+# which the image's `--fn model' never sets (it serves read-only), so these
+# are compared with ACL2 evaluating the same functions (tools/extract/post-ref.lisp).
+ARTICLE = (b"From: poster@example.invalid\r\nNewsgroups: fn.letters\r\nSubject: extracted\r\n"
+           b"\r\nA body line.\r\n..dot-stuffed\r\n.\r\n")
+POSTS = {
+    "post-one": [b"MODE READER\r\nPOST\r\n", ARTICLE, b"QUIT\r\n"],
+    "post-bad": [b"POST\r\n", b"Subject: no newsgroups\r\n\r\nx\r\n.\r\nQUIT\r\n"],
+    "post-bytewise": [bytes([b]) for b in b"POST\r\n" + ARTICLE + b"DATE\r\nQUIT\r\n"],
+}
+
 
 def write(path, chunks):
     with open(path, "wb") as h:
@@ -46,3 +57,13 @@ if __name__ == "__main__":
     for name, chunks in CASES.items():
         write(out / (name + ".chunks"), chunks)
         print(name, len(chunks), sum(len(c) for c in chunks))
+    (out / "post").mkdir(exist_ok=True)
+    for name, chunks in POSTS.items():
+        write(out / "post" / (name + ".chunks"), chunks)
+        print(name, len(chunks), sum(len(c) for c in chunks))
+    if len(sys.argv) > 2:
+        # the chunk lists as ACL2 constants for the reference evaluation
+        with open(sys.argv[2], "w") as h:
+            for name, chunks in POSTS.items():
+                h.write("(defconst *xt-%s* '(%s))\n" % (name, " ".join(
+                    "(" + " ".join(str(b) for b in c) + ")" for c in chunks)))
