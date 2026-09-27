@@ -206,9 +206,11 @@
      ((fn-evc-stxkp event)
       (fn-th-prefix-state :ok (1+ (nfix next)) (cons event snapshots)
                           accepted anchors installed nil))
+     ; The retained composite row records the wire composite it carries,
+     ; as books/topic-history-prefix.lisp fn-th-prefix-step does.
      ((fn-evc-stxap event)
       (fn-th-prefix-state :ok (1+ (nfix next)) snapshots
-                          (cons event accepted) anchors installed nil))
+                          (cons (fn-hstxa-stxa event) accepted) anchors installed nil))
      ((fn-th-local-admin-eventp event)
       (let ((updated (fn-th-local-admin-commit event installed)))
         (if (fn-stmt-okp updated)
@@ -269,7 +271,8 @@
   (and (fn-evc-recordp record)
        (fn-node-pending-matchesp node (fn-record-txid record)
                                 (fn-record-generation record))
-       (equal record (fn-sn-pending-record node (fn-record-sequence record)))))
+       (equal (fn-held-wire record (fn-record-payload record))
+              (fn-sn-pending-record node (fn-record-sequence record)))))
 
 (defthm fn-ccar-sn-record-bindsp-is-sn-record-bindsp
   (equal (fn-ccar-sn-record-bindsp node record) (fn-sn-record-bindsp node record))
@@ -305,7 +308,10 @@
                                    (fn-sn-identity-context s) record)) :ok)))
                     ((or (fn-evc-consumerp record) (fn-evc-topicp record))
                      (consp (fn-replay-apply-record (fn-sn-node s) record)))
-                    (t (fn-ccar-sn-record-bindsp (fn-sn-node s) record)))
+                    ; the row's context generation, as the reference gate
+                    (t (and (fn-ccar-sn-record-bindsp (fn-sn-node s) record)
+                            (equal (fn-hc-generation (fn-held-context record))
+                                   (fn-sn-keyring-generation s)))))
               (equal (fn-sf-completion (fn-sn-files s))
                      (cons (fn-evc-sequence record) (fn-evc-txid record)))))))
 
@@ -314,7 +320,7 @@
  (defthm fn-ccar-no-record-binds
    (not (fn-sn-record-bindsp node nil))
    :hints (("Goal" :in-theory '(fn-sn-record-bindsp
-                                (:executable-counterpart fn-record-p))))))
+                                (:executable-counterpart fn-held-p))))))
 
 (defthm fn-ccar-completion-core-enabledp-is-reference
   (equal (fn-ccar-completion-core-enabledp s)
@@ -434,9 +440,9 @@
             node
             (fn-stx-index-add (fn-sn-index s) (fn-sn-accepted-delta s))
             (fn-record-msgid record)
-            (fn-stx-verdict-of-octets
-             (fn-record-payload record)
-             (fn-sn-keyring s) (fn-sn-keyring-generation s))))))
+            ; the row's context, decided at intern (records-flip), as the
+            ; reference finish reads it
+            (fn-hc-verdict (fn-held-context record))))))
       (fn-cp-nth 1 projection))
      topic-projection)))
 

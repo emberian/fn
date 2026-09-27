@@ -421,7 +421,10 @@
 (assert-event (consp *ost-articles*))
 (defconst *ost-art* (car *ost-articles*))
 (defconst *ost-msgid* (fn-article-msgid *ost-art*))
-(defconst *ost-held* (fn-article-payload *ost-art*))
+; by specification: the flip: the acceptance article holds a handle; the
+; held article's octets are the bytes under it in the arena that interned
+; the journal (alpha).
+(defconst *ost-held* (fn-hrt-bytes *osi-completing-prior* (fn-article-payload *ost-art*)))
 (defconst *ost-groups* (fn-article-groups *ost-art*))
 (assert-event (and (stringp *ost-msgid*) (fn-cbor-octet-listp *ost-held*)
                    (< 100 (len *ost-held*))))
@@ -459,6 +462,38 @@
               (if (equal (nth (1- (len *ost-held*)) *ost-held*) 10) 11 10)
               *ost-held*))
 
+; by specification: the flip: the acceptance articles hold handles, so the
+; list and buffer decisions are the SPECIFICATION over the wire view of the
+; store (every handle replaced by its bytes; test-only surgery on the
+; acceptance state's article list), and the entry the host calls,
+; fn-store-existing-action (held-rows-tests' fn-hrt-existing-action), gives
+; the same answers over the live store and its arena
+; (books/store-existing-alpha.lisp fn-store-existing-action-is-pb-over-alpha).
+(defun ost-index-of (x xs i)
+  (if (consp xs) (if (equal (car xs) x) i (ost-index-of x (cdr xs) (1+ i))) nil))
+(defun ost-alpha-store (s prior)
+  (let* ((node (fn-sn-node s))
+         (acc (fn-node-acceptance node))
+         (arts (fn-state-articles acc))
+         (k (ost-index-of acc node 0))
+         (j (ost-index-of arts acc 0)))
+    (update-nth 3 (update-nth k (update-nth j (fn-hrt-articles-wire-of prior arts) acc) node) s)))
+(defconst *ost-s-wire* (ost-alpha-store *ost-s* *osi-completing-prior*))
+(assert-event (equal (fn-state-articles (fn-node-acceptance (fn-sn-node *ost-s-wire*)))
+                     (fn-hrt-articles-wire-of *osi-completing-prior* *ost-articles*)))
+(defun ost-entry (msgid payload groups)
+  (fn-hrt-existing-action *osi-completing-prior* msgid payload groups *ost-s*))
+(assert-event
+ (and (equal (ost-entry *ost-msgid* *ost-held* *ost-groups*) :duplicate)
+      (equal (ost-entry *ost-msgid* *ost-reinjected* *ost-groups*) :duplicate)
+      (equal (ost-entry *ost-msgid* *ost-changed* *ost-groups*) :conflict)
+      (equal (ost-entry *ost-msgid* *ost-held* (cons "fn.other" *ost-groups*)) :conflict)
+      (equal (ost-entry "<ost-absent@example.invalid>" *ost-held* *ost-groups*) nil)))
+; The flip regression: on the live store the list decision compares the
+; offered octets with the handle, so a true resend reads as a conflict.
+(assert-event (equal (fn-pb-existing-action *ost-msgid* *ost-held* *ost-groups* *ost-s*)
+                     :conflict))
+
 ; The buffer twin, run the way the host runs it: the payload filled into a
 ; live local buffer, the test read by index.
 (defun ost-existing-action (msgid payload groups s)
@@ -470,29 +505,29 @@
       r)))
 
 (assert-event
- (and (equal (fn-pb-existing-action *ost-msgid* *ost-held* *ost-groups* *ost-s*) :duplicate)
-      (equal (ost-existing-action *ost-msgid* *ost-held* *ost-groups* *ost-s*) :duplicate)
+ (and (equal (fn-pb-existing-action *ost-msgid* *ost-held* *ost-groups* *ost-s-wire*) :duplicate)
+      (equal (ost-existing-action *ost-msgid* *ost-held* *ost-groups* *ost-s-wire*) :duplicate)
       ; the source path: other octets, the same source
-      (equal (fn-pb-existing-action *ost-msgid* *ost-reinjected* *ost-groups* *ost-s*)
+      (equal (fn-pb-existing-action *ost-msgid* *ost-reinjected* *ost-groups* *ost-s-wire*)
              :duplicate)
-      (equal (ost-existing-action *ost-msgid* *ost-reinjected* *ost-groups* *ost-s*)
+      (equal (ost-existing-action *ost-msgid* *ost-reinjected* *ost-groups* *ost-s-wire*)
              :duplicate)
       ; a changed body is another article
-      (equal (fn-pb-existing-action *ost-msgid* *ost-changed* *ost-groups* *ost-s*) :conflict)
-      (equal (ost-existing-action *ost-msgid* *ost-changed* *ost-groups* *ost-s*) :conflict)
+      (equal (fn-pb-existing-action *ost-msgid* *ost-changed* *ost-groups* *ost-s-wire*) :conflict)
+      (equal (ost-existing-action *ost-msgid* *ost-changed* *ost-groups* *ost-s-wire*) :conflict)
       ; the same article to other groups
       (equal (fn-pb-existing-action *ost-msgid* *ost-held* (cons "fn.other" *ost-groups*)
-                                    *ost-s*)
+                                    *ost-s-wire*)
              :conflict)
       (equal (ost-existing-action *ost-msgid* *ost-held* (cons "fn.other" *ost-groups*)
-                                  *ost-s*)
+                                  *ost-s-wire*)
              :conflict)
       ; an unknown Message-ID
       (equal (fn-pb-existing-action "<ost-absent@example.invalid>" *ost-held* *ost-groups*
-                                    *ost-s*)
+                                    *ost-s-wire*)
              nil)
       (equal (ost-existing-action "<ost-absent@example.invalid>" *ost-held* *ost-groups*
-                                  *ost-s*)
+                                  *ost-s-wire*)
              nil)))
 
 ; The keystone's one hypothesis, (fn-octets-p fn-octets): on a value that is
@@ -502,16 +537,16 @@
 (defconst *ost-improper* (append *ost-held* 3))
 (assert-event
  (and (not (fn-octets-p *ost-improper*))
-      (equal (fn-pb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s*)
+      (equal (fn-pb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s-wire*)
              :conflict)))
 (defthm ost-t-improper-buffer-reads-to-its-length
-  (equal (fn-pbb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s*)
+  (equal (fn-pbb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s-wire*)
          :duplicate)
   :rule-classes nil)
 (must-fail
  (defthm ost-t-existing-action-without-octets-p
-   (equal (fn-pbb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s*)
-          (fn-pb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s*))))
+   (equal (fn-pbb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s-wire*)
+          (fn-pb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s-wire*))))
 
 ; The buffer's recognizer discharges the list entry's fn-octet-listp test.
 (assert-event (and (fn-octets-p *ost-held*) (fn-octet-listp *ost-held*)
@@ -633,26 +668,38 @@
             (equal (fn-pbb-desc-equalp '(-1 0 0) '(1 1 2 3) '(1 2 3))
                    (equal (fn-pbb-desc-list '(-1 0 0) '(1 2 3)) '(1 1 2 3))))))
 
+; by specification: the flip: the decisions over the WIRE view of the tin
+; Store (its article's handle replaced by the bytes), and the host's entry
+; over the live Store and its arena agrees on the resend.
+(defconst *ost-tin-wire* (ost-alpha-store *pbt-tin-store* *pbt-tin-prior*))
+(assert-event
+ (and (equal (fn-hrt-existing-action *pbt-tin-prior* *pbt-msgid* *ost-v3-resend* *pbt-groups*
+                                     *pbt-tin-store*)
+             :duplicate)
+      (equal (fn-hrt-existing-action *pbt-tin-prior* *pbt-msgid* *ost-v3-resend* '("fn.other")
+                                     *pbt-tin-store*)
+             :conflict)))
+
 ; The keystone over the tin Store: the resend at another clock is the
 ; held article (:duplicate, where the byte decision says :conflict); a
 ; changed supplied Path and a Path-less resend are other articles; the
 ; list function and the buffer function agree on each.
 (assert-event
- (and (equal (fn-sn-existing-action *pbt-msgid* *ost-v3-resend* *pbt-groups* *pbt-tin-store*)
+ (and (equal (fn-sn-existing-action *pbt-msgid* *ost-v3-resend* *pbt-groups* *ost-tin-wire*)
              :conflict)
-      (equal (fn-pb-existing-action *pbt-msgid* *ost-v3-resend* *pbt-groups* *pbt-tin-store*)
+      (equal (fn-pb-existing-action *pbt-msgid* *ost-v3-resend* *pbt-groups* *ost-tin-wire*)
              :duplicate)
-      (equal (ost-existing-action *pbt-msgid* *ost-v3-resend* *pbt-groups* *pbt-tin-store*)
+      (equal (ost-existing-action *pbt-msgid* *ost-v3-resend* *pbt-groups* *ost-tin-wire*)
              :duplicate)
-      (equal (ost-existing-action *pbt-msgid* *ost-v3-held* *pbt-groups* *pbt-tin-store*)
+      (equal (ost-existing-action *pbt-msgid* *ost-v3-held* *pbt-groups* *ost-tin-wire*)
              :duplicate)
       (equal (ost-existing-action *pbt-msgid* (pbt-octets *pbt-tin-other-path* *pbt-b*)
-                                  *pbt-groups* *pbt-tin-store*)
+                                  *pbt-groups* *ost-tin-wire*)
              :conflict)
       (equal (ost-existing-action *pbt-msgid* (pbt-octets *pbt-dateless* *pbt-b*)
-                                  *pbt-groups* *pbt-tin-store*)
+                                  *pbt-groups* *ost-tin-wire*)
              :conflict)
-      (equal (ost-existing-action *pbt-msgid* *ost-v3-resend* '("fn.other") *pbt-tin-store*)
+      (equal (ost-existing-action *pbt-msgid* *ost-v3-resend* '("fn.other") *ost-tin-wire*)
              :conflict)))
 
 ; The keystone's hypothesis over a v3 record: the resend with an improper
@@ -662,13 +709,13 @@
 (defconst *ost-v3-improper* (append *ost-v3-resend* 3))
 (assert-event
  (and (not (fn-octets-p *ost-v3-improper*))
-      (equal (fn-pb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *pbt-tin-store*)
+      (equal (fn-pb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *ost-tin-wire*)
              :conflict)))
 (defthm ost-t-v3-improper-buffer-reads-to-its-length
-  (equal (fn-pbb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *pbt-tin-store*)
+  (equal (fn-pbb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *ost-tin-wire*)
          :duplicate)
   :rule-classes nil)
 (must-fail
  (defthm ost-t-v3-existing-action-without-octets-p
-   (equal (fn-pbb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *pbt-tin-store*)
-          (fn-pb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *pbt-tin-store*))))
+   (equal (fn-pbb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *ost-tin-wire*)
+          (fn-pb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *ost-tin-wire*))))
