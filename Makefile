@@ -780,6 +780,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-session \
 	books/nntp-projection \
 	books/nntp-responses \
+	books/nntp-article-block \
 	books/nntp-reader-compat \
 	books/nntp \
 	books/nntp-overview \
@@ -807,6 +808,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/group-descriptions-tests \
 	tests/acl2/nntp-xref-tests \
 	tests/acl2/nntp-reader-compat-tests \
+	tests/acl2/nntp-article-block-tests \
 	tests/acl2/posting-account-tests \
 	tests/acl2/injection-info-params-tests \
 	tests/acl2/owner-injection-info-tests \
