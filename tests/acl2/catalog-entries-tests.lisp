@@ -164,7 +164,8 @@
 
 ; The store-side conclusion: the host's finish keeps the records and leaves
 ; the store idle.
-(defconst *cet-finished* (cdr (fn-ccar-own-finish *cet-completing* nil)))
+; (the owner the host installs: fn-ccar-own-finish-installs-ccar-own-complete-by-definition)
+(defconst *cet-finished* (fn-ccar-own-complete *cet-completing*))
 (assert-event (equal (fn-sf-records (fn-sn-files (fn-own-store *cet-finished*))) *cet-records*))
 (assert-event (fn-own-store-idlep (fn-own-store *cet-finished*)))
 (assert-event (equal (fn-own-view-version (fn-own-view *cet-finished*)) 1))

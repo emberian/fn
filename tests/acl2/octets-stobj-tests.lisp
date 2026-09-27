@@ -414,7 +414,7 @@
 ; connection 4 injected (owner-served-invariants-tests *osi-completing*,
 ; reached by fn-own-run), completed, so the acceptance state holds it.
 
-(defconst *ost-owner* (cdr (fn-own-finish *osi-completing* *osi-cfg*)))
+(defconst *ost-owner* (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*)))
 (defconst *ost-s* (fn-own-store *ost-owner*))
 (defconst *ost-articles*
   (fn-state-articles (fn-node-acceptance (fn-sn-node *ost-s*))))
