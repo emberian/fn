@@ -261,6 +261,15 @@
         (fnn-select-release-version)
         (load "host/native/tls.lisp")
         (fnn-tls-initialize)
+        ; Native SHA-256 (lane digest-native, A-CRYPTO-NATIVE): the pinned
+        ; libcrypto's EVP SHA-256 replaces the raw definitions of
+        ; fn-sha256-stobj, fn-sha256-of-string and fn-sha256-of-prefixed-buffer
+        ; after a known-answer and reference check.  Checked here, then reset
+        ; so the saved core holds the ACL2 references; every start re-checks
+        ; and re-installs after the TLS pair is pinned.
+        (load "host/native/digest.lisp")
+        (fnn-digest-initialize)
+        (fnn-digest-reset)
         (load "host/native/signatures.lisp")
         (fnn-hsig-initialize)
         (defun fn-native-entry (st)
@@ -268,6 +277,7 @@
           (fnn-crypto-startup)
           (fnn-tls-reset)
           (fnn-tls-initialize)
+          (fnn-digest-startup)
           (fnn-hsig-reset)
           (fnn-hsig-initialize)
           (fnn-main)
