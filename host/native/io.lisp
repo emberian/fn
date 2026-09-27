@@ -1542,6 +1542,13 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; rows'), the closed segments scanned and the genesis the scan started
   ;; from, and the active segment's index (fnn-log-history-records).
   (log-history nil)
+  ;; The newest record the open's scan handed to its sink (ACL2's octet
+  ;; list) and the active segment's committed count when the open ended:
+  ;; (COUNT RECORD), or NIL.  fnn-history-last-record answers it while the
+  ;; kernel's count is still COUNT (nothing committed since the open)
+  ;; instead of reading the log again (lane snapshot-open: that re-read was
+  ;; 1.3 s of a 40k open and 33 s of a 10k x 32 KiB one).
+  (log-last nil)
   ;; Lane commit-onto-log: the commit route ACL2 names from the profile
   ;; (fn-store-profile-logp: format 9) and, on that route, the open record
   ;; log (an fnn-log: the segment's descriptor and the log kernel).
@@ -3333,14 +3340,21 @@ stands in for a record."
 (defun fnn-history-last-record (store)
   "The history's newest record's octets, or NIL when there is none.  Read
 after the open, under its lock, so it is the record the open replayed last:
-the active segment's last committed record (fnn-log-read-active-segment),
-else the last closed segment's the open scanned, else (a checkpoint open
-whose suffix is empty) the covered prefix's last
-(fn-store-sco-last-record-octets)."
+the open's own newest record while nothing was committed since
+(snapshot-open), else the active segment's last committed record
+(fnn-log-read-active-segment), else the last closed segment's the open
+scanned, else (a checkpoint open whose suffix is empty) the covered prefix's
+last (fn-store-sco-last-record-octets)."
   (unless (fnn-store-logp store)
     (fnn-fault "a store that is not on the record log opened"))
-  (let ((last nil))
+  (let ((last nil)
+        (noted (fnn-store-log-last store)))
     (fnn-log-history-plan store)
+    ;; The open's own newest record, while no record was committed since
+    ;; (the rotation check is fnn-log-history-plan's).
+    (when (and noted
+               (eql (first noted) (fnn-log-committed-count store)))
+      (return-from fnn-history-last-record (fnn-octets (second noted))))
     (fnn-log-read-active-segment store (lambda (r) (setq last (fnn-octets r))))
     (cond (last last)
           ((car (last (fnn-log-closed-records store))))
@@ -5571,6 +5585,13 @@ genesis."
          (fnn-core 'fn-lgc-last (fnn-log-stream-segment fd extent unit max genesis sink))
       (fnn-close fd))))
 
+(defun fnn-log-committed-count (store)
+  "The active segment's committed record count (the log kernel's, read under
+its lock): fnn-history-last-record's test that nothing was committed since
+the open noted its newest record."
+  (let ((log (fnn-store-log store)))
+    (fnn-core 'fn-lgc-count (fnn-log-with-kernel (log) (fnn-log-kernel log)))))
+
 (defun fnn-log-read-active-segment (store sink)
   "The active segment's COMMITTED records again, one entry at a time, each to
 SINK as ACL2's octet list: a read-only descriptor streamed from the segment's
@@ -5669,12 +5690,13 @@ does, and records how the log holds the history (fnn-store-log-history) for
                                   (fnn-fault "ACL2 returned a malformed checkpoint selection"))
                                 (and (eq (first choice) :full-replay) choice))))
                    (config-records (fnn-config-records store))
-                   (acc 0) (kept nil) (scanned 0)
+                   (acc 0) (kept nil) (scanned 0) (newest nil)
                    (replay (and full (fnn-recover-log-stream-begin)))
                    (log (fnn-log-scan-segments
                          store (second plan) genesis
                          (lambda (record)
                            (incf scanned)
+                           (setq newest record)
                            (if replay
                                (fnn-recover-log-stream-take replay record)
                              (progn
@@ -5688,6 +5710,8 @@ does, and records how the log holds the history (fnn-store-log-history) for
                 (fnn-recover-log-stream-flush replay)
                 (setq acc (fourth replay)))
               (fnn-log-batch-reset log)
+              (setf (fnn-store-log-last store)
+                    (and newest (list (fnn-core 'fn-lgc-count (fnn-log-kernel log)) newest)))
               ;; The frontier: the fold, at least the checkpoint's frontier at S
               ;; (the dropped segments' txids) and the log kernel's next, and
               ;; the log kernel caught up to it.
