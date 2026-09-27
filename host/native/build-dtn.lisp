@@ -117,6 +117,9 @@
 ;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
 (include-book "books/bp-held-projection")
 (include-book "books/bp-node-retire")
+;; Natural rotation at a node verb's open (fnn-bps-rotate-when-due calls
+;; fn-bpnrd-due-rotation-event; profile 3).
+(include-book "books/bp-node-rotation-due")
 (include-book "books/bp-report-observe")
 (include-book "books/bp-report-guards")
 (include-book "books/bp-app-handoff")

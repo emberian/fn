@@ -3125,6 +3125,14 @@
         {
           "kind": "theorem",
           "name": "fn-bpnr-retired-names-never-the-selected-directory"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrd-due-rotation-event-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrd-due-rotation-preserves-recovery"
         }
       ]
     },
@@ -5151,6 +5159,26 @@
         {
           "kind": "theorem",
           "name": "fn-bpnf-family-next-memo-is-aux"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-node-profile-read-of-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-node-profile-read-of-older"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-node-profile-read-is-valid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-node-profile-base-is-a-profile"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnpf-node-profile-write-never-lowers"
         }
       ]
     },
