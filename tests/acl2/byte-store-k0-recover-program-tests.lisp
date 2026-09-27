@@ -26,7 +26,7 @@
   (and (fn-bs-k0-step-inputp bs ks step outcome)
        (mv-let (r bs1 ks1) (fn-bs-step bs ks step outcome *bsk5-groups* *bsk5-capacity*)
          (declare (ignore r))
-         (and (fn-bs-k0-coveredp bs1 ks1)
+         (and (fn-bs-k0-coveredp bs1 ks1 *bsk5-arena*)
               (or (equal ks1 ks) (equal (car step) :observe))))))
 (defun bskv-k (bs n)
   (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store bs))
@@ -35,7 +35,7 @@
 (defun bskv-prog-concl (bs ks)
   (let ((run (bskv-run bs ks)))
     (and (fn-bs-k0v-steps-coveredp (cons (cons bs ks) run) (fn-bs-recover-program))
-         (fn-bs-run-relatedp run)
+         (fn-bs-run-relatedp run *bsk5-arena*)
          (equal (len run) 17)
          (equal (car (nth 16 run)) (fn-bs-k0v-drained bs))
          (equal (fn-sf-phase (cdr (nth 16 run))) :ready))))
@@ -47,7 +47,7 @@
 ; holds the linked record the durable namespace does not yet name.
 (assert-event (consp (fn-bs-ops-for-dir (fn-bs-pending (bskv-link)) :transactions)))
 (assert-event (fn-bs-replay-visiblep (bskv-k (bskv-link) 0)))
-(assert-event (fn-bs-store-relation (bskv-link) (bskv-k (bskv-link) 0)))
+(assert-event (fn-bs-store-relation (bskv-link) (bskv-k (bskv-link) 0) *bsk5-arena*))
 (assert-event (equal (len (fn-sf-records (bskv-k (bskv-link) 0)))
                      (1+ (len (fn-bs-durable-names (bskv-link) :transactions)))))
 (assert-event (bskv-prog-concl (bskv-link) (bskv-k (bskv-link) 0)))
@@ -61,7 +61,7 @@
 ; The window with a pending frontier rename: the durable frontier is the
 ; scanned one minus one, and the root barrier lands it.
 (assert-event (consp (fn-bs-ops-for-dir (fn-bs-pending (bskv-rename)) :root)))
-(assert-event (fn-bs-store-relation (bskv-rename) (bskv-k (bskv-rename) 0)))
+(assert-event (fn-bs-store-relation (bskv-rename) (bskv-k (bskv-rename) 0) *bsk5-arena*))
 (assert-event (equal (fn-bs-durable-frontier (bskv-rename))
                      (1- (fn-sf-frontier (bskv-k (bskv-rename) 0)))))
 (assert-event (bskv-prog-concl (bskv-rename) (bskv-k (bskv-rename) 0)))
@@ -77,15 +77,15 @@
     bs1))
 (assert-event (not (fn-bs-k0-step-inputp (bskv-link) (bskv-k (bskv-link) 0)
                                          '(:fsync-dir :transactions) '(:eio :drop))))
-(assert-event (fn-bs-store-relation (bskv-dir-eio (bskv-link) :apply) (bskv-k (bskv-link) 0)))
-(must-fail (assert-event (fn-bs-store-relation (bskv-dir-eio (bskv-link) :drop) (bskv-k (bskv-link) 0))))
+(assert-event (fn-bs-store-relation (bskv-dir-eio (bskv-link) :apply) (bskv-k (bskv-link) 0) *bsk5-arena*))
+(must-fail (assert-event (fn-bs-store-relation (bskv-dir-eio (bskv-link) :drop) (bskv-k (bskv-link) 0) *bsk5-arena*)))
 ; (b) The quiet clause of an observation that leaves the window: the fifth
 ; barrier with the link still pending lands the kernel on :ready, whose
 ; relation reads the durable records, which lack the linked one.
 (assert-event (not (fn-bs-k0-step-inputp (bskv-link) (bskv-k (bskv-link) 4)
                                          '(:observe (:recovery-barrier :ok)) :ok)))
-(assert-event (fn-bs-store-relation (bskv-link) (bskv-k (bskv-link) 4)))
-(must-fail (assert-event (fn-bs-store-relation (bskv-link) (bskv-k (bskv-link) 5))))
+(assert-event (fn-bs-store-relation (bskv-link) (bskv-k (bskv-link) 4) *bsk5-arena*))
+(must-fail (assert-event (fn-bs-store-relation (bskv-link) (bskv-k (bskv-link) 5) *bsk5-arena*)))
 ; (c) The relation: the initial byte image under the reopened kernel.
 (must-fail (assert-event (bskv-prog-concl (bsk5-initial) (bskv-k (bskv-link) 0))))
 ; The fenced-target clause of :fsync-file has no must-fail here: the
@@ -101,11 +101,11 @@
                         (fn-bs-scan-records (fn-bs-scan-store bs))))
 (defun bskv-host (configs bs) (fn-sn-files (fn-sn-open-state (bskv-open configs bs))))
 (defun bskv-rerecovery-concl (configs bs)
-  (and (fn-bs-store-relation bs (bskv-host configs bs))
+  (and (fn-bs-store-relation bs (bskv-host configs bs) *bsk5-arena*)
        (bskv-prog-concl bs (bskv-host configs bs))))
 (defun bskv-admin () (fn-bs-k0v-drained (bskv-link)))
 (defun bskv-admin-k () (bskv-k (bskv-link) 5))
-(assert-event (fn-bs-store-relation (bskv-admin) (bskv-admin-k)))
+(assert-event (fn-bs-store-relation (bskv-admin) (bskv-admin-k) *bsk5-arena*))
 (assert-event (not (fn-bs-replay-visiblep (bskv-admin-k))))
 (assert-event (fn-bs-k0w-authority-quietp (bskv-admin)))
 (assert-event (consp (fn-bs-pending (bskv-admin))))
@@ -133,5 +133,5 @@
 ; re-recovery from it holds as well (it is the window witness above).  The
 ; hypothesis is what the host line provides, and it is sufficient, not
 ; shown necessary.
-(assert-event (fn-bs-store-relation (bskv-link) (cdr (bskv-r 10))))
+(assert-event (fn-bs-store-relation (bskv-link) (cdr (bskv-r 10)) *bsk5-arena*))
 (assert-event (bskv-rerecovery-concl *bskv-configs* (bskv-link)))

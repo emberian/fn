@@ -483,7 +483,7 @@
   (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
-           (equal (fn-bs-durable-records (fn-bs-k0p-s3 bs stage frame)) (fn-sf-records ks)))
+           (equal (fn-bs-durable-records (fn-bs-k0p-s3 bs stage frame)) (fn-bs-rows-wire (fn-sf-records ks) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0p-record-staged-durable-pair (g nil) (c nil))

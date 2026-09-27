@@ -154,7 +154,7 @@
                   (equal (fn-sf-frontier-candidate k6) (1+ (fn-sf-frontier ks)))
                   (equal (fn-sf-records k6) (fn-sf-records ks))
                   (equal (fn-bs-durable-frontier b6) (fn-sf-frontier ks))
-                  (equal (fn-bs-durable-records b6) (fn-sf-records ks))
+                  (equal (fn-bs-durable-records b6) (fn-bs-rows-wire (fn-sf-records ks) arena))
                   (equal (fn-bs-frontier-decode (fn-bs-durable-content b6 (fn-bs-next-ino bs)))
                          (1+ (fn-sf-frontier ks)))
                   (equal (fn-bs-lookup b6 :staging stage) (fn-bs-next-ino bs))

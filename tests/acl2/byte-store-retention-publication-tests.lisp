@@ -18,15 +18,15 @@
         (bs (bsk6-start))
         (pair (nth 10 (bsrp-run))))
    (and (fn-store-retention-event-p event)
-        (fn-bs-store-relation bs ks)
+        (fn-bs-store-relation bs ks *bsk5-arena*)
         (fn-bs-namep ".stage-k6-retention")
         (not (fn-bs-lookup bs :staging ".stage-k6-retention"))
         (equal (fn-sf-phase ks) :record-staged)
         (equal (fn-sf-record-candidate ks) event)
         (equal (fn-bs-record-of-octets (bsk6-retention-frame)) event)
         (fn-bs-record-inputp ks ".stage-k6-retention" (fn-bs-txn-name 1)
-                             (bsk6-retention-frame))
-        (fn-bs-store-relation (car pair) (cdr pair)))))
+                             (bsk6-retention-frame) *bsk5-arena*)
+        (fn-bs-store-relation (car pair) (cdr pair) *bsk5-arena*))))
 
 (defun bsrp-dir-eio-run (choice)
   (fn-bs-run (bsk6-start) (bsk6-retention-prepared)
@@ -46,7 +46,7 @@
                          *bsk5-groups* *bsk5-capacity*))
          (failed (nth 11 run)))
     (and (equal (len run) 12)
-         (fn-bs-store-relation (car failed) (cdr attempt))
+         (fn-bs-store-relation (car failed) (cdr attempt) *bsk5-arena*)
          (equal (fn-bs-durable-records (car failed))
                 (append (fn-bs-durable-records (car attempt))
                         (list (fn-sf-record-candidate (cdr attempt)))))
@@ -79,7 +79,7 @@
         (fn-bs-dir-quietp a :transactions)
         (fn-bs-dir-quietp d :transactions)
         (fn-sf-fencedp (fn-sf-record-dir-result ka :error))
-        (fn-bs-store-relation a ka)
+        (fn-bs-store-relation a ka *bsk5-arena*)
         (equal (fn-bs-durable-records a)
                (list *bsk5-record* (bsk6-retention-candidate)))
         (equal (fn-bs-durable-records d) (list *bsk5-record*))
@@ -99,9 +99,9 @@
  (let ((bs (bsk6-prior-final-set-and-delete))
        (ks (bsk6-retention-prepared)))
    (and (fn-bs-statep bs)
-        (not (fn-bs-store-relation bs ks))
+        (not (fn-bs-store-relation bs ks *bsk5-arena*))
         (fn-bs-record-inputp ks ".stage-k6-retention" (fn-bs-txn-name 1)
-                             (bsk6-retention-frame))
+                             (bsk6-retention-frame) *bsk5-arena*)
         (not (fn-bs-lookup bs :staging ".stage-k6-retention"))
         (not (bsrp-applied-exactp bs ks ".stage-k6-retention"
                                   (fn-bs-txn-name 1)
@@ -115,9 +115,9 @@
 ; An article frame at the retention candidate's name is not the candidate.
 (assert-event
  (let ((bs (bsk6-start)) (ks (bsk6-retention-prepared)))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (not (fn-bs-record-inputp ks ".stage-k6-retention"
-                                  (fn-bs-txn-name 1) (bsk5-frame-2)))
+                                  (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*))
         (not (fn-bs-lookup bs :staging ".stage-k6-retention"))
         (not (bsrp-applied-exactp bs ks ".stage-k6-retention"
                                   (fn-bs-txn-name 1) (bsk5-frame-2))))))
@@ -131,9 +131,9 @@
 ; the byte relation and the correctly typed retention frame still hold.
 (assert-event
  (let ((bs (bsrp-existing-stage)) (ks (bsk6-retention-prepared)))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (fn-bs-record-inputp ks ".stage-k6-retention" (fn-bs-txn-name 1)
-                             (bsk6-retention-frame))
+                             (bsk6-retention-frame) *bsk5-arena*)
         (fn-bs-lookup bs :staging ".stage-k6-retention")
         (not (bsrp-applied-exactp bs ks ".stage-k6-retention"
                                   (fn-bs-txn-name 1)

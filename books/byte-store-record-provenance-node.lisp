@@ -55,33 +55,25 @@
                             fn-sn-prepare-node fn-sn-record-bindsp
                             fn-sf-history-recoverablep fn-sf-candidatep))))))
 
-(local (defthm fn-bs-k0-node-article-prepare-success-has-recordp
-  (implies (and (equal (fn-sf-phase (fn-sn-files s)) :reserved)
-                (equal (fn-sf-phase (fn-sn-files (fn-sn-prepare s record)))
-                       :record-staged))
-           (fn-record-p record))
-  :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-sn-prepare
-                            fn-sf-prepare-record)
-                           (fn-sn-update fn-sn-make-v6
-                            fn-sn-statep fn-node-statep
-                            fn-sn-prepare-node fn-sn-record-bindsp
-                            fn-sf-history-recoverablep fn-sf-candidatep))))))
-
+;; After the records flip the node stages the RETAINED row the entry
+;; interned (fn-sn-prepare admits a held row only), and the frame the host
+;; writes is the encoding of the row's alpha through the arena.
 (defthm fn-bs-k0-served-article-prepare-to-attempted-relation
   (implies
    (and (fn-bs-store-relation bs (fn-sn-files s) arena)
         (equal (fn-sf-phase (fn-sn-files s)) :reserved)
         (equal (fn-sf-phase (fn-sn-files (fn-sn-prepare s record)))
                :record-staged)
+        (fn-record-p (fn-bs-row-wire record arena))
         (fn-bs-namep stage)
         (not (fn-bs-lookup bs :staging stage)))
    (let* ((ks (fn-sn-files (fn-sn-prepare s record)))
           (frame (append
-                  (fn-frame-store-protected (fn-store-event-encode record))
+                  (fn-frame-store-protected
+                   (fn-store-event-encode (fn-bs-row-wire record arena)))
                   (fn-frame-trailer
-                   (fn-frame-store-protected (fn-store-event-encode record)))))
+                   (fn-frame-store-protected
+                    (fn-store-event-encode (fn-bs-row-wire record arena))))))
           (name (fn-bs-txn-name (fn-store-event-sequence record))))
      (fn-bs-store-relation
       (car (nth 10 (fn-bs-run bs ks
@@ -94,9 +86,9 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0-node-article-prepare-preserves-relation)
                  (:instance fn-bs-k0-node-article-prepare-binds-candidate)
-                 (:instance fn-bs-k0-node-article-prepare-success-has-recordp)
                  (:instance fn-bs-k0-article-host-arguments-reach-related-attempted-cut
-                            (ks (fn-sn-files (fn-sn-prepare s record)))))
+                            (ks (fn-sn-files (fn-sn-prepare s record)))
+                            (row record)))
            :in-theory (theory 'minimal-theory))))
 
 ; K0 allocator entry.  host/native/io.lisp:fnn-advance-frontier calls
@@ -1498,7 +1490,7 @@
 (defthm fn-bs-k0-ready-input-durable-records-match
   (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :ready))
-           (equal (fn-bs-durable-records bs) (fn-sf-records ks)))
+           (equal (fn-bs-durable-records bs) (fn-bs-rows-wire (fn-sf-records ks) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-window-unfolds)

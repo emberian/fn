@@ -14,7 +14,8 @@
              *fn-bs-p-frontier* nil *fn-bsfk-groups* *fn-bsfk-capacity*))
 (defconst *fn-bsfk-reserved* (cdr (car (last *fn-bsfk-frontier-run*))))
 (defconst *fn-bsfk-staged*
-  (fn-sf-prepare-record *fn-bsfk-reserved* *fn-bsfk-record*
+  ; the kernel stages the retained row (records flip), handle 0
+  (fn-sf-prepare-record *fn-bsfk-reserved* (fn-held-plain *fn-bsfk-record* 0)
                         *fn-bsfk-groups* *fn-bsfk-capacity*))
 (defconst *fn-bsfk-record-run*
   (fn-bs-run (car (car (last *fn-bsfk-frontier-run*))) *fn-bsfk-staged*

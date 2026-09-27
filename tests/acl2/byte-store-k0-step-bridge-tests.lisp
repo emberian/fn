@@ -12,28 +12,28 @@
 (include-book "std/testing/must-fail" :dir :system)
 
 (defun bskb-rec (k) (nth k (bsk5-record-2-run)))
-(defun bskb-file-ok (bs ks) (fn-bs-store-relation bs (fn-sf-record-file-result ks :ok)))
-(defun bskb-link-ok (bs ks) (fn-bs-store-relation bs (fn-sf-record-link-result ks :ok)))
+(defun bskb-file-ok (bs ks) (fn-bs-store-relation bs (fn-sf-record-file-result ks :ok) *bsk5-arena*))
+(defun bskb-link-ok (bs ks) (fn-bs-store-relation bs (fn-sf-record-link-result ks :ok) *bsk5-arena*))
 
 ; The record-file observation at the file-barrier pair: related before, in
 ; :record-staged, related after, in :record-data-durable; and the general
 ; theorem's precondition and conclusion hold for the observe step there.
-(assert-event (fn-bs-store-relation (car (bskb-rec 4)) (cdr (bskb-rec 4))))
+(assert-event (fn-bs-store-relation (car (bskb-rec 4)) (cdr (bskb-rec 4)) *bsk5-arena*))
 (assert-event (equal (fn-sf-phase (cdr (bskb-rec 4))) :record-staged))
 (assert-event (bskb-file-ok (car (bskb-rec 4)) (cdr (bskb-rec 4))))
 (assert-event (equal (fn-sf-phase (fn-sf-record-file-result (cdr (bskb-rec 4)) :ok)) :record-data-durable))
 (assert-event (bsks-ok (car (bskb-rec 4)) (cdr (bskb-rec 4)) '(:observe (:record-file :ok)) :ok))
 ; The record-link observation at the linked pair (a transaction link pending).
-(assert-event (fn-bs-store-relation (car (bskb-rec 8)) (cdr (bskb-rec 8))))
+(assert-event (fn-bs-store-relation (car (bskb-rec 8)) (cdr (bskb-rec 8)) *bsk5-arena*))
 (assert-event (equal (fn-sf-phase (cdr (bskb-rec 8))) :record-data-durable))
 (assert-event (bskb-link-ok (car (bskb-rec 8)) (cdr (bskb-rec 8))))
 (assert-event (equal (fn-sf-phase (fn-sf-record-link-result (cdr (bskb-rec 8)) :ok)) :record-attempted))
 (assert-event (bsks-ok (car (bskb-rec 8)) (cdr (bskb-rec 8)) '(:observe (:record-link :ok)) :ok))
 ; Teeth: each lemma's one hypothesis is the relation.  Without it (the
 ; initial byte image under the same kernels) the conclusion fails.
-(assert-event (not (fn-bs-store-relation (bsk5-initial) (cdr (bskb-rec 4)))))
+(assert-event (not (fn-bs-store-relation (bsk5-initial) (cdr (bskb-rec 4)) *bsk5-arena*)))
 (must-fail (assert-event (bskb-file-ok (bsk5-initial) (cdr (bskb-rec 4)))))
-(assert-event (not (fn-bs-store-relation (bsk5-initial) (cdr (bskb-rec 8)))))
+(assert-event (not (fn-bs-store-relation (bsk5-initial) (cdr (bskb-rec 8)) *bsk5-arena*)))
 (must-fail (assert-event (bskb-link-ok (bsk5-initial) (cdr (bskb-rec 8)))))
 
 ; The marker error arms.
@@ -47,7 +47,7 @@
          (fn-bs-k0b-marker-step-coveredp (nth 5 run) (nth 6 prog) outcome ks *bsk5-groups* *bsk5-capacity*)
          (fn-bs-k0b-marker-step-coveredp (nth 7 run) (nth 8 prog) outcome ks *bsk5-groups* *bsk5-capacity*))))
 (defun bskb-hyps (bs ks stage octets outcome)
-  (and (fn-bs-store-relation bs ks)
+  (and (fn-bs-store-relation bs ks *bsk5-arena*)
        (fn-bs-finish-inputp ks (car (fn-sf-completion ks)) (cdr (fn-sf-completion ks)))
        (stringp stage) (not (fn-bs-lookup bs :staging stage))
        (fn-cbor-octet-listp octets) (consp octets)
@@ -66,7 +66,7 @@
 ; The relation: the initial byte image under the completing kernel.
 (must-fail (assert-event (bskb-concl (bsk5-initial) (bskb-k) *bskb-stage* (bskb-octets) :ok)))
 ; The completion window: the related record-attempted pair of the record run.
-(assert-event (fn-bs-store-relation (car (bskb-rec 10)) (cdr (bskb-rec 10))))
+(assert-event (fn-bs-store-relation (car (bskb-rec 10)) (cdr (bskb-rec 10)) *bsk5-arena*))
 (assert-event (not (fn-bs-finish-inputp (cdr (bskb-rec 10)) (car (fn-sf-completion (cdr (bskb-rec 10))))
                                         (cdr (fn-sf-completion (cdr (bskb-rec 10)))))))
 (must-fail (assert-event (bskb-concl (car (bskb-rec 10)) (cdr (bskb-rec 10)) *bskb-stage* (bskb-octets) :ok)))

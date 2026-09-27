@@ -349,13 +349,13 @@
                             (row (fn-sf-record-candidate ks)))
                  (:instance fn-bs-row-wire-keeps-the-sequence
                             (row (fn-sf-record-candidate ks)))
-                 (:instance fn-bs-record-of-octets-is-a-wire-event-or-nil
-                            (octets (fn-bs-content
-                                     bs (fn-bs-lookup
-                                         bs :transactions
-                                         (fn-bs-txn-name
-                                          (len (fn-bs-durable-names
-                                                bs :transactions)))))))
+                 (:instance fn-bs-record-of-is-a-wire-event-or-nil
+                            (s bs)
+                            (ino (fn-bs-lookup
+                                  bs :transactions
+                                  (fn-bs-txn-name
+                                   (len (fn-bs-durable-names
+                                         bs :transactions))))))
                  (:instance fn-bs-k8-one-record-read
                             (s bs) (n (len (fn-bs-durable-names bs :transactions))))
                  (:instance fn-bs-lookup-of-a-pending-target
@@ -366,7 +366,11 @@
                             (ops (fn-bs-pending bs)) (dir :transactions)
                             (name (fn-bs-txn-name
                                    (len (fn-bs-durable-names bs :transactions))))))
-           :in-theory (enable fn-bs-pending-shape-okp fn-bs-replay-visiblep))))
+           :in-theory (e/d (fn-bs-pending-shape-okp fn-bs-replay-visiblep)
+                           (fn-bs-record-of fn-wire-event-p
+                            fn-bs-row-wire-of-a-store-event-is-a-cons
+                            fn-bs-row-wire-keeps-the-sequence
+                            fn-bs-record-of-is-a-wire-event-or-nil)))))
 
 (defthm fn-bs-k8-pending-link-view-record-list
   (implies (and (fn-bs-store-relation bs ks arena)

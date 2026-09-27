@@ -12,11 +12,11 @@
 (include-book "std/testing/must-fail" :dir :system)
 
 (defun bskr-cuts-ok (run ks)
-  (and (fn-bs-store-relation (car (nth 1 run)) ks)
-       (fn-bs-store-relation (car (nth 3 run)) ks)
-       (fn-bs-store-relation (car (nth 5 run)) ks)
-       (fn-bs-k0s-root-rename-pendingp (car (nth 7 run)) ks)
-       (fn-bs-store-relation (car (nth 9 run)) ks)
+  (and (fn-bs-store-relation (car (nth 1 run)) ks *bsk5-arena*)
+       (fn-bs-store-relation (car (nth 3 run)) ks *bsk5-arena*)
+       (fn-bs-store-relation (car (nth 5 run)) ks *bsk5-arena*)
+       (fn-bs-k0s-root-rename-pendingp (car (nth 7 run)) ks *bsk5-arena*)
+       (fn-bs-store-relation (car (nth 9 run)) ks *bsk5-arena*)
        (equal (cdr (nth 1 run)) ks) (equal (cdr (nth 3 run)) ks) (equal (cdr (nth 5 run)) ks)
        (equal (cdr (nth 7 run)) ks) (equal (cdr (nth 9 run)) ks)))
 (defun bskr-scp (bs ks stage octets)
@@ -30,7 +30,7 @@
 (assert-event (bskr-scp (bskc-rb) (bskc-rk) ".stage-ck-1" *bskr-ck*))
 (defun bskr-scp-b4 ()
   (car (nth 7 (fn-bs-run (bskc-rb) (bskc-rk) (fn-bs-scp-program ".stage-ck-1" *bskr-ck*) nil nil nil))))
-(assert-event (not (fn-bs-store-relation (bskr-scp-b4) (bskc-rk))))
+(assert-event (not (fn-bs-store-relation (bskr-scp-b4) (bskc-rk) *bsk5-arena*)))
 (assert-event (equal (fn-bs-k0s-root-name (bskr-scp-b4)) *fn-bs-state-checkpoint-name*))
 (assert-event (not (equal (fn-bs-root-rename-dropped (bskr-scp-b4)) (fn-bs-k0s-root-rename-landed (bskr-scp-b4)))))
 ; The general step's arms at the new pairs: the rename onto each name, and the
@@ -51,7 +51,7 @@
 ; :root quiet: the frontier run's attempted pair 11 (related, the frontier
 ; rename pending): the checkpoint's rename joins a second root entry, and the
 ; replaced cut is neither related nor covered.
-(assert-event (fn-bs-store-relation (car (bskc-f 11)) (cdr (bskc-f 11))))
+(assert-event (fn-bs-store-relation (car (bskc-f 11)) (cdr (bskc-f 11)) *bsk5-arena*))
 (assert-event (not (fn-bs-lookup (car (bskc-f 11)) :staging ".stage-ck-1")))
 (must-fail (assert-event (bskr-scp (car (bskc-f 11)) (cdr (bskc-f 11)) ".stage-ck-1" *bskr-ck*)))
 ; No must-fail: :transactions quiet and the recovery-window guard are the
@@ -68,7 +68,7 @@
 ; both related, and the keystone's precondition and conclusion hold for each.
 (defun bskr-fd (b d o) (mv-let (r s) (fn-bs-fsync-dir b d o) (declare (ignore r)) s))
 (defun bskr-error-ok (b k d o)
-  (fn-bs-store-relation (bskr-fd b d o) k))
+  (fn-bs-store-relation (bskr-fd b d o) k *bsk5-arena*))
 (assert-event (consp (fn-bs-ops-for-dir (fn-bs-pending (car (bskc-f 11))) :root)))
 (assert-event (bskr-error-ok (car (bskc-f 11)) (cdr (bskc-f 11)) :root '(:eio :apply)))
 (assert-event (bskr-error-ok (car (bskc-f 11)) (cdr (bskc-f 11)) :root '(:eio :drop)))

@@ -14,7 +14,7 @@
         (bs (car pair)) (ks (cdr pair))
         (fenced (bsk8-fenced)))
    (and (equal (fn-sf-phase ks) :record-attempted)
-        (fn-bs-store-relation bs ks)
+        (fn-bs-store-relation bs ks *bsk5-arena*)
         (equal (fn-bs-durable-records bs) (list *bsk5-record*))
         (equal (fn-bs-durable-names fenced :transactions)
                (list (fn-bs-txn-name 0) (fn-bs-txn-name 1)))
@@ -37,7 +37,7 @@
 ; the Store kernel is carrying, including the older durable record.
 (assert-event
  (let* ((pair (bsk8-attempted)) (bs (car pair)) (ks (cdr pair)))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (equal (fn-sf-phase ks) :record-attempted)
         (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
         (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
@@ -54,7 +54,7 @@
 (assert-event
  (let* ((pair (bsk8-no-link-but-attempted))
         (bs (car pair)) (ks (cdr pair)))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (equal (fn-sf-phase ks) :record-attempted)
         (not (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
         (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
@@ -71,7 +71,7 @@
 ; fence, adding a prior record as well as the alleged candidate.
 (assert-event
  (let ((bs (bsk5-two-pending)) (ks (cdr (bsk8-attempted))))
-   (and (not (fn-bs-store-relation bs ks))
+   (and (not (fn-bs-store-relation bs ks *bsk5-arena*))
         (equal (fn-sf-phase ks) :record-attempted)
         (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
         (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
@@ -96,7 +96,7 @@
 (assert-event
  (let* ((pair (bsk8-replaying-pending-link))
         (bs (car pair)) (ks (cdr pair)))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (fn-bs-replay-visiblep ks)
         (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
         (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
@@ -125,7 +125,7 @@
         (bs (car pair)) (ks (cdr pair))
         (fenced (fn-bs-fence-dir bs :transactions))
         (image (fn-bs-crash fenced nil)))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (fn-bs-crash-choicesp nil (fn-bs-pending fenced)
                               (fn-bs-unit fenced))
         (equal (fn-bs-scan-records (fn-bs-scan-store image))

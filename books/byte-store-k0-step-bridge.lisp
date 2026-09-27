@@ -280,7 +280,7 @@
              (and (equal (cdr (nth 12 run)) (cdr (nth 10 run)))
                   (equal (car (nth 12 run)) (fn-bs-fence-dir (car (nth 10 run)) :transactions))
                   (equal (fn-sf-phase (cdr (nth 10 run))) :record-attempted)
-                  (fn-bs-record-directory-committedp (car (nth 12 run)) (cdr (nth 12 run))))))
+                  (fn-bs-record-directory-committedp (car (nth 12 run)) (cdr (nth 12 run)) arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0-record-durable-cut-relation-by-step fn-bs-k0-record-pair-11-is-transaction-fence

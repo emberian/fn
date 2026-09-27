@@ -239,7 +239,7 @@
                   (fn-bs-store-relation (car failed) (cdr attempt) arena)
                   (equal (fn-bs-durable-records (car failed))
                          (append (fn-bs-durable-records (car attempt))
-                                 (list (fn-sf-record-candidate (cdr attempt)))))
+                                 (list (fn-bs-row-wire (fn-sf-record-candidate (cdr attempt)) arena))))
                   (fn-bs-dir-quietp (car failed) :transactions)
                   (fn-sf-fencedp
                    (fn-sf-record-dir-result (cdr failed) :error)))))

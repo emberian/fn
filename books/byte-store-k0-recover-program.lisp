@@ -301,7 +301,7 @@
                             fn-bs-ops-for-dir fn-bs-lookup-of-an-untouched-name fn-bs-content-of-a-fenced-inode)))))
 (defthm fn-bs-k0v-quiet-kernel-admits-durable
   (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-k0w-authority-quietp bs))
-           (fn-sf-recovery-crash-imagep ks (fn-bs-durable-frontier bs) (fn-bs-durable-records bs)))
+           (fn-bs-alpha-recovery-crash-imagep ks (fn-bs-durable-frontier bs) (fn-bs-durable-records bs) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :cases ((fn-bs-replay-visiblep ks))

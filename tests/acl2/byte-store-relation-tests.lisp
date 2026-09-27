@@ -34,7 +34,7 @@
                                              (fn-bs-test-frontier))
                         nil nil nil))))))
    (and (equal bs (fn-bs-initial-image 4 (fn-bs-test-config) (fn-bs-test-frontier)))
-        (fn-bs-store-relation bs (fn-sf-initial-state))
+        (fn-bs-store-relation bs (fn-sf-initial-state) 'nil)
         (fn-bs-authority-knownp bs)
         (not (fn-bs-dir-quietp bs :staging))
         (fn-bs-dir-quietp bs :root))))
@@ -44,7 +44,7 @@
 (assert-event
  (let ((run (fn-bs-test-frontier-run 4 (fn-bs-test-config) (fn-bs-test-frontier)
                                     ".allocation-test" (fn-bs-test-next))))
-   (and (fn-bs-run-relatedp run)
+   (and (fn-bs-run-relatedp run 'nil)
         (equal (len run) (len (fn-bs-frontier-program ".allocation-test"
                                                     (fn-bs-test-next))))
         (equal (fn-sf-phase (cdr (car (last run)))) :reserved)
@@ -58,7 +58,7 @@
    (car (car (last (fn-bs-run *fn-bs-empty-store* (fn-sf-initial-state)
                               (fn-bs-init-program nil (fn-bs-test-frontier))
                               nil nil nil))))
-   (fn-sf-initial-state))))
+   (fn-sf-initial-state) 'nil)))
 
 ; Additional constructor/guard cases. With the concrete codec, malformed
 ; octets also fail metadata validation, so these are NOT claimed to isolate
@@ -66,23 +66,23 @@
 (must-fail
  (assert-event
   (fn-bs-store-relation (fn-bs-test-initial 0 (fn-bs-test-config) (fn-bs-test-frontier))
-                       (fn-sf-initial-state))))
+                       (fn-sf-initial-state) 'nil)))
 (must-fail
  (assert-event
   (fn-bs-store-relation (fn-bs-test-initial 4 '(256) (fn-bs-test-frontier))
-                       (fn-sf-initial-state))))
+                       (fn-sf-initial-state) 'nil)))
 (must-fail
  (assert-event
   (fn-bs-store-relation (fn-bs-test-initial 4 (fn-bs-test-config) '(256))
-                       (fn-sf-initial-state))))
+                       (fn-sf-initial-state) 'nil)))
 (must-fail
  (assert-event
   (fn-bs-store-relation (fn-bs-test-initial 4 nil (fn-bs-test-frontier))
-                       (fn-sf-initial-state))))
+                       (fn-sf-initial-state) 'nil)))
 (must-fail
  (assert-event
   (fn-bs-store-relation (fn-bs-test-initial 4 (fn-bs-test-config) (fn-bs-test-next))
-                       (fn-sf-initial-state))))
+                       (fn-sf-initial-state) 'nil)))
 
 ; Every-pair preservation has three hypotheses: a positive write unit, the
 ; initial-input boundary, and the successor-input boundary. The unit=0,
@@ -91,27 +91,27 @@
 (must-fail
  (assert-event
   (fn-bs-run-relatedp (fn-bs-test-frontier-run 0 (fn-bs-test-config)
-                       (fn-bs-test-frontier) ".allocation-test" (fn-bs-test-next)))))
+                       (fn-bs-test-frontier) ".allocation-test" (fn-bs-test-next)) 'nil)))
 (must-fail
  (assert-event
   (fn-bs-run-relatedp (fn-bs-test-frontier-run 4 '(256)
-                       (fn-bs-test-frontier) ".allocation-test" (fn-bs-test-next)))))
+                       (fn-bs-test-frontier) ".allocation-test" (fn-bs-test-next)) 'nil)))
 (must-fail
  (assert-event
   (fn-bs-run-relatedp (fn-bs-test-frontier-run 4 (fn-bs-test-config)
-                       '(256) ".allocation-test" (fn-bs-test-next)))))
+                       '(256) ".allocation-test" (fn-bs-test-next)) 'nil)))
 (must-fail
  (assert-event
   (fn-bs-run-relatedp (fn-bs-test-frontier-run 4 nil
-                       (fn-bs-test-frontier) ".allocation-test" (fn-bs-test-next)))))
+                       (fn-bs-test-frontier) ".allocation-test" (fn-bs-test-next)) 'nil)))
 (must-fail
  (assert-event
   (fn-bs-run-relatedp (fn-bs-test-frontier-run 4 (fn-bs-test-config)
-                       (fn-bs-test-next) ".allocation-test" (fn-bs-test-next)))))
+                       (fn-bs-test-next) ".allocation-test" (fn-bs-test-next)) 'nil)))
 (must-fail
  (assert-event
   (fn-bs-run-relatedp (fn-bs-test-frontier-run 4 (fn-bs-test-config)
-                       (fn-bs-test-frontier) ".allocation-test" (fn-bs-test-frontier)))))
+                       (fn-bs-test-frontier) ".allocation-test" (fn-bs-test-frontier)) 'nil)))
 
 ; The old K0 formula fails at an actual named host cut, after valid staging,
 ; although the program still completes. This separates the failed content
@@ -122,8 +122,8 @@
 (assert-event
  (let ((run (fn-bs-test-frontier-run 4 (fn-bs-test-config) (fn-bs-test-frontier)
                                     ".allocation-test" (fn-bs-test-frontier))))
-   (and (fn-bs-run-relatedp (take 8 run))
-        (not (fn-bs-store-relation (car (nth 9 run)) (cdr (nth 9 run))))
+   (and (fn-bs-run-relatedp (take 8 run) 'nil)
+        (not (fn-bs-store-relation (car (nth 9 run)) (cdr (nth 9 run)) 'nil))
         (equal (fn-sf-phase (cdr (car (last run)))) :reserved))))
 
 ; The existential image recognizer is non-executable. This local constructor
@@ -144,7 +144,7 @@
         (bs (car (nth 9 run)))
         (old (fn-bs-crash bs nil))
         (new (fn-bs-crash bs '(:drop :drop :drop :drop :drop :apply :drop))))
-   (and (fn-bs-store-relation bs (cdr (nth 9 run)))
+   (and (fn-bs-store-relation bs (cdr (nth 9 run)) 'nil)
         (fn-bs-crash-choicesp nil (fn-bs-pending bs) (fn-bs-unit bs))
         (fn-bs-crash-choicesp '(:drop :drop :drop :drop :drop :apply :drop)
                               (fn-bs-pending bs) (fn-bs-unit bs))

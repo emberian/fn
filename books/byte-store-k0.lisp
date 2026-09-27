@@ -157,15 +157,16 @@
 (fn-bs-k0-cut-after-related-pair fn-bs-k0-record-durable-cut-relation
   (fn-bs-record-program stage name frame) (fn-bs-record-inputp ks stage name frame arena)
   11 fn-bs-k0-record-fence-pair-relation)
-(defun fn-bs-record-directory-committedp (bs ks)
+(defun fn-bs-record-directory-committedp (bs ks arena)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-bs-dir-quietp bs :transactions)
        (equal (fn-bs-durable-records bs)
-              (append (fn-sf-records ks) (list (fn-sf-record-candidate ks))))))
+              (append (fn-bs-rows-wire (fn-sf-records ks) arena)
+                      (list (fn-bs-row-wire (fn-sf-record-candidate ks) arena))))))
 (defthm fn-bs-record-directory-commit-observation-preserves-relation
   (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-attempted)
-                (fn-bs-record-directory-committedp bs ks))
+                (fn-bs-record-directory-committedp bs ks arena))
            (and (fn-bs-store-relation bs (fn-sf-record-dir-result ks :ok) arena)
                 (equal (fn-sf-phase (fn-sf-record-dir-result ks :ok)) :completing)))
   :rule-classes nil

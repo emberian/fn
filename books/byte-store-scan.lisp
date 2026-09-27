@@ -365,6 +365,15 @@
                                   (fn-wire-event-p fn-store-event-decode-exact
                                    fn-frame-store-decode)))))
 
+(defthm fn-bs-record-of-is-a-wire-event-or-nil
+  (implies (fn-bs-record-of s ino)
+           (fn-wire-event-p (fn-bs-record-of s ino)))
+  :hints (("Goal" :use ((:instance fn-bs-record-of-octets-is-a-wire-event-or-nil
+                                   (octets (fn-bs-content s ino))))
+           :in-theory (e/d (fn-bs-record-of)
+                           (fn-bs-record-of-octets fn-wire-event-p
+                            fn-bs-record-of-octets-is-a-wire-event-or-nil)))))
+
 (defun fn-bs-txn-names (n)
   (declare (xargs :guard t :verify-guards nil :measure (nfix n)))
   (if (zp n) nil (append (fn-bs-txn-names (1- n)) (list (fn-bs-txn-name (1- n))))))
