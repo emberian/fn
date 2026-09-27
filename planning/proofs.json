@@ -11610,6 +11610,51 @@
         "fn-nntp-section-rev-is-the-section",
         "fn-nntp-response-validp-is-framed-section"
       ]
+    },
+    {
+      "id": "PRF-332",
+      "title": "The served OVER/XOVER, HDR/XHDR and XPAT read the overview column decided once at intern, never the payload, and answer what the bytes answer",
+      "statement": "books/held-record.lisp: a held row's facts carry NOV (fn-hnov: tombstone flag, parse verdict, the five RFC 3977 section 8.3.2 fields as strings; nil = not decided). books/catalog-record.lisp fn-hnov-of(-parsed) decides it inside fn-held-facts-of from ONE parse (the open's books/store-intern-once.lisp fn-ipo-facts-context and the POST's books/owner-parse-carried.lisp fn-apc-held-facts-of pass their parse; the fields are books/nov-fields.lisp fn-nov-header-content, the function OVER renders with). books/served-columns.lisp: F = fn-scol-okp (the arena recognizer and every catalog row whose column is decided carries exactly fn-held-facts-of of the octets its handle names). The lookup fn-scol-facts finds a row of the article's Message-ID (the catalog's Message-ID column) whose handle IS the article's; KEYSTONE fn-scol-facts-are-the-bytes-facts: under F its facts are the facts of the article's bytes, so no join, uniqueness or version fact is used. KEYSTONES fn-scol-tombstonep-is-bytes, fn-scol-overview-of-is-bytes, fn-scol-hdr-content-is-bytes: under F alone the column readers equal fn-nntp-article-tombstonep, fn-nov-overview and fn-nntp-hdr-content (a field token lowercasing to one of the five names reads the column: fn-scol-header-content-by-downcase; :bytes/:lines from the O(1) length and the facts' body lines; any other field reads the bytes). The served twins fn-nov-served-lines-numbered-col, fn-nntp-over-range/current/msgid-served-col and KEYSTONE fn-nntp-xref-reply-col-is-xref-reply equal the nntp-xref arms under F. books/served-catalog.lisp: fn-nntp-archive-command-cat calls fn-nntp-xref-reply-col and its HDR/XPAT arms call fn-scol-hdr-content; fn-nntp-archive-command-cat-is-pinned and the four HDR/XPAT -is-archive keystones are restated with F; books/served-catalog-chain.lisp fn-scr-catalogp carries F, so the chain's -is- theorems to fn-ocfg-read-tls-prefix hold over the column path. F at the transitions: fn-scol-okp-of-commit, -of-withdraw, -of-redecide, -of-clear, -of-seal-list, -of-arena-append, -of-faithful-reseat, -of-intern-list, fn-scol-row-okp-of-intern-list; at the owner's entries (books/served-catalog-owner.lisp) fn-scol-okp-of-load-held-rows (E, from fn-scol-history-okp of the store's rows), fn-scol-row-okp-of-intern-row-at (T1), fn-scol-okp-of-sca-complete (T2), -of-sca-withdraw-targets (T4), -of-sca-finish. OPEN: that the store's history rows stay faithful (fn-scol-history-okp) across the owner's steps and the opens is the same establishment obligation as the join's (PRF-302). Host subject: host/owner-host.lisp fn-owner-chunk-span -> fn-otm-read-span -> fn-orr-read-span -> fn-scr-* -> fn-nntp-archive-command-cat.",
+      "milestone": "M6",
+      "requirements": [
+        "STO-027",
+        "NNT-052"
+      ],
+      "depends_on": [
+        "PRF-302",
+        "PRF-292"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/nov-fields.lisp",
+        "books/held-record.lisp",
+        "books/catalog-record.lisp",
+        "books/served-columns.lisp",
+        "books/served-catalog.lisp",
+        "books/served-catalog-chain.lisp",
+        "books/served-catalog-owner.lisp",
+        "tests/acl2/served-columns-tests.lisp",
+        "tests/acl2/served-catalog-owner-tests.lisp",
+        "planning/evidence/served-columns-2026-09-27.md"
+      ],
+      "progress_note": "Lane served-columns (2026-09-27): never do at read time what could have been done once at write time.",
+      "events": [
+        "fn-scol-facts-are-the-bytes-facts",
+        "fn-scol-tombstonep-is-bytes",
+        "fn-scol-overview-of-is-bytes",
+        "fn-scol-hdr-content-is-bytes",
+        "fn-nntp-xref-reply-col-is-xref-reply",
+        "fn-nov-served-lines-numbered-col-is-served",
+        "fn-scol-okp-of-commit",
+        "fn-scol-okp-of-withdraw",
+        "fn-scol-okp-of-seal-list",
+        "fn-scol-okp-of-faithful-reseat",
+        "fn-scol-okp-of-intern-list",
+        "fn-scol-okp-of-load-held-rows",
+        "fn-scol-row-okp-of-intern-row-at",
+        "fn-scol-okp-of-sca-finish"
+      ]
     }
   ]
 }
