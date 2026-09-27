@@ -1401,7 +1401,7 @@ headline and the theorems above hold of the called path under that
 hypothesis (where before they held with none, because the replay tested the
 relation at run time and answered `:recovery-required` without it);
 `fn-oclc-publish-carries-ocl-relation` keeps the invariant for the next
-completion. What establishes the invariant: `fn-owner-recover`
+completion. What establishes the invariant: `fn-owner-recover-rows`
 (`fn-orec-started-owner-ocl-relation`); what is not yet proved to preserve
 it: the format-9 log route's two owner steps (PKT-827 (c)).
 

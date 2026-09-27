@@ -303,18 +303,6 @@
       "packet": "PKT-448 (d)",
       "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
     },
-    "fn-cpo-configure-durable append N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (e)"
-    },
-    "fn-cpo-configure-durable true-listp N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (e)"
-    },
-    "fn-cpr-loop recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (e)"
-    },
     "fn-ctl-apply-records recursion N": {
       "class": "unexpected",
       "packet": "PKT-658"
@@ -505,6 +493,21 @@
       "class": "unexpected",
       "confirmed": "section 4 row n-sweep POST at 56f94181: bytes consed per POST x3.23 (2.46 MB to 7.93 MB, about 608 B per retained article) from N 1,000 to 10,000 at 2 KiB; aggregate over the POST entries' finds, the row cannot apportion it; section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (a)"
+    },
+    "fn-oclc-configure append N": {
+      "class": "unexpected",
+      "packet": "PKT-448 (e)",
+      "note": "moved from fn-cpo-configure-durable by control-quanta (batch AW): the carried completion walks the CONFIG history (config records, not articles) as the replayed one did; fn-cpr-loop's replay is gone"
+    },
+    "fn-oclc-configure len N": {
+      "class": "unexpected",
+      "packet": "PKT-448 (e)",
+      "note": "moved from fn-cpo-configure-durable by control-quanta (batch AW): the carried completion walks the CONFIG history (config records, not articles) as the replayed one did; fn-cpr-loop's replay is gone"
+    },
+    "fn-oclc-configure true-listp N": {
+      "class": "unexpected",
+      "packet": "PKT-448 (e)",
+      "note": "moved from fn-cpo-configure-durable by control-quanta (batch AW): the carried completion walks the CONFIG history (config records, not articles) as the replayed one did; fn-cpr-loop's replay is gone"
     },
     "fn-own-retain-find-id-unguarded recursion N": {
       "class": "cold",

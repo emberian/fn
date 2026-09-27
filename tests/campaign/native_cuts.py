@@ -1024,11 +1024,14 @@ LOG_ROUTE_ARMS = {
     "fnn-mark-committed": (None, ()),
     "fnn-recover": ("fnn-recover-log", (("fn-lg-open-program", LOG_ROUTE_BOOK),)),
 }
+# fnn-log-scan-segments (lane log-recovery): the multi-segment open reads the
+# closed segments only (no step) and recovers the active one through
+# fnn-log-recover; a rotation it completes is P-ROTATE's, not the open's.
 LOG_ROUTE_EXPAND = ("fnn-log-commit-open-batch", "fnn-log-append", "fnn-log-fence",
-                    "fnn-log-recover")
+                    "fnn-log-recover", "fnn-log-scan-segments")
 _LOG_ROUTE_TOKEN = re.compile(
     r"\((fnn-log-pwrite|fnn-log-fdatasync|fnn-log-commit-open-batch|fnn-log-append|"
-    r"fnn-log-fence|fnn-log-recover)[\s)]"
+    r"fnn-log-fence|fnn-log-recover|fnn-log-scan-segments)[\s)]"
     r"|\(fnn-at store :([a-z0-9-]+)\)|\(fnn-log-at :([a-z0-9-]+)\)"
     r"|\(funcall barrier\)|RECOVER-BARRIER-")
 
