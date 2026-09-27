@@ -8305,7 +8305,8 @@
         "planning/evidence/manifests/certify-20260927T021015Z-1915504.json",
         "books/catalog-record.lisp",
         "tests/acl2/catalog-record-tests.lisp",
-        "planning/evidence/line-stack-2026-09-27.md"
+        "planning/evidence/line-stack-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T160812Z-252949.json"
       ],
       "progress_note": "Lane served-line-iterative (2026-09-26; image-floor packet 2, PKT-481's class, D27). Cause by persvati REPL backtrace (FN-POST-BODY-OCTETS frames to exhaustion on 3,000,000 lines) and by the native witness (one 4 MiB line: Control stack exhausted in fn-owner-chunk-span until fn-wire-list-length was a loop). Teeth: tests/acl2/served-line-iterative-tests.lisp (reachable witnesses, the composed BODY reply, served-size witnesses of 2,100,000 lines and of one 20,000,000-octet line through the compiled executables, labelled MUTATION witnesses refuted on ground instances). Lane line-stack (Opus 5.5, 2026-09-27): the fourth keystone; cause read from the frames of FN_NATIVE_FAULT_BACKTRACE's stack-exhaustion report (FN-HF-CRLF-COUNT x60795 on the committer); teeth in tests/acl2/catalog-record-tests.lisp (reachable witnesses by loop and definition; 5,000,000 lines through fn-hf-body-lines-of).",
       "events": [
