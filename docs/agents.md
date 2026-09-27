@@ -237,7 +237,8 @@ fn hybrid-author CONTROL 1 article.eml ed.sig ml.sig ml-public.pem
 ```
 
 - **Any size the node takes.** The article may be as large as the node's
-  article bound (`max-article-octets` in `fn operator CONFIG status`).
+  article bound (`max-article-octets`, which the operator's status line
+  prints).
   Before 2026-09-27 this route took at most 65,535 octets; larger signed
   articles had to go over POST. Both routes now take the same articles.
 - **Keep the signature files.** If the answer is `uncertain` (exit 3), send

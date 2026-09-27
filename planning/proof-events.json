@@ -3632,6 +3632,14 @@
         {
           "kind": "theorem",
           "name": "fn-nhctrl-read-bound-covers-both"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-native-hybrid-control-author-request-within-read-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nhctrl-author-request-covers-every-storable-article"
         }
       ]
     },
