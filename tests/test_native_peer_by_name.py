@@ -27,6 +27,8 @@ assertions pass.
 import json
 import os
 from pathlib import Path
+import socket
+import ssl
 import subprocess
 import tempfile
 import time
@@ -57,7 +59,6 @@ class NativePeerByNameTests(unittest.TestCase):
     initialize = Base.initialize
     profile = Base.profile
     assert_not_received = Base.assert_not_received
-    article_from = Base.article_from
 
     setUp = Base.setUp
 
@@ -99,6 +100,42 @@ class NativePeerByNameTests(unittest.TestCase):
                       "-CAkey", str(self.ca_key), "-CAcreateserial", "-days", "1",
                       "-sha256", "-extfile", str(extensions), "-out", str(certificate)])
         return certificate, key
+
+    def article_from(self, node, message_id):
+        """A protected reader's ARTICLE, verifying the node's own certificate name."""
+        with socket.create_connection(("127.0.0.1", node["port"]), timeout=15) as raw:
+            def recvline():
+                line = bytearray()
+                while not line.endswith(b"\n"):
+                    chunk = raw.recv(1)
+                    if not chunk:
+                        break
+                    line.extend(chunk)
+                return bytes(line)
+
+            self.assertTrue(recvline().startswith((b"200 ", b"201 ")))
+            raw.sendall(b"STARTTLS\r\n")
+            self.assertTrue(recvline().startswith(b"382 "))
+            context = ssl.create_default_context(cafile=str(self.ca))
+            hostname = getattr(self, "certificate_names", {}).get(node["name"], "localhost")
+            with context.wrap_socket(raw, server_hostname=hostname) as tls:
+                with tls.makefile("rwb", buffering=0) as stream:
+                    stream.write(b"AUTHINFO USER " + node["login"].encode() + b"\r\n")
+                    self.assertTrue(stream.readline().startswith(b"381 "))
+                    stream.write(b"AUTHINFO PASS " + node["password"].encode() + b"\r\n")
+                    self.assertTrue(stream.readline().startswith(b"281 "))
+                    stream.write(b"ARTICLE " + message_id.encode() + b"\r\n")
+                    response = stream.readline()
+                    if response.startswith(b"430 "):
+                        return None
+                    self.assertTrue(response.startswith(b"220 "), response)
+                    article = bytearray()
+                    while True:
+                        line = stream.readline()
+                        self.assertNotEqual(line, b"", "observer article EOF")
+                        if line == b".\r\n":
+                            return bytes(article)
+                        article.extend(line[1:] if line.startswith(b"..") else line)
 
     def node(self, name, login, password):
         node = self.initialize(name, free_port(), login, password)
