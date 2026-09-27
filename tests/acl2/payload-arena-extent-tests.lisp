@@ -91,11 +91,11 @@
 ; the durable octets, not the old arena's (absent: nil).
 (local
  (must-fail
-  (defthm paxt-keystone-without-below-count
+  (with-prover-step-limit 50000 (defthm paxt-keystone-without-below-count
     (implies (natp h)
              (equal (fn-arena-payload h (fn-arena-seal-extent file eoff elen poff plen trailer
                                                               fn-arena))
-                    (fn-arena-payload h fn-arena))))))
+                    (fn-arena-payload h fn-arena)))))))
 
 ; Without (natp h): h = -1 on the empty arena is below the count 0 is false,
 ; but h = -1 on a one-payload arena reads position 0 of both; the failing
@@ -113,11 +113,11 @@
 
 (local
  (must-fail
-  (defthm paxt-keystone-without-natp
+  (with-prover-step-limit 50000 (defthm paxt-keystone-without-natp
     (implies (< h (fn-arena-count fn-arena))
              (equal (fn-arena-payload h (fn-arena-seal-extent file eoff elen poff plen trailer
                                                               fn-arena))
-                    (fn-arena-payload h fn-arena))))))
+                    (fn-arena-payload h fn-arena)))))))
 
 ; The durable octets of an extent are its length (the assumption's
 ; constraint), which is what makes the handle's length the extent's.
@@ -135,6 +135,6 @@
 
 (local
  (must-fail
-  (defthm paxt-realize-without-natp
+  (with-prover-step-limit 50000 (defthm paxt-realize-without-natp
     (equal (fn-arx-realize-down plen 7 100 100 120 plen 99 nil)
-           (fn-durable-octets 7 120 plen)))))
+           (fn-durable-octets 7 120 plen))))))

@@ -9902,6 +9902,44 @@
         "planning/evidence/manifests/certify-20260927T125739Z-3340064.json"
       ],
       "progress_note": "Lane arena-offheap (2026-09-27), stage 1 of the coordinator's off-heap decision: the paged attachment replaces the byte array in the image. Stage 2 (payloads off the heap: handle -> durable file extent, A-DURABLE-EXTENT) builds on the same generic."
+    },
+    {
+      "id": "PRF-281",
+      "title": "Payloads off the heap: the arena's extent handles, the open's verified extent seals and the served read's trailer check",
+      "statement": "books/payload-arena-extent.lisp, books/payload-arena-extent-logic.lisp, books/payload-extent.lisp, books/payload-arena.lisp: payloads off the heap (arena-offheap stage 2). The generic fn-arena gains the export fn-arena-seal-extent (logic: append of fn-durable-octets FILE POFF PLEN, A-DURABLE-EXTENT); KEYSTONE fn-arena-seal-extent-payload: the new handle is the old count and denotes the extent's durable octets, every older handle keeps its payload, the count grows by one. The attachment fn-arena-extent (books/payload-arena-extent.lisp) nests the paged arena (PRF-272) as a child plus an EXT array; an extent handle holds no octets; its relation fn-arena$xcorr is fn-arx-view of the child's logical value, and every {correspondence}/{guard-thm}/{preserved} obligation is proved (fn-arena-extent-get{correspondence} reads an extent handle through the realizer fn-durable-realize-octet, equal to the durable octet by A-DURABLE-EXTENT; fn-arena-extent-seal-extent{correspondence}). At the open (books/payload-extent.lisp): fn-arx-positions answers each log entry's start, frame length and trailer; fn-arx-extent-of finds the payload's place by the codec's suffix length and VERIFIES it octet for octet; fn-arx-extent-of-denotes-payload: under the faithful read the extent's durable octets are the decoded payload; KEYSTONE fn-arx-intern-step-refines: the host's chunk step with extents (host/native/io.lisp fnn-bridge-recover calls fn-arx-intern-step) equals fn-srs-intern-step when fn-arx-faithful-p (each record's octets are its entry's durable octets: A-HOST's read and A-DURABLE-EXTENT), so every theorem about the open's rows and arena holds. Served reads of an extent handle: the host realizer (host/native/extent.lisp) preads the entry's protected prefix and asks fn-arx-entry-ok (SHA-256 equals the recorded trailer); fn-arx-entry-ok-of-durable: a faithful read passes; a mismatch is refused by name (arena-extent-digest), a store fault. Host subject: host/native/io.lisp fnn-bridge-recover (fn-arx-intern-step), fnn-log-scan-segments (fn-arx-positions via fnn-extent-positions), host/native/extent.lisp fnn-extent-entry (fn-arx-entry-ok, fn-arx-read-cache-entries).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [
+        "PRF-221",
+        "PRF-272"
+      ],
+      "assumptions": [
+        "A-HOST",
+        "A-DURABLE-EXTENT"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-arena-seal-extent-payload",
+        "fn-arena-extent-get{correspondence}",
+        "fn-arena-extent-seal-extent{correspondence}",
+        "fn-arx-extent-of-denotes-payload",
+        "fn-arx-intern-step-refines",
+        "fn-arx-entry-ok-of-durable"
+      ],
+      "evidence": [
+        "books/assumptions.lisp",
+        "books/payload-arena-extent-logic.lisp",
+        "books/payload-arena-extent.lisp",
+        "books/payload-arena.lisp",
+        "books/payload-extent.lisp",
+        "tests/acl2/payload-arena-extent-tests.lisp",
+        "tests/acl2/payload-extent-tests.lisp",
+        "planning/evidence/arena-offheap-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane arena-offheap-2 (2026-09-27): stage 2 of the coordinator's off-heap decision. The open of a format-9 store seals extents on its full replay; the state-checkpoint route, the commit and format 8 stay resident (the record's section on what is not done)."
     }
   ]
 }

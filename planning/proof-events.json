@@ -9908,6 +9908,35 @@
           "name": "fn-arena-paged-clear{correspondence}"
         }
       ]
+    },
+    {
+      "id": "PRF-281",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-extent-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-get{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-seal-extent{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-extent-of-denotes-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-intern-step-refines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-ok-of-durable"
+        }
+      ]
     }
   ]
 }
