@@ -171,8 +171,8 @@
   (declare (xargs :guard t))
   (fn-ideal-make-result s (list (list :todo port))))
 
-(defun fn-ideal-step (s e)
-  (declare (xargs :guard t))
+(defun fn-ideal-step (s e fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((port (fn-ag-car e)))
     (cond
      ((equal port :octets)
@@ -182,7 +182,7 @@
       (let* ((id (fn-ag-car (fn-ag-cdr e)))
              (chunk (fn-ag-car (fn-ag-cdr (fn-ag-cdr e))))
              (result (fn-served-step (fn-ideal-conn-find id (fn-ideal-conns s))
-                                     chunk)))
+                                     chunk fn-arena)))
         (fn-ideal-make-result
          (fn-ideal-make-state (fn-ideal-config s)
                               (fn-ideal-relay s)

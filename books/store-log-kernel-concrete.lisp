@@ -39,6 +39,7 @@
 
 (in-package "ACL2")
 (include-book "store-log-route")
+(include-book "store-log-segments")
 
 ; -----------------------------------------------------------------------------
 ; The concrete state.
@@ -150,6 +151,25 @@
            (list :taken (fn-lgc-prepare c record) entry))
           (t (list :refused c entry)))))
 
+; The segment rotation (books/store-log-segments.lisp; host fnn-log-rotate):
+; admitted when nothing is open, in flight or unacknowledged; needed when the
+; active segment holds a record; the new segment's kernel keeps the chain head
+; and the txid.
+(defun fn-lgc-rotate-admitsp (c)
+  (declare (xargs :guard (true-listp c)))
+  (and (atom (fn-lgc-batch c))
+       (atom (fn-lgc-inflight c))
+       (equal (fn-lgc-acked c) (fn-lgc-count c))
+       (not (equal (fn-lgc-phase c) :fault))))
+
+(defun fn-lgc-rotate-needed-p (c)
+  (declare (xargs :guard (true-listp c)))
+  (< 0 (fn-lgc-count c)))
+
+(defun fn-lgc-rotate (c)
+  (declare (xargs :guard (true-listp c)))
+  (fn-lgc-make 0 (fn-lgc-last c) 0 (fn-lgc-next-txid c) nil nil 0 :ready))
+
 ; The open: the scan's records (the replay's input) and the concrete kernel.
 (defun fn-lgc-open (s genesis unit max floor)
   (declare (xargs :guard (stringp s) :verify-guards nil))
@@ -235,6 +255,24 @@
          (equal (caddr a) (caddr b))))
   :hints (("Goal" :in-theory (disable fn-lgc-prepare fn-lgk-prepare fn-lgc-of fn-olr-entry-octets))))
 
+(defthm fn-lgc-rotate-admitsp-of-abstraction
+  (equal (fn-lgc-rotate-admitsp (fn-lgc-of ks)) (fn-lgs-rotate-admitsp ks)))
+
+(local
+ (defthm fn-lgc-positive-len-is-consp
+   (equal (< 0 (len x)) (consp x))))
+
+(defthm fn-lgc-rotate-needed-p-of-abstraction
+  (equal (fn-lgc-rotate-needed-p (fn-lgc-of ks)) (fn-lgs-rotate-needed-p ks)))
+
+(defthm fn-lgc-rotate-refines
+  (equal (fn-lgc-rotate (fn-lgc-of ks)) (fn-lgc-of (fn-lgs-rotate ks))))
+
+; Recovery's zeroing range read from the concrete kernel (host fnn-log-recover).
+(defthm fn-lg-recover-tail-of-abstraction
+  (equal (fn-lg-recover-tail (fn-lgc-of ks) extent) (fn-lg-recover-tail ks extent))
+  :hints (("Goal" :in-theory (enable fn-lgc-of fn-lgc-make))))
+
 (defthm fn-lgc-open-refines
   (mv-let (records c) (fn-lgc-open s genesis unit max floor)
     (and (equal records (fn-lgk-committed (fn-lg-open-kernel s genesis unit max floor)))
@@ -243,13 +281,14 @@
 (in-theory (disable fn-lgc-of fn-lgc-make fn-lgc-prepare fn-lgc-t-prepare fn-lgc-append
                     fn-lgc-fence fn-lgc-fence-failed fn-lgc-finish-one fn-lgc-consume-to
                     fn-lgc-take fn-lgc-open fn-lgc-append-octets fn-lgc-fitsp
-                    fn-lgc-append-admitsp))
+                    fn-lgc-append-admitsp fn-lgc-rotate-admitsp fn-lgc-rotate-needed-p
+                    fn-lgc-rotate))
 
 ; -----------------------------------------------------------------------------
 ; The keystone over any host run.  An operation is one of the host's calls:
 ;   (:prepare record) (:take record txid count octets bmax omax unit)
 ;   (:consume-to txid) (:append unit extent) (:fence unit) (:fence-failed)
-;   (:finish-one)
+;   (:finish-one) (:rotate)   -- the rotation only when admitted, as fnn-log-rotate
 
 (defun fn-lgk-host-step (ks op)
   (declare (xargs :guard t :verify-guards nil))
@@ -262,6 +301,7 @@
       (:fence (fn-lgk-fence ks (nth 1 op)))
       (:fence-failed (fn-lgk-fence-failed ks))
       (:finish-one (fn-lgk-finish-one ks))
+      (:rotate (if (fn-lgs-rotate-admitsp ks) (fn-lgs-rotate ks) ks))
       (otherwise ks)))
 
 (defun fn-lgc-host-step (c op)
@@ -275,6 +315,7 @@
       (:fence (fn-lgc-fence c (nth 1 op)))
       (:fence-failed (fn-lgc-fence-failed c))
       (:finish-one (fn-lgc-finish-one c))
+      (:rotate (if (fn-lgc-rotate-admitsp c) (fn-lgc-rotate c) c))
       (otherwise c)))
 
 (defun fn-lgk-host-run (ks ops)
@@ -295,7 +336,8 @@
    (equal (fn-lgc-host-step (fn-lgc-of ks) op) (fn-lgc-of (fn-lgk-host-step ks op)))
    :hints (("Goal" :in-theory (disable fn-lgc-take-refines fn-lgk-prepare fn-lgt-prepare fn-olr-take
                                        fn-olr-consume-to fn-lgk-append fn-lgk-fence
-                                       fn-lgk-fence-failed fn-lgk-finish-one)
+                                       fn-lgk-fence-failed fn-lgk-finish-one
+                                       fn-lgs-rotate fn-lgs-rotate-admitsp)
                    :use ((:instance fn-lgc-take-refines
                                     (record (nth 1 op)) (txid (nth 2 op)) (count (nth 3 op))
                                     (octets (nth 4 op)) (bmax (nth 5 op)) (omax (nth 6 op))

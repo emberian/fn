@@ -365,11 +365,11 @@
            (f-get-global 'fn-owner-app-msgid state)
            (f-get-global 'fn-owner-app-article state)
            (f-get-global 'fn-owner-app-obligation-id state)
-           (f-get-global 'fn-owner-app-stored-subject state) state)
+           (f-get-global 'fn-owner-app-stored-subject state) fn-arena state)
         (fn-owner-control-submit
          (f-get-global 'fn-owner-app-msgid state)
          (f-get-global 'fn-owner-app-groups state)
-         (f-get-global 'fn-owner-app-article state) state)))))
+         (f-get-global 'fn-owner-app-article state) fn-arena state)))))
 
 (defun fn-owner-app-record (fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))

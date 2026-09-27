@@ -279,7 +279,7 @@
                 (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t)
                 (fn-peer-session-transfer ps))
            (equal (fn-peer-step ps archive config observation injection
-                                wire-event)
+                                wire-event fn-arena)
                   (fn-pgc-transfer-step ps wire-event)))
   :hints (("Goal" :in-theory (e/d (fn-pgc-transfer-step fn-peer-step)
                                   (fn-peer-sessionp fn-peer-command
@@ -295,12 +295,12 @@
 ; fn-peer-delegate-pinned with no hypothesis: books/peer-offer-indexed.lisp).
 
 (defun fn-pgc-peer-arm
-    (ps trie arts archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard (fn-pgc-peer-sessionp ps)))
+    (ps trie arts archive index verdicts config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-pgc-peer-sessionp ps)))
   (cond
    ((not (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t))
     (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
-                                 injection wire-event))
+                                 injection wire-event fn-arena))
    ((fn-peer-session-transfer ps) (fn-pgc-transfer-step ps wire-event))
    ((and (consp wire-event)
          (equal (car wire-event) :command)
@@ -314,11 +314,11 @@
           (let ((r (fn-pgc-peer-command ps (car tokens) (cdr tokens) trie arts)))
             (if r r
               (fn-pix-peer-delegate-pinned ps archive index verdicts config
-                                           observation injection wire-event)))
+                                           observation injection wire-event fn-arena)))
         (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
-                                     injection wire-event))))
+                                     injection wire-event fn-arena))))
    (t (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
-                                   injection wire-event))))
+                                   injection wire-event fn-arena))))
 
 ; KEYSTONE.  On a peer session, the arm is the reference step: the premise
 ; is fn-peer-sessionp (so fn-node-statep of the session's node) and the
@@ -328,9 +328,9 @@
                 (fn-peer-session-peer ps)
                 (fn-midx-correspondencep trie arts))
            (equal (fn-pgc-peer-arm ps trie arts archive index verdicts config
-                                   observation injection wire-event)
+                                   observation injection wire-event fn-arena)
                   (fn-peer-step-pinned ps archive index verdicts config
-                                       observation injection wire-event)))
+                                       observation injection wire-event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-pgc-peer-arm fn-peer-step-pinned
                                    fn-peer-sessionp)
                                   (fn-pgc-peer-command fn-peer-command

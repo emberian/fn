@@ -146,15 +146,15 @@
                       (fn-post-result-effects
                        (fn-auth-step-pinned as archive index verdicts config
                                             observation injection
-                                            (list :command line)))))
+                                            (list :command line) fn-arena))))
                 (null (fn-post-result-submission
                        (fn-auth-step-pinned as archive index verdicts config
                                             observation injection
-                                            (list :command line))))
+                                            (list :command line) fn-arena)))
                 (equal (fn-post-result-session
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
-                                             (list :command line)))
+                                             (list :command line) fn-arena))
                        as)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-auth-step-pinned fn-auth-tls-eventp)
@@ -175,14 +175,14 @@
                 (not (fn-auth-postingp (fn-served-conn-session conn)))
                 (fn-served-post-command-eventp event))
            (and (equal (fn-served-conn-wire
-                        (fn-served-result-conn (fn-served-dispatch conn event)))
+                        (fn-served-result-conn (fn-served-dispatch conn event fn-arena)))
                        (fn-served-conn-wire conn))
                 (equal (fn-served-conn-session
-                        (fn-served-result-conn (fn-served-dispatch conn event)))
+                        (fn-served-result-conn (fn-served-dispatch conn event fn-arena)))
                        (fn-served-conn-session conn))
                 (null (fn-served-submission
                        (fn-served-result-effects
-                        (fn-served-dispatch conn event))))))
+                        (fn-served-dispatch conn event fn-arena))))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-served-post-command-eventp)
@@ -238,7 +238,7 @@
                                        (fn-served-conn-config conn)
                                        (fn-served-conn-observation conn)
                                        (fn-served-conn-injection conn)
-                                       event))))))))
+                                       event fn-arena))))))))
 
 ; -----------------------------------------------------------------------------
 ; Export theory (docs/proof-style.md section 2).
@@ -258,9 +258,9 @@
                                  (cdr (fn-nntp-tokenize line))))
            (equal (fn-auth-step-pinned
                    as archive index verdicts config observation injection
-                   (list :command line))
+                   (list :command line) fn-arena)
                   (fn-auth-step as archive config observation injection
-                                (list :command line))))
+                                (list :command line) fn-arena)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-auth-step-pinned fn-auth-step)
                            (fn-auth-command fn-auth-sessionp
@@ -377,21 +377,21 @@
            (and (null (fn-post-result-submission
                        (fn-auth-step-pinned as archive index verdicts config
                                             observation injection
-                                            (list :command line))))
+                                            (list :command line) fn-arena)))
                 (not (fn-post-offeredp
                       (fn-post-result-effects
                        (fn-auth-step-pinned as archive index verdicts config
                                             observation injection
-                                            (list :command line)))))
+                                            (list :command line) fn-arena))))
                 (equal (fn-post-result-session
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
-                                             (list :command line)))
+                                             (list :command line) fn-arena))
                        as)
                 (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
-                                             (list :command line)))
+                                             (list :command line) fn-arena))
                        (fn-auth-single as "480 authentication required"))))
   :hints (("Goal"
            :do-not-induct t
@@ -430,19 +430,19 @@
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
-                                             (list :command line)))
+                                             (list :command line) fn-arena))
                        (fn-auth-single
                         as
                         "483 a protected channel is required; use STARTTLS"))
                 (equal (fn-post-result-session
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
-                                             (list :command line)))
+                                             (list :command line) fn-arena))
                        as)
                 (null (fn-post-result-submission
                        (fn-auth-step-pinned as archive index verdicts config
                                             observation injection
-                                            (list :command line))))))
+                                            (list :command line) fn-arena)))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (disable fn-auth-step-pinned fn-auth-step fn-auth-command
@@ -536,10 +536,10 @@
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
                 (fn-auth-restricted-keywordp (car (fn-nntp-tokenize line))))
            (and (equal (fn-served-result-conn
-                        (fn-served-dispatch-core conn (list :command line)))
+                        (fn-served-dispatch-core conn (list :command line) fn-arena))
                        conn)
                 (equal (fn-served-result-effects
-                        (fn-served-dispatch-core conn (list :command line)))
+                        (fn-served-dispatch-core conn (list :command line) fn-arena))
                        (fn-auth-single (fn-served-conn-session conn)
                                        "480 authentication required"))))
   :hints (("Goal"
@@ -601,10 +601,10 @@
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
                 (fn-auth-restricted-keywordp (car (fn-nntp-tokenize line))))
            (and (equal (fn-served-result-conn
-                        (fn-served-dispatch conn (list :command line)))
+                        (fn-served-dispatch conn (list :command line) fn-arena))
                        conn)
                 (equal (fn-served-result-effects
-                        (fn-served-dispatch conn (list :command line)))
+                        (fn-served-dispatch conn (list :command line) fn-arena))
                        (fn-auth-single (fn-served-conn-session conn)
                                        "480 authentication required"))))
   :hints (("Goal"
@@ -655,10 +655,10 @@
            ; AUTHINFO moves no pin (fn-served-advance-eventp-of-command,
            ; fn-nntp-keywordp-exclusive), so the whole connection is kept.
            (and (equal (fn-served-result-conn
-                        (fn-served-dispatch conn (list :command line)))
+                        (fn-served-dispatch conn (list :command line) fn-arena))
                        conn)
                 (equal (fn-served-result-effects
-                        (fn-served-dispatch conn (list :command line)))
+                        (fn-served-dispatch conn (list :command line) fn-arena))
                        (fn-auth-single
                         (fn-served-conn-session conn)
                         "483 a protected channel is required; use STARTTLS"))))
@@ -735,7 +735,7 @@
   (equal (fn-auth-session-subject
           (fn-post-result-session
            (fn-auth-delegate-pinned as archive index verdicts config
-                                    observation injection wire-event)))
+                                    observation injection wire-event fn-arena)))
          (fn-auth-session-subject as))
   :hints (("Goal" :in-theory (e/d (fn-auth-delegate-pinned fn-auth-with-base)
                                   (fn-peer-step-pinned))))))
@@ -748,11 +748,11 @@
                 (fn-auth-session-subject
                  (fn-post-result-session
                   (fn-auth-step-pinned as archive index verdicts config
-                                       observation injection wire-event))))
+                                       observation injection wire-event fn-arena))))
            (iff (fn-auth-postingp
                  (fn-post-result-session
                   (fn-auth-step-pinned as archive index verdicts config
-                                       observation injection wire-event)))
+                                       observation injection wire-event fn-arena)))
                 (fn-auth-cred-postingp
                  (fn-auth-find-cred (fn-auth-session-pending as)
                                     (fn-auth-config-creds
@@ -787,18 +787,18 @@
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
-                                             (list :command line)))
+                                             (list :command line) fn-arena))
                        (fn-auth-single
                         as "440 posting not permitted for this principal"))
                 (equal (fn-post-result-session
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
-                                             (list :command line)))
+                                             (list :command line) fn-arena))
                        as)
                 (null (fn-post-result-submission
                        (fn-auth-step-pinned as archive index verdicts config
                                             observation injection
-                                            (list :command line))))))
+                                            (list :command line) fn-arena)))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-step-pinned fn-auth-command fn-auth-gatedp
@@ -860,10 +860,10 @@
                 (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "POST"))
            (equal (fn-auth-step-pinned as archive index verdicts config
                                        observation injection
-                                       (list :command line))
+                                       (list :command line) fn-arena)
                   (fn-auth-delegate-pinned as archive index verdicts config
                                            observation injection
-                                           (list :command line))))
+                                           (list :command line) fn-arena)))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-step-pinned fn-auth-command fn-auth-gatedp

@@ -59,10 +59,13 @@
 
 ; GROUP selects, and the selected session is consistent: group present, cursor
 ; at an article that exists.
+(include-book "arena-lift")
+;; The arena: handle 0 = *nnt-payload*.
+(defconst *sr-arena* (list *nnt-payload*))
+(bpr-lift fn-nntp-step 4)
 (defconst *nnt-selected*
   (fn-nntp-result-session
-   (fn-nntp-step (fn-nntp-open-session *nnt-archive*) *nnt-archive* *fn-nntp-env0*
-                 '(:command (103 82 111 85 112 32 102 110 46 108 101 116 116
+   (in-arena-fn-nntp-step *sr-arena* (fn-nntp-open-session *nnt-archive*) *nnt-archive* *fn-nntp-env0* '(:command (103 82 111 85 112 32 102 110 46 108 101 116 116
                              101 114 115)))))
 (assert-event (equal (fn-nntp-session-group *nnt-selected*) "fn.letters"))
 (assert-event (equal (fn-nntp-session-current *nnt-selected*) 1))
@@ -73,8 +76,7 @@
 ; separate these two consistent sessions.
 (defconst *nnt-empty-selected*
   (fn-nntp-result-session
-   (fn-nntp-step *nnt-selected* *nnt-archive* *fn-nntp-env0*
-                 '(:command (71 82 79 85 80 32 102 110 46 101 109 112 116 121)))))
+   (in-arena-fn-nntp-step *sr-arena* *nnt-selected* *nnt-archive* *fn-nntp-env0* '(:command (71 82 79 85 80 32 102 110 46 101 109 112 116 121)))))
 (assert-event (equal (fn-nntp-session-group *nnt-empty-selected*) "fn.empty"))
 (assert-event (null (fn-nntp-session-current *nnt-empty-selected*)))
 (assert-event (fn-nntp-session-consistentp *nnt-empty-selected* *nnt-archive*))
@@ -83,7 +85,7 @@
 (assert-event
  (fn-nntp-session-consistentp
   (fn-nntp-result-session
-   (fn-nntp-step *nnt-selected* *nnt-archive* *fn-nntp-env0* '(:command (72 69 65 68))))
+   (in-arena-fn-nntp-step *sr-arena* *nnt-selected* *nnt-archive* *fn-nntp-env0* '(:command (72 69 65 68))))
   *nnt-archive*))
 
 ; -----------------------------------------------------------------------------
@@ -104,8 +106,7 @@
 (assert-event
  (not (fn-nntp-session-consistentp
        (fn-nntp-result-session
-        (fn-nntp-step *nnt-forged-session* *nnt-archive* *fn-nntp-env0*
-                      '(:command (88 89 90 90 89))))
+        (in-arena-fn-nntp-step *sr-arena* *nnt-forged-session* *nnt-archive* *fn-nntp-env0* '(:command (88 89 90 90 89))))
        *nnt-archive*)))
 
 (local
@@ -113,8 +114,7 @@
   (defthm nnt-teeth-step-without-a-consistent-session
     (fn-nntp-session-consistentp
      (fn-nntp-result-session
-      (fn-nntp-step *nnt-forged-session* *nnt-archive* *fn-nntp-env0*
-                    '(:command (88 89 90 90 89))))
+      (fn-nntp-step *nnt-forged-session* *nnt-archive* *fn-nntp-env0* '(:command (88 89 90 90 89)) fn-arena))
      *nnt-archive*))))
 
 ; A second inconsistency, this time in the cursor rather than the group, so the
@@ -124,8 +124,7 @@
 (assert-event
  (not (fn-nntp-session-consistentp
        (fn-nntp-result-session
-        (fn-nntp-step *nnt-stale-cursor* *nnt-archive* *fn-nntp-env0*
-                      '(:command (88 89 90 90 89))))
+        (in-arena-fn-nntp-step *sr-arena* *nnt-stale-cursor* *nnt-archive* *fn-nntp-env0* '(:command (88 89 90 90 89))))
        *nnt-archive*)))
 
 (local
@@ -133,8 +132,7 @@
   (defthm nnt-teeth-step-without-a-valid-cursor
     (fn-nntp-session-consistentp
      (fn-nntp-result-session
-      (fn-nntp-step *nnt-stale-cursor* *nnt-archive* *fn-nntp-env0*
-                    '(:command (88 89 90 90 89))))
+      (fn-nntp-step *nnt-stale-cursor* *nnt-archive* *fn-nntp-env0* '(:command (88 89 90 90 89)) fn-arena))
      *nnt-archive*))))
 
 ; There is no second hypothesis any more.  The old statement also assumed

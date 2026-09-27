@@ -67,7 +67,9 @@ class NativeCrashCorrespondenceTests(unittest.TestCase):
         self.assertIn("(fnn-post-entry-fault", function_body(self.owner, "fnn-command-owner"))
         self.assertIn("(fnn-owner-install root max-connections fault)",
                       function_body(self.owner, "fnn-owner-run"))
-        self.assertIn("(fnn-open-live-store root t fault)",
+        # (the fourth argument NIL: the owner does not take the history's
+        # octets; checkpoint-arena-2)
+        self.assertIn("(fnn-open-live-store root t fault nil)",
                       function_body(self.owner, "fnn-owner-install"))
         entry = function_body(self.io, "fnn-post-entry-fault")
         for reader in ("(fnn-post-test-fault)", "(fnn-recovery-test-fault)",

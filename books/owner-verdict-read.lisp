@@ -69,7 +69,7 @@
                   (fn-nntp-message-id-tokenp (caddr tokens))
                   (not (fn-nntp-range-okp (fn-nntp-parse-range (caddr tokens)))))
              (equal (fn-served-result-effects
-                     (fn-served-dispatch conn (list :command line)))
+                     (fn-served-dispatch conn (list :command line) fn-arena))
                     (fn-nntp-result-effects
                      (fn-nntp-verdict-hdr-msgid
                       ns (fn-served-conn-archive conn)
@@ -113,7 +113,7 @@
                   (not (fn-nntp-range-okp (fn-nntp-parse-range (caddr tokens)))))
              (equal (fn-served-conn-wire
                      (fn-served-result-conn
-                      (fn-served-dispatch conn (list :command line))))
+                      (fn-served-dispatch conn (list :command line) fn-arena)))
                     (fn-served-conn-wire conn))))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
@@ -136,7 +136,7 @@
 (defthm fn-ovr-feed-byte-silent
   (implies (not (consp (fn-wire-result-events
                  (fn-wire-feed-byte (fn-served-conn-wire conn) byte))))
-           (equal (fn-served-feed-byte conn byte)
+           (equal (fn-served-feed-byte conn byte fn-arena)
                   (fn-served-make-result
                    (fn-ovr-with-wire conn (fn-wire-result-state
                                            (fn-wire-feed-byte
@@ -177,28 +177,28 @@
                 (not (fn-wire-result-events
                       (fn-wire-feed-proper (fn-served-conn-wire conn) prefix))))
            (and (equal (fn-served-result-effects
-                        (fn-served-feed conn (append prefix rest)))
+                        (fn-served-feed conn (append prefix rest) fn-arena))
                        (fn-served-result-effects
                         (fn-served-feed
                          (fn-ovr-with-wire
                           conn (fn-wire-result-state
                                 (fn-wire-feed-proper (fn-served-conn-wire conn)
                                                      prefix)))
-                         rest)))
+                         rest fn-arena)))
                 (equal (fn-served-result-conn
-                        (fn-served-feed conn (append prefix rest)))
+                        (fn-served-feed conn (append prefix rest) fn-arena))
                        (fn-served-result-conn
                         (fn-served-feed
                          (fn-ovr-with-wire
                           conn (fn-wire-result-state
                                 (fn-wire-feed-proper (fn-served-conn-wire conn)
                                                      prefix)))
-                         rest)))))
+                         rest fn-arena)))))
   :hints (("Goal" :induct (fn-ovr-induct conn prefix)
            :in-theory (e/d (fn-served-closed-wirep)
                            (fn-served-feed-byte fn-wire-feed-byte fn-wire-statep fn-served-feed-of-append
                             fn-served-tls-handshakingp)))
-          ("Subgoal *1/1" :expand ((fn-served-feed conn (cons (car prefix) (append (cdr prefix) rest)))
+          ("Subgoal *1/1" :expand ((fn-served-feed conn (cons (car prefix) (append (cdr prefix) rest)) fn-arena)
                                    (fn-wire-feed-proper (fn-served-conn-wire conn) prefix))
            :use ((:instance fn-wire-feed-byte-silent-step-stays-open
                   (wire-state (fn-served-conn-wire conn)) (byte (car prefix)))
@@ -224,14 +224,14 @@
   :hints (("Goal" :in-theory (enable fn-ovr-with-wire fn-served-conn-pinned-index))))
 
 (defthm fn-ovr-dispatch-effects-true-listp
-  (true-listp (fn-served-result-effects (fn-served-dispatch conn event)))
+  (true-listp (fn-served-result-effects (fn-served-dispatch conn event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core)
                                   (fn-auth-step-pinned fn-post-offeredp
                                    fn-wire-begin-article-with-line-limit)))))
 
 (defthm fn-ovr-feed-effects-true-listp
-  (true-listp (fn-served-result-effects (fn-served-feed conn octets)))
-  :hints (("Goal" :induct (fn-served-feed conn octets)
+  (true-listp (fn-served-result-effects (fn-served-feed conn octets fn-arena)))
+  :hints (("Goal" :induct (fn-served-feed conn octets fn-arena)
            :in-theory (e/d (fn-served-feed) (fn-served-feed-byte fn-served-feed-of-append)))))
 
 (defthm fn-ovr-wire-feed-proper-silent-stays-open
@@ -259,16 +259,16 @@
                         (fn-ovr-with-wire
                          c (fn-wire-result-state
                             (fn-wire-feed-byte (fn-served-conn-wire c) byte)))
-                        event)))
-             (and (equal (fn-served-result-effects (fn-served-feed c (list byte)))
+                        event fn-arena)))
+             (and (equal (fn-served-result-effects (fn-served-feed c (list byte) fn-arena))
                          (fn-served-result-effects here))
-                  (equal (fn-served-result-conn (fn-served-feed c (list byte)))
+                  (equal (fn-served-result-conn (fn-served-feed c (list byte) fn-arena))
                          (fn-served-result-conn here)))))
   :hints (("Goal" :do-not-induct t
-           :expand ((fn-served-feed c (list byte))
-                    (:free (x) (fn-served-dispatch-events x (list event)))
-                    (:free (x) (fn-served-dispatch-events x nil))
-                    (:free (x) (fn-served-feed x nil)))
+           :expand ((fn-served-feed c (list byte) fn-arena)
+                    (:free (x) (fn-served-dispatch-events x (list event) fn-arena))
+                    (:free (x) (fn-served-dispatch-events x nil fn-arena))
+                    (:free (x) (fn-served-feed x nil fn-arena)))
            :in-theory (e/d (fn-served-feed-byte fn-ovr-with-wire)
                            (fn-served-dispatch fn-wire-feed-byte
                             fn-served-feed fn-served-dispatch-events)))))
@@ -277,7 +277,7 @@
   (let* ((w0 (fn-served-conn-wire conn))
          (w1 (fn-wire-result-state (fn-wire-feed-proper w0 prefix)))
          (w2 (fn-wire-result-state (fn-wire-feed-byte w1 byte)))
-         (here (fn-served-dispatch (fn-ovr-with-wire conn w2) event)))
+         (here (fn-served-dispatch (fn-ovr-with-wire conn w2) event fn-arena)))
     (implies (and (fn-served-conn-shapep conn)
                   (fn-wire-statep w0)
                   (not (fn-served-closed-wirep w0))
@@ -288,7 +288,7 @@
                   (not (fn-served-closed-wirep
                         (fn-served-conn-wire (fn-served-result-conn here)))))
              (equal (fn-served-result-effects
-                     (fn-served-step conn (append prefix (list byte))))
+                     (fn-served-step conn (append prefix (list byte)) fn-arena))
                     (fn-served-result-effects here))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-ovr-feed-silent-prefix (rest (list byte)))
@@ -349,7 +349,7 @@
                   (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (consp article))
              (equal (fn-served-result-effects
-                     (fn-served-step conn (append prefix (list byte))))
+                     (fn-served-step conn (append prefix (list byte)) fn-arena))
                     (fn-nntp-result-effects
                      (fn-nntp-multi
                       ns (fn-nntp-hdr-initial nil)
@@ -448,7 +448,7 @@
                   (not (fn-nntp-range-okp (fn-nntp-parse-range (caddr tokens))))
                   (not (fn-auth-access-restrictedp as (fn-own-conn-config conn)))
                   (consp article))
-             (equal (car (fn-own-read o id (append prefix (list byte))))
+             (equal (car (fn-own-read o id (append prefix (list byte)) fn-arena))
                     (fn-nntp-result-effects
                      (fn-nntp-multi
                       ns (fn-nntp-hdr-initial nil)
@@ -490,7 +490,7 @@
 (defthm fn-own-reader-opened-after-completion-pins-the-finished-verdicts
   (implies (and (fn-sn-completion-enabledp (fn-own-store o))
                 (< (len (fn-own-conns o)) (nfix (fn-own-max-conns o))))
-           (let* ((o2 (cdr (fn-own-open (fn-own-step o '(:complete)) acfg)))
+           (let* ((o2 (cdr (fn-own-open (fn-own-step o '(:complete) fn-arena) acfg)))
                   (conn (fn-own-find-conn (fn-own-next-id o) (fn-own-conns o2))))
              (and conn
                   (equal (fn-own-conn-verdicts conn)

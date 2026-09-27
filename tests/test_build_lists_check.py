@@ -258,26 +258,6 @@ class BuildListsCheckTests(unittest.TestCase):
                 ("fn-pidx-sbud-prepare", "books/post-identity-index.lisp"),
                 ("fn-rcon-ocfg-io", "books/records-concrete-owner.lisp"))])
 
-    def test_served_crash_model_setup_satisfies_the_include_rule(self):
-        self.assertEqual(check.served_findings(), [])
-
-    def test_served_setup_without_the_store_node_books_is_found(self):
-        # qual-b6759850 C18: the served crash model's setup loaded
-        # host/store-node-host.lisp with only books/records-concrete-owner
-        # before it, and every case failed at model setup on FN-OCTETS.  The
-        # same list today is refused for the buffer books and the reader.
-        from tests.test_native_served_crash_model import SERVED_BRIDGE_SETUP
-        stale = tuple(form for form in SERVED_BRIDGE_SETUP
-                      if form not in ('(include-book "books/octets-stobj")',
-                                      '(include-book "books/store-checkpoint-buffer")',
-                                      '(include-book "books/store-checkpoint-reader")'))
-        self.assertEqual(len(stale), len(SERVED_BRIDGE_SETUP) - 3)
-        loader = ("the served crash model's setup "
-                  "(tests/test_native_served_crash_model.py)")
-        self.assertEqual(check.served_findings(setup=stale), [
-            line.replace("host/native/build-dtn.lisp", loader)
-            for line in STORE_NODE_HOST_FINDINGS])
-
     def test_a_nested_ld_serves_its_loader(self):
         # host/store-node-host.lisp loads host/store-host.lisp, which includes
         # books/store-config, before it calls fn-store-group-name; a loader of

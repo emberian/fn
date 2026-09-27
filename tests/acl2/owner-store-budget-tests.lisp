@@ -34,11 +34,11 @@
                   "osbt-release-2" 1 841000000))
 (defconst *osbt-second* (fn-hrt-row-at *osbt-second-wire* 1))
 
-(defun osbt-run (oc events)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
+(defun osbt-run (oc events fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
                   :verify-guards nil))
   (if (consp events)
-      (osbt-run (fn-ocfg-step oc (car events)) (cdr events))
+      (osbt-run (fn-ocfg-step oc (car events) fn-arena) (cdr events) fn-arena)
     oc))
 
 (defconst *osbt-reserve-events*
@@ -51,15 +51,17 @@
    (fn-own-configure (fn-own-start (fn-sn-initial *osbt-groups* 10) 3)
                      *osbt-post-config*)
    *osbt-config* nil nil))
-(defconst *osbt-first-reserved* (osbt-run *osbt-0* *osbt-reserve-events*))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-step 2)
+(bpr-lift osbt-run 2)
+(defconst *osbt-first-reserved* (in-arena-osbt-run *sr-arena* *osbt-0* *osbt-reserve-events*))
 (defconst *osbt-ready-one*
-  (fn-ocfg-step
-   (osbt-run (fn-opc-prepare *osbt-first-reserved* *osbt-first*)
-             '((:store (:io :record-file :ok))
+  (in-arena-fn-ocfg-step *sr-arena* (in-arena-osbt-run *sr-arena* (fn-opc-prepare *osbt-first-reserved* *osbt-first*) '((:store (:io :record-file :ok))
                (:store (:io :record-link :ok))
-               (:store (:io :record-directory :ok))))
-   '(:complete)))
-(defconst *osbt-reserved* (osbt-run *osbt-ready-one* *osbt-reserve-events*))
+               (:store (:io :record-directory :ok)))) '(:complete)))
+(defconst *osbt-reserved* (in-arena-osbt-run *sr-arena* *osbt-ready-one* *osbt-reserve-events*))
 (defconst *osbt-staged* (fn-opc-prepare *osbt-reserved* *osbt-second*))
 
 (assert-event (equal (fn-sbud-used (fn-sbud-oc-store *osbt-reserved*)) 1))

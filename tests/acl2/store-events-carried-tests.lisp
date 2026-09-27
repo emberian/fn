@@ -136,8 +136,13 @@
 ; The configured owner's completion the host installs: equal to fn-ocfg-step
 ; of (:complete), unstaged and staged.
 (defconst *evct-oc* (fn-ocfg-make *evct-o* nil nil nil))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-step 2)
+(bpr-lift fn-own-run 2)
 (assert-event (equal (fn-ccar-ocfg-complete *evct-oc*)
-                     (fn-ocfg-step *evct-oc* '(:complete))))
+                     (in-arena-fn-ocfg-step *sr-arena* *evct-oc* '(:complete))))
 (assert-event (equal (fn-ocfg-owner (fn-ccar-ocfg-complete *evct-oc*))
                      *ospt-finished*))
 (assert-event
@@ -152,13 +157,12 @@
 ; and it stages the composite (the store moves to :record-staged).
 (make-event
  `(defconst *evct-reserved*
-    ',(fn-own-run *ospt-taken* (take 4 (ospt-store-events *ospt-event*)))))
+    ',(in-arena-fn-own-run *sr-arena* *ospt-taken* (take 4 (ospt-store-events *ospt-event*)))))
 (defconst *evct-reserved-oc* (fn-ocfg-make *evct-reserved* nil nil nil))
 (assert-event (equal (fn-sf-phase (fn-sn-files (fn-own-store *evct-reserved*)))
                      :reserved))
 (assert-event (equal (fn-ccar-ocfg-prepare-identity *evct-reserved-oc* *ospt-event*)
-                     (fn-ocfg-step *evct-reserved-oc*
-                                   (list :store (list :prepare-identity *ospt-event*)))))
+                     (in-arena-fn-ocfg-step *sr-arena* *evct-reserved-oc* (list :store (list :prepare-identity *ospt-event*)))))
 (assert-event (equal (fn-sf-phase
                       (fn-sn-files
                        (fn-own-store
@@ -191,8 +195,7 @@
                                                     *ospt-event*)))
                      *ospt-event*))
 (assert-event (equal (fn-ccar-ocfg-prepare-identity *evct-reserved-oc* *ospt-event*)
-                     (fn-ocfg-step *evct-reserved-oc*
-                                   (list :store (list :prepare-identity *ospt-event*)))))
+                     (in-arena-fn-ocfg-step *sr-arena* *evct-reserved-oc* (list :store (list :prepare-identity *ospt-event*)))))
 
 ; Hypothesis removal, a CORRUPTED state (unreachable while fn-snt-relation
 ; holds): the same reserved store with its configured groups emptied and its

@@ -239,8 +239,8 @@
 ; (so neither journal) nor the live configuration.
 (local
  (defthm fn-ocl-crr-staging-and-close-keep-store-and-config
-   (let ((staged (fn-ocfg-step (fn-ocfg-step oc (list :reconfigure id deltas))
-                               (list :close id))))
+   (let ((staged (fn-ocfg-step (fn-ocfg-step oc (list :reconfigure id deltas) fn-arena)
+                               (list :close id) fn-arena)))
      (and (equal (fn-own-store (fn-ocfg-owner staged))
                  (fn-own-store (fn-ocfg-owner oc)))
           (equal (fn-ocfg-config staged) (fn-ocfg-config oc))))
@@ -290,7 +290,7 @@
 (local
  (defthm fn-ocl-crr-model-complete-config
    (implies (fn-ocfg-staged x)
-            (equal (fn-ocfg-config (fn-ocfg-step x (list :complete)))
+            (equal (fn-ocfg-config (fn-ocfg-step x (list :complete) fn-arena))
                    (fn-ocfg-published-config (fn-ocfg-config x) (fn-ocfg-staged x))))
    :hints (("Goal" :in-theory (enable fn-ocfg-step fn-ocfg-complete)))))
 
@@ -339,13 +339,13 @@
 ; what the durable journal carries.
 (defthm fn-ocl-crash-at-any-instant-recovers-the-live-generation
   (implies (fn-ocl-config-historyp oc)
-           (let* ((staged (fn-ocfg-step (fn-ocfg-step oc (list :reconfigure id deltas))
-                                        (list :close id)))
+           (let* ((staged (fn-ocfg-step (fn-ocfg-step oc (list :reconfigure id deltas) fn-arena)
+                                        (list :close id) fn-arena))
                   (record (fn-ocfg-staged staged))
                   (st (fn-own-store (fn-ocfg-owner staged)))
                   (h (fn-sn-config-history st))
                   (e (fn-sf-records (fn-sn-files st)))
-                  (model (fn-ocfg-step staged (list :complete)))
+                  (model (fn-ocfg-step staged (list :complete) fn-arena))
                   (result (fn-ocl-publish staged generation max-octets))
                   (published (mv-nth 1 result))
                   (pst (fn-own-store (fn-ocfg-owner published))))
@@ -383,13 +383,13 @@
   :hints (("Goal"
            :use ((:instance fn-ocl-crr-staging-and-close-keep-store-and-config)
                  (:instance fn-ocl-crr-durable-publication-replays
-                            (oc (fn-ocfg-step (fn-ocfg-step oc (list :reconfigure id deltas))
-                                              (list :close id))))
+                            (oc (fn-ocfg-step (fn-ocfg-step oc (list :reconfigure id deltas) fn-arena)
+                                              (list :close id) fn-arena)))
                  (:instance fn-ocl-cpr-replay-of-one-more-record
                             (h (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc))))
                             (r (fn-ocfg-staged
-                                (fn-ocfg-step (fn-ocfg-step oc (list :reconfigure id deltas))
-                                              (list :close id))))
+                                (fn-ocfg-step (fn-ocfg-step oc (list :reconfigure id deltas) fn-arena)
+                                              (list :close id) fn-arena)))
                             (events (fn-sf-records
                                      (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))))
            :in-theory (e/d (fn-ocl-config-historyp fn-ocfg-published-config)

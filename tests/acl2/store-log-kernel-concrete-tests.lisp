@@ -110,3 +110,32 @@
         (equal (fn-lgc-acked (fn-lgc-finish-one bad)) 3)
         (equal (fn-lgk-acked (fn-lgk-finish-one ks0)) 2)
         (not (equal (fn-lgc-finish-one bad) (fn-lgc-of (fn-lgk-finish-one ks0)))))))
+
+; (1) The rotation (host fnn-log-rotate): after the fence and the
+; acknowledgements it is admitted and needed, the new segment's kernel counts
+; nothing and keeps the chain head and the txid, on both sides of the
+; keystone; with a record prepared and not appended it is refused and the
+; kernel is unchanged.
+(assert-event
+ (let* ((ops (list (list :prepare (slc-rec 3)) (list :append (slc-unit) (slc-extent))
+                   (list :fence (slc-unit)) (list :finish-one) (list :rotate)))
+        (before (fn-lgc-host-run (mv-let (records c0) (slc-open) (declare (ignore records)) c0)
+                                 (butlast ops 1)))
+        (c (fn-lgc-host-run (mv-let (records c0) (slc-open) (declare (ignore records)) c0) ops))
+        (ks (fn-lgk-host-run (fn-lgt-recover (fn-lgd-octets (slc-segment)) *fn-lg-genesis*
+                                             (slc-unit) (slc-max) 1)
+                             ops)))
+   (and (fn-lgc-rotate-admitsp before)
+        (fn-lgc-rotate-needed-p before)
+        (equal c (fn-lgc-of ks))
+        (equal (fn-lgc-count c) 0)
+        (equal (fn-lgc-frontier c) 0)
+        (equal (fn-lgc-last c) (fn-lgc-last before))
+        (equal (fn-lgc-next-txid c) 4)
+        (equal (fn-lgk-committed ks) nil))))
+
+(assert-event
+ (let* ((c0 (mv-let (records c0) (slc-open) (declare (ignore records)) c0))
+        (c1 (fn-lgc-t-prepare c0 (slc-rec 3))))
+   (and (not (fn-lgc-rotate-admitsp c1))
+        (equal (fn-lgc-host-step c1 (list :rotate)) c1))))
