@@ -183,6 +183,29 @@ COMPACT_CHAIN_LINK = ("fnn-pack-publish-generation", "fnn-pack-select",
                       '(fnn-checkpoint-test-stop "pack-chain-link")')
 
 
+# The record log (lane w6-log-core; books/store-log-programs.lisp).  Each cut
+# is a named point of one log program, hosted by one function of
+# host/native/io.lisp (LOG_PROGRAM_HOSTS); the candidate is the batch's fate
+# at the cut: at log-written a crash image scans to the committed records and
+# a prefix of the batch (T2, "either"); at log-fenced the batch is committed;
+# the recovery cuts keep the scanned records ("present": the zeroing write
+# lies past the frontier).
+LOG_BOOK = "store-log-programs.lisp"
+LOG_PROGRAM_HOSTS = {
+    "fn-lg-append-program": "fnn-log-append",
+    "fn-lg-fence-program": "fnn-log-fence",
+    "fn-lg-recover-program": "fnn-log-recover",
+}
+LOG_CUTS = (
+    NativeCut("log-written", "fn-lg-append-program", "either", book=LOG_BOOK),
+    NativeCut("log-fenced", "fn-lg-fence-program", "present",
+              follows="fn-lg-append-program", book=LOG_BOOK),
+    NativeCut("log-truncated", "fn-lg-recover-program", "present", book=LOG_BOOK),
+    NativeCut("log-recovered", "fn-lg-recover-program", "present", book=LOG_BOOK),
+)
+# The host primitive that performs each log step kind, and its cut call.
+LOG_STEP_HOST = {"write-at": "(fnn-log-pwrite ", "fence": "(fnn-log-fdatasync "}
+
 def native_declared_cut_names(parameter: str) -> tuple[str, ...]:
     source = (ROOT / "host/native/io.lisp").read_text()
     match = re.search(r"\(defparameter \+{}\+\s+'\((.*?)\)\)".format(parameter),
@@ -217,7 +240,9 @@ def model_cut_names(program: str, book: str = "byte-store-programs.lisp") -> tup
 STEP_KINDS = ("observe", "cut", "create", "write-all", "fsync-file", "fsync-dir",
               "rename", "link", "unlink",
               # books/store-import-publication.lisp's two directory steps.
-              "mkdir", "rename-dir-noreplace")
+              "mkdir", "rename-dir-noreplace",
+              # books/store-log-programs.lisp's positioned write and barrier.
+              "write-at", "fence")
 SYSCALL_KINDS = frozenset(STEP_KINDS[2:])
 
 
@@ -794,3 +819,41 @@ def verify_swallowed_cuts(source: str | None = None) -> None:
             raise AssertionError("{}: model says swallowed={}, host ignore-errors "
                                  "says {}".format(cut.name, cut.name in swallowed,
                                                   site in inside))
+
+
+def verify_log_cut_map() -> None:
+    """The host's log cuts are the log programs', in their order: the declared
+    names (+fnn-log-model-cuts+) are LOG_CUTS's and the programs' cuts in
+    LOG_PROGRAM_HOSTS order; each hosting function performs its program's
+    steps (fnn-log-pwrite for :write-at, fnn-log-fdatasync for :fence, and
+    `(fnn-log-at :NAME)' for each cut) in the program's order, and every
+    `fnn-log-at' in it is one of the program's cuts."""
+    declared = tuple(c.name for c in LOG_CUTS)
+    if declared != native_declared_cut_names("fnn-log-model-cuts"):
+        raise AssertionError("native/model log cuts differ")
+    program_cuts = tuple(name for program in LOG_PROGRAM_HOSTS
+                         for name in model_cut_names(program, LOG_BOOK))
+    if declared != program_cuts:
+        raise AssertionError("log cuts are not the log programs': {!r}".format(program_cuts))
+    source = (ROOT / "host/native/io.lisp").read_text()
+    for program, host in LOG_PROGRAM_HOSTS.items():
+        body = host_function(source, host)
+        at, order = 0, []
+        for step in model_steps(program, LOG_BOOK):
+            needle = ("(fnn-log-at :{})".format(step.args[0]) if step.kind == "cut"
+                      else LOG_STEP_HOST[step.kind])
+            found = body.find(needle, at)
+            if found < 0:
+                raise AssertionError("{}: {} {} missing or out of order".format(
+                    host, step.kind, step.args))
+            order.append(found)
+            at = found + len(needle)
+        cuts = set(re.findall(r"\(fnn-log-at :([a-z-]+)\)", body))
+        if cuts != set(model_cut_names(program, LOG_BOOK)):
+            raise AssertionError("{} cuts {} are not {}'s".format(host, sorted(cuts), program))
+        for kind, needle in LOG_STEP_HOST.items():
+            if body.count(needle) != sum(1 for s in model_steps(program, LOG_BOOK)
+                                         if s.kind == kind):
+                raise AssertionError("{}: {} count differs from {}".format(host, kind, program))
+    for cut in LOG_CUTS:
+        cut_step_index(cut)

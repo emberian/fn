@@ -4652,7 +4652,8 @@ tree root), or stop the build."
     "FN_PEER_TEST_STOP_AFTER_CONSUME" "FN_PEER_TEST_STOP_AFTER_CONFIGURE"
     "FN_PULL_TEST_KILL"
     "FN_NATIVE_RECLAIM_FAULT" "FN_NATIVE_CHECKPOINT_BATCH_FAULT"
-    "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"))
+    "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"
+    "FN_NATIVE_LOG_FAULT"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."
@@ -4695,6 +4696,224 @@ tree root), or stop the build."
 
 (defun fnn-verb-handler (verb)
   (cdr (assoc verb *fnn-verbs* :test #'string=)))
+
+
+;;; The record log (books/store-log-programs.lisp; planning/design-2026-09-27-
+;;; storage-log.md; lane w6-log-core).  One preallocated segment file.  ACL2
+;;; decides every value the host writes or tests: the extent
+;;; (fn-lg-extent-okp), the kernel at open from the segment's bytes
+;;; (fn-lg-open-kernel over fn-lg-decode), recovery's zeroing range
+;;; (fn-lg-recover-tail), each record's admission (fn-lgt-prepare: only at
+;;; the kernel's next txid), the append's admission and octets
+;;; (fn-lg-append-admitsp, fn-lgk-frontier, fn-lgk-append-octets) and the
+;;; kernel after each step (fn-lgk-append, fn-lgk-fence, fn-lgk-fence-failed,
+;;; fn-lgk-finish-one).  The host reads, writes and fences, in the order of
+;;; fn-lg-recover-program, fn-lg-append-program and fn-lg-fence-program
+;;; (tests/campaign/native_cuts.py LOG_CUTS, verify_log_cut_map).  No owner
+;;; path calls these yet: lane w6-log-owner moves the commit onto them.
+
+(defparameter +fnn-log-model-cuts+
+  '("log-written" "log-fenced" "log-truncated" "log-recovered"))
+
+(defstruct (fnn-log (:constructor %make-fnn-log))
+  path fd kernel unit max extent)
+
+(defun fnn-log-at (point)
+  "A developer-image cut: FN_NATIVE_LOG_FAULT=NAME (a +fnn-log-model-cuts+
+name) kills the process at NAME with SIGKILL, so no cleanup runs."
+  (let ((armed (fnn-developer-selector "FN_NATIVE_LOG_FAULT")))
+    (when (and armed (string= armed (string-downcase (symbol-name point))))
+      (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
+      (fnn-fault "test SIGKILL did not terminate the process"))))
+
+(defun fnn-log-pwrite (fd offset octets)
+  "The one positioned write of OCTETS at OFFSET: lseek, then write(2) to
+completion (fnn-write-range)."
+  (let ((data (fnn-octets octets)))
+    (fnn-posix () (sb-posix:lseek fd offset sb-posix:seek-set))
+    (fnn-write-range fd data 0 (length data))))
+
+(defun fnn-log-fdatasync (fd)
+  "The log's barrier.  fdatasync(2) on Linux: an append inside the
+preallocated extent changes no size and no allocation, so it fences exactly
+what the byte model's fn-bs-fsync-file fences (an A-HOST condition of the
+qualification profile).  Elsewhere the platform's durable barrier."
+  #+linux
+  (when (minusp (sb-alien:alien-funcall
+                 (sb-alien:extern-alien "fdatasync" (function sb-alien:int sb-alien:int))
+                 fd))
+    (fnn-os-fail (sb-alien:get-errno)))
+  #-linux
+  (fnn-durable-barrier fd)
+  nil)
+
+(defun fnn-log-preallocate (fd extent)
+  "EXTENT allocated zero octets in a new segment: posix_fallocate on Linux,
+zeros written elsewhere (OpenBSD has no fallocate)."
+  #+linux
+  (let ((r (sb-alien:alien-funcall
+            (sb-alien:extern-alien "posix_fallocate"
+                                   (function sb-alien:int sb-alien:int
+                                             sb-alien:long sb-alien:long))
+            fd 0 extent)))
+    (unless (zerop r) (fnn-os-fail r)))
+  #-linux
+  (let ((zeros (fnn-make-octets (min extent 65536))) (at 0))
+    (fnn-posix () (sb-posix:lseek fd 0 sb-posix:seek-set))
+    (loop while (< at extent) do
+      (let ((n (min (length zeros) (- extent at))))
+        (fnn-write-range fd zeros 0 n)
+        (incf at n)))))
+
+(defun fnn-log-parent (path)
+  (let ((slash (position #\/ path :from-end t)))
+    (cond ((null slash) ".") ((zerop slash) "/") (t (subseq path 0 slash)))))
+
+(defun fnn-log-open-segment (path extent unit &optional read-only)
+  "The segment's descriptor.  Absent and not READ-ONLY: created, preallocated
+to EXTENT, fenced with its directory.  Present: a regular file of exactly
+EXTENT octets, or refused."
+  (unless (fnn-core 'fn-lg-extent-okp extent unit)
+    (error 'fnn-usage-error
+           :message (format nil "log extent ~a is not a positive number of ~a-octet units"
+                            extent unit)))
+  (let ((st (fnn-check-regular path)))
+    (cond (st
+           (let ((fd (fnn-open path (logior (if read-only sb-posix:o-rdonly sb-posix:o-rdwr)
+                                            +fnn-o-nofollow+))))
+             (unless (= (sb-posix:stat-size (fnn-fstat fd)) extent)
+               (fnn-close fd)
+               (fnn-refuse "log segment ~a is not ~a octets long" path extent))
+             fd))
+          (read-only (fnn-refuse "no log segment at ~a" path))
+          (t
+           (let ((fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat
+                                            sb-posix:o-excl +fnn-o-nofollow+))))
+             (fnn-log-preallocate fd extent)
+             (fnn-fsync-file fd)
+             (fnn-fsync-dir (fnn-log-parent path))
+             fd)))))
+
+(defun fnn-log-read-string (fd extent)
+  "The segment's EXTENT octets as a string, one character per octet: the
+concrete input of fn-lg-decode (its model is fn-lgd-octets)."
+  (fnn-posix () (sb-posix:lseek fd 0 sb-posix:seek-set))
+  (let ((data (fnn-read-exact-fd fd extent)))
+    (unless data (fnn-fault "log segment shorter than its extent"))
+    (map 'string #'code-char data)))
+
+(defun fnn-log-open-kernel (fd extent unit max)
+  (fnn-core 'fn-lg-open-kernel (fnn-log-read-string fd extent) *fn-lg-genesis* unit max 1))
+
+(defun fnn-log-recover (path extent unit max)
+  "P-LOG-RECOVER (fn-lg-recover-program): the kernel of the segment's decode,
+then the tail [F, EXTENT) zeroed by one write and fenced.  The kernel is
+R-related to the segment at log-recovered
+(fn-lg-recover-program-establishes-the-relation)."
+  (let* ((fd (fnn-log-open-segment path extent unit))
+         (ks (fnn-log-open-kernel fd extent unit max)))
+    (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
+      (fnn-log-pwrite fd offset (fnn-make-octets count))
+      (fnn-log-at :log-truncated)
+      (fnn-log-fdatasync fd)
+      (fnn-log-at :log-recovered))
+    (%make-fnn-log :path path :fd fd :kernel ks :unit unit :max max :extent extent)))
+
+(defun fnn-log-prepare (log record)
+  "The checked prepare: RECORD joins the open batch only at the kernel's
+next txid (fn-lgt-prepare)."
+  (setf (fnn-log-kernel log) (fnn-core 'fn-lgt-prepare (fnn-log-kernel log) record)))
+
+(defun fnn-log-append (log)
+  "P-BATCH's append (fn-lg-append-program): the kernel admits the open batch
+and its chained entries are written at the frontier in one positioned write."
+  (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
+    (unless (fnn-core 'fn-lg-append-admitsp ks unit extent)
+      (fnn-refuse "the log kernel refuses the append (a batch in flight, fenced, or past the extent)"))
+    (fnn-log-pwrite (fnn-log-fd log) (fnn-core 'fn-lgk-frontier ks)
+                    (fnn-core 'fn-lgk-append-octets ks unit))
+    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-append ks unit extent))
+    (fnn-log-at :log-written)))
+
+(defun fnn-log-fence (log)
+  "P-BATCH's fence (fn-lg-fence-program): the barrier, then the kernel's
+fence.  A failed barrier fences the kernel (fn-lgk-fence-failed): every
+member of the batch is uncertain until recovery decides."
+  (let ((ks (fnn-log-kernel log)))
+    (handler-case (fnn-log-fdatasync (fnn-log-fd log))
+      (fnn-os-error (e)
+        (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence-failed ks))
+        (fnn-indeterminate "log barrier failed: ~a" e)))
+    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence ks (fnn-log-unit log)))
+    (fnn-log-at :log-fenced)))
+
+(defun fnn-log-finish (log count)
+  "Acknowledge COUNT members in order (fn-lgk-finish-one; the kernel never
+acknowledges past the committed records)."
+  (dotimes (i count)
+    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-finish-one (fnn-log-kernel log)))))
+
+(defun fnn-log-line (what log size)
+  (let ((ks (fnn-log-kernel log)))
+    (fnn-out "~a records=~d frontier=~d next=~d last=~a workload=~(~a~)"
+             what (fnn-core 'fn-lgk-acked ks) (fnn-core 'fn-lgk-frontier ks)
+             (fnn-core 'fn-lgk-next-txid ks) (fnn-hex (fnn-core 'fn-lgk-last ks))
+             (if (fnn-core 'fn-lg-workload-prefixp (fnn-core 'fn-lgk-committed ks) 1 size)
+                 "t" "nil"))))
+
+(defun fnn-log-nat-arg (text what)
+  (let ((n (and text (every #'digit-char-p text) (plusp (length text))
+                (<= (length text) 12) (parse-integer text))))
+    (unless n (error 'fnn-usage-error :message (format nil "log: ~a is not a natural" what)))
+    n))
+
+;; `fn log scan SEGMENT EXTENT UNIT MAX SIZE' (both images: reads only) and,
+;; on a developer image, `fn log recover ...' and `fn log append SEGMENT
+;; EXTENT UNIT MAX SIZE BATCHES PER' (the power-loss rig's workload: recover,
+;; then BATCHES batches of PER workload records, one `ACK' line after each
+;; fence and its acknowledgements, flushed).
+(defun fnn-command-log (command argv)
+  (unless (member command '("scan" "recover" "append") :test #'equal)
+    (error 'fnn-usage-error :message "log scan|recover|append SEGMENT EXTENT UNIT MAX SIZE [BATCHES PER]"))
+  (when (and (not (string= command "scan")) (not (fnn-developer-image-p)))
+    (error 'fnn-usage-error :message (format nil "log ~a is a developer-image verb" command)))
+  (when (< (length argv) (if (string= command "append") 7 5))
+    (error 'fnn-usage-error :message "log: missing arguments"))
+  (let ((path (first argv))
+        (extent (fnn-log-nat-arg (second argv) "EXTENT"))
+        (unit (fnn-log-nat-arg (third argv) "UNIT"))
+        (max (fnn-log-nat-arg (fourth argv) "MAX"))
+        (size (fnn-log-nat-arg (fifth argv) "SIZE")))
+    (cond
+      ((string= command "scan")
+       (let ((fd (fnn-log-open-segment path extent unit t)))
+         (unwind-protect
+              (fnn-log-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
+                                                  :extent extent
+                                                  :kernel (fnn-log-open-kernel fd extent unit max))
+                            size)
+           (fnn-close fd))))
+      (t
+       (let ((log (fnn-log-recover path extent unit max)))
+         (unwind-protect
+              (progn
+                (fnn-log-line "RECOVERED" log size)
+                (when (string= command "append")
+                  (let ((batches (fnn-log-nat-arg (sixth argv) "BATCHES"))
+                        (per (fnn-log-nat-arg (seventh argv) "PER")))
+                    (dotimes (b batches)
+                      (dotimes (i per)
+                        (fnn-log-prepare
+                         log (fnn-core 'fn-lg-workload-record
+                                       (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log)) size)))
+                      (fnn-log-append log)
+                      (fnn-log-fence log)
+                      (fnn-log-finish log per)
+                      (fnn-log-line (format nil "ACK batch=~d" (1+ b)) log size)))))
+           (fnn-close (fnn-log-fd log)))))))
+  +fnn-exit-ok+)
+
+(fnn-register-verb "log" #'fnn-command-log)
 
 
 ;;; PKT-403: `fn --version' prints the release version and the source

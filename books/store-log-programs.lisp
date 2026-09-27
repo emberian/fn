@@ -247,3 +247,12 @@
                                   "@fn.invalid>")
                      (make-list (nfix size) :initial-element (mod txid 251))
                      '("fn.test") "o" "s" "e" 4 5))))
+
+; RECORDS are the workload records of txids TXID, TXID + 1, ... (the verb's
+; oracle line: `workload=t').
+(defun fn-lg-workload-prefixp (records txid size)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom records)
+      (null records)
+    (and (equal (car records) (fn-lg-workload-record txid size))
+         (fn-lg-workload-prefixp (cdr records) (1+ (nfix txid)) size))))
