@@ -77,6 +77,7 @@
                          (list (list :command line)))
                   (not (equal (fn-wire-state-mode w2) :closed))
                   (fn-octl-reader-hyps as tokens line)
+                  (not (fn-auth-access-restrictedp as (fn-own-conn-config conn)))
                   (consp (cddr tokens)) (null (cdddr tokens))
                   (fn-nntp-keywordp (car tokens) "HDR")
                   (fn-nntp-keywordp (cadr tokens) ":FN-ENROLLMENT")

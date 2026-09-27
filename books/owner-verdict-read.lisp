@@ -48,6 +48,9 @@
          (ns (fn-post-session-base pst))
          (tokens (fn-nntp-tokenize line)))
     (implies (and (fn-auth-sessionp as)
+                  ;; PRF-222: a session without a group-access rule (a
+                  ;; restricted one is served the view: books/group-access.lisp).
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
@@ -364,6 +367,7 @@
                   (fn-nntp-keywordp (cadr tokens) ":FN-VERIFIED")
                   (fn-nntp-message-id-tokenp (caddr tokens))
                   (not (fn-nntp-range-okp (fn-nntp-parse-range (caddr tokens))))
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (consp article))
              (equal (fn-served-result-effects
                      (fn-served-step conn (append prefix (list byte))))
@@ -463,6 +467,7 @@
                   (fn-nntp-keywordp (cadr tokens) ":FN-VERIFIED")
                   (fn-nntp-message-id-tokenp (caddr tokens))
                   (not (fn-nntp-range-okp (fn-nntp-parse-range (caddr tokens))))
+                  (not (fn-auth-access-restrictedp as (fn-own-conn-config conn)))
                   (consp article))
              (equal (car (fn-own-read o id (append prefix (list byte))))
                     (fn-nntp-result-effects

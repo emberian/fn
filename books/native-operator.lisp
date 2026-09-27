@@ -539,7 +539,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin, restart to apply; bind and unbind apply to a running node at once)")
         ((equal subject "account")
-         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers; spec nntp Invitation-code accounts)")
+         "usage: fn operator CONFIG account {invite [--expires SECONDS] | list | access {LOGIN|--anonymous} --read WILDMAT --post WILDMAT | access show} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers, and each access rule; access sets the groups a login sees and may post to; spec nntp Invitation-code accounts, Group access)")
         ((equal subject "keys")
          "usage: fn operator CONFIG keys redecide MSGID (re-decide a stored key statement under the grants in force now; the running owner decides it over the control socket; refused when MSGID is no stored key statement or its change is already made; spec peering 7.4)")
         ((equal subject "tls")
@@ -669,6 +669,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                               (fn-nop-profile-decimal
                                (fn-ncfg-first (fn-ncfg-rest (fn-ncfg-rest words)))))))
         ((equal words '("list")) (fn-nop-parse-administration "account" argv config))
+        ;; PRF-222: `account access show' and `account access LOGIN|--anonymous
+        ;; --read WILDMAT --post WILDMAT' (books/native-admin.lisp).
+        ((equal (fn-ncfg-first words) "access")
+         (fn-nop-parse-administration "account" argv config))
         (t (fn-nop-usage :invalid-account-command "account" config words))))
 
 (defun fn-nop-parse-command (words config argv)

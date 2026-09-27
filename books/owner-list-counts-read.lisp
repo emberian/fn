@@ -97,6 +97,9 @@
          (ns (fn-post-session-base pst))
          (tokens (fn-nntp-tokenize line)))
     (implies (and (fn-auth-sessionp as)
+                  ;; PRF-222: a session without a group-access rule (a
+                  ;; restricted one is served the view: books/group-access.lisp).
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
@@ -189,6 +192,7 @@
                   (fn-nntp-session-projected ns)
                   (fn-nntp-projectionp (fn-served-conn-archive conn))
                   (fn-olc-buckets-okp conn)
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (fn-nntp-command-inputp line)
                   (fn-nntp-command-arguments-at-mostp tokens)
                   (consp (cdr tokens))
@@ -270,6 +274,9 @@
          (ns (fn-post-session-base pst))
          (tokens (fn-nntp-tokenize line)))
     (implies (and (fn-auth-sessionp as)
+                  ;; PRF-222: a session without a group-access rule (a
+                  ;; restricted one is served the view: books/group-access.lisp).
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
@@ -361,6 +368,7 @@
                   (equal (fn-nntp-session-openp ns) t)
                   (fn-nntp-session-projected ns)
                   (fn-olc-buckets-okp conn)
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (fn-nntp-command-inputp line)
                   (fn-nntp-command-arguments-at-mostp tokens)
                   (consp (cdr tokens)) (null (cddr tokens))

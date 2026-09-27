@@ -474,6 +474,8 @@
                             (keyword (car (fn-nntp-tokenize (cadr wire-event))))
                             (args (cdr (fn-nntp-tokenize (cadr wire-event)))))))))
 
+; The delegated step serves the session's group-access view (PRF-222):
+; its session keeps the POST state (fn-auth-view-session-keeps-awaiting).
 (defthm fn-auth-fold-auth-delegate-starts-post-awaiting-only-on-post
   (implies
    (and (fn-auth-sessionp as)
@@ -489,11 +491,16 @@
    (fn-served-post-command-eventp wire-event))
   :hints (("Goal"
            :in-theory (e/d (fn-auth-delegate-pinned fn-auth-with-base
-                            fn-served-post-command-eventp fn-auth-sessionp)
+                            fn-served-post-command-eventp)
                            (fn-peer-step-pinned fn-nntp-tokenize
-                            fn-nntp-keywordp))
-           :use ((:instance fn-auth-fold-peer-step-starts-post-awaiting-only-on-post
-                            (ps (fn-auth-session-base as)))))))
+                            fn-nntp-keywordp fn-auth-sessionp
+                            fn-auth-view-session-is-a-session))
+           :use ((:instance fn-auth-view-session-is-a-session)
+                 (:instance fn-auth-fold-peer-step-starts-post-awaiting-only-on-post
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config as config archive)))))))
 
 (defun fn-auth-fold-post-awaiting (as)
   (declare (xargs :guard t))
