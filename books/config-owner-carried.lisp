@@ -549,3 +549,102 @@
                            (fn-ocl-relation fn-oclc-complete fn-ocfg-with-owner
                             fn-own-configure fn-oag-post-config
                             fn-oclc-publish-preserves-ocl-relation fn-oclc-publish-is-publish)))))
+
+; -----------------------------------------------------------------------------
+; The live request's authorization from the carried state (PKT-827 (b),
+; PRF-287).  Before this, the only pre-publication check of a live request
+; was host/native/admin.lisp fnn-admin-authorize's candidate open over the
+; records it reads from transactions/ -- none on a format-9 store, whose
+; records are in the log -- so it never checked that the history the owner
+; carries reopens with the new record.  The authorization below asks the
+; carried completion itself: the staged record applies to the owner's
+; carried node and configuration.  It reads no record and replays nothing.
+(defun fn-oclc-live-authorizep (oc)
+  (declare (xargs :guard t))
+  (let ((record (fn-ocfg-staged oc))
+        (st (fn-own-store (fn-ocfg-owner oc))))
+    (and record
+         (mv-let (next config1)
+           (fn-oclc-configure st (fn-ocfg-config oc) record)
+           (declare (ignore config1))
+           (not (equal (fn-sn-config-history next) (fn-sn-config-history st)))))))
+
+; An authorized request's completion is :durable, and only an authorized one
+; is: the completion never answers :recovery-required (a fenced owner) for a
+; record the authorization admitted, whatever the owner.
+(defthm fn-oclc-live-authorizep-is-durable-completion
+  (implies (and (fn-ocfg-staged oc)
+                (equal (fn-cfg-record-generation (fn-ocfg-staged oc)) generation))
+           (iff (equal (mv-nth 0 (fn-oclc-publish oc generation max-octets)) :durable)
+                (fn-oclc-live-authorizep oc)))
+  :hints (("Goal" :in-theory (e/d (fn-oclc-publish fn-oclc-complete)
+                                  (fn-oclc-configure fn-own-configure fn-oag-post-config
+                                   fn-ocl-owner-with-store)))))
+
+(defthm fn-oclc-configure-durable-history-grows-by-the-record
+  (implies (not (equal (fn-sn-config-history (fn-cpo-configure-durable st record))
+                       (fn-sn-config-history st)))
+           (equal (fn-sn-config-history (fn-cpo-configure-durable st record))
+                  (append (fn-sn-config-history st) (list record))))
+  :hints (("Goal" :in-theory (e/d (fn-cpo-configure-durable fn-cpo-install)
+                                  (fn-cpo-history-relation fn-cpr-replay fn-sn-statep
+                                   fn-cnode-statep fn-replay-advance-okp
+                                   fn-replay-advance-txid)))))
+
+; KEYSTONE (PRF-287).  Under the owner's invariant an authorized record is one
+; the durable history reopens to: the configured fold of the configuration
+; history extended by the record over the Store's history (the log's records,
+; which the carried store holds) succeeds, and its node advanced to the
+; frontier is the node the completion installs, with the domain and capacity
+; the completion installs (fn-cpo-history-relation of the installed store);
+; the Store history and frontier are unchanged, and the configuration the
+; owner goes live with is the reopened fold's (fn-ocl-store-config).
+(defthm fn-oclc-authorized-record-reopens
+  (implies (and (fn-ocl-relation oc)
+                (fn-oclc-live-authorizep oc))
+           (let* ((st (fn-own-store (fn-ocfg-owner oc)))
+                  (record (fn-ocfg-staged oc))
+                  (next (mv-nth 0 (fn-oclc-configure st (fn-ocfg-config oc) record)))
+                  (config1 (mv-nth 1 (fn-oclc-configure st (fn-ocfg-config oc) record))))
+             (and (fn-cpo-history-relation next)
+                  (equal (fn-sn-config-history next)
+                         (append (fn-sn-config-history st) (list record)))
+                  (equal (fn-sf-records (fn-sn-files next)) (fn-sf-records (fn-sn-files st)))
+                  (equal (fn-sf-frontier (fn-sn-files next)) (fn-sf-frontier (fn-sn-files st)))
+                  (equal config1 (fn-ocl-store-config next)))))
+  :hints (("Goal"
+           :cases ((equal (fn-sf-phase (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) :ready))
+           :use ((:instance fn-oclc-ready-cst-relation-is-history-relation
+                            (st (fn-own-store (fn-ocfg-owner oc))))
+                 (:instance fn-oclc-configure-is-configure-durable
+                            (st (fn-own-store (fn-ocfg-owner oc)))
+                            (config (fn-ocfg-config oc)) (record (fn-ocfg-staged oc)))
+                 (:instance fn-oclc-configure-config-is-store-config
+                            (st (fn-own-store (fn-ocfg-owner oc)))
+                            (config (fn-ocfg-config oc)) (record (fn-ocfg-staged oc)))
+                 (:instance fn-cpo-configure-durable-preserves-history-relation
+                            (st (fn-own-store (fn-ocfg-owner oc)))
+                            (record (fn-ocfg-staged oc)))
+                 (:instance fn-cpo-configure-durable-keeps-observed-events
+                            (st (fn-own-store (fn-ocfg-owner oc)))
+                            (record (fn-ocfg-staged oc)))
+                 (:instance fn-cpo-configure-durable-keeps-frontier
+                            (st (fn-own-store (fn-ocfg-owner oc)))
+                            (record (fn-ocfg-staged oc)))
+                 (:instance fn-oclc-configure-durable-history-grows-by-the-record
+                            (st (fn-own-store (fn-ocfg-owner oc)))
+                            (record (fn-ocfg-staged oc)))
+                 (:instance fn-oclc-configure-unready
+                            (st (fn-own-store (fn-ocfg-owner oc)))
+                            (config (fn-ocfg-config oc)) (record (fn-ocfg-staged oc))))
+           :in-theory (e/d (fn-oclc-live-authorizep fn-ocl-relation fn-ocl-config-historyp
+                            fn-oclc-replayed)
+                           (fn-oclc-configure fn-cpo-configure-durable fn-cpo-history-relation
+                            fn-cst-relation fn-cpr-replay fn-ocl-store-config
+                            fn-oclc-configure-is-configure-durable
+                            fn-oclc-configure-config-is-store-config
+                            fn-cpo-configure-durable-preserves-history-relation
+                            fn-cpo-configure-durable-keeps-observed-events
+                            fn-cpo-configure-durable-keeps-frontier
+                            fn-oclc-configure-unready fn-oclc-configure-durable-history-grows-by-the-record
+                            fn-ocl-view-configp fn-ocl-view-historyp fn-ocl-conns-historyp)))))

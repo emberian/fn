@@ -834,6 +834,18 @@
     (let ((state (fn-owner-install-ocfg next state)))
       (value verdict))))
 
+;; PKT-827 (b), PRF-287: the live request's authorization from the owner's
+;; carried state, asked after staging and before publication
+;; (host/native/admin.lisp fnn-owner-live-reconfigure-locked).  ACL2's
+;; fn-oclc-live-authorizep: the staged record applies to the carried node and
+;; configuration; an authorized record's completion is :durable
+;; (fn-oclc-live-authorizep-is-durable-completion) and under the owner's
+;; invariant the history reopens to the state it installs
+;; (fn-oclc-authorized-record-reopens).  It reads no record.
+(defun fn-owner-reconfigure-authorizedp (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-oclc-live-authorizep (fn-owner-ocfg state))))
+
 (defun fn-owner-config-generation (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cfg-generation (fn-owner-config state))))

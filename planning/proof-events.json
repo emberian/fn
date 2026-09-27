@@ -10296,6 +10296,121 @@
           "name": "fn-arena-paged-clear{correspondence}"
         }
       ]
+    },
+    {
+      "id": "PRF-285",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cstp-replay-append-event",
+          "note": "The configured fold over a history extended by one served event at the history's frontier is one event step from the fold without it (the order of configuration records and events is kept: every configuration record's transaction id is at most the event's, fn-cstp-loop-configs-at-most-final). Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cstp-reserve-io-preserves-relation",
+          "note": "fn-cst-relation across the reservation's file steps and the recovery barriers, every result. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cstp-record-io-preserves-relation",
+          "note": "fn-cst-relation across the record file and link steps and a non-publishing directory observation. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cstp-spc-prepare-preserves-relation",
+          "note": "The carried article prepare the host calls keeps fn-cst-relation when the article is served by the replayed configuration; without that hypothesis a retired group's article breaks it (teeth). Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cstp-held-record-dir-preserves-relation",
+          "note": "The directory observation publishing an article keeps fn-cst-relation given fn-cstp-carriedp; without the companion a topic counter off the history breaks it (teeth): fn-cst-relation alone is not closed under this step. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cstp-refuse-reservation-preserves",
+          "note": "The refused reservation keeps fn-cst-relation and the companion. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cstp-finish-preserves-carriedp",
+          "note": "fn-sn-finish keeps the companion (the topic prefix advances with the history). Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cstp-open-establishes-carriedp",
+          "note": "The configured open establishes the companion. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-286",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgoc-ocl-relation-of-owner-with-store",
+          "note": "The step lemma: an owner over a related Store with the same configuration history and an extended Store history satisfies fn-ocl-relation. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgoc-log-reserve-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-io :log-reserve. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgoc-sbud-prepare-preserves-invariant",
+          "note": "The prepare below the budget gate, for a served article. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgoc-pidx-sbud-prepare-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-prepare-buffer's fn-pidx-sbud-prepare, under its carried index premises. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgoc-log-order-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-io :log-order, an article staged. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgoc-finish-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-finish-submission. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgoc-refuse-reservation-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-refuse-reservation. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgoc-rcon-io-preserves-invariant",
+          "note": "Every safe file observation fn-owner-io feeds, the recovery barriers among them. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgoc-publish-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-reconfigure-complete's fn-oclc-publish. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgoc-recover-installs-invariant",
+          "note": "host/owner-host.lisp fn-owner-recover-from-store-open / fn-owner-recover-extended. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-287",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-live-authorizep-is-durable-completion",
+          "note": "An authorized record's completion is :durable and only an authorized one's. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-authorized-record-reopens",
+          "note": "Under the owner invariant an authorized record's installed Store satisfies fn-cpo-history-relation over the extended configuration history and the unchanged Store history. Teeth: tests/acl2/owner-log-ocl-tests.lisp."
+        }
+      ]
     }
   ]
 }
