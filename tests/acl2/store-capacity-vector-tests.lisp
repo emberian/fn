@@ -348,3 +348,22 @@
  (and (fn-record-p *cvt-record*)
       (not (equal (fn-store-event-kind *cvt-record*) :article))
       (not (fn-record-p *cvt-row*))))
+
+; -----------------------------------------------------------------------------
+; Lane keystone-audit (2026-09-27).  fn-cvec-article-verdict-keeps-the-vector-
+; for-a-held-row at the retained article row *cvt-row* (payload length 1 000,
+; the held facts' octets): the verdict at its payload length with one group
+; and one undertaking open admits, and the vector holds after the row's
+; stored octets.  Without the admissible verdict: one release record's room
+; later the verdict is :unaffordable and the vector no longer holds.
+(assert-event
+ (and (equal (fn-cvec-article-verdict-at *cvt-p* 1 *cvt-a*
+                                         (fn-cvec-row-payload-length *cvt-row*) 1 1)
+             :admissible)
+      (fn-cvec-roomp *cvt-p* (+ 1 1) (+ *cvt-a* (fn-cvec-row-payload-length *cvt-row*)) 1)))
+(assert-event
+ (and (not (equal (fn-cvec-article-verdict-at *cvt-p* 1 (+ *cvt-a* *cvt-r*)
+                                              (fn-cvec-row-payload-length *cvt-row*) 1 1)
+                  :admissible))
+      (not (fn-cvec-roomp *cvt-p* (+ 1 1)
+                          (+ *cvt-a* *cvt-r* (fn-cvec-row-payload-length *cvt-row*)) 1))))

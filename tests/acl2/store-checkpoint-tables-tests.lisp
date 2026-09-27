@@ -508,3 +508,34 @@
    :hints (("Goal" :do-not-induct t
             :in-theory (disable fn-sct-file-octets fn-sct-table-programs fn-ockp-estimate
                                 fn-ockp-estimate-is-len-file-octets)))))
+
+; keystone-audit 2026-09-27: books/owner-checkpoint-pipeline.lisp
+; fn-ockp-run-writes-the-file and fn-ockp-setup-not-unencodable-never-refuses-
+; a-row with the restated LOG argument non-nil (the witnesses above pass nil):
+; the pipeline over the capture with the log position *sctt-log* writes the
+; file of the tables that carry it, byte for byte, at batch 1 and 1000.
+(defun sctt-run-log (log b)
+  ; (SETUP-VERDICT RUN-VERDICT OCTETS ENCODABLEP)
+  (declare (xargs :guard (natp b) :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (result fn-octets)
+      (let* ((setup (fn-ockp-setup *sctt-capture* 9 "rev-test" log *sctt-seg* 100000000 *sctt-free*))
+             (tables (fn-sct-tables-of-capture *sctt-capture* 9 "rev-test" log)))
+        (mv-let (v octets fn-octets)
+          (fn-ockp-run setup (fn-ockp-initial-state tables fn-octets) b 1000000 *sctt-seg*
+                       *sctt-s* 100000 100000000 1000 fn-octets)
+          (mv (list (car setup) v octets (fn-ockp-tables-encodablep tables)) fn-octets)))
+      result)))
+(defun sctt-log-file ()
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-sct-file-octets *sctt-log-progs* *sctt-seg* *sctt-s*))
+(assert-event
+ (let ((r1 (sctt-run-log *sctt-log* 1))
+       (r1000 (sctt-run-log *sctt-log* 1000)))
+   (and (nth 3 r1) (not (equal (car r1) :unencodable))
+        (eq (nth 1 r1) :ok)
+        (equal (nth 2 r1) (sctt-log-file))
+        (equal (nth 2 r1000) (sctt-log-file))
+        ; non-degenerate: the log position is in the file (it differs from
+        ; the file without one)
+        (not (equal (sctt-log-file) (sctt-file))))))

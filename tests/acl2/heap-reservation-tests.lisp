@@ -805,3 +805,157 @@
             :in-theory (union-theories '(fn-heap-reserve-operation-decide
                                          (:executable-counterpart member-equal))
                                        (theory 'minimal-theory))))))
+
+; -----------------------------------------------------------------------------
+; Lane keystone-audit (2026-09-27): witnesses and teeth the PRF-198
+; restatements lacked.
+
+; fn-heap-init-decide-largest-takes-scale-when-it-fits: the reachable
+; witness (every hypothesis and the conclusion).  On a 512 GiB machine the
+; scale preset's first run fits, and FN_INIT_SIZING=largest writes it.
+(defconst *hrt-512g* (* 512 *hrt-gib*))
+(assert! (fn-heap-machine-sized-requestp *hrt-bare*))
+(assert! (not (equal (fn-heap-init-explicit-budget nil) :bad)))
+(assert! (fn-heap-reserve-acceptsp (fn-heap-preset-candidate :scale *hrt-bare*)
+                                   *hrt-core* *hrt-nursery*
+                                   (fn-heap-init-observations *hrt-512g* nil
+                                                              (fn-heap-init-explicit-budget nil))))
+(assert! (equal (fn-heap-init-decision-request
+                 (hrt-init *hrt-bare* *hrt-512g* nil nil *hrt-largest*))
+                (fn-heap-preset-candidate :scale *hrt-bare*)))
+(assert! (equal (fn-heap-preset-candidate :scale *hrt-bare*) '(:scale nil)))
+
+; fn-heap-reserve-first-run-accepted-is-within-the-machine.  Reachable: the
+; small preset's first run on OpenBSD's 1,536 MiB datasize (both hypotheses,
+; and 1,049,887,752 octets within 1,610,612,736).
+(assert! (fn-bs-profile-admittedp *fn-heap-small-profile*))
+(assert! (equal (car (fn-heap-reserve-first-run-decide *fn-heap-small-profile* *hrt-core*
+                                                       *hrt-nursery* (list *hrt-datasize*)
+                                                       (fn-heap-reserve-init-connections)))
+                :heap))
+(assert! (<= (fn-heap-init-reservation-octets *fn-heap-small-profile* *hrt-core* *hrt-nursery*)
+             (fn-heap-machine-octets (list *hrt-datasize*))))
+; Without the admitted profile: no profile on a 500 MiB machine is accepted
+; (the store-less figure, 310 MB), while the init reservation of no profile
+; (569,639,944 octets) is past the machine.
+(defconst *hrt-500m* (list (* 500 *fn-heap-mib*)))
+(assert! (not (fn-bs-profile-admittedp nil)))
+(assert! (equal (car (fn-heap-reserve-first-run-decide nil *hrt-core* *hrt-nursery* *hrt-500m*
+                                                       (fn-heap-reserve-init-connections)))
+                :heap))
+(assert! (not (<= (fn-heap-init-reservation-octets nil *hrt-core* *hrt-nursery*)
+                  (fn-heap-machine-octets *hrt-500m*))))
+; Without the accepted decision: the small preset on 300 MiB is refused, and
+; its reservation is past the machine.
+(defconst *hrt-300m* (list (* 300 *fn-heap-mib*)))
+(assert! (equal (car (fn-heap-reserve-first-run-decide *fn-heap-small-profile* *hrt-core*
+                                                       *hrt-nursery* *hrt-300m*
+                                                       (fn-heap-reserve-init-connections)))
+                :refused))
+(assert! (not (<= (fn-heap-init-reservation-octets *fn-heap-small-profile* *hrt-core*
+                                                   *hrt-nursery*)
+                  (fn-heap-machine-octets *hrt-300m*))))
+
+; fn-heap-operation-decide-of-a-serve-action-is-heap-decide.  Reachable:
+; `run' unobserved is heap-figure's decision.  Without "not an offline
+; verb": the reclaim's figure (1,840 MB) is not the serve figure (1,736).
+; Without "not init": init's first-run figure (668 MB) is not it either.
+(assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hrt-core* *hrt-nursery*
+                                          *hrt-2g* nil)
+                (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery* *hrt-2g*)))
+(assert! (equal (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery* *hrt-2g*)
+                '(:heap 1736 "small" 2048)))
+(assert! (member-equal :reclaim *fn-heap-list-actions*))
+(assert! (not (equal (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hrt-core*
+                                               *hrt-nursery* *hrt-4096* nil)
+                     (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
+                                     *hrt-4096*))))
+(assert! (not (member-equal :init *fn-heap-list-actions*)))
+(assert! (not (equal (fn-heap-operation-decide :init *fn-heap-small-profile* *hrt-core*
+                                               *hrt-nursery* *hrt-2g* nil)
+                     (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
+                                     *hrt-2g*))))
+
+; fn-heap-reserve-of-holds-the-decision.  Reachable: the small preset's
+; decision on 4 GiB reserved (every conjunct of the conclusion).  Without
+; the accepted reservation: heap-figure's accepted 1,736 MB on 2 GiB with
+; the threads beside it is refused (machine-cannot-hold-threads), and the
+; reservation's figure is past the machine.
+(defun hrt-of-conclusion (d r core observations)
+  (declare (xargs :mode :program))
+  (and (equal (car d) :heap)
+       (equal (fn-heap-decision-mb r) (fn-heap-decision-mb d))
+       (<= (+ (* *fn-heap-mib* (fn-heap-decision-mb r))
+              (fn-heap-core-file core)
+              (* (fn-heap-reserve-threads r)
+                 (+ (* 1024 (fn-heap-reserve-stack-kib r))
+                    *fn-heap-thread-runtime-octets*)))
+           (fn-heap-machine-octets observations))))
+(defconst *hrt-of-d* (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery* *hrt-4096*))
+(defconst *hrt-of-r* (fn-heap-reserve-of *hrt-of-d* *fn-heap-small-profile* *hrt-core*
+                                         *hrt-4096* 32))
+(assert! (equal (car *hrt-of-r*) :heap))
+(assert! (hrt-of-conclusion *hrt-of-d* *hrt-of-r* *hrt-core* *hrt-4096*))
+(defconst *hrt-of-d2* (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery* *hrt-2g*))
+(defconst *hrt-of-r2* (fn-heap-reserve-of *hrt-of-d2* *fn-heap-small-profile* *hrt-core*
+                                          *hrt-2g* 32))
+(assert! (equal (car *hrt-of-d2*) :heap))
+(assert! (equal *hrt-of-r2* '(:refused :machine-cannot-hold-threads 2070 2048)))
+(assert! (not (<= (fn-heap-reservation-octets (fn-heap-decision-mb *hrt-of-d2*) *hrt-core*
+                                              1024 30)
+                  (fn-heap-machine-octets *hrt-2g*))))
+
+; fn-heap-reserve-decide-is-reserve-of-heap-decide (no hypothesis): both
+; sides on the accepted 4 GiB decision and the refused 2 GiB one.
+(assert! (equal (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
+                                        *hrt-4096* 32)
+                *hrt-of-r*))
+(assert! (equal (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
+                                        *hrt-2g* 32)
+                *hrt-of-r2*))
+
+; fn-heap-figure-octets-grows-with-history-and-record.  Reachable: the small
+; preset below the defaults (all six hypotheses, and the figure grows).
+(defun hrt-grow-hyps (p1 p2)
+  (declare (xargs :mode :program))
+  (list (<= (nfix (fn-bs-profile-max-history-octets p1))
+            (nfix (fn-bs-profile-max-history-octets p2)))
+        (<= (nfix (fn-bs-profile-max-transactions p1))
+            (nfix (fn-bs-profile-max-transactions p2)))
+        (<= (nfix (fn-bs-profile-max-groups-per-article p1))
+            (nfix (fn-bs-profile-max-groups-per-article p2)))
+        (<= (nfix (fn-bs-profile-max-record-octets p1))
+            (nfix (fn-bs-profile-max-record-octets p2)))
+        (<= (nfix (fn-bs-profile-field 17 p1)) (nfix (fn-bs-profile-field 17 p2)))
+        (<= (fn-ock-capture-budget p1) (fn-ock-capture-budget p2))))
+(defun hrt-grow-conclusion (p1 p2)
+  (declare (xargs :mode :program))
+  (<= (fn-heap-figure-octets p1 *hrt-core* *hrt-nursery*)
+      (fn-heap-figure-octets p2 *hrt-core* *hrt-nursery*)))
+(defun hrt-small-with (fields)
+  (declare (xargs :mode :program))
+  (fn-bs-profile-resolve (list :development (append (cadr *fn-heap-small-request*) fields))
+                         nil))
+(assert! (equal (hrt-small-with nil) *fn-heap-small-profile*))
+(assert! (equal (hrt-grow-hyps *fn-heap-small-profile* *fn-bs-profile-defaults*)
+                '(t t t t t t)))
+(assert! (hrt-grow-conclusion *fn-heap-small-profile* *fn-bs-profile-defaults*))
+; Per hypothesis, the small preset with that one field raised against the
+; small preset: the other five hold, it fails, and the figure shrinks.
+(assert! (equal (hrt-grow-hyps (hrt-small-with '((2 . 32768))) *fn-heap-small-profile*)
+                '(t nil t t t t)))
+(assert! (not (hrt-grow-conclusion (hrt-small-with '((2 . 32768))) *fn-heap-small-profile*)))
+(assert! (equal (hrt-grow-hyps (hrt-small-with '((6 . 32))) *fn-heap-small-profile*)
+                '(t t nil t t t)))
+(assert! (not (hrt-grow-conclusion (hrt-small-with '((6 . 32))) *fn-heap-small-profile*)))
+(assert! (equal (hrt-grow-hyps (hrt-small-with '((17 . 32768))) *fn-heap-small-profile*)
+                '(t t t t nil t)))
+(assert! (not (hrt-grow-conclusion (hrt-small-with '((17 . 32768))) *fn-heap-small-profile*)))
+; H and R: the capture budget is fn-sccr-file-read-bound of H and R, so
+; raising either raises it too (two hypotheses fail at once); no single-
+; hypothesis counterexample is claimed for H, R or the capture budget
+; (keystone-audit packet: prove the statement without the capture-budget
+; hypothesis, then give H and R their teeth).
+(assert! (equal (hrt-grow-hyps (hrt-small-with '((3 . 16777216))) *fn-heap-small-profile*)
+                '(nil t t t t nil)))
+(assert! (not (hrt-grow-conclusion (hrt-small-with '((3 . 16777216))) *fn-heap-small-profile*)))
