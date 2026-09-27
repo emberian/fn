@@ -34,6 +34,13 @@
 ; The kind-4 event ACL2 constructs names the POST's Message-ID and the
 ; enrollment generation the plan selected.
 
+;; The identity fold reads a wire composite as itself (a retained row as the
+;; composite it carries, books/replay.lisp fn-replay-identity-wire).
+(defthm fn-osp-identity-wire-of-a-composite
+  (implies (fn-stxa-p e) (equal (fn-replay-identity-wire e) e))
+  :hints (("Goal" :in-theory (enable fn-replay-identity-wire fn-hstxa-p fn-stxa-p
+                                     fn-stxa-shapep))))
+
 (defthm fn-osp-bindsp-verdict-names-the-article-record
   (implies (fn-stxa-bindsp e)
            (and (equal (fn-stxe-msgid (fn-hls-kind4-verdict-event e))
@@ -43,7 +50,8 @@
                 (equal (fn-stxe-keyring-generation (fn-hls-kind4-verdict-event e))
                        (fn-stxa-keyring-generation e))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-stxa-bindsp fn-hls-kind4-verdict-event)
+  :hints (("Goal" :in-theory (e/d (fn-stxa-bindsp fn-hls-kind4-verdict-event
+                                   fn-osp-identity-wire-of-a-composite)
                                   (fn-stxe-decode-exact
                                    fn-stxe-encode)))))
 
@@ -278,6 +286,16 @@
                             fn-own-view-make-group-indexed fn-own-conn-make-group-indexed
                             fn-served-open-group-indexed fn-midx-refresh fn-gidx-build)))))
 
+; After the records flip the completion record is the retained ROW of the
+; composite E the POST constructed (books/held-record.lisp fn-hstxa-p); the
+; verdict a row records is its composite's.
+(defthm fn-osp-kind4-verdict-event-of-a-row
+  (implies (fn-hstxa-p r)
+           (equal (fn-hls-kind4-verdict-event r)
+                  (fn-hls-kind4-verdict-event (fn-hstxa-stxa r))))
+  :hints (("Goal" :in-theory (enable fn-hls-kind4-verdict-event
+                                     fn-replay-identity-wire))))
+
 (defthm fn-osp-signed-post-finish-records-its-verdict
   (let* ((e (fn-pa-authorized-event
              sequence txid generation msgid received groups obligation-id
@@ -287,7 +305,8 @@
          (v (fn-hls-kind4-verdict-event e)))
     (implies (and e
                   (fn-sn-completion-enabledp (fn-own-store o))
-                  (equal (fn-sn-completion-record (fn-own-store o)) e))
+                  (fn-hstxa-p (fn-sn-completion-record (fn-own-store o)))
+                  (equal (fn-hstxa-stxa (fn-sn-completion-record (fn-own-store o))) e))
              (equal (fn-sn-verdict-lookup
                      (fn-own-store (fn-own-step o '(:complete))) msgid)
                     (fn-stx-make-verdict (fn-stxe-token v) (fn-stxe-detail v)
@@ -296,7 +315,8 @@
            :use (fn-osp-authorized-event-binds-the-post
                  (:instance fn-sn-finish-of-a-kind-4-acceptance-records-its-verdict
                   (s (fn-own-store o))))
-           :in-theory (e/d (fn-osp-complete-store-is-finish)
+           :in-theory (e/d (fn-osp-complete-store-is-finish
+                            fn-osp-kind4-verdict-event-of-a-row)
                            (fn-pa-authorized-event fn-pa-current-plan
                             fn-hls-kind4-verdict-event fn-sn-finish
                             fn-sn-verdict-lookup fn-stx-make-verdict
@@ -315,7 +335,8 @@
          (conn (fn-own-find-conn (fn-own-next-id o) (fn-own-conns o2))))
     (implies (and e
                   (fn-sn-completion-enabledp (fn-own-store o))
-                  (equal (fn-sn-completion-record (fn-own-store o)) e)
+                  (fn-hstxa-p (fn-sn-completion-record (fn-own-store o)))
+                  (equal (fn-hstxa-stxa (fn-sn-completion-record (fn-own-store o))) e)
                   (< (len (fn-own-conns o)) (nfix (fn-own-max-conns o))))
              (and conn
                   (equal (fn-stx-reader-verdict msgid (fn-own-conn-verdicts conn))
@@ -609,8 +630,9 @@
 (defthm fn-osp-replay-records-a-carried-composite
   (implies (and (fn-hsig-article-event-carried-bindsp e)
                 (equal (fn-stxk-context-kind ctx) :ok)
-                (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx)))
-           (equal (fn-replay-identity-step ctx e)
+                (fn-hstxa-p r) (equal (fn-hstxa-stxa r) e)
+                (equal (fn-store-event-sequence r) (fn-stxk-context-next ctx)))
+           (equal (fn-replay-identity-step ctx r)
                   (fn-replay-apply-carried-verdict
                    ctx (fn-stmt-value
                         (fn-stxe-decode-exact (fn-stxa-verdict-event e))))))
@@ -635,8 +657,9 @@
 (defthm fn-osp-replay-records-a-revoked-composite
   (implies (and (fn-hsig-article-event-revoked-bindsp e)
                 (equal (fn-stxk-context-kind ctx) :ok)
-                (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx)))
-           (equal (fn-replay-identity-step ctx e)
+                (fn-hstxa-p r) (equal (fn-hstxa-stxa r) e)
+                (equal (fn-store-event-sequence r) (fn-stxk-context-next ctx)))
+           (equal (fn-replay-identity-step ctx r)
                   (fn-replay-apply-revoked-verdict
                    ctx (fn-stmt-value
                         (fn-stxe-decode-exact (fn-stxa-verdict-event e)))
@@ -670,11 +693,12 @@
 (defthm fn-osp-replay-admits-a-revoked-composite-exactly-at-its-tombstone
   (let* ((v (fn-stmt-value (fn-stxe-decode-exact (fn-stxa-verdict-event e))))
          (keys (fn-hsig-article-event-carrier-keys e))
-         (next (fn-replay-identity-step ctx e)))
+         (next (fn-replay-identity-step ctx r)))
     (implies (and (fn-hsig-article-event-revoked-bindsp e)
                   (fn-stxe-p v)
                   (equal (fn-stxk-context-kind ctx) :ok)
-                  (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx))
+                  (fn-hstxa-p r) (equal (fn-hstxa-stxa r) e)
+                (equal (fn-store-event-sequence r) (fn-stxk-context-next ctx))
                   (equal (fn-stxe-sequence v) (fn-stxk-context-next ctx)))
              (and (iff (equal (fn-stxk-context-kind next) :ok)
                        (fn-hsig-revoked-tombstone-bindsp
@@ -703,8 +727,9 @@
 (defthm fn-osp-carried-composite-keeps-the-keyring
   (implies (and (fn-hsig-article-event-carried-bindsp e)
                 (equal (fn-stxk-context-kind ctx) :ok)
-                (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx)))
-           (equal (fn-stxk-context-snapshots (fn-replay-identity-step ctx e))
+                (fn-hstxa-p r) (equal (fn-hstxa-stxa r) e)
+                (equal (fn-store-event-sequence r) (fn-stxk-context-next ctx)))
+           (equal (fn-stxk-context-snapshots (fn-replay-identity-step ctx r))
                   (fn-stxk-context-snapshots ctx)))
   :hints (("Goal"
            :use ((:instance fn-osp-replay-records-a-carried-composite))
@@ -718,8 +743,9 @@
 (defthm fn-osp-revoked-composite-keeps-the-keyring
   (implies (and (fn-hsig-article-event-revoked-bindsp e)
                 (equal (fn-stxk-context-kind ctx) :ok)
-                (equal (fn-store-event-sequence e) (fn-stxk-context-next ctx)))
-           (equal (fn-stxk-context-snapshots (fn-replay-identity-step ctx e))
+                (fn-hstxa-p r) (equal (fn-hstxa-stxa r) e)
+                (equal (fn-store-event-sequence r) (fn-stxk-context-next ctx)))
+           (equal (fn-stxk-context-snapshots (fn-replay-identity-step ctx r))
                   (fn-stxk-context-snapshots ctx)))
   :hints (("Goal"
            :use ((:instance fn-osp-replay-records-a-revoked-composite))

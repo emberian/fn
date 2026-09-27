@@ -293,12 +293,18 @@
 ; article record a signed acceptance composite carries (decoded as replay
 ; decodes it, `fn-replay-composite-record').  Cost: a composite is decoded
 ; (its article record's octets) when the walk reaches it.
+; E is a history event: after the records flip a plain article is a HELD row
+; and a signed article's composite is the ROW `fn-hstxa-p' whose interned
+; article carries the Message-ID (books/held-record.lisp); the wire forms (a
+; record, a composite) read as before.  Refinement over alpha:
+; books/history-fold-refinement.lisp fn-ctl-event-msgid-over-alpha.
 (defun fn-ctl-event-msgid (e)
   (declare (xargs :guard t))
-  (if (fn-record-p e)
-      (fn-record-msgid e)
-    (let ((r (fn-replay-composite-record e)))
-      (if (fn-record-p r) (fn-record-msgid r) nil))))
+  (cond ((fn-held-p e) (fn-record-msgid e))
+        ((fn-hstxa-p e) (fn-record-msgid (fn-hstxa-held e)))
+        ((fn-record-p e) (fn-record-msgid e))
+        (t (let ((r (fn-replay-composite-record e)))
+             (if (fn-record-p r) (fn-record-msgid r) nil)))))
 
 ; The txid of MSGID's acceptance event, nil when RECORDS holds none.
 ; Pessimistic cost: a walk of RECORDS decoding every signed composite before
