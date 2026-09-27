@@ -5920,7 +5920,7 @@ does, and records how the log holds the history (fnn-store-log-history) for
                       (if log-position
                           (fnn-recover-log-from-log-checkpoint store config-records scanned)
                         (or (fnn-recover-log-from-state-checkpoint store config-records scanned)
-                            (fnn-recover-log-replay store scanned config-records))))))))
+                            (fnn-recover-log-replay store scanned config-records)))))))
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
                 (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
                 (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))
