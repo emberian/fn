@@ -163,6 +163,10 @@ class NativeModerationTests(unittest.TestCase):
         if process.poll() is None:
             process.send_signal(signal.SIGKILL)
             process.wait(timeout=10)
+        if process.stderr and not process.stderr.closed:
+            # The owner's log, for a failure's diagnosis (its refusal lines).
+            tail = process.stderr.read()[-4000:].decode("ascii", "replace")
+            print("NATIVE-MODERATION owner log tail:", tail.replace("\n", " | "))
         for stream in (process.stdout, process.stderr):
             if stream and not stream.closed:
                 stream.close()
@@ -243,7 +247,8 @@ class NativeModerationTests(unittest.TestCase):
     def scenario(self, image):
         node = self.node(image)
         self.ok(node, "init", "fn.test")
-        for group in ("fn.mod", "fn.mod.moderation"):
+        # control.cancel: the filing group of the node's cancel (NNT-010).
+        for group in ("fn.mod", "fn.mod.moderation", "control.cancel"):
             self.ok(node, "group", "create", group)
         # Offline, refused by name: an absent group, an absent queue.
         self.assertNotEqual(self.operator(node, "group", "moderate", "fn.absent",
@@ -264,7 +269,7 @@ class NativeModerationTests(unittest.TestCase):
 
         carol = self.login(node, "carol")
         # PKT-658: carol moderates nothing; the queue is not served to her.
-        self.assertEqual(self.active(carol), {"fn.mod": "m", "fn.test": "y"})
+        self.assertEqual(self.active(carol), {"control.cancel": "y", "fn.mod": "m", "fn.test": "y"})
         self.assertTrue(self.line(carol, "GROUP fn.mod.moderation").startswith("411"))
         # Held: 240, not in fn.mod, in the queue as the envelope.
         held = self.post_lines(carol, self.article("fn.mod", "held1"))

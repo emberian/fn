@@ -25,9 +25,15 @@
 (defconst *mvt-agent* (mvt-o "fn.example.invalid"))
 (defconst *mvt-cfg*
   (fn-inj-make-config-closed t *mvt-agent*
-                             (list (mvt-o "fn.test") (mvt-o "fn.mod") (mvt-o "fn.queue"))
+                             (list (mvt-o "fn.test") (mvt-o "fn.mod") (mvt-o "fn.queue")
+                                   (mvt-o "control.cancel"))
                              32768 (list *mvt-entry*)))
 (defconst *mvt-obs* (fn-clock-observation 1000000 843004800000 500 t))
+; The Store's node: the operator created control.cancel (NNT-010's filing
+; group for a cancel).
+(defconst *mvt-node*
+  (fn-node-make-state (fn-initial-state '("control.cancel" "fn.mod" "fn.queue" "fn.test"))
+                      nil nil nil))
 (defconst *mvt-held*
   (mvt-o (concatenate 'string
                       "From: poster@example.invalid" *mvt-crlf*
@@ -56,7 +62,7 @@
 ; 2. Approve.
 
 (defun mvt-approve (raw ws login id)
-  (fn-mvb-approve raw ws nil *mvt-cfg* *mvt-obs* nil (mvt-o login) id))
+  (fn-mvb-approve raw ws nil *mvt-cfg* *mvt-obs* *mvt-node* (mvt-o login) id))
 (defconst *mvt-approved* (mvt-approve *mvt-raw* nil "alice" "<m1@example.invalid>"))
 (defconst *mvt-approved-octets*
   (fn-mvb-approved-article (mvt-o "alice") (fn-mvb-held-article *mvt-env*)))
@@ -74,7 +80,7 @@
 (assert-event (equal (fn-inj-decision-msgid *mvt-gated*) (cadr *mvt-approved*)))
 (assert-event (equal (fn-inj-decision-groups *mvt-gated*) (caddr *mvt-approved*)))
 (assert-event (fn-inj-injectedp (fn-own-operator-decision
-                                 *mvt-cfg* *mvt-obs* nil (cadr *mvt-approved*)
+                                 *mvt-cfg* *mvt-obs* *mvt-node* (cadr *mvt-approved*)
                                  (caddr *mvt-approved*) *mvt-approved-octets*)))
 ; The octets are the held proto-article with Approved: alice first.
 (assert-event (equal (take 17 *mvt-approved-octets*) (mvt-o (concatenate 'string "Approved: alice" *mvt-crlf*))))
@@ -111,18 +117,26 @@
 
 (defconst *mvt-rows* nil)
 (defconst *mvt-rejected*
-  (fn-mvb-reject *mvt-raw* nil nil *mvt-cfg* *mvt-rows* (mvt-o "alice")
+  (fn-mvb-reject *mvt-raw* nil nil *mvt-cfg* *mvt-obs* *mvt-node* *mvt-rows* (mvt-o "alice")
                  "<m1@example.invalid>" "off-topic"))
 (defconst *mvt-cause* "<fn-withdraw.fn-moderate.m1@example.invalid>")
 (assert-event (equal (car *mvt-rejected*) :withdraw))
 (assert-event (equal *mvt-rejected*
-                     (fn-mvb-withdraw *mvt-raw* *mvt-agent* *mvt-rows* *mvt-env-id* "off-topic")))
+                     (fn-mvb-withdraw *mvt-raw* *mvt-cfg* *mvt-obs* *mvt-node* *mvt-rows* *mvt-env-id* "off-topic")))
 (assert-event (equal (cadr *mvt-rejected*)
                      (fn-mvb-withdraw-argv *mvt-cause* *mvt-env-id* "off-topic")))
 (assert-event (equal (caddr *mvt-rejected*) (mvt-o *mvt-cause*)))
-(assert-event (equal (cadddr *mvt-rejected*) (list (mvt-o "fn.queue"))))
+(assert-event (equal (cadddr *mvt-rejected*) (list (mvt-o "control.cancel"))))
+(assert-event (equal (fn-pa-filing-plan (car (cddddr *mvt-rejected*)) (cadddr *mvt-rejected*)
+                                        (fn-state-groups (fn-node-acceptance *mvt-node*)))
+                     (list :file (cadddr *mvt-rejected*))))
+; Without control.cancel the commit could not file the cause: refused by
+; name before any row.
+(assert-event (equal (fn-mvb-reject *mvt-raw* nil nil *mvt-cfg* *mvt-obs* nil nil (mvt-o "alice")
+                                    "<m1@example.invalid>" "off-topic")
+                     '(:refused :control-not-filed)))
 ; carol is refused by name; a rejection with no reason names the default.
-(assert-event (equal (fn-mvb-reject *mvt-raw* nil nil *mvt-cfg* nil (mvt-o "carol")
+(assert-event (equal (fn-mvb-reject *mvt-raw* nil nil *mvt-cfg* *mvt-obs* *mvt-node* nil (mvt-o "carol")
                                     "<m1@example.invalid>" "")
                      '(:refused :not-a-moderator)))
 (assert-event (equal (fn-mvb-reject-reason "") "rejected by the moderator"))
@@ -172,7 +186,7 @@
 ; cause's Message-ID, into the envelope's group; the control machine reads
 ; its target from the injected octets.
 (defconst *mvt-cancel-decision*
-  (fn-own-operator-decision *mvt-cfg* *mvt-obs* nil (caddr *mvt-rejected*)
+  (fn-own-operator-decision *mvt-cfg* *mvt-obs* *mvt-node* (caddr *mvt-rejected*)
                             (cadddr *mvt-rejected*) (car (cddddr *mvt-rejected*))))
 (assert-event (fn-inj-injectedp *mvt-cancel-decision*))
 (assert-event (equal (fn-ctl-target-octets (fn-inj-decision-octets *mvt-cancel-decision*))
@@ -186,7 +200,7 @@
 (assert-event (equal (fn-ctl-w-principal *mvt-plan*) :node))
 (defconst *mvt-with-cause*
   (append *mvt-raw* (list (mvt-art *mvt-cause* (fn-inj-decision-octets *mvt-cancel-decision*)
-                                   '("fn.queue")))))
+                                   '("control.cancel")))))
 (assert-event (fn-ctl-withdrawn-by-p *mvt-env* (list *mvt-plan*) *mvt-with-cause* nil))
 (assert-event (not (fn-ctl-withdrawn-by-p (cadr *mvt-raw*) (list *mvt-plan*)
                                           *mvt-with-cause* nil)))
@@ -206,26 +220,27 @@
 ; ---------------------------------------------------------------------------
 ; 4. The general withdrawal.
 
-(assert-event (equal (fn-mvb-withdraw *mvt-raw* *mvt-agent* nil "<absent@example.invalid>" "x")
+(assert-event (equal (fn-mvb-withdraw *mvt-raw* *mvt-cfg* *mvt-obs* *mvt-node* nil "<absent@example.invalid>" "x")
                      '(:refused :no-such-article)))
 (must-fail
  (assert-event (consp (fn-cev-find-article "<absent@example.invalid>" *mvt-raw*))))
-(assert-event (equal (fn-mvb-withdraw *mvt-with-cause* *mvt-agent* nil *mvt-env-id* "x")
+(assert-event (equal (fn-mvb-withdraw *mvt-with-cause* *mvt-cfg* *mvt-obs* *mvt-node* nil *mvt-env-id* "x")
                      '(:refused :already-withdrawn)))
 ; A retry after the row alone: no vector, the article only.
-(defconst *mvt-retry* (fn-mvb-withdraw *mvt-raw* *mvt-agent* (fn-cfg-authorities *mvt-v1*)
+(defconst *mvt-retry* (fn-mvb-withdraw *mvt-raw* *mvt-cfg* *mvt-obs* *mvt-node* (fn-cfg-authorities *mvt-v1*)
                                        *mvt-env-id* "off-topic"))
 (assert-event (equal (car *mvt-retry*) :withdraw))
 (assert-event (null (cadr *mvt-retry*)))
-(assert-event (equal (fn-mvb-withdraw *mvt-raw* *mvt-agent* nil "<other@example.invalid>" "")
+(assert-event (equal (fn-mvb-withdraw *mvt-raw* *mvt-cfg* *mvt-obs* *mvt-node* nil "<other@example.invalid>" "")
                      (list :withdraw
                            (fn-mvb-withdraw-argv "<fn-withdraw.other@example.invalid>"
                                                  "<other@example.invalid>" "")
                            (mvt-o "<fn-withdraw.other@example.invalid>")
-                           (list (mvt-o "fn.test"))
+                           (list (mvt-o "control.cancel"))
                            (fn-mvb-cancel-article *mvt-agent*
                                                   "<fn-withdraw.other@example.invalid>"
-                                                  "<other@example.invalid>" '("fn.test") ""))))
+                                                  "<other@example.invalid>"
+                                                  '("control.cancel") ""))))
 
 ; ---------------------------------------------------------------------------
 ; 5. The plan the host calls, and the wire.

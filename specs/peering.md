@@ -1629,9 +1629,10 @@ its-target`); `control evidence` names it `principal=node`, HDR :fn-control
 `executed withdrawal ID node`. The decision is durable configuration the
 operator wrote, never the cause's octets: a peer's article with that
 Message-ID withdraws ID only because the row already says so. The cause is
-stored in ID's groups (for a rejection, the hidden queue) by the operator
-path, not filed in `control.cancel` (NNT-010's filing is the ingress
-paths'; PKT-715). A stronger fn guarantee: RFC 5537 section 5.3 leaves
+filed in `control.cancel` like every cancel (NNT-010: the owner's commit
+gate files a control article only in its filing group, and the plan
+refuses `control-not-filed` before writing the row when the operator has
+not created it). A stronger fn guarantee: RFC 5537 section 5.3 leaves
 cancel authority to local policy.
 
 **Filing (implemented, C1).** `fn-ctl-classify`

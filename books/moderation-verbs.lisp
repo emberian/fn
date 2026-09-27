@@ -29,8 +29,8 @@
 ;
 ; Reject and withdraw (PKT-575, CT3): the node withdraws TARGET under its own
 ; authority.  The configuration row (CAUSE TARGET REASON 1) is written first,
-; then the node injects the article CAUSE, `Control: cancel TARGET', into
-; TARGET's groups; the control machine's :node arm
+; then the node injects the article CAUSE, `Control: cancel TARGET', filed in
+; `control.cancel' (NNT-010; the operator creates that group); the control machine's :node arm
 ; (books/control-authority.lisp `fn-ctl-withdrawal-plan') makes the record
 ; when the refresh first publishes CAUSE, and
 ; `fn-ctl-node-withdrawal-withdraws-exactly-its-target' says what it
@@ -44,6 +44,7 @@
 (include-book "control-evidence")
 (include-book "nntp-post")
 (include-book "config-invariants")
+(include-book "peer-authored-accept")
 
 ; -----------------------------------------------------------------------------
 ; Identities
@@ -226,6 +227,11 @@
                     (list :refused :operator-decision-refused)
                   (list :submit msgid groups octets))))))))))
 
+; The cause is a cancel control message, so the owner files it in
+; `control.cancel' (books/control-classify.lisp `fn-ctl-filing-group'),
+; which the operator creates; its Newsgroups names that group.
+(defconst *fn-mvb-cancel-groups* '("control.cancel"))
+
 ; The vector the live administration takes for the row (CAUSE TARGET REASON 1).
 (defun fn-mvb-withdraw-argv (cause target reason)
   (declare (xargs :guard t))
@@ -236,7 +242,7 @@
         (fn-record-string-octets reason)))
 
 ; The node's withdrawal of TARGET (a string) with REASON (a string).
-(defun fn-mvb-withdraw (raw agent rows target reason)
+(defun fn-mvb-withdraw (raw cfg clock node rows target reason)
   (declare (xargs :guard t))
   (let* ((a (fn-cev-find-article target raw))
          (cause (fn-mvb-cause target))
@@ -249,12 +255,32 @@
            (list :refused :already-withdrawn))
           ((and row (not (equal (fn-cfg-row-b row) target)))
            (list :refused :withdrawal-row-conflict))
-          (t (list :withdraw
-                   (if row nil (fn-mvb-withdraw-argv cause target reason))
-                   (fn-record-string-octets cause)
-                   (fn-mvb-groups-octets (fn-article-groups a))
-                   (fn-mvb-cancel-article agent cause target
-                                          (fn-article-groups a) reason))))))
+          (t (let* ((msgid (fn-record-string-octets cause))
+                    (octets (fn-mvb-cancel-article (fn-inj-config-agent cfg)
+                                                   cause target
+                                                   *fn-mvb-cancel-groups* reason))
+                    (groups (fn-mvb-groups-octets *fn-mvb-cancel-groups*))
+                    (filing (fn-pa-filing-plan
+                             octets groups
+                             (fn-state-groups (fn-node-acceptance node))))
+                    (op (fn-own-operator-decision cfg clock node msgid groups
+                                                  octets)))
+               ; The commit files a control article in its filing group
+               ; (NNT-010: the owner's commit gate, fn-owner-bound-commit-gate,
+               ; commits only when the filing plan files the payload in
+               ; exactly the submitted groups), and the operator path must
+               ; inject it as planned: either refusal is the plan's, by its
+               ; reason, before any row.
+               (cond ((not (equal filing (list :file groups)))
+                      (list :refused (if (equal (car filing) :refused)
+                                         (cadr filing)
+                                       :control-not-filed)))
+                     ((not (fn-inj-injectedp op))
+                      (list :refused (fn-inj-decision-reason op)))
+                     (t (list :withdraw
+                              (if row nil
+                                (fn-mvb-withdraw-argv cause target reason))
+                              msgid groups octets))))))))
 
 (defconst *fn-mvb-rejected-reason* "rejected by the moderator")
 
@@ -262,14 +288,13 @@
   (declare (xargs :guard t))
   (if (equal reason "") *fn-mvb-rejected-reason* reason))
 
-(defun fn-mvb-reject (raw ws verdicts cfg rows login id reason)
+(defun fn-mvb-reject (raw ws verdicts cfg clock node rows login id reason)
   (declare (xargs :guard t))
   (let ((e (fn-mvb-held-envelope raw ws verdicts (fn-inj-config-closed cfg)
                                  login id)))
     (if (not (equal (car e) :envelope))
         e
-      (fn-mvb-withdraw raw (fn-inj-config-agent cfg) rows
-                       (fn-article-msgid (cadr e))
+      (fn-mvb-withdraw raw cfg clock node rows (fn-article-msgid (cadr e))
                        (fn-mvb-reject-reason reason)))))
 
 ; OP is :approve, :reject or :withdraw; LOGIN, ID and REASON are the
@@ -289,9 +314,11 @@
            (fn-mvb-approve raw ws verdicts cfg (fn-own-clock o)
                            (fn-sn-node (fn-own-store o)) login id))
           ((equal op :reject)
-           (fn-mvb-reject raw ws verdicts cfg rows login id reason))
+           (fn-mvb-reject raw ws verdicts cfg (fn-own-clock o)
+                          (fn-sn-node (fn-own-store o)) rows login id reason))
           ((equal op :withdraw)
-           (fn-mvb-withdraw raw (fn-inj-config-agent cfg) rows id reason))
+           (fn-mvb-withdraw raw cfg (fn-own-clock o) (fn-sn-node (fn-own-store o))
+                            rows id reason))
           (t (list :refused :moderation-request)))))
 
 ; -----------------------------------------------------------------------------
@@ -312,11 +339,13 @@
                                   (fn-record-octets-string id)))
                  ((equal op :reject)
                   (fn-mvb-reject (fn-own-view-raw v) (fn-own-view-withdrawals v)
-                                 (fn-own-view-verdicts v) cfg rows login
+                                 (fn-own-view-verdicts v) cfg (fn-own-clock o)
+                                 (fn-sn-node (fn-own-store o)) rows login
                                  (fn-record-octets-string id)
                                  (fn-record-octets-string reason)))
                  ((equal op :withdraw)
-                  (fn-mvb-withdraw (fn-own-view-raw v) (fn-inj-config-agent cfg) rows
+                  (fn-mvb-withdraw (fn-own-view-raw v) cfg (fn-own-clock o)
+                                   (fn-sn-node (fn-own-store o)) rows
                                    (fn-record-octets-string id)
                                    (fn-record-octets-string reason)))
                  (t (list :refused :moderation-request)))))
@@ -369,7 +398,7 @@
                  (fn-inj-config-closed cfg)))
            (and (equal (car (fn-mvb-approve raw ws verdicts cfg clock node login id))
                        :refused)
-                (equal (car (fn-mvb-reject raw ws verdicts cfg rows login id reason))
+                (equal (car (fn-mvb-reject raw ws verdicts cfg clock node rows login id reason))
                        :refused)))
   :hints (("Goal" :in-theory (disable fn-post-gated-decision fn-own-operator-decision fn-post-gated-decision-unfolds
                                       fn-mvb-moderates-some fn-cev-envelope-state
@@ -381,14 +410,14 @@
 ; KEYSTONE (PKT-657; PRF-228).  REJECT IS THE NODE'S WITHDRAWAL OF EXACTLY
 ; THE HELD ENVELOPE, by a moderator of its group.
 (defthm fn-mvb-reject-withdraws-the-held-envelope
-  (implies (equal (car (fn-mvb-reject raw ws verdicts cfg rows login id reason))
+  (implies (equal (car (fn-mvb-reject raw ws verdicts cfg clock node rows login id reason))
                   :withdraw)
            (let ((a (fn-cev-find-article (fn-mvb-envelope-id id) raw)))
              (and (fn-mvb-moderates-some login (fn-article-groups a)
                                          (fn-inj-config-closed cfg))
                   (equal (fn-cev-envelope-state a ws raw verdicts) "held")
-                  (equal (fn-mvb-reject raw ws verdicts cfg rows login id reason)
-                         (fn-mvb-withdraw raw (fn-inj-config-agent cfg) rows
+                  (equal (fn-mvb-reject raw ws verdicts cfg clock node rows login id reason)
+                         (fn-mvb-withdraw raw cfg clock node rows
                                           (fn-article-msgid a)
                                           (fn-mvb-reject-reason reason))))))
   :hints (("Goal" :in-theory (disable fn-mvb-moderates-some fn-cev-envelope-state
@@ -402,8 +431,8 @@
 ; existing row already names TARGET), and the cancel article
 ; `Control: cancel TARGET' under Message-ID CAUSE.
 (defthm fn-mvb-withdraw-names-exactly-its-target
-  (implies (equal (car (fn-mvb-withdraw raw agent rows target reason)) :withdraw)
-           (let* ((plan (fn-mvb-withdraw raw agent rows target reason))
+  (implies (equal (car (fn-mvb-withdraw raw cfg clock node rows target reason)) :withdraw)
+           (let* ((plan (fn-mvb-withdraw raw cfg clock node rows target reason))
                   (a (fn-cev-find-article target raw))
                   (cause (fn-mvb-cause target)))
              (and (consp a)
@@ -412,15 +441,22 @@
                   (not (equal cause target))
                   (equal (caddr plan) (fn-record-string-octets cause))
                   (equal (car (cddddr plan))
-                         (fn-mvb-cancel-article agent cause target
-                                                (fn-article-groups a) reason))
+                         (fn-mvb-cancel-article (fn-inj-config-agent cfg) cause target
+                                                *fn-mvb-cancel-groups* reason))
+                  (equal (fn-pa-filing-plan (car (cddddr plan)) (cadddr plan)
+                                            (fn-state-groups (fn-node-acceptance node)))
+                         (list :file (cadddr plan)))
+                  (fn-inj-injectedp (fn-own-operator-decision
+                                     cfg clock node (caddr plan) (cadddr plan)
+                                     (car (cddddr plan))))
                   (if (cadr plan)
                       (and (equal (cadr plan) (fn-mvb-withdraw-argv cause target reason))
                            (not (fn-cfg-withdrawal-row rows cause)))
                     (equal (fn-cfg-withdrawal-target rows cause) target)))))
   :hints (("Goal" :in-theory (disable fn-cev-find-article fn-mvb-cause
                                       fn-mvb-cancel-article fn-cfg-msgid-labelp
-                                      fn-mvb-withdraw-argv fn-cfg-labelp))))
+                                      fn-mvb-withdraw-argv fn-cfg-labelp
+                                      fn-own-operator-decision fn-pa-filing-plan))))
 
 ; KEYSTONE (PKT-575, CT3; PRF-196).  After the planned row (admitted as
 ; `fn-cfg-withdraw-article-authorizes-the-cause' says), the configuration
@@ -430,9 +466,9 @@
 ; configuration in force at CAUSE's txid holds the row, which the host
 ; publishes first).
 (defthm fn-mvb-withdraw-makes-the-node-authorize-exactly-its-target
-  (implies (equal (car (fn-mvb-withdraw raw agent (fn-cfg-authorities v) target reason))
+  (implies (equal (car (fn-mvb-withdraw raw cfg clock node (fn-cfg-authorities v) target reason))
                   :withdraw)
-           (let* ((plan (fn-mvb-withdraw raw agent (fn-cfg-authorities v) target reason))
+           (let* ((plan (fn-mvb-withdraw raw cfg clock node (fn-cfg-authorities v) target reason))
                   (cause (fn-mvb-cause target))
                   (v2 (if (cadr plan)
                           (fn-cfg-apply-delta v gen stamp
@@ -444,7 +480,8 @@
                                   (fn-cev-find-article fn-mvb-cause
                                    fn-mvb-cancel-article fn-cfg-msgid-labelp
                                    fn-mvb-withdraw-argv fn-cfg-labelp
-                                   fn-cfg-apply-delta))
+                                   fn-cfg-apply-delta fn-own-operator-decision
+                                   fn-pa-filing-plan))
            :use ((:instance fn-cfg-withdraw-article-authorizes-the-cause
                             (cause (fn-mvb-cause target))
                             (c (fn-mvb-cause target)))))))

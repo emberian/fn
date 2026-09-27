@@ -1814,7 +1814,8 @@ view). `reject` withdraws the envelope under the node's own authority (see
 moderator`); `moderation list` then shows it `rejected`. A login that does
 not moderate the group is refused by name (`REFUSED ... not-a-moderator`,
 exit 1), as is a post already approved or rejected. Both need the running
-owner (the control socket).
+owner (the control socket); `reject` also needs `control.cancel` (below), where
+its cancel, naming the envelope and the reason, is served.
 
 ### Withdrawing an article: `article withdraw`
 
@@ -1827,7 +1828,9 @@ authority, whoever posted it and wherever it is served. The node records
 the operator's decision in the configuration (`article withdraw-record`, a
 row the reader never sees), then injects a cancel control article
 (`Control: cancel <spam@example.net>`, Message-ID
-`<fn-withdraw.spam@example.net>`) into the article's groups; a connection
+`<fn-withdraw.spam@example.net>`), filed like every control message in
+`control.cancel`, which must exist (`group create control.cancel`; without
+it the verb is refused `control-not-filed` before anything is written); a connection
 opened before the cancel keeps its view until it advances, and the article
 stays withdrawn after a restart. `control evidence` names such a record
 `principal=node`. Nothing is deleted from the store. The reason is ASCII
