@@ -1,6 +1,6 @@
 ; fn: a slow or stalled disk refuses the POST command itself, 440, before
 ; the client sends the article (lane time-model-2, 2026-09-27, slice 2 of
-; planning/design-time-model-2026-09-27.md section 3.4; PRF-315).
+; planning/design-time-model-2026-09-27.md section 3.4; PRF-323).
 ;
 ; Slice 1 refused a POST try-later AFTER its article (441, the queued
 ; submission shed).  RFC 3977 section 6.3.1 gives the initial response 440
@@ -114,7 +114,7 @@
             (equal (fn-own-conn-id (fn-own-find-conn id conns)) id))
    :hints (("Goal" :in-theory (enable fn-own-find-conn)))))
 
-;; KEYSTONE (PRF-315, slice 2: 440 at the command).  Connection ID's read
+;; KEYSTONE (PRF-323, slice 2: 440 at the command).  Connection ID's read
 ;; while the disk sheds runs with posting not permitted (when its record has
 ;; the shape the owner makes, fn-own-conn-shapep); its effects are that
 ;; read's; and afterwards the connection, if still open, has the posting bit

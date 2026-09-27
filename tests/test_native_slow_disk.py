@@ -354,7 +354,7 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertIn(b"disk recovered: the barrier completed after ", log)
 
     def test_a_stall_past_h_tells_the_posters_uncertain_and_the_articles_land(self):
-        """Slice 2 (lane time-model-2; PRF-311, PRF-314, PRF-315): the three
+        """Slice 2 (lane time-model-2; PRF-311, PRF-322, PRF-323): the three
         profile fields set by `policy set' (D 2 s, H 6 s, cadence 250 ms);
         a barrier stalled past H: its posters -- the batch in flight and the
         one prepared behind it -- are told the outcome is uncertain, never

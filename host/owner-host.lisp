@@ -158,8 +158,8 @@
 (include-book "../books/owner-reader-view")
 ; Lane time-model (PRF-311): the barrier's deadline and the shed POST;
 ; lane time-model-2: the decision journal (books/owner-time-journal.lisp,
-; PRF-314) and the 440 at the POST command (books/owner-time-admission.lisp,
-; PRF-315).
+; PRF-322) and the 440 at the POST command (books/owner-time-admission.lisp,
+; PRF-323).
 (include-book "../books/owner-time-journal")
 (include-book "../books/owner-time-admission")
 (include-book "../books/owner-reader-read")
@@ -3225,7 +3225,7 @@
         ;; PKT-828: at the reader view while the committer holds a capture,
         ;; the working view put back after it (books/owner-reader-read.lisp
         ;; fn-orr-read-span; with no capture it is fn-scr-ocfg-read-span).
-        ;; Lane time-model-2 (PRF-315): ADMIT is the disk's write admission
+        ;; Lane time-model-2 (PRF-323): ADMIT is the disk's write admission
         ;; at this read's recorded time; while it sheds, the read runs with
         ;; posting not permitted, so a POST command is answered 440 before
         ;; its article (books/owner-time-admission.lisp fn-otm-read-span;

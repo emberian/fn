@@ -4688,7 +4688,7 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-311",
-        "PRF-315"
+        "PRF-323"
       ],
       "verification": [
         "proof",
@@ -4708,7 +4708,7 @@
         "host/native/control.lisp",
         "planning/evidence/time-model-2-2026-09-27.md"
       ],
-      "implementation_note": "Slices 1 and 2 of planning/design-time-model-2026-09-27.md. The limits D, H and the clock-event cadence are the live configuration's barrier-deadline-ms, barrier-stall-ms and clock-event-ms rows (policy set; defaults 5,000 / 30,000 / 1,000 ms). Past D: a POST command is answered 440 with the reason, an article already announced 441 with the reason, a mutating control request BUSY; past H every poster of the batch in flight and of the next is told uncertain and the queued POSTs are refused try-later. Not yet: IHAVE 436 / CHECK 431 during slow (PKT-858: transit is not admitted while a barrier is pending; peers wait), the inline barrier and configuration publication as requests (slice 3), health's exit in stalled (PKT-853 (b))."
+      "implementation_note": "Slices 1 and 2 of planning/design-time-model-2026-09-27.md. The limits D, H and the clock-event cadence are the live configuration's barrier-deadline-ms, barrier-stall-ms and clock-event-ms rows (policy set; defaults 5,000 / 30,000 / 1,000 ms). Past D: a POST command is answered 440 with the reason, an article already announced 441 with the reason, a mutating control request BUSY; past H every poster of the batch in flight and of the next is told uncertain and the queued POSTs are refused try-later. Not yet: IHAVE 436 / CHECK 431 during slow (PKT-862: transit is not admitted while a barrier is pending; peers wait), the inline barrier and configuration publication as requests (slice 3), health's exit in stalled (PKT-853 (b))."
     },
     {
       "id": "HST-028",
@@ -4717,7 +4717,7 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-314"
+        "PRF-322"
       ],
       "verification": [
         "proof",

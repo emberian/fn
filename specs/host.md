@@ -578,7 +578,7 @@ run before it, at most one START-NEXT that took members, and at most one
 more `:inspect` than `:commit`; the device's latency is not a quantity of
 the bound.
 
-Slice 2 (lane time-model-2; PRF-311, PRF-315). The limits are three
+Slice 2 (lane time-model-2; PRF-311, PRF-323). The limits are three
 profile fields, the live configuration's `barrier-deadline-ms` (D),
 `barrier-stall-ms` (H, read as at least D) and `clock-event-ms` (the
 committer's cadence) rows, each set by `policy set SLOT N` (ACL2's
@@ -608,13 +608,13 @@ answered accepted, refused, uncertain or try-later within H + L + one
 quantum of its article's arrival. `health` and `status` print `disk
 stalled: barrier N ms pending ... members=uncertain`; the service log names
 the stall and the recovery after it. Not yet: IHAVE's 436 and CHECK's 431
-during `slow` (PKT-858: a transit read is not admitted while a barrier is
+during `slow` (PKT-862: a transit read is not admitted while a barrier is
 pending, so a peer waits, as in slice 1), the inline barrier and
 configuration publication as requests (slice 3), `health`'s exit in
 `stalled` (PKT-853 (b)).
 
 HST-028: Every decision that stores nothing is reproducible from the
-decision journal (PRF-314, books/owner-time-journal.lisp). Each event the
+decision journal (PRF-322, books/owner-time-journal.lisp). Each event the
 scheduler's disk-and-clock value takes -- a barrier's issue and completion,
 a clock event of the committer, of a status render or of a served read
 (whose monotonic and wall readings are the owner's clock for that read:

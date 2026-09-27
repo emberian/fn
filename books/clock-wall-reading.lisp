@@ -1,6 +1,6 @@
 ; fn: the wall clock's validity, ACL2's (lane time-model-2, 2026-09-27; N3
 ; of lane proto-determinism, planning/evidence/proto-determinism-2026-09-27.md;
-; PRF-314).  A book of its own so the DTN image (host/native/build-dtn.lisp),
+; PRF-322).  A book of its own so the DTN image (host/native/build-dtn.lisp),
 ; whose store operations read the wall clock through the same host function
 ; (host/native/io.lisp fnn-owner-wall-milliseconds), includes it without
 ; the owner's scheduler.
