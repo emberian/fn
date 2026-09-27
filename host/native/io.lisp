@@ -582,9 +582,58 @@ label; it does not select a policy."
 (defvar *fnn-stdout* nil)
 (defvar *fnn-stderr* nil)
 
+;;; PKT-712: a report piped to `head' (or any reader that leaves early).
+;;; SIGPIPE is ignored (fnn-main), so a write to a closed stdout raises
+;;; EPIPE as a stream error inside whatever verb is printing, which printed
+;;; `fault operator health Couldn't write to ...' or, at the exit's final
+;;; flush outside every handler, SBCL's BROKEN-PIPE backtrace.  Standard
+;;; output is therefore one stream that cannot fail: the first error on it
+;;; marks it lost and every later write is dropped, so the verb finishes what
+;;; it was doing (a report's reader leaving changes nothing the node does)
+;;; and the process exits quietly: with the verb's own code when that is not
+;;; 0, else 141, the shell's code for a writer ended by SIGPIPE, so a lost
+;;; report is never reported as a success (fnn-exit).
+(defvar *fnn-stdout-lost* nil)
+
+(defclass fnn-stdout-stream (sb-gray:fundamental-binary-output-stream)
+  ((target :initarg :target :reader fnn-stdout-target)))
+
+(defmacro fnn-stdout-guard (stream &body body)
+  `(unless *fnn-stdout-lost*
+     (handler-case (progn ,@body)
+       (stream-error ()
+         (setq *fnn-stdout-lost* t)
+         ;; Drop what the fd-stream still buffers, so no later flush
+         ;; raises the same error again.
+         (ignore-errors (clear-output (fnn-stdout-target ,stream)))))))
+
+(defmethod stream-element-type ((stream fnn-stdout-stream))
+  '(unsigned-byte 8))
+
+(defmethod sb-gray:stream-write-byte ((stream fnn-stdout-stream) byte)
+  (fnn-stdout-guard stream (write-byte byte (fnn-stdout-target stream)))
+  byte)
+
+(defmethod sb-gray:stream-write-sequence ((stream fnn-stdout-stream) sequence
+                                          &optional (start 0) end)
+  (fnn-stdout-guard stream
+    (write-sequence sequence (fnn-stdout-target stream) :start start :end end))
+  sequence)
+
+(defmethod sb-gray:stream-finish-output ((stream fnn-stdout-stream))
+  (fnn-stdout-guard stream (finish-output (fnn-stdout-target stream)))
+  nil)
+
+(defmethod sb-gray:stream-force-output ((stream fnn-stdout-stream))
+  (fnn-stdout-guard stream (force-output (fnn-stdout-target stream)))
+  nil)
+
 (defun fnn-open-streams ()
-  (setq *fnn-stdout* (sb-sys:make-fd-stream 1 :output t :element-type '(unsigned-byte 8)
-                                              :buffering :full))
+  (setq *fnn-stdout*
+        (make-instance 'fnn-stdout-stream
+                       :target (sb-sys:make-fd-stream 1 :output t
+                                                        :element-type '(unsigned-byte 8)
+                                                        :buffering :full)))
   (setq *fnn-stderr* (sb-sys:make-fd-stream 2 :output t :element-type '(unsigned-byte 8)
                                               :buffering :full)))
 
@@ -796,9 +845,11 @@ offered to the writer while the owner runs (PKT-508), else written here."
 
 (defun fnn-exit (code)
   (when *fnn-stdout* (finish-output *fnn-stdout*))
-  (when *fnn-stderr* (finish-output *fnn-stderr*))
-  (finish-output *standard-output*)
-  (sb-ext:exit :code code :abort t))
+  (when *fnn-stderr* (ignore-errors (finish-output *fnn-stderr*)))
+  (ignore-errors (finish-output *standard-output*))
+  ;; PKT-712: a report whose reader left is never a success.
+  (sb-ext:exit :code (if (and *fnn-stdout-lost* (eql code 0)) 141 code)
+               :abort t))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Calls into the certified core: the executable counterpart of each host
