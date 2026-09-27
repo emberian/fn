@@ -22,12 +22,6 @@
 ; Build it with:  FN_NATIVE_BUILD=host/native/build-dtn.lisp \
 ;                 FN_NATIVE_IMAGE=build/fn-host-dtn sh tools/build_native_host.sh
 
-;; The records flip: `(attach-stobj fn-arena fn-arena-bytes)'
-;; (books/payload-arena-attach.lisp) must precede the first include whose
-;; closure holds books/payload-arena's defstobj, and books/served and
-;; books/bp-receipt-records hold it since batch AU: the attachment is the
-;; image's FIRST include.
-(include-book "books/payload-arena-attach")
 ; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
 (include-book "books/outcome-class")
 (include-book "books/replay")
@@ -42,6 +36,12 @@
 ;; (books/records-attach-concrete.lisp): fn-rcon-record-encode-impl, equal to
 ;; fn-record-encode-impl on every input.
 (include-book "books/records-attach-concrete")
+;; The payload arena's byte-array attachment (books/payload-arena-attach.lisp)
+;; must precede the first book that introduces the generic `fn-arena' (ACL2
+;; refuses the attach-stobj once the name is in use).  Since the records flip
+;; the held record reaches the arena, so nearly every book below does: it
+;; comes right after the codec and record attachments, before any of them.
+(include-book "books/payload-arena-attach")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/article-fields")
