@@ -66,6 +66,8 @@
 (assert-event (fn-held-p *bpra-forged-held*))
 (defconst *bpra-forged-records*
   (list *bsb-enrollment* (fn-hstxa-make *bsb-composite* *bpra-forged-held*)))
+; The history field holds the snoc-list of the forged history
+; (books/store-files.lisp: the shape requires the canonical field).
 (defconst *bpra-forged-store*
   (fn-sn-update *bsb-store*
                 (update-nth 4 (fn-sl-of *bpra-forged-records*) (fn-sn-files *bsb-store*))

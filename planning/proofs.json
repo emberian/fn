@@ -10136,7 +10136,7 @@
     {
       "id": "PRF-277",
       "title": "A POST's retention admission reads a carried obligation-id trie",
-      "statement": "books/post-retain-carried.lisp (post-alloc-2). The carry pairs a retention ledger with its id trie; fn-prc-carryp: the trie is fn-rii-kbuild of the ledger it names (no owner state, so no owner step falsifies it). KEYSTONES fn-prc-sbud-prepare-is-pidx-sbud-prepare (under fn-prc-carryp, the prepare host/owner-host.lisp fn-owner-prepare-buffer installs is PRF-191's fn-pidx-sbud-prepare), fn-prc-carryp-of-refresh (the host's one writer, fn-prc-refresh, keeps the recognizer), fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare (the composition). Local policy; no RFC requirement.",
+      "statement": "books/post-retain-carried.lisp (post-alloc-2). The carry pairs a retention ledger with its id trie; fn-prc-carryp: the trie answers exactly the known ids of the ledger it names (no owner state, so no owner step falsifies it; since PRF-289 a path-compressed id trie, fn-prc-set-okp). KEYSTONES fn-prc-sbud-prepare-is-pidx-sbud-prepare (under fn-prc-carryp, the prepare host/owner-host.lisp fn-owner-prepare-buffer installs is PRF-191's fn-pidx-sbud-prepare), fn-prc-carryp-of-refresh (the host's one writer, fn-prc-refresh, keeps the recognizer), fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare (the composition). Local policy; no RFC requirement.",
       "milestone": "M5",
       "requirements": [
         "HST-001"
@@ -10150,7 +10150,7 @@
         "books/post-retain-carried.lisp",
         "tests/acl2/post-retain-carried-tests.lisp"
       ],
-      "progress_note": "post-alloc-2 (helper post-alloc-2-retain) 2026-09-27: the per-POST pin walk (fn-retain-pin-id-scanp, ~12% of POST CPU at N=10,000) replaced by one trie lookup; cost: the trie (~2 KB per pin) and a rebuild after a release (open item).",
+      "progress_note": "post-alloc-2 (helper post-alloc-2-retain) 2026-09-27: the per-POST pin walk (fn-retain-pin-id-scanp, ~12% of POST CPU at N=10,000) replaced by one trie lookup; cost: the trie (~2 KB per pin) and a rebuild after a release (both closed by PRF-289).",
       "events": [
         "fn-prc-sbud-prepare-is-pidx-sbud-prepare",
         "fn-prc-carryp-of-refresh",
@@ -10410,6 +10410,87 @@
         "fn-ocl-view-configp-of-a-view-captured-before-appends",
         "fn-ocfg-at-reader-view-reads-the-reader-view",
         "fn-ocfg-with-view-keeps-the-rest"
+      ]
+    },
+    {
+      "id": "PRF-283",
+      "title": "The owner holds its ledger as a snoc-list: the commit appends one pair in O(1), and the take, the outcome and the host's finish read its length in O(1)",
+      "statement": "books/owner.lisp (post-alloc-3). The owner record's ledger field holds a snoc-list (books/snoc-list.lisp; a plain list, nil included, represents itself: fn-sl-list-when-plain); fn-own-ledger reads the list back (fn-sl-list of fn-own-ledger-field) and fn-own-make takes the FIELD, so a transition that keeps the ledger passes the field through and fn-own-ledger-of-fn-own-make reads (fn-sl-list FIELD), which fn-sl-list-of-fn-own-ledger-field names back as the ledger. fn-own-ledger-count (O(1) on a snoc form) is the length for every owner (fn-own-ledger-count-is-len); fn-own-take-submission's mark and fn-own-completion-consumedp read it through mbe (logic unchanged). KEYSTONES (no hypothesis): fn-rix-own-complete-enabled-ledger-field (the completion the host calls puts the pair on the field with fn-sl-snoc: one cons) and fn-rix-own-complete-enabled-ledger (the ledger it represents is the old one with the pair appended); fn-sl-list-of-fn-sl-snoc (PRF-275) for every value. Host subjects: host/owner-host.lisp fn-owner-finish-submission -> books/owner-refresh-indexed.lisp fn-rix-own-finish -> fn-rix-own-complete -> fn-rix-own-complete-enabled; fn-owner-finish -> fn-rix-ocfg-complete (the same completion) and compares fn-own-ledger-count before and after. Before: the commit copied the ledger (fn-ag-append), 16 B x POSTs-since-open per POST, and the take and the outcome walked it for its length. Local policy (D27: bound work, not data); no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-275",
+        "PRF-278"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/snoc-list.lisp",
+        "books/owner.lisp",
+        "books/owner-refresh-indexed.lisp",
+        "tests/acl2/owner-refresh-indexed-tests.lisp"
+      ],
+      "progress_note": "post-alloc-3 2026-09-27.",
+      "events": [
+        "fn-own-ledger-of-fn-own-make",
+        "fn-own-refresh-ix-keeps-ledger-field",
+        "fn-rix-own-complete-enabled-ledger-field",
+        "fn-rix-own-complete-enabled-ledger"
+      ]
+    },
+    {
+      "id": "PRF-284",
+      "title": "A POST's profile admission is decided once per open and carried",
+      "statement": "books/store-profile-carried.lisp (post-alloc-3). The carry pairs the Store profile with its admission verdict (fn-pvc-make, written once by host/owner-host.lisp fn-owner-install-profile; NIL at the recovery reset); fn-pvc-carryp: the verdict is fn-bs-profile-admittedp of the profile it names (no owner state, so no owner step falsifies it; fn-pvc-carryp-of-make, fn-pvc-carryp-when-atom); a reader uses the verdict only for the profile the carry names and decides afresh otherwise. KEYSTONES fn-pvc-article-budget-carried-is-cvec-article-budget-for (under fn-pvc-carryp, the budget fn-owner-prepare-buffer and fn-owner-prepare hand the prepare is fn-cvec-article-budget-for of the profile in hand), fn-pvc-post-boundary-carried-is-sbud-post-boundary (fn-owner-post-boundary), fn-pvc-verdict-carried-is-cvec-verdict-at (fn-owner-publication-verdict). Local policy; no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-profile-carried.lisp",
+        "tests/acl2/store-profile-carried-tests.lisp"
+      ],
+      "progress_note": "post-alloc-3 (helper post-alloc-3-profile) 2026-09-27: the store profile's validation (frame layout, the texts' UTF-8 decode, every relation) ran about a dozen times per POST in the budget and the POST boundary; now once per open.",
+      "events": [
+        "fn-pvc-article-budget-carried-is-cvec-article-budget-for",
+        "fn-pvc-post-boundary-carried-is-sbud-post-boundary",
+        "fn-pvc-verdict-carried-is-cvec-verdict-at",
+        "fn-pvc-carryp-of-make"
+      ]
+    },
+    {
+      "id": "PRF-289",
+      "title": "The carried obligation-id set is a path-compressed id trie, updated by the retention delta",
+      "statement": "books/post-retain-carried.lisp (post-alloc-3). The carry's set is a path-compressed id trie whose leaves are the ledger's own id strings (fn-rit-put, fn-rit-hasp; fn-rit-hasp-of-put holds for every node). fn-prc-carryp is fn-prc-set-okp: every pin and release id is in the trie and every string stored in it is a known id; fn-prc-set-okp-is-knownp: the trie then answers exactly fn-rii-knownp of the ledger it names. fn-prc-refresh keeps the carry for the same ledger, applies the retention delta (releases consed on the carried ones; pins = new pins over the carried ones less released ones: fn-prc-delta, fn-prc-set-okp-of-delta) and rebuilds only otherwise (fn-prc-set-okp-of-build); fn-prc-carryp-of-refresh. KEYSTONE unchanged: fn-prc-sbud-prepare-is-pidx-sbud-prepare (the prepare host/owner-host.lisp fn-owner-prepare-buffer installs is PRF-191's fn-pidx-sbud-prepare under fn-prc-carryp), through fn-prc-admissiblep-is-admissiblep. host/owner-host.lisp fn-owner-install-extended builds the carry at every recovery (fn-prc-refresh of nil). Local policy; no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-277",
+        "PRF-191"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/post-retain-carried.lisp",
+        "tests/acl2/post-retain-carried-tests.lisp"
+      ],
+      "progress_note": "post-alloc-3 (helper post-alloc-3-retain) 2026-09-27, hbox REPL, 10,000 pins with random 64-hex ids: live set 1,246,448 -> 27,820 conses (~2 KB -> ~45 B per pin); a release refresh 24.3 MB rebuild -> ~50 us and no allocation (delta); the first POST's build moved to the owner open (4.8 MB, 0.02 s).",
+      "events": [
+        "fn-rit-hasp-of-put",
+        "fn-prc-set-okp-is-knownp",
+        "fn-prc-set-okp-of-build",
+        "fn-prc-set-okp-of-delta",
+        "fn-prc-carryp-of-refresh",
+        "fn-prc-admissiblep-is-admissiblep",
+        "fn-prc-sbud-prepare-is-pidx-sbud-prepare"
       ]
     }
   ]

@@ -74,6 +74,10 @@
 ; PKT-169: the maintenance reservation (the served gates below).
 (include-book "../books/store-maintenance-reserve")
 (include-book "../books/store-capacity-vector")
+; PRF-284: the profile's admission decided once at open and carried
+; (fn-pvc-make; fn-pvc-article-budget-carried, fn-pvc-verdict-carried,
+; fn-pvc-post-boundary-carried).
+(include-book "../books/store-profile-carried")
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
@@ -273,6 +277,16 @@
   (if (equal oc :fault)
         (mv nil :fault fn-arena fn-cat state)
       (let* ((state (fn-owner-install-ocfg oc state))
+             ; PRF-289: the carried obligation-id trie for the ledger the
+             ; owner opens with (books/post-retain-carried.lisp
+             ; fn-prc-refresh of nil; fn-prc-carryp-of-refresh), so the
+             ; first POST's refresh is a delta, not a build.
+             (state (f-put-global
+                     'fn-owner-retain-carry
+                     (fn-prc-refresh nil (fn-node-retention
+                                          (fn-sn-node
+                                           (fn-own-store (fn-owner-core state)))))
+                     state))
              ; Rebuilt exclusively by successful FNFD scans after
              ; authoritative store recovery.  It is a carried
              ; incremental fold, never a whole-journal rescan on a
@@ -283,6 +297,8 @@
              ; then the budget is 0 and every publication is
              ; :unaffordable (books/store-budget.lisp).
              (state (f-put-global 'fn-owner-store-profile nil state))
+             ; PRF-284: its carried verdict with it (fn-pvc-carryp-when-atom).
+             (state (f-put-global 'fn-owner-profile-carry nil state))
              ; Socket-only reply framers are recreated after
              ; authoritative recovery; their durable counterpart is
              ; the FNFD replay above, not this retained input.
@@ -408,6 +424,10 @@
     (if (equal verdict :installed)
         (let* ((state (fn-owner-replace-core next state))
                (state (f-put-global 'fn-owner-store-profile values state))
+               ; PRF-284: the profile's admission, decided once here
+               ; (fn-pvc-carryp-of-make); see fn-owner-profile-carry.
+               (state (f-put-global 'fn-owner-profile-carry
+                                    (fn-pvc-make values) state))
                ; PRF-180: the committed record octets, the completion debt
                ; and the carried usage are folded once here, over the Store
                ; this open replayed (valid caches: fn-sbud-full-cache-is-valid,
@@ -436,6 +456,19 @@
   (declare (xargs :stobjs state :mode :program))
   (if (boundp-global 'fn-owner-store-profile state)
       (f-get-global 'fn-owner-store-profile state)
+    nil))
+
+; The carried verdict of the profile (books/store-profile-carried.lisp).
+; Its writers are fn-owner-install-profile (fn-pvc-make of the profile it
+; installs, fn-pvc-carryp-of-make) and the recovery reset (nil,
+; fn-pvc-carryp-when-atom), so it always satisfies fn-pvc-carryp; the
+; recognizer names no owner state, so no owner step can falsify it.  A
+; reader uses the verdict only for the profile the carry names (the same
+; object as fn-owner-store-profile's, so the EQUAL is an EQ).
+(defun fn-owner-profile-carry (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-profile-carry state)
+      (f-get-global 'fn-owner-profile-carry state)
     nil))
 
 ; The carried profile's article bound A and group bound G, for the control
@@ -734,8 +767,10 @@
     (mv-let (debt state) (fn-owner-record-debt state)
       (let ((s (fn-owner-store state)))
         ; PRF-180: the count read from the index (fn-sbud-count-is-used).
-        (value (fn-cvec-verdict-at (fn-owner-store-profile state) kind
-                                   (fn-sbud-count s) bytes debt))))))
+        ; PRF-284: fn-pvc-verdict-carried-is-cvec-verdict-at.
+        (value (fn-pvc-verdict-carried (fn-owner-profile-carry state)
+                                       (fn-owner-store-profile state) kind
+                                       (fn-sbud-count s) bytes debt))))))
 
 ; (used budget bytes-used history-bound reserved-charge charge-capacity), all
 ; read from the carried state; the host prints it and computes none of it.
@@ -1001,7 +1036,10 @@
                  ; the maintenance release) still holds after the article
                  ; (books/store-capacity-vector.lisp
                  ; `fn-cvec-prepare-keeps-the-vector').
-                 (budget (fn-cvec-article-budget-for
+                 ; PRF-284: fn-pvc-article-budget-carried-is-cvec-
+                 ; article-budget-for (the carry satisfies fn-pvc-carryp).
+                 (budget (fn-pvc-article-budget-carried
+                          (fn-owner-profile-carry state)
                           (fn-owner-store-profile state) (fn-sbud-count s)
                           bytes record debt))
                  (before (fn-owner-ocfg state))
@@ -1079,9 +1117,10 @@
 ; from the buffer (fn-arena-seal-buffer: no list is retained; the wire
 ; record's list payload lives only for the facts, the context and the budget).
 ;; The carried obligation-id trie (books/post-retain-carried.lisp): the
-;; global's only writer is fn-owner-prepare-buffer, which stores
-;; fn-prc-refresh of the value read here, so it always satisfies
-;; fn-prc-carryp (fn-prc-carryp-of-refresh; nil, before the first POST,
+;; global's two writers are fn-owner-install-extended (every recovery: the
+;; refresh of nil, so the first POST pays no build) and
+;; fn-owner-prepare-buffer, which stores fn-prc-refresh of the value read
+;; here; so it always satisfies fn-prc-carryp (fn-prc-carryp-of-refresh; nil
 ;; by fn-prc-carryp-when-atom).  The recognizer names no owner state, so no
 ;; owner step between two POSTs can falsify it.
 (defun fn-owner-retain-carry (state)
@@ -1129,7 +1168,10 @@
                  ; the maintenance release) still holds after the article
                  ; (books/store-capacity-vector.lisp
                  ; `fn-cvec-prepare-keeps-the-vector').
-                 (budget (fn-cvec-article-budget-for
+                 ; PRF-284: fn-pvc-article-budget-carried-is-cvec-
+                 ; article-budget-for (the carry satisfies fn-pvc-carryp).
+                 (budget (fn-pvc-article-budget-carried
+                          (fn-owner-profile-carry state)
                           (fn-owner-store-profile state) (fn-sbud-count s)
                           bytes record debt))
                  (before (fn-owner-ocfg state))
@@ -1142,7 +1184,7 @@
                                               (fn-arena-count fn-arena)
                                               (fn-owner-parse-carry state))))
                  ; The carried obligation-id trie, brought to the Store
-                 ; node's ledger (one put after a commit).
+                 ; node's ledger (a commit puts one id, a release none).
                  (carry (fn-prc-refresh (fn-owner-retain-carry state)
                                         (fn-node-retention (fn-sn-node s))))
                  (state (if (equal record :clock-unusable)
@@ -1352,8 +1394,11 @@
 (defun fn-owner-post-boundary (msgid-octets payload-length group-count charge
                                             state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-sbud-post-boundary (fn-owner-store-profile state) msgid-octets
-                                payload-length group-count charge)))
+  ; PRF-284: fn-pvc-post-boundary-carried-is-sbud-post-boundary.
+  (value (fn-pvc-post-boundary-carried (fn-owner-profile-carry state)
+                                       (fn-owner-store-profile state)
+                                       msgid-octets payload-length
+                                       group-count charge)))
 
 ; Completion is the owner's (:complete) event: fn-sn-finish consumed once,
 ; its pair appended to the ledger once (fn-own-completion-consumed-once).
@@ -1381,8 +1426,8 @@
          (after-files (fn-sn-files (fn-own-store after))))
     (if (and (equal (fn-sf-phase before-files) :completing)
              (equal (fn-sf-phase after-files) :ready)
-             (equal (len (fn-own-ledger after))
-                    (1+ (len (fn-own-ledger before)))))
+             (equal (fn-own-ledger-count after)
+                    (1+ (fn-own-ledger-count before))))
         (value :durable)
       (value :fault))))
 

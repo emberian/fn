@@ -10476,6 +10476,81 @@
           "name": "fn-ocfg-with-view-keeps-the-rest"
         }
       ]
+    },
+    {
+      "id": "PRF-283",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-ledger-of-fn-own-make"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-refresh-ix-keeps-ledger-field"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rix-own-complete-enabled-ledger-field"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rix-own-complete-enabled-ledger"
+        }
+      ]
+    },
+    {
+      "id": "PRF-284",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-article-budget-carried-is-cvec-article-budget-for"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-post-boundary-carried-is-sbud-post-boundary"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-verdict-carried-is-cvec-verdict-at"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-carryp-of-make"
+        }
+      ]
+    },
+    {
+      "id": "PRF-289",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rit-hasp-of-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-set-okp-is-knownp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-set-okp-of-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-set-okp-of-delta"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-carryp-of-refresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-admissiblep-is-admissiblep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-sbud-prepare-is-pidx-sbud-prepare"
+        }
+      ]
     }
   ]
 }

@@ -920,7 +920,7 @@ class OwnershipTests(unittest.TestCase):
         row = next(line for line in listing.stdout.splitlines() if line.startswith(mine))
         self.assertIn(f"lane-a-{os.getpid()}", row)
         self.assertIn("live", row)
-        self.assertIn("2h00m", row)  # the default deadline, stated
+        self.assertIn("20m00s", row)  # the default deadline, stated
         dry = self.cli("reap", "--lane", f"lane-a-{os.getpid()}", "--dry-run")
         self.assertIn(f"would reap {mine}", dry.stdout)
         self.assertTrue((proof_repl.SESSIONS / mine / "sock").exists())
