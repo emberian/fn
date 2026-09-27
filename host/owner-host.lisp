@@ -1988,7 +1988,12 @@
          ; opens the reader session with fn-acar-nntp-projectionp, which
          ; omits the fn-statep of the whole view archive that
          ; fn-ocl-view-historyp carries (fn-acar-view-historyp-carries-view-statep).
-         (result (fn-acar-own-outcome owner id word))
+         ; post-alloc-2: fn-apc-own-outcome, equal to fn-acar-own-outcome
+         ; under the intent and parse carries fn-owner-take wrote
+         ; (fn-apc-own-outcome-is-acar-own-outcome): the durable article's
+         ; feed targets from the carried Path and parse, not a reparse.
+         (result (fn-apc-own-outcome owner id word (fn-owner-intent-carry state)
+                                     (fn-owner-parse-carry state)))
          (state (fn-owner-replace-core (cdr result) state))
          (state (fn-owner-install-effects (car result) state))
          (state (f-put-global 'fn-owner-shared-resolution-id nil state)))

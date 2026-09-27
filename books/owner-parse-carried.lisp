@@ -45,6 +45,7 @@
 (include-book "owner-refresh-indexed")
 (include-book "owner-results")
 (include-book "peer-carriage")
+(include-book "owner-advance-carried")
 
 ; -----------------------------------------------------------------------------
 ; The carry.
@@ -829,6 +830,39 @@
                                    fn-stx-statement-of)))))
 
 ; books/store-intern.lisp fn-intern-row-at (fn-owner-prepare-buffer).
+; books/catalog-record.lisp fn-held-facts-of: the control fact from the
+; take's parse (post-alloc-2: the intern parsed the payload once more here).
+(defun fn-apc-control-of (received carry)
+  (declare (xargs :guard t))
+  (let ((fields (fn-apc-received-fields received carry)))
+    (list (fn-ctl-article-target fields)
+          (fn-ctl-cancel-keys fields)
+          (fn-ctl-cancel-locks fields))))
+
+(defthm fn-apc-control-of-is-reference
+  (implies (fn-apc-p carry)
+           (equal (fn-apc-control-of received carry)
+                  (fn-ctl-control-of received)))
+  :hints (("Goal" :in-theory (e/d (fn-ctl-control-of)
+                                  (fn-apc-received-fields fn-ctl-received-fields
+                                   fn-ctl-article-target fn-ctl-cancel-keys
+                                   fn-ctl-cancel-locks)))))
+
+(defun fn-apc-held-facts-of (bytes carry)
+  (declare (xargs :guard (true-listp bytes)))
+  (fn-hf-make (len bytes) (fn-hf-split-index bytes 0) (fn-hf-body-lines-of bytes)
+              (fn-apc-control-of bytes carry)))
+
+(defthm fn-apc-held-facts-of-is-reference
+  (implies (fn-apc-p carry)
+           (equal (fn-apc-held-facts-of bytes carry)
+                  (fn-held-facts-of bytes)))
+  :hints (("Goal" :in-theory (e/d (fn-held-facts-of)
+                                  (fn-apc-control-of fn-ctl-control-of fn-hf-make
+                                   fn-hf-split-index fn-hf-body-lines-of)))))
+
+(in-theory (disable fn-apc-control-of fn-apc-held-facts-of))
+
 (defun fn-apc-intern-row-at (w keyring generation h carry)
   (declare (xargs :guard (and (fn-record-p w) (fn-prin-keyringp keyring)
                               (natp generation) (natp h))
@@ -839,7 +873,7 @@
                   (fn-record-groups w) (fn-record-obligation-id w)
                   (fn-record-content-subject w) (fn-record-release-evidence w)
                   (fn-record-charge w) (fn-record-stamp w)
-                  (fn-held-facts-of bytes)
+                  (fn-apc-held-facts-of bytes carry)
                   (fn-apc-held-context-of bytes keyring generation carry)
                   nil nil)))
 
@@ -850,7 +884,8 @@
                   (fn-intern-row-at w keyring generation h)))
   :hints (("Goal" :in-theory (e/d (fn-intern-row-at)
                                   (fn-apc-held-context-of fn-held-context-of
-                                   fn-held-make fn-held-facts-of)))))
+                                   fn-held-make fn-held-facts-of
+                                   fn-apc-held-facts-of)))))
 
 (in-theory (disable fn-apc-held-context-of fn-apc-intern-row-at))
 
@@ -914,3 +949,68 @@
                                fn-ccar-own-finish-is-own-finish))))
 
 (in-theory (disable fn-apc-completion-names-submission-p fn-apc-own-finish))
+
+; -----------------------------------------------------------------------------
+; The served outcome (post-alloc-2).  books/owner-advance-carried.lisp
+; fn-acar-own-outcome, which host/owner-host.lisp fn-owner-outcome calls,
+; enqueues a durable article on its feeds through fn-own-feed-durable, whose
+; targets (fn-own-submission-targets) parse the article again for its Path,
+; its newsgroups' control groups and its Distribution.  fn-apc-own-outcome is
+; it with the targets read from the intent carry and the take's parse
+; (fn-apc-submission-targets).
+(defun fn-apc-own-outcome (o id word icar carry)
+  (declare (xargs :guard t))
+  (let ((conn (fn-own-find-conn id (fn-own-conns o)))
+        (sub (fn-own-inflight o)))
+    (if (and conn sub (equal (fn-own-sub-id sub) id))
+        (let* ((completion (fn-own-outcome-completion o word))
+               (next (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                                 (fn-own-next-id o) (fn-own-max-conns o)
+                                 (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
+                                 (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                                 (fn-own-config o) (fn-own-queue o) nil
+                                 (if (equal completion :durable)
+                                     (fn-own-feed-enqueue-all
+                                      (fn-apc-submission-targets o icar carry)
+                                      (fn-own-feeds o)
+                                      (fn-own-sub-msgid sub) (fn-own-feed-stamp o))
+                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))
+          (cons (fn-served-result-effects
+                 (fn-served-post-outcome
+                  (fn-served-make-conn-group-indexed (fn-own-conn-wire conn)
+                                       (fn-own-conn-session conn)
+                                       (fn-own-conn-archive conn)
+                                       (fn-own-conn-config conn)
+                                       (fn-own-conn-observation conn)
+                                       (fn-own-clock o)
+                                       (fn-own-conn-verdicts conn)
+                                       (fn-own-conn-index conn)
+                                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))
+                  (fn-own-post-rendering o word)))
+                (if (equal completion :durable)
+                    (cdr (fn-acar-own-advance-result next id))
+                  next)))
+      (cons nil o))))
+
+; KEYSTONE for the host line: under the two carries' recognizers (each
+; written by fn-owner-take alone, neither mentioning the owner) the outcome is
+; fn-acar-own-outcome, hence fn-own-outcome
+; (fn-acar-own-outcome-is-own-outcome and its relation form).
+(defthm fn-apc-own-outcome-is-acar-own-outcome
+  (implies (and (fn-icar-carryp icar) (fn-apc-p carry))
+           (equal (fn-apc-own-outcome o id word icar carry)
+                  (fn-acar-own-outcome o id word)))
+  :hints (("Goal" :use ((:instance fn-apc-submission-targets-is-reference)
+                        (:instance fn-icar-submission-targets-is-submission-targets (carry icar)))
+           :in-theory (e/d (fn-apc-own-outcome fn-acar-own-outcome fn-own-feed-durable)
+                           (fn-apc-submission-targets-is-reference
+                            fn-icar-submission-targets-is-submission-targets
+                            fn-apc-submission-targets fn-icar-submission-targets
+                            fn-own-submission-targets fn-own-make
+                            fn-own-feed-enqueue-all fn-acar-own-advance-result
+                            fn-served-post-outcome fn-served-result-effects
+                            fn-served-make-conn-group-indexed
+                            fn-own-outcome-completion fn-own-post-rendering
+                            fn-own-find-conn)))))
+
+(in-theory (disable fn-apc-own-outcome))
