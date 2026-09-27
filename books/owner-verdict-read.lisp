@@ -143,7 +143,8 @@
                                   (fn-wire-feed-byte)))))
 (defthm fn-ovr-with-wire-of-with-wire
   (equal (fn-ovr-with-wire (fn-ovr-with-wire conn w1) w2)
-         (fn-ovr-with-wire conn w2)))
+         (fn-ovr-with-wire conn w2))
+  :hints (("Goal" :in-theory (enable fn-served-conn-with-wire))))
 (defthm fn-ovr-wire-of-with-wire
   (equal (fn-served-conn-wire (fn-ovr-with-wire conn w)) w))
 (defthm fn-ovr-handshaking-of-with-wire
@@ -454,17 +455,9 @@
                                (fn-own-conn-verdicts conn))))))))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-served-step-hdr-fn-verified-is-the-pinned-verdict
-                  (conn (fn-served-make-conn-group-indexed
-                         (fn-own-conn-wire (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-live-session o (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-archive (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-config (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-observation (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-clock o)
-                         (fn-own-conn-verdicts (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-index (fn-own-find-conn id (fn-own-conns o)))
-                         (fn-own-conn-group-index (fn-own-find-conn id (fn-own-conns o))) (fn-own-conn-control (fn-own-find-conn id (fn-own-conns o)))))))
-           :in-theory (e/d (fn-own-read fn-own-finish-read)
+                  (conn (fn-own-served-conn o (fn-own-find-conn id (fn-own-conns o))
+                                            (fn-own-conn-live-session o (fn-own-find-conn id (fn-own-conns o)))))))
+           :in-theory (e/d (fn-own-read fn-own-read-full fn-own-finish-read)
                            (fn-served-step-hdr-fn-verified-is-the-pinned-verdict
                             fn-served-step fn-own-conn-live-session
                             fn-own-conn-wire fn-own-conn-archive fn-own-conn-config
