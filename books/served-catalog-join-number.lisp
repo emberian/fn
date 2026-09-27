@@ -13,7 +13,9 @@
 ; It is established at every open (books/served-catalog-join-open.lisp),
 ; preserved by the article install (fn-scj-acc-rowsp-of-install, below) and
 ; by every step that keeps the acceptance's articles, watermarks and domain
-; or only grows the domain (books/served-catalog-join-steps.lisp).
+; or only grows the domain (the configuration record:
+; fn-scj-acc-rowsp-of-apply-config; the owner steps over fn-ocfg-step are
+; OPEN, planning/evidence/sca-join-2026-09-27.md).
 
 (in-package "ACL2")
 
