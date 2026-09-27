@@ -1,119 +1,150 @@
 ; fn: own-post cancel for unsigned posts, RFC 8315 Cancel-Lock keyed by the
-; posting login (SEC-006, PRF-210; PKT-576's default, the coordinator's
-; decision of 2026-09-26).
+; posting ACCOUNT (SEC-006, PRF-210; PKT-576's default, the coordinator's
+; decisions of 2026-09-26; gpt-6's wave-5 review section 3, binding).
 ;
-; The login is the principal of an unsigned article on the node that
-; injected it (planning/decisions.md, path-and-login).  Nothing durable
-; names that login (the Store's kind-4 record does not, and D34 forbids
-; adding it), so the node writes the login's material into the article's own
-; octets, as RFC 8315 section 3.1 lets an injecting agent do for a posting
-; agent without Cancel-Lock support:
+; The account is the principal of an unsigned article on the node that
+; injected it.  Nothing durable names that account (the Store's kind-4
+; record does not, and D34 forbids adding it), so the node writes the
+; account's material into the article's own octets, as RFC 8315 section 3.1
+; lets an injecting agent do for a posting agent without Cancel-Lock
+; support (RFC 8315 section 4, K = HMAC(sec, uid+mid)):
 ;
-;   K    = Base64(HMAC-SHA256(S, "fn cancel-lock v1" || 0x00 || MSGID || LOGIN))
-;                                                       (RFC 8315 section 4;
-;                                                        books/node-secret.lisp)
-;   lock = Base64(SHA-256(K))                           (section 2.1)
+;   sec  = the cancel-lock purpose key of the key epoch E
+;          (books/node-secret.lisp fn-ns-cancel-lock-key: HKDF-SHA256 of the
+;          epoch's root, salt the node identity, info "fn/cancel-lock/v1")
+;   uid  = the account id in lowercase hex (no angle brackets, section 4)
+;   mid  = the Message-ID with its angle brackets
+;   K    = HMAC-SHA256(sec, uid || mid); the c-key-string is Base64(K)
+;   lock = Base64(SHA-256(Base64(K)))   (section 2.1: the hash is over the
+;          Base64-encoded key; `fn-ctl-lock-of-key' hashes the key entry's
+;          octets as they are written, RFC 8315 section 5.2's example in the
+;          teeth)
 ;
-; S is the node secret (books/node-secret.lisp: STORE/keys/node-secret.key,
-; written by init, carried by the owner as fn-own-node-secret, never served
-; and never written into a record).  On a served POST from login L the owner puts
-; `Cancel-Lock: sha256:lock(S, MSGID, L)' in front of the injected octets;
-; on a served cancel or Supersedes from L naming TARGET it also puts
-; `Cancel-Key: sha256:K(S, TARGET, L)' (section 3.3's MUST for an agent
-; that added the lock).  The withdrawal decision (books/control-authority.lisp
-; `fn-ctl-withdrawal-effect', the :poster arm) then reads the two articles
-; only: the same login's key opens the lock, on this node and on every peer
-; the two articles reach; another login's key is K(S, TARGET, L') and opens
-; it only if SHA-256 of two distinct HMAC outputs collide.
+; The account id is the principal the connection authenticated as
+; (books/nntp-auth.lisp fn-auth-session-subject), recorded on the
+; submission when it is enqueued (books/owner.lisp fn-own-sub-account): the
+; credential's configured principal, or for a redeemed account its local
+; principal, which no later record changes or reassigns
+; (fn-acct-redeemed-row-stays-across-replay).  Not the login spelling.
+;
+; On a served POST from account A the owner puts `Cancel-Lock:
+; sha256:lock(E, A, MSGID)' under the CURRENT epoch E in front of the
+; injected octets; on a served cancel or Supersedes from A naming TARGET it
+; also puts `Cancel-Key:' with one key K(E', A, TARGET) per RETAINED epoch
+; E', current first, so an article locked before a rotation stays
+; cancellable by its poster (`fn-cl-ring-keys-open-every-retained-lock').
+; The lines stand in front of the injected block, outside the authored
+; source (books/cancel-lock-lines.lisp; D25): a same-source retry from
+; another account or after a rotation is the article already stored, its
+; lock unchanged, and the retrying account gets no key that opens it.
+;
+; The withdrawal decision (books/control-authority.lisp
+; `fn-ctl-withdrawal-effect', the :poster arm) reads the two articles only:
+; A's key opens A's lock, on this node and on every peer the two articles
+; reach; another account's key opens it only if SHA-256 of two distinct HMAC
+; outputs collide.
 ;
 ; A proto-article that already carries Cancel-Lock (tin does, with its own
 ; secret) gets no lock from the node (section 2: the field occurs at most
-; once; the node does not rewrite the poster's field), and one that already
-; carries Cancel-Key gets no key: the poster's own RFC 8315 keys decide.
-; An unauthenticated POST, a control or BP submission, and a node without a
-; readable secret add nothing: the article is filed and a cancel by login
-; withdraws nothing, as before SEC-006.
+; once; the poster's field is the poster's input and is never rewritten),
+; one that already carries Cancel-Key gets no key, and a signed article
+; (an FN-Authorship carrier) gets neither: its signer is its principal and
+; its signed bytes are never edited.  An unauthenticated POST, a control or
+; BP submission, and an owner without a key ring add nothing.
 ;
 ; Prefix `fn-cl-' (docs/prefixes.md).
 (in-package "ACL2")
 (include-book "cancel-lock-lines")
 (include-book "node-secret")
 (include-book "control-authority")
+(include-book "identity")
 
 ; -----------------------------------------------------------------------------
-; The login's key and lock for one Message-ID.  MSGID and LOGIN are octets;
-; a Message-ID ends with ">" and contains no other, so MSGID || LOGIN is
-; read back uniquely.
+; RFC 8315 section 4 over an explicit secret: Base64(HMAC-SHA256(SEC, UID ||
+; MID)).  Section 5.2's example is in the teeth.
 
-(defun fn-cl-secretp (s)
+(defun fn-cl-rfc8315-key (sec uid mid)
   (declare (xargs :guard t))
-  (fn-ns-secretp s))
+  (fn-stx-b64-encode (fn-ns-hmac-sha256 sec (fn-cll-append uid mid))))
 
-; The node secret's Cancel-Lock use (books/node-secret.lisp: HMAC-SHA256
-; under the label "fn cancel-lock v1", separated from every other use).
-(defun fn-cl-key (secret msgid login)
+; The account id's uid: its lowercase hex.
+(defun fn-cl-uid (account)
   (declare (xargs :guard t))
-  (fn-stx-b64-encode (fn-ns-cancel-lock-mac secret (fn-cll-append msgid login))))
+  (if (fn-cbor-octet-listp account) (fn-id-hex-octets account) nil))
 
-(defun fn-cl-lock (secret msgid login)
+; The key and lock of ACCOUNT for Message-ID MSGID under key epoch ENTRY.
+(defun fn-cl-key (entry account msgid)
   (declare (xargs :guard t))
-  (fn-ctl-lock-of-key (fn-cl-key secret msgid login)))
+  (fn-cl-rfc8315-key (fn-ns-cancel-lock-key entry) (fn-cl-uid account) msgid))
+
+(defun fn-cl-lock (entry account msgid)
+  (declare (xargs :guard t))
+  (fn-ctl-lock-of-key (fn-cl-key entry account msgid)))
+
+; One key per retained epoch of RING, current first.
+(defun fn-cl-ring-keys (ring account msgid)
+  (declare (xargs :guard t))
+  (if (consp ring)
+      (cons (fn-cl-key (car ring) account msgid)
+            (fn-cl-ring-keys (cdr ring) account msgid))
+    nil))
 
 ; -----------------------------------------------------------------------------
 ; The served payload: the served arm of books/owner-served-invariants.lisp
 ; fn-own-sub-stored-octets, which host/owner-host.lisp fn-owner-take stages
 ; for the Store and fn-owner-finish-submission's completion gate compares
-; with the durable record.  SECRET the owner's fn-own-node-secret (nil
-; before the host installed one), LOGIN the submission's recorded login
-; (fn-own-sub-login, nil when none), MSGID the injected Message-ID's
+; with the durable record.  RING the owner's fn-own-node-secret (nil before
+; the host installed one), ACCOUNT the submission's recorded account
+; (fn-own-sub-account, nil when none), MSGID the injected Message-ID's
 ; octets, PAYLOAD the injected octets.
 
-(defun fn-cl-lock-wanted-p (secret login fields)
+; "fn-authorship", the signed carrier's field (books/hybrid-carrier.lisp).
+(defconst *fn-cl-authorship-name*
+  '(102 110 45 97 117 116 104 111 114 115 104 105 112))
+
+(defun fn-cl-accountp (account)
   (declare (xargs :guard t))
-  (and (fn-cl-secretp secret)
-       (fn-cbor-octet-listp login) (consp login)
+  (and (fn-cbor-octet-listp account) (consp account)))
+
+(defun fn-cl-unsigned-p (fields)
+  (declare (xargs :guard t))
+  (not (consp (fn-ctl-fields-named *fn-cl-authorship-name* fields))))
+
+(defun fn-cl-lock-wanted-p (ring account fields)
+  (declare (xargs :guard t))
+  (and (fn-ns-ringp ring) (fn-cl-accountp account) (fn-cl-unsigned-p fields)
        (not (consp (fn-ctl-fields-named *fn-ctl-cancel-lock-name* fields)))))
 
 ; The target a key is added for: the article's cancel or Supersedes target,
 ; when it carries no Cancel-Key of its own.
-(defun fn-cl-key-target (secret login fields)
+(defun fn-cl-key-target (ring account fields)
   (declare (xargs :guard t))
-  (and (fn-cl-secretp secret)
-       (fn-cbor-octet-listp login) (consp login)
+  (and (fn-ns-ringp ring) (fn-cl-accountp account) (fn-cl-unsigned-p fields)
        (not (consp (fn-ctl-fields-named *fn-ctl-cancel-key-name* fields)))
        (fn-ctl-article-target fields)))
 
-; The Cancel-Key line for the target of a cancel or Supersedes (nil when
-; there is none, or the poster wrote their own Cancel-Key).
-(defun fn-cl-key-lines (secret login fields)
+(defun fn-cl-lock-value (ring account msgid fields)
   (declare (xargs :guard t))
-  (let ((target (fn-cl-key-target secret login fields)))
+  (if (fn-cl-lock-wanted-p ring account fields)
+      (fn-cl-lock (fn-ns-current ring) account msgid)
+    nil))
+
+(defun fn-cl-key-values (ring account fields)
+  (declare (xargs :guard t))
+  (let ((target (fn-cl-key-target ring account fields)))
     (if target
-        (fn-cll-line *fn-cll-key-head*
-                     (fn-cl-key secret (fn-record-string-octets target) login))
+        (fn-cl-ring-keys ring account (fn-record-string-octets target))
       nil)))
 
-(defun fn-cl-served-payload (secret login msgid payload)
+(defun fn-cl-served-payload (ring account msgid payload)
   (declare (xargs :guard t))
-  (let* ((fields (fn-ctl-received-fields payload))
-         (target (fn-cl-key-target secret login fields)))
-    (if (or (fn-cl-lock-wanted-p secret login fields) target)
-        (fn-cll-insert
-         (fn-cll-append
-          (if (fn-cl-lock-wanted-p secret login fields)
-              (fn-cll-line *fn-cll-lock-head* (fn-cl-lock secret msgid login))
-            nil)
-          (fn-cl-key-lines secret login fields))
-         payload)
-      payload)))
+  (let ((fields (fn-ctl-received-fields payload)))
+    (fn-cll-append (fn-cll-lines (fn-cl-lock-value ring account msgid fields)
+                                 (fn-cl-key-values ring account fields))
+                   payload)))
 
 ; -----------------------------------------------------------------------------
 ; Theorems.
-
-; Without a login, or without a secret, the payload is stored as injected.
-(defthm fn-cl-served-payload-without-a-login-is-the-payload
-  (implies (or (not (consp login)) (not (fn-cl-secretp secret)))
-           (equal (fn-cl-served-payload secret login msgid payload) payload)))
 
 ; The lines are well formed: a key and a lock are 44 Base64 characters
 ; (RFC 8315 section 2's c-lock-string).
@@ -137,78 +168,114 @@
   :hints (("Goal" :in-theory (enable fn-stx-b64-encode))))
 
 (defthm fn-cl-key-shape
-  (and (fn-cll-valuep (fn-cl-key secret msgid login))
-       (true-listp (fn-cl-key secret msgid login))
-       (equal (len (fn-cl-key secret msgid login)) *fn-cll-value-length*)))
+  (and (fn-cll-valuep (fn-cl-key entry account msgid))
+       (true-listp (fn-cl-key entry account msgid))
+       (equal (len (fn-cl-key entry account msgid)) *fn-cll-value-length*)))
 
 (defthm fn-cl-lock-shape
-  (and (fn-cll-valuep (fn-cl-lock secret msgid login))
-       (true-listp (fn-cl-lock secret msgid login))
-       (equal (len (fn-cl-lock secret msgid login)) *fn-cll-value-length*)))
+  (and (fn-cll-valuep (fn-cl-lock entry account msgid))
+       (true-listp (fn-cl-lock entry account msgid))
+       (equal (len (fn-cl-lock entry account msgid)) *fn-cll-value-length*)))
 
-; KEYSTONE (SEC-006, the same login is accepted).  The key the node writes
-; into login L's cancel of TARGET opens the lock it wrote into L's article
-; TARGET, whatever other keys and locks the two articles carry; so, by
-; `fn-ctl-withdrawal-authority-is-exactly-signer-or-poster', the record of an
-; unsigned cancel carrying that key withdraws that article.  The subject is
-; the pair the effect compares: `fn-ctl-some-key-opens-p' over the entries
-; `fn-cl-served-payload' writes.  The step from the written line to the
-; parsed entry (the article parser over the prepended line) is not a
-; theorem here: the teeth book checks it on served articles, and the record
-; names it open (planning/evidence/newsreader-cancel-2026-09-26.md).
+(defthm fn-cl-lock-is-a-cons
+  (consp (fn-cl-lock entry account msgid))
+  :rule-classes (:rewrite :type-prescription)
+  :hints (("Goal" :use fn-cl-lock-shape :in-theory (disable fn-cl-lock fn-cl-lock-shape))))
+
+(defthm fn-cl-ring-keys-are-values
+  (fn-cll-values-p (fn-cl-ring-keys ring account msgid)))
+
+(defthm fn-cl-key-values-are-values
+  (fn-cll-values-p (fn-cl-key-values ring account fields)))
+
+(defthm fn-cl-lock-value-is-a-value
+  (fn-cll-valuep (fn-cl-lock-value ring account msgid fields)))
+
+(in-theory (disable fn-cl-key fn-cl-lock))
+
+; Without an account, or without a ring, the payload is stored as injected.
+(defthm fn-cl-served-payload-without-an-account-is-the-payload
+  (implies (or (not (fn-cl-accountp account)) (not (fn-ns-ringp ring)))
+           (equal (fn-cl-served-payload ring account msgid payload) payload)))
+
+; By definition: the generated lines, then the injected octets.
+(defthm fn-cl-served-payload-is-the-lines-then-the-payload-by-definition
+  (equal (fn-cl-served-payload ring account msgid payload)
+         (append (fn-cll-lines (fn-cl-lock-value ring account msgid
+                                                 (fn-ctl-received-fields payload))
+                               (fn-cl-key-values ring account
+                                                 (fn-ctl-received-fields payload)))
+                 payload))
+  :rule-classes nil)
+
+; KEYSTONE (D25, the generated lines are outside the authored source).
+; For every key ring and account, the D25 projection of the served payload
+; is the injected octets: the lock and keys never enter the comparison.
+; Subject: fn-cl-served-payload, the local arm of fn-own-sub-stored-octets
+; (host/owner-host.lisp fn-owner-take); the projection is fn-cll-skip,
+; called by books/poster-bytes.lisp.  The hypothesis holds of every
+; injection (it opens with its block: books/source-routes.lisp
+; fn-sr-a-block-opens-with-a-field-name).
+(defthm fn-cl-served-payload-projects-to-the-injected-octets
+  (implies (not (equal (car payload) 67))
+           (equal (fn-cll-skip (fn-cl-served-payload ring account msgid payload))
+                  payload))
+  :hints (("Goal" :use ((:instance fn-cll-skip-of-the-generated-lines
+                                   (lock (fn-cl-lock-value ring account msgid
+                                                           (fn-ctl-received-fields payload)))
+                                   (keys (fn-cl-key-values ring account
+                                                           (fn-ctl-received-fields payload)))
+                                   (x payload)))
+           :in-theory (disable fn-cll-lines fn-cl-lock-value fn-cl-key-values
+                               fn-ctl-received-fields))))
+
+; The lock line a served POST under ACCOUNT gets, when the owner holds a
+; ring, the poster wrote no Cancel-Lock and signed nothing: exactly one
+; Cancel-Lock line, ACCOUNT's lock for this Message-ID under the current
+; epoch, then the Cancel-Key line of a cancel, then the injected octets.
+(defthm fn-cl-served-payload-writes-one-account-lock
+  (let ((fields (fn-ctl-received-fields payload)))
+    (implies (fn-cl-lock-wanted-p ring account fields)
+             (equal (fn-cl-served-payload ring account msgid payload)
+                    (append (fn-cll-line *fn-cll-lock-head*
+                                         (fn-cl-lock (fn-ns-current ring) account msgid))
+                            (if (consp (fn-cl-key-values ring account fields))
+                                (fn-cll-key-line (fn-cl-key-values ring account fields))
+                              nil)
+                            payload))))
+  :hints (("Goal" :in-theory (disable fn-cl-key-values fn-ctl-received-fields
+                                      fn-cl-lock-wanted-p fn-cll-line fn-cll-key-line))))
+
 (defthm fn-cl-lock-memberp-of-append-cons
   (fn-ctl-lock-memberp x (append a (cons x b))))
 
-(defthm fn-cl-login-key-opens-login-lock
-  (implies (member-equal (fn-cl-key secret target login) keys)
-           (fn-ctl-some-key-opens-p
-            keys (append locks (list (fn-cl-lock secret target login)) more)))
-  :hints (("Goal" :induct (len keys)
-           :in-theory (disable fn-cl-key fn-ctl-lock-of-key))))
-
-; The lines a served POST under LOGIN gets, when the node holds a secret and
-; the poster wrote no Cancel-Lock of their own: exactly one Cancel-Lock line,
-; LOGIN's lock for this Message-ID, then the Cancel-Key line of a cancel, at
-; the end of the node's Injection-Info line; every other octet as injected.
 (local
- (defthm fn-cl-append-assoc
-   (equal (append (append a b) c) (append a (append b c)))))
+ (defthm fn-cl-some-key-opens-of-member
+   (implies (and (member-equal k keys)
+                 (fn-ctl-lock-memberp (fn-ctl-lock-of-key k) locks))
+            (fn-ctl-some-key-opens-p keys locks))))
 
-(defthm fn-cl-served-payload-writes-one-login-lock
-  (let ((fields (fn-ctl-received-fields payload))
-        (k (fn-cll-info-end payload 0 :start)))
-    (implies (and (fn-ns-secretp secret)
-                  (fn-cbor-octet-listp login) (consp login)
-                  (not (consp (fn-ctl-fields-named *fn-ctl-cancel-lock-name* fields))))
-             (equal (fn-cl-served-payload secret login msgid payload)
-                    (if k
-                        (append (fn-cll-take k payload)
-                                (fn-cll-line *fn-cll-lock-head*
-                                             (fn-cl-lock secret msgid login))
-                                (fn-cl-key-lines secret login fields)
-                                (fn-cll-drop k payload))
-                      payload))))
-  :hints (("Goal" :in-theory (e/d (fn-cl-secretp)
-                                  (fn-cl-lock fn-cl-key-lines fn-cl-key-target
-                                   fn-ctl-received-fields fn-cll-line
-                                   fn-cll-info-end fn-cll-take fn-cll-drop))
-           :use ((:instance fn-cll-insert-adds-only-the-lines
-                            (x payload)
-                            (lines (append (fn-cll-line *fn-cll-lock-head*
-                                                        (fn-cl-lock secret msgid login))
-                                           (fn-cl-key-lines secret login
-                                                            (fn-ctl-received-fields payload)))))))))
+; KEYSTONE (rotation retains service).  Whatever retained epoch ENTRY of
+; RING an article's lock was made under, the keys the node writes into its
+; account's cancel of it (one per retained epoch) include one that opens it.
+; Subject: fn-cl-ring-keys, the key line of fn-cl-served-payload.
+(defthm fn-cl-ring-keys-open-every-retained-lock
+  (implies (and (member-equal entry ring)
+                (fn-ctl-lock-memberp (fn-cl-lock entry account msgid) locks))
+           (fn-ctl-some-key-opens-p (fn-cl-ring-keys ring account msgid) locks))
+  :hints (("Goal" :induct (fn-cl-ring-keys ring account msgid)
+           :in-theory (e/d (fn-cl-lock) (fn-ctl-lock-of-key)))))
 
-; KEYSTONE (SEC-006, exactly the login's key opens the login's lock).  Over
-; the one lock the node writes for LOGIN: the key the node derives for a
-; login L2 opens it exactly when L2's lock for this Message-ID is LOGIN's.
-; So LOGIN's own key opens it (L2 = LOGIN), and another login's key opens it
-; only when SHA-256 of the two HMAC-SHA256 outputs collide under the node
-; secret: that is the cryptographic assumption no theorem states
+; KEYSTONE (exactly the account's key opens the account's lock).  Over the
+; one lock the node writes for ACCOUNT under ENTRY: the key it derives for
+; an account A2 opens it exactly when A2's lock for this Message-ID is
+; ACCOUNT's.  So ACCOUNT's own key opens it, and another account's key
+; opens it only when SHA-256 of the two HMAC-SHA256 outputs collide under
+; the purpose key: the cryptographic assumption no theorem states
 ; (planning/evidence/newsreader-cancel-2026-09-26.md, the pessimistic
-; figure), and the teeth show a concrete other login refused.
-(defthm fn-cl-login-key-opens-exactly-its-lock
-  (iff (fn-ctl-some-key-opens-p (list (fn-cl-key secret msgid l2))
-                                (list (fn-cl-lock secret msgid login)))
-       (equal (fn-cl-lock secret msgid l2) (fn-cl-lock secret msgid login)))
-  :hints (("Goal" :in-theory (disable fn-cl-key fn-ctl-lock-of-key))))
+; figure); the teeth show a concrete retrying account refused.
+(defthm fn-cl-account-key-opens-exactly-its-lock
+  (iff (fn-ctl-some-key-opens-p (list (fn-cl-key entry a2 msgid))
+                                (list (fn-cl-lock entry account msgid)))
+       (equal (fn-cl-lock entry a2 msgid) (fn-cl-lock entry account msgid)))
+  :hints (("Goal" :in-theory (enable fn-cl-lock))))

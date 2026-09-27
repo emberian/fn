@@ -1,40 +1,57 @@
-; fn: the node secret and its keyed hashes (SEC-006, PRF-210; PKT-574 and
-; PKT-576 share it, the coordinator's decision of 2026-09-27).
+; fn: the node's one protected root and the purpose keys derived from it
+; (SEC-006, PRF-210; PKT-574 and PKT-576 share it; gpt-6's wave-5 review
+; section 3, binding).
 ;
-; One 32-octet secret per node, written by `init' into STORE/keys/
-; node-secret.key (mode 0600; host/native/io.lisp fnn-node-secret-create),
-; read by the owner at every start and after every recovery, refused by
-; name at start when missing, of the wrong size or readable by group or
-; others (host/native/owner.lisp fnn-owner-load-node-secret).  It is never
-; served, never printed and never written into a configuration record
-; (`show' prints those; backups and checkpoints replay them).  The owner
-; carries it (books/owner.lisp fn-own-node-secret).
+; ONE random root per key epoch, never served, never printed, never in a
+; configuration record or an export.  It lives in the store directory, the
+; node's persistent private state under D34 (the release directory is
+; immutable): STORE/keys/node-secret.key, mode 0600 in a 0700 directory,
+; written once by the explicit verb `node-secret create' (and by `init'),
+; which refuses by name when a secret exists; a start with the file missing
+; or readable by group or others is refused by name and NEVER regenerates
+; one (host/native/io.lisp fnn-node-secret-create, host/native/owner.lisp
+; fnn-owner-load-node-secret).  A rotation keeps each older epoch's file as
+; STORE/keys/node-secret-E.key, so cancellation of older articles keeps
+; its key material (RFC 8315 section 4: secret, user id, Message-ID).
 ;
-; Every use is HMAC-SHA256 (RFC 2104, FIPS 198-1) under one secret with a
-; DOMAIN LABEL in front of the message:
+; The file (versioned; `fn-ns-file-render', `fn-ns-file-parse'):
 ;
-;   fn-ns-mac S LABEL M = HMAC-SHA256(S, LABEL || 0x00 || M)
+;   "fn-node-secret v1" LF   18 octets, the format version
+;   EPOCH                    4 octets, big-endian, 1 or more
+;   N                        2 octets, big-endian, the identity's length
+;   IDENTITY                 N octets, the node identity the keys are bound to
+;   ROOT                     32 octets from the OS CSPRNG
 ;
-; A label is an octet string without NUL, so the first NUL of the
-; HMAC input ends the label: two uses with distinct labels never MAC the
-; same input, whatever their messages (fn-ns-input-separates-labels).  The
-; labels:
+; A ring is the node's entries (EPOCH IDENTITY ROOT), the current epoch
+; first and every older retained one after it, epochs strictly decreasing.
+; The owner carries the ring (books/owner.lisp fn-own-node-secret).
 ;
-;   "fn cancel-lock v1"       RFC 8315 Cancel-Key K = Base64(fn-ns-mac S L
-;                             (MSGID || LOGIN)); books/cancel-lock.lisp
-;   "fn posting-account v1"   RFC 5536 section 3.2.8 posting-account value
-;                             (the accessor fn-ns-posting-account-mac;
-;                             Injection-Info is lane usenet-headers-3's)
+; Every use is a PURPOSE KEY derived from one entry by HKDF-SHA256 (RFC
+; 5869) with the entry's node identity as the salt, the root as the input
+; keying material, and a versioned info label:
 ;
-; What is proved is the separation of the INPUTS.  That distinct inputs
-; give unrelated outputs is HMAC-SHA256's pseudorandomness under a key the
-; adversary does not hold: an assumption about the real function, not a
-; theorem, and no theorem here uses it.
+;   PRK        = HMAC-SHA256(IDENTITY, ROOT)                (HKDF-Extract)
+;   key(INFO)  = HMAC-SHA256(PRK, INFO || 0x01)             (HKDF-Expand, L = 32)
+;
+;   INFO "fn/cancel-lock/v1"      the RFC 8315 section 4 secret <sec>;
+;                                 books/cancel-lock.lisp fn-cl-key
+;   INFO "fn/posting-account/v1"  the RFC 5536 section 3.2.8 posting-account
+;                                 value's key (lane usenet-headers-3's
+;                                 fn-pa-mac)
+;
+; What is proved is the separation of the derivation INPUTS
+; (`fn-ns-expand-input-separates-info'): two distinct info labels never
+; expand the same HMAC input under one entry, so no value derived for one
+; purpose is ever derived for another.  That distinct inputs give unrelated
+; outputs is HMAC-SHA256's pseudorandomness under a key the adversary does
+; not hold: an assumption about the real function, not a theorem, and no
+; theorem here uses it.
 ;
 ; Prefix `fn-ns-' (docs/prefixes.md).
 (in-package "ACL2")
 (include-book "sha256")
 (include-book "cbor")
+(local (include-book "cbor-invariants"))
 
 (defconst *fn-ns-secret-octets* 32)
 
@@ -81,92 +98,330 @@
                                          msg))))))
 
 ; -----------------------------------------------------------------------------
-; Domain labels.
+; HKDF-SHA256 (RFC 5869) for one 32-octet output block (RFC 5869 test
+; cases 1 and 3 in the teeth).
 
-(defun fn-ns-labelp (x)
+(defun fn-ns-hkdf-extract (salt ikm)
   (declare (xargs :guard t))
-  (and (fn-cbor-octet-listp x) (not (member-equal 0 x))))
+  (fn-ns-hmac-sha256 salt ikm))
 
-; "fn cancel-lock v1"
-(defconst *fn-ns-cancel-lock-label*
-  '(102 110 32 99 97 110 99 101 108 45 108 111 99 107 32 118 49))
-; "fn posting-account v1"
-(defconst *fn-ns-posting-account-label*
-  '(102 110 32 112 111 115 116 105 110 103 45 97 99 99 111 117 110 116 32 118 49))
-
-(defun fn-ns-input (label msg)
+; T(1) = HMAC(PRK, T(0) || info || 0x01) with T(0) empty.
+(defun fn-ns-expand-input (info)
   (declare (xargs :guard t))
-  (fn-ns-append label (cons 0 msg)))
+  (fn-ns-append info (list 1)))
 
-(defun fn-ns-mac (secret label msg)
+(defun fn-ns-hkdf-expand-32 (prk info)
   (declare (xargs :guard t))
-  (fn-ns-hmac-sha256 secret (fn-ns-input label msg)))
+  (fn-ns-hmac-sha256 prk (fn-ns-expand-input info)))
 
-; The two uses.  THE ACCESSORS: books/cancel-lock.lisp fn-cl-key calls the
-; first; the posting-account hash calls the second.
-(defun fn-ns-cancel-lock-mac (secret msg)
+(defun fn-ns-hkdf-sha256-32 (salt ikm info)
   (declare (xargs :guard t))
-  (fn-ns-mac secret *fn-ns-cancel-lock-label* msg))
+  (fn-ns-hkdf-expand-32 (fn-ns-hkdf-extract salt ikm) info))
 
-(defun fn-ns-posting-account-mac (secret login)
+; -----------------------------------------------------------------------------
+; The info labels (versioned).
+
+; "fn/cancel-lock/v1"
+(defconst *fn-ns-cancel-lock-info*
+  '(102 110 47 99 97 110 99 101 108 45 108 111 99 107 47 118 49))
+; "fn/posting-account/v1"
+(defconst *fn-ns-posting-account-info*
+  '(102 110 47 112 111 115 116 105 110 103 45 97 99 99 111 117 110 116 47 118 49))
+
+; -----------------------------------------------------------------------------
+; An entry (EPOCH IDENTITY ROOT) and a ring of them.  The bounds are the
+; file codec's widths (4 and 2 octets): every entry the ring admits is one
+; the file represents (`fn-ns-file-parse-of-render').
+
+(defconst *fn-ns-epoch-limit* 4294967296)   ; 2^32
+(defconst *fn-ns-identity-limit* 65536)     ; 2^16
+
+(defun fn-ns-entry-epoch (e) (declare (xargs :guard t)) (if (consp e) (car e) nil))
+(defun fn-ns-entry-identity (e)
   (declare (xargs :guard t))
-  (fn-ns-mac secret *fn-ns-posting-account-label* login))
+  (if (and (consp e) (consp (cdr e))) (cadr e) nil))
+(defun fn-ns-entry-root (e)
+  (declare (xargs :guard t))
+  (if (and (consp e) (consp (cdr e)) (consp (cddr e))) (caddr e) nil))
+
+(defun fn-ns-entryp (e)
+  (declare (xargs :guard t))
+  (and (true-listp e) (equal (len e) 3)
+       (posp (car e)) (< (car e) *fn-ns-epoch-limit*)
+       (fn-cbor-octet-listp (cadr e)) (< (len (cadr e)) *fn-ns-identity-limit*)
+       (fn-ns-secretp (caddr e))))
+
+(defun fn-ns-ring-entriesp (r)
+  (declare (xargs :guard t))
+  (if (consp r)
+      (and (fn-ns-entryp (car r))
+           (or (atom (cdr r))
+               (and (fn-ns-entryp (cadr r))
+                    (< (car (cadr r)) (car (car r)))))
+           (fn-ns-ring-entriesp (cdr r)))
+    (null r)))
+
+; The current epoch first, every retained older one after it.
+(defun fn-ns-ringp (r)
+  (declare (xargs :guard t))
+  (and (consp r) (fn-ns-ring-entriesp r)))
+
+(defun fn-ns-current (r)
+  (declare (xargs :guard t))
+  (if (consp r) (car r) nil))
+
+; A ring of one fresh entry: what `node-secret create' and `init' publish.
+(defun fn-ns-make-entry (epoch identity root)
+  (declare (xargs :guard t))
+  (list epoch identity root))
+
+; The entries `node-secret create' and `node-secret rotate' write
+; (host/native/io.lisp): epoch 1, or the current epoch plus one, bound to
+; IDENTITY (the operator's name for the node; "local" when none is given,
+; and on a rotation the current entry's unless another is given).  ROOT is
+; 32 octets from the OS CSPRNG.
+; "local"
+(defconst *fn-ns-default-identity* '(108 111 99 97 108))
+
+(defun fn-ns-identity-or-default (identity default)
+  (declare (xargs :guard t))
+  (if (and (fn-cbor-octet-listp identity) (consp identity)) identity default))
+
+(defun fn-ns-create-entry (identity root)
+  (declare (xargs :guard t))
+  (fn-ns-make-entry 1 (fn-ns-identity-or-default identity *fn-ns-default-identity*)
+                    root))
+
+(defun fn-ns-rotate-entry (current identity root)
+  (declare (xargs :guard t))
+  (fn-ns-make-entry (+ 1 (nfix (fn-ns-entry-epoch current)))
+                    (fn-ns-identity-or-default identity
+                                               (fn-ns-entry-identity current))
+                    root))
+
+; The host checks the ring it assembles (the rotated entry in front of the
+; retained ones) with fn-ns-ringp at every start (host/owner-host.lisp
+; fn-owner-install-node-secret): epochs strictly decreasing.
+
+; -----------------------------------------------------------------------------
+; The purpose keys.  THE ACCESSORS: books/cancel-lock.lisp fn-cl-key calls
+; `fn-ns-cancel-lock-key' of the entry an article's lock was made under;
+; lane usenet-headers-3 (its fn-pa-mac) calls
+; `fn-ns-posting-account-key' of the ring (its current entry).
+
+(defun fn-ns-purpose-key (entry info)
+  (declare (xargs :guard t))
+  (fn-ns-hkdf-sha256-32 (fn-ns-entry-identity entry) (fn-ns-entry-root entry) info))
+
+(defun fn-ns-cancel-lock-key (entry)
+  (declare (xargs :guard t))
+  (fn-ns-purpose-key entry *fn-ns-cancel-lock-info*))
+
+(defun fn-ns-posting-account-key (ring)
+  (declare (xargs :guard t))
+  (fn-ns-purpose-key (fn-ns-current ring) *fn-ns-posting-account-info*))
+
+; The posting-account value's MAC over LOGIN (kept for lane
+; usenet-headers-3's fn-pa-mac, whose argument is the owner's ring).
+(defun fn-ns-posting-account-mac (ring login)
+  (declare (xargs :guard t))
+  (fn-ns-hmac-sha256 (fn-ns-posting-account-key ring) login))
 
 ; -----------------------------------------------------------------------------
 ; Separation.
 
 (local
- (defun fn-ns-two-lists (l1 l2)
-   (if (and (consp l1) (consp l2))
-       (fn-ns-two-lists (cdr l1) (cdr l2))
-     (list l1 l2))))
+ (defun fn-ns-two (a b)
+   (if (and (consp a) (consp b)) (fn-ns-two (cdr a) (cdr b)) (list a b))))
 
 (local
- (defthm fn-ns-input-prefix-lemma
-   (implies (and (not (member-equal 0 l1)) (not (member-equal 0 l2))
-                 (true-listp l1) (true-listp l2)
-                 (equal (append l1 (cons 0 m1)) (append l2 (cons 0 m2))))
-            (equal l1 l2))
+ (defthm fn-ns-append-one-injective
+   (implies (and (true-listp a) (true-listp b)
+                 (equal (append a (list 1)) (append b (list 1))))
+            (equal a b))
    :rule-classes nil
-   :hints (("Goal" :induct (fn-ns-two-lists l1 l2)))))
+   :hints (("Goal" :induct (fn-ns-two a b)))))
 
 (local
  (defthm fn-ns-octet-list-true-listp
    (implies (fn-cbor-octet-listp x) (true-listp x))
    :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
 
-; KEYSTONE (the separation).  Under distinct labels the HMAC inputs differ,
-; whatever the two messages: no value MACed for one use is ever the input
-; of another use.
-(defthm fn-ns-input-separates-labels
-  (implies (and (fn-ns-labelp l1) (fn-ns-labelp l2) (not (equal l1 l2)))
-           (not (equal (fn-ns-input l1 m1) (fn-ns-input l2 m2))))
-  :hints (("Goal" :use ((:instance fn-ns-input-prefix-lemma))
-           :in-theory (disable fn-ns-append))))
+; KEYSTONE (the separation).  Under distinct info labels the HKDF-Expand
+; inputs differ, so under one entry (one PRK) no purpose key is computed
+; from the HMAC input of another purpose.
+(defthm fn-ns-expand-input-separates-info
+  (implies (and (true-listp i1) (true-listp i2) (not (equal i1 i2)))
+           (not (equal (fn-ns-expand-input i1) (fn-ns-expand-input i2))))
+  :hints (("Goal" :use ((:instance fn-ns-append-one-injective (a i1) (b i2))))))
 
-(defthm fn-ns-labels-are-labels
-  (and (fn-ns-labelp *fn-ns-cancel-lock-label*)
-       (fn-ns-labelp *fn-ns-posting-account-label*)
-       (not (equal *fn-ns-cancel-lock-label* *fn-ns-posting-account-label*)))
-  :rule-classes nil)
-
-; The two uses of the one secret never MAC the same input.
 (defthm fn-ns-cancel-lock-and-posting-account-inputs-differ
-  (not (equal (fn-ns-input *fn-ns-cancel-lock-label* m1)
-              (fn-ns-input *fn-ns-posting-account-label* m2)))
-  :hints (("Goal" :use ((:instance fn-ns-input-separates-labels
-                                   (l1 *fn-ns-cancel-lock-label*)
-                                   (l2 *fn-ns-posting-account-label*)))
-           :in-theory (disable fn-ns-input))
-          ("Goal'" :use fn-ns-labels-are-labels)))
+  (not (equal (fn-ns-expand-input *fn-ns-cancel-lock-info*)
+              (fn-ns-expand-input *fn-ns-posting-account-info*)))
+  :hints (("Goal" :use ((:instance fn-ns-expand-input-separates-info
+                                   (i1 *fn-ns-cancel-lock-info*)
+                                   (i2 *fn-ns-posting-account-info*)))
+           :in-theory (disable fn-ns-expand-input))))
 
-; Every use yields 32 octets (the lock and key lengths of RFC 8315 rest on it).
+; Every derived value is 32 octets.
 (defthm fn-ns-hmac-sha256-shape
   (and (true-listp (fn-ns-hmac-sha256 key msg))
        (equal (len (fn-ns-hmac-sha256 key msg)) 32)))
 
-(defthm fn-ns-mac-shape
-  (and (true-listp (fn-ns-mac secret label msg))
-       (equal (len (fn-ns-mac secret label msg)) 32)))
+(defthm fn-ns-hmac-sha256-octets
+  (fn-sha256-octet-listp (fn-ns-hmac-sha256 key msg)))
 
-(in-theory (disable fn-ns-input fn-ns-mac fn-ns-hmac-sha256))
+(defthm fn-ns-purpose-key-shape
+  (and (true-listp (fn-ns-purpose-key entry info))
+       (equal (len (fn-ns-purpose-key entry info)) 32)
+       (fn-sha256-octet-listp (fn-ns-purpose-key entry info))))
+
+(defthm fn-ns-posting-account-key-shape
+  (and (true-listp (fn-ns-posting-account-key ring))
+       (equal (len (fn-ns-posting-account-key ring)) 32)
+       (fn-sha256-octet-listp (fn-ns-posting-account-key ring))))
+
+(defthm fn-ns-posting-account-mac-shape
+  (and (true-listp (fn-ns-posting-account-mac ring login))
+       (equal (len (fn-ns-posting-account-mac ring login)) 32)
+       (fn-sha256-octet-listp (fn-ns-posting-account-mac ring login))))
+
+; -----------------------------------------------------------------------------
+; The key file.
+
+; "fn-node-secret v1" LF
+(defconst *fn-ns-file-magic*
+  '(102 110 45 110 111 100 101 45 115 101 99 114 101 116 32 118 49 10))
+
+(defun fn-ns-nth (n x)
+  (declare (xargs :guard (natp n)))
+  (if (atom x) nil (if (zp n) (car x) (fn-ns-nth (1- n) (cdr x)))))
+
+(defun fn-ns-take (n x)
+  (declare (xargs :guard (natp n)))
+  (if (or (zp n) (atom x)) nil (cons (car x) (fn-ns-take (1- n) (cdr x)))))
+
+(defun fn-ns-drop (n x)
+  (declare (xargs :guard (natp n)))
+  (if (or (zp n) (atom x)) x (fn-ns-drop (1- n) (cdr x))))
+
+(defun fn-ns-strip (prefix x)
+  (declare (xargs :guard t))
+  (if (consp prefix)
+      (if (and (consp x) (equal (car x) (car prefix)))
+          (fn-ns-strip (cdr prefix) (cdr x))
+        :no)
+    x))
+
+(defun fn-ns-file-render (entry)
+  (declare (xargs :guard (fn-ns-entryp entry)))
+  (fn-ns-append *fn-ns-file-magic*
+                (fn-ns-append (fn-cbor-u32-bytes (fn-ns-entry-epoch entry))
+                              (fn-ns-append (fn-cbor-u16-bytes
+                                             (len (fn-ns-entry-identity entry)))
+                                            (fn-ns-append (fn-ns-entry-identity entry)
+                                                          (fn-ns-entry-root entry))))))
+
+(defun fn-ns-u32-from (x)
+  (declare (xargs :guard t))
+  (+ (* 16777216 (fn-ns-octet (fn-ns-nth 0 x)))
+     (* 65536 (fn-ns-octet (fn-ns-nth 1 x)))
+     (* 256 (fn-ns-octet (fn-ns-nth 2 x)))
+     (fn-ns-octet (fn-ns-nth 3 x))))
+
+(defun fn-ns-u16-from (x)
+  (declare (xargs :guard t))
+  (+ (* 256 (fn-ns-octet (fn-ns-nth 0 x)))
+     (fn-ns-octet (fn-ns-nth 1 x))))
+
+; The entry a key file holds, or nil (the host refuses the file by name).
+(defun fn-ns-file-parse (octets)
+  (declare (xargs :guard t))
+  (let ((r (fn-ns-strip *fn-ns-file-magic* octets)))
+    (if (and (fn-cbor-octet-listp r) (<= 6 (len r)))
+        (let* ((epoch (fn-ns-u32-from r))
+               (r2 (fn-ns-drop 4 r))
+               (n (fn-ns-u16-from r2))
+               (r3 (fn-ns-drop 2 r2))
+               (entry (fn-ns-make-entry epoch (fn-ns-take n r3) (fn-ns-drop n r3))))
+          (if (and (<= n (len r3)) (fn-ns-entryp entry)) entry nil))
+      nil)))
+
+(defthm fn-ns-file-parse-is-an-entry
+  (implies (fn-ns-file-parse octets)
+           (fn-ns-entryp (fn-ns-file-parse octets))))
+
+(local
+ (defthm fn-ns-u32-round-trip
+   (implies (and (natp n) (< n 4294967296))
+            (equal (fn-ns-u32-from (append (fn-cbor-u32-bytes n) rest)) n))
+   :hints (("Goal" :use (fn-cbor-u32-from-u32-bytes fn-cbor-u32-bytes-are-octets)
+            :in-theory (e/d (fn-cbor-u32-bytes fn-cbor-u32-from fn-cbor-octet-listp
+                             fn-cbor-octetp)
+                            (floor mod))))))
+
+(local
+ (defthm fn-ns-u16-round-trip
+   (implies (and (natp n) (< n 65536))
+            (equal (fn-ns-u16-from (append (fn-cbor-u16-bytes n) rest)) n))
+   :hints (("Goal" :use (fn-cbor-u16-from-u16-bytes fn-cbor-u16-bytes-are-octets)
+            :in-theory (e/d (fn-cbor-u16-bytes fn-cbor-u16-from fn-cbor-octet-listp
+                             fn-cbor-octetp)
+                            (floor mod))))))
+
+(local
+ (defthm fn-ns-octet-listp-of-append
+   (implies (true-listp a)
+            (equal (fn-cbor-octet-listp (append a b))
+                   (and (fn-cbor-octet-listp a) (fn-cbor-octet-listp b))))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
+(local
+ (defthm fn-ns-u32-bytes-shape
+   (and (true-listp (fn-cbor-u32-bytes n)) (equal (len (fn-cbor-u32-bytes n)) 4))
+   :hints (("Goal" :in-theory (enable fn-cbor-u32-bytes)))))
+
+(local
+ (defthm fn-ns-u16-bytes-shape
+   (and (true-listp (fn-cbor-u16-bytes n)) (equal (len (fn-cbor-u16-bytes n)) 2))
+   :hints (("Goal" :in-theory (enable fn-cbor-u16-bytes)))))
+
+(local
+ (defthm fn-ns-three-list
+   (implies (and (true-listp e) (equal (len e) 3))
+            (equal (list (car e) (cadr e) (caddr e)) e))))
+
+(local
+ (defthm fn-ns-len-of-append
+   (equal (len (append a b)) (+ (len a) (len b)))))
+
+(local
+ (defthm fn-ns-true-list-fix-of-octets
+   (implies (fn-cbor-octet-listp x) (equal (true-list-fix x) x))))
+
+(local
+ (defthm fn-ns-take-of-append
+   (implies (equal n (len a))
+            (equal (fn-ns-take n (append a b)) (true-list-fix a)))))
+
+(local
+ (defthm fn-ns-drop-of-append
+   (implies (equal n (len a))
+            (equal (fn-ns-drop n (append a b)) b))))
+
+(local
+ (defthm fn-ns-strip-of-append
+   (implies (true-listp p)
+            (equal (fn-ns-strip p (append p x)) x))))
+
+; KEYSTONE (the file keeps the entry).  What `node-secret create' writes,
+; the start reads back unchanged.
+(defthm fn-ns-file-parse-of-render
+  (implies (fn-ns-entryp entry)
+           (equal (fn-ns-file-parse (fn-ns-file-render entry)) entry))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-u32-bytes-are-octets fn-cbor-u16-bytes-are-octets)
+                                  (fn-cbor-u32-bytes fn-cbor-u16-bytes
+                                   fn-ns-u32-from fn-ns-u16-from)))))
+
+(in-theory (disable fn-ns-hmac-sha256 fn-ns-expand-input fn-ns-purpose-key
+                    fn-ns-file-parse fn-ns-file-render))

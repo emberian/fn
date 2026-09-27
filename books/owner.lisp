@@ -32,16 +32,18 @@
 ;   config    the posting configuration (fn-inj-configp, books/injection.lisp)
 ;             pinned into every connection at open; nil refuses POST with 440;
 ;   queue     the submissions served reads produced and the writer has not
-;             taken, each (id version mark decision [login]), in arrival
-;             order; login is the AUTHINFO name of an authenticated served
-;             POST (fn-own-finish-read), absent otherwise;
-;   node-secret nil, or the node's 32-octet secret (books/node-secret.lisp
-;             fn-ns-secretp) the host read from STORE/keys/node-secret.key
-;             and installed with fn-own-with-node-secret after every open
-;             and recovery; every owner step carries it unchanged.  The
-;             stored octets of a served POST under a login carry the
-;             RFC 8315 Cancel-Lock keyed by it
-;             (books/owner-served-invariants.lisp fn-own-sub-stored-octets);
+;             taken, each (id version mark decision [login account]), in
+;             arrival order; login is the AUTHINFO name and account the
+;             principal id of an authenticated served POST
+;             (fn-own-finish-read), both absent otherwise;
+;   node-secret nil, or the node's key ring (books/node-secret.lisp
+;             fn-ns-ringp: the current key epoch first, every retained
+;             older one after it) the host read from STORE/keys/ and
+;             installed with fn-own-with-node-secret after every open and
+;             recovery; every owner step carries it unchanged.  The stored
+;             octets of a served POST under an account carry the RFC 8315
+;             Cancel-Lock keyed by it (books/owner-served-invariants.lisp
+;             fn-own-sub-stored-octets);
 ;   feeds     the outbound feed table (books/owner-feed.lisp): one
 ;             (name record feed) per configured peer with an outbound half.
 ;             Built from the configuration by the (:feeds cfg) arm, enqueued
@@ -408,7 +410,7 @@
 
 (defun fn-own-sub-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (or (equal (len x) 4) (equal (len x) 5))))
+  (and (true-listp x) (or (equal (len x) 4) (equal (len x) 6))))
 (defun fn-own-sub-id (x)
   (declare (xargs :guard t))
   (mbe :logic (car x) :exec (fn-ag-car x)))
@@ -443,52 +445,66 @@
   (consp (fn-own-sub-make id version mark decision))
   :rule-classes (:rewrite :type-prescription))
 
-; The login a served submission was posted under (SEC-006, PRF-210): the
-; AUTHINFO USER name the connection had authenticated as BEFORE the read
-; that completed the article (the session fn-own-finish-read is handed,
-; not the one the read leaves: an AUTHINFO later in the same read never
-; claims an article posted before it), recorded when it is enqueued, so the stored octets can carry the
-; login's Cancel-Lock even when the connection is gone by the time the
-; writer takes it.  A submission without a login (control, BP, transit, an
-; unauthenticated POST) keeps the four-element shape it always had:
-; fn-own-sub-make-login with a nil login IS fn-own-sub-make.
+; The author of a served submission (SEC-006, PRF-210): the AUTHINFO USER
+; name (LOGIN) and the principal id (ACCOUNT, books/nntp-auth.lisp
+; fn-auth-session-subject) the connection had authenticated as BEFORE the
+; read that completed the article (the session fn-own-finish-read is
+; handed, not the one the read leaves: an AUTHINFO later in the same read
+; never claims an article posted before it), recorded when it is enqueued.
+; The account keys the RFC 8315 Cancel-Lock the stored octets carry, even
+; when the connection is gone by the time the writer takes it; the login
+; is what the posting-policy gate reads (books/login-binding.lisp
+; fn-lb-inflight-login, PKT-619).  A submission without an author
+; (control, BP, transit, an unauthenticated POST) keeps the four-element
+; shape it always had: fn-own-sub-make-author with a nil login IS
+; fn-own-sub-make.
 (defun fn-own-sub-login (x)
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr (cdr (cdr x)))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
-(defun fn-own-sub-make-login (id version mark decision login)
+(defun fn-own-sub-account (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr x))))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
+(defun fn-own-sub-make-author (id version mark decision login account)
   (declare (xargs :guard t))
   (if login
-      (list id version mark decision login)
+      (list id version mark decision login account)
     (fn-own-sub-make id version mark decision)))
 
-(defthm fn-own-sub-make-login-of-no-login-by-definition
-  (equal (fn-own-sub-make-login id version mark decision nil)
+(defthm fn-own-sub-make-author-of-no-login-by-definition
+  (equal (fn-own-sub-make-author id version mark decision nil account)
          (fn-own-sub-make id version mark decision)))
 (defthm fn-own-sub-login-of-fn-own-sub-make
   (equal (fn-own-sub-login (fn-own-sub-make id version mark decision)) nil))
-(defthm fn-own-sub-shapep-of-fn-own-sub-make-login
-  (fn-own-sub-shapep (fn-own-sub-make-login id version mark decision login)))
-(defthm fn-own-sub-id-of-fn-own-sub-make-login
-  (equal (fn-own-sub-id (fn-own-sub-make-login id version mark decision login)) id))
-(defthm fn-own-sub-version-of-fn-own-sub-make-login
-  (equal (fn-own-sub-version (fn-own-sub-make-login id version mark decision login))
+(defthm fn-own-sub-account-of-fn-own-sub-make
+  (equal (fn-own-sub-account (fn-own-sub-make id version mark decision)) nil))
+(defthm fn-own-sub-shapep-of-fn-own-sub-make-author
+  (fn-own-sub-shapep (fn-own-sub-make-author id version mark decision login account)))
+(defthm fn-own-sub-id-of-fn-own-sub-make-author
+  (equal (fn-own-sub-id (fn-own-sub-make-author id version mark decision login account)) id))
+(defthm fn-own-sub-version-of-fn-own-sub-make-author
+  (equal (fn-own-sub-version (fn-own-sub-make-author id version mark decision login account))
          version))
-(defthm fn-own-sub-mark-of-fn-own-sub-make-login
-  (equal (fn-own-sub-mark (fn-own-sub-make-login id version mark decision login)) mark))
-(defthm fn-own-sub-decision-of-fn-own-sub-make-login
-  (equal (fn-own-sub-decision (fn-own-sub-make-login id version mark decision login))
+(defthm fn-own-sub-mark-of-fn-own-sub-make-author
+  (equal (fn-own-sub-mark (fn-own-sub-make-author id version mark decision login account)) mark))
+(defthm fn-own-sub-decision-of-fn-own-sub-make-author
+  (equal (fn-own-sub-decision (fn-own-sub-make-author id version mark decision login account))
          decision))
-(defthm fn-own-sub-login-of-fn-own-sub-make-login
-  (equal (fn-own-sub-login (fn-own-sub-make-login id version mark decision login))
+(defthm fn-own-sub-login-of-fn-own-sub-make-author
+  (equal (fn-own-sub-login (fn-own-sub-make-author id version mark decision login account))
          login))
-(defthm fn-own-sub-make-login-is-consp
-  (consp (fn-own-sub-make-login id version mark decision login))
+(defthm fn-own-sub-account-of-fn-own-sub-make-author
+  (equal (fn-own-sub-account (fn-own-sub-make-author id version mark decision login account))
+         (if login account nil)))
+(defthm fn-own-sub-make-author-is-consp
+  (consp (fn-own-sub-make-author id version mark decision login account))
   :rule-classes (:rewrite :type-prescription))
 
 (in-theory (disable (:d fn-own-sub-shapep) (:d fn-own-sub-id) (:d fn-own-sub-version)
                     (:d fn-own-sub-mark) (:d fn-own-sub-decision) (:d fn-own-sub-make)
-                    (:d fn-own-sub-login) (:d fn-own-sub-make-login)))
+                    (:d fn-own-sub-login) (:d fn-own-sub-account)
+                    (:d fn-own-sub-make-author)))
 
 ; -----------------------------------------------------------------------------
 ; The committed view record:
@@ -1545,11 +1561,16 @@
 
 ; The login a served connection's session has authenticated as: the name
 ; AUTHINFO USER cached once AUTHINFO PASS set the subject (RFC 4643 section
-; 2.3), nil before.  books/login-binding.lisp fn-lb-inflight-login reads the
-; same two fields.
+; 2.3), nil before; and the account, the subject itself (the principal id
+; of the credential that authenticated: the credential file's principal,
+; or a redeemed account's local principal).
 (defun fn-own-session-login (as)
   (declare (xargs :guard t))
   (if (fn-auth-session-subject as) (fn-auth-session-pending as) nil))
+
+(defun fn-own-session-account (as)
+  (declare (xargs :guard t))
+  (fn-auth-session-subject as))
 
 (defun fn-own-finish-read (o conn result)
   (declare (xargs :guard t))
@@ -1577,9 +1598,10 @@
                          o (fn-own-replace-conn next (fn-own-conns o)))))
                 (if decision
                     (fn-own-enqueue
-                     o2 (fn-own-sub-make-login
+                     o2 (fn-own-sub-make-author
                          id (fn-own-conn-version conn) nil decision
-                         (fn-own-session-login (fn-own-conn-session conn))))
+                         (fn-own-session-login (fn-own-conn-session conn))
+                         (fn-own-session-account (fn-own-conn-session conn))))
                   o2))
             (fn-own-set-conns o (fn-own-remove-conn id (fn-own-conns o)))))))
 
@@ -2347,10 +2369,12 @@
                      (fn-own-next-id o) (fn-own-max-conns o) (fn-own-sub-id sub)
                      (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
                      (fn-own-config o) (cdr (fn-own-queue o))
-                     (fn-own-sub-make-login (fn-own-sub-id sub) (fn-own-sub-version sub)
-                                            (len (fn-own-ledger o))
-                                            (fn-own-sub-decision sub)
-                                            (fn-own-sub-login sub)) (fn-own-feeds o) (fn-own-node-secret o)))
+                     (fn-own-sub-make-author (fn-own-sub-id sub) (fn-own-sub-version sub)
+                                             (len (fn-own-ledger o))
+                                             (fn-own-sub-decision sub)
+                                             (fn-own-sub-login sub)
+                                             (fn-own-sub-account sub))
+                     (fn-own-feeds o) (fn-own-node-secret o)))
     o))
 
 ; The Store refusal words the host may relay.  Each is the kind an ACL2

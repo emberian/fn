@@ -1,11 +1,11 @@
 ; Teeth for SEC-006 (PRF-210): own-post cancel by RFC 8315 Cancel-Lock keyed
-; by the posting login (books/cancel-lock.lisp, books/cancel-lock-lines.lisp,
-; the :poster arm of books/control-authority.lisp).  Per keystone a reachable
-; witness asserting the complete antecedent and conclusion, and per
-; hypothesis a removal witness (AGENTS.md, "Teeth ship with each keystone").
-; The articles are parsed by the article parser the served path uses, so the
-; witnesses also check the step no theorem covers: the line the owner writes
-; parses back as the entry the decision reads.
+; by the posting ACCOUNT under HKDF-derived purpose keys (books/cancel-lock.lisp,
+; books/cancel-lock-lines.lisp, the :poster arm of books/control-authority.lisp).
+; Per keystone a reachable witness asserting the complete antecedent and
+; conclusion, and per hypothesis a removal witness (AGENTS.md, "Teeth ship
+; with each keystone").  The articles are parsed by the article parser the
+; served path uses, so the witnesses also check the step no theorem covers:
+; the line the owner writes parses back as the entry the decision reads.
 (in-package "ACL2")
 (include-book "../../books/cancel-lock")
 (include-book "../../books/control-visible")
@@ -18,31 +18,37 @@
     nil))
 
 ; ---------------------------------------------------------------------------
-; HMAC-SHA256 against RFC 4231 test cases 2 and 6 (a key over the block
-; length is hashed first).
-(defun clt-hex (octets)
-  (if (consp octets)
-      (let ((d "0123456789abcdef"))
-        (concatenate 'string (string (char d (floor (car octets) 16)))
-                     (string (char d (mod (car octets) 16)))
-                     (clt-hex (cdr octets))))
-    ""))
+; RFC 8315 section 5.2's example: K = HMAC-SHA256("AnotherSecret",
+; "JaneDoe<12345@mid.example>"); the key is Base64(K) and the lock is
+; Base64(SHA-256(Base64(K))): the hash is over the Base64-ENCODED key.
 (assert-event
- (equal (clt-hex (fn-ns-hmac-sha256 (clt-octets "Jefe")
-                                    (clt-octets "what do ya want for nothing?")))
-        "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"))
+ (let ((k (fn-cl-rfc8315-key (clt-octets "AnotherSecret") (clt-octets "JaneDoe")
+                             (clt-octets "<12345@mid.example>"))))
+   (and (equal k (clt-octets "yM0ep490Fzt83CLYYAytm3S2HasHhYG4LAeAlmuSEys="))
+        (equal (fn-ctl-lock-of-key k)
+               (clt-octets "NSBTz7BfcQFTCen+U4lQ0VS8VIlZao2b8mxD/xJaaeE=")))))
+; A lock of the RAW key would differ (the encoding is not optional).
 (assert-event
- (equal (clt-hex (fn-ns-hmac-sha256
-                  (make-list 131 :initial-element 170)
-                  (clt-octets "Test Using Larger Than Block-Size Key - Hash Key First")))
-        "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"))
+ (not (equal (fn-stx-b64-encode
+              (fn-sha256 (fn-ns-hmac-sha256 (clt-octets "AnotherSecret")
+                                            (clt-octets "JaneDoe<12345@mid.example>"))))
+             (clt-octets "NSBTz7BfcQFTCen+U4lQ0VS8VIlZao2b8mxD/xJaaeE="))))
 
 ; ---------------------------------------------------------------------------
-; Two logins on one node, one secret.
-(defconst *clt-secret* (make-list 32 :initial-element 7))
-(defconst *clt-alice* (clt-octets "alice"))
-(defconst *clt-bob* (clt-octets "bob"))
+; Two accounts on one node (principal ids, 32 octets), one key ring: epoch 1,
+; then epoch 2 after a rotation.
+(defconst *clt-e1* (fn-ns-create-entry (clt-octets "fn.test") (make-list 32 :initial-element 7)))
+(defconst *clt-e2* (fn-ns-rotate-entry *clt-e1* nil (make-list 32 :initial-element 9)))
+(defconst *clt-secret* (list *clt-e1*))
+(defconst *clt-ring2* (list *clt-e2* *clt-e1*))
+(defconst *clt-alice* (make-list 32 :initial-element 1))
+(defconst *clt-bob* (make-list 32 :initial-element 2))
 (defconst *clt-t-id* "<t1@fn.test>")
+(assert-event (and (fn-ns-ringp *clt-secret*) (fn-ns-ringp *clt-ring2*)))
+; The uid is the account's lowercase hex: no angle brackets (section 4).
+(assert-event (and (equal (len (fn-cl-uid *clt-alice*)) 64)
+                   (not (member 60 (fn-cl-uid *clt-alice*)))
+                   (not (member 62 (fn-cl-uid *clt-alice*)))))
 
 ; An injected article (recipe v2 block) and cancels of it, as injected.
 (defconst *clt-t*
@@ -70,22 +76,25 @@
                         *clt-c-bob*))
 
 ; The written lines parse back as the entries: the target's one lock is
-; alice's lock for its Message-ID; each cancel's one key is its login's key
-; for the target; the cancel also gets its own lock.
+; alice's lock for its Message-ID; each cancel's one key is its account's
+; key for the target; the cancel also gets its own lock.
 (assert-event
  (equal (fn-ctl-locks-octets *clt-t-stored*)
-        (list (fn-cl-lock *clt-secret* (clt-octets *clt-t-id*) *clt-alice*))))
+        (list (fn-cl-lock *clt-e1* *clt-alice* (clt-octets *clt-t-id*)))))
 (assert-event
  (equal (fn-ctl-keys-octets *clt-c-alice-stored*)
-        (list (fn-cl-key *clt-secret* (clt-octets *clt-t-id*) *clt-alice*))))
+        (list (fn-cl-key *clt-e1* *clt-alice* (clt-octets *clt-t-id*)))))
 (assert-event
  (equal (fn-ctl-keys-octets *clt-c-bob-stored*)
-        (list (fn-cl-key *clt-secret* (clt-octets *clt-t-id*) *clt-bob*))))
+        (list (fn-cl-key *clt-e1* *clt-bob* (clt-octets *clt-t-id*)))))
 (assert-event
  (equal (fn-ctl-locks-octets *clt-c-alice-stored*)
-        (list (fn-cl-lock *clt-secret* (clt-octets "<c1@fn.test>") *clt-alice*))))
+        (list (fn-cl-lock *clt-e1* *clt-alice* (clt-octets "<c1@fn.test>")))))
 (assert-event (equal (fn-ctl-target-octets *clt-c-alice-stored*) *clt-t-id*))
 (assert-event (null (fn-ctl-keys-octets *clt-t-stored*)))
+; The lock is the FIRST header line, in front of the block.
+(assert-event
+ (equal (take 20 *clt-t-stored*) (clt-octets "Cancel-Lock: sha256:")))
 
 ; ---------------------------------------------------------------------------
 ; fn-ctl-withdrawal-authority-is-exactly-signer-or-poster: the positive
@@ -195,81 +204,6 @@
         (list :decline :no-grant)))
 
 ; ---------------------------------------------------------------------------
-; fn-cl-login-key-opens-login-lock: witness with other entries around.
-(assert-event
- (let ((k (fn-cl-key *clt-secret* (clt-octets *clt-t-id*) *clt-alice*)))
-   (and (member-equal k (list (clt-octets "zz") k))
-        (fn-ctl-some-key-opens-p
-         (list (clt-octets "zz") k)
-         (append (list (clt-octets "other"))
-                 (list (fn-cl-lock *clt-secret* (clt-octets *clt-t-id*) *clt-alice*))
-                 nil)))))
-; Removal of the membership: bob's key alone does not open alice's lock.
-(assert-event
- (not (fn-ctl-some-key-opens-p
-       (list (fn-cl-key *clt-secret* (clt-octets *clt-t-id*) *clt-bob*))
-       (list (fn-cl-lock *clt-secret* (clt-octets *clt-t-id*) *clt-alice*)))))
-; Another secret (another node's) gives another key for the same login.
-(assert-event
- (not (equal (fn-cl-key *clt-secret* (clt-octets *clt-t-id*) *clt-alice*)
-             (fn-cl-key (make-list 32 :initial-element 8)
-                        (clt-octets *clt-t-id*) *clt-alice*))))
-
-; ---------------------------------------------------------------------------
-; fn-cll-insert-adds-only-the-lines: the lock sits directly after the
-; Injection-Info line (position 52 of *clt-t*), and taking it out gives the
-; injected octets.
-(assert-event
- (let* ((k (fn-cll-info-end *clt-t* 0 :start))
-        (lines (fn-cll-line *fn-cll-lock-head*
-                            (fn-cl-lock *clt-secret* (clt-octets *clt-t-id*) *clt-alice*))))
-   (and (equal k (len (clt-crlf-join (list "Path: fn.test!not-for-mail"
-                                           "Injection-Info: fn.test"))))
-        (equal *clt-t-stored*
-               (append (fn-cll-take k *clt-t*) lines (fn-cll-drop k *clt-t*)))
-        (equal (append (fn-cll-take k *clt-t*)
-                       (fn-cll-drop k (fn-cll-drop (len lines)
-                                                   (append lines (fn-cll-drop k *clt-t*)))))
-               (append (fn-cll-take k *clt-t*) (fn-cll-drop k (fn-cll-drop k *clt-t*))))
-        (equal (append (fn-cll-take k *clt-t*) (fn-cll-drop k *clt-t*)) *clt-t*))))
-; Removal of the Injection-Info line: octets this node did not inject get no
-; lines, even from an authenticated login.
-(defconst *clt-foreign*
-  (clt-crlf-join (list "Path: elsewhere!not-for-mail" "From: x <x@example.invalid>"
-                       "Newsgroups: local.general" "Subject: s"
-                       "Message-ID: <f1@elsewhere>" "" "body")))
-(assert-event
- (and (null (fn-cll-info-end *clt-foreign* 0 :start))
-      (equal (fn-cl-served-payload *clt-secret* *clt-alice* (clt-octets "<f1@elsewhere>")
-                                   *clt-foreign*)
-             *clt-foreign*)))
-; An Injection-Info in the body is not a header line.
-(assert-event
- (null (fn-cll-info-end (clt-crlf-join (list "Path: x!y" "Subject: s" ""
-                                             "Injection-Info: fn.test"))
-                        0 :start)))
-
-; fn-cl-served-payload-without-a-login-is-the-payload.
-(assert-event
- (and (equal (fn-cl-served-payload *clt-secret* nil (clt-octets *clt-t-id*) *clt-t*)
-             *clt-t*)
-      (equal (fn-cl-served-payload (make-list 31 :initial-element 7) *clt-alice*
-                                   (clt-octets *clt-t-id*) *clt-t*)
-             *clt-t*)))
-
-; A poster's own Cancel-Lock (tin) is kept and the node adds none.
-(defconst *clt-t-tin*
-  (clt-crlf-join (list "Path: fn.test!not-for-mail" "Injection-Info: fn.test"
-                       "From: tin <tin@example.invalid>" "Newsgroups: local.general"
-                       "Subject: mine" "Message-ID: <t3@fn.test>"
-                       "Cancel-Lock: sha256:OWNLOCKOWNLOCKOWNLOCKOWNLOCKOWNLOCKOWNLOCK123="
-                       "" "hello")))
-(assert-event
- (equal (fn-cl-served-payload *clt-secret* *clt-alice* (clt-octets "<t3@fn.test>")
-                              *clt-t-tin*)
-        *clt-t-tin*))
-
-; ---------------------------------------------------------------------------
 ; The visible view (fn-ctl-visible-articles, the owner refresh's definition):
 ; alice's cancel withdraws her post; bob's does not.
 (defun clt-art (msgid groups payload)
@@ -289,60 +223,135 @@
         (equal (fn-ctl-visible-articles arts ws nil) arts))))
 
 ; ---------------------------------------------------------------------------
-; fn-cl-served-payload-writes-one-login-lock: witness (alice's post: the
-; secret, a login, no poster lock; the node's Injection-Info line present)
-; and the conclusion in its stated form; then per hypothesis a removal.
-(defun clt-one-lock-form (secret login msgid payload)
-  (let ((fields (fn-ctl-received-fields payload))
-        (k (fn-cll-info-end payload 0 :start)))
-    (equal (fn-cl-served-payload secret login msgid payload)
-           (if k
-               (append (fn-cll-take k payload)
-                       (fn-cll-line *fn-cll-lock-head* (fn-cl-lock secret msgid login))
-                       (fn-cl-key-lines secret login fields)
-                       (fn-cll-drop k payload))
-             payload))))
+; fn-cl-served-payload-writes-one-account-lock: witness (alice's post: a
+; ring, an account, unsigned, no poster lock) with the conclusion in its
+; stated form; then per hypothesis a removal: the payload is then stored as
+; injected (a positive check of the retained hypotheses, the omitted one
+; false, the conclusion false).
+(defun clt-one-lock-form (ring account msgid payload)
+  (let ((fields (fn-ctl-received-fields payload)))
+    (append (fn-cll-line *fn-cll-lock-head*
+                         (fn-cl-lock (fn-ns-current ring) account msgid))
+            (if (consp (fn-cl-key-values ring account fields))
+                (fn-cll-key-line (fn-cl-key-values ring account fields))
+              nil)
+            payload)))
 (assert-event
- (and (fn-ns-secretp *clt-secret*) (consp *clt-alice*)
-      (fn-cbor-octet-listp *clt-alice*)
-      (not (consp (fn-ctl-fields-named *fn-ctl-cancel-lock-name*
-                                       (fn-ctl-received-fields *clt-t*))))
-      (fn-cll-info-end *clt-t* 0 :start)
-      (clt-one-lock-form *clt-secret* *clt-alice* (clt-octets *clt-t-id*) *clt-t*)
-      (not (equal *clt-t-stored* *clt-t*))))
-; No secret: nothing written, the conclusion's lock is absent.
+ (let ((fields (fn-ctl-received-fields *clt-t*)))
+   (and (fn-cl-lock-wanted-p *clt-secret* *clt-alice* fields)
+        (equal (fn-cl-served-payload *clt-secret* *clt-alice* (clt-octets *clt-t-id*) *clt-t*)
+               (clt-one-lock-form *clt-secret* *clt-alice* (clt-octets *clt-t-id*) *clt-t*)))))
+; Removal of the ring.
 (assert-event
- (not (clt-one-lock-form (make-list 31 :initial-element 7) *clt-alice*
-                         (clt-octets *clt-t-id*) *clt-t*)))
-(must-fail
- (assert-event (clt-one-lock-form (make-list 31 :initial-element 7) *clt-alice*
-                                  (clt-octets *clt-t-id*) *clt-t*)))
-; No login.
-(assert-event (not (clt-one-lock-form *clt-secret* nil (clt-octets *clt-t-id*) *clt-t*)))
-(must-fail
- (assert-event (clt-one-lock-form *clt-secret* nil (clt-octets *clt-t-id*) *clt-t*)))
-; The poster's own Cancel-Lock (tin): the node writes none.
+ (and (fn-cl-accountp *clt-alice*) (not (fn-ns-ringp nil))
+      (equal (fn-cl-served-payload nil *clt-alice* (clt-octets *clt-t-id*) *clt-t*) *clt-t*)
+      (not (equal *clt-t* (clt-one-lock-form *clt-secret* *clt-alice*
+                                             (clt-octets *clt-t-id*) *clt-t*)))))
+; Removal of the account (an unauthenticated POST).
 (assert-event
- (not (clt-one-lock-form *clt-secret* *clt-alice* (clt-octets "<t3@fn.test>") *clt-t-tin*)))
-(must-fail
- (assert-event
-  (clt-one-lock-form *clt-secret* *clt-alice* (clt-octets "<t3@fn.test>") *clt-t-tin*)))
+ (and (fn-ns-ringp *clt-secret*) (not (fn-cl-accountp nil))
+      (equal (fn-cl-served-payload *clt-secret* nil (clt-octets *clt-t-id*) *clt-t*) *clt-t*)))
+; Removal of "no poster Cancel-Lock": tin's article keeps its own lock and
+; gets none from the node (the poster's field is user input, never rewritten).
+(defconst *clt-t-tin*
+  (clt-crlf-join (list "Path: fn.test!not-for-mail" "Injection-Info: fn.test"
+                       "From: alice <alice@example.invalid>"
+                       "Newsgroups: local.general" "Subject: tin"
+                       "Cancel-Lock: sha256:tinlocktinlocktinlocktinlocktinlocktinlock0="
+                       "Message-ID: <t3@fn.test>" "" "hello")))
+(assert-event
+ (and (fn-ns-ringp *clt-secret*) (fn-cl-accountp *clt-alice*)
+      (not (fn-cl-lock-wanted-p *clt-secret* *clt-alice* (fn-ctl-received-fields *clt-t-tin*)))
+      (equal (fn-cl-served-payload *clt-secret* *clt-alice* (clt-octets "<t3@fn.test>")
+                                   *clt-t-tin*)
+             *clt-t-tin*)
+      (equal (fn-ctl-locks-octets *clt-t-tin*)
+             (list (clt-octets "tinlocktinlocktinlocktinlocktinlocktinlock0=")))))
+; Removal of "unsigned": a signed article (an FN-Authorship carrier) gets
+; neither a lock nor a key: its signed bytes are never edited.
+(defconst *clt-t-signed*
+  (clt-crlf-join (list "Path: fn.test!not-for-mail" "Injection-Info: fn.test"
+                       "From: alice <alice@example.invalid>"
+                       "Newsgroups: local.general" "Subject: signed"
+                       "FN-Authorship: v1 x"
+                       "Message-ID: <t4@fn.test>" "" "hello")))
+(assert-event
+ (and (fn-ns-ringp *clt-secret*) (fn-cl-accountp *clt-alice*)
+      (not (fn-cl-unsigned-p (fn-ctl-received-fields *clt-t-signed*)))
+      (equal (fn-cl-served-payload *clt-secret* *clt-alice* (clt-octets "<t4@fn.test>")
+                                   *clt-t-signed*)
+             *clt-t-signed*)))
 
-; fn-cl-login-key-opens-exactly-its-lock: alice's key opens alice's lock
-; (the iff's two sides true); bob's does not (both sides false: his lock
-; is another value).
+; ---------------------------------------------------------------------------
+; fn-cl-served-payload-projects-to-the-injected-octets (D25): witness (the
+; payload opens with its block, not "C"); the projection of what alice and
+; bob store for the same source is the injected octets, though the stored
+; octets differ (their locks differ).
+(defconst *clt-t-stored-bob*
+  (fn-cl-served-payload *clt-secret* *clt-bob* (clt-octets *clt-t-id*) *clt-t*))
+(defconst *clt-t-stored-e2*
+  (fn-cl-served-payload *clt-ring2* *clt-alice* (clt-octets *clt-t-id*) *clt-t*))
+(assert-event
+ (and (not (equal (car *clt-t*) 67))
+      (not (equal *clt-t-stored* *clt-t-stored-bob*))
+      (not (equal *clt-t-stored* *clt-t-stored-e2*))
+      (equal (fn-cll-skip *clt-t-stored*) *clt-t*)
+      (equal (fn-cll-skip *clt-t-stored-bob*) *clt-t*)
+      (equal (fn-cll-skip *clt-t-stored-e2*) *clt-t*)
+      (equal (fn-cll-skip *clt-c-alice-stored*) *clt-c-alice*)))
+; Removal: a payload that itself opens with a Cancel-Lock line (no
+; injection does) loses that line to the projection.
+(assert-event
+ (let ((x (append (clt-octets "Cancel-Lock: sha256:x") '(13 10) *clt-t*)))
+   (and (equal (car x) 67)
+        (not (equal (fn-cll-skip (fn-cl-served-payload *clt-secret* *clt-alice*
+                                                       (clt-octets *clt-t-id*) x))
+                    x)))))
+
+; ---------------------------------------------------------------------------
+; fn-cl-ring-keys-open-every-retained-lock (rotation): alice's post locked
+; under epoch 1; after the rotation her cancel carries one key per retained
+; epoch (2 then 1), and one of them opens the old lock.
+(defconst *clt-c-alice-e2-stored*
+  (fn-cl-served-payload *clt-ring2* *clt-alice* (clt-octets "<c5@fn.test>")
+                        (clt-cancel "<c5@fn.test>")))
+(assert-event
+ (let ((keys (fn-ctl-keys-octets *clt-c-alice-e2-stored*))
+       (locks (fn-ctl-locks-octets *clt-t-stored*)))
+   (and (member-equal *clt-e1* *clt-ring2*)
+        (fn-ctl-lock-memberp (fn-cl-lock *clt-e1* *clt-alice* (clt-octets *clt-t-id*)) locks)
+        (equal keys (fn-cl-ring-keys *clt-ring2* *clt-alice* (clt-octets *clt-t-id*)))
+        (equal (len keys) 2)
+        (fn-ctl-some-key-opens-p keys locks))))
+; Removal of "retained": a ring that dropped epoch 1 has no key for it.
+(assert-event
+ (let ((locks (fn-ctl-locks-octets *clt-t-stored*)))
+   (and (not (member-equal *clt-e1* (list *clt-e2*)))
+        (not (fn-ctl-some-key-opens-p (fn-cl-ring-keys (list *clt-e2*) *clt-alice*
+                                                       (clt-octets *clt-t-id*))
+                                      locks)))))
+; Removal of "the lock is the entry's lock for this account": bob's keys over
+; the same ring open nothing.
+(assert-event
+ (not (fn-ctl-some-key-opens-p (fn-cl-ring-keys *clt-ring2* *clt-bob* (clt-octets *clt-t-id*))
+                               (fn-ctl-locks-octets *clt-t-stored*))))
+
+; ---------------------------------------------------------------------------
+; fn-cl-account-key-opens-exactly-its-lock: alice's key opens alice's lock
+; (the equality holds); bob's does not (the equality fails): the retrying
+; account's cancel is refused.
 (assert-event
  (and (fn-ctl-some-key-opens-p
-       (list (fn-cl-key *clt-secret* (clt-octets *clt-t-id*) *clt-alice*))
-       (list (fn-cl-lock *clt-secret* (clt-octets *clt-t-id*) *clt-alice*)))
+       (list (fn-cl-key *clt-e1* *clt-alice* (clt-octets *clt-t-id*)))
+       (list (fn-cl-lock *clt-e1* *clt-alice* (clt-octets *clt-t-id*))))
       (not (fn-ctl-some-key-opens-p
-            (list (fn-cl-key *clt-secret* (clt-octets *clt-t-id*) *clt-bob*))
-            (list (fn-cl-lock *clt-secret* (clt-octets *clt-t-id*) *clt-alice*))))
-      (not (equal (fn-cl-lock *clt-secret* (clt-octets *clt-t-id*) *clt-bob*)
-                  (fn-cl-lock *clt-secret* (clt-octets *clt-t-id*) *clt-alice*)))))
-; The Cancel-Lock key is the node secret's labelled use, not the bare HMAC.
+            (list (fn-cl-key *clt-e1* *clt-bob* (clt-octets *clt-t-id*)))
+            (list (fn-cl-lock *clt-e1* *clt-alice* (clt-octets *clt-t-id*)))))
+      (not (equal (fn-cl-lock *clt-e1* *clt-bob* (clt-octets *clt-t-id*))
+                  (fn-cl-lock *clt-e1* *clt-alice* (clt-octets *clt-t-id*))))))
+; The key is RFC 8315's over the purpose key, not a bare HMAC of the root.
 (assert-event
- (not (equal (fn-cl-key *clt-secret* (clt-octets *clt-t-id*) *clt-alice*)
+ (not (equal (fn-cl-key *clt-e1* *clt-alice* (clt-octets *clt-t-id*))
              (fn-stx-b64-encode
-              (fn-ns-hmac-sha256 *clt-secret*
-                                 (append (clt-octets *clt-t-id*) *clt-alice*))))))
+              (fn-ns-hmac-sha256 (fn-ns-entry-root *clt-e1*)
+                                 (append (fn-cl-uid *clt-alice*) (clt-octets *clt-t-id*)))))))

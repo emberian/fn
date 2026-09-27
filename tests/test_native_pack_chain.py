@@ -156,6 +156,10 @@ class NativePackChainTests(unittest.TestCase):
         recorded = json.loads((fixture / "before-view.json").read_text(encoding="ascii"))
         store = self.base / name
         shutil.copytree(fixture / "store", store, symlinks=True)
+        # SEC-006: a fixture built before the key files gets its secret once
+        # (a start never creates one).
+        if not (store / "keys" / "node-secret.key").exists():
+            self.native("store", store, "node-secret", "create")
         config, port = self.owner_config(store, name)
         return (origin["n"], store, config, port, recorded["sample"],
                 decode_view(recorded["view"]),
