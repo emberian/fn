@@ -150,7 +150,7 @@
                                              (fn-smid-observed-identity obs2))))))
 
 ; -----------------------------------------------------------------------------
-; PKT-706: the stranger rehearsal's case.  `init' outside the shipped unit
+; PKT-820: the stranger rehearsal's case.  `init' outside the shipped unit
 ; saw /var/lib/fn/store on the overlay root (`/'); inside the unit
 ; (ProtectSystem=strict, ReadWritePaths=/var/lib/fn) the same overlay is
 ; bind-mounted at /var/lib/fn.  Both report fsid fed8002cbb8c0fad.
@@ -181,7 +181,7 @@
 (assert-event (equal (car *smid-t-sr-plan*) :record))
 
 ; fn-smid-same-fsid-view-opens: the witness (the mount points differ; before
-; PKT-706 this was refused `filesystem-changed').
+; PKT-820 this was refused `filesystem-changed').
 (assert-event (equal (fn-smid-open-verdict (smid-t-sr-record) *smid-t-sr-inside*)
                      (list :open)))
 (assert-event (equal (fn-smid-start-verdict (smid-t-sr-record) *smid-t-sr-inside*)

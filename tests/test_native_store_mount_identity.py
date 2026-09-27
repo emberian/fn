@@ -128,7 +128,7 @@ class MountIdentityNativeTests(unittest.TestCase):
     def in_bind_view(self, directory, *words):
         """WORDS run where DIRECTORY is bind-mounted onto itself, the view the
         shipped systemd unit's ProtectSystem=strict + ReadWritePaths gives the
-        service (PKT-706), made here in a user and mount namespace so no root
+        service (PKT-820), made here in a user and mount namespace so no root
         is needed.  Answers the result, or None when this host refuses
         unprivileged namespaces."""
         unshare = shutil.which("unshare")
@@ -147,7 +147,7 @@ class MountIdentityNativeTests(unittest.TestCase):
             stderr=subprocess.PIPE, timeout=180, check=False)
 
     def test_the_units_bind_view_of_the_same_filesystem_opens(self):
-        # PKT-706: init outside the unit records the mount point the store
+        # PKT-820: init outside the unit records the mount point the store
         # directory is under; inside the unit the node directory is its own
         # (bind) mount.  The fsid is the same, so the open proceeds.
         node = self.other / "node"

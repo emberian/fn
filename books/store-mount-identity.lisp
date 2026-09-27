@@ -32,7 +32,7 @@
 ; Where both fsids are known neither the source nor the mount point is
 ; compared: a loop device number, or a /dev/sdX name, can change across a
 ; remount while the volume is the same, and the mount point is a property of
-; the viewer's mount namespace, not of the filesystem (PKT-706, the stranger
+; the viewer's mount namespace, not of the filesystem (PKT-820, the stranger
 ; rehearsal of 2026-09-27).  The shipped systemd unit's ProtectSystem=strict
 ; with ReadWritePaths=/var/lib/fn bind-mounts /var/lib/fn onto itself in the
 ; service's namespace, so the service sees the store at a mount point
@@ -836,7 +836,7 @@
                                       fn-smid-observed-identity
                                       fn-smid-observationp)))))
 
-; KEYSTONE (PKT-706, the sandboxed view).  A store recorded from observation
+; KEYSTONE (PKT-820, the sandboxed view).  A store recorded from observation
 ; OBS opens under OBS2 whenever both report the same nonzero fsid and the
 ; same type, whatever mount point and source OBS2 shows: the shipped unit's
 ; ReadWritePaths bind view of /var/lib/fn, recorded as `/' by an `init' or a
@@ -969,7 +969,7 @@
                             (obs2 obs)
                             (policy (fn-smid-rebind-policy record requested)))))))
 
-;; KEYSTONE (PKT-706, the cure).  `store rebind-filesystem' run where the
+;; KEYSTONE (PKT-820, the cure).  `store rebind-filesystem' run where the
 ;; operator is (outside the unit, observation OBS) cures the open the unit's
 ;; namespace makes (OBS2) whenever the two see one filesystem by its fsid:
 ;; the remedy the refusal names is one that works.
