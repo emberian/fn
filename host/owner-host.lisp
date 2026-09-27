@@ -371,15 +371,15 @@
         ; byte and seals nothing (fn-sca-load-held-rows).
         (let ((fn-cat (fn-sca-load-held-rows (fn-sf-records (fn-sn-files store))
                                              (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
-                                             fn-arena fn-cat))
-              ; Stage 2b: the history stobj IS the installed store's history
+                                             fn-arena fn-cat)))
+          (let (; Stage 2b: the history stobj IS the installed store's history
               ; (KEYSTONE fn-hist-load-is-the-history,
               ; books/history-columns.lisp): R is established here, at every
               ; install, and the budget readers below sync it forward
               ; (fn-hist-sync-after-run-is-the-history).  The salt keys only
               ; the Message-ID buckets, which no reader here consults yet.
-              (fn-hist (fn-hist-load (fn-sf-records (fn-sn-files store)) 0 fn-hist)))
-          (mv nil :recovering fn-arena fn-cat fn-hist state)))))
+                (fn-hist (fn-hist-load (fn-sf-records (fn-sn-files store)) 0 fn-hist)))
+            (mv nil :recovering fn-arena fn-cat fn-hist state))))))
 
 (defun fn-owner-recover-extended (extended config-records frontier max-conns fn-arena fn-cat fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
