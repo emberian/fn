@@ -6465,8 +6465,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-pcar-sbud-prepare-keeps-the-stored-octets",
-          "note": "The served POST (host/owner-host.lisp fn-owner-prepare -> fn-pcar-sbud-prepare over the row fn-intern-row-at makes at the arena's count, then the seal when the store changed) keeps fn-sbud-store-extents-okp: the budget's octets stay the stored octets."
+          "name": "fn-sbud-prepare-keeps-the-stored-octets",
+          "note": "The served POST (host/owner-host.lisp fn-owner-prepare -> fn-pcar-sbud-prepare, which is fn-sbud-prepare by fn-pcar-sbud-prepare-is-sbud-prepare, over the row fn-intern-row-at makes at the arena's count, then the seal when the store changed) keeps fn-sbud-store-extents-okp: the budget's octets stay the stored octets."
         }
       ]
     },

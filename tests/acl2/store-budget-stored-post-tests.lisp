@@ -143,15 +143,12 @@
 ; live arena satisfies; no removal witness is claimed for it.
 
 ; -----------------------------------------------------------------------------
-; The owner's POST (fn-pcar-sbud-prepare-keeps-the-stored-octets): an owner
-; over the reached store *sbsp-s4*; the row fn-intern-row-at makes of W2 at the
-; arena's count; the seal when the store changed.  DEV'S carried prepare
-; (books/owner-prepare-carried.lisp fn-pcar-spc-prepare, 2026-09-27) still
-; asks fn-rcon-record-p of what it stages, so on dev it refuses the row and
-; this witness reaches the REFUSAL branch (store and arena unchanged); once
-; flip-L6's carried prepare stages held rows it reaches the STAGING branch
-; (row at handle 1, W2's payload sealed).  The assertions below hold on both
-; branches, and the keystone's proof covers both.
+; The owner's POST (fn-sbud-prepare-keeps-the-stored-octets; the host's
+; fn-pcar-sbud-prepare is fn-sbud-prepare by
+; fn-pcar-sbud-prepare-is-sbud-prepare): an owner over the reached store
+; *sbsp-s4*; the row fn-intern-row-at makes of W2 at the arena's count; the
+; seal when the store changed.  Reachable, staging: the row at handle 1, W2's
+; payload sealed, the relation before and after.
 (defconst *sbsp-oc* (fn-ocfg-make (fn-own-start *sbsp-s4* 4) nil nil nil))
 (assert-event (equal (fn-sbud-oc-store *sbsp-oc*) *sbsp-s4*))
 
@@ -164,7 +161,7 @@
            (before (fn-sbud-store-extents-okp s fn-arena))
            (row (fn-intern-row-at w (fn-sn-keyring s) (fn-sn-keyring-generation s)
                                   (fn-arena-count fn-arena)))
-           (next (fn-pcar-sbud-prepare oc row 100)))
+           (next (fn-sbud-prepare oc row 100)))
       (if (equal (fn-sbud-oc-store next) s)
           (mv (list before (fn-sbud-oc-store next)
                     (fn-sbud-store-extents-okp (fn-sbud-oc-store next) fn-arena))
@@ -180,6 +177,9 @@
 
 (defconst *sbsp-own* (sbsp-owner *sbsp-oc* *sbsp-w2* (list *sbsp-w1*)))
 (assert-event (equal (nth 0 *sbsp-own*) t))
+(assert-event (equal (fn-sf-phase (fn-sn-files (nth 1 *sbsp-own*))) :record-staged))
+(assert-event (equal (fn-record-payload (fn-sf-record-candidate (fn-sn-files (nth 1 *sbsp-own*))))
+                     1))
 (assert-event (equal (nth 2 *sbsp-own*) t))
 ; Removal of the relation: the empty arena.
 (defconst *sbsp-own-bad* (sbsp-owner *sbsp-oc* *sbsp-w2* nil))
