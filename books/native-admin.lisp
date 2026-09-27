@@ -296,13 +296,15 @@
 ;; record with LOGIN "" and no row.
 (defun fn-native-admin-consumer-plan (words argv)
   (declare (xargs :guard t))
-  (cond ((and (equal (len words) 3)
+  ;; WORDS and ARGV start at the verb: (bind NAME --account LOGIN),
+  ;; (unbind NAME), (show).
+  (cond ((and (equal (len words) 2)
               (equal (fn-native-admin-arg 0 words) "unbind"))
          (if (fn-cfg-consumer-namep (fn-native-admin-arg 1 words))
              (fn-native-admin-result :accepted nil :consumer-bind
                                      (fn-native-admin-arg 1 argv) 0 nil nil)
            (fn-native-admin-result :refused :consumer-name nil nil 0 nil nil)))
-        ((and (equal (len words) 5)
+        ((and (equal (len words) 4)
               (equal (fn-native-admin-arg 0 words) "bind")
               (equal (fn-native-admin-arg 2 words) "--account"))
          (cond ((not (fn-cfg-consumer-namep (fn-native-admin-arg 1 words)))
