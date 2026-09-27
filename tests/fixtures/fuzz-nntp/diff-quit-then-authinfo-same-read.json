@@ -1,0 +1,11 @@
+{
+ "campaign": "diff",
+ "class": "shape",
+ "minimized_hex": [
+  "515549540d0a41555448494e464f205553455220780d0a"
+ ],
+ "note": "Model and host agree, and both answer 381 after 205 in the same read: RFC 3977 section 5.4 (the server closes after acknowledging QUIT).",
+ "packet": "F1 (after-QUIT)",
+ "status": "open",
+ "store": "-"
+}
