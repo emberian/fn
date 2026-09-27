@@ -350,3 +350,11 @@
                                    fn-nntp-retrieval-initial
                                    fn-nntp-article-idp fn-rcl-tombstonep
                                    fn-nntp-set-cursor)))))
+
+; The equations above restate the served machine's own functions; books
+; that reason about those functions keep their theory (enable these by name).
+(in-theory (disable fn-nntp-article-response-is-of-bytes
+                    fn-nntp-article-section-unfolds
+                    fn-nntp-article-framedp-unfolds
+                    fn-nntp-blank-linep-is-split-okp
+                    fn-nntp-crlf-validp-is-crlf-lines-ok))

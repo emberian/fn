@@ -708,7 +708,8 @@
                   (fn-rcompat-article-reply session article number kind updatep
                                             group server fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-rcompat-article-reply-exec
-                                   fn-rcompat-article-reply)
+                                   fn-rcompat-article-reply
+                                   fn-nntp-article-response-is-of-bytes)
                                   (fn-nntp-article-response-of-bytes
                                    fn-nntp-response-okp-of-bytes
                                    fn-rcompat-served-payload-of-bytes
