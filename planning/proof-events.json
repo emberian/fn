@@ -7379,6 +7379,67 @@
           "note": "KEYSTONE at the owner: the read host/owner-host.lisp fn-owner-chunk(-span) calls hands fn-own-finish-read at most one submission."
         }
       ]
+    },
+    {
+      "id": "PRF-222",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-state-is-a-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-index-corresponds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-state-groups-are-readable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-articles-memberships-readable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-index-withdrawn-are-readable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restricted-article-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-absent-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-deselected-consistent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-consistent-back"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-when-unrestricted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-consistent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-consistent-back"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-trie-corresponds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-delegate-pinned-preserves-consistentp"
+        }
+      ]
     }
   ]
 }

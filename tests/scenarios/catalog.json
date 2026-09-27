@@ -4292,6 +4292,38 @@
         "Four 239s in order, each echoing its Message-ID, then 205; all four stored byte-identical.",
         "340 240 340 240 340 240 340 240 205 in that order (no 340 before the 240 of the article preceding it); all four stored."
       ]
+    },
+    {
+      "id": "SCN-152",
+      "title": "Two accounts, one private group: the restricted login cannot list, select, read by number or Message-ID, or post to it; the other can; after a restart too; on both images",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "NNT-046",
+        "SEC-007"
+      ],
+      "steps": [
+        "`init local.general`; `group create fn.public`, `group create fn.private.x`; start the owner (implicit TLS, protected_only).",
+        "Invite and redeem alice and bob (XREDEEM); alice posts <secret> to fn.private.x, <pub> to fn.public, <cross> to both.",
+        "Live `account access bob --read 'fn.[' --post '*'` (refused), then `account access bob --read 'fn.*,!fn.private.*' --post fn.public`; `account access show`.",
+        "bob on a new connection: LIST ACTIVE, LIST NEWSGROUPS, LIST COUNTS; GROUP fn.absent, GROUP fn.private.x, LISTGROUP fn.private.x; STAT <nothere>, STAT <secret>, ARTICLE <secret>, STAT <cross>; GROUP fn.public; OVER <cross>; POST to fn.private.x and to fn.absent; POST to fn.public.",
+        "alice on a new connection: LIST ACTIVE, GROUP fn.private.x, ARTICLE <secret>, POST to fn.private.x.",
+        "Restart the owner and repeat the two connections."
+      ],
+      "expected": [
+        "The refused pattern exits non-zero; the rule exits 0; `show` prints `access bob read fn.*,!fn.private.* post fn.public`.",
+        "bob's LIST variants omit fn.private.x and list fn.public; GROUP fn.private.x answers the same line as GROUP fn.absent (411); LISTGROUP 411; STAT <secret> answers the same line as STAT <nothere> (430); ARTICLE <secret> 430; STAT <cross> 223; GROUP fn.public 211; OVER <cross> 224 without fn.private.x; the POST to fn.private.x answers the 441 a POST to fn.absent answers; the POST to fn.public 240.",
+        "alice lists fn.private.x, GROUP 211, ARTICLE 220, POST 240.",
+        "After the restart, the same."
+      ],
+      "implementation": {
+        "test": "tests.test_native_group_access",
+        "cases": [
+          "NativeGroupAccessTests.test_two_accounts_one_private_group"
+        ],
+        "native": true,
+        "record": "planning/evidence/group-access-2026-09-27.md"
+      }
     }
   ]
 }
