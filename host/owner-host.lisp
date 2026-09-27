@@ -124,6 +124,8 @@
 (include-book "../books/feed-journal")
 (include-book "../books/peer-pull")
 (include-book "../books/peer-pull-session")
+; PRF-325: catching up from a peer (the XFNCATCHUP requester).
+(include-book "../books/peer-catchup")
 (include-book "../books/consumer-owner-local")
 (include-book "../books/consumer-bound")
 (include-book "../books/consumer-wait")
@@ -3763,3 +3765,9 @@ existing port only after fn-fc has made this connection ready."
 (defun fn-owner-pull-plans (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pull-plans (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
+
+; PRF-325: the peers this node catches up from (books/peer-catchup.lisp
+; `fn-cu-plans'); host/native/pull-service.lisp drives each round.
+(defun fn-owner-catchup-plans (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cu-plans (fn-cfg-peers (fn-cfg-value (fn-owner-config state))))))
