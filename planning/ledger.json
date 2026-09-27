@@ -1057,7 +1057,7 @@
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 166,
     "include_hygiene_warnings": 1056,
-    "host_names_warnings": 1193,
+    "host_names_warnings": 1195,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -47392,7 +47392,21 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3891,
+        "line": 3797,
+        "name": "char/=",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/io.lisp",
+        "line": 3806,
+        "name": "read-line",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/io.lisp",
+        "line": 3921,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
