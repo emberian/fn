@@ -2405,6 +2405,51 @@
           (equal (fn-served-conn-live c) (fn-own-view-live (fn-own-view o)))))
    :hints (("Goal" :in-theory (enable fn-own-served-conn)))))
 
+; The surviving connection IS the connection fn-own-finish-read rebuilt from
+; the served result (the pin from the served connection, the identifier and
+; the pinned configuration and observation from the found connection).
+; The read's third answer, without opening the read.
+(local
+ (defthm fn-own-read-repinned-is-the-served-flag
+   (implies (fn-own-find-conn id (fn-own-conns o))
+            (equal (fn-own-read-repinned o id octets)
+                   (fn-own-result-repinned
+                    (fn-served-step
+                     (fn-own-served-conn o (fn-own-find-conn id (fn-own-conns o))
+                                         (fn-own-conn-live-session
+                                          o (fn-own-find-conn id (fn-own-conns o))))
+                     octets))))
+   :hints (("Goal" :in-theory (e/d (fn-own-read-repinned fn-own-read-full)
+                                   (fn-served-step fn-own-finish-read fn-own-served-conn
+                                    fn-own-result-repinned fn-own-conn-live-session))))))
+
+(local
+ (defthm fn-own-read-survivor-is-next
+   (implies
+    (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets))))
+    (equal (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets))))
+           (let* ((conn (fn-own-find-conn id (fn-own-conns o)))
+                  (sconn (fn-served-result-conn
+                          (fn-served-step
+                           (fn-own-served-conn o conn (fn-own-conn-live-session o conn))
+                           octets)))
+                  (pinned (fn-served-conn-pinned sconn)))
+             (fn-own-conn-make-group-indexed
+              id (fn-served-pinned-version pinned) (fn-served-pinned-frontier pinned)
+              (fn-served-conn-wire sconn) (fn-served-conn-session sconn)
+              (fn-served-conn-archive sconn)
+              (fn-own-conn-config conn) (fn-own-conn-observation conn)
+              (fn-served-conn-verdicts sconn) (fn-served-conn-index sconn)
+              (fn-served-conn-group-index sconn) (fn-served-conn-control sconn)))))
+   :hints (("Goal"
+            :use ((:instance fn-own-find-conn-id (conns (fn-own-conns o))))
+            :in-theory (e/d (fn-own-read fn-own-read-full fn-own-finish-read
+                             fn-own-set-conns fn-own-enqueue)
+                            (fn-served-step fn-own-conn-boundedp
+                             fn-own-conn-make-group-indexed fn-own-served-conn
+                             fn-served-make-conn-group-indexed fn-served-make-conn-live
+                             fn-own-conn-live-session))))))
+
 ; NNT-042: the survivor keeps its identifier; its pin is the old one or the
 ; view's (fn-served-step-pin-is-old-or-live), and which one is what
 ; fn-own-read-repinned says.
@@ -2466,14 +2511,18 @@
                                   (fn-own-conn-live-session
                                    o (fn-own-find-conn id (fn-own-conns o))))
                                  octets)))))
-           :in-theory (e/d (fn-own-read fn-own-read-full fn-own-read-repinned
-                            fn-own-finish-read fn-own-result-repinned
-                            fn-own-set-conns fn-own-enqueue fn-served-conn-pin
-                            fn-served-live-pin)
-                           (fn-served-step fn-own-conn-boundedp
+           :in-theory (e/d (fn-own-result-repinned
+                            fn-own-read-survivor-is-next
+                            fn-own-read-repinned-is-the-served-flag)
+                           (fn-own-read fn-own-read-full fn-own-finish-read
+                            fn-served-step fn-own-conn-boundedp
                             fn-own-conn-make-group-indexed fn-own-served-conn
                             fn-served-make-conn-group-indexed fn-served-make-conn-live
-                            fn-served-pin-old-or-live-p fn-own-conn-live-session)))))
+                            fn-served-pin-old-or-live-p fn-own-conn-live-session
+                            fn-served-conn-pin fn-served-live-pin
+                            fn-served-step-pin-is-old-or-live
+                            fn-served-pin-old-or-live-p-cases
+                            fn-own-read-repinned)))))
 
 ; The survivor's wire framing state is the served step's, and that step
 ; started from the connection's own wire (books/config-owner-read-invariants).
