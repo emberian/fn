@@ -1163,3 +1163,8 @@
 ; The unfolding rules stay available by name (the crash book enables them
 ; where it steps a batch chunk by chunk).
 (in-theory (disable fn-lg-log-unfolds fn-lg-last-trailer-unfolds))
+
+; A chunk's frame is used through its lemmas (length, octets, slice, open,
+; records), never by opening the packed body.
+(in-theory (disable fn-lg-frame-body fn-lg-frame-kind fn-lg-pack fn-lg-unpack
+                    fn-lg-unpack-exactp))

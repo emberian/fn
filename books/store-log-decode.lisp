@@ -20,7 +20,7 @@
 ; with fn-lgd-octets the string's character codes, the logical model.  The
 ; loop is tail-recursive (the records accumulate reversed and are reversed
 ; once), so a long segment costs no stack.  The frame codec's helpers the
-; loop calls (fn-lg-declared-len, fn-lg-entry-okp, fn-lg-slice-record,
+; loop calls (fn-lg-declared-len, fn-lg-entry-okp, fn-lg-slice-records,
 ; fn-lg-trailer: guards not verified in books/store-log.lisp) run through
 ; ec-call on octet lists of one entry; the SHA-256 digest of the frame's
 ; open dominates each step.
@@ -98,7 +98,7 @@
           (if (not (ec-call (fn-lg-entry-okp slice prev max)))
               (mv (revappend acc nil) pos prev)
             (let ((step (+ n (fn-lg-pad-len n unit)))
-                  (record (ec-call (fn-lg-slice-record slice max)))
+                  (record (ec-call (fn-lg-slice-records slice max)))
                   (last (ec-call (fn-lg-trailer slice))))
               (if (< (+ pos step) (length s))
                   (fn-lgd-loop s (+ pos step) last unit max (cons record acc))
@@ -220,7 +220,7 @@
   :hints (("Goal" :induct (fn-lgd-loop s pos prev unit max acc)
            :expand ((fn-lg-scan (nthcdr pos (fn-lgd-octets s)) prev unit max)
                     (fn-lg-scan-last (nthcdr pos (fn-lgd-octets s)) prev unit max))
-           :in-theory (disable fn-lg-declared-len fn-lg-entry-okp fn-lg-slice-record
+           :in-theory (disable fn-lg-declared-len fn-lg-entry-okp fn-lg-slice-records
                                fn-lg-trailer fn-lg-pad-len fn-lgd-range fn-lg-scan
                                fn-lg-scan-last fn-lg-slice fn-lgd-octets length
                                fn-lgd-declared-at

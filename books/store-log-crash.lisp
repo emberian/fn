@@ -603,6 +603,9 @@
 (defthm fn-lgc-take-true-listp
    (true-listp (fn-bs-take n x)))
 
+(defthm fn-lgc-consp-take
+   (implies (posp k) (consp (fn-bs-take k x))))
+
 (defthm fn-lgc-chunk-len-of-prefix
    (implies (and (consp batch)
                  (fn-lg-prefixp p (nthcdr (fn-lg-chunk-len batch) batch)))
@@ -693,7 +696,8 @@
                            (fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-slice fn-lg-scan
                             fn-lg-forgery-in fn-lg-chunkp fn-lg-recordsp fn-lgc-log-of-prefix
                             fn-lgc-scan-when-slice-is-frame fn-lg-take-then-nthcdr-append-2
-                            fn-lgc-prefixp-of-append-chunk (:definition fn-lg-log)))
+                            fn-lgc-prefixp-of-append-chunk (:definition fn-lg-log)
+                            fn-lg-chunk-len fn-lg-entry-len fn-lg-frame-len))
            :use ((:instance fn-lg-chunkp-of-first-chunk (records batch))
                  (:instance fn-lgc-scan-when-slice-is-frame (chunk (fn-bs-take (fn-lg-chunk-len batch) batch)))
                  (:instance fn-lg-take-then-nthcdr-append-2 (k (fn-lg-chunk-len batch)) (x batch))
@@ -900,7 +904,8 @@
            (not (fn-lg-forgery-in x batch prev unit max)))
   :hints (("Goal" :induct (fn-lg-forgery-in x batch prev unit max)
            :in-theory (disable fn-lg-frame fn-lg-entry fn-lg-slice fn-lg-trailer
-                               fn-lg-forgeryp fn-lg-entry-okp))))
+                               fn-lg-forgeryp fn-lg-entry-okp fn-lg-chunk-len fn-bs-take
+                               fn-lg-entry-len fn-lg-frame-len))))
 
 (defthm fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer
   (implies (and (posp (fn-bs-unit s)) (natp k) ino (true-listp d)
@@ -927,3 +932,9 @@
                  (:instance fn-lg-no-forgery-under-a-crypto-trailer
                             (x (nthcdr (len d) (fn-bs-durable-content image ino)))
                             (prev last) (unit (fn-bs-unit s)))))))
+
+; The chunk-stepping rules are named where a proof steps a batch; they stay
+; out of the default theory of the books above.
+(in-theory (disable fn-lgc-log-len-of-consp fn-lgc-log-of-prefix
+                    fn-lgc-chunk-len-of-prefix fn-lgc-fit-count-of-prefix
+                    fn-bs-crash-of-aligned-append fn-lgc-unit-le-multiple))

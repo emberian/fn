@@ -79,7 +79,7 @@
                    (equal (mod a unit) 0) (equal (mod b unit) 0))
               (equal (mod (- a b) unit) 0)))))
 
-(local (in-theory (disable fn-lg-declared-len fn-lg-entry-okp fn-lg-slice-record
+(local (in-theory (disable fn-lg-declared-len fn-lg-entry-okp fn-lg-slice-records
                            fn-lg-trailer fn-lg-pad-len)))
 
 (defthm fn-lg-scan-consumed-aligned
