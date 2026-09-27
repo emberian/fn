@@ -6,6 +6,9 @@
 # its TLS port (563, or the tls_port in fn.toml) or its plain port
 # (119, or the port in fn.toml; the reader then switches to TLS itself).
 node = news.example.org:563
+# The reader speaks TLS from the first octet only on port 563.  On any other
+# TLS port (the tls_port in fn.toml, like 11564 on OpenBSD) add:
+# tls = yes
 
 # How the reader checks that it is talking to your node.
 # A certificate you made yourself: a copy of the node's tls/cert.pem here
