@@ -4,6 +4,7 @@
 (include-book "../books/native-control-reason")
 (include-book "../books/consumer-local-control")
 (include-book "../books/consumer-wait-codec")
+(include-book "../books/consumer-reason")
 (include-book "../books/topic-history-local-control")
 
 (defun fn-native-control-host-topic-request-encode (operation sequence quota)
@@ -173,8 +174,9 @@
   (+ *fn-frame-overhead-octets* *fn-ncl-status-max-payload*))
 
 (defun fn-native-control-host-consumer-cli-plan (command argv)
+  ;; PKT-709: `--json COMMAND ...' is (:json PLAN) (books/consumer-reason.lisp).
   (declare (xargs :mode :program))
-  (fn-cwait-cli-plan command argv))
+  (fn-ncr-cli-plan command argv))
 
 ;; PRF-252: the article a poll report carries (fn_agent's reader).
 (defun fn-native-control-host-consumer-report-article (octets)
@@ -204,8 +206,11 @@
   (fn-native-control-reasoned-admin-decode octets))
 
 (defun fn-native-control-host-reasoned-framep (octets)
+  ;; PKT-709: a reasoned consumer request (kind 22) is answered, however its
+  ;; handling ends, with the reasoned reply too (books/consumer-reason.lisp).
   (declare (xargs :mode :program))
-  (fn-native-control-reasoned-framep octets))
+  (or (fn-native-control-reasoned-framep octets)
+      (fn-ncr-framep octets)))
 
 (defun fn-native-control-host-reasoned-reply-encode (status reason)
   (declare (xargs :mode :program))
@@ -222,3 +227,35 @@
   ; The reason word the operator's line carries after the status, or nil.
   (declare (xargs :mode :program))
   (fn-native-control-reply-detail status word))
+
+;; PKT-709, PKT-710 (books/consumer-reason.lisp): the reasoned consumer
+;; request (FNCT kind 22), the client's read of the owner's answer, the
+;; register retry, the report summary and the JSON lines.
+(defun fn-native-control-host-consumer-reasoned-request-encode (kind first second)
+  (declare (xargs :mode :program))
+  (fn-ncr-request-encode kind first second))
+
+(defun fn-native-control-host-consumer-reasoned-request-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-ncr-request-decode octets))
+
+(defun fn-native-control-host-consumer-client-read (operation octets)
+  ;; (:status STATUS WORD), (:reply REPLY), (:resend) or (:transport).
+  (declare (xargs :mode :program))
+  (fn-ncr-client-read operation octets))
+
+(defun fn-native-control-host-consumer-cli-after (operation status word)
+  (declare (xargs :mode :program))
+  (fn-ncr-cli-after operation status word))
+
+(defun fn-native-control-host-consumer-report-summary (octets)
+  (declare (xargs :mode :program))
+  (fn-ncr-report-summary octets))
+
+(defun fn-native-control-host-consumer-json-line (operation status word counts summary)
+  (declare (xargs :mode :program))
+  (fn-ncr-json-line operation status word counts summary))
+
+(defun fn-native-control-host-consumer-article-json (summary)
+  (declare (xargs :mode :program))
+  (fn-ncr-article-json summary))

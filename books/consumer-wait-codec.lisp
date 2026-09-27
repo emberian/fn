@@ -291,3 +291,7 @@
 (verify-guards fn-cwait-read-body)
 (verify-guards fn-cwait-request-decode)
 (verify-guards fn-cwait-cli-plan)
+;; PKT-709 (friend-blockers-2): the report reader is guard-verified, so the
+;; report summary a consumer command prints (books/consumer-reason.lisp) is.
+(verify-guards fn-cwait-record-article)
+(verify-guards fn-cwait-report-article)

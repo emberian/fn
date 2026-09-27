@@ -979,6 +979,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-wait-codec-tests \
 	books/consumer-wait \
 	tests/acl2/consumer-wait-tests \
+	books/consumer-reason \
+	tests/acl2/consumer-reason-tests \
+	books/consumer-withdrawal \
+	tests/acl2/consumer-withdrawal-tests \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \

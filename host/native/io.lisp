@@ -5110,7 +5110,10 @@ acknowledges past the committed records)."
   (dotimes (i count)
     (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-finish-one (fnn-log-kernel log)))))
 
-(defun fnn-log-kernel-line (what log size)
+(defun fnn-log-rig-line (what log size)
+  ;; Not `fnn-log-line': that is the service log's one-argument writer
+  ;; (above), which this rig's definition used to replace in the image, so
+  ;; every owner start faulted in fn-lgk-acked (friend-blockers-2, 09:10Z).
   (let ((ks (fnn-log-kernel log)))
     (fnn-out "~a records=~d frontier=~d next=~d last=~a workload=~(~a~)"
              what (fnn-core 'fn-lgk-acked ks) (fnn-core 'fn-lgk-frontier ks)
@@ -5145,7 +5148,7 @@ acknowledges past the committed records)."
       ((string= command "scan")
        (let ((fd (fnn-log-open-segment path extent unit t)))
          (unwind-protect
-              (fnn-log-kernel-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
+              (fnn-log-rig-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
                                                   :extent extent
                                                   :kernel (fnn-log-open-kernel fd extent unit max))
                             size)
@@ -5154,7 +5157,7 @@ acknowledges past the committed records)."
        (let ((log (fnn-log-recover path extent unit max)))
          (unwind-protect
               (progn
-                (fnn-log-kernel-line "RECOVERED" log size)
+                (fnn-log-rig-line "RECOVERED" log size)
                 (when (string= command "append")
                   (let ((batches (fnn-log-nat-arg (sixth argv) "BATCHES"))
                         (per (fnn-log-nat-arg (seventh argv) "PER")))
@@ -5166,7 +5169,7 @@ acknowledges past the committed records)."
                       (fnn-log-append log)
                       (fnn-log-fence log)
                       (fnn-log-finish log per)
-                      (fnn-log-kernel-line (format nil "ACK batch=~d" (1+ b)) log size)))))
+                      (fnn-log-rig-line (format nil "ACK batch=~d" (1+ b)) log size)))))
            (fnn-close (fnn-log-fd log)))))))
   +fnn-exit-ok+)
 

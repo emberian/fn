@@ -3037,7 +3037,7 @@
     {
       "id": "PRF-068",
       "title": "Local consumer status reports the scoped committed journal distance",
-      "statement": "The experimental local-owner command `consumer status CONTROL ID` reports the registered consumer ACK, committed journal frontier and their event-distance from fixed committed Store projections after the same local principal, query-version and view-version scope checks used by position and poll. The diagnostic leaves owner state unchanged. For the exact host-called kind-9 FNCT codec, decoding an encoded accepted reply returns its ACK, frontier and gap when ACK and frontier are uint32 values, ACK is no greater than frontier, and gap equals frontier minus ACK; decoding an encoded refused, uncertain or fault reply returns that status with empty fields under the constrained frame-digest shape. This target remains in progress because the subsequent topic/index composition requires its own native qualification. The codec theorem does not prove concrete hash security, native filesystem recovery or article unreadness/application processing; Store recovery authority remains PRF-064. EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): PKT-709: fn-ncl-cli-plan answers (:help) for `help` (the host prints fn-ncl-usage-text for help, no words and every usage refusal); a refused register bootstraps and registers once more (fn-ncl-cli-after); an uncertain one sends nothing more; fn-ncl-cli-after-retries-only-a-refused-register.",
+      "statement": "The experimental local-owner command `consumer status CONTROL ID` reports the registered consumer ACK, committed journal frontier and their event-distance from fixed committed Store projections after the same local principal, query-version and view-version scope checks used by position and poll. The diagnostic leaves owner state unchanged. For the exact host-called kind-9 FNCT codec, decoding an encoded accepted reply returns its ACK, frontier and gap when ACK and frontier are uint32 values, ACK is no greater than frontier, and gap equals frontier minus ACK; decoding an encoded refused, uncertain or fault reply returns that status with empty fields under the constrained frame-digest shape. This target remains in progress because the subsequent topic/index composition requires its own native qualification. The codec theorem does not prove concrete hash security, native filesystem recovery or article unreadness/application processing; Store recovery authority remains PRF-064. EXTENSION (lane friend-blockers, 2026-09-27, the stranger rehearsal's stops): PKT-709: fn-ncl-cli-plan answers (:help) for `help` (the host prints fn-ncl-usage-text for help, no words and every usage refusal); the register retry moved to books/consumer-reason.lisp fn-ncr-cli-after (PRF-263, lane friend-blockers-2: only an unbootstrapped or unnamed refusal retries).",
       "milestone": "M4",
       "requirements": [
         "CNS-001"
@@ -3071,8 +3071,7 @@
       "progress_note": "The ACL2 local status codec, owner scope decision and native-control host test passed the scoped status/index run. The general accepted and nonaccepted kind-9 codec roundtrips and their isolating teeth certified in the selected hbox book/test roots at the exact new source bytes; these are proof-only changes to the executable codec. The earlier e160442f image passed unknown-consumer refusal, read-only status, advancing ACK and recovered status checks. The joined topic/index source has scoped certification but has not yet run on a matching saved image. The diagnostic does not assert application processing or discharge.",
       "events": [
         "fn-ncl-status-accepted-reply-roundtrip",
-        "fn-ncl-status-nonaccepted-reply-roundtrip",
-        "fn-ncl-cli-after-retries-only-a-refused-register"
+        "fn-ncl-status-nonaccepted-reply-roundtrip"
       ]
     },
     {
@@ -9658,6 +9657,73 @@
         "fn-spo-open-of-another-layout-refuses-by-name",
         "fn-spo-config-open-layout-refusal-is-never-a-decoded-frame",
         "fn-spo-layout-fields-of-a-layout-frame"
+      ]
+    },
+    {
+      "id": "PRF-263",
+      "title": "A local consumer command's refusal names the owner's reason on the wire, a bind of an unregistered consumer is refused by name, and the command's JSON line is ACL2's, all printable ASCII",
+      "statement": "books/consumer-reason.lisp and books/consumer-owner-local.lisp. Subjects: fn-ncr-request-encode / -decode / fn-ncr-framep (host/native-control-host.lisp fn-native-control-host-consumer-reasoned-request-encode / -decode and fn-native-control-host-reasoned-framep, called by host/native/control.lisp fnn-control-consumer-local (client) and fnn-control-handle-client (owner)); fn-ncr-client-read (fn-native-control-host-consumer-client-read, fnn-control-consumer-local); fn-ncr-cli-after (fn-native-control-host-consumer-cli-after, host/native/consumer-local.lisp fnn-command-consumer-local); fn-ncr-cli-plan, fn-ncr-json-line, fn-ncr-report-summary, fn-ncr-article-json (host/native/consumer-local.lisp); fn-col-bind-refusal (host/native-admin-host.lisp fn-native-admin-host-owner-reconfigure live and fn-native-admin-host-apply offline). KEYSTONES: fn-ncr-printed-reason-is-the-decisions (for every status, the client's read of the reasoned reply the owner seals is that status and the reason's word, and a refusal that named a reason prints exactly that word); fn-ncr-request-decode-is-the-plain-decode (the kind-22 frame is decided as the kind-4 request with the same payload); fn-ncr-cli-after-retries-only-an-unbootstrapped-register; fn-col-bind-refusal-refuses-exactly-an-unregistered-bind; fn-ncr-json-object-is-ascii; fn-ncr-withdrawal-roundtrip and fn-ncr-withdrawal-report-fits-the-poll-reply (the withdrawal report's byte form, PRF-262's). fn-ncr-cli-plan-without-the-flag-by-definition: without --json the plan is the wait codec's. Local policy; no RFC requirement. The reasoned consumer request is FNCT kind 22; an old owner's plain refusal of it is resent once as kind 4 (PKT-453's pattern).",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-009"
+      ],
+      "depends_on": [
+        "PRF-172",
+        "PRF-234",
+        "PRF-252"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/consumer-reason.lisp",
+        "books/consumer-owner-local.lisp",
+        "tests/acl2/consumer-reason-tests.lisp",
+        "tests/acl2/consumer-owner-local-tests.lisp",
+        "planning/evidence/friend-blockers-2-2026-09-27.md"
+      ],
+      "events": [
+        "fn-ncr-printed-reason-is-the-decisions",
+        "fn-ncr-request-decode-is-the-plain-decode",
+        "fn-ncr-framep-of-seal",
+        "fn-ncr-cli-after-retries-only-an-unbootstrapped-register",
+        "fn-col-bind-refusal-refuses-exactly-an-unregistered-bind",
+        "fn-ncr-json-object-is-ascii",
+        "fn-ncr-withdrawal-roundtrip",
+        "fn-ncr-withdrawal-report-fits-the-poll-reply"
+      ]
+    },
+    {
+      "id": "PRF-262",
+      "title": "A consumer gets the withdrawal event, never the withdrawn content: a withdrawn article is delivered as its Message-ID, a cancel of an article of the consumer's group is delivered at its own position, and while nothing is withdrawn the page is the poll's answer",
+      "statement": "books/consumer-withdrawal.lisp. Subjects: fn-cwd-page (host/owner-host.lisp fn-owner-consumer-local-poll and fn-owner-consumer-local-bound-poll, over the answers of fn-cbind-plain-poll-over and fn-cbind-poll-over, the polls over the live arena) and fn-cwd-wait-step-over (fn-owner-consumer-local-wait-step, called by host/native/owner.lisp fnn-owner-consumer-local-wait); the scan fn-cwd-scan inside fn-cwd-poll. The withdrawal decision read is the owner's committed view's withdrawn list and withdrawal records (fn-own-view-withdrawn, fn-own-view-withdrawals; fn-ctl-msgid-withdrawn), the one NNTP's 430 withdrawn reads. KEYSTONES: fn-cwd-page-never-serves-withdrawn-content (when the poll selects an article the view withdrew, the page over any answer carrying a report is a refusal or a withdrawal report, which fn-ncr-withdrawal-decode reads as (:withdrawn MSGID)); fn-cwd-scan-delivers-a-withdrawing-cause (an event at the position, of no article of the group, whose record withdrew an article of the group, is where the scan stops, naming that article); fn-cwd-scan-withdrawal-advances (the withdrawal's next position is past the consumer's and within the frontier); fn-cwd-page-of-a-withdrawal (the page is the withdrawal at the cursor built from that position); fn-cwd-page-without-withdrawals-is-the-answer (with nothing withdrawn the page is exactly the answer, so PRF-116, PRF-177, PRF-234 and PRF-252 hold unchanged); fn-cwd-scan-is-the-poll-scan-unless-a-withdrawal; fn-cwd-page-of-a-refusal; fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page. Pessimistic cost per poll: 16 x (R + N) comparisons (R records, N withdrawn) plus one walk of N. On dev at 2026-09-27 the view's withdrawn list is empty until lane flip-L8-2's live refresh lands. Local policy; no RFC requirement (RFC 5537 section 5.3 files a cancel in control.cancel, which is why a consumer of the target's group never selected it).",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-008"
+      ],
+      "depends_on": [
+        "PRF-116",
+        "PRF-234",
+        "PRF-252",
+        "PRF-263"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/consumer-withdrawal.lisp",
+        "tests/acl2/consumer-withdrawal-tests.lisp",
+        "tools/fn_agent.py",
+        "tests/test_fn_agent.py",
+        "planning/evidence/friend-blockers-2-2026-09-27.md"
+      ],
+      "events": [
+        "fn-cwd-page-never-serves-withdrawn-content",
+        "fn-cwd-scan-delivers-a-withdrawing-cause",
+        "fn-cwd-scan-withdrawal-advances",
+        "fn-cwd-page-of-a-withdrawal",
+        "fn-cwd-page-without-withdrawals-is-the-answer",
+        "fn-cwd-scan-is-the-poll-scan-unless-a-withdrawal",
+        "fn-cwd-page-of-a-refusal",
+        "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
       ]
     }
   ]
