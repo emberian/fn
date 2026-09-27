@@ -11,9 +11,12 @@ fnn-command-store-import read and write.  On the image under test:
   octet changed (manifest-mismatch NAME), an existing store (store-exists)
   and a raised field that breaks a relation (profile REASON); a raised field
   that keeps the relations is imported and reported by `status`;
-* a format-7 store (the fixture FN_FORMAT7_STORE, a copy of a pre-D34
-  store; never /tank/fn/node) is refused at open by name: `open refused
-  reason=store-format`, exit 1, its files unchanged.
+* a store made by another release (synthesized by
+  tests/older_release_store.py: a format-7 frame, and the thirteen-field
+  layout of every store made before batch AS) is refused at open by name:
+  `open refused reason=store-format` and `open refused
+  reason=older-release`, exit 1, its files unchanged (PKT-695: no fixture
+  store is kept for it).
 
 TODO (continuation, SCN-133): the brief's 300-article store with a signed
 composite, a cancel, a retention event and a consumer registration; this
@@ -24,13 +27,14 @@ import hashlib
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import unittest
 
 from tests import test_native_operator_verbs as verbs
 from tests.native_profile_fixture import ProfileFixture, ProfileLineMixin
+from tests import older_release_store as older
 
 EXIT_OK, EXIT_REFUSED = verbs.EXIT_OK, verbs.EXIT_REFUSED
-FORMAT7_STORE = Path(os.environ["FN_FORMAT7_STORE"]) if os.environ.get("FN_FORMAT7_STORE") else None
 COUNT = int(os.environ.get("FN_EXPORT_ARTICLES", "30"))
 
 
@@ -125,16 +129,23 @@ class StoreExportTests(ProfileFixture):
                                     "--max-transactions", "1000")
         self.assertEqual(raised.returncode, EXIT_OK, raised.stderr.decode())
 
-    @unittest.skipUnless(FORMAT7_STORE, "FN_FORMAT7_STORE names the format-7 fixture store")
-    def test_a_format_7_store_is_refused_by_name(self):
-        shutil.copytree(FORMAT7_STORE, self.store, symlinks=True)
-        before = tree(self.store)
-        for words in (("status",), ("recover",)):
-            got = self.op(*words)
+    def refused_by_name(self, kind):
+        made, config, _ = older.make_store(kind, self.image, self.root / "older",
+                                           verbs.environment())
+        before = tree(made)
+        for head in (["operator", str(config), "status"], ["store", str(made), "recover"]):
+            got = subprocess.run([str(self.image), "--fn", *head], cwd=verbs.ROOT,
+                                 env=verbs.environment(), stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, timeout=180, check=False)
             self.assertEqual(got.returncode, EXIT_REFUSED, got.stderr.decode())
-            self.assertIn(b"open refused reason=store-format: reinstall from the release and import",
-                          got.stderr + got.stdout)
-        self.assertEqual(tree(self.store), before)
+            self.assertIn(older.LINES[kind].encode("ascii"), got.stderr + got.stdout)
+        self.assertEqual(tree(made), before)
+
+    def test_a_format_7_store_is_refused_by_name(self):
+        self.refused_by_name("format-7")
+
+    def test_a_store_of_the_older_layout_is_refused_by_name(self):
+        self.refused_by_name("older-release")
 
 
 if __name__ == "__main__":

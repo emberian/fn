@@ -9510,6 +9510,25 @@
           "note": "Transferred to the host-called fast entries by PRF-220 (fn-bpaj-bpr-accept-request-fast, fn-bpaj-record-lookup-fast; host/bp-receipt-host.lisp fn-bpr-host-accept). Teeth: tests/acl2/bp-receipt-alpha-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-258",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-spo-open-of-another-layout-refuses-by-name",
+          "note": "KEYSTONE (PKT-705). Host: host/native/io.lisp fnn-metadata-config-decode via host/store-host.lisp fn-store-metadata-config-open. Teeth: tests/acl2/store-profile-open-tests.lisp (a real pre-AS config.json; one witness per hypothesis)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-config-open-layout-refusal-is-never-a-decoded-frame",
+          "note": "KEYSTONE (the refinement). Host: as above."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-spo-layout-fields-of-a-layout-frame"
+        }
+      ]
     }
   ]
 }
