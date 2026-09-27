@@ -572,11 +572,15 @@ class NativeKeyStatementTests(unittest.TestCase):
             '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
                 store, node["port"], node["control"], node["log"]), encoding="ascii")
         # A named T with the default history bound (1 TiB) reserves ~11.5 TB,
-        # which init now refuses by name (membership-budget, PRF-315); name a
-        # history bound that holds these few records and is at least the default record ceiling (64 MiB).
+        # which init refuses by name (membership-budget, PRF-315), and a
+        # bound large enough for the default record ceiling does not fit the
+        # test's 24 GB unit at run; name both, as test_native_capacity_vector
+        # does: R 256 KiB (above the composite's 196,608-octet ceiling) and H
+        # 4 MiB, which hold these few records.
         flags = [] if max_transactions is None else [
             "--max-transactions", str(max_transactions),
-            "--max-history-octets", str(64 << 20)]
+            "--max-history-octets", str(4 << 20),
+            "--max-record-octets", "262144"]
         self.fn("operator", node["config"], "init", *flags, *groups)
         return node
 
