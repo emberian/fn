@@ -48,8 +48,9 @@
 (assert-event (equal (fn-cpe-operation (cadr *colt-register*))
                      (list :register *colt-id* *fn-col-principal*
                            *colt-group* 1 0 1)))
+; PKT-709: before its registration commits, the consumer is unknown by name.
 (assert-event (equal (fn-col-position *colt-o0* *colt-id*)
-                     '(:refused :scope)))
+                     '(:refused :unknown-consumer)))
 (assert-event (equal (fn-col-register *colt-o0* 256 *colt-id* '(1 2 3))
                      '(:refused :query)))
 
@@ -69,7 +70,7 @@
         (fn-cp-nth 9
          (fn-cp-nth 1
           (fn-cp-cursor-decode (cadr *colt-position*))))))
-(assert-event (equal (fn-col-status *colt-o1* '(88)) '(:refused :scope)))
+(assert-event (equal (fn-col-status *colt-o1* '(88)) '(:refused :unknown-consumer)))
 (must-fail
  (assert-event
   (equal (fn-cp-nth 3 (fn-col-status *colt-o1* '(88)))

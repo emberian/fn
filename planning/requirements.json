@@ -4520,6 +4520,61 @@
         "planning/evidence/owner-scheduler-2026-09-26.md"
       ],
       "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read)."
+    },
+    {
+      "id": "CNS-008",
+      "title": "A consumer gets the withdrawal event, never the withdrawn content: an article withdrawn by its author's cancel or a supersession is delivered as a withdrawal report naming its Message-ID, at its own position and at the withdrawing event's",
+      "specification": "specs/consumer-progress.md#withdrawals",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-262"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/consumer-withdrawal.lisp",
+        "books/consumer-reason.lisp",
+        "host/owner-host.lisp",
+        "host/native/consumer-local.lisp",
+        "tools/fn_agent.py",
+        "tools/fn_consumer.py",
+        "tests/acl2/consumer-withdrawal-tests.lisp",
+        "tests/test_fn_agent.py",
+        "planning/evidence/friend-blockers-2-2026-09-27.md"
+      ],
+      "implementation_note": "PKT-710 (DECIDED): the stranger rehearsal's consumer was handed articles its author had cancelled. The withdrawal decision is the committed view's (the one 430 withdrawn reads); on dev at 2026-09-27 that list is empty until flip-L8-2's live refresh lands. No store record, delta or store format change; the report is a new poll-report byte form (FNWD 0x01 then the Message-ID).",
+      "note": "At least once: a consumer that polls after the cancel can meet the same Message-ID at the article's position and at the cancel's."
+    },
+    {
+      "id": "CNS-009",
+      "title": "A local consumer command's refusal names the owner's reason, a bind of an unregistered consumer name is refused by name, and every consumer command can print one ACL2-rendered JSON line",
+      "specification": "specs/consumer-progress.md#refusal-reasons-and-the-json-line",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-261"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "books/consumer-reason.lisp",
+        "books/consumer-owner-local.lisp",
+        "host/native-control-host.lisp",
+        "host/native/control.lisp",
+        "host/native/owner.lisp",
+        "host/native/consumer-local.lisp",
+        "host/native-admin-host.lisp",
+        "tests/acl2/consumer-reason-tests.lisp",
+        "tests/test_native_consumer_e2.py",
+        "planning/evidence/friend-blockers-2-2026-09-27.md"
+      ],
+      "implementation_note": "PKT-709: FNCT kind 22 (the reasoned consumer request, the kind-4 payload) answered on refusal with the reasoned reply kind 18 (PKT-453's pattern; an old owner is resent kind 4 once). `fn consumer --json COMMAND ...`, `fn consumer-article [--json] REPORT`, `fn consumer help`.",
+      "note": "A client contract, not an RFC requirement."
     }
   ]
 }

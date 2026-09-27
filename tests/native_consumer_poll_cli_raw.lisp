@@ -4,6 +4,7 @@
 
 (defvar *calls* nil)
 (defparameter +fnn-exit-usage+ 2)
+(defparameter +fnn-exit-ok+ 0)
 (defun fnn-ascii-octet-list (s) (map 'list #'char-code s))
 (defun fnn-octets (x) x)
 (defun fnn-octets-string (x) (map 'string #'code-char x))
@@ -16,10 +17,14 @@
      (list :run :poll '(99) '(119) '(99 117 114 115 111 114)
            '(114 101 112 111 114 116)))
     (fn-native-control-host-status-exit-code 0)
+    ;; PKT-709: no register retry for a poll; the report's summary for the
+    ;; line (text mode prints only the status).
+    (fn-native-control-host-consumer-cli-after nil)
+    (fn-native-control-host-consumer-report-summary '(:empty))
     (otherwise (error "unexpected ACL2 entry ~s" name))))
 (defun fnn-control-consumer-local (control operation first second)
   (push (list :request control operation first second) *calls*)
-  (list :consumer-poll-reply :accepted '(1 2 3) '(4 5 6)))
+  (values (list :consumer-poll-reply :accepted '(1 2 3) '(4 5 6)) nil))
 (defun fnn-write-staged (path bytes)
   (push (list :write path bytes) *calls*))
 (defun fnn-out (&rest args) (declare (ignore args)))
@@ -32,8 +37,11 @@
     (loop for form = (read stream nil :eof)
           until (eq form :eof)
           when (and (consp form) (eq (car form) 'defun)
-                    (eq (cadr form) 'fnn-command-consumer-local))
-            do (eval form) (setf found t)))
+                    (member (cadr form) '(fnn-command-consumer-local
+                                          fnn-consumer-say)))
+            do (eval form)
+               (when (eq (cadr form) 'fnn-command-consumer-local)
+                 (setf found t))))
   (unless found (error "deployed consumer CLI adapter missing")))
 
 (unless (eql (fnn-command-consumer-local "poll"

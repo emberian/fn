@@ -228,7 +228,7 @@
 (assert-event
  (equal (cbt-poll (fn-ocfg-make *cbt-o* (fn-cfg-make 5 *cbt-v-nine*) nil nil)
                   '(57) *cbt-secret*)
-        '(:refused :scope)))
+        '(:refused :unknown-consumer)))
 ; A redeemed account's credential (the second producer) authenticates too:
 ; the row fn-auth-account-creds reads, with the same verifier.
 (defconst *cbt-digest* (coerce (make-list 64 :initial-element #\a) (quote string)))

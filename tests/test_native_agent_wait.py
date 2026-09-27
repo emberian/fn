@@ -74,7 +74,9 @@ def text(result):
 class AgentWaitSourceTests(unittest.TestCase):
     def test_the_host_calls_the_wait_decisions(self):
         host = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
-        self.assertIn("(fn-cwait-step (fn-owner-ocfg state) (fn-owner-auth state)", host)
+        # The step over the live arena (records flip), with the view's
+        # withdrawals in its page (PKT-710, books/consumer-withdrawal.lisp).
+        self.assertIn("(fn-cwd-wait-step-over (fn-owner-ocfg state) (fn-owner-auth state)", host)
         self.assertIn("(fn-cwait-admit waiters)", host)
         control = (ROOT / "host" / "native-control-host.lisp").read_text(encoding="ascii")
         self.assertIn("(fn-cwait-request-decode octets)", control)
