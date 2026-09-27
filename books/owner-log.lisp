@@ -368,12 +368,12 @@ fn-pcb-transit-verdict (PKT-473), or nil."
         (fn-olog-served-refusal-lines o id (cdr effects)))
     nil))
 
-(defun fn-olog-control-refusal-line (o msgid groups octets)
+(defun fn-olog-control-refusal-line (o msgid groups octets stored)
   "The line for the operator's article when fn-own-operator-submit-result
 refuses it, read from the owner the submit was decided against; NIL when the
 decision injects (the outcome line is then fn-olog-control-post-line's)."
   (declare (xargs :guard t))
-  (let ((decision (fn-own-operator-decision-of o msgid groups octets)))
+  (let ((decision (fn-own-operator-decision-of o msgid groups octets stored)))
     (if (fn-inj-injectedp decision)
         nil
       (fn-olog-join
@@ -693,7 +693,7 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
   :hints (("Goal" :in-theory (disable fn-olog-post-refusal-reply))))
 
 (defthm fn-olog-control-refusal-line-is-one-line
-  (fn-olog-no-breakp (fn-olog-control-refusal-line o msgid groups octets))
+  (fn-olog-no-breakp (fn-olog-control-refusal-line o msgid groups octets stored))
   :hints (("Goal" :in-theory (disable fn-olog-join fn-olog-symbol-text
                                       fn-own-operator-decision-of))))
 ; KEYSTONE (control).  The operator's article gets a `refused' line exactly
@@ -701,9 +701,9 @@ decision injects (the outcome line is then fn-olog-control-post-line's)."
 ; fn-owner-operator-submit returns -- is :refused.
 (defthm fn-olog-control-refusal-line-says-refused-iff-submit-refused
   (equal (equal (fn-olog-line-word
-                 (fn-olog-control-refusal-line o msgid groups octets))
+                 (fn-olog-control-refusal-line o msgid groups octets stored))
                 (fn-olog-text "refused"))
-         (equal (fn-own-operator-submit-result o msgid groups octets)
+         (equal (fn-own-operator-submit-result o msgid groups octets stored)
                 :refused))
   :hints (("Goal" :in-theory (e/d (fn-olog-class-word fn-olog-text
                                    fn-own-operator-submit-result)

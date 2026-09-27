@@ -1035,6 +1035,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/cancel-lock \
 	tests/acl2/cancel-lock-tests \
 	tests/acl2/owner-cancel-lock-tests \
+	tests/acl2/owner-cancel-refresh-tests \
 	books/cancel-lock-d25 \
 	tests/acl2/cancel-lock-d25-tests \
 	books/control-served \

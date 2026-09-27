@@ -80,7 +80,7 @@
 (assert-event (equal (fn-inj-decision-msgid *mvt-gated*) (cadr *mvt-approved*)))
 (assert-event (equal (fn-inj-decision-groups *mvt-gated*) (caddr *mvt-approved*)))
 (assert-event (fn-inj-injectedp (fn-own-operator-decision
-                                 *mvt-cfg* *mvt-obs* *mvt-node* (cadr *mvt-approved*)
+                                 *mvt-cfg* *mvt-obs* :absent (cadr *mvt-approved*)
                                  (caddr *mvt-approved*) *mvt-approved-octets*)))
 ; The octets are the held proto-article with Approved: alice first.
 (assert-event (equal (take 17 *mvt-approved-octets*) (mvt-o (concatenate 'string "Approved: alice" *mvt-crlf*))))
@@ -186,7 +186,7 @@
 ; cause's Message-ID, into the envelope's group; the control machine reads
 ; its target from the injected octets.
 (defconst *mvt-cancel-decision*
-  (fn-own-operator-decision *mvt-cfg* *mvt-obs* *mvt-node* (caddr *mvt-rejected*)
+  (fn-own-operator-decision *mvt-cfg* *mvt-obs* :absent (caddr *mvt-rejected*)
                             (cadddr *mvt-rejected*) (car (cddddr *mvt-rejected*))))
 (assert-event (fn-inj-injectedp *mvt-cancel-decision*))
 (assert-event (equal (fn-ctl-target-octets (fn-inj-decision-octets *mvt-cancel-decision*))

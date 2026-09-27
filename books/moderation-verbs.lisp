@@ -221,7 +221,7 @@
                 (list :refused (fn-inj-decision-reason d))
               (let* ((msgid (fn-inj-decision-msgid d))
                      (groups (fn-inj-decision-groups d))
-                     (op (fn-own-operator-decision cfg clock node msgid groups
+                     (op (fn-own-operator-decision cfg clock :absent msgid groups
                                                    octets)))
                 (if (not (fn-inj-injectedp op))
                     (list :refused :operator-decision-refused)
@@ -263,7 +263,7 @@
                     (filing (fn-pa-filing-plan
                              octets groups
                              (fn-state-groups (fn-node-acceptance node))))
-                    (op (fn-own-operator-decision cfg clock node msgid groups
+                    (op (fn-own-operator-decision cfg clock :absent msgid groups
                                                   octets)))
                ; The commit files a control article in its filing group
                ; (NNT-010: the owner's commit gate, fn-owner-bound-commit-gate,
@@ -297,6 +297,14 @@
       (fn-mvb-withdraw raw cfg clock node rows (fn-article-msgid (cadr e))
                        (fn-mvb-reject-reason reason)))))
 
+; The operator decision a plan checks is the fresh one (STORED :absent):
+; the plan is pure and holds no arena, so it cannot read the octets a held
+; article's handle names (records flip).  It is a pre-check: the host then
+; runs the planned submission through the operator path, whose decision
+; reads the stored octets (books/owner.lisp fn-own-operator-decision over
+; books/owner-served-invariants.lisp fn-own-operator-stored-octets) and
+; resubmits a stored injection as the duplicate it is (flip-L8-2).
+;
 ; OP is :approve, :reject or :withdraw; LOGIN, ID and REASON are the
 ; request's octets; OC the owner and its configuration (books/owner-config).
 (defun fn-mvb-plan (op login id reason oc)
@@ -380,7 +388,7 @@
                   (equal (cadr plan) (fn-inj-decision-msgid d))
                   (equal (caddr plan) (fn-inj-decision-groups d))
                   (fn-inj-injectedp (fn-own-operator-decision
-                                     cfg clock node (cadr plan) (caddr plan)
+                                     cfg clock :absent (cadr plan) (caddr plan)
                                      octets)))))
   :hints (("Goal" :in-theory (disable fn-post-gated-decision fn-own-operator-decision fn-post-gated-decision-unfolds
                                       fn-mvb-moderates-some fn-cev-envelope-state
@@ -447,7 +455,7 @@
                                             (fn-state-groups (fn-node-acceptance node)))
                          (list :file (cadddr plan)))
                   (fn-inj-injectedp (fn-own-operator-decision
-                                     cfg clock node (caddr plan) (cadddr plan)
+                                     cfg clock :absent (caddr plan) (cadddr plan)
                                      (car (cddddr plan))))
                   (if (cadr plan)
                       (and (equal (cadr plan) (fn-mvb-withdraw-argv cause target reason))

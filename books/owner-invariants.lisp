@@ -1531,7 +1531,7 @@
 
 (defthm fn-own-operator-submit-preserves-relation
   (implies (fn-own-relation o)
-           (fn-own-relation (fn-own-operator-submit o msgid groups octets)))
+           (fn-own-relation (fn-own-operator-submit o msgid groups octets stored)))
   :hints (("Goal" :in-theory (e/d (fn-own-operator-submit-result
                                    fn-own-operator-submit
                                    fn-own-enqueue fn-own-relation)
@@ -1563,21 +1563,21 @@
 ;    article, whatever the clock now reads, so the store answers duplicate.
 
 (defthm fn-own-operator-decision-is-an-injection-of-the-payload
-  (implies (fn-inj-injectedp (fn-own-operator-decision cfg clock node msgid groups octets))
-           (let ((d (fn-own-operator-decision cfg clock node msgid groups octets)))
+  (implies (fn-inj-injectedp (fn-own-operator-decision cfg clock stored msgid groups octets))
+           (let ((d (fn-own-operator-decision cfg clock stored msgid groups octets)))
              (and (equal (fn-inj-decision-msgid d) msgid)
                   (equal (fn-inj-decision-groups d) groups)
                   (fn-inj-reinjectionp (fn-inj-decision-octets d) octets
                                        (fn-inj-config-agent cfg) msgid))))
   :hints (("Goal" :in-theory (e/d (fn-own-operator-decision)
                                   (fn-inj-decide fn-inj-reinjectionp
-                                   fn-own-stored-octets fn-own-clock-usablep))
+                                   fn-own-clock-usablep))
            :use ((:instance fn-inj-injected-article-is-a-reinjection-of-its-source
                             (source octets) (config cfg) (observation clock))))))
 
 (defthm fn-own-operator-submission-is-an-injection-of-the-payload
-  (implies (equal (fn-own-operator-submit-result o msgid groups octets) :submitted)
-           (let* ((q (fn-own-queue (fn-own-operator-submit o msgid groups octets)))
+  (implies (equal (fn-own-operator-submit-result o msgid groups octets stored) :submitted)
+           (let* ((q (fn-own-queue (fn-own-operator-submit o msgid groups octets stored)))
                   (d (fn-own-sub-decision (car q))))
              (and (equal (len q) 1)
                   (fn-own-control-submissionp (car q))
@@ -1593,14 +1593,14 @@
                                   (fn-own-operator-decision fn-inj-reinjectionp))
            :use ((:instance fn-own-operator-decision-is-an-injection-of-the-payload
                             (cfg (fn-own-config o)) (clock (fn-own-clock o))
-                            (node (fn-sn-node (fn-own-store o))))))))
+                            (stored stored))))))
 
 (defthm fn-own-operator-submit-without-a-clock-refuses-and-changes-nothing
   (implies (not (and (fn-clock-observationp (fn-own-clock o))
                      (fn-clock-has-wall (fn-own-clock o))))
-           (and (equal (fn-own-operator-submit-result o msgid groups octets)
+           (and (equal (fn-own-operator-submit-result o msgid groups octets stored)
                        :refused)
-                (equal (fn-own-operator-submit o msgid groups octets) o)))
+                (equal (fn-own-operator-submit o msgid groups octets stored) o)))
   :hints (("Goal" :in-theory (e/d (fn-own-operator-submit-result
                                    fn-own-operator-submit
                                    fn-own-operator-decision-of
@@ -1619,17 +1619,16 @@
   (implies (and (fn-inj-injectedp (fn-inj-decide octets cfg first))
                 (equal (fn-inj-decision-msgid (fn-inj-decide octets cfg first))
                        msgid)
-                (equal (fn-own-stored-octets node msgid)
+                (equal stored
                        (fn-inj-decision-octets (fn-inj-decide octets cfg first)))
                 (fn-clock-observationp later)
                 (fn-clock-has-wall later))
-           (equal (fn-own-operator-decision cfg later node msgid groups octets)
+           (equal (fn-own-operator-decision cfg later stored msgid groups octets)
                   (fn-inj-make-decision
                    :injected nil msgid groups
                    (fn-inj-decision-octets (fn-inj-decide octets cfg first)))))
   :hints (("Goal" :in-theory (e/d (fn-own-operator-decision fn-own-clock-usablep)
                                   (fn-inj-decide fn-inj-reinjectionp
-                                   fn-own-stored-octets
                                    fn-inj-injected-article-is-a-reinjection-of-its-source
                                    fn-inj-injection-requires-posting-allowed))
            :use ((:instance fn-inj-injected-article-is-a-reinjection-of-its-source
