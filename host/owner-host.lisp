@@ -1169,7 +1169,11 @@
 ;; every input), which reads the record's strings in place instead of
 ;; building their octet lists.
 (defun fn-owner-finish-submission (fn-arena fn-cat state)
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
+  ; fn-arena: the catalog calling convention (host/native/owner.lisp
+  ; fnn-owner-catalog-action passes the live arena and catalog); the
+  ; completion reads the row the prepare interned and interns nothing.
+  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program)
+           (ignore fn-arena))
   (let ((oc (fn-owner-ocfg state)))
     (if (fn-ocfg-staged oc)
         (mv nil :fault fn-cat state)
