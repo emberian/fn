@@ -177,8 +177,18 @@ class SchedulerNativeTests(unittest.TestCase):
         return int(head.group(1)), rows
 
     def test_health_carries_the_scheduler_lines_and_counts_the_classes(self):
+        # Each class counts its own quanta and no other's: a reader
+        # connection's steps are reader holds, the health requests control
+        # holds, one submission through the control socket exactly one poster
+        # hold (host/native/owner.lisp fnn-owner-control-submit-serialized),
+        # and with no peer configured the transit class holds only the feed
+        # worker's idle polls (host/native/feed-service.lisp fnn-feed-worker:
+        # fnn-feed-peer-list every +fnn-feed-poll-seconds+ = 1/20 s, one
+        # :transit quantum each), so they grow with the window and by no more
+        # than it allows.
         bound, before = self.sched()
         self.assertEqual(bound, 3)
+        started = time.monotonic()
         conn, stream = self.connect()
         with conn:
             for _ in range(10):
@@ -187,14 +197,27 @@ class SchedulerNativeTests(unittest.TestCase):
                 self.assertTrue(stream.readline().startswith(b"211"))
             stream.write(b"QUIT\r\n")
             stream.flush()
+        payload = self.root / "poster.eml"
+        payload.write_bytes(b"From: author@example.invalid\r\nNewsgroups: fn.test\r\n"
+                            b"Subject: the poster class\r\n"
+                            b"Date: Sun, 27 Sep 2026 04:00:00 +0000\r\n"
+                            b"Message-ID: <sched-poster@example.invalid>\r\n\r\n"
+                            b"one poster quantum\r\n")
+        posted = self.operator("post", "--message-id", "<sched-poster@example.invalid>",
+                               "--payload", str(payload), "--group", "fn.test", timeout=120)
+        self.assertEqual(posted.returncode, 0,
+                         posted.stdout.decode("ascii", "replace") + posted.stderr.decode("ascii", "replace"))
         time.sleep(0.5)
         bound, after = self.sched()
+        elapsed = time.monotonic() - started
         # holds, then the five buckets, hold-max, wait-max, waits>=1s
         self.assertGreaterEqual(after["reader"][0] - before["reader"][0], 10,
                                 (before, after))
         self.assertGreater(after["control"][0], before["control"][0], (before, after))
-        self.assertEqual(after["poster"][0], 0, after)
-        self.assertEqual(after["transit"][0], 0, after)
+        self.assertEqual(after["poster"][0] - before["poster"][0], 1, (before, after))
+        transit = after["transit"][0] - before["transit"][0]
+        self.assertGreaterEqual(transit, 1, (before, after))
+        self.assertLessEqual(transit, int(elapsed * 20) + 2, (elapsed, before, after))
         for name, row in after.items():
             self.assertEqual(sum(row[1:6]), row[0], (name, row))
 
