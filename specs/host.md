@@ -434,8 +434,10 @@ reservation counts against the login class's datasize, the fourteenth thread
 was refused at 1,536 MiB. The figure is the heap-figure heap, plus the
 image's own mappings outside the dynamic space (at most the core file), plus
 THREADS x (STACK + 4 MiB; measured 2.5 MiB on Linux, at most 3 on OpenBSD):
-THREADS the run's `max-connections`, the 16 control clients
-and 12 fixed threads; STACK a constant 1,024 KiB, seven times the 142 KiB
+THREADS the 12 fixed threads, the 2 I/O loops that serve every connection
+(a connection is no thread since connection-multiplexing; the reservation
+counted one per `max-connections` until lane reservation-after-flip) and the
+16 control clients: 30; STACK a constant 1,024 KiB, seven times the 142 KiB
 the node needs whatever the article since the served path's per-line
 recursions became loops (lane served-line-iterative, PRF-218; before, the
 need grew by 32 octets per line and this figure carried a per-line term). A total the machine cannot hold is refused by name
@@ -945,27 +947,43 @@ dynamic space when the process starts, so the installed `bin/fn`
 `heap -- ARGV` and then execs the command with `--dynamic-space-size MB`
 (through `SBCL_USER_ARGS`, which every image launcher splices after its own
 figure; SBCL takes the last). ACL2 decides the figure
-(books/heap-figure.lisp `fn-heap-decide`, host/native/heap.lisp
-`fnn-heap-decision`): the saved core's length, the host's 64 MiB collection
-nursery, sixteen bytes per octet (one cons per octet, the octet-list
-representation) for twice the history bound H plus one record bound R, doubled
-for the collector's copy, and the two checkpoint buffers at the profile's
-file bound (`fn-ock-capture-budget`, three times H plus one segment), in MiB
-rounded up. The profile is the one the command's store was saved with
-(`config.json`), or for `init` the profile it will write; a command that
-names no existing store is given the machine. The machine is the least of
-the host's observations: physical memory (`sysconf`), on Linux the cgroup's
-`memory.max` from the process's group up and `RLIMIT_AS`, and `RLIMIT_DATA`
-(which OpenBSD's login classes set). A figure above the machine is refused:
-exit 1 (outcome class `refused`), `refused machine-cannot-hold-profile
-heap=MB MB machine=M MB` on stderr, and the command does not run. An
-accepted figure holds every store the profile admits
-(`fn-heap-decide-admits-every-store-the-profile-admits`). `status` and
-`health` end with `heap=MB MB profile=WORD machine=M MB`. `init` with no
-preset word and no field flag, on a machine under 4 GiB, writes the small
-preset (T 16,384, H 8 MiB, R 196,608, A 32,768, G 16, K 128: 1,002 MB on a
-389 MB core; `fn-heap-small-profile-fits-a-small-machine` for any core up to
-512 MiB on 1,536 MiB). The probe itself runs in the core's size plus 128 MB,
+(books/heap-figure.lisp `fn-heap-operation-decide` over
+books/heap-store-figure.lisp, host/native/heap.lisp `fnn-heap-reservation`
+and `fnn-heap-decision`; re-derived from the records flip's payload arena by
+lane reservation-after-flip, 2026-09-27): the image's dynamic content (the
+least of the core file's length and the dynamic space in use when the probe
+starts); the store's state at the profile's bounds -- the arena's byte array
+at three bytes per history octet (it doubles, and the old array is live
+during a resize), 48 octets of handles and, twice for the collector, 5,120
+octets per record and 320 per group membership (measured 3.5 to 4.8 KiB and
+0.25 KiB); the open's transient over the history on disk, which the probe
+observes (the history files' octets and the transaction files' count): two
+list copies of each octet at sixteen bytes, and 16 KiB per record, twice for
+the collector (a full replay decodes the records as octet lists); the
+request in flight (the record and three header copies as lists) and the two
+checkpoint buffers at the profile's file bound (`fn-ock-capture-budget`);
+and twice the collection trigger the host sets in the space it gets
+(`fn-heap-nursery-trigger`: a sixteenth of it, at least 8 MiB, at most the
+host's 64 MiB), the figure being the least space that holds all of it
+(`fn-heap-with-nursery`), in MiB rounded up. The profile is the one the
+command's store was saved with (`config.json`), or for `init` the profile it
+will write, judged by the first run of the empty store it makes; a command
+that names no existing store is given the store-less figure. The machine is
+the least of the host's observations: physical memory (`sysconf`), on Linux
+the cgroup's `memory.max` from the process's group up and `RLIMIT_AS`, and
+`RLIMIT_DATA` (which OpenBSD's login classes set). A figure above the
+machine is refused: exit 1 (outcome class `refused`), `refused
+machine-cannot-hold-profile heap=MB MB machine=M MB` on stderr, and the
+command does not run. An accepted figure holds every store the profile
+admits with an open of the store on disk
+(`fn-heap-operation-decide-holds-the-store`,
+`fn-heap-decide-admits-every-store-the-profile-admits`). `status` and
+`health` end with `heap=MB MB profile=WORD machine=M MB`, the next run's
+figure over the store on disk. The small preset (T 16,384, H 8 MiB, R
+196,608, A 32,768, G 16, K 128) reserves 583 MB of heap for the run of an
+empty store on the production image and 1,662 MB at its bounds;
+`fn-heap-small-profile-run-fits-a-small-machine`: its empty store's run
+fits 1,536 MiB for any image of up to 512 MiB of dynamic content. The probe itself runs in the core's size plus 128 MB,
 a bound on its work (it reads `fn.toml` and `config.json`, 16 KiB each). A
 checkout's `packaging/fn` passes `FN_TEST_HEAP_MB` when set and otherwise
 the image launcher's own figure; the installed launcher ignores both

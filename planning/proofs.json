@@ -7582,7 +7582,7 @@
       "events": [
         "fn-heap-decide-admits-every-store-the-profile-admits",
         "fn-heap-decide-refuses-exactly-past-the-machine",
-        "fn-heap-small-profile-fits-a-small-machine",
+        "fn-heap-small-profile-run-fits-a-small-machine",
         "fn-heap-machine-octets-is-at-most-each-observation",
         "fn-heap-decision-exit-code-of-a-refusal",
         "fn-heap-reserve-decide-holds-every-thread-the-node-runs",
@@ -7603,7 +7603,12 @@
         "fn-heap-operation-decide-of-a-serve-action-is-heap-decide",
         "fn-heap-reserve-operation-decide-holds-the-operation",
         "fn-heap-reserve-decide-is-reserve-of-heap-decide",
-        "fn-heap-reserve-of-holds-the-decision"
+        "fn-heap-reserve-of-holds-the-decision",
+        "fn-heap-store-figure-holds-every-store",
+        "fn-heap-with-nursery-holds-the-trigger",
+        "fn-heap-store-figure-observed-is-at-most-unobserved",
+        "fn-heap-operation-decide-holds-the-store",
+        "fn-heap-reserve-first-run-accepted-is-within-the-machine"
       ],
       "evidence": [
         "books/heap-figure.lisp",
