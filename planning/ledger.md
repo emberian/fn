@@ -13,22 +13,22 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1306 |
 | Certification roots in the Makefile | 1267 |
 | Books inside the root closure | 1304 |
-| `defthm` and `defthmd` events | 19411 |
-| `defun` events | 13415 |
-| Functions with verified guards | 2488 |
+| `defthm` and `defthmd` events | 19440 |
+| `defun` events | 13447 |
+| Functions with verified guards | 2489 |
 | Functions declared `:verify-guards nil` and never verified | 1630 |
-| Functions left at the default with an explicit guard | 7459 |
-| Functions left at the default with no guard | 1838 |
-| `assert-event` checks | 19213 |
-| `must-fail` checks | 2187 |
+| Functions left at the default with an explicit guard | 7489 |
+| Functions left at the default with no guard | 1839 |
+| `assert-event` checks | 19250 |
+| `must-fail` checks | 2189 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 97 |
-| Theorems flagged SUSPECT by shape | 1011 |
+| Theorems flagged SUSPECT by shape | 1013 |
 | Export-hygiene warnings | 237 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 230 |
 | Include-hygiene warnings | 1785 |
-| Host-names warnings | 1398 |
+| Host-names warnings | 1402 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -465,11 +465,11 @@ that `make certify` requests.
 | `books/native-control-launch.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/native-control-reason.lisp` | root | 11 | 16 | 0/0/16/0 | 0 | 0 | 0 |
 | `books/native-control.lisp` | root | 18 | 34 | 0/0/34/0 | 0 | 0 | 0 |
-| `books/native-health.lisp` | root | 37 | 65 | 11/1/53/0 | 0 | 0 | 0 |
+| `books/native-health.lisp` | root | 57 | 84 | 12/1/71/0 | 0 | 0 | 0 |
 | `books/native-hybrid-control.lisp` | root | 5 | 17 | 0/0/17/0 | 0 | 0 | 0 |
 | `books/native-live-status.lisp` | root | 61 | 53 | 4/10/39/0 | 0 | 0 | 0 |
 | `books/native-mission.lisp` | root | 15 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/native-operator.lisp` | root | 51 | 128 | 0/0/128/0 | 0 | 0 | 2 |
+| `books/native-operator.lisp` | root | 51 | 129 | 0/0/129/0 | 0 | 0 | 2 |
 | `books/nntp-article-block.lisp` | root | 15 | 9 | 0/0/7/2 | 0 | 0 | 2 |
 | `books/nntp-auth-fold.lisp` | root | 66 | 4 | 0/3/1/0 | 0 | 0 | 0 |
 | `books/nntp-auth-invariants.lisp` | root | 35 | 3 | 0/0/3/0 | 0 | 0 | 2 |
@@ -602,7 +602,7 @@ that `make certify` requests.
 | `books/peer-inbound.lisp` | root | 79 | 77 | 9/7/61/0 | 0 | 0 | 27 |
 | `books/peer-invite.lisp` | root | 50 | 77 | 0/0/77/0 | 0 | 0 | 1 |
 | `books/peer-offer-indexed.lisp` | root | 20 | 10 | 9/0/1/0 | 0 | 0 | 1 |
-| `books/peer-pull-session.lisp` | root | 32 | 38 | 0/0/38/0 | 0 | 0 | 1 |
+| `books/peer-pull-session.lisp` | root | 41 | 49 | 0/0/49/0 | 0 | 0 | 3 |
 | `books/peer-pull.lisp` | root | 85 | 121 | 11/0/110/0 | 0 | 0 | 2 |
 | `books/peer-refused-offers.lisp` | root | 17 | 4 | 0/4/0/0 | 0 | 0 | 1 |
 | `books/peer-transit-forms.lisp` | root | 10 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -1116,7 +1116,7 @@ that `make certify` requests.
 | `tests/acl2/native-control-launch-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/native-control-reason-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 33 | 3 | 0 |
 | `tests/acl2/native-control-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 83 | 2 | 0 |
-| `tests/acl2/native-health-tests.lisp` | root | 0 | 6 | 0/6/0/0 | 87 | 17 | 0 |
+| `tests/acl2/native-health-tests.lisp` | root | 0 | 6 | 0/6/0/0 | 109 | 18 | 0 |
 | `tests/acl2/native-hybrid-control-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 2 | 0 |
 | `tests/acl2/native-live-status-tests.lisp` | root | 1 | 9 | 0/6/2/1 | 72 | 15 | 0 |
 | `tests/acl2/native-mission-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 23 | 5 | 0 |
@@ -1222,7 +1222,7 @@ that `make certify` requests.
 | `tests/acl2/peer-inbound-tests.lisp` | root | 0 | 9 | 0/2/0/7 | 251 | 5 | 0 |
 | `tests/acl2/peer-invite-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 157 | 27 | 0 |
 | `tests/acl2/peer-offer-indexed-tests.lisp` | root | 0 | 3 | 0/3/0/0 | 43 | 4 | 0 |
-| `tests/acl2/peer-pull-session-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 48 | 10 | 0 |
+| `tests/acl2/peer-pull-session-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 63 | 11 | 0 |
 | `tests/acl2/peer-pull-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 84 | 20 | 0 |
 | `tests/acl2/peer-transit-forms-tests.lisp` | root | 0 | 9 | 0/2/0/7 | 34 | 5 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
@@ -1731,7 +1731,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-mvb-plan-unfolds` | `books/moderation-verbs.lisp` | 342 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-native-admin-plan-deltas-over-other-plans-by-definition` | `books/native-admin.lisp` | 831 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-admin-plan-deltas-over and the conclusion is that arm's value |
 | `fn-native-auth-load-protected-without-tls-refuses` | `books/native-auth-profile.lisp` | 327 | arm-of-definition: constant arguments select one IF/COND arm of fn-native-auth-load and the conclusion is that arm's value |
-| `fn-native-operator-control-outcome-passes-a-bindable-path` | `books/native-operator.lisp` | 2399 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-operator-control-outcome and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-native-operator-control-outcome and the conclusion is that branch's value |
+| `fn-native-operator-control-outcome-passes-a-bindable-path` | `books/native-operator.lisp` | 2411 | arm-of-definition: the hypotheses select one IF/COND arm of fn-native-operator-control-outcome and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-native-operator-control-outcome and the conclusion is that branch's value |
 | `fn-ncfg-opt-pair-of-nil` | `books/native-config-show.lisp` | 775 | arm-of-definition: constant arguments select one IF/COND arm of fn-ncfg-opt-pair and the conclusion is that arm's value |
 | `fn-ncfg-trim-left-noop` | `books/native-config-show.lisp` | 365 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncfg-trim-left and the conclusion is that arm's value |
 | `fn-ncfg-trim-right-rev-noop` | `books/native-config-show.lisp` | 365 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ncfg-trim-right-rev and the conclusion is that arm's value |
@@ -1968,7 +1968,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-psrv-prepare-when-served` | `books/owner-prepare-served.lisp` | 113 | arm-of-definition: the hypotheses select one IF/COND arm of fn-psrv-prepare and the conclusion is that arm's value |
 | `fn-pull-fixed-fold` | `books/peer-pull.lisp` | 1053 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-pull-fixed |
 | `fn-pull-list-of-true-list` | `books/peer-pull.lisp` | 770 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pull-list and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-pull-list and the conclusion is that branch's value |
-| `fn-pull-session-step-of-a-done-round` | `books/peer-pull-session.lisp` | 392 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pull-session-step and the conclusion is that arm's value |
+| `fn-pull-session-failure-names-every-failed-step` | `books/peer-pull-session.lisp` | 945 | closed-theory-corollary: proved only by fn-peer-failure-words-begin-with-reason, fn-pull-session-failure-iff, fn-pull-session-failure-shape |
+| `fn-pull-session-run-keeps-the-cursor-and-journals-nothing` | `books/peer-pull-session.lisp` | 525 | closed-theory-corollary: proved only by fn-pull-session-run-journals-nothing, fn-pull-session-run-keeps-roundp, fn-pull-session-run-keeps-the-cursor |
+| `fn-pull-session-step-of-a-done-round` | `books/peer-pull-session.lisp` | 403 | arm-of-definition: the hypotheses select one IF/COND arm of fn-pull-session-step and the conclusion is that arm's value |
 | `fn-rca-result-okp-is-line-okp` | `books/reclaim-admission.lisp` | 76 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-rcl-article-alpha-accessors` | `books/store-reclaim-holders.lisp` | 254 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-rcl-config-rule-without-a-row-keeps-forever` | `books/reclaim-rule.lisp` | 155 | arm-of-definition: the hypotheses select one IF/COND arm of fn-rcl-config-rule and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-rcl-config-rule and the conclusion is that branch's value |
