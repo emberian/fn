@@ -3488,6 +3488,13 @@ in sequence order, the committed-history marker checked against their count
 (`fnn-check-history-marker').  The caller holds STORE's writer lock for as
 long as it uses the result.  No file length or directory listing stands in
 for a record."
+  (when (fnn-store-logp store)
+    ;; Format 9: the records the open's scan committed (the log kernel's,
+    ;; fn-lgk-committed), every event kind in sequence order.  The log holds
+    ;; every record of the history (no segment is dropped yet: PKT-750).
+    (return-from fnn-committed-history
+      (mapcar #'fnn-octets (fnn-core 'fn-lgk-committed
+                                     (fnn-log-kernel (fnn-store-log store))))))
   (multiple-value-bind (physical lower sequences)
       (fnn-durable-records store (funcall *fnn-pack-lower-bound-callback* store))
     (let ((records (funcall *fnn-pack-recover-callback* store physical sequences lower)))
@@ -3513,21 +3520,24 @@ for a record."
 (defun fnn-command-store-export (root dir)
   "Offline: write the archive of ROOT's committed history to DIR (it must not
 exist).  The store is acquired under its writer lock (a running owner refuses
-this), the history is the one the open reads (`fnn-committed-history': the
-selected pack's records then the suffix files, the marker checked), and the
-entries and MANIFEST are ACL2's (fn-sxp-entries, fn-sxp-manifest)."
+this), the history is the one the open reads (`fnn-committed-history': on
+format 9 the log's committed records; on format 8 the selected pack's records
+then the suffix files, the marker checked), and the entries and MANIFEST are
+ACL2's (fn-sxp-entries, fn-sxp-manifest)."
   (when (fnn-lstat dir)
     (fnn-refuse "export refused reason=archive-exists"))
   (let ((store (make-fnn-store root :writable nil)))
     (fnn-acquire store)
-    ;; A format-9 store's export reads the log (PKT-COL-3; w6-log-recovery's
-    ;; export/import over the log): refused by name until then.
-    (when (fnn-store-logp store)
-      (fnn-store-close store)
-      (fnn-refuse "export refused reason=record-log: exporting a format-9 store is w6-log-recovery's (PKT-750)"))
     (unwind-protect
          (let* ((profile (fnn-octet-list (fnn-read-regular-bounded (fnn-config-path store) 16384)))
-                (frontier (fnn-octet-list (fnn-read-regular-bounded (fnn-frontier-path store) 4096)))
+                ;; Format 9 holds no frontier file: the archive carries the
+                ;; frontier the log derived at this open (ACL2's frame of
+                ;; fn-store-log-next-txid), so the entry means what a
+                ;; format-8 archive's does.
+                (frontier (fnn-octet-list
+                           (if (fnn-store-logp store)
+                               (fnn-metadata-frontier-frame (fnn-store-frontier store))
+                             (fnn-read-regular-bounded (fnn-frontier-path store) 4096))))
                 (configs (mapcar (lambda (pair) (cons (car pair) (fnn-octet-list (cdr pair))))
                                  (fnn-config-record-observation store)))
                 (records (mapcar (lambda (record)
@@ -3767,25 +3777,35 @@ presence of the two names is classified by fn-bs-imp-classify."
     (destructuring-bind (values frontier configs records) (rest plan)
       (let* ((root-path (string-right-trim "/" root))
              (stage-root (format nil "~a.import-~a" root-path (fnn-random-hex 6)))
-             (stage (make-fnn-store stage-root :writable t :fault (fnn-import-test-fault))))
+             (stage (make-fnn-store stage-root :writable t :fault (fnn-import-test-fault)))
+             (logp (fnn-core 'fn-store-profile-logp values)))
         (fnn-staged-publication
          "import" stage root-path
-         ;; fn-sxp-import-plan's files, in its order.
+         ;; fn-sxp-import-plan's files, in its order.  The plan's profile is
+         ;; format 9 (fn-sxp-log-profile): the records go into the log
+         ;; below, not into transaction files.
          (append (list (cons (fnn-config-path stage) (fnn-core 'fn-bs-config-encode values))
                        (cons (fnn-frontier-path stage) frontier))
                  (mapcar (lambda (config)
                            (cons (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
                          configs)
-                 (mapcar (lambda (record)
-                           (cons (fnn-join (fnn-transactions stage)
-                                           (fnn-transaction-name (car record)))
-                                 (fnn-frame (fnn-octets (cdr record)))))
-                         records))
+                 (unless logp
+                   (mapcar (lambda (record)
+                             (cons (fnn-join (fnn-transactions stage)
+                                             (fnn-transaction-name (car record)))
+                                   (fnn-frame (fnn-octets (cdr record)))))
+                           records)))
          (length records)
          ;; The imported store is a new store on the filesystem ROOT is on
          ;; (its stage is ROOT's sibling): its record, under the import's
-         ;; policy (fn-smid-init-policy: 1), before the ordinary open.
-         (lambda (stage) (fnn-record-filesystem-at-init stage request policy)))
+         ;; policy (fn-smid-init-policy: 1), before the ordinary open.  On
+         ;; format 9 the stage's segment is then written from the genesis
+         ;; (fnn-log-write-history) before that open admits it.
+         (lambda (stage)
+           (fnn-record-filesystem-at-init stage request policy)
+           (when logp
+             (fnn-log-init-segment stage)
+             (fnn-log-write-history stage values records))))
         (fnn-out "imported records=~d configuration=~d" (length records) (length configs))
         +fnn-exit-ok+))))
 
@@ -5419,6 +5439,39 @@ fenced (fn-lgk-fence-failed) and the store with it."
       ;; still to come and finds the store fenced, as fnn-finish requires).
       (setf (fnn-store-fenced store) fenced))
     t))
+
+(defun fnn-log-write-history (store values records)
+  "`store import' onto the record log (design 2026-09-27 storage-log section
+5.3): the fresh segment of the staged STORE (profile VALUES) receives
+RECORDS, a list of (SEQUENCE . OCTETS) in increasing sequence, from the
+genesis, through the kernel the open recovered from it and the commit
+route's own steps: per record the kernel catches up to its sequence
+(fn-olr-consume-to: the archive's burned reservations stay burned) and takes
+it (fn-olr-take, at the bounds of a configuration naming none: fn-olr-bmax,
+fn-olr-omax); a full batch, and the last, is P-BATCH's append and barrier
+(fnn-log-commit-open-batch, cuts log-written and log-fenced) and is
+acknowledged.  The stage is unpublished throughout: a death here leaves
+ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
+  (let* ((path (fnn-segment-path store))
+         (log (fnn-log-recover path (fnn-log-observed-extent path) (fnn-store-log-unit)
+                               (fnn-nat (fnn-core 'fn-store-profile-max-record-octets values)))))
+    (setf (fnn-store-log store) log
+          (fnn-log-bmax log) (fnn-nat (fnn-core 'fn-olr-bmax nil))
+          (fnn-log-omax log) (fnn-nat (fnn-core 'fn-olr-omax nil)))
+    (fnn-log-batch-reset log)
+    (unwind-protect
+         (let ((*fnn-log-batch* t))
+           (dolist (record records)
+             (let ((sequence (car record)))
+               (setf (fnn-log-kernel log)
+                     (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) sequence)
+                     (fnn-log-reserved log) sequence)
+               (fnn-log-take store (cdr record))
+               (fnn-log-batch-finish store)))
+           (fnn-log-commit-open-batch store)
+           (fnn-log-batch-finish store))
+      (fnn-close (fnn-log-fd log))
+      (setf (fnn-store-log store) nil))))
 
 (defun fnn-log-publish (store sequence record)
   "fnn-publish on the log route."
