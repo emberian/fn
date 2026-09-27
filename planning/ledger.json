@@ -732,7 +732,10 @@
     "books/records-attach-concrete",
     "books/msgid-index-concrete",
     "books/octets-stobj",
+    "books/payload-arena-bytes",
     "books/payload-arena",
+    "books/payload-arena-attach",
+    "books/records-freeze",
     "books/catalog-record",
     "books/catalog",
     "books/catalog-commit",
@@ -750,10 +753,7 @@
     "books/owner-checkpoint-pipeline",
     "tests/acl2/octets-stobj-tests",
     "tests/acl2/payload-arena-tests",
-    "books/proto-catalog",
-    "books/proto-catalog-fold",
-    "books/proto-catalog-arena",
-    "tests/acl2/proto-catalog-tests",
+    "tests/acl2/records-freeze-tests",
     "tests/acl2/catalog-record-tests",
     "tests/acl2/catalog-tests",
     "tests/acl2/catalog-commit-tests",
@@ -1041,24 +1041,24 @@
     "books": 1063,
     "books_in_root_closure": 1055,
     "roots": 1034,
-    "theorems": 15158,
-    "functions": 10436,
-    "assert_events": 15594,
-    "must_fails": 1855,
+    "theorems": 15202,
+    "functions": 10460,
+    "assert_events": 15602,
+    "must_fails": 1864,
     "prover_refusals": 0,
     "encapsulates": 77,
     "guards": {
-      "verified": 2336,
-      "declared-off": 829,
-      "default-guarded": 5701,
-      "default-unguarded": 1570
+      "verified": 2337,
+      "declared-off": 830,
+      "default-guarded": 5713,
+      "default-unguarded": 1580
     },
     "suspect_theorems": 145,
     "export_hygiene_warnings": 168,
     "enabled_projection_warnings": 43,
-    "teeth_form_warnings": 166,
-    "include_hygiene_warnings": 1056,
-    "host_names_warnings": 1195,
+    "teeth_form_warnings": 164,
+    "include_hygiene_warnings": 1060,
+    "host_names_warnings": 1189,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -13014,18 +13014,46 @@
       "read_error": null
     },
     {
-      "book": "books/payload-arena.lisp",
+      "book": "books/payload-arena-attach.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 98,
-      "functions": 29,
+      "theorems": 0,
+      "functions": 1,
       "guards": {
-        "verified": 2,
-        "declared-off": 3,
-        "default-guarded": 20,
-        "default-unguarded": 4
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
       },
-      "verify_guards_events": 2,
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-record",
+        "payload-arena",
+        "payload-arena-bytes"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/payload-arena-bytes.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 79,
+      "functions": 28,
+      "guards": {
+        "verified": 3,
+        "declared-off": 3,
+        "default-guarded": 19,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 3,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -13035,6 +13063,32 @@
       "includes": [
         "octets-stobj",
         "records-shape"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/payload-arena.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 49,
+      "functions": 13,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 9,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "payload-arena-bytes"
       ],
       "system_includes": [],
       "suspects": [],
@@ -13715,86 +13769,6 @@
       "read_error": null
     },
     {
-      "book": "books/proto-catalog-arena.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 0,
-      "functions": 1,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 1
-      },
-      "verify_guards_events": 0,
-      "assert_events": 1,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "payload-arena",
-        "proto-catalog",
-        "proto-catalog-fold"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "books/proto-catalog-fold.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 6,
-      "functions": 2,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 2,
-        "default-unguarded": 0
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "proto-catalog"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
-      "book": "books/proto-catalog.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 26,
-      "functions": 9,
-      "guards": {
-        "verified": 0,
-        "declared-off": 1,
-        "default-guarded": 6,
-        "default-unguarded": 2
-      },
-      "verify_guards_events": 0,
-      "assert_events": 0,
-      "must_fails": 0,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "payload-arena"
-      ],
-      "system_includes": [],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "books/provenance-codec.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -14220,6 +14194,33 @@
       "system_includes": [
         "arithmetic/top"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/records-freeze.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 28,
+      "functions": 12,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 11,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-relation",
+        "records-seam"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -27160,16 +27161,16 @@
       "book": "tests/acl2/payload-arena-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
-      "functions": 5,
+      "theorems": 22,
+      "functions": 13,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 1,
-        "default-unguarded": 4
+        "default-unguarded": 12
       },
       "verify_guards_events": 0,
-      "assert_events": 4,
+      "assert_events": 7,
       "must_fails": 10,
       "prover_refusals": 0,
       "defconsts": 8,
@@ -27640,34 +27641,6 @@
       "read_error": null
     },
     {
-      "book": "tests/acl2/proto-catalog-tests.lisp",
-      "in_root_closure": true,
-      "is_root": true,
-      "theorems": 5,
-      "functions": 2,
-      "guards": {
-        "verified": 0,
-        "declared-off": 0,
-        "default-guarded": 0,
-        "default-unguarded": 2
-      },
-      "verify_guards_events": 0,
-      "assert_events": 2,
-      "must_fails": 2,
-      "prover_refusals": 0,
-      "defconsts": 0,
-      "defmacros": 0,
-      "encapsulates": 0,
-      "includes": [
-        "../../books/proto-catalog-fold"
-      ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
-      "suspects": [],
-      "read_error": null
-    },
-    {
       "book": "tests/acl2/provenance-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -27862,6 +27835,36 @@
         "../../books/records-concrete",
         "../../books/records-concrete-owner",
         "owner-served-invariants-tests"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/records-freeze-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 22,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 7,
+      "must_fails": 11,
+      "prover_refusals": 0,
+      "defconsts": 21,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/records-freeze",
+        "crypto-seam-tests"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -34281,18 +34284,6 @@
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
-        "check": "pct-keeps-w-natp-h",
-        "book": "tests/acl2/proto-catalog-tests.lisp",
-        "line": 93,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
-        "check": "pct-keeps-w-bound",
-        "book": "tests/acl2/proto-catalog-tests.lisp",
-        "line": 109,
-        "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
-      },
-      {
         "check": "rwpt-narrow-without-the-charge-hypothesis",
         "book": "tests/acl2/record-width-producers-tests.lisp",
         "line": 56,
@@ -37058,6 +37049,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/payload-arena-attach.lisp",
+        "line": 32,
+        "include": "payload-arena-bytes",
+        "included": "books/payload-arena-bytes.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/payload-arena.lisp",
+        "line": 63,
+        "include": "payload-arena-bytes",
+        "included": "books/payload-arena-bytes.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/peer-authored-accept.lisp",
         "line": 5,
         "include": "hybrid-lifecycle",
@@ -37142,13 +37147,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "books/proto-catalog-arena.lisp",
-        "line": 27,
-        "include": "proto-catalog-fold",
-        "included": "books/proto-catalog-fold.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "books/provenance.lisp",
         "line": 41,
         "include": "acceptance-alloc",
@@ -37193,6 +37191,20 @@
       {
         "book": "books/records-attach.lisp",
         "line": 23,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/records-freeze.lisp",
+        "line": 69,
+        "include": "catalog-relation",
+        "included": "books/catalog-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/records-freeze.lisp",
+        "line": 70,
         "include": "records-seam",
         "included": "books/records-seam.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -40978,13 +40990,6 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
-        "book": "tests/acl2/proto-catalog-tests.lisp",
-        "line": 20,
-        "include": "../../books/proto-catalog-fold",
-        "included": "books/proto-catalog-fold.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
         "book": "tests/acl2/public-exposure-tests.lisp",
         "line": 11,
         "include": "../../books/public-exposure",
@@ -41052,6 +41057,20 @@
         "line": 8,
         "include": "owner-served-invariants-tests",
         "included": "tests/acl2/owner-served-invariants-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/records-freeze-tests.lisp",
+        "line": 24,
+        "include": "crypto-seam-tests",
+        "included": "tests/acl2/crypto-seam-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/records-freeze-tests.lisp",
+        "line": 25,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -49061,48 +49080,6 @@
         "host": "host/native/peer-invite.lisp",
         "line": 423,
         "name": "fnn-exit-code-for",
-        "source": "host/native/io.lisp",
-        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-catalog.lisp",
-        "line": 17,
-        "name": "user-stobj-alist",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-catalog.lisp",
-        "line": 17,
-        "name": "fnn-fault",
-        "source": "host/native/io.lisp",
-        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-catalog.lisp",
-        "line": 21,
-        "name": "simple-vector-p",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
-      },
-      {
-        "host": "host/native/proto-catalog.lisp",
-        "line": 21,
-        "name": "fnn-call",
-        "source": "host/native/io.lisp",
-        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-catalog.lisp",
-        "line": 21,
-        "name": "fnn-out",
-        "source": "host/native/io.lisp",
-        "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/native/proto-catalog.lisp",
-        "line": 38,
-        "name": "fnn-register-developer-verb",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },

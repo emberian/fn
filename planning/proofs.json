@@ -5347,7 +5347,7 @@
         "fn-arena-seal-keeps-sealed",
         "fn-arena-seals-keep-sealed",
         "fn-arena-seal-new-handle",
-        "fn-arena-seal-buffer{correspondence}",
+        "fn-arena-bytes-seal-buffer{correspondence}",
         "fn-arn-store-corr-of-commit",
         "fn-arn-store-corr-of-open"
       ],
