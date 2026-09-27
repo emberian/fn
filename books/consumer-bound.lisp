@@ -110,7 +110,8 @@
     (cond ((not login) (list :refused :unbound))
           ((not (fn-cbind-authenticp oc acfg login secret))
            (list :refused :credential))
-          ((not (eq (car scoped) :scope)) (list :refused :scope))
+          ;; PKT-709: the scope's own refusal, which names its reason.
+          ((not (eq (car scoped) :scope)) (list :refused (fn-cp-nth 1 scoped)))
           ((not (fn-cbind-group-readablep
                  (fn-cbind-read-pattern oc login)
                  (fn-record-octets-string
@@ -164,8 +165,10 @@
 
 (defun fn-cbind-event-readablep (text event)
   (declare (xargs :guard t :verify-guards nil))
+  ;; After the records flip a plain article's event is a HELD row
+  ;; (fn-col-poll-articlep: a held row or a record), as the scan selects it.
   (let ((article (fn-col-poll-article event)))
-    (and (fn-record-p article)
+    (and (fn-col-poll-articlep article)
          (fn-cbind-some-readablep text (fn-record-groups article))
          t)))
 

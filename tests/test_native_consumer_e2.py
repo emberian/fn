@@ -154,7 +154,7 @@ class NativeConsumerE2Tests(unittest.TestCase):
         self.assertIn(b"register CONTROL NAME GROUP CURSOR-OUT", usage.stdout)
         refused = self.native("consumer", "register", first["control"], "worker")
         self.assertEqual(refused.returncode, 5, refused.stderr)
-        self.assertIn(b"usage: fn consumer COMMAND CONTROL", refused.stderr)
+        self.assertIn(b"usage: fn consumer [--json] COMMAND CONTROL", refused.stderr)
         token_path = first["base"] / "initial.fncu"
         initial = self.register(first, "worker", token_path)
         self.consumer("bootstrap", first, expected=1)
@@ -215,6 +215,59 @@ class NativeConsumerE2Tests(unittest.TestCase):
                                        first["base"] / "reopened.fncu"), current)
         self.assertEqual(self.status(first, "worker")[0], 0)
         self.stop_owner(reopened)
+
+    def test_refusals_name_their_reason_json_lines_and_bind_of_an_unknown_name(self):
+        """PKT-709 (CNS-009, PRF-261): a refusal names the owner's reason
+        (the reasoned consumer request, FNCT kind 22, answered with the
+        reasoned reply); `--json` prints ACL2's one JSON line; `consumer
+        bind` of a name no registration declared is refused by name."""
+        node = self.node("reasons")
+        owner = self.start_owner(node)
+        self.register(node, "worker", node["base"] / "worker.fncu")
+        # The reason, in text.
+        status = self.consumer("status", node, "ghost", expected=1)
+        self.assertIn(b"consumer status refused unknown-consumer", status.stdout)
+        poll = self.consumer("poll", node, "ghost", node["base"] / "g.fncu",
+                             node["base"] / "g.report", expected=1)
+        self.assertIn(b"consumer refused unknown-consumer", poll.stdout)
+        # The same, as JSON; every line is one JSON object.
+        refused = self.native("consumer", "--json", "poll", node["control"], "ghost",
+                              node["base"] / "g2.fncu", node["base"] / "g2.report")
+        self.assertEqual(refused.returncode, 1, refused.stderr)
+        line = json.loads(refused.stdout.decode("ascii").strip().splitlines()[-1])
+        self.assertEqual(line, {"command": "poll", "outcome": "refused",
+                                "reason": "unknown-consumer"})
+        counts = self.native("consumer", "--json", "status", node["control"], "worker")
+        self.assertEqual(counts.returncode, 0, counts.stderr)
+        line = json.loads(counts.stdout.decode("ascii").strip().splitlines()[-1])
+        self.assertEqual(line["outcome"], "accepted")
+        self.assertIsNone(line["reason"])
+        self.assertEqual(line["journal_event_distance"],
+                         line["journal_frontier"] - line["committed_ack"])
+        empty = self.native("consumer", "--json", "poll", node["control"], "worker",
+                            node["base"] / "w.fncu", node["base"] / "w.report")
+        self.assertEqual(empty.returncode, 0, empty.stderr)
+        line = json.loads(empty.stdout.decode("ascii").strip().splitlines()[-1])
+        self.assertEqual((line["outcome"], line["report"]), ("accepted", "empty"))
+        # `fn consumer-article` on the empty report names it.
+        article = self.native("consumer-article", "--json", node["base"] / "w.report")
+        self.assertEqual(article.returncode, 1, article.stderr)
+        self.assertEqual(json.loads(article.stdout.decode("ascii").strip()),
+                         {"report": "empty"})
+        # A bind of a name no registration declared is refused by name; the
+        # registered one is bound.
+        ghost = self.native("operator", node["config"], "consumer", "bind",
+                            "ghost", "--account", "bob")
+        self.assertEqual(ghost.returncode, 1, ghost.stdout + ghost.stderr)
+        self.assertIn(b"unknown-consumer", ghost.stdout + ghost.stderr)
+        bound = self.native("operator", node["config"], "consumer", "bind",
+                            "worker", "--account", "bob")
+        self.assertEqual(bound.returncode, 0, bound.stdout + bound.stderr)
+        # The plain poll of the now bound consumer names why it is refused.
+        plain = self.consumer("poll", node, "worker", node["base"] / "b.fncu",
+                              node["base"] / "b.report", expected=1)
+        self.assertIn(b"consumer refused bound", plain.stdout)
+        self.stop_owner(owner)
 
     def test_lost_register_reply_resolves_by_reopened_position(self):
         node = self.node("uncertain")
