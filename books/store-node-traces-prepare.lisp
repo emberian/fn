@@ -377,7 +377,10 @@
                   (implies (fn-held-p record) (natp (fn-record-generation record))))
                  (:type-prescription :corollary
                   (implies (fn-held-p record) (natp (fn-record-sequence record)))))
-  :hints (("Goal" :in-theory (enable fn-record-p fn-record-uint32p))))
+  :hints (("Goal" :in-theory '(fn-held-p fn-held-shapep fn-record-uint64p
+                               fn-held-sequence fn-held-txid fn-held-generation
+                               fn-record-sequence fn-record-txid fn-record-generation
+                               fn-cbor-ag-car fn-cbor-ag-cdr natp))))
 
 ; `fn-sn-make' is the six-field constructor, which fills the four fields
 ; `6e992351' added to `fn-sn-state' with 0, NIL, NIL and 0.  Rebuilding a
@@ -609,9 +612,10 @@
 (defthm fn-snt-bound-record-excludes-consumer-by-shape
   (implies (fn-sn-record-bindsp node record)
            (not (fn-cpe-eventp record)))
-  :hints (("Goal" :use fn-snt-bound-record-is-an-article-record
-           :in-theory (disable fn-sn-record-bindsp fn-record-p
-                               fn-cpe-eventp))))
+  :hints (("Goal" :use (fn-snt-bound-record-is-an-article-record
+                        (:instance fn-held-p-forward-natural-head (x record)))
+           :in-theory (e/d (fn-cpe-eventp fn-cp-nth)
+                           (fn-sn-record-bindsp fn-held-p fn-record-p)))))
 
 ; The reserved frontier is the candidate's successor, so the node the
 ; relation carries (replay at frontier - 1) is replay at the candidate txid.
@@ -1039,6 +1043,13 @@
             (history (fn-sf-records (fn-sn-files s)))
             (txid (+ -1 (fn-sf-frontier (fn-sn-files s)))))))))
 
+(defthm fn-snt-topic-event-is-not-hstxa
+  (implies (fn-th-topic-eventp event)
+           (not (fn-hstxa-p event)))
+  :hints (("Goal" :use (:instance fn-hstxa-p-forward-shape (x event))
+           :in-theory (e/d (fn-th-topic-eventp fn-th-local-admin-eventp fn-th-at)
+                           (fn-hstxa-p)))))
+
 (defthm fn-snt-prepare-identity-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-prepare-identity s event)))
@@ -1091,6 +1102,7 @@
           fn-th-topic-event-is-not-stxe
           fn-th-topic-event-is-not-stxk
           fn-th-topic-event-is-not-stxa
+          fn-snt-topic-event-is-not-hstxa
           (:instance fn-snt-an-article-record-is-no-other-store-event
             (record event))
           (:instance fn-snt-candidate-is-frontier-predecessor
