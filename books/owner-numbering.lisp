@@ -330,7 +330,7 @@
 
 (local (defthm fn-own-writer-step-view-is-kept-or-the-idle-node
   (implies (fn-ocfg-writer-eventp event)
-           (let ((o2 (fn-own-step o event)))
+           (let ((o2 (fn-own-step o event fn-arena)))
              (or (equal (fn-own-view o2) (fn-own-view o))
                  (and (fn-own-store-idlep (fn-own-store o2))
                       (equal (fn-own-view-version (fn-own-view o2))
@@ -366,9 +366,9 @@
 
 (local (defthm fn-own-writer-step-keeps-store-configuration
   (implies (fn-ocfg-writer-eventp event)
-           (and (equal (fn-sn-groups (fn-own-store (fn-own-step o event)))
+           (and (equal (fn-sn-groups (fn-own-store (fn-own-step o event fn-arena)))
                        (fn-sn-groups (fn-own-store o)))
-                (equal (fn-sn-capacity (fn-own-store (fn-own-step o event)))
+                (equal (fn-sn-capacity (fn-own-store (fn-own-step o event fn-arena)))
                        (fn-sn-capacity (fn-own-store o)))))
   :hints (("Goal" :in-theory (e/d (fn-own-step fn-own-take-submission fn-own-begin
                                    fn-own-store-step fn-own-complete fn-ocfg-writer-eventp
@@ -423,7 +423,7 @@
   (implies (and (fn-own-relation o)
                 (fn-ocfg-writer-eventp event))
            (let ((v1 (fn-own-view o))
-                 (v2 (fn-own-view (fn-own-step o event))))
+                 (v2 (fn-own-view (fn-own-step o event fn-arena))))
              (and (fn-own-tailp (fn-own-view-raw v1) (fn-own-view-raw v2))
                   (<= (fn-next-number g (fn-state-nexts (fn-own-view-archive v1)))
                       (fn-next-number g (fn-state-nexts (fn-own-view-archive v2))))
@@ -436,32 +436,32 @@
                  (:instance fn-own-step-preserves-relation)
                  (:instance fn-own-step-records-prefix)
                  (:instance fn-own-relation-parts)
-                 (:instance fn-own-relation-parts (o (fn-own-step o event)))
+                 (:instance fn-own-relation-parts (o (fn-own-step o event fn-arena)))
                  (:instance fn-own-view-okp-archive
                             (view (fn-own-view o))
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o)))))
-                 (:instance fn-own-idle-node-is-replay (s (fn-own-store (fn-own-step o event))))
-                 (:instance fn-own-related-node-is-statep (s (fn-own-store (fn-own-step o event))))
+                 (:instance fn-own-idle-node-is-replay (s (fn-own-store (fn-own-step o event fn-arena))))
+                 (:instance fn-own-related-node-is-statep (s (fn-own-store (fn-own-step o event fn-arena))))
                  (:instance fn-own-statep-committed-facts
-                            (a (fn-node-acceptance (fn-sn-node (fn-own-store (fn-own-step o event))))))
-                 (:instance fn-own-relation-records-true-list (o (fn-own-step o event)))
+                            (a (fn-node-acceptance (fn-sn-node (fn-own-store (fn-own-step o event fn-arena))))))
+                 (:instance fn-own-relation-records-true-list (o (fn-own-step o event fn-arena)))
                  (:instance fn-own-take-of-prefix
                             (n (fn-own-view-version (fn-own-view o)))
                             (xs (fn-sf-records (fn-sn-files (fn-own-store o))))
-                            (ys (fn-sf-records (fn-sn-files (fn-own-store (fn-own-step o event))))))
+                            (ys (fn-sf-records (fn-sn-files (fn-own-store (fn-own-step o event fn-arena))))))
                  (:instance fn-own-take-is-prefix
                             (n (fn-own-view-version (fn-own-view o)))
-                            (ys (fn-sf-records (fn-sn-files (fn-own-store (fn-own-step o event))))))
+                            (ys (fn-sf-records (fn-sn-files (fn-own-store (fn-own-step o event fn-arena))))))
                  (:instance fn-own-replay-node-prefix-grows
                             (groups (fn-sn-groups (fn-own-store o)))
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (xs (fn-own-take (fn-own-view-version (fn-own-view o))
-                                             (fn-sf-records (fn-sn-files (fn-own-store (fn-own-step o event))))))
-                            (ys (fn-sf-records (fn-sn-files (fn-own-store (fn-own-step o event)))))
+                                             (fn-sf-records (fn-sn-files (fn-own-store (fn-own-step o event fn-arena))))))
+                            (ys (fn-sf-records (fn-sn-files (fn-own-store (fn-own-step o event fn-arena)))))
                             (f1 (fn-own-view-frontier (fn-own-view o)))
-                            (f2 (fn-sf-frontier (fn-sn-files (fn-own-store (fn-own-step o event)))))))
+                            (f2 (fn-sf-frontier (fn-sn-files (fn-own-store (fn-own-step o event fn-arena)))))))
            :in-theory (union-theories
                        '(fn-own-tailp-reflexive fn-own-writer-step-keeps-store-configuration
                          fn-own-node-statep-acceptance)
@@ -474,16 +474,16 @@
 
 (local (defthm fn-ocfg-writer-step-owner
   (implies (fn-ocfg-writer-eventp event)
-           (or (equal (fn-ocfg-owner (fn-ocfg-step oc event)) (fn-ocfg-owner oc))
-               (equal (fn-ocfg-owner (fn-ocfg-step oc event))
-                      (fn-own-step (fn-ocfg-owner oc) event))))
+           (or (equal (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)) (fn-ocfg-owner oc))
+               (equal (fn-ocfg-owner (fn-ocfg-step oc event fn-arena))
+                      (fn-own-step (fn-ocfg-owner oc) event fn-arena))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-ocfg-step fn-ocfg-pass fn-ocfg-complete
                                    fn-ocfg-with-owner fn-ocfg-writer-eventp)
                                   (fn-own-step fn-own-complete fn-ocfg-open fn-ocfg-read
                                    fn-ocfg-read-step fn-ocfg-fault fn-ocfg-close
                                    fn-ocfg-advance fn-ocfg-open-peer fn-ocfg-reconfigure))
-           :expand ((fn-own-step (fn-ocfg-owner oc) event))))))
+           :expand ((fn-own-step (fn-ocfg-owner oc) event fn-arena))))))
 
 (defthm fn-own-outcome-keeps-the-view
   (equal (fn-own-view (cdr (fn-own-outcome o id word))) (fn-own-view o))
@@ -494,7 +494,7 @@
   (implies (and (fn-own-relation (fn-ocfg-owner oc))
                 (fn-ocfg-writer-eventsp events))
            (let* ((o1 (fn-ocfg-owner oc))
-                  (o2 (fn-ocfg-owner (fn-ocfg-run oc events)))
+                  (o2 (fn-ocfg-owner (fn-ocfg-run oc events fn-arena)))
                   (v1 (fn-own-view o1))
                   (v2 (fn-own-view o2)))
              (and (fn-own-relation o2)
@@ -504,7 +504,7 @@
                   (or (equal v2 v1)
                       (fn-articles-freshp (fn-own-view-raw v2))))))
   :rule-classes nil
-  :hints (("Goal" :induct (fn-ocfg-run oc events)
+  :hints (("Goal" :induct (fn-ocfg-run oc events fn-arena)
            :in-theory (e/d (fn-ocfg-run fn-ocfg-writer-eventsp)
                            (fn-ocfg-step fn-own-step fn-own-relation fn-ocfg-writer-eventp
                             fn-next-number fn-own-tailp fn-statep fn-articles-freshp)))
@@ -517,11 +517,11 @@
                  (:instance fn-own-tailp-transitive
                             (x (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc))))
                             (y (fn-own-view-raw
-                                (fn-own-view (fn-ocfg-owner (fn-ocfg-step oc (car events))))))
+                                (fn-own-view (fn-ocfg-owner (fn-ocfg-step oc (car events) fn-arena)))))
                             (z (fn-own-view-raw
                                 (fn-own-view (fn-ocfg-owner
-                                              (fn-ocfg-run (fn-ocfg-step oc (car events))
-                                                           (cdr events)))))))))))
+                                              (fn-ocfg-run (fn-ocfg-step oc (car events) fn-arena)
+                                                           (cdr events) fn-arena))))))))))
 )
 
 ; -----------------------------------------------------------------------------
@@ -635,7 +635,7 @@
 (defthm fn-own-served-watermarks-never-decrease
   (implies (and (fn-own-relation (fn-ocfg-owner oc))
                 (fn-ocfg-writer-eventsp events))
-           (let* ((oc1 (fn-ocfg-run oc events))
+           (let* ((oc1 (fn-ocfg-run oc events fn-arena))
                   (oc2 (fn-ocfg-with-owner
                         oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word)))))
              (<= (fn-next-number
@@ -657,7 +657,7 @@
                 (fn-ocfg-writer-eventsp events)
                 (fn-own-number-holder
                  group number (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc)))))
-           (let* ((oc1 (fn-ocfg-run oc events))
+           (let* ((oc1 (fn-ocfg-run oc events fn-arena))
                   (oc2 (fn-ocfg-with-owner
                         oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word)))))
              (equal (fn-own-number-holder
@@ -669,7 +669,7 @@
                         (:instance fn-own-holder-of-fresh-extension
                                    (xs (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc))))
                                    (ys (fn-own-view-raw
-                                        (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events)))))))
+                                        (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events fn-arena)))))))
            :in-theory (e/d (fn-ocfg-with-owner)
                            (fn-own-outcome fn-ocfg-run fn-own-relation fn-next-number
                             fn-own-tailp fn-statep fn-own-number-holder
@@ -686,7 +686,7 @@
                 (fn-own-number-holder
                  group number
                  (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))))
-           (let* ((oc1 (fn-ocfg-run oc events))
+           (let* ((oc1 (fn-ocfg-run oc events fn-arena))
                   (oc2 (fn-ocfg-with-owner
                         oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word))))
                   (after (fn-own-number-holder
@@ -702,23 +702,23 @@
                         (:instance fn-own-relation-view-is-a-subsequence-of-raw
                                    (o (fn-ocfg-owner oc)))
                         (:instance fn-own-relation-view-is-a-subsequence-of-raw
-                                   (o (fn-ocfg-owner (fn-ocfg-run oc events))))
+                                   (o (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))))
                         (:instance fn-own-freshp-of-tail
                                    (xs (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc))))
                                    (ys (fn-own-view-raw
-                                        (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events))))))
+                                        (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))))))
                         (:instance fn-own-holder-of-fresh-subseq
                                    (xs (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc)))))
                                    (ys (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc)))))
                         (:instance fn-own-holder-of-fresh-extension
                                    (xs (fn-own-view-raw (fn-own-view (fn-ocfg-owner oc))))
                                    (ys (fn-own-view-raw
-                                        (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events))))))
+                                        (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))))))
                         (:instance fn-own-holder-of-fresh-subseq
                                    (xs (fn-state-articles (fn-own-view-archive
-                                                           (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events))))))
+                                                           (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))))))
                                    (ys (fn-own-view-raw
-                                        (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events)))))))
+                                        (fn-own-view (fn-ocfg-owner (fn-ocfg-run oc events fn-arena)))))))
            :in-theory (e/d (fn-ocfg-with-owner)
                            (fn-own-outcome fn-ocfg-run fn-own-relation fn-next-number
                             fn-own-tailp fn-statep fn-own-number-holder

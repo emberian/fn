@@ -48,7 +48,7 @@
   (equal (fn-auth-session-config
           (fn-post-result-session
            (fn-auth-step-pinned as archive index verdicts config observation
-                                injection wire-event)))
+                                injection wire-event fn-arena)))
          (fn-auth-session-config as))
   :hints (("Goal"
            :do-not-induct t
@@ -65,7 +65,7 @@
            (not (fn-post-result-submission
                  (fn-nntp-post-step-pinned
                   ps archive index verdicts config observation injection
-                  wire-event))))
+                  wire-event fn-arena))))
   :hints (("Goal"
            :in-theory (e/d (fn-nntp-post-step-pinned fn-nntp-post-step)
                            (fn-nntp-step-pinned
@@ -78,12 +78,12 @@
                  (fn-post-result-session
                   (fn-nntp-post-step-pinned
                    ps archive index verdicts config observation injection
-                   wire-event))))
+                   wire-event fn-arena))))
            (fn-post-offeredp
             (fn-post-result-effects
              (fn-nntp-post-step-pinned
               ps archive index verdicts config observation injection
-              wire-event))))
+              wire-event fn-arena))))
   :hints (("Goal"
            :in-theory (e/d (fn-nntp-post-step-pinned)
                            (fn-nntp-step-pinned fn-nntp-post-step
@@ -129,7 +129,7 @@
 (defthm fn-auth-fold-archive-command-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
-         (fn-nntp-archive-command session archive env keyword args))))
+         (fn-nntp-archive-command session archive env keyword args fn-arena))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory
@@ -206,19 +206,19 @@
 ;; R3: the served OVER renderers (books/nntp-xref.lisp) answer through
 ;; fn-nntp-single, -multi or -multi-octets.
 (defthm fn-auth-fold-nntp-over-range-served-has-no-offer
-  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-over-range-served session buckets trie token legacyp server))))
+  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-over-range-served session buckets trie token legacyp server fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-served)
                                   (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
                                    fn-post-offeredp fn-nov-served-lines-numbered fn-nntp-index-group-range-numbers fn-nntp-parse-range)))))
 
 (defthm fn-auth-fold-nntp-over-current-served-has-no-offer
-  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-over-current-served session archive server))))
+  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-over-current-served session archive server fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-current-served)
                                   (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
                                    fn-post-offeredp fn-nov-served-line fn-nov-overview fn-nntp-available-article)))))
 
 (defthm fn-auth-fold-nntp-over-msgid-served-has-no-offer
-  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-over-msgid-served session archive token server))))
+  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-over-msgid-served session archive token server fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-msgid-served)
                                   (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
                                    fn-post-offeredp fn-nov-served-line fn-nov-overview fn-find-article)))))
@@ -232,7 +232,7 @@
 (defthm fn-auth-fold-xref-reply-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
-         (fn-nntp-xref-reply session archive index env keyword args))))
+         (fn-nntp-xref-reply session archive index env keyword args fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-xref-reply)
                                   (fn-post-offeredp fn-nntp-keywordp
                                    fn-nntp-xref-server
@@ -243,7 +243,7 @@
 (defthm fn-auth-fold-rcompat-reply-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
-         (fn-rcompat-reply session archive index env keyword args))))
+         (fn-rcompat-reply session archive index env keyword args fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-rcompat-reply fn-rcompat-newgroups
                                    fn-rcompat-active-times
                                    fn-rcompat-subscriptions
@@ -262,7 +262,7 @@
   (not (fn-post-offeredp
         (fn-nntp-result-effects
          (fn-nntp-archive-command-pinned
-          session archive index verdicts env keyword args))))
+          session archive index verdicts env keyword args fn-arena))))
   :hints (("Goal" :do-not-induct t
            :in-theory
            (e/d (fn-nntp-archive-command-pinned
@@ -279,7 +279,7 @@
            (not (fn-post-offeredp
                  (fn-nntp-result-effects
                   (fn-nntp-command-pinned session archive index verdicts
-                                          env tokens)))))
+                                          env tokens fn-arena)))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-command-pinned)
                 (fn-nntp-session-command
@@ -290,7 +290,7 @@
   (implies
    (fn-post-offeredp
     (fn-nntp-result-effects
-     (fn-nntp-command-pinned session archive index verdicts env tokens)))
+     (fn-nntp-command-pinned session archive index verdicts env tokens fn-arena)))
    (fn-nntp-keyword-tokenp (car tokens)))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-command-pinned)
@@ -302,7 +302,7 @@
   (implies
    (fn-post-offeredp
     (fn-nntp-result-effects
-     (fn-nntp-step-pinned session archive index verdicts env wire-event)))
+     (fn-nntp-step-pinned session archive index verdicts env wire-event fn-arena)))
    (and (consp wire-event)
         (equal (car wire-event) :command)
         (consp (cdr wire-event))
@@ -329,13 +329,13 @@
          (fn-post-result-session
           (fn-nntp-post-step-pinned
            ps archive index verdicts config observation injection
-           wire-event))))
+           wire-event fn-arena))))
    (fn-post-offeredp
     (fn-nntp-result-effects
      (fn-nntp-step-pinned
       (fn-post-session-base ps) archive index verdicts
       (fn-post-reader-env config observation)
-      wire-event))))
+      wire-event fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-post-step-pinned)
                 (fn-nntp-step-pinned fn-post-offeredp
@@ -349,7 +349,7 @@
          (fn-post-result-session
           (fn-nntp-post-step-pinned
            ps archive index verdicts config observation injection
-           wire-event))))
+           wire-event fn-arena))))
    (and (consp wire-event)
         (equal (car wire-event) :command)
         (consp (cdr wire-event))
@@ -404,7 +404,7 @@
             (fn-peer-reader-session
              (fn-post-result-session
               (fn-peer-step ps archive config observation injection
-                            wire-event)))
+                            wire-event fn-arena)))
             (fn-peer-reader-session ps)))
   :hints (("Goal" :in-theory
            (e/d (fn-peer-step fn-peer-with-transfer)
@@ -423,7 +423,7 @@
              (fn-peer-session-base
               (fn-post-result-session
                (fn-peer-step ps archive config observation injection
-                             wire-event))))
+                             wire-event fn-arena))))
             (fn-post-session-awaiting (fn-peer-session-base ps))))
   :hints (("Goal" :in-theory
            (e/d (fn-peer-step fn-peer-with-transfer)
@@ -440,7 +440,7 @@
           (fn-post-result-session
            (fn-peer-delegate-pinned
             ps archive index verdicts config observation injection
-            wire-event)))))
+            wire-event fn-arena)))))
    (and (consp wire-event)
         (equal (car wire-event) :command)
         (consp (cdr wire-event))
@@ -469,7 +469,7 @@
           (fn-post-result-session
            (fn-peer-step-pinned
             ps archive index verdicts config observation injection
-            wire-event)))))
+            wire-event fn-arena)))))
    (and (consp wire-event)
         (equal (car wire-event) :command)
         (consp (cdr wire-event))
@@ -505,7 +505,7 @@
            (fn-post-result-session
             (fn-auth-delegate-pinned
              as archive index verdicts config observation injection
-             wire-event))))))
+             wire-event fn-arena))))))
    (fn-served-post-command-eventp wire-event))
   :hints (("Goal"
            :in-theory (e/d (fn-auth-delegate-pinned fn-auth-with-base
@@ -582,7 +582,7 @@
          (fn-post-result-session
           (fn-auth-step-pinned
            as archive index verdicts config observation injection
-           wire-event))))
+           wire-event fn-arena))))
    (fn-served-post-command-eventp wire-event))
   :hints (("Goal"
            :in-theory
@@ -610,7 +610,7 @@
      (fn-post-result-session
       (fn-auth-step-pinned
        as archive index verdicts config observation injection
-       wire-event)))))
+       wire-event fn-arena)))))
   :hints (("Goal"
            :do-not-induct t
            :in-theory (e/d (fn-auth-step-pinned fn-auth-tls-eventp
@@ -630,7 +630,7 @@
    (not (fn-post-result-submission
          (fn-peer-delegate-pinned
           ps archive index verdicts config observation injection
-          wire-event))))
+          wire-event fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-peer-delegate-pinned)
                 (fn-nntp-post-step-pinned)))))
@@ -652,7 +652,7 @@
            (not (fn-inj-injectedp
                  (fn-post-result-submission
                   (fn-peer-step ps archive config observation injection
-                                wire-event)))))
+                                wire-event fn-arena)))))
   :hints (("Goal" :in-theory
            (e/d (fn-peer-step fn-peer-make-submission
                   fn-inj-injectedp fn-inj-decision-status fn-inj-nth
@@ -669,7 +669,7 @@
          (fn-post-result-submission
           (fn-peer-step-pinned
            ps archive index verdicts config observation injection
-           wire-event)))))
+           wire-event fn-arena)))))
   :hints (("Goal" :in-theory
            (e/d (fn-peer-step-pinned)
                 (fn-peer-delegate-pinned fn-peer-step
@@ -706,7 +706,7 @@
          (fn-post-result-submission
           (fn-auth-step-pinned
            as archive index verdicts config observation injection
-           wire-event)))))
+           wire-event fn-arena)))))
   :hints (("Goal" :in-theory
            (e/d (fn-auth-step-pinned fn-auth-delegate-pinned
                   fn-auth-with-base fn-auth-fold-post-awaiting
@@ -758,7 +758,7 @@
  (defthm fn-auth-fold-dispatch-core-preserves-safe-connp
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-safe-connp
-            (fn-served-result-conn (fn-served-dispatch-core conn event))))
+            (fn-served-result-conn (fn-served-dispatch-core conn event fn-arena))))
   :hints (("Goal"
            :in-theory (e/d (fn-auth-fold-safe-connp fn-served-dispatch-core)
                            (fn-served-connp fn-auth-step-pinned
@@ -801,7 +801,7 @@
  (defthm fn-auth-fold-dispatch-core-has-no-local-submission
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-no-local-effectsp
-            (fn-served-result-effects (fn-served-dispatch-core conn event))))
+            (fn-served-result-effects (fn-served-dispatch-core conn event fn-arena))))
   :hints (("Goal"
            :in-theory (e/d (fn-auth-fold-safe-connp fn-served-dispatch-core
                             fn-served-submit-effect
@@ -851,7 +851,7 @@
                                (fn-served-conn-config conn)
                                (fn-served-conn-observation conn)
                                (fn-served-conn-injection conn)
-                               event)))))))))
+                               event fn-arena)))))))))
 
 ; NNT-042: the dispatch is the dispatch proper, on a GROUP or LISTGROUP
 ; line over the re-pinned connection (kept exactly on 211, else the input
@@ -901,7 +901,7 @@
 (defthm fn-auth-fold-dispatch-preserves-safe-connp
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-safe-connp
-            (fn-served-result-conn (fn-served-dispatch conn event))))
+            (fn-served-result-conn (fn-served-dispatch conn event fn-arena))))
   :hints (("Goal"
            :cases ((fn-served-advance-eventp event))
            :use ((:instance fn-auth-fold-dispatch-core-preserves-safe-connp)
@@ -914,7 +914,7 @@
                  (:instance fn-auth-fold-with-wire-preserves-safe-connp
                             (wire (fn-served-conn-wire
                                    (fn-served-result-conn
-                                    (fn-served-dispatch-core (fn-served-repin conn) event))))))
+                                    (fn-served-dispatch-core (fn-served-repin conn) event fn-arena))))))
            :in-theory (e/d (fn-served-dispatch)
                            (fn-served-dispatch-core fn-served-repin fn-served-selectedp
                             fn-served-advance-eventp fn-auth-fold-safe-connp
@@ -928,7 +928,7 @@
 (defthm fn-auth-fold-dispatch-has-no-local-submission
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-no-local-effectsp
-            (fn-served-result-effects (fn-served-dispatch conn event))))
+            (fn-served-result-effects (fn-served-dispatch conn event fn-arena))))
   :hints (("Goal"
            :cases ((fn-served-advance-eventp event))
            :use ((:instance fn-auth-fold-dispatch-core-has-no-local-submission)
@@ -947,8 +947,8 @@
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-safe-connp
             (fn-served-result-conn
-             (fn-served-dispatch-events conn events))))
-  :hints (("Goal" :induct (fn-served-dispatch-events conn events)
+             (fn-served-dispatch-events conn events fn-arena))))
+  :hints (("Goal" :induct (fn-served-dispatch-events conn events fn-arena)
            :in-theory (disable fn-served-dispatch
                                fn-auth-fold-safe-connp))))
 
@@ -956,8 +956,8 @@
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-no-local-effectsp
             (fn-served-result-effects
-             (fn-served-dispatch-events conn events))))
-  :hints (("Goal" :induct (fn-served-dispatch-events conn events)
+             (fn-served-dispatch-events conn events fn-arena))))
+  :hints (("Goal" :induct (fn-served-dispatch-events conn events fn-arena)
            :in-theory (disable fn-served-dispatch
                                fn-auth-fold-safe-connp
                                fn-auth-fold-no-local-effectsp))))
@@ -991,7 +991,7 @@
 (defthm fn-auth-fold-feed-byte-preserves-safe-connp
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-safe-connp
-            (fn-served-result-conn (fn-served-feed-byte conn byte))))
+            (fn-served-result-conn (fn-served-feed-byte conn byte fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-served-feed-byte fn-auth-fold-fed-conn)
                 (fn-wire-feed-byte fn-served-dispatch-events
@@ -1007,7 +1007,7 @@
 (defthm fn-auth-fold-feed-byte-has-no-local-submission
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-no-local-effectsp
-            (fn-served-result-effects (fn-served-feed-byte conn byte))))
+            (fn-served-result-effects (fn-served-feed-byte conn byte fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-served-feed-byte fn-auth-fold-fed-conn)
                 (fn-wire-feed-byte fn-served-dispatch-events
@@ -1024,8 +1024,8 @@
 (defthm fn-auth-fold-feed-preserves-safe-connp
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-safe-connp
-            (fn-served-result-conn (fn-served-feed conn octets))))
-  :hints (("Goal" :induct (fn-served-feed conn octets)
+            (fn-served-result-conn (fn-served-feed conn octets fn-arena))))
+  :hints (("Goal" :induct (fn-served-feed conn octets fn-arena)
            :in-theory (e/d (fn-served-feed)
                            (fn-served-feed-byte
                             fn-auth-fold-safe-connp
@@ -1035,8 +1035,8 @@
 (defthm fn-auth-fold-feed-has-no-local-submission
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-no-local-effectsp
-            (fn-served-result-effects (fn-served-feed conn octets))))
-  :hints (("Goal" :induct (fn-served-feed conn octets)
+            (fn-served-result-effects (fn-served-feed conn octets fn-arena))))
+  :hints (("Goal" :induct (fn-served-feed conn octets fn-arena)
            :in-theory (e/d (fn-served-feed)
                            (fn-served-feed-byte
                             fn-auth-fold-safe-connp
@@ -1047,7 +1047,7 @@
 (defthm fn-auth-fold-step-preserves-safe-connp
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-safe-connp
-            (fn-served-result-conn (fn-served-step conn octets))))
+            (fn-served-result-conn (fn-served-step conn octets fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-served-step)
                 (fn-served-feed fn-auth-fold-safe-connp
@@ -1056,7 +1056,7 @@
 (defthm fn-auth-fold-step-has-no-local-submission
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-no-local-effectsp
-            (fn-served-result-effects (fn-served-step conn octets))))
+            (fn-served-result-effects (fn-served-step conn octets fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-served-step fn-nntp-close-effect
                   fn-auth-fold-no-local-effectsp)

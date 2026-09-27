@@ -30,11 +30,11 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-native-admin-query-report
           plan (fn-cfg-value (f-get-global 'fn-store-cfg state)))))
-(defun fn-native-admin-host-owner-reconfigure (id plan state)
+(defun fn-native-admin-host-owner-reconfigure (id plan fn-arena state)
   ; The live arm.  The delta list, labels as strings, is ACL2's
   ; (`fn-native-admin-plan-deltas', books/native-admin.lisp); this bridge
   ; only hands it to the owner's staging step.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   ; PRF-099: an :extend-peer plan's delta is built over the live owner's
   ; peer table (`fn-native-admin-plan-deltas-over').
   ;; PRF-164: an `account invite' plan's pending row expires from the live
@@ -45,7 +45,7 @@
                   (fn-native-admin-plan-deltas-over
                    plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))))
     (if deltas
-        (fn-owner-reconfigure-deltas id deltas state)
+        (fn-owner-reconfigure-deltas id deltas fn-arena state)
       ;; No delta for this plan over the live owner's tables: the result
       ;; says so, never a previous request's reason (PKT-453 (a)).
       (value (fn-ores-config-refused :no-delta)))))
@@ -163,8 +163,8 @@
 ;; connection-independent credential table (auth.toml's rows, then the
 ;; redeemed rows: fn-auth-config-with-accounts) and the profile's
 ;; max-credentials BOUND.  Only a :redeem plan stages its one delta.
-(defun fn-acct-host-owner-redeem-stage (pcid id salt bound state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-acct-host-owner-redeem-stage (pcid id salt bound fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-owner-core state))))
          (req (and conn (fn-auth-redeem-waitp (fn-own-conn-session conn))
                    (fn-auth-redeem-request (fn-own-conn-session conn))))
@@ -181,7 +181,7 @@
          (state (f-put-global 'fn-acct-redeem-plan plan state)))
     (if (equal (car plan) :redeem)
         (fn-owner-reconfigure-deltas pcid (list (fn-acct-plan-delta plan))
-                                     state)
+                                     fn-arena state)
       ;; The plan's own reason (a previous request's reason used to stand
       ;; in the retired reason slot here).
       (value (fn-ores-config-refused (cadr plan))))))
@@ -212,13 +212,13 @@
 
 ;; The host's re-entry after the publication: the (:account-outcome WORD)
 ;; event through the same owner step (:tls-established) takes.
-(defun fn-owner-account-outcome (id word state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-account-outcome (id word fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
       (let* ((result (fn-ocfg-read-step (fn-owner-ocfg state)
-                                        id (list :account-outcome word)))
+                                        id (list :account-outcome word) fn-arena))
              (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))

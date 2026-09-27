@@ -260,6 +260,30 @@ return the index the bytes begin at."
             (or (cdr (assoc 'fn-arena (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the payload arena stobj is not in this image")))))
 
+;;; Which state-returning entries take the live arena just before state: the
+;;; owner and reader entries whose served reads read an article's bytes
+;;; through it (books/nntp-session.lisp fn-nntp-article-bytes; lane
+;;; served-readers, 2026-09-27).  Read off the entry's own STOBJS-IN (a
+;;; property the image keeps: host/native/strip-world.lisp), once per name,
+;;; so a wrapper never carries a list that could go stale.
+(defvar *fnn-arena-entries* (make-hash-table :test 'eq))
+
+(defun fnn-arena-entry-p (name)
+  (multiple-value-bind (known found) (gethash name *fnn-arena-entries*)
+    (if found
+        known
+      (setf (gethash name *fnn-arena-entries*)
+            (let ((ins (stobjs-in name (w *the-live-state*))))
+              (and (>= (length ins) 2)
+                   (eq (car (last ins)) 'state)
+                   (eq (car (last ins 2)) 'fn-arena)))))))
+
+(defun fnn-arena-then-state (name)
+  "The trailing stobj arguments of the state-returning entry NAME."
+  (if (fnn-arena-entry-p name)
+      (list (fnn-live-arena) *the-live-state*)
+    (list *the-live-state*)))
+
 (defun fnn-core-arena-state (name &rest args)
   "A wrapper over the arena and state, the live arena passed before state:
 its value.  An entry that seals returns (mv erp val fn-arena state) and a
@@ -285,7 +309,7 @@ and seal it into the arena (host/owner-host.lisp fn-owner-prepare-buffer)."
   "A `state`-returning wrapper over the buffer, (mv erp value state) with the
 live buffer passed before state: its value."
   (destructuring-bind (erp val &rest ignored)
-      (apply #'fnn-call name (append args (list (fnn-live-octets) *the-live-state*)))
+      (apply #'fnn-call name (append args (cons (fnn-live-octets) (fnn-arena-then-state name))))
     (declare (ignore ignored))
     (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
     val))
@@ -928,7 +952,7 @@ execution-boundary fault, never a claim that the core refused an input."
 (defun fnn-core-state (name &rest args)
   "A `state`-returning wrapper's value; its error flag is a core fault."
   (destructuring-bind (erp val &rest ignored)
-      (apply #'fnn-call name (append args (list *the-live-state*)))
+      (apply #'fnn-call name (append args (fnn-arena-then-state name)))
     (declare (ignore ignored))
     (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
     val))

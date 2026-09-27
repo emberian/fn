@@ -320,16 +320,16 @@
 
 (defthm fn-own-writer-step-keeps-every-connection
   (implies (fn-ocfg-writer-eventp event)
-           (and (equal (fn-own-conns (fn-own-step o event)) (fn-own-conns o))
-                (equal (fn-own-clock (fn-own-step o event)) (fn-own-clock o))))
+           (and (equal (fn-own-conns (fn-own-step o event fn-arena)) (fn-own-conns o))
+                (equal (fn-own-clock (fn-own-step o event fn-arena)) (fn-own-clock o))))
   :hints (("Goal" :in-theory (enable fn-own-step fn-own-take-submission fn-own-begin
                                      fn-own-store-step fn-own-refresh-keeps-fields))))
 
 (defthm fn-ocfg-writer-step-keeps-every-connection
   (implies (fn-ocfg-writer-eventp event)
-           (and (equal (fn-own-conns (fn-ocfg-owner (fn-ocfg-step oc event)))
+           (and (equal (fn-own-conns (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))
                        (fn-own-conns (fn-ocfg-owner oc)))
-                (equal (fn-own-clock (fn-ocfg-owner (fn-ocfg-step oc event)))
+                (equal (fn-own-clock (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))
                        (fn-own-clock (fn-ocfg-owner oc)))))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-step fn-ocfg-pass fn-ocfg-complete
                                    fn-ocfg-with-owner)
@@ -341,11 +341,11 @@
 
 (defthm fn-ocfg-writer-run-keeps-every-connection
   (implies (fn-ocfg-writer-eventsp events)
-           (and (equal (fn-own-conns (fn-ocfg-owner (fn-ocfg-run oc events)))
+           (and (equal (fn-own-conns (fn-ocfg-owner (fn-ocfg-run oc events fn-arena)))
                        (fn-own-conns (fn-ocfg-owner oc)))
-                (equal (fn-own-clock (fn-ocfg-owner (fn-ocfg-run oc events)))
+                (equal (fn-own-clock (fn-ocfg-owner (fn-ocfg-run oc events fn-arena)))
                        (fn-own-clock (fn-ocfg-owner oc)))))
-  :hints (("Goal" :induct (fn-ocfg-run oc events)
+  :hints (("Goal" :induct (fn-ocfg-run oc events fn-arena)
            :in-theory (e/d (fn-ocfg-run) (fn-ocfg-step fn-ocfg-writer-eventp)))))
 
 (defthm fn-own-outcome-keeps-the-clock
@@ -367,10 +367,10 @@
                 (not (fn-peer-session-cfg
                       (fn-auth-session-base
                        (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o)))))))
-           (and (equal (fn-own-tls-result-effects (fn-own-read-tls-prefix o2 id octets))
-                       (fn-own-tls-result-effects (fn-own-read-tls-prefix o id octets)))
-                (equal (fn-own-tls-result-consumed (fn-own-read-tls-prefix o2 id octets))
-                       (fn-own-tls-result-consumed (fn-own-read-tls-prefix o id octets)))))
+           (and (equal (fn-own-tls-result-effects (fn-own-read-tls-prefix o2 id octets fn-arena))
+                       (fn-own-tls-result-effects (fn-own-read-tls-prefix o id octets fn-arena)))
+                (equal (fn-own-tls-result-consumed (fn-own-read-tls-prefix o2 id octets fn-arena))
+                       (fn-own-tls-result-consumed (fn-own-read-tls-prefix o id octets fn-arena)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-own-read-tls-prefix fn-own-finish-read
                                    fn-own-conn-live-session fn-own-tls-served-conn
@@ -393,8 +393,8 @@
                 (equal (fn-own-clock (fn-ocfg-owner oc2))
                        (fn-own-clock (fn-ocfg-owner oc)))
                 (not (fn-served-advance-eventp event)))
-           (equal (car (fn-ocfg-read-step oc2 id event))
-                  (car (fn-ocfg-read-step oc id event))))
+           (equal (car (fn-ocfg-read-step oc2 id event fn-arena))
+                  (car (fn-ocfg-read-step oc id event fn-arena))))
   :rule-classes nil
   :hints (("Goal"
            :in-theory (e/d (fn-ocfg-read-step fn-own-read-step-full fn-own-served-conn
@@ -437,7 +437,7 @@
 (defthm fn-own-pinned-view-survives-other-post
   (implies (and (fn-ocfg-writer-eventsp events)
                 (not (equal id sub-id)))
-           (let* ((oc1 (fn-ocfg-run oc events))
+           (let* ((oc1 (fn-ocfg-run oc events fn-arena))
                   (oc2 (fn-ocfg-with-owner
                         oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word)))))
              (and (equal (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))
@@ -447,7 +447,7 @@
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-own-outcome-touches-only-its-connection
-                            (o (fn-ocfg-owner (fn-ocfg-run oc events)))
+                            (o (fn-ocfg-owner (fn-ocfg-run oc events fn-arena)))
                             (id sub-id) (other id)))
            :in-theory (e/d (fn-ocfg-with-owner)
                            (fn-own-outcome fn-ocfg-run
@@ -460,18 +460,18 @@
   (implies (and (fn-ocfg-writer-eventsp events)
                 (not (equal id sub-id))
                 (not (fn-served-advance-eventp event)))
-           (let* ((oc1 (fn-ocfg-run oc events))
+           (let* ((oc1 (fn-ocfg-run oc events fn-arena))
                   (oc2 (fn-ocfg-with-owner
                         oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word)))))
-             (equal (car (fn-ocfg-read-step oc2 id event))
-                    (car (fn-ocfg-read-step oc id event)))))
+             (equal (car (fn-ocfg-read-step oc2 id event fn-arena))
+                    (car (fn-ocfg-read-step oc id event fn-arena)))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-own-pinned-view-survives-other-post)
                  (:instance fn-ocfg-read-step-without-selection-depends-only-on-its-connection-and-clock
                             (oc2 (fn-ocfg-with-owner
-                                  (fn-ocfg-run oc events)
-                                  (cdr (fn-own-outcome (fn-ocfg-owner (fn-ocfg-run oc events))
+                                  (fn-ocfg-run oc events fn-arena)
+                                  (cdr (fn-own-outcome (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))
                                                        sub-id word))))))
            :in-theory (disable fn-ocfg-read-step fn-ocfg-with-owner fn-ocfg-run
                                fn-own-outcome fn-served-advance-eventp))))

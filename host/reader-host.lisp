@@ -153,10 +153,10 @@
 ; fn-wire-feed-byte with fn-nntp-post-step run on each framed event before the
 ; next byte, with the reply concatenation, proved partition independent in
 ; books/served.lisp.  There is no suffix to hand back and no loop in Python.
-(defun fn-reader-chunk (octets state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-reader-chunk (octets fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let ((state (fn-reader-install-result
-                (fn-served-step (f-get-global 'fn-reader-conn state) octets)
+                (fn-served-step (f-get-global 'fn-reader-conn state) octets fn-arena)
                 state)))
     (value :ok)))
 

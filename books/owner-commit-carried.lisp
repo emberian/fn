@@ -633,7 +633,7 @@
 ; KEYSTONE for the host line: equal to the owner event the host used to
 ; issue, for every configured owner.  No hypothesis.
 (defthm fn-ccar-ocfg-complete-is-ocfg-step-complete
-  (equal (fn-ccar-ocfg-complete oc) (fn-ocfg-step oc '(:complete)))
+  (equal (fn-ccar-ocfg-complete oc) (fn-ocfg-step oc '(:complete) fn-arena))
   :hints (("Goal" :in-theory '(fn-ccar-ocfg-complete fn-ocfg-step
                                fn-ocfg-complete
                                fn-ccar-own-complete-is-own-complete
@@ -783,7 +783,7 @@
 (defthm fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation
   (implies (fn-own-relation (fn-ocfg-owner oc))
            (equal (fn-ccar-ocfg-prepare-identity oc event)
-                  (fn-ocfg-step oc (list :store (list :prepare-identity event)))))
+                  (fn-ocfg-step oc (list :store (list :prepare-identity event)) fn-arena)))
   :hints (("Goal"
            :use ((:instance
                   fn-ccar-sn-prepare-identity-is-sn-prepare-identity-under-relation

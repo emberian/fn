@@ -197,7 +197,7 @@ class Acl2Reader:
         if not octets:
             return b"", False, []
         literal = "(" + " ".join(str(byte) for byte in octets) + ")"
-        self.call("(fn-reader-chunk '" + literal + " state)")
+        self.call("(fn-reader-chunk '" + literal + " fn-arena state)")
         reply = bytes(acl2_octet_list(self.call("(@ fn-reader-output)")))
         closing = acl2_boolean(self.call("(@ fn-reader-closep)"))
         return reply, closing, []

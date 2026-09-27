@@ -36,9 +36,9 @@
 
 (defthm fn-nntp-newnews-lines-are-clean
   (fn-nov-clean-line-listp
-   (fn-nntp-newnews-scan groups threshold articles horizon))
+   (fn-nntp-newnews-scan groups threshold articles horizon fn-arena))
   :hints (("Goal"
-           :induct (fn-nntp-newnews-scan groups threshold articles horizon)
+           :induct (fn-nntp-newnews-scan groups threshold articles horizon fn-arena)
            :in-theory (disable fn-nntp-newnews-candidatep fn-nntp-article-idp
                                fn-nntp-string-octets fn-article-msgid))))
 
@@ -63,17 +63,17 @@
   :hints (("Goal" :induct (fn-nntp-newnews-prefix-horizon newer horizon))))
 
 (defun fn-nntp-newnews-accepted-since
-    (groups threshold articles newer horizon)
-  (declare (xargs :guard (true-listp newer)
+    (groups threshold articles newer horizon fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (true-listp newer)
                   :measure (acl2-count articles)))
   (if (consp articles)
       (let* ((article (car articles))
              (current (fn-nntp-newnews-prefix-horizon newer horizon))
              (rest (fn-nntp-newnews-accepted-since
                     groups threshold (cdr articles)
-                    (append newer (list article)) horizon)))
+                    (append newer (list article)) horizon fn-arena)))
         (if (and (fn-nntp-newnews-candidatep groups article)
-                 (not (fn-rcl-tombstonep (fn-article-payload article)))
+                 (not (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena)))
                  (fn-nntp-newnews-newp
                   threshold (fn-article-stamp article) current))
             (cons (fn-nntp-string-octets (fn-article-msgid article)) rest)
@@ -84,20 +84,20 @@
  (defthm fn-nntp-newnews-scan-is-filter-with-prefix
    (equal (fn-nntp-newnews-scan
            groups threshold articles
-           (fn-nntp-newnews-prefix-horizon newer horizon))
+           (fn-nntp-newnews-prefix-horizon newer horizon) fn-arena)
           (fn-nntp-newnews-accepted-since
-           groups threshold articles newer horizon))
+           groups threshold articles newer horizon fn-arena))
    :hints (("Goal"
             :induct (fn-nntp-newnews-accepted-since
-                     groups threshold articles newer horizon)
+                     groups threshold articles newer horizon fn-arena)
             :in-theory (disable fn-nntp-newnews-candidatep
                                 fn-nntp-newnews-newp
                                 fn-nntp-string-octets fn-article-msgid)))))
 
 (defthm fn-nntp-newnews-scan-is-the-acceptance-filter
-  (equal (fn-nntp-newnews-scan groups threshold articles horizon)
+  (equal (fn-nntp-newnews-scan groups threshold articles horizon fn-arena)
          (fn-nntp-newnews-accepted-since
-          groups threshold articles nil horizon))
+          groups threshold articles nil horizon fn-arena))
   :hints (("Goal" :use ((:instance fn-nntp-newnews-scan-is-filter-with-prefix
                                   (newer nil)))
            :in-theory (disable fn-nntp-newnews-scan-is-filter-with-prefix
@@ -108,19 +108,19 @@
 ; Since D13 a tombstone is kept (STO-014): whether an article was reclaimed
 ; is the one payload fact the scan reads, through `fn-rcl-tombstonep', which
 ; walks at most the tombstone's fixed head and parses nothing.
-(defun fn-nntp-newnews-without-payload (articles)
-  (declare (xargs :guard t))
+(defun fn-nntp-newnews-without-payload (articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (consp articles)
       (let ((a (car articles)))
         (cons (fn-make-article
                (fn-article-msgid a)
-               (if (fn-rcl-tombstonep (fn-article-payload a))
+               (if (fn-rcl-tombstonep (fn-nntp-article-bytes a fn-arena))
                    (fn-article-payload a)
                  nil)
                (fn-article-groups a)
                (fn-article-memberships a) (fn-article-pin a)
                (fn-article-stamp a))
-              (fn-nntp-newnews-without-payload (cdr articles))))
+              (fn-nntp-newnews-without-payload (cdr articles) fn-arena)))
     nil))
 
 (local
@@ -140,11 +140,11 @@
 
 (defthm fn-nntp-newnews-scan-reads-no-payload
   (equal (fn-nntp-newnews-scan
-          groups threshold (fn-nntp-newnews-without-payload articles)
-          horizon)
-         (fn-nntp-newnews-scan groups threshold articles horizon))
+          groups threshold (fn-nntp-newnews-without-payload articles fn-arena)
+          horizon fn-arena)
+         (fn-nntp-newnews-scan groups threshold articles horizon fn-arena))
   :hints (("Goal" :induct (fn-nntp-newnews-scan
-                           groups threshold articles horizon)
+                           groups threshold articles horizon fn-arena)
            :in-theory (disable fn-nntp-newnews-candidatep
                                fn-nntp-newnews-newp fn-nntp-string-octets
                                fn-nntp-newnews-scan-is-the-acceptance-filter
@@ -158,11 +158,11 @@
     0))
 
 (defthm fn-nntp-newnews-scan-lines-at-most-candidates
-  (<= (len (fn-nntp-newnews-scan groups threshold articles horizon))
+  (<= (len (fn-nntp-newnews-scan groups threshold articles horizon fn-arena))
       (fn-nntp-newnews-candidate-count groups articles))
   :rule-classes (:rewrite :linear)
   :hints (("Goal" :induct (fn-nntp-newnews-scan
-                           groups threshold articles horizon)
+                           groups threshold articles horizon fn-arena)
            :in-theory (disable fn-nntp-newnews-candidatep
                                fn-nntp-newnews-newp fn-nntp-string-octets
                                fn-nntp-newnews-scan-is-the-acceptance-filter
@@ -185,8 +185,8 @@
    (implies (and (fn-nntp-session-projected session)
                  (fn-nntp-keyword-tokenp (car tokens))
                  (fn-nntp-keywordp (car tokens) "NEWNEWS"))
-            (equal (fn-nntp-command session archive env tokens)
-                   (fn-nntp-newnews-response session archive env (cdr tokens))))
+            (equal (fn-nntp-command session archive env tokens fn-arena)
+                   (fn-nntp-newnews-response session archive env (cdr tokens) fn-arena)))
    :hints (("Goal" :in-theory (disable fn-nntp-newnews-response
                                        fn-nntp-retrieval fn-nntp-group-result
                                        fn-nntp-listgroup-command
@@ -218,9 +218,9 @@
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
                 (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
                 (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "NEWNEWS"))
-           (equal (fn-nntp-step session archive env (list :command line))
+           (equal (fn-nntp-step session archive env (list :command line) fn-arena)
                   (fn-nntp-newnews-response session archive env
-                                            (cdr (fn-nntp-tokenize line)))))
+                                            (cdr (fn-nntp-tokenize line)) fn-arena)))
   :hints (("Goal" :in-theory (disable fn-nntp-newnews-response
                                       fn-nntp-command fn-nntp-tokenize
                                       fn-nntp-command-inputp

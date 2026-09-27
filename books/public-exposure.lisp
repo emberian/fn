@@ -999,14 +999,14 @@
                 (fn-auth-restricted-keywordp (car (fn-nntp-tokenize line))))
            (and (null (fn-post-result-submission
                        (fn-auth-step as archive config observation injection
-                                     (list :command line))))
+                                     (list :command line) fn-arena)))
                 (equal (fn-post-result-session
                         (fn-auth-step as archive config observation injection
-                                      (list :command line)))
+                                      (list :command line) fn-arena))
                        as)
                 (equal (fn-post-result-effects
                         (fn-auth-step as archive config observation injection
-                                      (list :command line)))
+                                      (list :command line) fn-arena))
                        (fn-auth-single as "480 authentication required"))))
   :hints (("Goal"
            :do-not-induct t

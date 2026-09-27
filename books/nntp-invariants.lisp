@@ -185,7 +185,7 @@
 (defthm fn-nntp-article-response-keeps-projection
   (equal (fn-nntp-session-projected
           (fn-nntp-result-session
-           (fn-nntp-article-response session article number kind updatep group)))
+           (fn-nntp-article-response session article number kind updatep group fn-arena)))
          (fn-nntp-session-projected session))
   :hints (("Goal" :in-theory (e/d (fn-nntp-article-response)
                                   (fn-nntp-retrieval-initial)))))
@@ -216,7 +216,7 @@
 
 (defthm fn-nntp-current-retrieval-keeps-projection
   (equal (fn-nntp-session-projected
-          (fn-nntp-result-session (fn-nntp-current-retrieval session archive kind)))
+          (fn-nntp-result-session (fn-nntp-current-retrieval session archive kind fn-arena)))
          (fn-nntp-session-projected session))
   :hints (("Goal" :in-theory (e/d (fn-nntp-current-retrieval)
                                   (fn-nntp-article-response fn-nntp-single
@@ -225,7 +225,7 @@
 
 (defthm fn-nntp-number-retrieval-keeps-projection
   (equal (fn-nntp-session-projected
-          (fn-nntp-result-session (fn-nntp-number-retrieval session archive kind token)))
+          (fn-nntp-result-session (fn-nntp-number-retrieval session archive kind token fn-arena)))
          (fn-nntp-session-projected session))
   :hints (("Goal" :in-theory (e/d (fn-nntp-number-retrieval)
                                   (fn-nntp-article-response fn-nntp-single
@@ -234,13 +234,13 @@
 
 (defthm fn-nntp-msgid-retrieval-keeps-projection
   (equal (fn-nntp-session-projected
-          (fn-nntp-result-session (fn-nntp-msgid-retrieval session archive kind token)))
+          (fn-nntp-result-session (fn-nntp-msgid-retrieval session archive kind token fn-arena)))
          (fn-nntp-session-projected session))
   :hints (("Goal" :use fn-nntp-msgid-preserves-session)))
 
 (defthm fn-nntp-retrieval-keeps-projection
   (equal (fn-nntp-session-projected
-          (fn-nntp-result-session (fn-nntp-retrieval session archive kind args)))
+          (fn-nntp-result-session (fn-nntp-retrieval session archive kind args fn-arena)))
          (fn-nntp-session-projected session))
   :hints (("Goal" :in-theory (e/d (fn-nntp-retrieval)
                                   (fn-nntp-current-retrieval
@@ -252,7 +252,7 @@
 
 (defthm fn-nntp-next-or-last-keeps-projection
   (equal (fn-nntp-session-projected
-          (fn-nntp-result-session (fn-nntp-next-or-last session archive direction)))
+          (fn-nntp-result-session (fn-nntp-next-or-last session archive direction fn-arena)))
          (fn-nntp-session-projected session))
   :hints (("Goal" :in-theory (e/d (fn-nntp-next-or-last)
                                   (fn-nntp-article-response fn-nntp-single
@@ -299,7 +299,7 @@
 ; group or the article cursor.
 (defthm fn-nntp-newnews-response-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-newnews-response session archive env args))
+          (fn-nntp-newnews-response session archive env args fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
@@ -310,14 +310,14 @@
   (equal (fn-nntp-result-session (fn-nntp-list-overview-fmt session)) session))
 
 (defthm fn-nntp-over-current-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-over-current session archive)) session)
+  (equal (fn-nntp-result-session (fn-nntp-over-current session archive fn-arena)) session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-over-current)))))
 
 (defthm fn-nntp-over-range-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-over-range session archive token))
+  (equal (fn-nntp-result-session (fn-nntp-over-range session archive token fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
@@ -325,7 +325,7 @@
                                   (fn-nntp-over-range)))))
 
 (defthm fn-nntp-over-msgid-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-over-msgid session archive token))
+  (equal (fn-nntp-result-session (fn-nntp-over-msgid session archive token fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
@@ -333,7 +333,7 @@
                                   (fn-nntp-over-msgid)))))
 
 (defthm fn-nntp-over-response-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-over-response session archive args))
+  (equal (fn-nntp-result-session (fn-nntp-over-response session archive args fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
@@ -351,49 +351,49 @@
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-list-headers)))))
 (defthm fn-nntp-xover-range-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-xover-range session archive token)) session)
+  (equal (fn-nntp-result-session (fn-nntp-xover-range session archive token fn-arena)) session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-xover-range)))))
 (defthm fn-nntp-xover-response-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-xover-response session archive args)) session)
+  (equal (fn-nntp-result-session (fn-nntp-xover-response session archive args fn-arena)) session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-xover-response)))))
 (defthm fn-nntp-hdr-current-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-hdr-current session archive field legacyp)) session)
+  (equal (fn-nntp-result-session (fn-nntp-hdr-current session archive field legacyp fn-arena)) session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-hdr-current)))))
 (defthm fn-nntp-hdr-range-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-hdr-range session archive field token legacyp)) session)
+  (equal (fn-nntp-result-session (fn-nntp-hdr-range session archive field token legacyp fn-arena)) session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-hdr-range)))))
 (defthm fn-nntp-hdr-msgid-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-hdr-msgid session archive field token legacyp)) session)
+  (equal (fn-nntp-result-session (fn-nntp-hdr-msgid session archive field token legacyp fn-arena)) session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-hdr-msgid)))))
 (defthm fn-nntp-hdr-command-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-hdr-command session archive args legacyp)) session)
+  (equal (fn-nntp-result-session (fn-nntp-hdr-command session archive args legacyp fn-arena)) session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-hdr-command)))))
 (defthm fn-nntp-hdr-response-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-hdr-response session archive args)) session)
+  (equal (fn-nntp-result-session (fn-nntp-hdr-response session archive args fn-arena)) session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-hdr-response)))))
 (defthm fn-nntp-xhdr-response-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-xhdr-response session archive args)) session)
+  (equal (fn-nntp-result-session (fn-nntp-xhdr-response session archive args fn-arena)) session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
                                    fn-nntp-responses-vocabulary)
@@ -402,7 +402,7 @@
 ; the session than XHDR does -- which is nothing.
 (defthm fn-nntp-xpat-range-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-xpat-range session archive field patterns token))
+          (fn-nntp-xpat-range session archive field patterns token fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
@@ -410,14 +410,14 @@
                                   (fn-nntp-xpat-range)))))
 (defthm fn-nntp-xpat-msgid-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-xpat-msgid session archive field patterns token))
+          (fn-nntp-xpat-msgid session archive field patterns token fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
                                    fn-nntp-responses-vocabulary)
                                   (fn-nntp-xpat-msgid)))))
 (defthm fn-nntp-xpat-response-preserves-session
-  (equal (fn-nntp-result-session (fn-nntp-xpat-response session archive args))
+  (equal (fn-nntp-result-session (fn-nntp-xpat-response session archive args fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d () (fn-nntp-syntax-vocabulary fn-nntp-session-vocabulary
                                    fn-nntp-projection-vocabulary
@@ -539,7 +539,7 @@
 
 (defthm fn-nntp-archive-command-keeps-projection
   (equal (fn-nntp-session-projected
-          (fn-nntp-result-session (fn-nntp-archive-command session archive env keyword args)))
+          (fn-nntp-result-session (fn-nntp-archive-command session archive env keyword args fn-arena)))
          (fn-nntp-session-projected session))
   :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command)
                                   (fn-nntp-group-result fn-nntp-listgroup-command
@@ -551,7 +551,7 @@
 
 (defthm fn-nntp-command-keeps-projection
   (equal (fn-nntp-session-projected
-          (fn-nntp-result-session (fn-nntp-command session archive env tokens)))
+          (fn-nntp-result-session (fn-nntp-command session archive env tokens fn-arena)))
          (fn-nntp-session-projected session))
   :hints (("Goal" :in-theory (e/d (fn-nntp-command)
                                   (fn-nntp-session-command fn-nntp-archive-command
@@ -564,7 +564,7 @@
 ; verdict every later step has.  No served command reruns fn-nntp-projectionp.
 (defthm fn-nntp-step-preserves-carried-projection
   (equal (fn-nntp-session-projected
-          (fn-nntp-result-session (fn-nntp-step session archive env wire-event)))
+          (fn-nntp-result-session (fn-nntp-step session archive env wire-event fn-arena)))
          (fn-nntp-session-projected session))
   :hints (("Goal" :in-theory (e/d (fn-nntp-step)
                                   (fn-nntp-command fn-nntp-single
@@ -582,8 +582,8 @@
 ; now do not read the archive at all, so no archive can change their answer.
 (defthm fn-nntp-archive-free-step-ignores-the-archive
   (implies (not (fn-nntp-archive-keywordp (car (fn-nntp-tokenize line))))
-           (equal (fn-nntp-step session archive env (list :command line))
-                  (fn-nntp-step session other env (list :command line))))
+           (equal (fn-nntp-step session archive env (list :command line) fn-arena)
+                  (fn-nntp-step session other env (list :command line) fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-step fn-nntp-command)
                                   (fn-nntp-session-command fn-nntp-archive-command
                                    fn-nntp-archive-keywordp fn-nntp-keyword-tokenp
@@ -760,7 +760,7 @@
                                  group number (fn-state-articles archive))))))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
-             (fn-nntp-article-response session article number kind updatep group))
+             (fn-nntp-article-response session article number kind updatep group fn-arena))
             archive))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-article-response
@@ -786,7 +786,7 @@
                 (fn-nntp-projectionp archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
-             (fn-nntp-current-retrieval session archive kind)) archive))
+             (fn-nntp-current-retrieval session archive kind fn-arena)) archive))
   :hints (("Goal"
            :use ((:instance fn-nntp-article-response-preserves-consistent-session
                   (article (fn-nntp-available-article
@@ -831,7 +831,7 @@
 (defthm fn-nntp-article-response-without-identifier-preserves-session
   (implies (not (fn-nntp-article-idp article))
            (equal (fn-nntp-result-session
-                   (fn-nntp-article-response session article number kind updatep group))
+                   (fn-nntp-article-response session article number kind updatep group fn-arena))
                   session))
   :hints (("Goal" :in-theory (e/d (fn-nntp-article-response)
                                   (fn-nntp-article-idp
@@ -876,7 +876,7 @@
                 (fn-nntp-projectionp archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
-             (fn-nntp-number-retrieval session archive kind token)) archive))
+             (fn-nntp-number-retrieval session archive kind token fn-arena)) archive))
   :hints (("Goal"
            :cases ((fn-nntp-article-idp
                     (fn-nntp-find-group-number
@@ -918,7 +918,7 @@
   (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
-             (fn-nntp-msgid-retrieval session archive kind token)) archive))
+             (fn-nntp-msgid-retrieval session archive kind token fn-arena)) archive))
   :hints (("Goal" :use fn-nntp-msgid-preserves-session)))
 
 (defthm fn-nntp-retrieval-preserves-consistent-session
@@ -926,7 +926,7 @@
                 (fn-nntp-projectionp archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
-             (fn-nntp-retrieval session archive kind args)) archive))
+             (fn-nntp-retrieval session archive kind args fn-arena)) archive))
   :hints (("Goal" :in-theory (e/d (fn-nntp-retrieval)
                                   (fn-nntp-current-retrieval
                                    fn-nntp-number-retrieval
@@ -941,7 +941,7 @@
                 (fn-nntp-projectionp archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
-             (fn-nntp-next-or-last session archive direction)) archive))
+             (fn-nntp-next-or-last session archive direction fn-arena)) archive))
   :hints (("Goal"
            :use ((:instance fn-nntp-article-response-preserves-consistent-session
                   (article (fn-nntp-available-article
@@ -993,7 +993,7 @@
 (defthm fn-nntp-next-or-last-moves-only-to-an-available-article
   (implies (fn-nntp-session-consistentp session archive)
            (let ((result (fn-nntp-result-session
-                          (fn-nntp-next-or-last session archive direction))))
+                          (fn-nntp-next-or-last session archive direction fn-arena))))
              (or (equal result session)
                  (and (equal (fn-nntp-session-group result)
                              (fn-nntp-session-group session))
@@ -1060,7 +1060,7 @@
                 (fn-nntp-projectionp archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
-             (fn-nntp-archive-command session archive env keyword args)) archive))
+             (fn-nntp-archive-command session archive env keyword args fn-arena)) archive))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-archive-command)
                 (fn-nntp-projectionp fn-statep
@@ -1077,7 +1077,7 @@
 (defthm fn-nntp-command-preserves-consistent-session
   (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-session-consistentp
-            (fn-nntp-result-session (fn-nntp-command session archive env tokens))
+            (fn-nntp-result-session (fn-nntp-command session archive env tokens fn-arena))
             archive))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-command)
@@ -1094,7 +1094,7 @@
 (defthm fn-nntp-step-preserves-consistent-session
   (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-session-consistentp
-            (fn-nntp-result-session (fn-nntp-step session archive env wire-event))
+            (fn-nntp-result-session (fn-nntp-step session archive env wire-event fn-arena))
             archive))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-step)
@@ -1178,10 +1178,10 @@
 (defthm fn-rcompat-reply-preserves-consistent-session
   (implies (and (fn-nntp-session-consistentp session archive)
                 (fn-nntp-projectionp archive)
-                (fn-rcompat-reply session archive index env keyword args))
+                (fn-rcompat-reply session archive index env keyword args fn-arena))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
-             (fn-rcompat-reply session archive index env keyword args))
+             (fn-rcompat-reply session archive index env keyword args fn-arena))
             archive))
   :hints (("Goal" :use ((:instance fn-nntp-retrieval-preserves-consistent-session
                                    (kind (fn-rcompat-retrieval-kind keyword)))
@@ -1199,7 +1199,7 @@
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
              (fn-nntp-archive-command-pinned
-              session archive index verdicts env keyword args)) archive))
+              session archive index verdicts env keyword args fn-arena)) archive))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-archive-command-pinned)
                 (fn-nntp-archive-command fn-nntp-msgid-retrieval-indexed
@@ -1226,7 +1226,7 @@
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
              (fn-nntp-command-pinned
-              session archive index verdicts env tokens)) archive))
+              session archive index verdicts env tokens fn-arena)) archive))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-command-pinned)
                 (fn-nntp-archive-command-pinned fn-nntp-session-command
@@ -1241,7 +1241,7 @@
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
              (fn-nntp-step-pinned
-              session archive index verdicts env wire-event)) archive))
+              session archive index verdicts env wire-event fn-arena)) archive))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-step-pinned)
                 (fn-nntp-command-pinned fn-nntp-session-consistentp
@@ -1254,43 +1254,44 @@
 
 ; Actual step folding, including malformed events and events after QUIT.  There
 ; is no event predicate that assumes the result is valid, and no output filter.
-(defun fn-nntp-run-session (session archive env events)
+(defun fn-nntp-run-session (session archive env events fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp events)
       (fn-nntp-run-session
-       (fn-nntp-result-session (fn-nntp-step session archive env (car events)))
-       archive env (cdr events))
+       (fn-nntp-result-session (fn-nntp-step session archive env (car events) fn-arena))
+       archive env (cdr events) fn-arena)
     session))
 
 (defthm fn-nntp-finite-trace-preserves-consistent-session
   (implies (fn-nntp-session-consistentp session archive)
            (fn-nntp-session-consistentp
-            (fn-nntp-run-session session archive env events) archive))
-  :hints (("Goal" :induct (fn-nntp-run-session session archive env events)
+            (fn-nntp-run-session session archive env events fn-arena) archive))
+  :hints (("Goal" :induct (fn-nntp-run-session session archive env events fn-arena)
            :in-theory (e/d (fn-nntp-run-session)
                            (fn-nntp-step fn-nntp-result-session
                             fn-nntp-session-consistentp fn-nntp-projectionp)))))
 
 (defthm fn-nntp-finite-trace-preserves-carried-projection
-  (equal (fn-nntp-session-projected (fn-nntp-run-session session archive env events))
+  (equal (fn-nntp-session-projected (fn-nntp-run-session session archive env events fn-arena))
          (fn-nntp-session-projected session))
-  :hints (("Goal" :induct (fn-nntp-run-session session archive env events)
+  :hints (("Goal" :induct (fn-nntp-run-session session archive env events fn-arena)
            :in-theory (e/d (fn-nntp-run-session)
                            (fn-nntp-step fn-nntp-result-session
                             fn-nntp-session-projected)))))
 
 (defthm fn-nntp-opened-finite-trace-is-consistent
   (and (fn-nntp-session-consistentp
-        (fn-nntp-run-session (fn-nntp-open-session archive) archive env events)
+        (fn-nntp-run-session (fn-nntp-open-session archive) archive env events fn-arena)
         archive)
        (fn-nntp-sessionp
-        (fn-nntp-run-session (fn-nntp-open-session archive) archive env events)))
+        (fn-nntp-run-session (fn-nntp-open-session archive) archive env events fn-arena)))
   :hints (("Goal"
            :use ((:instance fn-nntp-open-session-is-consistent)
                  (:instance fn-nntp-finite-trace-preserves-consistent-session
                   (session (fn-nntp-open-session archive)))
                  (:instance fn-nntp-consistent-session-is-session
                   (session (fn-nntp-run-session
-                            (fn-nntp-open-session archive) archive env events))))
+                            (fn-nntp-open-session archive) archive env events fn-arena))))
            :in-theory (disable fn-nntp-run-session
                                fn-nntp-open-session
                                fn-nntp-session-consistentp fn-nntp-sessionp
