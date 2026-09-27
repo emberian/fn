@@ -345,8 +345,9 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.start(config, port, log1)
         self.post(port, ids)
         self.serve(port, ids)
+        # checkpoint-pipeline's line carries steps= (host/native/owner.lisp).
         auto = self.wait_for(log1, rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) "
-                                   rb"octets=(\d+) ms=(\d+)", port)
+                                   rb"octets=(\d+) (?:steps=\d+ )?ms=(\d+)", port)
         print("NATIVE-HEAP", auto.group(0).decode())
         hwm1 = self.stop()
         print("NATIVE-HEAP vmhwm run=1 kB={}".format(hwm1))
