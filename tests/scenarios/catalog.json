@@ -2775,7 +2775,7 @@
     },
     {
       "id": "SCN-100",
-      "title": "A cancel crossing two peers in both orders, with grants on either or both sides, a kill between the arrivals and readers pinned on both nodes; a store a pre-C1 image wrote holding a signed cancel is refused by name at open",
+      "title": "A cancel crossing two peers in both orders, with grants on either or both sides, a kill between the arrivals and readers pinned on both nodes",
       "milestone": "M3",
       "status": "specified",
       "requirements": [
@@ -2785,29 +2785,25 @@
         "Three loopback nodes H, A and B, each `init fn.ga.t fn.gb.t fn.gab.t fn.post control.cancel`; P and Q enrolled on all three; Q granted cancel over fn.ga.* and fn.gab.* on A, fn.gb.* and fn.gab.* on B.",
         "For each basis (P cancels P's signed target; Q cancels an unsigned target) and each target group, H authors the target and the cancel; the harness relays the pair over IHAVE to A and B, target first or cancel first, with both receivers SIGKILLed and restarted between the two arrivals in half the cases.",
         "Readers opened on A and B after the first arrivals read each target again after the second arrivals and after their own POST; every grant is then revoked and both receivers SIGKILLed and restarted.",
-        "A signed article naming fn.unserved is authored through hybrid-author.",
-        "A copy of the store the pre-C1 developer image f358dbac wrote (a signed target and a signed cancel of it filed under fn.test; tests/fixtures/pre-c1-control-store/witness) is opened by the current image through store recover, store inspect, store checkpoint, operator run and operator health; store repair-control is run on it; the same procedure's store without the cancel (fixtures .../ordinary) is recovered."
+        "A signed article naming fn.unserved is authored through hybrid-author."
       ],
       "expected": [
         "On each node the fresh answer is the same line in both orders: 430 withdrawn for the author basis everywhere and for the authority basis where that node's grant covers the target's group, 220 otherwise.",
         "A pinned reader answers 220 for every target it saw until its POST re-pins it, then the fresh answer; after the revoke and the restart every answer is unchanged.",
-        "hybrid-author exits 1 with `refused hybrid-author UNKNOWN-GROUP`; the same signer's article naming only fn.test is accepted.",
-        "Every open of the witness exits 1 with `pre-C1 control record (txid 2, <prec1-cancel@example.invalid>): run store repair-control` after its family's word (`store: `, `refused operator run `, `refused operator health `), never the generic fault; its transactions are unchanged; store repair-control exits 1 with `repair semantics undecided (PKT-444)`; the store without the cancel recovers two transactions and its status exits 0."
+        "hybrid-author exits 1 with `refused hybrid-author UNKNOWN-GROUP`; the same signer's article naming only fn.test is accepted."
       ],
       "implementation": {
         "test": "tests.test_native_control_across_peers",
         "cases": [
           "NativeControlAcrossPeersTests.test_author_basis",
           "NativeControlAcrossPeersTests.test_authority_basis",
-          "NativeHybridAuthorTest.test_unserved_group_and_every_refusal_are_named",
-          "tests.test_native_pre_c1_open.PreC1OpenTest.test_every_open_of_the_witness_refuses_by_name",
-          "tests.test_native_pre_c1_open.PreC1OpenTest.test_repair_control_refuses_until_its_semantics_are_decided",
-          "tests.test_native_pre_c1_open.PreC1OpenTest.test_the_store_without_the_cancel_opens"
+          "NativeHybridAuthorTest.test_unserved_group_and_every_refusal_are_named"
         ],
         "native": true,
         "log": "planning/evidence/control-across-peers-2026-09-26/native-m1-across-peers.log",
         "record": "planning/evidence/control-across-peers-2026-09-26.md"
-      }
+      },
+      "retirement_note": "2026-09-27 lane fixtures-refresh (PKT-697, D34): the pre-C1 open steps and their cases (tests.test_native_pre_c1_open, fixture tests/fixtures/pre-c1-control-store) are retired: the pre-C1 image wrote a pre-D34 store format, refused at the profile open before replay; SCN-174 and SCN-132 cover the named refusal of a store made by another release."
     },
     {
       "id": "SCN-098",
@@ -3816,11 +3812,21 @@
         "STO-028"
       ],
       "steps": [
-        "Open a copy of the format-7 fixture store (/tank/fn/scratch/fixtures/format-7-store) with status, recover and run."
+        "Synthesize a format-7 store (tests/older_release_store.py: a fresh store whose config.json is a format-7 profile frame, octets pinned to ACL2) and open it with store recover, store status, store inspect, store checkpoint, operator status, operator health and operator run; install a release over a node holding one."
       ],
       "expected": [
-        "Each exits 1 with the line open refused reason=store-format: reinstall from the release and import; no file of the store changes."
-      ]
+        "Each open exits 1 with the line open refused reason=store-format: reinstall from the release and import; no file of the store changes; install.sh exits 4 naming the export and import."
+      ],
+      "implementation": {
+        "test": "tests.test_native_older_release_open",
+        "cases": [
+          "OlderReleaseOpenTest.test_a_format_7_store_is_refused_by_name",
+          "tests.test_native_store_export.StoreExportTests.test_a_format_7_store_is_refused_by_name",
+          "tests.test_release_tarball.ReleaseTarballTests.test_install_refuses_a_format_7_store"
+        ],
+        "native": true,
+        "record": "planning/evidence/fixtures-refresh-2026-09-27.md"
+      }
     },
     {
       "id": "SCN-133",
@@ -4911,6 +4917,32 @@
         "cases": [],
         "native": true,
         "record": "planning/evidence/adapter-retirement-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-174",
+      "title": "A store made before batch AS (the thirteen-field profile layout) is refused at open by name: open refused reason=older-release with both field counts, exit 1, the store untouched; the same store with this release's profile opens",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-028"
+      ],
+      "steps": [
+        "Synthesize a store made before batch AS (tests/older_release_store.py: a fresh store whose config.json is the pre-AS n1k-2k fixture's frame, octets pinned to ACL2) and open it with store recover, store status, store inspect, store checkpoint, operator status, operator health and operator run; export-refusal and install.sh over a node holding it; put the store's own config.json back and recover."
+      ],
+      "expected": [
+        "Each open exits 1 with open refused reason=older-release: store made by an older release (profile layout 13 fields, this release expects 16): export it with the release that made it, then import it here; never ACL2 rejected durable configuration frame; no file changes; install.sh exits 4; with its own config.json the store recovers, exit 0."
+      ],
+      "implementation": {
+        "test": "tests.test_native_older_release_open",
+        "cases": [
+          "OlderReleaseOpenTest.test_a_store_of_the_older_layout_is_refused_by_name",
+          "OlderReleaseOpenTest.test_the_same_store_with_its_own_profile_opens",
+          "tests.test_native_store_export.StoreExportTests.test_a_store_of_the_older_layout_is_refused_by_name",
+          "tests.test_release_tarball.ReleaseTarballTests.test_install_refuses_a_store_of_the_older_layout"
+        ],
+        "native": true,
+        "record": "planning/evidence/fixtures-refresh-2026-09-27.md"
       }
     }
   ]

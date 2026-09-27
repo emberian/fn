@@ -67,7 +67,6 @@ OB_HOST="" OB_ROOT=""
 HOST=${FN_HBOX:-hbox}
 BOX_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g
 BOX_CACHE=/tank/fn/certcache
-FORMAT7=/tank/fn/scratch/fixtures/format-7-store
 while [ "$#" -gt 0 ]; do
   case $1 in
     --dry-run) DRY=yes; shift ;;
@@ -301,7 +300,7 @@ FN_CERT_CACHE=$BOX_CACHE FN_ACL2=$BOX_ACL2 sh packaging/release-tarball.sh --run
 python3 tools/runpath_check.py --tarball $S/release/$tb
 cd $S/fresh && cp $S/release/$tb $S/release/SHA256SUMS . && sha256sum -c --ignore-missing SHA256SUMS
 tar xzf $tb && sh fn/install.sh --prefix $S/fresh/opt/fn --node $S/fresh/node --no-service
-cd $T && FN_RELEASE_TARBALL=$S/release/$tb FN_FORMAT7_STORE=$FORMAT7 python3 -m unittest -v tests.test_release_tarball 2> $S/release-test.log; tail -1 $S/release-test.log
+cd $T && FN_RELEASE_TARBALL=$S/release/$tb python3 -m unittest -v tests.test_release_tarball 2> $S/release-test.log; tail -1 $S/release-test.log
 [ \"\$(tail -1 $S/release-test.log)\" = OK ] || { echo 'test_release_tarball: not OK with no skips'; exit 1; }
 docker run --rm -v $S/release:/r:ro debian:12 sh -c 'apt-get update -qq >/dev/null && apt-get install -y -qq libssl3 >/dev/null && cd /tmp && tar xzf /r/$tb && fn/bin/fn --version' > $S/debian12-version.txt
 [ \"\$(cat $S/debian12-version.txt)\" = 'fn $VERSION ($SHORT)' ] || { echo \"Debian 12: \$(cat $S/debian12-version.txt)\"; exit 1; }

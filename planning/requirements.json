@@ -3623,7 +3623,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-205"
+        "PRF-205",
+        "PRF-253"
       ],
       "verification": [
         "proof",
@@ -3634,7 +3635,9 @@
         "books/store-export.lisp",
         "tests/acl2/store-export-tests.lisp",
         "host/native/io.lisp",
-        "tests/test_native_store_export.py"
+        "tests/test_native_store_export.py",
+        "tests/test_native_older_release_open.py",
+        "planning/evidence/fixtures-refresh-2026-09-27.md"
       ],
       "implementation_note": "D34. The open refuses a profile frame of another format (:store-format) with the line naming the reinstall and import; store export writes the archive (ACL2's names and MANIFEST), store import builds a new store from it and admits it by the ordinary open."
     },

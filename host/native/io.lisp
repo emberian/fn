@@ -896,9 +896,11 @@ scope ends, however it ends."
   "ACL2's decoded store profile: a format-8 profile (the one format, D34).  The host keeps the value opaque and
 reads every field through an ACL2 accessor.  The verdict is ACL2's open
 (books/store-profile-open.lisp fn-spo-config-open): a saved profile whose
-record bound the poll reply cannot carry, or a profile frame of another
-format, is refused by name, exit 1, with ACL2's line (PKT-471, D34); a frame
-that is no saved profile stays a fault."
+record bound the poll reply cannot carry, a profile frame of another
+format, or a fn-store-8 profile frame of another release's layout (PKT-705:
+`reason=older-release' / `newer-release', naming both field counts) is
+refused by name, exit 1, with ACL2's line (PKT-471, D34); a frame that is no
+saved profile stays a fault."
   (let ((verdict (fnn-core 'fn-store-metadata-config-open
                            (fnn-octet-list octets))))
     (cond ((and (consp verdict) (eq (first verdict) :opened)

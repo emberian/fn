@@ -1122,7 +1122,14 @@ invent independently inside a file-writing adapter.
 STO-028: A store has one format, `fn-store-8` (D34, fresh deploys). The open
 refuses a profile frame of any other format by name (`open refused
 reason=store-format: reinstall from the release and import`, exit 1) and
-translates nothing. `store export DIR` writes the committed history the open
+translates nothing. A `fn-store-8` profile frame of another release's layout
+(the run of u64 fields after the two texts: thirteen in every store made
+before batch AS, sixteen now) is refused by name with both counts: `open
+refused reason=older-release: store made by an older release (profile layout
+13 fields, this release expects 16): export it with the release that made
+it, then import it here` (`newer-release` for a wider layout), exit 1, never
+the generic fault (PRF-253, PKT-705); `install.sh` refuses such a node before
+copying anything. `store export DIR` writes the committed history the open
 reads (the profile frame, the allocation frontier, each configuration record
 and each committed record, packs included, in sequence order) with a
 MANIFEST whose names and SHA-256 lines ACL2 renders; `store import DIR
