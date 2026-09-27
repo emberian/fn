@@ -7340,7 +7340,6 @@
         "fn-cat-wire-list-of-redecide",
         "fn-cat-prefix-relation-of-withdraw",
         "fn-cat-prefix-relation-of-redecide",
-        "fn-cat-ocl-relation-of-article-finish",
         "fn-cat-ocl-relation-before-article-finish",
         "fn-cat-ocl-relation-of-other-finish",
         "fn-cat-ocl-relation-of-withdraw",
@@ -7451,7 +7450,7 @@
         "fn-nntp-archive-command-cat-is-pinned",
         "fn-scr-ocfg-read-span-is-reference-under-ocl-relation",
         "fn-cat-relation-of-complete-hidden",
-        "fn-sca-load-history-establishes-relation",
+        "fn-sca-load-held-rows-establishes-relation",
         "fn-sca-finish-keeps-the-relation",
         "fn-sca-finish-keeps-pinned-views",
         "fn-sca-finish-hides-the-hidden-row",
@@ -10836,8 +10835,7 @@
         "fn-orr-span-read-keeps-the-reader-relation-and-the-rest",
         "fn-orr-restoring-the-working-view-keeps-the-reader-relation",
         "fn-orr-reader-relation-at-a-captured-view",
-        "fn-orr-relation-of-with-view",
-        "fn-ocvp-step-preserves-inv"
+        "fn-orr-relation-of-with-view"
       ]
     },
     {
