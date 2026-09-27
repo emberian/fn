@@ -3898,6 +3898,35 @@
         "planning/evidence/transit-pipelining-2026-09-27.md"
       ],
       "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
+    },
+    {
+      "id": "REP-015",
+      "title": "The BP application handoff is reported durable only when the application committed the delivered ADU (the Store holds the article, or the receipt's release is durable); a durable kind 7 recording a refusal is reported refused, naming the disposition, never durable",
+      "specification": "specs/bp-node-machine.md#493-the-handoff-reports-the-applications-disposition-2026-09-27-lane-bp-fragments-10mib-prf-224",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-224"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc9171.txt",
+        "books/bp-handoff-report.lisp",
+        "books/bp-node-foundation.lisp",
+        "books/bp-node-progress.lisp",
+        "tests/acl2/bp-handoff-report-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "tests/test_bp_node_native.py",
+        "tests/test_bp_fragment_node_native.py",
+        "specs/bp-node-machine.md",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 9171 section 5.7 (local bundle delivery) leaves the application's disposition to the node; a durable kind 7 completes delivery at the BP layer whatever the application decided (spec bp-node-machine 3.1). fn's stronger guarantee: the host reports the disposition ACL2 names (fn-bpah-handoff-report), so 'handoff durable' means the application committed. PKT-630 (7).",
+      "note": "SCN-158; SCN-077's 10 MiB case is the positive witness once its Store admits the article."
     }
   ]
 }

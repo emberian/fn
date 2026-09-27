@@ -706,11 +706,19 @@ its outcome, which is the refusal to the offering ingress."
       (:deliver
        (fnn-fault "bp-service: application delivery requires the owner caller"))
       (:delivery-answer
-       (case (second effect)
-         (:durable (fnn-out "BP application handoff durable"))
+       ;; PRF-224: ACL2's report (fn-bpah-handoff-report) names the
+       ;; application's disposition the durable kind 7 holds: durable only
+       ;; when the application committed, refused by name otherwise.
+       (case (fnn-core 'fn-bpah-handoff-report effect)
+         (:durable
+          (fnn-out "BP application handoff durable disposition=~(~a~)"
+                   (third effect)))
          (:refused
           (fnn-bps-note service :refused)
-          (fnn-out "BP application handoff refused"))
+          (if (third effect)
+              (fnn-out "BP application handoff refused disposition=~(~a~) (kind 7 durable)"
+                       (third effect))
+            (fnn-out "BP application handoff refused")))
          (otherwise
           (fnn-bps-note service :fenced)
           (fnn-indeterminate "bp-service: application handoff uncertain"))))

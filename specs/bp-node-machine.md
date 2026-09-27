@@ -1819,6 +1819,44 @@ preserved by every installed owner transition; the kernel crash, which the
 host never issues, is the one Store event that breaks it until recovery
 rebuilds it), not a hypothesis of the keystones.
 
+#### 4.9.3 The handoff reports the application's disposition (2026-09-27, lane bp-fragments-10mib, PRF-224)
+
+REP-015: The BP application handoff is reported durable only when the application committed the delivered ADU (the Store holds the article, or the receipt's release is durable); a durable kind 7 recording a refusal is reported refused, naming the disposition, never durable
+
+A durable kind 7 completes a delivery at this layer whatever the
+application decided (§3.1 class 3: a refusal is a completed delivery), so
+the kind-7 publication's durability is not the application's acceptance.
+SCN-077's 10 MiB case showed the difference: the receiving Store ran the
+development base (32,768-octet articles), refused the article as
+oversize, the kind 7 of that refusal became durable, and the node printed
+`BP application handoff durable` while the Store held no article
+(PKT-630 (7)).
+
+- `fn-bpah-persist-delivery-step`'s durable answer is
+  `(:delivery-answer :durable DISPOSITION)`, DISPOSITION the kind-7
+  record's (`fn-bpah-disposition-code`'s seven).
+- `fn-bpah-handoff-report EFFECT` is `:durable` exactly for an accepting
+  disposition (`:request-accepted`, `:request-duplicate`,
+  `:request-returned`, `:receipt-accepted`, `:receipt-duplicate`),
+  `:refused` for `:request-refused` / `:receipt-refused` and for a refused
+  callback, `:uncertain` otherwise. The host (bp-service.lisp
+  `fnn-bps-drive-effects`) prints `BP application handoff durable
+  disposition=D`, `BP application handoff refused disposition=D (kind 7
+  durable)` or fences, from that word alone.
+- KEYSTONE `fn-bpah-handoff-report-is-application-disposition`
+  (books/bp-handoff-report.lisp): after the deliver-result step records the
+  application's STATUS and issues kind 7, the publication's answer reports
+  STATUS's disposition or `:uncertain`; with a durable publication that
+  applies to the held row, exactly STATUS's disposition.
+  `fn-bpnf-step-deliver-result-is-step` and
+  `fn-bpnf-step-persist-delivery-is-step` route the two host events to
+  those steps through the foundation dispatcher.
+- Scope: the statement is over the foundation steps; the layers above
+  (`fn-bpnj-step`, `fn-bpnp-step`) pass the answer's effects through or
+  replace a `:deliver` answer by `(:delivery-answer :uncertain)`
+  (`fn-bpnp-publication-fault-effect`), which reports `:uncertain`; that
+  pass-through is not a theorem here.
+
 ## 5. The theorems
 
 Notation, fixed for every statement:

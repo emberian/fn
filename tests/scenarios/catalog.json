@@ -2352,6 +2352,7 @@
       "status": "specified",
       "requirements": [
         "REP-008",
+        "REP-015",
         "STO-015"
       ],
       "steps": [
@@ -2360,7 +2361,7 @@
         "Kill the receiver with SIGKILL halfway through the family, restart it on the same journal, and send the rest."
       ],
       "expected": [
-        "The receiver publishes one kind-18 family, logs `BP application handoff durable` once, and the Store holds one article whose bytes are the ADU.",
+        "The receiver publishes one kind-18 family, logs `BP application handoff durable disposition=request-accepted` once, and the Store holds one article whose bytes are the ADU. Under the development-base Store (32,768-octet articles) the Store refuses the article as oversize and the handoff is reported refused (PKT-630 (7), PRF-224): the harness raises the Store profile (--max-article-octets 11534336 --max-record-octets 33554432 --max-history-octets 268435456).",
         "Arrivals no longer block it (PRF-136, bp-lifecycle-5): a bp-node serve session costs about 60 ms at 64 to 256 held rows (3.7 to 15.9 s before) and the first 1,311 fragments arrive in 90 s. Blocked now by the open: a journal of 1,311 held rows opens in 51.9 s (three re-encodings per row, an unverified bundle decode, a quadratic held-octet sum), so the restarted receiver misses the harness's waits in the second half. PKT-308."
       ],
       "evidence": [
@@ -2368,7 +2369,8 @@
         "books/bp-node-profile.lisp",
         "planning/evidence/bp-lifecycle-4-2026-09-26.md",
         "books/bp-node-profile-admission.lisp",
-        "planning/evidence/bp-lifecycle-5-2026-09-26.md"
+        "planning/evidence/bp-lifecycle-5-2026-09-26.md",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ]
     },
     {
@@ -4291,6 +4293,27 @@
         "Eight 239s in order, each echoing its Message-ID, then 205; all eight stored byte-identical.",
         "Four 239s in order, each echoing its Message-ID, then 205; all four stored byte-identical.",
         "340 240 340 240 340 240 340 240 205 in that order (no 340 before the 240 of the article preceding it); all four stored."
+      ]
+    },
+    {
+      "id": "SCN-158",
+      "title": "A request the receiving Store refuses is reported as a refused BP handoff naming the disposition, never a durable one",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-015"
+      ],
+      "steps": [
+        "Start a receiving bp-node whose channel is admitted but whose policy grants no inbound scope (tests.test_bp_node_native test_admitted_channel_without_inbound_scope_refuses_store_request).",
+        "Send one request bundle; the application refuses it and kind 7 records :request-refused durably."
+      ],
+      "expected": [
+        "The node logs `BP application handoff refused disposition=request-refused (kind 7 durable)` and `BP node delivery request-refused`, never `BP application handoff durable`, and the Store holds no article."
+      ],
+      "evidence": [
+        "tests/test_bp_node_native.py",
+        "books/bp-handoff-report.lisp",
+        "tests/acl2/bp-handoff-report-tests.lisp"
       ]
     }
   ]

@@ -7880,6 +7880,39 @@
         "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix",
         "fn-ocfg-read-tls-prefix-carries-at-most-one-submission"
       ]
+    },
+    {
+      "id": "PRF-224",
+      "title": "The BP application handoff's reported outcome is the application's disposition: a refused delivery is reported refused by name, never durable",
+      "statement": "books/bp-handoff-report.lisp over books/bp-node-foundation.lisp. fn-bpah-persist-delivery-step's durable answer is (:delivery-answer :durable D), D the kind-7 record's disposition; fn-bpah-handoff-report (host/native/bp-service.lisp fnn-bps-drive-effects prints exactly its word for every :delivery-answer that fnn-bps-foundation-step returns) is :durable exactly for an accepting disposition and :refused for a refusing one. KEYSTONE fn-bpah-handoff-report-is-application-disposition: after fn-bpah-deliver-result-step records the application's STATUS and issues kind 7 ((car e1) = :persist-delivery), the report of fn-bpah-persist-delivery-step's answer to that publication is a member of (list (fn-bpah-disposition-report STATUS) :uncertain), and with RESULT :durable and the record applying to the held list it equals (fn-bpah-disposition-report STATUS). fn-bpah-persist-delivery-reports-the-record (hypothesis-free) and fn-bpah-persist-delivery-reports-exactly state the same for the publication step alone; fn-bpah-disposition-report-durable-is-accepting: the report is :durable iff the disposition is accepting. fn-bpnf-step-deliver-result-is-step and fn-bpnf-step-persist-delivery-is-step: the foundation dispatcher fn-bpnf-step routes the host's two events (host/native/bp-node.lisp fnn-bpnode-dispatch-one) to these steps. Why: SCN-077's 10 MiB case printed 'BP application handoff durable' while its development-base Store (32,768-octet articles) had refused the article as oversize (PKT-630 (7)). What it does not say: that the layers above fn-bpnf-step (fn-bpnj-step, fn-bpnp-step, the fragment step) pass the answer's effects through unchanged (they do by definition, or replace a :deliver answer by (:delivery-answer :uncertain), which reports :uncertain); that STATUS is the Store's true verdict (the application layer's theorems, PRF-128/PRF-132 and the FNRJ receipt books, own that).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-015"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpah-handoff-report-is-application-disposition",
+        "fn-bpah-persist-delivery-reports-the-record",
+        "fn-bpah-persist-delivery-reports-exactly",
+        "fn-bpah-disposition-report-durable-is-accepting",
+        "fn-bpnf-step-deliver-result-is-step",
+        "fn-bpnf-step-persist-delivery-is-step"
+      ],
+      "evidence": [
+        "books/bp-handoff-report.lisp",
+        "books/bp-node-foundation.lisp",
+        "books/bp-node-progress.lisp",
+        "tests/acl2/bp-handoff-report-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "tests/test_bp_node_native.py",
+        "tests/test_bp_fragment_node_native.py",
+        "specs/bp-node-machine.md",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      ],
+      "progress_note": "Lane bp-fragments-10mib (2026-09-27): certified on hbox with certify_books.py --incremental (2 jobs); the farm manifest is cited in the evidence record."
     }
   ]
 }

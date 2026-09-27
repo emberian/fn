@@ -493,6 +493,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-rotation-buffer-tests \
 	books/bp-held-projection \
 	tests/acl2/bp-held-projection-tests \
+	books/bp-handoff-report \
+	tests/acl2/bp-handoff-report-tests \
 	books/bp-held-payload \
 	tests/acl2/bp-held-payload-tests \
 	books/bp-node-rotation-step \

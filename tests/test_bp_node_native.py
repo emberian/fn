@@ -1304,6 +1304,11 @@ class NativeBpNodeTests(unittest.TestCase):
         self.assertEqual(sent.returncode, 0, sent.stderr)
         self.assertEqual(receiver.returncode, 0, err)
         self.assertIn(b"BP node delivery request-refused", out)
+        # PRF-224: the durable kind 7 of a refusal is reported refused by
+        # name, never as a durable handoff.
+        self.assertIn(b"BP application handoff refused "
+                      b"disposition=request-refused", out)
+        self.assertNotIn(b"BP application handoff durable", out)
         self.assertEqual(self.receiver_counts()[1], 0)
         self.assertIn(b"pinned=yes", self.sender_status().stdout)
 
