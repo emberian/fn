@@ -542,3 +542,54 @@
   :hints (("Goal" :induct (fn-durable-ind off len))))
 
 (in-theory (disable fn-durable-octets-unfold))
+
+; -----------------------------------------------------------------------------
+; A-PGS-HOST-IO (lane arena-store, 2026-09-27; the page store,
+; books/proto/pagestore*.lisp; the host I/O half of what the prototype called
+; A-PGS-OBSERVE).
+;
+; "The page file holds, at page ADDR, the 2048 little-endian u64 words the
+; host last durably wrote there; and the host's fill answers them."
+;
+; What is PROVED at this boundary, and so not assumed: the word digest the
+; host calls is SHA-256 of the words' octets (pgs-x-words-digest-is-sha256,
+; books/proto/pagestore-words-sha.lisp); a table page's and the directory
+; run's words are the encodings of the model's table pages and directory,
+; and decoding them gives those back (pgs-x-table-page-words,
+; pgs-x-dir-run-words, pgs-decode-encode-table); the open's verdicts over the
+; decoded words are the model's (pgs-x-dir-verdict-is-model,
+; pgs-x-table-verdict-is-model); the commit the host runs refines the model's
+; (pgs-x-commit-refines) -- all in books/proto/pagestore-exec.lisp.
+;
+; What is ASSUMED: `(fn-pgs-page-words file addr)' is the list of 2048 u64
+; words the page file FILE holds at page ADDR, and
+; `(fn-pgs-fill-realize file addr)', the host's fill
+; (host/native/proto-pagestore-io.lisp `fnps-fill-from-file': pread on the
+; stobj array's storage, short counts looped, EINTR retried, end of file and
+; every other error a named condition, never a silent zero fill; the
+; little-endian check at load, A-PGS-LE), answers exactly those words.
+; Durability of what was written is A-DURABILITY's (a completed fdatasync);
+; the page store's crash model is books/proto/pagestore.lisp `pgs-crash'
+; (any subset of the commit's writes), which the power-loss rig checks
+; against dm-log-writes replays.
+;
+; Theorems that should take it (a page read by the host is the page the
+; model's `pgs-lookup' answers): the composition of pgs-x-table-verdict-is-model
+; and pgs-x-dir-verdict-is-model with the fill, not yet stated.
+(encapsulate
+  (((fn-pgs-page-words * *) => *)
+   ((fn-pgs-fill-realize * *) => *))
+
+  (local (defun fn-pgs-page-words (file addr)
+           (declare (ignore file addr))
+           (make-list 2048 :initial-element 0)))
+
+  (local (defun fn-pgs-fill-realize (file addr)
+           (fn-pgs-page-words file addr)))
+
+  (defthm fn-pgs-page-words-shape
+    (and (true-listp (fn-pgs-page-words file addr))
+         (equal (len (fn-pgs-page-words file addr)) 2048)))
+
+  (defthm fn-pgs-fill-realize-is-page-words
+    (equal (fn-pgs-fill-realize file addr) (fn-pgs-page-words file addr))))
