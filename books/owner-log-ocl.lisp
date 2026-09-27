@@ -73,7 +73,10 @@
            :in-theory (e/d (fn-ocl-view-configp fn-ocl-config-historyp
                             fn-own-refresh fn-own-store-idlep)
                            (fn-cpr-replay fn-own-take fn-snt-idle-phasep
-                            fn-own-view-make-group-indexed)))))
+                            fn-own-view-make-group-indexed
+                            fn-ctl-refresh-visible-is-visible fn-ctl-visible-articles
+                            fn-ctl-visible-filter fn-ctl-withdrawn-by-p
+                            fn-ctl-withdrawal-effect fn-ctl-withdrawalp)))))
 (defthm fn-lgoc-view-historyp-of-longer-history
   (implies (and (fn-ocl-view-historyp o)
                 (equal (fn-own-view o2) (fn-own-view o))
@@ -219,7 +222,10 @@
                             fn-lgoc-ledger-durablep-of-longer-history
                             fn-lgoc-view-historyp-of-longer-history
                             fn-lgoc-view-configp-of-longer-history
-                            fn-lgoc-cst-relation-replay-ok)))))
+                            fn-lgoc-cst-relation-replay-ok
+                            fn-nntp-response-text-true-listp fn-oct-bufp-true-listp
+                            fn-nntp-response-textp fn-cbor-octet-listp fn-scc-octet-listp
+                            (:definition true-listp))))))
 ; -----------------------------------------------------------------------------
 ; The carried owner invariant: fn-ocl-relation and the Store's carried
 ; companion (books/config-store-steps.lisp fn-cstp-carriedp).
@@ -565,3 +571,6 @@
                  fn-lgoc-invariant-statep)
            :in-theory '(fn-lgoc-invariantp fn-lgoc-refuse-reservation-is-owner-with-store
                         fn-lgoc-store-of-owner-with-store fn-lgoc-ocl-relation-cst))))
+
+; Accessor equalities used above as rewrite rules; withdrawn at export.
+(in-theory (disable fn-lgoc-ocl-relation-config-fold))

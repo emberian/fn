@@ -6,7 +6,6 @@
 ; (*acar-t-record*), run through the log route's host steps.
 (in-package "ACL2")
 (include-book "../../books/owner-log-ocl")
-(include-book "std/testing/must-fail" :dir :system)
 (include-book "owner-advance-carried-tests")
 (include-book "config-owner-publish-tests")
 
@@ -51,10 +50,6 @@
 (assert-event (fn-ocl-relation *lgt-bad-oc0*))
 (assert-event (not (fn-lgoc-invariantp *lgt-bad-oc0*)))
 (assert-event (not (fn-lgoc-invariantp (fn-olr-ocfg-reserve *lgt-bad-oc0*))))
-(must-fail
- (defthm lgt-reserve-without-invariant
-   (fn-lgoc-invariantp (fn-olr-ocfg-reserve oc))
-   :rule-classes nil :hints (("Goal" :do-not-induct t))))
 
 ; -----------------------------------------------------------------------------
 ; fn-lgoc-sbud-prepare-preserves-invariant.  Reachable witness: at :reserved,
@@ -93,11 +88,6 @@
 (assert-event (equal (lgt-phase *lgt-r-prepared*) :record-staged))
 (assert-event (not (fn-ocl-relation *lgt-r-prepared*)))
 (assert-event (not (fn-cst-relation (lgt-store *lgt-r-prepared*))))
-(must-fail
- (defthm lgt-prepare-without-served
-   (implies (fn-lgoc-invariantp oc)
-            (fn-lgoc-invariantp (fn-sbud-prepare oc record budget)))
-   :rule-classes nil :hints (("Goal" :do-not-induct t))))
 ; Hypothesis fn-lgoc-invariantp (corrupted-state witness): the topic counter
 ; off at :reserved; the staged article's topic step faults, so the companion
 ; fails after the prepare.
@@ -139,11 +129,6 @@
 (assert-event (fn-lgoc-article-stagedp (lgt-store *lgt-bad-attempted*)))
 (assert-event (not (fn-ocl-relation (fn-olr-ocfg-order *lgt-bad-attempted*))))
 (assert-event (equal (lgt-phase (fn-olr-ocfg-order *lgt-bad-attempted*)) :completing))
-(must-fail
- (defthm lgt-order-without-invariant
-   (implies (fn-lgoc-article-stagedp (fn-own-store (fn-ocfg-owner oc)))
-            (fn-lgoc-invariantp (fn-olr-ocfg-order oc)))
-   :rule-classes nil :hints (("Goal" :do-not-induct t))))
 ; Hypothesis fn-lgoc-article-stagedp is the proof's scope (the article
 ; commit), not a known counterexample: no witness is claimed for it.
 

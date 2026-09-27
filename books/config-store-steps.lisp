@@ -1293,3 +1293,6 @@
                         (:executable-counterpart member-equal)
                         (:executable-counterpart fn-snt-idle-phasep)
                         (:executable-counterpart fn-sf-record-phasep)))))
+
+; Accessor equalities used above as rewrite rules; withdrawn at export.
+(in-theory (disable fn-cstp-completion-record-after-dir))
