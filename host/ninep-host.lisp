@@ -79,8 +79,12 @@
   (declare (xargs :stobjs state :mode :program))
   (f-get-global 'fn-reader-archive state))
 
+;; OCTETS are octets, never a payload handle (books/payload-kinds.lisp): the
+;; retained article's payload is read through the arena (fn-nntp-article-bytes;
+;; lane entry-guards, 2026-09-27: both article entries emitted the handle).
 (defun fn9p-emit (octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (f-put-global 'fn9p-output octets state))
 
 ; Each entry point below leaves its octets in fn9p-output and returns T when

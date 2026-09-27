@@ -32,6 +32,7 @@
 ; -----------------------------------------------------------------------------
 ; The two decisions over an article list.
 
+(fn-payload-kind fn-sn-action-over :wire "the verdict over alpha (octet articles)")
 (defun fn-sn-action-over (msgid payload groups articles)
   (declare (xargs :guard t))
   (let ((article (fn-find-article msgid articles)))
@@ -42,6 +43,7 @@
           :conflict)
       nil)))
 
+(fn-payload-kind fn-pb-action-over :wire "the verdict over alpha (octet articles)")
 (defun fn-pb-action-over (msgid payload groups articles)
   (declare (xargs :guard t))
   (let ((article (fn-find-article msgid articles)))

@@ -77,7 +77,8 @@
     (fn-bpa-encode (fn-bpr-receipt-entry-receipt pending)) nil))))
 
 (defun fn-bprj-receipt-adu (request-octets state)
- (declare (xargs :stobjs state :mode :program))
+ (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp request-octets)))
  (let ((parsed (fn-bpa-decode-exact request-octets)))
   (value (if (fn-record-parse-okp parsed)
     (fn-bpaj-bpr-receipt-adu-fast
@@ -92,7 +93,8 @@
          (f-get-global 'fn-bpaj-state state) request-octets)))
 
 (defun fn-bprj-request-action (request-octets generation fn-arena state)
- (declare (xargs :stobjs (fn-arena state) :mode :program))
+ (declare (xargs :stobjs (fn-arena state) :mode :program
+                  :guard (fn-cbor-octet-listp request-octets)))
  (value (fn-bpaj-dispatch-fast
          (f-get-global 'fn-bpaj-state state)
          (fn-bprj-store state) request-octets generation fn-arena)))
@@ -114,7 +116,8 @@
 (defun fn-bprj-request-transit-context-record
  (inbound-id request-octets store-record generation txid record-generation
              application-result state)
- (declare (xargs :stobjs state :mode :program))
+ (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp request-octets)))
  (value (fn-bpaj-transit-context-record inbound-id request-octets store-record
                                         generation txid record-generation
                                         application-result)))
@@ -125,12 +128,14 @@
          (f-get-global 'fn-bpaj-state state))))
 
 (defun fn-bprj-request-work-id (request-octets state)
- (declare (xargs :stobjs state :mode :program))
+ (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp request-octets)))
  (let ((request (fn-bpaj-request request-octets)))
   (value (and request (fn-bpa-request-work-id request)))))
 
 (defun fn-bprj-request-receipt-id (request-octets state)
- (declare (xargs :stobjs state :mode :program))
+ (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp request-octets)))
  (let ((request (fn-bpaj-request request-octets)))
   (value (and request (fn-bpaj-receipt-id request)))))
 
@@ -140,17 +145,20 @@
   (value (and request (fn-bpa-request-source-eid request)))))
 
 (defun fn-bprj-request-bound-inbound-id (request-octets state)
- (declare (xargs :stobjs state :mode :program))
+ (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp request-octets)))
  (value (fn-bpaj-request-inbound-id
          (f-get-global 'fn-bpaj-state state) request-octets)))
 
 (defun fn-bprj-request-bound-generation (request-octets state)
- (declare (xargs :stobjs state :mode :program))
+ (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp request-octets)))
  (value (fn-bpaj-request-generation
          (f-get-global 'fn-bpaj-state state) request-octets)))
 
 (defun fn-bprj-request-result (request-octets state)
- (declare (xargs :stobjs state :mode :program))
+ (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp request-octets)))
  (value (fn-bpaj-request-result
          (f-get-global 'fn-bpaj-state state) request-octets)))
 
@@ -160,6 +168,7 @@
          (f-get-global 'fn-bpaj-state state) request-octets)))
 
 (defun fn-bprj-request-planned-result (request-octets state)
- (declare (xargs :stobjs state :mode :program))
+ (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp request-octets)))
  (value (fn-bpaj-request-planned-result
          (f-get-global 'fn-bpaj-state state) request-octets)))

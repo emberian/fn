@@ -152,7 +152,8 @@
 ; and octets (books/store-budget-article.lisp,
 ; `fn-sbud-article-verdict-keeps-history').
 (defun fn-store-sn-article-verdict (profile payload-length group-count state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (natp payload-length)))
   (let ((s (f-get-global 'fn-store-sn state)))
     (mv-let (bytes state) (fn-store-sn-record-octets s state)
       (mv-let (debt state) (fn-store-sn-record-debt s state)
@@ -243,7 +244,11 @@ the same configuration replay and observed-node open definitions startup uses."
   "The existing exact byte decoders feed one logical publication authorization.
 The result binds the core's record generation, the ACL2 filename, candidate
 reopen predicate, writer-lock observation and observed final namespace."
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (and (fn-cbor-octet-listp record-octets)
+                              (fn-octet-list-listp octet-records)
+                              (fn-octet-list-listp config-octet-records)
+                              (fn-octet-list-listp observed-name-octets))))
   (let ((records (fn-store-decode-records octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records))
         (parsed (fn-cfg-decode-exact record-octets))
@@ -281,7 +286,10 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-cfg-native-admin-authorize-carried
     (frontier config-octet-records record-octets lock-owned observed-name-octets
               profile state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (and (fn-cbor-octet-listp record-octets)
+                              (fn-octet-list-listp config-octet-records)
+                              (fn-octet-list-listp observed-name-octets))))
   (let* ((carried (and (boundp-global 'fn-store-sco-open state)
                        (f-get-global 'fn-store-sco-open state)))
          (opened-configs (and (boundp-global 'fn-store-cfg-open-configs state)
@@ -426,7 +434,9 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; guard-verified callee re-checking its guard) and print a warning on
 ; standard output (flip-L6-2 LANEDUMP).
 (defun fn-store-sn-recover-records (octet-records config-octet-records)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (and (fn-octet-list-listp octet-records)
+                              (fn-octet-list-listp config-octet-records))))
   (let ((records (fn-store-decode-records octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (equal records :bad) (equal config-records :bad)
@@ -435,7 +445,8 @@ reopen predicate, writer-lock observation and observed final namespace."
       records)))
 
 (defun fn-store-sn-recover-rows (rows frontier config-octet-records state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-octet-list-listp config-octet-records)))
   (let ((config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (equal config-records :bad) (null config-records))
         (value :fault)
@@ -640,7 +651,8 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; fn-sn-recover-from-checkpoint-equals-full-recover is about the fn-sco-open
 ; of that extension.  The answer is (mv nil KEYWORD state).
 (defun fn-store-sn-recover-from-checkpoint (rows frontier config-octet-records state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-octet-list-listp config-octet-records)))
   (let ((checkpoint (fn-store-sco-current state))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (null checkpoint) (equal rows :bad) (equal config-records :bad)
@@ -1123,7 +1135,12 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-sn-prepare (msgid-octets payload group-codes id-octets
                              subject-octets evidence-octets charge observation
                              fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :mode :program
+                  :guard (and (fn-cbor-octet-listp msgid-octets)
+                              (fn-cbor-octet-listp payload)
+                              (fn-cbor-octet-listp id-octets)
+                              (fn-cbor-octet-listp subject-octets)
+                              (fn-cbor-octet-listp evidence-octets))))
   (let* ((s (f-get-global 'fn-store-sn state))
          (groups (fn-store-groups-from-codes group-codes (fn-store-sn-domain state))))
     ; The fields' checks are ACL2's (books/post-fields.lisp
@@ -1279,7 +1296,9 @@ reopen predicate, writer-lock observation and observed final namespace."
            (fn-sn-node (f-get-global 'fn-store-sn state))))))
 
 (defun fn-store-sn-existing-action (msgid-octets payload group-codes fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :mode :program
+                  :guard (and (fn-cbor-octet-listp msgid-octets)
+                              (fn-cbor-octet-listp payload))))
   (let ((groups (fn-store-groups-from-codes group-codes (fn-store-sn-domain state))))
     (if (or (not (fn-pfld-lookup-inputsp msgid-octets groups))
             (not (fn-octet-listp payload)))
@@ -1309,7 +1328,8 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (fn-rtf-reserved (f-get-global 'fn-store-sn state))))
 
 (defun fn-store-sn-lookup (msgid-octets fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :mode :program
+                  :guard (fn-cbor-octet-listp msgid-octets)))
   (if (not (fn-af-message-idp msgid-octets))
       (value nil)
     ; The row's HANDLE through the event index, not the acceptance state's
@@ -1322,7 +1342,8 @@ reopen predicate, writer-lock observation and observed final namespace."
                             fn-arena))))
 
 (defun fn-store-sn-lookup-foundp (msgid-octets state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp msgid-octets)))
   (if (not (fn-af-message-idp msgid-octets))
       (value nil)
     ; fn-apr-foundp-is-article-found (books/acceptance-payload-ref.lisp).

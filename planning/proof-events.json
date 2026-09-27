@@ -11135,6 +11135,19 @@
           "name": "fn-rii-sco-cpr-finish-configured-is-finish"
         }
       ]
+    },
+    {
+      "id": "PRF-319",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-payload-handle-is-not-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-payload-octets-are-not-a-handle"
+        }
+      ]
     }
   ]
 }

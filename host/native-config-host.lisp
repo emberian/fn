@@ -4,7 +4,8 @@
 (include-book "../books/native-config")
 
 (defun fn-native-config-host-load (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp octets)))
   (fn-native-config-load octets))
 
 (defun fn-native-config-host-max-octets ()
@@ -13,7 +14,8 @@
 
 (defun fn-native-config-host-listener-addresses (host-octets)
   "NNT-041: every (FAMILY ADDRESS) the owner binds, in the written order."
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp host-octets)))
   (fn-native-config-listener-addresses host-octets))
 
 (defun fn-native-config-host-listener-address (host-octets)

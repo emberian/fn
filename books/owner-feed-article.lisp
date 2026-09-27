@@ -70,6 +70,7 @@
 
 ; The octet-list model's feed article: `fn-own-feed-article' (books/owner.lisp)
 ; over ALPHA of the acceptance articles, the bytes it read before the flip.
+(fn-payload-kind fn-ofa-wire-feed-article :wire "over fn-articles-wire-of: the octet model's articles")
 (defun-nx fn-ofa-wire-feed-article (o msgid fn-arena)
   (let ((a (fn-find-article
             (fn-record-octets-string msgid)

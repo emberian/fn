@@ -127,8 +127,8 @@
 ;; The transport, one attempt each (fnn-mux-receive-now, fnn-mux-write-now):
 ;; a read takes the next scripted chunk (empty when the script ends: the
 ;; peer closed); a write takes the whole reply.
-(defun fnn-mux-receive-now (service conn)
-  (declare (ignore service conn))
+(defun fnn-mux-receive-now (service loop conn)
+  (declare (ignore service loop conn))
   (incf *read-count*)
   (if *reads* (pop *reads*) (fnn-make-octets 0)))
 (defun fnn-mux-write-now (conn)

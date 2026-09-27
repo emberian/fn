@@ -144,6 +144,7 @@
   (declare (xargs :guard t))
   (fn-state-articles (fn-node-acceptance node)))
 
+(fn-payload-kind fn-stx-lace-of-store :wire "the lace model; applied over octet articles (store-intern.lisp fn-rows-articles-newest-first)")
 (defun fn-stx-lace-of-store (articles keyring)
   (declare (xargs :guard (fn-prin-keyringp keyring)))
   (if (consp articles)

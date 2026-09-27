@@ -56,6 +56,7 @@
   (fn-tcl-host-triple (fn-tcl-tick s (fn-clock-observation monotonic 0 0 nil))))
 
 (defun fn-tcl-host-send (s ref octets now)
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-tcl-host-triple (fn-tcl-send s ref octets now)))
 
 (defun fn-tcl-host-pump (s now)

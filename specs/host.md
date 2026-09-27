@@ -788,6 +788,40 @@ fields the host reads. The capture result carries the checkpoint
 pipeline's ten fields in its order; the served step's result is the owner
 scheduler's render plan (not this section's).
 
+### The host entry guard
+
+HST-027: The host hands an ACL2 entry only the kind of value its guard names; a payload handle where octets are meant, an octet vector where a list is meant, or the wrong argument count is refused by name before the entry runs
+
+Typed results (HST-019) check what comes back across the boundary; this
+checks what goes in. The image runs with `guard-checking-on` = `t`, but a
+`:program` wrapper, and a total (`:guard t`) function beneath it, accepts
+any value: a natural is a good argument to `consp` and `len`. Since the
+records flip the retained article's payload is an arena HANDLE
+(books/payload-kinds.lisp `fn-payload-handle-p`, disjoint from
+`fn-cbor-octet-listp` octets by PRF-319's keystones), and on 2026-09-27 six
+defects handed a handle, or the wrong argument count, to code that meant
+octets; each surfaced as a silent refusal downstream (441 on signed POSTs,
+ARTICLE 503, BP sends refused, a feed's empty command, moderation's
+envelope-malformed, stored-octets 0).
+
+`fnn-call` (host/native/io.lisp), the dispatcher every `fnn-core*` wrapper
+applies, runs `fnn-entry-guard` first. It reads the entry's formals,
+stobjs-in and guard from the image's world once per name (strip-world keeps
+them) and evaluates, on the actual arguments, the arity and exactly the
+conjuncts `(R v)` of that guard with `R` one of `*fn-entry-guard-kinds*`
+(each guard-t and at most linear in the argument it reads, which the entry
+consumes anyway) and `v` a non-stobj formal. A failure is
+`fnn-entry-guard-fault`, a store fault (exit 4) whose message is
+`host-entry-guard: ENTRY argument N (FORMAL) must be KIND (RECOGNIZER); the
+host passed DESCRIPTION`, the description bounded (a natural's value, a
+list's or vector's length, never contents). Any other conjunct, such as a
+whole-state invariant, stays ACL2's and is never evaluated here. The kinds
+are named in the entries' own guards: every host wrapper's byte-carrying
+formal (`tools/harness_check.py` entry-guards, gating), and every
+definition in books/ that reads a retained payload declares whether it
+works in handles or in the octet model (`fn-payload-kind`,
+`tools/payload_kind_check.py`, gating).
+
 ### Differential evidence and measurements
 
 `python3 -m unittest tests.test_native_served_differential` now uses the

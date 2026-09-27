@@ -72,6 +72,11 @@
   ((message :initarg :message :reader fnn-message))
   (:report (lambda (c s) (write-string (fnn-message c) s))))
 (define-condition fnn-store-fault (fnn-store-error) ())
+;; host-entry-guard: the host handed an ACL2 entry an argument its guard
+;; refuses, or the wrong number of arguments (fnn-entry-guard).  A fault
+;; (exit 4) named by the entry, the argument position and the expected kind,
+;; raised before the entry runs: never a silent refusal further down.
+(define-condition fnn-entry-guard-fault (fnn-store-fault) ())
 (define-condition fnn-input-overbound (fnn-store-fault) ())
 (define-condition fnn-store-indeterminate (fnn-store-error) ())
 ;; A Store write that failed before publication, after which ACL2 consumed the
@@ -1019,12 +1024,97 @@ offered to the writer while the owner runs (PKT-508), else written here."
       (fnn-fault "ACL2 executable counterpart missing: ~a" name))
     symbol))
 
+;;; The entry guard (lane entry-guards, 2026-09-27).  Every call into the
+;;; core passes through fnn-call; before the counterpart runs, the host checks
+;;; the entry's ARITY and the CHEAP conjuncts of the entry's own ACL2 guard on
+;;; the actual arguments: a conjunct (R v) with v a non-stobj formal and R one
+;;; of the kind recognizers books/payload-kinds.lisp lists in
+;;; *fn-entry-guard-kinds* (each guard-t and at most linear in the argument it
+;;; reads, which the entry consumes anyway).  The spec is read once per name
+;;; off the image's world (formals, stobjs-in, guard: kept by
+;;; host/native/strip-world.lisp) and cached.  A guard conjunct that is not a
+;;; kind recognizer (a whole-state invariant, a relation between arguments) is
+;;; never evaluated here: no whole-state revalidation on the served path.
+;;; Failure is a fault named host-entry-guard with the entry, the position,
+;;; the formal and the kind: the six handle-for-octets defects of 2026-09-27
+;;; surfaced as silent refusals downstream instead.  The kind decision is
+;;; ACL2's (the guard and the recognizer); the host only evaluates it.
+(defvar *fnn-entry-guard-specs* (make-hash-table :test 'eq))
+
+(defun fnn-guard-conjuncts (term)
+  "The conjuncts of a translated guard TERM ((if a b 'nil) is a conjunction)."
+  (if (and (consp term) (eq (car term) 'if) (equal (fourth term) *nil*))
+      (append (fnn-guard-conjuncts (second term)) (fnn-guard-conjuncts (third term)))
+    (list term)))
+
+(defun fnn-entry-guard-spec (name)
+  "(arity . checks) for the entry NAME, each check (position formal recognizer
+kind); :unknown when the world has no formals for NAME (a raw primitive)."
+  (multiple-value-bind (spec found) (gethash name *fnn-entry-guard-specs*)
+    (if found
+        spec
+      (setf (gethash name *fnn-entry-guard-specs*)
+            (let* ((wrld (w *the-live-state*))
+                   (formals (getpropc name 'formals :none wrld))
+                   (stobjs (getpropc name 'stobjs-in nil wrld))
+                   (checks nil))
+              (if (eq formals :none)
+                  :unknown
+                (progn
+                  (dolist (c (fnn-guard-conjuncts (getpropc name 'guard *t* wrld)))
+                    (when (and (consp c) (symbolp (car c)) (consp (cdr c)) (null (cddr c))
+                               (symbolp (second c)) (member (second c) formals)
+                               (null (nth (position (second c) formals) stobjs)))
+                      (let ((kind (assoc (car c) *fn-entry-guard-kinds*)))
+                        (when kind
+                          (push (list (position (second c) formals) (second c) (car c) (cdr kind))
+                                checks)))))
+                  (cons (length formals) (sort checks #'< :key #'first)))))))))
+
+(defun fnn-entry-guard-describe (value)
+  "A bounded description of VALUE's kind (never its contents)."
+  (cond ((and (integerp value) (>= value 0)) (format nil "the natural ~d" value))
+        ((integerp value) (format nil "the integer ~d" value))
+        ((null value) "NIL")
+        ((stringp value) (format nil "a string of ~d characters" (length value)))
+        ((symbolp value) (format nil "the symbol ~s" value))
+        ((consp value) (let ((n (loop for tail = value then (cdr tail)
+                                      for i from 0
+                                      while (and (consp tail) (< i 1000000))
+                                      finally (return i))))
+                         (format nil "a list of ~d element~:p (first ~a)" n
+                                 (let ((head (car value)))
+                                   (cond ((integerp head) head)
+                                         ((consp head) "a list")
+                                         (t (type-of head)))))))
+        ((vectorp value) (format nil "a vector of ~d element~:p" (length value)))
+        (t (format nil "a ~(~a~)" (type-of value)))))
+
+(defun fnn-entry-guard (name args)
+  "Refuse, by name, a call the entry NAME's arity or kind guards refuse."
+  (let ((spec (fnn-entry-guard-spec name)))
+    (unless (eq spec :unknown)
+      (let ((given (length args)))
+        (unless (= given (car spec))
+          (error 'fnn-entry-guard-fault
+                 :message (format nil "host-entry-guard: ~(~a~) takes ~d argument~:p (stobjs and state included); the host passed ~d"
+                                  name (car spec) given))))
+      (dolist (check (cdr spec))
+        (destructuring-bind (position formal recognizer kind) check
+          (let ((value (nth position args)))
+            (unless (funcall recognizer value)
+              (error 'fnn-entry-guard-fault
+                     :message (format nil "host-entry-guard: ~(~a~) argument ~d (~(~a~)) must be ~a (~(~a~)); the host passed ~a"
+                                      name (1+ position) formal kind recognizer
+                                      (fnn-entry-guard-describe value))))))))))
+
 (defun fnn-call (name &rest args)
-  "Apply NAME's executable counterpart to ARGS.
+  "Apply NAME's executable counterpart to ARGS, after the entry guard.
 
 An explicit core result such as :REFUSED remains a semantic result for its
 wrapper to handle.  A thrown condition or escaped raw evaluation is an
 execution-boundary fault, never a claim that the core refused an input."
+  (fnn-entry-guard name args)
   (let ((outcome :thrown) (values nil))
     (setq values
           (catch 'raw-ev-fncall
