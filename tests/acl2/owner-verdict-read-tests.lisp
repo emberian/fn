@@ -157,6 +157,7 @@
           (fn-nntp-keywordp (cadr tokens) ":FN-VERIFIED")
           (fn-nntp-message-id-tokenp (caddr tokens))
           (not (fn-nntp-range-okp (fn-nntp-parse-range (caddr tokens))))
+          (not (fn-auth-access-restrictedp as (fn-own-conn-config conn)))
           (consp (fn-find-article (fn-nntp-token-string (caddr tokens))
                                   (fn-state-articles
                                    (fn-own-conn-archive conn)))))))
@@ -194,7 +195,7 @@
 ; publication, one socket read of the HDR line.  Every premise holds and the
 ; reply is the verified item, which is not the "absent no-record" item.
 (assert-event (equal (fn-ovrt-hyps *ov-reader-b* 2 *ovr-prefix* *ovr-lf*)
-                     (fn-ovrt-all-but 26)))
+                     (fn-ovrt-all-but 27)))
 (assert-event (equal (car (fn-own-read *ov-reader-b* 2
                                        (append *ovr-prefix* (list *ovr-lf*))))
                      (fn-ovrt-rhs *ov-reader-b* 2 *ovr-prefix* *ovr-lf*)))
@@ -208,10 +209,13 @@
                              (fn-own-find-conn 2 (fn-own-conns *ov-reader-b*)))))
                           (fn-stx-reader-item nil))))
 
-; Without the article in the pinned archive (premise 26): reader A pinned
+; Premise 26 (PRF-222: the session has no access rule) has its teeth in
+; tests/acl2/group-access-tests.lisp: bob's HDR/STAT of fn.private.x's
+; Message-ID answers 430 over the store that holds it.
+; Without the article in the pinned archive (premise 27): reader A pinned
 ; before the publication answers 430, not a verdict line.
 (assert-event (equal (fn-ovrt-hyps *ov-reader-b* 0 *ovr-prefix* *ovr-lf*)
-                     (fn-ovrt-only-false 25 26)))
+                     (fn-ovrt-only-false 26 27)))
 (assert-event (not (equal (car (fn-own-read *ov-reader-b* 0 *ov-hdr*))
                           (fn-ovrt-rhs *ov-reader-b* 0 *ovr-prefix* *ovr-lf*))))
 (must-fail
@@ -240,7 +244,7 @@
           '(13 10)))
 (defconst *ovr-subject-prefix* (butlast *ovr-subject* 1))
 (assert-event (equal (fn-ovrt-hyps *ov-reader-b* 2 *ovr-subject-prefix* *ovr-lf*)
-                     (fn-ovrt-only-false 22 26)))
+                     (fn-ovrt-only-false 22 27)))
 (assert-event (not (equal (car (fn-own-read *ov-reader-b* 2 *ovr-subject*))
                           (fn-ovrt-rhs *ov-reader-b* 2 *ovr-subject-prefix*
                                        *ovr-lf*))))

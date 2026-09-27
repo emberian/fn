@@ -367,6 +367,7 @@
                   (fn-nntp-keywordp (cadr tokens) ":FN-VERIFIED")
                   (fn-nntp-message-id-tokenp (caddr tokens))
                   (not (fn-nntp-range-okp (fn-nntp-parse-range (caddr tokens))))
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (consp article))
              (equal (fn-served-result-effects
                      (fn-served-step conn (append prefix (list byte))))
@@ -466,6 +467,7 @@
                   (fn-nntp-keywordp (cadr tokens) ":FN-VERIFIED")
                   (fn-nntp-message-id-tokenp (caddr tokens))
                   (not (fn-nntp-range-okp (fn-nntp-parse-range (caddr tokens))))
+                  (not (fn-auth-access-restrictedp as (fn-own-conn-config conn)))
                   (consp article))
              (equal (car (fn-own-read o id (append prefix (list byte))))
                     (fn-nntp-result-effects

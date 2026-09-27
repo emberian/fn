@@ -7614,6 +7614,14 @@
         {
           "kind": "theorem",
           "name": "fn-auth-delegate-pinned-preserves-consistentp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-views-find-is-restriction"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-access-views-covers-pattern"
         }
       ]
     }

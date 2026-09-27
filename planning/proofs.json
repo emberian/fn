@@ -7992,7 +7992,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-native-app-fast.lisp",
         "books/owner-store-indexed.lisp",
@@ -8049,7 +8049,9 @@
         "fn-auth-view-consistent",
         "fn-auth-view-consistent-back",
         "fn-auth-view-trie-corresponds",
-        "fn-auth-delegate-pinned-preserves-consistentp"
+        "fn-auth-delegate-pinned-preserves-consistentp",
+        "fn-gac-views-find-is-restriction",
+        "fn-gac-access-views-covers-pattern"
       ]
     }
   ]

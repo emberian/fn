@@ -225,8 +225,11 @@
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
-                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp))
-           :use ((:instance fn-auth-sessionp (x as))
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-auth-view-archive fn-auth-view-index
+                            fn-auth-view-config fn-auth-selection-in-viewp))
+           :use ((:instance fn-auth-view-session-when-selection-in-view)
+                 (:instance fn-auth-sessionp (x as))
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
@@ -270,8 +273,11 @@
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
-                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp))
-           :use ((:instance fn-auth-sessionp (x as))
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-auth-view-archive fn-auth-view-index
+                            fn-auth-view-config fn-auth-selection-in-viewp))
+           :use ((:instance fn-auth-view-session-when-selection-in-view)
+                 (:instance fn-auth-sessionp (x as))
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
@@ -315,8 +321,11 @@
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
-                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp))
-           :use ((:instance fn-auth-sessionp (x as))
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-auth-view-archive fn-auth-view-index
+                            fn-auth-view-config fn-auth-selection-in-viewp))
+           :use ((:instance fn-auth-view-session-when-selection-in-view)
+                 (:instance fn-auth-sessionp (x as))
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
@@ -360,8 +369,11 @@
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
-                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp))
-           :use ((:instance fn-auth-sessionp (x as))
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-auth-view-archive fn-auth-view-index
+                            fn-auth-view-config fn-auth-selection-in-viewp))
+           :use ((:instance fn-auth-view-session-when-selection-in-view)
+                 (:instance fn-auth-sessionp (x as))
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
@@ -405,8 +417,11 @@
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
-                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp))
-           :use ((:instance fn-auth-sessionp (x as))
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-auth-view-archive fn-auth-view-index
+                            fn-auth-view-config fn-auth-selection-in-viewp))
+           :use ((:instance fn-auth-view-session-when-selection-in-view)
+                 (:instance fn-auth-sessionp (x as))
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
@@ -450,8 +465,11 @@
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
-                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp))
-           :use ((:instance fn-auth-sessionp (x as))
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-auth-view-archive fn-auth-view-index
+                            fn-auth-view-config fn-auth-selection-in-viewp))
+           :use ((:instance fn-auth-view-session-when-selection-in-view)
+                 (:instance fn-auth-sessionp (x as))
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
@@ -495,8 +513,11 @@
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
-                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp))
-           :use ((:instance fn-auth-sessionp (x as))
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-auth-view-archive fn-auth-view-index
+                            fn-auth-view-config fn-auth-selection-in-viewp))
+           :use ((:instance fn-auth-view-session-when-selection-in-view)
+                 (:instance fn-auth-sessionp (x as))
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
@@ -540,12 +561,18 @@
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
-                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp))
-           :use ((:instance fn-auth-sessionp (x as))
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-auth-view-archive fn-auth-view-index
+                            fn-auth-view-config fn-auth-selection-in-viewp))
+           :use ((:instance fn-auth-view-session-when-selection-in-view)
+                 (:instance fn-auth-sessionp (x as))
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
 
 (must-fail
+; the prover's search without this hypothesis visits every served keyword;
+; bound it (the ground witness above is the counterexample).
+(with-prover-step-limit 300000
 (defthm nht-without-unlisted
   (implies (and (fn-auth-sessionp as)
                 (not (fn-auth-session-handshakingp as))
@@ -585,10 +612,13 @@
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
-                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp))
-           :use ((:instance fn-auth-sessionp (x as))
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-auth-view-archive fn-auth-view-index
+                            fn-auth-view-config fn-auth-selection-in-viewp))
+           :use ((:instance fn-auth-view-session-when-selection-in-view)
+                 (:instance fn-auth-sessionp (x as))
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
-                 (:instance fn-post-sessionp (x (fn-auth-post-session as))))))))
+                 (:instance fn-post-sessionp (x (fn-auth-post-session as)))))))))
 
 ; (10) without the selection in view: a ruled session selected outside its
 ; view is deselected (the ground case above).

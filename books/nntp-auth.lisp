@@ -3160,7 +3160,11 @@
               (fn-inj-config-max-octets config))
        (equal (fn-inj-config-listing (fn-auth-view-config as config archive))
               (fn-inj-config-listing config)))
-  :hints (("Goal" :in-theory (enable fn-auth-view-config fn-gac-post-config))))
+  :hints (("Goal" :in-theory '(fn-auth-view-config fn-gac-post-config
+                                fn-inj-config-allow-of-fn-inj-make-config-full
+                                fn-inj-config-agent-of-fn-inj-make-config-full
+                                fn-inj-config-max-octets-of-fn-inj-make-config-full
+                                fn-inj-config-listing-of-fn-inj-make-config-full))))
 
 (in-theory (disable fn-auth-access-login fn-auth-access-text fn-auth-access-read
                     fn-auth-access-post fn-auth-access-restrictedp
@@ -3440,6 +3444,29 @@
                                      fn-auth-view-session fn-gac-deselect))))
 
 (in-theory (disable fn-auth-selection-in-viewp))
+
+; The view session keeps the connection's role and its reader session's
+; open and projected flags (books/owner-verdict-read.lisp reads them).
+(defthm fn-auth-view-session-keeps-role
+  (and (equal (fn-peer-session-peer (fn-auth-view-session as config))
+              (fn-peer-session-peer (fn-auth-session-base as)))
+       (equal (fn-peer-session-transfer (fn-auth-view-session as config))
+              (fn-peer-session-transfer (fn-auth-session-base as)))
+       (equal (fn-nntp-session-openp
+               (fn-post-session-base
+                (fn-peer-session-base (fn-auth-view-session as config))))
+              (fn-nntp-session-openp
+               (fn-post-session-base
+                (fn-peer-session-base (fn-auth-session-base as)))))
+       (equal (fn-nntp-session-projected
+               (fn-post-session-base
+                (fn-peer-session-base (fn-auth-view-session as config))))
+              (fn-nntp-session-projected
+               (fn-post-session-base
+                (fn-peer-session-base (fn-auth-session-base as))))))
+  :hints (("Goal" :in-theory (enable fn-auth-view-session fn-gac-deselect fn-peer-with-base
+                                     fn-nntp-make-session fn-nntp-session-openp
+                                     fn-nntp-session-projected))))
 
 (defthm fn-auth-step-pinned-submission-is-typed
   (implies (and (fn-auth-sessionp as)
