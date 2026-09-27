@@ -409,17 +409,16 @@ In rough priority. Each is one focused lane; base on batch/ay.
 8. spwashi and pug peering details, after feed-queue.
 9. PKT-673 and PKT-322.
 
-## 6. The path to v6.6.0 from here
-1. AY pushes the first green tranche (21 lanes plus site-newsgroup).
+## 6. The path to v6.6.0 from here (the cut is HELD — ember 23:30Z)
+1. AY pushes green tranches as they come (21 lanes plus site-newsgroup first).
 2. feed-queue lands; the OpenBSD friend rehearsal reruns clean.
-3. release-machinery lands: the cut script's gates and fundamentals.py judge
-   F1 to F8 on the converged head; F8 is the one likely to read red (reserved
-   memory) and the release note says so with the number.
-4. One qualification of a quiet candidate on hbox and persvati; the tag; the
-   node moves from the rehearsal build to the cut.
-5. Then 6.6.1 onward carries G3 and G4, arena-store-2 carries G1 and G6, and
-   the 6.7.x series is where the extracted image (G2) can become the served
-   one.
+3. release-machinery lands the cut script's gates and fundamentals.py as
+   tooling that judges F1 to F8 on any head; no qualification, no tag.
+4. The deep work of section 7 runs now: G3/G4 (defkeystone, defprotocol), G1/G6
+   (arena-store-2, then the format bump), extraction (extract-2, then the served
+   image without ACL2 on ember's go), F2 (sca-join-5).
+5. The cut happens when ember says; then the node moves from the rehearsal
+   build to it.
 
 ## 7. "Put it down and be done and proud of it" (ember, 23:25Z; the coordinator's answer)
 
@@ -452,8 +451,15 @@ Done and proud, with rough lane-weeks at today's cadence:
    implementation that can drift even under the rule that Python never
    computes what ACL2 computes. (2)
 
-Total 12 to 16 lane-weeks: two to three weeks of a ten-lane swarm after the
-cut. Complecting to add on purpose: the time model (requests with one
+Total 12 to 16 lane-weeks: two to three weeks of a ten-lane swarm. Ember
+(23:30Z): "we don't have to wait until after the cut! i'm gonna hold off the
+cut for a decent amount of time" — so items 2 to 7 start NOW, in parallel with
+the release-critical lanes; the cut script and fundamentals tool finish as
+tooling; no qualification or tag until ember says. Launched at 23:35Z:
+extract-2 (e1 boundary guards, e2 extent primitives, e3 A-EXTRACT row, e4 `make
+extract-check`, e5 measure) and defkeystone (G3 pilot with a differential on
+one keystone family); defprotocol (G4) is briefed in
+build/coordinator/queue/defprotocol.txt for the next free slot. Complecting to add on purpose: the time model (requests with one
 completion each) and the carried join invariant. Complecting to remove: the
 twin-per-representation hand proofs, the three boundary generators, the two
 dispatch paths, the two ACL2 builds. The swarm holds at ten lanes.
