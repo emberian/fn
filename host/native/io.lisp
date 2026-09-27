@@ -5488,7 +5488,10 @@ tree root), or stop the build."
   ;; SYNC-CV signalled when the syncer returns.
   (lock (sb-thread:make-mutex :name "fn log kernel"))
   (sealed 0) (sync-state :idle)
-  (sync-cv (sb-thread:make-waitqueue :name "fn log sync")))
+  (sync-cv (sb-thread:make-waitqueue :name "fn log sync"))
+  ;; The open's places of the segment's committed records (ACL2's
+  ;; fn-arx-text-places over the octets the open read), or NIL.
+  (opened-places nil))
 
 (defmacro fnn-log-with-kernel ((log) &body body)
   "BODY under the log's kernel lock (recursive: a kernel step may call another)."
@@ -5594,22 +5597,27 @@ as a torn tail."
                     genesis unit max)
       (error 'fnn-store-open-refusal
              :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
-    ks))
+    ;; The committed records' places, read from the entries in TEXT
+    ;; (books/payload-extent.lisp fn-arx-text-places): the open's extent seals.
+    (values ks (fnn-core 'fn-arx-text-places text 0 (length (fnn-core 'fn-lgk-committed ks))
+                         unit 0 0 0 0 nil))))
 
 (defun fnn-log-recover (path extent unit max &optional (genesis *fn-lg-genesis*))
   "P-LOG-RECOVER (fn-lg-recover-program): the kernel of the segment's decode
 from GENESIS, then the tail [F, EXTENT) zeroed by one write and fenced.  The
 kernel is R-related to the segment at log-recovered
 (fn-lg-recover-program-establishes-the-relation)."
-  (let* ((fd (fnn-log-open-segment path extent unit))
-         (ks (handler-case (fnn-log-open-kernel fd extent unit max genesis)
-               (error (e) (fnn-close fd) (error e)))))
-    (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
-      (fnn-log-pwrite fd offset (fnn-make-octets count))
-      (fnn-log-at :log-truncated)
-      (fnn-log-fdatasync fd)
-      (fnn-log-at :log-recovered))
-    (%make-fnn-log :path path :fd fd :kernel ks :unit unit :max max :extent extent)))
+  (let ((fd (fnn-log-open-segment path extent unit)))
+    (multiple-value-bind (ks places)
+        (handler-case (fnn-log-open-kernel fd extent unit max genesis)
+          (error (e) (fnn-close fd) (error e)))
+      (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
+        (fnn-log-pwrite fd offset (fnn-make-octets count))
+        (fnn-log-at :log-truncated)
+        (fnn-log-fdatasync fd)
+        (fnn-log-at :log-recovered))
+      (%make-fnn-log :path path :fd fd :kernel ks :unit unit :max max :extent extent
+                     :opened-places places))))
 
 (defun fnn-log-prepare (log record)
   "The checked prepare: RECORD joins the open batch only at the kernel's
@@ -5736,8 +5744,9 @@ init completes, never truncates): the retry branch, not the program."
   (let* ((extent (fnn-log-observed-extent path))
          (fd (fnn-log-open-segment path extent unit t)))
     (handler-case
-        (%make-fnn-log :path path :fd fd :unit unit :max max :extent extent
-                       :kernel (fnn-log-open-kernel fd extent unit max genesis))
+        (multiple-value-bind (ks places) (fnn-log-open-kernel fd extent unit max genesis)
+          (%make-fnn-log :path path :fd fd :unit unit :max max :extent extent
+                         :kernel ks :opened-places places))
       (error (e) (fnn-close fd) (error e)))))
 
 (defun fnn-log-batch-reset (log)
@@ -5923,9 +5932,10 @@ the chain carried from each segment's kernel to the next (fn-lgk-last).
 The closed segments are read only; the active one is recovered (a writable
 open: P-LOG-RECOVER) or read.  Returns (values RECORDS LOG POSITIONS): every
 scanned record in order, the active segment's log, and per record its
-entry's (FILE START N 0): FILE the extent realizer's id of the segment
-(host/native/extent.lisp: a read-only descriptor held for the process's
-life), the rest ACL2's (fn-arx-positions over the records' lengths)."
+record's (FILE START N ROFF RLEN): FILE the extent realizer's id of the
+segment (host/native/extent.lisp: a read-only descriptor held for the
+process's life), the rest its PLACE, ACL2's fn-arx-text-places over the
+entries the scan read (a batch's records share chunk entries)."
   (let ((unit (fnn-store-log-unit))
         (max (fnn-store-log-max store))
         (records nil)
@@ -5933,10 +5943,10 @@ life), the rest ACL2's (fn-arx-positions over the records' lengths)."
     (loop for (k . more) on scan do
       (let ((path (fnn-segment-path-at store k)))
         (if more
-            (multiple-value-bind (closed last)
+            (multiple-value-bind (closed last places)
                 (fnn-log-read-closed-segment store k genesis unit max)
               (push closed records)
-              (push (fnn-extent-positions path (mapcar #'length closed) unit) positions)
+              (push (fnn-extent-places path places (length closed)) positions)
               (setq genesis last))
           (progn
             (fnn-log-complete-rotation store path)
@@ -5949,7 +5959,8 @@ life), the rest ACL2's (fn-arx-positions over the records' lengths)."
               ;; place (PKT-823).
               (let ((these (fnn-core 'fn-lgk-committed (fnn-log-kernel log))))
                 (push these records)
-                (push (fnn-extent-positions path (mapcar #'length these) unit) positions))
+                (push (fnn-extent-places path (fnn-log-opened-places log) (length these)) positions)
+                (setf (fnn-log-opened-places log) nil))
               (return-from fnn-log-scan-segments
                 (values (apply #'append (nreverse records)) log
                         (apply #'append (nreverse positions)))))))))
@@ -5969,8 +5980,12 @@ genesis."
            (when (fnn-core 'fn-lgs-chain-broken-string-p text genesis unit max)
              (error 'fnn-store-open-refusal
                     :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
-           (values (fnn-core 'fn-lgs-open-chain-records (list text) genesis unit max)
-                   (fnn-core 'fn-lgs-open-chain-last (list text) genesis unit max)))
+           (let ((records (fnn-core 'fn-lgs-open-chain-records (list text) genesis unit max)))
+             (values records
+                     (fnn-core 'fn-lgs-open-chain-last (list text) genesis unit max)
+                     ;; the records' places, read from the entries
+                     ;; (books/payload-extent.lisp fn-arx-text-places)
+                     (fnn-core 'fn-arx-text-places text 0 (length records) unit 0 0 0 0 nil))))
       (fnn-close fd))))
 
 (defun fnn-recover-log-from-log-checkpoint (store config-records suffix s)

@@ -102,12 +102,12 @@ from the cache or read and checked by ACL2 (fn-arx-entry-ok)."
   (sb-thread:with-mutex (*fnn-extent-lock*)
     (setq *fnn-extent-cache* nil)))
 
-(defun fnn-extent-positions (path lengths unit)
-  "The open's positions for the records the scan read from the segment at
-PATH, of LENGTHS octets each: per record (FILE START N 0), FILE this
-segment's new realizer id, the rest ACL2's (fn-arx-positions)."
-  (let ((ps (fnn-core 'fn-arx-positions 0 unit lengths nil)))
-    (if (and (consp ps) (= (length ps) (length lengths)))
-        (let ((file (fnn-extent-register path)))
-          (mapcar (lambda (p) (cons file p)) ps))
-        (make-list (length lengths) :initial-element nil))))
+(defun fnn-extent-places (path places count)
+  "The open's positions for the COUNT records the scan read from the segment
+at PATH: per record (FILE . PLACE), FILE this segment's new realizer id,
+PLACE ACL2's (fn-arx-text-places over the segment's entries); NIL for every
+record when ACL2 placed fewer or more (each record then stays resident)."
+  (if (and (consp places) (= (length places) count))
+      (let ((file (fnn-extent-register path)))
+        (mapcar (lambda (p) (cons file p)) places))
+      (make-list count :initial-element nil)))
