@@ -92,7 +92,7 @@
 ;; logp: the development preset in the per-file layout's word (format 8, what
 ;; the previous release exported).  Valid, in order, not a log profile: the
 ;; plan imports it under the fn-store-9 word, so not under VALUES.
-(defconst *sxpt-format-8* (fn-bs-profile-as-format-8 *fn-bs-profile-development*))
+(defconst *sxpt-format-8* (cons *fn-bs-meta-format-8* (cdr *fn-bs-profile-development*)))
 (assert-event (fn-bs-profile-validp *sxpt-format-8*))
 (assert-event (and (fn-sxp-increasingp *sxpt-records*)
                    (fn-sxp-config-names-increasingp *sxpt-configs* nil)))

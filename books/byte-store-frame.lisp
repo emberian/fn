@@ -303,18 +303,14 @@
   (fn-bs-profile-validp (fn-bs-profile-of values)))
 
 ; The commit route of the store a profile opens (lane commit-onto-log): the
-; record log for format 9, the per-file programs for format 8.  A value that
-; is not a profile names neither (the open refuses it before this is read).
+; record log for format 9.  A format-8 profile (the per-file layout) is
+; valid and decodes, for `store import''s migration of an old release's
+; archive (books/store-export.lisp fn-sxp-log-profile), but no image opens it
+; (books/store-profile-open.lisp, :store-format).  A value that is not a
+; profile names no route.
 (defun fn-bs-profile-logp (values)
   (declare (xargs :guard t))
   (equal (fn-bs-meta-nth 0 (fn-bs-profile-of values)) *fn-bs-meta-format-9*))
-
-; The same profile in the per-file layout: what a developer image's `init'
-; writes under FN_NATIVE_STORE_FORMAT=8 for the modules that read that layout
-; (PKT-COL-1).  Validity does not read the word beyond its being a format.
-(defun fn-bs-profile-as-format-8 (values)
-  (declare (xargs :guard t))
-  (if (consp values) (cons *fn-bs-meta-format-8* (cdr values)) values))
 
 ; The named accessors every consumer reads.  Each reads the profile the
 ; store runs under, and a value that is not a valid profile gives 0.

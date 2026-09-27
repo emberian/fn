@@ -995,20 +995,14 @@ scope ends, however it ends."
 ;;; mirror tools/frame_bridge.py's wrappers: the raw host neither frames nor
 ;;; parses a field, and it does not restate the frontier domain or successor.
 
-(defun fnn-store-format-8-selected-p ()
-  "FN_NATIVE_STORE_FORMAT=8 on a developer image: init writes format 8."
-  (equal (fnn-developer-selector "FN_NATIVE_STORE_FORMAT") "8"))
-
 (defun fnn-metadata-config-frame (profile)
-  (let ((value (if (fnn-store-format-8-selected-p)
-                   (fnn-core 'fn-store-metadata-config-frame-format-8 profile)
-                 (fnn-core 'fn-store-metadata-config-frame profile))))
+  (let ((value (fnn-core 'fn-store-metadata-config-frame profile)))
     (when (or (null value) (not (fnn-octet-list-p value)))
       (fnn-fault "ACL2 returned malformed metadata profile frame"))
     (fnn-octets value)))
 
 (defun fnn-metadata-config-decode (octets)
-  "ACL2's decoded store profile: a format-8 profile (the one format, D34).  The host keeps the value opaque and
+  "ACL2's decoded store profile: a format-9 profile (the one format, D34).  The host keeps the value opaque and
 reads every field through an ACL2 accessor.  The verdict is ACL2's open
 (books/store-profile-open.lisp fn-spo-config-open): a saved profile whose
 record bound the poll reply cannot carry, a profile frame of another
@@ -4934,10 +4928,7 @@ tree root), or stop the build."
     "FN_PULL_TEST_KILL"
     "FN_NATIVE_RECLAIM_FAULT" "FN_NATIVE_CHECKPOINT_BATCH_FAULT"
     "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"
-    "FN_NATIVE_LOG_FAULT"
-    ;; commit-onto-log: `8' makes a developer image's init write the
-    ;; per-file layout (format 8) for the modules that read it (PKT-COL-1).
-    "FN_NATIVE_STORE_FORMAT"))
+    "FN_NATIVE_LOG_FAULT"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."

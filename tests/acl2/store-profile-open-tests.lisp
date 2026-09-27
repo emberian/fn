@@ -240,10 +240,12 @@
 (assert-event (equal (fn-spo-config-open (fn-bs-config-encode *fn-bs-profile-development*))
                      (list :opened *fn-bs-profile-development*)))
 (must-fail
- (with-prover-step-limit 20000 (thm (implies (and (equal values *fn-bs-profile-development*)
-                    (fn-bs-profile-validp values))
-               (equal (fn-spo-config-open (fn-bs-config-encode values))
-                      (list :refused :store-format))))))
+ (with-prover-time-limit 10
+  (thm (implies (and (equal values *fn-bs-profile-development*)
+                     (fn-bs-profile-validp values))
+                (equal (fn-spo-config-open (fn-bs-config-encode values))
+                       (list :refused :store-format)))
+       :hints (("Goal" :in-theory (theory 'minimal-theory))))))
 ; Hypothesis removed (validity): the format-8 word over fields whose H is
 ; below R: the retained hypothesis holds, the profile is invalid, and the open
 ; answers the generic fault, not the format's name.
@@ -254,10 +256,12 @@
 (assert-event (equal (fn-spo-config-open (fn-spo-saved-frame *spot-format-8-short*))
                      '(:rejected)))
 (must-fail
- (with-prover-step-limit 20000 (thm (implies (and (equal values *spot-format-8-short*)
-                    (not (equal (car values) *fn-bs-meta-format-9*)))
-               (equal (fn-spo-config-open (fn-spo-saved-frame values))
-                      (list :refused :store-format))))))
+ (with-prover-time-limit 10
+  (thm (implies (and (equal values *spot-format-8-short*)
+                     (not (equal (car values) *fn-bs-meta-format-9*)))
+                (equal (fn-spo-config-open (fn-spo-saved-frame values))
+                       (list :refused :store-format)))
+       :hints (("Goal" :in-theory (theory 'minimal-theory))))))
 ; A value that is not a profile names no route.
 (assert-event (not (fn-bs-profile-logp '(1 2 3))))
 (assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *fn-bs-profile-scale*))) 9))

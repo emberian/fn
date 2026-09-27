@@ -430,14 +430,6 @@
 (defun fn-store-profile-logp (values)
   (fn-bs-profile-logp values))
 
-;; The frame a developer `init' writes under FN_NATIVE_STORE_FORMAT=8: the
-;; same profile in the per-file layout (PKT-COL-1), or NIL.
-(defun fn-store-metadata-config-frame-format-8 (profile)
-  (let ((frame (fn-bs-config-frame-for-profile profile)))
-    (and frame
-         (let ((values (fn-bs-config-decode frame)))
-           (and values (fn-bs-config-encode (fn-bs-profile-as-format-8 values)))))))
-
 ;; The log's next txid at an open (lane commit-onto-log): one past the largest
 ;; txid of every record the log holds, of every event kind (the codec's
 ;; dispatch, as fn-store-decode-records decodes them), or FLOOR.  The core's
