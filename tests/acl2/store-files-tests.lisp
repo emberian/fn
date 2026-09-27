@@ -57,7 +57,8 @@
                        (fn-sf-frontier-candidate *sf-fa1*)))))
 ; State hypothesis dropped: a malformed tuple in the phase is a no-op crash.
 (defconst *sf-bogus-data-durable*
-  (fn-sf-make :frontier-data-durable 0 1 '(not-a-record) nil nil nil 5))
+  (fn-sf-make :frontier-data-durable 0 1 '(not-a-record) nil nil nil
+              *fn-sf-recovery-barrier-count*))
 (assert-event (not (fn-sf-statep *sf-bogus-data-durable*)))
 (assert-event (with-guard-checking :none (not (equal (fn-sf-frontier (fn-sf-crash *sf-bogus-data-durable* :new :absent))
                        (fn-sf-frontier-candidate *sf-bogus-data-durable*)))))
@@ -104,7 +105,8 @@
                        (fn-sf-frontier-candidate *sf-fa1*)))))
 ; State hypothesis dropped.
 (defconst *sf-bogus-attempted*
-  (fn-sf-make :frontier-attempted 0 1 '(not-a-record) nil nil nil 5))
+  (fn-sf-make :frontier-attempted 0 1 '(not-a-record) nil nil nil
+              *fn-sf-recovery-barrier-count*))
 (assert-event (not (fn-sf-statep *sf-bogus-attempted*)))
 (assert-event (with-guard-checking :none (not (equal (fn-sf-frontier
                         (fn-sf-crash (fn-sf-frontier-dir-result *sf-bogus-attempted* :ok)
@@ -167,9 +169,10 @@
 (assert-event (with-guard-checking :none (not (equal (fn-sf-records (fn-sf-crash *sf-rdata* :bogus :present))
                        (append (fn-sf-records *sf-rdata*)
                                (list (fn-sf-record-candidate *sf-rdata*)))))))
-; State hypothesis dropped.
+; State hypothesis dropped (a barrier count past *fn-sf-recovery-barrier-count*).
 (defconst *sf-bogus-record-durable*
-  (fn-sf-make :record-data-durable 1 nil nil *sf-record-0* nil nil 3))
+  (fn-sf-make :record-data-durable 1 nil nil *sf-record-0* nil nil
+              (1+ *fn-sf-recovery-barrier-count*)))
 (assert-event (not (fn-sf-statep *sf-bogus-record-durable*)))
 (assert-event (with-guard-checking :none (not (equal (fn-sf-records (fn-sf-crash *sf-bogus-record-durable* :old :present))
                        (append (fn-sf-records *sf-bogus-record-durable*)
@@ -244,9 +247,10 @@
                         (fn-sf-crash (fn-sf-record-dir-result *sf-rdata* :ok) :old :absent))
                        (append (fn-sf-records *sf-rdata*)
                                (list (fn-sf-record-candidate *sf-rdata*)))))))
-; State hypothesis dropped.
+; State hypothesis dropped (a barrier count past *fn-sf-recovery-barrier-count*).
 (defconst *sf-bogus-record-attempted*
-  (fn-sf-make :record-attempted 1 nil nil *sf-record-0* nil nil 3))
+  (fn-sf-make :record-attempted 1 nil nil *sf-record-0* nil nil
+              (1+ *fn-sf-recovery-barrier-count*)))
 (assert-event (not (fn-sf-statep *sf-bogus-record-attempted*)))
 (assert-event (with-guard-checking :none (not (equal (fn-sf-records
                         (fn-sf-crash (fn-sf-record-dir-result *sf-bogus-record-attempted* :ok)

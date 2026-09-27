@@ -366,10 +366,14 @@
 
 ; The counts are computed from the actual graph above; these assertions pin
 ; the recorded run so a silent change in the kernel or the domain is noticed.
-(assert-event (equal *sfe-states* 240))
-(assert-event (equal *sfe-applications* 8337))
-(assert-event (equal *sfe-transitions* 1127))
-(assert-event (equal *sfe-transition-pairs* 524))
+; Lane open-barriers (2026-09-27): *fn-sf-recovery-barrier-count* 5 -> 3
+; removes the :recovering and :fenced-recovery states at barrier counts 3 and
+; 4 (240 -> 188 states; 8337 -> 6517 applications; 1127 -> 867 transitions;
+; 524 -> 420 transition pairs).
+(assert-event (equal *sfe-states* 188))
+(assert-event (equal *sfe-applications* 6517))
+(assert-event (equal *sfe-transitions* 867))
+(assert-event (equal *sfe-transition-pairs* 420))
 (assert-event (equal *sfe-transient-states* 8))
 
 ; Every semantic phase that can be reached in this domain occurs.  The three

@@ -477,7 +477,8 @@
 ; fn-bpr-live-step-extends-history: an untyped Store with an improper record
 ; list is a no-op for every transition and is not its own prefix.
 (defconst *bpre-untyped-store*
-  (fn-sn-make *bpr-groups* 20 (fn-sf-make :ready 3 nil (cons *bpr-row* 7) nil nil nil 5)
+  (fn-sn-make *bpr-groups* 20 (fn-sf-make :ready 3 nil (cons *bpr-row* 7) nil nil nil
+                                          *fn-sf-recovery-barrier-count*)
               (fn-sn-node *bpr-store*) nil (fn-stx-index-empty)))
 (assert-event (not (fn-sn-statep *bpre-untyped-store*)))
 ; fn-snrt-step carries (fn-sn-statep s) now (store, 2026-09-19); this witness is a
