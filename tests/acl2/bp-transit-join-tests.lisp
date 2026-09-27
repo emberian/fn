@@ -10,6 +10,10 @@
 (include-book "../../books/crypto-attach")
 (include-book "peer-inbound-tests")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "arena-lift")
+(bpr-lift fn-bpaj-transit-record-lookup 3)
+(bpr-lift fn-bpaj-transit-record-lookup-fast 3)
+
 
 (defconst *btj-peer*
   (fn-cfg-peer-make "dtnB" "dtnb.example" '(:bp "dtn://b/")
@@ -391,15 +395,12 @@
 (assert-event
  (equal (car (fn-bpaj-transit-article-fields *btj-injected-request*)) :ok))
 (assert-event
- (equal (fn-bpaj-transit-record-lookup-fast
-         *btj-empty-store* *btj-injected-request* *btj-injected-intent*)
+ (equal (in-arena-fn-bpaj-transit-record-lookup-fast nil *btj-empty-store* *btj-injected-request* *btj-injected-intent*)
         '(:absent)))
 (assert-event
- (equal (fn-bpaj-transit-record-lookup
-         *btj-empty-store* *btj-injected-request* *btj-injected-intent*)
+ (equal (in-arena-fn-bpaj-transit-record-lookup nil *btj-empty-store* *btj-injected-request* *btj-injected-intent*)
         '(:absent)))
 (must-fail
  (assert-event
-  (equal (fn-bpaj-transit-record-lookup-fast
-          *btj-empty-store* *btj-injected-request* *btj-injected-intent*)
+  (equal (in-arena-fn-bpaj-transit-record-lookup-fast nil *btj-empty-store* *btj-injected-request* *btj-injected-intent*)
          '(:conflict))))

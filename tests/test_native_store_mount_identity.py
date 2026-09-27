@@ -125,6 +125,65 @@ class MountIdentityNativeTests(unittest.TestCase):
         # The original, untouched, still opens where it was made.
         self.expect(self.fn("store", store, "recover"), EXIT_OK, "the original")
 
+    def in_bind_view(self, directory, *words):
+        """WORDS run where DIRECTORY is bind-mounted onto itself, the view the
+        shipped systemd unit's ProtectSystem=strict + ReadWritePaths gives the
+        service (PKT-820), made here in a user and mount namespace so no root
+        is needed.  Answers the result, or None when this host refuses
+        unprivileged namespaces."""
+        unshare = shutil.which("unshare")
+        if unshare is None:
+            return None
+        probe = subprocess.run([unshare, "--user", "--map-root-user", "--mount",
+                                "true"], stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, check=False)
+        if probe.returncode != 0:
+            return None
+        script = 'mount --bind "$1" "$1" && shift && exec "$@"'
+        return subprocess.run(
+            [unshare, "--user", "--map-root-user", "--mount", "sh", "-c", script,
+             "sh", str(directory), str(IMAGE), "--fn", *map(str, words)],
+            cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=180, check=False)
+
+    def test_the_units_bind_view_of_the_same_filesystem_opens(self):
+        # PKT-820: init outside the unit records the mount point the store
+        # directory is under; inside the unit the node directory is its own
+        # (bind) mount.  The fsid is the same, so the open proceeds.
+        node = self.other / "node"
+        node.mkdir()
+        store = node / "store"
+        self.expect(self.fn("store", store, "init", "fn.test"), EXIT_OK, "init")
+        result = self.in_bind_view(node, "store", store, "recover")
+        if result is None:
+            self.skipTest("unprivileged user namespaces are refused on this host")
+        text = self.expect(result, EXIT_OK, "recover in the bind view")
+        self.assertNotIn("store filesystem changed", text)
+        result = self.in_bind_view(node, "store", store, "status")
+        self.expect(result, EXIT_OK, "status in the bind view")
+        # A rebind made outside records the outside view, and the bind view
+        # still opens: the remedy the refusal names cures the unit's open.
+        self.expect(self.fn("store", store, "rebind-filesystem"), EXIT_OK, "rebind outside")
+        self.expect(self.in_bind_view(node, "store", store, "recover"), EXIT_OK,
+                    "recover in the bind view after the rebind")
+
+    def test_the_bind_view_of_another_filesystem_is_still_refused(self):
+        # The same bind view over a store that was copied to another
+        # filesystem is refused by name: the view changes nothing the fsid
+        # says.
+        if same_filesystem(self.tmp, self.other):
+            self.skipTest("the temporary directory and the tree share a filesystem")
+        store = self.tmp / "store"
+        self.expect(self.fn("store", store, "init", "fn.test"), EXIT_OK, "init")
+        node = self.other / "node"
+        node.mkdir()
+        shutil.copytree(store, node / "store")
+        result = self.in_bind_view(node, "store", node / "store", "recover")
+        if result is None:
+            self.skipTest("unprivileged user namespaces are refused on this host")
+        text = self.expect(result, EXIT_REFUSED, "recover of a moved store in the bind view")
+        self.assertIn("store filesystem changed: expected ", text)
+
     def test_an_empty_directory_where_the_store_was_is_refused_as_unrecorded(self):
         # The volume is not mounted: the store path is an empty directory on
         # the filesystem underneath.  Nothing is created there.

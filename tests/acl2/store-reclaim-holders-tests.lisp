@@ -11,7 +11,7 @@
 ; The owner fixture's store, its one article, and a group it is numbered in.
 ; The completing owner's store after its article completed, as in
 ; octets-stobj-tests (not included: it depends on the octet buffer books).
-(defconst *rht-s0* (fn-own-store (cdr (fn-own-finish *osi-completing* *osi-cfg*))))
+(defconst *rht-s0* (fn-own-store (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*))))
 (defconst *rht-art* (car (fn-state-articles (fn-node-acceptance (fn-sn-node *rht-s0*)))))
 (defconst *rht-m* (car (fn-article-memberships *rht-art*)))
 (defconst *rht-g* (car *rht-m*))

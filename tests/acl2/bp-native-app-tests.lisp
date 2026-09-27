@@ -37,19 +37,20 @@
       (not (member-equal (fn-record-encode-impl *bpr-record*) *bpaj-context*))))
 
 ; Intent alone is not acceptance and produces no receipt.
-(make-event `(defconst *bpaj-intent-replay* ',(fn-bpaj-replay *bpr-store* (list *bpaj-config* *bpaj-intent*))))
+(bpr-lift fn-bpaj-dispatch 4)
+(bpr-lift fn-bpaj-replay 2)
+
+(make-event `(defconst *bpaj-intent-replay* ',(in-arena-fn-bpaj-replay *bpr-payloads* *bpr-store* (list *bpaj-config* *bpaj-intent*))))
 (assert-event (car *bpaj-intent-replay*))
 (assert-event
  (equal (fn-bpaj-request-status (fn-bpaj-nth 1 *bpaj-intent-replay*)
                                  *bpaj-request-octets*)
         :intent))
 (assert-event
- (equal (fn-bpaj-dispatch (fn-bpaj-nth 1 *bpaj-intent-replay*)
-                           *bpr-store* *bpaj-request-octets* 7)
+ (equal (in-arena-fn-bpaj-dispatch *bpr-payloads* (fn-bpaj-nth 1 *bpaj-intent-replay*) *bpr-store* *bpaj-request-octets* 7)
         (list :bind *bpr-record*)))
 
-(make-event `(defconst *bpaj-context-replay* ',(fn-bpaj-replay *bpr-store*
-                   (list *bpaj-config* *bpaj-intent* *bpaj-context*))))
+(make-event `(defconst *bpaj-context-replay* ',(in-arena-fn-bpaj-replay *bpr-payloads* *bpr-store* (list *bpaj-config* *bpaj-intent* *bpaj-context*))))
 (assert-event (car *bpaj-context-replay*))
 (assert-event
  (equal (fn-bpaj-request-status (fn-bpaj-nth 1 *bpaj-context-replay*)
@@ -63,23 +64,16 @@
 ; Strict context has teeth: no intent, wrong generation, wrong transaction,
 ; wrong result, or a second candidate all prevent the binding.
 (assert-event
- (not (car (fn-bpaj-replay *bpr-store*
-                            (list *bpaj-config* *bpaj-context*)))))
+ (not (car (in-arena-fn-bpaj-replay *bpr-payloads* *bpr-store* (list *bpaj-config* *bpaj-context*)))))
 (assert-event
- (not (car (fn-bpaj-replay
-            *bpr-store*
-            (list *bpaj-config* *bpaj-intent*
+ (not (car (in-arena-fn-bpaj-replay *bpr-payloads* *bpr-store* (list *bpaj-config* *bpaj-intent*
                   (update-nth 4 8 *bpaj-context*))))))
 (assert-event
- (not (car (fn-bpaj-replay
-            *bpr-store*
-            (list *bpaj-config* *bpaj-intent*
+ (not (car (in-arena-fn-bpaj-replay *bpr-payloads* *bpr-store* (list *bpaj-config* *bpaj-intent*
                   (update-nth 5 (+ 1 (fn-record-txid *bpr-record*))
                               *bpaj-context*))))))
 (assert-event
- (not (car (fn-bpaj-replay
-            *bpr-store*
-            (list *bpaj-config* *bpaj-intent*
+ (not (car (in-arena-fn-bpaj-replay *bpr-payloads* *bpr-store* (list *bpaj-config* *bpaj-intent*
                   (update-nth 7 :accepted *bpaj-context*))))))
 
 ; Reachable examples for the dispatcher projections: a matching current intent
@@ -88,28 +82,21 @@
 (defconst *bpaj-fresh-store* (fn-sn-initial *bpr-groups* 20))
 (make-event `(defconst *bpaj-accept-intent* ',(bpaj-test-intent "bundle-new" *bpaj-request-octets* 9 0 :accepted
                          (fn-record-payload *bpr-record*))))
-(make-event `(defconst *bpaj-accept-replay* ',(fn-bpaj-replay *bpaj-fresh-store*
-                   (list *bpaj-config* *bpaj-accept-intent*))))
+(make-event `(defconst *bpaj-accept-replay* ',(in-arena-fn-bpaj-replay *bpr-payloads* *bpaj-fresh-store* (list *bpaj-config* *bpaj-accept-intent*))))
 (assert-event (car *bpaj-accept-replay*))
 (assert-event
- (equal (fn-bpaj-dispatch (fn-bpaj-nth 1 *bpaj-accept-replay*)
-                           *bpaj-fresh-store* *bpaj-request-octets* 9)
+ (equal (in-arena-fn-bpaj-dispatch *bpr-payloads* (fn-bpaj-nth 1 *bpaj-accept-replay*) *bpaj-fresh-store* *bpaj-request-octets* 9)
         (list :submit)))
 (assert-event
- (not (equal (fn-bpaj-dispatch (fn-bpaj-nth 1 *bpaj-accept-replay*)
-                                *bpaj-fresh-store* *bpaj-request-octets* 10)
+ (not (equal (in-arena-fn-bpaj-dispatch *bpr-payloads* (fn-bpaj-nth 1 *bpaj-accept-replay*) *bpaj-fresh-store* *bpaj-request-octets* 10)
              (list :submit))))
 (assert-event
- (not (equal (fn-bpaj-dispatch (fn-bpaj-nth 1 *bpaj-context-replay*)
-                                *bpr-store* *bpaj-request-octets* 7)
+ (not (equal (in-arena-fn-bpaj-dispatch *bpr-payloads* (fn-bpaj-nth 1 *bpaj-context-replay*) *bpr-store* *bpaj-request-octets* 7)
              (list :submit))))
 
 ; Legacy journals remain replayable only before the append-only intent
 ; vocabulary appears; a legacy context after strict mode is rejected.
 (assert-event
- (car (fn-bpaj-replay *bpr-store*
-                       (list *bpaj-config* *bprr-request-record*))))
+ (car (in-arena-fn-bpaj-replay *bpr-payloads* *bpr-store* (list *bpaj-config* *bprr-request-record*))))
 (assert-event
- (not (car (fn-bpaj-replay
-            *bpr-store*
-            (list *bpaj-config* *bpaj-intent* *bprr-request-record*)))))
+ (not (car (in-arena-fn-bpaj-replay *bpr-payloads* *bpr-store* (list *bpaj-config* *bpaj-intent* *bprr-request-record*)))))

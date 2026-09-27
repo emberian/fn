@@ -1145,9 +1145,16 @@ programs while the native modules that read that layout are retired
 (PKT-COL-1, the coordinator numbers it); a developer image writes it under
 `FN_NATIVE_STORE_FORMAT=8`. The open refuses a profile frame of any other
 format by name (`open refused reason=store-format: reinstall from the release
-and import`, exit 1) and translates nothing. On a `fn-store-9` store,
-`store compact`, `store reclaim` and `store export` refuse by name
-(`reason=record-log`) until segment rotation lands (PKT-750). `store export DIR` writes the committed history the open
+and import`, exit 1) and translates nothing. A profile frame of another
+release's layout (the run of u64 fields after the two texts: thirteen in every
+store made before batch AS, sixteen now) is refused by name with both counts:
+`open refused reason=older-release: store made by an older release (profile
+layout 13 fields, this release expects 16): export it with the release that
+made it, then import it here` (`newer-release` for a wider layout), exit 1,
+never the generic fault (PRF-258, PKT-705); `install.sh` refuses such a node
+before copying anything. On a `fn-store-9` store, `store compact`, `store
+reclaim` and `store export` refuse by name (`reason=record-log`) until segment
+rotation lands (PKT-750). `store export DIR` writes the committed history the open
 reads (the profile frame, the allocation frontier, each configuration record
 and each committed record, packs included, in sequence order) with a
 MANIFEST whose names and SHA-256 lines ACL2 renders; `store import DIR

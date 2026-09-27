@@ -44,9 +44,12 @@
     105 110 118 97 108 105 100 62 13 10
     83 117 98 106 101 99 116 58 32 84 101 115 116 13 10 13 10
     72 101 108 108 111 13 10 46 100 111 116 13 10))
+;; by specification: the flip -- an accepted article's payload is an arena
+;; handle (natp), not its octets; *nnt-payload* stays the bytes handle 0 stands for.
+(defconst *nnt-payload-handle* 0)
 (defconst *nnt-archive*
   (fn-accept-complete
-   (fn-accept-prepare (fn-initial-state *nnt-groups*) 1 *nnt-id* *nnt-payload*
+   (fn-accept-prepare (fn-initial-state *nnt-groups*) 1 *nnt-id* *nnt-payload-handle*
                       '("fn.letters") 841000000)
    0 1 :durable))
 

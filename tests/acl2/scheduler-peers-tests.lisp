@@ -12,8 +12,10 @@
 ; A reachable sender and two reachable per-peer schedulers.
 
 (defconst *tp-groups* '("fn.letters"))
-(defconst *tp-payload-small* '(72 105 13 10))
-(defconst *tp-payload-big* '(76 111 110 103 13 10))
+; by specification: the flip -- the node carries each payload as a distinct
+; arena handle (natp), not octets; the charges below are unchanged.
+(defconst *tp-payload-small* 0)
+(defconst *tp-payload-big* 1)
 (defconst *tp-node-0* (fn-node-initial-state *tp-groups* 16))
 (defconst *tp-node-1*
   (fn-node-complete

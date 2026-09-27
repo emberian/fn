@@ -8,12 +8,21 @@
 (in-package "ACL2")
 (include-book "../../books/store-files-invariants")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 (defconst *sf-groups* '("fn.letters" "fn.test"))
-(defconst *sf-record-0*
+(defconst *sf-record-0-wire*
   (fn-record-make 0 0 0 "<zero@example.invalid>" '(90)
                   '("fn.letters" "fn.test")
                   "archive-zero" "content-zero" "release-zero" 2 841000000))
+; The kernel stages HELD ROWS (records-flip): the wire record interned on a
+; fresh arena takes handle 0.
+(defconst *sf-record-0* (car (fn-hrt-rows (list *sf-record-0-wire*) nil 0)))
+(assert-event (fn-held-p *sf-record-0*))
+; by specification: the flip -- the payload is handle 0, whose bytes are the
+; wire record's payload.
+(assert-event (equal (fn-record-payload *sf-record-0*) 0))
+(assert-event (equal (fn-hrt-bytes (list *sf-record-0-wire*) 0) '(90)))
 
 (defconst *sf-s0* (fn-sf-initial-state))
 (assert-event (fn-sf-statep *sf-s0*))
@@ -185,10 +194,17 @@
 
 ; The next allocator operation creates a fresh one-use reservation.  Sequence 0
 ; now admits txid 1, while the known-aborted txid 0 remains unavailable.
-(defconst *sf-record-1*
+(defconst *sf-record-1-wire*
   (fn-record-make 0 1 1 "<one@example.invalid>" '(79)
                   '("fn.letters")
                   "archive-one" "content-one" "release-one" 1 841000000))
+; Its held row, interned after record 0 (handle 1: the aborted record's
+; payload stays distinct).
+(defconst *sf-record-1* (fn-hrt-row-after (list *sf-record-0-wire*) *sf-record-1-wire* nil 0))
+(assert-event (fn-held-p *sf-record-1*))
+; by specification: the flip -- handle 1, whose bytes are record 1's payload.
+(assert-event (equal (fn-record-payload *sf-record-1*) 1))
+(assert-event (equal (fn-hrt-bytes (list *sf-record-0-wire* *sf-record-1-wire*) 1) '(79)))
 (defconst *sf-next-a0* (fn-sf-start-frontier *sf-aborted*))
 (defconst *sf-next-a1* (fn-sf-frontier-file-result *sf-next-a0* :ok))
 (defconst *sf-next-a2* (fn-sf-frontier-replace-result *sf-next-a1* :ok))

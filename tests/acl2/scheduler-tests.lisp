@@ -15,8 +15,10 @@
 ; A reachable sender: two durable works bound to two accepted articles.
 
 (defconst *sched-groups* '("fn.letters"))
-(defconst *sched-payload-small* '(72 105 13 10))
-(defconst *sched-payload-big* '(76 111 110 103 13 10))
+; by specification: the flip -- the node carries each payload as a distinct
+; arena handle (natp), not octets; the charges below are unchanged.
+(defconst *sched-payload-small* 0)
+(defconst *sched-payload-big* 1)
 (defconst *sched-node-0* (fn-node-initial-state *sched-groups* 16))
 (defconst *sched-node-1*
   (fn-node-complete

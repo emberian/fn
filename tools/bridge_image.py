@@ -67,6 +67,10 @@ STORE_FORMS = (
     '(include-book "books/records-attach-concrete")',
     # The store bridge's record dispatchers call the concrete twins.
     '(include-book "books/records-concrete")',
+    # The records flip: host/store-host.lisp includes books/store-intern,
+    # which names the payload arena; its byte-array attachment must precede
+    # the generic (books/payload-arena-attach.lisp), as in the image.
+    '(include-book "books/payload-arena-attach")',
     '(ld "host/store-host.lisp"' + LD,
     # The state checkpoint's publication over the octet buffer
     # (rep-wave-d-2): host/store-node-host.lisp fn-store-sco-publish-plan

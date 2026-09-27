@@ -118,6 +118,21 @@
                                                25165824 128
                                                *fn-bs-meta-frontier-format*))))
 
+; Its octets (129), written out: tests/older_release_store.py writes the same
+; file as the config.json of a synthesized format-7 store.
+(defconst *spot-format-7-octets*
+  '(
+    70 78 83 77 1 1 0 0 0 87 0 21 102 110 45 115
+    116 111 114 101 45 101 120 112 101 114 105 109 101 110 116 45
+    55 0 0 0 0 0 16 0 0 0 0 0 0 0 0 128
+    0 0 0 0 0 1 128 0 0 0 0 0 0 0 0 0
+    128 0 30 102 110 45 115 116 111 114 101 45 97 108 108 111
+    99 97 116 105 111 110 45 102 114 111 110 116 105 101 114 45
+    50 236 231 127 192 153 44 184 72 173 60 49 58 185 189 124
+    69 192 134 19 202 227 175 86 144 55 35 230 236 93 118 46
+    173))
+(assert-event (equal (spot-format-7-frame) *spot-format-7-octets*))
+
 ; Reachable witness, the right side true: not in the window, not decoded,
 ; a foreign format word; the open refuses by the format's name, and the
 ; line says what to do.
@@ -171,3 +186,161 @@
 ; A value that is not a profile names no route.
 (assert-event (not (fn-bs-profile-logp '(1 2 3))))
 (assert-event (equal (cdr (assoc-equal "format" (fn-bs-profile-report *fn-bs-profile-scale*))) 9))
+; Another layout (PKT-705: fn-spo-open-of-another-layout-refuses-by-name)
+
+; The layouts, by hand: the one before batch AS (13 u64 fields) and this
+; release's (16, the profile spec itself).
+(assert-event (equal (fn-spo-layout-spec 13)
+                     '(:text :text :nat :nat :nat :nat :nat :nat :nat :nat :nat
+                       :nat :nat :nat :nat)))
+(assert-event (equal (fn-spo-layout-spec 16) *fn-bs-meta-profile-spec*))
+(assert-event (equal *fn-spo-release-layout-fields* 16))
+
+; A store made before batch AS: hbox:/tank/fn/scratch/fixtures/n1k-2k/store/
+; config.json, octet for octet (190 octets; the default profile, written by
+; the throughput gate's developer image of dev 6407de336): the FNSM frame,
+; payload length 148 = the two texts (44) and thirteen u64 fields (104).
+(defconst *spot-pre-as-octets*
+  '(70 78 83 77 1 1 0 0 0 148 0 10 102 110 45 115
+    116 111 114 101 45 56 0 30 102 110 45 115 116 111 114 101
+    45 97 108 108 111 99 97 116 105 111 110 45 102 114 111 110
+    116 105 101 114 45 50 0 0 0 0 255 255 255 255 0 0
+    1 0 0 0 0 0 0 0 0 0 4 0 0 0 0 0
+    0 0 1 0 0 0 0 0 0 0 0 0 16 0 0 0
+    0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0
+    0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
+    0 0 0 16 0 0 0 0 0 0 0 16 0 0 0 0
+    0 0 0 16 0 0 0 0 0 0 0 0 0 0 70 112
+    111 138 38 173 76 99 249 65 234 23 184 118 203 76 223 145
+    252 221 169 197 118 171 16 149 10 151 172 203 171 232))
+
+; Its values, by hand (the u64 fields read off the octets above).
+(defconst *spot-pre-as*
+  (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
+        4294967295 1099511627776 67108864 16777216 4096 256 65536
+        1048576 1048576 1048576 1048576 1048576 0))
+
+(assert-event (equal (len *spot-pre-as-octets*) 190))
+(assert-event (equal (fn-spo-layout-frame 13 *spot-pre-as*) *spot-pre-as-octets*))
+
+; Reachable witness, the complete antecedent and conclusion.
+(assert-event (natp 13))
+(assert-event (not (equal 13 *fn-spo-release-layout-fields*)))
+(assert-event (fn-frame-values-okp (fn-spo-layout-spec 13) *spot-pre-as*))
+(assert-event (equal (car *spot-pre-as*) *fn-bs-meta-format-8*))
+(assert-event (<= (len (fn-frame-fields-octets (fn-spo-layout-spec 13) *spot-pre-as*))
+                  *fn-bs-meta-max-config-payload*))
+(assert-event (equal (fn-spo-layout-fields *spot-pre-as-octets*) 13))
+(assert-event (equal (fn-spo-config-open *spot-pre-as-octets*)
+                     '(:refused :profile-layout 13)))
+; What the open answered before (the generic fault): the decoder refuses it,
+; and it is no foreign format and not in the window.
+(assert-event (null (fn-bs-config-decode *spot-pre-as-octets*)))
+(assert-event (null (fn-spo-saved-format-8 *spot-pre-as-octets*)))
+(assert-event (not (fn-spo-foreign-formatp *spot-pre-as-octets*)))
+; The line every open path prints: the cause and the way out (D34).
+(assert-event
+ (equal (fn-spo-refusal-text (fn-spo-config-open *spot-pre-as-octets*))
+        "open refused reason=older-release: store made by an older release (profile layout 13 fields, this release expects 16): export it with the release that made it, then import it here"))
+
+; A layout wider than this release's is refused by the other name.
+(defconst *spot-wider* (append *spot-pre-as* '(1 2 3 4)))
+(assert-event (fn-frame-values-okp (fn-spo-layout-spec 17) *spot-wider*))
+(assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 17 *spot-wider*))
+                     '(:refused :profile-layout 17)))
+(assert-event
+ (equal (fn-spo-refusal-text (fn-spo-config-open (fn-spo-layout-frame 17 *spot-wider*)))
+        "open refused reason=newer-release: store made by a newer release (profile layout 17 fields, this release expects 16): export it with the release that made it, then import it here"))
+
+; Hypothesis removed: (not (equal n 16)).  This release's layout, the scale
+; preset: every other hypothesis holds; the open opens it, not the refusal.
+(assert-event (fn-frame-values-okp (fn-spo-layout-spec 16) *fn-bs-profile-scale*))
+(assert-event (equal (car *fn-bs-profile-scale*) *fn-bs-meta-format-8*))
+(assert-event (<= (len (fn-frame-fields-octets (fn-spo-layout-spec 16) *fn-bs-profile-scale*))
+                  *fn-bs-meta-max-config-payload*))
+(assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 16 *fn-bs-profile-scale*))
+                     (list :opened *fn-bs-profile-scale*)))
+(must-fail
+ (thm (implies (and (equal n 16) (equal values *fn-bs-profile-scale*))
+               (equal (fn-spo-config-open (fn-spo-layout-frame n values))
+                      (list :refused :profile-layout n)))))
+
+; Hypothesis removed: (natp n).  n = -1 with no u64 field: the frame is the
+; one of layout 0 (fn-spo-layout-frame reads (nfix n)); the refusal names 0,
+; not -1.
+(defconst *spot-no-fields* (list *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*))
+(assert-event (not (natp -1)))
+(thm (fn-frame-values-okp (fn-spo-layout-spec -1) *spot-no-fields*))
+(assert-event (equal (fn-spo-config-open (fn-spo-layout-frame -1 *spot-no-fields*))
+                     '(:refused :profile-layout 0)))
+(must-fail
+ (thm (implies (and (equal n -1) (equal values *spot-no-fields*))
+               (equal (fn-spo-config-open (fn-spo-layout-frame n values))
+                      (list :refused :profile-layout n)))))
+
+; Hypothesis removed: the values fit the layout.  The pre-AS values with an
+; empty second text (frame text is nonempty): the sealed frame's head does
+; not parse, so it has no layout, and the open answers the generic fault.
+(defconst *spot-empty-text* (list* *fn-bs-meta-format-8* nil (cddr *spot-pre-as*)))
+(assert-event (not (fn-frame-values-okp (fn-spo-layout-spec 13) *spot-empty-text*)))
+(assert-event (equal (car *spot-empty-text*) *fn-bs-meta-format-8*))
+; A frame of values outside the layout is outside the encoder's guard, so
+; its octets are built from guarded pieces (the empty text is its u16 length
+; 0 and no octet) and proved equal to the encoder's frame.
+(defun spot-empty-text-payload ()
+  (append (fn-frame-field-octets :text *fn-bs-meta-format-8*)
+          '(0 0)
+          (fn-frame-fields-octets (fn-spo-nat-specs 13) (cddr *spot-pre-as*))))
+(defun spot-empty-text-frame ()
+  (fn-frame-seal *fn-bs-meta-magic* *fn-bs-meta-version* *fn-bs-meta-config-kind*
+                 (spot-empty-text-payload)))
+(thm (equal (fn-spo-layout-frame 13 *spot-empty-text*) (spot-empty-text-frame))
+     :hints (("Goal" :expand ((fn-spo-layout-frame 13 *spot-empty-text*))
+              :in-theory (disable (:e fn-frame-seal) fn-frame-seal
+                                  (:e fn-spo-layout-frame)))))
+(assert-event (null (fn-spo-layout-fields (spot-empty-text-frame))))
+(assert-event (equal (fn-spo-config-open (spot-empty-text-frame)) '(:rejected)))
+(must-fail
+ (thm (implies (and (equal n 13) (equal values *spot-empty-text*))
+               (equal (fn-spo-config-open (fn-spo-layout-frame n values))
+                      (list :refused :profile-layout n)))))
+
+; Hypothesis removed: the format word is fn-store-8.  The pre-AS values under
+; the format-7 word: another format, refused by that name instead.
+(defconst *spot-other-word* (cons *spot-fmt7-word* (cdr *spot-pre-as*)))
+(assert-event (fn-frame-values-okp (fn-spo-layout-spec 13) *spot-other-word*))
+(assert-event (not (equal (car *spot-other-word*) *fn-bs-meta-format-8*)))
+(assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 13 *spot-other-word*))
+                     '(:refused :store-format)))
+(must-fail
+ (thm (implies (and (equal n 13) (equal values *spot-other-word*))
+               (equal (fn-spo-config-open (fn-spo-layout-frame n values))
+                      (list :refused :profile-layout n)))))
+
+; Hypothesis removed: the payload fits a profile frame (600 octets).  Seventy
+; zero fields: 44 + 560 = 604 octets; the frame does not open and the open
+; answers the generic fault.
+(defun spot-zeros (n) (if (zp n) nil (cons 0 (spot-zeros (1- n)))))
+(defconst *spot-long* (list* *fn-bs-meta-format-8* *fn-bs-meta-frontier-format*
+                             (spot-zeros 70)))
+(assert-event (fn-frame-values-okp (fn-spo-layout-spec 70) *spot-long*))
+(assert-event (equal (len (fn-frame-fields-octets (fn-spo-layout-spec 70) *spot-long*)) 604))
+(assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 70 *spot-long*))
+                     '(:rejected)))
+(must-fail
+ (thm (implies (and (equal n 70) (equal values *spot-long*))
+               (equal (fn-spo-config-open (fn-spo-layout-frame n values))
+                      (list :refused :profile-layout n)))))
+
+; The refinement (fn-spo-config-open-layout-refusal-is-never-a-decoded-frame):
+; the witness above is refused and not decoded; a decoded frame is opened.
+(assert-event (fn-bs-config-decode (fn-bs-config-encode *fn-bs-profile-scale*)))
+(assert-event (not (equal (car (fn-spo-config-open (fn-bs-config-encode *fn-bs-profile-scale*)))
+                          :refused)))
+
+; The generic fault (fn-spo-config-open-rejected-has-this-layout-or-none-by-definition):
+; octets that are no frame have no layout; this release's layout with H below
+; R is this release's layout.
+(assert-event (null (fn-spo-layout-fields *spot-garbage*)))
+(assert-event (equal (fn-spo-layout-fields (fn-spo-saved-frame *spot-short-history*)) 16))
+(assert-event (null (fn-spo-layout-fields *spot-corrupted*)))

@@ -350,7 +350,7 @@
 
 (defthm fn-osi-own-finish-keeps-indexed
   (implies (fn-ceis-indexedp (fn-own-store o))
-           (fn-ceis-indexedp (fn-own-store (cdr (fn-ccar-own-finish o cfg)))))
+           (fn-ceis-indexedp (fn-own-store (cdr (fn-ccar-own-finish o cfg fn-arena)))))
   :hints (("Goal" :in-theory (e/d (fn-ccar-own-finish-is-own-finish fn-own-finish)
                                   (fn-ceis-indexedp fn-own-complete
                                    fn-own-completion-names-submission-p)))))
@@ -567,6 +567,7 @@
 ;   :prepare-identity fn-owner-prepare-identity               fn-ccar-ocfg-prepare-identity
 ;   :complete        fn-owner-finish                          fn-ccar-ocfg-complete
 ;   :finish          fn-owner-finish-submission               fn-ccar-own-finish
+;                    (installs its cdr, fn-ccar-own-complete: the word alone reads the arena)
 ;   :publish         fn-owner-reconfigure-complete            fn-ocl-publish
 ;   :configure       fn-owner-posting-configure               fn-own-configure
 ;   :profile         fn-owner-install-profile                 fn-osb-install
@@ -598,8 +599,7 @@
       (:complete (fn-ccar-ocfg-complete oc))
       (:finish (if (fn-ocfg-staged oc) oc
                  (fn-ocfg-with-owner
-                  oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc)
-                                              (fn-ocfg-config oc))))))
+                  oc (fn-ccar-own-complete (fn-ocfg-owner oc)))))
       (:publish (mv-let (verdict next) (fn-ocl-publish oc a b)
                   (declare (ignore verdict))
                   next))
@@ -646,6 +646,7 @@
                             (o (fn-ocfg-owner oc)) (cfg (fn-ocfg-config oc))))
            :in-theory (union-theories
                        '(fn-osi-host-step
+                         fn-ccar-own-finish-installs-ccar-own-complete-by-definition
                          fn-osi-ocfg-step-keeps-indexed fn-osi-rcon-io-keeps-indexed
                          fn-osi-pcar-prepare-keeps-indexed
                          fn-osi-pidx-prepare-keeps-indexed
@@ -702,18 +703,18 @@
 ; conclusion changes.
 
 ; KEYSTONE: once the live Store's history holds an article record (plain or
-; signed) with the Message-ID the dispatcher reads, the dispatcher never
-; answers (:submit).
+; signed; after the records flip, the held row it retains) with the
+; Message-ID the dispatcher reads, the dispatcher never answers (:submit).
 (defthm fn-bpaj-dispatch-never-resubmits-a-stored-article
   (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
     (implies (and (member-equal record
                                 (fn-bpr-article-records
                                  (fn-sf-records (fn-sn-files store))))
-                  (fn-record-p record)
+                  (fn-held-p record)
                   (equal (fn-record-msgid record)
                          (fn-bpaj-dispatch-msgid joined request-octets)))
              (not (equal (fn-bpaj-dispatch-fast joined store request-octets
-                                                generation)
+                                                generation fn-arena)
                          (list :submit)))))
   :hints (("Goal"
            :use (fn-osi-live-owner-store-is-indexed
@@ -722,26 +723,29 @@
                                                       frontier max-conns evs))))
            :in-theory (union-theories '() (theory 'minimal-theory)))))
 
-; KEYSTONE: whatever the dispatcher binds over the live Store is an article
-; record of an event of that Store's own history, for the request's
-; Message-ID, accepted by the receiver's Store check; a signed composite
-; binds its verdict to exactly that record.
+; KEYSTONE: whatever the dispatcher binds over the live Store is the wire
+; form, read through the arena, of the held row an event of that Store's own
+; history retains as its article, for the request's Message-ID, accepted by
+; the receiver's Store check; a composite row whose article record decodes
+; binds its verdict to that article.
 (defthm fn-bpaj-dispatch-binds-the-stores-own-record
   (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
     (implies (equal (car (fn-bpaj-dispatch-fast joined store request-octets
-                                                generation))
+                                                generation fn-arena))
                     :bind)
              (let* ((record (cadr (fn-bpaj-dispatch-fast
-                                   joined store request-octets generation)))
+                                   joined store request-octets generation fn-arena)))
                     (events (fn-sf-records (fn-sn-files store)))
-                    (event (fn-bpaj-article-event record events)))
+                    (event (fn-bpaj-article-event record events fn-arena)))
                (and (fn-record-p record)
                     (equal (fn-record-msgid record)
                            (fn-bpaj-dispatch-msgid joined request-octets))
-                    (fn-bpaj-store-record-accepted-fast store record)
+                    (fn-bpaj-store-record-accepted-fast store record fn-arena)
                     (member-equal event events)
-                    (equal (fn-bpr-event-article event) record)
-                    (implies (fn-stxa-p event) (fn-stxa-bindsp event))))))
+                    (fn-bpr-row-stands-for (fn-bpr-event-article event) record fn-arena)
+                    (implies (and (fn-hstxa-p event)
+                                  (fn-record-p (fn-bpr-event-article (fn-hstxa-stxa event))))
+                             (fn-stxa-bindsp (fn-hstxa-stxa event)))))))
   :hints (("Goal"
            :use (fn-osi-live-owner-store-is-indexed
                  (:instance fn-bpaj-dispatch-binds-the-stores-own-record-under-index
@@ -756,8 +760,8 @@
 (defthm fn-osi-live-store-record-accepted-fast-is-checked
   (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
     (implies (fn-sn-statep store)
-             (equal (fn-bpaj-store-record-accepted-fast store record)
-                    (fn-bpr-store-record-acceptedp store record))))
+             (equal (fn-bpaj-store-record-accepted-fast store record fn-arena)
+                    (fn-bpr-store-record-acceptedp store record fn-arena))))
   :hints (("Goal"
            :use (fn-osi-live-owner-store-is-indexed
                  (:instance fn-bpaj-store-record-accepted-fast-is-checked
@@ -788,8 +792,8 @@
 (defthm fn-osi-ocl-store-record-accepted-fast-is-checked
   (let ((store (fn-own-store (fn-ocfg-owner oc))))
     (implies (and (fn-ocl-relation oc) (fn-ceis-indexedp store))
-             (equal (fn-bpaj-store-record-accepted-fast store record)
-                    (fn-bpr-store-record-acceptedp store record))))
+             (equal (fn-bpaj-store-record-accepted-fast store record fn-arena)
+                    (fn-bpr-store-record-acceptedp store record fn-arena))))
   :hints (("Goal"
            :use (fn-bpaj-ocl-relation-carries-sn-statep
                  (:instance fn-bpaj-store-record-accepted-fast-is-checked
@@ -799,8 +803,8 @@
 (defthm fn-osi-live-record-lookup-fast-is-checked
   (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
     (implies (fn-sn-statep store)
-             (equal (fn-bpaj-record-lookup-fast store request)
-                    (fn-bpaj-record-lookup store request))))
+             (equal (fn-bpaj-record-lookup-fast store request fn-arena)
+                    (fn-bpaj-record-lookup store request fn-arena))))
   :hints (("Goal"
            :use (fn-osi-live-owner-store-is-indexed
                  (:instance fn-bpaj-record-lookup-fast-is-checked
@@ -811,8 +815,8 @@
 (defthm fn-osi-live-transit-record-lookup-fast-is-checked
   (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
     (implies (fn-sn-statep store)
-             (equal (fn-bpaj-transit-record-lookup-fast store request intent)
-                    (fn-bpaj-transit-record-lookup store request intent))))
+             (equal (fn-bpaj-transit-record-lookup-fast store request intent fn-arena)
+                    (fn-bpaj-transit-record-lookup store request intent fn-arena))))
   :hints (("Goal"
            :use (fn-osi-live-owner-store-is-indexed
                  (:instance fn-bpaj-transit-record-lookup-fast-is-checked
@@ -824,9 +828,9 @@
   (let ((store (fn-osi-live-store configs prefix suffix frontier max-conns evs)))
     (implies (and (fn-bpaj-statep joined) (fn-sn-statep store))
              (equal (fn-bpaj-dispatch-fast joined store request-octets
-                                           current-generation)
+                                           current-generation fn-arena)
                     (fn-bpaj-dispatch joined store request-octets
-                                      current-generation))))
+                                      current-generation fn-arena))))
   :hints (("Goal"
            :use (fn-osi-live-owner-store-is-indexed
                  (:instance fn-bpaj-dispatch-fast-is-checked

@@ -370,7 +370,7 @@
                                   (fn-acar-own-advance-result fn-statep)))))
 
 (defthm fn-acar-own-finish-keeps-conns
-  (equal (fn-own-conns (cdr (fn-ccar-own-finish o cfg)))
+  (equal (fn-own-conns (cdr (fn-ccar-own-finish o cfg fn-arena)))
          (fn-own-conns o))
   :hints (("Goal" :in-theory (e/d (fn-own-finish fn-own-complete
                                    fn-own-refresh-keeps-fields)
@@ -378,7 +378,7 @@
                                    fn-sn-completion-enabledp)))))
 
 (defthm fn-acar-conn-sessionp-after-own-finish
-  (equal (fn-acar-conn-sessionp (cdr (fn-ccar-own-finish o cfg)) id)
+  (equal (fn-acar-conn-sessionp (cdr (fn-ccar-own-finish o cfg fn-arena)) id)
          (fn-acar-conn-sessionp o id))
   :hints (("Goal" :in-theory (e/d (fn-acar-conn-sessionp)
                                   (fn-auth-sessionp fn-ccar-own-finish-is-own-finish)))))
@@ -403,9 +403,9 @@
 (defthm fn-acar-own-outcome-after-commit-is-reference
   (implies (fn-ocl-relation oc)
            (equal (fn-acar-own-outcome
-                   (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg)) id word)
+                   (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)) id word)
                   (fn-own-outcome
-                   (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg)) id word)))
+                   (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)) id word)))
   :hints (("Goal" :in-theory (disable fn-acar-conn-sessionp fn-acar-view-statep
                                       fn-ocl-relation fn-acar-own-outcome
                                       fn-own-outcome
@@ -413,7 +413,7 @@
            :use ((:instance fn-ocmt-post-commit-preserves-ocl-relation)
                  (:instance fn-acar-own-outcome-is-reference-under-ocl-relation
                   (oc (fn-ocfg-with-owner
-                       oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg)))))))))
+                       oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))))))
 
 ; The static owner's relation carries the first premise only; its view is
 ; fn-own-prefix-archive, whose acceptance state needs the prefix's

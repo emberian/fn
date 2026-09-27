@@ -9,7 +9,7 @@
 
 (defun fnn-bpapp-action (journal request generation)
   (declare (ignore journal))
-  (let ((answer (fnn-core-state 'fn-bprj-request-action
+  (let ((answer (fnn-core-arena-state 'fn-bprj-request-action
                                 (fnn-octet-list request) generation)))
     (unless (and (consp answer) (keywordp (first answer)))
       (fnn-fault "BP application dispatcher returned malformed action"))
@@ -35,7 +35,7 @@
   ;; Rebind after the Store transition, then select the one exact committed
   ;; record through ACL2.  The native adapter never enumerates candidates.
   (fnn-bpapp-bind-owner-store)
-  (unless (eq (fnn-owner-action 'fn-owner-app-record) :found)
+  (unless (eq (fnn-owner-arena-action 'fn-owner-app-record) :found)
     (fnn-fault "BP application completion has no exact committed Store record"))
   (let* ((inbound-id
            (fnn-core-state 'fn-bprj-request-bound-inbound-id
@@ -87,7 +87,7 @@
   "Run one request through FNRJ, owner Store, FNFD, and receipt decision.
 The caller holds SERVICE's mutex for this whole function."
   (fnn-bpapp-bind-owner-store)
-  (let ((planned (fnn-owner-action
+  (let ((planned (fnn-owner-arena-action
                   'fn-owner-app-plan inbound-id (fnn-octet-list request) node-id
                   (fnn-octet-list bundle-identity) ingress bundle-source
                   bundle-destination)))
@@ -134,7 +134,7 @@ The caller holds SERVICE's mutex for this whole function."
                    (if transitp
                        (fnn-owner-complete-bp-transit-submission
                         service
-                        (lambda () (fnn-owner-action 'fn-owner-app-submit))
+                        (lambda () (fnn-owner-arena-action 'fn-owner-app-submit))
                         msgid payload
                         (fnn-octets (fnn-global 'fn-owner-app-stored))
                         groups evidence generation (fnn-bpapp-planned-txid txid)
@@ -142,7 +142,7 @@ The caller holds SERVICE's mutex for this whole function."
                         (fnn-global 'fn-owner-app-stored-subject))
                      (fnn-owner-complete-bound-submission
                       service
-                      (lambda () (fnn-owner-action 'fn-owner-app-submit))
+                      (lambda () (fnn-owner-arena-action 'fn-owner-app-submit))
                       msgid payload groups evidence generation
                       (fnn-bpapp-planned-txid txid))))
              (unless (member application-result '(:accepted :duplicate))

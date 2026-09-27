@@ -13,7 +13,8 @@
 ; *osi-completing*, connection 4's article at :completing, committed through
 ; the carried commit; the outcome for :durable is the 240 and re-pins
 ; connection 4.
-(defconst *acar-t-o4* (cdr (fn-ccar-own-finish *osi-completing* *osi-cfg*)))
+; (the owner the host installs: fn-ccar-own-finish-installs-ccar-own-complete-by-definition)
+(defconst *acar-t-o4* (fn-ccar-own-complete *osi-completing*))
 (assert-event (fn-own-relation *osi-completing*))
 (assert-event (fn-acar-conn-sessionp *acar-t-o4* 4))
 (assert-event (equal (fn-acar-own-outcome *acar-t-o4* 4 :durable)
@@ -39,8 +40,7 @@
   (acar-t-ocfg-run *scar-t-oc* (osi-drop-last (own-post-events *acar-t-record*))))
 (defconst *acar-t-committed*
   (fn-ocfg-with-owner *acar-t-completing*
-                      (cdr (fn-ccar-own-finish (fn-ocfg-owner *acar-t-completing*)
-                                               (fn-ocfg-config *acar-t-completing*)))))
+                      (fn-ccar-own-complete (fn-ocfg-owner *acar-t-completing*))))
 (defconst *acar-t-o* (fn-ocfg-owner *acar-t-committed*))
 (defconst *acar-t-conn* (fn-own-find-conn 1 (fn-own-conns *acar-t-o*)))
 (assert-event (fn-ocl-relation *acar-t-completing*))
@@ -232,7 +232,8 @@
 ; record, the store returns to :ready with the history kept, the node moves.
 (defconst *acar-t-st* (fn-own-store (fn-ocfg-owner *acar-t-completing*)))
 (assert-event (fn-sn-completion-enabledp *acar-t-st*))
-(assert-event (fn-record-p (fn-sn-completion-record *acar-t-st*)))
+; by specification: the flip: the article completion is a held row.
+(assert-event (fn-held-p (fn-sn-completion-record *acar-t-st*)))
 (assert-event (fn-cst-relation *acar-t-st*))
 (assert-event (fn-cst-relation (fn-sn-finish *acar-t-st*)))
 (assert-event (equal (fn-sf-phase (fn-sn-files (fn-sn-finish *acar-t-st*))) :ready))
@@ -265,4 +266,5 @@
    (fn-ocl-relation
     (fn-ocfg-with-owner *acar-t-bad-completing*
                         (cdr (fn-ccar-own-finish (fn-ocfg-owner *acar-t-bad-completing*)
-                                                 (fn-ocfg-config *acar-t-bad-completing*)))))))
+                                                 (fn-ocfg-config *acar-t-bad-completing*)
+                                                 fn-arena))))))
