@@ -10251,6 +10251,43 @@
           "name": "fn-srb-within-h-is-within-the-bound"
         }
       ]
+    },
+    {
+      "id": "PRF-281",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arp-add-page-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arp-write-octet-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arp-seal-list-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-get{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-payload{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-seal-range{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-paged-clear{correspondence}"
+        }
+      ]
     }
   ]
 }
