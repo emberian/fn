@@ -654,6 +654,12 @@ checkpoint's S, or NIL."
       (fnn-fault "owner rejected committed history"))
     (unless (eq (fnn-owner-core 'fn-owner-sco-note-durable s) :noted)
       (fnn-fault "owner refused the durable checkpoint sequence"))
+    ;; The base's canonical payload count: the arena's count after the open
+    ;; (host/owner-host.lisp fn-owner-sco-note-base-payloads).
+    (unless (eq (fnn-owner-core 'fn-owner-sco-note-base-payloads
+                                (first (fnn-call 'fn-arena-count (fnn-live-arena))))
+                :noted)
+      (fnn-fault "owner refused the base payload count"))
     s))
 
 ;;; SEC-006 (PRF-210): read the node's key ring and hand it to the owner,
@@ -2452,10 +2458,12 @@ the crash keystone) and serving continues."
   ;; trigger while it runs, the service trigger again when it ends.
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   (unwind-protect
-  (destructuring-bind (base configs records record-octets count suffix budget frontier free revision)
+  (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
+                        base-payloads)
       captured
     (declare (ignore count))
     (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil)
+          (payloads nil)
           ;; the writer's segment: ACL2's choice under the record bound R the
           ;; capture handed over (fn-ockp-segment-octets, the verb's derivation)
           (segment (fnn-core 'fn-ockp-segment-octets record-octets
@@ -2465,10 +2473,16 @@ the crash keystone) and serving continues."
                       internal-time-units-per-second)))
         (handler-case
             (let ((sequence (length records)))
-              (setq next (fnn-core 'fn-ock-next-checkpoint base configs records))
-              (let ((setup (fnn-core 'fn-ockp-setup next frontier revision segment budget free)))
+              ;; Records-flip: NEXT is the capture of the captured rows'
+              ;; canonical rows and the file opens with their canonical
+              ;; payloads (host/owner-host.lisp fn-owner-sco-prepare, which
+              ;; READS the live arena below the captured count).
+              (destructuring-bind (setup prepared-next n arun)
+                  (fnn-core 'fn-owner-sco-prepare base base-payloads configs records
+                            frontier revision segment budget free (fnn-live-arena))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
+                (setq next prepared-next payloads n)
                 (setq verdict (first setup))
                 (cond
                   ((eq verdict :unencodable)
@@ -2490,7 +2504,7 @@ the crash keystone) and serving continues."
                             (lambda (fd)
                               (setq steps (fnn-checkpoint-write-steps
                                            fd setup segment sequence (fnn-store-config store)
-                                           (fnn-live-octets-pub)))))
+                                           (fnn-live-octets-pub) arun))))
                            (setq durablep t)
                            (fnn-err "CHECKPOINT auto sequence=~d suffix=~d octets=~d steps=~d ms=~d"
                                     sequence suffix octets steps (elapsed)))
@@ -2504,7 +2518,7 @@ the crash keystone) and serving continues."
                (fnn-owner-gated (service :control)
                  (when next
                    (let ((done (fnn-owner-core 'fn-owner-sco-publication-done
-                                               next durablep verdict)))
+                                               next payloads durablep verdict)))
                      (when (and durablep (not (integerp done)))
                        (fnn-err "CHECKPOINT auto: owner refused the durable sequence")))))
              (serious-condition (e)

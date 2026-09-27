@@ -2101,10 +2101,42 @@ vocabulary of fn-sco-select-named."
       (:refused (fnn-core-state 'fn-store-sco-clear)
        (values (case value (:exceeds-bound :exceeds-bound) (:schema :schema) (t :refused)) 0))
       (t (let ((answer (fnn-core-buffer-state 'fn-store-sco-decode value)))
-           (cond ((and (consp answer) (eq (first answer) :ok)
-                       (integerp (second answer)) (>= (second answer) 0))
-                  (values :ok (second answer)))
-                 (t (values :refused 0))))))))
+           (if (and (consp answer) (eq (first answer) :arena) (= (length answer) 4)
+                    (every (lambda (x) (and (integerp x) (>= x 0))) (rest answer)))
+               (fnn-state-checkpoint-load-arena (second answer) (third answer)
+                                                (fourth answer))
+               (values :refused 0)))))))
+
+(defconstant +fnn-checkpoint-load-batch-payloads+ 1024
+  "Payloads sealed into the arena per call while a state checkpoint loads
+(fn-scka-seal-n): a work bound per call, never a bound on the store; the
+arena is the same at every value (fn-scka-seal-n-compose).")
+
+(defun fnn-state-checkpoint-load-arena (start end count)
+  "The checkpoint's arena run is verified (fn-store-sco-decode answered
+(:arena START END COUNT)): empty the arena, seal the COUNT payloads of the
+buffer's [START, END) through the guard-verified fn-scka-seal-n a bounded
+number per call, then read the four tables (fn-store-sco-decode-finish).
+The three calls are fn-scka-load (books/store-checkpoint-arena-load.lisp,
+KEYSTONE fn-scka-load-of-written-file).  No :program entry updates the
+arena (invariant-risk; host/store-node-host.lisp fn-store-sco-decode's note).
+A refusal leaves a partial arena that nothing reads: the full replay
+empties it first (fnn-bridge-recover)."
+  (let ((arena (fnn-live-arena)) (octets (fnn-live-octets)) (i start) (left count))
+    (fnn-call 'fn-arena-clear arena)
+    (loop while (> left 0) do
+      (let* ((k (min left +fnn-checkpoint-load-batch-payloads+))
+             (answer (fnn-call 'fn-scka-seal-n i end k octets arena)))
+        (unless (and (consp answer) (first answer) (integerp (second answer)))
+          (fnn-core-state 'fn-store-sco-clear)
+          (return-from fnn-state-checkpoint-load-arena (values :refused 0)))
+        (setq i (second answer))
+        (decf left k)))
+    (let ((answer (fnn-core-buffer-state 'fn-store-sco-decode-finish i end)))
+      (if (and (consp answer) (eq (first answer) :ok)
+               (integerp (second answer)) (>= (second answer) 0))
+          (values :ok (second answer))
+          (values :refused 0)))))
 
 (defun fnn-recover-full-replay (store config-records &optional (reason nil))
   "Today's open: every durable record, then one full replay."
@@ -2146,6 +2178,23 @@ vocabulary of fn-sco-select-named."
         (push record records)))
     (nreverse records)))
 
+(defun fnn-recover-suffix-rows (store suffix config-records)
+  "The open from the loaded checkpoint: the suffix decoded
+(fn-store-sn-recover-records), interned ON TOP of the arena the load left by
+the guard-verified fn-intern-events (records nil 0: the canonical handles
+continue from the checkpoint's payload count), then the open over the rows
+(fn-store-sn-recover-from-checkpoint).  The three calls are
+fn-scka-recover-rows over the host's extension (books/store-checkpoint-
+arena.lisp, KEYSTONE fn-scka-recover-from-checkpoint-is-full-recover)."
+  (let* ((configs (mapcar #'fnn-octet-list config-records))
+         (decoded (fnn-core 'fn-store-sn-recover-records
+                            (mapcar #'fnn-octet-list suffix) configs)))
+    (if (eq decoded :bad)
+        :fault
+        (let ((rows (first (fnn-call 'fn-intern-events decoded nil 0 (fnn-live-arena)))))
+          (fnn-action (fnn-core-state 'fn-store-sn-recover-from-checkpoint
+                                      rows (fnn-store-frontier store) configs))))))
+
 (defun fnn-recover-from-state-checkpoint (store config-records)
   "The records of the history when the checkpoint opened the Store, else NIL
 after recording why not in open-mode (the caller then replays in full)."
@@ -2175,12 +2224,7 @@ after recording why not in open-mode (the caller then replays in full)."
                      (nthcdr s (funcall *fnn-pack-recover-callback*
                                         store physical sequences actual-lower))))))
         (fnn-check-history-marker store (+ s (length suffix)))
-        (unless (eq (fnn-action
-                     (fnn-core-arena-state 'fn-store-sn-recover-from-checkpoint
-                                     (mapcar #'fnn-octet-list suffix)
-                                     (fnn-store-frontier store)
-                                     (mapcar #'fnn-octet-list config-records)))
-                    :recovering)
+        (unless (eq (fnn-recover-suffix-rows store suffix config-records) :recovering)
           ;; Full replay is authoritative and decides; the checkpoint is
           ;; derived.  Never serve a refused checkpoint open.
           (fnn-core-state 'fn-store-sco-clear)
@@ -2621,13 +2665,45 @@ which the process is killed, or NIL."
             (fnn-fault "invalid FN_NATIVE_CHECKPOINT_BATCH_FAULT (expected K:kill)"))
           k)))))
 
-(defun fnn-checkpoint-write-steps (fd setup segment sequence profile st)
-  "Write the pipeline's frames to FD step by step; the number of steps."
-  (let ((state (fnn-core 'fn-ockp-initial-state (second setup) st))
-        (segment-bound (fnn-core 'fn-store-sco-segment-read-bound profile))
-        (file-bound (fnn-core 'fn-store-sco-file-read-bound profile))
-        (fault (fnn-checkpoint-batch-fault))
-        (steps 0))
+(defun fnn-checkpoint-write-arena-steps (fd arun sequence segment-bound file-bound st fault)
+  "Write the arena run's frames to FD step by step (fn-scka-write-step: step 0
+the head, each later step one batch of whole canonical payloads read through
+the arena, framed and admitted by the reader's rule); the number of steps.
+ARUN is (N COUNT STATE0) from fn-store-sco-publish-setup or the owner's
+capture.  KEYSTONE fn-scka-write-run-is-run-segments
+(books/store-checkpoint-arena-writer.lisp): the frames' octets, in order,
+are the arena run the load reads.  The step READS the arena and updates only
+the publication buffer ST."
+  (destructuring-bind (n count state) arun
+    (let ((steps 0) (arena (fnn-live-arena)))
+      (loop
+        (when (fnn-core 'fn-scka-write-donep state count) (return steps))
+        (let ((answer (fnn-call 'fn-scka-write-step state n count sequence
+                                segment-bound file-bound arena st)))
+          (unless (and (consp answer) (>= (length answer) 3))
+            (fnn-fault "ACL2 returned a malformed checkpoint arena step"))
+          (destructuring-bind (verdict frames next &rest stobj) answer
+            (declare (ignore stobj))
+            (unless (eq verdict :ok)
+              (fnn-refuse-io "the checkpoint arena run refused by name: ~a" verdict))
+            (unless (fnn-plan-p frames st)
+              (fnn-fault "ACL2 returned a malformed checkpoint arena step"))
+            (fnn-plan-write-all fd frames st)
+            (setq state next)
+            (incf steps)
+            (when (and fault (= steps (1+ fault)))
+              (sb-posix:kill (sb-posix:getpid) sb-posix:sigkill))))))))
+
+(defun fnn-checkpoint-write-steps (fd setup segment sequence profile st arun)
+  "Write the file's frames to FD step by step: the arena run ARUN first
+(fnn-checkpoint-write-arena-steps), then the four tables (fn-ockp-step); the
+number of steps."
+  (let* ((segment-bound (fnn-core 'fn-store-sco-segment-read-bound profile))
+         (file-bound (fnn-core 'fn-store-sco-file-read-bound profile))
+         (fault (fnn-checkpoint-batch-fault))
+         (steps (fnn-checkpoint-write-arena-steps fd arun sequence segment-bound
+                                                  file-bound st fault))
+         (state (fnn-core 'fn-ockp-initial-state (second setup) st)))
     (loop
       (when (fnn-core 'fn-ockp-donep state) (return steps))
       (let ((answer (fnn-call 'fn-ockp-step setup state +fnn-checkpoint-batch-rows+
@@ -2676,14 +2752,15 @@ buffer at once."
                                    (fnn-profile-nat 'fn-store-profile-max-record-octets store)
                                    +fnn-checkpoint-batch-octets+))
                 (budget (fnn-core 'fn-ock-capture-budget profile))
-                (answer (fnn-core-state 'fn-store-sco-publish-setup segment budget
+                (answer (fnn-core-arena-state 'fn-store-sco-publish-setup segment budget
                                         (fnn-disk-free-octets store)
                                         (fnn-checkpoint-revision))))
-           (unless (and (consp answer) (= (length answer) 2)
+           (unless (and (consp answer) (= (length answer) 3)
                         (consp (first answer)) (integerp (second answer))
                         (= (second answer) (length records)))
              (fnn-fault "ACL2 returned a malformed state checkpoint setup"))
            (let* ((setup (first answer)) (sequence (second answer))
+                  (arun (third answer))
                   (verdict (first setup)))
              (cond
                ((eq verdict :unencodable)
@@ -2697,7 +2774,7 @@ buffer at once."
                    store
                    (lambda (fd)
                      (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
-                                                             profile st))))
+                                                             profile st arun))))
                   (fnn-out "checkpoint sequence=~d octets=~d steps=~d ~a"
                            sequence (second verdict) steps (fnn-open-report store))
                   +fnn-exit-ok+))

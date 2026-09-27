@@ -56,12 +56,28 @@
   (equal (fn-scka-canon-lens rows fn-arena)
          (fn-scka-lens (fn-scka-canon-payloads rows fn-arena))))
 
-; (list N KS COUNT): the payload count, the batches, the run's segments.
+; The run's octets, from the payloads' lengths and its segment count: every
+; segment its header and its trailer, the head chunk (the tag and N), and
+; each payload its length's octets and its own.
+(defun fn-scka-enc-lens-sum (lens)
+  (declare (xargs :guard (nat-listp lens)))
+  (if (atom lens)
+      0
+    (+ (fn-scka-enc-len (nfix (car lens))) (fn-scka-enc-lens-sum (cdr lens)))))
+
+(defun fn-scka-run-octets (lens count)
+  (declare (xargs :guard (and (nat-listp lens) (natp count))))
+  (+ (* (nfix count) (+ *fn-scc-segment-header-octets* *fn-frame-trailer-octets*))
+     (len (fn-scka-head (len lens)))
+     (fn-scka-enc-lens-sum lens)))
+
+; (list N KS COUNT OCTETS): the payload count, the batches, the run's
+; segments and the run's octets.
 (defun fn-scka-write-setup (rows seg fn-arena)
   (declare (xargs :stobjs fn-arena :guard (natp seg) :verify-guards nil))
   (let* ((lens (fn-scka-canon-lens rows fn-arena))
          (ks (fn-scka-batches lens seg)))
-    (list (len lens) ks (+ 1 (len ks)))))
+    (list (len lens) ks (+ 1 (len ks)) (fn-scka-run-octets lens (+ 1 (len ks))))))
 
 (defthm fn-scka-write-setup-facts
   (let ((su (fn-scka-write-setup rows seg fn-arena))
@@ -188,7 +204,27 @@
 (verify-guards fn-scka-canon-lens)
 (verify-guards fn-scka-batches
   :hints (("Goal" :in-theory (disable fn-scka-batch-count))))
+(local
+ (defthm fn-scka-canon-lens-nat-listp
+   (nat-listp (fn-scka-canon-lens rows fn-arena))))
+
 (verify-guards fn-scka-write-setup)
+
+; The publication's setup: the table pipeline's (books/owner-checkpoint-
+; writer.lisp fn-ockp-setup: the tables of NEXT, their estimate, the
+; encodability check), with the decision taken by name, before anything is
+; allocated, over the WHOLE file's octets: the arena run's (ALEN, from
+; fn-scka-write-setup) and the tables'.  (list VERDICT TABLES COUNTS MTRIE
+; INDEX N ESTIMATE), ESTIMATE the whole file's.
+(defun fn-scka-publication-setup (next frontier revision seg budget free alen)
+  (declare (xargs :guard (and (natp seg) (natp budget) (natp alen))
+                  :guard-hints (("Goal" :in-theory (disable fn-ockp-setup fn-ockp-decide)))))
+  (let ((setup (fn-ockp-setup next frontier revision seg budget free)))
+    (if (eq (car setup) :unencodable)
+        setup
+      (let ((estimate (+ alen (nfix (fn-sco-at 6 setup)))))
+        (update-nth 6 estimate
+                    (update-nth 0 (fn-ockp-decide estimate budget free) setup))))))
 (verify-guards fn-scka-append-batch
   :hints (("Goal" :use ((:instance fn-scka-payload-of-digits
                                    (w (fn-row-wire-of (car rows) fn-arena)))
@@ -459,3 +495,101 @@
                             fn-scka-write-step-batch fn-scka-write-step
                             fn-scka-body fn-scc-header fn-scc-seal fn-scka-head
                             fn-scka-canon-payloads fn-sccb-plan-octets fn-scka-chunks)))))
+
+; -----------------------------------------------------------------------------
+; 5. The owner's next checkpoint.  The owner publishes from its live rows
+; while it serves: BASE is the checkpoint it last captured (at the open, the
+; open's extended checkpoint E; after a publication, that publication's
+; NEXT), the capture of the canonical rows of the first (len (fn-sco-records
+; BASE)) live rows, and H0 their canonical payload count.  NEXT extends BASE
+; over the canonical rows of the rows after them, whose handles continue
+; from H0: the history is never canonicalized twice.  (NEXT, or :bad when a
+; row's alpha does not intern.)  host/owner-host.lisp fn-owner-sco-prepare
+; calls it off the owner mutex (it READS the arena: the handles it reads
+; are below the count the capture saw, sealed before the capture and never
+; rewritten).
+
+(defun fn-scka-next-checkpoint (base h0 configs records fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (natp h0) :verify-guards nil))
+  (let ((canon (fn-scka-canon-rows (nthcdr (len (fn-sco-records base)) records) fn-arena h0)))
+    (if (equal canon :bad)
+        :bad
+      (fn-sco-extend base configs canon))))
+
+(local
+ (defthm fn-scka-sco-records-of-capture
+   (implies (true-listp records)
+            (equal (fn-sco-records (fn-sco-capture configs records)) records))
+   :hints (("Goal" :in-theory (e/d (fn-sco-capture fn-sco-make fn-sco-records fn-sco-at)
+                                   (fn-sco-cpr-prefix fn-replay-identity-loop
+                                    fn-cpe-projection-replay fn-th-prefix-loop
+                                    fn-cei-build-aux))))))
+
+(local
+ (defthm fn-scka-rows-wire-of-append
+   (equal (fn-rows-wire-of (append a b) fn-arena)
+          (append (fn-rows-wire-of a fn-arena) (fn-rows-wire-of b fn-arena)))))
+
+(local
+ (defthm fn-scka-len-intern-at
+   (implies (not (equal (fn-scka-intern-at ws h) :bad))
+            (equal (len (fn-scka-intern-at ws h)) (len ws)))
+   :hints (("Goal" :in-theory (disable fn-scka-intern-one fn-scka-sealsp)))))
+
+(local
+ (defthm fn-scka-len-take
+   (implies (natp n) (equal (len (take n x)) n))))
+
+(local
+ (defthm fn-scka-len-rows-wire-of
+   (equal (len (fn-rows-wire-of rows fn-arena)) (len rows))))
+
+(local
+ (defthm fn-scka-append-take-nthcdr-all
+   (implies (and (natp n) (<= n (len x)))
+            (equal (append (take n x) (nthcdr n x)) x))))
+
+; KEYSTONE (the owner's next): from a BASE that is the capture of the
+; canonical rows of the first PLEN live rows, with H0 their canonical
+; payload count, NEXT is the capture of the canonical rows of all of them:
+; the file the publication writes is that of fn-store-sco-publish-setup's
+; NEXT for the same rows, so the load and open keystones hold of it.
+(defthm fn-scka-next-checkpoint-is-capture
+  (implies (and (natp plen) (<= plen (len records))
+                (equal base (fn-sco-capture configs
+                                            (fn-scka-canon-rows (take plen records) fn-arena 0)))
+                (equal h0 (len (fn-scka-canon-payloads (take plen records) fn-arena)))
+                (not (equal (fn-scka-canon-rows records fn-arena 0) :bad)))
+           (equal (fn-scka-next-checkpoint base h0 configs records fn-arena)
+                  (fn-sco-capture configs (fn-scka-canon-rows records fn-arena 0))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-scka-append-take-nthcdr-all (n plen) (x records))
+                 (:instance fn-scka-intern-at-of-append
+                            (ws (fn-rows-wire-of (take plen records) fn-arena))
+                            (vs (fn-rows-wire-of (nthcdr plen records) fn-arena)) (h 0))
+                 (:instance fn-scka-intern-at-of-append-bad
+                            (ws (fn-rows-wire-of (take plen records) fn-arena))
+                            (vs (fn-rows-wire-of (nthcdr plen records) fn-arena)) (h 0))
+                 (:instance fn-scka-intern-at-store-eventsp
+                            (ws (fn-rows-wire-of (take plen records) fn-arena)))
+                 (:instance fn-scka-intern-at-true-listp
+                            (ws (fn-rows-wire-of (take plen records) fn-arena)) (h 0))
+                 (:instance fn-scka-intern-at-true-listp
+                            (ws (fn-rows-wire-of (nthcdr plen records) fn-arena))
+                            (h (len (fn-scka-payloads (fn-rows-wire-of (take plen records)
+                                                                        fn-arena)))))
+                 (:instance fn-sco-extend-of-capture
+                            (prefix (fn-scka-intern-at (fn-rows-wire-of (take plen records)
+                                                                         fn-arena) 0))
+                            (suffix (fn-scka-intern-at
+                                     (fn-rows-wire-of (nthcdr plen records) fn-arena)
+                                     (len (fn-scka-payloads (fn-rows-wire-of (take plen records)
+                                                                              fn-arena)))))))
+           :in-theory (e/d (fn-scka-canon-rows-is-intern-at-of-alpha
+                            fn-scka-canon-payloads-is-payloads-of-alpha)
+                           (fn-scka-append-take-nthcdr-all fn-scka-intern-at-of-append
+                            fn-scka-intern-at-of-append-bad fn-scka-intern-at-store-eventsp
+                            fn-scka-intern-at-true-listp fn-sco-extend-of-capture
+                            fn-scka-intern-at fn-scka-payloads fn-rows-wire-of
+                            fn-sco-extend fn-sco-capture fn-scka-canon-rows
+                            fn-scka-canon-payloads)))))
