@@ -1148,6 +1148,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/login-binding-live-tests \
 	tests/acl2/native-admin-peer-budget-tests \
 	tests/acl2/account-list-tests \
+	tests/acl2/accounts-snapshot-tests \
+	tests/acl2/accounts-tests \
+	tests/acl2/feed-totality-tests \
+	tests/acl2/group-access-tests \
+	tests/acl2/group-status-tests \
+	tests/acl2/moderation-tests \
+	tests/acl2/peer-host-tests \
+	tests/acl2/sha256-stobj-tests \
+	tests/acl2/topic-history-identity-disjoint-tests \
 	books/public-exposure \
 	tests/acl2/public-exposure-tests \
 	books/public-exposure-reply \

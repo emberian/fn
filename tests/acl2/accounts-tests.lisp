@@ -335,11 +335,13 @@
 (assert-event (< (+ (fn-clock-wall *at-stamp*) (fn-clock-wall-error *at-stamp*))
                  (fn-acct-invite-expiry 60 *at-stamp*)))
 ; Hypothesis of fn-acct-invite-delta-is-live-at-its-stamp removed: no wall
-; clock, no expiry, and the comparison fails.
+; clock, no expiry, and the comparison fails.  The conclusion's `<' reads a
+; non-number as 0 in the logic; `fix' says so, since evaluating (< 0 nil)
+; is a guard violation, which refused the whole book.
 (assert-event (and (null (fn-acct-invite-expiry 60 *at-stamp-no-wall*))
                    (null (fn-acct-invite-delta "x" 60 *at-stamp-no-wall*))
                    (not (< (+ (fn-clock-wall *at-stamp-no-wall*)
                               (fn-clock-wall-error *at-stamp-no-wall*))
-                           (fn-acct-invite-expiry 60 *at-stamp-no-wall*)))))
+                           (fix (fn-acct-invite-expiry 60 *at-stamp-no-wall*))))))
 ; `account list' (books/account-list.lisp, tests/acl2/account-list-tests.lisp)
 ; names logins and principals, never a digest.
