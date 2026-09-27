@@ -13,19 +13,19 @@
 ; PKT-209: `control log' and `control evidence MSGID' (books/control-evidence.lisp).
 (include-book "../books/control-evidence")
 
-(defun fn-native-live-status-host-offline (kind profile obs state)
+(defun fn-native-live-status-host-offline (kind profile obs fn-arena state)
   ; `status', `pins', `obligations' and `peer list' with no owner running:
   ; the Store and configuration this process replayed, no connection.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (if (fn-cevg-kindp kind)
       ;; PKT-209: the records decided as recovery decides them.
       (fn-cev-offline-report kind (f-get-global 'fn-store-sn state))
     (fn-nls-offline-report kind profile
                            (f-get-global 'fn-store-sn state)
                            (f-get-global 'fn-store-cfg state)
-                           obs)))
+                           obs fn-arena)))
 
-(defun fn-native-live-status-host-answer (request cached obs min log-sink sched state)
+(defun fn-native-live-status-host-answer (request cached obs min log-sink sched fn-arena state)
   ; The running owner's page for one FNLS request, under its mutex
   ; (host/native/control.lisp `fnn-control-live-status-answer'): (REPLY
   ; CACHED').  A request from offset 0 renders the report once into a
@@ -37,7 +37,7 @@
   ; the owner's service-log sink (books/log-sink.lisp, PKT-508), NIL when no
   ; writer runs; SCHED the owner's scheduler value (books/owner-scheduler.lisp,
   ; HST-023): `health' ends with the sink's line and the scheduler's.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   ;; PKT-209: FNLS frame kind 3 carries a control report kind and its
   ;; argument (fn-cev-any-request-decode reads either frame).
   (let ((decoded (fn-cev-any-request-decode request)))
@@ -80,7 +80,7 @@
                                          ;; fnn-store-observation.
                                          (append (take 5 obs)
                                                  (list (fn-owner-sco-deferred state)))
-                                         min)
+                                         min fn-arena)
                     (cond ((equal kind :health)
                            ;; PKT-508 (PRF-187): the log sink's line last;
                            ;; fn-nh-report-exit-of-render-and-more: the exit is

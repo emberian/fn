@@ -303,13 +303,14 @@ whether a checkpoint served this process's open."
          (append (fn-nls-text "release-after:") (fn-nls-nat (cadr rule))))
         (t (fn-nls-text "keep-forever"))))
 
-(defun fn-nls-reclaim-words (s cfg obs)
+(defun fn-nls-reclaim-words (s cfg obs fn-arena)
   "`reclaim rule=R reclaimable=N reclaimable-octets=N held=N reclaimed=N
-freed-octets=N'."
-  (declare (xargs :guard t :verify-guards nil))
+freed-octets=N', each article read through the arena (only read):
+books/store-reclaim-holders.lisp fn-rcl-store-counts-arena."
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let* ((rule (fn-rcl-config-rule (fn-cfg-value cfg)))
          (stamp (fn-record-stamp-of-observation (fn-nls-obs-clock obs)))
-         (counts (fn-rcl-store-counts rule (if (natp stamp) stamp nil) s)))
+         (counts (fn-rcl-store-counts-arena rule (if (natp stamp) stamp nil) s fn-arena)))
     (append (fn-nls-text "reclaim rule=") (fn-nls-rule-words rule)
             (fn-nls-field "reclaimable" (nth 0 counts))
             (fn-nls-field "reclaimable-octets" (nth 1 counts))
@@ -447,13 +448,14 @@ freed-octets=N'."
 
 (defconst *fn-nls-kinds* (quote (:status :pins :peers :obligations :control :health :accounts)))
 
-(defun fn-nls-report (kind profile s bytes cfg pins obs)
+(defun fn-nls-report (kind profile s bytes cfg pins obs fn-arena)
   "The octets `operator CONFIG KIND' prints.
 
 S is the Store state, PROFILE its persisted profile, BYTES its committed
 record octets, CFG the configuration, PINS the open connections'
-configuration pins (nil with no owner), OBS the host's open observation."
-  (declare (xargs :guard t :verify-guards nil))
+configuration pins (nil with no owner), OBS the host's open observation,
+FN-ARENA the payload arena the reclaim counts read (only read)."
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (cond
    ((equal kind :peers)
     (fn-native-admin-peer-budget-report (fn-cfg-peers (fn-cfg-value cfg))))
@@ -484,25 +486,25 @@ configuration pins (nil with no owner), OBS the host's open observation."
                              (fn-cvec-record-debt (fn-sf-records (fn-sn-files s)))))
             *fn-nls-lf*
             (fn-nls-open-words obs) *fn-nls-lf*
-            (fn-nls-reclaim-words s cfg obs) *fn-nls-lf*
+            (fn-nls-reclaim-words s cfg obs fn-arena) *fn-nls-lf*
             (fn-nls-checkpoint-file-words obs) *fn-nls-lf*
             (fn-nls-pins-line s pins)))))
 
-(defun fn-nls-offline-report (kind profile s cfg obs)
+(defun fn-nls-offline-report (kind profile s cfg obs fn-arena)
   "What the offline command prints over the state it replayed: every
 committed record re-encoded once, and no connection."
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-nls-report kind profile s (fn-sbud-bytes-used s) cfg nil obs))
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (fn-nls-report kind profile s (fn-sbud-bytes-used s) cfg nil obs fn-arena))
 
-(defun fn-nls-live-report (kind profile oc cache obs)
+(defun fn-nls-live-report (kind profile oc cache obs fn-arena)
   "What the running owner answers over the configured owner OC it carries:
 its Store, its configuration and its connections' pins, with the committed
 record octets extended from the carried (K . SUM) CACHE, not stored."
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((s (fn-own-store (fn-ocfg-owner oc))))
     (fn-nls-report kind profile s
                    (fn-sbud-bytes-extend cache (fn-sf-records (fn-sn-files s)))
-                   (fn-ocfg-config oc) (fn-ocfg-pins oc) obs)))
+                   (fn-ocfg-config oc) (fn-ocfg-pins oc) obs fn-arena)))
 
 ; KEYSTONE (the live words are the offline words).  The subject is
 ; `fn-nls-live-report', which the owner's control handler reaches through
@@ -517,8 +519,8 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
 (local
  (defthm fn-nls-report-without-connections
    (implies (not (consp pins))
-            (equal (fn-nls-report kind profile s bytes cfg pins obs)
-                   (fn-nls-report kind profile s bytes cfg nil obs)))
+            (equal (fn-nls-report kind profile s bytes cfg pins obs fn-arena)
+                   (fn-nls-report kind profile s bytes cfg nil obs fn-arena)))
    :hints (("Goal" :expand ((fn-nls-connection-lines pins)
                             (fn-nls-connection-lines nil))
             :in-theory '(fn-nls-report fn-nls-pins-line len)))))
@@ -527,10 +529,10 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
   (implies (and (fn-sbud-octets-cache-validp
                  cache (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
                 (not (consp (fn-ocfg-pins oc))))
-           (equal (fn-nls-live-report kind profile oc cache obs)
+           (equal (fn-nls-live-report kind profile oc cache obs fn-arena)
                   (fn-nls-offline-report kind profile
                                          (fn-own-store (fn-ocfg-owner oc))
-                                         (fn-ocfg-config oc) obs)))
+                                         (fn-ocfg-config oc) obs fn-arena)))
   :hints (("Goal"
            :use ((:instance fn-sbud-bytes-used-is-kernel-sum
                             (s (fn-own-store (fn-ocfg-owner oc))))
@@ -561,7 +563,7 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
 
 (defthm fn-nls-report-of-query-kind-is-query-report
   (equal (fn-nls-report (fn-native-admin-result-report-kind plan)
-                        profile s bytes cfg pins obs)
+                        profile s bytes cfg pins obs fn-arena)
          (fn-nls-query-report plan (fn-cfg-value cfg)))
   :hints (("Goal" :in-theory '(fn-nls-report fn-native-admin-result-report-kind
                                fn-native-admin-query-report

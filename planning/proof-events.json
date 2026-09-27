@@ -3737,6 +3737,14 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-rcl-verdict-arena-is-the-model-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-store-counts-arena-is-the-model-counts"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-rcl-absent-verdict-contributes-nothing"
         },
         {

@@ -4,6 +4,7 @@
 (include-book "../../books/store-reclaim-holders")
 (include-book "../../books/native-live-status")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "arena-lift")
 (include-book "owner-served-invariants-tests")
 ; A verified article (*stxt-r1*) and the keyring it verifies under.
 (include-book "stx-transit-tests")
@@ -102,6 +103,91 @@
 
 ; The status words over the configuration's rule (no row: keep-forever).
 (assert-event
- (equal (fn-nls-reclaim-words *rht-caught* (fn-cfg-initial) '(nil nil (:full-replay :absent) nil))
+ (equal (fn-nls-reclaim-words *rht-caught* (fn-cfg-initial) '(nil nil (:full-replay :absent) nil) fn-arena)
         (fn-record-string-octets
          "reclaim rule=keep-forever reclaimable=0 reclaimable-octets=0 held=0 reclaimed=0 freed-octets=0")))
+
+; -----------------------------------------------------------------------------
+; The counts over the ARENA (lane matrix-reds-reclaim).  The fixture is a
+; flipped Store: its three articles carry handles 2, 1 and 0 (the tested
+; article *rht-art* is handle 2); the arena below holds, at each handle, the
+; bytes the arena that interned the completing journal holds there, or, for
+; the reclaimed case, *rht-art*'s tombstone at its handle.
+(defconst *rht-h* (fn-article-payload *rht-art*))
+(defconst *rht-b0* (fn-hrt-bytes *osi-completing-prior* 0))
+(defconst *rht-b1* (fn-hrt-bytes *osi-completing-prior* 1))
+(defconst *rht-arena* (list *rht-b0* *rht-b1* *rht-art-octets*))
+(defconst *rht-tomb*
+  (fn-rcl-tombstone-of *rht-art-octets* (fn-record-string-octets *rht-msgid*)))
+(defconst *rht-tomb-arena* (list *rht-b0* *rht-b1* *rht-tomb*))
+(defconst *rht-live-octets* (+ (len *rht-b0*) (len *rht-b1*) (len *rht-art-octets*)))
+(defconst *rht-freed* (- (len *rht-art-octets*) (len *rht-tomb*)))
+(assert-event (and (equal *rht-h* 2)
+                   (fn-rcl-tombstonep *rht-tomb*)
+                   (not (fn-rcl-tombstonep *rht-art-octets*))
+                   (consp *rht-b0*) (consp *rht-b1*)
+                   (< 0 *rht-freed*)
+                   (equal (len (fn-state-articles (fn-node-acceptance (fn-sn-node *rht-caught*))))
+                          3)))
+(defun rht-counts-model (rule now s fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((models (fn-rcl-articles-alpha
+                 (fn-state-articles (fn-node-acceptance (fn-sn-node s))) fn-arena)))
+    (append (fn-rcl-summary rule now (fn-rcl-store-holders s) (fn-sn-verdicts s) models)
+            (list (fn-rcl-held-count rule now (fn-rcl-store-holders s) (fn-sn-verdicts s)
+                                     models)))))
+(bpr-lift fn-rcl-store-counts-arena 3)
+(bpr-lift rht-counts-model 3)
+(bpr-lift fn-rcl-verdict-arena 5)
+
+; fn-rcl-store-counts-arena-is-the-model-counts, reachable: caught up, the
+; three articles are reclaimable and the octet count is the bytes under
+; their handles; with *rht-art* reclaimed (its tombstone under its handle)
+; it counts as reclaimed and its freed octets are its recorded length less
+; the tombstone's.  Each equals the octet-list model's counts over the
+; articles' octet models.
+(assert-event
+ (equal (in-arena-fn-rcl-store-counts-arena *rht-arena* *rht-rule* 0 *rht-caught*)
+        (list 3 *rht-live-octets* 0 0 0)))
+(assert-event
+ (equal (in-arena-fn-rcl-store-counts-arena *rht-tomb-arena* *rht-rule* 0 *rht-caught*)
+        (list 2 (+ (len *rht-b0*) (len *rht-b1*)) 1 *rht-freed* 0)))
+(assert-event
+ (and (equal (in-arena-fn-rcl-store-counts-arena *rht-arena* *rht-rule* 0 *rht-caught*)
+             (in-arena-rht-counts-model *rht-arena* *rht-rule* 0 *rht-caught*))
+      (equal (in-arena-fn-rcl-store-counts-arena *rht-tomb-arena* *rht-rule* 0 *rht-caught*)
+             (in-arena-rht-counts-model *rht-tomb-arena* *rht-rule* 0 *rht-caught*))))
+; Lagging, the live articles are held; the reclaimed one stays reclaimed.
+(assert-event
+ (equal (in-arena-fn-rcl-store-counts-arena *rht-arena* *rht-rule* 0 *rht-lag*)
+        (list 0 0 0 0 3)))
+(assert-event
+ (equal (in-arena-fn-rcl-store-counts-arena *rht-tomb-arena* *rht-rule* 0 *rht-lag*)
+        (list 0 0 1 *rht-freed* 2)))
+; The mutation (the pre-lane counts, which parsed the handles): the wire
+; counts over the flipped Store count no octets, and the reclaimed article
+; as reclaimable again.
+(assert-event (equal (fn-rcl-store-counts *rht-rule* 0 *rht-caught*) (list 3 0 0 0 0)))
+(must-fail
+ (assert-event
+  (equal (fn-rcl-store-counts *rht-rule* 0 *rht-caught*)
+         (in-arena-fn-rcl-store-counts-arena *rht-tomb-arena* *rht-rule* 0 *rht-caught*))))
+(must-fail
+ (assert-event
+  (equal (fn-rcl-store-counts *rht-rule* 0 *rht-caught*)
+         (in-arena-fn-rcl-store-counts-arena *rht-arena* *rht-rule* 0 *rht-caught*))))
+
+; fn-rcl-verdict-arena-is-the-model-verdict: the tombstone under the handle
+; is :already-reclaimed, the live octets :reclaimable; the wire verdict of
+; the handle itself (the mutation) is never :already-reclaimed.
+(assert-event
+ (and (equal (in-arena-fn-rcl-verdict-arena *rht-tomb-arena* *rht-rule* 0
+                                            (fn-rcl-store-holders *rht-caught*) nil *rht-art*)
+             :already-reclaimed)
+      (equal (in-arena-fn-rcl-verdict-arena *rht-arena* *rht-rule* 0
+                                            (fn-rcl-store-holders *rht-caught*) nil *rht-art*)
+             :reclaimable)))
+(must-fail
+ (assert-event
+  (equal (fn-rcl-verdict *rht-rule* 0 (fn-rcl-store-holders *rht-caught*) nil *rht-art*)
+         :already-reclaimed)))

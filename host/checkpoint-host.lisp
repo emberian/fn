@@ -293,10 +293,13 @@
                   :guard (fn-cbor-octet-listp octets)))
   (fn-rclp-event octets ctx))
 
-(defun fn-store-log-reclaim-decide-stream (profile clock acc dry state)
-  (declare (xargs :stobjs state :mode :program))
+;; The counts read the articles through the arena (only read; lane
+;; matrix-reds-reclaim: they had parsed each article's handle as its octets).
+(defun fn-store-log-reclaim-decide-stream (profile clock acc dry fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
-    (value (fn-lgr-decide-stream profile rule now (f-get-global 'fn-store-sn state) acc dry))))
+    (value (fn-lgr-decide-stream profile rule now (f-get-global 'fn-store-sn state)
+                                 acc dry fn-arena))))
 
 ;; The subjects of books/checkpoint-compaction-preservation: the reclaim
 ;; preservation theorems are stated over these two functions.
