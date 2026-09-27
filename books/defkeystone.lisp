@@ -366,7 +366,10 @@
 (logic)
 
 (defmacro defkeystone (&whole form name term &rest kvs)
+  ; A refusal is a SOFT error event, so it fails like any refused event (and
+  ; under must-fail prints nothing a certification log reads as a failure).
   (let ((reason (fn-dk-refusal name term kvs)))
     (if reason
-        (er hard 'defkeystone "~x0: ~@1" name (fn-dk-refusal-text reason))
+        `(make-event (er soft 'defkeystone "~x0: ~@1" ',name
+                         ',(fn-dk-refusal-text reason)))
       (fn-dk-expand form))))

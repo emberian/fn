@@ -183,7 +183,6 @@
    :subject fn-dkt-add :hyps (natp small) :witness ((x 3) (y 4))
    :breaks ((natp ((x -1))))
    :hints (("Goal" :in-theory (enable fn-dkt-add))))
- :expected :hard
  :unchecked "the expansion is refused by name (fn-dk-refusal :no-breaking-value), before any event")
 
 ; A breaking value at which a RETAINED hypothesis also fails is not a
