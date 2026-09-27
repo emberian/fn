@@ -22,21 +22,24 @@ def definition(source: str, name: str) -> str:
 
 class NativeServedCostTests(unittest.TestCase):
     def test_owner_calls_fast_span_entry(self) -> None:
-        # The native read path is the span over the octet buffer (REP-012):
-        # the host fills the buffer and calls fn-owner-chunk-span, which
-        # calls fn-scar-ocfg-read-span, whose fold checks only the fast
+        # The native read path is the span over the octet buffer (REP-012)
+        # and, since the catalog slice's step 8, the catalog: the host fills
+        # the buffer and calls fn-owner-chunk-span with the live arena and
+        # catalog, which calls fn-scr-ocfg-read-span
+        # (books/served-catalog-chain.lisp, equal to fn-scar-ocfg-read-span
+        # under the catalog relation), whose fold checks only the fast
         # predicate; no list of the read's octets is built on the way.
         native = (ROOT / "host/native/owner.lisp").read_text()
         host = (ROOT / "host/owner-host.lisp").read_text()
-        span = (ROOT / "books/served-span.lisp").read_text()
+        chain = (ROOT / "books/served-catalog-chain.lisp").read_text()
         handoff = definition(native, "fnn-owner-handle-chunk")
         self.assertIn("(fnn-octets-fill incoming)", handoff)
         self.assertIn("(fnn-core-buffer-state 'fn-owner-chunk-span cid", handoff)
         self.assertNotIn("fnn-octet-list incoming", handoff)
         self.assertNotIn("'fn-owner-chunk cid", handoff)
-        self.assertIn("(fn-scar-ocfg-read-span", definition(host, "fn-owner-chunk-span"))
-        self.assertIn("(fn-scar-step-span-fast", definition(span, "fn-scar-own-read-span"))
-        fast = definition(span, "fn-scar-step-span-fast")
+        self.assertIn("(fn-scr-ocfg-read-span", definition(host, "fn-owner-chunk-span"))
+        self.assertIn("(fn-scr-step-span-fast", definition(chain, "fn-scr-own-read-span"))
+        fast = definition(chain, "fn-scr-step-span-fast")
         self.assertIn("fn-wire-fast-statep", fast)
         self.assertNotIn("fn-wire-statep", fast)
 
@@ -44,11 +47,10 @@ class NativeServedCostTests(unittest.TestCase):
         # The served span fold reads each octet of the range from the buffer
         # by index (fn-octets-get); the list of the range's octets
         # (fn-oct-slice-list) is the logical model in the theorems only.
-        # PKT-479: the fold is the LOGIC of the host-called core; it is
-        # executed by the served scan, one framed event at a time
-        # (books/served-scan.lisp, fn-scar-scan-span-is-feed-counted).
-        span = (ROOT / "books/served-span.lisp").read_text()
-        fold = definition(span, "fn-scar-feed-span")
+        # The per-line index scan (no wire state inside a line) is PKT-479
+        # and has no static check until it lands.
+        span = (ROOT / "books/served-catalog-chain.lisp").read_text()
+        fold = definition(span, "fn-scr-feed-span")
         self.assertIn("(fn-octets-get i fn-octets)", fold)
         self.assertNotIn("fn-oct-slice-list", fold)
         self.assertNotIn("fn-octets-list", fold)

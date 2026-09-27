@@ -7394,7 +7394,12 @@
         "planning/evidence/manifests/certify-20260927T044349Z-763688.json",
         "planning/evidence/manifests/certify-20260927T053413Z-938097.json",
         "planning/evidence/manifests/certify-20260927T082505Z-2325383.json",
-        "planning/evidence/manifests/certify-20260927T090307Z-2876073.json"
+        "planning/evidence/manifests/certify-20260927T090307Z-2876073.json",
+        "books/served-catalog-chain.lisp",
+        "books/served-catalog-owner.lisp",
+        "tests/acl2/served-catalog-chain-tests.lisp",
+        "tests/acl2/served-catalog-owner-tests.lisp",
+        "books/catalog-relation.lisp"
       ],
       "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); proved by lane catalog-boundary-owner (Fable, gpt-6's wave-5 review section 5) on 2026-09-26 in books/catalog-refresh.lisp over the owner's own view vocabulary, so the statement's subject is the refresh the host reaches today; the catalog-side twins are the same book's. catalog-slice-2 and -4's groundwork (the delta grammar, fn-view-cancel-after-target, fn-cat-view-articles) is what the catalog side is stated over.",
       "events": [
@@ -7427,9 +7432,16 @@
         "fn-scat-number-article-is-find-group-number",
         "fn-nntp-msgid-retrieval-cat-is-scan",
         "fn-nntp-number-retrieval-cat-is-walk",
-        "fn-nntp-archive-command-cat-is-pinned"
+        "fn-nntp-archive-command-cat-is-pinned",
+        "fn-scr-ocfg-read-span-is-reference-under-ocl-relation",
+        "fn-cat-relation-of-complete-hidden",
+        "fn-sca-load-history-establishes-relation",
+        "fn-sca-finish-keeps-the-relation",
+        "fn-sca-finish-keeps-pinned-views",
+        "fn-sca-finish-hides-the-hidden-row",
+        "fn-sca-finish-hides-the-targets-from-fresh-views"
       ],
-      "progress_note": "catalog-slice-5 (2026-09-26): step 7a, the pinned-view semantics in the served machine the host calls today (the served connection carries the owner's committed view as its live pin; GROUP/LISTGROUP re-pin before the arm and keep the re-pin exactly on 211); the retrieval arms over the catalog are 7b (PKT-585). catalog-slice-6 (2026-09-27): 7a certified over its closure (the farm runs in the record); 7b first increment in books/served-catalog.lisp: the Message-ID and article-number finders over the catalog (fn-scat-msgid-article through the Message-ID column, fn-scat-number-article through index-stobjs fn-cnx-view-seq), the two retrieval arms over them, and the boundary theorem fn-nntp-archive-command-cat-is-pinned: the pinned case split with those arms reading the catalog equals fn-nntp-archive-command-pinned under archive = the view's articles, trie = its Message-ID index, a fresh number column. OVER/XOVER, LISTGROUP, LIST COUNTS, HDR/XHDR/XPAT, the lift to fn-served-dispatch-core and the host switch remain (7b rest, 8). catalog-slice-7 (2026-09-27): 7b rest -- OVER/XOVER of a range, LISTGROUP, GROUP, LIST COUNTS, HDR/XHDR and XPAT over the catalog (index-stobjs' fn-cnx-view-range and the number table, never a walk of the view's articles), KEYSTONE N fn-scat-range-numbers-is-group-range-numbers and KEYSTONE P fn-scat-available-article-is-available, one -is-archive theorem per arm, and fn-nntp-archive-command-cat-is-pinned over the whole pinned case split (hypotheses added: fn-nntp-projectionp and fn-gidx-pin-correspondencep of the archive); crossing witnesses in tests/acl2/served-catalog-tests.lisp (append, cancel after and before its target, redecision, reclamation).",
+      "progress_note": "catalog-slice-5 (2026-09-26): step 7a, the pinned-view semantics in the served machine the host calls today (the served connection carries the owner's committed view as its live pin; GROUP/LISTGROUP re-pin before the arm and keep the re-pin exactly on 211); the retrieval arms over the catalog are 7b (PKT-585). catalog-slice-6 (2026-09-27): 7a certified over its closure (the farm runs in the record); 7b first increment in books/served-catalog.lisp: the Message-ID and article-number finders over the catalog (fn-scat-msgid-article through the Message-ID column, fn-scat-number-article through index-stobjs fn-cnx-view-seq), the two retrieval arms over them, and the boundary theorem fn-nntp-archive-command-cat-is-pinned: the pinned case split with those arms reading the catalog equals fn-nntp-archive-command-pinned under archive = the view's articles, trie = its Message-ID index, a fresh number column. OVER/XOVER, LISTGROUP, LIST COUNTS, HDR/XHDR/XPAT, the lift to fn-served-dispatch-core and the host switch remain (7b rest, 8). catalog-slice-7 (2026-09-27): 7b rest -- OVER/XOVER of a range, LISTGROUP, GROUP, LIST COUNTS, HDR/XHDR and XPAT over the catalog (index-stobjs' fn-cnx-view-range and the number table, never a walk of the view's articles), KEYSTONE N fn-scat-range-numbers-is-group-range-numbers and KEYSTONE P fn-scat-available-article-is-available, one -is-archive theorem per arm, and fn-nntp-archive-command-cat-is-pinned over the whole pinned case split (hypotheses added: fn-nntp-projectionp and fn-gidx-pin-correspondencep of the archive); crossing witnesses in tests/acl2/served-catalog-tests.lisp (append, cancel after and before its target, redecision, reclamation). catalog-slice-8 (2026-09-27): step 8, the host switch -- fn-owner-chunk-span reads through books/served-catalog-chain.lisp fn-scr-ocfg-read-span over the live arena and catalog (fn-scr-ocfg-read-span-is-reference-under-ocl-relation, under fn-scr-owner-catalogp); the catalog is maintained at the owner's entries (books/served-catalog-owner.lisp): E fn-sca-load-history at recovery, T4-then-T2 fn-sca-finish at fn-owner-finish-submission (fn-sca-finish-keeps-the-relation, -keeps-pinned-views, -hides-the-hidden-row (R1), -hides-the-targets-from-fresh-views), the prepare fn-cat-prepare at fn-owner-prepare-buffer. The join fn-sca-join is the open R-side target.",
       "pending_subject": "fn-view-apply-is-refresh as registered is deferred to 7b/8 (the delta equation needs the arms over the catalog); the proved events are the version semantics over the host-called served path and, since catalog-slice-6, the Message-ID and number retrieval arms and (catalog-slice-7) the range arms over the catalog equal to the pinned arms (not yet host-called: the lift and the host switch are 7b rest and 8)."
     },
     {
@@ -9816,6 +9828,61 @@
       ]
     },
     {
+      "id": "PRF-270",
+      "title": "The record log's segments: the drop of the segments a checkpoint covers preserves the history the open replays (T8), the open's plan ignores covered leftovers, and the rotation's kernel is the recovered kernel of the new segment",
+      "statement": "books/store-log-segments.lisp. KEYSTONE fn-lg-segment-drop-preserves-the-open: over the host's fold (fn-lgs-open-chain-records / fn-lgs-open-chain-last: fn-lg-open-kernel per segment read as a string, the genesis carried; host/native/io.lisp fnn-log-scan-segments calls both per closed segment), when the checkpoint's prefix is the covered segments' records and the F row's genesis their last trailer, the checkpoint's records followed by the fold over the remaining segments from that genesis are the fold over every segment (fn-lgs-open-chain-is-the-chain: the fold is the model chain fn-lgs-chain-records over the segments' octets; the replay of that split is the full replay by fn-sn-recover-from-checkpoint-equals-full-recover). fn-lgs-open-plan-scan-ignores-covered: at the drop's cuts (fnn-log-drop: drop-unlinked, drop-durable) the open's plan (fn-lgs-open-plan, called by fnn-recover-log) scans the same segments and refuses the same stores whatever covered segments remain. fn-lgs-rotate-is-the-recovered-kernel: the rotated kernel (fnn-log-rotate) is the kernel recovery derives from the new segment's durable zeros with the closed segment's last trailer, so R holds for the new segment by the fact that establishes it at log-recovered. fn-lgs-chain-records-of-append: the chain splits at any segment boundary.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-034"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-segments.lisp",
+        "tests/acl2/store-log-segments-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_log_compaction.py",
+        "planning/evidence/log-recovery-2026-09-27.md"
+      ],
+      "progress_note": "Lane log-recovery 2026-09-27: admitted in the persvati REPL with its test book; certification is the batch's.",
+      "events": [
+        "fn-lg-segment-drop-preserves-the-open",
+        "fn-lgs-open-chain-records-of-append",
+        "fn-lgs-open-chain-is-the-chain",
+        "fn-lgs-open-plan-scan-ignores-covered",
+        "fn-lgs-rotate-is-the-recovered-kernel",
+        "fn-lgs-chain-records-of-append"
+      ]
+    },
+    {
+      "id": "PRF-271",
+      "title": "Content reclamation over the record log checkpoints exactly the reclaiming pack's rewrite of the committed history",
+      "statement": "books/store-log-reclaim.lisp KEYSTONE fn-lgr-decide-checkpoints-the-rewrite: when fn-lgr-decide (host: host/checkpoint-host.lisp fn-store-log-reclaim-decide, called by host/native/checkpoint.lisp fnn-log-reclaim-steps) answers :reclaim, the run is not a dry run, the profile is admitted, some article is rewritten, the Message-IDs it reports are fn-rclp-rewritten-msgids and the history the host replays and checkpoints (with the log rotated, then the covered segments dropped: PRF-270) is exactly fn-rclp-events of the committed history under the store's context (fn-rclp-ctx: STO-014's per-article decision over every holder), so books/store-reclaim-pack.lisp's theorems about that list (a held article is never touched, a reclaimed event stays reclaimed, a rerun rewrites nothing) are about what the log's checkpoint holds.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017",
+        "STO-034"
+      ],
+      "depends_on": [
+        "PRF-270"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-reclaim.lisp",
+        "tests/acl2/store-log-reclaim-tests.lisp",
+        "host/checkpoint-host.lisp",
+        "host/native/checkpoint.lisp",
+        "tests/test_native_log_compaction.py",
+        "planning/evidence/log-recovery-2026-09-27.md"
+      ],
+      "progress_note": "Lane log-recovery 2026-09-27: admitted in the persvati REPL with its test book; certification is the batch's.",
+      "events": [
+        "fn-lgr-decide-checkpoints-the-rewrite"
+      ]
+    },
+    {
       "id": "PRF-267",
       "title": "The owner's commit runs in three scheduled steps with its log barrier off the owner: a status or health request waits at most one quantum and never a barrier, and a batch's members are told acceptance or refusal only after its barrier, each as its own outcome",
       "statement": "fn-ocs-inspect-waits-at-most-one (books/owner-commit-steps.lisp; keystone, no hypothesis on the state or the commit's events): for every scheduler value S and every sequence WS of pick observations, each (W EVENT) with W the six waiting counts (control reader poster transit commit inspect) and EVENT what a :commit quantum picked there reports, if the :inspect class has a waiter at every pick (fn-ocs-inspect-waitsp) then the quanta of other classes picked before the first :inspect pick, fn-ocs-inspect-delay, is at most 1. The barrier is not a quantum: it is the :barrier ACTION fn-ocs-commit-step names after a START, which the committer runs with the owner released. So the wall time an :inspect request waits at the gate is at most the longest single quantum of another class; its bound's hypotheses: the store commits through the record log (format 9; on a format-8 store there is no committer and a served POST's commit is still inside its reader quantum), and no quantum of another class contains a barrier (true of the START and the COMPLETE when no feed peer is configured: a configured peer's intent flush fsyncs per member inside the START, PKT-825). fn-ocs-in-flight-admits-only-inspect-commit-and-reader: while a batch is in flight (phase :staged, :fenced or :failed) the pick is :inspect, :commit, :reader or nil -- no control-socket poster, transit or mutating control quantum runs between a batch's START and its COMPLETE; a reader runs at the reader view (PRF-288), so no read reveals an unfenced record (coordinator decision PKT-828); fn-ocs-in-flight-commit-before-reader: in flight a waiting commit step (START-NEXT, COMPLETE) is picked before any reader. fn-ocs-next-otherwise-is-ocm-next: outside a batch every non-:inspect pick is books/owner-commit-class.lisp fn-ocm-next's pick and state, so PRF-248's control bound (via fn-ocm-next-otherwise-is-osch-next) and fn-ocm-commit-waits-at-most-the-bound hold over the non-:inspect quanta; fn-ocs-inspect-pick-keeps-the-ocm. fn-ocs-complete-only-after-the-barrier: the step machine names :complete (the step that releases the members' replies) only for phase :staged and event :fenced; fn-ocs-barrier-only-from-a-start, fn-ocs-staged-only-by-a-start, fn-ocs-in-flight-until-completed. The keystone's per-pick subjects, each about fn-ocs-next itself: fn-ocs-inspect-first-when-not-last (an :inspect waits and the last pick was not an :inspect: the pick is :inspect), fn-ocs-inspect-waiting-picks-someone (an :inspect waits: the pick is not nil), fn-ocs-other-pick-clears-lasti (a pick that is neither nil nor :inspect clears LASTI). The members' replies (lane scheduler-2-rebase, onto commit-onto-log's per-member uncertain replies): fn-ocs-members-told-only-after-the-barrier (keystone; subjects the host's two calls per batch, fn-ocs-commit-step -- through fn-ocs-commit-event for the committer, directly for the inline commit fnn-owner-commit-queued-locked -- and fn-ocs-member-releases, which host/native/owner.lisp fnn-owner-commit-complete-locked calls over each member's (WORD RENDERABLE)): if the releases for the step's action name any member :rendered (its own rendered completion: the acceptance or refusal its word decided), then the phase was :staged and the event :fenced. fn-ocs-failed-barrier-stops-telling-no-member: a staged batch whose barrier failed gets the :stop (the recovery event: the store fenced, exit 3) and no member :rendered. fn-ocs-member-rendered-only-in-a-complete (iff: :rendered exactly when the action is :complete and the word is not :uncertain), fn-ocs-member-otherwise-uncertain (every other release is :own-uncertain, :uncertain-reply or :close), fn-ocs-member-uncertain-word-told-uncertain. Scope: accepted and refused are the member's own ACL2 word and rendered reply, unchanged by the COMPLETE; after a stop a refused member is answered uncertain too (its refusal can rest on an earlier member whose record the log may not hold). A service stopped by the operator during a barrier answers every member with the close (host, uncertain), outside this theorem.",
@@ -9906,122 +9973,6 @@
       "events": [
         "fn-own-feed-intent-reconcile-kind-reads-no-txid",
         "fn-own-feed-intent-reuse-is-a-fresh-intent"
-      ]
-    },
-    {
-      "id": "PRF-270",
-      "title": "The record log's segments: the drop of the segments a checkpoint covers preserves the history the open replays (T8), the open's plan ignores covered leftovers, and the rotation's kernel is the recovered kernel of the new segment",
-      "statement": "books/store-log-segments.lisp. KEYSTONE fn-lg-segment-drop-preserves-the-open: over the host's fold (fn-lgs-open-chain-records / fn-lgs-open-chain-last: fn-lg-open-kernel per segment read as a string, the genesis carried; host/native/io.lisp fnn-log-scan-segments calls both per closed segment), when the checkpoint's prefix is the covered segments' records and the F row's genesis their last trailer, the checkpoint's records followed by the fold over the remaining segments from that genesis are the fold over every segment (fn-lgs-open-chain-is-the-chain: the fold is the model chain fn-lgs-chain-records over the segments' octets; the replay of that split is the full replay by fn-sn-recover-from-checkpoint-equals-full-recover). fn-lgs-open-plan-scan-ignores-covered: at the drop's cuts (fnn-log-drop: drop-unlinked, drop-durable) the open's plan (fn-lgs-open-plan, called by fnn-recover-log) scans the same segments and refuses the same stores whatever covered segments remain. fn-lgs-rotate-is-the-recovered-kernel: the rotated kernel (fnn-log-rotate) is the kernel recovery derives from the new segment's durable zeros with the closed segment's last trailer, so R holds for the new segment by the fact that establishes it at log-recovered. fn-lgs-chain-records-of-append: the chain splits at any segment boundary.",
-      "milestone": "M5",
-      "requirements": [
-        "STO-034"
-      ],
-      "depends_on": [],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/store-log-segments.lisp",
-        "tests/acl2/store-log-segments-tests.lisp",
-        "host/native/io.lisp",
-        "tests/test_native_log_compaction.py",
-        "planning/evidence/log-recovery-2026-09-27.md"
-      ],
-      "events": [
-        "fn-lg-segment-drop-preserves-the-open",
-        "fn-lgs-open-chain-records-of-append",
-        "fn-lgs-open-chain-is-the-chain",
-        "fn-lgs-open-plan-scan-ignores-covered",
-        "fn-lgs-rotate-is-the-recovered-kernel",
-        "fn-lgs-chain-records-of-append"
-      ],
-      "progress_note": "Lane log-recovery 2026-09-27: admitted in the persvati REPL with its test book; certification is the batch's."
-    },
-    {
-      "id": "PRF-288",
-      "title": "While a batch's barrier is in flight readers are served at the durable view and new POSTs are prepared into the next batch: no read reveals a record of the batch in flight or of the next one before its COMPLETE, and no new POST joins the batch in flight",
-      "statement": "Subjects: fn-ocv-capture (host/owner-host.lisp fn-owner-reader-views-capture, called by host/native/owner.lisp fnn-owner-reader-capture at the committer's START, START-NEXT, COMPLETE and drop), fn-ocfg-with-view / fn-ocfg-at-reader-view (host/owner-host.lisp fn-owner-at-reader-view, around fn-owner-chunk-span and fn-owner-open), fn-olr-take (host/native/io.lisp fnn-log-take). KEYSTONE fn-ocvm-reader-view-is-the-completed-prefix (books/owner-reader-view.lisp): in the capture discipline's count model (a view as the record count it is the view of), along every legal run of START (at an idle owner), START-NEXT (behind a batch in flight, no next open), :unnext, COMPLETE and drop events from the idle owner, the reader view fn-ocv-reader-view is C, the count of records whose batch COMPLETED (whose barrier returned fenced: fn-ocp-complete-only-after-the-barrier), while the working view is C + A + B (A the batch in flight, B the next batch): no read counts a record of either batch before its COMPLETE. Hypothesis: the run is legal (fn-ocvm-legal-run-p), which fn-ocp-start-next-only-behind-a-sync and fn-ocp-sync-only-when-none-in-flight give the host's event order; the model counts views, the host captures the view objects at the same points. KEYSTONE fn-ocl-relation-of-a-view-captured-before-appends: the view of a related owner OC0 (fn-ocl-relation), put into a related owner OC whose Store has only appended records since OC0 (the same configuration history and configuration), gives a related owner, and the view's version is at most OC0's record count: every served-read theorem stated under fn-ocl-relation (fn-scar-ocfg-read-span-is-reference-under-ocl-relation among them) holds of the read a reader quantum runs during a barrier, over the replay of at most the records the Store held at the capture. Hypotheses: the append-only Store and the unchanged configuration between capture and read (in flight no control quantum runs: fn-ocs-in-flight-admits-only-inspect-commit-and-reader). Scope: the relation of the owner AFTER the reader's entry, with the working view put back, is not restated here (no read-preservation theorem exists for the served path today). KEYSTONE fn-olr-take-never-joins-the-batch-in-flight: the log's take never changes the kernel's INFLIGHT, and a taken record is appended to the open BATCH; with fn-ocp-sync-only-when-none-in-flight (the open batch is sealed only after the batch in flight is fenced) a POST a reader queued during a barrier never joins the batch in flight.",
-      "milestone": "M5",
-      "requirements": [
-        "HST-023"
-      ],
-      "depends_on": [
-        "PRF-267",
-        "PRF-272"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/owner-reader-view.lisp",
-        "tests/acl2/owner-reader-view-tests.lisp",
-        "host/owner-host.lisp",
-        "host/native/owner.lisp",
-        "tests/test_native_owner_scheduler.py"
-      ],
-      "progress_note": "Lane owner-scheduler-2 (Opus 5.5, 2026-09-27; PKT-688 (4) slice 2, on lane commit-onto-log's :commit class). Host lines: host/native/owner.lisp fnn-owner-gate-pick calls fn-ocs-next at every release of the owner and every arrival at an idle one; fnn-owner-gate-leave calls fn-ocs-observe; fnn-owner-commit-event calls fn-ocs-commit-event inside the committer's :commit quanta (fnn-owner-commit-batch: START = fnn-owner-commit-start-locked, then fnn-owner-commit-barrier with the owner released, then COMPLETE = fnn-owner-commit-complete-locked under a second :commit quantum whose unwind-protect applies :completed); host/native/control.lisp fnn-control-live-status-answer enters as :inspect after ACL2's fn-native-live-status-host-requestp chose that path. Teeth: tests/acl2/owner-commit-steps-tests.lisp (states reached from fn-ocs-init; the keystone tight at 1 in and out of a batch; must-fail with the inspect absent for three picks: delay 3; in flight only readers waiting: nobody admitted, and the same readers admitted after :fenced/:completed (must-fail); the step machine's whole cycle and its faults). Native: tests.test_native_owner_scheduler test_status_is_answered_while_a_batch_barrier_is_in_flight (a developer selector holds the barrier 6 s: status answered inside it, GROUP and the 240 after it).",
-      "events": [
-        "fn-ocvm-reader-view-is-the-completed-prefix",
-        "fn-ocl-relation-of-a-view-captured-before-appends",
-        "fn-olr-take-never-joins-the-batch-in-flight",
-        "fn-ocl-view-historyp-of-a-view-captured-before-appends",
-        "fn-ocl-view-configp-of-a-view-captured-before-appends",
-        "fn-ocfg-at-reader-view-reads-the-reader-view",
-        "fn-ocfg-with-view-keeps-the-rest"
-      ]
-    },
-    {
-      "id": "PRF-280",
-      "title": "Every history the profile admits reopens: the open's recovery input bound is H plus the profile's transaction count times the per-record encoding overhead, which holds every admitted history's encoded records",
-      "statement": "books/store-replay-bound.lisp (lane compact-arena, the coordinator's addition to PKT-686). Since the records flip the history budget H counts an article row's payload octets while its transaction file holds the whole encoded record, so a store the budget admitted up to H held more than H octets of records and the open refused it at every heap size (\"transaction recovery input exceeds configured bound\": a small-preset store of 3,500 x 2 KiB posts, lane reservation-after-flip; post-alloc's capacity-vector store). fn-srb-replay-input-bound PROFILE = H + T x fn-srb-record-overhead, the overhead fn-record-encoded-octets-ceiling 0 G (books/records-shape.lisp: 1,083 + 261 G). KEYSTONE fn-srb-admitted-history-is-within-the-bound: (implies (and (fn-bs-profile-admittedp profile) (<= (len encoded) T) (<= (fn-srb-sum stored) H) (fn-srb-pointwise-within encoded stored (fn-srb-record-overhead profile))) (fn-srb-replay-within-boundp profile (fn-srb-sum encoded))): any history of at most T records whose budget octets sum within H, each record encoded within its budget octets plus the overhead, is within the bound. fn-srb-within-h-is-within-the-bound: everything the H bound accepted is accepted. Host: host/store-host.lisp fn-store-profile-replay-within-bound calls fn-srb-replay-within-boundp, from host/native/io.lisp fnn-durable-records and fnn-read-suffix-records. Scope: the per-record hypothesis is records-seam's narrow length bound for the records the POST path produces (fn-sbud-article-figure-bounds-the-record); every other row's budget octets are its whole encoding (fn-sbud-row-octets), overhead 0. The small preset's bound is 94,552,064 octets.",
-      "milestone": "M5",
-      "requirements": [
-        "STO-023",
-        "STO-005"
-      ],
-      "depends_on": [
-        "PRF-198"
-      ],
-      "assumptions": [
-        "A-HOST"
-      ],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/store-replay-bound.lisp",
-        "tests/acl2/store-replay-bound-tests.lisp",
-        "host/store-host.lisp",
-        "host/native/io.lisp",
-        "planning/evidence/compact-arena-2026-09-27.md"
-      ],
-      "progress_note": "Lane compact-arena (2026-09-27): the book and its test book REPL-admitted on hbox (w28, --source-deps); certification is the batch's.",
-      "events": [
-        "fn-srb-admitted-history-is-within-the-bound",
-        "fn-srb-within-h-is-within-the-bound"
-      ]
-    },
-    {
-      "id": "PRF-271",
-      "title": "Content reclamation over the record log checkpoints exactly the reclaiming pack's rewrite of the committed history",
-      "statement": "books/store-log-reclaim.lisp KEYSTONE fn-lgr-decide-checkpoints-the-rewrite: when fn-lgr-decide (host: host/checkpoint-host.lisp fn-store-log-reclaim-decide, called by host/native/checkpoint.lisp fnn-log-reclaim-steps) answers :reclaim, the run is not a dry run, the profile is admitted, some article is rewritten, the Message-IDs it reports are fn-rclp-rewritten-msgids and the history the host replays and checkpoints (with the log rotated, then the covered segments dropped: PRF-270) is exactly fn-rclp-events of the committed history under the store's context (fn-rclp-ctx: STO-014's per-article decision over every holder), so books/store-reclaim-pack.lisp's theorems about that list (a held article is never touched, a reclaimed event stays reclaimed, a rerun rewrites nothing) are about what the log's checkpoint holds.",
-      "milestone": "M5",
-      "requirements": [
-        "STO-017",
-        "STO-034"
-      ],
-      "depends_on": [
-        "PRF-270"
-      ],
-      "assumptions": [],
-      "status": "uncertified-at-current-digest",
-      "evidence": [
-        "books/store-log-reclaim.lisp",
-        "tests/acl2/store-log-reclaim-tests.lisp",
-        "host/checkpoint-host.lisp",
-        "host/native/checkpoint.lisp",
-        "tests/test_native_log_compaction.py",
-        "planning/evidence/log-recovery-2026-09-27.md"
-      ],
-      "progress_note": "Lane log-recovery 2026-09-27: admitted in the persvati REPL with its test book; certification is the batch's.",
-      "events": [
-        "fn-lgr-decide-checkpoints-the-rewrite"
       ]
     },
     {
@@ -10271,6 +10222,35 @@
       ]
     },
     {
+      "id": "PRF-280",
+      "title": "Every history the profile admits reopens: the open's recovery input bound is H plus the profile's transaction count times the per-record encoding overhead, which holds every admitted history's encoded records",
+      "statement": "books/store-replay-bound.lisp (lane compact-arena, the coordinator's addition to PKT-686). Since the records flip the history budget H counts an article row's payload octets while its transaction file holds the whole encoded record, so a store the budget admitted up to H held more than H octets of records and the open refused it at every heap size (\"transaction recovery input exceeds configured bound\": a small-preset store of 3,500 x 2 KiB posts, lane reservation-after-flip; post-alloc's capacity-vector store). fn-srb-replay-input-bound PROFILE = H + T x fn-srb-record-overhead, the overhead fn-record-encoded-octets-ceiling 0 G (books/records-shape.lisp: 1,083 + 261 G). KEYSTONE fn-srb-admitted-history-is-within-the-bound: (implies (and (fn-bs-profile-admittedp profile) (<= (len encoded) T) (<= (fn-srb-sum stored) H) (fn-srb-pointwise-within encoded stored (fn-srb-record-overhead profile))) (fn-srb-replay-within-boundp profile (fn-srb-sum encoded))): any history of at most T records whose budget octets sum within H, each record encoded within its budget octets plus the overhead, is within the bound. fn-srb-within-h-is-within-the-bound: everything the H bound accepted is accepted. Host: host/store-host.lisp fn-store-profile-replay-within-bound calls fn-srb-replay-within-boundp, from host/native/io.lisp fnn-durable-records and fnn-read-suffix-records. Scope: the per-record hypothesis is records-seam's narrow length bound for the records the POST path produces (fn-sbud-article-figure-bounds-the-record); every other row's budget octets are its whole encoding (fn-sbud-row-octets), overhead 0. The small preset's bound is 94,552,064 octets.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-023",
+        "STO-005"
+      ],
+      "depends_on": [
+        "PRF-198"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-replay-bound.lisp",
+        "tests/acl2/store-replay-bound-tests.lisp",
+        "host/store-host.lisp",
+        "host/native/io.lisp",
+        "planning/evidence/compact-arena-2026-09-27.md"
+      ],
+      "progress_note": "Lane compact-arena (2026-09-27): the book and its test book REPL-admitted on hbox (w28, --source-deps); certification is the batch's.",
+      "events": [
+        "fn-srb-admitted-history-is-within-the-bound",
+        "fn-srb-within-h-is-within-the-bound"
+      ]
+    },
+    {
       "id": "PRF-281",
       "title": "The paged payload arena: fixed pages, no doubling; the node's arena attachment corresponds to the generic's list of sealed payloads",
       "statement": "books/payload-arena-paged.lisp: fn-arena-paged is an abstract stobj over the concrete fn-arena$p (a resizable table of page stobjs, each a byte array of *fn-arp-page* = 262,144 octets: above SBCL's large-object size, 131,072, so the collector never copies a page allocated when the page is added; an offset and a size per handle; the count, the fill and the page count). Its logical side is fn-arena-bytes's, verbatim (fn-arena$ap, create-fn-arena$a, the eight fn-arena$a-*), so books/payload-arena-attach.lisp's (attach-stobj fn-arena fn-arena-paged) makes the generic fn-arena (PRF-221) execute over pages while every certificate above the generic stays the generic's. The abstraction fn-arena$pcorr is fn-arena$corr's (PRF-118) with the pages' byte lists concatenated (fn-arp-flat over the first npages pages, each full: fn-arp-fullp) in place of the byte array, and the fill within the pages' capacity. The page arithmetic is proved once: fn-arp-nth-flat and fn-arp-flat-of-page-write (page K's octet J is the flat view's position J + 262144 K; a write there is the flat view's update-nth), fn-arp-nth-flat-at / fn-arp-flat-of-write-at (the same at floor and mod of a position), fn-arp-flat-snoc and fn-arp-flat-of-resize-list (adding a page appends its octets; doubling the table of POINTERS keeps the view). Steps: fn-arp-put-step (a page write is the flat view's update), fn-arp-add-page-step (one more page; every octet below the old capacity kept), fn-arp-write-octet-step, fn-arp-write-appends, fn-arp-seal-list-step; reads fn-arp-byte-is-nth and fn-arp-list-pages-is-list-from (the payload reader walks pages). Every {correspondence}, {preserved} and {guard-thm} obligation is proved before the defabsstobj (fn-arena-paged-get{correspondence} ... fn-arena-paged-clear{preserved}); every executable function is guard-verified. What it changes: a sealed octet never moves and a seal never copies an older payload; growth allocates one 256 KiB page and, when the table has no spare slot, doubles the table's pointers (8 octets per page); the arena's footprint is its payload octets plus under one page plus the handle arrays, and no two copies are live (recover-memory-2's packet P1: the byte array's last doubling kept 256 and 512 MiB live together). The clear releases the page table. Host subject: every host call of an fn-arena export (host/native/io.lisp fnn-arena-seal-*, host/store-node-host.lisp fn-store-sn-lookup through fn-handle-bytes, host/owner-host.lisp's clears) runs over this attachment; the host names only the generic.",
@@ -10398,6 +10378,38 @@
       "events": [
         "fn-oclc-live-authorizep-is-durable-completion",
         "fn-oclc-authorized-record-reopens"
+      ]
+    },
+    {
+      "id": "PRF-288",
+      "title": "While a batch's barrier is in flight readers are served at the durable view and new POSTs are prepared into the next batch: no read reveals a record of the batch in flight or of the next one before its COMPLETE, and no new POST joins the batch in flight",
+      "statement": "Subjects: fn-ocv-capture (host/owner-host.lisp fn-owner-reader-views-capture, called by host/native/owner.lisp fnn-owner-reader-capture at the committer's START, START-NEXT, COMPLETE and drop), fn-ocfg-with-view / fn-ocfg-at-reader-view (host/owner-host.lisp fn-owner-at-reader-view, around fn-owner-chunk-span and fn-owner-open), fn-olr-take (host/native/io.lisp fnn-log-take). KEYSTONE fn-ocvm-reader-view-is-the-completed-prefix (books/owner-reader-view.lisp): in the capture discipline's count model (a view as the record count it is the view of), along every legal run of START (at an idle owner), START-NEXT (behind a batch in flight, no next open), :unnext, COMPLETE and drop events from the idle owner, the reader view fn-ocv-reader-view is C, the count of records whose batch COMPLETED (whose barrier returned fenced: fn-ocp-complete-only-after-the-barrier), while the working view is C + A + B (A the batch in flight, B the next batch): no read counts a record of either batch before its COMPLETE. Hypothesis: the run is legal (fn-ocvm-legal-run-p), which fn-ocp-start-next-only-behind-a-sync and fn-ocp-sync-only-when-none-in-flight give the host's event order; the model counts views, the host captures the view objects at the same points. KEYSTONE fn-ocl-relation-of-a-view-captured-before-appends: the view of a related owner OC0 (fn-ocl-relation), put into a related owner OC whose Store has only appended records since OC0 (the same configuration history and configuration), gives a related owner, and the view's version is at most OC0's record count: every served-read theorem stated under fn-ocl-relation (fn-scar-ocfg-read-span-is-reference-under-ocl-relation among them) holds of the read a reader quantum runs during a barrier, over the replay of at most the records the Store held at the capture. Hypotheses: the append-only Store and the unchanged configuration between capture and read (in flight no control quantum runs: fn-ocs-in-flight-admits-only-inspect-commit-and-reader). Scope: the relation of the owner AFTER the reader's entry, with the working view put back, is not restated here (no read-preservation theorem exists for the served path today). KEYSTONE fn-olr-take-never-joins-the-batch-in-flight: the log's take never changes the kernel's INFLIGHT, and a taken record is appended to the open BATCH; with fn-ocp-sync-only-when-none-in-flight (the open batch is sealed only after the batch in flight is fenced) a POST a reader queued during a barrier never joins the batch in flight.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-267",
+        "PRF-272"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-reader-view.lisp",
+        "tests/acl2/owner-reader-view-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_owner_scheduler.py"
+      ],
+      "progress_note": "Lane owner-scheduler-2 (Opus 5.5, 2026-09-27; PKT-688 (4) slice 2, on lane commit-onto-log's :commit class). Host lines: host/native/owner.lisp fnn-owner-gate-pick calls fn-ocs-next at every release of the owner and every arrival at an idle one; fnn-owner-gate-leave calls fn-ocs-observe; fnn-owner-commit-event calls fn-ocs-commit-event inside the committer's :commit quanta (fnn-owner-commit-batch: START = fnn-owner-commit-start-locked, then fnn-owner-commit-barrier with the owner released, then COMPLETE = fnn-owner-commit-complete-locked under a second :commit quantum whose unwind-protect applies :completed); host/native/control.lisp fnn-control-live-status-answer enters as :inspect after ACL2's fn-native-live-status-host-requestp chose that path. Teeth: tests/acl2/owner-commit-steps-tests.lisp (states reached from fn-ocs-init; the keystone tight at 1 in and out of a batch; must-fail with the inspect absent for three picks: delay 3; in flight only readers waiting: nobody admitted, and the same readers admitted after :fenced/:completed (must-fail); the step machine's whole cycle and its faults). Native: tests.test_native_owner_scheduler test_status_is_answered_while_a_batch_barrier_is_in_flight (a developer selector holds the barrier 6 s: status answered inside it, GROUP and the 240 after it).",
+      "events": [
+        "fn-ocvm-reader-view-is-the-completed-prefix",
+        "fn-ocl-relation-of-a-view-captured-before-appends",
+        "fn-olr-take-never-joins-the-batch-in-flight",
+        "fn-ocl-view-historyp-of-a-view-captured-before-appends",
+        "fn-ocl-view-configp-of-a-view-captured-before-appends",
+        "fn-ocfg-at-reader-view-reads-the-reader-view",
+        "fn-ocfg-with-view-keeps-the-rest"
       ]
     }
   ]

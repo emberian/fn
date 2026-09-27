@@ -348,7 +348,7 @@ function supplied no observation at all, which is a defect here."
 
 (defun fnn-owner-finish-submission ()
   "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
-  (fnn-owner-arena-action 'fn-owner-finish-submission))
+  (fnn-owner-core 'fn-owner-finish-submission))
 
 ;;; The typed results (books/owner-results.lisp; wave 5 adapter retirement).
 ;;; A wrapper that used to answer a keyword and leave the rest of its result
@@ -690,7 +690,7 @@ checkpoint's S, or NIL."
   (declare (ignore records))
   (let* ((mode (fnn-store-open-mode store))
          (s (and (eq (first mode) :checkpoint) (second mode)))
-         (result (fnn-owner-core 'fn-owner-recover-from-store-open max-connections)))
+         (result (fnn-owner-action 'fn-owner-recover-from-store-open max-connections)))
     (unless (eq result :recovering)
       (fnn-fault "owner rejected committed history"))
     (unless (eq (fnn-owner-core 'fn-owner-sco-note-durable s) :noted)
@@ -1244,7 +1244,9 @@ follows is justified only by this line."
                 ;; (host/owner-host.lisp fn-owner-prepare-buffer).
                 (when (eq prepared :seal-buffer)
                   (fnn-seal-live-buffer)
-                  (setq prepared :prepared))
+                  ;; Step 8: the catalog prepares the store's row, which names
+                  ;; the handle just sealed (one seal per POST).
+                  (setq prepared (fnn-owner-action 'fn-owner-cat-prepare-sealed)))
                 (unless (eq prepared :prepared)
                   (setf (fnn-store-fenced store) t)
                   (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation)

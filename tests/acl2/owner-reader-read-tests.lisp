@@ -18,15 +18,44 @@
               (symbol-class 'fn-ocs-publication-class (w state)))
         '(:common-lisp-compliant :common-lisp-compliant)))
 
-; The host call on ground octets: the buffer filled as fnn-octets-fill fills
-; it, the whole region read (i 0, end its length), an empty sealed arena.
+; The catalog premise of the keystone (fn-scr-owner-catalogp, a defun-nx:
+; not executable) is not built on ground values here.  Under it the host's
+; call is the same composition over the carried read without the catalog
+; (books/served-catalog-chain.lisp fn-scr-ocfg-read-span-is-scar-ocfg-read-
+; span), so the witnesses run that twin, tied to fn-orr-read-span by the
+; theorem below; the premise's removal is the must-fail further down.
+(defun orrt-read-span-scar (oc views id i end fn-octets fn-arena)
+  (declare (xargs :stobjs (fn-octets fn-arena) :verify-guards nil))
+  (if (consp views)
+      (let ((result (fn-scar-ocfg-read-span (fn-ocfg-at-reader-view oc views)
+                                            id i end fn-octets fn-arena)))
+        (fn-own-tls-make-result
+         (fn-own-tls-result-consumed result)
+         (fn-own-tls-result-effects result)
+         (fn-ocfg-with-view (fn-own-tls-result-owner result)
+                            (fn-own-view (fn-ocfg-owner oc)))
+         (fn-own-tls-result-repinned result)))
+    (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)))
+
+(defthm orrt-the-host-read-is-the-twin-under-the-catalog
+  (implies (fn-scr-owner-catalogp (fn-ocfg-owner (if (consp views)
+                                                     (fn-ocfg-at-reader-view oc views)
+                                                   oc))
+                                  id fn-arena fn-cat)
+           (equal (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)
+                  (orrt-read-span-scar oc views id i end fn-octets fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-orr-read-span fn-scr-ocfg-read-span-is-scar-ocfg-read-span)
+                                  (fn-scr-owner-catalogp fn-ocfg-at-reader-view)))))
+
+; The call on ground octets: the buffer filled as fnn-octets-fill fills it,
+; the whole region read (i 0, end its length), an empty sealed arena.
 (defun orrt-span (oc views id octs fn-octets)
   (declare (xargs :stobjs fn-octets :verify-guards nil))
   (let ((fn-octets (fn-octets-from-list octs fn-octets)))
     (mv (with-local-stobj fn-arena
           (mv-let (r fn-arena)
             (let ((fn-arena (fn-arn-seal-many nil fn-arena)))
-              (mv (fn-orr-read-span oc views id 0 (len octs) fn-octets fn-arena) fn-arena))
+              (mv (orrt-read-span-scar oc views id 0 (len octs) fn-octets fn-arena) fn-arena))
             r))
         fn-octets)))
 (defun orrt (oc views id octs)
@@ -167,11 +196,10 @@
 (assert-event (fn-ocri-relation
                (fn-own-tls-result-owner (orrt *ocp-new* nil 2 *orrt-test-group*))))
 
-; The configuration alone (the history kept) and natp i / natp end cannot be
-; dropped separately on ground owners here (a related owner's configuration
-; is its history's replay, and the host reads from 0 to the region's
-; length); the proof does not go through without them (failed proof search,
-; not a counterexample).
+; The configuration alone (the history kept) cannot be dropped separately on
+; ground owners here (a related owner's configuration is its history's
+; replay); the keystone's own proof does not go through without it (failed
+; proof search with the keystone's hints, not a counterexample).
 (must-fail
  (defthm orrt-needs-the-configuration
    (implies (and (consp views)
@@ -183,10 +211,51 @@
                                 extra))
                  (equal (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc)))
                         (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc0))))
+                 (fn-scr-owner-catalogp (fn-ocfg-owner (fn-ocfg-with-view oc (car views)))
+                                        id fn-arena fn-cat)
                  (natp i) (natp end))
             (fn-ocri-relation
-             (fn-own-tls-result-owner (fn-orr-read-span oc views id i end fn-octets fn-arena))))
-   :hints (("Goal" :in-theory (disable fn-ocri-relation)))))
+             (fn-own-tls-result-owner (fn-orr-read-span oc views id i end fn-octets fn-arena
+                                                        fn-cat))))
+   :hints (("Goal" :use ((:instance fn-orr-reader-relation-at-a-captured-view)
+                         (:instance fn-orr-span-read-keeps-the-reader-relation-and-the-rest
+                                    (x (fn-ocfg-with-view oc (car views))))
+                         (:instance fn-orr-restoring-the-working-view-keeps-the-reader-relation
+                                    (x2 (fn-own-tls-result-owner
+                                         (fn-scr-ocfg-read-span (fn-ocfg-with-view oc (car views))
+                                                                id i end fn-octets fn-arena fn-cat)))))
+            :in-theory (union-theories '(fn-orr-read-span fn-ocfg-at-reader-view fn-ocv-reader-view
+                                         fn-orr-tls-result-of-make fn-orr-with-view-fields)
+                                       (theory 'minimal-theory))))))
+
+; Without the catalog premise the keystone's own proof does not go through
+; (failed proof search with its hints, not a counterexample).
+(must-fail
+ (defthm orrt-needs-the-catalog
+   (implies (and (consp views)
+                 (equal (car views) (fn-own-view (fn-ocfg-owner oc0)))
+                 (fn-ocri-relation oc0)
+                 (fn-ocri-relation oc)
+                 (equal (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                        (append (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc0))))
+                                extra))
+                 (equal (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc)))
+                        (fn-sn-config-history (fn-own-store (fn-ocfg-owner oc0))))
+                 (equal (fn-ocfg-config oc) (fn-ocfg-config oc0))
+                 (natp i) (natp end))
+            (fn-ocri-relation
+             (fn-own-tls-result-owner (fn-orr-read-span oc views id i end fn-octets fn-arena
+                                                        fn-cat))))
+   :hints (("Goal" :use ((:instance fn-orr-reader-relation-at-a-captured-view)
+                         (:instance fn-orr-span-read-keeps-the-reader-relation-and-the-rest
+                                    (x (fn-ocfg-with-view oc (car views))))
+                         (:instance fn-orr-restoring-the-working-view-keeps-the-reader-relation
+                                    (x2 (fn-own-tls-result-owner
+                                         (fn-scr-ocfg-read-span (fn-ocfg-with-view oc (car views))
+                                                                id i end fn-octets fn-arena fn-cat)))))
+            :in-theory (union-theories '(fn-orr-read-span fn-ocfg-at-reader-view fn-ocv-reader-view
+                                         fn-orr-tls-result-of-make fn-orr-with-view-fields)
+                                       (theory 'minimal-theory))))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-ocvp-reader-view-is-at-the-current-generation.

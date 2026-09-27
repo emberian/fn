@@ -767,9 +767,10 @@ RAW_DISPATCHERS = {"fnn-call": 0, "fnn-core": 0, "fnn-core-state": 1,
 # The state dispatchers pass the live payload arena before state to an entry
 # whose ACL2 formals end in (fn-arena state) (host/native/io.lisp
 # fnn-arena-then-state, read off the entry's stobjs-in: lane served-readers).
-# ARENA_ENTRIES is filled from the tree's formals by raw_arity_findings.
+# (or (fn-arena fn-cat state): both).  ARENA_ENTRIES (name -> how many) is
+# filled from the tree's formals by raw_arity_findings.
 ARENA_STATE_DISPATCHERS = {"fnn-core-state", "fnn-owner-core", "fnn-owner-action"}
-ARENA_ENTRIES: set[str] = set()
+ARENA_ENTRIES: dict[str, int] = {}
 
 RAW_LAMBDA_KEYWORDS = {"&optional", "&rest", "&body", "&key", "&aux",
                        "&allow-other-keys", "&whole", "&environment"}
@@ -912,8 +913,8 @@ def raw_applications(form, found: list, shadowed: frozenset = frozenset()) -> No
             callee = str(target[1]).lower()
             found.append(("'" + callee,
                           len(form) - 2 + RAW_DISPATCHERS[name]
-                          + (1 if name in ARENA_STATE_DISPATCHERS
-                             and callee in ARENA_ENTRIES else 0)))
+                          + (ARENA_ENTRIES.get(callee, 0)
+                             if name in ARENA_STATE_DISPATCHERS else 0)))
     if name not in shadowed and not name.startswith((":", "&")):
         found.append((name, len(form) - 1))
     walk(form[1:])
@@ -1046,14 +1047,19 @@ def raw_arity_findings(root: Path) -> tuple[list[dict], dict]:
     for definition in wrappers:
         seen.setdefault(definition.name, set()).add(len(definition.formals))
     ARENA_ENTRIES.clear()
+    def trailing(formals):
+        tail = [str(f).lower() for f in formals[-3:]]
+        if tail == ["fn-arena", "fn-cat", "state"]:
+            return 2
+        if tail[-2:] == ["fn-arena", "state"]:
+            return 1
+        return 0
     for name, function in tree.functions.items():
-        formals = function.formals
-        if isinstance(formals, list) and [str(f).lower() for f in formals[-2:]] == ["fn-arena", "state"]:
-            ARENA_ENTRIES.add(name)
+        if isinstance(function.formals, list) and trailing(function.formals):
+            ARENA_ENTRIES[name] = trailing(function.formals)
     for definition in wrappers:
-        formals = definition.formals
-        if isinstance(formals, list) and [str(f).lower() for f in formals[-2:]] == ["fn-arena", "state"]:
-            ARENA_ENTRIES.add(definition.name)
+        if isinstance(definition.formals, list) and trailing(definition.formals):
+            ARENA_ENTRIES[definition.name] = trailing(definition.formals)
     for name, lengths in seen.items():
         if name in macros or name in arity:
             continue
