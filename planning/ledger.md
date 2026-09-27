@@ -13,16 +13,16 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1178 |
 | Certification roots in the Makefile | 1138 |
 | Books inside the root closure | 1167 |
-| `defthm` and `defthmd` events | 17354 |
-| `defun` events | 12031 |
+| `defthm` and `defthmd` events | 17379 |
+| `defun` events | 12040 |
 | Functions with verified guards | 2415 |
-| Functions declared `:verify-guards nil` and never verified | 1213 |
-| Functions left at the default with an explicit guard | 6651 |
-| Functions left at the default with no guard | 1752 |
-| `assert-event` checks | 17293 |
-| `must-fail` checks | 2103 |
+| Functions declared `:verify-guards nil` and never verified | 1214 |
+| Functions left at the default with an explicit guard | 6656 |
+| Functions left at the default with no guard | 1755 |
+| `assert-event` checks | 17334 |
+| `must-fail` checks | 2108 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 88 |
+| `encapsulate` events | 89 |
 | Theorems flagged SUSPECT by shape | 186 |
 | Export-hygiene warnings | 201 |
 | Enabled-projection warnings | 49 |
@@ -414,7 +414,7 @@ that `make certify` requests.
 | `books/group-number-index.lisp` | root | 2 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/group-status.lisp` | closure | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/heap-figure.lisp` | root | 13 | 15 | 0/0/15/0 | 0 | 0 | 0 |
-| `books/heap-reservation.lisp` | root | 56 | 41 | 0/0/41/0 | 0 | 0 | 0 |
+| `books/heap-reservation.lisp` | root | 57 | 41 | 0/0/41/0 | 0 | 0 | 0 |
 | `books/held-record.lisp` | closure | 56 | 45 | 22/0/23/0 | 0 | 0 | 1 |
 | `books/history-fold-refinement.lisp` | closure | 29 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/history-wire.lisp` | closure | 3 | 1 | 0/0/1/0 | 0 | 0 | 2 |
@@ -695,7 +695,7 @@ that `make certify` requests.
 | `books/store-prepare-correspondence.lisp` | root | 19 | 5 | 2/0/0/3 | 0 | 0 | 0 |
 | `books/store-profile-facts.lisp` | root | 4 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/store-profile-namespace.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
-| `books/store-profile-open.lisp` | root | 24 | 11 | 0/1/8/2 | 0 | 0 | 0 |
+| `books/store-profile-open.lisp` | root | 48 | 17 | 0/2/13/2 | 0 | 0 | 0 |
 | `books/store-reclaim-buffer.lisp` | root | 6 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-reclaim-holders.lisp` | root | 4 | 6 | 0/2/4/0 | 0 | 0 | 0 |
 | `books/store-reclaim-pack.lisp` | root | 30 | 13 | 0/12/1/0 | 0 | 0 | 2 |
@@ -1220,7 +1220,7 @@ that `make certify` requests.
 | `tests/acl2/store-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/store-profile-facts-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 17 | 1 | 0 |
 | `tests/acl2/store-profile-namespace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
-| `tests/acl2/store-profile-open-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 36 | 1 | 0 |
+| `tests/acl2/store-profile-open-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 77 | 6 | 0 |
 | `tests/acl2/store-reclaim-buffer-tests.lisp` | root | 1 | 3 | 0/3/0/0 | 8 | 1 | 0 |
 | `tests/acl2/store-reclaim-holders-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 13 | 5 | 0 |
 | `tests/acl2/store-reclaim-pack-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 29 | 8 | 0 |
