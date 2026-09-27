@@ -5298,7 +5298,7 @@ fn-lgs-chain-broken-p), never read as a torn tail.  Returns the kernel
 
 (defun fnn-log-open-kernel (fd extent unit max &optional (genesis *fn-lg-genesis*))
   "(values RECORDS KERNEL) of the segment (fnn-log-stream-segment collecting
-the records): for the log rig's oracle, never the open."
+the records as octet vectors): for the log rig's oracle, never the open."
   (let* ((records nil)
          (ks (fnn-log-stream-segment fd extent unit max genesis
                                      (lambda (r) (push r records)))))
@@ -5366,7 +5366,7 @@ acknowledges past the committed records' count)."
     (fnn-out "~a records=~d frontier=~d next=~d last=~a workload=~(~a~)"
              what (fnn-core 'fn-lgc-acked ks) (fnn-core 'fn-lgc-frontier ks)
              (fnn-core 'fn-lgc-next-txid ks) (fnn-hex (fnn-core 'fn-lgc-last ks))
-             (if (fnn-core 'fn-lg-workload-prefixp records 1 size)
+             (if (fnn-core 'fn-lg-workload-prefixp (mapcar #'fnn-octet-list records) 1 size)
                  "t" "nil"))))
 
 (defun fnn-log-nat-arg (text what)
