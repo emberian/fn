@@ -306,7 +306,13 @@ observation into the outcome and this function only carries it out."
                      (code (progn
                              (unless (consp profile)
                                (fnn-fault "ACL2 accepted an init plan with no store profile"))
-                             (fnn-command-init root groups profile))))
+                             ;; PKT-648: the store's durability policy,
+                             ;; 1 under a mission (fn-smid-init-policy).
+                             (fnn-command-init
+                              root groups profile
+                              (fnn-core 'fn-smid-init-policy
+                                        (fnn-core 'fn-native-operator-host-result-config-mission
+                                                  result))))))
                 (fnn-operator-emit-status
                  (fnn-operator-status-of-exit-code code) "init")
                 code))))
@@ -472,6 +478,10 @@ observation into the outcome and this function only carries it out."
                       (:reclaim (funcall *fnn-reclaim-callback* root nil))
                       (:reclaim-dry-run (funcall *fnn-reclaim-callback* root t))
                       (:checkpoint (fnn-command-state-checkpoint root))
+                      (:rebind-filesystem
+                       (fnn-command-rebind-filesystem
+                        root
+                        (fnn-core 'fn-native-operator-host-result-rebind-policy result)))
                       (:export
                        (fnn-command-store-export
                         root
@@ -484,7 +494,10 @@ observation into the outcome and this function only carries it out."
                         (fnn-octets-string
                          (fnn-core 'fn-native-operator-host-result-archive-path-octets
                                    result))
-                        (fnn-core 'fn-native-operator-host-result-import-request result)))
+                        (fnn-core 'fn-native-operator-host-result-import-request result)
+                        (fnn-core 'fn-smid-init-policy
+                                  (fnn-core 'fn-native-operator-host-result-config-mission
+                                            result))))
                       (t +fnn-exit-fault+))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
                                     (string-downcase (symbol-name action)))
@@ -750,7 +763,7 @@ one `init' makes; nothing is opened or locked."
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
           ((:recover :compact :checkpoint :export :import
-            :reclaim :reclaim-dry-run)
+            :reclaim :reclaim-dry-run :rebind-filesystem)
            (fnn-operator-execute-store-action result action))
           (:inspect (fnn-operator-execute-inspect result))
           (:admin (fnn-operator-execute-admin result))

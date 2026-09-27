@@ -467,6 +467,21 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((and (consp words) (equal (car words) "reclaim")
               (equal (cdr words) '("--dry-run")))
          (fn-nop-result :accepted :plan "store" config (list :reclaim-dry-run)))
+        ; PKT-579: record the filesystem the store is on now
+        ; (books/store-mount-identity.lisp fn-smid-rebind-plan), keeping the
+        ; store's durability policy (PKT-648) or setting it.
+        ((and (consp words) (equal (car words) "rebind-filesystem")
+              (null (cdr words)))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :rebind-filesystem nil)))
+        ((and (consp words) (equal (car words) "rebind-filesystem")
+              (equal (cdr words) '("--storage-require-durable" "on")))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :rebind-filesystem 1)))
+        ((and (consp words) (equal (car words) "rebind-filesystem")
+              (equal (cdr words) '("--storage-require-durable" "off")))
+         (fn-nop-result :accepted :plan "store" config
+                        (list :rebind-filesystem 0)))
         (t (fn-nop-usage :invalid-store-command "store" config words))))
 
 ;; `status --watch N': the seconds between two asks.  A work bound on the
@@ -504,7 +519,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG obligations (the retention ledger's held obligations)")
         ((equal subject "recover") "usage: fn operator CONFIG recover")
         ((equal subject "store")
-         "usage: fn operator CONFIG store {export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run] | inspect MESSAGE-ID} (offline; refused while an owner runs; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
+         "usage: fn operator CONFIG store {export ARCHIVE-DIR | import ARCHIVE-DIR [--FIELD N ...] | compact | checkpoint | reclaim [--dry-run] | inspect MESSAGE-ID | rebind-filesystem [--storage-require-durable on|off]} (offline; refused while an owner runs; rebind-filesystem records the filesystem the store is on now, after a deliberate move or a restore; import makes a new store: the configured store must not exist, and the archive's profile, with any field raised, is the new store's)")
         ((equal subject "group") "usage: fn operator CONFIG group {create|retire} NAME | group describe NAME [TEXT ...] (LIST NEWSGROUPS shows TEXT; no TEXT clears it)")
         ((equal subject "motd")
          "usage: fn operator CONFIG motd {set LINE [LINE ...] | clear} (LIST MOTD shows one LINE per argument, each at most 256 octets)")
@@ -1086,6 +1101,15 @@ is installed into the owner for both served and control submission."
   (and (equal (fn-native-operator-result-status result) :accepted)
        (equal (fn-native-operator-result-command result) "init")))
 
+(defun fn-native-operator-result-config-mission (result)
+  "The mission an accepted plan's configuration names (the durability policy
+of the store `init' or `store import' makes, books/store-mount-identity.lisp
+fn-smid-init-policy), else nil."
+  (declare (xargs :guard t))
+  (if (equal (fn-native-operator-result-status result) :accepted)
+      (fn-native-config-ops-mission (fn-native-operator-result-config result))
+    nil))
+
 (defun fn-native-operator-result-init-store-octets (result)
   (declare (xargs :guard t))
   (if (fn-native-operator-result-init-planp result)
@@ -1125,6 +1149,16 @@ names, as octets, else nil."
            (stringp (fn-ncfg-second (fn-native-operator-result-arguments result))))
       (fn-record-string-octets
        (fn-ncfg-second (fn-native-operator-result-arguments result)))
+    nil))
+
+(defun fn-native-operator-result-rebind-policy (result)
+  "The durability policy an accepted `store rebind-filesystem' plan sets (1
+or 0), or nil to keep the store's."
+  (declare (xargs :guard t))
+  (if (and (equal (fn-nop-store-plan-word result) :rebind-filesystem)
+           (member-equal (fn-ncfg-second (fn-native-operator-result-arguments result))
+                         '(0 1)))
+      (fn-ncfg-second (fn-native-operator-result-arguments result))
     nil))
 
 (defun fn-native-operator-result-import-request (result)
@@ -1332,6 +1366,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
                          :inspect)
                   :inspect)
+                 ((equal (fn-ncfg-first (fn-native-operator-result-arguments result))
+                         :rebind-filesystem)
+                  :rebind-filesystem)
                  (t :none)))
           ((and (equal (fn-native-operator-result-command result) "peer")
                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))

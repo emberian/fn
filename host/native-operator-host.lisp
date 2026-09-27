@@ -46,6 +46,10 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-native-action result))
 
+(defun fn-native-operator-host-result-rebind-policy (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-rebind-policy result))
+
 (defun fn-native-operator-host-result-archive-path-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-archive-path-octets result))
@@ -186,6 +190,10 @@
 (defun fn-native-operator-host-result-init-profile (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-init-profile result))
+
+(defun fn-native-operator-host-result-config-mission (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-config-mission result))
 
 (defun fn-native-operator-host-result-init-group-octets (result)
   (declare (xargs :mode :program))

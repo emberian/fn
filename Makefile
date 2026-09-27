@@ -205,6 +205,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-profile-open-tests \
 	books/store-profile-namespace \
 	tests/acl2/store-profile-namespace-tests \
+	books/store-mount-identity \
+	tests/acl2/store-mount-identity-tests \
 	books/store-checkpoint-open \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \

@@ -99,8 +99,8 @@
 ; The record: the identity and the store's durability policy (PKT-648, the
 ; coordinator's decision of 2026-09-27): (0) the store may run on a mount
 ; that disables durability (a warning), (1) it may not (the owner's start is
-; refused by name).  `init' takes it from the preset (development: 0; the
-; default and scale presets: 1); `store rebind-filesystem' can set it.  It
+; refused by name).  `init' takes it from the configuration
+; (`fn-smid-init-policy'); `store rebind-filesystem' can set it.  It
 ; lives here, beside the identity it is judged against, and not in the
 ; saved profile, whose frame is the store format (D34).
 (defun fn-smid-policyp (x)
@@ -642,15 +642,15 @@
   (declare (xargs :guard t))
   (if (equal policy 1) (list 1) (list 0)))
 
-; The policy `init' records: 0 for the development preset (the developer
-; `store ROOT init' default), 1 for every other preset (the operator `init'
-; default and `--profile scale'), and 1 for an import.
-(defun fn-smid-init-policy (request)
+; The policy `init' (and `store import') records: 1 for a store made under
+; a mission's fn.toml (`[ops] mission', the release and public node's
+; configuration: docs/install.md, tools/runbooks/public-node), 0 otherwise
+; (the development, default and scale presets tests and benchmarks run on
+; tmpfs with).  MISSION is the configuration's mission name, or NIL.
+; `store rebind-filesystem --storage-require-durable on|off' changes it.
+(defun fn-smid-init-policy (mission)
   (declare (xargs :guard t))
-  (if (or (equal request :development)
-          (and (consp request) (equal (car request) :development)))
-      0
-    1))
+  (if mission 1 0))
 
 ; -----------------------------------------------------------------------------
 ; The open's decision

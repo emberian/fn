@@ -311,11 +311,9 @@
 ; Required and safe: starts.
 (assert-event (equal (fn-smid-start-verdict (smid-t-record) *smid-t-mounted*)
                      (list :start)))
-; The init policy by preset.
-(assert-event (equal (fn-smid-init-policy :development) 0))
-(assert-event (equal (fn-smid-init-policy '(:development nil)) 0))
-(assert-event (equal (fn-smid-init-policy '(:default nil)) 1))
-(assert-event (equal (fn-smid-init-policy '(:scale nil)) 1))
+; The init policy: 1 under a mission, 0 otherwise.
+(assert-event (equal (fn-smid-init-policy "small-community") 1))
+(assert-event (equal (fn-smid-init-policy nil) 0))
 
 ; Without the same filesystem: the start answers the open's refusal, not the
 ; policy's.
