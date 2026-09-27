@@ -953,6 +953,32 @@ The publication facts it needs are the ones T6 needs (§6 of the review):
 the FNBS publisher's relation to the byte-store model, including the cut
 after an uncertainty callback. Rotation adds no storage primitive.
 
+**Natural rotation** (lane bp-rotation, 2026-09-27). Rotation is no longer
+only the operator's: the node's profile carries a rotation threshold
+(`fn-bp-profile-3`'s fifth field, `rotate-records`, the records the
+selected generation may carry; specs/storage.md), and the open of a node
+verb (`bp-node serve`, `bp-node dispatch`; host/native/bp-node.lisp
+`fnn-bps-rotate-when-due`) asks `fn-bpnrd-due-rotation-event`
+(books/bp-node-rotation-due.lisp) whether to rotate. It answers `(:rotate g
+ck)`, exactly the event `bp-node checkpoint` drives, when the recovered
+generation's record count has reached the threshold and the recovered
+state is quiescent, and NIL otherwise
+(`fn-bpnrd-due-rotation-event-by-definition`). The machine then decides as
+for the operator's rotation, the host publishes and retires with the same
+programs (so `fn-bpnr-rotation-crash-recovers-old-or-new` and
+`fn-bpnr-retirement-cut-keeps-open-view` cover every cut of it), and after
+a rotation the host reopens the journal. Keystone
+`fn-bpnrd-due-rotation-preserves-recovery`: when the machine proposes the
+due rotation's publication, the published checkpoint read back as the next
+open reads it recovers exactly what full recovery over the old generation
+does (with no later rows: the same replay at the rotation's operation
+frontier and a zero row count; with later rows that start after it:
+recovery over the old rows followed by them). Every node open also finishes
+a retirement a death or a failed step left. The default threshold (formats
+1 and 2, or no file) is 4,096 records, half the received namespace's 8,192
+per generation, so a node nobody checkpoints no longer fills its
+generation and refuses custody.
+
 ## 4. The transitions
 
 Every transition is total, refuses malformed operands in the logic, does
