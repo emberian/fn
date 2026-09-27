@@ -475,29 +475,54 @@ vector holds after it at its worst case, its own promise included."
 ; composite and peer-carried producers are outside PRF-123/126).  A release
 ; is admitted only against an open undertaking.
 
+;
+; A retained article is a HELD row (records-flip): kind :article is exactly
+; `fn-held-p' (books/store-events.lisp `fn-store-event-kind'), its payload
+; position is a handle, and its payload length is the facts' octets the
+; intern decided from the bytes it sealed (`fn-sbud-row-octets'; stated over
+; the arena in books/store-budget-stored.lisp).  The host's article gate
+; (`fn-cvec-article-budget-for') is asked of the WIRE record at the POST,
+; whose payload length the intern copies into those facts
+; (`fn-cvec-intern-row-payload-length' in the test book's witness).  Before
+; this restatement the arm asked `fn-record-p' of the history row, which no
+; retained article satisfies (`fn-cvec-wire-record-is-no-article-row'):
+; every history with an article was unadmitted and the keystones below said
+; nothing about one.
+(defun fn-cvec-row-payload-length (row)
+  (declare (xargs :guard t :verify-guards nil))
+  (nfix (fn-hf-octets (fn-held-facts row))))
+
 (defun fn-cvec-record-figure (record)
   (declare (xargs :guard t :verify-guards nil))
   (if (equal (fn-store-event-kind record) :article)
-      (fn-sbud-article-figure (len (fn-record-payload record))
+      (fn-sbud-article-figure (fn-cvec-row-payload-length record)
                               (len (fn-record-groups record)))
     (fn-store-publication-ceiling (fn-store-event-kind record))))
 
 (defun fn-cvec-record-admittedp (profile used bytes-used debt record)
   (declare (xargs :guard t :verify-guards nil))
   (let ((kind (fn-store-event-kind record)))
-    (and (if (equal kind :article)
-             (and (fn-record-p record)
-                  (equal (fn-cvec-article-verdict-at
-                          profile used bytes-used (len (fn-record-payload record))
-                          (len (fn-record-groups record)) debt)
-                         :admissible))
-           (and (equal (fn-cvec-verdict-at profile kind used bytes-used debt)
-                       :admissible)
-                (or (not (equal kind :release)) (posp debt))))
-         (if (equal kind :article)
-             (fn-record-uint32p (fn-record-charge record))
+    (if (equal kind :article)
+        (and (fn-held-p record)
+             (equal (fn-cvec-article-verdict-at
+                     profile used bytes-used (fn-cvec-row-payload-length record)
+                     (len (fn-record-groups record)) debt)
+                    :admissible))
+      (and (equal (fn-cvec-verdict-at profile kind used bytes-used debt)
+                  :admissible)
+           (or (not (equal kind :release)) (posp debt))
            (<= (fn-sbud-row-octets record)
                (fn-store-publication-ceiling kind))))))
+
+; The arm the restatement replaced could not fire: a wire record is never a
+; row of kind :article.
+(defthm fn-cvec-wire-record-is-no-article-row
+  (implies (fn-record-p record)
+           (not (equal (fn-store-event-kind record) :article)))
+  :hints (("Goal" :use ((:instance fn-held-p-forward-shape (x record)))
+           :in-theory (e/d (fn-store-event-kind fn-record-p fn-record-shapep fn-held-shapep
+                            fn-store-retention-event-p fn-th-topic-eventp fn-th-local-admin-eventp)
+                           (fn-held-p)))))
 
 (defun fn-cvec-history-admittedp (profile used bytes-used debt records)
   (declare (xargs :guard t :verify-guards nil :measure (len records)))
@@ -522,17 +547,44 @@ vector holds after it at its worst case, its own promise included."
           (fn-cvec-roomp profile used b d))))
 
 
-; A wire article record stores its encoding (it is no held or composite row).
+;  A held row stores its payload length, which is within the figure it
+; was charged at.
 (local
- (defthm fn-cvec-wire-record-row-octets
-   (implies (fn-record-p record)
+ (defthm fn-cvec-held-row-octets
+   (implies (fn-held-p record)
             (equal (fn-sbud-row-octets record)
-                   (len (fn-store-event-encode record))))
-   :hints (("Goal" :use ((:instance fn-held-p-forward-shape (x record))
-                         (:instance fn-sbud-row-octets-of-wire-row (row record)))
-            :in-theory (e/d (fn-record-p fn-record-shapep fn-held-shapep fn-hstxa-p)
-                            (fn-held-p fn-sbud-row-octets-of-wire-row
-                             fn-store-event-encode))))))
+                   (fn-cvec-row-payload-length record)))
+   :hints (("Goal" :in-theory (enable fn-sbud-row-octets)))))
+
+(defthm fn-cvec-held-row-within-its-figure
+  (<= (fn-cvec-row-payload-length record)
+      (fn-sbud-article-figure (fn-cvec-row-payload-length record) group-count))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-sbud-article-figure
+                                     fn-record-encoded-octets-ceiling))))
+
+; The article verdict at a held row's payload length keeps the vector at the
+; octets the row stores.
+(defthm fn-cvec-article-verdict-keeps-the-vector-for-a-held-row
+  (implies (equal (fn-cvec-article-verdict-at profile used bytes-used
+                                              (fn-cvec-row-payload-length record)
+                                              group-count debt)
+                  :admissible)
+           (fn-cvec-roomp profile (+ 1 used)
+                          (+ bytes-used (fn-cvec-row-payload-length record))
+                          debt))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-cvec-roomp-antitone-in-octets
+                                   (used (+ 1 used))
+                                   (b (+ bytes-used (fn-sbud-article-figure
+                                                     (fn-cvec-row-payload-length record)
+                                                     group-count)))
+                                   (b2 (+ bytes-used (fn-cvec-row-payload-length record))))
+                        (:instance fn-cvec-held-row-within-its-figure))
+           :in-theory (e/d (fn-cvec-article-verdict-at fn-sbud-article-verdict-at
+                            fn-sbud-admitp fn-bs-history-admissiblep)
+                           (fn-cvec-roomp fn-smr-roomp fn-cvec-row-payload-length
+                            fn-sbud-article-figure)))))
 
 ;  KEYSTONE (one committed record of any kind keeps the vector).
 (defthm fn-cvec-record-keeps-the-vector
@@ -544,21 +596,18 @@ vector holds after it at its worst case, its own promise included."
                           (fn-cvec-debt-step (fn-store-event-kind record) debt)))
   :rule-classes nil
   :hints (("Goal"
-           :use ((:instance fn-cvec-article-verdict-keeps-the-vector-at-producer-width
-                            (payload-length (len (fn-record-payload record)))
+           :use ((:instance fn-cvec-article-verdict-keeps-the-vector-for-a-held-row
                             (group-count (len (fn-record-groups record))))
                  (:instance fn-cvec-release-keeps-the-vector
                             (octets (fn-sbud-row-octets record)))
                  (:instance fn-cvec-admission-keeps-the-vector
                             (kind (fn-store-event-kind record))
                             (octets (fn-sbud-row-octets record))))
-           :in-theory (e/d (fn-cvec-record-admittedp fn-cvec-debt-step
-                            fn-store-event-article-encoding-is-legacy-record-encoding)
+           :in-theory (e/d (fn-cvec-record-admittedp fn-cvec-debt-step)
                            (fn-cvec-roomp fn-cvec-verdict-at
-                            fn-cvec-article-verdict-at
+                            fn-cvec-article-verdict-at fn-cvec-row-payload-length
                             fn-store-event-kind fn-store-event-encode
-                            fn-store-publication-ceiling fn-record-uint32p
-                            fn-record-p)))))
+                            fn-store-publication-ceiling fn-held-p)))))
 
 ;  The vector part of the composed statement, by induction over the history.
 (local
@@ -696,4 +745,5 @@ vector holds after it at its worst case, its own promise included."
                     fn-cvec-article-budget fn-cvec-article-budget-for
                     fn-cvec-report fn-cvec-debt-extend fn-cvec-record-debt
                     fn-cvec-history-admittedp
-                    fn-cvec-record-admittedp fn-cvec-record-figure))
+                    fn-cvec-record-admittedp fn-cvec-record-figure
+                    fn-cvec-row-payload-length))
