@@ -54,6 +54,11 @@ class NativeServedCostTests(unittest.TestCase):
         fold = definition(span, "fn-scar-feed-span")
         chain = (ROOT / "books/served-catalog-chain.lisp").read_text()
         self.assertIn("(fn-octets-get i fn-octets)", definition(chain, "fn-scr-feed-span"))
+        # The catalog path runs the same framed-event scan (catalog-columns).
+        self.assertRegex(definition(chain, "fn-scr-step-span-core"), re.compile(
+            r"\(mbe :logic \(fn-scr-feed-span conn i end [^)]*\)\s+"
+            r":exec \(fn-scr-scan-span conn i end [^)]*\)\)"))
+        self.assertIn("(fn-wire-scan ", definition(chain, "fn-scr-scan-span"))
         self.assertIn("(fn-octets-get i fn-octets)", fold)
         self.assertNotIn("fn-oct-slice-list", fold)
         self.assertNotIn("fn-octets-list", fold)

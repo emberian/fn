@@ -774,6 +774,185 @@
 
 (in-theory (disable fn-scr-feed-span))
 
+; -----------------------------------------------------------------------------
+; PKT-479 on the catalog path (catalog-columns, 2026-09-27): the span taken
+; one framed event at a time, as books/served-scan.lisp fn-scar-scan-span
+; takes it for the pinned-index path.  fn-wire-scan runs the wire machine
+; over the range until its first event (books/wire-scan.lisp
+; fn-wire-scan-is-span-fold), the connection is rebuilt and the event
+; dispatched once per event.  KEYSTONE fn-scr-scan-span-is-feed-span (no
+; hypothesis): it IS the byte fold fn-scr-feed-span, so
+; fn-scr-step-span-core runs it as that fold's executable (mbe).
+
+(local (in-theory (disable fn-scr-feed-span-is-scar-feed-span fn-scr-conn-okp-of-with-wire
+                           fn-scr-conn-okp fn-scr-conn-catalogp fn-scr-live-catalogp
+                           fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
+                           fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp
+                           fn-nntp-index-msgid-okp fn-cp-id-length-bound)))
+
+(defun fn-scr-scan-span (conn i end live trie arts fn-octets fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                  :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
+                              (natp i) (natp end) (<= i end)
+                              (<= end (fn-octets-len fn-octets))
+                              (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
+                  :measure (nfix (- end i))
+                  :verify-guards nil
+                  :hints (("Goal" :in-theory (disable fn-scr-dispatch-events
+                                                      fn-served-submission)))))
+  (if (or (not (natp i)) (not (natp end)) (>= i end)
+          (fn-served-closed-wirep (fn-served-conn-wire conn))
+          (fn-served-tls-handshakingp conn))
+      (fn-served-counted-make 0 (fn-served-make-result conn nil))
+    (let* ((w (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets))
+           (next (fn-wsp-next w))
+           (here (fn-scr-dispatch-events
+                  (fn-served-conn-with-wire conn (fn-wsp-state w))
+                  (fn-wsp-events w) live trie arts fn-arena fn-cat)))
+      (if (fn-served-submission (fn-served-result-effects here))
+          (fn-served-counted-make
+           (- next i)
+           (fn-served-make-result (fn-served-result-conn here)
+                                  (fn-served-result-effects here)))
+        (let* ((tail (fn-scr-scan-span (fn-served-result-conn here) next end
+                                       live trie arts fn-octets fn-arena fn-cat))
+               (tail-result (fn-served-counted-result tail)))
+          (fn-served-counted-make
+           (+ (- next i) (fn-served-counted-consumed tail))
+           (fn-served-make-result
+            (fn-served-result-conn tail-result)
+            (mbe :logic (append (fn-served-result-effects here)
+                                (fn-served-result-effects tail-result))
+                 :exec (fn-ag-append (fn-served-result-effects here)
+                                     (fn-served-result-effects tail-result))))))))))
+
+(local
+ (defthm fn-scscan-scan-preserves-fast-statep
+   (implies (fn-wire-fast-statep (fn-served-conn-wire conn))
+            (fn-wire-fast-statep
+             (fn-served-conn-wire
+              (fn-served-result-conn
+               (fn-scr-dispatch-events
+                (fn-served-conn-with-wire
+                 conn
+                 (fn-wsp-state (fn-wire-scan (fn-served-conn-wire conn) i end fn-octets)))
+                events live trie arts fn-arena fn-cat)))))
+   :hints (("Goal" :in-theory (disable fn-scr-dispatch-events fn-wire-fast-statep)))))
+
+(local
+ (defthm fn-scscan-with-wire-twice
+   (equal (fn-served-conn-with-wire (fn-served-conn-with-wire conn w1) w2)
+          (fn-served-conn-with-wire conn w2))
+   :hints (("Goal" :in-theory (enable fn-served-conn-with-wire)))))
+
+(local
+ (defthm fn-scscan-handshaking-of-with-wire
+   (equal (fn-served-tls-handshakingp (fn-served-conn-with-wire conn w))
+          (fn-served-tls-handshakingp conn))
+   :hints (("Goal" :in-theory (enable fn-served-tls-handshakingp)))))
+
+(local
+ (defthm fn-scscan-feed-byte-without-event-keeps-open
+   (implies (and (not (equal (fn-wire-state-mode wire-state) :closed))
+                 (not (consp (fn-wire-result-events
+                              (fn-wire-feed-byte wire-state byte)))))
+            (not (equal (fn-wire-state-mode
+                         (fn-wire-result-state (fn-wire-feed-byte wire-state byte)))
+                        :closed)))
+   :hints (("Goal" :in-theory (enable fn-wire-feed-byte fn-wire-after-line
+                                      fn-wire-close)))))
+
+(local
+ (defthm fn-scscan-dispatch-no-events
+   (implies (not (consp events))
+            (equal (fn-scr-dispatch-events conn events live trie arts fn-arena fn-cat)
+                   (fn-served-make-result conn nil)))
+   :hints (("Goal" :expand ((fn-scr-dispatch-events conn events live trie arts fn-arena fn-cat))))))
+
+(local
+ (defun fn-scscan-ind (conn i end fn-octets)
+   (declare (xargs :stobjs fn-octets :measure (nfix (- end i))
+                   :verify-guards nil))
+   (if (or (not (natp i)) (not (natp end)) (>= i end))
+       (list conn i end)
+     (let ((r (fn-wire-feed-byte (fn-served-conn-wire conn)
+                                 (fn-octets-get i fn-octets))))
+       (if (consp (fn-wire-result-events r))
+           (list conn i end)
+         (fn-scscan-ind (fn-served-conn-with-wire conn (fn-wire-result-state r))
+                        (+ 1 i) end fn-octets))))))
+
+; The byte fold over [i, end) splits at the wire's first event.
+(local
+ (defthm fn-scscan-feed-span-splits
+   (implies (and (not (fn-served-closed-wirep (fn-served-conn-wire conn)))
+                 (not (fn-served-tls-handshakingp conn))
+                 (natp i) (natp end) (< i end))
+            (equal
+             (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat)
+             (let* ((w (fn-wire-span-fold (fn-served-conn-wire conn) i end fn-octets))
+                    (next (fn-wsp-next w))
+                    (here (fn-scr-dispatch-events
+                           (fn-served-conn-with-wire conn (fn-wsp-state w))
+                           (fn-wsp-events w) live trie arts fn-arena fn-cat)))
+               (if (fn-served-submission (fn-served-result-effects here))
+                   (fn-served-counted-make
+                    (- next i)
+                    (fn-served-make-result (fn-served-result-conn here)
+                                           (fn-served-result-effects here)))
+                 (let* ((tail (fn-scr-feed-span (fn-served-result-conn here) next end
+                                                live trie arts fn-octets fn-arena fn-cat))
+                        (tail-result (fn-served-counted-result tail)))
+                   (fn-served-counted-make
+                    (+ (- next i) (fn-served-counted-consumed tail))
+                    (fn-served-make-result
+                     (fn-served-result-conn tail-result)
+                     (append (fn-served-result-effects here)
+                             (fn-served-result-effects tail-result)))))))))
+   :hints (("Goal" :induct (fn-scscan-ind conn i end fn-octets)
+            :in-theory (e/d (fn-scr-feed-byte fn-served-closed-wirep
+                             fn-served-counted-make fn-served-counted-consumed
+                             fn-served-counted-result)
+                            (fn-wire-feed-byte fn-wire-fast-statep
+                             fn-scr-dispatch-events
+                             fn-served-submission fn-served-tls-handshakingp))
+            :expand ((fn-wire-span-fold (fn-served-conn-wire conn) i end fn-octets)
+                     (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat))))))
+
+(defthm fn-scr-scan-span-is-feed-span
+  (equal (fn-scr-scan-span conn i end live trie arts fn-octets fn-arena fn-cat)
+         (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat))
+  :hints (("Goal" :induct (fn-scr-scan-span conn i end live trie arts fn-octets fn-arena fn-cat)
+           :in-theory (e/d (fn-scr-scan-span fn-served-counted-make
+                            fn-served-counted-consumed fn-served-counted-result)
+                           (fn-scr-dispatch-events fn-wire-fast-statep
+                            fn-scr-feed-span
+                            fn-served-submission fn-served-closed-wirep
+                            fn-served-tls-handshakingp)))
+          (and stable-under-simplificationp
+               '(:expand ((fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat))))))
+
+(local
+ (defthm fn-scscan-consumed-is-natural
+   (natp (fn-served-counted-consumed
+          (fn-scr-scan-span conn i end live trie arts fn-octets fn-arena fn-cat)))
+   :rule-classes (:rewrite :type-prescription)
+   :hints (("Goal" :in-theory (disable fn-scr-scan-span)
+            :use ((:instance fn-scr-feed-span-consumed-is-natural))))))
+
+(verify-guards fn-scr-scan-span
+  :hints (("Goal"
+           :in-theory (e/d (fn-served-counted-make fn-served-counted-result)
+                           (fn-scr-dispatch-events fn-wire-fast-statep
+                            fn-served-counted-consumed)))))
+
+(in-theory (disable fn-scr-scan-span))
+(local (in-theory (enable fn-scr-feed-span-is-scar-feed-span fn-scr-conn-okp-of-with-wire
+                          fn-scr-conn-okp fn-scr-conn-catalogp fn-scr-live-catalogp
+                          fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
+                          fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp
+                          fn-nntp-index-msgid-okp fn-cp-id-length-bound)))
+
 (defun fn-scr-step-span-core (conn i end live trie arts fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
                   :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
@@ -781,7 +960,10 @@
                               (<= end (fn-octets-len fn-octets))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))))
   (let* ((wire (fn-served-conn-wire conn))
-         (fed (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat))
+         ;; PKT-479: executed one framed event at a time (fn-scr-scan-span,
+         ;; equal to the byte fold by fn-scr-scan-span-is-feed-span).
+         (fed (mbe :logic (fn-scr-feed-span conn i end live trie arts fn-octets fn-arena fn-cat)
+                   :exec (fn-scr-scan-span conn i end live trie arts fn-octets fn-arena fn-cat)))
          (result (fn-served-counted-result fed))
          (wire2 (fn-served-conn-wire (fn-served-result-conn result))))
     (fn-served-counted-make
