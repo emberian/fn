@@ -4168,7 +4168,13 @@ presence of the two names is classified by fn-bs-imp-classify."
            (fnn-record-filesystem-at-init stage request policy)
            (when logp
              (fnn-log-init-segment stage)
-             (fnn-log-write-history stage values records))))
+             (fnn-log-write-history stage values records)))
+         ;; The staged tree's subdirectories: a format-9 store's are init's
+         ;; (journal/ among them: fnn-log-init-segment's caller makes it
+         ;; since log-2's initializer program).
+         (if logp
+             (fnn-core 'fn-bs-init-log-subdir-names)
+             '("transactions" "staging" "config")))
         (fnn-out "imported records=~d configuration=~d" (length records) (length configs))
         +fnn-exit-ok+))))
 
