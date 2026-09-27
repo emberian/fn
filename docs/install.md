@@ -236,6 +236,9 @@ A refused POST is answered `441` with the reply below, and the log line for it s
 | reason | the reply |
 | --- | --- |
 | `unparsable` | `441 posting failed; the article is not valid syntax` |
+| `header-fields-limit` | `441 posting failed; the header has more fields than the profile's max-header-fields` |
+| `header-lines-limit` | `441 posting failed; the header has more lines than the profile's max-header-lines` |
+| `header-octets-limit` | `441 posting failed; the header has more octets than the profile's max-header-octets` |
 | `group-read-only` | `441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)` |
 | `injection-info` | `441 posting failed; Injection-Info must not be supplied` |
 | `xref` | `441 posting failed; Xref must not be supplied` |
