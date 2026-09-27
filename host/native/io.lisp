@@ -228,6 +228,17 @@ input the core's string entries read in place, with no list in between."
             (or (cdr (assoc 'fn-octets-pub (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the publication buffer stobj is not in this image")))))
 
+(defun fnn-octets-release ()
+  "Empty the buffer and give its array back: after the state checkpoint's
+load the array holds the whole file, which the served attempts (one request
+each) never need again; they regrow it to one request's size.  A bound on
+retained memory only (the logical value, the empty list, is unchanged by the
+array's size); it decides nothing ACL2 decides."
+  (let ((st (fnn-live-octets)))
+    (setf (svref st 1) 0)
+    (setf (svref st 0) (make-array 0 :element-type '(unsigned-byte 8)))
+    st))
+
 (defun fnn-octets-reserve (n)
   "Grow the buffer's array so that N octets fit; contents and count unchanged."
   (fn-octets$c-reserve n (fnn-live-octets)))
@@ -2167,10 +2178,13 @@ empties it first (fnn-bridge-recover)."
              (answer (fnn-call 'fn-scka-seal-n i end k octets arena)))
         (unless (and (consp answer) (first answer) (integerp (second answer)))
           (fnn-core-state 'fn-store-sco-clear)
+          (fnn-octets-release)
           (return-from fnn-state-checkpoint-load-arena (values :refused 0)))
         (setq i (second answer))
         (decf left k)))
     (let ((answer (fnn-core-buffer-state 'fn-store-sco-decode-finish i end)))
+      ;; The file is read; the buffer's array (the whole file) is given back.
+      (fnn-octets-release)
       (if (and (consp answer) (eq (first answer) :ok)
                (integerp (second answer)) (>= (second answer) 0))
           (values :ok (second answer))
