@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1265 |
-| Certification roots in the Makefile | 1218 |
-| Books inside the root closure | 1254 |
-| `defthm` and `defthmd` events | 18812 |
-| `defun` events | 12879 |
+| Books read | 1269 |
+| Certification roots in the Makefile | 1222 |
+| Books inside the root closure | 1258 |
+| `defthm` and `defthmd` events | 18866 |
+| `defun` events | 12889 |
 | Functions with verified guards | 2474 |
 | Functions declared `:verify-guards nil` and never verified | 1522 |
-| Functions left at the default with an explicit guard | 7098 |
-| Functions left at the default with no guard | 1785 |
-| `assert-event` checks | 18400 |
+| Functions left at the default with an explicit guard | 7106 |
+| Functions left at the default with no guard | 1787 |
+| `assert-event` checks | 18451 |
 | `must-fail` checks | 2182 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 99 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 216 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 221 |
-| Include-hygiene warnings | 1352 |
-| Host-names warnings | 1391 |
+| Include-hygiene warnings | 1353 |
+| Host-names warnings | 1392 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -560,6 +560,8 @@ that `make certify` requests.
 | `books/owner-parse-carried.lisp` | root | 43 | 37 | 0/1/36/0 | 0 | 0 | 1 |
 | `books/owner-prepare-carried.lisp` | root | 18 | 8 | 5/0/3/0 | 0 | 0 | 0 |
 | `books/owner-prepare-correspondence.lisp` | root | 19 | 3 | 1/0/2/0 | 0 | 0 | 0 |
+| `books/owner-prepare-served-ocl.lisp` | root | 50 | 1 | 0/0/1/0 | 0 | 0 | 0 |
+| `books/owner-prepare-served.lisp` | root | 3 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/owner-reader-view.lisp` | root | 18 | 18 | 0/0/18/0 | 0 | 0 | 0 |
 | `books/owner-recover-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-refresh-indexed.lisp` | root | 10 | 9 | 0/0/9/0 | 0 | 0 | 1 |
@@ -738,6 +740,7 @@ that `make certify` requests.
 | `books/store-open-pre-c1.lisp` | root | 19 | 9 | 1/1/7/0 | 0 | 0 | 1 |
 | `books/store-prepare-carried.lisp` | root | 3 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/store-prepare-correspondence.lisp` | root | 19 | 5 | 2/0/0/3 | 0 | 0 | 0 |
+| `books/store-prepare-served.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/store-profile-carried.lisp` | root | 16 | 15 | 0/0/15/0 | 0 | 0 | 0 |
 | `books/store-profile-facts.lisp` | root | 4 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/store-profile-namespace.lisp` | root | 1 | 5 | 0/0/5/0 | 0 | 0 | 0 |
@@ -1164,6 +1167,7 @@ that `make certify` requests.
 | `tests/acl2/owner-parse-carried-tests.lisp` | root | 0 | 5 | 0/2/0/3 | 73 | 5 | 0 |
 | `tests/acl2/owner-prepare-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 2 | 0 |
 | `tests/acl2/owner-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 26 | 1 | 0 |
+| `tests/acl2/owner-prepare-served-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 51 | 0 | 0 |
 | `tests/acl2/owner-reader-view-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 28 | 1 | 0 |
 | `tests/acl2/owner-recover-ocl-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 3 | 0 |
 | `tests/acl2/owner-refresh-indexed-tests.lisp` | root | 0 | 4 | 0/1/0/3 | 6 | 2 | 0 |
