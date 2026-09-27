@@ -510,6 +510,21 @@ call (books/public-exposure.lisp fn-exp-open), as the worker did it."
   (let ((service (fnn-mux-service loop))
         (socket (fnn-mux-conn-socket conn)))
     (setf (fnn-mux-conn-fd conn) (fnn-socket-fd socket))
+    ;; The handshake pool bounds handshake work, and it is bounded BEFORE the
+    ;; exposure admits anything: an implicit-TLS connection arriving while
+    ;; every handshake slot of its loop is taken is closed and named
+    ;; (`tls refused reason=busy'), never admitted, so a flood of half-open
+    ;; handshakes holds at most the pool's slots of the capacity and a
+    ;; plaintext reader is still admitted (hostile campaign, TLS slowloris
+    ;; half-open x200).  The kernel's accept queue is the same kind of
+    ;; bound: it decides no protocol answer.
+    (when (and (fnn-mux-conn-implicit-tls conn)
+               (>= (+ (fnn-mux-loop-handshaking loop)
+                      (length (fnn-mux-loop-waiting loop)))
+                   +fnn-mux-handshakes-per-loop+))
+      (fnn-mux-tls-log loop conn :busy)
+      (fnn-mux-finish loop conn)
+      (return-from fnn-mux-begin nil))
     (multiple-value-bind (family address) (fnn-owner-socket-address service socket)
       (multiple-value-bind (opened greeting)
           (fnn-owner-serialized

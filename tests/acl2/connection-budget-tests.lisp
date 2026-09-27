@@ -222,3 +222,5 @@
 ; PKT-640's line.
 (assert-event (equal (fn-cbud-tls-refusal-line :timeout 7)
                      "tls refused reason=timeout connection=7"))
+(assert-event (equal (fn-cbud-tls-refusal-line :busy 0)
+                     "tls refused reason=busy connection=0"))

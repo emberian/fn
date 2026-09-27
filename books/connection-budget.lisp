@@ -163,7 +163,7 @@
 
 (defconst *fn-cbud-tls-reasons*
   '((:handshake . "handshake") (:timeout . "timeout") (:closed . "closed")
-    (:refused . "refused")))
+    (:refused . "refused") (:busy . "busy")))
 
 (defun fn-cbud-tls-refusal-line (reason id)
   (declare (xargs :guard t))
