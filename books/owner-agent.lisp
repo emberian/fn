@@ -93,7 +93,10 @@
   (declare (xargs :guard t))
   (list (fn-oag-descs (fn-cnode-served-of cfg) (fn-cfg-value cfg))
         (fn-cfg-motd-lines (fn-cfg-value cfg))
-        (fn-oag-agent cfg)))
+        (fn-oag-agent cfg)
+        ;; PRF-222: the access rules (books/group-access.lisp
+        ;; `fn-gac-listing-table'), the accounts slot's mark-3 rows.
+        (fn-cfg-access-table (fn-cfg-accounts (fn-cfg-value cfg)))))
 
 (defun fn-oag-post-config (cfg max-octets)
   "The posting configuration the owner installs for configuration CFG.
