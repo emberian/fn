@@ -47,6 +47,7 @@
 (include-book "records-shape")
 (include-book "nntp-syntax")
 (include-book "config")
+(include-book "owner-intent-carried")
 
 ; ---------------------------------------------------------------------------
 ; Shared field recognizers.
@@ -58,10 +59,20 @@
            (fn-ores-octet-lists-p (cdr x)))
     (null x)))
 
+; The owner's submission ids: a served connection's number (fn-own-read
+; enqueues under the connection id) or the control id `*fn-own-control-id*'
+; (books/owner.lisp: every `operator post', BP application and transit
+; submission is enqueued under it).  The first recognizer admitted only a
+; natural, so every operator post faulted at the submission intent (the
+; batch AM revert, dev 54d23d01).
+(defun fn-ores-submission-idp (x)
+  (declare (xargs :guard t))
+  (or (natp x) (equal x *fn-own-control-id*)))
+
 (defun fn-ores-tokenp (x)
   ; nil, today's submission id, or the catalog slice's (txid . expected).
   (declare (xargs :guard t))
-  (or (null x) (natp x) (consp x)))
+  (or (null x) (fn-ores-submission-idp x) (consp x)))
 
 ; ---------------------------------------------------------------------------
 ; FeedPublication.
@@ -173,6 +184,34 @@
      (if (fn-wire-outbound-okp rendered) :ok (fn-wire-outbound-reason rendered))
      log-line)))
 
+;; The submission path.  host/owner-host.lisp `fn-owner-submission-intent'
+;; and `fn-owner-submission-resolution' return exactly these values; the
+;; token is the in-flight submission's id.
+(defun fn-ores-inflight-token (o)
+  (declare (xargs :guard t))
+  (let ((sub (fn-own-inflight o)))
+    (and sub (fn-own-sub-id sub))))
+
+(defun fn-ores-submission-intent-publication (o carry evidence generation txid)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((intent (fn-icar-submission-intent o carry evidence generation txid)))
+    (fn-ores-feed-port-publication (car intent) (cdr intent) nil
+                                   (fn-ores-inflight-token o) nil)))
+
+(defun fn-ores-resolution-word (o word records)
+  (declare (xargs :guard t))
+  (cond ((consp records) (fn-feed-journal-kind (car records)))
+        ((equal (fn-own-outcome-completion o word) :uncertain) :uncertain)
+        (t :none)))
+
+(defun fn-ores-submission-resolution-publication
+    (o carry word evidence generation txid)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((records (fn-icar-submission-resolution-records
+                  o carry word evidence generation txid)))
+    (fn-ores-feed-port-publication (fn-ores-resolution-word o word records)
+                                   records nil (fn-ores-inflight-token o) nil)))
+
 ; KEYSTONE.  The plan is the by-index fetch it replaces: its I-th pair is the
 ; I-th peer of the old peer list and the seal of the I-th encoded frame, and
 ; it has exactly one pair per record (so the old "frame/peer count mismatch"
@@ -255,7 +294,7 @@
        (equal (len x) 9)
        (equal (nth 0 x) :submission-taken)
        (fn-ores-taken-wordp (nth 1 x))
-       (or (null (nth 2 x)) (natp (nth 2 x)))
+       (or (null (nth 2 x)) (fn-ores-submission-idp (nth 2 x)))
        (fn-cbor-octet-listp (nth 3 x))
        (fn-cbor-octet-listp (nth 4 x))
        (fn-ores-octet-lists-p (nth 5 x))
@@ -431,3 +470,113 @@
 ; A refusal, whatever reason it was handed, is a result the host accepts.
 (defthm fn-ores-config-refused-is-a-result
   (fn-ores-config-result-p (fn-ores-config-refused reason)))
+
+; ---------------------------------------------------------------------------
+; The submission path's results are well-formed (PRF-208, adapter-retirement-2).
+;
+; host/owner-host.lisp `fn-owner-submission-intent' returns
+; `fn-ores-submission-intent-publication' and `fn-owner-submission-resolution'
+; returns `fn-ores-submission-resolution-publication'; host/native/owner.lisp
+; `fnn-owner-feed-step' checks `fn-ores-feed-publication-p' of each and faults
+; (exit 4) when it fails.  Batch AM's image faulted on every `operator post':
+; the in-flight id there is `*fn-own-control-id*' and the token recognizer
+; admitted only a natural.  These theorems say the check holds on both
+; submission paths for every outcome word, under two named conditions:
+;
+;  - `fn-ores-inflight-idp': the in-flight submission's id, when there is
+;    one, is one of the owner's two submission ids (a connection number from
+;    `fn-own-read', `*fn-own-control-id*' from the control, BP application
+;    and BP transit submits; those are every `fn-own-sub-make' in books/).
+;    The owner relation (books/owner-invariants.lisp fn-own-relation) does
+;    not yet carry the queue's ids; PKT-616 (c) files that.
+;  - `fn-ores-records-sealp': the codec accepts each journal record (a record
+;    it refuses seals to :bad; the host faulted there before this lane, with
+;    "malformed sealed FNFD frame").
+
+(defun fn-ores-inflight-idp (o)
+  (declare (xargs :guard t))
+  (let ((token (fn-ores-inflight-token o)))
+    (or (null token) (fn-ores-submission-idp token))))
+
+(defun fn-ores-records-sealp (records)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-ores-sealed-plan-p (fn-ores-sealed-plan records)))
+
+(defthm fn-ores-feed-port-publication-p-without-effects
+  (implies (and (symbolp word)
+                (fn-ores-sealed-plan-p (fn-ores-sealed-plan records))
+                (fn-ores-tokenp token))
+           (fn-ores-feed-publication-p
+            (fn-ores-feed-port-publication word records nil token nil)))
+  :hints (("Goal" :in-theory (disable fn-ores-sealed-plan fn-ores-sealed-plan-p
+                                      fn-ores-tokenp))))
+
+(defthm fn-ores-symbolp-of-submission-intent-word
+  (symbolp (car (fn-icar-submission-intent o carry evidence generation txid)))
+  :hints (("Goal" :in-theory (union-theories '(fn-icar-submission-intent car-cons)
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-ores-car-car-of-feed-resolution-records
+  (implies (consp (fn-own-feed-resolution-records
+                   kind names msgid identity evidence generation txid tick))
+           (equal (car (car (fn-own-feed-resolution-records
+                             kind names msgid identity evidence generation txid tick)))
+                  kind))
+  :hints (("Goal" :expand ((fn-own-feed-resolution-records
+                            kind names msgid identity evidence generation txid tick))
+                  :in-theory (enable fn-feed-journal-entry))))
+
+(defthm fn-ores-symbolp-of-resolution-word
+  (symbolp (fn-ores-resolution-word
+            o word (fn-icar-submission-resolution-records
+                    o carry word evidence generation txid)))
+  :hints (("Goal" :in-theory (disable fn-own-outcome-completion
+                                      fn-icar-submission-targets
+                                      fn-own-feed-intent-values fn-icar-intent-id))))
+
+; KEYSTONE (the intent).  Host callers, host/native/owner.lisp:
+; fnn-owner-drain-one (served and control drains, the operator post's path),
+; fnn-owner-complete-bound-submission and
+; fnn-owner-complete-bp-transit-submission.
+(defthm fn-ores-submission-intent-publication-is-well-formed
+  (implies (and (fn-ores-inflight-idp o)
+                (fn-ores-records-sealp
+                 (cdr (fn-icar-submission-intent o carry evidence generation txid))))
+           (fn-ores-feed-publication-p
+            (fn-ores-submission-intent-publication o carry evidence generation txid)))
+  :hints (("Goal" :in-theory (e/d (fn-ores-records-sealp fn-ores-tokenp)
+                                  (fn-icar-submission-intent fn-ores-feed-port-publication
+                                   fn-ores-feed-publication-p fn-ores-sealed-plan
+                                   fn-ores-sealed-plan-p
+                                   fn-ores-feed-port-publication-p-without-effects))
+                  :use ((:instance fn-ores-feed-port-publication-p-without-effects
+                                   (word (car (fn-icar-submission-intent
+                                               o carry evidence generation txid)))
+                                   (records (cdr (fn-icar-submission-intent
+                                                  o carry evidence generation txid)))
+                                   (token (fn-ores-inflight-token o)))))))
+
+; KEYSTONE (the resolution; the same three host callers, after the outcome).
+(defthm fn-ores-submission-resolution-publication-is-well-formed
+  (implies (and (fn-ores-inflight-idp o)
+                (fn-ores-records-sealp
+                 (fn-icar-submission-resolution-records
+                  o carry word evidence generation txid)))
+           (fn-ores-feed-publication-p
+            (fn-ores-submission-resolution-publication
+             o carry word evidence generation txid)))
+  :hints (("Goal" :in-theory (e/d (fn-ores-records-sealp fn-ores-tokenp)
+                                  (fn-icar-submission-resolution-records
+                                   fn-ores-resolution-word
+                                   fn-ores-feed-port-publication
+                                   fn-ores-feed-publication-p fn-ores-sealed-plan
+                                   fn-ores-sealed-plan-p
+                                   fn-ores-feed-port-publication-p-without-effects))
+                  :use ((:instance fn-ores-feed-port-publication-p-without-effects
+                                   (word (fn-ores-resolution-word
+                                          o word
+                                          (fn-icar-submission-resolution-records
+                                           o carry word evidence generation txid)))
+                                   (records (fn-icar-submission-resolution-records
+                                             o carry word evidence generation txid))
+                                   (token (fn-ores-inflight-token o)))))))

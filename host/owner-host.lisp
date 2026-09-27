@@ -1471,16 +1471,15 @@
     nil))
 
 (defun fn-owner-submission-intent (evidence generation txid state)
+  ; The FeedPublication is fn-ores-submission-intent-publication's
+  ; (books/owner-results.lisp; well-formed by
+  ; fn-ores-submission-intent-publication-is-well-formed): the token is the
+  ; in-flight id, a connection number or the control id.
   (declare (xargs :stobjs state :mode :program))
-  (let* ((owner (fn-owner-core state))
-         (intent (fn-icar-submission-intent owner (fn-owner-intent-carry state)
-                                            evidence generation txid))
-         (result (car intent))
-         (records (cdr intent))
-         (sub (fn-own-inflight owner))
-         (state (f-put-global 'fn-owner-shared-resolution-id nil state)))
-    (value (fn-ores-feed-port-publication result records nil
-                                          (and sub (fn-own-sub-id sub)) nil))))
+  (let* ((state (f-put-global 'fn-owner-shared-resolution-id nil state)))
+    (value (fn-ores-submission-intent-publication
+            (fn-owner-core state) (fn-owner-intent-carry state)
+            evidence generation txid))))
 
 ; Project commit/abort while the same submission is still in flight.  The
 ; caller durably appends these records before invoking fn-owner-outcome (or
@@ -1490,21 +1489,15 @@
 ;; fn-own-submission-resolution-records under the same carry
 ;; (fn-icar-submission-resolution-records-is-reference).
 (defun fn-owner-submission-resolution (word evidence generation txid state)
+  ; fn-ores-submission-resolution-publication (books/owner-results.lisp;
+  ; fn-ores-submission-resolution-publication-is-well-formed).
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
-         (records (fn-icar-submission-resolution-records
-                   owner (fn-owner-intent-carry state)
-                   word evidence generation txid))
-         (sub (fn-own-inflight owner))
          (state (f-put-global 'fn-owner-shared-resolution-id
-                              (and sub (fn-own-sub-id sub)) state)))
-    (value (fn-ores-feed-port-publication
-            (cond ((consp records)
-                   (fn-feed-journal-kind (car records)))
-                  ((equal (fn-own-outcome-completion owner word) :uncertain)
-                   :uncertain)
-                  (t :none))
-            records nil (and sub (fn-own-sub-id sub)) nil))))
+                              (fn-ores-inflight-token owner) state)))
+    (value (fn-ores-submission-resolution-publication
+            owner (fn-owner-intent-carry state)
+            word evidence generation txid))))
 
 ; Startup calls this only after the store's authoritative recovery completed.
 ; The scanner accumulated exact unresolved intent values in the global.  One

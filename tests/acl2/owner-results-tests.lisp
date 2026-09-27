@@ -115,3 +115,100 @@
                        (fn-ores-config-result-p nil)
                        (fn-ores-served-step-p *ort-taken*)
                        (fn-ores-config-result-p (ort-publication)))))
+
+; ---------------------------------------------------------------------------
+; The submission path (adapter-retirement-2; the batch AM revert, dev
+; 54d23d01: every `operator post' faulted because the control submission's
+; id, *fn-own-control-id*, failed the token recognizer).
+
+; Owners whose in-flight submission is the control submission (an operator
+; post), a served connection's (id 3), and one whose id is outside the
+; owner's vocabulary (a corrupted state: no fn-own-sub-make builds it).
+(defmacro ort-owner (id)
+  `(fn-own-make nil nil nil 0 1 nil nil 0 nil nil nil
+                (fn-own-sub-make ,id 0 nil nil) nil))
+
+; The pre-fix value: the recognizer refuses a publication whose token is
+; :control only if :control is not a submission id; now it is one.
+(assert-event (fn-ores-submission-idp *fn-own-control-id*))
+(assert-event (fn-ores-tokenp :control))
+(assert-event (not (fn-ores-tokenp "3")))
+(assert-event (not (fn-ores-tokenp :other)))
+
+; KEYSTONE fn-ores-submission-intent-publication-is-well-formed, positive,
+; the operator post: both hypotheses hold, the word is the intent's
+; (:refused: the evidence 7 is not a feed name), the token is :control,
+; and the conclusion holds.
+(assert-event
+ (let ((o (ort-owner :control)))
+   (and (fn-ores-inflight-idp o)
+        (fn-ores-records-sealp (cdr (fn-icar-submission-intent o nil 7 0 0)))
+        (equal (car (fn-icar-submission-intent o nil 7 0 0)) :refused)
+        (fn-ores-feed-publication-p (fn-ores-submission-intent-publication o nil 7 0 0))
+        (equal (fn-ores-feedpub-token (fn-ores-submission-intent-publication o nil 7 0 0))
+               :control))))
+; The served connection's submission, and no submission at all (:absent).
+(assert-event
+ (let ((o (ort-owner 3)))
+   (and (fn-ores-inflight-idp o)
+        (fn-ores-feed-publication-p (fn-ores-submission-intent-publication o nil 7 0 0))
+        (equal (fn-ores-feedpub-token (fn-ores-submission-intent-publication o nil 7 0 0)) 3))))
+(assert-event
+ (let ((o (fn-own-make nil nil nil 0 1 nil nil 0 nil nil nil nil nil)))
+   (and (fn-ores-inflight-idp o)
+        (equal (fn-ores-feedpub-word (fn-ores-submission-intent-publication o nil 7 0 0))
+               :absent)
+        (fn-ores-feed-publication-p (fn-ores-submission-intent-publication o nil 7 0 0)))))
+
+; KEYSTONE fn-ores-submission-resolution-publication-is-well-formed, positive:
+; the control submission's resolution with no records.
+(assert-event
+ (let ((o (ort-owner :control)))
+   (and (fn-ores-inflight-idp o)
+        (fn-ores-records-sealp (fn-icar-submission-resolution-records o nil :durable 7 0 0))
+        (fn-ores-feed-publication-p
+         (fn-ores-submission-resolution-publication o nil :durable 7 0 0)))))
+
+; Hypothesis removal, fn-ores-inflight-idp: an id outside the vocabulary.
+; The other hypothesis holds, the omitted one fails, the conclusion fails
+; (the host would fault, as batch AM's did on :control).
+(assert-event
+ (let ((o (ort-owner "x")))
+   (and (fn-ores-records-sealp (cdr (fn-icar-submission-intent o nil 7 0 0)))
+        (not (fn-ores-inflight-idp o))
+        (not (fn-ores-feed-publication-p
+              (fn-ores-submission-intent-publication o nil 7 0 0)))
+        (fn-ores-records-sealp (fn-icar-submission-resolution-records o nil :durable 7 0 0))
+        (not (fn-ores-feed-publication-p
+              (fn-ores-submission-resolution-publication o nil :durable 7 0 0))))))
+(must-fail
+ (defthm ort-intent-without-inflight-idp
+   (implies (fn-ores-records-sealp
+             (cdr (fn-icar-submission-intent o carry evidence generation txid)))
+            (fn-ores-feed-publication-p
+             (fn-ores-submission-intent-publication o carry evidence generation txid)))
+   :hints (("Goal" :in-theory (disable fn-icar-submission-intent)))))
+
+; Hypothesis removal, fn-ores-records-sealp, on the builder both keystones
+; instantiate (fn-ores-feed-port-publication-p-without-effects): a record the
+; codec refuses, with a symbol word and the control token.  The retained
+; hypotheses hold, the omitted one fails, the conclusion fails.
+(assert-event
+ (and (symbolp :ready)
+      (fn-ores-tokenp :control)
+      (not (fn-ores-records-sealp *ort-bad-records*))
+      (not (fn-ores-feed-publication-p
+            (fn-ores-feed-port-publication :ready *ort-bad-records* nil :control nil)))))
+(must-fail
+ (defthm ort-resolution-without-records-sealp
+   (implies (fn-ores-inflight-idp o)
+            (fn-ores-feed-publication-p
+             (fn-ores-submission-resolution-publication
+              o carry word evidence generation txid)))
+   :hints (("Goal" :in-theory (disable fn-icar-submission-resolution-records
+                                       fn-ores-sealed-plan)))))
+; And a sealed non-empty plan with the control token is accepted.
+(assert-event
+ (and (fn-ores-records-sealp *ort-records*)
+      (fn-ores-feed-publication-p
+       (fn-ores-feed-port-publication :ready *ort-records* nil :control nil))))
