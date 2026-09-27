@@ -62,6 +62,7 @@
 (in-package "ACL2")
 (include-book "owner-checkpoint-pipeline")
 (include-book "outcome-class")
+(include-book "store-replay-bound")
 
 (defconst *fn-heap-mib* 1048576)
 (defconst *fn-heap-octets-per-list-octet* 16)
@@ -363,14 +364,17 @@
 ; THE OBSERVED HISTORY (PKT-686 item 1, the coordinator's decision): an
 ; offline verb that never grows the store -- `recover', `store compact',
 ; `store reclaim' -- holds copies of the history the store HAS, not of the
-; profile's bound H.  OBSERVED is the octets of the store's history files on
+; profile's bound.  OBSERVED is the octets of the store's history files on
 ; disk the probe summed before the image started (host/native/heap.lisp
 ; fnn-heap-history-observation: the regular files under transactions/,
-; packs/ and checkpoints/ and the state checkpoint; NIL when unobserved): an
-; upper bound of the stored octets `fn-sbud-bytes-used' counts, since every
-; retained record's encoding is in one of those files.  For those actions
-; the history term is the least of OBSERVED and H; for every other action
-; (`run' grows the store) it stays H.
+; packs/ and checkpoints/ and the state checkpoint; NIL when unobserved):
+; every record the verb reads, encoded and framed, is in one of those files.
+; For those actions the history term is OBSERVED, at most the profile's
+; recovery input bound (books/store-replay-bound.lisp
+; `fn-srb-replay-input-bound': since the records flip the budget H counts an
+; article's payload, and its encoding is larger, so a full store's files
+; exceed H; past the input bound the open refuses the store); for every
+; other action (`run' grows the store) and an unobserved store it stays H.
 (defconst *fn-heap-observed-actions* '(:recover :compact :reclaim))
 
 ; Whether the probe observes the history for ACTION (host/native/heap.lisp
@@ -388,11 +392,9 @@
 
 (defun fn-heap-operation-history-octets (action profile observed)
   (declare (xargs :guard t))
-  (let ((h (fn-bs-profile-max-history-octets profile)))
-    (if (and (member-equal action *fn-heap-observed-actions*)
-             (natp observed) (< observed (nfix h)))
-        observed
-      h)))
+  (if (and (member-equal action *fn-heap-observed-actions*) (natp observed))
+      (min observed (fn-srb-replay-input-bound profile))
+    (fn-bs-profile-max-history-octets profile)))
 
 (defun fn-heap-operation-list-octets (action profile observed)
   (declare (xargs :guard t))
@@ -439,18 +441,16 @@
 
 ; KEYSTONE (PKT-686).  An accepted operation figure for an admitted profile
 ; holds the image, the nursery, the operation's measured list copies of
-; every history USED within H -- and, for an observed verb with an
-; observation, within OBSERVED -- the record and headers in flight, and both
-; checkpoint buffers; and it fits the machine.
+; every history USED within the history term -- H, or for an observed verb
+; the observed octets (`fn-heap-operation-history-octets-by-definition') --
+; the record and headers in flight, and both checkpoint buffers; and it fits
+; the machine.
 (defthm fn-heap-operation-decide-holds-the-operation
   (let ((decision (fn-heap-operation-decide action profile core nursery observations
                                             observed)))
     (implies (and (fn-bs-profile-admittedp profile)
                   (equal (car decision) :heap)
-                  (<= used (fn-bs-profile-max-history-octets profile))
-                  (implies (and (member-equal action *fn-heap-observed-actions*)
-                                (natp observed))
-                           (<= used observed))
+                  (<= used (fn-heap-operation-history-octets action profile observed))
                   (natp core) (natp nursery))
              (and (<= (+ core nursery
                          (* 2 *fn-heap-octets-per-list-octet*
@@ -474,19 +474,29 @@
                             (octets (fn-heap-operation-figure-octets
                                      action profile core nursery observed)))))))
 
-; The observation only ever lowers the figure: the observed figure is at most
-; the unobserved one (the H figure the verb had before), so no accepted
-; command is refused because the probe observed its store.
-(defthm fn-heap-operation-figure-octets-observed-is-at-most-unobserved
-  (<= (fn-heap-operation-figure-octets action profile core nursery observed)
-      (fn-heap-operation-figure-octets action profile core nursery nil))
+; The history term, by definition: an observed verb's observation (at most
+; the recovery input bound), else H.
+(defthm fn-heap-operation-history-octets-by-definition
+  (equal (fn-heap-operation-history-octets action profile observed)
+         (if (and (member-equal action *fn-heap-observed-actions*) (natp observed))
+             (min observed (fn-srb-replay-input-bound profile))
+           (fn-bs-profile-max-history-octets profile)))
+  :rule-classes nil)
+
+; An observation within H only lowers the figure: no store the H figure
+; accepted is refused because the probe observed it within H.
+(defthm fn-heap-operation-figure-octets-observed-within-h-is-at-most-unobserved
+  (implies (<= (nfix observed) (fn-bs-profile-max-history-octets profile))
+           (<= (fn-heap-operation-figure-octets action profile core nursery observed)
+               (fn-heap-operation-figure-octets action profile core nursery nil)))
   :rule-classes :linear
   :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets
                                    fn-heap-operation-list-octets
                                    fn-heap-operation-history-octets)
                                   (fn-bs-profile-max-history-octets
                                    fn-bs-profile-max-record-octets
-                                   fn-bs-profile-field fn-heap-buffer-octets)))))
+                                   fn-bs-profile-field fn-heap-buffer-octets
+                                   fn-srb-replay-input-bound)))))
 
 (defthm fn-heap-small-profile-is-admitted
   (fn-bs-profile-admittedp *fn-heap-small-profile*))
