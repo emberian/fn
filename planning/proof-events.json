@@ -7385,6 +7385,34 @@
         {
           "kind": "theorem",
           "name": "fn-lgk-crash-of-related-state-is-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-consumed-aligned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-consumed-within"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-take-consumed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-recovered-frontier-is-the-last-complete-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-last-digestp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-recovered-content-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-recover-establishes-relation"
         }
       ]
     }
