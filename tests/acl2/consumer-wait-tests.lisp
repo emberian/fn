@@ -1,0 +1,216 @@
+; Teeth for books/consumer-wait.lisp (PRF-252, CNS-007): a consumer wait.
+; The subjects are what host/owner-host.lisp calls:
+; fn-owner-consumer-local-wait-step calls fn-cwait-step and
+; fn-owner-consumer-local-wait-admit calls fn-cwait-admit (both from
+; host/native/owner.lisp fnn-owner-consumer-local-wait).
+;
+; A committed Store with two groups and two consumers, before and after the
+; public article arrives:
+;
+;   "1"  query fn.private.x  unbound (the operator's; a plain wait)
+;   "2"  query fn.public     bound to bob (a bound wait)
+(in-package "ACL2")
+(include-book "std/testing/must-fail" :dir :system)
+(include-book "../../books/consumer-wait")
+
+; --- the Store ---------------------------------------------------------------
+(defun cwt-reserve (s)
+  (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
+                                :frontier-file :ok)
+                      :frontier-replace :ok)
+            :frontier-directory :ok))
+(defun cwt-commit (s event)
+  (fn-sn-finish
+   (fn-sn-io
+    (fn-sn-io
+     (fn-sn-io (fn-sn-prepare-consumer (cwt-reserve s) event)
+               :record-file :ok)
+     :record-link :ok)
+    :record-directory :ok)))
+(defun cwt-article (s record)
+  (fn-sn-finish
+   (fn-sn-io
+    (fn-sn-io
+     (fn-sn-io (fn-sn-prepare (cwt-reserve s) record) :record-file :ok)
+     :record-link :ok)
+    :record-directory :ok)))
+(defun cwt-register (s id group)
+  (let ((d (fn-col-register (fn-own-start s 2) 256 id group)))
+    (if (eq (car d) :write) (cwt-commit s (cadr d)) s)))
+
+(defconst *cwt-public* '(102 110 46 112 117 98 108 105 99))           ; fn.public
+(defconst *cwt-private* '(102 110 46 112 114 105 118 97 116 101 46 120)) ; fn.private.x
+(defconst *cwt-c1* '(49))
+(defconst *cwt-c2* '(50))
+
+(defconst *cwt-empty*
+  (cwt-register
+   (cwt-register
+    (cwt-commit (fn-sn-initial '("fn.public" "fn.private.x") 16)
+                (fn-cpe-make 0 0 0 '(:bootstrap (1) (2))))
+    *cwt-c1* *cwt-private*)
+   *cwt-c2* *cwt-public*))
+(defconst *cwt-full*
+  (cwt-article *cwt-empty*
+               (fn-record-make 3 3 3 "<news@fn.test>" '(78)
+                               '("fn.public") "news-pin" "news-content"
+                               "news-release" 1 841000000)))
+; Both registrations and the article committed: frontier 4.
+(assert-event (equal (fn-cp-nth 3 (fn-sn-consumer *cwt-full*)) 4))
+
+; --- the configuration: "2" bound to bob, who reads fn.* but not fn.private.*
+(defconst *cwt-v*
+  (let ((v (fn-cfg-value (fn-cfg-initial))))
+    (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                            (fn-cfg-quotas v) (fn-cfg-policies v)
+                            (fn-cfg-listeners v) (fn-cfg-peers v)
+                            (fn-cfg-limits v) (fn-cfg-authorities v)
+                            (fn-cfg-invitations v)
+                            (list (fn-cfg-row-make "bob" "fn.*,!fn.private.*" "fn.*" 3)
+                                  (fn-cfg-row-make "2" "bob" "" 6))
+                            (fn-cfg-descriptions v))))
+(assert-event
+ (equal (fn-cfg-apply-delta
+         (fn-cfg-apply-delta (fn-cfg-value (fn-cfg-initial)) 1 0
+                             (fn-cfg-account-access "bob" "fn.*,!fn.private.*" "fn.*"))
+         2 0 (fn-cfg-consumer-bind "2" "bob"))
+        *cwt-v*))
+(defconst *cwt-oc-empty*
+  (fn-ocfg-make (fn-own-start *cwt-empty* 2) (fn-cfg-make 2 *cwt-v*) nil nil))
+(defconst *cwt-oc-full*
+  (fn-ocfg-make (fn-own-start *cwt-full* 2) (fn-cfg-make 2 *cwt-v*) nil nil))
+
+; --- credentials (books/nntp-auth-teeth-tests' verifier literal) -------------
+(defconst *cwt-secret* (fn-nntp-string-octets "correct-horse"))
+(defconst *cwt-wrong* (fn-nntp-string-octets "wrong-horse"))
+(defconst *cwt-salt* (make-list 16 :initial-element 3))
+(defconst *cwt-verifier*
+  (fn-authsec-verifier
+   *cwt-salt*
+   '(60 237 250 71 154 204 168 180 72 224 241 93 232 185 72 59
+     73 5 240 237 54 116 175 93 127 219 39 238 113 83 63 194)))
+(assert-event (equal *cwt-verifier* (fn-authsec-enrol *cwt-salt* *cwt-secret*)))
+(defconst *cwt-acfg*
+  (fn-auth-make-config
+   t nil t
+   (list (fn-auth-make-cred (fn-nntp-string-octets "bob")
+                            (make-list 32 :initial-element 8) *cwt-verifier* t))))
+(assert-event (fn-auth-configp *cwt-acfg*))
+
+(defun cwt-step (oc id secret elapsed seconds)
+  (fn-cwait-step oc *cwt-acfg* id secret elapsed seconds))
+(defun cwt-poll (oc id secret) (fn-cwait-poll oc *cwt-acfg* id secret))
+
+; The polls themselves: the wait's poll is the plain / bound poll.
+(assert-event (equal (cwt-poll *cwt-oc-empty* *cwt-c1* nil)
+                     (fn-cbind-plain-poll *cwt-oc-empty* *cwt-c1*)))
+(assert-event (equal (cwt-poll *cwt-oc-full* *cwt-c2* *cwt-secret*)
+                     (fn-cbind-poll *cwt-oc-full* *cwt-acfg* *cwt-c2* *cwt-secret*)))
+(assert-event (fn-cwait-empty-pagep (cwt-poll *cwt-oc-empty* *cwt-c1* nil)))
+(assert-event (fn-cwait-empty-pagep (cwt-poll *cwt-oc-empty* *cwt-c2* *cwt-secret*)))
+(assert-event (fn-cwait-empty-pagep (cwt-poll *cwt-oc-full* *cwt-c1* nil)))
+(defun cwt-news () (cwt-poll *cwt-oc-full* *cwt-c2* *cwt-secret*))
+(assert-event (equal (car (cwt-news)) :poll))
+(assert-event (consp (caddr (cwt-news))))
+(assert-event (equal (fn-record-msgid
+                      (fn-col-poll-article
+                       (caddr (fn-col-poll (fn-own-start *cwt-full* 2) *cwt-c2*))))
+                     "<news@fn.test>"))
+
+; --- KEYSTONE 1: fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page ---
+; Conjunct 1 (no hypothesis), both disjuncts reached: an empty page 0 ms into
+; a 30 s wait sleeps 30 000 ms; the news answers at once.
+(assert-event (equal (cwt-step *cwt-oc-empty* *cwt-c1* nil 0 30) '(:sleep 30000)))
+(assert-event (equal (cwt-step *cwt-oc-empty* *cwt-c2* *cwt-secret* 1200 30)
+                     '(:sleep 28800)))
+(assert-event (equal (cwt-step *cwt-oc-full* *cwt-c2* *cwt-secret* 5 30)
+                     (list :answer (cwt-news))))
+; Only the consumer with news answers: "1" still sleeps on the full Store.
+(assert-event (equal (cwt-step *cwt-oc-full* *cwt-c1* nil 5 30) '(:sleep 29995)))
+; A refusal answers at once (it is not an empty page).
+(assert-event (equal (cwt-step *cwt-oc-empty* *cwt-c2* *cwt-wrong* 0 30)
+                     '(:answer (:refused :credential))))
+(assert-event (equal (cwt-step *cwt-oc-empty* *cwt-c2* nil 0 30)
+                     '(:answer (:refused :bound))))
+; Conjunct 2 positive: the timeout answers the empty page at its deadline.
+(assert-event (equal (cwt-step *cwt-oc-empty* *cwt-c1* nil 30000 30)
+                     (list :answer (cwt-poll *cwt-oc-empty* *cwt-c1* nil))))
+(assert-event (equal (cwt-step *cwt-oc-empty* *cwt-c1* nil 0 0)
+                     (list :answer (cwt-poll *cwt-oc-empty* *cwt-c1* nil))))
+; Conjunct 2 without each hypothesis: elapsed not natural (a malformed
+; elapsed answers the empty page early); the answer not empty (the news at
+; 5 ms).  (A sleep's second element is its milliseconds, never a page.)
+(defmacro cwt-k2 (elapsed seconds)
+  `(<= (fn-cwait-deadline-ms ,seconds) ,elapsed))
+(assert-event (equal (car (cwt-step *cwt-oc-empty* *cwt-c1* nil 'x 30)) :answer))
+(must-fail
+ (assert-event (let ((r (cwt-step *cwt-oc-empty* *cwt-c1* nil 'x 30)))
+                 (implies (fn-cwait-empty-pagep (cadr r))
+                          (cwt-k2 'x 30)))))
+(must-fail
+ (assert-event (let ((r (cwt-step *cwt-oc-full* *cwt-c2* *cwt-secret* 5 30)))
+                 (implies (natp 5)
+                          (cwt-k2 5 30)))))
+; Conjunct 3 without its hypothesis (before the deadline): a sleep.
+(must-fail
+ (assert-event (equal (cwt-step *cwt-oc-empty* *cwt-c1* nil 29999 30)
+                      (list :answer (cwt-poll *cwt-oc-empty* *cwt-c1* nil)))))
+; Conjunct 4 without its hypothesis (an empty page): a sleep.
+(must-fail
+ (assert-event (equal (cwt-step *cwt-oc-empty* *cwt-c1* nil 0 30)
+                      (list :answer (cwt-poll *cwt-oc-empty* *cwt-c1* nil)))))
+
+; --- KEYSTONE 2: fn-cwait-run-answers-the-poll-at-its-return-point ----------
+; The wait of "2": admitted on the empty Store, woken 1 200 ms later by the
+; commit of the news: it answers the news, the poll of the state it
+; returned in.
+(defun cwt-run ()
+  (fn-cwait-run (list (cons *cwt-oc-empty* 0) (cons *cwt-oc-full* 1200))
+                *cwt-acfg* *cwt-c2* *cwt-secret* 30))
+(assert-event (equal (cwt-run) (list :answer (cwt-news) *cwt-oc-full* 1200)))
+(assert-event (equal (cadr (cwt-run))
+                     (cwt-poll (caddr (cwt-run)) *cwt-c2* *cwt-secret*)))
+; The wait of "1" over the same commits: no news for it; it times out on the
+; empty page at 30 000 ms.
+(defun cwt-timeout ()
+  (fn-cwait-run (list (cons *cwt-oc-empty* 0) (cons *cwt-oc-full* 1200)
+                      (cons *cwt-oc-full* 30000))
+                *cwt-acfg* *cwt-c1* nil 30))
+(assert-event (equal (car (cwt-timeout)) :answer))
+(assert-event (fn-cwait-empty-pagep (cadr (cwt-timeout))))
+(assert-event (equal (cadddr (cwt-timeout)) 30000))
+; Without its hypothesis (the run answered): no observation answers.
+(must-fail
+ (assert-event
+  (equal (car (fn-cwait-run (list (cons *cwt-oc-empty* 0)) *cwt-acfg* *cwt-c1* nil 30))
+         :answer)))
+; The inner implication without each hypothesis: the answer not empty (the
+; news at 1 200 ms is before the deadline); elapsed not natural.
+(must-fail
+ (assert-event (<= (fn-cwait-deadline-ms 30) (cadddr (cwt-run)))))
+(defun cwt-bad-run ()
+  (fn-cwait-run (list (cons *cwt-oc-empty* 'x)) *cwt-acfg* *cwt-c1* nil 30))
+(assert-event (fn-cwait-empty-pagep (cadr (cwt-bad-run))))
+(must-fail
+ (assert-event (<= (fn-cwait-deadline-ms 30) (cadddr (cwt-bad-run)))))
+
+; --- fn-cwait-run-sleeps-only-over-empty-pages ------------------------------
+(assert-event
+ (equal (fn-cwait-run (list (cons *cwt-oc-empty* 0) (cons *cwt-oc-full* 1200))
+                      *cwt-acfg* *cwt-c2* *cwt-secret* 30)
+        (fn-cwait-run (list (cons *cwt-oc-full* 1200))
+                      *cwt-acfg* *cwt-c2* *cwt-secret* 30)))
+; Without its hypothesis (the first step answered): the page is not empty.
+(must-fail
+ (assert-event (fn-cwait-empty-pagep
+                (cwt-poll *cwt-oc-full* *cwt-c2* *cwt-secret*))))
+
+; --- KEYSTONE 3: fn-cwait-admit-leaves-workers-free -------------------------
+(assert-event (equal (fn-cwait-capacity) 12))
+(assert-event (equal (fn-cwait-admit 0) :admit))
+(assert-event (equal (fn-cwait-admit 11) :admit))
+(assert-event (equal (fn-cwait-admit 12) '(:refused :waiters)))
+; Without the first conjunct's hypothesis: 12 is not admitted.
+(must-fail (assert-event (<= (+ 1 12) (fn-cwait-capacity))))
+; Without the second's: 11 is admitted.
+(must-fail (assert-event (equal (fn-cwait-admit 11) '(:refused :waiters))))

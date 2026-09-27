@@ -50,7 +50,23 @@
   (start-hooks nil) (stop-hooks nil) (close-hooks nil)
   ;; Private executable-test injection.  Production instances leave this NIL;
   ;; the value names a real connection envelope, not a second fault decision.
-  (connection-fault-operation nil))
+  (connection-fault-operation nil)
+  ;; PRF-252: consumer waits (fnn-owner-consumer-local-wait).  COMMITS counts
+  ;; durable Store publications and stops; each raises WAIT-QUEUE under
+  ;; WAIT-LOCK.  WAITERS is the number of waits admitted and not yet
+  ;; answered; ACL2 admits one more (fn-cwait-admit).  Lock order: the owner
+  ;; mutex, then WAIT-LOCK; a waiter never holds the owner mutex while it
+  ;; sleeps.
+  (wait-lock (sb-thread:make-mutex :name "fn consumer wait"))
+  (wait-queue (sb-thread:make-waitqueue :name "fn consumer commit"))
+  (commits 0) (waiters 0))
+
+(defun fnn-owner-signal-commit (service)
+  "Wake every consumer wait: a Store publication is durable, or the owner stops.
+The waiters poll again (ACL2 decides what each answers); this only signals."
+  (sb-thread:with-mutex ((fnn-owner-service-wait-lock service))
+    (incf (fnn-owner-service-commits service))
+    (sb-thread:condition-broadcast (fnn-owner-service-wait-queue service))))
 
 (defstruct (fnn-owner-feed-journal (:constructor %make-fnn-owner-feed-journal))
   peer path fd phase (replayed 0))
@@ -704,6 +720,9 @@ fence; no semantic action of any worker, that one included, can run after it
     (unless (eq socket answering)
       (ignore-errors
         (sb-bsd-sockets:socket-shutdown socket :direction :io))))
+  ;; PRF-252: a sleeping consumer wait wakes, finds the owner stopping and
+  ;; is answered (its next step is refused by fnn-owner-serialized).
+  (fnn-owner-signal-commit service)
   ;; Hooks only signal external listeners/clients.  They run inside the same
   ;; first-terminal boundary and must be idempotent and nonblocking.
   (dolist (hook (fnn-owner-service-stop-hooks service))
@@ -868,6 +887,8 @@ the current connection."
     (fnn-mark-committed store sequence)
     (setf (fnn-store-fenced store) t)
     (fnn-finish store)
+    ;; PRF-252: the committed delta wakes the consumer waits.
+    (fnn-owner-signal-commit service)
     :durable))
 
 (defun fnn-owner-preflight-publication (service kind)
@@ -1507,6 +1528,86 @@ client, which can issue POSITION after reconnecting."
               (fnn-fault "ACL2 returned malformed durable cursor"))
             (list :consumer-reply :accepted token)))
          (otherwise (fnn-fault "ACL2 returned malformed consumer decision")))))))
+
+(defun fnn-owner-consumer-poll-answer (answer)
+  "Carry an ACL2 poll answer, (:poll TOKEN REPORT) or a refusal, as the poll reply."
+  (case (and (consp answer) (first answer))
+    (:poll
+     (let ((token (second answer)) (report (third answer)))
+       (unless (and (fnn-octet-list-p token) (fnn-octet-list-p report))
+         (fnn-fault "ACL2 returned malformed consumer poll"))
+       (list :consumer-poll-reply :accepted token report)))
+    (:refused (list :consumer-poll-reply :refused nil nil))
+    (otherwise (fnn-fault "ACL2 returned malformed consumer poll decision"))))
+
+(defun fnn-owner-wait-elapsed-ms (start)
+  (floor (* 1000 (max 0 (- (fnn-now) start))) internal-time-units-per-second))
+
+(defun fnn-owner-consumer-local-wait (service operation consumer argument)
+  "Answer one consumer WAIT (PRF-252): what a poll answers when it returns.
+
+OPERATION is :wait (ARGUMENT the timeout in seconds) or :bound-wait (ARGUMENT
+the list (SECONDS PASSWORD)).  ACL2 admits the waiter
+(fn-owner-consumer-local-wait-admit) and decides each step
+(fn-owner-consumer-local-wait-step, books/consumer-wait.lisp): the poll's
+answer, or (:sleep MS) on an empty page before the deadline.  Between steps
+this thread sleeps on the owner's commit signal (fnn-owner-signal-commit,
+raised by every durable publication and by a stop) for at most MS, holding
+no owner lock; a signal that came after the step's poll but before the
+sleep is seen by the commit count, so none is lost.  It never spins: each
+step follows a signal, a spurious wakeup or the sleep's end."
+  (let* ((boundp (eq operation :bound-wait))
+         (seconds (if boundp (first argument) argument))
+         (secret (and boundp (second argument)))
+         (lock (fnn-owner-service-wait-lock service))
+         (queue (fnn-owner-service-wait-queue service))
+         (start (fnn-now))
+         (admission
+           (fnn-owner-serialized
+            service nil
+            (lambda ()
+              (sb-thread:with-mutex (lock)
+                (let ((verdict (fnn-owner-core
+                                'fn-owner-consumer-local-wait-admit
+                                (fnn-owner-service-waiters service))))
+                  (when (eq verdict :admit)
+                    (incf (fnn-owner-service-waiters service)))
+                  verdict))))))
+    (unless (eq admission :admit)
+      (unless (and (consp admission) (eq (first admission) :refused))
+        (fnn-fault "ACL2 returned malformed wait admission"))
+      (fnn-err "consumer wait refused: ~(~a~)" (second admission))
+      (return-from fnn-owner-consumer-local-wait
+        (list :consumer-poll-reply :refused nil nil)))
+    (unwind-protect
+         (loop
+           (let* ((seen (sb-thread:with-mutex (lock)
+                          (fnn-owner-service-commits service)))
+                  (step (fnn-owner-serialized
+                         service nil
+                         (lambda ()
+                           (fnn-owner-core 'fn-owner-consumer-local-wait-step
+                                           consumer secret
+                                           (fnn-owner-wait-elapsed-ms start)
+                                           seconds)))))
+             (case (and (consp step) (first step))
+               (:answer
+                (return (fnn-owner-consumer-poll-answer (second step))))
+               (:sleep
+                (let ((ms (second step)))
+                  (unless (and (integerp ms) (plusp ms))
+                    (fnn-fault "ACL2 returned a malformed wait sleep"))
+                  (sb-thread:grab-mutex lock)
+                  (unwind-protect
+                       (when (= seen (fnn-owner-service-commits service))
+                         (sb-thread:condition-wait queue lock
+                                                   :timeout (/ ms 1000.0d0)))
+                    ;; A timed-out condition-wait may return without the mutex.
+                    (when (sb-thread:holding-mutex-p lock)
+                      (sb-thread:release-mutex lock)))))
+               (otherwise (fnn-fault "ACL2 returned a malformed wait step")))))
+      (sb-thread:with-mutex (lock)
+        (decf (fnn-owner-service-waiters service))))))
 
 (defun fnn-owner-transit-complete (cid kind reason word)
   "Feed a transit outcome to the owner and write its one service-log line.

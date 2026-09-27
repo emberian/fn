@@ -4,7 +4,7 @@
 
 (defun fnn-command-consumer-local (command argv)
   (let* ((bounded
-           (and (<= (length argv) 5)
+           (and (<= (length argv) 7)
                 (<= (length command) 512)
                 (every (lambda (word) (<= (length word) 512)) argv)))
          (plan
@@ -19,7 +19,7 @@
                (and (consp plan) (second plan)))
       (return-from fnn-command-consumer-local +fnn-exit-usage+))
     (destructuring-bind (ignored operation control first second output
-                         &optional secret-file) plan
+                         &optional secret-file seconds) plan
       (declare (ignore ignored))
       (let* ((input
                (if (member operation '(:ack :bound-ack))
@@ -41,12 +41,17 @@
                 (fnn-octets control) operation input
                 (cond ((member operation '(:bound-poll :bound-ack)) secret)
                       ((eq operation :poll) nil)
+                      ;; PRF-252: a wait carries its timeout (and a bound
+                      ;; wait the password) where a poll carries nothing.
+                      ((eq operation :wait) seconds)
+                      ((eq operation :bound-wait) (list seconds secret))
                       (t second))))
              (status (and (consp reply) (second reply)))
              (cursor (and (consp reply) (third reply))))
         (unless (and (eq (first reply)
                          (case operation
-                           ((:poll :bound-poll) :consumer-poll-reply)
+                           ((:poll :bound-poll :wait :bound-wait)
+                            :consumer-poll-reply)
                            (:status :consumer-status-reply)
                            (otherwise :consumer-reply)))
                      (member status '(:accepted :refused :uncertain :fault))
@@ -60,7 +65,8 @@
                            (and (null cursor) (null (fourth reply))
                                 (null (fifth reply))))
                        (and (fnn-octet-list-p cursor)
-                            (or (not (member operation '(:poll :bound-poll)))
+                            (or (not (member operation
+                                             '(:poll :bound-poll :wait :bound-wait)))
                                 (fnn-octet-list-p (fourth reply))))))
           (fnn-fault "local consumer control returned malformed reply"))
         (when (eq operation :status)
@@ -71,7 +77,8 @@
             (fnn-out "consumer status ~(~a~)" status))
           (return-from fnn-command-consumer-local
             (fnn-core 'fn-native-control-host-status-exit-code status)))
-        (when (and (eq status :accepted) (member operation '(:poll :bound-poll)))
+        (when (and (eq status :accepted)
+                   (member operation '(:poll :bound-poll :wait :bound-wait)))
           ;; Report first, cursor last: a cursor file implies both outputs
           ;; were created.  Poll is read-only; an output failure is a local
           ;; fault and a repeat poll may redeliver the same event.
@@ -85,7 +92,8 @@
                  (fnn-octets cursor)))
             (error () (setq status :fault))))
         (when (and (eq status :accepted) output
-                   (not (member operation '(:poll :bound-poll))))
+                   (not (member operation
+                                '(:poll :bound-poll :wait :bound-wait))))
           (unless (consp cursor)
             (fnn-fault "accepted consumer command returned no cursor"))
           ;; This output file is an application convenience, never fn's

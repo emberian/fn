@@ -927,6 +927,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-owner-local-progress-tests \
 	books/consumer-bound \
 	tests/acl2/consumer-bound-tests \
+	books/consumer-wait-codec \
+	tests/acl2/consumer-wait-codec-tests \
+	books/consumer-wait \
+	tests/acl2/consumer-wait-tests \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
