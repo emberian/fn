@@ -1288,7 +1288,7 @@
     "export_hygiene_warnings": 236,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 229,
-    "include_hygiene_warnings": 1783,
+    "include_hygiene_warnings": 1784,
     "host_names_warnings": 1410,
     "hand_written_record_warnings": 18
   },
@@ -33531,11 +33531,10 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/owner-time-model"
+        "../../books/owner-time-model",
+        "must-fail-checked"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -60189,6 +60188,13 @@
         "line": 111,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-time-model-tests.lisp",
+        "line": 7,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
