@@ -476,6 +476,8 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
                                  "omitted": omitted}
         print("NATIVE-DIFF world reads: kept pairs {}, absent {}, omitted {}".format(
             len(set(kept)), len(absent), len(omitted)))
+        for row in absent + omitted:
+            print("NATIVE-DIFF   " + row)
         self.assertGreater(len(kept), 0, "the check saw no reads: was it loaded?")
         self.assertEqual(omitted, [])
 
