@@ -1,4 +1,4 @@
-; Witnesses and teeth for books/served-plan.lisp (PRF-221; lane
+; Witnesses and teeth for books/served-plan.lisp (PRF-237; lane
 ; owner-scheduler, 2026-09-26).
 ;
 ; Keystone 1 (`fn-splan-window-is-a-prefix-of-the-reply'): the window's
@@ -41,7 +41,8 @@
 
 ; The host's loop over the stobj: windows until done; (status octets windows).
 (defun spt-loop (p w fuel acc n)
-  (declare (xargs :guard (and (natp w) (natp fuel) (true-listp acc) (natp n))))
+  (declare (xargs :guard (and (natp w) (natp fuel) (true-listp acc) (natp n))
+                  :measure (nfix fuel)))
   (if (or (zp fuel) (fn-splan-donep p))
       (list :ok acc n)
     (let ((r (spt-window nil p w)))

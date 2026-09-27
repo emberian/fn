@@ -1,6 +1,6 @@
 ; fn: a served step's reply as an immutable RENDER PLAN, pulled in windows off
 ; the owner mutex (wave 5, lane owner-scheduler, 2026-09-26; D27; HST-023;
-; PRF-221; gpt-6's consolidation review section 7: "immutable read/render
+; PRF-237; gpt-6's consolidation review section 7: "immutable read/render
 ; plans produced against pinned views, and I/O execution that consumes those
 ; plans").
 ;
@@ -26,7 +26,7 @@
 ;                        reply before)
 ;   fn-splan-donep      (plan) -> whether nothing remains
 ;
-; The keystones (PRF-221):
+; The keystones (PRF-237):
 ;   fn-splan-window-is-a-prefix-of-the-reply: the window's octets (the
 ;     buffer's range [0, len)) followed by what the continuation still owes
 ;     are exactly what the plan owed, and the window is at most W octets
@@ -292,7 +292,7 @@
   (true-listp (fn-splan-remaining p)))
 
 (defthm fn-splan-windows-are-the-reply
-  ; KEYSTONE (PRF-221).  Whatever the window size W and however many windows N
+  ; KEYSTONE (PRF-237).  Whatever the window size W and however many windows N
   ; the socket took, once the plan is done the octets written are the reply
   ; the served machine decided.
   ; The one hypothesis: the loop ran until the plan was done (a plan that

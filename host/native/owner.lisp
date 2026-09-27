@@ -10,7 +10,7 @@
 
 ;;;
 ;;; The scheduler (planning/design-2026-09-26-owner-scheduler.md; HST-023;
-;;; PRF-221): the mutex is entered through a GATE.  A thread names its
+;;; PRF-237): the mutex is entered through a GATE.  A thread names its
 ;;; SERVICE CLASS (:control, :reader, :poster, :transit) and waits at the
 ;;; gate; ACL2 decides which class runs next (books/owner-scheduler.lisp
 ;;; fn-osch-next: the first waiting class in cyclic order from a cursor, so a
@@ -106,7 +106,7 @@
       (fnn-fault "owner returned non-octets in ~a" name))
     (fnn-octets value)))
 
-;;; The render plan (books/served-plan.lisp; HST-023, PRF-221).  A served
+;;; The render plan (books/served-plan.lisp; HST-023, PRF-237).  A served
 ;;; step answers with an immutable PLAN (the step's effects, whose reply
 ;;; octets are pointers into the connection's pinned archive) and the
 ;;; connection's thread renders it OFF the mutex, at most

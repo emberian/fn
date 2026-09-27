@@ -80,9 +80,9 @@
 ;; fn-octets buffer and calls fn-rclb-existing-action (D13, STO-014).
 (include-book "../books/records-concrete-owner")
 (include-book "../books/octets-stobj")
-; HST-023 (PRF-221): the served step's typed result and render plan.
-(include-book "../books/served-plan")
 (include-book "../books/store-reclaim-buffer")
+; HST-023 (PRF-237): the served step's typed result and render plan.
+(include-book "../books/served-plan")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -2391,7 +2391,7 @@
 ; fn-scar-ocfg-read-tls-prefix over (fn-oct-slice-list start end fn-octets)
 ; (fn-scar-ocfg-read-span-is-reference-under-ocl-relation).
 ;
-; HST-023 (PRF-221; adapter-retirement-2's ServedStep, PKT-616 (b)): the
+; HST-023 (PRF-237; adapter-retirement-2's ServedStep, PKT-616 (b)): the
 ; result is ONE typed value, `fn-splan-step-make' of the step's effects, its
 ; close, STARTTLS and submission projections (fn-served-closingp,
 ; fn-served-starttlsp, fn-served-submission: what fn-owner-install-effects

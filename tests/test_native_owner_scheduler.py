@@ -1,5 +1,5 @@
 """The owner's scheduler gate and render plans on a native image (HST-023,
-PRF-221; lane owner-scheduler, 2026-09-26).
+PRF-237; lane owner-scheduler, 2026-09-26).
 
 The owner mutex is entered through a gate that names each quantum's service
 class; ACL2 picks the class that runs next (books/owner-scheduler.lisp

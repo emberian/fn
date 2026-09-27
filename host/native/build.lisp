@@ -29,7 +29,7 @@
 (include-book "books/public-exposure")
 (include-book "books/public-exposure-reply")
 ;; PRF-192: the served read's reply as a range of the octet buffer.  HST-023
-;; (PRF-221): the reply is a render PLAN over the step's effects, rendered off
+;; (PRF-237): the reply is a render PLAN over the step's effects, rendered off
 ;; the owner mutex a window at a time: host/owner-host.lisp fn-owner-chunk-span
 ;; calls fn-splan-step-make, host/native/owner.lisp fnn-owner-render-next calls
 ;; fn-splan-window and the gate calls fn-osch-next (books/owner-scheduler).

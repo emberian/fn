@@ -1,6 +1,6 @@
 ; fn: the owner's scheduler -- which service class runs next (wave 5, lane
 ; owner-scheduler, 2026-09-26; ember's priority 2 "a better mutation scheme";
-; gpt-6's consolidation review section 7; HST-023; PRF-221).
+; gpt-6's consolidation review section 7; HST-023; PRF-237).
 ;
 ; One semantic owner does not require one enormous critical section.  The
 ; native owner (host/native/owner.lisp) keeps ONE mutation owner: every
@@ -382,7 +382,7 @@
    :hints (("Goal" :use fn-osch-norm-cases :in-theory (disable fn-osch-norm)))))
 
 (defthm fn-osch-control-waits-at-most-the-bound
-  ; KEYSTONE (PRF-221).  The subject is `fn-osch-next' (its pick is
+  ; KEYSTONE (PRF-237).  The subject is `fn-osch-next' (its pick is
   ; `fn-osch-pick' of the cursor and the counts), which host/native/owner.lisp
   ; fnn-owner-gate-admit calls at every release of the owner mutex and at
   ; every arrival at an idle owner.  From any cursor, while control has a
