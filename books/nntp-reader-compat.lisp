@@ -301,7 +301,7 @@
 (defthm fn-rcompat-served-payload-inserts-one-line
   (let ((split (fn-nntp-split-article (fn-nntp-article-bytes article fn-arena))))
     (if (and (consp (fn-xref-pairs article))
-             (not (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena)))
+             (not (fn-nntp-article-tombstonep article fn-arena))
              (fn-nntp-split-okp split))
         (and (equal (fn-nntp-article-bytes article fn-arena)
                     (append (fn-nntp-split-head split) (list 13 10)
@@ -423,7 +423,7 @@
 (defun fn-rcompat-xref-content (server article fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (and (consp article)
-           (not (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena))))
+           (not (fn-nntp-article-tombstonep article fn-arena)))
       (list :ok (fn-rcompat-xref-value server article))
     (list :error)))
 

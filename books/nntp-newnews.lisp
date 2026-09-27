@@ -73,7 +73,7 @@
                     groups threshold (cdr articles)
                     (append newer (list article)) horizon fn-arena)))
         (if (and (fn-nntp-newnews-candidatep groups article)
-                 (not (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena)))
+                 (not (fn-nntp-article-tombstonep article fn-arena))
                  (fn-nntp-newnews-newp
                   threshold (fn-article-stamp article) current))
             (cons (fn-nntp-string-octets (fn-article-msgid article)) rest)
@@ -114,7 +114,7 @@
       (let ((a (car articles)))
         (cons (fn-make-article
                (fn-article-msgid a)
-               (if (fn-rcl-tombstonep (fn-nntp-article-bytes a fn-arena))
+               (if (fn-nntp-article-tombstonep a fn-arena)
                    (fn-article-payload a)
                  nil)
                (fn-article-groups a)

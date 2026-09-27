@@ -14,6 +14,74 @@
 ; persvati); left open for the books above, nntp-invariants went from
 ; 4.5 s to 16.0 s.  A proof that needs it enables it in a hint.
 (in-theory (disable fn-rcl-tombstonep))
+;; Whether an article is reclaimed, read through the arena (lane served-readers,
+;; 2026-09-27, F2): at most the tombstone's fixed head of the sealed payload
+;; is read in place, and no octet list is built.  Logically it IS
+;; fn-rcl-tombstonep of the article's bytes (the definition expands in every
+;; proof); fn-nntp-article-tombstonep-exec-is-logic is the guard obligation.
+(defun fn-nntp-arena-prefixp (prefix h i fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (true-listp prefix) (natp h) (natp i)
+                              (< h (fn-arena-count fn-arena)))
+                  :measure (len prefix)))
+  (if (consp prefix)
+      (and (< i (fn-arena-payload-len h fn-arena))
+           (equal (car prefix) (fn-arena-get h i fn-arena))
+           (fn-nntp-arena-prefixp (cdr prefix) h (+ 1 i) fn-arena))
+    t))
+
+(encapsulate ()
+  (local (defthm fn-nntp-car-nthcdr (equal (car (nthcdr i xs)) (nth i xs))))
+  (local (defthm fn-nntp-cdr-nthcdr
+           (implies (natp i) (equal (cdr (nthcdr i xs)) (nthcdr (+ 1 i) xs)))))
+  (local (defthm fn-nntp-nthcdr-of-nil (equal (nthcdr i nil) nil)))
+  (local (defthm fn-nntp-consp-nthcdr
+           (implies (natp i) (iff (consp (nthcdr i xs)) (< i (len xs))))))
+  (local (in-theory (disable nthcdr nth)))
+  (defthm fn-nntp-arena-prefixp-is-rcl-prefixp
+    (implies (natp i)
+             (equal (fn-nntp-arena-prefixp prefix h i fn-arena)
+                    (fn-rcl-prefixp prefix (nthcdr i (nth h fn-arena)))))
+    :hints (("Goal" :induct (fn-nntp-arena-prefixp prefix h i fn-arena)
+             :in-theory (enable fn-rcl-prefixp fn-arena-get-is-nth
+                                fn-arena-payload-len-is-len-nth)))))
+
+(defthm fn-nntp-arena-prefixp-at-0
+  (equal (fn-nntp-arena-prefixp prefix h 0 fn-arena)
+         (fn-rcl-prefixp prefix (nth h fn-arena)))
+  :hints (("Goal" :use ((:instance fn-nntp-arena-prefixp-is-rcl-prefixp (i 0)))
+           :in-theory (enable nthcdr))))
+
+(local
+ (defthm fn-nntp-rcl-at-leastp-is-len
+   (implies (natp n)
+            (equal (fn-rcl-at-leastp n xs) (<= n (len xs))))
+   :hints (("Goal" :in-theory (enable fn-rcl-at-leastp)))))
+
+(local
+ (defthm fn-nntp-tombstonep-unfolds
+   (equal (fn-rcl-tombstonep payload)
+          (and (<= *fn-rcl-tombstone-fixed* (len payload))
+               (fn-rcl-prefixp *fn-rcl-magic* payload)))
+   :hints (("Goal" :in-theory '(fn-rcl-tombstonep fn-nntp-rcl-at-leastp-is-len
+                                 (:e natp))))))
+
+(defun fn-nntp-article-tombstonep (article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t
+                  :guard-hints (("Goal" :in-theory '(fn-nntp-tombstonep-unfolds
+                                                     fn-nntp-payload-bytes
+                                                     fn-nntp-article-bytes
+                                                     fn-arena-payload-is-nth
+                                                     fn-arena-count-is-len
+                                                     fn-arena-payload-len-is-len-nth
+                                                     fn-nntp-arena-prefixp-at-0)))))
+  (mbe :logic (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena))
+       :exec (let ((p (fn-article-payload article)))
+               (if (and (natp p) (< p (fn-arena-count fn-arena)))
+                   (and (<= *fn-rcl-tombstone-fixed* (fn-arena-payload-len p fn-arena))
+                        (fn-nntp-arena-prefixp *fn-rcl-magic* p 0 fn-arena))
+                 (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena))))))
+
 
 ; The books below this one withdraw their definitions at their export events
 ; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
@@ -54,7 +122,7 @@
     ; is still held and its number never reused -- but its bytes are gone.
     ; By number or as the current article it is 423, by Message-ID 430,
     ; and the text says why.  The cursor does not move.
-    (if (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena))
+    (if (fn-nntp-article-tombstonep article fn-arena)
         (fn-nntp-single session (if updatep
                                     "423 article reclaimed"
                                   "430 article reclaimed"))
@@ -83,7 +151,7 @@
 ; and the session is unchanged.
 (defthm fn-nntp-reclaimed-article-answers-reclaimed
   (implies (and (fn-nntp-article-idp article)
-                (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena)))
+                (fn-nntp-article-tombstonep article fn-arena))
            (equal (fn-nntp-article-response session article number kind
                                             updatep group fn-arena)
                   (fn-nntp-single session (if updatep
@@ -1089,12 +1157,42 @@
 ; The :lines metadata item counts the body lines of the exact retained octets;
 ; :bytes counts those octets themselves.  Neither is stored beside the article
 ; and neither is recomputed from a normalized copy.
+;; The body's line count without building its lines (lane served-readers, F2:
+;; OVER 1-2000 built every body's line list to take its length).  The count
+;; walks the octets as fn-nntp-crlf-lines-aux does and answers NIL where that
+;; answers :error (fn-nov-crlf-count-aux-is-len-of-lines).
+(defun fn-nov-crlf-count-aux (bytes pending n)
+  (declare (xargs :guard (natp n) :measure (acl2-count bytes)))
+  (if (consp bytes)
+      (if (equal (car bytes) 13)
+          (if (and (consp (cdr bytes)) (equal (car (cdr bytes)) 10))
+              (fn-nov-crlf-count-aux (cdr (cdr bytes)) nil (+ 1 n))
+            nil)
+        (if (or (equal (car bytes) 10) (equal (car bytes) 0))
+            nil
+          (fn-nov-crlf-count-aux (cdr bytes) t n)))
+    (if pending nil n)))
+
+(defthm fn-nov-crlf-count-aux-is-len-of-lines
+  (let ((r (fn-nntp-crlf-lines-aux bytes line-rev lines-rev)))
+    (equal (fn-nov-crlf-count-aux bytes (consp line-rev) (len lines-rev))
+           (if (equal (car r) :ok) (len (car (cdr r))) nil)))
+  :hints (("Goal" :induct (fn-nntp-crlf-lines-aux bytes line-rev lines-rev)
+           :in-theory (enable fn-nntp-crlf-lines-aux))))
+
 (defun fn-nov-body-line-count (payload)
   (declare (xargs :guard t :verify-guards nil))
   (let ((split (fn-nntp-split-article payload)))
     (if (fn-nntp-split-okp split)
-        (let ((lines (fn-nntp-crlf-lines (fn-nntp-split-body split))))
-          (if (equal (car lines) :ok) (fn-ng-len (car (cdr lines))) 0))
+        (mbe :logic
+             (let ((lines (fn-nntp-crlf-lines (fn-nntp-split-body split))))
+               (if (equal (car lines) :ok) (fn-ng-len (car (cdr lines))) 0))
+             :exec
+             (let ((body (fn-nntp-split-body split)))
+               (if (fn-octet-listp body)
+                   (let ((n (fn-nov-crlf-count-aux body nil 0)))
+                     (if n n 0))
+                 0)))
       0)))
 
 (defun fn-nov-overview (article fn-arena)
@@ -1166,7 +1264,7 @@
              ; D13: a reclaimed article has no overview; it is skipped
              ; before its tombstone reaches the parser.
              (over (if (and (consp article)
-                            (not (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena))))
+                            (not (fn-nntp-article-tombstonep article fn-arena)))
                        (fn-nov-overview article fn-arena)
                      (list :error))))
         (if (fn-nov-okp over)
@@ -1192,7 +1290,7 @@
                         group current (fn-state-articles archive))))
           (if (not (consp article))
               (fn-nntp-single session "420 no current article")
-            (if (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena))
+            (if (fn-nntp-article-tombstonep article fn-arena)
                 (fn-nntp-single session "423 article reclaimed")
             (let ((over (fn-nov-overview article fn-arena)))
               (if (fn-nov-okp over)
@@ -1224,7 +1322,7 @@
                                   (fn-state-articles archive))))
     (if (not (consp article))
         (fn-nntp-single session "430 no article with that message-id")
-      (if (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena))
+      (if (fn-nntp-article-tombstonep article fn-arena)
           (fn-nntp-single session "430 article reclaimed")
       (let ((over (fn-nov-overview article fn-arena)))
         (if (fn-nov-okp over)
@@ -1472,7 +1570,11 @@
   :hints (("Goal" :in-theory (disable fn-article-get-headers
                                       fn-article-syntax-p))))
 
-(verify-guards fn-nov-body-line-count)
+(verify-guards fn-nov-body-line-count
+  :hints (("Goal" :in-theory (enable fn-nntp-crlf-lines)
+           :use ((:instance fn-nov-crlf-count-aux-is-len-of-lines
+                            (bytes (fn-nntp-split-body (fn-nntp-split-article payload)))
+                            (line-rev nil) (lines-rev nil))))))
 
 ; The article accessors stay closed here so that
 ; fn-nov-get-headers-car-is-a-field (local, above) is what discharges
@@ -2167,7 +2269,7 @@
       ; D13: a reclaimed article is not listed.  The test reads at most
       ; the tombstone's fixed head of the payload, never parses it.
       (if (and (fn-nntp-newnews-candidatep groups article)
-               (not (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena)))
+               (not (fn-nntp-article-tombstonep article fn-arena))
                (fn-nntp-newnews-newp threshold stamp horizon))
           (cons (fn-nntp-string-octets (fn-article-msgid article)) rest)
         rest))))

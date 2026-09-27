@@ -12,7 +12,7 @@
              (article (fn-gidx-entry-number-article group number entries trie))
              ; D13: a reclaimed article is skipped before the parser.
              (over (if (and (consp article)
-                            (not (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena))))
+                            (not (fn-nntp-article-tombstonep article fn-arena)))
                        (fn-nov-overview article fn-arena)
                      (list :error))))
         (if (fn-nov-okp over)
@@ -35,7 +35,7 @@
              (article (fn-gidx-nidx-number-article number nidx trie))
              ; D13: a reclaimed article is skipped before the parser.
              (over (if (and (consp article)
-                            (not (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena))))
+                            (not (fn-nntp-article-tombstonep article fn-arena)))
                        (fn-nov-overview article fn-arena)
                      (list :error))))
         (if (fn-nov-okp over)
