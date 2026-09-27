@@ -25,6 +25,7 @@
 (in-package "ACL2")
 (include-book "owner-tls-prefix")
 (include-book "owner-prepare-correspondence")
+(include-book "store-intern")
 
 ; -----------------------------------------------------------------------------
 ; P2.  The 240 names this submission's record.
@@ -91,21 +92,29 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets))))
 
-(defun fn-own-completion-names-submission-p (o cfg)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
-  (let ((sub (fn-own-inflight o))
-        (record (fn-sn-completion-record (fn-own-store o))))
+; The store retains ROWS (records-flip, books/store-intern.lisp): the
+; completion record is a held row whose payload position is a handle into
+; the entry's arena, so the submission is named through ALPHA of the row
+; (fn-row-wire-of: the wire record the row stands for, its payload the bytes
+; under the handle).  Comparing the handle itself with the staged octets is
+; false on every completion, and every served POST finish was :fault (436
+; uncertain) until this read went through the arena.
+(defun fn-own-completion-names-submission-p (o cfg fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store o))))
+  (let* ((sub (fn-own-inflight o))
+         (record (fn-sn-completion-record (fn-own-store o)))
+         (w (fn-row-wire-of record fn-arena)))
     (and sub
-         (fn-record-p record)
-         (equal (fn-record-msgid record)
+         (fn-held-p record)
+         (equal (fn-record-msgid w)
                 (fn-record-octets-string (fn-own-sub-msgid sub)))
-         (equal (fn-record-payload record) (fn-own-sub-stored-octets cfg sub))
+         (equal (fn-record-payload w) (fn-own-sub-stored-octets cfg sub))
          t)))
 
-(defun fn-own-finish (o cfg)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
+(defun fn-own-finish (o cfg fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store o))))
   (cons (if (and (fn-sn-completion-enabledp (fn-own-store o))
-                 (fn-own-completion-names-submission-p o cfg))
+                 (fn-own-completion-names-submission-p o cfg fn-arena))
             :durable
           :fault)
         (fn-own-complete o)))
@@ -128,15 +137,16 @@
 ; store is fn-sn-finish of the old); exactly one acknowledgement, the
 ; completion pair, was appended to the store's success list and to the
 ; ledger; the in-flight submission is connection `id''s; the completed record
-; is an article record whose Message-ID is that submission's and whose
-; payload is the octets the owner staged for it under CFG
-; (fn-own-sub-stored-octets); and the pair names a record in the durable
-; history.
+; is a held article row, and ALPHA of it through the arena (fn-row-wire-of)
+; carries that submission's Message-ID and, as its payload, the octets the
+; owner staged for it under CFG (fn-own-sub-stored-octets); and the pair
+; names a record in the durable history.
 (defthm fn-own-240-follows-consumed-completion
-  (let* ((o2 (cdr (fn-own-finish o cfg)))
-         (word (car (fn-own-finish o cfg)))
+  (let* ((o2 (cdr (fn-own-finish o cfg fn-arena)))
+         (word (car (fn-own-finish o cfg fn-arena)))
          (pair (fn-sf-completion (fn-sn-files (fn-own-store o))))
          (record (fn-sn-completion-record (fn-own-store o)))
+         (w (fn-row-wire-of record fn-arena))
          (sub (fn-own-inflight o)))
     (implies (and (fn-own-relation o)
                   (equal (car (fn-own-outcome o2 id word))
@@ -160,27 +170,27 @@
                                  (list pair)))
                   (equal (fn-own-ledger o2) (append (fn-own-ledger o) (list pair)))
                   (equal (fn-own-inflight o2) sub)
-                  (fn-record-p record)
-                  (equal (fn-record-msgid record)
+                  (fn-held-p record)
+                  (equal (fn-record-msgid w)
                          (fn-record-octets-string (fn-own-sub-msgid sub)))
-                  (equal (fn-record-payload record)
+                  (equal (fn-record-payload w)
                          (fn-own-sub-stored-octets cfg sub))
                   (fn-sf-record-has-pairp
                    pair (fn-sf-records (fn-sn-files (fn-own-store o2)))))))
   :rule-classes nil
   :hints (("Goal"
            :cases ((and (fn-sn-completion-enabledp (fn-own-store o))
-                        (fn-own-completion-names-submission-p o cfg)))
+                        (fn-own-completion-names-submission-p o cfg fn-arena)))
            :use ((:instance fn-own-durable-reply-names-a-durable-record
-                            (o (cdr (fn-own-finish o cfg)))
-                            (word (car (fn-own-finish o cfg))))
+                            (o (cdr (fn-own-finish o cfg fn-arena)))
+                            (word (car (fn-own-finish o cfg fn-arena))))
                  (:instance fn-own-complete-preserves-relation)
                  fn-own-complete-keeps-every-connection
                  (:instance fn-own-complete-ledger-is-exact-pair)
                  (:instance fn-sn-finish-acknowledges-exact-pair
                             (s (fn-own-store o))))
            :in-theory (e/d (fn-own-finish fn-own-completion-names-submission-p)
-                           (fn-own-sub-stored-octets
+                           (fn-own-sub-stored-octets fn-row-wire-of
                             fn-own-complete fn-own-relation fn-own-outcome
                             fn-served-post-outcome fn-sn-finish
                             fn-sn-completion-enabledp fn-sn-completion-record

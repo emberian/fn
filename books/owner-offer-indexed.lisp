@@ -341,13 +341,13 @@
 
 (defthm fn-oix-finish-keeps-view-indexed
   (implies (fn-scar-view-indexedp o)
-           (fn-scar-view-indexedp (cdr (fn-own-finish o cfg))))
+           (fn-scar-view-indexedp (cdr (fn-own-finish o cfg fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-own-finish)
                                   (fn-midx-correspondencep fn-own-refresh)))))
 
 (defthm fn-oix-ccar-own-finish-keeps-view-indexed
   (implies (fn-scar-view-indexedp o)
-           (fn-scar-view-indexedp (cdr (fn-ccar-own-finish o cfg))))
+           (fn-scar-view-indexedp (cdr (fn-ccar-own-finish o cfg fn-arena))))
   :hints (("Goal" :use fn-oix-finish-keeps-view-indexed
            :in-theory '(fn-ccar-own-finish-is-own-finish))))
 
