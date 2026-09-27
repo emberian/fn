@@ -7968,7 +7968,8 @@
         "books/wire.lisp",
         "tests/acl2/served-line-iterative-tests.lisp",
         "tests/test_native_served_line_stack.py",
-        "planning/evidence/served-line-iterative-2026-09-26.md"
+        "planning/evidence/served-line-iterative-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260927T021015Z-1915504.json"
       ],
       "progress_note": "Lane served-line-iterative (2026-09-26; image-floor packet 2, PKT-481's class, D27). Cause by persvati REPL backtrace (FN-POST-BODY-OCTETS frames to exhaustion on 3,000,000 lines) and by the native witness (one 4 MiB line: Control stack exhausted in fn-owner-chunk-span until fn-wire-list-length was a loop). Teeth: tests/acl2/served-line-iterative-tests.lisp (reachable witnesses, the composed BODY reply, served-size witnesses of 2,100,000 lines and of one 20,000,000-octet line through the compiled executables, labelled MUTATION witnesses refuted on ground instances).",
       "events": [
@@ -7991,7 +7992,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-native-app-fast.lisp",
         "books/owner-store-indexed.lisp",
@@ -8000,7 +8001,8 @@
         "host/bp-receipt-host.lisp",
         "host/bp-receive-host.lisp",
         "host/bp-native-app-host.lisp",
-        "planning/evidence/hot-path-fixes-bp-2026-09-26.md"
+        "planning/evidence/hot-path-fixes-bp-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260927T021015Z-1915504.json"
       ],
       "events": [
         "fn-bpaj-node-record-committed-carriedp-is-committedp",
