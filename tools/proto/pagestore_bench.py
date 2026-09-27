@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
-"""The page-store prototype's bench and crash campaign (lane proto-pagestore,
-2026-09-27; planning/evidence/proto-pagestore-2026-09-27.md).
+"""The page store's bench and crash campaign (lane proto-pagestore,
+2026-09-27; the two-level table host of lane arena-store, 2026-09-27:
+planning/evidence/arena-store-2026-09-27/).
 
 Runs ON hbox (Linux).  From the laptop:
 
     python3 tools/proto/pagestore_bench.py ship          # rsync the tree to hbox
-    ssh hbox python3 /tank/fn/scratch/proto-pagestore/tree/tools/proto/pagestore_bench.py build
-    ssh hbox python3 .../pagestore_bench.py q1|q2|q4|cut-map|q3 [--out DIR]
+    ssh hbox python3 /tank/fn/scratch/arena-store-host/tree/tools/proto/pagestore_bench.py build
+    ssh hbox python3 .../pagestore_bench.py q1|q2|q3|q4|cut-map|summarize [--out DIR]
 
-`build` loads books/proto/pagestore.lisp from source in the w28 ACL2 (its
-include closure's certificates come from the proof REPL tree), loads
+`build` certifies books/proto/pagestore-words, pagestore and pagestore-exec
+in the w28 ACL2 (their include closure's sha256 certificates come from the
+proof REPL tree), includes pagestore-exec, loads
 host/native/proto-pagestore.lisp and saves one image
-(/tank/fn/scratch/proto-pagestore/fnps-image.core) under swarm-build.  Every
-command after that is one process of that image under
+(/tank/fn/scratch/arena-store-host/fnps-image.core) under swarm-build.
+Every command after that is one process of that image under
 `systemd-run --user --scope -p MemoryMax=24G`, fed `:q` and one
 `(fnps-main ...)` form; it prints `FNPS-JSON {...}` lines, which this tool
-parses.  The process-death campaign (q3) kills the snapshot at every cut the
-book names (*pgs-snapshot-cuts*; FNPS_CUT=name[:k], exit 77) and opens the
-store in a fresh process: it must land on the last complete commit, with the
-image digest of that commit.  Never touches /tank/fn/node.
+parses.  The store layout is the inline one-barrier layout.  The
+process-death campaign (q3) kills the snapshot at every cut the book names
+(*pgs-snapshot-cuts*; FNPS_CUT=name[:k], exit 77) and opens the store in a
+fresh process: it must land on the last complete commit, with the image
+digest of that commit; then damage cases (a data page, a table page, the
+directory; written by the newest commit or shared with the previous one).
+Never touches /tank/fn/node.
 """
 from __future__ import annotations
 
@@ -33,14 +38,14 @@ import subprocess
 import sys
 import time
 
-ROOT = Path("/tank/fn/scratch/proto-pagestore")
+ROOT = Path("/tank/fn/scratch/arena-store-host")
 TREE = ROOT / "tree"
 CORE = ROOT / "fnps-image.core"
 REPL_BOOKS = Path("/tank/fn/gates/proto-pagestore-repl/books")
 SBCL = "/tank/fn/sbcl/bin/sbcl"
 ACL2_CORE = "/tank/fn/acl2-8.7/saved_acl2.core"
 DYN = "16000"
-NVME = Path("/var/tmp/proto-pagestore")        # ext4 on /dev/nvme0n1p4
+NVME = Path("/var/tmp/arena-store-host")        # ext4 on /dev/nvme0n1p4
 ZFS = ROOT / "data"                            # tank (ZFS)
 LANE = Path(__file__).resolve().parents[2]
 
@@ -58,21 +63,43 @@ def ship(_a):
     print("shipped", LANE, "->", TREE)
 
 
+BOOKS = ("pagestore-words", "pagestore", "pagestore-exec")
+
+
 def build(_a):
     books = TREE / "books"
     for f in REPL_BOOKS.glob("sha256*"):
         if f.suffix in (".cert", ".fasl", ".port"):
             shutil.copy2(f, books / f.name)
-    script = f"""(set-cbd "{TREE}/books/proto/")
-(ld "pagestore.lisp")
-:q
-(load "{TREE}/host/native/proto-pagestore.lisp")
-(save-exec "{ROOT}/fnps-image" "proto-pagestore")
-"""
     log = ROOT / "build.log"
-    with open(log, "w") as out:
+    out = open(log, "w")
+    for b in BOOKS:
+        for ext in (".cert", ".fasl", ".port"):
+            (books / "proto" / (b + ext)).unlink(missing_ok=True)
+    for b in BOOKS:
+        t0 = time.time()
+        script = f"""(set-cbd "{TREE}/books/proto/")
+(certify-book "{b}" ? t)
+"""
+        out.write(f"== certify {b}\n"); out.flush()
         p = subprocess.run(["swarm-build"] + sbcl_argv(ACL2_CORE), input=script, text=True,
                            stdout=out, stderr=subprocess.STDOUT, cwd=TREE)
+        ok = (books / "proto" / (b + ".cert")).exists()
+        out.write(f"== certify {b} rc {p.returncode} cert {ok} {time.time() - t0:.1f} s\n"); out.flush()
+        print("certify", b, "rc", p.returncode, "cert", ok, f"{time.time() - t0:.1f} s", flush=True)
+        if not ok:
+            return 1
+    script = f"""(set-cbd "{TREE}/books/proto/")
+(include-book "pagestore-exec")
+:q
+(load "{TREE}/host/native/proto-pagestore.lisp")
+(save-exec "{ROOT}/fnps-image" "arena-store-host")
+"""
+    CORE.unlink(missing_ok=True)
+    out.write("== image\n"); out.flush()
+    p = subprocess.run(["swarm-build"] + sbcl_argv(ACL2_CORE), input=script, text=True,
+                       stdout=out, stderr=subprocess.STDOUT, cwd=TREE)
+    out.close()
     text = log.read_text()
     bad = [l for l in text.splitlines() if "ACL2 Error" in l or "debugger invoked" in l]
     print("build rc", p.returncode, "core", CORE.exists(), "errors", bad[:5])
@@ -137,7 +164,7 @@ def q1(a):
                 print(raw[-3000:]); return 1
             # A second commit of one appended page, so a lazy open checks
             # only the pages its own commit wrote (the realistic steady state).
-            rc, recs, raw = run(["mutate", store, "main", "append", "1", "2"])
+            rc, recs, raw = run(["mutate", store, "main", "append", "1", "1"])
             append(res, {"fs": fsname, "n": n, "phase": "second-commit", "rc": rc,
                          "commit": ev(recs, "commit")})
             du = subprocess.run(["du", "-sb", store], capture_output=True, text=True).stdout.split()[0]
@@ -153,8 +180,10 @@ def q1(a):
                                      "rc": rc, "open": o[0] if o else None,
                                      "first": fr[0] if fr else None})
                         print(fsname, n, mode, temp, i, rc,
-                              o and o[0].get("ms-total"), fr and fr[0]["requests"].get("ms-lookup-seq"),
+                              o and o[0].get("ms-total"), fr and fr[0].get("ms-to-first-request"),
                               flush=True)
+                        if rc != 0 or not fr:
+                            print(raw[-3000:]); return 1
             if not a.keep:
                 shutil.rmtree(store, ignore_errors=True)
     return 0
@@ -165,28 +194,28 @@ def q2(a):
     res = d / "q2.jsonl"
     base = NVME if a.fs == "nvme" else ZFS
     for kind in ("random", "append"):
-        for fs_ in ((1,) if a.inline else (1, 2)):
-            store = str(base / f"q2-{kind}-{fs_}")
-            shutil.rmtree(store, ignore_errors=True)
-            rc, recs, raw = run(["init", store, str(a.n)] + (["inline"] if a.inline else []))
-            if rc != 0:
-                print(raw[-3000:]); return 1
-            for count in [int(x) for x in a.counts.split(",")]:
-                for i in range(a.runs):
-                    st = str(d / f"strace-{kind}-{fs_}-{count}-{i}.txt") if i == 0 else None
-                    rc, recs, raw = run(["mutate", store, "main", kind, str(count), str(fs_)],
-                                        strace=st)
-                    c = ev(recs, "commit")
-                    rec = {"fs": a.fs, "layout": "inline" if a.inline else "root-file", "kind": kind, "fsyncs": fs_, "count": count, "run": i,
-                           "rc": rc, "commit": c[0]["commit"] if c else None}
-                    if st and Path(st).exists():
-                        rec["strace"] = Path(st).read_text()
-                    append(res, rec)
-                    print(kind, fs_, count, i, rc, c and c[0]["commit"].get("ms-total"), flush=True)
-                    if rc != 0:
-                        print(raw[-3000:]); return 1
-            shutil.rmtree(store, ignore_errors=True)
+        store = str(base / f"q2-{kind}")
+        shutil.rmtree(store, ignore_errors=True)
+        rc, recs, raw = run(["init", store, str(a.n)])
+        if rc != 0:
+            print(raw[-3000:]); return 1
+        append(res, {"fs": a.fs, "kind": kind, "phase": "init", "init": ev(recs, "init")})
+        for count in [int(x) for x in a.counts.split(",")]:
+            for i in range(a.runs):
+                st = str(d / f"strace-{a.fs}-{kind}-{count}-{i}.txt") if i == 0 else None
+                rc, recs, raw = run(["mutate", store, "main", kind, str(count), "1"], strace=st)
+                c = ev(recs, "commit")
+                rec = {"fs": a.fs, "layout": "inline-2level", "kind": kind, "count": count, "run": i,
+                       "rc": rc, "commit": c[0]["commit"] if c else None}
+                if st and Path(st).exists():
+                    rec["strace"] = Path(st).read_text()
+                append(res, rec)
+                print(kind, count, i, rc, c and c[0]["commit"].get("ms-total"), flush=True)
+                if rc != 0:
+                    print(raw[-3000:]); return 1
+        shutil.rmtree(store, ignore_errors=True)
     return 0
+
 
 
 def q4(a):
@@ -244,40 +273,51 @@ def cut_map(a):
     return 0 if ok else 1
 
 
+def refusal_key(r):
+    parts = r.strip("()").split()
+    return parts[2] if len(parts) > 2 else r
+
+
+BOOK_CUTS = ["begin", "page-written", "table-written", "dir-written", "record-torn",
+             "record-written", "record-synced"]
+
+
 def q3(a):
     d = out_dir(a)
     res = d / "q3-cuts.jsonl"
     rng = random.Random(a.seed)
     store = str(NVME / "q3")
     shutil.rmtree(store, ignore_errors=True)
-    rc, recs, raw = run(["init", store, str(a.n)] + (["inline"] if a.inline else []))
+    rc, recs, raw = run(["init", store, str(a.n)])
     if rc != 0:
         print(raw[-3000:]); return 1
     rc, recs, raw = run(["digest", store, "main"])
     cur = ev(recs, "digest")[0]
     expected = {cur["txid"]: cur["digest"]}
-    cuts = ["begin", "page-written", "table-written", "pages-synced", "record-torn",
-            "record-written", "record-synced"]
     after_new = {"record-written", "record-synced"}
     viol = 0
     counts = {}
     refusals = {}
     for i in range(a.cuts):
-        name = cuts[i % len(cuts)]
+        name = BOOK_CUTS[i % len(BOOK_CUTS)]
         kind = rng.choice(["random", "append"])
         count = rng.choice([1, 2, 5, 17, 40]) if kind == "random" else rng.choice([1, 3, 8])
-        fs_ = 2 if name == "pages-synced" else (1 if a.inline else rng.choice([1, 2]))
         k = 1
         if name == "page-written":
             k = rng.randint(1, 3)
+        elif name == "table-written":
+            k = rng.choice([1, 1, 2])
         env = {"FNPS_CUT": f"{name}:{k}", "FNPS_DIGEST": "1", "FNPS_SEED": str(rng.randrange(1 << 30))}
-        rc, recs, raw = run(["mutate", store, "main", kind, str(count), str(fs_)], env=env)
+        mmode = rng.choice(["eager", "lazy"])
+        rc, recs, raw = run(["mutate", store, "main", kind, str(count), "1", mmode], env=env)
         pre = ev(recs, "pre")
-        if not pre:
+        if not pre or not pre[0].get("next-digest"):
             print(raw[-3000:]); return 1
         new_txid = cur["txid"] + 1
         expected[new_txid] = pre[0]["next-digest"]
         reached = rc == 77
+        if not reached and rc != 0:
+            print(raw[-3000:]); return 1
         land_new = (not reached) or name in after_new
         mode = rng.choice(["eager", "lazy"])
         rc2, recs2, raw2 = run(["digest", store, "main", mode])
@@ -289,96 +329,114 @@ def q3(a):
         if name == "record-torn" and reached:
             ok = ok and any(":commit-torn" in r for r in refs)
         for r in refs:
-            parts = r.strip("()").split()
-            key = parts[2] if len(parts) > 2 else r
-            refusals[key] = refusals.get(key, 0) + 1
-        label = f"{name}" + (f":{k}" if name == "page-written" else "")
+            refusals[refusal_key(r)] = refusals.get(refusal_key(r), 0) + 1
+        label = name + (f":{k}" if name in ("page-written", "table-written") else "")
         c = counts.setdefault(name, {"cuts": 0, "reached": 0, "violations": 0})
         c["cuts"] += 1; c["reached"] += int(reached); c["violations"] += int(not ok)
         viol += int(not ok)
-        append(res, {"i": i, "cut": label, "kind": kind, "count": count, "fsyncs": fs_,
+        append(res, {"i": i, "cut": label, "kind": kind, "count": count, "mutate_mode": mmode,
                      "rc": rc, "reached": reached, "open_mode": mode, "want_txid": want_txid,
                      "got": got, "refusals": refs, "ok": ok})
         if not ok:
             print("VIOLATION", i, label, raw2[-2000:], flush=True)
         if got:
-            cur = got
-            if cur["txid"] < new_txid:
+            if got["txid"] < new_txid:
                 expected.pop(new_txid, None)
+            cur = got
         print(i, label, "rc", rc, "landed", got and got["txid"], "ok", ok, flush=True)
     # Damage cases.
     dres = d / "q3-damage.jsonl"
-    dmg = {"eager-fallback": 0, "lazy-open-fallback": 0, "lazy-touch-damaged": 0,
-           "eager-shared-refused": 0, "violations": 0}
+    kinds = ["page-new", "page-shared", "table-new", "table-shared", "dir"]
+    dmg = {k: {"cases": 0, "ok": 0} for k in kinds}
+    dviol = 0
+
+    def damage(what, probe=False):
+        rc_, r_, raw_ = run(["damage", store, "main", what] + (["probe"] if probe else []))
+        dm_ = ev(r_, "damage")
+        if not dm_:
+            print(raw_[-2000:])
+        return dm_[0] if dm_ else None
+
     for j in range(a.damage):
+        which = kinds[j % len(kinds)]
         # A fresh commit T over T-1, both known.
-        rc, recs, raw = run(["mutate", store, "main", "random", "5", "2"],
-                            env={"FNPS_DIGEST": "1", "FNPS_SEED": str(rng.randrange(1 << 30))})
+        mk = ["append", "1"] if which == "table-shared" else ["random", "5"]
+        rc, recs, raw = run(["mutate", store, "main", mk[0], mk[1], "1"],
+                            env={"FNPS_SEED": str(rng.randrange(1 << 30))})
+        com = ev(recs, "commit")
+        if rc != 0 or not com:
+            print(raw[-3000:]); return 1
+        dirty = com[0]["commit"]["lpages"] or []
+        npages = com[0]["commit"]["pages"]
         prev = cur
         rc, recs, raw = run(["digest", store, "main"])
         cur = ev(recs, "digest")[0]
         expected[cur["txid"]] = cur["digest"]
-        # Which pages did T write?  The table says; damage picks by entry txid.
-        rc, recs, raw = run(["damage", store, "main", "0"])       # probe page 0 (flip)
-        run(["damage", store, "main", "0"])                       # restore
-        which = "new" if j % 2 == 0 else "old"
-        lp = None
-        for cand in range(1, 400):
-            rc, recs, raw = run(["damage", store, "main", str(cand)])
-            dm = ev(recs, "damage")
-            if not dm:
-                break
-            if (dm[0]["entry-txid"] == cur["txid"]) == (which == "new"):
-                lp = cand
-                break
-            run(["damage", store, "main", str(cand)])             # not this one: restore
-        if lp is None:
-            continue
+        T = cur["txid"]
+        if which == "page-new":
+            what = str(dirty[0])
+        elif which == "page-shared":
+            what = str(next(p for p in range(1, npages) if p not in dirty))
+        elif which == "table-new":
+            what = f"table:{dirty[0] // 341}"
+        elif which == "table-shared":
+            what = "table:0"
+        else:
+            what = "dir"
+        pr = damage(what, probe=True)
+        if pr is None:
+            return 1
+        new_written = pr["entry-txid"] == T
+        if new_written != (which in ("page-new", "table-new", "dir")):
+            print("damage target not as intended", which, pr, flush=True)
+            append(dres, {"j": j, "which": which, "skipped": pr}); continue
+        touch = str(pr["lpage"] if pr["kind"] == "page" else (341 * pr["lpage"] + 1 if pr["kind"] == "table" else 1))
+        damage(what)
         rce, re_, rawe = run(["digest", store, "main", "eager"])
-        rcl, rl, rawl = run(["open", store, "main", "lazy", str(lp)])
+        rcl, rl, rawl = run(["open", store, "main", "lazy", touch])
+        damage(what)                                              # restore
+        rcr, rr, rawr = run(["digest", store, "main", "eager"])
+        restored = ev(rr, "digest")
         oe = ev(re_, "open"); ge = ev(re_, "digest")
         ol = ev(rl, "open"); fl = ev(rl, "first-request")
-        rec = {"j": j, "which": which, "lpage": lp, "T": cur["txid"],
-               "eager_open": oe[0] if oe else None, "eager_digest": ge[0] if ge else None,
-               "lazy_open": ol[0] if ol else None, "lazy_touch": fl[0] if fl else None}
-        ok = True
-        if which == "new":
-            ok = bool(ge) and ge[0]["txid"] == prev["txid"] and ge[0]["digest"] == prev["digest"] \
-                and any(":page-damaged" in r for r in (oe[0]["refusals"] or []))
-            dmg["eager-fallback"] += int(ok)
-            lok = bool(ol) and ol[0].get("txid") == prev["txid"] and \
-                any(":page-damaged" in r for r in (ol[0]["refusals"] or []))
-            dmg["lazy-open-fallback"] += int(lok)
-            ok = ok and lok
+        erefs = (oe[0]["refusals"] or []) if oe else []
+        lrefs = (ol[0]["refusals"] or []) if ol else []
+        name = {"page": ":page-damaged", "table": ":table-damaged", "dir": ":dir-damaged"}[pr["kind"]]
+        if which in ("page-new", "table-new", "dir"):
+            # The newest commit wrote it: both modes refuse T by name and
+            # land on T-1 with its digest.
+            eok = bool(ge) and ge[0]["txid"] == prev["txid"] and ge[0]["digest"] == prev["digest"] \
+                and any(name in r for r in erefs)
+            lok = bool(ol) and ol[0].get("txid") == prev["txid"] and any(name in r for r in lrefs)
         else:
-            # A page T did not write is shared with T-1: eager refuses both by
-            # name; lazy lands on T and the touch answers :damaged.
-            eok = bool(oe) and oe[0].get("landed") is None and \
-                sum(":page-damaged" in r for r in (oe[0]["refusals"] or [])) >= 1
-            dmg["eager-shared-refused"] += int(eok)
-            lok = bool(fl) and fl[0].get("touch-verdict") == ":damaged"
-            dmg["lazy-touch-damaged"] += int(lok)
-            ok = eok and lok
-        rec["ok"] = ok
-        for o_ in (oe, ol):
-            for r in ((o_[0]["refusals"] or []) if o_ else []):
-                parts = r.strip("()").split()
-                key = "damage " + (parts[2] if len(parts) > 2 else r)
-                refusals[key] = refusals.get(key, 0) + 1
-        dmg["violations"] += int(not ok)
-        append(dres, rec)
-        print("damage", j, which, lp, ok, flush=True)
-        run(["damage", store, "main", str(lp)])                   # restore
-    summary = {"cuts": a.cuts, "violations": viol, "by_cut": counts, "refusals": refusals,
-               "damage": dmg}
+            # Shared with T-1: eager refuses both slots by name (nothing
+            # opens); lazy lands on T and the first touch answers by name.
+            eok = bool(oe) and oe[0].get("landed") is None and not ge and \
+                sum(name in r for r in erefs) == 2
+            lok = bool(ol) and ol[0].get("txid") == T and bool(fl) and \
+                name in (fl[0].get("touch-verdict") or "")
+        rok = bool(restored) and restored[0]["txid"] == T and restored[0]["digest"] == cur["digest"]
+        ok = eok and lok and rok
+        dmg[which]["cases"] += 1; dmg[which]["ok"] += int(ok)
+        dviol += int(not ok)
+        for r in erefs + lrefs:
+            refusals["damage " + refusal_key(r)] = refusals.get("damage " + refusal_key(r), 0) + 1
+        append(dres, {"j": j, "which": which, "target": pr, "T": T, "prev": prev["txid"],
+                      "eager_open": oe[0] if oe else None, "eager_digest": ge[0] if ge else None,
+                      "lazy_open": ol[0] if ol else None, "lazy_touch": fl[0] if fl else None,
+                      "restored": rok, "eager_ok": eok, "lazy_ok": lok, "ok": ok})
+        print("damage", j, which, what, "eager", eok, "lazy", lok, "restored", rok, flush=True)
+    summary = {"n": a.n, "cuts": a.cuts, "violations": viol, "by_cut": counts, "refusals": refusals,
+               "damage": dmg, "damage_violations": dviol}
     append(d / "q3-summary.jsonl", summary)
     print(json.dumps(summary, indent=1))
     shutil.rmtree(store, ignore_errors=True)
-    return 0 if viol == 0 and dmg["violations"] == 0 else 1
+    return 0 if viol == 0 and dviol == 0 else 1
 
 
 def summarize(a):
     """Tables (medians) from the jsonl files in --out; writes summary.md."""
+    import re
     d = Path(a.out)
     lines = []
     med = lambda xs: round(statistics.median(xs), 1) if xs else None
@@ -387,57 +445,64 @@ def summarize(a):
         rows = [json.loads(l) for l in q1f.read_text().splitlines()]
         sizes = {(r["fs"], r["n"]): r["bytes"] for r in rows if r.get("phase") == "size"}
         lines += ["## Q1 open (ms, median of runs)", "",
-                  "| fs | records | MB on disk | mode | cache | commit | table | bulk read | verify | open total | seq lookup | msgid lookup | bg pass | RSS MiB |",
-                  "|---|---:|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
-        keys = sorted({(r["fs"], r["n"], r["mode"], r["temp"]) for r in rows if "mode" in r},
-                      key=lambda k: (k[0], k[1], k[2], k[3]))
+                  "| fs | records | MB on disk | mode | cache | slots | directory | table pages (n) | data read (n) | data verify | open total | to first request | seq / msgid lookup | bg pass | RSS MiB |",
+                  "|---|---:|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+        keys = sorted({(r["fs"], r["n"], r["mode"], r["temp"]) for r in rows if "mode" in r})
         for k in keys:
             rs = [r for r in rows if (r.get("fs"), r.get("n"), r.get("mode"), r.get("temp")) == k
                   and r.get("open")]
             g = lambda f: med([r["open"][f] for r in rs])
             fr = lambda f: med([r["first"]["requests"][f] for r in rs if r.get("first")])
+            ttfr = med([r["first"]["ms-to-first-request"] for r in rs if r.get("first")])
             bg = med([r["first"]["ms-background-pass"] for r in rs if r.get("first")])
             rss = med([r["open"]["rss-kib"] / 1024 for r in rs])
+            o0 = rs[0]["open"]
             lines.append(f"| {k[0]} | {k[1]:,} | {sizes.get((k[0], k[1]), 0) / 1e6:.0f} | {k[2]} | {k[3]} | "
-                         f"{g('ms-commit')} | {g('ms-table')} | {g('ms-bulk')} | {g('ms-verify')} | "
-                         f"{g('ms-total')} | {fr('ms-lookup-seq')} | {fr('ms-lookup-msgid')} | {bg} | {rss} |")
+                         f"{g('ms-slots')} | {g('ms-dir')} | {g('ms-tables')} ({o0['tables-loaded']}) | "
+                         f"{g('ms-pages-read')} ({o0['pages-loaded']}) | {g('ms-pages-verify')} | "
+                         f"{g('ms-total')} | {ttfr} | {fr('ms-lookup-seq')} / {fr('ms-lookup-msgid')} | {bg} | {rss} |")
         lines.append("")
-    for fsn in ("nvme", "zfs"):
-        q2f = d / "q2.jsonl"
-        if not q2f.exists():
-            break
-        rows = [json.loads(l) for l in q2f.read_text().splitlines()]
-        allrows = [r for r in rows if r.get("fs") == fsn and r.get("commit")]
-        for layout in ("root-file", "inline"):
-          rows = [r for r in allrows if r.get("layout", "root-file") == layout]
-          if not rows:
-            continue
-          lines += [f"## Q2 snapshot on {fsn}, {layout} layout (ms, median)", "",
-                  "| kind | dirty pages | barriers | plan+digest | page writes | table | sync 1 | record | sync 2 | total | fdatasync calls | write calls | MB written | table pages |",
-                  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
-          for kind in ("append", "random"):
-              for fs_ in (1, 2):
-                  for cnt in sorted({r["count"] for r in rows}):
-                      rs = [r["commit"] for r in rows if r["kind"] == kind and r["fsyncs"] == fs_
-                            and r["count"] == cnt]
-                      if not rs:
-                          continue
-                      g = lambda f: med([c[f] for c in rs])
-                      st = [r.get("strace", "") for r in rows if r["kind"] == kind and r["fsyncs"] == fs_
-                            and r["count"] == cnt and r.get("strace")]
-                      calls = "-"
-                      if st:
-                          import re
-                          got = {m.group(2): int(m.group(1))
-                                 for m in re.finditer(r"^\s*[\d.]+\s+[\d.]+\s+\d+\s+(\d+)\s+(?:\d+\s+)?(f?d?a?t?a?sync)\s*$", st[0], re.M)}
-                          calls = f"{rs[0]['syncs']} (strace: {got or 'none'})"
-                      else:
-                          calls = str(rs[0]['syncs'])
-                      lines.append(f"| {kind} | {cnt:,} | {fs_} | {g('ms-plan')} | {g('ms-pages')} | "
-                                   f"{g('ms-table')} | {g('ms-sync1')} | {g('ms-record')} | {g('ms-sync2')} | "
-                                   f"{g('ms-total')} | {calls} | {rs[0]['runs']} | "
-                                   f"{rs[0]['bytes'] / 1e6:.2f} | {rs[0]['table-pages']} |")
-          lines.append("")
+    q2f = d / "q2.jsonl"
+    if q2f.exists():
+        allrows = [json.loads(l) for l in q2f.read_text().splitlines()]
+        for fsn in ("nvme", "zfs"):
+            rows = [r for r in allrows if r.get("fs") == fsn and r.get("commit")]
+            if not rows:
+                continue
+            inits = [r for r in allrows if r.get("fs") == fsn and r.get("phase") == "init"]
+            pages = inits[0]["init"][0]["pages"] if inits and inits[0].get("init") else "?"
+            lines += [f"## Q2 snapshot on {fsn} (inline, two-level table; store of {pages} pages at init; ms, median)", "",
+                      "| kind | dirty pages | table pages written | dir pages | plan (digests + table) | need-table loads | page writes | table writes | dir write | record | fdatasync | total | fdatasync calls | write calls | MB written |",
+                      "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+            for kind in ("random", "append"):
+                for cnt in sorted({r["count"] for r in rows}):
+                    rs = [r["commit"] for r in rows if r["kind"] == kind and r["count"] == cnt]
+                    if not rs:
+                        continue
+                    g = lambda f: med([c[f] for c in rs])
+                    st = [r.get("strace", "") for r in rows if r["kind"] == kind and r["count"] == cnt
+                          and r.get("strace")]
+                    calls = str(rs[0]["syncs"])
+                    if st:
+                        got = {m.group(2): int(m.group(1))
+                               for m in re.finditer(r"^\s*[\d.]+\s+[\d.]+\s+\d+\s+(\d+)\s+(?:\d+\s+)?(f?d?a?t?a?sync)\s*$", st[0], re.M)}
+                        calls = f"{rs[0]['syncs']} (strace: {got or 'none'})"
+                    lines.append(f"| {kind} | {cnt:,} | {rs[0]['tables-written']} | {rs[0]['dir-pages']} | "
+                                 f"{g('ms-plan')} | {g('ms-need')} | {g('ms-pages')} | {g('ms-tables')} | "
+                                 f"{g('ms-dir')} | {g('ms-record')} | {g('ms-sync')} | {g('ms-total')} | "
+                                 f"{calls} | {rs[0]['writes']} | {rs[0]['bytes'] / 1e6:.2f} |")
+            lines.append("")
+    q3f = d / "q3-summary.jsonl"
+    if q3f.exists():
+        sm = json.loads(q3f.read_text().splitlines()[-1])
+        lines += [f"## Q3 process death (n = {sm['n']:,} records): {sm['cuts']} cuts, {sm['violations']} violations; damage violations {sm['damage_violations']}", "",
+                  "| cut | cuts | reached | violations |", "|---|---:|---:|---:|"]
+        for k, v in sm["by_cut"].items():
+            lines.append(f"| {k} | {v['cuts']} | {v['reached']} | {v['violations']} |")
+        lines += ["", "| damage case | cases | as required |", "|---|---:|---:|"]
+        for k, v in sm["damage"].items():
+            lines.append(f"| {k} | {v['cases']} | {v['ok']} |")
+        lines += ["", "Refusals by name: " + ", ".join(f"{k} {v}" for k, v in sorted(sm["refusals"].items())), ""]
     out = d / "summary.md"
     out.write_text("\n".join(lines) + "\n")
     print(out.read_text())
@@ -456,15 +521,13 @@ def main(argv=None):
         p.add_argument("--out", default=str(ROOT / "results"))
         p.add_argument("--runs", type=int, default=3)
         p.add_argument("--n", type=int, default=40000)
-        p.add_argument("--sizes", default="40000,1000000,10000000")
+        p.add_argument("--sizes", default="40000,1000000")
         p.add_argument("--counts", default="1,100,10000")
         p.add_argument("--fs", default="nvme")
         p.add_argument("--cuts", type=int, default=210)
         p.add_argument("--damage", type=int, default=12)
         p.add_argument("--seed", type=int, default=931)
         p.add_argument("--keep", action="store_true")
-        p.add_argument("--inline", action="store_true",
-                       help="root main's slots in page 0 of the page file (one-barrier commits)")
     a = ap.parse_args(argv)
     return a.fn(a) or 0
 

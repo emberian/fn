@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Power loss under the page store (lane proto-pagestore, 2026-09-27).
+"""Power loss under the page store (lane proto-pagestore, 2026-09-27; the
+two-level table host of lane arena-store, 2026-09-27).
 
 The rig is tools/power_loss.py's (lane power-loss): dm-log-writes over loop
 devices whose images live in /dev/shm, ext4 with barriers on the mapped
@@ -12,25 +13,27 @@ store's workload and oracle.  It runs on hbox (sudo -n for losetup, dmsetup,
 mount, e2fsck; the store runs as the invoking user) with the saved image of
 tools/proto/pagestore_bench.py `build`.
 
-Workload, per store layout (phase `inline`: root main's slots in page 0 of
-the page file, ONE fdatasync per commit; phase `rootfile`: slots in a
-separate root file, page barrier then record barrier): `init` (txid 1), then
-K commits of seeded random or append dirty sets.  Before a commit starts the
-client writes the mark `try-L-N` (txid N may land from here on); after the
-commit's process exits 0 -- its final fdatasync returned -- it writes
-`ack-L-N` (txid N durable).  The expected image digest of every txid is
-recorded when it is computed (FNPS_DIGEST, before the commit writes).
+Workload (phase `inline`: the inline one-barrier layout, root main's slots
+in page 0 of the page file, ONE fdatasync per commit; the two-level table:
+a commit writes its data pages, the touched table pages, the directory run
+and the record): `init` (txid 1), then K commits of seeded random or append
+dirty sets, opened lazily or eagerly.  Before a commit starts the client
+writes the mark `try-L-N` (txid N may land from here on); after the
+commit's process exits 0 -- its fdatasync returned -- it writes `ack-L-N`
+(txid N durable).  The expected image digest of every txid is recorded
+when it is computed (FNPS_DIGEST, before the commit writes).
 
-Oracle at a cut in phase L: the image mounts, `e2fsck -fn` is clean, and an
-eager open of L's store lands on a txid T with
-    last ack-L before the cut  <=  T  <=  last try-L before the cut
+Oracle at a cut: the image mounts, `e2fsck -fn` is clean, and an eager open
+of the store lands on a txid T with
+    last ack before the cut  <=  T  <=  last try before the cut
 and T's recorded image digest.  A record that did not land whole is refused
 by name (:commit-torn) or its missing pages are (:page-damaged,
-:ptab-damaged) and the open falls back; any other landing is a violation.
-Before ack-L-1 (the store is being created) the store may be absent or
-refuse to open (nothing was acknowledged).  Controls (the rig's teeth): the
-device just after ack-L-N's mark, judged as if N+1 were acknowledged: the
-oracle must report every one (N+1's writes all follow the mark).
+:table-damaged, :dir-damaged, :dir-unloaded) and the open falls back; any
+other landing is a violation.  Before ack-1 (the store is being created)
+the store may be absent or refuse to open (nothing was acknowledged).
+Controls (the rig's teeth): the device just after ack-N's mark, judged as
+if N+1 were acknowledged: the oracle must report every one (N+1's writes
+all follow the mark).
 """
 from __future__ import annotations
 
@@ -70,11 +73,11 @@ def workload(a):
     def log(**rec):
         pl.out_line(wl, **rec)
 
-    for layout, fsyncs in (("inline", "1"), ("rootfile", "2")):
+    for layout, fsyncs in (("inline", "1"),):
         store = mnt / ("s-" + layout)
         pl.mark("phase:" + layout)
         pl.mark("try-%s-1" % layout)
-        rc, recs, raw = run(["init", str(store), str(a.n)] + (["inline"] if layout == "inline" else []))
+        rc, recs, raw = run(["init", str(store), str(a.n)])
         if rc != 0:
             raise SystemExit("init failed: " + raw[-2000:])
         pl.mark("ack-%s-1" % layout)
@@ -86,14 +89,18 @@ def workload(a):
             count = rng.choice([1, 3, 20, 100]) if kind == "random" else rng.choice([1, 4, 16])
             txid = i + 2
             pl.mark("try-%s-%d" % (layout, txid))
-            rc, recs, raw = run(["mutate", str(store), "main", kind, str(count), fsyncs],
+            mode = rng.choice(["lazy", "eager"])
+            rc, recs, raw = run(["mutate", str(store), "main", kind, str(count), fsyncs, mode],
                                 env={"FNPS_DIGEST": "1", "FNPS_SEED": str(rng.randrange(1 << 30))})
             pre = pb.ev(recs, "pre"); com = pb.ev(recs, "commit")
-            if rc != 0 or not pre or not com or com[0]["commit"]["txid"] != txid:
+            if rc != 0 or not pre or not pre[0].get("next-digest") or not com \
+                    or com[0]["commit"]["txid"] != txid:
                 raise SystemExit("commit failed: " + raw[-2000:])
             pl.mark("ack-%s-%d" % (layout, txid))
+            c = com[0]["commit"]
             log(layout=layout, txid=txid, digest=pre[0]["next-digest"], kind=kind, count=count,
-                syncs=com[0]["commit"]["syncs"], tag="commit")
+                mode=mode, syncs=c["syncs"], dirty=c["dirty"], tables=c["tables-written"],
+                tag="commit")
         print(layout, "done", flush=True)
     pl.mark("end")
     log(tag="done")
@@ -120,7 +127,7 @@ def check(image_mnt, store, want_lo, want_hi, expected, before_ack1, violations,
     rec["landed"] = t
     if not (want_lo <= t <= want_hi):
         violations.append("landed-%d-outside-%d..%d" % (t, want_lo, want_hi))
-    elif expected.get(t) != d[0]["digest"]:
+    elif d[0].get("digest") is None or expected.get(t) != d[0]["digest"]:
         violations.append("digest-mismatch-at-%d" % t)
 
 
@@ -142,11 +149,11 @@ def cuts(a):
             if t.startswith(pre):
                 lay, n = t[len(pre):].rsplit("-", 1)
                 dst.setdefault(lay, []).append((i, int(n)))
-    plan = {"inline": a.per_phase, "rootfile": a.per_phase}
+    plan = {"inline": a.per_phase}
     chosen = pl.choose_cuts(ents, marks, plan, a.seed)
     crng = random.Random(a.seed + 1)
     controls = {}
-    for lay in ("inline", "rootfile"):
+    for lay in ("inline",):
         ak = acks.get(lay, [])
         cands = [(at, n) for at, n in ak if any(m == n + 1 for _, m in ak)]
         for at, n in crng.sample(cands, min(a.controls, len(cands))):
