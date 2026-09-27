@@ -300,7 +300,7 @@ class NativeHybridAuthorTest(unittest.TestCase):
     def test_v2_source_through_hybrid_author(self):
         """PKT-codex-003 (Mini/DREGG): the local author request carries a v2
         source (past 65,535 octets), as the served POST does.  Under a Store
-        whose article bound A is 400,000, a signed 191,283-octet source (the
+        whose article bound A is at least 200,000, a signed 191,283-octet source (the
         size of Mini's grain-origin R, refused here before) is accepted, its
         exact resend is DUPLICATE, NNTP serves the stored carrier ending in
         the exact source with its acceptance-time verdict, and a source whose
@@ -358,8 +358,14 @@ class NativeHybridAuthorTest(unittest.TestCase):
             done = self.invoke("hybrid-author", *arguments, timeout=300)
             return done.returncode, done.stderr.decode().strip().splitlines()[-1:]
 
+        status = self.invoke("operator", str(self.config), "status")
+        self.assertEqual(status.returncode, 0, status.stderr.decode())
+        bound = int(re.search(rb"max-article-octets=(\d+)", status.stdout).group(1))
+        self.assertGreaterEqual(bound, 200000, status.stdout.decode())
         large = source_of("codex003-v2", 191283)
-        past_a = source_of("codex003-past-a", 399000)
+        # A source within A whose carrier (source + FN-Authorship + the
+        # injected fields) is past A: read whole, refused by injection's word.
+        past_a = source_of("codex003-past-a", bound - 1000)
         owner = self.start_owner()
         try:
             enrolled = self.invoke("hybrid-enroll", str(self.control), "1",
@@ -374,9 +380,9 @@ class NativeHybridAuthorTest(unittest.TestCase):
                 with whole_stream(sock) as stream:
                     self.assertTrue(stream.readline().startswith(b"200 "))
                     stream.write(b"ARTICLE <codex003-v2@example.invalid>\r\n")
-                    status = stream.readline()
+                    article_status = stream.readline()
                     returned = bytearray()
-                    if status.startswith(b"220 "):
+                    if article_status.startswith(b"220 "):
                         while True:
                             line = stream.readline()
                             self.assertTrue(line, "ARTICLE ended before its terminator")
@@ -390,12 +396,13 @@ class NativeHybridAuthorTest(unittest.TestCase):
             self.assertEqual(owner.returncode, 0, diagnostic)
         print("NATIVE-CODEX003-WITNESS " + repr(
             {"first": first, "again": again, "beyond": beyond,
-             "article": status[:4], "stored": len(returned), "hdr": hdr}))
+             "bound": bound, "article": article_status[:4], "stored": len(returned),
+             "hdr": hdr}))
         self.assertEqual(first, (0, ["accepted hybrid-author ACCEPTED"]))
         self.assertEqual(again, (0, ["accepted hybrid-author DUPLICATE"]))
         self.assertEqual(beyond, (1, ["refused hybrid-author ARTICLE-EXCEEDS-PROFILE-BOUND"]),
                          diagnostic[-3000:] + self.service_log.read_text()[-3000:])
-        self.assertTrue(status.startswith(b"220 "), status)
+        self.assertTrue(article_status.startswith(b"220 "), article_status)
         self.assertTrue(bytes(returned).endswith(large.read_bytes()))
         self.assertIn(b"FN-Authorship: ", bytes(returned)[:200])
         self.assertEqual(hdr[0], b"225 headers follow\r\n")
