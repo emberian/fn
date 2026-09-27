@@ -7823,7 +7823,7 @@
     {
       "id": "PRF-209",
       "title": "An offline configuration request authorizes its one record from the fold its open computed: the candidate's folds are one step from the open's, never a replay",
-      "statement": "The configuration-only fold over CONFIGS ++ (R) is fn-cfgc-config-extend of the fold over CONFIGS (fn-cfgc-config-replay-of-one-more, from fn-cnode-replay-loop-splits-at-any-prefix); the physical fold fn-cpr-replay over CONFIGS ++ (R) and EVENTS is fn-cfgc-cpr-extend of the fold over CONFIGS and EVENTS, one fn-cpr-loop step, when both lists are true lists and every event's txid is below R's (fn-cfgc-cpr-replay-of-one-more); an observed history is below its frontier, so a record at or past the frontier is filed after every event. Hence the candidate from the open's carried folds is fn-native-admin-candidate-open-result of the appended history (fn-cfgc-candidate-open-result-is-the-replayed-candidate) and the authorization the host calls, fn-cfgc-cvec-native-admin-authorize, is EQUAL to fn-cvec-native-admin-authorize on every arm whenever the carried fold is fn-cpr-replay of the same histories and the configuration history is a true list (fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization), so every keystone of the replaying authorization (the lock, the generation, the occupied name, the group-name bound, the candidate) carries. The carried fold is established by the open: host/store-node-host.lisp fn-store-sn-open-extended keeps (E replayed opened) and the configuration history it folded, and fn-sco-store-open-of-extended-capture is the theorem that replayed is fn-cpr-replay of those configurations and E's records, on the full and the checkpoint open. Host: host/native/admin.lisp fnn-admin-execute -> fnn-admin-authorize-carried -> host/store-node-host.lisp fn-store-cfg-native-admin-authorize-carried (NIL, and the replaying authorization, when the observed configuration history is not the open's). Scope: the candidate open fn-cpo-open-observed is still computed over the whole history, and the open itself replays it: per offline request one open and one candidate open remain (PKT-601).",
+      "statement": "The configuration-only fold over CONFIGS ++ (R) is fn-cfgc-config-extend of the fold over CONFIGS (fn-cfgc-config-replay-of-one-more, from fn-cnode-replay-loop-splits-at-any-prefix); the physical fold fn-cpr-replay over CONFIGS ++ (R) and EVENTS is fn-cfgc-cpr-extend of the fold over CONFIGS and EVENTS, one fn-cpr-loop step, when both lists are true lists and every event's txid is below R's (fn-cfgc-cpr-replay-of-one-more); an observed history is below its frontier, so a record at or past the frontier is filed after every event. Hence the candidate from the open's carried folds is fn-native-admin-candidate-open-result of the appended history (fn-cfgc-candidate-open-result-is-the-replayed-candidate) and the authorization the host calls, fn-cfgc-cvec-native-admin-authorize, is EQUAL to fn-cvec-native-admin-authorize on every arm whenever the carried fold is fn-cpr-replay of the same histories and the configuration history is a true list (fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization), so every keystone of the replaying authorization (the lock, the generation, the occupied name, the group-name bound, the candidate) carries. The carried fold is established by the open: host/store-node-host.lisp fn-store-sn-open-extended keeps (E replayed opened) and the configuration history it folded, and fn-sco-store-open-of-extended-capture is the theorem that replayed is fn-cpr-replay of those configurations and E's records, on the full and the checkpoint open. Host: host/native/admin.lisp fnn-admin-execute -> fnn-admin-authorize-carried -> host/store-node-host.lisp fn-store-cfg-native-admin-authorize-carried (NIL, and the replaying authorization, when the observed configuration history is not the open's). PKT-601 (1), config-consumer-catalog-2: the candidate open is not recomputed. fn-cfgc-candidate-open-carried decides it from OPENED, the open's own result (kept beside E and the fold), and the extended fold: when OPENED succeeded and R is at or past the frontier, the candidate is accepted exactly when the extended fold is :ok and fn-cfgc-advance-okp (the four scalar tests of fn-replay-advance-okp, equal to it on a configured node: fn-cfgc-advance-okp-is-replay-advance-okp) holds of its node; KEYSTONE fn-cfgc-candidate-open-carried-is-the-replayed-candidate: under a true configuration history, CONFIGURATION the configuration-only fold, REPLAYED the physical fold and OPENED = fn-cpo-open-observed of the same histories and frontier, it EQUALS fn-native-admin-candidate-open-result of the appended history (from store-open-bridge fn-cpo-open-observed-succeeds-exactly: over the same events and frontier, a second configuration history opens exactly when its configured replay does, fn-cfgc-cpo-open-of-other-configs); the authorization keystones carry it with the OPENED hypothesis. PKT-601 (2): fnn-admin-verify-under-lock reads the published file back; KEYSTONE fn-cfgc-readback-verified-is-the-reopen: when fn-native-admin-publication-authorize accepted RECORD, RECORD is the decode of AUTHORIZED, and fn-cfgc-readback-verdict of the readback, AUTHORIZED, GENERATION and the frontier is :verified, the open of the configuration history plus the record read back succeeds, its fold is :ok and serves GENERATION (what the retired whole-store reopen observed; fn-bs-k0v-host-rerecovery-keeps-relation-at-every-cut loses that host line). Scope: the open itself still replays the configuration and Store histories, and the authorization still folds the configuration-only history once (O(configuration records) per request); the configuration root the checkpoint persists (R's first row, the paused fold) already bounds the physical fold at a checkpoint open.",
       "milestone": "M5",
       "requirements": [
         "STO-025"
@@ -7834,21 +7834,26 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/config-carried-candidate.lisp",
         "tests/acl2/config-carried-candidate-tests.lisp",
         "planning/evidence/config-consumer-catalog-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T221758Z-3334374.json",
-        "planning/evidence/manifests/certify-20260927T001141Z-384911.json"
+        "planning/evidence/manifests/certify-20260927T001141Z-384911.json",
+        "planning/evidence/config-consumer-catalog-2-2026-09-27.md"
       ],
-      "progress_note": "Id confirmed at the batch AN merge (lane config-consumer-catalog). Not done: the candidate open extended from the open (fn-cpo-open-observed of CONFIGS ++ (R) from the open's state), the configuration root persisted by the checkpoint pipeline, the verify-under-lock reopen (PKT-601).",
+      "progress_note": "Id confirmed at the batch AN merge (lane config-consumer-catalog). config-consumer-catalog-2 (2026-09-27): PKT-601 (1) and (2) proved and REPL-admitted (the candidate open from the open's result; the readback verdict), the host changed (fn-store-cfg-native-admin-authorize-carried passes the carried result; fnn-admin-verify-under-lock reads back); certification and the hbox measurement are in the record. Not done: the configuration-only fold's per-request replay (it needs the monotonicity of admission in the reservation to be derived from the physical fold), the consumer poll's measurement at depth (PKT-601 (4)).",
       "events": [
         "fn-cfgc-config-replay-of-one-more",
         "fn-cfgc-cpr-replay-of-one-more",
         "fn-cfgc-candidate-open-result-is-the-replayed-candidate",
         "fn-cfgc-publication-authorize-is-the-replayed-authorization",
-        "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization"
+        "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization",
+        "fn-cfgc-advance-okp-is-replay-advance-okp",
+        "fn-cfgc-cpo-open-of-other-configs",
+        "fn-cfgc-candidate-open-carried-is-the-replayed-candidate",
+        "fn-cfgc-readback-verified-is-the-reopen"
       ]
     },
     {
@@ -7949,6 +7954,31 @@
         "planning/evidence/manifests/certify-20260927T002614Z-565053.json"
       ],
       "progress_note": "Lane acceptance-payload-arena (2026-09-26): certified on persvati, run-20260927T001950Z-505f (certify-20260927T002614Z-565053: passed 2, failed 0, no book over 10 s at two jobs); every event REPL-admitted first."
+    },
+    {
+      "id": "PRF-233",
+      "title": "A committed delta applied in bounded steps under any schedule of quanta ends where its one-shot application does: the :policy range is re-decided exactly once, row by row",
+      "statement": "books/config-policy-delta.lisp (lane config-consumer-catalog-2, 2026-09-27; PKT-601 (6), discharging catalog-delta's OPEN). KEYSTONE fn-cfgp-apply-in-quanta-is-apply-delta: for a delta satisfying fn-delta-p and a natural cursor at or before the delta's range start, fn-cat-apply-in-quanta (the resumable run of fn-cat-apply-delta-step, each step re-deciding at most its quantum of rows, fn-cat-apply-delta-step-bounded) under ANY list of quanta equals fn-cat-apply-delta, the one-shot application. Its inductive form fn-cfgp-policy-in-quanta-is-the-range: for a :policy delta with natural bounds, from ANY natural cursor the run is fn-cat-recontext-range from the later of the cursor and the range start to the range end clipped to the count. Scope: the catalog alone; no host line calls fn-cat-apply-in-quanta yet (the catalog serves no path until PKT-585's steps 4 to 9); which configuration change emits a :policy delta is not decided (the held context carries a keyring generation only; the record's packet).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-013"
+      ],
+      "depends_on": [
+        "PRF-201"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-policy-delta.lisp",
+        "tests/acl2/config-policy-delta-tests.lisp",
+        "planning/evidence/config-consumer-catalog-2-2026-09-27.md"
+      ],
+      "pending_subject": "No host line calls fn-cat-apply-in-quanta or fn-cat-apply-delta yet: the catalog's delta is applied only by the test books until the catalog serves the view (PKT-585).",
+      "events": [
+        "fn-cfgp-recontext-range-split",
+        "fn-cfgp-policy-in-quanta-is-the-range",
+        "fn-cfgp-apply-in-quanta-is-apply-delta"
+      ]
     }
   ]
 }

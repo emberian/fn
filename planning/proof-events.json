@@ -7416,6 +7416,22 @@
         {
           "kind": "theorem",
           "name": "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-advance-okp-is-replay-advance-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-cpo-open-of-other-configs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-candidate-open-carried-is-the-replayed-candidate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgc-readback-verified-is-the-reopen"
         }
       ]
     },
@@ -7507,6 +7523,23 @@
         {
           "kind": "theorem",
           "name": "fn-apr-foundp-is-article-found"
+        }
+      ]
+    },
+    {
+      "id": "PRF-233",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfgp-recontext-range-split"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgp-policy-in-quanta-is-the-range"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfgp-apply-in-quanta-is-apply-delta"
         }
       ]
     }
