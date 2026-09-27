@@ -221,7 +221,10 @@
 (defthm fn-nntp-msgid-preserves-session
   (equal (fn-nntp-result-session
           (fn-nntp-msgid-retrieval session archive kind token fn-arena))
-         session))
+         session)
+  ; The reply's octets never touch the session: 28 M prover steps with the
+  ; reply constructors open, 41 K without (lane served-readers).
+  :hints (("Goal" :in-theory (disable fn-nntp-article-tombstonep fn-nntp-article-section fn-nntp-article-framedp fn-nntp-stuff-lines fn-nntp-crlf fn-nntp-retrieval-initial fn-nntp-reply-effect))))
 
 (defun fn-nntp-retrieval (session archive kind args fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
@@ -2742,8 +2745,9 @@
           (fn-nntp-article-response session article number kind nil group fn-arena))
          session)
   :hints (("Goal" :in-theory
-           (enable fn-nntp-article-response fn-nntp-result-session
-                   fn-nntp-single fn-nntp-make-result))))
+           (e/d (fn-nntp-article-response fn-nntp-result-session
+                 fn-nntp-single fn-nntp-make-result)
+                (fn-nntp-article-tombstonep fn-nntp-article-section fn-nntp-article-framedp fn-nntp-stuff-lines fn-nntp-crlf fn-nntp-retrieval-initial fn-nntp-reply-effect)))))
 
 (local
  (defthm fn-nntp-msgid-car-preserves-session
