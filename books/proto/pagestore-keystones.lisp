@@ -1134,8 +1134,7 @@
 
 ; Commit-then-open denotes the committed state.
 (defthm pgs-open-after-commit
-  (implies (and (equal (car (pgs-open disk r mode)) :ok)
-                (equal (car (pgs-plan-commit disk r mode dirty)) :plan))
+  (implies (equal (car (pgs-plan-commit disk r mode dirty)) :plan)
            (equal (pgs-view (pgs-open (pgs-commit disk r mode dirty) r mode))
                   (list (pgs-next-txid (pgs-root-slots r disk))
                         (pgs-apply-dirty (fourth (pgs-open disk r mode)) dirty))))
@@ -1145,6 +1144,7 @@
                                                pgs-c-fourth-is-contents car-cons cdr-cons)
                                              (theory 'minimal-theory))
                   :use ((:instance pgs-plan-commit-refuses-without-alloc)
+                        (:instance pgs-plan-commit-refuses-without-open)
                         (:instance pgs-c-open-facts)
                         (:instance pgs-c-step-hyps)
                         (:instance pgs-set-other-slot (k0 (pgs-c-k0 disk r mode))
@@ -1222,8 +1222,7 @@
   (let* ((o (pgs-open disk r mode))
          (p (pgs-plan-commit disk r mode dirty))
          (image (pgs-crash disk r (second p) keep (third p) sv)))
-    (implies (and (equal (car o) :ok)
-                  (equal (car p) :plan)
+    (implies (and (equal (car p) :plan)
                   (pgs-writes-faithful (second p) (pgs-pages disk))
                   (or (equal sv (pgs-slot (third p) (pgs-root-slots r disk)))
                       (equal sv (fourth p))
@@ -1239,6 +1238,7 @@
                                                pgs-view-of-ok member-equal car-cons cdr-cons)
                                              (theory 'minimal-theory))
                   :use ((:instance pgs-plan-commit-refuses-without-alloc)
+                        (:instance pgs-plan-commit-refuses-without-open)
                         (:instance pgs-view-of-ok (o (pgs-open disk r mode)))
                         (:instance pgs-c-open-facts)
                         (:instance pgs-c-step-hyps)
@@ -1272,13 +1272,31 @@
 
 ; Fork isolation: a commit on R, complete or crashed anywhere, leaves every
 ; other root's open exactly as it was (refusals included).
+(defthm pgs-refused-plan-writes-nothing
+  (implies (not (equal (car (pgs-plan-commit disk r mode dirty)) :plan))
+           (equal (pgs-write-addrs (second (pgs-plan-commit disk r mode dirty))) nil))
+  :hints (("Goal" :in-theory (disable pgs-open pgs-alloc pgs-plan-ptab pgs-make-rec
+                                      pgs-page-writes pgs-roots-keeps pgs-mark pgs-hwm
+                                      pgs-next-txid pgs-slot pgs-root-slots))))
+
 (defthm pgs-crash-isolates-other-roots
   (let ((p (pgs-plan-commit disk r mode dirty)))
-    (implies (and (equal (car p) :plan)
-                  (not (equal r2 r)))
+    (implies (not (equal r2 r))
              (equal (pgs-open (pgs-crash disk r (second p) keep (third p) sv) r2 mode2)
                     (pgs-open disk r2 mode2))))
   :hints (("Goal" :in-theory (union-theories '(pgs-plan-commit-unfold pgs-open-of-crash
+                                               pgs-avoids-nil
+                                               car-cons cdr-cons)
+                                             (theory 'minimal-theory))
+                  :cases ((equal (car (pgs-plan-commit disk r mode dirty)) :plan)))
+          ("Subgoal 2" :use ((:instance pgs-refused-plan-writes-nothing)
+                             (:instance pgs-open-is-open-slots (r r2) (mode mode2))
+                             (:instance pgs-open-slots-of-apply-pages
+                                        (slots (pgs-root-slots r2 disk)) (pages (pgs-pages disk))
+                                        (mode mode2)
+                                        (writes (second (pgs-plan-commit disk r mode dirty))))))
+          ("Subgoal 1"
+                  :in-theory (union-theories '(pgs-plan-commit-unfold pgs-open-of-crash
                                                car-cons cdr-cons)
                                              (theory 'minimal-theory))
                   :use ((:instance pgs-plan-commit-refuses-without-alloc)
