@@ -258,6 +258,9 @@ class SlowDiskNativeTests(unittest.TestCase):
             # The next POST is accepted.
             self.send_article(c, b"after@example.invalid", b"after the stall")
             after = c.readline()
+            # The reader's pin moves at its next GROUP (a reader keeps the
+            # version it opened on until then).
+            self.timed_read(reader, b"GROUP fn.test\r\n", b"211")
             stat_shed = self.timed_read(reader, b"STAT <shed@example.invalid>\r\n", b"430")
             stat_after = self.timed_read(reader, b"STAT <after@example.invalid>\r\n", b"223")
             stat_a = self.timed_read(reader, b"STAT <held@example.invalid>\r\n", b"223")
