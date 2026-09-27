@@ -1475,6 +1475,11 @@ check:
 # nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_load.ClassifyTests
+# Every global hash table in host/ is :synchronized t, or declared
+# thread-confined or guarded-by a lock the file takes (static, no ACL2; lane
+# host-lints, after entry-guards-2's owner stop on an unsynchronized table).
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --tables
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_tables
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
