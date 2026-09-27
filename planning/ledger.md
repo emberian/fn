@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1269 |
-| Certification roots in the Makefile | 1222 |
-| Books inside the root closure | 1258 |
-| `defthm` and `defthmd` events | 18866 |
-| `defun` events | 12889 |
+| Books read | 1271 |
+| Certification roots in the Makefile | 1224 |
+| Books inside the root closure | 1260 |
+| `defthm` and `defthmd` events | 18884 |
+| `defun` events | 12899 |
 | Functions with verified guards | 2474 |
 | Functions declared `:verify-guards nil` and never verified | 1522 |
-| Functions left at the default with an explicit guard | 7106 |
+| Functions left at the default with an explicit guard | 7116 |
 | Functions left at the default with no guard | 1787 |
-| `assert-event` checks | 18451 |
-| `must-fail` checks | 2182 |
+| `assert-event` checks | 18483 |
+| `must-fail` checks | 2184 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 99 |
 | Theorems flagged SUSPECT by shape | 214 |
-| Export-hygiene warnings | 216 |
+| Export-hygiene warnings | 217 |
 | Enabled-projection warnings | 49 |
-| Teeth-form warnings | 221 |
-| Include-hygiene warnings | 1353 |
+| Teeth-form warnings | 223 |
+| Include-hygiene warnings | 1355 |
 | Host-names warnings | 1392 |
 | Hand-written-record warnings | 18 |
 
@@ -604,6 +604,7 @@ that `make certify` requests.
 | `books/peer-transit-forms.lisp` | root | 10 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/policy-invariants.lisp` | root | 32 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/policy.lisp` | root | 14 | 29 | 1/0/28/0 | 0 | 0 | 0 |
+| `books/post-fields.lisp` | root | 18 | 10 | 0/0/10/0 | 0 | 0 | 0 |
 | `books/post-identity-index.lisp` | root | 15 | 11 | 4/0/7/0 | 0 | 0 | 0 |
 | `books/post-retain-carried.lisp` | root | 63 | 29 | 3/0/26/0 | 0 | 0 | 0 |
 | `books/poster-bytes-buffer.lisp` | root | 67 | 25 | 0/0/24/1 | 0 | 0 | 0 |
@@ -1199,6 +1200,7 @@ that `make certify` requests.
 | `tests/acl2/peer-pull-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 84 | 20 | 0 |
 | `tests/acl2/peer-transit-forms-tests.lisp` | root | 0 | 9 | 0/2/0/7 | 34 | 5 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
+| `tests/acl2/post-fields-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 2 | 0 |
 | `tests/acl2/post-identity-index-tests.lisp` | root | 0 | 8 | 0/2/0/6 | 17 | 7 | 0 |
 | `tests/acl2/post-retain-carried-tests.lisp` | root | 0 | 4 | 0/0/1/3 | 15 | 2 | 0 |
 | `tests/acl2/poster-bytes-tests.lisp` | root | 0 | 8 | 0/1/0/7 | 65 | 12 | 0 |

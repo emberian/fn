@@ -10597,6 +10597,35 @@
       "events": [
         "fn-psrv-unstage-preserves-invariant"
       ]
+    },
+    {
+      "id": "PRF-293",
+      "title": "The Store prepares' field checks are ACL2's: the host calls one verdict per prepare, the metadata bound is exactly the record codec's, and every field the node generates for a POST is admitted",
+      "statement": "books/post-fields.lisp. Subjects, each the function the host calls: fn-pfld-article-inputsp (host/owner-host.lisp fn-owner-prepare-buffer, fn-owner-prepare; host/store-node-host.lisp fn-store-sn-prepare), fn-pfld-retention-inputsp (fn-owner-prepare-retention, fn-store-sn-prepare-retention), fn-pfld-lookup-inputsp (fn-owner-existing-action, fn-owner-existing-action-buffer, fn-store-sn-existing-action), fn-pfld-group-name-requestp (fn-owner-reconfigure, fn-owner-declare-group), fn-pfld-bp-ingress-inputsp (host/bp-ingress-host.lisp fn-bpi-host-inputsp), fn-af-message-idp (fn-store-sn-lookup, -lookup-foundp, -verdict), fn-pfld-post-evidence (host/store-node-host.lisp fn-store-prov-post). The host predicates fn-store-text-octetsp, fn-store-msgid-octetsp, fn-store-msgid-validp and the host constant *fn-store-max-text* (512) are deleted. KEYSTONE fn-pfld-textp-is-a-record-metadata-field: an admitted field is fn-record-metadata-bytes-p of its string and its octets round-trip. KEYSTONE fn-pfld-textp-is-exactly-the-record-metadata-domain: over printable octets (33..126, hypothesis) the check IS the record's metadata domain, so no ceiling below the codec's (*fn-record-max-metadata* 256) remains; the deleted 512 admitted fields the record refuses. KEYSTONE fn-pfld-identity-text-is-admitted: fn-id-text of a nonempty octet identity of at most 128 octets (a SHA-256 identity is 32) is admitted. KEYSTONE fn-pfld-post-evidence-is-admitted: for a natural generation, the post evidence (wire form when fn-prov-durablep, legacy rendering otherwise; principal 'local' when no path identity) is admitted. fn-pfld-group-name-requestp-is-bounded-by-the-codec: a group-name request is within the group name's codec ceiling. Scope: the three metadata fields are node-generated, so their bound is a codec domain (STO-021's third class), not an admission limit or a profile field; the data a POST carries keeps its bounds where they are (RFC 5536 Message-ID, the profile's payload/group bound fn-sbud-post-boundary, the profile's header limits STO-030).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-021"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/post-fields.lisp",
+        "tests/acl2/post-fields-tests.lisp",
+        "host/owner-host.lisp",
+        "host/store-node-host.lisp",
+        "host/store-host.lisp",
+        "host/bp-ingress-host.lisp",
+        "planning/evidence/host-decisions-2026-09-27.md"
+      ],
+      "progress_note": "Lane host-decisions (Opus 5.5, 2026-09-27; prepare-served's host-decision list, item 1). Teeth: tests/acl2/post-fields-tests.lisp: REACHABLE witnesses over the identities and evidence the node builds for a POST (fn-id-subject-of-payload, fn-id-obligation-of through the digest attachment; fn-pfld-post-evidence with and without a path identity), each keystone's complete antecedent and conclusion; each conjunct of the article verdict removed refuses; BOUNDARY witnesses at 256/257/512 octets (the old host limit admitted 512, the record refuses it); the printable hypothesis needed (a space is a metadata octet the check refuses); the identity bound needed (129 octets renders 258); must-fail of the exactness keystone without its hypothesis and of the identity keystone without its bound.",
+      "events": [
+        "fn-pfld-textp-is-a-record-metadata-field",
+        "fn-pfld-textp-is-exactly-the-record-metadata-domain",
+        "fn-pfld-identity-text-is-admitted",
+        "fn-pfld-post-evidence-is-admitted",
+        "fn-pfld-group-name-requestp-is-bounded-by-the-codec"
+      ]
     }
   ]
 }
