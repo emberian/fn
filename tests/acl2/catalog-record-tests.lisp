@@ -169,7 +169,7 @@
          (and (fn-held-p held)
               (equal (fn-record-payload held) 0)
               (equal (fn-held-facts held)
-                     (list (len *crt-art*) 14 2 (fn-ctl-control-of *crt-art*)))
+                     (list (len *crt-art*) 14 2 (fn-ctl-control-of *crt-art*) (fn-hnov-of *crt-art*)))
               (equal (fn-hc-generation (fn-held-context held)) 0)
               (equal fn-arena (list *crt-art*))
               (equal (fn-held-wire-of held fn-arena) *crt-w*))))
@@ -245,4 +245,12 @@
     (mv-let (result fn-arena) (crt-exec-run fn-arena) result)))
 
 (assert-event (equal (crt-exec) (list 2 0 1 t t t t (list (len *crt-art*) 14 2
-                                                     (fn-ctl-control-of *crt-art*)))))
+                                                     (fn-ctl-control-of *crt-art*)
+                                                     (fn-hnov-of *crt-art*)))))
+;; The overview column the intern decided (lane served-columns): parsed, not a
+;; tombstone, and the Subject's content.
+(assert-event (let ((nov (fn-hnov-of *crt-art*)))
+                (and (fn-hnov-ok nov) (not (fn-hnov-tomb nov))
+                     (equal (fn-hnov-subject nov)
+                            (fn-hnov-field (fn-article-result-article (fn-article-parse *crt-art*))
+                                           *fn-nov-subject-name*)))))
