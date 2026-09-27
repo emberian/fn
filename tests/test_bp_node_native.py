@@ -1302,7 +1302,7 @@ class NativeBpNodeTests(unittest.TestCase):
         sent = self.send_request(port, "no-inbound-scope")
         out, err = receiver.communicate(timeout=120)
         self.assertEqual(sent.returncode, 0, sent.stderr)
-        self.assertEqual(receiver.returncode, 0, err)
+        self.assertEqual(receiver.returncode, 0, out + err)
         self.assertIn(b"BP node delivery request-refused", out)
         # PRF-224: the durable kind 7 of a refusal is reported refused by
         # name, never as a durable handoff.

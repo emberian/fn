@@ -714,11 +714,17 @@ its outcome, which is the refusal to the offering ingress."
           (fnn-out "BP application handoff durable disposition=~(~a~)"
                    (third effect)))
          (:refused
-          (fnn-bps-note service :refused)
+          ;; A durable kind 7 recording the application's refusal completes
+          ;; the delivery: the run's evidence is unchanged (the transfer was
+          ;; accepted and its disposition is durable), as before PRF-224.
+          ;; Only a refused publication or callback (no disposition) is the
+          ;; run's refusal.
           (if (third effect)
               (fnn-out "BP application handoff refused disposition=~(~a~) (kind 7 durable)"
                        (third effect))
-            (fnn-out "BP application handoff refused")))
+            (progn
+              (fnn-bps-note service :refused)
+              (fnn-out "BP application handoff refused"))))
          (otherwise
           (fnn-bps-note service :fenced)
           (fnn-indeterminate "bp-service: application handoff uncertain"))))
