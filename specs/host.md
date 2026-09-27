@@ -595,8 +595,8 @@ a verb that needs their octets reads them after the open under its lock
 `fnn-recover-log`, which answers the count the same way (a state-checkpoint
 open answers S plus the suffix's count, without re-encoding the covered
 prefix), and `fnn-history-records` reads the record log: the
-history as the open read it (`fnn-log-history-records`: a checkpoint's
-covered prefix when segments were dropped, the closed segments scanned again
+history as the open read it (`fnn-log-history-each`, streamed; a checkpoint's
+covered prefix a chunk at a time when segments were dropped, the closed segments scanned again
 from disk, then the log kernel's committed records, `fn-lgk-committed`); a
 rotation in the process since the open is a fault, never a shorter history.
 The per-file reads are unreachable since the open refuses a format-8 profile

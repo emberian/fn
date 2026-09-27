@@ -7654,7 +7654,8 @@
         "fn-heap-with-nursery-holds-the-trigger",
         "fn-heap-store-figure-observed-is-at-most-unobserved",
         "fn-heap-operation-decide-holds-the-store",
-        "fn-heap-reserve-first-run-accepted-is-within-the-machine"
+        "fn-heap-reserve-first-run-accepted-is-within-the-machine",
+        "fn-heap-storeless-decide-is-small-and-fits"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -8512,7 +8513,9 @@
         "fn-cbud-run-decide-refuses-exactly-past-the-limit",
         "fn-cbud-admitted-connections-fit-the-machine",
         "fn-cbud-deltas-refusal-keeps-the-capacity-held",
-        "fn-cbud-launch-decide-keeps-the-store-figure"
+        "fn-cbud-launch-decide-keeps-the-store-figure",
+        "fn-cbud-step-read-octets-is-bounded",
+        "fn-cbud-read-covers-the-step"
       ]
     },
     {
