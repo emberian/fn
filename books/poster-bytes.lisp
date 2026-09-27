@@ -31,6 +31,9 @@
 ; Reached through books/hybrid-store.lisp until that book included only
 ; books/injection-shape.lisp (audit 2026-09-25, packet 1).
 (include-book "injection")
+; The node's generated RFC 8315 lines in front of the block (SEC-006):
+; fn-cll-skip sets them aside.
+(include-book "cancel-lock-lines")
 
 ; The agent of a Path line this node writes, `Path: AGENT!not-for-mail' CRLF,
 ; at the front of x; nil when x does not open with such a line.
@@ -65,14 +68,47 @@
   (declare (xargs :guard t))
   (not (equal (fn-inj-strip field x) :no)))
 
+; The octets of r before its first ";", or :no when it has none.
+(defun fn-pb-upto-semicolon (r)
+  (declare (xargs :guard t))
+  (if (consp r)
+      (if (equal (car r) 59)
+          nil
+        (let ((rest (fn-pb-upto-semicolon (cdr r))))
+          (if (equal rest :no) :no (cons (car r) rest))))
+    :no))
+
+; The agent an Injection-Info LINE with parameters names (PKT-597,
+; books/injection-info-params.lisp): the octets before the first ";", when
+; the whole line is that agent's line with a parameter run
+; (books/injection.lisp fn-inj-strip-info leaves nothing after it).
+(defun fn-pb-params-line-agent (line)
+  (declare (xargs :guard t))
+  (let ((agent (fn-pb-upto-semicolon
+                (fn-inj-strip *fn-inj-injection-info-field* line))))
+    (if (and (consp agent) (equal (fn-inj-strip-info agent line) nil))
+        agent
+      nil)))
+
+(in-theory (disable fn-pb-params-line-agent))
+
+; The plain line's agent, else the agent of the line with parameters: an
+; article stored with Injection-Info parameters still names its agent, so
+; D25 reads its v3 block as before.  An agent is a dot-atom and never holds
+; ";", so a line with parameters is never read as a plain line naming
+; AGENT; PARAMS (fn-ipp-a-supplied-path-retry-is-the-same-article).
 (defun fn-pb-info-line-agent (x)
   (declare (xargs :guard t))
   (let* ((line (fn-pb-line x))
          (r (fn-inj-strip *fn-inj-injection-info-field* line)))
-    (if (and (true-listp r) (< 2 (len r)))
-        (let ((agent (fn-inj-take (- (len r) 2) r)))
-          (if (equal (fn-inj-injection-info-line agent) line) agent nil))
-      nil)))
+    (or (if (and (true-listp r) (< 2 (len r)))
+            (let ((agent (fn-inj-take (- (len r) 2) r)))
+              (if (and (equal (fn-inj-injection-info-line agent) line)
+                       (not (member-equal 59 agent)))
+                  agent
+                nil))
+          nil)
+        (fn-pb-params-line-agent line))))
 
 (defun fn-pb-block-agent (x msgid)
   (declare (xargs :guard t))
@@ -89,16 +125,23 @@
 ; and v2), else its v3 block's Injection-Info line's.  Whichever it names,
 ; the inverse checks the whole block, so a wrong guess gives no source and
 ; the octets are compared exactly.
+; SEC-006 (D25 restored, gpt-6's wave-5 review section 3): both are read
+; after `fn-cll-skip', which sets aside the Cancel-Lock and Cancel-Key lines
+; the node generates in front of its block (books/cancel-lock-lines.lisp),
+; so those lines are never part of the comparison subject, whatever account
+; or key epoch wrote them.  A Cancel-Lock the poster wrote stays in the
+; source.
 (defun fn-pb-path-agent (x msgid)
   (declare (xargs :guard t))
-  (or (fn-pb-path-line-agent x) (fn-pb-block-agent x msgid)))
+  (let ((x (fn-cll-skip x)))
+    (or (fn-pb-path-line-agent x) (fn-pb-block-agent x msgid))))
 
 ; The comparison subject of an article: its source when this agent's recipe
 ; gives one back, else the article's own octets.  The two arms are tagged,
 ; so a source can never equal a payload compared exactly.
 (defun fn-pb-subject (octets agent msgid)
   (declare (xargs :guard t))
-  (let ((source (fn-inj-source-of octets agent msgid)))
+  (let ((source (fn-inj-source-of (fn-cll-skip octets) agent msgid)))
     (if source
         (cons :source (cdr source))
       (cons :octets octets))))

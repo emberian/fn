@@ -7706,11 +7706,12 @@
     },
     {
       "id": "PRF-206",
-      "title": "The served overview carries an Xref:full field naming exactly the groups and local numbers at which the node serves each article",
-      "statement": "R3: over the served step the host runs (host/owner-host.lisp fn-owner-chunk -> fn-served-step), a framed OVER RANGE line on a connection whose pinned configuration's listing names a server answers fn-nntp-over-range-served over the pinned buckets and trie with that server (fn-served-step-over-range-carries-the-xref); every served line is the eight-field line of fn-nov-lines-for-numbers-numbered followed by TAB and the Xref field of the article the number index resolves (fn-nov-served-lines-numbered-extend-the-eight-fields, fn-nov-served-lines-numbered-has-the-article-line); the field's locations are exactly the pairs (G . N) with G a colon-free printable group and N the article's available local number fn-nntp-article-number G (fn-xref-pairs-exact), each an entry the group index builds (fn-xref-pair-is-an-index-entry); the server of fn-oag-post-config's listing is the node's path-identity when set (fn-oag-listing-server-is-the-path-identity); LIST OVERVIEW.FMT names Xref:full on the same condition; every reply is well-formed (fn-nntp-effects-*-served) and without a server the renderers are the eight-field ones (*-without-a-server). Not an event of this target yet: books/posting-account.lisp (the P2 posting-account value, HMAC-SHA256 of the login in hex; fn-pa-account-value-is-hex, -depends-only-on-the-mac, -determines-the-mac; RFC 4231 vectors in its test book) is certified but no host line calls it until PKT-597 wires Injection-Info, so reach_check rightly refuses it as evidence.",
+      "title": "The served overview carries an Xref:full field naming exactly the groups and local numbers at which the node serves each article; and a served POST's stored Injection-Info carries the login's posting-account pseudonym and the complaints address",
+      "statement": "R3: over the served step the host runs (host/owner-host.lisp fn-owner-chunk -> fn-served-step), a framed OVER RANGE line on a connection whose pinned configuration's listing names a server answers fn-nntp-over-range-served over the pinned buckets and trie with that server (fn-served-step-over-range-carries-the-xref); every served line is the eight-field line of fn-nov-lines-for-numbers-numbered followed by TAB and the Xref field of the article the number index resolves (fn-nov-served-lines-numbered-extend-the-eight-fields, fn-nov-served-lines-numbered-has-the-article-line); the field's locations are exactly the pairs (G . N) with G a colon-free printable group and N the article's available local number fn-nntp-article-number G (fn-xref-pairs-exact), each an entry the group index builds (fn-xref-pair-is-an-index-entry); the server of fn-oag-post-config's listing is the node's path-identity when set (fn-oag-listing-server-is-the-path-identity); LIST OVERVIEW.FMT names Xref:full on the same condition; every reply is well-formed (fn-nntp-effects-*-served) and without a server the renderers are the eight-field ones (*-without-a-server). P2 (PKT-597): over books/injection-info-params.lisp fn-ipp-injected-octets, which books/owner-served-invariants.lisp fn-own-sub-stored-octets calls for every local submission (host/owner-host.lisp fn-owner-take stages it; fn-owner-finish-submission's completion gate compares with it) with the submission's login (fn-own-sub-login, from the :submit effect's fn-served-login), the owner's node secret and the live configuration: for an injection, the stored octets are the injected block with its one Injection-Info line carrying the parameters, then the source (fn-ipp-injected-octets-carry-the-parameters over fn-ipp-with-params-of-an-injection), and the injection inverse still gives back the source (fn-ipp-with-params-keeps-the-source; books/injection.lisp fn-inj-source-of reads the line through fn-inj-strip-info), and the node's Injection-Info line with its parameters is outside the authored-source identity: the D25 subject (books/poster-bytes.lisp fn-pb-subject) of the stored octets is the poster's source, as for the injection without them (fn-ipp-injected-octets-keep-the-d25-subject), and two injections under one Message-ID, in either recipe (a supplied Path or not), at any clock readings and under any secrets', logins' and complaints addresses' parameters, are one article for the Store's duplicate test exactly when their sources are equal (fn-ipp-same-articlep-of-two-injections, fn-ipp-a-same-source-retry-is-the-same-article; the agent is read back from the stored octets in both recipes, fn-ipp-path-agent-of-the-injected-octets); over the owner's stored octets, with the node's Cancel-Lock lines in front, the D25 subject is still the poster's source (books/owner-injection-info.lisp fn-oii-stored-octets-keep-the-d25-subject, over fn-own-sub-stored-octets, composing SEC-006's fn-own-stored-octets-keep-the-injected-octets); under a login with the secret installed the parameters open with `; posting-account=\"HEX\"`, HEX = fn-pa-account-value (64 lowercase hex digits of HMAC-SHA256 of the login under the key ring's HKDF-SHA256 `fn/posting-account/v1` purpose key, books/node-secret.lisp fn-ns-posting-account-mac: fn-pa-account-value-is-hex, -depends-only-on-the-mac, -determines-the-mac), then `; mail-complaints-to=\"ADDR\"` when the complaints-to policy is an addr-spec (fn-ipp-params-of-a-login; fn-ipp-addr-spec-has-no-quote-or-line-break); without a login no posting-account (fn-ipp-params-without-a-login), and without both the injection is stored unchanged (fn-ipp-injected-octets-without-parameters); the parameters are a CR/LF-free run opening with ';' (fn-ipp-params-are-a-parameter-run). Not claimed: one value means one login (HMAC-SHA256 collision resistance; n(n-1)/2^257 for n logins under one secret).",
       "milestone": "M6",
       "requirements": [
-        "NNT-006"
+        "NNT-006",
+        "NNT-004"
       ],
       "depends_on": [
         "PRF-195"
@@ -7728,9 +7729,19 @@
         "tests/acl2/nntp-xref-tests.lisp",
         "tests/acl2/posting-account-tests.lisp",
         "tests/test_native_reader_index.py",
-        "planning/evidence/usenet-headers-2026-09-26.md"
+        "planning/evidence/usenet-headers-2026-09-26.md",
+        "books/injection-info-policy.lisp",
+        "books/injection-info-params.lisp",
+        "books/injection-info-params-invariants.lisp",
+        "books/served.lisp",
+        "books/injection.lisp",
+        "tests/acl2/injection-info-params-tests.lisp",
+        "tests/test_native_injection_info.py",
+        "planning/evidence/usenet-headers-3-2026-09-26.md",
+        "books/owner-injection-info.lisp",
+        "tests/acl2/owner-injection-info-tests.lisp"
       ],
-      "progress_note": "usenet-headers-2 (2026-09-26): R3 done (books, teeth, native case); P2's posting-account primitive proved, its Injection-Info wiring and the init key file are PKT-597.",
+      "progress_note": "usenet-headers-3 (2026-09-26): P2 wired (PKT-597): Injection-Info parameters in the stored octets under the node secret (lane/newsreader-cancel), complaints-to policy, account hash verb, native SCN-168.",
       "events": [
         "fn-xref-pairs-exact",
         "fn-xref-pair-is-an-index-entry",
@@ -8186,6 +8197,58 @@
         "fn-own-bp-transit-refuses-past-the-limits",
         "fn-own-control-decision-injects-only-within-the-limits",
         "fn-own-control-decision-refuses-past-the-limits-by-name"
+      ]
+    },
+    {
+      "id": "PRF-210",
+      "title": "A cancel's authority is exactly a granted signed canceller or the poster: an unsigned cancel or Supersedes withdraws its target exactly when one of its RFC 8315 Cancel-Key entries opens one of the target's sha256 Cancel-Locks; the octets the owner stores for an account's POST carry exactly one Cancel-Lock keyed by that account under an HKDF purpose key, outside the D25 source",
+      "statement": "Withdrawal (unchanged): over fn-ctl-refresh-withdrawals / fn-ctl-journal-withdrawals, the record of a cause withdraws a target exactly when the cause names another target and either a verified principal P signed it or P's grants cover its groups, or no principal is verified and a Cancel-Key K of the cause has Base64(SHA-256(K)) among the target's sha256 Cancel-Locks (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster; fn-ctl-verified-cause-ignores-its-keys). Stored octets: books/owner-served-invariants.lisp fn-own-sub-stored-octets CFG SUB RING (host/owner-host.lisp fn-owner-take; the completion gate compares the same function): for a served submission by account A (fn-own-sub-account, recorded by fn-own-finish-read from the session subject) with a key ring installed (fn-ns-ringp), unsigned and with no poster Cancel-Lock, the stored octets are `Cancel-Lock: sha256:Base64(SHA-256(K))` CRLF, then on a cancel `Cancel-Key:` with one key per retained epoch, then the injected octets unchanged, K = Base64(HMAC-SHA256(key, hex(A) || MSGID)) with key the HKDF-SHA256 purpose key of the current epoch (info fn/cancel-lock/v1, salt the node identity) (fn-own-stored-octets-carry-the-account-lock, fn-cl-served-payload-writes-one-account-lock). D25: the projection fn-cll-skip that books/poster-bytes.lisp reads both compared payloads through gives the injected octets for every ring and account (fn-own-stored-octets-keep-the-injected-octets, fn-cl-served-payload-projects-to-the-injected-octets, fn-cll-skip-of-the-generated-lines), so a same-source retry by any account or key epoch is :duplicate and a different source :conflict at fn-rcl-existing-action (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored, fn-cld-a-changed-source-is-a-conflict-whatever-the-account). Rotation: a cancel's keys open a lock made under any retained epoch (fn-cl-ring-keys-open-every-retained-lock). Exactly the account's key opens its lock up to the stated collision (fn-cl-account-key-opens-exactly-its-lock). Derivation: distinct info labels never expand the same HKDF input (fn-ns-expand-input-separates-info); the key file round-trips (fn-ns-file-parse-of-render). Not theorems: that the written line parses back as the entry (teeth on parsed stored octets); that another account's key opens nothing (a SHA-256 collision of two HMAC outputs under a key the forger does not hold, about 2^128 generic work); HMAC/HKDF pseudorandomness.",
+      "milestone": "M4",
+      "requirements": [
+        "SEC-006"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/control-authority.lisp",
+        "books/control-visible.lisp",
+        "books/control-served.lisp",
+        "books/control-evidence.lisp",
+        "books/cancel-lock.lisp",
+        "books/cancel-lock-lines.lisp",
+        "tests/acl2/cancel-lock-tests.lisp",
+        "books/node-secret.lisp",
+        "books/owner.lisp",
+        "books/owner-served-invariants.lisp",
+        "tests/acl2/node-secret-tests.lisp",
+        "tests/acl2/owner-cancel-lock-tests.lisp",
+        "tests/test_native_own_cancel.py",
+        "planning/evidence/newsreader-cancel-2026-09-26.md",
+        "books/cancel-lock-d25.lisp",
+        "tests/acl2/cancel-lock-d25-tests.lisp",
+        "books/poster-bytes.lisp",
+        "books/poster-bytes-buffer.lisp"
+      ],
+      "progress_note": "newsreader-cancel-2 (2026-09-27): the node-written lock is in the stored octets (fn-own-sub-stored-octets under fn-own-node-secret) and the completion gate compares the same function; persvati run-20260926T231408Z-d865 green at 53dc88c1c (manifest planning/evidence/manifests/certify-20260926T231509Z-3976540.json: 175 certified incl. books/node-secret, books/cancel-lock, books/owner-served-invariants and the teeth tests/acl2/{node-secret,cancel-lock,owner-cancel-lock}-tests); tests.test_native_own_cancel OK (3 ran) on both images and test_native_control_across_peers OK on hbox native-n5; V0-CLIENT-THUNDERBIRD-CANCEL accepted on persvati. Earlier: newsreader-cancel (2026-09-26) the decision half.",
+      "events": [
+        "fn-ctl-withdrawal-authority-is-exactly-signer-or-poster",
+        "fn-ctl-verified-cause-ignores-its-keys",
+        "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets",
+        "fn-ctl-withdrawal-plan-record-is-bound",
+        "fn-ctl-cancel-executes-only-for-author-or-authority",
+        "fn-own-stored-octets-carry-the-account-lock",
+        "fn-own-stored-octets-keep-the-injected-octets",
+        "fn-cl-account-key-opens-exactly-its-lock",
+        "fn-cl-served-payload-writes-one-account-lock",
+        "fn-cl-served-payload-projects-to-the-injected-octets",
+        "fn-cl-ring-keys-open-every-retained-lock",
+        "fn-cll-skip-of-the-generated-lines",
+        "fn-ns-expand-input-separates-info",
+        "fn-ns-cancel-lock-and-posting-account-inputs-differ",
+        "fn-ns-file-parse-of-render",
+        "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored",
+        "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
       ]
     }
   ]

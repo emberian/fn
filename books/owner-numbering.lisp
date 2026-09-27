@@ -347,14 +347,14 @@
                                             (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                                             (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
                                             (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-                                            (fn-own-inflight o) (fn-own-feeds o))))
+                                            (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o))))
                  (:instance fn-own-refresh-view-is-kept-or-the-idle-node
                             (o (fn-own-make (fn-sn-finish (fn-own-store o)) (fn-own-view o) (fn-own-conns o)
                                             (fn-own-next-id o) (fn-own-max-conns o) nil
                                             (append (fn-own-ledger o)
                                                           (list (fn-sf-completion (fn-sn-files (fn-own-store o)))))
                                             (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-                                            (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o))))))))
+                                            (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o))))))))
 )
 
 (local (defthm fn-own-finish-keeps-store-configuration

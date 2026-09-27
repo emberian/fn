@@ -145,6 +145,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-descriptions-read \
 	books/owner-xref-read \
 	books/posting-account \
+	books/injection-info-policy \
+	books/injection-info-params \
+	books/injection-info-params-invariants \
+	books/owner-injection-info \
 	books/owner-signed-post \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
@@ -710,6 +714,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/group-descriptions-tests \
 	tests/acl2/nntp-xref-tests \
 	tests/acl2/posting-account-tests \
+	tests/acl2/injection-info-params-tests \
+	tests/acl2/owner-injection-info-tests \
 	tests/acl2/nntp-post-tests \
 	tests/acl2/served-line-iterative-tests \
 	books/path \
@@ -954,6 +960,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/tls-reload-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
+	books/node-secret \
+	tests/acl2/node-secret-tests \
+	books/cancel-lock-lines \
+	books/cancel-lock \
+	tests/acl2/cancel-lock-tests \
+	tests/acl2/owner-cancel-lock-tests \
+	books/cancel-lock-d25 \
+	tests/acl2/cancel-lock-d25-tests \
 	books/control-served \
 	tests/acl2/control-served-tests \
 	books/nntp-control \
