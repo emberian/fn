@@ -303,15 +303,39 @@
 ; R against the configured owner the host holds (fn-owner-core /
 ; fn-owner-ocfg, host/owner-host.lisp): the equality at idle phases, the
 ; prefix otherwise, and the owner's own live relation.  The history is the
-; store's ROWS read through the arena (books/store-intern.lisp
-; fn-rows-wire-of, ALPHA): after the records flip `fn-sf-records' holds
-; interned rows whose article payload is a HANDLE, and no held row is
-; fn-record-p, so R over the raw rows would read no article at all (the
-; vacuity catalog-columns removed, 2026-09-27).
+; ARTICLES of the store's ROWS read through the arena (fn-cat-history-articles
+; below): after the records flip `fn-sf-records' holds interned rows whose
+; article payload is a HANDLE, and no held row is fn-record-p, so R over the
+; raw rows would read no article at all (the vacuity catalog-columns
+; removed, 2026-09-27); and a signed article is a composite row whose held
+; row carries it, which ALPHA by wire (fn-rows-wire-of) reads as the wire
+; composite, no article (signed-post's red).
+
+; ALPHA for the catalog: each row of the store's history read as the ARTICLE
+; it serves, through the arena.  A held row (a plain article) and the held
+; row inside a composite row (a signed article: the atomic acceptance whose
+; article the intern made a held row, books/store-intern.lisp
+; fn-intern-event) are both read by their handle (fn-row-wire-of of the held
+; row); any other row is its wire event, which is no article.  (For a
+; composite, fn-rows-wire-of reads the wire composite, which
+; fn-sf-article-records skips: a relation over it had no signed articles --
+; the red signed-post found, catalog-columns 2026-09-27.)
+(defun fn-cat-history-article (row fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (fn-hstxa-p row)
+      (fn-row-wire-of (fn-hstxa-held row) fn-arena)
+    (fn-row-wire-of row fn-arena)))
+
+(defun fn-cat-history-articles (rows fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (atom rows)
+      nil
+    (cons (fn-cat-history-article (car rows) fn-arena)
+          (fn-cat-history-articles (cdr rows) fn-arena))))
 
 (defun-nx fn-cat-ocl-relation (oc fn-arena fn-cat)
   (let* ((s (fn-own-store (fn-ocfg-owner oc)))
-         (history (fn-rows-wire-of (fn-sf-records (fn-sn-files s)) fn-arena)))
+         (history (fn-cat-history-articles (fn-sf-records (fn-sn-files s)) fn-arena)))
     (and (fn-ocl-relation oc)
          (if (fn-own-store-idlep s)
              (fn-cat-history-relation history fn-arena fn-cat)
@@ -397,7 +421,7 @@
                 (fn-cat-history-relation records0 fn-arena fn-cat)
                 (fn-sn-completion-enabledp (fn-own-store (fn-ocfg-owner oc)))
                 (equal (fn-sf-article-records
-                        (fn-rows-wire-of (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                        (fn-cat-history-articles (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
                                          fn-arena))
                        (append (fn-sf-article-records records0) (list w)))
                 (fn-pc-p pending)
@@ -414,7 +438,7 @@
                         (:instance fn-cat-relation-of-complete (records records0))
                         (:instance fn-cat-history-relation-reads-the-articles
                                    (a (append records0 (list w)))
-                                   (b (fn-rows-wire-of
+                                   (b (fn-cat-history-articles
                                        (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
                                        fn-arena))
                                    (fn-cat (mv-nth 2 (fn-cat-complete token pending fn-cat))))
@@ -436,7 +460,7 @@
   (implies (and (fn-ocl-relation oc)
                 (fn-sn-completion-enabledp (fn-own-store (fn-ocfg-owner oc)))
                 (equal (fn-sf-article-records
-                        (fn-rows-wire-of (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                        (fn-cat-history-articles (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
                                          fn-arena))
                        (append (fn-sf-article-records records0) (list w)))
                 (fn-record-p w)
@@ -447,7 +471,7 @@
   :hints (("Goal" :use (fn-ocmt-post-commit-preserves-ocl-relation
                         (:instance fn-cat-history-relation-reads-the-articles
                                    (a (append records0 (list w)))
-                                   (b (fn-rows-wire-of
+                                   (b (fn-cat-history-articles
                                        (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
                                        fn-arena))
                                    (fn-cat fn-cat2))
@@ -471,11 +495,11 @@
   (implies (and (fn-ocl-relation oc)
                 (fn-cat-history-relation records0 fn-arena fn-cat)
                 (equal (fn-sf-article-records
-                        (fn-rows-wire-of (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                        (fn-cat-history-articles (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
                                          fn-arena))
                        (append (fn-sf-article-records records0) (list w))))
            (fn-cat-history-prefix-relation
-            (fn-rows-wire-of (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena)
+            (fn-cat-history-articles (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena)
             fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-cat-history-relation fn-cat-history-prefix-relation)
                                   (fn-cat-count-is-len fn-cat-at-is-nth fn-cat-p-is-rowsp
@@ -490,7 +514,7 @@
   (implies (and (fn-ocl-relation oc)
                 (fn-sn-completion-enabledp (fn-own-store (fn-ocfg-owner oc)))
                 (fn-cat-history-relation
-                 (fn-rows-wire-of (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena)
+                 (fn-cat-history-articles (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena)
                  fn-arena fn-cat))
            (fn-cat-ocl-relation
             (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))

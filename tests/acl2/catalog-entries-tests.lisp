@@ -2,8 +2,11 @@
 ; 2026-09-26).
 ;
 ; What this book is evidence FOR (restated over the flipped store by lane
-; catalog-columns, 2026-09-27; the relation reads ALPHA of the store's rows,
-; books/store-intern.lisp fn-rows-wire-of, and the entries are the host's):
+; catalog-columns, 2026-09-27; the relation reads the ARTICLES of the
+; store's rows through the arena, books/catalog-entries.lisp
+; fn-cat-history-articles -- a held row and a signed composite's held
+; article row -- and the entries are the host's; the signed witness is at
+; the end):
 ;
 ; books/served-catalog-owner.lisp fn-sca-ocl-relation-at-full-open (E1/E2):
 ; the host's full open on live stobjs -- the arena cleared, the one-article
@@ -14,7 +17,7 @@
 ; fn-sca-ocl-relation-at-recover (E3, any prefix/suffix split): the two
 ; splits install the same owner at an idle store holding the rows; removal
 ; witnesses for fn-rows-handles-inp and fn-arena-p (evaluated) and for
-; fn-wire-event-listp (symbolic: its only falsifier under the others is a
+; fn-rows-composites-okp (symbolic: its only falsifier under the others is a
 ; payload over *fn-record-max-payload* octets).
 ; fn-sca-ocl-relation-of-finish (T2 at fn-owner-finish-submission): a
 ; configured owner at :completing (owner-advance-carried-tests' recipe)
@@ -125,8 +128,8 @@
     (mv (list (fn-cat-count fn-cat)
               (and (fn-arena-p fn-arena) (fn-sf-record-valuesp records)
                    (fn-rows-handles-inp records fn-arena)
-                   (fn-wire-event-listp (fn-rows-wire-of records fn-arena)) t)
-              (fn-cat-history-relation (fn-rows-wire-of records fn-arena) fn-arena fn-cat)
+                   (fn-rows-composites-okp records fn-arena) t)
+              (fn-cat-history-relation (fn-cat-history-articles records fn-arena) fn-arena fn-cat)
               (fn-cat-wire-list 0 fn-arena fn-cat)
               (fn-scr-view-of (fn-own-view-version view) fn-cat))
         fn-arena fn-cat)))
@@ -238,7 +241,7 @@
               (mv (list (equal (fn-rows-wire-of srows fn-arena) ws)
                         (fn-ocl-relation oc)
                         (if (fn-own-store-idlep s) t nil)
-                        (fn-cat-history-relation (fn-rows-wire-of srows fn-arena) fn-arena fn-cat)
+                        (fn-cat-history-relation (fn-cat-history-articles srows fn-arena) fn-arena fn-cat)
                         (fn-cat-count fn-cat)
                         (fn-cat-wire-list 0 fn-arena fn-cat))
                   fn-arena fn-cat))))))))
@@ -302,36 +305,38 @@
          (bad-arena (list (fn-record-payload *cet-w0*) 'not-octets)))
     (and (equal rows (append *cet-hr* nil))
          (fn-arena-p nil)
-         (fn-wire-event-listp (fn-rows-wire-of rows nil))
+         (fn-rows-composites-okp rows nil)
          (not (fn-rows-handles-inp rows nil))
-         (not (fn-cat-history-relation (fn-rows-wire-of rows nil) nil
+         (not (fn-cat-history-relation (fn-cat-history-articles rows nil) nil
                                        (fn-sca-load-held-rows rows idx nil nil)))
          (fn-rows-handles-inp rows bad-arena)
          (equal (fn-rows-wire-of rows bad-arena) *cet-h*)
-         (fn-wire-event-listp (fn-rows-wire-of rows bad-arena))
+         (fn-rows-composites-okp rows bad-arena)
          (not (fn-arena-p bad-arena))
-         (not (fn-cat-history-relation (fn-rows-wire-of rows bad-arena) bad-arena
+         (not (fn-cat-history-relation (fn-cat-history-articles rows bad-arena) bad-arena
                                        (fn-sca-load-held-rows rows idx bad-arena nil)))))
   :rule-classes nil)
 
-;  (fn-wire-event-listp (fn-rows-wire-of ...)): with the arena an arena and
-;  the handle inside, ALPHA of a held row fails to be a wire record only when
+;  (fn-rows-composites-okp rows fn-arena): with the arena an arena and
+;  the handle inside, a held row's article fails to be a record only when
 ;  its payload exceeds *fn-record-max-payload* (4,261,412,864 octets), too
 ;  long to evaluate; the witness is symbolic over any such payload P: the
 ;  retained hypotheses hold, the removed one fails, and R fails (the catalog
 ;  commits the row, the history's articles are empty).
-(defthm cet-w-at-recover-wire-events-needed
+(defthm cet-w-at-recover-composites-needed
   (let* ((own (fn-ocfg-owner *cet-ckpt*))
          (rows (fn-sf-records (fn-sn-files (fn-own-store own))))
          (idx (fn-own-view-index (fn-own-view own))))
     (implies (and (fn-cbor-octet-listp p) (< *fn-record-max-payload* (len p)))
              (and (fn-arena-p (list p))
                   (fn-rows-handles-inp rows (list p))
-                  (not (fn-wire-event-listp (fn-rows-wire-of rows (list p))))
-                  (not (fn-cat-history-relation (fn-rows-wire-of rows (list p)) (list p)
+                  (not (fn-rows-composites-okp rows (list p)))
+                  (not (fn-cat-history-relation (fn-cat-history-articles rows (list p)) (list p)
                                                 (fn-sca-load-held-rows rows idx (list p) nil))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-rows-wire-of fn-row-wire-of fn-row-bytes fn-held-wire
+                                     fn-cat-history-articles fn-cat-history-article
+                                     fn-rows-composites-okp fn-row-composite-okp
                                      fn-rows-handles-inp fn-row-handle-inp fn-wire-event-listp
                                      fn-wire-event-p fn-record-p fn-record-payloadp
                                      fn-cat-history-relation fn-sf-article-records
@@ -411,7 +416,7 @@
     (fn-cat-intern-list *cet-w0* nil 0 nil)
     (let ((pending (fn-cat-prepare-sealed *cet-w0* (fn-sn-completion-record *cet-s*)
                                           nil nil nil arena nil))
-          (history (fn-rows-wire-of *cet-records* arena)))
+          (history (fn-cat-history-articles *cet-records* arena)))
       (and (equal held (fn-sn-completion-record *cet-s*))
            (equal pending (fn-pc-make (cons 0 0) 0 held nil nil))
            (fn-cat-history-relation nil arena nil)
@@ -464,7 +469,7 @@
          (o (fn-ocfg-owner oc))
          (s (fn-own-store o))
          (rows (fn-sf-records (fn-sn-files s)))
-         (records0 (fn-rows-wire-of (take nrec rows) fn-arena))
+         (records0 (fn-cat-history-articles (take nrec rows) fn-arena))
          (fn-cat (fn-sca-load-held-rows (take ncat rows) (fn-own-view-index (fn-own-view o))
                                         fn-arena fn-cat))
          (row (fn-sn-completion-record s))
@@ -479,7 +484,7 @@
          (hyps (list (fn-ocl-relation oc)
                      (fn-cat-history-relation records0 fn-arena fn-cat)
                      (fn-sn-completion-enabledp s)
-                     (equal (fn-sf-article-records (fn-rows-wire-of rows fn-arena))
+                     (equal (fn-sf-article-records (fn-cat-history-articles rows fn-arena))
                             (append (fn-sf-article-records records0) (list w)))
                      (fn-pc-p pending)
                      (equal token (fn-pc-token pending))
@@ -497,7 +502,7 @@
                 (list (fn-ocl-relation finished)
                       (if (fn-own-store-idlep (fn-own-store fo)) t nil)
                       (fn-cat-history-relation
-                       (fn-rows-wire-of (fn-sf-records (fn-sn-files (fn-own-store fo))) fn-arena)
+                       (fn-cat-history-articles (fn-sf-records (fn-sn-files (fn-own-store fo))) fn-arena)
                        fn-arena fn-cat)
                       (fn-cat-count fn-cat)))
           fn-arena fn-cat))))
@@ -572,3 +577,54 @@
      (fn-ocfg-config oc) (fn-ocfg-pins oc) (fn-ocfg-staged oc))))
 (assert-event (equal (cet-t2-exec *cet-t2-bad* *cet-t2-payloads* 2 2 nil)
                      (list (list nil t nil t t t t t t) (list nil nil t 1))))
+
+; -----------------------------------------------------------------------------
+; Signed articles (signed-post's red, catalog-columns 2026-09-27): the
+; history a plain article and a SIGNED one (owner-signed-post-tests' atomic
+; acceptance composite), interned as the open interns it (a held row, then a
+; composite row holding its article's held row).  The host's load commits
+; BOTH rows (the catalog had skipped the composite, so GROUP counted only
+; the plain articles), and R holds over the rows' ARTICLES
+; (fn-cat-history-articles); ALPHA by wire (fn-rows-wire-of) reads the
+; composite as the wire composite, which is no article -- the relation over
+; it saw one article where the history serves two.
+; fn-sca-load-held-rows-establishes-relation, reachable positive witness:
+; every hypothesis and the conclusion evaluated on live stobjs.
+
+(include-book "owner-signed-post-tests")
+
+(defconst *cet-sws* (list *cet-w0* *ospt-event*))
+(make-event `(defconst *cet-signed-article* ',(fn-replay-composite-record *ospt-event*)))
+(assert-event (and (fn-stxa-p *ospt-event*) (fn-record-p *cet-signed-article*)))
+
+(defun cet-signed-run (ws fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let ((fn-arena (fn-arena-clear fn-arena)))
+    (mv-let (rows fn-arena)
+      (fn-intern-events ws nil 0 fn-arena)
+      (if (equal rows :bad)
+          (mv :bad fn-arena fn-cat)
+        (let ((fn-cat (fn-sca-load-held-rows rows nil fn-arena fn-cat)))
+          (mv (list (list (if (fn-held-p (first rows)) t nil)
+                          (if (fn-hstxa-p (second rows)) t nil))
+                    (and (fn-arena-p fn-arena) (fn-sf-record-valuesp rows)
+                         (fn-rows-handles-inp rows fn-arena)
+                         (fn-rows-composites-okp rows fn-arena) t)
+                    (fn-cat-history-relation (fn-cat-history-articles rows fn-arena) fn-arena fn-cat)
+                    (fn-cat-count fn-cat)
+                    (fn-cat-wire-list 0 fn-arena fn-cat)
+                    (len (fn-sf-article-records (fn-rows-wire-of rows fn-arena))))
+              fn-arena fn-cat))))))
+
+(defun cet-signed-exec (ws)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (cet-signed-run ws fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+(assert-event (equal (cet-signed-exec *cet-sws*)
+                     (list '(t t) t t 2 (list *cet-w0* *cet-signed-article*) 1)))

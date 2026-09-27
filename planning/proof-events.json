@@ -7058,6 +7058,14 @@
         {
           "kind": "theorem",
           "name": "fn-sca-ocl-store-rows-are-values"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-intern-events-composites-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sca-held-rowsp-of-record-values"
         }
       ]
     },

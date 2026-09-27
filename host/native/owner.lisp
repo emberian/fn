@@ -346,6 +346,10 @@ function supplied no observation at all, which is a defect here."
 (defun fnn-owner-finish ()
   (fnn-owner-action 'fn-owner-finish))
 
+(defun fnn-owner-finish-identity ()
+  "An identity event's completion with the catalog's T4 then T2 (host/owner-host.lisp fn-owner-finish-identity)."
+  (fnn-owner-core 'fn-owner-finish-identity))
+
 (defun fnn-owner-finish-submission ()
   "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
   (fnn-owner-core 'fn-owner-finish-submission))
@@ -1635,6 +1639,12 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                        (fnn-octet-list-p (second prepared)))
             (fnn-fault "ACL2 returned a malformed identity seal"))
           (fnn-seal-octets (second prepared))
+          ;; The catalog's row for the article the event carries, after the
+          ;; one seal (fn-owner-cat-prepare-sealed), completed by
+          ;; fn-owner-finish-identity at the durable finish.
+          (unless (eq (fnn-owner-action 'fn-owner-cat-prepare-sealed) :prepared)
+            (fnn-fault "owner did not prepare the catalog row of the identity event"))
+          (setq *fnn-finish-callback* #'fnn-owner-finish-identity)
           (setq prepared :prepared))
         (unless (keywordp prepared)
           (fnn-fault "owner returned non-action from fn-owner-prepare-identity"))
