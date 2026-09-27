@@ -8282,7 +8282,7 @@
         "fn-ccco-remember-all-keeps-sound",
         "fn-ccco-framed-link-fast-is-framed-link",
         "fn-ccco-octet-event-listp-is-octet-event-listp",
-        "fn-ccco-event-fields-are-the-dispatchers",
+        "fn-event-fields-of-wire-is-the-dispatchers",
         "fn-ccco-linkp-is-linkp",
         "fn-ccco-decode-link-is-decode-link",
         "fn-obi-load-is-cat-load",
@@ -8574,7 +8574,11 @@
         "fn-cbind-poll-is-the-consumer-poll-or-a-refusal",
         "fn-cbind-ack-is-the-consumer-ack-or-a-refusal",
         "fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll",
-        "fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack"
+        "fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack",
+        "fn-cbind-poll-over-delivers-only-readable-events",
+        "fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal",
+        "fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll",
+        "fn-cbind-poll-over-is-poll-unless-a-held-row"
       ]
     },
     {
@@ -9126,7 +9130,9 @@
         "fn-cwait-wait-request-roundtrip",
         "fn-cwait-bound-wait-request-roundtrip",
         "fn-cwait-request-decode-of-another-code-is-the-consumer-decode",
-        "fn-cwait-cli-plan-of-another-command-is-the-consumer-plan"
+        "fn-cwait-cli-plan-of-another-command-is-the-consumer-plan",
+        "fn-cwait-step-over-is-the-poll-or-a-sleep-on-an-empty-page",
+        "fn-cwait-step-over-is-step-unless-a-held-row"
       ]
     },
     {
@@ -9172,7 +9178,7 @@
         "fn-rii-node-prepare-is-node-prepare",
         "fn-rii-acceptedp-is-acceptedp",
         "fn-rii-admissiblep-is-admissiblep",
-        "fn-rii-event-fields-are-the-dispatchers",
+        "fn-event-fields-of-rows-is-the-dispatchers",
         "fn-rii-sf-record-listp-is-sf-record-listp",
         "fn-rii-sco-finalize-from-is-sco-finalize-from",
         "fn-sbud-count-is-used",

@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1180 |
-| Certification roots in the Makefile | 1140 |
-| Books inside the root closure | 1169 |
-| `defthm` and `defthmd` events | 17403 |
-| `defun` events | 12059 |
-| Functions with verified guards | 2415 |
-| Functions declared `:verify-guards nil` and never verified | 1228 |
+| Books read | 1181 |
+| Certification roots in the Makefile | 1141 |
+| Books inside the root closure | 1170 |
+| `defthm` and `defthmd` events | 17412 |
+| `defun` events | 12068 |
+| Functions with verified guards | 2419 |
+| Functions declared `:verify-guards nil` and never verified | 1235 |
 | Functions left at the default with an explicit guard | 6658 |
-| Functions left at the default with no guard | 1758 |
-| `assert-event` checks | 17438 |
+| Functions left at the default with no guard | 1756 |
+| `assert-event` checks | 17446 |
 | `must-fail` checks | 2116 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 89 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 201 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 205 |
-| Include-hygiene warnings | 1204 |
+| Include-hygiene warnings | 1205 |
 | Host-names warnings | 1341 |
 | Hand-written-record warnings | 18 |
 
@@ -333,7 +333,7 @@ that `make certify` requests.
 | `books/checkpoint-codec.lisp` | root | 110 | 36 | 13/1/21/1 | 0 | 0 | 1 |
 | `books/checkpoint-compaction-preservation.lisp` | root | 34 | 13 | 0/5/7/1 | 0 | 0 | 0 |
 | `books/checkpoint-compaction.lisp` | root | 12 | 19 | 0/15/4/0 | 0 | 0 | 0 |
-| `books/checkpoint-pack-chain-once.lisp` | root | 21 | 16 | 0/15/1/0 | 0 | 0 | 0 |
+| `books/checkpoint-pack-chain-once.lisp` | root | 20 | 15 | 0/14/1/0 | 0 | 0 | 0 |
 | `books/checkpoint-pack-chain.lisp` | root | 73 | 54 | 0/25/27/2 | 0 | 0 | 1 |
 | `books/checkpoint-pack-retire.lisp` | root | 12 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/checkpoint-publish.lisp` | root | 67 | 65 | 13/1/51/0 | 0 | 0 | 0 |
@@ -360,7 +360,7 @@ that `make certify` requests.
 | `books/config.lisp` | root | 59 | 238 | 1/0/237/0 | 0 | 0 | 0 |
 | `books/connection-budget.lisp` | root | 30 | 24 | 0/0/24/0 | 0 | 0 | 1 |
 | `books/consumer-artifact-retry.lisp` | root | 21 | 3 | 0/0/2/1 | 0 | 0 | 0 |
-| `books/consumer-bound.lisp` | root | 19 | 13 | 5/1/7/0 | 0 | 0 | 0 |
+| `books/consumer-bound.lisp` | root | 26 | 15 | 7/1/7/0 | 0 | 0 | 0 |
 | `books/consumer-event-index-store-invariants.lisp` | root | 28 | 2 | 0/2/0/0 | 0 | 0 | 1 |
 | `books/consumer-event-index.lisp` | root | 28 | 19 | 2/1/16/0 | 0 | 0 | 0 |
 | `books/consumer-local-control.lisp` | root | 6 | 24 | 22/0/2/0 | 0 | 0 | 0 |
@@ -374,7 +374,7 @@ that `make certify` requests.
 | `books/consumer-store-invariants.lisp` | root | 101 | 5 | 0/5/0/0 | 0 | 0 | 0 |
 | `books/consumer-store-projection.lisp` | root | 2 | 4 | 4/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-wait-codec.lisp` | root | 10 | 7 | 3/2/2/0 | 0 | 0 | 0 |
-| `books/consumer-wait.lisp` | root | 6 | 8 | 2/1/5/0 | 0 | 0 | 0 |
+| `books/consumer-wait.lisp` | root | 8 | 10 | 4/1/5/0 | 0 | 0 | 0 |
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
 | `books/control-authority.lisp` | root | 35 | 56 | 0/0/56/0 | 0 | 0 | 1 |
@@ -614,7 +614,7 @@ that `make certify` requests.
 | `books/relay-source-routes.lisp` | closure | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/relay-source.lisp` | root | 33 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/relay.lisp` | root | 0 | 32 | 0/15/17/0 | 0 | 0 | 0 |
-| `books/replay-identity-index.lisp` | root | 54 | 31 | 15/0/16/0 | 0 | 0 | 0 |
+| `books/replay-identity-index.lisp` | root | 53 | 30 | 14/0/16/0 | 0 | 0 | 0 |
 | `books/replay-invariants.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/replay.lisp` | root | 37 | 29 | 18/0/11/0 | 0 | 0 | 0 |
 | `books/retention-figures.lisp` | root | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
@@ -658,6 +658,7 @@ that `make certify` requests.
 | `books/store-checkpoint-tables.lisp` | root | 62 | 37 | 2/4/30/1 | 1 | 0 | 1 |
 | `books/store-compact-verb.lisp` | root | 24 | 6 | 0/3/3/0 | 0 | 0 | 0 |
 | `books/store-config.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
+| `books/store-event-fields.lisp` | root | 2 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/store-events-carried.lisp` | root | 24 | 13 | 0/0/13/0 | 0 | 0 | 1 |
 | `books/store-events.lisp` | root | 2 | 26 | 15/9/2/0 | 0 | 0 | 0 |
 | `books/store-existing-alpha.lisp` | root | 5 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -937,7 +938,7 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-codec-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 81 | 1 | 0 |
 | `tests/acl2/checkpoint-compaction-preservation-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 22 | 13 | 0 |
 | `tests/acl2/checkpoint-compaction-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 4 | 0 |
-| `tests/acl2/checkpoint-pack-chain-once-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 36 | 4 | 0 |
+| `tests/acl2/checkpoint-pack-chain-once-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 38 | 4 | 0 |
 | `tests/acl2/checkpoint-pack-chain-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 48 | 19 | 0 |
 | `tests/acl2/checkpoint-pack-retire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 9 | 0 |
 | `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 93 | 2 | 0 |
@@ -961,7 +962,7 @@ that `make certify` requests.
 | `tests/acl2/config-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 104 | 0 | 0 |
 | `tests/acl2/connection-budget-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 51 | 10 | 0 |
 | `tests/acl2/consumer-artifact-retry-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 8 | 2 | 0 |
-| `tests/acl2/consumer-bound-tests.lisp` | root | 0 | 13 | 0/0/0/13 | 57 | 5 | 0 |
+| `tests/acl2/consumer-bound-tests.lisp` | root | 0 | 17 | 0/5/0/12 | 62 | 5 | 0 |
 | `tests/acl2/consumer-event-index-store-invariants-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 6 | 1 | 0 |
 | `tests/acl2/consumer-event-index-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 3 | 0 |
 | `tests/acl2/consumer-local-control-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 52 | 5 | 0 |
@@ -977,7 +978,7 @@ that `make certify` requests.
 | `tests/acl2/consumer-store-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 1 | 0 |
 | `tests/acl2/consumer-topic-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
 | `tests/acl2/consumer-wait-codec-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 28 | 5 | 0 |
-| `tests/acl2/consumer-wait-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 34 | 10 | 0 |
+| `tests/acl2/consumer-wait-tests.lisp` | root | 0 | 12 | 0/3/0/9 | 35 | 10 | 0 |
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
 | `tests/acl2/control-authority-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 39 | 0 | 0 |
 | `tests/acl2/control-evidence-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 43 | 7 | 0 |

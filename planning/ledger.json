@@ -333,6 +333,7 @@
     "tests/acl2/checkpoint-compaction-preservation-tests",
     "books/checkpoint-pack-chain",
     "tests/acl2/checkpoint-pack-chain-tests",
+    "books/store-event-fields",
     "books/checkpoint-pack-chain-once",
     "tests/acl2/checkpoint-pack-chain-once-tests",
     "books/catalog-load-index",
@@ -1144,26 +1145,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1180,
-    "books_in_root_closure": 1169,
-    "roots": 1140,
-    "theorems": 17403,
-    "functions": 12059,
-    "assert_events": 17438,
+    "books": 1181,
+    "books_in_root_closure": 1170,
+    "roots": 1141,
+    "theorems": 17412,
+    "functions": 12068,
+    "assert_events": 17446,
     "must_fails": 2116,
     "prover_refusals": 0,
     "encapsulates": 89,
     "guards": {
-      "verified": 2415,
-      "declared-off": 1228,
+      "verified": 2419,
+      "declared-off": 1235,
       "default-guarded": 6658,
-      "default-unguarded": 1758
+      "default-unguarded": 1756
     },
     "suspect_theorems": 186,
     "export_hygiene_warnings": 201,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 205,
-    "include_hygiene_warnings": 1204,
+    "include_hygiene_warnings": 1205,
     "host_names_warnings": 1341,
     "hand_written_record_warnings": 18
   },
@@ -7959,11 +7960,11 @@
       "book": "books/checkpoint-pack-chain-once.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
-      "functions": 16,
+      "theorems": 20,
+      "functions": 15,
       "guards": {
         "verified": 0,
-        "declared-off": 15,
+        "declared-off": 14,
         "default-guarded": 1,
         "default-unguarded": 0
       },
@@ -7975,7 +7976,8 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "checkpoint-pack-chain"
+        "checkpoint-pack-chain",
+        "store-event-fields"
       ],
       "system_includes": [],
       "suspects": [],
@@ -8689,15 +8691,15 @@
       "book": "books/consumer-bound.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 19,
-      "functions": 13,
+      "theorems": 26,
+      "functions": 15,
       "guards": {
-        "verified": 5,
+        "verified": 7,
         "declared-off": 1,
         "default-guarded": 7,
         "default-unguarded": 0
       },
-      "verify_guards_events": 5,
+      "verify_guards_events": 7,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -8706,6 +8708,7 @@
       "encapsulates": 0,
       "includes": [
         "consumer-owner-local-progress",
+        "history-fold-refinement",
         "owner-config"
       ],
       "system_includes": [],
@@ -9072,15 +9075,15 @@
       "book": "books/consumer-wait.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 6,
-      "functions": 8,
+      "theorems": 8,
+      "functions": 10,
       "guards": {
-        "verified": 2,
+        "verified": 4,
         "declared-off": 1,
         "default-guarded": 5,
         "default-unguarded": 0
       },
-      "verify_guards_events": 2,
+      "verify_guards_events": 4,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -15872,15 +15875,15 @@
       "book": "books/replay-identity-index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 54,
-      "functions": 31,
+      "theorems": 53,
+      "functions": 30,
       "guards": {
-        "verified": 15,
+        "verified": 14,
         "declared-off": 0,
         "default-guarded": 16,
         "default-unguarded": 0
       },
-      "verify_guards_events": 15,
+      "verify_guards_events": 14,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -15889,6 +15892,7 @@
       "encapsulates": 0,
       "includes": [
         "msgid-index-concrete",
+        "store-event-fields",
         "store-open-pre-c1"
       ],
       "system_includes": [
@@ -17108,6 +17112,32 @@
       "encapsulates": 0,
       "includes": [
         "cbor"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-event-fields.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 1,
+      "guards": {
+        "verified": 1,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-events"
       ],
       "system_includes": [],
       "suspects": [],
@@ -25057,7 +25087,7 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 36,
+      "assert_events": 38,
       "must_fails": 4,
       "prover_refusals": 0,
       "defconsts": 15,
@@ -25737,15 +25767,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 13,
+      "functions": 17,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 5,
         "default-guarded": 0,
-        "default-unguarded": 13
+        "default-unguarded": 12
       },
       "verify_guards_events": 0,
-      "assert_events": 57,
+      "assert_events": 62,
       "must_fails": 5,
       "prover_refusals": 0,
       "defconsts": 32,
@@ -26190,15 +26220,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 10,
+      "functions": 12,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 3,
         "default-guarded": 0,
-        "default-unguarded": 10
+        "default-unguarded": 9
       },
       "verify_guards_events": 0,
-      "assert_events": 34,
+      "assert_events": 35,
       "must_fails": 10,
       "prover_refusals": 0,
       "defconsts": 14,
@@ -36235,13 +36265,13 @@
       {
         "theorem": "fn-ccco-linkp-is-linkp",
         "book": "books/checkpoint-pack-chain-once.lisp",
-        "line": 168,
+        "line": 150,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-ccco-links-okp-of-decoded",
         "book": "books/checkpoint-pack-chain-once.lisp",
-        "line": 368,
+        "line": 350,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -36763,13 +36793,13 @@
       {
         "theorem": "fn-rii-sf-statep-is-sf-statep",
         "book": "books/replay-identity-index.lisp",
-        "line": 1039,
+        "line": 1010,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rii-sn-statep-is-sn-statep",
         "book": "books/replay-identity-index.lisp",
-        "line": 1067,
+        "line": 1038,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -40763,9 +40793,16 @@
       },
       {
         "book": "books/consumer-bound.lisp",
-        "line": 48,
+        "line": 59,
         "include": "consumer-owner-local-progress",
         "included": "books/consumer-owner-local-progress.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/consumer-bound.lisp",
+        "line": 60,
+        "include": "history-fold-refinement",
+        "included": "books/history-fold-refinement.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -41792,7 +41829,7 @@
       },
       {
         "book": "books/replay-identity-index.lisp",
-        "line": 65,
+        "line": 66,
         "include": "store-open-pre-c1",
         "included": "books/store-open-pre-c1.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -44893,7 +44930,7 @@
       },
       {
         "book": "tests/acl2/consumer-bound-tests.lisp",
-        "line": 15,
+        "line": 16,
         "include": "../../books/consumer-bound",
         "included": "books/consumer-bound.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
