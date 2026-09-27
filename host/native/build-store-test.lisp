@@ -12,6 +12,15 @@
 ; The fn-wide outcome classes and exit codes host/native/io.lisp reads (PRF-143).
 (include-book "books/outcome-class")
 (include-book "books/replay")
+; Every codec seam's attachment (books/codec-attach.lisp), as in build.lisp:
+; `store recover' decodes the journal (host/store-host.lisp
+; fn-store-record-sequence -> fn-store-event-decode-exact), and without the
+; attachment the constrained decoder has no body (hbox 08:27Z: "ACL2 error in
+; fn-store-record-sequence: EV-FNCALL-NULL-BODY-ER ... FN-RECORD-DECODE-EXACT").
+(include-book "books/codec-attach")
+;; The record encoder's attachment over the concrete recognizer
+;; (books/records-attach-concrete.lisp), as in build.lisp.
+(include-book "books/records-attach-concrete")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/article-fields")
