@@ -3970,6 +3970,10 @@
         {
           "kind": "theorem",
           "name": "fn-rcl-tombstone-contributes-nothing"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-store-counts-is-the-model-over-alpha"
         }
       ]
     },

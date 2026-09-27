@@ -169,12 +169,12 @@
 ; The decision over the fold (store-reclaim-pack.lisp `fn-rclp-decide').
 
 (defun fn-rcls-decide (profile rule now s acc frontier lower names generations
-                               selected disk-free dry)
-  (declare (xargs :guard t :verify-guards nil))
+                               selected disk-free dry fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let* ((used (nfix (nth 0 acc)))
          (reclaim (fn-bs-pack-reclaim-plan
                    names (fn-bs-profile-max-transactions profile) lower))
-         (counts (fn-rcl-store-counts rule now s))
+         (counts (fn-rcl-store-counts rule now s fn-arena))
          (msgids (rev (nth 1 acc)))
          (freed (nth 2 acc)))
     (cond ((not (fn-bs-profile-admittedp profile)) (list :refused :profile))
@@ -257,9 +257,9 @@
   (implies (and (true-listp records)
                 (equal acc (fn-rcls-fold records (fn-rclp-ctx rule now s) (fn-rcls-init))))
            (equal (fn-rcls-decide profile rule now s acc frontier lower names generations
-                                  selected disk-free dry)
+                                  selected disk-free dry fn-arena)
                   (fn-rclp-decide profile rule now s records frontier lower names
-                                  generations selected disk-free dry)))
+                                  generations selected disk-free dry fn-arena)))
   :hints (("Goal" :use ((:instance fn-rcls-fold-of-init (ctx (fn-rclp-ctx rule now s))))
            :in-theory (union-theories '(fn-rcls-decide fn-rclp-decide)
                                       (theory 'minimal-theory)))))

@@ -4079,7 +4079,7 @@
         "planning/evidence/manifests/certify-20260926T081338Z-3125166.json",
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
       ],
-      "progress_note": "Open: the durable `store reclaim` byte program and its `--dry-run` verb in books/native-operator (design B, reclaim through the compaction pack: planning/evidence/reclaim-host-2026-09-25.md); the reclaimed record's own replay step; holders: the consumer reading is conservative (a lagging consumer holds every article), feed state and FNBS rows are not read, reader pins have no durable form (offline reclaim needs none); the retention charge released with the payload; articles with a verdict other than :absent are held; the buffer's source digest slices the two ranges of the D32 description into one list on the resend-of-a-reclaimed-article path (a two-range buffer digest reader would remove it); native N=5,000 run and cut campaign (SCN-048).",
+      "progress_note": "Open: the durable `store reclaim` byte program and its `--dry-run` verb in books/native-operator (design B, reclaim through the compaction pack: planning/evidence/reclaim-host-2026-09-25.md); the reclaimed record's own replay step; holders: the consumer reading is conservative (a lagging consumer holds every article), feed state and FNBS rows are not read, reader pins have no durable form (offline reclaim needs none); the retention charge released with the payload; articles with a verdict other than :absent are held; the buffer's source digest slices the two ranges of the D32 description into one list on the resend-of-a-reclaimed-article path (a two-range buffer digest reader would remove it); native N=5,000 run and cut campaign (SCN-048). audit-fixes rcl (2026-09-27): since the acceptance flip the reclaim counts (status's reclaim line, the reclaim verbs' reports) read each article's HANDLE as its octets, so reclaimable-octets and freed-octets were 0 and a tombstoned article counted reclaimable again. fn-rcl-store-counts now takes the arena (host: fn-native-live-status-host-offline/-answer, fn-store-reclaim-decide(-stream), fn-store-log-reclaim-decide-stream pass the live fn-arena) and reads lengths and the tombstone head through it; KEYSTONE fn-rcl-store-counts-is-the-model-over-alpha: the counts are fn-rcl-summary / fn-rcl-held-count over ALPHA of the Store's articles (tests/acl2/store-reclaim-holders-tests.lisp).",
       "events": [
         "fn-rcl-reclaimable-is-no-obligation-names-it",
         "fn-rcl-reclaim-never-touches-a-held-article",
@@ -4102,7 +4102,8 @@
         "fn-rcl-absent-verdict-contributes-nothing",
         "fn-rcl-tombstone-refused-at-carrier-form",
         "fn-rca-nul-first-octet-is-not-an-article",
-        "fn-rcl-tombstone-contributes-nothing"
+        "fn-rcl-tombstone-contributes-nothing",
+        "fn-rcl-store-counts-is-the-model-over-alpha"
       ]
     },
     {
