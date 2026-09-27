@@ -49,6 +49,8 @@
 (assert-event (equal (fn-lgs-open-plan '("000001.log" "000003.log") nil)
                      '(:refused :history-short-of-checkpoint)))
 (assert-event (equal (fn-lgs-open-plan nil nil)
+                     '(:refused :no-segment)))
+(assert-event (equal (fn-lgs-open-plan '("x.tmp") 2)
                      '(:refused :history-short-of-checkpoint)))
 
 ; -----------------------------------------------------------------------------

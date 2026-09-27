@@ -9,6 +9,8 @@ import struct
 import subprocess
 import sys
 import tempfile
+
+from tests.native_process import native_peer_add
 import time
 import unittest
 
@@ -336,13 +338,9 @@ class NativeOwnerTests(unittest.TestCase):
         self.assertTrue((self.store / "feed" / "v1").is_dir())
 
     def test_configured_source_address_opens_native_transit_session(self):
-        configured = subprocess.run(
-            [sys.executable, "tools/run_store.py", "--store", str(self.store),
-             "peer", "add", "source", "--path-identity", "source.invalid",
-             "--nntp", "127.0.0.1:9", "--inbound-groups", "fn.*",
-             "--source-address", "127.0.0.1"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=180, check=False)
+        configured = native_peer_add(
+            IMAGE, self.store, ["source", "source.invalid", "127.0.0.1", "9", "fn.*", "-",
+                                "127.0.0.1", "true"], environment(), ROOT)
         self.assertEqual(configured.returncode, 0, configured.stderr.decode())
 
         process, port = self.start_owner()
@@ -450,13 +448,9 @@ class NativeOwnerTests(unittest.TestCase):
         self.assertNotEqual(missing.returncode, 0)
 
     def test_uncertain_commit_reconciles_its_durable_feed_intent_on_restart(self):
-        configured = subprocess.run(
-            [sys.executable, "tools/run_store.py", "--store", str(self.store),
-             "peer", "add", "sink", "--path-identity", "sink.example.invalid",
-             "--nntp", "127.0.0.1:9", "--outbound-groups", "fn.*",
-             "--source-address", "127.0.0.2"],
-            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            env=environment(), timeout=180, check=False)
+        configured = native_peer_add(
+            IMAGE, self.store, ["sink", "sink.example.invalid", "127.0.0.1", "9", "-", "fn.*",
+                                "127.0.0.2", "true"], environment(), ROOT)
         self.assertEqual(configured.returncode, 0, configured.stderr.decode())
 
         msgid = b"<native-owner-feed-recovery@example.invalid>"

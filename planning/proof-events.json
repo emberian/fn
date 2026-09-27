@@ -10673,7 +10673,7 @@
       ]
     },
     {
-      "id": "PRF-292",
+      "id": "PRF-299",
       "events": [
         {
           "kind": "theorem",
@@ -10698,6 +10698,35 @@
         {
           "kind": "theorem",
           "name": "fn-psrv-known-abort-preserves-invariant"
+        }
+      ]
+    },
+    {
+      "id": "PRF-292",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-block-rev-is-the-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-crlf-validp-is-crlf-lines-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-blank-linep-is-split-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-article-response-is-of-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-response-of-bytes-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-article-reply-exec-is-the-reply"
         }
       ]
     },
