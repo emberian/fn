@@ -542,7 +542,8 @@ open-cost replay-records=")
 ; tuple) and fn-nls-articles-left-is-at-most-the-transactions-left
 ; (keystone-audit 2026-09-27: neither had a witness).  The headroom is the
 ; reachable store's (fn-sbud-headroom-at, the tuple the host prints: one
-; article used of 128, 2 record octets of the history bound) under the
+; article used of 128, 642 record octets of the history bound: its 2
+; payload octets and its two memberships at 320, lane membership-budget) under the
 ; development profile, and the same store under that profile with one field
 ; spent.  A lowered profile is not admitted (fn-sbud-budget answers 0 for
 ; it), so the spent tuples are written in the host's shape: fnn-out-headroom
@@ -551,7 +552,7 @@ open-cost replay-records=")
   (declare (xargs :verify-guards nil))
   (fn-sbud-headroom profile *nlst-s*))
 (defconst *nlst-hr* (nlst-headroom *nlst-profile*))
-(assert-event (equal *nlst-hr* '(1 128 2 25165824 2 10)))
+(assert-event (equal *nlst-hr* '(1 128 642 25165824 2 10)))
 ; Positive witness, first disjunct: the store's tuple after 127 more
 ; articles of 2 octets (128 used of 128); the second disjunct is false (the
 ; history bound is far from spent); the line says 0.

@@ -26,8 +26,8 @@ name, outside a limit of at most 2 GiB.
   (K = 128: at 64), stops, reopens from the checkpoint and serves them
   again.  Each run's VmHWM is printed.
 * The refusal: `init --profile development' is the operator's request,
-  never resized: the launcher's probe refuses it by name under 2 GiB; the
-  image's own init refuses it by name with both numbers (lane
+  never resized: under the launcher and run directly, init refuses it by
+  name with both numbers (lane
   membership-budget), and with FN_INIT_BUDGET_MB=4096 writes it for that
   target (`within-budget=no target-budget=4096 MB'); the launcher refuses
   its `run' and `status' by name.
@@ -524,8 +524,11 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         config, port = self.config("development")
         refused = self.run_fn("operator", config, "init", "--profile", "development",
                               "local.test")
+        # The launcher's probe of `init' sizes the empty store's first run
+        # (it fits under 2 GiB since the memberships are charged to H); the
+        # refusal is init's own, by name with both numbers.
         self.assertEqual(refused.returncode, EXIT_REFUSED, text(refused))
-        self.assertRegex(text(refused), REFUSED)
+        self.assertRegex(text(refused), INIT_REFUSED)
         self.assertFalse((self.tmp / "development").exists())
         own = self.run_fn("operator", config, "init", "--profile", "development",
                           "local.test", command=[IMAGE, "--fn"])
