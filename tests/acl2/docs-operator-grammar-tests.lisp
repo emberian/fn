@@ -118,7 +118,7 @@
     ("docs/operator-internals.md#agents-consumers-bind-each-to-its-account" 3 "consumer" "show")
     ("docs/operator.md#1-choose-the-disk-for-the-store" 1 "store" "rebind-filesystem" "--storage-require-durable" "off")
     ("docs/peering-with-a-friend.md#1-both-of-you-set-up-a-node" 1 "peer" "keygen" "/var/lib/fn/keys")
-    ("docs/peering-with-a-friend.md#2-invite-accept-confirm" 1 "peer" "invite" "friend" "local.*" "198.51.100.9" "119" "friend.example.net" "/var/lib/fn/keys" "/var/lib/fn/invitation-for-friend" "203.0.113.7" "119")
+    ("docs/peering-with-a-friend.md#2-invite-accept-confirm" 1 "peer" "invite" "friend" "local.*" "198.51.100.9" "119" "news.example.org" "/var/lib/fn/keys" "/var/lib/fn/invitation-for-friend" "203.0.113.7" "119")
     ("docs/peering-with-a-friend.md#2-invite-accept-confirm" 2 "peer" "accept" "/var/lib/fn/invitation-for-friend" "/var/lib/fn/keys" "friend.example.net" "198.51.100.9:119" "/var/lib/fn/acceptance-for-you")
     ("docs/peering-with-a-friend.md#2-invite-accept-confirm" 3 "peer" "confirm" "/var/lib/fn/acceptance-for-you" "/var/lib/fn/invitation-for-friend")
     ("docs/peering-with-a-friend.md#3-turn-on-the-encrypted-feed-both-ways" 1 "principal" "set-password" "friend-node" "--principal" "9261767a9261767a9261767a9261767a9261767a9261767a9261767a9261767a" "--posting")

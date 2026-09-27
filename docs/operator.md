@@ -193,6 +193,9 @@ dots. Names starting with `example` or `poster` are refused. Avoid names
 starting with `to.` or `control.`, names with a part `all` or `ctl`, and
 `junk`: other servers treat those specially.
 
+One of those is made for you. A node set up with a `mission` also serves
+`control.cancel`: a reader's own cancel is filed there. Keep it.
+
 Choose which groups a new reader is offered first (with no names, all
 readable groups are offered):
 
@@ -256,8 +259,18 @@ fn operator CONFIG account list
 1. `account invite` prints a code once. fn does not keep the code itself, so
    if it is lost, make a new one. Without `--expires`, a code lasts a week.
 2. Send the code over a channel you trust.
-3. Your friend connects with TLS and sends `XREDEEM CODE LOGIN`, then
-   `XREDEEM PASS PASSWORD`. The answer `281` means the account is ready.
+3. Your friend runs `fn redeem`, from any machine with fn unpacked. It
+   asks for the new password:
+
+   ```sh
+   fn redeem news.example.org CODE carol --cafile cert.pem
+   ```
+
+   `--cafile` names your node's certificate file, when it is your own
+   (self-made) one. Add `--tls` and the port (`news.example.org:563`) for a
+   node that speaks TLS from the start. `redeemed: the account carol is
+   ready` means it worked. A newsreader cannot do this step; a program can
+   send `XREDEEM CODE LOGIN`, then `XREDEEM PASS PASSWORD`, over TLS.
 4. From then on they log in normally. No restart is needed.
 
 `account list` shows accounts and unused codes, never passwords or codes.
@@ -549,13 +562,24 @@ packaging/fn-native operator /etc/fn/fn.toml control grant PRINCIPAL-HEX keys fn
 packaging/fn-native operator /etc/fn/fn.toml keys redecide <a1@example.invalid>
 ```
 
-### The store is getting full
+### When the store is full
 
-`health` shows `space-pressure` and `status` shows the headroom. When the
-store is full, posts are refused with
-`441 posting failed; the store has no capacity for this article`. Nothing is
-lost. The store's size limits are fixed when it is made. To raise them,
-move to a new store with bigger limits (see [store settings](#store-settings)).
+`init` sizes the store for the machine: the more memory, the more room.
+On a small machine that is still about ten thousand short posts. `status`
+has a line `capacity articles-left=N`: about how many more posts fit.
+`health` shows `space-pressure` when it gets low.
+
+When the store is full, posts are refused with
+`441 posting failed; the store is full: no capacity for this article (unaffordable); the node's operator can raise it`.
+Nothing is lost. A friend's node that feeds you is told "try later"
+(`436`). It keeps the articles and tries again, and its `health` shows
+`unavailable-peer`.
+
+The store's size limits are fixed when it is made. To raise them, move to a
+new store with bigger limits: `store export`, a fresh install, then
+`store import DIR --max-transactions N --max-history-octets N` (see
+[reinstalling](install.md#4-reinstalling) and
+[store settings](#store-settings)).
 
 With the node stopped, `store compact` packs the store's many small files
 into a few big ones. It changes no article. It needs about 4 MiB free.

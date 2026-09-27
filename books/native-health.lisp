@@ -674,7 +674,9 @@ and feed table, with the committed octets extended from the carried sum."
    (implies (and (member-equal e tbl)
                  (fn-nh-feed-deferredp (fn-own-feed-entry-feed e)))
             (consp (fn-nh-unavailable-peers tbl)))
-   :hints (("Goal" :in-theory (disable fn-nh-feed-deferredp)))))
+   :hints (("Goal" :induct (fn-nh-unavailable-peers tbl)
+            :in-theory (e/d (fn-nh-unavailable-peers fn-nh-feed-unavailablep)
+                            (fn-nh-feed-deferredp))))))
 
 (defthm fn-nh-deferring-peer-is-held
   (implies (and (member-equal e feeds)

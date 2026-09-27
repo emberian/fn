@@ -357,12 +357,13 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ;; PKT-708 (decided by the coordinator 2026-09-27): a mission's node files its
 ;; readers' own cancels, so its `init' also serves control.cancel, the group
 ;; a cancel is filed in (books/control-classify.lisp; RFC 5537 s5.3).  It is
-;; added after the groups named, once.  A plain `init' serves exactly the
+;; added after the groups named, once (a mission with no groups named and
+;; none by default, relay or archive, is still the usage error it was).  A plain `init' serves exactly the
 ;; groups its operator names (fn-nop-parse-init-groups: no second owner of
 ;; that choice).
 (defun fn-nop-with-cancel-group (words)
   (declare (xargs :guard t))
-  (if (member-equal "control.cancel" (true-list-fix words))
+  (if (or (atom words) (member-equal "control.cancel" (true-list-fix words)))
       (true-list-fix words)
     (append (true-list-fix words) (list "control.cancel"))))
 
@@ -410,9 +411,29 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (local
  (defthm fn-nop-with-cancel-group-has-it
-   (member-equal "control.cancel" (fn-nop-with-cancel-group words))))
+   (implies (consp words)
+            (member-equal "control.cancel" (fn-nop-with-cancel-group words)))))
+
+(local
+ (defthm fn-nop-with-cancel-group-of-an-atom
+   (implies (atom words)
+            (equal (fn-nop-with-cancel-group words) nil))))
 
 (local (in-theory (disable fn-nop-with-cancel-group)))
+
+(local
+ (defthm fn-nop-parse-with-cancel-keeps-it
+   (implies (not (equal (fn-nop-parse-init-groups (fn-nop-with-cancel-group w) nil)
+                        :bad))
+            (member-equal "control.cancel"
+                          (fn-nop-parse-init-groups (fn-nop-with-cancel-group w) nil)))
+   :hints (("Goal" :cases ((consp w))
+            :in-theory (disable fn-nop-parse-init-groups-keeps-its-words
+                                fn-nop-with-cancel-group-has-it)
+            :use ((:instance fn-nop-parse-init-groups-keeps-its-words
+                             (x "control.cancel")
+                             (words (fn-nop-with-cancel-group w)) (acc nil))
+                  (:instance fn-nop-with-cancel-group-has-it (words w)))))))
 
 ;; KEYSTONE (PKT-708).  An accepted `init' under a mission serves
 ;; control.cancel, so a reader's own cancel is filed there
