@@ -9,10 +9,13 @@
 
 (in-package "ACL2")
 (include-book "../../books/payload-extent")
+; The attached frame digest, so the log's own encoder (fn-lg-log) executes.
+(include-book "../../books/crypto-attach")
 (include-book "std/testing/must-fail" :dir :system)
 
 (assert-event
- (and (eq (symbol-class 'fn-arx-positions (w state)) :common-lisp-compliant)
+ (and (eq (symbol-class 'fn-arx-list-places (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-arx-text-places (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arx-extent-of (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arx-intern-event (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arx-intern-events (w state)) :common-lisp-compliant)
@@ -33,8 +36,9 @@
 
 (defconst *pxt-r* (fn-record-encode-impl *pxt-w*))
 
-; The entry at start 4096 of file 3, frame length 42 + |r| + 32.
-(defconst *pxt-pos* (list 4096 (+ 42 (len *pxt-r*) 32) 0))
+; The record's place: a one-record entry at start 4096 of file 3, frame
+; length 42 + |r| + 32, the record at 4096 + 42, |r| octets.
+(defconst *pxt-pos* (list 4096 (+ 42 (len *pxt-r*) 32) (+ 4096 42) (len *pxt-r*)))
 
 (assert-event (consp *pxt-r*))
 
@@ -51,7 +55,10 @@
 
 ; A frame length that does not match the record, or octets that do not hold
 ; the payload at the codec's place, give no extent (the record stays resident).
-(assert-event (null (fn-arx-extent-of 3 (list 4096 (+ 43 (len *pxt-r*) 32) 0) *pxt-r* *pxt-w*)))
+(assert-event (null (fn-arx-extent-of 3 (list 4096 (+ 42 (len *pxt-r*) 32) (+ 4096 42) (1+ (len *pxt-r*)))
+                                      *pxt-r* *pxt-w*)))
+(assert-event (null (fn-arx-extent-of 3 (list 4096 (+ 41 (len *pxt-r*) 32) (+ 4096 42) (len *pxt-r*))
+                                      *pxt-r* *pxt-w*)))
 (assert-event (null (fn-arx-extent-of 3 *pxt-pos* (cons 0 (butlast *pxt-r* 1)) *pxt-w*)))
 
 ; --- Teeth.
@@ -175,6 +182,46 @@
 (assert-event (not (fn-arx-entry-ok (append '(1 2 3) (make-list 32 :initial-element 0)) 3)))
 (assert-event (not (fn-arx-entry-ok (append '(1 2) (fn-sha256 '(1 2 3))) 3)))
 
-; The positions: an entry is 42 + the record + 32, padded to the unit.
-(assert-event (equal (fn-arx-positions 0 4096 '(100 5000) nil)
-                     '((0 174 0) (4096 5074 0))))
+;; The places, against the log's OWN encoder: two batches written as
+;; fn-lg-log writes them (the second chained from the first's last trailer),
+;; the first of three small records (one kind-2 chunk entry: their u32
+;; lengths packed), the second of one record (a kind-1 entry).  Every place
+;; the walkers answer holds its record, over the octet list (the commit's)
+;; and over the text (the open's).
+(defconst *pxt-b1* (list (make-list 5 :initial-element 1) (make-list 7 :initial-element 2)
+                         (make-list 300 :initial-element 3)))
+(defconst *pxt-b2* (list (make-list 900 :initial-element 4)))
+; (Macros, not constants: the frame digest runs through its attachment,
+; which a defconst may not call.)
+(defmacro pxt-log1 () '(fn-lg-log *pxt-b1* *fn-lg-genesis* 4096))
+(defmacro pxt-log ()
+  '(append (pxt-log1)
+           (fn-lg-log *pxt-b2* (fn-lg-last-trailer *pxt-b1* *fn-lg-genesis*) 4096)))
+
+(defun pxt-places-hold (places records octets)
+  (if (atom records)
+      (atom places)
+    (and (consp places)
+         (equal (nth 3 (car places)) (len (car records)))
+         (equal (take (len (car records)) (nthcdr (nth 2 (car places)) octets)) (car records))
+         (pxt-places-hold (cdr places) (cdr records) octets))))
+
+(defun pxt-octets-string (xs)
+  (coerce (loop$ for x in xs collect (code-char x)) 'string))
+
+(assert-event
+ (let ((ps (fn-arx-list-places (pxt-log) 0 4 4096 0 0 nil 0 0 nil)))
+   (and (equal (len ps) 4)
+        (pxt-places-hold ps (append *pxt-b1* *pxt-b2*) (pxt-log))
+        ; the three small records share one entry (kind 2), the fourth has its own
+        (equal (nth 0 (nth 0 ps)) 0) (equal (nth 0 (nth 2 ps)) 0)
+        (equal (nth 0 (nth 3 ps)) 4096))))
+
+(assert-event
+ (equal (fn-arx-text-places (pxt-octets-string (pxt-log)) 0 4 4096 0 0 0 0 nil)
+        (fn-arx-list-places (pxt-log) 0 4 4096 0 0 nil 0 0 nil)))
+
+; More records than the entries hold, or a count of zero entries' worth past
+; the end: nil (every record stays resident).
+(assert-event (null (fn-arx-list-places (pxt-log) 0 5 4096 0 0 nil 0 0 nil)))
+(assert-event (null (fn-arx-text-places (pxt-octets-string (pxt-log1)) 0 4 4096 0 0 0 0 nil)))

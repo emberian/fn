@@ -10733,6 +10733,60 @@
           "name": "fn-rcompat-article-reply-exec-is-the-reply"
         }
       ]
+    },
+    {
+      "id": "PRF-295",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-frame-digest-buffer-is-the-frame-digest"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-ok-buffer-is-the-frame-check"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-entry-ok-buffer-of-durable"
+        }
+      ]
+    },
+    {
+      "id": "PRF-296",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-arena-reseat-extent-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-reseat-extent-keeps-a-faithful-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-reseat-extent{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-extent-release{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-commit-extent-denotes-the-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-commit-reseat-keeps-the-arena"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-commit-reseats-keep-the-arena"
+        }
+      ]
     }
   ]
 }

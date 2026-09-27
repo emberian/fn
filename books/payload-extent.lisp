@@ -4,8 +4,9 @@
 ;
 ; The open of a format-9 store scans each log segment (host/native/io.lisp
 ; fnn-log-scan-segments).  While the segment's octets are in hand, ACL2
-; answers each committed entry's POSITION: its start, its frame length and
-; its trailer (`fn-arx-positions', stepped as the scan steps).  The replay
+; answers each committed record's PLACE: its entry's start and frame length,
+; where the record starts in it and its length (`fn-arx-text-places', read
+; from the entries the scan read: a batch's records share chunk entries).  The replay
 ; then interns each chunk with its positions (`fn-arx-intern-step'): a
 ; record whose payload the entry holds contiguously -- found by the codec's
 ; suffix length and VERIFIED octet for octet against the decoded payload
@@ -13,7 +14,7 @@
 ; no octets on the heap); any other event is interned as before.
 ;
 ; KEYSTONE fn-arx-intern-step-refines: when each record's octets are the
-; durable octets at its entry (`fn-arx-faithful-p': what the scan read is
+; durable octets at its place (`fn-arx-faithful-p': what the scan read is
 ; the file, A-HOST's read of a regular file and A-DURABLE-EXTENT), the
 ; extent intern answers exactly the rows and the arena of the resident
 ; intern (books/store-recover-stream.lisp fn-srs-intern-step), so every
@@ -48,29 +49,147 @@
   (natp (fn-arx-octets-nat xs acc))
   :rule-classes :type-prescription)
 
-; -----------------------------------------------------------------------------
-; 2. The entries' positions in a segment, from the records the scan read: an
-; entry is the frame (the header, the chain, the record, the trailer: the
-; log's fn-lg-frame) padded to the write unit (fn-lg-entry), so entry i+1
-; starts where entry i's padding ends.  Per record (START N 0), N the frame's
-; length; the realizer checks the entry's own trailer at [START+N-32,
-; START+N) when it reads it (fn-arx-entry-ok), so a position that is not an
-; entry is refused there, never served.
+;; -----------------------------------------------------------------------------
+; 2. The records' PLACES in a segment, read from its entries (lane
+; arena-offheap-3: stage 2 first assumed one record per entry; a batch of
+; several records is one or more CHUNK entries, books/store-log.lisp fn-lg-log
+; with fn-lg-chunk-len, kind 2, each record behind its u32 length).
+;
+; An entry at P is the frame -- header (magic 4, version 1, kind 1, the
+; payload's length L as u32, 10 octets), the payload (the 32-octet chain and
+; the body), the trailer (32) -- padded to the write unit (fn-lg-entry): its
+; frame length N is 10 + L + 32 and the next entry starts at P + N + pad.
+; Kind 1: the body is one record, at P + 42, of L - 32 octets.  Kind 2: the
+; body is the packed records (fn-lg-pack), each a u32 length then the record.
+; A record's PLACE is (START N ROFF RLEN): its entry's start and frame
+; length, where the record starts, its length.  The walkers read the octets
+; the scan read (the segment's text, fn-arx-text-places) or the octets the
+; commit wrote (fn-arx-list-places), COUNT records; anything that is not
+; such an entry, or a count the entries do not hold, answers nil (every
+; record stays resident).  The places decide nothing by themselves: the
+; extent check (fn-arx-extent-of) requires the place's length to be the
+; record's, and the served read checks the entry's own trailer.
 
 (defconst *fn-arx-record-at* 42)
 
 (local
  (defthm fn-arx-octets-true-listp
    (implies (fn-cbor-octet-listp x) (true-listp x))
-   :rule-classes nil))   ; the frame header (10) and the chain (32)
+   :rule-classes nil))
 
-(defun fn-arx-positions (pos unit lens acc)
-  (declare (xargs :guard (and (natp pos) (nat-listp lens) (true-listp acc))))
-  (if (atom lens)
-      (revappend acc nil)
-    (let ((n (+ *fn-arx-record-at* (nfix (car lens)) *fn-frame-trailer-octets*)))
-      (fn-arx-positions (+ (nfix pos) n (fn-lg-pad-len n unit)) unit (cdr lens)
-                        (cons (list (nfix pos) n 0) acc)))))
+; A big-endian u32 from the first four elements of XS.
+(defun fn-arx-u32-list (xs)
+  (declare (xargs :guard (true-listp xs)))
+  (+ (* 16777216 (nfix (nth 0 xs))) (* 65536 (nfix (nth 1 xs)))
+     (* 256 (nfix (nth 2 xs))) (nfix (nth 3 xs))))
+
+; The walk over an octet list.  TAIL is the octets from the entry at P; when
+; inside a kind-2 body, QTAIL is the octets from Q, the body ends at QEND,
+; and the entry is (EP EN).
+(defun fn-arx-list-places (tail p count unit ep en qtail q qend acc)
+  (declare (xargs :guard (and (true-listp tail) (true-listp qtail)
+                              (natp p) (natp count) (natp ep) (natp en) (natp q) (natp qend)
+                              (true-listp acc))
+                  :measure (nfix count)
+                  :hints (("Goal" :in-theory (disable nthcdr fn-lg-pad-len fn-arx-u32-list nth)))
+                  :verify-guards nil))
+  (cond ((zp count) (revappend acc nil))
+        ((and (natp q) (natp qend) (< q qend))
+         (let* ((rlen (fn-arx-u32-list qtail))
+                (r (+ q 4))
+                (q2 (+ r rlen))
+                (acc (cons (list (nfix ep) (nfix en) r rlen) acc)))
+           (cond ((< qend q2) nil)
+                 ((equal q2 qend)
+                  (let ((np (+ (nfix ep) (nfix en) (fn-lg-pad-len en unit))))
+                    (fn-arx-list-places (nthcdr (nfix (- np (nfix p))) tail) np (1- count) unit
+                                        0 0 nil 0 0 acc)))
+                 (t (fn-arx-list-places tail p (1- count) unit ep en (nthcdr (+ 4 rlen) qtail)
+                                        q2 qend acc)))))
+        (t
+         (let* ((p (nfix p))
+                (kind (nfix (nth 5 tail)))
+                (l (fn-arx-u32-list (nthcdr 6 tail)))
+                (n (+ 10 l *fn-frame-trailer-octets*)))
+           (cond ((not (consp (nthcdr 9 tail))) nil)
+                 ((< l 32) nil)
+                 ((equal kind 1)
+                  (let ((np (+ p n (fn-lg-pad-len n unit))))
+                    (fn-arx-list-places (nthcdr (nfix (- np p)) tail) np (1- count) unit 0 0 nil 0 0
+                                        (cons (list p n (+ p *fn-arx-record-at*) (- l 32)) acc))))
+                 ((and (equal kind 2) (<= 4 (- l 32)))
+                  (let* ((q (+ p *fn-arx-record-at*))
+                         (qend (+ q (- l 32)))
+                         (qtail (nthcdr *fn-arx-record-at* tail))
+                         (rlen (fn-arx-u32-list qtail))
+                         (r (+ q 4))
+                         (q2 (+ r rlen))
+                         (acc (cons (list p n r rlen) acc)))
+                    (cond ((< qend q2) nil)
+                          ((equal q2 qend)
+                           (let ((np (+ p n (fn-lg-pad-len n unit))))
+                             (fn-arx-list-places (nthcdr (nfix (- np p)) tail) np (1- count) unit
+                                                 0 0 nil 0 0 acc)))
+                          (t (fn-arx-list-places tail p (1- count) unit p n
+                                                 (nthcdr (+ 4 rlen) qtail) q2 qend acc)))))
+                 (t nil))))))
+
+(local
+ (defthm fn-arx-true-listp-nthcdr
+   (implies (true-listp x) (true-listp (nthcdr k x)))))
+
+(verify-guards fn-arx-list-places
+  :hints (("Goal" :in-theory (disable fn-lg-pad-len nthcdr fn-arx-u32-list nth))))
+
+; The walk over the segment's text (one character per octet, as the scan
+; reads it: fnn-log-read-string), by index.
+(defun fn-arx-text-octet (text i)
+  (declare (xargs :guard (and (stringp text) (natp i))))
+  (if (< i (length text)) (char-code (char text i)) 0))
+
+(defun fn-arx-u32-text (text i)
+  (declare (xargs :guard (and (stringp text) (natp i))))
+  (+ (* 16777216 (fn-arx-text-octet text i)) (* 65536 (fn-arx-text-octet text (+ 1 i)))
+     (* 256 (fn-arx-text-octet text (+ 2 i))) (fn-arx-text-octet text (+ 3 i))))
+
+(defun fn-arx-text-places (text p count unit ep en q qend acc)
+  (declare (xargs :guard (and (stringp text) (natp p) (natp count) (natp ep) (natp en)
+                              (natp q) (natp qend) (true-listp acc))
+                  :measure (nfix count)))
+  (cond ((zp count) (revappend acc nil))
+        ((and (natp q) (natp qend) (< q qend))
+         (let* ((rlen (fn-arx-u32-text text q))
+                (r (+ q 4))
+                (q2 (+ r rlen))
+                (acc (cons (list (nfix ep) (nfix en) r rlen) acc)))
+           (cond ((< qend q2) nil)
+                 ((equal q2 qend)
+                  (fn-arx-text-places text (+ (nfix ep) (nfix en) (fn-lg-pad-len en unit))
+                                      (1- count) unit 0 0 0 0 acc))
+                 (t (fn-arx-text-places text p (1- count) unit ep en q2 qend acc)))))
+        (t
+         (let* ((p (nfix p))
+                (kind (fn-arx-text-octet text (+ p 5)))
+                (l (fn-arx-u32-text text (+ p 6)))
+                (n (+ 10 l *fn-frame-trailer-octets*)))
+           (cond ((< (length text) (+ p n)) nil)
+                 ((< l 32) nil)
+                 ((equal kind 1)
+                  (fn-arx-text-places text (+ p n (fn-lg-pad-len n unit)) (1- count) unit 0 0 0 0
+                                      (cons (list p n (+ p *fn-arx-record-at*) (- l 32)) acc)))
+                 ((and (equal kind 2) (<= 4 (- l 32)))
+                  (let* ((q (+ p *fn-arx-record-at*))
+                         (qend (+ q (- l 32)))
+                         (rlen (fn-arx-u32-text text q))
+                         (r (+ q 4))
+                         (q2 (+ r rlen))
+                         (acc (cons (list p n r rlen) acc)))
+                    (cond ((< qend q2) nil)
+                          ((equal q2 qend)
+                           (fn-arx-text-places text (+ p n (fn-lg-pad-len n unit)) (1- count) unit
+                                               0 0 0 0 acc))
+                          (t (fn-arx-text-places text p (1- count) unit p n q2 qend acc)))))
+                 (t nil))))))
 
 ; -----------------------------------------------------------------------------
 ; 3. The extent of one record, verified.
@@ -96,24 +215,26 @@
       t
     (and (consp r) (equal (car p) (car r)) (fn-arx-prefixp (cdr p) (cdr r)))))
 
-; The record R (octets) at the entry POSITION (START N TRAILER) of FILE,
-; decoded as the record W: the extent (FILE START N-32 POFF PLEN TRAILER),
-; or nil when the entry does not hold W's payload at the codec's place.
+; The record R (octets) at its PLACE (START N ROFF RLEN) in FILE, decoded as
+; the record W: the extent (FILE START N-32 POFF PLEN 0), or nil when the
+; place is not R's (its length, or a record not inside the entry's protected
+; prefix) or R does not hold W's payload at the codec's place.
 (defun fn-arx-extent-of (file position r w)
   (declare (xargs :guard (and (natp file) (fn-record-p w) (true-listp r) (true-listp position))
                   :guard-hints (("Goal" :in-theory (enable fn-record-p fn-record-payloadp)))))
   (let* ((start (nfix (nth 0 position)))
          (n (nfix (nth 1 position)))
-         (trailer (nfix (nth 2 position)))
+         (roff (nfix (nth 2 position)))
          (p (fn-record-payload w))
          (plen (len p))
          (rlen (len r))
          (k (- rlen (+ (fn-arx-record-suffix-len w) plen))))
     (if (and (natp k)
-             (equal n (+ *fn-arx-record-at* rlen *fn-frame-trailer-octets*))
+             (equal (nth 3 position) rlen)
+             (<= (+ start *fn-arx-record-at*) roff)
+             (<= (+ roff rlen *fn-frame-trailer-octets*) (+ start n))
              (fn-arx-prefixp p (nthcdr k r)))
-        (list (nfix file) start (- n *fn-frame-trailer-octets*)
-              (+ start *fn-arx-record-at* k) plen trailer)
+        (list (nfix file) start (- n *fn-frame-trailer-octets*) (+ roff k) plen 0)
       nil)))
 
 (defthm fn-arx-extent-of-extentp
@@ -237,7 +358,7 @@
       t
     (and (or (atom (car ps))
              (equal (fn-durable-octets (nfix (car (car ps)))
-                                       (+ (nfix (nth 0 (cdr (car ps)))) *fn-arx-record-at*)
+                                       (nfix (nth 2 (cdr (car ps))))
                                        (len (car rs)))
                     (car rs)))
          (fn-arx-faithful-p (cdr rs) (cdr ps)))))
@@ -276,7 +397,7 @@
 ; The verified extent denotes the payload.
 (defthm fn-arx-extent-of-denotes-payload
   (implies (and (fn-arx-extent-of file position r w)
-                (equal (fn-durable-octets (nfix file) (+ (nfix (nth 0 position)) *fn-arx-record-at*)
+                (equal (fn-durable-octets (nfix file) (nfix (nth 2 position))
                                           (len r))
                        r)
                 (true-listp (fn-record-payload w)))
@@ -289,7 +410,7 @@
                                                     (len (fn-record-payload w)))))
                                    (m (len (fn-record-payload w)))
                                    (file (nfix file))
-                                   (off (+ (nfix (nth 0 position)) *fn-arx-record-at*))
+                                   (off (nfix (nth 2 position)))
                                    (len (len r)))
                         (:instance fn-arx-prefixp-take
                                    (p (fn-record-payload w))
@@ -310,7 +431,7 @@
 
 (defthm fn-arx-intern-event-refines
   (implies (and (fn-arena-p fn-arena)
-                (equal (fn-durable-octets (nfix file) (+ (nfix (nth 0 position)) *fn-arx-record-at*)
+                (equal (fn-durable-octets (nfix file) (nfix (nth 2 position))
                                           (len r))
                        r))
            (equal (fn-arx-intern-event w r position file keyring generation fn-arena)

@@ -19,10 +19,11 @@
       (eq (symbol-class 'fn-arx-commit-reseat (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arx-commit-reseats (w state)) :common-lisp-compliant)))
 
-; Handle 0 holds (1 2 3); the record the log wrote is (9 9 1 2 3 7) at entry
-; start 100 of file 5, its frame 42 + 6 + 32 = 80 octets.
+; Handle 0 holds (1 2 3); the record the log wrote is (9 9 1 2 3 7), placed
+; (fn-arx-list-places) in the one-record entry at start 100 of file 5: frame
+; 42 + 6 + 32 = 80 octets, the record at 142, 6 octets.
 (defconst *pcx-r* '(9 9 1 2 3 7))
-(defconst *pcx-pos* '(100 80 0))
+(defconst *pcx-pos* '(100 80 142 6))
 
 (assert-event
  (let ((fn-arena (fn-arena-clear fn-arena)))
@@ -31,10 +32,12 @@
                      '(5 100 48 144 3 0))
               ; the payload is not in the record
               (null (fn-arx-commit-extent 0 5 *pcx-pos* '(9 9 1 2 4 7) fn-arena))
-              ; the frame is not the record's
-              (null (fn-arx-commit-extent 0 5 '(100 81 0) *pcx-r* fn-arena))
+              ; the place is not the record's (its length)
+              (null (fn-arx-commit-extent 0 5 '(100 80 142 7) *pcx-r* fn-arena))
+              ; the record is not inside the entry's protected prefix
+              (null (fn-arx-commit-extent 0 5 '(100 79 142 6) *pcx-r* fn-arena))
               ; the payload is longer than the record
-              (null (fn-arx-commit-extent 0 5 '(100 76 0) '(1 2) fn-arena)))
+              (null (fn-arx-commit-extent 0 5 '(100 76 142 2) '(1 2) fn-arena)))
          fn-arena)))
  :stobjs-out '(nil fn-arena))
 
@@ -79,14 +82,14 @@
  (must-fail
   (with-prover-step-limit 50000 (defthm pcx-keeps-without-arena-p
     (implies (and (true-listp r)
-                  (equal (fn-durable-octets (nfix file) (+ (nfix (nth 0 position)) 42) (len r)) r))
+                  (equal (fn-durable-octets (nfix file) (nfix (nth 2 position)) (len r)) r))
              (equal (fn-arx-commit-reseat h file position r fn-arena) fn-arena))))))
 
 (local
  (must-fail
   (with-prover-step-limit 50000 (defthm pcx-keeps-without-true-listp
     (implies (and (fn-arena-p fn-arena)
-                  (equal (fn-durable-octets (nfix file) (+ (nfix (nth 0 position)) 42) (len r)) r))
+                  (equal (fn-durable-octets (nfix file) (nfix (nth 2 position)) (len r)) r))
              (equal (fn-arx-commit-reseat h file position r fn-arena) fn-arena))))))
 
 ; fn-arx-commit-reseats-keep-the-arena: the ground batch of the witness.

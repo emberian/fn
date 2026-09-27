@@ -80,20 +80,24 @@
           (fn-arx-arena-find h plen (nthcdr from r) from end fn-arena))
       nil)))
 
-; The extent of handle H's payload in the record R the log wrote at entry
-; POSITION (START N TRAILER) of FILE, or nil.
+; The extent of handle H's payload in the record R the log wrote at its
+; PLACE (START N ROFF RLEN) in FILE (books/payload-extent.lisp
+; fn-arx-list-places), or nil: the place must be R's (its length) and lie in
+; the entry's protected prefix.
 (defun fn-arx-commit-extent (h file position r fn-arena)
   (declare (xargs :stobjs fn-arena
                   :guard (and (natp h) (< h (fn-arena-count fn-arena))
                               (natp file) (true-listp position) (true-listp r))))
   (let* ((start (nfix (nth 0 position)))
          (n (nfix (nth 1 position)))
-         (trailer (nfix (nth 2 position)))
-         (k (and (equal n (+ *fn-arx-record-at* (len r) *fn-frame-trailer-octets*))
+         (roff (nfix (nth 2 position)))
+         (k (and (equal (nth 3 position) (len r))
+                 (<= (+ start *fn-arx-record-at*) roff)
+                 (<= (+ roff (len r) *fn-frame-trailer-octets*) (+ start n))
                  (fn-arx-commit-place h r fn-arena))))
     (if (natp k)
         (list (nfix file) start (- n *fn-frame-trailer-octets*)
-              (+ start *fn-arx-record-at* k) (fn-arena-payload-len h fn-arena) trailer)
+              (+ roff k) (fn-arena-payload-len h fn-arena) 0)
       nil)))
 
 (defthm fn-arx-arena-find-bounds
@@ -284,7 +288,7 @@
 (defthm fn-arx-commit-extent-denotes-the-payload
   (implies (and (fn-arena-p fn-arena)
                 (fn-arx-commit-extent h file position r fn-arena)
-                (equal (fn-durable-octets (nfix file) (+ (nfix (nth 0 position)) *fn-arx-record-at*)
+                (equal (fn-durable-octets (nfix file) (nfix (nth 2 position))
                                           (len r))
                        r))
            (equal (fn-durable-octets (nth 0 (fn-arx-commit-extent h file position r fn-arena))
@@ -298,7 +302,7 @@
            :use ((:instance fn-arx-commit-place-is-a-place)
                  (:instance fn-pce-durable-of-a-slice
                             (file (nfix file))
-                            (off (+ (nfix (nth 0 position)) *fn-arx-record-at*))
+                            (off (nfix (nth 2 position)))
                             (k (fn-arx-commit-place h r fn-arena))
                             (m (len (nth h fn-arena)))
                             (p (nth h fn-arena)))))))
@@ -314,7 +318,7 @@
 (defthm fn-arx-commit-reseat-keeps-the-arena
   (implies (and (fn-arena-p fn-arena)
                 (true-listp r)
-                (equal (fn-durable-octets (nfix file) (+ (nfix (nth 0 position)) *fn-arx-record-at*)
+                (equal (fn-durable-octets (nfix file) (nfix (nth 2 position))
                                           (len r))
                        r))
            (equal (fn-arx-commit-reseat h file position r fn-arena)
@@ -338,7 +342,7 @@
     (let ((m (car members)))
       (and (or (not (and (true-listp m) (equal (len m) 4) (natp (nth 1 m))
                          (true-listp (nth 2 m)) (true-listp (nth 3 m))))
-               (equal (fn-durable-octets (nth 1 m) (+ (nfix (nth 0 (nth 2 m))) *fn-arx-record-at*)
+               (equal (fn-durable-octets (nth 1 m) (nfix (nth 2 (nth 2 m)))
                                          (len (nth 3 m)))
                       (nth 3 m)))
            (fn-arx-commit-faithful-p (cdr members))))))
