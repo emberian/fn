@@ -724,6 +724,14 @@ class Consumer:
             else:
                 event, line = self.project(cursor_path, report_path)
                 if event is None:
+                    # PKT-710: a withdrawal event (the author cancelled the
+                    # article, or it was superseded) carries a Message-ID
+                    # and no content; the native decoder names it.  Nothing
+                    # to verify or answer: it is noted and acked.
+                    code, out, _ = self.native("consumer-article", report_path)
+                    words = out.decode("ascii", "replace").split()
+                    if code == 0 and len(words) == 2 and words[0] == "fn-consumer-withdrawn-v1":
+                        line = "withdrawn " + bytes.fromhex(words[1]).decode("ascii", "replace")
                     self.note_unattributed(len(self.db.execute(
                         "SELECT 1 FROM unattributed").fetchall()), line, cursor)
                 else:

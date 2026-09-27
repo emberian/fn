@@ -171,6 +171,15 @@ already covers RECORDS (nothing written).  Each link is decoded once
         (setf (fnn-store-fenced store) nil)
         (values generation line)))))
 
+(defun fnn-pack-chain-vectors (chain)
+  "CHAIN, (GENERATION OCTETS DIGEST) each, with each link's octets as a byte
+vector: the same octets, one byte each."
+  (mapcar (lambda (e) (list (first e) (fnn-octets (second e)) (third e))) chain))
+
+(defun fnn-pack-chain-octet-lists (chain)
+  "The chain ACL2 reads: each link's octets as an octet list."
+  (mapcar (lambda (e) (list (first e) (fnn-octet-list (second e)) (third e))) chain))
+
 (defun fnn-pack-extend-chain (store records &key admit)
   "Publish and select links, each over the records above the selected chain,
 until the chain covers RECORDS.  Each link is its own publication and
@@ -183,6 +192,10 @@ caller's own decision.  Returns the newest generation, the number of links
 written and ACL2's no-op line."
   (multiple-value-bind (chain coverage selected)
       (fnn-pack-selected-raw-and-coverage store)
+    ;; The links' octets as byte vectors between ACL2 calls: the octet lists
+    ;; exist only inside the coverage call, never beside the capture's
+    ;; records (PKT-686).
+    (setq chain (fnn-pack-chain-vectors chain))
     (let ((links 0) (generation selected) (line nil))
       (loop do (when (and admit (plusp links)
                           (< (second coverage) (length records)))
@@ -199,10 +212,10 @@ written and ACL2's no-op line."
                  (fnn-checkpoint-test-stop "pack-chain-link")
                  (incf links)
                  (setq generation next selected next
-                       chain (cons (list next (fnn-octet-list frame) (fnn-digest-of frame))
-                                   chain))
+                       chain (cons (list next frame (fnn-digest-of frame)) chain))
                  (let ((c (fnn-core-state 'fn-store-checkpoint-chain-coverage
-                                    chain (fnn-config-max-transactions store)
+                                    (fnn-pack-chain-octet-lists chain)
+                                    (fnn-config-max-transactions store)
                                     (fnn-store-frontier store)
                                     (fnn-pack-link-bound store))))
                    (unless (and (listp c) (eq (first c) :ok) (= (second c) boundary))
@@ -729,24 +742,30 @@ selected head it counts from."
         (sort (cons selected (copy-list plan)) #'<))
       generations))
 
+(defun fnn-pack-chain-observation (store)
+  "The selected chain's coverage boundary (0 without one), the generations
+the decisions may count as retirable, and the selected generation.  The
+chain's octet lists are dropped when this returns, before the caller hands
+ACL2 the records as octet lists: the two are never live together (PKT-686)."
+  (multiple-value-bind (chain coverage selected)
+      (fnn-pack-selected-raw-and-coverage store)
+    (values (if coverage (second coverage) 0)
+            (fnn-pack-retirable-generations store chain selected
+                                            (fnn-pack-generations store))
+            selected)))
+
 (defun fnn-compact-decide (store records)
   "Observe the store (the selected chain's coverage, the transaction and pack
 namespaces, the disk's free octets) and ask ACL2's one compaction decision."
-  (multiple-value-bind (chain coverage selected)
-      (fnn-pack-selected-raw-and-coverage store)
-    (let* ((lower (if coverage (second coverage) 0))
-           (names (sort (fnn-list-directory-bounded
+  (multiple-value-bind (lower retirable selected) (fnn-pack-chain-observation store)
+    (let* ((names (sort (fnn-list-directory-bounded
                          (fnn-transactions store) (fnn-config-max-transactions store)
                          "transaction namespace")
                         #'string<))
-           (generations (fnn-pack-generations store))
            (decision (fnn-core 'fn-store-compact-decide
                                (fnn-store-config store)
                                (mapcar #'fnn-octet-list records)
-                               lower names
-                               (fnn-pack-retirable-generations store chain selected
-                                                               generations)
-                               selected
+                               lower names retirable selected
                                (fnn-disk-free-octets store))))
       (unless (and (listp decision) (member (first decision) '(:compact :refused)))
         (fnn-fault "ACL2 returned no compaction decision"))
@@ -858,22 +877,17 @@ kept, and a rerun continues from them."
         (fnn-indeterminate "state checkpoint removal is uncertain: ~a" e)))))
 
 (defun fnn-reclaim-observe (store records dry)
-  (multiple-value-bind (chain coverage selected)
-      (fnn-pack-selected-raw-and-coverage store)
-    (let* ((lower (if coverage (second coverage) 0))
-           (names (sort (fnn-list-directory-bounded
+  (multiple-value-bind (lower retirable selected) (fnn-pack-chain-observation store)
+    (let* ((names (sort (fnn-list-directory-bounded
                          (fnn-transactions store) (fnn-config-max-transactions store)
                          "transaction namespace")
                         #'string<))
-           (generations (fnn-pack-generations store))
            (decision (fnn-core-state 'fn-store-reclaim-decide
                                      (fnn-store-config store)
                                      (fnn-store-prepare-observation)
                                      (mapcar #'fnn-octet-list records)
                                      (fnn-store-frontier store)
-                                     lower names
-                                     (fnn-pack-retirable-generations store chain selected
-                                                                     generations)
+                                     lower names retirable
                                      selected
                                      (fnn-disk-free-octets store)
                                      (if dry t nil))))

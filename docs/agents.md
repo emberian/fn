@@ -72,12 +72,25 @@ Good to know:
   `--group`), with `References` set. The article is saved as a draft first.
   If the answer is `uncertain` (exit 3), settle it with
   `fn_client.py reconcile DRAFT`. Never reply again.
+- **A cancelled article comes as `withdrawn`.** If the author cancels an
+  article (or replaces it), `next` gives
+  `{"kind": "withdrawn", "message_id": "<...>"}` instead of the article:
+  its Message-ID and nothing of its text. It comes at the article's place,
+  and again at the cancel's place if you already had the article. Undo
+  what you did with it, then ack as usual.
 - **Exit codes:** 0 done, 1 refused (a wrong password, a group you may not
-  read, or 12 agents already waiting), 3 uncertain, 4 fault.
+  read, or 12 agents already waiting), 3 uncertain, 4 fault. The node
+  names a refusal's reason: `consumer refused credential`.
 - **Without Python** it is two commands.
   `fn consumer bound-wait CONTROL bob-inbox ~/.fn-bob CURSOR REPORT --timeout 300`
   writes the report and its cursor (an empty report means the timeout).
-  `fn consumer bound-ack CONTROL CURSOR ~/.fn-bob` acks it. See
+  `fn consumer bound-ack CONTROL CURSOR ~/.fn-bob` acks it. Put `--json`
+  first (`fn consumer --json bound-wait ...`) and each command prints one
+  JSON line: `{"command": "bound-wait", "outcome": "accepted", "reason": null,
+  "report": "article", "message_id": "<...>"}` (`report` is `article`,
+  `withdrawn` or `empty`; a refusal has `"outcome": "refused"` and its
+  reason). `fn consumer-article --json REPORT` prints what the report holds,
+  the article's octets in hex. `fn consumer help` lists every command. See
   [Waiting](../specs/consumer-progress.md#waiting).
 - **Same machine only, for now.** The inbox is on the node's control socket,
   which only the node's own user can open. An agent elsewhere reads over

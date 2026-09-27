@@ -1,6 +1,15 @@
-; Reachable Store outcomes and teeth for the actual host-called decision.
+; Reachable Store outcomes and teeth for the byte-identity decision
+; (books/store-node-existing-invariants.lisp, fn-sn-existing-action) and the
+; entry the host calls (books/store-intern.lisp fn-store-existing-action).
+; by specification: the flip -- the held payload is a handle, so
+; fn-sn-existing-action is the specification over the WIRE view: its
+; outcomes are asserted over alpha of the Store's articles (the bytes under
+; each handle, books/store-existing-alpha.lisp fn-sn-action-over over
+; fn-sn-alpha-articles, which fn-store-existing-action-refines-byte-identity-
+; over-alpha relates to the entry).
 (in-package "ACL2")
 (include-book "../../books/store-node-existing-invariants")
+(include-book "../../books/store-existing-alpha")
 (include-book "../../books/codec-attach")
 (include-book "held-rows-tests")
 (include-book "std/testing/must-fail" :dir :system)
@@ -30,39 +39,63 @@
  (fn-find-article "<held@example>"
                   (fn-state-articles
                    (fn-node-acceptance (fn-sn-node *snex-finished*)))))
-(assert-event (equal (fn-sn-existing-action
+;; The byte-identity decision over alpha of S's articles, read through the
+;; arena that interned PRIOR.
+(defun snex-sn-in (prior msgid payload groups s fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-hrt-events prior nil 0 fn-arena)
+    (declare (ignore rows))
+    (mv (fn-sn-action-over msgid payload groups (fn-sn-alpha-articles s fn-arena))
+        fn-arena)))
+(defun snex-sn (msgid payload groups s)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena) (snex-sn-in (list *snex-record-wire*) msgid payload groups s fn-arena)
+      r)))
+; On the live Store the decision is its definition over the articles
+; (handles): a byte-identical resend is no duplicate there, which is why the
+; outcomes below are over alpha.
+(assert-event
+ (and (equal (fn-sn-existing-action "<held@example>" '(65 66) *snex-groups* *snex-finished*)
+             (fn-sn-action-over "<held@example>" '(65 66) *snex-groups*
+                                (fn-state-articles (fn-node-acceptance
+                                                    (fn-sn-node *snex-finished*)))))
+      (equal (fn-sn-existing-action "<held@example>" '(65 66) *snex-groups* *snex-finished*)
+             :conflict)))
+(assert-event (equal (snex-sn
                       "<held@example>" '(65 66) *snex-groups* *snex-finished*)
                      :duplicate))
-(assert-event (equal (fn-sn-existing-action
+(assert-event (equal (snex-sn
                       "<held@example>" '(99) *snex-groups* *snex-finished*)
                      :conflict))
-(assert-event (equal (fn-sn-existing-action
+(assert-event (equal (snex-sn
                       "<held@example>" '(65 66) '("fn.letters") *snex-finished*)
                      :conflict))
-(assert-event (null (fn-sn-existing-action
+(assert-event (null (snex-sn
                      "<missing@example>" '(65 66) *snex-groups* *snex-finished*)))
 
 ; Each deleted premise makes the corresponding outcome false on the same
 ; committed article: payload equality, group equality, or a held binding.
 (must-fail
  (assert-event
-  (equal (fn-sn-existing-action
+  (equal (snex-sn
           "<held@example>" '(99) *snex-groups* *snex-finished*)
          :duplicate)))
 (must-fail
  (assert-event
-  (equal (fn-sn-existing-action
+  (equal (snex-sn
           "<held@example>" '(65 66) '("fn.letters") *snex-finished*)
          :duplicate)))
 (must-fail
  (assert-event
-  (equal (fn-sn-existing-action
+  (equal (snex-sn
           "<missing@example>" '(65 66) *snex-groups* *snex-finished*)
          :duplicate)))
 ; A difference without a held Message-ID is missing, not a conflict.
 (must-fail
  (assert-event
-  (equal (fn-sn-existing-action
+  (equal (snex-sn
           "<missing@example>" '(99) *snex-groups* *snex-finished*)
          :conflict)))
 

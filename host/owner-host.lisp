@@ -96,6 +96,8 @@
 (include-book "../books/consumer-owner-local")
 (include-book "../books/consumer-bound")
 (include-book "../books/consumer-wait")
+;; PKT-710: the page and the wait step over it.
+(include-book "../books/consumer-withdrawal")
 (include-book "../books/acceptance-payload-ref")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
@@ -1158,7 +1160,12 @@
   ;; The records flip: a selected article is a held row, whose report reads
   ;; its bytes through the live arena (fn-cbind-plain-poll-over,
   ;; fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll).
-  (value (fn-cbind-plain-poll-over (fn-owner-ocfg state) consumer fn-arena)))
+  ;; PKT-710: the page is that answer with the view's withdrawals in it
+  ;; (books/consumer-withdrawal.lisp fn-cwd-page; the answer itself while
+  ;; nothing is withdrawn, fn-cwd-page-without-withdrawals-is-the-answer).
+  (value (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
+                      (fn-cbind-plain-poll-over (fn-owner-ocfg state) consumer
+                                                fn-arena))))
 
 (defun fn-owner-consumer-local-unregister (consumer state)
   (declare (xargs :stobjs state :mode :program))
@@ -1478,8 +1485,11 @@
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   ;; Over the live arena (records flip): fn-cbind-poll-over-delivers-only-
   ;; readable-events, fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal.
-  (value (fn-cbind-poll-over (fn-owner-ocfg state) (fn-owner-auth state)
-                             consumer secret fn-arena)))
+  ;; PKT-710: with the withdrawals in it (a refusal of the gate is served
+  ;; unchanged, fn-cwd-page-of-a-refusal).
+  (value (fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer
+                      (fn-cbind-poll-over (fn-owner-ocfg state) (fn-owner-auth state)
+                                          consumer secret fn-arena))))
 
 ;; PRF-252: one step of a consumer wait (books/consumer-wait.lisp
 ;; fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page): the poll a
@@ -1489,10 +1499,11 @@
 ;; both under the owner mutex.
 (defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
-  ;; Over the live arena (records flip):
-  ;; fn-cwait-step-over-is-the-poll-or-a-sleep-on-an-empty-page.
-  (value (fn-cwait-step-over (fn-owner-ocfg state) (fn-owner-auth state)
-                             consumer secret elapsed seconds fn-arena)))
+  ;; Over the live arena (records flip), and PKT-710: a wait answers the
+  ;; page (fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page),
+  ;; so a withdrawal wakes it as an article does.
+  (value (fn-cwd-wait-step-over (fn-owner-ocfg state) (fn-owner-auth state)
+                                consumer secret elapsed seconds fn-arena)))
 
 (defun fn-owner-consumer-local-wait-admit (waiters state)
   (declare (xargs :stobjs state :mode :program))

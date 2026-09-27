@@ -573,7 +573,14 @@ recovery evidence is uncertain and fences the whole owner image.
 
 The store path opens on the replayed configuration history: `config/*.cfg`,
 oldest first, to `fn-store-sn-recover-records`, the host's intern and `fn-store-sn-recover-rows` with the article records and the
-frontier. A store with no configuration record is refused, and the served
+frontier. The native host sends the article records in chunks closed at
+`fn-srs-chunk-fullp`'s work quantum (one record always taken first, so none
+is refused or split for its size): per chunk `fn-store-decode-records` and
+the guard-verified `fn-srs-intern-step`, then `fn-store-sn-recover-rows` over
+`fn-srs-rows`; no octet list or decoded event of the whole history exists at
+once, and any chunking opens the same Store
+(`fn-srs-steps-are-one-step-of-the-concatenation`,
+books/store-recover-stream.lisp, PRF-261). A store with no configuration record is refused, and the served
 group names, their codes and the generation come back from the core
 (`fn-store-cfg-served/-domain/-generation`); the image holds no compiled
 group table and `init` asks `fn-cfg-host-initial-octets` for generation 1.
