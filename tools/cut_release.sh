@@ -81,6 +81,11 @@
 #   python3 tools/power_loss_openbsd.py prepare cutbld --cache writeback \
 #     --ssh 2293 --nntp 11693 --smp 8 --mem 7168 --store-size 48G \
 #     --format raw --ffs 2
+# then, in the guest, root's login class lifted past the 4 GiB heap (the
+# `daemon' class caps datasize at 4096M; SBCL's 4096 MB dynamic space plus
+# the runtime does not fit: "mmap: Cannot allocate memory"):
+#   sed -i '/^daemon:/,/^$/s/:datasize=4096M:/:datasize=infinity:/' /etc/login.conf
+# (a build VM only; a node keeps its class).
 # The gate boots it (`power_loss_openbsd.py start', refused if it is
 # already running: someone else's), certifies REV's default closure in the
 # guest into a cache of the cut's own, builds the tarball with
@@ -379,6 +384,7 @@ g_tarball_openbsd() {
   guest="set -e
 mount | grep -q ' /bw '
 ulimit -d \$(ulimit -H -d)
+[ \$(ulimit -d) = unlimited ] || [ \$(ulimit -d) -ge 6291456 ] || { echo \"datasize \$(ulimit -d) KiB: under the 4 GiB heap plus runtime; lift root's login class (tools/cut_release.sh header)\"; exit 1; }
 L=/usr/local/fn-work/acl2-lit-4g-tls64k
 printf '%s\\n' '#!/bin/sh' 'export SBCL_HOME=/usr/local/lib/sbcl/' 'exec /usr/local/bin/sbcl --tls-limit 65536 --dynamic-space-size 4096 --control-stack-size 64 --disable-ldb --core /usr/local/fn-work/acl2-8.7/saved_acl2.core --end-runtime-options --no-userinit --eval \"(acl2::sbcl-restart)\" \"\$@\"' > \$L
 chmod 0755 \$L
@@ -387,7 +393,7 @@ export FN_ACL2_SLOTS=7 FN_ACL2_TIMEOUT_SECONDS=3000 FN_CERT_CACHE=$W/certcache
 rm -rf $W/src $W/certcache $W/release $W/fresh; mkdir -p $W/src $W/certcache $W/release $W/fresh
 cd $W/src && tar -xf $W/source.tar
 echo \"== certify \$(date -u +%FT%TZ)\"
-python3 tools/certify_books.py --jobs 7 --closure \$(python3 tools/proof_artifacts.py roots --profile default) > $W/certify.log 2>&1 || { tail -5 $W/certify.log; exit 1; }
+python3 tools/certify_books.py --jobs 7 --closure \$(python3 tools/proof_artifacts.py roots --profile default) > $W/certify.log 2>&1 || { grep -v '^ACL2 did not produce' $W/certify.log | tail -5; grep -o 'Books that failed: [^,]*, [^,]*, [^,]*' $W/certify.log; exit 1; }
 echo \"== release \$(date -u +%FT%TZ)\"
 FN_FREEZE_SODIUM=/usr/local/lib/libsodium.so.11.1 FN_FREEZE_DYNAMIC_SPACE_MB=1024 sh packaging/release-tarball.sh openbsd-amd64 $REV $W/release $W/source.tar > $W/release.log 2>&1 || { tail -15 $W/release.log; exit 1; }
 tail -4 $W/release.log
