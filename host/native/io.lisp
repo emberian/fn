@@ -4960,6 +4960,7 @@ tree root), or stop the build."
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
     "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN" "FN_NATIVE_OWNER_TEST_BARRIER_MS" "FN_NATIVE_TEST_DISK_STALL_FILE" "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE" "FN_NATIVE_FAULT_BACKTRACE"
+    "FN_NATIVE_COUNT_LOOKUPS"
     "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"
     "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER" "FN_BP_TEST_DELIVER_FAULT"
     "FN_BP_TEST_PROFILE"
@@ -5043,6 +5044,107 @@ with its depth, and the rows under it name the path that called it."
      (finish-output *error-output*)))
   (funcall next))
 
+;;; FN_NATIVE_COUNT_LOOKUPS (release row F2's lookup count; lane sca-join-4):
+;;; a diagnostic, not a fault.  Each function below is one catalog or index
+;;; lookup, or the entry of a walk; each is wrapped with a counter
+;;; (sb-int:encapsulate, as FN_NATIVE_FAULT_BACKTRACE wraps the stack signal),
+;;; and every served read (fn-owner-chunk-span through fnn-core-buffer-state)
+;;; first prints the counts since the previous one to stderr and clears them:
+;;; `lookups window K: NAME=N ...' is the work of the read before it, its
+;;; render included.  The wrappers return the wrapped function's values, so no
+;;; outcome changes; a production image never reads the selector.  Only
+;;; entries are counted (SBCL compiles a function's self-calls as local calls,
+;;; which no wrapper sees): a self-recursive walk counts once per walk, so the
+;;; bisection is counted at fn-scr-mid (one call per probe) and a walk over a
+;;; list is given as (NAME . I), which also adds the length of its Ith
+;;; argument to `NAME/len', the size of what it walks.  The exports of the
+;;; fn-cat abstract stobj are counted at their :exec functions (fn-cat$c-*),
+;;; the functions a served call reaches.
+(defparameter +fnn-lookup-functions+
+  '(;; the pinned view: fn-scr-view-of's bisection, one fn-scr-mid per probe
+    fn-scr-view-of fn-scr-mid
+    ;; the catalog's tables (books/catalog.lisp exports, :exec side)
+    fn-cat$c-group-number fn-cat$c-msgid-seqs fn-cat$c-at fn-cat$c-visible-at
+    fn-cat$c-group-next fn-cat$c-group-count
+    ;; the catalog finders over them
+    fn-cnx-view-seq fn-cnx-view-range fn-scat-range-numbers
+    (fn-cat-view-last-visible . 0) fn-cat-row-article
+    ;; the Message-ID trie
+    fn-midx-lookup
+    ;; archive and catalog-list walks (their entries and the length walked;
+    ;; none belongs on the served path)
+    (fn-find-article . 1) (fn-nntp-find-group-number . 2)
+    (fn-nntp-available-article . 2) (fn-nntp-group-range-numbers . 3)
+    (fn-nntp-group-count . 1) (fn-nntp-group-low . 1) (fn-nntp-group-high . 1)
+    fn-cat-view-below fn-cat-view-articles fn-cat-view-find
+    fn-cat-view-number-find fn-cat-number-seq fn-cat-seqs-for fn-cnx-walk-range
+    fn-nntp-archive-command fn-nntp-over-range fn-nntp-group-result))
+
+(defvar *fnn-lookup-counts* nil)
+(defvar *fnn-lookup-names* nil)
+(defvar *fnn-lookup-window* 0)
+
+(defun fnn-lookup-window-close ()
+  "Print the counts since the previous served read, then clear them."
+  (let ((counts *fnn-lookup-counts*))
+    (format *error-output* "~&lookups window ~d:" *fnn-lookup-window*)
+    (dotimes (i (length counts))
+      (let ((n (aref counts i)))
+        (when (> n 0)
+          (format *error-output* " ~(~a~)=~d" (aref *fnn-lookup-names* i) n)
+          (setf (aref counts i) 0))))
+    (terpri *error-output*)
+    (finish-output *error-output*)
+    (incf *fnn-lookup-window*)))
+
+(defun fnn-lookup-counter (i)
+  (lambda (next &rest args)
+    (sb-ext:atomic-incf (aref (the (simple-array sb-ext:word (*)) *fnn-lookup-counts*) i))
+    (apply next args)))
+
+(defun fnn-lookup-walk-counter (i len-i arg)
+  (lambda (next &rest args)
+    (let ((counts (the (simple-array sb-ext:word (*)) *fnn-lookup-counts*)))
+      (sb-ext:atomic-incf (aref counts i))
+      (let ((walked (nth arg args)))
+        (when (listp walked)
+          (sb-ext:atomic-incf (aref counts len-i) (length walked)))))
+    (apply next args)))
+
+(defun fnn-install-lookup-counters ()
+  (unless *fnn-lookup-counts*
+    (let* ((specs (remove-if-not (lambda (spec)
+                                   (let ((s (if (consp spec) (car spec) spec)))
+                                     (and (fboundp s) (not (macro-function s)))))
+                                 +fnn-lookup-functions+))
+           (missing (set-difference +fnn-lookup-functions+ specs :test #'equal))
+           (names nil))
+      ;; One column per function, one more (NAME/len) per walk.
+      (dolist (spec specs)
+        (if (consp spec)
+            (progn (push (car spec) names)
+                   (push (intern (format nil "~a/LEN" (car spec)) "ACL2") names))
+            (push spec names)))
+      (setq names (nreverse names)
+            *fnn-lookup-names* (coerce names 'simple-vector)
+            *fnn-lookup-counts* (make-array (length names) :element-type 'sb-ext:word
+                                                           :initial-element 0))
+      (dolist (spec specs)
+        (if (consp spec)
+            (let ((i (position (car spec) names)))
+              (sb-int:encapsulate (car spec) 'fnn-lookup-count
+                                  (fnn-lookup-walk-counter i (1+ i) (cdr spec))))
+            (sb-int:encapsulate spec 'fnn-lookup-count
+                                (fnn-lookup-counter (position spec names)))))
+      (sb-int:encapsulate
+       'fnn-core-buffer-state 'fnn-lookup-count
+       (lambda (next name &rest args)
+         (when (eq name 'fn-owner-chunk-span) (fnn-lookup-window-close))
+         (apply next name args)))
+      (format *error-output* "~&lookups counted:~{ ~(~a~)~}~%lookups not counted (unbound or a macro):~{ ~(~a~)~}~%"
+              names missing)
+      (finish-output *error-output*))))
+
 (defun fnn-developer-selector-gate (argv)
   "Refuse, before any store is opened, a production start that names a cut."
   ;; A stack exhaustion is signalled inside fnn-core's handlers, which unwind
@@ -5054,6 +5156,8 @@ with its depth, and the rows under it name the path that called it."
       (sb-int:encapsulate 'sb-kernel::control-stack-exhausted-error
                           'fnn-stack-exhaustion-report
                           #'fnn-stack-exhaustion-report)))
+  (when (fnn-developer-selector "FN_NATIVE_COUNT_LOOKUPS")
+    (fnn-install-lookup-counters))
   (let ((found (fnn-developer-selector-refusal argv)))
     (when found
       (error 'fnn-usage-error
