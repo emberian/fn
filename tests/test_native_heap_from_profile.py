@@ -232,7 +232,7 @@ class HeapFromProfileTests(unittest.TestCase):
         self.post(port, ids)
         self.serve(port, ids)
         auto = self.wait_for(log1, rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) "
-                                   rb"octets=(\d+) ms=(\d+)", port)
+                                   rb"octets=(\d+) steps=(\d+) ms=(\d+)", port)
         print("NATIVE-HEAP", auto.group(0).decode())
         hwm1 = self.stop()
         print("NATIVE-HEAP vmhwm run=1 kB={}".format(hwm1))
