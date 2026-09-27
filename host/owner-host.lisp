@@ -285,15 +285,16 @@
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (equal records :bad) (equal config-records :bad))
         (mv nil :fault fn-arena state)
-      (mv-let (rows fn-arena)
-        (fn-store-intern-records records (fn-arena-clear fn-arena))
+      (let ((fn-arena (fn-arena-clear fn-arena)))
+        (mv-let (rows fn-arena)
+        (fn-store-intern-records records fn-arena)
         (if (equal rows :bad)
             (mv nil :fault fn-arena state)
           (mv-let (erp val state)
             (fn-owner-recover-extended
              (fn-sco-extend (fn-sco-capture config-records nil) config-records rows)
              config-records frontier max-conns state)
-            (mv erp val fn-arena state)))))))
+            (mv erp val fn-arena state))))))))
 
 ; The open from the checkpoint the Store open decoded and verified
 ; (`fn-store-sco-checkpoint', host/store-node-host.lisp) and the octets of
@@ -307,15 +308,16 @@
     (if (or (null checkpoint) (equal records :bad) (equal config-records :bad))
         (mv nil :fault fn-arena state)
       ; The checkpoint's rows reference no handle (fn-store-sco-decode).
-      (mv-let (rows fn-arena)
-        (fn-store-intern-records records (fn-arena-clear fn-arena))
+      (let ((fn-arena (fn-arena-clear fn-arena)))
+        (mv-let (rows fn-arena)
+        (fn-store-intern-records records fn-arena)
         (if (equal rows :bad)
             (mv nil :fault fn-arena state)
           (mv-let (erp val state)
             (fn-owner-recover-extended
              (fn-sco-extend checkpoint config-records rows)
              config-records frontier max-conns state)
-            (mv erp val fn-arena state)))))))
+            (mv erp val fn-arena state))))))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))

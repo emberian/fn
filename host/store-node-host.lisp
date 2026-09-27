@@ -493,8 +493,9 @@ reopen predicate, writer-lock observation and observed final namespace."
         (mv nil :fault fn-arena state)
       ; The checkpoint's rows reference no handle (fn-store-sco-decode refuses
       ; a capture that does), so the arena starts empty under the suffix.
-      (mv-let (rows fn-arena)
-        (fn-store-intern-records records (fn-arena-clear fn-arena))
+      (let ((fn-arena (fn-arena-clear fn-arena)))
+        (mv-let (rows fn-arena)
+        (fn-store-intern-records records fn-arena)
         (if (equal rows :bad)
             (mv nil :fault fn-arena state)
           ; The suffix is replayed once: E is fn-sco-open's extension, and the
@@ -504,7 +505,7 @@ reopen predicate, writer-lock observation and observed final namespace."
             (fn-store-sn-open-extended
              (fn-sco-extend checkpoint config-records rows)
              config-records frontier state)
-            (mv erp val fn-arena state)))))))
+            (mv erp val fn-arena state))))))))
 
 ; Each ROW's wire event (alpha, books/store-intern.lisp fn-row-wire-of: the
 ; payload read through the arena), encoded.
