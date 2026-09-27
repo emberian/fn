@@ -107,7 +107,9 @@
          (expected (fn-cst-replay-node (fn-sn-config-history st)
                                         (fn-sf-records files)
                                         (fn-sf-frontier files))))
-    (if (fn-record-p record)
+    ; An article completion is a HELD row since the records flip
+    ; (books/held-record.lisp); the node completes it as fn-sn-finish does.
+    (if (fn-held-p record)
         (equal (fn-node-complete node (fn-record-txid record)
                                  (fn-record-generation record) :durable)
                expected)
@@ -118,7 +120,7 @@
                                   (fn-sf-statep fn-node-statep
                                    fn-cst-replay-node fn-node-complete
                                    fn-sn-completion-record
-                                   fn-replay-apply-record fn-record-p)))))
+                                   fn-replay-apply-record fn-held-p)))))
 
 (defun fn-cst-relation (st)
   (declare (xargs :guard t :verify-guards nil))
@@ -142,7 +144,7 @@
                 (equal node (fn-cst-replay-node configs events
                                                 (1- frontier)))))
           ((fn-sf-record-phasep phase)
-           (if (fn-record-p (fn-sf-record-candidate files))
+           (if (fn-held-p (fn-sf-record-candidate files))
                (fn-cst-pending-linkp st)
              (fn-cst-deferred-linkp st)))
           ((equal phase :completing)
