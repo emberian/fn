@@ -118,10 +118,10 @@
       "name": "240 after a consumed completion",
       "contract": "After the owner consumes an article's completion the POST reply is 240 or uncertain, never a refusal, and each refusal kind stays distinct.",
       "host": {
-        "function": "fn-ccar-own-finish",
+        "function": "fn-apc-own-finish",
         "file": "host/owner-host.lisp"
       },
-      "bridge": "fn-ccar-own-finish-is-own-finish",
+      "bridge": "fn-apc-own-finish-is-own-finish",
       "keystone": "fn-own-240-follows-consumed-completion",
       "tested": {
         "image": "69046a76",
@@ -213,7 +213,7 @@
       "name": "two nodes exchange both ways",
       "contract": "An accepted article is offered to every configured peer except the one it came from and those its Path names, and a relayed article keeps the received Path tail.",
       "host": {
-        "function": "fn-icar-submission-intent",
+        "function": "fn-apc-submission-intent",
         "file": "host/owner-host.lisp"
       },
       "bridge": "fn-own-submission-targets-are-feed-targets",

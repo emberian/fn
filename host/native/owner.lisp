@@ -1243,9 +1243,21 @@ follows is justified only by this line."
 ;;; submission with the detail.
 (defvar *fnn-owner-transit-verdict* nil)
 
+;;; (PAYLOAD . OCTET-LIST) for the transit attempt in flight: its payload
+;;; vector converted once (bound by fnn-owner-attempt-transit).  ACL2 never
+;;; mutates an argument, so its calls share the one list; the parse carry
+;;; (books/owner-parse-carried.lisp) compares it with the take's octets.
+(defvar *fnn-owner-payload-list* nil)
+
+(defun fnn-owner-payload-octets (payload)
+  (if (and (consp *fnn-owner-payload-list*)
+           (eq (car *fnn-owner-payload-list*) payload))
+      (cdr *fnn-owner-payload-list*)
+    (fnn-octet-list payload)))
+
 (defun fnn-owner-note-transit-verdict (payload nntp-transit-p ed ml)
   (setq *fnn-owner-transit-verdict*
-        (fnn-owner-core 'fn-owner-transit-verdict (fnn-octet-list payload)
+        (fnn-owner-core 'fn-owner-transit-verdict (fnn-owner-payload-octets payload)
                         (and nntp-transit-p t) ed ml)))
 
 (defun fnn-owner-transit-refused (detail)
@@ -1265,7 +1277,7 @@ follows is justified only by this line."
   (if (not nntp-transit-p) plan
     ;; PKT-433 (d): ACL2's (CLASS VERDICT); the log prints both.
     (let ((detail (fnn-owner-core 'fn-owner-transit-refusal-class
-                                  (fnn-octet-list payload) t ed ml)))
+                                  (fnn-owner-payload-octets payload) t ed ml)))
       (if (and (consp detail) (keywordp (first detail)))
           (list :refused detail)
         plan))))
@@ -1285,8 +1297,12 @@ First, for every ingress, ACL2's filing step (C1, fn-pa-filing-plan through
 fn-owner-control-filing): a control article's groups become exactly its
 control.<verb> filing group, or the attempt is refused with the plan's
 reason before any Store call.  An ordinary article's groups are unchanged."
+  ;; The payload's octet list, converted once for the ACL2 calls below
+  ;; (fnn-owner-payload-octets): each call used to convert the vector
+  ;; again, 16 bytes a cons per octet.
+  (let ((*fnn-owner-payload-list* (cons payload (fnn-octet-list payload))))
   (let ((filing (fnn-owner-core 'fn-owner-control-filing
-                                (fnn-octet-list payload)
+                                (fnn-owner-payload-octets payload)
                                 (mapcar #'fnn-octet-list groups))))
     (unless (and (consp filing)
                  (member (first filing) '(:file :refused))
@@ -1300,7 +1316,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
       (fnn-fault "owner returned malformed filed groups"))
     (setq groups (mapcar #'fnn-octets (second filing))))
   (let ((form (fnn-owner-core 'fn-owner-peer-carrier-form
-                              (fnn-octet-list payload))))
+                              (fnn-owner-payload-octets payload))))
     (cond
       ((eq form :absent)
        (fnn-owner-note-transit-verdict payload nntp-transit-p nil nil)
@@ -1324,12 +1340,12 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                               (length payload) (length codes) charge))
              (case (fnn-owner-arena-action 'fn-owner-existing-action
                                      (fnn-octet-list msgid)
-                                     (fnn-octet-list payload) codes)
+                                     (fnn-owner-payload-octets payload) codes)
                (:duplicate (return-from fnn-owner-attempt-transit :duplicate))
                (:conflict (return-from fnn-owner-attempt-transit
                             (fnn-owner-transit-refused :conflict))))
              (let ((plan (fnn-owner-core 'fn-owner-peer-carrier-plan
-                                         (fnn-octet-list payload)
+                                         (fnn-owner-payload-octets payload)
                                          (and nntp-transit-p t))))
                (when (and (consp plan) (eq (first plan) :carried))
                  (unless (eq (fnn-owner-advance-clock) :observed)
@@ -1342,7 +1358,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                           (event
                             (fnn-owner-core
                              'fn-owner-peer-carried-relay-event coordinates
-                             (fnn-octet-list msgid) (fnn-octet-list payload)
+                             (fnn-octet-list msgid) (fnn-owner-payload-octets payload)
                              codes (fnn-octet-list obligation)
                              (fnn-octet-list subject) (fnn-octet-list evidence)
                              charge)))
@@ -1412,7 +1428,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                                'fn-owner-peer-revoked-event
                              'fn-owner-peer-carried-event)
                            coordinates
-                           (fnn-octet-list msgid) (fnn-octet-list payload)
+                           (fnn-octet-list msgid) (fnn-owner-payload-octets payload)
                            codes (fnn-octet-list obligation)
                            (fnn-octet-list subject) (fnn-octet-list evidence)
                            charge (coerce observed-ml-key 'list)
@@ -1432,7 +1448,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                                                    (first ml-observation))
                    (fnn-owner-statement-committed
                     service event
-                    (fnn-owner-identity-commit service event))))))))))))
+                    (fnn-owner-identity-commit service event)))))))))))))
 
 ;;; PRF-098: the key-statement executor, run by the owner right after it
 ;;; committed a kind-4 composite (books/key-statements.lisp, through

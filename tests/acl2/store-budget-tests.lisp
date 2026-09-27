@@ -14,7 +14,7 @@
 (defun sbudt-store (n)
   (declare (xargs :guard (natp n)))
   (list nil nil
-        (list :store-files :ready n nil (make-list n) nil nil nil 0)))
+        (fn-sf-make :ready n nil (make-list n) nil nil nil 0)))
 
 ; The named profiles: 128 and 4096, for an article and for every smaller kind.
 (assert-event (equal (fn-sbud-budget *sbudt-dev* :article) 128))
@@ -81,7 +81,7 @@
                         '("fn.letters") "p" "s" "r" 2 1)))
 (defconst *sbudt-two*
   (list nil nil
-        (list :store-files :ready 2 nil
+        (fn-sf-make :ready 2 nil
               (fn-hrt-rows *sbudt-two-wire* nil 0)
               nil nil nil 0)))
 (assert-event (and (fn-held-p (car (fn-sf-records (fn-sn-files *sbudt-two*))))
@@ -108,7 +108,7 @@
                      (fn-sbud-iota 0 0)))
 (defconst *sbudt-misnumbered*
   (list nil nil
-        (list :store-files :ready 1 nil
+        (fn-sf-make :ready 1 nil
               ; the retained row (records-flip), handle 0
               (list (fn-hrt-row-at
                      (fn-record-make 1 0 0 "<a@example.invalid>" '(65)

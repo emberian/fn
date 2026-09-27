@@ -28,6 +28,7 @@
 (in-package "ACL2")
 (include-book "replay")
 (include-book "records-seam")
+(include-book "snoc-list")
 ; The codecs cluster withdraws the record and codec definitions at export
 ; (2026-09-19); the proofs here open fn-store-event-p and the record accessors.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-shape-vocabulary)))
@@ -37,11 +38,21 @@
 
 ; -----------------------------------------------------------------------------
 ; The kernel state record (opaque below its lemmas, docs/proof-style.md s1).
-; Layout: (:store-files phase frontier frontier-candidate records
-;          record-candidate completion-pair successes recovery-barriers)
+; Layout: (:store-files phase frontier frontier-candidate RECORDS
+;          record-candidate completion-pair SUCCESSES recovery-barriers)
+; RECORDS and SUCCESSES are held as snoc-lists (books/snoc-list.lisp: newest
+; first, with their length), because both grow by one element at the end per
+; committed POST and an ordinary list copies itself to append (post-alloc-2,
+; 2026-09-27: the only N-dependent allocation of an owner POST).
+; fn-sf-records and fn-sf-successes read the lists back; fn-sf-make converts;
+; the shape requires each field to be the representation of its list
+; (fn-sl-canonp), so a transition that passes a history through copies the
+; field (fn-sf-remake: mbe, the logic is fn-sf-make of the lists) and the
+; commit appends in O(1) (fn-sl-snoc).
 (defun fn-sf-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 9) (equal (car x) :store-files)))
+  (and (true-listp x) (equal (len x) 9) (equal (car x) :store-files)
+       (fn-sl-canonp (nth 4 x)) (fn-sl-canonp (nth 7 x))))
 
 (defun fn-sf-phase (s)
   (declare (xargs :guard t :verify-guards nil))
@@ -54,10 +65,13 @@
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr s))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))
-(defun fn-sf-records (s)
+(defun fn-sf-records-field (s)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr (cdr s)))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s)))))))
+(defun fn-sf-records (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-sl-list (fn-sf-records-field s)))
 (defun fn-sf-record-candidate (s)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr s))))))
@@ -70,12 +84,15 @@
        :exec (fn-ag-car
               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
                          (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s)))))))))
-(defun fn-sf-successes (s)
+(defun fn-sf-successes-field (s)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr s))))))))
        :exec (fn-ag-car
               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
                          (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s))))))))))
+(defun fn-sf-successes (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-sl-list (fn-sf-successes-field s)))
 (defun fn-sf-barriers (s)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr s)))))))))
@@ -83,18 +100,29 @@
               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
                          (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr s)))))))))))
 
+; The constructor over the held fields, and the one over the lists.
+(defun fn-sf-make-fields (phase frontier frontier-candidate records-field
+                                record-candidate completion successes-field
+                                barriers)
+  (declare (xargs :guard t))
+  (list :store-files phase frontier frontier-candidate records-field
+        record-candidate completion successes-field barriers))
+
 (defun fn-sf-make (phase frontier frontier-candidate records record-candidate
                          completion successes barriers)
   (declare (xargs :guard t))
-  (list :store-files phase frontier frontier-candidate records record-candidate
-        completion successes barriers))
+  (fn-sf-make-fields phase frontier frontier-candidate (fn-sl-of records)
+                     record-candidate completion (fn-sl-of successes)
+                     barriers))
 
 (verify-guards fn-sf-phase)
 (verify-guards fn-sf-frontier)
 (verify-guards fn-sf-frontier-candidate)
+(verify-guards fn-sf-records-field)
 (verify-guards fn-sf-records)
 (verify-guards fn-sf-record-candidate)
 (verify-guards fn-sf-completion)
+(verify-guards fn-sf-successes-field)
 (verify-guards fn-sf-successes)
 (verify-guards fn-sf-barriers)
 
@@ -136,11 +164,115 @@
                                      record-candidate completion successes barriers))
          barriers))
 
+;; The held fields.  A transition that keeps a history copies its field
+;; (fn-sf-remake below); the commit and the success append one element in
+;; O(1) (fn-sl-snoc).  Under the shape each is fn-sf-make of the lists
+;; (fn-sf-make-fields-is-make, fn-sf-make-fields-snoc-records-is-make,
+;; fn-sf-make-fields-snoc-successes-is-make), which is what the executable
+;; branch of every transition is proved to compute.
+(defthm fn-sf-records-field-of-fn-sf-make-fields
+  (equal (fn-sf-records-field
+          (fn-sf-make-fields phase frontier frontier-candidate rf
+                             record-candidate completion sf barriers))
+         rf))
+(defthm fn-sf-successes-field-of-fn-sf-make-fields
+  (equal (fn-sf-successes-field
+          (fn-sf-make-fields phase frontier frontier-candidate rf
+                             record-candidate completion sf barriers))
+         sf))
+(defthm fn-sf-shape-fields-canonical
+  (implies (fn-sf-shapep s)
+           (and (fn-sl-canonp (fn-sf-records-field s))
+                (fn-sl-canonp (fn-sf-successes-field s))))
+  :hints (("Goal" :in-theory (enable fn-sf-shapep fn-sf-records-field
+                                     fn-sf-successes-field))))
+(defthm fn-sf-make-fields-is-make
+  (implies (fn-sf-shapep s)
+           (equal (fn-sf-make-fields phase frontier frontier-candidate
+                                     (fn-sf-records-field s)
+                                     record-candidate completion
+                                     (fn-sf-successes-field s) barriers)
+                  (fn-sf-make phase frontier frontier-candidate
+                              (fn-sf-records s) record-candidate completion
+                              (fn-sf-successes s) barriers)))
+  :hints (("Goal" :in-theory (e/d (fn-sf-make fn-sf-records fn-sf-successes)
+                                  (fn-sf-make-fields))
+           :use fn-sf-shape-fields-canonical)))
+(defthm fn-sf-make-fields-snoc-records-is-make
+  (implies (fn-sf-shapep s)
+           (equal (fn-sf-make-fields phase frontier frontier-candidate
+                                     (fn-sl-snoc (fn-sf-records-field s) record)
+                                     record-candidate completion
+                                     (fn-sf-successes-field s) barriers)
+                  (fn-sf-make phase frontier frontier-candidate
+                              (append (fn-sf-records s) (list record))
+                              record-candidate completion
+                              (fn-sf-successes s) barriers)))
+  :hints (("Goal" :in-theory (e/d (fn-sf-make fn-sf-records fn-sf-successes)
+                                  (fn-sf-make-fields fn-sl-snoc-of-fn-sl-of))
+           :use (fn-sf-shape-fields-canonical
+                 (:instance fn-sl-snoc-of-fn-sl-of
+                            (x (fn-sl-list (fn-sf-records-field s)))
+                            (r record))))))
+(defthm fn-sf-make-fields-snoc-successes-is-make
+  (implies (fn-sf-shapep s)
+           (equal (fn-sf-make-fields phase frontier frontier-candidate
+                                     (fn-sf-records-field s)
+                                     record-candidate completion
+                                     (fn-sl-snoc (fn-sf-successes-field s) pair)
+                                     barriers)
+                  (fn-sf-make phase frontier frontier-candidate
+                              (fn-sf-records s) record-candidate completion
+                              (append (fn-sf-successes s) (list pair))
+                              barriers)))
+  :hints (("Goal" :in-theory (e/d (fn-sf-make fn-sf-records fn-sf-successes)
+                                  (fn-sf-make-fields fn-sl-snoc-of-fn-sl-of))
+           :use (fn-sf-shape-fields-canonical
+                 (:instance fn-sl-snoc-of-fn-sl-of
+                            (x (fn-sl-list (fn-sf-successes-field s)))
+                            (r pair))))))
+
+; A transition that keeps both histories: the logic is fn-sf-make of the
+; lists, the execution copies the two fields (fn-sf-make-fields-is-make).
+(defmacro fn-sf-remake (phase frontier frontier-candidate record-candidate
+                              completion barriers s)
+  `(mbe :logic (fn-sf-make ,phase ,frontier ,frontier-candidate
+                           (fn-sf-records ,s) ,record-candidate ,completion
+                           (fn-sf-successes ,s) ,barriers)
+        :exec (fn-sf-make-fields ,phase ,frontier ,frontier-candidate
+                                 (fn-sf-records-field ,s) ,record-candidate
+                                 ,completion (fn-sf-successes-field ,s)
+                                 ,barriers)))
+
+; The history's length and its last record, in O(1), for every value
+; (fn-sl-count-is-len, fn-sl-last-is-last): the prepare's candidate test and
+; the owner's refresh read them (books/owner-prepare-carried.lisp,
+; books/owner.lisp fn-own-refresh).
+(defun fn-sf-records-count (s)
+  (declare (xargs :guard t))
+  (mbe :logic (len (fn-sf-records s))
+       :exec (fn-sl-count (fn-sf-records-field s))))
+(defun fn-sf-records-last (s)
+  (declare (xargs :guard t))
+  (mbe :logic (car (last (fn-sf-records s)))
+       :exec (fn-sl-last (fn-sf-records-field s))))
+; The record at position I, counted from the oldest, read from the newest
+; end (fn-sl-nth-is-nth): the commit's finish reads the record it just
+; appended in O(1) (books/owner-commit-carried.lisp).
+(defun fn-sf-records-nth (i s)
+  (declare (xargs :guard (natp i)))
+  (mbe :logic (nth i (fn-sf-records s))
+       :exec (fn-sl-nth i (fn-sf-records-field s))))
+
 ; Nothing below opens the record: goals stay in accessor vocabulary.
 (in-theory (disable (:d fn-sf-shapep) (:d fn-sf-phase) (:d fn-sf-frontier)
                     (:d fn-sf-frontier-candidate) (:d fn-sf-records)
                     (:d fn-sf-record-candidate) (:d fn-sf-completion)
-                    (:d fn-sf-successes) (:d fn-sf-barriers) (:d fn-sf-make)))
+                    (:d fn-sf-successes) (:d fn-sf-barriers) (:d fn-sf-make)
+                    (:d fn-sf-records-field) (:d fn-sf-successes-field)
+                    (:d fn-sf-make-fields)
+                    fn-sf-records-count fn-sf-records-last
+                    fn-sf-records-nth))
 
 ; Shape facts type reasoning used to supply while the record opened
 ; (docs/proof-style.md s1), exported as forward-chaining rules only.
@@ -173,7 +305,7 @@
                                     :trigger-terms ((fn-sf-successes x)))
                  (:forward-chaining :corollary (implies (fn-sf-barriers x) (consp x))
                                     :trigger-terms ((fn-sf-barriers x))))
-  :hints (("Goal" :in-theory (enable fn-sf-phase fn-sf-frontier fn-sf-frontier-candidate fn-sf-records fn-sf-record-candidate fn-sf-completion fn-sf-successes fn-sf-barriers))))
+  :hints (("Goal" :in-theory (enable fn-sf-phase fn-sf-frontier fn-sf-frontier-candidate fn-sf-records fn-sf-record-candidate fn-sf-completion fn-sf-successes fn-sf-barriers fn-sf-records-field fn-sf-successes-field fn-sl-list fn-sl-snoc-formp))))
 
 ; Every phase below is either observable between host calls or transient
 ; inside one composed host call (:aborting, :completed).  The kernel has no
@@ -347,9 +479,7 @@
   (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :ready)
            (< (fn-sf-frontier s) *fn-sf-max-uint*))
-      (fn-sf-make :frontier-staged (fn-sf-frontier s)
-                  (1+ (fn-sf-frontier s)) (fn-sf-records s) nil nil
-                  (fn-sf-successes s) (fn-sf-barriers s))
+      (fn-sf-remake :frontier-staged (fn-sf-frontier s) (1+ (fn-sf-frontier s)) nil nil (fn-sf-barriers s) s)
     s))
 
 ; :known-fail is reported by the host for a staging failure before any
@@ -359,12 +489,9 @@
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :frontier-staged))
       (cond
        ((equal result :ok)
-        (fn-sf-make :frontier-data-durable (fn-sf-frontier s)
-                    (fn-sf-frontier-candidate s) (fn-sf-records s) nil nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
+        (fn-sf-remake :frontier-data-durable (fn-sf-frontier s) (fn-sf-frontier-candidate s) nil nil (fn-sf-barriers s) s))
        ((equal result :known-fail)
-        (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
+        (fn-sf-remake :ready (fn-sf-frontier s) nil nil nil (fn-sf-barriers s) s))
        (t s))
     s))
 
@@ -374,13 +501,9 @@
            (equal (fn-sf-phase s) :frontier-data-durable))
       (cond
        ((equal result :ok)
-        (fn-sf-make :frontier-attempted (fn-sf-frontier s)
-                    (fn-sf-frontier-candidate s) (fn-sf-records s) nil nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
+        (fn-sf-remake :frontier-attempted (fn-sf-frontier s) (fn-sf-frontier-candidate s) nil nil (fn-sf-barriers s) s))
        ((equal result :error)
-        (fn-sf-make :fenced-frontier (fn-sf-frontier s)
-                    (fn-sf-frontier-candidate s) (fn-sf-records s) nil nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
+        (fn-sf-remake :fenced-frontier (fn-sf-frontier s) (fn-sf-frontier-candidate s) nil nil (fn-sf-barriers s) s))
        (t s))
     s))
 
@@ -389,13 +512,9 @@
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :frontier-attempted))
       (cond
        ((equal result :ok)
-        (fn-sf-make :reserved (fn-sf-frontier-candidate s) nil
-                    (fn-sf-records s) nil nil (fn-sf-successes s)
-                    (fn-sf-barriers s)))
+        (fn-sf-remake :reserved (fn-sf-frontier-candidate s) nil nil nil (fn-sf-barriers s) s))
        ((equal result :error)
-        (fn-sf-make :fenced-frontier (fn-sf-frontier s)
-                    (fn-sf-frontier-candidate s) (fn-sf-records s) nil nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
+        (fn-sf-remake :fenced-frontier (fn-sf-frontier s) (fn-sf-frontier-candidate s) nil nil (fn-sf-barriers s) s))
        (t s))
     s))
 
@@ -425,8 +544,7 @@
   (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :reserved)
            (natp txid) (equal (1+ txid) (fn-sf-frontier s)))
-      (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
-                  (fn-sf-successes s) (fn-sf-barriers s))
+      (fn-sf-remake :ready (fn-sf-frontier s) nil nil nil (fn-sf-barriers s) s)
     s))
 
 (defun fn-sf-prepare-record (s record groups capacity)
@@ -436,8 +554,7 @@
            (fn-sf-history-recoverablep
             groups capacity (append (fn-sf-records s) (list record))
             (fn-sf-frontier s)))
-      (fn-sf-make :record-staged (fn-sf-frontier s) nil (fn-sf-records s)
-                  record nil (fn-sf-successes s) (fn-sf-barriers s))
+      (fn-sf-remake :record-staged (fn-sf-frontier s) nil record nil (fn-sf-barriers s) s)
     s))
 
 ; :known-fail here is reached only inside fn-sn-known-abort
@@ -448,13 +565,9 @@
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :record-staged))
       (cond
        ((equal result :ok)
-        (fn-sf-make :record-data-durable (fn-sf-frontier s) nil
-                    (fn-sf-records s) (fn-sf-record-candidate s) nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
+        (fn-sf-remake :record-data-durable (fn-sf-frontier s) nil (fn-sf-record-candidate s) nil (fn-sf-barriers s) s))
        ((equal result :known-fail)
-        (fn-sf-make :aborting (fn-sf-frontier s) nil (fn-sf-records s)
-                    (fn-sf-record-candidate s) nil (fn-sf-successes s)
-                    (fn-sf-barriers s)))
+        (fn-sf-remake :aborting (fn-sf-frontier s) nil (fn-sf-record-candidate s) nil (fn-sf-barriers s) s))
        (t s))
     s))
 
@@ -465,9 +578,7 @@
   (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sf-statep s) :exec t)
            (equal (fn-sf-phase s) :record-data-durable))
-      (fn-sf-make :aborting (fn-sf-frontier s) nil (fn-sf-records s)
-                  (fn-sf-record-candidate s) nil (fn-sf-successes s)
-                  (fn-sf-barriers s))
+      (fn-sf-remake :aborting (fn-sf-frontier s) nil (fn-sf-record-candidate s) nil (fn-sf-barriers s) s)
     s))
 
 ; The composed known abort derives sequence and txid from the bound candidate
@@ -478,8 +589,7 @@
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :aborting)
            (equal (cons sequence txid)
                   (fn-sf-record-pair (fn-sf-record-candidate s))))
-      (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
-                  (fn-sf-successes s) (fn-sf-barriers s))
+      (fn-sf-remake :ready (fn-sf-frontier s) nil nil nil (fn-sf-barriers s) s)
     s))
 
 (defun fn-sf-record-link-result (s result)
@@ -488,13 +598,9 @@
            (equal (fn-sf-phase s) :record-data-durable))
       (cond
        ((equal result :ok)
-        (fn-sf-make :record-attempted (fn-sf-frontier s) nil
-                    (fn-sf-records s) (fn-sf-record-candidate s) nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
+        (fn-sf-remake :record-attempted (fn-sf-frontier s) nil (fn-sf-record-candidate s) nil (fn-sf-barriers s) s))
        ((equal result :error)
-        (fn-sf-make :fenced-record (fn-sf-frontier s) nil
-                    (fn-sf-records s) (fn-sf-record-candidate s) nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
+        (fn-sf-remake :fenced-record (fn-sf-frontier s) nil (fn-sf-record-candidate s) nil (fn-sf-barriers s) s))
        (t s))
     s))
 
@@ -504,14 +610,13 @@
       (cond
        ((equal result :ok)
         (let ((record (fn-sf-record-candidate s)))
-          (fn-sf-make :completing (fn-sf-frontier s) nil
+          (mbe :logic (fn-sf-make :completing (fn-sf-frontier s) nil
                       (append (fn-sf-records s) (list record)) nil
                       (fn-sf-record-pair record) (fn-sf-successes s)
-                      (fn-sf-barriers s))))
+                      (fn-sf-barriers s))
+               :exec (fn-sf-make-fields :completing (fn-sf-frontier s) nil (fn-sl-snoc (fn-sf-records-field s) record) nil (fn-sf-record-pair record) (fn-sf-successes-field s) (fn-sf-barriers s)))))
        ((equal result :error)
-        (fn-sf-make :fenced-record (fn-sf-frontier s) nil
-                    (fn-sf-records s) (fn-sf-record-candidate s) nil
-                    (fn-sf-successes s) (fn-sf-barriers s)))
+        (fn-sf-remake :fenced-record (fn-sf-frontier s) nil (fn-sf-record-candidate s) nil (fn-sf-barriers s) s))
        (t s))
     s))
 
@@ -525,18 +630,17 @@
   (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :completing)
            (equal (cons sequence txid) (fn-sf-completion s)))
-      (fn-sf-make :completed (fn-sf-frontier s) nil (fn-sf-records s) nil
-                  (fn-sf-completion s) (fn-sf-successes s)
-                  (fn-sf-barriers s))
+      (fn-sf-remake :completed (fn-sf-frontier s) nil nil (fn-sf-completion s) (fn-sf-barriers s) s)
     s))
 
 (defun fn-sf-emit-success (s sequence txid)
   (declare (xargs :guard (fn-sf-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :completed)
            (equal (cons sequence txid) (fn-sf-completion s)))
-      (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
+      (mbe :logic (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
                   (append (fn-sf-successes s) (list (cons sequence txid)))
                   (fn-sf-barriers s))
+               :exec (fn-sf-make-fields :ready (fn-sf-frontier s) nil (fn-sf-records-field s) nil nil (fn-sl-snoc (fn-sf-successes-field s) (cons sequence txid)) (fn-sf-barriers s)))
     s))
 
 ; unreachable-in-composition: fn-sn-finish performs fn-sf-core-completion and
@@ -549,8 +653,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (and (fn-sf-statep s) (equal (fn-sf-phase s) :completed)
            (equal (cons sequence txid) (fn-sf-completion s)))
-      (fn-sf-make :ready (fn-sf-frontier s) nil (fn-sf-records s) nil nil
-                  (fn-sf-successes s) (fn-sf-barriers s))
+      (fn-sf-remake :ready (fn-sf-frontier s) nil nil nil (fn-sf-barriers s) s)
     s))
 
 ; -----------------------------------------------------------------------------
@@ -819,10 +922,8 @@
   (if (and (mbe :logic (fn-sf-statep s) :exec t) (equal (fn-sf-phase s) :replaying))
       (if (fn-sf-history-recoverablep groups capacity (fn-sf-records s)
                                       (fn-sf-frontier s))
-          (fn-sf-make :recovering (fn-sf-frontier s) nil (fn-sf-records s)
-                      nil nil (fn-sf-successes s) 0)
-        (fn-sf-make :fault (fn-sf-frontier s) nil (fn-sf-records s)
-                    nil nil (fn-sf-successes s) 0))
+          (fn-sf-remake :recovering (fn-sf-frontier s) nil nil nil 0 s)
+        (fn-sf-remake :fault (fn-sf-frontier s) nil nil nil 0 s))
     s))
 
 (defun fn-sf-recovery-barrier (s result)
@@ -831,14 +932,12 @@
       (cond
        ((equal result :ok)
         (let ((next (1+ (fn-sf-barriers s))))
-          (fn-sf-make
+          (fn-sf-remake
            (if (equal next *fn-sf-recovery-barrier-count*) :ready :recovering)
-           (fn-sf-frontier s) nil (fn-sf-records s) nil nil
-           (fn-sf-successes s) next)))
+           (fn-sf-frontier s) nil nil nil next s)))
        ((equal result :uncertain)
-        (fn-sf-make :fenced-recovery (fn-sf-frontier s) nil
-                    (fn-sf-records s) nil nil (fn-sf-successes s)
-                    (fn-sf-barriers s)))
+        (fn-sf-remake :fenced-recovery (fn-sf-frontier s) nil
+                      nil nil (fn-sf-barriers s) s))
        (t s))
     s))
 
@@ -927,6 +1026,10 @@
   (implies (fn-sf-statep x) (and (consp x) (true-listp x)))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (enable fn-sf-statep fn-sf-shapep))))
+; The held fields' shape is part of the state (the O(1) readers' guard).
+(defthm fn-sf-statep-implies-shapep
+  (implies (fn-sf-statep x) (fn-sf-shapep x))
+  :hints (("Goal" :in-theory (enable fn-sf-statep))))
 (verify-guards fn-sf-initial-state)
 (verify-guards fn-sf-start-frontier)
 (verify-guards fn-sf-frontier-file-result)

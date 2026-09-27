@@ -331,14 +331,21 @@
 
 ; The held row a history event carries: a held row itself (a natural head,
 ; its sequence) or the interned article of a retained accepted-statement
-; event; nil for every other event.  Dispatch on the head only: the
-; recognizer `fn-held-p' is never run here (executing it hashes every
-; statement of a row's delta, fn-lace-p -> fn-stmt-p -> fn-digest).
+; event; nil for every other event.  Dispatch on the head and the held
+; shape (fifteen positions) only: the recognizer `fn-held-p' is never run
+; here (executing it hashes every statement of a row's delta, fn-lace-p ->
+; fn-stmt-p -> fn-digest).  The shape test is what tells a row from a
+; standalone verdict event (fn-stxe-p, books/stx-evidence-records.lisp: a
+; natural head too, eight positions, its Message-ID at the row's Message-ID
+; position), which the Store accepts into its history
+; (fn-sn-prepare-identity, recovery) and which is not an article's row.  On
+; every Store event the dispatch is exactly the Message-ID index's
+; (books/control-visible-indexed.lisp fn-ctl-row-okp-of-store-event).
 (defun fn-ctl-event-row (e)
   (declare (xargs :guard t))
   (cond ((atom e) nil)
         ((eq (car e) :hstxa) (fn-hstxa-held e))
-        ((natp (car e)) e)
+        ((and (natp (car e)) (fn-held-shapep e)) e)
         (t nil)))
 
 ; The first history event whose row carries MSGID, nil when none does.
