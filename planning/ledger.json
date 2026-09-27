@@ -898,6 +898,8 @@
     "tests/acl2/catalog-number-index-tests",
     "books/sha256-buffer",
     "tests/acl2/sha256-buffer-tests",
+    "books/sha256-range",
+    "tests/acl2/sha256-range-tests",
     "books/owner-advance-carried",
     "books/owner-intent-carried",
     "books/owner-commit-ocl",
@@ -1273,26 +1275,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1308,
-    "books_in_root_closure": 1306,
-    "roots": 1269,
-    "theorems": 19466,
-    "functions": 13467,
-    "assert_events": 19268,
+    "books": 1310,
+    "books_in_root_closure": 1308,
+    "roots": 1271,
+    "theorems": 19556,
+    "functions": 13503,
+    "assert_events": 19282,
     "must_fails": 2193,
     "prover_refusals": 0,
-    "encapsulates": 97,
+    "encapsulates": 101,
     "guards": {
-      "verified": 2489,
-      "declared-off": 1631,
-      "default-guarded": 7497,
+      "verified": 2497,
+      "declared-off": 1638,
+      "default-guarded": 7518,
       "default-unguarded": 1850
     },
-    "suspect_theorems": 1014,
-    "export_hygiene_warnings": 237,
+    "suspect_theorems": 1016,
+    "export_hygiene_warnings": 241,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 231,
-    "include_hygiene_warnings": 1789,
+    "include_hygiene_warnings": 1791,
     "host_names_warnings": 1402,
     "hand_written_record_warnings": 18
   },
@@ -10041,12 +10043,12 @@
       "book": "books/frame-digest-buffer.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 3,
-      "functions": 2,
+      "theorems": 5,
+      "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
-        "default-guarded": 1,
+        "declared-off": 2,
+        "default-guarded": 2,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -10055,10 +10057,11 @@
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 1,
+      "encapsulates": 2,
       "includes": [
         "crypto-attach",
-        "sha256-buffer"
+        "sha256-buffer",
+        "sha256-range"
       ],
       "system_includes": [],
       "suspects": [
@@ -15677,30 +15680,34 @@
       "book": "books/payload-arena-paged.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 105,
-      "functions": 25,
+      "theorems": 128,
+      "functions": 28,
       "guards": {
-        "verified": 6,
+        "verified": 7,
         "declared-off": 6,
-        "default-guarded": 9,
+        "default-guarded": 11,
         "default-unguarded": 4
       },
-      "verify_guards_events": 6,
+      "verify_guards_events": 7,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 1,
       "defmacros": 0,
-      "encapsulates": 1,
+      "encapsulates": 4,
       "includes": [
         "payload-arena-bytes"
       ],
       "system_includes": [
         "arithmetic-5/top",
+        "arithmetic-5/top",
+        "arithmetic-5/top",
+        "arithmetic-5/top",
         "arithmetic/top"
       ],
       "suspects": [
-        "fn-arp-okp-forward"
+        "fn-arp-okp-forward",
+        "fn-arp-put-is-put-kj"
       ],
       "read_error": null
     },
@@ -17570,15 +17577,15 @@
       "book": "books/replay-identity-index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 53,
-      "functions": 30,
+      "theorems": 64,
+      "functions": 37,
       "guards": {
-        "verified": 14,
+        "verified": 19,
         "declared-off": 0,
-        "default-guarded": 16,
+        "default-guarded": 18,
         "default-unguarded": 0
       },
-      "verify_guards_events": 14,
+      "verify_guards_events": 19,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -18333,6 +18340,38 @@
       ],
       "suspects": [
         "fn-shb-digest-list-is-digest"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/sha256-range.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 41,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 8,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "octets-stobj",
+        "sha256-stobj"
+      ],
+      "system_includes": [
+        "arithmetic/top",
+        "ihs/quotient-remainder-lemmas"
+      ],
+      "suspects": [
+        "fn-shr-digest-list-is-digest"
       ],
       "read_error": null
     },
@@ -19134,12 +19173,12 @@
       "book": "books/store-checkpoint-reader.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 61,
-      "functions": 16,
+      "theorems": 65,
+      "functions": 17,
       "guards": {
         "verified": 0,
         "declared-off": 2,
-        "default-guarded": 14,
+        "default-guarded": 15,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -19150,6 +19189,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "frame-digest-buffer",
         "store-checkpoint-buffer"
       ],
       "system_includes": [
@@ -20124,15 +20164,15 @@
       "book": "books/store-log-stream.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 36,
-      "functions": 18,
+      "theorems": 44,
+      "functions": 21,
       "guards": {
-        "verified": 0,
+        "verified": 2,
         "declared-off": 2,
-        "default-guarded": 16,
+        "default-guarded": 17,
         "default-unguarded": 0
       },
-      "verify_guards_events": 0,
+      "verify_guards_events": 2,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -25695,11 +25735,10 @@
       "encapsulates": 0,
       "includes": [
         "../../books/bp-node-rotation-due",
-        "bp-node-counterexamples-tests"
+        "bp-node-counterexamples-tests",
+        "must-fail-checked"
       ],
-      "system_includes": [
-        "std/testing/must-fail"
-      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -33755,19 +33794,19 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 41,
-      "functions": 7,
+      "functions": 12,
       "guards": {
         "verified": 0,
-        "declared-off": 2,
-        "default-guarded": 1,
+        "declared-off": 6,
+        "default-guarded": 2,
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 3,
+      "assert_events": 5,
       "must_fails": 20,
       "prover_refusals": 0,
       "defconsts": 20,
-      "defmacros": 16,
+      "defmacros": 17,
       "encapsulates": 0,
       "includes": [
         "../../books/payload-arena",
@@ -34881,10 +34920,10 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 12,
+      "assert_events": 18,
       "must_fails": 6,
       "prover_refusals": 0,
-      "defconsts": 29,
+      "defconsts": 33,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -35416,6 +35455,32 @@
       "includes": [
         "../../books/crypto-attach",
         "../../books/sha256-buffer"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/sha256-range-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 5,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-checkpoint-reader"
       ],
       "system_includes": [],
       "suspects": [],
@@ -36793,15 +36858,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 16,
+      "functions": 17,
       "guards": {
         "verified": 0,
-        "declared-off": 12,
+        "declared-off": 13,
         "default-guarded": 4,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 8,
+      "assert_events": 10,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 0,
@@ -38949,6 +39014,15 @@
       "line": 504,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-arp-okp"
+      ]
+    },
+    {
+      "theorem": "fn-arp-put-is-put-kj",
+      "book": "books/payload-arena-paged.lisp",
+      "line": 976,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
+        "reflexive-conclusion: a conjunct is (equal X X)"
       ]
     },
     {
@@ -41365,7 +41439,7 @@
     {
       "theorem": "fn-lgw-slice-is-take",
       "book": "books/store-log-stream.lisp",
-      "line": 217,
+      "line": 317,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-lg-slice and the conclusion is that arm's value"
       ]
@@ -41373,7 +41447,7 @@
     {
       "theorem": "fn-lgw-slice-when-not-declared",
       "book": "books/store-log-stream.lisp",
-      "line": 222,
+      "line": 322,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-lg-slice and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-lg-slice and the conclusion is that branch's value"
@@ -44820,7 +44894,7 @@
     {
       "theorem": "fn-sha256-of-prefixed-buffer-any-is-sha256",
       "book": "books/frame-digest-buffer.lisp",
-      "line": 54,
+      "line": 55,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -44829,6 +44903,15 @@
       "theorem": "fn-shb-digest-list-is-digest",
       "book": "books/sha256-buffer.lisp",
       "line": 434,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-shr-digest-list-is-digest",
+      "book": "books/sha256-range.lisp",
+      "line": 453,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)",
         "reflexive-conclusion: a conjunct is (equal X X)"
@@ -48130,6 +48213,18 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-rii-sf-statep-carried-is-sf-statep",
+        "book": "books/replay-identity-index.lisp",
+        "line": 1154,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rii-sn-statep-carried-is-sn-statep",
+        "book": "books/replay-identity-index.lisp",
+        "line": 1182,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-scat-article-idp-is-msgid-idp",
         "book": "books/served-catalog.lisp",
         "line": 512,
@@ -48307,6 +48402,18 @@
         "theorem": "fn-lgc-rotate-refines",
         "book": "books/store-log-kernel-concrete.lisp",
         "line": 580,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lgw-unpack-is-unpack",
+        "book": "books/store-log-stream.lisp",
+        "line": 187,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lgw-unpack-exactp-is-exactp",
+        "book": "books/store-log-stream.lisp",
+        "line": 192,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -53764,6 +53871,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/store-checkpoint-reader.lisp",
+        "line": 57,
+        "include": "frame-digest-buffer",
+        "included": "books/frame-digest-buffer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/store-checkpoint-tables.lisp",
         "line": 62,
         "include": "store-checkpoint-open",
@@ -56036,6 +56150,13 @@
         "line": 13,
         "include": "../../books/bp-node-rotation-due",
         "included": "books/bp-node-rotation-due.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/bp-node-rotation-due-tests.lisp",
+        "line": 14,
+        "include": "must-fail-checked",
+        "included": "tests/acl2/must-fail-checked.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -68789,189 +68910,189 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2328,
+        "line": 2330,
         "name": "fnn-%statfs",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2361,
+        "line": 2363,
         "name": "plusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2361,
+        "line": 2363,
         "name": "fill-pointer",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2784,
+        "line": 2786,
         "name": "functionp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3400,
+        "line": 3402,
         "name": "search",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4483,
+        "line": 4485,
         "name": "find-if",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4507,
+        "line": 4509,
         "name": "find-class",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4507,
+        "line": 4509,
         "name": "slot-value",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4771,
+        "line": 4773,
         "name": "char/=",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4780,
+        "line": 4782,
         "name": "read-line",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4877,
+        "line": 4879,
         "name": "*error-output*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5195,
+        "line": 5197,
         "name": "file-namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5243,
+        "line": 5245,
         "name": "some",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5243,
+        "line": 5245,
         "name": "fnn-extent-register",
         "source": "host/native/extent.lisp",
         "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5270,
+        "line": 5272,
         "name": "nconc",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5338,
+        "line": 5340,
         "name": "*standard-input*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5754,
+        "line": 5756,
         "name": "*fn-lg-genesis*",
         "source": "books/store-log.lisp",
         "reason": "defined in books/store-log.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6179,
+        "line": 6200,
         "name": "nth-value",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6232,
+        "line": 6253,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6395,
+        "line": 6416,
         "name": "open",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6395,
+        "line": 6416,
         "name": "logandc2",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6429,
+        "line": 6450,
         "name": "fnn-tls-send-all",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6429,
+        "line": 6450,
         "name": "fnn-tls-read",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6429,
+        "line": 6450,
         "name": "fnn-tls-open-client-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6429,
+        "line": 6450,
         "name": "fnn-tls-connect",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6429,
+        "line": 6450,
         "name": "fnn-tls-close-channel",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6429,
+        "line": 6450,
         "name": "fnn-tls-close-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -72821,42 +72942,42 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 591,
+        "line": 603,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 696,
+        "line": 707,
         "name": "atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 735,
+        "line": 746,
         "name": "reverse",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 950,
+        "line": 961,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 1112,
+        "line": 1123,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 1536,
+        "line": 1547,
         "name": "explode-atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
