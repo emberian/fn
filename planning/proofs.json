@@ -10411,6 +10411,72 @@
         "fn-ocfg-at-reader-view-reads-the-reader-view",
         "fn-ocfg-with-view-keeps-the-rest"
       ]
+    },
+    {
+      "id": "PRF-290",
+      "title": "The owner's prepares decide the served groups themselves, and the carried owner invariant holds across every owner prepare the host calls, the deferred publications' order and the known abort",
+      "statement": "books/owner-prepare-served.lisp and books/owner-prepare-served-ocl.lisp. The host's article prepare is fn-psrv-prepare (host/owner-host.lisp fn-owner-prepare-buffer and fn-owner-prepare): fn-prc-sbud-prepare when fn-psrv-event-servedp of the live configuration and the record, the owner unchanged otherwise (fn-psrv-prepare-refuses-unserved, fn-psrv-prepare-when-served); the refusal word is fn-psrv-refusal-kind (:refused for an unserved group). The host makes no served test. fn-psrv-event-servedp equals the configured replay's fn-cpr-event-servedp at the configuration (fn-psrv-event-servedp-is-cpr-event-servedp). KEYSTONES, each with fn-lgoc-invariantp (PRF-286) as the only hypothesis unless named: fn-psrv-prepare-preserves-invariant (plus fn-prc-carryp and the two carried index premises of PRF-191/PRF-242; no served hypothesis), fn-psrv-prepare-identity-preserves-invariant (fn-owner-prepare-identity: fn-psrv-prepare-identity tests a signed composite's article groups), fn-psrv-prepare-retention-preserves-invariant and fn-psrv-prepare-consumer-preserves-invariant ((:store (:prepare-retention/consumer E)) through fn-ocfg-step), fn-psrv-prepare-topic-preserves-invariant (fn-owner-prepare-topic: fn-psrv-prepare-topic, which is (:store (:prepare-topic E)) where the consumer projection admits E, fn-psrv-prepare-topic-is-ocfg-step-when-admitted), fn-psrv-known-abort-preserves-invariant ((:store (:known-abort))), fn-psrv-rcon-io-preserves-invariant (every record file observation of any staged record) and fn-psrv-log-order-preserves-invariant (fn-olr-ocfg-order whatever is staged). Store level: fn-psrv-deferred-stage-preserves (a deferred candidate staged at the reservation keeps fn-cst-relation and fn-cstp-carriedp), fn-psrv-deferred-record-dir-preserves-relation, fn-psrv-known-abort-preserves. The bridge to the budget gate: fn-psrv-prepare-is-sbud-prepare-when-served (under the carry's recognizer and PRF-191/PRF-242's carried view premises, the host's prepare of a served record is fn-sbud-prepare). The standalone Store's POST (host/store-node-host.lisp fn-store-sn-prepare) calls fn-psrv-store-prepare-next (books/store-prepare-served.lisp), which stages only a record whose groups the configuration serves (fn-psrv-store-prepare-next-cases).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-286",
+        "PRF-285",
+        "PRF-191",
+        "PRF-242",
+        "PRF-144"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-prepare-served.lisp",
+        "books/owner-prepare-served-ocl.lisp",
+        "books/store-prepare-served.lisp",
+        "tests/acl2/owner-prepare-served-tests.lisp",
+        "planning/evidence/prepare-served-2026-09-27.md"
+      ],
+      "progress_note": "Lane prepare-served (Opus 5.5, 2026-09-27; PKT-827 (d)). The retired-group witness (control-quanta-2's *lgt-r-prepared*) is refused by the host's prepare with the invariant kept. Teeth for the identity, consumer and topic prepares are the theorems' corrupted-state witnesses only (no configured-owner fixture carries those events); the index and carry premises of the article prepare keep PRF-191's and post-alloc-2's teeth.",
+      "events": [
+        "fn-psrv-prepare-preserves-invariant",
+        "fn-psrv-prepare-identity-preserves-invariant",
+        "fn-psrv-prepare-retention-preserves-invariant",
+        "fn-psrv-prepare-consumer-preserves-invariant",
+        "fn-psrv-prepare-topic-preserves-invariant",
+        "fn-psrv-prepare-topic-is-ocfg-step-when-admitted",
+        "fn-psrv-known-abort-preserves-invariant",
+        "fn-psrv-rcon-io-preserves-invariant",
+        "fn-psrv-log-order-preserves-invariant",
+        "fn-psrv-deferred-record-dir-preserves-relation",
+        "fn-psrv-known-abort-preserves",
+        "fn-psrv-prepare-is-sbud-prepare-when-served",
+        "fn-psrv-store-prepare-next-cases"
+      ]
+    },
+    {
+      "id": "PRF-291",
+      "title": "A configuration request refused before its record is written is un-staged by ACL2, so the configuration lock does not outlive the refusal",
+      "statement": "books/owner-prepare-served.lisp fn-psrv-unstage, called by host/owner-host.lisp fn-owner-reconfigure-unstage from host/native/admin.lisp fnn-owner-live-reconfigure-locked on the three pre-publication refusals (fn-oclc-live-authorizep refused, fnn-admin-authorize's candidate open refused, the immutable publisher's :refused); an uncertain publication or a fault keeps the stage and fences. KEYSTONE fn-psrv-unstage-preserves-invariant (hypothesis fn-lgoc-invariantp): the result carries the invariant, has the same owner (so the same Store and durable state: a process death on either side of the un-stage recovers the same history), configuration and pins, and nothing staged. Before it, a refused request left the record staged and fn-ocfg-step refused every :begin and :take (every POST) until a restart.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-286",
+        "PRF-287"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-prepare-served.lisp",
+        "books/owner-prepare-served-ocl.lisp",
+        "tests/acl2/owner-prepare-served-tests.lisp",
+        "planning/evidence/prepare-served-2026-09-27.md"
+      ],
+      "progress_note": "Lane prepare-served (Opus 5.5, 2026-09-27). Teeth: control-quanta-2's *lgt-stale* refuses :begin before and admits it after.",
+      "events": [
+        "fn-psrv-unstage-preserves-invariant"
+      ]
     }
   ]
 }
