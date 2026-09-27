@@ -1278,7 +1278,18 @@ ACL2_BOOKS ?= books/defrecord \
 	books/proto/adt-lib \
 	books/proto/adt \
 	books/proto/adt-consumer-position \
-	tests/acl2/proto-adt-tests
+	tests/acl2/proto-adt-tests \
+	books/proto/adt-key-lib \
+	books/proto/adt-nest-lib \
+	books/proto/adt-keyed \
+	books/proto/adt-bytes-lib \
+	books/proto/adt-bytes \
+	books/proto/adt-compact-lib \
+	books/proto/adt-config-policy \
+	books/proto/adt-config-groups \
+	books/proto/adt-topic-accepted-type \
+	books/proto/adt-topic-accepted \
+	tests/acl2/proto-adt-2-tests
 
 .PHONY: site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
