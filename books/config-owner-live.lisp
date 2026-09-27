@@ -18,6 +18,23 @@
 ; recognizers; nothing below needs them.
 (local (in-theory (disable fn-nntp-response-text-true-listp fn-cp-idp-true-listp
                            fn-nntp-article-idp-is-consp fn-cp-id-length-bound)))
+; Rules and vocabulary of the resolution, wire, control, feed and index
+; clusters that are tried or opened here and never apply (accumulated
+; persistence over the book, 2026-09-27): consp and car conclusions with
+; free-variable hypotheses, and the group and message-id index builders.
+(local (in-theory (disable fn-snrt-new-success-is-actual-matching-durable-completion
+                           fn-wire-next-loop-event-needs-input
+                           fn-wire-next-event-needs-input
+                           fn-ctl-authorize-execute-is-nonempty
+                           fn-cpr-config-firstp-has-config
+                           fn-own-feed-never-offers-a-loop
+                           fn-digest-octetsp-implies-octet-listp
+                           fn-prov-structured-is-not-a-string
+                           fn-ctl-refresh-visible-is-visible fn-gidx-refresh-is-build
+                           fn-gidx-put fn-gidx-put-all fn-gidx-build-entries
+                           fn-gnix-add fn-gnix-set fn-midx-branch-put
+                           fn-ctl-visible-articles fn-ctl-withdrawal-effect
+                           fn-sf-record-has-pairp)))
 
 (defun fn-ocl-owner-with-store (o st)
   (declare (xargs :guard t))
@@ -1609,14 +1626,41 @@
                                     fn-own-set-conns fn-own-enqueue)
                                    (fn-served-step fn-own-conn-boundedp)))))
 
+; fn-own-finish-read ends in fn-own-set-conns or fn-own-enqueue, both an
+; fn-own-make that copies every control field; the two read theorems below
+; cite these instead of opening the served step's result three ways.
+(local
+ (defthm fn-ocl-finish-read-owner-shape
+   (fn-own-shapep (cdr (fn-own-finish-read o conn result)))
+   :hints (("Goal" :in-theory (e/d (fn-own-finish-read fn-own-set-conns
+                                    fn-own-enqueue)
+                                   (fn-own-shapep fn-own-make
+                                    fn-own-conn-boundedp fn-own-replace-conn
+                                    fn-own-remove-conn))))))
+
+(local
+ (defthm fn-ocl-finish-read-keeps-owner-control
+   (let ((next (cdr (fn-own-finish-read o conn result))))
+     (and (equal (fn-own-view next) (fn-own-view o))
+          (equal (fn-own-next-id next) (fn-own-next-id o))
+          (equal (fn-own-max-conns next) (fn-own-max-conns o))
+          (equal (fn-own-pending next) (fn-own-pending o))
+          (equal (fn-own-ledger next) (fn-own-ledger o))
+          (equal (fn-own-clock next) (fn-own-clock o))
+          (equal (fn-own-facts next) (fn-own-facts o))
+          (equal (fn-own-config next) (fn-own-config o))))
+   :hints (("Goal" :in-theory (e/d (fn-own-finish-read fn-own-set-conns
+                                    fn-own-enqueue)
+                                   (fn-own-make
+                                    fn-own-conn-boundedp fn-own-replace-conn
+                                    fn-own-remove-conn))))))
+
 (defthm fn-ocl-own-read-preserves-owner-shape
   (implies (fn-own-shapep o)
            (fn-own-shapep (cdr (fn-own-read o id octets))))
-  :hints (("Goal" :in-theory (e/d (fn-own-read fn-own-finish-read
-                                    fn-own-set-conns fn-own-enqueue
-                                    fn-own-shapep fn-own-make)
-                                   (fn-ctl-withdrawal-effect fn-ctl-visible-articles
-                            fn-served-step fn-own-conn-boundedp)))))
+  :hints (("Goal" :in-theory (e/d (fn-own-read fn-own-read-full)
+                                  (fn-own-finish-read fn-own-shapep
+                                   fn-served-step fn-own-conn-boundedp)))))
 
 (defthm fn-ocl-own-read-keeps-owner-control
   (let ((next (cdr (fn-own-read o id octets))))
@@ -1628,9 +1672,9 @@
          (equal (fn-own-clock next) (fn-own-clock o))
          (equal (fn-own-facts next) (fn-own-facts o))
          (equal (fn-own-config next) (fn-own-config o))))
-  :hints (("Goal" :in-theory (e/d (fn-own-read fn-own-finish-read
-                                    fn-own-set-conns fn-own-enqueue)
-                                   (fn-served-step fn-own-conn-boundedp)))))
+  :hints (("Goal" :in-theory (e/d (fn-own-read fn-own-read-full)
+                                  (fn-own-finish-read
+                                   fn-served-step fn-own-conn-boundedp)))))
 
 (defthm fn-ocl-own-read-does-not-increase-connections
   (<= (len (fn-own-conns (cdr (fn-own-read o id octets))))
