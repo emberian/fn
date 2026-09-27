@@ -19,7 +19,7 @@
 ;;;
 ;;;   input   the octets the next step is handed: the read in hand, or the
 ;;;           suffix a step left (at most one read of ACL2's size,
-;;;           fn-cbud-step-read-octets: 64 KiB, 512 under a step rate);
+;;;           fn-cbud-step-read-octets: 4 KiB, 512 under a step rate);
 ;;;   out     the one window of the reply being written, its offset and
 ;;;           deadline, and the render plan's continuation (HST-023: the step
 ;;;           answers a plan; fnn-owner-render-next renders the next window,

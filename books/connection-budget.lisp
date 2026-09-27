@@ -18,7 +18,7 @@
 ;     read    what the connection holds of its input: the retained suffix
 ;             (at most one read less one octet) and the read in hand, two
 ;             reads of the largest size a step may read
-;             (fn-cbud-step-read-octets: 64 KiB), 2 x 65,536;
+;             (fn-cbud-step-read-octets: 4 KiB), 2 x 4,096;
 ;     reply   the one reply a connection holds while the socket drains it
 ;             (the loop never steps a connection with a reply queued): the
 ;             STATED WORKLOAD's largest, an article of the profile's A
@@ -92,14 +92,21 @@
 ; the rate's unit of work and reads at most *fn-cbud-step-octets* (512, RFC
 ; 3977 section 3.1's command line), so the rate keeps its meaning in octets
 ; per second.  Without one (a loopback listener, or a row set to 0), a step
-; reads at most *fn-cbud-read-quantum* (64 KiB): the work of one step is
-; still bounded by a constant, and a 10 MiB POST is 160 owner steps, not
-; 20,480.  The host reads the answer under the owner mutex after every step
+; reads at most *fn-cbud-read-quantum* (4 KiB): a 10 MiB POST is 2,560 owner
+; steps, not 20,480.  The quantum is the measured trade (planning/evidence/
+; input-loop-2-2026-09-27.md section 5): a step holds the owner mutex for
+; about 100 ns per octet it reads, so another connection's command waits
+; for up to one step -- during a 1 MiB upload a DATE client's median was
+; 0.44 ms at 512, 0.62 ms at 4 KiB, 1.10 ms at 16 KiB and 3.84 ms at 64 KiB
+; -- while the allocation per POSTed octet is 592.5, 571.1, 568.8 and 568.0
+; octets: 4 KiB takes 97% of the per-step saving for a fifth of a
+; millisecond.  Raise it when the per-octet cost of a step falls (the body
+; out of the parser's lists: item 2 of that record).  The host reads the answer under the owner mutex after every step
 ; (host/owner-host.lisp fn-owner-read-octets; host/native/owner.lisp
 ; fnn-owner-refresh-read-octets) and reads into one buffer per I/O loop, so
 ; a read allocates only the octets it returns.
 (defconst *fn-cbud-step-octets* 512)
-(defconst *fn-cbud-read-quantum* 65536)
+(defconst *fn-cbud-read-quantum* 4096)
 
 (defun fn-cbud-step-read-octets (lim)
   (declare (xargs :guard t))
