@@ -9740,6 +9740,43 @@
           "name": "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
         }
       ]
+    },
+    {
+      "id": "PRF-266",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-next-open-only-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-commit-event-completes-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-complete-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-sync-only-when-none-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-next-opens-only-behind-a-sync"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-start-next-only-behind-a-sync"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-next-is-ocs-next"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-in-flight-admits-only-inspect-and-commit"
+        }
+      ]
     }
   ]
 }
