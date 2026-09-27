@@ -11192,6 +11192,15 @@
           "name": "fn-nntp-response-validp-is-framed-section"
         }
       ]
+    },
+    {
+      "id": "PRF-333",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-record-p-of-make-is-without-payload"
+        }
+      ]
     }
   ]
 }
