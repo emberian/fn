@@ -51,17 +51,17 @@
         (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize (awt-line ,text)))
         (fn-nntp-keywordp (car (fn-nntp-tokenize (awt-line ,text))) "XREDEEM")))
 (defmacro awt-483-concl (as text)
-  `(and (equal (fn-post-result-effects (awt-step ,as (awt-cmd ,text) fn-arena))
+  `(and (equal (fn-post-result-effects (in-arena-awt-step *sr-arena* ,as (awt-cmd ,text)))
                (awt-single *awt-483*))
-        (equal (fn-post-result-session (awt-step ,as (awt-cmd ,text) fn-arena)) ,as)
-        (null (fn-post-result-submission (awt-step ,as (awt-cmd ,text) fn-arena)))))
-(assert-event (and (awt-483-hyps *awt-prot* *awt-redeem*)
-                   (awt-483-concl *awt-prot* *awt-redeem*)))
-; H5 removed: over TLS the same line answers 381.
+        (equal (fn-post-result-session (in-arena-awt-step *sr-arena* ,as (awt-cmd ,text))) ,as)
+        (null (fn-post-result-submission (in-arena-awt-step *sr-arena* ,as (awt-cmd ,text))))))
 (include-book "arena-lift")
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
 (bpr-lift awt-step 2)
+(assert-event (and (awt-483-hyps *awt-prot* *awt-redeem*)
+                   (awt-483-concl *awt-prot* *awt-redeem*)))
+; H5 removed: over TLS the same line answers 381.
 (assert-event (and (fn-auth-session-tlsp *awt-prot-tls*)
                    (not (awt-483-concl *awt-prot-tls* *awt-redeem*))
                    (equal (fn-post-result-effects

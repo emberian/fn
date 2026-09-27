@@ -43,11 +43,6 @@
 
 ; Without (fn-ocl-relation oc): the carried read is not the reference read for
 ; an arbitrary configuration.
-(include-book "arena-lift")
-;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
-(defconst *sr-arena* nil)
-(bpr-lift fn-ocfg-read-tls-prefix 3)
-(bpr-lift fn-scar-ocfg-read-span 5)
 (must-fail
  (defthm sst-read-span-needs-ocl-relation
    (implies (and (fn-scar-view-indexedp (fn-ocfg-owner oc))

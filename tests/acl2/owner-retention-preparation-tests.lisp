@@ -27,7 +27,6 @@
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
 (bpr-lift fn-ocfg-step 2)
-(bpr-lift orpr-conclusionp 3)
 (bpr-lift orpr-run 2)
 (defconst *orpr-reserved*
   (in-arena-orpr-run *sr-arena* *orpr-0* '((:store (:io :start-frontier nil))
@@ -59,6 +58,7 @@
                        :record-staged)
                 (equal (fn-sf-record-candidate (fn-sn-files prepared))
                        event))))))
+(bpr-lift orpr-conclusionp 3)
 
 ; A related, reserved owner stages the actual ACL2-built undertaking.
 (assert-event (fn-ocfg-statep *orpr-reserved*))

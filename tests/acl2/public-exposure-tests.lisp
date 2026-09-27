@@ -170,12 +170,8 @@
 (assert-event (fn-auth-config-requiredp *pxt-pinned-open*))
 (defconst *pxt-s-pinned-open* (aut-session *pxt-pinned-open* nil))
 ; Witness: GROUP and POST are 480 and nothing is submitted.
-(include-book "arena-lift")
-;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
-(defconst *sr-arena* nil)
-(bpr-lift aut-reply 2)
-(bpr-lift aut-step 2)
-(bpr-lift fn-auth-step 6)
+;; The arena and its lifts (in-arena-aut-reply, -aut-step, -fn-auth-step) are
+;; nntp-auth-teeth-tests': *sr-arena* holds *aut-payload* at handle 0.
 (assert-event (equal (in-arena-aut-reply *sr-arena* *pxt-s-pinned-open* "GROUP fn.letters")
                      (aut-single *aut-480*)))
 (assert-event (equal (in-arena-aut-reply *sr-arena* *pxt-s-pinned-open* "POST") (aut-single *aut-480*)))

@@ -125,11 +125,6 @@
 (bpr-lift fn-ocfg-run 2)
 (bpr-lift fn-own-run 2)
 (bpr-lift fn-own-step 2)
-(bpr-lift osi-after-post 4)
-(bpr-lift osi-p3-pin-conclusion 5)
-(bpr-lift osi-p3-read-conclusion 6)
-(bpr-lift osi-p3-step-conclusion 6)
-(bpr-lift osi-transit-completing 1)
 (defconst *osi-completing*
   (in-arena-fn-own-run *sr-arena* *own-taken* (osi-drop-last (own-post-events (osi-sub-record 2 2 *osi-sub*)))))
 (defconst *osi-completing-prior*
@@ -240,6 +235,7 @@
               (osi-drop-last
                (own-post-events
                 (osi-record-of 2 2 *osi-transit-sub* payload))) fn-arena))
+(bpr-lift osi-transit-completing 1)
 
 ; Witness: the Store completes the record carrying the staged octets.  The
 ; finish is :durable, the reply is the 240 expression, and the keystone's
@@ -333,6 +329,7 @@
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((oc1 (fn-ocfg-run oc events fn-arena)))
     (fn-ocfg-with-owner oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word)))))
+(bpr-lift osi-after-post 4)
 
 ; The chunk read answers as before (the pre-NNT-042 conclusion; now the
 ; not-yet-proved chunk form for chunks framing no selection).
@@ -343,6 +340,7 @@
                 (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc id octets fn-arena)))
          (equal (fn-own-tls-result-consumed (fn-ocfg-read-tls-prefix oc2 id octets fn-arena))
                 (fn-own-tls-result-consumed (fn-ocfg-read-tls-prefix oc id octets fn-arena))))))
+(bpr-lift osi-p3-read-conclusion 6)
 
 ; The theorem's conclusion: the connection record and the clock survive.
 (defun osi-p3-pin-conclusion (oc events sub-id word id fn-arena)
@@ -351,6 +349,7 @@
     (and (equal (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))
                 (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
          (equal (fn-own-clock (fn-ocfg-owner oc2)) (fn-own-clock (fn-ocfg-owner oc))))))
+(bpr-lift osi-p3-pin-conclusion 5)
 
 ; The corollary's conclusion: one framed event answers as before.
 (defun osi-p3-step-conclusion (oc events sub-id word id event fn-arena)
@@ -358,6 +357,7 @@
   (let ((oc2 (osi-after-post oc events sub-id word fn-arena)))
     (equal (car (fn-ocfg-read-step oc2 id event fn-arena))
            (car (fn-ocfg-read-step oc id event fn-arena)))))
+(bpr-lift osi-p3-step-conclusion 6)
 
 (defun osi-reader-p (oc id)
   (not (fn-peer-session-cfg

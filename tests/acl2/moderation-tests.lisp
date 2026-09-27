@@ -365,8 +365,6 @@
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
 (bpr-lift fn-nntp-post-step 6)
-(bpr-lift mdt-list 2)
-(bpr-lift mdt-post 2)
 (defconst *mdt-awaiting*
   (fn-post-result-session
    (in-arena-fn-nntp-post-step *sr-arena* *mdt-s0* *mdt-archive* *mdt-cfg* *mdt-obs* *mdt-obs* (list :command (mdt-o "POST")))))
@@ -374,6 +372,7 @@
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-nntp-post-step *mdt-awaiting* *mdt-archive* cfg *mdt-obs* *mdt-obs*
                      (list :article (list source)) fn-arena))
+(bpr-lift mdt-post 2)
 (defun mdt-reply (text)
   (list (fn-nntp-reply-effect (fn-nntp-crlf (fn-nntp-string-octets text)))))
 (assert-event (equal (fn-post-result-submission (in-arena-mdt-post *sr-arena* *mdt-held* *mdt-cfg*))
@@ -393,6 +392,7 @@
   (fn-post-result-effects
    (fn-nntp-post-step *mdt-s0* *mdt-archive* cfg *mdt-obs* *mdt-obs*
                       (list :command (mdt-o words)) fn-arena)))
+(bpr-lift mdt-list 2)
 (defun mdt-listing (lines)
   (fn-nntp-result-effects
    (fn-nntp-multi nil "215 list of active newsgroups follows" lines)))
@@ -424,15 +424,14 @@
 ; 7. PKT-658: the queue is readable only by its group's moderators
 ; (books/nntp-auth.lisp fn-auth-view-hides-the-queue-from-a-non-moderator).
 
-(defun mdt-payload (id)
-  (append (mdt-o "Message-ID: ") (mdt-o id)
-          '(13 10) (mdt-o "Subject: mdt") '(13 10 13 10 88 13 10)))
+; An article's payload is its arena handle (books/acceptance.lisp): the
+; envelope is handle 0 and the public article handle 1.  The checks below
+; read views and never an article's bytes, so no arena holds them.
 (defconst *mdt-env*
-  (fn-make-article "<fn-moderate.h@example.invalid>"
-                   (mdt-payload "<fn-moderate.h@example.invalid>")
+  (fn-make-article "<fn-moderate.h@example.invalid>" 0
                    '("fn.queue") (list (cons "fn.queue" 1)) t 841000000))
 (defconst *mdt-pub*
-  (fn-make-article "<p@example.invalid>" (mdt-payload "<p@example.invalid>")
+  (fn-make-article "<p@example.invalid>" 1
                    '("fn.test") (list (cons "fn.test" 1)) t 841000000))
 (defconst *mdt-state*
   (fn-make-state '("fn.test" "fn.mod" "fn.queue")

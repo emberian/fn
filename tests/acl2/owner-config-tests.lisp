@@ -100,7 +100,6 @@
 (bpr-lift fn-ocfg-step 2)
 (bpr-lift fn-own-run 2)
 (bpr-lift fn-own-step 2)
-(bpr-lift ocfg-l-live-admin 2)
 (defconst *ocfg-t-idle-read* (cdr (in-arena-fn-ocfg-read *sr-arena* *ocfg-t-3* 0 nil)))
 (assert-event (fn-own-find-conn 0
                             (fn-own-conns (fn-ocfg-owner *ocfg-t-idle-read*))))
@@ -356,12 +355,13 @@
 (defun ocfg-l-live-admin (oc deltas fn-arena)
   ; The host's three events around one private connection, returning the
   ; state at the instant before durability and the published state.
-  (declare (xargs :stobjs fn-arena :verify-guards nil :mode :program))
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let* ((cid (fn-own-next-id (fn-ocfg-owner oc)))
          (opened (cdr (fn-ocfg-open oc nil)))
          (staged (fn-ocfg-step (fn-ocfg-step opened (list :reconfigure cid deltas) fn-arena)
                                (list :close cid) fn-arena)))
     (list opened staged (fn-ocfg-step staged (list :complete) fn-arena))))
+(bpr-lift ocfg-l-live-admin 2)
 
 (defconst *ocfg-l-deltas1*
   (list (fn-cfg-create-group "fn.dtn" *fn-cfg-default-policy-id*)))
@@ -607,7 +607,7 @@
   (append (fn-nntp-string-octets "AUTHINFO USER reader") '(13 10)
           (fn-nntp-string-octets "AUTHINFO PASS correct-horse") '(13 10)))
 (defmacro ocfg-r-bound ()
-  '(cdr (fn-ocfg-read *ocfg-r-1* 0 *ocfg-r-login*)))
+  '(cdr (in-arena-fn-ocfg-read *sr-arena* *ocfg-r-1* 0 *ocfg-r-login*)))
 (assert-event (equal (fn-auth-session-peer (ocfg-r-session (ocfg-r-bound) 0))
                      "principal-peer"))
 (assert-event (equal (fn-auth-session-subject (ocfg-r-session (ocfg-r-bound) 0))

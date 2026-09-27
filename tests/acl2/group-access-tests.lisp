@@ -15,14 +15,17 @@
           '(13 10) (fn-nntp-string-octets "Subject: gat") '(13 10 13 10 88 13 10)))
 
 (defconst *gat-groups* '("fn.public" "fn.private.x"))
+; An article's payload is its arena handle (books/acceptance.lisp): p, s and c
+; are handles 0, 1 and 2, and *sr-arena* below seals their payloads in that
+; order.
 (defconst *gat-p*
-  (fn-make-article "<p@example.invalid>" (gat-payload "<p@example.invalid>")
+  (fn-make-article "<p@example.invalid>" 0
                    '("fn.public") (list (cons "fn.public" 1)) t 841000000))
 (defconst *gat-s*
-  (fn-make-article "<s@example.invalid>" (gat-payload "<s@example.invalid>")
+  (fn-make-article "<s@example.invalid>" 1
                    '("fn.private.x") (list (cons "fn.private.x" 1)) t 841000000))
 (defconst *gat-c*
-  (fn-make-article "<c@example.invalid>" (gat-payload "<c@example.invalid>")
+  (fn-make-article "<c@example.invalid>" 2
                    '("fn.public" "fn.private.x")
                    (list (cons "fn.public" 2) (cons "fn.private.x" 2)) t 841000000))
 (defconst *gat-articles* (list *gat-c* *gat-s* *gat-p*))
@@ -94,13 +97,14 @@
 (defconst *gat-as-bob* (gat-logged-in "bob" (make-list 32 :initial-element 8)))
 (defconst *gat-as-alice* (gat-logged-in "alice" (make-list 32 :initial-element 7)))
 (include-book "arena-lift")
-;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
-(defconst *sr-arena* nil)
+;; The payloads the arena holds at handles 0, 1, 2: *gat-p*'s, *gat-s*'s, *gat-c*'s.
+(defconst *sr-arena*
+  (list (gat-payload "<p@example.invalid>") (gat-payload "<s@example.invalid>")
+        (gat-payload "<c@example.invalid>")))
 (bpr-lift fn-auth-step-pinned 8)
 (bpr-lift gat-after 2)
 (bpr-lift gat-login 1)
 (bpr-lift gat-reply 2)
-(bpr-lift gat-text 2)
 (assert-event (equal (in-arena-gat-login *sr-arena* "bob") *gat-as-bob*))
 (assert-event (equal (in-arena-gat-login *sr-arena* "alice") *gat-as-alice*))
 (assert-event (fn-auth-session-subject *gat-as-bob*))
@@ -121,6 +125,7 @@
   (if (fn-octet-listp x) (fn-record-octets-string x) nil))
 (defun gat-text (as text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil)) (gat-string (gat-lines (gat-reply as text fn-arena))))
+(bpr-lift gat-text 2)
 
 (defun gat-prefixp (p s)
   (and (stringp s) (<= (length p) (length s)) (equal (subseq s 0 (length p)) p)))

@@ -182,8 +182,6 @@
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
 (bpr-lift fn-nntp-post-step 6)
-(bpr-lift gst-list 2)
-(bpr-lift gst-post 2)
 (defconst *gst-awaiting*
   (fn-post-result-session
    (in-arena-fn-nntp-post-step *sr-arena* *gst-s0* *gst-archive* *gst-cfg* *gst-obs* *gst-obs* (list :command (gst-o "POST")))))
@@ -192,6 +190,7 @@
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-nntp-post-step *gst-awaiting* *gst-archive* cfg *gst-obs* *gst-obs*
                      (list :article (list source)) fn-arena))
+(bpr-lift gst-post 2)
 (defconst *gst-read-only-line*
   "441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)")
 (defun gst-reply (text)
@@ -212,6 +211,7 @@
   (fn-post-result-effects
    (fn-nntp-post-step *gst-s0* *gst-archive* cfg *gst-obs* *gst-obs*
                       (list :command (gst-o words)) fn-arena)))
+(bpr-lift gst-list 2)
 (defun gst-listing (lines)
   (fn-nntp-result-effects
    (fn-nntp-multi nil "215 list of active newsgroups follows" lines)))

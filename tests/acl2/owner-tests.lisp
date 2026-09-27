@@ -26,7 +26,7 @@
 ; kernel's invariant as their guard.
 
 (assert-event (equal (symbol-class 'fn-own-read (w state)) :common-lisp-compliant))
-(assert-event (equal (guard 'fn-own-read nil (w state)) *t*))
+(assert-event (equal (guard 'fn-own-read nil (w state)) '(fn-arena-p fn-arena)))
 (assert-event (equal (symbol-class 'fn-own-open (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-own-open nil (w state)) *t*))
 (assert-event (equal (symbol-class 'fn-own-advance (w state)) :common-lisp-compliant))
@@ -46,7 +46,9 @@
 (assert-event (equal (guard 'fn-own-complete nil (w state))
                      '(fn-sn-statep (fn-own-store o))))
 (assert-event (equal (guard 'fn-own-step nil (w state))
-                     '(fn-sn-statep (fn-own-store o))))
+                     '(if (fn-arena-p fn-arena)
+                          (fn-sn-statep (fn-own-store o))
+                        'nil)))
 
 ; -----------------------------------------------------------------------------
 ; A post as the owner sees it: the same event sequence tools/run_owner.py
@@ -118,7 +120,6 @@
 (bpr-lift fn-own-step 2)
 (bpr-lift fn-served-dispatch 2)
 (bpr-lift fn-served-step 2)
-(bpr-lift own-large-served-submission 0)
 (defconst *own-b* (in-arena-fn-own-step *sr-arena* *own-a* '(:open)))
 (defconst *own-begun* (in-arena-fn-own-step *sr-arena* *own-b* '(:begin 1)))
 (assert-event (equal (fn-own-pending *own-begun*) 1))
@@ -751,6 +752,7 @@
          (offered (cdr (fn-own-read opened id *own-post-command* fn-arena))))
     (fn-served-submission
      (car (fn-own-read offered id *own-large-article* fn-arena)))))
+(bpr-lift own-large-served-submission 0)
 (assert-event (fn-inj-injectedp (in-arena-own-large-served-submission *sr-arena*)))
 (defconst *own-article*
   (append (fn-nntp-string-octets "From: poster@example.invalid") '(13 10)

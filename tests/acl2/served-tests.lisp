@@ -20,14 +20,16 @@
 ; specs/node-functionality.md section 3.1: the served entry point is total in
 ; the executable sense, not only in the logic.  Guard `t` verified means raw
 ; Common Lisp evaluation on ANY arguments computes the value without a guard
-; violation.  The whole-closure version of this check is packet P2.
+; violation.  The step and the run also take the payload arena, whose stobj
+; recognizer is their whole guard.  The whole-closure version of this check
+; is packet P2.
 
 (assert-event (equal (symbol-class 'fn-served-step (w state))
                      :common-lisp-compliant))
-(assert-event (equal (guard 'fn-served-step nil (w state)) *t*))
+(assert-event (equal (guard 'fn-served-step nil (w state)) '(fn-arena-p fn-arena)))
 (assert-event (equal (symbol-class 'fn-served-run (w state))
                      :common-lisp-compliant))
-(assert-event (equal (guard 'fn-served-run nil (w state)) *t*))
+(assert-event (equal (guard 'fn-served-run nil (w state)) '(fn-arena-p fn-arena)))
 (assert-event (equal (symbol-class 'fn-served-open (w state))
                      :common-lisp-compliant))
 (assert-event (equal (symbol-class 'fn-served-reply-octets (w state))
@@ -110,13 +112,12 @@
 
 ; A reachable, non-degenerate run: three commands, three replies, a close.
 (include-book "arena-lift")
-;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
-(defconst *sr-arena* nil)
+;; The payloads the arena holds at handles 0, 1, ...: the archive's one
+;; article, handle 0 (*fn-t-served-payload-handle*), is *fn-t-served-payload*.
+(defconst *sr-arena* (list *fn-t-served-payload*))
 (bpr-lift fn-served-run 2)
 (bpr-lift fn-served-step 2)
 (bpr-lift fn-served-step-nntp-steps 2)
-(bpr-lift fn-t-served-line 2)
-(bpr-lift fn-t-served-login 1)
 (assert-event (equal (fn-served-reply-octets
                       (fn-served-result-effects
                        (in-arena-fn-served-step *sr-arena* *fn-t-served-conn* *fn-t-served-command*)))
@@ -707,6 +708,7 @@
 (defun fn-t-served-line (conn text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-served-step conn (append (fn-nntp-string-octets text) '(13 10)) fn-arena))
+(bpr-lift fn-t-served-line 2)
 (defun fn-t-served-said (result)
   (take 4 (fn-served-reply-octets (fn-served-result-effects result))))
 (defun fn-t-served-login (conn fn-arena)
@@ -714,6 +716,7 @@
   (fn-t-served-line
    (fn-served-result-conn (fn-t-served-line conn "AUTHINFO USER reader" fn-arena))
    "AUTHINFO PASS correct-horse" fn-arena))
+(bpr-lift fn-t-served-login 1)
 
 ; 281 authentication accepted, on a connection the owner resolved to a peer.
 (assert-event (equal (fn-t-served-said (in-arena-fn-t-served-login *sr-arena* *fn-t-served-peer*))

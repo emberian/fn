@@ -31,7 +31,7 @@
 ; lane's comparison with the live node would miss, and the carried advance
 ; compares with the node the session already carries.
 (defun acar-t-ocfg-run (oc events fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil :mode :program))
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp events)
       (acar-t-ocfg-run (fn-ocfg-step oc (car events) fn-arena) (cdr events) fn-arena)
     oc))

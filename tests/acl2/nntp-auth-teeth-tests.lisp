@@ -142,19 +142,9 @@
 ; with no index.  A delegated STAT on an accepted article separates them
 ; when that pin is stale, so the handled-command premise does real work.
 (include-book "arena-lift")
-;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
-(defconst *sr-arena* nil)
-(bpr-lift aut-after 2)
-(bpr-lift aut-delegated 2)
-(bpr-lift aut-dispatch 2)
-(bpr-lift aut-dispatch-octets 2)
-(bpr-lift aut-pinned 2)
-(bpr-lift aut-pinned-after 2)
-(bpr-lift aut-pinned-octets 2)
-(bpr-lift aut-pinned-reply 2)
-(bpr-lift aut-reply 2)
-(bpr-lift aut-role-after 2)
-(bpr-lift aut-role-reply 2)
+;; The payloads the arena holds at handles 0, 1, ...: *aut-archive*'s one
+;; article is handle 0 (*aut-handle*), its payload *aut-payload*.
+(defconst *sr-arena* (list *aut-payload*))
 (bpr-lift aut-step 2)
 (bpr-lift aut-step-pinned 3)
 (bpr-lift fn-auth-step 6)
@@ -177,9 +167,11 @@
 (defun aut-reply (as text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-effects (aut-step as text fn-arena)))
+(bpr-lift aut-reply 2)
 (defun aut-after (as text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-session (aut-step as text fn-arena)))
+(bpr-lift aut-after 2)
 
 ; The expected replies, assembled from the RFC's table with their own CRLFs.
 (defun aut-single (text)
@@ -194,7 +186,7 @@
 ; evaluation applies and the real SHA-256 runs.
 (defconst *aut-after-user* (in-arena-aut-after *sr-arena* *aut-s-req* "AUTHINFO USER reader"))
 (defmacro aut-authed ()
-  '(aut-after *aut-after-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-after *sr-arena* *aut-after-user* "AUTHINFO PASS correct-horse"))
 (assert-event (equal (fn-auth-session-subject (aut-authed)) *aut-principal*))
 (assert-event (fn-auth-sessionp (aut-authed)))
 
@@ -597,7 +589,7 @@
 ; G3 dropped: an authenticated connection is 502 (section 2.3.1 note [2]),
 ; never 483 and never 480.
 (defmacro aut-prot-authed ()
-  '(aut-after *aut-prot-after-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-after *sr-arena* *aut-prot-after-user* "AUTHINFO PASS correct-horse"))
 (assert-event (fn-auth-session-subject (aut-prot-authed)))
 (assert-event (equal (in-arena-aut-reply *sr-arena* (aut-prot-authed) "AUTHINFO USER reader")
                      (aut-single "502 already authenticated")))
@@ -1414,9 +1406,11 @@
 (defun aut-role-after (as text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-session (aut-role-step as text fn-arena)))
+(bpr-lift aut-role-after 2)
 (defun aut-role-reply (as text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-effects (aut-role-step as text fn-arena)))
+(bpr-lift aut-role-reply 2)
 
 (defconst *aut-r-one* (aut-reader *aut-cfg-one* *aut-role-policy* nil))
 (defconst *aut-r-two* (aut-reader *aut-cfg-two* *aut-role-policy* nil))
@@ -1434,13 +1428,13 @@
 ; After PASS: macros, because the accepting branch runs the SHA-256
 ; attachment, which a `defconst' may not call.
 (defmacro aut-bound ()
-  '(aut-role-after *aut-r-one-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-role-after *sr-arena* *aut-r-one-user* "AUTHINFO PASS correct-horse"))
 (defmacro aut-dup-authed ()
-  '(aut-role-after *aut-r-two-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-role-after *sr-arena* *aut-r-two-user* "AUTHINFO PASS correct-horse"))
 (defmacro aut-none-authed ()
-  '(aut-role-after *aut-r-none-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-role-after *sr-arena* *aut-r-none-user* "AUTHINFO PASS correct-horse"))
 (defmacro aut-guest-authed ()
-  '(aut-role-after *aut-r-guest-user* "AUTHINFO PASS guest-pass"))
+  '(in-arena-aut-role-after *sr-arena* *aut-r-guest-user* "AUTHINFO PASS guest-pass"))
 
 ; The table the repair is for.  `fn-cfgp' asks only that the peers slot be a
 ; row list, and a (:set-peer name rows) delta is admitted when its rows are
@@ -1487,7 +1481,7 @@
 (defconst *aut-r-shadow-user*
   (in-arena-aut-role-after *sr-arena* (aut-reader *aut-cfg-shadow* *aut-role-policy* nil) "AUTHINFO USER reader"))
 (defmacro aut-shadow-authed ()
-  '(aut-role-after *aut-r-shadow-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-role-after *sr-arena* *aut-r-shadow-user* "AUTHINFO PASS correct-horse"))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE 8: fn-auth-step-binds-a-peer-role-only-by-a-principal-login
@@ -1520,7 +1514,7 @@
         (equal (fn-auth-session-subject
                 (fn-post-result-session
                  (fn-auth-step as archive config observation injection
-                               wire-event)))
+                               wire-event fn-arena)))
                (fn-auth-cred-principal
                 (fn-auth-find-cred (fn-auth-session-pending as)
                                    (fn-auth-config-creds
@@ -1528,7 +1522,7 @@
         (equal (fn-auth-session-peer
                 (fn-post-result-session
                  (fn-auth-step as archive config observation injection
-                               wire-event)))
+                               wire-event fn-arena)))
                (fn-auth-principal-match
                 (fn-auth-cred-principal
                  (fn-auth-find-cred (fn-auth-session-pending as)
@@ -1538,13 +1532,13 @@
         (fn-auth-principal-rolep
          (fn-post-result-session
           (fn-auth-step as archive config observation injection
-                        wire-event)))))
+                        wire-event fn-arena)))))
 (defconst *aut-k8-hyps*
   '((b1 . (not (fn-auth-session-peer as)))
     (b2 . (fn-auth-session-peer
            (fn-post-result-session
             (fn-auth-step as archive config observation injection
-                          wire-event))))))
+                          wire-event fn-arena))))))
 
 ; The hypothesis list a tooth states, picked by name from a keystone's list,
 ; so every instance below is the keystone's own text with some names left
@@ -1668,12 +1662,12 @@
 (defconst *aut-k9-conclusion*
   '(and (equal (fn-post-result-effects
                 (fn-auth-step as archive config observation injection
-                              (list :command line)))
+                              (list :command line) fn-arena))
                (fn-auth-single as "281 authentication accepted"))
         (equal (fn-auth-session-subject
                 (fn-post-result-session
                  (fn-auth-step as archive config observation injection
-                               (list :command line))))
+                               (list :command line) fn-arena)))
                (fn-auth-cred-principal
                 (fn-auth-find-cred (fn-auth-session-pending as)
                                    (fn-auth-config-creds
@@ -1681,7 +1675,7 @@
         (equal (fn-auth-session-peer
                 (fn-post-result-session
                  (fn-auth-step as archive config observation injection
-                               (list :command line))))
+                               (list :command line) fn-arena)))
                (fn-auth-principal-match
                 (fn-auth-cred-principal
                  (fn-auth-find-cred (fn-auth-session-pending as)
@@ -1806,29 +1800,29 @@
     (s2 . (fn-auth-session-handshakingp
            (fn-post-result-session
             (fn-auth-step as archive config observation injection
-                          wire-event))))
+                          wire-event fn-arena))))
     ; PRF-164: the TLS handshake, not the XREDEEM redemption hold.
     (s3 . (not (fn-auth-redeem-waitp
                 (fn-post-result-session
                  (fn-auth-step as archive config observation injection
-                               wire-event)))))))
+                               wire-event fn-arena)))))))
 (defconst *aut-k10-conclusion*
   '(and (null (fn-auth-session-subject
                (fn-post-result-session
                 (fn-auth-step as archive config observation injection
-                              wire-event))))
+                              wire-event fn-arena))))
         (null (fn-auth-session-pending
                (fn-post-result-session
                 (fn-auth-step as archive config observation injection
-                              wire-event))))
+                              wire-event fn-arena))))
         (not (fn-auth-principal-rolep
               (fn-post-result-session
                (fn-auth-step as archive config observation injection
-                             wire-event))))
+                             wire-event fn-arena))))
         (equal (fn-auth-session-peer
                 (fn-post-result-session
                  (fn-auth-step as archive config observation injection
-                               wire-event)))
+                               wire-event fn-arena)))
                (if (fn-auth-principal-rolep as)
                    nil
                  (fn-auth-session-peer as)))))
@@ -1862,7 +1856,7 @@
 ; a fresh login over TLS binds again.
 (defmacro aut-after-tls ()
   '(fn-post-result-session
-    (fn-auth-step (aut-role-after (aut-bound) "STARTTLS") *aut-node-archive*
+    (in-arena-fn-auth-step *sr-arena* (in-arena-aut-role-after *sr-arena* (aut-bound) "STARTTLS") *aut-node-archive*
                   *aut-config* *aut-obs* *aut-obs* (list :tls-established))))
 (assert-event (equal (fn-auth-session-tlsp (aut-after-tls)) t))
 (assert-event (null (fn-auth-session-peer (aut-after-tls))))
@@ -1905,26 +1899,33 @@
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-auth-step-pinned as *aut-archive* *aut-pin* nil *aut-config* *aut-obs*
                        *aut-obs* (list :command line) fn-arena))
+(bpr-lift aut-pinned-octets 2)
 (defun aut-pinned (as text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (aut-pinned-octets as (fn-nntp-string-octets text) fn-arena))
+(bpr-lift aut-pinned 2)
 (defun aut-pinned-reply (as text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-effects (aut-pinned as text fn-arena)))
+(bpr-lift aut-pinned-reply 2)
 (defun aut-pinned-after (as text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-session (aut-pinned as text fn-arena)))
+(bpr-lift aut-pinned-after 2)
 (defun aut-delegated (as text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-auth-delegate-pinned as *aut-archive* *aut-pin* nil *aut-config*
                            *aut-obs* *aut-obs*
                            (list :command (fn-nntp-string-octets text)) fn-arena))
+(bpr-lift aut-delegated 2)
 (defun aut-dispatch-octets (conn line fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-served-dispatch conn (list :command line) fn-arena))
+(bpr-lift aut-dispatch-octets 2)
 (defun aut-dispatch (conn text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (aut-dispatch-octets conn (fn-nntp-string-octets text) fn-arena))
+(bpr-lift aut-dispatch 2)
 
 (defmacro aut-p1-tooth (name keys alist conclusion keystone)
   `(defthm ,name
@@ -1960,21 +1961,21 @@
   '(and (null (fn-post-result-submission
                (fn-auth-step-pinned as archive index verdicts config
                                     observation injection
-                                    (list :command line))))
+                                    (list :command line) fn-arena)))
         (not (fn-post-offeredp
               (fn-post-result-effects
                (fn-auth-step-pinned as archive index verdicts config
                                     observation injection
-                                    (list :command line)))))
+                                    (list :command line) fn-arena))))
         (equal (fn-post-result-session
                 (fn-auth-step-pinned as archive index verdicts config
                                      observation injection
-                                     (list :command line)))
+                                     (list :command line) fn-arena))
                as)
         (equal (fn-post-result-effects
                 (fn-auth-step-pinned as archive index verdicts config
                                      observation injection
-                                     (list :command line)))
+                                     (list :command line) fn-arena))
                (fn-auth-single as "480 authentication required"))))
 (defmacro aut-k11 (name keys)
   `(aut-p1-tooth ,name ,keys ,*aut-k11-hyps* ,*aut-k11-conclusion*
@@ -2047,18 +2048,18 @@
   '(and (equal (fn-post-result-effects
                 (fn-auth-step-pinned as archive index verdicts config
                                      observation injection
-                                     (list :command line)))
+                                     (list :command line) fn-arena))
                (fn-auth-single
                 as "483 a protected channel is required; use STARTTLS"))
         (equal (fn-post-result-session
                 (fn-auth-step-pinned as archive index verdicts config
                                      observation injection
-                                     (list :command line)))
+                                     (list :command line) fn-arena))
                as)
         (null (fn-post-result-submission
                (fn-auth-step-pinned as archive index verdicts config
                                     observation injection
-                                    (list :command line))))))
+                                    (list :command line) fn-arena)))))
 (defmacro aut-k12 (name keys)
   `(aut-p1-tooth ,name ,keys ,*aut-k12-hyps* ,*aut-k12-conclusion*
                  fn-auth-step-pinned-protected-only-refuses-authinfo-before-tls))
@@ -2151,13 +2152,13 @@
 ; attachment).
 (defmacro aut-conn-authed ()
   '(fn-served-result-conn
-    (aut-dispatch (fn-served-result-conn
-                   (aut-dispatch *aut-conn-req* "AUTHINFO USER reader"))
+    (in-arena-aut-dispatch *sr-arena* (fn-served-result-conn
+                   (in-arena-aut-dispatch *sr-arena* *aut-conn-req* "AUTHINFO USER reader"))
                   "AUTHINFO PASS correct-horse")))
 (defmacro aut-conn-prot-authed ()
   '(fn-served-result-conn
-    (aut-dispatch (fn-served-result-conn
-                   (aut-dispatch *aut-conn-prot-tls* "AUTHINFO USER reader"))
+    (in-arena-aut-dispatch *sr-arena* (fn-served-result-conn
+                   (in-arena-aut-dispatch *sr-arena* *aut-conn-prot-tls* "AUTHINFO USER reader"))
                   "AUTHINFO PASS correct-horse")))
 (assert-event (fn-served-connp (aut-conn-authed)))
 (assert-event (fn-auth-session-subject (fn-served-conn-session (aut-conn-authed))))
@@ -2176,10 +2177,10 @@
     (c7 . (fn-auth-restricted-keywordp (car (fn-nntp-tokenize line))))))
 (defconst *aut-k13-conclusion*
   '(and (equal (fn-served-result-conn
-                (fn-served-dispatch conn (list :command line)))
+                (fn-served-dispatch conn (list :command line) fn-arena))
                conn)
         (equal (fn-served-result-effects
-                (fn-served-dispatch conn (list :command line)))
+                (fn-served-dispatch conn (list :command line) fn-arena))
                (fn-auth-single (fn-served-conn-session conn)
                                "480 authentication required"))))
 (defmacro aut-k13 (name keys)
@@ -2254,10 +2255,10 @@
     (e8 . (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "AUTHINFO"))))
 (defconst *aut-k14-conclusion*
   '(and (equal (fn-served-result-conn
-                (fn-served-dispatch conn (list :command line)))
+                (fn-served-dispatch conn (list :command line) fn-arena))
                conn)
         (equal (fn-served-result-effects
-                (fn-served-dispatch conn (list :command line)))
+                (fn-served-dispatch conn (list :command line) fn-arena))
                (fn-auth-single
                 (fn-served-conn-session conn)
                 "483 a protected channel is required; use STARTTLS"))))
@@ -2332,9 +2333,9 @@
 (defconst *aut-p-reader-user* (in-arena-aut-pinned-after *sr-arena* *aut-p-s* "AUTHINFO USER reader"))
 (defconst *aut-p-guest-user* (in-arena-aut-pinned-after *sr-arena* *aut-p-s* "AUTHINFO USER guest"))
 (defmacro aut-p-reader ()
-  '(aut-pinned-after *aut-p-reader-user* "AUTHINFO PASS correct-horse"))
+  '(in-arena-aut-pinned-after *sr-arena* *aut-p-reader-user* "AUTHINFO PASS correct-horse"))
 (defmacro aut-p-guest ()
-  '(aut-pinned-after *aut-p-guest-user* "AUTHINFO PASS guest-pass"))
+  '(in-arena-aut-pinned-after *sr-arena* *aut-p-guest-user* "AUTHINFO PASS guest-pass"))
 (assert-event (fn-auth-sessionp *aut-p-s*))
 (assert-event (equal (fn-auth-session-subject (aut-p-reader)) *aut-principal*))
 (assert-event (equal (fn-auth-session-subject (aut-p-guest)) *aut-principal-guest*))
@@ -2351,12 +2352,12 @@
     (l2 . (fn-auth-session-subject
            (fn-post-result-session
             (fn-auth-step-pinned as archive index verdicts config
-                                 observation injection wire-event))))))
+                                 observation injection wire-event fn-arena))))))
 (defconst *aut-k15-conclusion*
   '(iff (fn-auth-postingp
          (fn-post-result-session
           (fn-auth-step-pinned as archive index verdicts config
-                               observation injection wire-event)))
+                               observation injection wire-event fn-arena)))
         (fn-auth-cred-postingp
          (fn-auth-find-cred (fn-auth-session-pending as)
                             (fn-auth-config-creds
@@ -2405,18 +2406,18 @@
   '(and (equal (fn-post-result-effects
                 (fn-auth-step-pinned as archive index verdicts config
                                      observation injection
-                                     (list :command line)))
+                                     (list :command line) fn-arena))
                (fn-auth-single
                 as "440 posting not permitted for this principal"))
         (equal (fn-post-result-session
                 (fn-auth-step-pinned as archive index verdicts config
                                      observation injection
-                                     (list :command line)))
+                                     (list :command line) fn-arena))
                as)
         (null (fn-post-result-submission
                (fn-auth-step-pinned as archive index verdicts config
                                     observation injection
-                                    (list :command line))))))
+                                    (list :command line) fn-arena)))))
 (defmacro aut-k16 (name keys)
   `(aut-p1-tooth ,name ,keys ,*aut-k16-hyps* ,*aut-k16-conclusion*
                  fn-auth-step-pinned-post-by-a-principal-without-the-flag-is-440))
@@ -2498,10 +2499,10 @@
     (d5 . (fn-nntp-keywordp (car (fn-nntp-tokenize line)) "POST"))))
 (defconst *aut-k17-conclusion*
   '(equal (fn-auth-step-pinned as archive index verdicts config
-                               observation injection (list :command line))
+                               observation injection (list :command line) fn-arena)
           (fn-auth-delegate-pinned as archive index verdicts config
                                    observation injection
-                                   (list :command line))))
+                                   (list :command line) fn-arena)))
 (defmacro aut-k17 (name keys)
   `(aut-p1-tooth ,name ,keys ,*aut-k17-hyps* ,*aut-k17-conclusion*
                  fn-auth-step-pinned-post-by-a-principal-with-the-flag-is-delegated))

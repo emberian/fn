@@ -50,11 +50,7 @@
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
 (bpr-lift fn-auth-step-pinned 8)
-(bpr-lift nht-all-served 1)
-(bpr-lift nht-conclusion 2)
 (bpr-lift nht-effects 2)
-(bpr-lift nht-retained-but 3)
-(bpr-lift nht-retained-but-under 4)
 (bpr-lift nht-step 2)
 (assert-event
  (equal (in-arena-nht-effects *sr-arena* *nht-s* "HELP")
@@ -85,6 +81,7 @@
            (not (equal (nht-effects *nht-s* (car keywords) fn-arena) *nht-500*))
            (nht-all-served (cdr keywords) fn-arena))
     t))
+(bpr-lift nht-all-served 1)
 (assert-event (in-arena-nht-all-served *sr-arena* *nht-listed*))
 ; The list is the whole table: 28 keywords, and a lower-case spelling is
 ; the same keyword (RFC 3977 section 3.1: case-insensitive).
@@ -121,6 +118,7 @@
          (equal (fn-post-result-session r) as))))
 (defun nht-conclusion (as line fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil)) (nht-conclusion-under as line *nht-config* fn-arena))
+(bpr-lift nht-conclusion 2)
 (assert-event (nht-antecedent *nht-s* *nht-xpath*))
 (assert-event (in-arena-nht-conclusion *sr-arena* *nht-s* *nht-xpath*))
 ; Not degenerate: the conclusion's 500 line is the one the witness wrote.
@@ -143,8 +141,10 @@
        (or (equal k 10) (fn-auth-selection-in-viewp as config))
        (not (nht-antecedent-under as line config))
        (not (nht-conclusion-under as line config fn-arena))))
+(bpr-lift nht-retained-but-under 4)
 (defun nht-retained-but (k as line fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil)) (nht-retained-but-under k as line *nht-config* fn-arena))
+(bpr-lift nht-retained-but 3)
 
 ; (10) the selection is in the session's view (PRF-222): a session that
 ; selected fn.letters and whose rule (the anonymous row, read fn.other)

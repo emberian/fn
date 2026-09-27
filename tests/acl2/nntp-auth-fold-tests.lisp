@@ -67,7 +67,11 @@
           (aft-line "body")
           (aft-line ".")))
 (defmacro aft-served-read ()
-  '(fn-served-step (fn-served-result-conn *aft-open*) *aft-read*))
+  '(in-arena-fn-served-step *sr-arena* (fn-served-result-conn *aft-open*) *aft-read*))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-served-step 2)
 (assert-event
  (equal (fn-auth-session-peer
          (fn-served-conn-session (fn-served-result-conn (aft-served-read))))
@@ -81,10 +85,6 @@
 (assert-event
  (fn-auth-fold-no-local-effectsp
   (fn-served-result-effects (aft-served-read))))
-(include-book "arena-lift")
-;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
-(defconst *sr-arena* nil)
-(bpr-lift fn-served-step 2)
 (assert-event
  (fn-auth-fold-no-local-effectsp
   (fn-served-result-effects
@@ -116,15 +116,15 @@
           (aft-line "body")
           (aft-line ".")))
 (defmacro aft-post-served-read ()
-  '(fn-served-step (fn-served-result-conn *aft-poster-open*)
+  '(in-arena-fn-served-step *sr-arena* (fn-served-result-conn *aft-poster-open*)
                    *aft-post-read*))
 (defmacro aft-poster-login ()
-  '(fn-served-step
+  '(in-arena-fn-served-step *sr-arena*
     (fn-served-result-conn *aft-poster-open*)
     (append (aft-line "AUTHINFO USER reader")
             (aft-line "AUTHINFO PASS correct-horse"))))
 (defmacro aft-poster-offer ()
-  '(fn-served-step (fn-served-result-conn (aft-poster-login))
+  '(in-arena-fn-served-step *sr-arena* (fn-served-result-conn (aft-poster-login))
                    (aft-line "POST")))
 (assert-event
  (equal (fn-wire-state-mode

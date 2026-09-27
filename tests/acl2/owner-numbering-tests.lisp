@@ -53,7 +53,6 @@
 (bpr-lift fn-ocfg-run 2)
 (bpr-lift onb-holder-conclusion 6)
 (bpr-lift onb-raw-holder-conclusion 6)
-(bpr-lift onb-reply 3)
 (bpr-lift onb-watermark-conclusion 5)
 (bpr-lift osi-after-post 4)
 (defconst *onb-after* (in-arena-osi-after-post *sr-arena* *osi-q* *onb-events* 4 :durable))
@@ -103,6 +102,7 @@
 (defun onb-reply (oc id octets fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-served-reply-octets (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc id octets fn-arena))))
+(bpr-lift onb-reply 3)
 (defconst *onb-stat-octets*
   (append *own-group-octets*
           (fn-nntp-string-octets "STAT 3") '(13 10)

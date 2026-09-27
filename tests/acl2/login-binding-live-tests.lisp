@@ -204,7 +204,11 @@
   (list (list :reconfigure 6 (list (fn-lb-binding-delta *lblt-guest* nil)))))
 (assert-event (fn-ocfg-pin-find 5 (fn-ocfg-pins *lblt-oc*)))
 (assert-event (not (fn-ocfg-repins-forp 5 *lblt-events*)))
-(defmacro lblt-run () '(fn-ocfg-run *lblt-oc* *lblt-events*))
+(defmacro lblt-run () '(in-arena-fn-ocfg-run *sr-arena* *lblt-oc* *lblt-events*))
+(include-book "arena-lift")
+;; *sr-arena* (no payload: no byte is read here) is config-owner-live-tests'.
+(bpr-lift fn-ocfg-run 2)
+(bpr-lift fn-ocfg-step 2)
 (assert-event
  (with-guard-checking :none
   (equal (fn-lb-inflight-id (fn-ocfg-owner (lblt-run))) 5)))
@@ -237,11 +241,6 @@
 ; Without the stable pin: an :advance of 5 re-pins it to the live table.
 (defconst *lblt-advance* (list (list :advance 5)))
 (assert-event (fn-ocfg-repins-forp 5 *lblt-advance*))
-(include-book "arena-lift")
-;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
-(defconst *sr-arena* nil)
-(bpr-lift fn-ocfg-run 2)
-(bpr-lift fn-ocfg-step 2)
 (must-fail
  (defthm lblt-pinned-without-no-repin
    (implies (and (fn-ocfg-pin-find id (fn-ocfg-pins oc))
