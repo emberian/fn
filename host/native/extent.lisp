@@ -149,3 +149,39 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
 
 (defun acl2_*1*_acl2::fn-durable-realize-octets (file eoff elen poff plen trailer)
   (fn-durable-realize-octets file eoff elen poff plen trailer))
+
+;;; A-DURABLE-LZ (books/assumptions.lisp; lane compression-extents, PRF-326):
+;;; the realizer of a COMPRESSED extent.  It reads the block C through the
+;;; extent realizer above (the entry's trailer checked by ACL2), runs ACL2's
+;;; decoder over it (fn-lzr-lz-read, books/payload-lz-record.lisp; KEYSTONE
+;;; fn-lzr-lz-read-is-the-lz-value: an :ok answer is the value the
+;;; constraint names) and answers ACL2's octets.  A decode that fails is
+;;; refused by name (arena-extent-lz-decode, a store fault: a recovery
+;;; event) and nothing is answered.  One decoded payload is kept (the last
+;;; one read) so a reader that reads octet by octet (fn-arena$x-get) decodes
+;;; once; the key includes the dictionary's identity (EQ: one shared list
+;;; per dictionary).
+(defvar *fnn-extent-lz-last* nil)             ; (key dict . octets)
+
+(defun fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
+  (let* ((key (list file eoff poff plen n))
+         (hit (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+                (let ((last *fnn-extent-lz-last*))
+                  (and last (equal (first last) key) (eq (second last) dict)
+                       (cddr last))))))
+    (or hit
+        (let* ((c (fn-durable-realize-octets file eoff elen poff plen trailer))
+               (r (fnn-core 'fn-lzr-lz-read dict c n)))
+          (unless (and (consp r) (eq (first r) :ok))
+            (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+              (incf (third *fnn-extent-stats*)))
+            (error 'fnn-extent-fault
+                   :message (format nil "arena-extent-lz-decode: the block at ~a of ~a does not decode to its ~a octets"
+                                    poff (gethash file *fnn-extent-paths*) n)))
+          (let ((octets (second r)))
+            (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+              (setq *fnn-extent-lz-last* (list* key dict octets)))
+            octets)))))
+
+(defun acl2_*1*_acl2::fn-durable-realize-lz (file eoff elen poff plen trailer n dict)
+  (fn-durable-realize-lz file eoff elen poff plen trailer n dict))
