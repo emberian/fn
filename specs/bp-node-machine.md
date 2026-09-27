@@ -1895,10 +1895,17 @@ fresh deploys (D34).
   to it, and encodes to its octets); `fn-bpaj-context-read-resolves-exactly`
   (a context the host published for request octets R resolves, at any read
   whose Store names a record with R's article, to exactly R).
-- Scope: the transit kinds (`:request-transit-intent`,
-  `:request-transit-context`) and the legacy `:request-context` still carry
-  the request ADU and the Store record or projection: a transit request past
-  128 KiB is still refused at FNRJ (open, PKT-646's remainder).
+- Scope, unreachable-in-composition: every NEW request is planned by
+  `fn-bpaj-transit-plan` and journals the TRANSIT kinds
+  (`:request-transit-intent`, `:request-transit-context`), which still carry
+  the request ADU and the stored projection or Store record; the local kinds
+  above are reached only for a journal already holding a local intent, which
+  fresh deploys (D34) never hold. Every BP request past 128 KiB is therefore
+  still refused at FNRJ, `kind=request-transit-intent` (SCN-077 on hbox,
+  2026-09-27). Moving the reference onto the transit kinds needs the
+  receiver's context to hold the request by reference too (its article is
+  not in the Store: the Store holds the relay projection): PKT-646's open
+  remainder.
 
 ## 5. The theorems
 
