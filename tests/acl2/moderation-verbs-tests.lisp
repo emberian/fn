@@ -10,7 +10,7 @@
 (include-book "../../books/moderation-verbs")
 (include-book "../../books/native-admin")
 (include-book "../../books/native-operator")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun mvt-o (s) (declare (xargs :guard (stringp s))) (fn-record-string-octets s))
 (defconst *mvt-crlf* (coerce '(#\Return #\Newline) 'string))
@@ -94,14 +94,14 @@
 ; conclusion's first literal fails.
 (defconst *mvt-carol* (mvt-approve *mvt-raw* nil "carol" "<m1@example.invalid>"))
 (assert-event (equal *mvt-carol* '(:refused :not-a-moderator)))
-(must-fail
+(must-fail-checked
  (assert-event (fn-mvb-moderates-some (mvt-o "carol") '("fn.queue") (list *mvt-entry*))))
 ; Already approved (the post's own Message-ID stored), already rejected (a
 ; node record withdraws the envelope), no such envelope.
 (defconst *mvt-raw-approved* (cons (mvt-art "<m1@example.invalid>" nil '("fn.mod")) *mvt-raw*))
 (assert-event (equal (mvt-approve *mvt-raw-approved* nil "alice" "<m1@example.invalid>")
                      '(:refused :already-approved)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-cev-envelope-state *mvt-env* nil *mvt-raw-approved* nil) "held")))
 (defconst *mvt-node-record*
   (fn-ctl-withdrawal-make *mvt-env-id* "<fn-withdraw.fn-moderate.m1@example.invalid>"
@@ -163,7 +163,7 @@
 (defconst *mvt-delta2* (fn-cfg-withdraw-article *mvt-cause* "<other@example.invalid>" "x"))
 (assert-event (equal (fn-cfg-withdraw-article-reason *mvt-v1* *mvt-delta2*)
                      :withdrawal-duplicate))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-cfg-withdrawal-target
                        (fn-cfg-authorities (fn-cfg-apply-delta *mvt-v1* 1 nil *mvt-delta2*))
                        *mvt-cause*)
@@ -179,7 +179,7 @@
 ; The composed keystone: after the row, the configuration authorizes the
 ; cause for exactly the envelope.
 (assert-event (fn-ctl-node-authorizesp *mvt-cause* *mvt-env-id* (fn-cfg-make 1 *mvt-v1*)))
-(must-fail
+(must-fail-checked
  (assert-event (fn-ctl-node-authorizesp *mvt-cause* *mvt-env-id* (fn-cfg-make 1 *mvt-v0*))))
 
 ; The cause article the node injects: a cancel of the envelope under the
@@ -209,7 +209,7 @@
 (assert-event (equal (fn-ctl-visible-articles *mvt-with-cause* (list *mvt-plan*) nil)
                      (cdr *mvt-with-cause*)))
 ; Hypothesis removal: without the row the unsigned cause declines.
-(must-fail
+(must-fail-checked
  (assert-event (fn-ctl-withdrawalp
                 (fn-ctl-withdrawal-plan *mvt-cause* nil *mvt-env-id* nil
                                         (fn-cfg-make 1 *mvt-v0*)))))
@@ -222,7 +222,7 @@
 
 (assert-event (equal (fn-mvb-withdraw *mvt-raw* *mvt-cfg* *mvt-obs* *mvt-node* nil "<absent@example.invalid>" "x")
                      '(:refused :no-such-article)))
-(must-fail
+(must-fail-checked
  (assert-event (consp (fn-cev-find-article "<absent@example.invalid>" *mvt-raw*))))
 (assert-event (equal (fn-mvb-withdraw *mvt-with-cause* *mvt-cfg* *mvt-obs* *mvt-node* nil *mvt-env-id* "x")
                      '(:refused :already-withdrawn)))

@@ -11,7 +11,7 @@
 ; not a failed proof search).
 (in-package "ACL2")
 (include-book "../../books/nntp-post")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The host runs the loop: both subjects are guard-verified, so the host's
 ; call (fn-owner-chunk-span -> ... -> fn-nntp-article-response and
@@ -81,7 +81,7 @@
 (assert-event
  (not (equal (fn-ag-rev-onto (sli-t-mut-stuff-onto *sli-t-lines* nil) nil)
              (fn-nntp-stuff-lines *sli-t-lines*))))
-(must-fail
+(must-fail-checked
  (defthm sli-t-mut-stuff-is-stuff-lines
    (equal (fn-ag-rev-onto (sli-t-mut-stuff-onto *sli-t-lines* nil) nil)
           (fn-nntp-stuff-lines *sli-t-lines*))))
@@ -100,7 +100,7 @@
 (assert-event
  (not (equal (fn-ag-rev-onto (sli-t-mut-unstuffed-onto *sli-t-lines* nil) nil)
              (fn-nntp-stuff-lines *sli-t-lines*))))
-(must-fail
+(must-fail-checked
  (defthm sli-t-mut-unstuffed-is-stuff-lines
    (equal (fn-ag-rev-onto (sli-t-mut-unstuffed-onto *sli-t-lines* nil) nil)
           (fn-nntp-stuff-lines *sli-t-lines*))))
@@ -140,7 +140,7 @@
 (assert-event
  (not (equal (fn-ag-rev-onto (sli-t-mut-join-onto *sli-t-post-lines* nil) nil)
              (fn-post-body-octets *sli-t-post-lines*))))
-(must-fail
+(must-fail-checked
  (defthm sli-t-mut-join-is-body-octets
    (equal (fn-ag-rev-onto (sli-t-mut-join-onto *sli-t-post-lines* nil) nil)
           (fn-post-body-octets *sli-t-post-lines*))))
@@ -180,7 +180,7 @@
 ; into the count) is not the length.
 (assert-event (not (equal (fn-wire-list-length-onto '(76 76 76) 1)
                           (fn-wire-list-length '(76 76 76)))))
-(must-fail
+(must-fail-checked
  (defthm sli-t-mut-length-from-one
    (equal (fn-wire-list-length-onto '(76 76 76) 1)
           (fn-wire-list-length '(76 76 76)))))

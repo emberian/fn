@@ -2,7 +2,7 @@
 ; scheduler-2-rebase, 2026-09-27; PKT-828).
 (in-package "ACL2")
 (include-book "../../books/owner-reader-view")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; --- fn-ocv-capture: the host's calls, in the committer's order ---------------
 ; A START captures the working view; a START-NEXT adds the next batch's; the
@@ -71,7 +71,7 @@
                    (equal (cadr *orvt-full*) *orvt-ks*)))
 ; Mutation witness (labelled): a take that put the record into INFLIGHT
 ; would change it -- the keystone's first conjunct refuses that shape.
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-lgk-inflight
                        (fn-lgk-make nil nil 0 8 '((1 2)) '((9 9) (3 4)) 0 :appended))
                       (fn-lgk-inflight *orvt-ks*))))

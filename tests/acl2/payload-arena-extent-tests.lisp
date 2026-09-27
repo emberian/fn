@@ -14,7 +14,7 @@
 (in-package "ACL2")
 (include-book "../../books/payload-arena-extent")
 (include-book "../../books/payload-arena")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (and (eq (symbol-class 'fn-arena$x-count (w state)) :common-lisp-compliant)
@@ -95,7 +95,7 @@
 ; Without (< h count): handle h = count is the NEW handle, whose payload is
 ; the durable octets, not the old arena's (absent: nil).
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm paxt-keystone-without-below-count
     (implies (natp h)
              (equal (fn-arena-payload h (fn-arena-seal-extent file eoff elen poff plen trailer
@@ -117,7 +117,7 @@
            :in-theory (e/d (nth) (fn-durable-octets-len)))))
 
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm paxt-keystone-without-natp
     (implies (< h (fn-arena-count fn-arena))
              (equal (fn-arena-payload h (fn-arena-seal-extent file eoff elen poff plen trailer
@@ -186,7 +186,7 @@
            :in-theory (disable (:e fn-arena-reseat-extent) fn-arena-reseat-extent-payload))))
 
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm paxt-reseat-without-below-count
     (implies (and (fn-arena-p fn-arena) (natp h))
              (equal (fn-arena-payload h (fn-arena-reseat-extent h file eoff elen poff plen trailer
@@ -210,14 +210,14 @@
                                fn-arena-reseat-extent-keeps-a-faithful-arena))))
 
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm paxt-faithful-without-faithful
     (implies (and (fn-arena-p fn-arena) (natp h) (< h (fn-arena-count fn-arena)))
              (equal (fn-arena-reseat-extent h file eoff elen poff plen trailer fn-arena)
                     fn-arena))))))
 
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm paxt-faithful-without-below-count
     (implies (and (fn-arena-p fn-arena) (natp h)
                   (equal (fn-durable-octets file poff plen) (fn-arena-payload h fn-arena)))
@@ -225,7 +225,7 @@
                     fn-arena))))))
 
 (local
- (must-fail
+ (must-fail-checked
   (with-prover-step-limit 50000 (defthm paxt-faithful-without-arena-p
     (implies (and (natp h) (< h (fn-arena-count fn-arena))
                   (equal (fn-durable-octets file poff plen) (fn-arena-payload h fn-arena)))

@@ -1,7 +1,7 @@
 ; Witnesses and teeth for books/checkpoint-compaction-preservation.
 (in-package "ACL2")
 (include-book "../../books/checkpoint-compaction-preservation")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 ; Five committed events: a record, an undertaking, its release, an identity
@@ -120,25 +120,25 @@
 ;; The same four, as the conclusion the prover refuses at those constants.
 (make-event `(defconst *ccpt-gap-names* ',(list (fn-bs-txn-name 0) (fn-bs-txn-name 5))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-composition-without-valid-before
     (not (equal (ccpt-open (fn-ccp-remove-names *ccpt-gap-names* nil) 4
                            *ccpt-contents*)
                 :invalid)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-composition-without-gone-in-plan
     (equal (ccpt-open (fn-ccp-remove-names *ccpt-names* (list (fn-bs-txn-name 4)))
                       4 *ccpt-contents*)
            (ccpt-open *ccpt-names* 4 *ccpt-contents*)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-composition-without-pack-boundary
     (equal (ccpt-open (fn-ccp-remove-names *ccpt-names* (list (fn-bs-txn-name 4)))
                       5 *ccpt-contents*)
            (ccpt-open *ccpt-names* 5 *ccpt-contents*)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-composition-without-open-before
     (equal (ccpt-open (fn-ccp-remove-names *ccpt-names* (list (fn-bs-txn-name 1)))
                       4 *ccpt-bad-contents*)
@@ -158,14 +158,14 @@
                                (list (list 0 *ccpt-b0*)) 6)
         (list :ok (list *ccpt-b0* *ccpt-b1* *ccpt-b2* *ccpt-b3*) 6)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-deletion-without-sublist
     (implies (equal (car (fn-ccp-observe-framed framed digest observed frontier))
                     :ok)
              (equal (fn-ccp-observe-framed framed digest after frontier)
                     (fn-ccp-observe-framed framed digest observed frontier))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-deletion-without-ok-before
     (implies (fn-ccp-covered-sublistp after observed
                                       (fn-ccp-framed-boundary framed digest))
@@ -190,14 +190,14 @@
                                (list (list 0 *ccpt-b0*) (list 1 *ccpt-b1*)) 6)
         (list :ok (list *ccpt-b0* *ccpt-b1* *ccpt-b2* *ccpt-b3*) 6)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-complete-without-ok
     (implies (and (fn-ccp-contiguousp observed 0)
                   (<= (fn-ccp-framed-boundary framed digest) (len observed)))
              (equal (fn-ccp-observe-framed framed digest observed frontier)
                     (list :ok (fn-ccp-records observed) frontier))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-complete-without-contiguity
     (implies (and (equal (car (fn-ccp-observe-framed framed digest observed
                                                      frontier))
@@ -206,7 +206,7 @@
              (equal (fn-ccp-observe-framed framed digest observed frontier)
                     (list :ok (fn-ccp-records observed) frontier))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-complete-without-length
     (equal (fn-ccp-observe-framed *ccpt-framed* *ccpt-digest*
                                   (list (list 0 *ccpt-b0*) (list 1 *ccpt-b1*)) 6)
@@ -219,7 +219,7 @@
         (list :ok 4 (list (list 0 (fn-bs-txn-name 0)) (list 1 (fn-bs-txn-name 1))
                           (list 3 (fn-bs-txn-name 3)) (list 4 (fn-bs-txn-name 4))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-namespace-without-plan
     (let ((before (fn-profile-txn-observation names maximum lower)))
       (implies (not (equal before :invalid))
@@ -228,7 +228,7 @@
                       (list :ok lower
                             (fn-ccp-remove-pairs (third before) gone))))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-namespace-without-valid-before
     (let ((before (fn-profile-txn-observation names maximum lower)))
       (implies (subsetp-equal gone (fn-bs-pack-reclaim-plan names maximum lower))
@@ -243,13 +243,13 @@
  (equal (fn-ccp-coverage-framed *ccpt-framed* *ccpt-digest* 3 6)
         '(:error :coverage)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-coverage-without-ok
     (implies (and (rationalp old) (rationalp new) (<= old new))
              (equal (fn-ccp-coverage-framed framed digest new frontier)
                     (fn-ccp-coverage-framed framed digest old frontier))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm ccpt-coverage-without-order
     (equal (fn-ccp-coverage-framed *ccpt-framed* *ccpt-digest* 3 6)
            (fn-ccp-coverage-framed *ccpt-framed* *ccpt-digest* 8 6)))))

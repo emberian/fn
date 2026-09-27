@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "../../books/reclaim-admission")
 (include-book "../../books/store-reclaim")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 ; A verified article (*stxt-r1*) and the keyring it verifies under.
 (include-book "stx-transit-tests")
 
@@ -18,20 +18,20 @@
 (assert-event (equal (fn-pa-carrier-form *ra-tomb*) '(:refused :article)))
 (assert-event (equal (fn-pa-carrier-form *ra-article*) :absent))
 ; Tooth (tombstonep): without it an admitted article is a counterexample.
-(must-fail (assert-event (equal (fn-pa-carrier-form *ra-article*) '(:refused :article))))
+(must-fail-checked (assert-event (equal (fn-pa-carrier-form *ra-article*) '(:refused :article))))
 
 ; fn-rca-nul-first-octet-is-not-an-article.  Witness: the article with its
 ; first octet replaced by NUL.  Tooth (first octet NUL): the article parses.
 (assert-event (not (fn-article-result-okp (fn-article-parse (cons 0 (cdr *ra-article*))))))
-(must-fail (assert-event (not (fn-article-result-okp (fn-article-parse *ra-article*)))))
+(must-fail-checked (assert-event (not (fn-article-result-okp (fn-article-parse *ra-article*)))))
 
 ; fn-rca-nul-line-is-no-field.  Witness and tooth over "H: x".
 (assert-event (not (fn-article-line-okp (fn-article-new-field '(0 58 32 120)))))
-(must-fail (assert-event (not (fn-article-line-okp (fn-article-new-field '(72 58 32 120))))))
+(must-fail-checked (assert-event (not (fn-article-line-okp (fn-article-new-field '(72 58 32 120))))))
 
 ; fn-rcl-tombstone-contributes-nothing.  Witness: the tombstone under the
 ; keyring that verifies *stxt-r1*.  Tooth (tombstonep): *stxt-r1* itself
 ; contributes its statement.
 (assert-event (equal (fn-stx-delta *ra-tomb* *stxt-keyring*) nil))
-(must-fail (assert-event (equal (fn-stx-delta (fn-article-payload *stxt-r1*) *stxt-keyring*)
+(must-fail-checked (assert-event (equal (fn-stx-delta (fn-article-payload *stxt-r1*) *stxt-keyring*)
                                 nil)))

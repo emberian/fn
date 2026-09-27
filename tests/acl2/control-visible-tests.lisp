@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (include-book "../../books/control-visible")
 (include-book "../../books/catalog-record")   ; fn-held-facts-of: the rows' facts
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *cvt-p* (make-list 32 :initial-element 17))
 (defconst *cvt-p-hex* (fn-record-octets-string (fn-stx-hex-octets *cvt-p*)))
@@ -62,7 +62,7 @@
 ; Teeth, the one hypothesis: a carried list that is not the definition's
 ; (here the raw archive, which still holds the withdrawn T) is not repaired
 ; by an ordinary article, so the conclusion fails.
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((old (list *cvt-c* *cvt-t*)))
     (equal (fn-ctl-visible-add *cvt-o* old old *cvt-ws* *cvt-verdicts*)
@@ -80,7 +80,7 @@
 ; Teeth, the one hypothesis: a carried list holding an article the archive
 ; does not (O over the empty archive) is not repaired by the batch (C): the
 ; stray O stays and the conclusion fails.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ctl-visible-extend (list *cvt-c*) (list *cvt-o*) nil *cvt-ws*
                                 *cvt-verdicts*)
@@ -154,7 +154,7 @@
                (fn-ctl-visible-articles new ws2 *cvt-v1*)))))
 ; Teeth, hypothesis 1 (the carried list is the definition's): a carried
 ; (O) that lost T is not repaired by an ordinary article.
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((old (list *cvt-t* *cvt-o*))
          (new (cons *cvt-a* old))
@@ -177,7 +177,7 @@
         (new (cons *cvt-x* old)))
    (and (not (no-duplicatesp-equal (fn-article-msgids new)))
         (equal (fn-ctl-visible-articles old (list *cvt-w0*) nil) old))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((old (list *cvt-k* *cvt-o*))
          (new (cons *cvt-x* old))
@@ -209,7 +209,7 @@
         (fn-statep vis)
         (equal (fn-state-articles vis) (list c3))
         (equal (fn-state-nexts vis) (fn-state-nexts st)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((bad (fn-make-state (list "fn.a" "fn.a") nil nil 0 nil nil)))
     (fn-statep (fn-ctl-visible-state bad nil nil)))))
@@ -298,7 +298,7 @@
         (cvt-journal-conclusion ws *cvt-jv* (list *cvt-rt* *cvt-rc2*) (list *cvt-ro*)
                                 (list *cvt-grant*) (list *cvt-revoke-9*)))))
 ; Hypothesis 1 removed (the carried records are the journal): carried nil.
-(must-fail
+(must-fail-checked
  (assert-event
   (cvt-journal-conclusion nil *cvt-jv* (list *cvt-rt* *cvt-rc2*) (list *cvt-ro*)
                           (list *cvt-grant*) (list *cvt-revoke-9*))))
@@ -308,14 +308,14 @@
 (assert-event
  (not (fn-ctl-history-grows-by-p (list *cvt-rc2* *cvt-ro*) (cons *cvt-o* *cvt-jold*)
                                  *cvt-jold*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (cvt-journal-conclusion (cvt-journal-ws *cvt-jv0* (list *cvt-rt*) (list *cvt-grant*))
                           *cvt-jv* (list *cvt-rt*) (list *cvt-rc2* *cvt-ro*)
                           (list *cvt-grant*) (list *cvt-revoke-9*))))
 ; Hypothesis 2 removed (the verdicts grew only by a fresh Message-ID): the
 ; new pair names C2 again, verified as Q's.
-(must-fail
+(must-fail-checked
  (assert-event
   (cvt-journal-conclusion (cvt-journal-ws *cvt-jv0* (list *cvt-rt* *cvt-rc2*)
                                           (list *cvt-grant*))
@@ -328,7 +328,7 @@
  (not (fn-ctl-entries-below-p (fn-ctl-archive-entries *cvt-jold* *cvt-jv0*
                                                       (list *cvt-rt* *cvt-rc2*))
                               3)))
-(must-fail
+(must-fail-checked
  (assert-event
   (cvt-journal-conclusion (cvt-journal-ws *cvt-jv0* (list *cvt-rt* *cvt-rc2*)
                                           (list *cvt-grant*))

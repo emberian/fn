@@ -18,7 +18,7 @@
 (include-book "../../books/codec-attach")
 ; Intents pin digests (PKT-646): fn-frame-digest runs through its attachment.
 (include-book "../../books/crypto-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "arena-lift")
 (bpr-lift fn-bpaj-article-event 2)
 (bpr-lift fn-bpaj-dispatch-fast 4)
@@ -266,7 +266,7 @@
       (not (member-equal *bsb-row*
                          (fn-bpr-article-records
                           (fn-sf-records (fn-sn-files *bsb-enrolled*)))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-joined* *bsb-enrolled* *bsb-request-octets* 1)
               (list :submit)))))
@@ -291,7 +291,7 @@
       (equal (fn-record-msgid *bsb-non-record*)
              (fn-bpaj-dispatch-msgid *bsb-joined* *bsb-request-octets*))
       (not (fn-held-p *bsb-non-record*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-joined* *bsb-forged-store* *bsb-request-octets* 1)
               (list :submit)))))
@@ -356,7 +356,7 @@
       (not (equal (fn-record-msgid *bsb-row*)
                   (fn-bpaj-dispatch-msgid *bsb-other-joined*
                                           *bsb-other-request-octets*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-other-joined* *bsb-store* *bsb-other-request-octets* 1)
               (list :submit)))))
@@ -367,7 +367,7 @@
 (assert-event
  (not (equal (car (in-arena-fn-bpaj-dispatch-fast *bsb-payloads* *bsb-joined* *bsb-enrolled* *bsb-request-octets* 1))
              :bind)))
-(must-fail
+(must-fail-checked
  (assert-event
   (in-arena-bsb-binds-own-record-conclusion *bsb-payloads* *bsb-joined* *bsb-enrolled*
                                    *bsb-request-octets* 1)))

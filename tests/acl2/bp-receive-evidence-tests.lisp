@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/bp-receive-evidence")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defconst *fn-t-bpe-empty* (fn-bpn-evidence-recover nil))
@@ -57,15 +57,15 @@
 
 ; Teeth: allocation authority needs the held lock and both exact absence
 ; observations.  Dropping any one does not produce a publication operation.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-evidence-operationp
    (fn-bpn-evidence-authorize *fn-t-bpe-empty* :accepted nil t t))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-evidence-operationp
    (fn-bpn-evidence-authorize *fn-t-bpe-empty* :accepted t nil t))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-evidence-operationp
    (fn-bpn-evidence-authorize *fn-t-bpe-empty* :accepted t t nil))))

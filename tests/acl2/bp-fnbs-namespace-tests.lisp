@@ -1,7 +1,7 @@
 ; Mixed legacy and received FNBS final-name recovery in one directory.
 (in-package "ACL2")
 (include-book "../../books/bp-fnbs-namespace")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bpnfn-mixed-names ()
   (list ".record-leftover"
@@ -60,6 +60,6 @@
  (equal (fn-bpnf-namespace-plan
          (list (fn-bpnf-stored-record-name 9 1) "9-1.fnb"))
         '(:fault :fnbs-namespace)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpnf-namespace-planp (fn-bpnf-namespace-plan (list "stray.fnb")))))

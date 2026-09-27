@@ -2,7 +2,7 @@
 ; opens with the owner's invariant carried.
 (in-package "ACL2")
 (include-book "../../books/owner-open-carried")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-advance-carried-tests")
 (include-book "public-exposure-tests")
 
@@ -94,7 +94,7 @@
                nil))))
 (assert-event (not (equal (fn-ocar-ocfg-open *ocar-t-bad-oc* *aut-required*)
           (fn-ocfg-open *ocar-t-bad-oc* *aut-required*))))
-(must-fail
+(must-fail-checked
  (defthm fn-ocar-t-ocfg-open-without-relation
    (equal (fn-ocar-ocfg-open *ocar-t-bad-oc* *aut-required*)
           (fn-ocfg-open *ocar-t-bad-oc* *aut-required*))))
@@ -102,7 +102,7 @@
                             *aut-required* nil *pxt-a* 5000)
           (fn-exp-open *ocar-t-bad-oc* (fn-exp-initial) *pxt-lim*
                        *aut-required* nil *pxt-a* 5000))))
-(must-fail
+(must-fail-checked
  (defthm fn-ocar-t-exp-open-without-relation
    (equal (fn-ocar-exp-open *ocar-t-bad-oc* (fn-exp-initial) *pxt-lim*
                             *aut-required* nil *pxt-a* 5000)
@@ -129,7 +129,7 @@
 (assert-event (not (equal (fn-ocar-auth-open-reader *acar-t-bad-archive* *aut-required*)
           (fn-auth-open-session *acar-t-bad-archive* nil nil nil
                                 *aut-required* nil))))
-(must-fail
+(must-fail-checked
  (defthm fn-ocar-t-auth-reader-without-statep
    (equal (fn-ocar-auth-open-reader *acar-t-bad-archive* *aut-required*)
           (fn-auth-open-session *acar-t-bad-archive* nil nil nil
@@ -141,20 +141,20 @@
                      (fn-peer-open-session *ocar-t-archive* nil *ocar-t-node* *ocar-t-cfg*)))
 (assert-event (not (equal (fn-ocar-peer-open-reader *acar-t-bad-archive* *ocar-t-node* *ocar-t-cfg*)
           (fn-peer-open-session *acar-t-bad-archive* nil *ocar-t-node* *ocar-t-cfg*))))
-(must-fail
+(must-fail-checked
  (defthm fn-ocar-t-peer-reader-without-statep
    (equal (fn-ocar-peer-open-reader *acar-t-bad-archive* *ocar-t-node* *ocar-t-cfg*)
           (fn-peer-open-session *acar-t-bad-archive* nil *ocar-t-node* *ocar-t-cfg*))))
 (assert-event (not (equal (fn-ocar-peer-open-reader *ocar-t-archive* *scar-t-bad-node* *ocar-t-cfg*)
           (fn-peer-open-session *ocar-t-archive* nil *scar-t-bad-node* *ocar-t-cfg*))))
-(must-fail
+(must-fail-checked
  (defthm fn-ocar-t-peer-reader-without-node-statep
    (equal (fn-ocar-peer-open-reader *ocar-t-archive* *scar-t-bad-node* *ocar-t-cfg*)
           (fn-peer-open-session *ocar-t-archive* nil *scar-t-bad-node* *ocar-t-cfg*))))
 (assert-event (not (fn-cfgp nil)))
 (assert-event (not (equal (fn-ocar-peer-open-reader *ocar-t-archive* *ocar-t-node* nil)
           (fn-peer-open-session *ocar-t-archive* nil *ocar-t-node* nil))))
-(must-fail
+(must-fail-checked
  (defthm fn-ocar-t-peer-reader-without-cfgp
    (equal (fn-ocar-peer-open-reader *ocar-t-archive* *ocar-t-node* nil)
           (fn-peer-open-session *ocar-t-archive* nil *ocar-t-node* nil))))
@@ -166,7 +166,7 @@
 (assert-event (not (fn-acar-view-statep *acar-t-bad-view-o*)))
 (assert-event (not (equal (fn-ocar-own-open *acar-t-bad-view-o* *aut-required*)
           (fn-own-open *acar-t-bad-view-o* *aut-required*))))
-(must-fail
+(must-fail-checked
  (defthm fn-ocar-t-own-open-without-view-statep
    (equal (fn-ocar-own-open *acar-t-bad-view-o* *aut-required*)
           (fn-own-open *acar-t-bad-view-o* *aut-required*))))
@@ -183,7 +183,7 @@
 (defconst *ocar-t-bad-raw* (cdr (fn-own-open *acar-t-bad-view-o* *aut-required*)))
 (assert-event (not (equal (fn-ocar-own-reader-context *ocar-t-bad-raw* *ocar-t-id* *ocar-t-cfg*)
           (fn-own-reader-context *ocar-t-bad-raw* *ocar-t-id* *ocar-t-cfg*))))
-(must-fail
+(must-fail-checked
  (defthm fn-ocar-t-reader-context-without-statep
    (equal (fn-ocar-own-reader-context *ocar-t-bad-raw* *ocar-t-id* *ocar-t-cfg*)
           (fn-own-reader-context *ocar-t-bad-raw* *ocar-t-id* *ocar-t-cfg*))))
@@ -198,13 +198,13 @@
 (assert-event (equal (fn-sn-node (fn-own-store *ocar-t-bad-node-raw*)) *scar-t-bad-node*))
 (assert-event (not (equal (fn-ocar-own-reader-context *ocar-t-bad-node-raw* *ocar-t-id* *ocar-t-cfg*)
           (fn-own-reader-context *ocar-t-bad-node-raw* *ocar-t-id* *ocar-t-cfg*))))
-(must-fail
+(must-fail-checked
  (defthm fn-ocar-t-reader-context-without-node-statep
    (equal (fn-ocar-own-reader-context *ocar-t-bad-node-raw* *ocar-t-id* *ocar-t-cfg*)
           (fn-own-reader-context *ocar-t-bad-node-raw* *ocar-t-id* *ocar-t-cfg*))))
 (assert-event (not (equal (fn-ocar-own-reader-context *ocar-t-raw* *ocar-t-id* nil)
           (fn-own-reader-context *ocar-t-raw* *ocar-t-id* nil))))
-(must-fail
+(must-fail-checked
  (defthm fn-ocar-t-reader-context-without-cfgp
    (equal (fn-ocar-own-reader-context *ocar-t-raw* *ocar-t-id* nil)
           (fn-own-reader-context *ocar-t-raw* *ocar-t-id* nil))))

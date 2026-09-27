@@ -5,7 +5,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/owner-served-bound")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun osbt-text (s) (fn-record-string-octets s))
 
@@ -45,7 +45,7 @@
  (mv-let (verdict next) (fn-osb-install *osbt-owner* nil)
    (and (equal verdict :refused)
         (equal (fn-own-body-limit next) 4261412864))))
-(must-fail
+(must-fail-checked
  (defthm osbt-serves-the-profile-bound-without-admission
    (and (equal (mv-nth 0 (fn-osb-install o profile)) :installed)
         (equal (fn-own-body-limit (mv-nth 1 (fn-osb-install o profile)))
@@ -61,7 +61,7 @@
                                         *fn-bs-profile-development*)
    (and (equal verdict :installed)
         (not (fn-inj-configp (fn-own-config next))))))
-(must-fail
+(must-fail-checked
  (defthm osbt-keeps-configp-without-configp
    (fn-inj-configp (fn-own-config (mv-nth 1 (fn-osb-install o profile))))
    :hints (("Goal" :in-theory (e/d (fn-sbud-payload-bound fn-inj-configp)

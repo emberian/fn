@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/hybrid-carrier")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (local (in-theory (enable fn-hybrid-carrier-vocabulary
                           fn-hybrid-signature-vocabulary)))
@@ -160,7 +160,7 @@
  (equal (car (fn-hc-field-decode '(81 85 74 68 82 65 61 61))) :unverified))
 
 ; Teeth: source preservation needs successful native admission.
-(must-fail
+(must-fail-checked
  (defthm hc-source-without-success
    (equal (car (fn-hc-value
                 (fn-hc-native-plan source principal keys signatures)))
@@ -205,20 +205,20 @@
 
 ;; Teeth: the round trip needs the emission premise (an unemittable
 ;; version, key set or signature pair has no carrier to decode) ...
-(must-fail
+(must-fail-checked
  (defthm hc-decode-at-of-encode-at-without-emission
    (equal (fn-hc-decode-at version
                            (fn-hc-encode-at version principal keys signatures))
           (fn-hc-ok (list principal keys signatures)))))
 ;; ... and version binding needs both premises: another version, and a
 ;; carrier that was emitted.
-(must-fail
+(must-fail-checked
  (defthm hc-decode-at-refuses-without-other-version
    (implies (fn-hc-encode-at version principal keys signatures)
             (not (fn-hc-okp (fn-hc-decode-at other
                                              (fn-hc-encode-at version principal
                                                               keys signatures)))))))
-(must-fail
+(must-fail-checked
  (defthm hc-decode-at-refuses-without-emission
    (implies (not (equal other version))
             (not (fn-hc-okp (fn-hc-decode-at other

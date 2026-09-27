@@ -991,6 +991,33 @@
             ((equal code 436) (fn-peer-echo-reply "436 " msgid))
             (t (fn-peer-echo-reply "439 " msgid))))))
 
+; The transit article did not arrive as one (:article lines) event.  Two
+; cases, both closing:
+;
+;   (:reject :body-overlimit)  the wire cut the article at the connection's
+;       body limit (books/wire.lisp fn-wire-close; the limit is the operator's
+;       profile bound or the peer record's, whichever is smaller:
+;       books/owner.lisp fn-own-peer-body-limit).  The article is refused by
+;       name and for good: IHAVE 437 with the size's reason text (RFC 3977
+;       section 6.3.2), TAKETHIS 439 echoing the Message-ID (RFC 4644
+;       section 2.5.2).  The rest of the body is never read: the wire is
+;       closed, so the connection closes (fuzz-nntp F2).
+;   anything else  RFC 3977 section 6.3.2.2 makes a lack of response a
+;       retry; the honest signal is the retry code and a close.
+(defun fn-peer-transfer-unreceived-effects (ps transfer wire-event)
+  (declare (xargs :guard t))
+  (append (cond ((not (equal wire-event '(:reject :body-overlimit)))
+                 (fn-peer-single
+                  ps (if (equal (fn-ag-car transfer) :ihave)
+                         "436 transfer failed; the article was not received"
+                       "436 the article was not received; closing")))
+                ((equal (fn-ag-car transfer) :ihave)
+                 (fn-peer-single
+                  ps (string-append "437 transfer rejected; "
+                                    (fn-peer-reason-text :oversize))))
+                (t (fn-peer-echo-reply "439 " (fn-ag-car (fn-ag-cdr transfer)))))
+          (list (fn-nntp-close-effect))))
+
 ; The offer codes, the same two classes: :defer is 431 (CHECK) / 436 (IHAVE),
 ; :refuse and :have are 438 / 435, :want is 238 / 335.
 (defun fn-peer-offer-code (kind d)
@@ -1151,16 +1178,9 @@
            (fn-peer-make-submission (fn-peer-session-peer ps)
                                     (car transfer) (car (cdr transfer))
                                     (fn-post-body-octets (car (cdr wire-event)))))
-        ; The article was not received: RFC 3977 section 6.3.2.2 makes a
-        ; lack of response a retry; the honest signal is the retry code and
-        ; a close.
         (fn-post-make-result
          (fn-peer-with-transfer ps nil (fn-peer-session-inflight ps))
-         (append (fn-peer-single
-                  ps (if (equal (car transfer) :ihave)
-                         "436 transfer failed; the article was not received"
-                       "436 the article was not received; closing"))
-                 (list (fn-nntp-close-effect)))
+         (fn-peer-transfer-unreceived-effects ps transfer wire-event)
          nil))))
    ; A command line: the transit commands here, everything else delegated.
    ((and (consp wire-event)
@@ -1305,6 +1325,27 @@
                                    fn-af-message-idp fn-nntp-printable-tokenp
                                    fn-peer-decision-kind
                                    fn-peer-decision-reason)))))
+
+(defthm fn-peer-transfer-unreceived-effects-well-formed
+  (implies (and (fn-peer-transferp transfer) transfer)
+           (fn-nntp-effectsp
+            (fn-peer-transfer-unreceived-effects ps transfer wire-event)))
+  :hints (("Goal" :in-theory (e/d (fn-peer-transfer-unreceived-effects
+                                   fn-peer-transferp fn-peer-reason-text)
+                                  (fn-peer-single fn-peer-echo-reply
+                                   fn-nntp-effectsp fn-nntp-response-textp
+                                   fn-nntp-initial-status-linep
+                                   fn-af-message-idp fn-nntp-printable-tokenp)))))
+
+(in-theory (disable fn-peer-transfer-unreceived-effects))
+
+(local (defthm fn-peer-sessionp-transfer-forward
+  (implies (fn-peer-sessionp x)
+           (fn-peer-transferp (fn-peer-session-transfer x)))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d ((:d fn-peer-sessionp))
+                                  ((:d fn-post-sessionp) (:d fn-peer-transferp)
+                                   (:d fn-node-statep) (:d fn-cfgp)))))))
 
 ; Every advertised label is response text: the reader's list is ground and
 ; IHAVE and STREAMING are two more ground lines.

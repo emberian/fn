@@ -5,7 +5,7 @@
 ; a Date.
 (in-package "ACL2")
 (include-book "../../books/source-projection-bridge")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun spjt-codes (cs)
   (if (consp cs) (cons (char-code (car cs)) (spjt-codes (cdr cs))) nil))
@@ -61,7 +61,7 @@
 (assert-event
  (and (spjt-ok (spjt-stored *spjt-agent* t nil *spjt-native*))
       (not (fn-hc-reserved-namep (spjt-oct "message-id")))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (spjt-proj (spjt-stored *spjt-agent* t nil *spjt-native*))
                       (spjt-proj *spjt-native*))))
 
@@ -71,7 +71,7 @@
 (assert-event
  (and (not (fn-spj-line-freep *spjt-bad-agent*))
       (spjt-ok (spjt-stored *spjt-bad-agent* nil nil *spjt-native*))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (spjt-proj (spjt-stored *spjt-bad-agent* nil nil *spjt-native*))
                       (spjt-proj *spjt-native*))))
 
@@ -81,6 +81,6 @@
 (assert-event
  (and (not (spjt-ok *spjt-folded*))
       (spjt-ok (spjt-stored *spjt-agent* nil nil *spjt-folded*))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (spjt-proj (spjt-stored *spjt-agent* nil nil *spjt-folded*))
                       (spjt-proj *spjt-folded*))))

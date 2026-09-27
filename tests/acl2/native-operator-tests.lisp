@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-operator")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-nop-test-argv (words)
   (if (consp words)
@@ -419,7 +419,7 @@
                      5))
 ; Teeth for fn-native-operator-run-store-compact-is-the-compact-action.
 ; Without the argv hypothesis: an accepted store plan that is not compact.
-(local (must-fail
+(local (must-fail-checked
         (defthm fn-nop-compact-action-without-argv
           (equal (fn-native-operator-result-native-action *fn-nop-export*) :compact))))
 ; Without acceptance: `store compact' under a configuration that does not
@@ -428,13 +428,13 @@
   (fn-native-operator-run (fn-nop-test-lines '("[store]" "path = 7"))
                           (fn-nop-test-argv '("store" "compact"))))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-compact-bad-config*) :usage))
-(local (must-fail
+(local (must-fail-checked
         (defthm fn-nop-compact-action-without-acceptance
           (equal (fn-native-operator-result-native-action *fn-nop-compact-bad-config*)
                  :compact))))
 ; Tooth for fn-native-operator-run-compact-action-is-only-store-compact:
 ; without the :compact action the argv is any other command.
-(local (must-fail
+(local (must-fail-checked
         (defthm fn-nop-compact-argv-without-action
           (equal (fn-nop-argument-texts
                   (fn-nop-test-argv '("store" "export" "/tmp/a")))
@@ -491,10 +491,10 @@
                      5))
 ; Teeth for the two is-the-action keystones: without the argv an accepted
 ; store plan is another action; without acceptance the action is :none.
-(local (must-fail
+(local (must-fail-checked
         (defthm fn-nop-reclaim-action-without-argv
           (equal (fn-native-operator-result-native-action *fn-nop-compact*) :reclaim))))
-(local (must-fail
+(local (must-fail-checked
         (defthm fn-nop-reclaim-dry-action-without-argv
           (equal (fn-native-operator-result-native-action *fn-nop-reclaim*)
                  :reclaim-dry-run))))
@@ -502,16 +502,16 @@
   (fn-native-operator-run (fn-nop-test-lines '("[store]" "path = 7"))
                           (fn-nop-test-argv '("store" "reclaim"))))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-reclaim-bad-config*) :usage))
-(local (must-fail
+(local (must-fail-checked
         (defthm fn-nop-reclaim-action-without-acceptance
           (equal (fn-native-operator-result-native-action *fn-nop-reclaim-bad-config*)
                  :reclaim))))
 ; Teeth for the two is-only keystones: another argv is not the command.
-(local (must-fail
+(local (must-fail-checked
         (defthm fn-nop-reclaim-argv-without-action
           (equal (fn-nop-argument-texts (fn-nop-test-argv '("store" "compact")))
                  '("store" "reclaim")))))
-(local (must-fail
+(local (must-fail-checked
         (defthm fn-nop-reclaim-dry-argv-without-action
           (equal (fn-nop-argument-texts (fn-nop-test-argv '("store" "reclaim")))
                  '("store" "reclaim" "--dry-run")))))
@@ -527,7 +527,7 @@
                    (equal (fn-native-admin-result-kind
                            (fn-native-operator-result-admin-plan *fn-nop-retention*))
                           :set-retention)))
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (equal (fn-native-operator-result-status
                     (fn-native-operator-run *fn-nop-minimal-config*
                                             (fn-nop-test-argv '("retention" "set" "forever"))))
@@ -548,7 +548,7 @@
                      5))
 ; Teeth for fn-native-operator-run-store-checkpoint-is-the-checkpoint-action.
 ; Without the argv hypothesis: an accepted store plan that is not checkpoint.
-(local (must-fail
+(local (must-fail-checked
         (defthm fn-nop-checkpoint-action-without-argv
           (equal (fn-native-operator-result-native-action *fn-nop-compact*) :checkpoint))))
 ; Without acceptance: under a configuration that does not load it is usage.
@@ -556,12 +556,12 @@
   (fn-native-operator-run (fn-nop-test-lines '("[store]" "path = 7"))
                           (fn-nop-test-argv '("store" "checkpoint"))))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-checkpoint-bad-config*) :usage))
-(local (must-fail
+(local (must-fail-checked
         (defthm fn-nop-checkpoint-action-without-acceptance
           (equal (fn-native-operator-result-native-action *fn-nop-checkpoint-bad-config*)
                  :checkpoint))))
 ; Tooth for fn-native-operator-run-checkpoint-action-is-only-store-checkpoint.
-(local (must-fail
+(local (must-fail-checked
         (defthm fn-nop-checkpoint-argv-without-action
           (equal (fn-nop-argument-texts
                   (fn-nop-test-argv '("store" "compact")))
@@ -896,7 +896,7 @@
                           (fn-nop-test-argv '("init" "fn.test"))))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-init-fn-test*)
                      :accepted))
-(must-fail
+(must-fail-checked
  (defthm fn-nop-reserved-without-init
    (implies (and (member-equal name (cdr (fn-nop-argument-texts argv)))
                  (fn-native-admin-group-name-reservedp name))
@@ -916,7 +916,7 @@
                                     fn-nop-argvp fn-native-config-load
                                     fn-ncfg-ascii-octetsp
                                     fn-native-config-operator-availablep))))))
-(must-fail
+(must-fail-checked
  (defthm fn-nop-reserved-without-membership
    (implies (and (equal (car (fn-nop-argument-texts argv)) "init")
                  (fn-native-admin-group-name-reservedp name))
@@ -936,7 +936,7 @@
                                     fn-nop-argvp fn-native-config-load
                                     fn-ncfg-ascii-octetsp
                                     fn-native-config-operator-availablep))))))
-(must-fail
+(must-fail-checked
  (defthm fn-nop-init-refused-without-reservation
    (implies (and (equal (car (fn-nop-argument-texts argv)) "init")
                  (member-equal name (cdr (fn-nop-argument-texts argv))))
@@ -1052,7 +1052,7 @@
 ; Teeth: without the :init hypothesis the statement fails (a refused plan's
 ; second element is its reason, not a group list, and the refusal was made
 ; because a group word was flag-shaped).
-(must-fail
+(must-fail-checked
  (defthm nopt-developer-init-groups-are-not-flags-without-init
    (not (fn-nop-some-flag-wordp (cadr (fn-nop-developer-init words))))
    :hints (("Goal" :in-theory (disable fn-nop-parse-profile-flags
@@ -1092,7 +1092,7 @@
                      *fn-nop-help-plan*))
 (assert-event (equal (fn-native-operator-exit-code
                       (fn-native-operator-store-outcome *fn-nop-help-plan* nil)) 0))
-(must-fail
+(must-fail-checked
  (thm (implies (not (consp observed))
                (equal (fn-native-operator-result-status
                        (fn-native-operator-store-outcome result observed))
@@ -1106,7 +1106,7 @@
                       (fn-native-operator-store-outcome
                        *fn-nop-status-plan* (list (fn-record-string-octets "config.json"))))
                      0))
-(must-fail
+(must-fail-checked
  (thm (implies (fn-native-operator-result-needs-storep result)
                (equal (fn-native-operator-result-reason
                        (fn-native-operator-store-outcome result observed))
@@ -1155,7 +1155,7 @@
 (assert-event (not (fn-native-operator-control-path-too-longp *fn-nop-run*)))
 (assert-event (equal (fn-native-operator-control-outcome *fn-nop-run*) *fn-nop-run*))
 (assert-event (equal (fn-native-operator-result-status *fn-nop-run*) :accepted))
-(must-fail
+(must-fail-checked
  (thm (equal (fn-native-operator-result-status (fn-native-operator-control-outcome result))
              :refused)))
 ; A usage result carries ACL2's accepted form.
@@ -1197,7 +1197,7 @@
 ; The hypothesis (a port is offered) removed: over a result that offers
 ; none, the conclusion fails (no plan, no certificate).
 (assert-event (not (fn-native-operator-result-run-planp *fn-nop-post*)))
-(must-fail
+(must-fail-checked
  (thm (let ((port (fn-native-operator-result-run-implicit-tls-port result)))
         (declare (ignorable port))
         (fn-native-operator-result-run-planp result))))
@@ -1241,7 +1241,7 @@
               "absent <a@fn.example.invalid> nothing is stored here under this Message-ID")))
 ; The answer follows the lookup and nothing else: the verdict of a found
 ; lookup is not the verdict of a missing one.
-(must-fail
+(must-fail-checked
  (thm (equal (cadr (fn-native-operator-inspect-report m t))
              (cadr (fn-native-operator-inspect-report m nil)))))
 
@@ -1365,7 +1365,7 @@
                     (fn-bs-profile-max-group-name-octets
                      (fn-bs-profile-resolve (caddr (nth 4 *fn-nop-not-accepted*))
                                             nil)))))
-(must-fail
+(must-fail-checked
  (defthm fn-nop-init-groups-within-without-acceptance
    (let ((result (fn-nop-parse-init-plain (list "x" (list *fn-nop-name-101*))
                                           *fn-nop-minimal-config*)))
@@ -1390,7 +1390,7 @@
 ;; Without a mission: a plain init serves exactly its named groups.
 (assert-event (equal (cadr (nth 4 (fn-nop-parse-init '("local.friends") nil)))
                      '("local.friends")))
-(must-fail
+(must-fail-checked
  (defthm nop-t-cancel-without-mission
    (let ((result (fn-nop-parse-init words config)))
      (implies (and (fn-native-mission-request (fn-native-config-ops-mission config))
@@ -1401,7 +1401,7 @@
 ;; Without a known mission: `moon' is no mission, so init is the plain one.
 (assert-event (equal (cadr (nth 4 (fn-nop-parse-init '("local.friends") *nop-t-moon-config*)))
                      '("local.friends")))
-(must-fail
+(must-fail-checked
  (defthm nop-t-cancel-without-mission-request
    (let ((result (fn-nop-parse-init words config)))
      (implies (and (fn-native-config-ops-mission config)
@@ -1414,7 +1414,7 @@
                            (fn-nop-parse-init '("--max-transactions" "5")
                                               *nop-t-mission-config*))
                           :accepted)))
-(must-fail
+(must-fail-checked
  (defthm nop-t-cancel-without-acceptance
    (let ((result (fn-nop-parse-init words config)))
      (implies (and (fn-native-config-ops-mission config)

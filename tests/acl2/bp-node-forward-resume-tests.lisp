@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "bp-node-forward-retry-tests")
 (include-book "../../books/bp-node-forward-resume")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bprs-row (effect)
   (declare (xargs :guard t :verify-guards nil))
@@ -102,7 +102,7 @@
 ;; Hypothesis teeth.
 ;; writes-only-for-a-stranded-row: without the stranded slot there is no
 ;; :persist-forward-result.
-(must-fail
+(must-fail-checked
  (assert-event (equal (car (bprs-refusal (bprs-resume *bpfr-d2* 0)))
                       :persist-forward-result)))
 ;; clears-only-the-slot needs :resumed: a :sent kind 9 on a live attempt
@@ -112,7 +112,7 @@
 (assert-event (equal (car (fn-bpnp-forward-result-apply
                            *bprs-sent-rec* (fn-bpnf-held-list *bpfr-s4*)))
                      :ready))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpn-nth 2 (fn-bpnp-forward-result-apply
                         *bprs-sent-rec* (fn-bpnf-held-list *bpfr-s4*)))
@@ -123,14 +123,14 @@
 (assert-event (equal (car (fn-bpnp-forward-result-apply
                            *bprs-rec* (fn-bpnf-held-list *bpfr-d4*)))
                      :ready))
-(must-fail
+(must-fail-checked
  (assert-event (equal (car (fn-bpnp-forward-result-apply
                             *bprs-rec* (fn-bpnf-held-list *bpfr-d2*)))
                       :ready)))
 ;; resumed-row-is-a-forward-candidate needs a live bundle: at an observation
 ;; after its lifetime the resumed row is no candidate.
 (defconst *bprs-late* (fn-clock-observation 100000000000 0 0 nil))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpnp-forward-candidatep (car (fn-bpnf-held-list *bprs-d5*)) *bpfr-dest*
                               *bprs-late* (fn-bpnf-epoch *bprs-d5*) 3)))
@@ -220,7 +220,7 @@
                         (list :forward-result (fn-bpn-nth 3 effect)
                               (fn-bpn-nth 4 effect) (fn-bpn-nth 2 effect)
                               :failed *bpfr-obs*)))))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bpnp-uncertain-attemptp (bpfr-slot *bprs-failed*)
                                            (fn-bpnf-epoch *bprs-failed*)
                                            *bpfr-dest*)))

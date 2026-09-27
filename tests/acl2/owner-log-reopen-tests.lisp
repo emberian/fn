@@ -1,7 +1,7 @@
 ; Teeth for books/owner-log-reopen.lisp (PKT-101).
 (in-package "ACL2")
 (include-book "../../books/owner-log-reopen")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Witnesses: one SIGHUP with a log file reopens and handles it; two more
 ; arriving together reopen once; with no log file the request is handled
@@ -17,10 +17,10 @@
 ; Teeth for fn-olr-reopen-iff-requested, one per hypothesis: without
 ; (natp handled) a non-natural count is not echoed back; without
 ; (natp requested) a non-natural request is not handled.
-(must-fail
+(must-fail-checked
  (assert-event (equal (cadr (fn-olr-decide t 5/2 3)) (max 5/2 3))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (cadr (fn-olr-decide t 0 1/2)) (max 0 1/2))))
 ; The conclusion's iff fails for a request that is not a natural.
-(must-fail
+(must-fail-checked
  (assert-event (iff (equal (car (fn-olr-decide t 0 1/2)) :reopen) (< 0 1/2))))

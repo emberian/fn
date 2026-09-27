@@ -18,7 +18,7 @@
 (include-book "../../books/owner-feed-subject")
 (include-book "../../books/crypto-attach")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; Guard-world audit: the served port and the connection events are total in
@@ -935,7 +935,7 @@
 ; mark below the ledger: *own-taken* has consumed nothing, so :refused refuses.
 (assert-event (equal (fn-own-sub-mark (fn-own-inflight *own-taken*))
                      (len (fn-own-ledger *own-taken*))))
-(must-fail
+(must-fail-checked
  (defthm own-w2-needs-a-consumed-completion
    (equal (car (fn-own-outcome *own-taken* 4 :refused))
           (own-w2-rhs *own-taken* 4 :refused))
@@ -948,14 +948,14 @@
                                 nil (fn-own-sub-decision (fn-own-inflight *own-p-done*)))))
 (assert-event (and (null (fn-own-sub-mark (fn-own-inflight *own-w2-nil-mark*)))
                    (< 0 (len (fn-own-ledger *own-w2-nil-mark*)))))
-(must-fail
+(must-fail-checked
  (defthm own-w2-needs-a-natural-mark
    (equal (car (fn-own-outcome *own-w2-nil-mark* 4 :refused))
           (own-w2-rhs *own-w2-nil-mark* 4 :refused))
    :rule-classes nil))
 ; the submission is this connection's: connection 0 exists, 4 is in flight.
 (assert-event (fn-own-find-conn 0 (fn-own-conns *own-p-done*)))
-(must-fail
+(must-fail-checked
  (defthm own-w2-needs-this-connections-submission
    (equal (car (fn-own-outcome *own-p-done* 0 :refused))
           (own-w2-rhs *own-p-done* 0 :refused))
@@ -963,7 +963,7 @@
 ; the connection exists: without it no reply is rendered at all.
 (defconst *own-w2-no-conn*
   (own-w2-with *own-p-done* nil (fn-own-inflight *own-p-done*)))
-(must-fail
+(must-fail-checked
  (defthm own-w2-needs-the-connection
    (equal (car (fn-own-outcome *own-w2-no-conn* 4 :refused))
           (own-w2-rhs *own-w2-no-conn* 4 :refused))
@@ -987,7 +987,7 @@
                      :durable))
 (assert-event (equal (car (fn-own-outcome *own-taken* 4 :durable-key-change-refused))
                      (car (fn-own-outcome *own-taken* 4 :uncertain))))
-(must-fail
+(must-fail-checked
  (defthm own-w2-kc-needs-a-consumed-completion
    (equal (car (fn-own-outcome *own-taken* 4 :durable-key-change-refused))
           (own-w2-rhs *own-taken* 4 :durable-key-change-refused))
@@ -1047,7 +1047,7 @@
 (assert-event (equal (fn-own-outcome-completion *own-control-taken*
                                                :clock-unusable)
                      :clock-unusable))
-(must-fail
+(must-fail-checked
  (defthm own-clock-refusal-cannot-be-flattened-to-three-words
    (member-equal (fn-own-outcome-completion *own-control-taken*
                                            :clock-unusable)
@@ -1358,7 +1358,7 @@
        (fn-own-conn-verdicts conn) nil)
       (fn-own-conns *own-late*)))))
 (assert-event (not (fn-own-relation *own-forged-index*)))
-(must-fail
+(must-fail-checked
  (defthm fn-own-forged-index-still-serves-accepted-article
    (equal (fn-own-take 4
            (fn-served-reply-octets
@@ -1885,18 +1885,18 @@
 ; Tooth (membership): "q" is no target of the host's function, and no feed
 ; target either.
 (assert-event (not (member-equal "q" (fn-own-submission-targets *own-tr-p*))))
-(must-fail (assert-event (member-equal "q" (own-feed-targets-of *own-tr-p*))))
+(must-fail-checked (assert-event (member-equal "q" (own-feed-targets-of *own-tr-p*))))
 
 ; fn-own-submission-never-targets-a-loop, two hypotheses.
 ; Tooth (membership): with the table recognizer holding, the origin "out" is
 ; not a target, and the conclusion is false of it (it IS the origin).
 (assert-event (not (member-equal "out" (fn-own-submission-targets *own-tr-out*))))
-(must-fail (assert-event (own-loop-conclusion *own-tr-out* "out")))
+(must-fail-checked (assert-event (own-loop-conclusion *own-tr-out* "out")))
 ; ... and on the Path half: "out" is not a target of the seen article, whose
 ; Path names out.example.
 (assert-event (fn-own-feed-tablep (fn-own-feeds *own-tr-seen*)))
 (assert-event (not (member-equal "out" (fn-own-submission-targets *own-tr-seen*))))
-(must-fail (assert-event (own-loop-conclusion *own-tr-seen* "out")))
+(must-fail-checked (assert-event (own-loop-conclusion *own-tr-seen* "out")))
 ; Tooth (table recognizer): an entry keyed "p" carrying out's record.  The
 ; record passes the scope decision for an article from "p" (its own name is
 ; "out"), so "p" -- the origin -- is a target of the host's function, and the
@@ -1907,7 +1907,7 @@
 (defconst *own-tr-p-bad* (fn-own-with-feeds *own-tr-p* *own-bad-feeds*))
 (assert-event (not (fn-own-feed-tablep (fn-own-feeds *own-tr-p-bad*))))
 (assert-event (member-equal "p" (fn-own-submission-targets *own-tr-p-bad*)))
-(must-fail (assert-event (own-loop-conclusion *own-tr-p-bad* "p")))
+(must-fail-checked (assert-event (own-loop-conclusion *own-tr-p-bad* "p")))
 
 ; fn-own-feed-durable-never-enqueues-on-the-origin, one hypothesis.  Witness:
 ; the durable enqueue of the article from "p" moves "out"'s feed, and the
@@ -1920,7 +1920,7 @@
                       (fn-own-feed-durable *own-tr-out* (fn-own-inflight *own-tr-out*)))
                      (own-origin-entry *own-tr-out* (fn-own-feeds *own-tr-out*))))
 ; Tooth (table recognizer): the bad table enqueues on the origin "p".
-(must-fail
+(must-fail-checked
  (assert-event (equal (own-origin-entry
                        *own-tr-p-bad*
                        (fn-own-feed-durable *own-tr-p-bad* (fn-own-inflight *own-tr-p-bad*)))
@@ -1947,7 +1947,7 @@
 ; Tooth (table recognizer): on the bad table the durable transit outcome
 ; enqueues the article back on "p".
 (assert-event (consp (car (fn-own-transit-outcome *own-tr-p-bad* 4 :want nil :durable))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (own-origin-entry
                        *own-tr-p-bad*
                        (fn-own-feeds (cdr (fn-own-transit-outcome
@@ -2041,7 +2041,7 @@
                      (fn-nntp-string-octets "control.cancel")))
 (assert-event (fn-own-feed-any-matchp "fn.*" (fn-own-feed-groups-of
                                              (own-sub-octets-of *own-cancel-a*))))
-(must-fail (assert-event (fn-own-feed-any-matchp
+(must-fail-checked (assert-event (fn-own-feed-any-matchp
                           "fn.*" (fn-own-sub-feed-base-groups
                                   (fn-own-inflight *own-cancel-a*)))))
 
@@ -2053,7 +2053,7 @@
                    (own-article-octets nil "local.general" t)))
 (assert-event (own-pkt400-antecedent *own-cancel-b* "ctl"))
 (assert-event (equal (fn-own-submission-targets *own-cancel-b*) '("ctl")))
-(must-fail (assert-event (fn-own-feed-any-matchp
+(must-fail-checked (assert-event (fn-own-feed-any-matchp
                           "control.cancel"
                           (fn-own-feed-groups-of (own-sub-octets-of *own-cancel-b*)))))
 
@@ -2071,8 +2071,8 @@
 (assert-event (equal (car (fn-own-feed-control-of (own-sub-octets-of *own-cancel-nomatch*)))
                      :control))
 (assert-event (fn-own-feed-outboundp (fn-own-feed-record-of "out" (fn-own-feeds *own-cancel-nomatch*))))
-(must-fail (assert-event (own-pkt400-antecedent *own-cancel-nomatch* "out")))
-(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-nomatch*))))
+(must-fail-checked (assert-event (own-pkt400-antecedent *own-cancel-nomatch* "out")))
+(must-fail-checked (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-nomatch*))))
 ; (2) control: an ORDINARY article whose Newsgroups (fn.letters) matches,
 ; submitted under local.general: its scope is its base groups, unchanged.
 (defconst *own-ordinary-c*
@@ -2083,16 +2083,16 @@
 (assert-event (equal (fn-own-feed-control-of (own-sub-octets-of *own-ordinary-c*)) :ordinary))
 (assert-event (equal (fn-own-sub-feed-groups (fn-own-inflight *own-ordinary-c*))
                      (fn-own-sub-feed-base-groups (fn-own-inflight *own-ordinary-c*))))
-(must-fail (assert-event (own-pkt400-antecedent *own-ordinary-c* "out")))
-(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-ordinary-c*))))
+(must-fail-checked (assert-event (own-pkt400-antecedent *own-ordinary-c* "out")))
+(must-fail-checked (assert-event (member-equal "out" (fn-own-submission-targets *own-ordinary-c*))))
 ; (3) the Path: out.example already in it.
 (defconst *own-cancel-seen*
   (own-local-taken *own-out-cfg* *own-cancel-filed*
                    (own-article-octets "out.example!x" "fn.letters" t)))
 (assert-event (fn-own-feed-any-matchp "fn.*" (fn-own-feed-groups-of
                                              (own-sub-octets-of *own-cancel-seen*))))
-(must-fail (assert-event (own-pkt400-antecedent *own-cancel-seen* "out")))
-(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-seen*))))
+(must-fail-checked (assert-event (own-pkt400-antecedent *own-cancel-seen* "out")))
+(must-fail-checked (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-seen*))))
 ; (4) the origin: the same cancel arriving FROM "out" as transit.
 (defconst *own-cancel-from-out*
   (let ((sub (fn-own-inflight *own-cancel-a*)))
@@ -2103,8 +2103,8 @@
                                                (own-article-octets "p.example!x" "fn.letters" t))))))
 (assert-event (equal (car (fn-own-feed-control-of (own-sub-octets-of *own-cancel-from-out*)))
                      :control))
-(must-fail (assert-event (own-pkt400-antecedent *own-cancel-from-out* "out")))
-(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-from-out*))))
+(must-fail-checked (assert-event (own-pkt400-antecedent *own-cancel-from-out* "out")))
+(must-fail-checked (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-from-out*))))
 ; The same transit cancel from "p" does reach "out": transit is widened too.
 (defconst *own-cancel-from-p*
   (let ((sub (fn-own-inflight *own-cancel-a*)))
@@ -2121,12 +2121,12 @@
 (defconst *own-cancel-held*
   (fn-own-with-feeds *own-cancel-a* (fn-own-feed-durable *own-cancel-a*
                                                          (fn-own-inflight *own-cancel-a*))))
-(must-fail (assert-event (own-pkt400-antecedent *own-cancel-held* "out")))
+(must-fail-checked (assert-event (own-pkt400-antecedent *own-cancel-held* "out")))
 (assert-event (null (fn-own-submission-targets *own-cancel-held*)))
 ; (6) the table entry: "q" is no peer of the table (its record is nil, so
 ; the outbound literal fails with it: labelled structural, not reachable
 ; separately).
-(must-fail (assert-event (own-pkt400-antecedent *own-cancel-a* "q")))
+(must-fail-checked (assert-event (own-pkt400-antecedent *own-cancel-a* "q")))
 (assert-event (not (member-equal "q" (fn-own-submission-targets *own-cancel-a*))))
 ; (7) nothing in flight: no target.
 (assert-event (null (fn-own-inflight (fn-own-feeds-reconfigure *own-after-post* *own-out-cfg*))))
@@ -2163,8 +2163,8 @@
 (assert-event (not (fn-mod-names-a-queuep
                     (fn-own-sub-feed-groups (fn-own-inflight *own-cancel-a*))
                     (fn-inj-config-closed (fn-own-config *own-cancel-a*)))))
-(must-fail (assert-event (equal (fn-own-submission-targets *own-cancel-a*) nil)))
-(must-fail (assert-event (equal (fn-own-feed-durable *own-cancel-a*
+(must-fail-checked (assert-event (equal (fn-own-submission-targets *own-cancel-a*) nil)))
+(must-fail-checked (assert-event (equal (fn-own-feed-durable *own-cancel-a*
                                                      (fn-own-inflight *own-cancel-a*))
                                 (fn-own-feeds *own-cancel-a*))))
 ; The PKT-400 keystone's new literal, removed: every other literal of its
@@ -2173,8 +2173,8 @@
 ; conclusion.
 (assert-event (equal (fn-own-inflight *own-cancel-queued*) (fn-own-inflight *own-cancel-a*)))
 (assert-event (equal (fn-own-feeds *own-cancel-queued*) (fn-own-feeds *own-cancel-a*)))
-(must-fail (assert-event (own-pkt400-antecedent *own-cancel-queued* "out")))
-(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-queued*))))
+(must-fail-checked (assert-event (own-pkt400-antecedent *own-cancel-queued* "out")))
+(must-fail-checked (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-queued*))))
 ; A queue the submission does not name leaves the target.
 (assert-event (equal (fn-own-submission-targets (own-with-queue *own-cancel-a* "fn.other"))
                      '("out")))
@@ -2284,13 +2284,13 @@
                                    (fn-own-feed-path-of (own-sub-octets-of *own-dist-world*)))))
 (assert-event (not (consp (fn-feed-find (fn-own-sub-msgid (fn-own-inflight *own-dist-world*))
                                         (fn-feed-queue (fn-own-feed-find "out" (fn-own-feeds *own-dist-world*)))))))
-(must-fail (assert-event (fn-own-feed-distribution-admitsp
+(must-fail-checked (assert-event (fn-own-feed-distribution-admitsp
                           (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-world*))
                           (fn-own-feed-distributions-of (own-sub-octets-of *own-dist-world*)))))
-(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-world*))))
+(must-fail-checked (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-world*))))
 ; A malformed Distribution matches no filter.
 (defconst *own-dist-bad* (own-dist-taken *own-dist-cfg* " fn,,us"))
-(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-bad*))))
+(must-fail-checked (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-bad*))))
 ; The same article without the row: no filter, fed (the filter is the row's).
 (defconst *own-dist-world-unfiltered* (own-dist-taken *own-out-cfg* " world"))
 (assert-event (null (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-world-unfiltered*))))
@@ -2303,10 +2303,10 @@
 (assert-event (fn-own-feed-distribution-admitsp
                (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-held*))
                (fn-own-feed-distributions-of (own-sub-octets-of *own-dist-held*))))
-(must-fail (assert-event (own-dist-antecedent *own-dist-held* "out")))
-(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-held*))))
+(must-fail-checked (assert-event (own-dist-antecedent *own-dist-held* "out")))
+(must-fail-checked (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-held*))))
 ; The scope literal: "q" is no peer of the table.
-(must-fail (assert-event (own-dist-antecedent *own-dist-fn* "q")))
+(must-fail-checked (assert-event (own-dist-antecedent *own-dist-fn* "q")))
 (assert-event (not (member-equal "q" (fn-own-submission-targets *own-dist-fn*))))
 ; The in-flight literal: nothing in flight, no target.
 (assert-event (null (fn-own-submission-targets
@@ -2323,8 +2323,8 @@
                      :control))
 (assert-event (fn-own-feed-any-matchp "fn.*" (fn-own-feed-groups-of
                                              (own-sub-octets-of *own-dist-cancel*))))
-(must-fail (assert-event (own-pkt400-antecedent *own-dist-cancel* "out")))
-(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-cancel*))))
+(must-fail-checked (assert-event (own-pkt400-antecedent *own-dist-cancel* "out")))
+(must-fail-checked (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-cancel*))))
 
 ; fn-own-feed-dists-of-reconfigure: a peer the reconfiguration binds carries
 ; its rows' filter; without the binding hypothesis the conclusion fails (a
@@ -2337,8 +2337,8 @@
   (list (fn-cfg-row-make "in" "path-identity" "in.example" 0)
         (fn-cfg-row-make "in" *fn-pcb-distributions-slot* "fn" 0)))
 (assert-event (equal (fn-own-feed-dists-of-rows "in" *own-dist-inbound-peers*) "fn"))
-(must-fail (assert-event (fn-own-feed-boundp "in" (fn-own-feed-reconfigure nil *own-dist-inbound-peers*))))
-(must-fail (assert-event (equal (fn-own-feed-dists-of "in" (fn-own-feed-reconfigure nil *own-dist-inbound-peers*))
+(must-fail-checked (assert-event (fn-own-feed-boundp "in" (fn-own-feed-reconfigure nil *own-dist-inbound-peers*))))
+(must-fail-checked (assert-event (equal (fn-own-feed-dists-of "in" (fn-own-feed-reconfigure nil *own-dist-inbound-peers*))
                                 (fn-own-feed-dists-of-rows "in" *own-dist-inbound-peers*))))
 ; A second `peer distributions' request replaces the first (single-valued).
 (defconst *own-dist-row-2* (fn-cfg-row-make "out" *fn-pcb-distributions-slot* "us" 0))
@@ -2354,5 +2354,5 @@
 ; (PKT-658).  *own-cancel-queued*: every other literal holds for "out", the
 ; queue literal fails, and so does the conclusion.
 (assert-event (own-dist-antecedent *own-cancel-queued* "out"))
-(must-fail (assert-event (own-dist-antecedent-q *own-cancel-queued* "out")))
-(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-queued*))))
+(must-fail-checked (assert-event (own-dist-antecedent-q *own-cancel-queued* "out")))
+(must-fail-checked (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-queued*))))

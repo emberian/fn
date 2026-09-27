@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-compaction-correspondence")
 (include-book "../../books/byte-store-frame")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defconst *bscc-names*
@@ -79,7 +79,7 @@
          '((0 (99)) (2 (12))) 3)
         '(:error :conflict)))
 
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bs-pack-reclaim-plan
           (list "00000000000000000001.txn" "00000000000000000005.txn") 8 4)
@@ -111,7 +111,7 @@
 
 ; The unplanned-name premise has teeth: applying the issued unlink destroys
 ; covered sequence 1, so the same conclusion is false for that planned name.
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((before *bscc-store*)
          (cut (fn-bs-test-reclaim-cut 2))
@@ -133,7 +133,7 @@
                           "00000000000000000004.txn" 13))
               15))
 
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((before *bscc-foreign-writer-store*)
          (cut (fn-bs-prefix-state
@@ -160,7 +160,7 @@
 
 ; Dropping the suffix-boundary premise admits covered sequence 1, which is
 ; present in the actual plan.
-(must-fail
+(must-fail-checked
  (assert-event
   (not (member-equal
         "00000000000000000001.txn"

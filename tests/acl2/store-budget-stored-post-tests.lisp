@@ -11,7 +11,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-budget-stored-post")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *sbsp-groups* '("fn.letters" "fn.test"))
 (defconst *sbsp-w1*
@@ -127,17 +127,17 @@
 (defconst *sbsp-st-bad* (sbsp-stage *sbsp-s4* *sbsp-w2* nil))
 (assert-event (equal (nth 0 *sbsp-st-bad*) nil))
 (assert-event (equal (fn-sf-phase (fn-sn-files (nth 1 *sbsp-st-bad*))) :record-staged))
-(must-fail (assert-event (nth 2 *sbsp-st-bad*)))
+(must-fail-checked (assert-event (nth 2 *sbsp-st-bad*)))
 
 ; fn-sn-io-keeps-the-stored-octets (one hypothesis).  Omitted: the staged
 ; row's handle is outside the empty arena.  Conclusion: fails after the
 ; publish words.
 (assert-event (equal (sbsp-okp *sbsp-s1* nil) nil))
-(must-fail (assert-event (sbsp-okp *sbsp-s2* nil)))
+(must-fail-checked (assert-event (sbsp-okp *sbsp-s2* nil)))
 
 ; fn-sn-finish-keeps-the-stored-octets (one hypothesis).
 (assert-event (equal (sbsp-okp *sbsp-s2* nil) nil))
-(must-fail (assert-event (sbsp-okp *sbsp-s3* nil)))
+(must-fail-checked (assert-event (sbsp-okp *sbsp-s3* nil)))
 
 ; fn-arena-p (both stage keystones): the stobj's own recognizer, which every
 ; live arena satisfies; no removal witness is claimed for it.
@@ -184,4 +184,4 @@
 ; Removal of the relation: the empty arena.
 (defconst *sbsp-own-bad* (sbsp-owner *sbsp-oc* *sbsp-w2* nil))
 (assert-event (equal (nth 0 *sbsp-own-bad*) nil))
-(must-fail (assert-event (nth 2 *sbsp-own-bad*)))
+(must-fail-checked (assert-event (nth 2 *sbsp-own-bad*)))

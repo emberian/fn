@@ -1,7 +1,7 @@
 ; Teeth for the FNBS persistence-cut model.
 (in-package "ACL2")
 (include-book "../../books/bp-sequence-persistence")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bspt-root*
   (fn-bpn-sp-step (fn-bpn-sp-initial) :root-parent-barrier))
@@ -18,7 +18,7 @@
 ; namespace barriers and the final sequence-directory barrier have occurred.
 (assert-event (equal (fn-bpn-sp-effect *bspt-stage*) nil))
 (assert-event (equal (fn-bpn-sp-effect *bspt-name*) nil))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-bpn-sp-effect *bspt-name*) '(:authored 0))))
 (assert-event (equal (fn-bpn-sp-effect *bspt-durable*) '(:authored 0)))
 
@@ -28,7 +28,7 @@
 (defconst *bspt-root-failed*
   (fn-bpn-sp-step (fn-bpn-sp-initial) :root-parent-failed))
 (assert-event (equal (fn-bpn-sp-effect *bspt-root-failed*) nil))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-bpn-sp-effect
                        (fn-bpn-sp-step *bspt-root-failed* :sequence-parent-barrier))
                       '(:authored 0))))

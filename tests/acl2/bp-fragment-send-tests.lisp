@@ -5,7 +5,7 @@
 ; the function runs, never inside a defconst).
 (in-package "ACL2")
 (include-book "../../books/bp-fragment-send")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpfst-a* (cons :dtn '(47 47 102 110 45 97 47)))   ; dtn://fn-a/
 (defconst *bpfst-b* (cons :dtn '(47 47 102 110 45 98 47)))   ; dtn://fn-b/
@@ -63,7 +63,7 @@
         (chunk (- 400 (fn-bpfs-overhead b))))
    (and (equal (fn-bpfs-chunk b 400) (- chunk 8))
         (fn-bpfs-all-at-most (cdr (bpfst-plan 1000 400)) 400))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((b (bpfst-bundle 0 1000))
          (chunk (- 400 (fn-bpfs-overhead b))))
@@ -98,7 +98,7 @@
 
 ; Without :fragments the conclusion fails: a whole answer carries no views,
 ; and the canvas is all gaps.
-(must-fail
+(must-fail-checked
  (assert-event (equal (bpfst-canvas (bpfst-wire 0 100) 100000) (bpfst-payload 100 nil))))
 
 ; -----------------------------------------------------------------------------
@@ -116,7 +116,7 @@
 ; Without :fragments: at MRU 5000 the answer is (:whole) and what goes on
 ; the wire is the parent itself, which carries no fragment flag.
 (assert-event (equal (bpfst-plan 1000 5000) '(:whole)))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bpfs-restoresp (list (bpfst-wire 0 1000)) (bpfst-bundle 0 1000))))
 
 ; -----------------------------------------------------------------------------
@@ -132,13 +132,13 @@
 
 ; Hypothesis :fragments: a whole answer has no views, and the reassembler
 ; refuses.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpf-reassemble (fn-bpfs-views (cdr (bpfst-plan 100 100000))) 100)
          (list :ok (bpfst-payload 100 nil)))))
 ; Hypothesis whole parent: a fragment parent's pieces carry its total 3000,
 ; not its payload length.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpf-reassemble (fn-bpfs-views (cdr (fn-bpfs-plan (bpfst-fparent-wire) 300)))
                             1000)
@@ -150,7 +150,7 @@
  (let ((p (bpfst-plan 1000 (bpfst-small-mru))))
    (and (equal (car p) :fragments) (equal (len (cdr p)) 100)
         (fn-bpfs-all-at-most (cdr p) (bpfst-small-mru)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpf-reassemble (fn-bpfs-views (cdr (bpfst-plan 1000 (bpfst-small-mru)))) 1000)
          (list :ok (bpfst-payload 1000 nil)))))
@@ -171,7 +171,7 @@
         (equal (fn-bpf-total (car vs)) 70000)
         (equal (fn-bpf-total (cadr vs)) 70000)
         (equal (bpfst-concat vs) (bpfst-payload 70000 nil)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpf-reassemble (fn-bpfs-views (cdr (bpfst-big-plan))) 70000)
          (list :ok (bpfst-payload 70000 nil)))))
@@ -191,7 +191,7 @@
         (list :ok (bpfst-payload 1000 nil))))
 ;; Hypothesis :fragments: a whole answer has no views; refused.
 (assert-event (not (equal (car (bpfst-plan 100 100000)) :fragments)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpfw-reassemble (fn-bpfs-views (cdr (bpfst-plan 100 100000))) 100)
          (list :ok (bpfst-payload 100 nil)))))
@@ -201,7 +201,7 @@
  (and (equal (car (fn-bpfs-plan (bpfst-fparent-wire) 300)) :fragments)
       (fn-bpp-fragmentp
        (fn-bpp-flags (fn-bpb-bundle-primary (fn-bpfs-parent (bpfst-fparent-wire)))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpfw-reassemble (fn-bpfs-views (cdr (fn-bpfs-plan (bpfst-fparent-wire) 300)))
                              1000)
@@ -213,4 +213,4 @@
 (assert-event (equal (fn-bpfs-fragment-outcome 1 :failed) :failed))
 (assert-event (equal (fn-bpfs-fragment-outcome 2 :failed) :uncertain))
 (assert-event (equal (fn-bpfs-fragment-outcome 3 :refused) :refused))
-(must-fail (assert-event (equal (fn-bpfs-fragment-outcome 2 :failed) :failed)))
+(must-fail-checked (assert-event (equal (fn-bpfs-fragment-outcome 2 :failed) :failed)))

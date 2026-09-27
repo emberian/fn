@@ -5,7 +5,7 @@
 (include-book "../../books/bp-node-fragment-jobs")
 (include-book "bp-node-fragment-replacement-tests")
 (include-book "bp-node-fragment-step-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Reachable positive witness: the plan fixture's held list (two fragments of
 ; one family, a fragment of another, and a non-fragment row) satisfies the
@@ -53,7 +53,7 @@
                             (cadddr *bpnfj-forwarding-applied*)))
 (assert-event (not (fn-bpnf-rows-job-onlyp
                     (cadddr *bpnfj-forwarding-applied*))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bpnf-rows-job-onlyp (cadddr *bpnfj-forwarding-applied*))))
 
 ; Hypothesis removal, :ready.  A refused application (the anchor's arrival

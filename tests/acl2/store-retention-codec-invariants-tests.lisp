@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-retention-codec-invariants")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-srci-test-retention*
   (fn-store-retention-event-make :undertake 1 1 1
@@ -29,7 +29,7 @@
       (not (equal (fn-store-event-decode-exact
                    (fn-store-event-encode *fn-srci-test-invalid-retention*))
                   (list :ok *fn-srci-test-invalid-retention*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-store-event-decode-exact
           (fn-store-event-encode *fn-srci-test-invalid-retention*))

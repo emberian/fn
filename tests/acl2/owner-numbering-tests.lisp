@@ -11,7 +11,7 @@
 (in-package "ACL2")
 (include-book "owner-served-invariants-tests")
 (include-book "../../books/owner-numbering")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun onb-archive (oc)
   (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))
@@ -152,16 +152,16 @@
 (assert-event (equal (fn-state-nexts (onb-archive (in-arena-osi-after-post *sr-arena* *onb-wound* *osi-post-events* 4 :durable)))
                      '(("fn.letters" . 2) ("fn.test" . 1))))
 (assert-event (not (in-arena-onb-watermark-conclusion *sr-arena* *onb-wound* *osi-post-events* 4 :durable "fn.letters")))
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (in-arena-onb-watermark-conclusion *sr-arena* *onb-wound* *osi-post-events* 4 :durable "fn.letters")))
 (assert-event (equal (fn-own-number-holder "fn.letters" 1 (fn-state-articles (onb-archive *onb-wound*)))
                      "<one@example>"))
 (assert-event (not (in-arena-onb-holder-conclusion *sr-arena* *onb-wound* *osi-post-events* 4 :durable "fn.letters" 1)))
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (in-arena-onb-holder-conclusion *sr-arena* *onb-wound* *osi-post-events* 4 :durable "fn.letters" 1)))
 (assert-event (equal (fn-own-number-holder "fn.letters" 1 (onb-raw *onb-wound*)) "<one@example>"))
 (assert-event (not (in-arena-onb-raw-holder-conclusion *sr-arena* *onb-wound* *osi-post-events* 4 :durable "fn.letters" 1)))
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (in-arena-onb-raw-holder-conclusion *sr-arena* *onb-wound* *osi-post-events* 4 :durable "fn.letters" 1)))
 
 ; Hypothesis (the number is held before), both holder keystones.
@@ -169,10 +169,10 @@
 ; article after.  A number is fixed once it is given, not before.
 (assert-event (null (fn-own-number-holder "fn.letters" 3 (fn-state-articles (onb-archive *osi-q*)))))
 (assert-event (not (in-arena-onb-holder-conclusion *sr-arena* *osi-q* *onb-events* 4 :durable "fn.letters" 3)))
-(must-fail (assert-event (in-arena-onb-holder-conclusion *sr-arena* *osi-q* *onb-events* 4 :durable "fn.letters" 3)))
+(must-fail-checked (assert-event (in-arena-onb-holder-conclusion *sr-arena* *osi-q* *onb-events* 4 :durable "fn.letters" 3)))
 (assert-event (null (fn-own-number-holder "fn.letters" 3 (onb-raw *osi-q*))))
 (assert-event (not (in-arena-onb-raw-holder-conclusion *sr-arena* *osi-q* *onb-events* 4 :durable "fn.letters" 3)))
-(must-fail (assert-event (in-arena-onb-raw-holder-conclusion *sr-arena* *osi-q* *onb-events* 4 :durable "fn.letters" 3)))
+(must-fail-checked (assert-event (in-arena-onb-raw-holder-conclusion *sr-arena* *osi-q* *onb-events* 4 :durable "fn.letters" 3)))
 
 ; Hypothesis (fn-ocfg-writer-eventsp events): NO TOOTH.  No violating value
 ; was found.  Every other arm of fn-ocfg-step leaves the committed view

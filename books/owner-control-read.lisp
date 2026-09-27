@@ -614,7 +614,7 @@
                            (fn-wire-result-state
                             (fn-wire-feed-proper (fn-served-conn-wire conn) prefix))
                            byte))))))
-           :in-theory (e/d (fn-served-closed-wirep fn-served-tls-handshakingp)
+           :in-theory (e/d (fn-served-closed-wirep fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp)
                            (fn-served-step-of-one-framed-event
                             fn-octl-dispatch-archive-command fn-octl-reply
                             fn-served-step fn-served-dispatch

@@ -47,7 +47,7 @@
                   :measure (len octets)))
   (if (or (not (consp octets))
           (fn-served-closed-wirep (fn-served-conn-wire conn))
-          (fn-served-tls-handshakingp conn))
+          (fn-served-haltedp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
     (let ((here (fn-served-feed-byte conn (car octets) fn-arena)))
       ;; PKT-600: yield after the octet that completed a submission; the rest

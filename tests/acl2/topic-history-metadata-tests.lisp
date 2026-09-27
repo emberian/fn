@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/topic-history-metadata-invariants")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *th-id*
   (append *fn-id-subject-label* '(0 1 1)
@@ -146,14 +146,14 @@
                                             (string #\Tab) "AA=="))
                              '(13 10 120))))))
 ; A positive candidate depends on the only field being intact.
-(must-fail
+(must-fail-checked
  (defthm fn-th-project-source-ignores-field-change
    (equal (fn-th-project-source
            (append *th-source-head*
                    (append (fn-t-th-line "FN-Topic: v1 AAAA") '(13 10 120))))
           (fn-stmt-ok *th-root*))))
 ; Dropping the validity hypothesis loses the constructor inverse.
-(must-fail
+(must-fail-checked
  (defthm fn-th-roundtrip-without-validity
    (equal (fn-th-decode (fn-th-encode
                          (list :control *th-id* *th-id*
@@ -161,7 +161,7 @@
           (fn-stmt-ok (list :control *th-id* *th-id*
                             (list *th-author* *th-author*))))))
 ; A duplicate authored field cannot satisfy the successful-field binding.
-(must-fail
+(must-fail-checked
  (defthm fn-th-host-inspect-duplicate-is-candidate
    (let ((field-line (append (fn-record-string-octets "FN-Topic: ")
                              (fn-th-field-encode *th-root*) '(13 10))))

@@ -1,7 +1,7 @@
 ; Teeth for books/consumer-owner-local-progress (PRF-116), over the actual
 ; local-owner subject and committed Store witnesses.
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/consumer-owner-local-progress")
 (include-book "../../books/history-fold-refinement")
 
@@ -78,13 +78,13 @@
 (assert-event (with-guard-checking :none
                 (eq (car (fn-col-poll-scan nil *colp-group* -1 5 0)) :scan)))
 (assert-event (not (natp -1)))
-(must-fail (assert-event (with-guard-checking :none
+(must-fail-checked (assert-event (with-guard-checking :none
                            (colp-contract nil *colp-group* -1 5 0))))
 ; Without (eq (car scan) :scan): a refused history has no continuation.
 (assert-event (natp 0))
 (assert-event (equal (fn-col-poll-scan nil *colp-group* 0 1 1)
                      '(:refused :history)))
-(must-fail (assert-event (colp-contract nil *colp-group* 0 1 1)))
+(must-fail-checked (assert-event (colp-contract nil *colp-group* 0 1 1)))
 
 ; The host-called poll over a committed Store is that selector's page.
 (defconst *colp-after-article*
@@ -133,7 +133,7 @@
 (assert-event (eq (car (colp-ack *colp-state* *colp-cursor*)) :write))
 (assert-event (colp-write-conclusion *colp-state* *colp-cursor*))
 (assert-event (eq (car (colp-ack *colp-state* *colp-same*)) :no-op))
-(must-fail (assert-event (colp-write-conclusion *colp-state* *colp-same*)))
+(must-fail-checked (assert-event (colp-write-conclusion *colp-state* *colp-same*)))
 ; No-op conjunct: witness, then each hypothesis removed.
 (defun colp-noop-conclusion (s cursor)
   (equal (colp-ack s cursor)
@@ -150,17 +150,17 @@
   (fn-cp-cursor '(1) '(2) *colp-id* '(88) *colp-group* 1 0 1 0))
 (assert-event (equal (fn-cp-nth 9 *colp-stranger-same*)
                      (fn-cp-nth 7 (colp-entry *colp-state* *colp-stranger-same*))))
-(must-fail (assert-event (colp-noop-conclusion *colp-state* *colp-stranger-same*)))
+(must-fail-checked (assert-event (colp-noop-conclusion *colp-state* *colp-stranger-same*)))
 (assert-event (not (equal (fn-cp-nth 9 *colp-cursor*)
                           (fn-cp-nth 7 (colp-entry *colp-state* *colp-cursor*)))))
-(must-fail (assert-event (colp-noop-conclusion *colp-state* *colp-cursor*)))
+(must-fail-checked (assert-event (colp-noop-conclusion *colp-state* *colp-cursor*)))
 
 ; After the committed ack, the same ack is a no-op (an uncertain ack retried).
 (defun colp-after-conclusion (s cursor)
   (equal (car (colp-ack (fn-cp-apply s (list :ack cursor)) cursor)) :no-op))
 (assert-event (colp-after-conclusion *colp-state* *colp-cursor*))
 (assert-event (eq (car (colp-ack *colp-state* *colp-stranger*)) :refused))
-(must-fail (assert-event (colp-after-conclusion *colp-state* *colp-stranger*)))
+(must-fail-checked (assert-event (colp-after-conclusion *colp-state* *colp-stranger*)))
 
 ; PKT-256, CORRUPTED STATE (not reachable: a replayed scope's recorded
 ; position never exceeds the committed frontier, `fn-col-scope-entry'
@@ -181,7 +181,7 @@
 (assert-event (not (<= (fn-cp-nth 9 *colp-cursor*)
                        (nfix (fn-cp-nth 3 *colp-corrupt*)))))
 (assert-event (equal (colp-ack *colp-corrupt* *colp-cursor*) '(:refused :future)))
-(must-fail (assert-event (colp-noop-conclusion *colp-corrupt* *colp-cursor*)))
+(must-fail-checked (assert-event (colp-noop-conclusion *colp-corrupt* *colp-cursor*)))
 
 ; PKT-254 (PRF-177 (c)): fn-col-poll-report-fits-or-refuses-by-name over the
 ; host-called report.  Reachable witness: the page above serves the article
@@ -223,7 +223,7 @@
 ; length hypothesis removed, the conclusion fails on the reachable page.
 (assert-event (<= (len (fn-col-poll-report-octets *colp-poll-wire*))
                   *fn-stxa-max-octets*))
-(must-fail (assert-event (equal *colp-report* '(:refused :oversize))))
+(must-fail-checked (assert-event (equal *colp-report* '(:refused :oversize))))
 ; PKT-467 (PRF-178): fn-col-poll-report-of-an-admitted-payload-fits.
 ; Reachable, the full antecedent: the page's event encoding is a payload the
 ; development profile's publication gate admits, and the report is the page.
@@ -234,7 +234,7 @@
         (fn-bs-publication-admissiblep *fn-bs-profile-development* 0 (len octets))
         (equal *colp-report* (list :poll (cadr *colp-poll*) octets)))))
 ; The page hypothesis dropped: the scope refusal is not a page.
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-col-poll-report (fn-own-start *colp-after-article* 2) '(9))
                       (list :poll (cadr (fn-col-poll (fn-own-start *colp-after-article* 2) '(9)))
                             nil))))

@@ -13,7 +13,7 @@
 (include-book "held-rows-tests")
 (include-book "../../books/cancel-lock-d25")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun cdt-text (s) (fn-record-string-octets s))
 (defconst *cdt-agent* (cdt-text "hbox.ember.software"))
@@ -204,7 +204,7 @@
  (equal (cdt-alpha-action *cdt-held-octets* "<other@example.invalid>" *cdt-bob-octets*
                           *cdt-groups* *cdt-s*)
         nil))
-(must-fail
+(must-fail-checked
  (defthm cdt-retry-needs-the-same-source
    (let ((held (fn-find-article
                 msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))

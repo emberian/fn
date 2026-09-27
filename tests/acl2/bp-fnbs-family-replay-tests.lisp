@@ -3,7 +3,7 @@
 (include-book "../../books/bp-node-fragment-step")
 (include-book "bp-node-fragment-plan-tests")
 (include-book "bp-report-deletion-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnfr-p0-arrival-one*
   (fn-bpnfft-held '(112) 1 *bpnff-b0* '(:dispatch-pending) nil))
@@ -104,7 +104,7 @@
                     (nth 0 (bpnfr-replay-rows))
                     (nth 2 (bpnfr-replay-rows)))
               (fn-bpnf-base *bpnff-state*))) :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpnf-family-replay-rows
                (list (nth 2 (bpnfr-replay-rows)))

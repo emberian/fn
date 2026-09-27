@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/checkpoint-publish")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "held-rows-tests")
 
 (defconst *cpp-groups* '("fn.letters" "fn.test"))
@@ -153,12 +153,12 @@
 ;; Tooth (not :bad): a gapped namespace below the capacity is :bad, not the
 ;; count.
 (assert-event (equal (fn-cpp-next-generation '(0 2) 10) :bad))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-cpp-next-generation '(0 2) 10) (len '(0 2)))))
 ;; Tooth (capacity within the uint32 width): past it the codec, not the
 ;; profile, exhausts the numbering.
 (assert-event (not (<= (expt 2 40) (+ 1 *fn-cbor-max-uint*))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-cpp-next-generation-from nil 4294967296 (expt 2 40))
                       (if (<= (expt 2 40) 4294967296) :exhausted 4294967296))))
 

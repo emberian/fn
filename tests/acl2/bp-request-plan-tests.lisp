@@ -4,7 +4,7 @@
 (include-book "bp-outbound-tests")
 (include-book "../../books/bp-request-plan")
 (include-book "../../books/bp-ion-workflow")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 ; The workflow entries read the payload arena (the records flip): each call
 ; runs over an arena holding *bpo-payloads* (tests/acl2/arena-lift.lisp).
 (bpr-lift fn-bprq-plan 3)
@@ -88,10 +88,10 @@
                           :ok)))
 ; The conclusion instantiated at that witness is false (a concrete
 ; counterexample, so the unhypothesised statement is not a theorem).
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpa-decode-exact (fn-bprq-plan-adu *bprq-none*))) :ok)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bp-journal-nth 3 (fn-bprq-plan-attempt *bprq-none*))
          "work:missing")))

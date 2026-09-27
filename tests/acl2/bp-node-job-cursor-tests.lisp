@@ -10,7 +10,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-job-cursor")
 (include-book "../../books/bp-node-receive-boundary")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *jc-local* (cons :dtn '(47 47 102 110 45 97 47)))   ; dtn://fn-a/
 (defconst *jc-peer* (cons :dtn '(47 47 102 110 45 98 47)))    ; dtn://fn-b/
@@ -107,7 +107,7 @@
              '(:close))
       (not (equal (car (fn-bpnjc-contact-next *jc-st* *jc-peer* *jc-routing* nil '(0 2 nil)))
                   (fn-bpnj-contact-next *jc-st* *jc-peer* *jc-routing* nil)))))
-(must-fail
+(must-fail-checked
  (thm (equal (car (fn-bpnjc-contact-next *jc-st* *jc-peer* *jc-routing* nil '(0 2 nil)))
              (fn-bpnj-contact-next *jc-st* *jc-peer* *jc-routing* nil))))
 

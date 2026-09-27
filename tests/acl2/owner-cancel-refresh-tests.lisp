@@ -21,7 +21,7 @@
 ;      same store decides the same records and the same archive.
 (in-package "ACL2")
 (include-book "owner-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun ocr-line (text) (append (fn-record-string-octets text) '(13 10)))
 (defun ocr-octets (lines)
@@ -115,7 +115,7 @@
  (and (fn-own-relation *ocr-after-other*)
       (equal (len (fn-own-view-withdrawals (fn-own-view *ocr-after-other*))) 1)
       (equal (ocr-archive *ocr-after-other*) (list "<lc@example>" "<lt@example>"))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (ocr-archive *ocr-after-other*) (list "<lc@example>"))))
 
 ; 3. The cancel first: C's record is made with no target locks (T has no

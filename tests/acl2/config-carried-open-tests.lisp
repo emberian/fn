@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/config-carried-open")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-cfgct-events*
   (list (fn-store-retention-event-make :undertake 0 0 0
@@ -83,7 +83,7 @@
              (fn-cvec-native-admin-authorize
               *fn-cfgct-events* 2 *fn-cfgct-history* *fn-cfgct-record* t nil
               *fn-cfgct-profile*))))
-(must-fail
+(must-fail-checked
  (defthm fn-cfgct-authorize-without-the-open
    (implies (and (true-listp config-records)
                  (equal opened (fn-cpo-open-observed config-records frontier records)))
@@ -184,7 +184,7 @@
               *fn-cfgct-unobserved-events* 2
               (fn-native-admin-append-record *fn-cfgct-one* *fn-cfgct-second*))
              '(:refused :history))))
-(must-fail
+(must-fail-checked
  (defthm fn-cfgct-carried-without-the-open-result
    (implies (and (true-listp config-records)
                  (equal configuration (fn-cnode-config-replay config-records))
@@ -242,7 +242,7 @@
                    *fn-cfgct-events* 2 *fn-cfgct-history* *fn-cfgct-record*
                    *fn-cfgct-configuration* *fn-cfgct-stale* *fn-cfgct-opened*)
                   *fn-cfgct-candidate*))))
-(must-fail
+(must-fail-checked
  (defthm fn-cfgct-carried-without-the-fold
    (implies (and (true-listp config-records)
                  (equal configuration (fn-cnode-config-replay config-records))
@@ -300,7 +300,7 @@
               *fn-cfgct-events* 2 *fn-cfgct-history* *fn-cfgct-record*
               *fn-cfgct-stale-configuration* *fn-cfgct-open* *fn-cfgct-opened*)
              '(:refused :configuration))))
-(must-fail
+(must-fail-checked
  (defthm fn-cfgct-carried-without-the-configuration
    (implies (and (true-listp config-records)
                  (equal replayed (fn-cpr-replay config-records records))
@@ -363,7 +363,7 @@
               *fn-cfgct-events* 2
               (fn-native-admin-append-record *fn-cfgct-improper-history*
                                              *fn-cfgct-second*)))))
-(must-fail
+(must-fail-checked
  (defthm fn-cfgct-carried-without-true-configs
    (implies (and (equal configuration (fn-cnode-config-replay config-records))
                  (equal replayed (fn-cpr-replay config-records records))

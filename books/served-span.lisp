@@ -49,7 +49,7 @@
                                                       fn-served-submission)))))
   (if (or (not (natp i)) (not (natp end)) (>= i end)
           (fn-served-closed-wirep (fn-served-conn-wire conn))
-          (fn-served-tls-handshakingp conn))
+          (fn-served-haltedp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
     (let ((here (fn-scar-feed-byte conn (fn-octets-get i fn-octets) live trie arts fn-arena)))
       ;; PKT-600: yield after the octet that completed a submission; the host

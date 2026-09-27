@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "store-budget-article-tests")
 (include-book "../../books/store-maintenance-reserve")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *smt-h* 250000)
 ; *pmt-old* budgets 4 transactions: the fourth is the release's.
@@ -36,7 +36,7 @@
       (not (fn-smr-roomp *pmt-old* 3 (+ (1+ *smt-b*) 4096)))))
 ; Tooth, the verdict: the profile's gate alone admits at H - 4 096 and the
 ; reservation is gone after the record.
-(must-fail
+(must-fail-checked
  (defthm smt-keeps-without-the-verdict
    (implies (and (equal (fn-sbud-verdict-at *pmt-old* :undertake 2 (- *smt-h* 4096))
                         :admissible)
@@ -114,7 +114,7 @@
  (and (equal (fn-sbud-article-verdict-at *pmt-old* 1 (- *smt-h* *smt-fig*) 32768 400)
              :admissible)
       (not (fn-smr-roomp *pmt-old* 2 (+ (- *smt-h* *smt-fig*) *pmt-len*)))))
-(must-fail
+(must-fail-checked
  (defthm smt-prepare-without-the-staging
    (fn-smr-roomp *pmt-old* 2 (+ (- *smt-h* *smt-fig*) *pmt-len*))
    :rule-classes nil))

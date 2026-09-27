@@ -10,7 +10,7 @@
 ; empty and built once from a node that already knows an article, a pin and
 ; a release.
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/replay-identity-index")
 
 (defconst *rii-t-stamp* *fn-cfg-default-stamp*)
@@ -234,19 +234,19 @@
       (equal (fn-replay-result-reason *rii-t-bad-prefix*) :event-refusal)
       (fn-sco-pausedp
        (fn-sco-cpr-prefix *rii-t-paused-cn* nil (list *rii-t-article-2*) 3 3))))
-(must-fail
+(must-fail-checked
  (defthm rii-t-apply-record-without-msgid-trie
    (equal *rii-t-bad-msgid-step*
           (fn-replay-apply-record *rii-t-paused-node* *rii-t-article-2*))))
-(must-fail
+(must-fail-checked
  (defthm rii-t-apply-record-without-id-trie
    (equal *rii-t-bad-id-step*
           (fn-replay-apply-record *rii-t-paused-node* *rii-t-article-2*))))
-(must-fail
+(must-fail-checked
  (defthm rii-t-cpr-apply-event-without-okp
    (equal *rii-t-bad-id-event*
           (fn-cpr-apply-event *rii-t-paused-cn* *rii-t-article-2*))))
-(must-fail
+(must-fail-checked
  (defthm rii-t-prefix-without-okp
    (equal *rii-t-bad-prefix*
           (fn-sco-cpr-prefix *rii-t-paused-cn* nil (list *rii-t-article-2*) 3 3))))
@@ -299,7 +299,7 @@
                             (ktrie (cdr *rii-t-wrong-next*))
                             (retention (fn-node-retention *rii-t-paused-node*))
                             (id "archive-rii"))))))
-(must-fail
+(must-fail-checked
  (defthm rii-t-ix-next-without-release-step
    (fn-rii-okp *rii-t-wrong-next* *rii-t-paused-node*)))
 
@@ -318,7 +318,7 @@
                             (ktrie (cdr *rii-t-fake-id*))
                             (retention (fn-node-retention *rii-t-paused-node*))
                             (id "archive-rii-2"))))))
-(must-fail
+(must-fail-checked
  (defthm rii-t-ix-next-without-okp
    (fn-rii-okp *rii-t-still-wrong* *rii-t-paused-node*)))
 

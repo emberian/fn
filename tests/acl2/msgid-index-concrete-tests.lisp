@@ -2,7 +2,7 @@
 ; string index.
 (in-package "ACL2")
 (include-book "../../books/msgid-index-concrete")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -101,11 +101,11 @@
 ; The guard of the walk is needed for its compiled code: with (natp i)
 ; dropped from the guard, the walk's own body (its mbt, the index into the
 ; string) is not guard-verified.
-(must-fail
- (defun mxc-t-get-unguarded (msgid i trie)
-   (declare (xargs :guard (stringp msgid) :verify-guards t
-                   :measure (nfix (- (length msgid) (nfix i)))))
-   (if (and (mbt (and (stringp msgid) (natp i)))
-            (< i (length msgid)))
-       (mxc-t-get-unguarded msgid (1+ i) (fn-midx-branch-get (char msgid i) trie))
-     (fn-midx-branch-get *fn-midx-value-key* trie))))
+(defun mxc-t-get-unguarded (msgid i trie)
+  (declare (xargs :guard (stringp msgid) :verify-guards nil
+                  :measure (nfix (- (length msgid) (nfix i)))))
+  (if (and (mbt (and (stringp msgid) (natp i)))
+           (< i (length msgid)))
+      (mxc-t-get-unguarded msgid (1+ i) (fn-midx-branch-get (char msgid i) trie))
+    (fn-midx-branch-get *fn-midx-value-key* trie)))
+(must-fail-checked (verify-guards mxc-t-get-unguarded))

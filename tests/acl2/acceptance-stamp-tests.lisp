@@ -3,7 +3,7 @@
 (include-book "store-node-tests")
 (include-book "store-identity-traces-tests")
 (include-book "../../books/acceptance-stamp-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "held-rows-tests")
 
 (defconst *ast-observation* (fn-clock-observation 1 841000000000 0 t))
@@ -31,7 +31,7 @@
                      :clock-unusable))
 
 ; Each constructor theorem fails when its clock hypothesis is dropped.
-(must-fail
+(must-fail-checked
  (defthm ast-stamp-without-usable-clock-fails
    (equal (fn-record-stamp
            (fn-sn-article-record *sn-reserved* *ast-no-wall*
@@ -39,7 +39,7 @@
                                  "sn-pin" "sn-content" "sn-release" 2))
           (floor (fn-clock-wall *ast-no-wall*) 1000))
    :rule-classes nil))
-(must-fail
+(must-fail-checked
  (defthm ast-refusal-with-usable-clock-fails
    (equal *ast-built* :clock-unusable)
    :rule-classes nil))
@@ -55,7 +55,7 @@
 ; article that happens to share the record's transaction coordinates.
 (assert-event (null (fn-replay-apply-record (fn-sn-node *sn-prepared*)
                                             *sn-row*)))
-(must-fail
+(must-fail-checked
  (defthm ast-prepare-refusal-without-legacy-hypothesis-fails
    (equal (fn-sn-prepare *sn-reserved* *ast-row*) *sn-reserved*)
    :rule-classes nil))
@@ -82,7 +82,7 @@
          "<sn@example>"
          (fn-state-articles
           (fn-node-acceptance (fn-sn-node (fn-sn-finish *sn-completing*)))))))
-(must-fail
+(must-fail-checked
  (defthm ast-article-finish-without-enabled-completion-fails
    (consp
     (fn-find-article
@@ -123,7 +123,7 @@
          (list *ast-row* *ast-topic-install*))
         (list (cons (fn-record-msgid *ast-built*)
                     (fn-record-stamp *ast-built*)))))
-(must-fail
+(must-fail-checked
  (defthm ast-article-classification-without-topic-exclusion-fails
    (implies (and (not (fn-store-retention-event-p *ast-topic-install*))
                  (not (fn-stxe-p *ast-topic-install*))
@@ -155,7 +155,7 @@
 (assert-event (equal (fn-record-decode-exact
                       (append (butlast *ast-schema1* 1) '(26 0 0 0 5)))
                      '(:error :noncanonical)))
-(must-fail
+(must-fail-checked
  (defthm ast-canonicality-without-parser-success-fails
    (equal (fn-record-encode
            (fn-record-result-record
@@ -263,7 +263,7 @@
 (assert-event (fn-replay-article-eventp *ast-refused-article*))
 (assert-event (null (fn-replay-apply-record *ast-replay-initial*
                                            *ast-refused-article*)))
-(must-fail
+(must-fail-checked
  (defthm ast-one-record-without-successful-step-fails
    (consp (fn-find-article
            "<wrong-group@stamp.test>"
@@ -278,7 +278,7 @@
           (fn-replay *ast-journal-groups* 20
                      (list *ast-journal-r0* *ast-journal-r1*)))
          *ast-journal-retention*)))
-(must-fail
+(must-fail-checked
  (defthm ast-one-record-without-article-arm-fails
    (consp
     (fn-find-article
@@ -302,7 +302,7 @@
 (assert-event
  (not (fn-replay-okp (fn-replay *ast-journal-groups* 20
                                 *ast-bad-sequence-journal*))))
-(must-fail
+(must-fail-checked
  (defthm ast-journal-without-success-hypothesis-fails
    (equal (fn-articles-msgid-stamps
            (fn-state-articles
@@ -344,7 +344,7 @@
       (fn-sn-node (fn-sn-finish *ast-composite-completing*))))))
   841000000))
 (assert-event (not (fn-sn-completion-enabledp *ast-composite-prepared*)))
-(must-fail
+(must-fail-checked
  (defthm ast-composite-without-enabled-completion-fails
    (consp
     (fn-find-article
@@ -357,7 +357,7 @@
 ; by specification: the flip: the retained composite kind is fn-hstxa-p (a
 ; retained record is never the wire fn-stxa-p, so that test would be vacuous).
 (assert-event (not (fn-hstxa-p (fn-sn-completion-record *sn-completing*))))
-(must-fail
+(must-fail-checked
  (defthm ast-composite-without-composite-kind-fails
    (consp
     (fn-find-article
@@ -393,7 +393,7 @@
   (fn-sn-completion-record *ast-retention-completing*)))
 (assert-event (fn-stxk-p (fn-sn-completion-record *ast-keyring-completing*)))
 (assert-event (fn-stxe-p (fn-sn-completion-record *ast-verdict-completing*)))
-(must-fail
+(must-fail-checked
  (defthm ast-article-finish-without-retention-exclusion-fails
    (consp
     (fn-find-article
@@ -402,7 +402,7 @@
       (fn-node-acceptance
        (fn-sn-node (fn-sn-finish *ast-retention-completing*))))))
    :rule-classes nil))
-(must-fail
+(must-fail-checked
  (defthm ast-article-finish-without-keyring-exclusion-fails
    (consp
     (fn-find-article
@@ -411,7 +411,7 @@
       (fn-node-acceptance
        (fn-sn-node (fn-sn-finish *ast-keyring-completing*))))))
    :rule-classes nil))
-(must-fail
+(must-fail-checked
  (defthm ast-article-finish-without-verdict-exclusion-fails
    (consp
     (fn-find-article
@@ -420,7 +420,7 @@
       (fn-node-acceptance
        (fn-sn-node (fn-sn-finish *ast-verdict-completing*))))))
    :rule-classes nil))
-(must-fail
+(must-fail-checked
  (defthm ast-article-finish-without-composite-exclusion-fails
    (consp
     (fn-find-article

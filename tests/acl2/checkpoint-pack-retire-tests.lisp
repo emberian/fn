@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/checkpoint-pack-retire")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Three generations, with 1 selected.  Retiring old 0 never changes selected
 ; 1 or a newer unselected candidate 2, regardless of whether the unlink is
@@ -29,21 +29,21 @@
       (equal (len (fn-cprt-crash-survivors '(0 1) nil nil)) 2)
       (equal (len (fn-cprt-crash-survivors '(0 1) '(0) '(0))) 2)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-cprt-slot-without-generation-membership
     (implies (and (member-equal generation issued)
                   (not (member-equal generation retained)))
              (< (len (fn-cprt-crash-survivors generations issued retained))
                 (len generations))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-cprt-slot-without-issued-attempt
     (implies (and (member-equal generation generations)
                   (not (member-equal generation retained)))
              (< (len (fn-cprt-crash-survivors generations issued retained))
                 (len generations))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-cprt-slot-without-unretained-image
     (implies (and (member-equal generation generations)
                   (member-equal generation issued))
@@ -83,14 +83,14 @@
       (not (member-equal 1
                          (fn-cprt-crash-survivors '(0 1 2) '(1) nil)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-cprt-selected-survives-without-membership
     (let ((plan (fn-cprt-retire-plan generations selected)))
       (implies (fn-cprt-prefixp issued plan)
                (member-equal selected
                              (fn-cprt-crash-survivors generations issued retained)))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-cprt-selected-survives-without-issued-prefix
     (implies (member-equal selected generations)
              (member-equal selected
@@ -116,19 +116,19 @@
  (and (fn-cprt-generationsp '(4095))
       (equal (fn-cprt-next-generation '(4095) 1) :exhausted)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-cprt-next-without-valid-namespace
     (implies (and (member-equal selected generations)
                   (not (equal (fn-cprt-next-generation generations 4096) :exhausted)))
              (< selected (fn-cprt-next-generation generations 4096))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-cprt-next-without-selected-member
     (implies (and (fn-cprt-generationsp generations)
                   (not (equal (fn-cprt-next-generation generations 4096) :exhausted)))
              (< selected (fn-cprt-next-generation generations 4096))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-cprt-next-without-capacity
     (implies (and (fn-cprt-generationsp generations)
                   (member-equal selected generations))
@@ -145,6 +145,6 @@
 ;; Tooth (a valid namespace): out of order, :invalid, not the number after
 ;; the last.
 (assert-event (not (fn-cprt-generationsp '(9 3))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-cprt-next-generation '(9 3) 5)
                       (+ 1 (fn-cprt-last '(9 3))))))

@@ -10,6 +10,7 @@
 ; with the finished Store under its old view, as fn-own-complete refreshes
 ; it.  One must-fail per hypothesis.
 (in-package "ACL2")
+(include-book "must-fail-checked")
 (include-book "owner-cancel-refresh-tests")
 (include-book "../../books/owner-refresh-indexed")
 
@@ -68,7 +69,7 @@
       (equal (len (fn-own-view-withdrawals
                    (fn-own-view (fn-own-refresh-ix (ori-with-store *ori-pre* *ori-bad-s*)))))
              0)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-own-refresh-ix (ori-with-store *ori-pre* *ori-bad-s*))
          (fn-own-refresh (ori-with-store *ori-pre* *ori-bad-s*)))))
@@ -97,7 +98,7 @@
       (equal (len (fn-own-view-withdrawals
                    (fn-own-view (fn-own-refresh-ix (ori-with-store *ori-pre* *ori-fake-s*)))))
              1)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-own-refresh-ix (ori-with-store *ori-pre* *ori-fake-s*))
          (fn-own-refresh (ori-with-store *ori-pre* *ori-fake-s*)))))

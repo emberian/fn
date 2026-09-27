@@ -1,7 +1,7 @@
 ; Teeth for books/served-carried.lisp and books/owner-served-carried.lisp.
 (in-package "ACL2")
 (include-book "../../books/owner-served-carried")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "config-owner-live-tests")
 
 ; Reachable witness: the configured owner after a live group creation opens
@@ -75,7 +75,7 @@
           (fn-ocfg-owner
            (fn-own-tls-result-owner
             (in-arena-fn-ocfg-read-tls-prefix *sr-arena* *scar-t-bad-oc* 1 *ocl-t-live-group-command*)))))))
-(must-fail
+(must-fail-checked
  (defthm fn-scar-t-read-is-reference-without-relation
    (equal (fn-scar-ocfg-read-tls-prefix *scar-t-bad-oc* 1 *ocl-t-live-group-command* fn-arena)
           (fn-ocfg-read-tls-prefix *scar-t-bad-oc* 1 *ocl-t-live-group-command* fn-arena))))
@@ -87,7 +87,7 @@
                                              *scar-t-bad-node*))))
 (assert-event (fn-scar-auth-sessionp *scar-t-bad-session* *scar-t-bad-node*))
 (assert-event (not (fn-auth-sessionp *scar-t-bad-session*)))
-(must-fail
+(must-fail-checked
  (defthm fn-scar-t-auth-sessionp-without-node-premise
    (equal (fn-scar-auth-sessionp *scar-t-bad-session* *scar-t-bad-node*)
           (fn-auth-sessionp *scar-t-bad-session*))))

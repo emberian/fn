@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/tcpcl-spool")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *t-tcl-stage*
   '(46 105 110 99 111 109 105 110 103 45
@@ -29,7 +29,7 @@
 
 ; Dropping the regular-file hypothesis changes the conclusion and preserves
 ; the unexplained entry, rather than following or deleting it.
-(must-fail
+(must-fail-checked
  (defthm fn-tcl-spool-recovery-removes-a-nonregular-stage
    (implies (fn-tcl-spool-stage-namep stage)
             (equal (fn-tcl-spool-status

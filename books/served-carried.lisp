@@ -357,7 +357,7 @@
                                                       fn-served-submission)))))
   (if (or (not (consp octets))
           (fn-served-closed-wirep (fn-served-conn-wire conn))
-          (fn-served-tls-handshakingp conn))
+          (fn-served-haltedp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
     (let ((here (fn-scar-feed-byte conn (car octets) live trie arts fn-arena)))
       ;; PKT-600: yield after the octet that completed a submission, as

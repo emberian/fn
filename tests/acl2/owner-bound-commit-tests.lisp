@@ -2,7 +2,7 @@
 ; commit route commits only under the filing plan's groups.
 (in-package "ACL2")
 (include-book "../../books/owner-bound-commit")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun obct-line (text)
   (append (fn-record-string-octets text) '(13 10)))
@@ -45,7 +45,7 @@
 
 ; Teeth for fn-obc-commit-only-after-filing (one hypothesis, the gate's
 ; :commit): without it the plan does not file in the committed groups.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-pa-filing-plan *obct-cancel* *obct-fn-test* *obct-domain*)
          (list :file *obct-fn-test*))))
@@ -53,10 +53,10 @@
 ; Teeth for fn-obc-control-commits-only-in-its-filing-group: without the
 ; :control hypothesis an ordinary article commits in fn.test, which is not a
 ; control group; without the gate the cancel's own groups are fn.test.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-ctl-control-group-namep "fn.test")))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal *obct-fn-test*
          (list (fn-record-string-octets

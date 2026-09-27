@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-initializer")
 (include-book "../../books/byte-store-frame")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defun fn-bsi-test-config () (fn-bs-initial-config-octets))
@@ -122,7 +122,7 @@
                                 (fn-bsi-test-frontier) 7
                                 *fn-bsi-test-record-stage*
                                 *fn-bsi-test-frontier-stage*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-store-relation
    (car (car (last (fn-bs-run *fn-bs-empty-store* (fn-sf-initial-state)
@@ -134,7 +134,7 @@
                                                            *fn-bsi-test-frontier-stage*)
                               nil nil nil))))
    (fn-sf-initial-state) 'nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-store-relation
    (car (car (last (fn-bs-run *fn-bs-empty-store* (fn-sf-initial-state)
@@ -251,7 +251,7 @@
    (and (equal (len run) 7)
         (< (len run) (len program)))))
 
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((program (fn-bsi-existing-init-program
                    (fn-bsi-test-config) (fn-bsi-test-frontier)

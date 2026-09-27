@@ -4,7 +4,7 @@
 ; (fnn-owner-gate-pick, fnn-owner-commit-event, fnn-owner-disk-event).
 (in-package "ACL2")
 (include-book "../../books/owner-time-model")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun otmt-class (s w) (mv-let (c s2) (fn-otm-next s w) (declare (ignore s2)) c))
 (defun otmt-pick (s w) (mv-let (c s2) (fn-otm-next s w) (declare (ignore c)) s2))
@@ -129,7 +129,7 @@ clock regressed: readings=1
 (defconst *otmt-reg* (otmt-disk (otmt-at *otmt-s1a* 8000) :issue 3000 0))
 (assert-event (and (equal (fn-otm-now *otmt-reg*) 8000)
                    (equal (fn-otm-disk-since (fn-otm-disk *otmt-reg*)) 8000)))
-(must-fail
+(must-fail-checked
  (defthm otmt-tooth-wait-needs-the-wait
    (implies (and (natp reading) (<= (fn-otm-disk-since (fn-otm-disk s)) (fn-otm-now s))
                  (<= (fn-otm-now s) reading))
@@ -206,8 +206,19 @@ clock regressed: readings=1
 ; the first item alone satisfies it
 (assert-event (fn-otm-barrier-walk-okp *otmt-s1* (list (list *otmt-rc* :next-started))))
 
-(must-fail
- (defthm otmt-tooth-bound-needs-pending
-   (implies (fn-otm-barrier-walk-okp s ws)
-            (equal (fn-otm-walk-others s ws) 0))
-   :rule-classes nil))
+; The refutation of the keystone without fn-otm-barrier-pending-p is the idle
+; witness above, stated as a theorem (proved by evaluation):
+(defthm otmt-bound-needs-pending-refuted
+  (let ((s *otmt-idle*) (ws (list (list *otmt-cr* nil))))
+    (and (not (fn-otm-barrier-pending-p s))
+         (fn-otm-barrier-walk-okp s ws)
+         (not (equal (fn-otm-walk-others s ws) 0))))
+  :rule-classes nil)
+; The weakened statement also does not prove; bounded, because the unbounded
+; search ran 145M prover steps (180 s) before it failed (batch AX).
+(must-fail-checked
+ (with-prover-step-limit 200000
+  (defthm otmt-tooth-bound-needs-pending
+    (implies (fn-otm-barrier-walk-okp s ws)
+             (equal (fn-otm-walk-others s ws) 0))
+    :rule-classes nil)))

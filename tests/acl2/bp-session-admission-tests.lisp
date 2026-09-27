@@ -107,7 +107,7 @@
 
 ; D23: the carried-source decision.  "peer" is the neighbour; it carries
 ; dtn://x/, and "x" is x's own enrollment (a different listener port).
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (defconst *bpat-x-rows*
   (list (fn-cfg-row-make "x" "path-identity" "x.example.invalid" 0)
         (fn-cfg-row-make "x" "auth-principal" "bp-only-no-nntp-principal" 0)
@@ -168,7 +168,7 @@
 
 ; Teeth.  fn-bpaj-carried-decision-is-the-authors-direct-decision without
 ; its hypothesis: a refused decision names no author with a direct decision.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpaj-current-peer-eidp
    *bpat-unenrolled-cfg*
@@ -178,12 +178,12 @@
    7 "dtn://x/")))
 ; fn-bpaj-unlisted-source-is-not-trusted: with the neighbour's own
 ; transport row, or with its carries row, the source is trusted.
-(must-fail
+(must-fail-checked
  (assert-event
   (not (fn-bpaj-source-decision-trustedp
         (fn-bpaj-carried-source-decision *bpat-carried-cfg* *bpat-p* 7
                                          "dtn://peer/")))))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (fn-bpaj-source-decision-trustedp
         (fn-bpaj-carried-source-decision *bpat-carried-cfg* *bpat-p* 7
@@ -193,14 +193,14 @@
   (equal (fn-bpaj-carried-source-decision cfg principal generation "dtn://x/")
          '(:refused :carried-source-unenrolled)))
 (assert-event (bpat-unenrolledp *bpat-unenrolled-cfg* *bpat-p* 7))
-(must-fail (assert-event   ; not a configuration
+(must-fail-checked (assert-event   ; not a configuration
             (bpat-unenrolledp
              (fn-cfg-make 7 (fn-cfg-value-make '(junk) 0 nil nil nil
                               (append *bpat-rows* *bpat-carries-x*) nil nil nil nil))
              *bpat-p* 7)))
-(must-fail (assert-event (bpat-unenrolledp *bpat-unenrolled-cfg* *bpat-p* 8)))
-(must-fail (assert-event (bpat-unenrolledp *bpat-uncarried-cfg* *bpat-p* 7)))
-(must-fail (assert-event (bpat-unenrolledp *bpat-carried-cfg* *bpat-p* 7)))
+(must-fail-checked (assert-event (bpat-unenrolledp *bpat-unenrolled-cfg* *bpat-p* 8)))
+(must-fail-checked (assert-event (bpat-unenrolledp *bpat-uncarried-cfg* *bpat-p* 7)))
+(must-fail-checked (assert-event (bpat-unenrolledp *bpat-carried-cfg* *bpat-p* 7)))
 
 ; D23 second half: typed identities, origin carriage and the release list.
 ; "peer" carries dtn://x/ and, in the released configuration, also lists
@@ -258,13 +258,13 @@
         '(:refused :source-not-carried)))
 ; Teeth for fn-bpaj-release-row-is-not-carriage: with the carries row the
 ; conclusion fails.
-(must-fail
+(must-fail-checked
  (assert-event
   (not (fn-bpaj-origin-carriage-permittedp
         *bpat-released-cfg* *bpat-p* 7 (fn-bpaj-source-eid "dtn://x/")))))
 ; fn-bpaj-carried-decision-requires-origin-carriage: a direct decision is
 ; not a carriage permission (the hypothesis matters).
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpaj-origin-carriage-permittedp *bpat-carried-cfg* *bpat-p* 7
                                       (fn-bpaj-source-eid "dtn://peer/"))))
@@ -277,20 +277,20 @@
                                          "dtn://x/")))
 ; Teeth, one per hypothesis: configurations that differ in a non-release
 ; row, in generation, or in well-formedness decide differently.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpaj-carried-source-decision *bpat-released-cfg* *bpat-p* 7
                                           "dtn://x/")
          (fn-bpaj-carried-source-decision *bpat-release-only-cfg* *bpat-p* 7
                                           "dtn://x/"))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpaj-carried-source-decision *bpat-released-cfg* *bpat-p* 7
                                           "dtn://x/")
          (fn-bpaj-carried-source-decision
           (fn-cfg-make 8 (fn-cfg-value *bpat-released-cfg*)) *bpat-p* 7
           "dtn://x/"))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpaj-carried-source-decision *bpat-released-cfg* *bpat-p* 7
                                           "dtn://x/")

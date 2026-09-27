@@ -6,7 +6,7 @@
 (in-package "ACL2")
 (include-book "../../books/injection-info-params-invariants")
 (include-book "../../books/native-operator")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun ipt-codes (cs)
   (declare (xargs :guard (character-listp cs)))
@@ -98,7 +98,7 @@ Hello, news.
                            (fn-ipp-params *ipt-secret* *ipt-login*
                                           (fn-ipp-complaints *ipt-cfg1*)))
                           *ipt-source*)))))
-(must-fail
+(must-fail-checked
  (defthm ipt-carry-without-an-injection
    (equal (fn-ipp-injected-octets (fn-inj-decide source config obs) secret login cfg)
           (append (fn-ipp-prefix-with
@@ -110,7 +110,7 @@ Hello, news.
 
 ; fn-ipp-with-params-of-an-injection: the same antecedent; its removal is
 ; the witness above with PARAMS the parameters.
-(must-fail
+(must-fail-checked
  (defthm ipt-with-params-without-an-injection
    (equal (fn-ipp-with-params (fn-inj-decision-octets (fn-inj-decide source config obs))
                               (fn-inj-decision-msgid (fn-inj-decide source config obs))
@@ -141,7 +141,7 @@ Hello, news.
                                                         *ipt-not-a-run*)
                                     *ipt-agent* (fn-inj-decision-msgid *ipt-d*))
                   (cons t *ipt-source*)))))
-(must-fail
+(must-fail-checked
  (defthm ipt-keeps-the-source-without-a-run
    (implies (fn-inj-injectedp (fn-inj-decide source config obs))
             (equal (fn-inj-source-of
@@ -153,7 +153,7 @@ Hello, news.
                     (fn-inj-decision-msgid (fn-inj-decide source config obs)))
                    (cons t source)))
    :hints (("Goal" :in-theory (theory 'minimal-theory)))))
-(must-fail
+(must-fail-checked
  (defthm ipt-keeps-the-source-without-an-injection
    (implies (fn-ipp-params-okp params)
             (equal (fn-inj-source-of
@@ -181,7 +181,7 @@ Hello, news.
  (and (not (fn-ipp-accountp *ipt-secret* nil))
       (equal (fn-ipp-params *ipt-secret* nil (ipt-o "abuse@example.org"))
              (ipt-o "; mail-complaints-to=\"abuse@example.org\""))))
-(must-fail
+(must-fail-checked
  (defthm ipt-params-of-anyone
    (equal (fn-ipp-params secret login addr)
           (append *fn-ipp-account-open*
@@ -189,12 +189,12 @@ Hello, news.
                   *fn-ipp-quote*
                   (if (consp addr) (fn-ipp-complaints-param addr) nil)))
    :hints (("Goal" :in-theory (theory 'minimal-theory)))))
-(must-fail
+(must-fail-checked
  (defthm ipt-params-never-an-account
    (equal (fn-ipp-params secret login addr)
           (if (consp addr) (fn-ipp-complaints-param addr) nil))
    :hints (("Goal" :in-theory (theory 'minimal-theory)))))
-(must-fail
+(must-fail-checked
  (defthm ipt-everyone-has-parameters
    (consp (fn-ipp-params secret login addr))
    :hints (("Goal" :in-theory (theory 'minimal-theory)))))
@@ -205,7 +205,7 @@ Hello, news.
       (not (fn-ipp-params-okp (fn-ipp-params nil nil (fn-ipp-complaints *ipt-cfg0*))))))
 (assert-event
  (fn-ipp-params-okp (fn-ipp-params *ipt-secret* *ipt-login* (fn-ipp-complaints *ipt-cfg1*))))
-(must-fail
+(must-fail-checked
  (defthm ipt-params-always-a-run
    (fn-ipp-params-okp (fn-ipp-params secret login (fn-ipp-complaints cfg)))
    :hints (("Goal" :in-theory (theory 'minimal-theory)))))
@@ -222,13 +222,13 @@ Hello, news.
  (and (not (fn-ipp-accountp *ipt-secret* nil)) (fn-ipp-complaints *ipt-cfg1*)
       (not (equal (fn-ipp-injected-octets *ipt-d* *ipt-secret* nil *ipt-cfg1*)
                   (fn-inj-decision-octets *ipt-d*)))))
-(must-fail
+(must-fail-checked
  (defthm ipt-without-parameters-under-a-login
    (implies (not (fn-ipp-complaints cfg))
             (equal (fn-ipp-injected-octets d secret login cfg)
                    (fn-inj-decision-octets d)))
    :hints (("Goal" :in-theory (theory 'minimal-theory)))))
-(must-fail
+(must-fail-checked
  (defthm ipt-without-parameters-with-an-address
    (implies (not (fn-ipp-accountp secret login))
             (equal (fn-ipp-injected-octets d secret login cfg)
@@ -241,7 +241,7 @@ Hello, news.
 (assert-event (fn-ipp-addr-specp (ipt-o "abuse@example.org")))
 (assert-event (not (fn-ipp-addr-specp (ipt-o "a\"b@example.org"))))
 (assert-event (not (fn-ipp-addr-specp (ipt-o "abuse"))))
-(must-fail
+(must-fail-checked
  (defthm ipt-any-text-is-quote-free
    (not (member-equal 34 x))
    :hints (("Goal" :in-theory (theory 'minimal-theory)))))
@@ -319,7 +319,7 @@ Hello, news.
                                                          *ipt-login* *ipt-cfg1*)
                                  *ipt-agent* (fn-inj-decision-msgid *ipt-refused*))
                   (cons :source *ipt-source*)))))
-(must-fail
+(must-fail-checked
  (defthm ipt-d25-subject-without-an-injection
    (equal (fn-pb-subject (fn-ipp-injected-octets (fn-inj-decide source config obs)
                                                  secret login cfg)
@@ -353,7 +353,7 @@ Hello, news.
               (fn-inj-decision-msgid *ipt-d2*)
               (fn-ipp-injected-octets *ipt-d2* *ipt-secret* *ipt-login* *ipt-cfg1*)
               (fn-ipp-injected-octets d0 *ipt-secret* *ipt-login* *ipt-cfg1*))))))
-(must-fail
+(must-fail-checked
  (defthm ipt-retry-without-one-message-id
    (implies (and (fn-inj-injectedp (fn-inj-decide source config obs1))
                  (fn-inj-injectedp (fn-inj-decide source config obs2)))
@@ -367,7 +367,7 @@ Hello, news.
 ; fn-ipp-an-injection-does-not-open-with-c: the alice post opens with "P";
 ; the omitted injection: a refused decision's octets are nil.
 (assert-event (and (fn-inj-injectedp *ipt-d*) (equal (car *ipt-stored*) 80)))
-(must-fail
+(must-fail-checked
  (defthm ipt-never-opens-with-c
    (not (equal (car (fn-ipp-injected-octets d secret login cfg)) 67))
    :hints (("Goal" :in-theory (theory 'minimal-theory)))))

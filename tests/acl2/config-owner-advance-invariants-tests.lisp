@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/config-owner-advance-invariants")
 (include-book "config-owner-live-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *ocla-t-advanced* (fn-ocfg-advance *ocl-t-new-open* 0))
 (assert-event
@@ -71,7 +71,7 @@
 (assert-event
  (not (fn-ocl-relation (fn-ocfg-advance *ocla-t-duplicate* 0))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocl-advance-without-historical-relation
     (fn-ocl-relation (fn-ocfg-advance oc id))
     :rule-classes nil)))

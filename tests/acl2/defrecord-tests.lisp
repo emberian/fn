@@ -34,7 +34,7 @@
 (include-book "../../books/acceptance-alloc")
 (include-book "../../books/defrecord")
 (include-book "../../books/deftransition")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; 1. A three-field untagged record, the `fn-sched-result' shape.
@@ -132,7 +132,7 @@
             (fn-drt-code-d4 fn-drt-digitp)
             (fn-drt-code-d5 fn-drt-digitp))))
 
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   100000
   (defthm fn-drt-codep-forward-shape-with-the-fields-open

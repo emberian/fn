@@ -1,7 +1,7 @@
 ; Reachable witnesses and hypothesis teeth for PRF-046.
 (in-package "ACL2")
 (include-book "../../books/bp-node-machine-authorization")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpna-local* (cons :dtn '(47 47 102 110 45 97 47)))
 (defconst *bpna-peer* (cons :dtn '(47 47 102 110 45 98 47)))
@@ -104,7 +104,7 @@
 (assert-event (fn-bpn-machine-statep *bpna-over-token*))
 (assert-event (not (fn-bpn-lifecycle-invariantp *bpna-over-token*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-bpn-tooth-step-without-input-invariant
     (fn-bpn-lifecycle-invariantp
      (fn-bpn-answer-state
@@ -131,7 +131,7 @@
   (list :restart *bpna-overlong-records* :ready))
 (assert-event (not (fn-bpn-machine-eventp *bpna-overlong-restart-event*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-bpn-tooth-step-without-bounded-event
     (fn-bpn-lifecycle-invariantp
      (fn-bpn-answer-state
@@ -163,7 +163,7 @@
  (fn-bpn-effect-kind-memberp :cl-send
                              (fn-bpn-answer-effects *bpna-fake-send-answer*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-bpn-tooth-send-without-pending-authorization
     (equal (fn-cbor-ag-car
             (fn-bpn-pending-record *bpna-fake-send-pending*))
@@ -194,7 +194,7 @@
  (fn-bpn-effect-kind-memberp
   :bundle-queue-accepted (fn-bpn-answer-effects *bpna-fake-accept-answer*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-bpn-tooth-acceptance-without-pending-authorization
     (equal (fn-cbor-ag-car
             (fn-bpn-pending-record *bpna-fake-accept-pending*))

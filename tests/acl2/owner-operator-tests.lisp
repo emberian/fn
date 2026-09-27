@@ -29,7 +29,7 @@
 (include-book "../../books/owner-invariants")
 (include-book "../../books/owner-served-invariants")   ; fn-own-operator-stored-octets
 (include-book "../../books/injection-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun opt-codes (cs)
   (declare (xargs :mode :program))
@@ -140,7 +140,7 @@
 
 ; Tooth for keystone 1: without `injectedp' the octets of a refusal (none)
 ; are no re-injection of the payload.
-(must-fail
+(must-fail-checked
  (defthm opt-decision-without-injection
    (let ((d (fn-own-operator-decision cfg clock stored msgid groups octets)))
      (fn-inj-reinjectionp (fn-inj-decision-octets d) octets
@@ -162,7 +162,7 @@
         :control-mismatch))
 
 ; Tooth for keystone 2: without `:submitted' the queue holds nothing.
-(must-fail
+(must-fail-checked
  (defthm opt-submission-without-submitted
    (let* ((q (fn-own-queue (fn-own-operator-submit o msgid groups octets stored)))
           (d (fn-own-sub-decision (car q))))
@@ -205,7 +205,7 @@
                      :clock-unusable))
 
 ; Tooth: without the hypothesis, the clocked owner submits.
-(must-fail
+(must-fail-checked
  (defthm opt-refusal-without-no-clock
    (and (equal (fn-own-operator-submit-result o msgid groups octets stored) :refused)
         (equal (fn-own-operator-submit o msgid groups octets stored) o))
@@ -402,7 +402,7 @@
            (fn-clock-has-wall later))
 
 ; Without the first injection: nothing stored is its octets.
-(must-fail
+(must-fail-checked
  (opt-retry opt-retry-without-injected
             (equal (fn-inj-decision-msgid (fn-inj-decide octets cfg first)) msgid)
             (equal stored
@@ -412,7 +412,7 @@
 ; Without the Message-ID agreeing: an article submitted with no Message-ID
 ; was injected under a generated one, and its stored octets carry that line,
 ; which is no re-injection under another identifier.
-(must-fail
+(must-fail-checked
  (opt-retry opt-retry-without-msgid
             (fn-inj-injectedp (fn-inj-decide octets cfg first))
             (equal stored
@@ -430,7 +430,7 @@
 
 ; Without the stored article: the node holds nothing, and a fresh injection
 ; under the later clock carries another Injection-Date.
-(must-fail
+(must-fail-checked
  (opt-retry opt-retry-without-stored
             (fn-inj-injectedp (fn-inj-decide octets cfg first))
             (equal (fn-inj-decision-msgid (fn-inj-decide octets cfg first)) msgid)
@@ -441,14 +441,14 @@
              (fn-own-operator-decision *opt-config* *opt-later* :absent
                                        *opt-msgid* *opt-groups* *opt-nodate*))))
 ; Without a later reading at all, and without its wall time: refused.
-(must-fail
+(must-fail-checked
  (opt-retry opt-retry-without-observation
             (fn-inj-injectedp (fn-inj-decide octets cfg first))
             (equal (fn-inj-decision-msgid (fn-inj-decide octets cfg first)) msgid)
             (equal stored
                    (fn-inj-decision-octets (fn-inj-decide octets cfg first)))
             (fn-clock-has-wall later)))
-(must-fail
+(must-fail-checked
  (opt-retry opt-retry-without-wall
             (fn-inj-injectedp (fn-inj-decide octets cfg first))
             (equal (fn-inj-decision-msgid (fn-inj-decide octets cfg first)) msgid)

@@ -9,7 +9,7 @@
 ; one and the failure of the conclusion.
 (in-package "ACL2")
 (include-book "../../books/served-catalog")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *sct-p0* (append (fn-record-string-octets "Subject: a") '(13 10 13 10 65 13 10)))
 (defconst *sct-p1* (append (fn-record-string-octets "Subject: b") '(13 10 13 10 66 13 10)))
@@ -105,7 +105,7 @@
                     "fn.test" 1 (fn-cat-view-articles 3 *sct-a* *sct-c-dup*)))))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm sct-teeth-number-article-without-freshness
    (equal (fn-scat-number-article "fn.test" 1 3 *sct-a* *sct-c-dup*)
           (fn-nntp-find-group-number
@@ -122,7 +122,7 @@
                             (if (consp pair) (cdr pair) nil))))))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm sct-teeth-row-without-group
    (iff (equal (fn-nntp-membership-number nil '(7 (nil . 5))) 5)
         (equal 5 (let ((pair (fn-cat-assoc nil '(7 (nil . 5)))))
@@ -138,7 +138,7 @@
                             (if (consp pair) (cdr pair) nil))))))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm sct-teeth-row-without-posp
    (iff (equal (fn-nntp-membership-number "fn.test" nil) 0)
         (equal 0 (let ((pair (fn-cat-assoc "fn.test" nil)))
@@ -284,7 +284,7 @@
                                                 (fn-cat-view-articles 3 *sct-a* *sct-c-dup*)))))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm sct-teeth-n-without-freshness
    (equal (fn-scat-range-numbers "fn.test" 1 10 3 *sct-c-dup*)
           (fn-nntp-group-range-numbers "fn.test" 1 10
@@ -298,7 +298,7 @@
                                                 (fn-cat-view-articles 3 *sct-a* *sct-c*)))))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm sct-teeth-n-without-natp-low
    (equal (fn-scat-range-numbers "fn.test" -5 10 3 *sct-c*)
           (fn-nntp-group-range-numbers "fn.test" -5 10 (fn-cat-view-articles 3 *sct-a* *sct-c*)))
@@ -311,7 +311,7 @@
                                                 (fn-cat-view-articles 3 *sct-a* *sct-c*)))))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm sct-teeth-n-without-natp-high
    (equal (fn-scat-range-numbers "fn.test" 1 5/2 3 *sct-c*)
           (fn-nntp-group-range-numbers "fn.test" 1 5/2 (fn-cat-view-articles 3 *sct-a* *sct-c*)))
@@ -331,7 +331,7 @@
                    (fn-nntp-available-article nil 1 (fn-cat-view-articles 1 *sct-a* *sct-c-atom*)))))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm sct-teeth-p-without-group
    (equal (fn-scat-available-article nil 1 1 *sct-a* *sct-c-atom*)
           (fn-nntp-available-article nil 1 (fn-cat-view-articles 1 *sct-a* *sct-c-atom*)))
@@ -344,7 +344,7 @@
                                               (fn-cat-view-articles 3 *sct-a* *sct-c-dup*)))))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm sct-teeth-p-without-freshness
    (equal (fn-scat-available-article "fn.test" 1 3 *sct-a* *sct-c-dup*)
           (fn-nntp-available-article "fn.test" 1 (fn-cat-view-articles 3 *sct-a* *sct-c-dup*)))

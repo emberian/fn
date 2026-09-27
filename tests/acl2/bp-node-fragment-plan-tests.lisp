@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-fragment-plan")
 (include-book "bp-node-fragment-family-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnfp-plan*
   (fn-bpnf-family-plan *bpnff-state* *bpnff-p3*))
@@ -24,7 +24,7 @@
                      '(:missing 0 6)))
 (assert-event (equal (fn-bpnf-family-plan *bpnff-state* *bpnff-pdeleted*)
                      '(:invalid :bounds)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpnf-family-plan *bpnff-conflict-state*
                                    *bpnff-p3*)) :ready)))

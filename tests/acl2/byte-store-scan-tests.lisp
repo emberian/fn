@@ -21,7 +21,7 @@
 (include-book "../../books/byte-store-frame")
 (include-book "../../books/codec-attach")
 (include-book "consumer-store-invariants-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The byte scanner consumes the shared Store-event dispatcher, so one
 ; immutable namespace may contain a legacy article followed by retention
@@ -230,7 +230,7 @@
 ; Tooth for the maintained E2 relation.  The byte/kernel relation and
 ; modeled crash premise are both true at this actual physical program cut;
 ; only the node's checked consumer-prefix relation is absent.
-(must-fail
+(must-fail-checked
  (assert-event
   (implies (and (fn-bs-store-relation
                  (car (bsk-e2-invalid-finished-pair))
@@ -249,7 +249,7 @@
  (not (fn-bs-store-relation
        (car (bsk-e2-invalid-finished-pair))
        (fn-sn-files *csnt-after-boot*) 'nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (implies (and (fn-csi-full-relationp *csnt-after-boot*)
                 (fn-bs-crash-choicesp
@@ -262,7 +262,7 @@
 ; Tooth for the modeled crash-image premise: the valid bootstrap byte state
 ; is related to its node, but the independently produced registration image
 ; has different framed content and fails consumer replay.
-(must-fail
+(must-fail-checked
  (assert-event
   (implies (and (fn-csi-full-relationp *csnt-after-boot*)
                 (fn-bs-store-relation
@@ -271,7 +271,7 @@
            (fn-sn-observed-consumer-okp
             (fn-bs-scan-records (fn-bs-scan-store
                                  (bsk-e2-invalid-image)))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-sn-observed-consumer-okp
    (fn-bs-scan-records (fn-bs-scan-store (bsk-e2-invalid-image))))))
@@ -349,7 +349,7 @@
         (not (fn-sn-open-okp
               (fn-sn-open-observed (fn-sn-groups s) (fn-sn-capacity s)
                                    (fn-bs-scan-frontier scan) records))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((s (bsk-topic-node))
          (scan (fn-bs-scan-store (bsk-topic-image))))

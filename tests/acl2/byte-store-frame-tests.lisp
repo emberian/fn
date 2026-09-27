@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-frame")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ;  The development profile and zero frontier are the actual bytes init writes
 ; for `--profile development' (the developer initializer's default).
@@ -179,7 +179,7 @@
 ; The hypothesis: without the gate's admission a payload one octet past the
 ; ceiling is a counterexample; and the gate refuses it even under the profile
 ; that asks for R one octet past the ceiling (that profile is not admitted).
-(must-fail
+(must-fail-checked
  (thm (implies (equal octets 4294966941) (<= octets *fn-stxa-max-octets*))))
 (assert-event
  (not (fn-bs-publication-admissiblep
@@ -357,7 +357,7 @@
 (assert-event (not (equal (fn-bs-frontier-decode-impl
                            (fn-bs-frontier-encode-impl 18446744073709551616))
                           18446744073709551616)))
-(must-fail
+(must-fail-checked
  (defthm bsft-round-trip-without-the-width
    (implies (natp n)
             (equal (fn-bs-frontier-decode-impl (fn-bs-frontier-encode-impl n))
@@ -382,7 +382,7 @@
                      (fn-bs-frontier-v2-decode (fn-bs-frontier-encode-impl 2))))
 (assert-event (not (equal (fn-bs-frontier-decode-impl (bsft-f3-first))
                           (fn-bs-frontier-v2-decode (bsft-f3-first)))))
-(must-fail
+(must-fail-checked
  (defthm bsft-extends-without-the-format-2-hypothesis
    (equal (fn-bs-frontier-decode-impl octets)
           (fn-bs-frontier-v2-decode octets))

@@ -1,7 +1,7 @@
 ; Teeth for books/log-sink (PKT-508, PRF-187): the owner's service-log sink.
 (in-package "ACL2")
 (include-book "../../books/log-sink")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *lst-b* 100)
 
@@ -40,7 +40,7 @@
 (defconst *lst-bad* '(0 0 0 0 5))
 (assert-event (not (fn-log-sink-okp *lst-bad* *lst-b*)))
 (assert-event (not (fn-log-sink-okp (cadr (fn-log-sink-offer *lst-bad* 1 *lst-b*)) *lst-b*)))
-(must-fail
+(must-fail-checked
  (defthm lst-offer-preserves-without-okp
    (implies (and (equal s *lst-bad*) (equal len 1) (equal bound *lst-b*))
             (fn-log-sink-okp (cadr (fn-log-sink-offer s len bound)) bound))
@@ -50,7 +50,7 @@
 (defconst *lst-over* '(500 3 0 0 3))
 (assert-event (not (fn-log-sink-okp *lst-over* *lst-b*)))
 (assert-event (not (fn-log-sink-okp (fn-log-sink-take *lst-over* 0 :written) *lst-b*)))
-(must-fail
+(must-fail-checked
  (defthm lst-take-preserves-without-okp
    (implies (and (equal s *lst-over*) (equal len 0) (equal outcome :written)
                  (equal bound *lst-b*))
@@ -65,7 +65,7 @@
                    (<= (+ (fn-log-sink-pending-octets (cadr *lst-o1*)) 40) *lst-b*)))
 ; The conclusion fails for a stronger rule that drops any line past the
 ; bound: the empty-queue line of 5000 is queued.
-(must-fail
+(must-fail-checked
  (defthm lst-drops-any-line-past-the-bound
    (implies (and (equal s (fn-log-sink-init)) (equal len 5000) (equal bound *lst-b*)
                  (< (nfix bound) (+ (fn-log-sink-pending-octets s) (nfix len))))
@@ -78,7 +78,7 @@
                      (+ 1 (fn-log-sink-dropped (cadr *lst-o2*)))))
 (assert-event (equal (fn-log-sink-dropped (cadr *lst-o2*))
                      (fn-log-sink-dropped (cadr *lst-o1*))))
-(must-fail
+(must-fail-checked
  (defthm lst-drop-counts-without-drop
    (implies (and (equal s (cadr *lst-o1*)) (equal len 40) (equal bound *lst-b*))
             (equal (fn-log-sink-dropped (cadr (fn-log-sink-offer s len bound)))

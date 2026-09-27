@@ -29,27 +29,46 @@ Each was true, proved, certified, and irrelevant to the running server.
     python3 tools/reach_check.py --strict     # non-zero on an UNBASELINED orphan
     python3 tools/reach_check.py --baseline   # rewrite the baseline (deliberate)
 
-WHAT IT MEASURES.  The call graph over `books/*.lisp` and `host/*.lisp`,
-seeded from every function `host/` defines, every book symbol a host file
-names, and every book symbol a `tools/*.py` bridge names in a string --- the
+WHAT IT MEASURES.  The call graph over `books/*.lisp' and `host/*.lisp',
+seeded from every function `host/' defines, every book symbol a host file
+names, and every book symbol a `tools/*.py' bridge names in a string --- the
 bridges really do call ACL2 by building forms as text, so those are host
-lines too.  A registry event is HOSTED when at least one function its theorem
-mentions is in that reachable set.
+lines too.  A `defabsstobj' export is a function whose body is its :logic and
+:exec functions, and `(attach-stobj GENERIC IMPL)' makes each GENERIC export
+reach IMPL's export with the same :logic (the node's `fn-arena' runs
+`fn-arena-paged''s pages); a live stobj's creator and recognizer run
+whenever one of its exports does.
 
-WHAT IT CANNOT SEE, and why it is deliberately generous.  "The functions its
-theorem mentions" over-approximates the subject: a hypothesis predicate
-counts alongside the conclusion's real subject.  So an event can be called
-hosted on the strength of a recognizer the host happens to reach.  That makes
-the count a FLOOR --- every orphan it reports is real, and it misses some.
-A gate that cries wolf gets switched off, and this one is meant to stay on.
-It also cannot see a function reached only through a macro this reader does
-not expand, or named in a Python string it does not recognize as a symbol.
-The one macro it does expand is `fn-defrecord' (books/defrecord.lisp): its
-generated recognizer is a definition here, whose body is the record's
-`:fields' types, `:extra' conjuncts and `:recognizer-formals' (PKT-394: fn-node-statep's
-field conjuncts call fn-statep and fn-node-articles-have-archive-bindingsp,
-which fn-sco-finalize-from executes at every open, and without the expansion
-three PRF-173 keystones read as orphans).
+A registry event is HOSTED when its SUBJECT is (the keystone audit of
+2026-09-27 found 16 events hosted by something else; AGENTS.md: "The subject
+is the function the host calls"):
+* the subject is the book functions its CONCLUSION calls (nested `implies'
+  unfolded), less the stobj names (`fn-arena', `fn-cat', `state': a stobj is
+  threaded, never the subject) and less the predicate each hypothesis
+  conjunct applies (in `(implies (inv s) (inv (step s)))' the subject is
+  `step').  Hints never count.  A conclusion that calls nothing takes its
+  subject from the hypotheses;
+* a hosted subject counts only where it is applied to arguments no MODEL
+  computed: under `(let ((m (model-run evs))) (host-f (views m)))' host-f is
+  applied to the model's state, and the event is about the model;
+* `NAME{correspondence}' and `NAME{preserved}' are about the export NAME;
+* failing that, a NAMED equality in books/ ties an unhosted subject U to a
+  hosted H: a conclusion `(equal (U ..) (H x ..))' whose H side applies H to
+  variables and constants only (not a commutation, not an unfolding into a
+  constructor), or a refinement square `(equal (H .. (A x) ..) (A (U x ..)))'
+  (store-log-kernel-concrete's fn-lgc-*-refines).  `--explain' names it.
+
+WHAT IT CANNOT SEE.  A function reached only through a macro this reader
+does not expand, or named in a Python string it does not recognize as a
+symbol, and reachability is transitive: a book function a hosted function
+calls is executed, so a keystone over a component (fn-cat-complete inside
+the host's fn-sca-finish) is hosted even when the host-level theorem is a
+different event.  The one macro it does expand is `fn-defrecord'
+(books/defrecord.lisp): its generated recognizer is a definition here, whose
+body is the record's `:fields' types, `:extra' conjuncts and
+`:recognizer-formals' (PKT-394).  `$' and braces are symbol constituents
+(before 2026-09-27 `(defun fn-arena$lcorr ...)' read as a definition of
+`fn-arena').
 
 A flag is a question for a human, never a verdict.  Being unreachable is not
 by itself a defect: a book can legitimately run ahead of its host.  What the
@@ -67,10 +86,15 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASELINE = ROOT / "planning" / "reach-baseline.json"
 
-DEFUN = re.compile(r"\((?:defun|defund|defun-nx|define|defmacro)\s+([a-zA-Z0-9<>=/*+-]+)")
-DEFTHM = re.compile(r"\((?:defthm|defthmd)\s+([a-zA-Z0-9<>=/*+-]+)")
-SYMBOL = re.compile(r"[a-zA-Z][a-zA-Z0-9<>=/*+-]*")
-NAME = r"[a-zA-Z0-9<>=/*+-]+"
+# `$' and braces are symbol constituents: `fn-arena$lcorr' is one symbol, not
+# `fn-arena' followed by noise (before 2026-09-27 the DEFUN pattern stopped at
+# the `$', so `(defun fn-arena$lcorr ...)' defined `fn-arena', and every
+# theorem naming the stobj was hosted by it), and `fn-arena-paged-get{correspondence}'
+# is one event name.
+DEFUN = re.compile(r"\((?:defun|defund|defun-nx|define|defmacro)\s+([a-zA-Z0-9<>=/*+$-]+)")
+DEFTHM = re.compile(r"\((?:defthm|defthmd)\s+([a-zA-Z0-9<>=/*+${}-]+)")
+SYMBOL = re.compile(r"[a-zA-Z][a-zA-Z0-9<>=/*+${}-]*")
+NAME = r"[a-zA-Z0-9<>=/*+$-]+"
 ATTACH_ONE = re.compile(rf"\(defattach\s+({NAME})\s+({NAME})")
 ATTACH_PAIR = re.compile(rf"\(\s*({NAME})\s+({NAME})\s*\)")
 
@@ -221,6 +245,66 @@ def record_definitions(paths):
     return found
 
 
+def absstobjs(paths):
+    """name -> {"exports": {export: (logic, exec)}, "file": rel} for every
+    `defabsstobj' (and the plain stobj names of every `defstobj').
+
+    An export is what a host line calls (`fn-arena-seal-list'); its :logic
+    function is what theorems are stated over and its :exec function is what
+    runs.  The recognizer and the creator are read as exports too.  A
+    `defstobj' contributes only its name (to `stobj_names')."""
+    found = {}
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        rel = str(path.relative_to(ROOT))
+        for form in forms(text):
+            head = re.match(r"\((defabsstobj|defstobj)\s", form, re.I)
+            if not head:
+                continue
+            tree = read_sexp(form)
+            if not tree or len(tree) < 2 or not isinstance(tree[1], str):
+                continue
+            entry = {"exports": {}, "file": rel}
+            found[tree[1]] = entry
+            if head.group(1).lower() == "defstobj":
+                continue
+            rest = tree[2:]
+            keys = {rest[i]: rest[i + 1] for i in range(0, len(rest) - 1, 2)
+                    if isinstance(rest[i], str) and rest[i].startswith(":")}
+            specs = [keys.get(":recognizer"), keys.get(":creator")]
+            specs += keys.get(":exports") or []
+            for spec in specs:
+                if not isinstance(spec, list) or not spec or not isinstance(spec[0], str):
+                    continue
+                opts = {spec[i]: spec[i + 1] for i in range(1, len(spec) - 1, 2)
+                        if isinstance(spec[i], str)}
+                logic, execf = opts.get(":logic"), opts.get(":exec")
+                entry["exports"][spec[0]] = (
+                    logic if isinstance(logic, str) else None,
+                    execf if isinstance(execf, str) else None)
+    return found
+
+
+def stobj_attachments(paths) -> dict[str, set[str]]:
+    """generic stobj -> the implementations `(attach-stobj GENERIC IMPL)'
+    names.  At run time an export of GENERIC executes IMPL's export that
+    shares its :logic function (books/payload-arena-attach.lisp)."""
+    found: dict[str, set[str]] = collections.defaultdict(set)
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for form in forms(text):
+            match = re.match(rf"\(attach-stobj\s+({NAME})\s+({NAME})\s*\)", form, re.I)
+            if match:
+                found[match.group(1).lower()].add(match.group(2).lower())
+    return found
+
+
 class Graph:
     """The call graph, and what a host line can reach through it."""
 
@@ -237,6 +321,26 @@ class Graph:
                           **definitions(self.books)}
         host_defs = definitions(self.hosts)
         attached = attachments(self.books)
+        # Abstract stobjs: each export is a callable book function whose body
+        # is its :logic and :exec functions; an attached implementation's
+        # export with the same :logic is what the generic's export runs.
+        self.stobjs = absstobjs(self.books)
+        self.stobj_names = set(self.stobjs) | {"state"}
+        self.export_of = {}
+        by_logic = collections.defaultdict(set)
+        for sname, entry in self.stobjs.items():
+            for export, (logic, execf) in entry["exports"].items():
+                self.export_of[export] = sname
+                if logic:
+                    by_logic[(sname, logic)].add(export)
+        stobj_attached = stobj_attachments(self.books)
+        for sname, entry in self.stobjs.items():
+            for export, (logic, execf) in entry["exports"].items():
+                parts = [p for p in (logic, execf) if p]
+                for impl in stobj_attached.get(sname, ()):
+                    parts += sorted(by_logic.get((impl, logic), ()))
+                self.book_defs.setdefault(export, (
+                    entry["file"], "(defabsstobj-export %s %s)" % (export, " ".join(parts))))
         self.known = set(self.book_defs) | set(host_defs) | set(attached)
 
         bodies = {n: f for n, (_, f) in self.book_defs.items()}
@@ -264,6 +368,20 @@ class Graph:
                 if nxt not in seen:
                     seen.add(nxt)
                     work.append(nxt)
+        # A live stobj is created and recognized by ACL2 itself, never by a
+        # host line: its creator and recognizer run whenever an export does.
+        for sname, entry in self.stobjs.items():
+            exports = list(entry["exports"])
+            if any(e in seen for e in exports):
+                for e in exports[:2]:
+                    if e not in seen:
+                        seen.add(e)
+                        work = [e]
+                        while work:
+                            for nxt in self.edges.get(work.pop(), ()):
+                                if nxt not in seen:
+                                    seen.add(nxt)
+                                    work.append(nxt)
         self.reachable = seen & set(self.book_defs)
 
     @staticmethod
@@ -289,28 +407,282 @@ class Finding:
                 f"server does not exercise what this event claims")
 
 
+NESTED_DEFTHM = re.compile(r"\((?:defthm|defthmd)\s+([a-zA-Z0-9<>=/*+${}-]+)")
+
+
+def theorem_forms(paths) -> dict:
+    """name -> (file, form) for every `defthm'/`defthmd', including those
+    inside an `encapsulate', `local', `defsection' or `progn' (a top-level
+    only scan left such events unresolved, which passed them silently)."""
+    found = {}
+    for path in paths:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        rel = str(path.relative_to(ROOT))
+        for form in forms(text):
+            for match in NESTED_DEFTHM.finditer(form):
+                name = match.group(1).lower()
+                if name in found:
+                    continue
+                inner = forms(form[match.start():])
+                if inner:
+                    found[name] = (rel, inner[0])
+    return found
+
+
+def split_statement(form: str):
+    """(hypotheses, conclusion) of a defthm FORM as s-expression trees.
+    Nested `implies' in the conclusion are unfolded; the hints, rule
+    classes and every other keyword argument are dropped."""
+    tree = read_sexp(form)
+    if not isinstance(tree, list) or len(tree) < 3:
+        return [], None
+    term, hyps = tree[2], []
+    while isinstance(term, list) and len(term) == 3 and term[0] == "implies":
+        hyps.append(term[1])
+        term = term[2]
+    return hyps, term
+
+
+def tree_symbols(tree) -> set[str]:
+    if isinstance(tree, list):
+        out: set[str] = set()
+        for t in tree:
+            out |= tree_symbols(t)
+        return out
+    return {tree} if isinstance(tree, str) else set()
+
+
+def hypothesis_heads(hyps) -> set[str]:
+    """The predicate each hypothesis conjunct applies: `(and (p x) (not (q
+    y)))' gives {p, q}.  Only these are the recognizers a theorem assumes;
+    a function called INSIDE a hypothesis (`(ok (parse x))') may well be the
+    conclusion's subject too, and is not removed from it."""
+    heads: set[str] = set()
+    work = list(hyps)
+    while work:
+        term = work.pop()
+        if not isinstance(term, list) or not term or not isinstance(term[0], str):
+            continue
+        if term[0] in ("and", "not"):
+            work.extend(term[1:])
+        else:
+            heads.add(term[0])
+    return heads
+
+
+def equality_heads(tree):
+    """The two call heads of an `(equal (F ...) (G ...))' conclusion."""
+    if (isinstance(tree, list) and len(tree) == 3 and tree[0] == "equal"
+            and isinstance(tree[1], list) and isinstance(tree[2], list)
+            and tree[1] and tree[2]
+            and isinstance(tree[1][0], str) and isinstance(tree[2][0], str)):
+        return tree[1][0], tree[2][0]
+    return None
+
+
+def _bindings(term):
+    """(pairs, body) of a let/let*/mv-let TERM, else None.  Each pair is
+    (list of variables, bound term)."""
+    if not isinstance(term, list) or not term or not isinstance(term[0], str):
+        return None
+    head = term[0]
+    if head in ("let", "let*") and len(term) >= 3 and isinstance(term[1], list):
+        pairs = [([b[0]], b[1] if len(b) > 1 else None)
+                 for b in term[1] if isinstance(b, list) and b and isinstance(b[0], str)]
+        return pairs, term[-1]
+    if head == "mv-let" and len(term) >= 4 and isinstance(term[1], list):
+        return [([v for v in term[1] if isinstance(v, str)], term[2])], term[-1]
+    return None
+
+
+def model_tainted(term, env, graph) -> bool:
+    """Is TERM computed by a book function no host line reaches (a model),
+    directly or through a variable bound to one?"""
+    if isinstance(term, str):
+        return env.get(term, False)
+    if not isinstance(term, list) or not term:
+        return False
+    if term[0] == "quote":
+        return False
+    bound = _bindings(term)
+    if bound:
+        pairs, body = bound
+        inner = dict(env)
+        for names, value in pairs:
+            tainted = model_state(value, inner, graph)
+            for name in names:
+                inner[name] = tainted
+        return model_tainted(body, inner, graph)
+    return any(model_tainted(arg, env, graph) for arg in term[1:])
+
+
+def model_state(term, env, graph) -> bool:
+    """Is a let-bound TERM a model's state: a call of an unreached book
+    function (or built from a variable that is one)?  Only a BOUND state
+    taints: `(host-f (spec-input x))' states the host function over a class
+    of inputs and stays hosted; `(let ((m (model-run evs))) (host-f
+    (model-views m)))' states it over the model's own state."""
+    if isinstance(term, str):
+        return env.get(term, False)
+    if not isinstance(term, list) or not term or term[0] == "quote":
+        return False
+    head = term[0]
+    if (isinstance(head, str) and head in graph.book_defs
+            and head not in graph.reachable and head not in graph.stobj_names):
+        return True
+    return model_tainted(term, env, graph)
+
+
+def hosted_call(term, env, graph, subjects) -> bool:
+    """Does TERM apply a hosted subject to arguments no model computed?
+
+    `(fn-ocv-reader-view (fn-ocvm-views m) w)' with m bound to the count
+    machine's run is a statement about the model, though the host calls
+    fn-ocv-reader-view: the reader-view models of PRF-288/296 passed the old
+    check that way (keystone audit 2026-09-27, G1-1)."""
+    if not isinstance(term, list) or not term or term[0] == "quote":
+        return False
+    bound = _bindings(term)
+    if bound:
+        pairs, body = bound
+        inner = dict(env)
+        for names, value in pairs:
+            if hosted_call(value, inner, graph, subjects):
+                return True
+            tainted = model_state(value, inner, graph)
+            for name in names:
+                inner[name] = tainted
+        return hosted_call(body, inner, graph, subjects)
+    head = term[0]
+    if (isinstance(head, str) and head in subjects and head in graph.reachable
+            and not any(model_tainted(arg, env, graph) for arg in term[1:])):
+        return True
+    return any(hosted_call(arg, env, graph, subjects) for arg in term[1:])
+
+
+class Subject:
+    """What an event is about, as this reader decides it.
+
+    The SUBJECT is the set of book functions its CONCLUSION calls, less the
+    stobj names (`fn-arena', `fn-cat', `state': a stobj is threaded, not
+    called) and less every function its hypotheses already name (a
+    recognizer or invariant the step is assumed to start in -- in
+    `(implies (inv s) (inv (step s)))' the subject is `step').  When that
+    leaves nothing (the conclusion only restates a hypothesis predicate),
+    the conclusion's own functions are the subject.  Hints never count: a
+    hosted function named in a `:use' is not what the theorem claims.
+
+    A `NAME{correspondence}' (or `{preserved}') event of a `defabsstobj' is
+    about the export NAME: it is hosted when a host line calls that export
+    (directly, or as the generic export an `attach-stobj' runs it for)."""
+
+    def __init__(self, graph: "Graph", name: str, form: str | None) -> None:
+        self.via = None
+        brace = re.match(r"(.+)\{(correspondence|preserved)\}$", name)
+        if brace and brace.group(1) in graph.export_of:
+            self.functions = [brace.group(1)]
+            self.via = "export"
+            return
+        hyps, conclusion = split_statement(form or "")
+        functions = tree_symbols(conclusion) & set(graph.book_defs)
+        functions -= graph.stobj_names
+        assumed = hypothesis_heads(hyps) & set(graph.book_defs)
+        narrowed = functions - assumed
+        if not functions:
+            # A conclusion that calls nothing (`(equal x :done)') states a
+            # consequence of its hypotheses; what it is about is there.
+            functions = (tree_symbols(hyps) & set(graph.book_defs)) - graph.stobj_names
+            narrowed = functions
+        self.functions = sorted(narrowed or functions)
+        self.term = conclusion if tree_symbols(conclusion) & set(self.functions) else (
+            ["and"] + list(hyps))
+
+    def hosted(self, graph: "Graph") -> bool:
+        if self.via == "export":
+            return bool(set(self.functions) & graph.reachable)
+        return hosted_call(self.term, {}, graph, set(self.functions))
+
+
+def equality_bridges(graph: "Graph", theorems: dict) -> dict[str, list]:
+    """function -> [(other, theorem)] for every `(equal (F ...) (G ...))'
+    theorem conclusion in books/: a NAMED equality that ties an unhosted
+    subject to a hosted function (AGENTS.md: "A theorem about another
+    function counts only with a named theorem equating the two")."""
+    bridges: dict[str, list] = collections.defaultdict(list)
+    for tname, (_, form) in theorems.items():
+        _, conclusion = split_statement(form)
+        heads = equality_heads(conclusion)
+        if not heads:
+            continue
+        # A refinement square `(equal (C .. (A x) ..) (A (L x ..)))': the
+        # concrete C the host calls, over the abstraction A of a logical
+        # state, is A of the logical step L (store-log-kernel-concrete's
+        # fn-lgc-*-refines).  It ties L to C.
+        for conc, absn in ((conclusion[1], conclusion[2]), (conclusion[2], conclusion[1])):
+            if (len(absn) == 2 and isinstance(absn[1], list) and absn[1]
+                    and isinstance(absn[1][0], str)
+                    and any(isinstance(arg, list) and arg and arg[0] == absn[0]
+                            for arg in conc[1:])
+                    and conc[0] in graph.book_defs and absn[1][0] in graph.book_defs
+                    and conc[0] != absn[1][0] and conc[0] != absn[0]):
+                bridges[absn[1][0]].append((conc[0], tname))
+        left, right = heads
+        # A commutation `(equal (f (g x)) (g (f x)))' ties neither to the
+        # other: each side must be free of the other side's head.
+        if (tree_symbols(conclusion[1]) & {right}
+                or tree_symbols(conclusion[2]) & {left}):
+            continue
+        # And an equality to a FUNCTION, not an unfolding: the side a
+        # subject is tied TO applies its head to variables and constants
+        # only.  `(equal (indexed g ns (build as)) (plain g ns as))' ties the
+        # indexed scan to `plain'; `(equal (fence d bs) (fn-bs-make (files
+        # bs) ..))' only says what the result is built from.
+        def plain(side):
+            return len(side) > 1 and not any(tree_symbols(arg) & set(graph.book_defs) for arg in side[1:])
+        if left in graph.book_defs and right in graph.book_defs and left != right:
+            if plain(conclusion[2]):
+                bridges[left].append((right, tname))
+            if plain(conclusion[1]):
+                bridges[right].append((left, tname))
+    return bridges
+
+
 def audit(graph: Graph):
-    theorems = definitions(graph.books, DEFTHM)
+    theorems = theorem_forms(graph.books)
+    bridges = equality_bridges(graph, theorems)
     registry = json.loads((ROOT / "planning" / "proofs.json").read_text())
     rows = registry["proofs"] if isinstance(registry, dict) else registry
 
     findings, hosted, unresolved = [], 0, []
+    graph.bridged = []
     for row in rows:
         for event in row.get("events", []):
             name = str(event).lower()
             entry = theorems.get(name)
-            if not entry:
+            subject = Subject(graph, name, entry[1] if entry else None)
+            if not entry and subject.via != "export":
                 unresolved.append((row["id"], name, "no such defthm here"))
                 continue
-            book, form = entry
-            subjects = sorted(graph.mentions(form, name) & set(graph.book_defs))
+            book = entry[0] if entry else graph.stobjs[
+                graph.export_of[subject.functions[0]]]["file"]
+            subjects = subject.functions
             if not subjects:
                 unresolved.append((row["id"], name, "no resolvable subject"))
                 continue
-            if set(subjects) & graph.reachable:
+            if subject.hosted(graph):
                 hosted += 1
-            else:
-                findings.append(Finding(row["id"], name, book, subjects))
+                continue
+            tie = next(((s, other, t) for s in subjects
+                        for other, t in bridges.get(s, ())
+                        if other in graph.reachable), None)
+            if tie:
+                hosted += 1
+                graph.bridged.append((row["id"], name) + tie)
+                continue
+            findings.append(Finding(row["id"], name, book, subjects))
     return findings, hosted, unresolved
 
 
@@ -360,9 +732,36 @@ def main(argv=None) -> int:
                         help="exit non-zero on an orphan not in the baseline")
     parser.add_argument("--baseline", action="store_true",
                         help="rewrite planning/reach-baseline.json from this run")
+    parser.add_argument("--explain", metavar="EVENT",
+                        help="print what this reader takes EVENT's subject to be and why it is or is not hosted")
     arguments = parser.parse_args(argv)
 
     graph = Graph()
+    if arguments.explain:
+        name = arguments.explain.lower()
+        theorems = theorem_forms(graph.books)
+        entry = theorems.get(name)
+        subject = Subject(graph, name, entry[1] if entry else None)
+        print(f"{name}: {'defined in ' + entry[0] if entry else 'no defthm here'}")
+        print("subject: " + (", ".join(
+            f + (" (reached)" if f in graph.reachable else "") for f in subject.functions)
+            or "nothing resolvable"))
+        if subject.hosted(graph):
+            print("hosted: a reached subject is applied to arguments no model computed")
+            return 0
+        bridges = equality_bridges(graph, theorems)
+        for s in subject.functions:
+            for other, tname in bridges.get(s, ()):
+                if other in graph.reachable:
+                    print(f"hosted through the named equality {tname}: {s} = {other} (reached)")
+                    return 0
+        if set(subject.functions) & graph.reachable:
+            print("NOT hosted: its reached subject is applied only to a model's state "
+                  "(a let-bound call of an unreached function), and no named equality ties "
+                  "the model to a reached function")
+        else:
+            print("NOT hosted: no reached subject, and no named equality to a reached function")
+        return 0
     findings, hosted, unresolved = audit(graph)
 
     if arguments.baseline:

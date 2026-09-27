@@ -13,7 +13,7 @@
 (include-book "../../books/owner-agent")
 (include-book "../../books/native-admin")
 (include-book "../../books/account-list")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun mdt-o (s) (declare (xargs :guard (stringp s))) (fn-nntp-string-octets s))
 (defconst *mdt-crlf* (coerce '(#\Return #\Newline) 'string))
@@ -119,7 +119,7 @@
 (assert-event (fn-cfg-set-group-moderation-reason
                *mdt-v1* 2 (fn-cfg-set-group-moderation "fn.absent" "fn.queue" ""
                                                        '("alice"))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-cfg-group-moderation
                        (fn-cfg-apply-delta *mdt-v1* 2 *mdt-stamp*
                                            (fn-cfg-set-group-moderation
@@ -211,7 +211,7 @@
 ; Without the hypothesis (a list that already holds an :approver entry,
 ; which the owner never installs): carol "approves".
 (assert-event (not (fn-mod-no-approversp (list *mdt-approver-entry*))))
-(must-fail
+(must-fail-checked
  (assert-event (not (fn-mod-entry-approverp
                      (fn-mod-entry-of (mdt-o "fn.mod")
                                       (fn-mod-session-entries (list *mdt-approver-entry*)
@@ -289,12 +289,12 @@
                    (not (mdt-in-moderatedp (mdt-decide *mdt-held* *mdt-cfg*) *mdt-cfg*))))
 ; Without "not approved" (a moderator's approved article): it is in fn.mod.
 (assert-event (fn-mod-facts-approvedp (fn-mod-facts *mdt-approved* *mdt-alice-cfg*)))
-(must-fail
+(must-fail-checked
  (assert-event (not (mdt-in-moderatedp (mdt-decide *mdt-approved* *mdt-alice-cfg*)
                                        *mdt-alice-cfg*))))
 ; Without "ordinary" (a cancel, no facts): it names fn.mod.
 (assert-event (null (fn-mod-facts *mdt-cancel* *mdt-cfg*)))
-(must-fail
+(must-fail-checked
  (assert-event (not (mdt-in-moderatedp (mdt-decide *mdt-cancel* *mdt-cfg*) *mdt-cfg*))))
 
 ; KEYSTONE fn-post-moderator-approved-article-is-committed: its three
@@ -309,12 +309,12 @@
                           (fn-inj-decide *mdt-approved* *mdt-alice-cfg* *mdt-obs*))))
 ; Without "the named moderated groups approve" (the owner's view): refused.
 (assert-event (not (fn-mod-all-approverp (mdt-entries *mdt-approved* *mdt-cfg*))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (mdt-decide *mdt-approved* *mdt-cfg*)
                       (fn-inj-decide *mdt-approved* *mdt-cfg* *mdt-obs*))))
 ; Without "approved" (the held article on alice's connection): forwarded.
 (assert-event (fn-mod-all-approverp (mdt-entries *mdt-held* *mdt-alice-cfg*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (mdt-decide *mdt-held* *mdt-alice-cfg*)
                       (fn-inj-decide *mdt-held* *mdt-alice-cfg* *mdt-obs*))))
 ; Without "not read-only" (fn.mod also closed): the read-only refusal.
@@ -322,7 +322,7 @@
   (fn-inj-make-config-closed t *mdt-agent* *mdt-groups* 32768
                              (list (mdt-o "fn.mod") *mdt-approver-entry*)))
 (assert-event (fn-gst-post-gate *mdt-approved* *mdt-closed-alice-cfg*))
-(must-fail
+(must-fail-checked
  (assert-event (equal (mdt-decide *mdt-approved* *mdt-closed-alice-cfg*)
                       (fn-inj-decide *mdt-approved* *mdt-closed-alice-cfg*
                                      *mdt-obs*))))
@@ -336,24 +336,24 @@
                    (equal (mdt-decide *mdt-approved* *mdt-cfg*)
                           (fn-inj-refuse :approval-not-moderator))))
 ; Without "some approver is missing" (alice): committed, not refused.
-(must-fail
+(must-fail-checked
  (assert-event (equal (mdt-decide *mdt-approved* *mdt-alice-cfg*)
                       (fn-inj-refuse :approval-not-moderator))))
 ; Without "a moderated group is named" (fn.test only, with Approved).
 (defconst *mdt-open-approved* (mdt-article "fn.test" *mdt-approved-line*))
 (assert-event (not (consp (mdt-entries *mdt-open-approved* *mdt-cfg*))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (mdt-decide *mdt-open-approved* *mdt-cfg*)
                       (fn-inj-refuse :approval-not-moderator))))
 ; Without "approved": held, not refused.
-(must-fail
+(must-fail-checked
  (assert-event (equal (mdt-decide *mdt-held* *mdt-cfg*)
                       (fn-inj-refuse :approval-not-moderator))))
 ; Without "not read-only": the read-only refusal.
 (defconst *mdt-closed-cfg*
   (fn-inj-make-config-closed t *mdt-agent* *mdt-groups* 32768
                              (list (mdt-o "fn.mod") *mdt-entry*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (mdt-decide *mdt-approved* *mdt-closed-cfg*)
                       (fn-inj-refuse :approval-not-moderator))))
 

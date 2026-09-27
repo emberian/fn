@@ -4,7 +4,7 @@
 (include-book "../../books/store-budget")
 (include-book "../../books/codec-attach")
 (include-book "held-rows-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *sbudt-dev* (fn-bs-config-for-profile :development))
 (defconst *sbudt-scale* (fn-bs-config-for-profile :scale))
@@ -96,7 +96,7 @@
                      (fn-sbud-bytes-used *sbudt-two*)))
 (assert-event (not (equal (fn-sbud-bytes-extend '(1 . 999) *sbudt-two-records*)
                           (fn-sbud-bytes-used *sbudt-two*))))
-(must-fail
+(must-fail-checked
  (defthm sbudt-kernel-sum-without-valid-cache
    (equal (fn-sbud-bytes-extend '(1 . 999) (fn-sf-records (fn-sn-files s)))
           (fn-sbud-bytes-used s))))
@@ -119,7 +119,7 @@
                            (fn-sf-records (fn-sn-files *sbudt-misnumbered*)))
                           (fn-sbud-iota 0 (fn-sbud-used *sbudt-misnumbered*)))))
 ;; The namespace theorem without its fn-sf-statep hypothesis, at that store.
-(must-fail
+(must-fail-checked
  (defthm sbudt-namespace-without-statep
    (equal (fn-sbud-sequences (fn-sf-records (fn-sn-files *sbudt-misnumbered*)))
           (fn-sbud-iota 0 (fn-sbud-used *sbudt-misnumbered*)))))
@@ -129,7 +129,7 @@
   (car (fn-sf-records (fn-sn-files *sbudt-misnumbered*))))
 (assert-event (equal (fn-store-event-sequence *sbudt-sequence-one*) 1))
 (assert-event (not (fn-sf-candidatep *sbudt-sequence-one* nil 1)))
-(must-fail
+(must-fail-checked
  (defthm sbudt-any-record-takes-sequence-used
    (equal (fn-store-event-sequence *sbudt-sequence-one*)
           (fn-sbud-used (sbudt-store 0)))))

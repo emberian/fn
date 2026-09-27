@@ -19,7 +19,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/store-files-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 (include-book "held-rows-tests")
 
@@ -140,14 +140,14 @@
 ; certify-20260922T081242Z-1518252 killed the first one at 1800 s in
 ; Subgoal *1.14.25.6/3.8.8..., where before it failed at once.
 (local
- (must-fail
+ (must-fail-checked
   (defthm sft-candidate-append-without-ordered-history
     (implies (fn-sf-candidatep record records frontier)
              (fn-sf-record-listp (append records (list record))
                                  0 0 frontier))
     :hints (("Goal" :do-not-induct t)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm sft-candidate-append-without-candidate
     (implies (fn-sf-record-listp records 0 0 frontier)
              (fn-sf-record-listp (append records (list record))

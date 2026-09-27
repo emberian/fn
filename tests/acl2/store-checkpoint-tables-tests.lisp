@@ -16,7 +16,7 @@
 ; is fn-sha256's.)
 
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/owner-checkpoint-pipeline")
 (include-book "../../books/store-checkpoint-tables-reader")
 
@@ -334,7 +334,7 @@
 ; fn-ockp-step-preserves-encodable without its state hypothesis (the
 ; :unencodable witness above), and without its tables hypothesis (the
 ; unencodable tables behind an encodable state).
-(must-fail
+(must-fail-checked
  (defthm sctt-r-step-preserves-encodable-without-state
    (implies (fn-ockp-tables-encodablep (fn-sco-at 1 setup))
             (let ((r (fn-ockp-step setup pst b bytes seg s segment-bound file-bound fn-octets)))
@@ -343,7 +343,7 @@
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
             :in-theory (disable fn-ockp-step fn-ockp-step-preserves-encodable)))))
-(must-fail
+(must-fail-checked
  (defthm sctt-r-step-preserves-encodable-without-tables
    (implies (fn-ockp-state-encodablep pst)
             (fn-ockp-state-encodablep
@@ -354,7 +354,7 @@
 
 ; fn-ockp-step-preserves-statep without its shape hypothesis (the string K
 ; above).
-(must-fail
+(must-fail-checked
  (defthm sctt-r-step-preserves-statep-without-shape
    (fn-ockp-statep (mv-nth 2 (fn-ockp-step setup pst b bytes seg s segment-bound file-bound
                                            fn-octets))
@@ -366,7 +366,7 @@
 
 ; fn-ockp-run-of-encodable-never-refuses-a-row without its state hypothesis
 ; (the run above answers :unencodable).
-(must-fail
+(must-fail-checked
  (defthm sctt-r-run-never-refuses-without-state
    (implies (fn-ockp-tables-encodablep (fn-sco-at 1 setup))
             (not (equal (car (fn-ockp-run setup pst b bytes seg s segment-bound file-bound fuel
@@ -387,7 +387,7 @@
         (segs (fn-sct-run-segments (fn-sct-rows-program (list (fn-sct-f-row big 9 "r" nil)) 0 nil nil big nil)
                                    64 big)))
    (not (equal (nth 3 (fn-scc-parse-header (car segs))) big))))
-(must-fail
+(must-fail-checked
  (defthm sctt-r-decode-file-without-width
    (let* ((c (fn-sco-capture configs records))
           (tables (fn-sct-tables-of-capture c frontier revision log))
@@ -431,7 +431,7 @@
       (fn-sct-programs-widthp *sctt-bad-log-progs*)
       (equal (fn-sct-decode-file (fn-sct-file-segments *sctt-bad-log-progs* *sctt-seg* *sctt-s*))
              (list :refused :f-row))))
-(must-fail
+(must-fail-checked
  (defthm sctt-r-decode-file-without-log-position
    (let* ((c (fn-sco-capture configs records))
           (tables (fn-sct-tables-of-capture c frontier revision log))
@@ -457,7 +457,7 @@
         (not (fn-sct-agreep *sctt-mindex* other 1))
         (equal (fn-sct-run prog nil other) (list (list 9 9 9)))
         (not (equal (fn-sct-run prog nil other) (list *sctt-payload*))))))
-(must-fail
+(must-fail-checked
  (defthm sctt-r-run-of-program-without-agreement
    (implies (fn-scc-treep x)
             (equal (fn-sct-run (append (fn-sct-program x cand mtrie n te) rest) stack td)
@@ -481,7 +481,7 @@
          (not (iff (fn-ock-publication-blockedp verdict 0 0) (< (nfix 0) 1/2)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-ockp-decide fn-ock-publication-blockedp fn-ockp-space))))
-(must-fail
+(must-fail-checked
  (defthm sctt-r-decide-without-natp-estimate
    (let ((verdict (fn-ockp-decide estimate budget free)))
      (implies (< budget estimate)
@@ -500,7 +500,7 @@
         (tables (fn-sct-tables-of-capture c 9 "r" nil)))
    (and (not (fn-ockp-tables-encodablep tables))
         (equal (car (fn-ockp-setup c 9 "r" nil 64 1000000 nil)) :unencodable))))
-(must-fail
+(must-fail-checked
  (defthm sctt-r-estimate-without-encodable
    (equal (len (fn-sct-file-octets (fn-sct-table-programs tables index) seg s))
           (fn-ockp-estimate tables index seg))

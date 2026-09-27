@@ -6,7 +6,7 @@
 ; outside a transition's guard is made under `with-guard-checking :none'.
 (in-package "ACL2")
 (include-book "../../books/retention-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; Executable scenarios for the finite-capacity retention ledger.
@@ -295,7 +295,7 @@
 ; `fn-node-prepare-refuses-whatever-retain-admit-refuses'
 ; (books/store-node-retention.lisp), whose teeth are in
 ; tests/acl2/store-node-retention-tests.lisp.
-(must-fail
+(must-fail-checked
  (defthm ret-cap-refusal-without-capacity-hypothesis
    (equal (fn-retain-admit *ret-cap-teeth-near* "forward-1" "object-a" :forward
                            "receipt-from-successor" 4)

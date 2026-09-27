@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-profile-replay")
 (include-book "bp-fnbs-family-replay-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ;; ---------------------------------------------------------------------------
 ;; fn-bpnpf-read-of-octets.  Witness: the profile SCN-067 runs under.
@@ -20,7 +20,7 @@
 (assert-event
  (and (not (fn-bpnpf-validp 0 16777216))
       (not (equal (fn-bpnpf-read t (fn-bpnpf-octets 0 16777216)) '(0 16777216)))))
-(must-fail
+(must-fail-checked
  (defthm bpnpft-read-without-validity
    (equal (fn-bpnpf-read t (fn-bpnpf-octets rows octets)) (list rows octets))
    :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
@@ -47,7 +47,7 @@
       (not (fn-bpnpf-validp 16777217 16777216))
       (not (fn-bpn-machine-statep
             (fn-bpn-initial-machine-state *bpnpft-config* 16777217 16777216)))))
-(must-fail
+(must-fail-checked
  (defthm bpnpft-opens-without-validity
    (implies (fn-bpn-configp config)
             (fn-bpn-machine-statep (fn-bpn-initial-machine-state config rows octets)))
@@ -56,7 +56,7 @@
 (assert-event
  (and (fn-bpnpf-validp 128 16777216) (not (fn-bpn-configp nil))
       (not (fn-bpn-machine-statep (fn-bpn-initial-machine-state nil 128 16777216)))))
-(must-fail
+(must-fail-checked
  (defthm bpnpft-opens-without-config
    (implies (fn-bpnpf-validp rows octets)
             (fn-bpn-machine-statep (fn-bpn-initial-machine-state config rows octets)))
@@ -142,7 +142,7 @@
       (not (equal (fn-bpnpf-profile-read
                    t (fn-bpnpf-profile-octets 128 16777216 16777217 1048576))
                   '(128 16777216 16777217 1048576)))))
-(must-fail
+(must-fail-checked
  (defthm bpnpft-profile-read-without-validity
    (equal (fn-bpnpf-profile-read
            t (fn-bpnpf-profile-octets rows octets adu bundle))
@@ -225,7 +225,7 @@
                             (append (bpnpft-prefix) (list (bpnpft-row)))
                             (bpnpft-base-octets o) nil nil nil 0)))
                2))))
-(must-fail
+(must-fail-checked
  (defthm bpnpft-octets-without-the-bound
    (let ((r (fn-bpnf-family-replay-rows-aux
              prefix base held handoffs prior next-arrival)))

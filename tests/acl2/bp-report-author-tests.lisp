@@ -3,7 +3,7 @@
 (include-book "bp-report-outbox-tests")
 (include-book "bp-node-machine-tests")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bpra-proposal ()
   (declare (xargs :guard t :verify-guards nil))
@@ -30,7 +30,7 @@
          (fn-bpn-report-author-step
           *bprst-state* (list :queue-report 0 9 *bpnm-route* *bpnm-obs*)))
         nil))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (car (fn-bpnf-answer-effects (bpra-proposal))))
          :bundle-queue-accepted)))

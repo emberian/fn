@@ -2,7 +2,7 @@
 (include-book "../../books/bp-report-deletion")
 (include-book "bp-app-handoff-tests")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bprd-arrival* (fn-clock-observation 1000 0 0 nil))
 (defconst *bprd-later* (fn-clock-observation 3601002 0 0 nil))
@@ -39,7 +39,7 @@
                                  '(1) :lifetime-expired)
     (list *bprd-held*))
    (and (not ok) (equal updated (list *bprd-held*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (mv-let (ok updated)
     (fn-bpn-report-apply-delete
@@ -50,7 +50,7 @@
 (assert-event
  (null (fn-bpn-report-find-expired-held
         (list *bpah-held*) *bprd-later*))) ; legacy anchor is unknown
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-report-find-expired-held
    (list *bpah-held*) *bprd-later*)))
@@ -97,7 +97,7 @@
  (null (fn-bpn-report-deleted-payload
         *bprd-request-record* *bprd-request-held*
         *bprd-later* t)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpn-report-deleted-payload
    *bprd-request-record* *bprd-request-held* *bprd-later* t)))

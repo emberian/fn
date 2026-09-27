@@ -2,7 +2,7 @@
 ; live configuration; a prior physical capacity decrease remains recoverable.
 (in-package "ACL2")
 (include-book "../../books/config-owner-live")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "config-observed-tests")
 
 (defconst *ocl-t-cfg*
@@ -181,7 +181,7 @@
  (fn-ocl-relation
   (cdr (in-arena-fn-ocfg-read *sr-arena* *ocl-t-forged-old-pin* 0 *ocl-t-live-group-command*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-ocl-read-without-historical-input-is-not-preserved
     (fn-ocl-relation (cdr (fn-ocfg-read oc id octets fn-arena)))
     :rule-classes nil)))
@@ -276,6 +276,6 @@
 (assert-event (not (fn-ocl-view-historyp *ocl-t-hist-bad*)))
 (assert-event
  (not (fn-ocl-view-historyp (fn-ocl-owner-with-store *ocl-t-hist-bad* *ocl-t-hist-st*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-ocl-view-historyp (fn-ocl-owner-with-store *ocl-t-hist-bad* *ocl-t-hist-st*))))

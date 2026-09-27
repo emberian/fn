@@ -678,3 +678,196 @@
 ; not held, which no intern constructs (its guard refuses a bad generation).
 (assert-event (and (fn-sf-record-valuesp *cet-hr*) (fn-sca-held-rowsp *cet-hr*)))
 (assert-event (and (not (fn-sf-record-valuesp (list 17))) (fn-sca-held-rowsp (list 17))))
+
+; -----------------------------------------------------------------------------
+; T3, fn-cat-ocl-relation-of-other-finish (PRF-201; audit packet G5-3, lane
+; audit-fixes): the completion of a NON-article event keeps R.  The owner is
+; the T2 owner above after its finish (the article committed), driven through
+; the host's next POST-less round: a frontier reservation, the host's
+; retention prepare ((:store (:prepare-retention EVENT)), as
+; owner-retention-preparation-tests stages it; EVENT an undertaking at the
+; store's next identity and txid), and the record io to :completing.  Its
+; rows: two retention events, the article, the new undertaking.  The catalog
+; is the host's load of the first NCAT rows (fn-sca-load-held-rows).
+(defun cet-t3-event (oc kind charge)
+  (let* ((s (fn-own-store (fn-ocfg-owner oc)))
+         (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
+    (fn-store-retention-event-make
+     kind (fn-sn-identity-next s) txid txid
+     (fn-record-octets-string '(111 98 108))
+     (fn-record-octets-string '(115 117 98))
+     (fn-record-octets-string '(101 118 105)) charge)))
+
+;; Returns (HYPS CONCLUSION-CONJUNCTS COMPLETION-RECORD CATALOG-COUNT).
+(defun cet-t3-run (payloads ncat fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many payloads fn-arena))
+         (oc *cet-t2-oc*)
+         (oc (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc) fn-arena))))
+         (oc (acar-t-ocfg-run oc '((:store (:io :start-frontier nil))
+                                   (:store (:io :frontier-file :ok))
+                                   (:store (:io :frontier-replace :ok))
+                                   (:store (:io :frontier-directory :ok))) fn-arena))
+         (oc (acar-t-ocfg-run oc (list (list :store (list :prepare-retention (cet-t3-event oc :undertake 1)))
+                                       '(:store (:io :record-file :ok))
+                                       '(:store (:io :record-link :ok))
+                                       '(:store (:io :record-directory :ok))) fn-arena))
+         (o (fn-ocfg-owner oc))
+         (s (fn-own-store o))
+         (rows (fn-sf-records (fn-sn-files s)))
+         (fn-cat (fn-sca-load-held-rows (take ncat rows) (fn-own-view-index (fn-own-view o))
+                                        fn-arena fn-cat))
+         (hyps (list (fn-ocl-relation oc)
+                     (fn-sn-completion-enabledp s)
+                     (fn-cat-history-relation (fn-cat-history-articles rows fn-arena) fn-arena fn-cat)))
+         (finished (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish o (fn-ocfg-config oc) fn-arena))))
+         (fs (fn-own-store (fn-ocfg-owner finished)))
+         (fhist (fn-cat-history-articles (fn-sf-records (fn-sn-files fs)) fn-arena)))
+    (mv (list hyps
+              (list (fn-ocl-relation finished)
+                    (if (fn-own-store-idlep fs) t nil)
+                    (if (fn-own-store-idlep fs)
+                        (fn-cat-history-relation fhist fn-arena fn-cat)
+                      (fn-cat-history-prefix-relation fhist fn-arena fn-cat)))
+              (fn-sn-completion-record s)
+              (fn-cat-count fn-cat))
+        fn-arena fn-cat)))
+
+(defun cet-t3-exec (payloads ncat)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (cet-t3-run payloads ncat fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+; Reachable positive witness: the completion is the retention undertaking
+; (no article), all three hypotheses hold, and after the host's finish the
+; owner is related, its store idle, and R holds as the equality with the
+; catalog unchanged (one article row: non-vacuous).
+(assert-event
+ (let ((r (cet-t3-exec *cet-t2-payloads* 4)))
+   (and (equal (car r) (list t t t))
+        (equal (cadr r) (list t t t))
+        (fn-store-retention-event-p (caddr r))
+        (not (fn-held-p (caddr r)))
+        (equal (cadddr r) 1))))
+; Removal of the history relation: the catalog one article row behind (loaded
+; from the two retention rows only).  The owner hypotheses still hold; R
+; fails after the finish.
+(assert-event
+ (let ((r (cet-t3-exec *cet-t2-payloads* 2)))
+   (and (equal (car r) (list t t nil))
+        (equal (cadr r) (list t t nil))
+        (equal (cadddr r) 0))))
+; NOT witnessed alone: (fn-ocl-relation oc) and the completion gate, for the
+; reason given at T2 above (the owners tried fail both jointly).
+
+; -----------------------------------------------------------------------------
+; G5-4: the three lemma steps of fn-sca-ocl-relation-of-finish, each literal
+; statement evaluated on the T2 state (the host's catalog over the first two
+; rows, RECORDS0 = ALPHA of the first two rows, W the completing article's
+; wire, the host's pending and token).  They are proof steps of the T2
+; keystone, whose teeth are above; they are not registry events.
+;   fn-cat-ocl-relation-before-article-finish: HYPS-A => the prefix relation.
+;   fn-cat-ocl-relation-of-article-finish-by: HYPS-B => fn-cat-ocl-relation of
+;     the finished owner with CAT2, the catalog after the host's fn-sca-finish.
+;   fn-cat-relation-of-complete-hidden: HYPS-C => R over RECORDS0 ++ (W) of the
+;     catalog after fn-cat-complete-hidden with BY = the pending's expected.
+(defun cet-t2-steps-run (oc payloads ncat nrec hidden fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many payloads fn-arena))
+         (o (fn-ocfg-owner oc))
+         (s (fn-own-store o))
+         (rows (fn-sf-records (fn-sn-files s)))
+         (records0 (fn-cat-history-articles (take nrec rows) fn-arena))
+         (fn-cat (fn-sca-load-held-rows (take ncat rows) (fn-own-view-index (fn-own-view o))
+                                        fn-arena fn-cat))
+         (row (fn-sn-completion-record s))
+         (w (fn-held-wire-of row fn-arena))
+         (pending (fn-cat-prepare-sealed w row nil nil nil fn-arena fn-cat))
+         (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files s)))) (fn-pc-expected pending)))
+         (history (fn-cat-history-articles rows fn-arena))
+         (articles-eq (equal (fn-sf-article-records history)
+                             (append (fn-sf-article-records records0) (list w))))
+         (hyps-a (list (fn-ocl-relation oc)
+                       (fn-cat-history-relation records0 fn-arena fn-cat)
+                       articles-eq))
+         (concl-a (fn-cat-history-prefix-relation history fn-arena fn-cat))
+         (hyps-c (list (fn-cat-history-relation records0 fn-arena fn-cat)
+                       (fn-pc-p pending)
+                       (equal token (fn-pc-token pending))
+                       (equal (fn-pc-expected pending) (fn-cat-count fn-cat))
+                       (< (fn-record-payload (fn-pc-held pending)) (fn-arena-count fn-arena))
+                       (equal (fn-held-wire-of (fn-pc-held pending) fn-arena) w)
+                       (fn-record-p w)
+                       (natp (fn-pc-expected pending))))
+         (finished (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish o (fn-ocfg-config oc) fn-arena))))
+         (fo (fn-ocfg-owner finished))
+         (fs (fn-own-store fo))
+         (fhist (fn-cat-history-articles (fn-sf-records (fn-sn-files fs)) fn-arena)))
+    (if hidden
+        (mv-let (word pending2 fn-cat)
+          (fn-cat-complete-hidden token pending (fn-pc-expected pending) fn-cat)
+          (declare (ignore word pending2))
+          (mv (list hyps-a concl-a hyps-c
+                    (fn-cat-history-relation (append records0 (list w)) fn-arena fn-cat))
+              fn-arena fn-cat))
+      (let ((targets (fn-sca-targets-of (fn-record-msgid row)
+                                        (fn-own-view-withdrawals (fn-own-view fo)))))
+        (mv-let (word pending2 fn-cat)
+          (fn-sca-finish token pending (fn-own-view-index (fn-own-view fo)) targets fn-cat)
+          (declare (ignore word pending2))
+          (mv (list (list (fn-ocl-relation oc)
+                          (fn-sn-completion-enabledp s)
+                          articles-eq
+                          (fn-record-p w)
+                          (fn-cat-history-relation (append records0 (list w)) fn-arena fn-cat))
+                    (list (fn-ocl-relation finished)
+                          (if (fn-own-store-idlep fs)
+                              (fn-cat-history-relation fhist fn-arena fn-cat)
+                            (fn-cat-history-prefix-relation fhist fn-arena fn-cat))))
+              fn-arena fn-cat))))))
+
+(defun cet-t2-steps-exec (oc payloads ncat nrec hidden)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (cet-t2-steps-run oc payloads ncat nrec hidden fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+; before-article-finish and complete-hidden, positive (the hidden run).
+(assert-event
+ (equal (cet-t2-steps-exec *cet-t2-oc* *cet-t2-payloads* 2 2 t)
+        (list (list t t t) t (list t t t t t t t t) t)))
+; article-finish-by, positive (the host's fn-sca-finish gives CAT2).
+(assert-event
+ (equal (cet-t2-steps-exec *cet-t2-oc* *cet-t2-payloads* 2 2 nil)
+        (list (list t t t t t) (list t t))))
+; Cheap removals (every retained hypothesis holds, the removed one fails,
+; the conclusion fails):
+;  complete-hidden without the history relation: RECORDS0 already holds the
+;  article (ALPHA of three rows) while the catalog holds two rows.
+(assert-event
+ (equal (cet-t2-steps-exec *cet-t2-oc* *cet-t2-payloads* 2 3 t)
+        (list (list t nil nil) t (list nil t t t t t t t) nil)))
+;  article-finish-by without R over RECORDS0 ++ (W) at CAT2: the catalog was
+;  loaded from all three rows, so the host's finish leaves it one row ahead.
+(assert-event
+ (equal (cet-t2-steps-exec *cet-t2-oc* *cet-t2-payloads* 3 2 nil)
+        (list (list t t t t nil) (list t nil))))
+;  before-article-finish has no tooth here: a catalog loaded from every row
+;  breaks its history hypothesis, but the prefix conclusion still holds (a
+;  list is its own prefix); evaluated below.
+(assert-event
+ (equal (car (cet-t2-steps-exec *cet-t2-oc* *cet-t2-payloads* 3 2 t))
+        (list t nil t)))
+(assert-event
+ (equal (cadr (cet-t2-steps-exec *cet-t2-oc* *cet-t2-payloads* 3 2 t)) t))

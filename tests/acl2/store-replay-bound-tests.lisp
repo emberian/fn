@@ -5,7 +5,7 @@
 ; must-fail of the keystone without it.
 (in-package "ACL2")
 (include-book "../../books/store-replay-bound")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
 ; The small preset (books/heap-figure.lisp *fn-heap-small-request*, the same
@@ -44,7 +44,7 @@
   (fn-srb-replay-within-boundp profile (fn-srb-sum encoded)))
 
 (defmacro srt-must-fail (name &rest hyps)
-  `(must-fail
+  `(must-fail-checked
     (defthm ,name
       (implies (and ,@hyps)
                (fn-srb-replay-within-boundp profile (fn-srb-sum encoded)))

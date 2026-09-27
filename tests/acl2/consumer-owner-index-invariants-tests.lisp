@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/consumer-owner-index-invariants")
 (include-book "consumer-owner-local-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event (fn-ceis-relatedp *colt-after-article*))
 (assert-event (fn-snt-relation *colt-after-article*))
@@ -50,7 +50,7 @@
  (not (equal (fn-col-poll (fn-own-start *coit-stale-index* 2) *colt-id*)
              (fn-col-poll-list-reference
               (fn-own-start *coit-stale-index* 2) *colt-id*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-col-poll (fn-own-start *coit-stale-index* 2) *colt-id*)
          (fn-col-poll-list-reference
@@ -71,7 +71,7 @@
 (assert-event (fn-ceis-relatedp *coit-fault-stale-index*))
 (assert-event
  (fn-sf-statep (fn-sn-files *coit-fault-stale-index*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-col-poll (fn-own-start *coit-fault-stale-index* 2) *colt-id*)
          (fn-col-poll-list-reference

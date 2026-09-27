@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-app-handoff")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpah-local* (cons :dtn '(47 47 114 101 99 101 105 118 101 114 47)))
 (defconst *bpah-peer* (cons :dtn '(47 47 115 101 110 100 101 114 47)))
@@ -34,7 +34,7 @@
                      (fn-bpnf-state (fn-bpnf-base *bpah-state*) nil nil nil
                                     nil nil nil 1 1)
                      *bpah-local*)))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bpah-local-pendingp *bpah-held* *bpah-peer*)))
 
 ; The receipt names the remote work peer, while its return carrier is
@@ -86,11 +86,11 @@
        *bpah-request-view* (fn-cfg-make 8 (fn-cfg-value *bpah-request-cfg*)))))
 (assert-event
  (fn-bpah-receipt-trustedp *bpah-receipt-view* *bpah-receipt-cfg*))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpah-receipt-trustedp
     *bpah-receipt-view* (fn-cfg-make 8 (fn-cfg-value *bpah-receipt-cfg*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpah-receipt-trustedp
    (update-nth 6 "dtn://other/" *bpah-receipt-view*)
@@ -124,12 +124,12 @@
  (not (fn-bpah-request-trustedp
        (fn-bpah-pending-view *bpah-partial-state* *bpah-local*)
        *bpah-request-cfg*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-bpah-view-class
                        (fn-bpah-pending-view *bpah-partial-state*
                                               *bpah-local*))
                       :request)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpah-request-trustedp
    (fn-bpah-pending-view *bpah-partial-state* *bpah-local*)
@@ -164,7 +164,7 @@
 ;; D23 second half: carrying the receiver's EID is not release authority.
 ;; The relay carries dtn://receiver/ but does not release for it: its
 ;; receipt is not trusted.  With a releases-for row it is.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpah-receipt-trustedp *bpah-carried-receipt-view*
                             (bpah-cfg-with (append *bpah-relay-rows*
@@ -204,7 +204,7 @@
 ; fn-bpah-unauthorized-issuer-never-authorizes-receipt: teeth -- with the
 ; release row the issuer is authorized and the receipt is trusted, so the
 ; conclusion fails without the hypothesis.
-(must-fail
+(must-fail-checked
  (assert-event
   (not (fn-bpah-receipt-trustedp
         *bpah-carried-receipt-view*
@@ -225,7 +225,7 @@
          *bpah-carried-receipt-view*
          (bpah-cfg-with (append *bpah-relay-rows* *bpah-relay-carries*)))
         "carried carrier=relay author=receiver-peer"))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bpah-receipt-trustedp *bpah-carried-receipt-view*
                             (bpah-cfg-with *bpah-relay-rows*))))

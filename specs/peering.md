@@ -403,8 +403,10 @@ contexts; fn refuses it.
 
 Per-peer inbound limits are checked in this order, and the first failing
 check names the refusal (§2.2): the connection's `fn-wire-statep` body limit
-is set from `inbound-max-octets` at `:open` (so an oversize article is cut by
-the wire machine, RFC 3977 §3.1.1 dot-block, never by a second parser);
+is set at `:open` to the smaller of `inbound-max-octets` and the operator's
+profile article bound A (`fn-own-peer-body-limit`; PRF-313), so an oversize
+article is cut by the wire machine, RFC 3977 §3.1.1 dot-block, never by a
+second parser, and refused 437 / 439 by name and closed;
 `max-inflight` bounds the number of `238`/`335` answers outstanding before a
 `431`/`436`. Capacity is the retention ledger's: `fn-retain-admissiblep` with
 the charge `fn-charge-for-payload` ([identity](identity.md)) of the received
@@ -2351,7 +2353,8 @@ transition retains or requeues durable delivery work.
   configured records' `auth-source-address` rows and `fn-own-open-peer` opens
   the connection with `fn-served-open-peer`, pinning the node, the live
   configuration and the operator's AUTHINFO policy into the session; the body
-  limit is the record's `inbound-max-octets`. `(:principal id)` is a reserved
+  limit is the smaller of the record's `inbound-max-octets` and the profile's
+  article bound (`fn-own-peer-body-limit`). `(:principal id)` is a reserved
   slot and matches nothing yet, so A-PEER still stands: the identity is the
   configured address.
 

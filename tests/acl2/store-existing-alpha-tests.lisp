@@ -6,7 +6,7 @@
 (include-book "poster-bytes-tests")
 (include-book "source-routes-tests")
 (include-book "../../books/store-existing-alpha")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Evaluate over the arena of SPEC (srt-spec's form: the journal the entry
 ; interned, then payloads sealed after it): the entry, D25's decision over
@@ -78,7 +78,7 @@
       (equal (sea-pb *srt-t-dateless-spec* *srt-msgid* (srt-o *srt-dateless* *srt-b*)
                      *srt-groups* *srt-t-dateless*)
              :conflict)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (sea-entry *srt-t-dateless-spec* *srt-msgid* (srt-o *srt-dateless* *srt-b*)
                                  *srt-groups* *srt-t-dateless*)
                       (sea-pb *srt-t-dateless-spec* *srt-msgid* (srt-o *srt-dateless* *srt-b*)
@@ -104,7 +104,7 @@
       (not (sea-tombp *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*))
       (null (sea-entry *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*))
       (sea-pb *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (sea-entry *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*)
                       (sea-pb *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*))))
 
@@ -129,7 +129,7 @@
       (not (equal (sea-entry *srt-t-dateless-spec* *srt-msgid* *sea-tomb-bytes* *srt-groups*
                              *srt-t-dateless*)
                   :duplicate))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (sea-entry *srt-t-dateless-spec* *srt-msgid* *sea-tomb-bytes* *srt-groups*
                                  *srt-t-dateless*)
                       :duplicate)))
@@ -138,6 +138,6 @@
 (assert-event
  (and (sea-sn *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*)
       (null (sea-entry *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*))))
-(must-fail
+(must-fail-checked
  (assert-event (iff (sea-entry *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*)
                     (sea-sn *sea-spec* nil *sea-held* *pbt-groups* *sea-nil-store*))))

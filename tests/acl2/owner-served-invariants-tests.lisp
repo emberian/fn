@@ -9,7 +9,7 @@
 (in-package "ACL2")
 (include-book "owner-tests")
 (include-book "../../books/owner-served-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event (equal (symbol-class 'fn-own-finish (w state)) :common-lisp-compliant))
 (assert-event (equal (stobjs-in 'fn-own-finish (w state)) '(nil nil fn-arena)))
@@ -183,7 +183,7 @@
 (assert-event (fn-own-relation *own-taken*))
 (assert-event (not (osi-p2-240p *own-taken* 4 (osi-prior nil))))
 (assert-event (not (osi-p2-conclusion *own-taken* 4 (osi-prior nil))))
-(must-fail (assert-event (osi-p2-conclusion *own-taken* 4 (osi-prior nil))))
+(must-fail-checked (assert-event (osi-p2-conclusion *own-taken* 4 (osi-prior nil))))
 
 ; Hypothesis 1 (the relation).  Connection 4's session replaced by a
 ; malformed one: every completion renders the same 403, so the reply equals
@@ -205,7 +205,7 @@
 (assert-event (not (fn-own-relation *osi-unrelated*)))
 (assert-event (osi-p2-240p *osi-unrelated* 4 (osi-prior nil)))
 (assert-event (not (osi-p2-conclusion *osi-unrelated* 4 (osi-prior nil))))
-(must-fail (assert-event (osi-p2-conclusion *osi-unrelated* 4 (osi-prior nil))))
+(must-fail-checked (assert-event (osi-p2-conclusion *osi-unrelated* 4 (osi-prior nil))))
 
 ; Transit (transit-436, the 6c0626c5 regression).  A transit submission from
 ; peer "p" in flight on connection 4 of the reachable *own-taken*, installed
@@ -261,7 +261,7 @@
                      *osi-transit-stored*))
 (assert-event (not (equal (osi-completion-bytes *osi-transit-completing* *osi-transit-wire*)
                           *osi-transit-received*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (osi-completion-bytes *osi-transit-completing* *osi-transit-wire*)
                       *osi-transit-received*)))
 
@@ -276,7 +276,7 @@
 (assert-event (equal (car (osi-finish *osi-transit-unstaged* *osi-cfg* *osi-unstaged-prior*))
                      :fault))
 (assert-event (not (osi-p2-240p *osi-transit-unstaged* 4 *osi-unstaged-prior*)))
-(must-fail (assert-event (osi-p2-conclusion *osi-transit-unstaged* 4 *osi-unstaged-prior*)))
+(must-fail-checked (assert-event (osi-p2-conclusion *osi-transit-unstaged* 4 *osi-unstaged-prior*)))
 
 ; Negative: a completion for a different article.  The record carries the
 ; staged octets but another Message-ID; the finish still faults.
@@ -302,7 +302,7 @@
 (assert-event (fn-sn-completion-enabledp (fn-own-store *osi-transit-other*)))
 (assert-event (equal (car (osi-finish *osi-transit-other* *osi-cfg* *osi-other-prior*)) :fault))
 (assert-event (not (osi-p2-240p *osi-transit-other* 4 *osi-other-prior*)))
-(must-fail (assert-event (osi-p2-conclusion *osi-transit-other* 4 *osi-other-prior*)))
+(must-fail-checked (assert-event (osi-p2-conclusion *osi-transit-other* 4 *osi-other-prior*)))
 
 ; The transit arm's Path shape on the witness (P7's
 ; fn-peer-relayed-octets-keep-the-received-path-tail, concretely): the staged
@@ -408,20 +408,20 @@
 ; Hypothesis (not (fn-served-advance-eventp event)) of the corollary: the
 ; GROUP event is answered from the fresh view.
 (assert-event (not (in-arena-osi-p3-step-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 3 *osi-group-event*)))
-(must-fail (assert-event (in-arena-osi-p3-step-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 3 *osi-group-event*)))
+(must-fail-checked (assert-event (in-arena-osi-p3-step-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 3 *osi-group-event*)))
 
 ; Hypothesis (not (equal id sub-id)).  The poster itself is re-pinned by
 ; the 240: its record changes.
 (assert-event (osi-reader-p *osi-q* 4))
 (assert-event (not (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 4)))
-(must-fail (assert-event (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 4)))
+(must-fail-checked (assert-event (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-q* *osi-post-events* 4 :durable 4)))
 
 ; Hypothesis (fn-ocfg-writer-eventsp events).  An (:advance 3) among the
 ; events re-pins reader 3 itself.
 (defconst *osi-advance-events* (append *osi-post-events* '((:advance 3))))
 (assert-event (not (fn-ocfg-writer-eventsp *osi-advance-events*)))
 (assert-event (not (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-q* *osi-advance-events* 4 :durable 3)))
-(must-fail (assert-event (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-q* *osi-advance-events* 4 :durable 3)))
+(must-fail-checked (assert-event (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-q* *osi-advance-events* 4 :durable 3)))
 
 ; A peer connection's record survives another post too (P3 no longer needs
 ; the reader hypothesis), but its chunk read is not pin-stable: IHAVE answers
@@ -435,7 +435,7 @@
 (assert-event (not (equal *own-peer-id* 1)))
 (assert-event (in-arena-osi-p3-pin-conclusion *sr-arena* *osi-peered* *osi-peer-events* 1 :durable *own-peer-id*))
 (assert-event (not (in-arena-osi-p3-read-conclusion *sr-arena* *osi-peered* *osi-peer-events* 1 :durable *own-peer-id* *own-ihave-octets*)))
-(must-fail (assert-event (in-arena-osi-p3-read-conclusion *sr-arena* *osi-peered* *osi-peer-events* 1 :durable *own-peer-id* *own-ihave-octets*)))
+(must-fail-checked (assert-event (in-arena-osi-p3-read-conclusion *sr-arena* *osi-peered* *osi-peer-events* 1 :durable *own-peer-id* *own-ihave-octets*)))
 
 ; -----------------------------------------------------------------------------
 ; P5: the bound, and the fault wrapper.
@@ -454,7 +454,7 @@
 (assert-event (< (len (fn-own-conns (fn-ocfg-owner *osi-open0*)))
                  (fn-own-max-conns (fn-ocfg-owner *osi-open0*))))
 (assert-event (consp (car (fn-ocfg-open *osi-open0* nil))))
-(must-fail (assert-event (equal (fn-ocfg-open *osi-open0* nil) (cons nil *osi-open0*))))
+(must-fail-checked (assert-event (equal (fn-ocfg-open *osi-open0* nil) (cons nil *osi-open0*))))
 
 ; Hypothesis (fn-ocfg-statep).  The same full owner with its identifier
 ; counter wound back onto an open connection: the refused open still writes
@@ -471,7 +471,7 @@
 (assert-event (<= (fn-own-max-conns (fn-ocfg-owner *osi-wound*))
                   (len (fn-own-conns (fn-ocfg-owner *osi-wound*)))))
 (assert-event (not (equal (fn-ocfg-open *osi-wound* nil) (cons nil *osi-wound*))))
-(must-fail (assert-event (equal (fn-ocfg-open *osi-wound* nil) (cons nil *osi-wound*))))
+(must-fail-checked (assert-event (equal (fn-ocfg-open *osi-wound* nil) (cons nil *osi-wound*))))
 
 ; The fault wrapper: its equation at a reachable connection, and K-FAULT-2
 ; over it.  The one hypothesis, other /= id: the faulted connection itself
@@ -490,6 +490,6 @@
                      (fn-ocfg-pin-find 1 (fn-ocfg-pins *osi-full*))))
 (assert-event (not (equal (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner (cdr *osi-faulted*))))
                           (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *osi-full*))))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (equal (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner (cdr *osi-faulted*))))
                    (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *osi-full*))))))

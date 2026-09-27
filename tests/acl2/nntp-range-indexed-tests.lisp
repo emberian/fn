@@ -1,7 +1,7 @@
 ; Sparse, cross-posted and historically pinned OVER/XOVER range witnesses.
 (in-package "ACL2")
 (include-book "../../books/nntp-range-indexed-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-xri-payload (id subject)
   (append (fn-nntp-string-octets "Message-ID: ")
@@ -102,7 +102,7 @@
 (assert-event
  (not (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xri-session* *xri-new* *xri-missing-trie-pin* nil *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
              (in-arena-fn-nntp-archive-command *sr-arena* *xri-session* *xri-new* *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100"))))))
-(must-fail
+(must-fail-checked
  (defthm fn-xri-without-bucket-correspondence
    (implies (and (fn-statep archive)
                  (fn-midx-correspondencep
@@ -111,7 +111,7 @@
             (equal (fn-nntp-archive-command-pinned session archive index nil nil keyword (list token) fn-arena)
                    (fn-nntp-archive-command session archive nil keyword (list token) fn-arena)))
    :hints (("Goal" :do-not-induct t))))
-(must-fail
+(must-fail-checked
  (defthm fn-xri-without-trie-correspondence
    (implies (and (fn-statep archive)
                  (fn-gidx-pin-correspondencep index archive)
@@ -152,13 +152,13 @@
       (not (equal
             (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xri-session* *xri-duplicate-state* *xri-duplicate-pin* nil *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "100-100")))
             (in-arena-fn-nntp-archive-command *sr-arena* *xri-session* *xri-duplicate-state* *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "100-100")))))))
-(must-fail
+(must-fail-checked
  (defthm fn-xri-without-valid-archive
    (equal (fn-gidx-number-article
            group number (fn-gidx-build articles) (fn-midx-build articles))
           (fn-nntp-available-article group number articles))
    :hints (("Goal" :do-not-induct t))))
-(must-fail
+(must-fail-checked
  (defthm fn-xri-carried-without-valid-archive
    (implies (and (fn-gidx-pin-correspondencep index archive)
                  (fn-midx-correspondencep
@@ -174,7 +174,7 @@
  (not (equal
        (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xri-session* *xri-new* *xri-new-pin* nil *xri-env* (fn-nntp-string-octets "HDR") (list (fn-nntp-string-octets ":FN-VERIFIED")))
        (in-arena-fn-nntp-archive-command *sr-arena* *xri-session* *xri-new* *xri-env* (fn-nntp-string-octets "HDR") (list (fn-nntp-string-octets ":FN-VERIFIED"))))))
-(must-fail
+(must-fail-checked
  (defthm fn-xri-carried-without-over-keyword-scope
    (implies (and (fn-statep archive)
                  (fn-gidx-pin-correspondencep index archive)

@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-identity-sequence-invariants")
 (include-book "store-identity-traces-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Nondegenerate reached states cover ordinary ready history, the actual
 ; record-directory off-by-one window, a burned allocator txid, and completion.
@@ -31,7 +31,7 @@
   (update-nth 9 (1+ (fn-sn-identity-next *sis-staged*)) *sis-staged*))
 (assert-event (fn-sn-statep *sis-candidate-bad-next*))
 (assert-event (not (fn-sn-identity-sequencep *sis-candidate-bad-next*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-store-event-sequence
           (fn-sf-record-candidate (fn-sn-files *sis-candidate-bad-next*)))
@@ -44,13 +44,13 @@
 (assert-event
  (equal (len (fn-sf-records (fn-sn-files *sis-candidate-malformed*)))
         (fn-sn-identity-next *sis-candidate-malformed*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-store-event-p
    (fn-sf-record-candidate (fn-sn-files *sis-candidate-malformed*)))))
 (assert-event (fn-sn-statep *sis-reserved*))
 (assert-event (fn-sn-identity-sequencep *sis-reserved*))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-store-event-p (fn-sf-record-candidate (fn-sn-files *sis-reserved*)))))
 (assert-event
@@ -102,6 +102,6 @@
 
 ; Dropping the input sequence relation from the finish theorem is false even
 ; for a well-shaped state whose completing event is still consumed.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-sn-identity-sequencep (fn-sn-finish *sis-bad-completing*))))

@@ -18,7 +18,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/catalog-view")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (and (eq (symbol-class 'fn-cat-row-article (w state)) :common-lisp-compliant)
@@ -165,7 +165,7 @@
                (fn-midx-build (fn-cat-view-below 3 3 *cvt-a3* *cvt-c3*)))
               (fn-cat-row-article 2 *cvt-a3* *cvt-c3*)))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm cvt-r-number-article-without-uniqueness
    (equal (fn-gidx-entry-number-article
            "fn.test" 2

@@ -9,7 +9,7 @@
 ; The intent pins digests (PKT-646): fn-frame-digest runs through its attachment.
 (include-book "../../books/crypto-attach")
 (include-book "peer-inbound-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "arena-lift")
 (bpr-lift fn-bpaj-transit-record-lookup 3)
 (bpr-lift fn-bpaj-transit-record-lookup-fast 3)
@@ -56,7 +56,7 @@
                      (fn-peer-relayed-octets *btj-cfg* "dtnB" *pt-a1*)))
 (assert-event (not (equal (fn-bpaj-transit-stored-octets *btj-plan*)
                           *pt-a1*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-bpaj-transit-stored-octets *btj-plan*)
                       *pt-a1*)))
 (make-event
@@ -80,7 +80,7 @@
 ; The projection's bytes in place of its digest are no intent.
 (assert-event (not (fn-bpaj-transit-intentp
                     (update-nth 12 *pt-a1* *btj-intent*))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bpaj-transit-intentp
                 (update-nth 12 *pt-a1* *btj-intent*))))
 (assert-event
@@ -122,7 +122,7 @@
    (fn-bpaj-nth 8 *btj-plan*) (fn-bpaj-nth 9 *btj-plan*)))
 (assert-event (fn-own-relation *btj-owner*))
 (assert-event (fn-own-relation *btj-queued*))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-own-relation
    (fn-own-bp-transit-submit
@@ -143,12 +143,12 @@
 (assert-event
  (fn-own-relation
   (fn-own-bp-transit-outcome *btj-taken* :uncertain)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-own-relation
    (fn-own-bp-transit-outcome
     (update-nth 4 -1 *btj-taken*) :uncertain))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-own-bp-transit-outcome-result *btj-taken* :durable)
          :accepted)))
@@ -252,11 +252,11 @@
 (assert-event (equal (car (btj-decision *btj-carried-cfg*
                                         *btj-bad-relay-ingress*))
                      :carried))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bpah-request-trustedp (btj-view *btj-bad-relay-ingress*)
                                          *btj-carried-cfg*)))
 ; (2) direct ingress not a CL ingress.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpah-view-source-decision
           (btj-view (update-nth 2 -1 *btj-ingress*)) *btj-carried-cfg*)
@@ -265,19 +265,19 @@
 ;     no direct view is decided under it.
 (assert-event (equal (btj-decision *btj-uncarried-cfg* *btj-relay-ingress*)
                      '(:refused :source-not-carried)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpah-view-source-decision
           (btj-view (update-nth 4 nil *btj-ingress*)) *btj-uncarried-cfg*)
          (list :direct nil))))
 ; (4) direct ingress names the carrier, not the author.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpah-view-source-decision
           (btj-view *btj-relay-ingress*) *btj-carried-cfg*)
          (list :direct (pt-o "dtnB")))))
 ; (5) direct ingress at another generation.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpah-view-source-decision
           (btj-view (update-nth 5 2 *btj-ingress*)) *btj-carried-cfg*)
@@ -293,11 +293,11 @@
                                       *btj-uncarried-cfg*)
         "refused reason=source-not-carried"))
 ; (1) with the neighbour's own transport row for the source (direct).
-(must-fail
+(must-fail-checked
  (assert-event (not (fn-bpah-request-trustedp (btj-view *btj-ingress*)
                                               *btj-uncarried-cfg*))))
 ; (2) with the carries row (the relay carries b, and b is enrolled).
-(must-fail
+(must-fail-checked
  (assert-event (not (fn-bpah-request-trustedp (btj-view *btj-relay-ingress*)
                                               *btj-carried-cfg*))))
 
@@ -321,25 +321,25 @@
 (assert-event (not (fn-bpah-request-trustedp (btj-view *btj-relay-ingress*)
                                              *btj-untrusted-author-cfg*)))
 ; (1) not a CL ingress.
-(must-fail (assert-event (btj-unenrolledp *btj-unenrolled-cfg*
+(must-fail-checked (assert-event (btj-unenrolledp *btj-unenrolled-cfg*
                                           *btj-bad-relay-ingress*)))
 ; (2) a malformed configuration with the same rows and generation.
 (defconst *btj-malformed-cfg*
   (fn-cfg-make 1 (fn-cfg-value-make '(junk) 0 nil nil nil
                    (fn-cfg-peers (fn-cfg-value *btj-unenrolled-cfg*)) nil nil nil nil)))
 (assert-event (not (fn-cfgp *btj-malformed-cfg*)))
-(must-fail (assert-event (btj-unenrolledp *btj-malformed-cfg*
+(must-fail-checked (assert-event (btj-unenrolledp *btj-malformed-cfg*
                                           *btj-relay-ingress*)))
 ; (3) another generation.
-(must-fail (assert-event (btj-unenrolledp *btj-unenrolled-cfg*
+(must-fail-checked (assert-event (btj-unenrolledp *btj-unenrolled-cfg*
                                           (update-nth 5 2 *btj-relay-ingress*))))
 ; (4) the neighbour does not carry the source.
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (btj-unenrolledp
              (fn-cfg-make 1 (btj-with-relay (fn-cfg-value *pt-cfg*) nil))
              *btj-relay-ingress*)))
 ; (5) the source is enrolled here.
-(must-fail (assert-event (btj-unenrolledp *btj-carried-cfg*
+(must-fail-checked (assert-event (btj-unenrolledp *btj-carried-cfg*
                                           *btj-relay-ingress*)))
 ; Two boundaries enrolled for one source name no author.
 (defconst *btj-ambiguous-cfg*
@@ -400,7 +400,7 @@
 (assert-event
  (equal (in-arena-fn-bpaj-transit-record-lookup nil *btj-empty-store* *btj-injected-request* *btj-injected-intent*)
         '(:absent)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (in-arena-fn-bpaj-transit-record-lookup-fast nil *btj-empty-store* *btj-injected-request* *btj-injected-intent*)
          '(:conflict))))

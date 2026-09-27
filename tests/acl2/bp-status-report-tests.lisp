@@ -2,7 +2,7 @@
 ; encoder, and include both subject shapes and timed and untimed assertions.
 (in-package "ACL2")
 (include-book "../../books/bp-status-report-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-bpn-report-whole*
   '(:report ((nil) (nil) (nil) (nil)) 0 (:dtn-none) (0 0) nil))
@@ -70,7 +70,7 @@
                            (fn-bpn-report-encode *fn-bpn-report-long-eid*))
                           (fn-cbor-ok *fn-bpn-report-long-eid* nil))))
 ; Dropping the report recognizer admits an out-of-profile reason.
-(must-fail
+(must-fail-checked
  (defthm fn-bpn-report-roundtrip-without-reportp-is-false
    (equal (fn-bpn-report-decode
            (fn-bpn-report-encode
