@@ -32,6 +32,7 @@
 ;; The log kernel the host holds (lane per-record-state; host/native/io.lisp
 ;; fnn-log-*): the committed records' count in place of their list.
 (include-book "../books/store-log-kernel-concrete")
+(include-book "../books/store-log-stream")
 (include-book "../books/store-log-segments")
 
 (defconst *fn-store-max-text* 512)
