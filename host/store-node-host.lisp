@@ -163,7 +163,7 @@
   (let ((s (f-get-global 'fn-store-sn state)))
     (mv-let (bytes state) (fn-store-sn-record-octets s state)
       (mv-let (debt state) (fn-store-sn-record-debt s state)
-        ; PRF-180: the count read from the index (fn-sbud-count-is-used).
+        ; PRF-180: the count read from the index (fn-sbud-count-is-used-by-definition).
         (value (fn-cvec-verdict-at profile kind (fn-sbud-count s) bytes debt))))))
 
 ; An article's verdict (packet 1): the count gate and the history gate at the
@@ -178,7 +178,7 @@
       (mv-let (debt state) (fn-store-sn-record-debt s state)
         ; PRF-138: and the capacity vector still holds after it
         ; (`fn-cvec-article-verdict-keeps-the-vector').  PRF-180: the count
-        ; read from the index (fn-sbud-count-is-used).
+        ; read from the index (fn-sbud-count-is-used-by-definition).
         (value (fn-cvec-article-verdict-at profile (fn-sbud-count s) bytes
                                            payload-length group-count
                                            debt))))))

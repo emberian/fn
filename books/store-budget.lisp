@@ -396,7 +396,7 @@ count (O(1)), `fn-sbud-used' with no hypothesis."
   (fn-sf-records-count (fn-sn-files s)))
 
 ; KEYSTONE (the count): the carried count is the committed record count.
-(defthm fn-sbud-count-is-used
+(defthm fn-sbud-count-is-used-by-definition
   (equal (fn-sbud-count s) (fn-sbud-used s))
   :hints (("Goal" :in-theory (enable fn-sbud-count fn-sbud-used fn-sf-records-count))))
 

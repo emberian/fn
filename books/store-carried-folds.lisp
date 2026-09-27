@@ -90,7 +90,7 @@
   (implies (and (fn-cvec-debt-cache-validp cache (fn-sf-records (fn-sn-files s))))
            (equal (fn-scf-debt-carried cache s)
                   (fn-cvec-record-debt (fn-sf-records (fn-sn-files s)))))
-  :hints (("Goal" :use (fn-sbud-count-is-used
+  :hints (("Goal" :use (fn-sbud-count-is-used-by-definition
                         (:instance fn-scf-debt-advance-is-the-suffix-fold
                                    (files (fn-sn-files s))
                                    (events (fn-sf-records (fn-sn-files s)))
@@ -100,7 +100,7 @@
            :in-theory (e/d (fn-scf-debt-carried fn-cvec-debt-cache-validp
                             fn-cvec-debt-extend fn-sbud-used)
                            (fn-scf-debt-advance fn-cvec-debt-from
-                            fn-cvec-record-debt fn-sbud-count fn-sbud-count-is-used
+                            fn-cvec-record-debt fn-sbud-count fn-sbud-count-is-used-by-definition
                             fn-scf-debt-advance-is-the-suffix-fold
                             fn-cvec-debt-extend-is-the-record-debt
                             take nthcdr)))))
@@ -162,7 +162,7 @@
   (implies (fn-pcb-cache-validp cache (fn-sf-records (fn-sn-files s)))
            (equal (fn-scf-usage-carried cache s)
                   (fn-pcb-usage-extend cache (fn-sf-records (fn-sn-files s)))))
-  :hints (("Goal" :use (fn-sbud-count-is-used
+  :hints (("Goal" :use (fn-sbud-count-is-used-by-definition
                         (:instance fn-scf-tally-advance-is-the-suffix-fold
                                    (files (fn-sn-files s))
                                    (events (fn-sf-records (fn-sn-files s)))
@@ -170,7 +170,7 @@
            :in-theory (e/d (fn-scf-usage-carried fn-pcb-cache-validp
                             fn-pcb-usage-extend fn-sbud-used)
                            (fn-scf-tally-advance fn-pcb-tally-records
-                            fn-sbud-count fn-sbud-count-is-used
+                            fn-sbud-count fn-sbud-count-is-used-by-definition
                             fn-scf-tally-advance-is-the-suffix-fold
                             take nthcdr)))))
 

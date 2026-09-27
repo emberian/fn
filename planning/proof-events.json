@@ -6122,10 +6122,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-sbud-count-is-used"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-sbud-lookup-of-correspondence"
         },
         {
@@ -8887,10 +8883,6 @@
         {
           "kind": "theorem",
           "name": "fn-rii-sco-finalize-from-is-sco-finalize-from"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sbud-count-is-used"
         },
         {
           "kind": "theorem",
