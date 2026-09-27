@@ -64,10 +64,13 @@
         ((fn-wire-event-p w) w)
         (t :bad)))
 
-; Whether the intern seals a payload for W, and which.
+; Whether the intern seals a payload for W, and which: a record, or a
+; composite whose article decodes to one (fn-intern-event seals exactly
+; these; any other composite is :bad).
 (defun fn-scka-sealsp (w)
   (declare (xargs :guard t))
-  (or (fn-record-p w) (fn-stxa-p w)))
+  (or (fn-record-p w)
+      (and (fn-stxa-p w) (fn-record-p (fn-replay-composite-record w)))))
 
 (defun fn-scka-payload-of (w)
   (declare (xargs :guard t :verify-guards nil))
@@ -524,6 +527,9 @@
           (if (eq rest :bad)
               :bad
             (cons row rest)))))))
+
+(verify-guards fn-scka-intern-at)
+(verify-guards fn-scka-canon-rows)
 
 (defthm fn-scka-canon-rows-is-intern-at-of-alpha
   (equal (fn-scka-canon-rows rows fn-arena h)
