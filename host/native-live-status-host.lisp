@@ -33,7 +33,7 @@
   ; of the buffer its first page stored (`fn-nls-cached-buffer',
   ; `fn-nls-page-of-buffer-is-reply').  CACHED is carried by the host and
   ; chosen here.  The carried octet sum is read, not extended in place:
-  ; `fn-owner-headroom' stores its extension, this does not.  LOG-SINK is
+  ; `fn-owner-record-octets' stores its extension, this does not.  LOG-SINK is
   ; the owner's service-log sink (books/log-sink.lisp, PKT-508), NIL when no
   ; writer runs; SCHED the owner's scheduler value (books/owner-scheduler.lisp,
   ; HST-023): `health' ends with the sink's line and the scheduler's.

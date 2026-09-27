@@ -1,7 +1,7 @@
 ; fn: the decision journal -- the readings that store nothing, recorded so
 ; that replay reproduces the decisions made from them (lane time-model-2,
 ; 2026-09-27, slice 2 of planning/design-time-model-2026-09-27.md section
-; 3.7; PRF-308).
+; 3.7; PRF-314).
 ;
 ; Ember's rule: the fold is a pure function of the log; a clock reading is
 ; an event the host appends, never a call made inside an owner step.  A
@@ -664,7 +664,7 @@
    :hints (("Goal" :induct (fn-otm-rr-ind s r steps)
             :in-theory (e/d (fn-otm-run fn-otm-run-okp) (fn-otm-replay nfix))))))
 
-;; KEYSTONE (PRF-308, slice 2: replay determinism).  The subjects are the
+;; KEYSTONE (PRF-314, slice 2: replay determinism).  The subjects are the
 ;; host's calls: fn-otm-disk-step and fn-otm-note-step (whose journal lines
 ;; are fn-otm-jline of the entries fn-otm-run collects), and fn-otm-next,
 ;; fn-otm-observe and fn-otm-commit-event interleaved (host/native/owner.lisp

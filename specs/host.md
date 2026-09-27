@@ -553,7 +553,7 @@ with unbounded latency: a batch barrier is a request with a deadline, the
 disk's mode is ACL2's, reads and status never wait on a barrier, and a POST
 that arrives while the disk is slow is refused try-later with the reason.
 Design: planning/design-time-model-2026-09-27.md; slice 1 of it is this
-requirement (PRF-308, books/owner-time-model.lisp). The gate's value
+requirement (PRF-311, books/owner-time-model.lisp). The gate's value
 carries the disk's state and a recorded time: every disk event (the
 barrier's issue, its completion, a clock event) carries one monotonic
 reading the host takes under the gate mutex, recorded monotone (a lower

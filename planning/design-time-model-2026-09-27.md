@@ -1,7 +1,7 @@
 # Design: the disk, the network and the clock as an adversarial environment (2026-09-27)
 
 Lane time-model (Opus 5.5). Status: READY FOR REVIEW (the design); slice 1 is
-built on lane/time-model (section 9). Ids: PRF-308, HST-026, SCN-182, PKT-845
+built on lane/time-model (section 9). Ids: PRF-311, HST-026, SCN-182, PKT-853
 (from tools/next_id.py on dev 4fe07cc21; the coordinator renumbers at merge if
 another lane took one).
 
@@ -348,20 +348,20 @@ F4-R and F4-W with their hypotheses stated next to the numbers.
 
 ## 8. Open decisions for ember (packets)
 
-- **PKT-845 (a) the default D.** 5,000 ms proposed (a healthy batch is
+- **PKT-853 (a) the default D.** 5,000 ms proposed (a healthy batch is
   milliseconds on hbox's pool; 5 s is well past any healthy fdatasync and
   under the 10 s client deadline). Rejected: 1 s (a spinning disk under a
   64 x 4 MiB batch sheds spuriously). Continues without it: the default is
   one constant in books/owner-time-model.lisp.
-- **PKT-845 (b) whether `slow` changes health's exit** (today: the line
+- **PKT-853 (b) whether `slow` changes health's exit** (today: the line
   only, exit unchanged). Proposed: exit 1 (degraded) in `stalled`, not in
   `slow`.
-- **PKT-845 (c) F4's bar** as F4-R / F4-W above, replacing "within one
+- **PKT-853 (c) F4's bar** as F4-R / F4-W above, replacing "within one
   scheduling step".
 
 ## 9. Slice 1: what was built (planning/evidence/time-model-2026-09-27.md)
 
-books/owner-time-model.lisp (PRF-308, HST-026): the gate's value (OCP DISK
+books/owner-time-model.lisp (PRF-311, HST-026): the gate's value (OCP DISK
 CLOCK), recorded time per section 3.7, the barrier's deadline and the
 disk's mode; keystones fn-otm-barrier-reader-bound and
 fn-otm-disk-event-keeps-the-pipeline, with fn-otm-shed-iff-slow,

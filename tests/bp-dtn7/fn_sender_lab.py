@@ -84,7 +84,7 @@ class Sender:
 
         def external_action():
             adu = run_store.acl2_octets(self.acl2.call(
-                '(fn-bpo-host-request-adu ' + text_form(WORK_ID) + ' state)'))
+                '(fn-bpo-host-request-adu ' + text_form(WORK_ID) + ' fn-arena state)'))
             if not adu:
                 raise RuntimeError('ACL2 refused the durable work projection')
             projected.append(adu)
@@ -254,7 +254,7 @@ def scheduled_submit(sender, bpa, work_id: str, attempt_id: str, txid: int,
 
     def external_action():
         adu = run_store.acl2_octets(sender.acl2.call(
-            "(fn-bpo-host-request-adu " + text_form(work_id) + " state)"))
+            "(fn-bpo-host-request-adu " + text_form(work_id) + " fn-arena state)"))
         if not adu:
             raise RuntimeError("ACL2 refused the durable work projection")
         return bpa.submit(adu, CONFIG["peer-eid"], attempt_id,

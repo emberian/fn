@@ -1401,7 +1401,7 @@
                       (fn-native-admin-plan (fn-na-test-argv '("policy" "set" "log-batch-records" "x"))))
                      :refused))
 
-; Lane time-model-2 (PRF-308): the disk's profile fields, each one
+; Lane time-model-2 (PRF-311): the disk's profile fields, each one
 ; `:set-limit' row read by host/owner-host.lisp fn-owner-barrier-limits
 ; (books/owner-time-model.lisp fn-otm-limits): D, H and the cadence.
 (defconst *fn-na-disk-deadline*

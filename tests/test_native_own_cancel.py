@@ -402,9 +402,13 @@ class NativeOwnCancelTests(unittest.TestCase):
         seen["post T2"] = self.post(h, "alice", article(target))
         stored = self.fetch(h, target)
         header = stored.partition(b"\r\n\r\n")[0].split(b"\r\n")
+        # ARTICLE puts the serving node's own Xref first (reader-compat,
+        # PRF-243; RFC 5536 section 3.2.14); the stored article follows it.
+        if header and header[0].startswith(b"Xref: "):
+            header = header[1:]
         locks = [i for i, f in enumerate(header) if f.lower().startswith(b"cancel-lock:")]
         seen["T2 locks"] = [header[i].decode() for i in locks]
-        # In front of the injected block: the first header line.
+        # In front of the injected block: the stored article's first line.
         seen["lock is the first line"] = locks == [0]
         bob_id = "<own-cancel-bob-2@example.invalid>"
         alice_id = "<own-cancel-alice-2@example.invalid>"

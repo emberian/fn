@@ -134,6 +134,19 @@ class NativeKeyStatementTests(unittest.TestCase):
     def log(self, node):
         return node["log"].read_text("utf-8", "replace") if node["log"].exists() else ""
 
+    def live_log(self, node, needle, timeout=30):
+        """The running owner's log once it holds NEEDLE (or at TIMEOUT).  The
+        owner hands each line to its log writer (PKT-508), and a line that
+        names a record committed in a batch is written in the batch's
+        COMPLETE, beside the reply (lane ack-before-barrier): the client can
+        read the reply before the writer has written the line."""
+        deadline = time.monotonic() + timeout
+        while True:
+            text = self.log(node)
+            if needle in text or time.monotonic() > deadline:
+                return text
+            time.sleep(0.05)
+
     def history(self, node):
         return self.fn("hybrid-key-history", node["store"]).stdout.decode().splitlines()
 
@@ -252,7 +265,7 @@ class NativeKeyStatementTests(unittest.TestCase):
             reply = self.post(b, statement)
             witness("succession POST", reply.strip())
             self.assertTrue(reply.startswith(b"240 "), reply)
-            self.assertIn("key-statement enrol-successor committed", self.log(b))
+            self.assertIn("key-statement enrol-successor committed", self.live_log(b, "key-statement enrol-successor committed"))
             # An article under the old keys is refused; under the new, accepted.
             refused = self.post(b, self.carrier(self.principal_file, old,
                                                 self.ordinary("<old-key@keys.invalid>"), "oldart"))
@@ -270,7 +283,7 @@ class NativeKeyStatementTests(unittest.TestCase):
             carried_reply = self.ihave(b, "<carried@keys.invalid>", carried)
             witness("carried IHAVE", carried_reply.strip())
             self.assertTrue(carried_reply.startswith(b"235 "), carried_reply)
-            self.assertIn("key-statement declined carried", self.log(b))
+            self.assertIn("key-statement declined carried", self.live_log(b, "key-statement declined carried"))
             # Revocation, signed by the current (new) keys.
             revocation = self.carrier(self.principal_file, new,
                                       self.revocation("<revocation@keys.invalid>", P),
@@ -278,7 +291,7 @@ class NativeKeyStatementTests(unittest.TestCase):
             revoked_reply = self.post(b, revocation)
             witness("revocation POST", revoked_reply.strip())
             self.assertTrue(revoked_reply.startswith(b"240 "), revoked_reply)
-            self.assertIn("key-statement revoke committed", self.log(b))
+            self.assertIn("key-statement revoke committed", self.live_log(b, "key-statement revoke committed"))
             late = self.post(b, self.carrier(self.principal_file, new,
                                              self.ordinary("<late@keys.invalid>"), "late"))
             witness("after-revocation POST", late.strip())
@@ -298,7 +311,7 @@ class NativeKeyStatementTests(unittest.TestCase):
             item = self.hdr_verified(b, revoked_msgid)
             witness("revoked-transit HDR", item.strip())
             self.assertTrue(item.startswith(b"0 revoked " + P.hex().encode() + b" keyring "), item)
-            lines = [line for line in self.log(b).splitlines()
+            lines = [line for line in self.live_log(b, " message-id=" + revoked_msgid + " ").splitlines()
                      if line.startswith("accepted transit ")
                      and " message-id=" + revoked_msgid + " " in line]
             witness("revoked-transit log", lines)
@@ -382,7 +395,8 @@ class NativeKeyStatementTests(unittest.TestCase):
             reply = self.post(d, statement)
             witness("statement POST without a grant", reply.strip())
             self.assertTrue(reply.startswith(b"240 "), reply)
-            declined = [line for line in self.log(d).splitlines() if "key-statement" in line]
+            declined = [line for line in self.live_log(d, "key-statement").splitlines()
+                        if "key-statement" in line]
             witness("log at acceptance", declined)
             self.assertEqual(len(declined), 1)
             self.assertIn("key-statement declined", declined[0])
@@ -598,7 +612,8 @@ class NativeKeyStatementTests(unittest.TestCase):
         try:
             self.assertEqual(reply, b"240 article received OK; the key change it carries "
                                     b"was refused (key-change-refused)\r\n")
-            self.assertIn("key-statement enrol-successor refused", self.log(d))
+            self.assertIn("key-statement enrol-successor refused",
+                          self.live_log(d, "key-statement enrol-successor refused"))
             # The budget is spent: the next article is a capacity refusal.
             later = self.post(d, self.carrier(self.principal_file, old,
                                               self.ordinary("<kc-later@keys.invalid>"), "kclater"))

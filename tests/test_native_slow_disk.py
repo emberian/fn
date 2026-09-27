@@ -1,4 +1,4 @@
-"""A stalled disk on a native image (lane time-model, 2026-09-27; PRF-308,
+"""A stalled disk on a native image (lane time-model, 2026-09-27; PRF-311,
 HST-026, SCN-182; planning/design-time-model-2026-09-27.md).
 
 The developer selector FN_NATIVE_TEST_DISK_STALL_FILE holds every batch

@@ -1,6 +1,6 @@
 ; fn: a slow or stalled disk refuses the POST command itself, 440, before
 ; the client sends the article (lane time-model-2, 2026-09-27, slice 2 of
-; planning/design-time-model-2026-09-27.md section 3.4; PRF-308).
+; planning/design-time-model-2026-09-27.md section 3.4; PRF-315).
 ;
 ; Slice 1 refused a POST try-later AFTER its article (441, the queued
 ; submission shed).  RFC 3977 section 6.3.1 gives the initial response 440
@@ -78,7 +78,7 @@
          allow)
   :hints (("Goal" :in-theory (disable fn-otm-cfg-with-allow))))
 
-;; KEYSTONE (PRF-308, slice 2: 440 at the command).  While the disk sheds,
+;; KEYSTONE (PRF-315, slice 2: 440 at the command).  While the disk sheds,
 ;; the served read runs with posting not permitted, and the owner it leaves
 ;; has the posting bit it had before: the slow disk changes what this read
 ;; answers, never the node's configuration.

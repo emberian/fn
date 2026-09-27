@@ -52,15 +52,49 @@ A row changes to MET only in the commit that adds that evidence.
 <!-- fundamentals -->
 | ID | fundamental | bar (measurable) | status | evidence |
 | --- | --- | --- | --- | --- |
-| F1 | The records freeze landed (PKT-293, PKT-635; records-freeze) | Retained heap about 1 octet per stored payload octet plus stated per-record metadata (today 16 B/octet: the history and the acceptance node hold octet lists). A reopen of the 1,000-post store under 128 MB RSS. | OPEN | - |
-| F2 | The served machine reads through the catalog (catalog-slice step 7b/8) | GROUP/LISTGROUP/ARTICLE/OVER read v/fn-cat; R established at every host entry; the index lookups per served command measured on the served path, with the before/after at N = 10,000 | OPEN | - |
-| F3 | The storage log (storage-log-design, PKT-636) | fsyncs per POST at batch 8 well under today's 7 barriers per commit, the figure stated by the design and measured; POST/s on the public node's edge disk stated (node-disk's mount) | OPEN | - |
-| F4 | The owner scheduler (owner-scheduler, PKT-321) | Under the mixed hour (3 tight-loop readers, 1 POST every 0.5 s), every control request answered within its 10 s deadline, control p99 stated and bounded; no served read outlier past the work-quantum bound | OPEN | - |
-| F5 | Connection multiplexing (connection-multiplexing) | Memory per idle connection measured and stated (today one worker thread and its stack per connection, PKT-605); the capacity check against memory | OPEN | - |
-| F6 | Opens at scale | The owner's open of a 20,000- and a 40,000-article store in seconds, not tens of seconds (the coordinator reads the bar as under 10 s each; ember may set it), peak RSS stated; checkpoint-pipeline measured 28.8 s and 5.15 GB at 40,000 x 2 KiB | OPEN | - |
-| F7 | BP 10 MiB validated (SCN-077, PKT-630 (7); bp-fragments-10mib) | tests.test_bp_fragment_node_native wholly OK on dtn and dtn-developer, SCN-077 delivering a 10 MiB ADU into a Store profiled for it | OPEN | - |
-| F8 | The memory target (D35) | Under 256 MB reserved and under 128 MB in use after 1,000 posts on the release image, AND a reopen of that store under 256 MB (image-floor-2: 68 MiB in use after 1,000 posts, but the reopen needs 280 MB; not merged) | OPEN | - |
+| F1 | The records freeze landed (PKT-293, PKT-635; records-freeze) | Retained heap about 1 octet per stored payload octet plus stated per-record metadata (today 16 B/octet: the history and the acceptance node hold octet lists). A reopen of the 1,000-post store under 128 MB RSS. | MET | planning/evidence/fundamentals-2026-09-27/F1.md |
+| F2 | The served machine reads through the catalog (catalog-slice step 7b/8) | GROUP/LISTGROUP/ARTICLE/OVER read v/fn-cat; R established at every host entry; the index lookups per served command measured on the served path, with the before/after at N = 10,000 | OPEN | planning/evidence/fundamentals-2026-09-27/F2.md |
+| F3 | The storage log (storage-log-design, PKT-636) | fsyncs per POST at batch 8 well under today's 7 barriers per commit, the figure stated by the design and measured; POST/s on the public node's edge disk stated (node-disk's mount) | OPEN | planning/evidence/fundamentals-2026-09-27/F3.md |
+| F4 | The owner scheduler (owner-scheduler, PKT-321) | Under the mixed hour (3 tight-loop readers, 1 POST every 0.5 s), every control request answered within its 10 s deadline, control p99 stated and bounded; no served read outlier past the work-quantum bound | OPEN | planning/evidence/fundamentals-2026-09-27/F4.md |
+| F5 | Connection multiplexing (connection-multiplexing) | Memory per idle connection measured and stated (today one worker thread and its stack per connection, PKT-605); the capacity check against memory | MET | planning/evidence/fundamentals-2026-09-27/F5.md |
+| F6 | Opens at scale | The owner's open of a 20,000- and a 40,000-article store in seconds, not tens of seconds (the coordinator reads the bar as under 10 s each; ember may set it), peak RSS stated; checkpoint-pipeline measured 28.8 s and 5.15 GB at 40,000 x 2 KiB | OPEN | planning/evidence/fundamentals-2026-09-27/F6.md |
+| F7 | BP 10 MiB validated (SCN-077, PKT-630 (7); bp-fragments-10mib) | tests.test_bp_fragment_node_native wholly OK on dtn and dtn-developer, SCN-077 delivering a 10 MiB ADU into a Store profiled for it | OPEN | planning/evidence/fundamentals-2026-09-27/F7.md |
+| F8 | The memory target (D35) | Under 256 MB reserved and under 128 MB in use after 1,000 posts on the release image, AND a reopen of that store under 256 MB (image-floor-2: 68 MiB in use after 1,000 posts, but the reopen needs 280 MB; not merged) | OPEN | planning/evidence/fundamentals-2026-09-27/F8.md |
 <!-- end fundamentals -->
+
+Measured on ONE image, dev `33bbfae9c` (hbox, 2026-09-27 16:14Z to 17:22Z,
+load 17 to 39, rows pinned to cores 20 to 23; lane fundamentals-scoreboard;
+the common conditions in planning/evidence/fundamentals-2026-09-27/README.md):
+
+- **F1 MET.** The retained heap is 1.0 to 1.3 B per payload octet, plus
+  3.6 KB per record after a reopen (9.5 KB while posting). At 2 KiB that is
+  3.0 B per octet in all. The 1,000-post reopen on the production image is
+  60.2 MiB RSS, with a high-water mark of 109.3 MiB.
+- **F2 OPEN.** OVER 1-2000 takes 372 to 386 ms and ARTICLE 1.1 to 1.2 ms at
+  N = 10,000. Two things are missing:
+  - R at every host entry: lane sca-join.
+  - A per-command lookup count: unowned.
+
+  No before image opens today's store.
+- **F3 OPEN.** Clause 1 is met: 0.30 fsync per POST on NVMe and 0.34 on ZFS
+  at 8 posters. POST/s is 257 on NVMe and 36 on tank. The edge disk's POST/s
+  is unmeasured (PKT-751, no access), and unowned.
+- **F4 OPEN.** All 284 of 284 control requests were answered within 10 s,
+  the maximum being 8.0 s. The control p99 is 6.1 s. The read maximum is
+  10.35 s, and no work-quantum bound is defined. ember is to name the bound.
+- **F5 MET.** An idle connection costs 7.7 to 9.2 KiB, with 9 threads at
+  1,000 connections. The capacity check refuses at start on both images.
+- **F6 OPEN.** 20k opens in 7.9 to 8.1 s. 40k opens in 16.2 s from a fresh
+  checkpoint and 22.3 s from the fixture's own checkpoint. Peak RSS is
+  850 MiB at 20k and 1.19 to 1.70 GiB at 40k. The 40k open is over the 10 s
+  reading and unowned.
+- **F7 OPEN.** SCN-077 passes on dtn, dtn-developer and developer. The module
+  is 7/7 on dtn-developer but 6/7 on dtn: its rotation test needs a
+  developer-only cut. ember is to decide the reading. Under "SCN-077 on dtn,
+  the module on dtn-developer", this evidence meets it.
+- **F8 OPEN.** The reservation is 672 MB empty and 1,407 MB after 1k, against
+  a bar of 256 MB; that belongs to lane reservation-figure. In use after 1k is
+  114.1 MiB RSS (high-water mark 142.2 MiB). The reopen floor is 138 MB.
 
 ## 3. The gates, in order
 

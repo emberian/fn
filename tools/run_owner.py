@@ -141,11 +141,11 @@ class Acl2Owner(Acl2Store):
         # fn-intern-events at top level, so no :program entry updates the
         # arena (invariant-risk), as run_store.Store.recover does.
         form = ("(let ((records (fn-store-decode-records '" + literal + ")))"
-                " (if (eq records :bad) (mv nil :fault fn-arena state)"
+                " (if (eq records :bad) (mv nil :fault fn-arena fn-hist state)"
                 " (let ((fn-arena (fn-arena-clear fn-arena)))"
                 " (mv-let (rows fn-arena) (fn-intern-events records nil 0 fn-arena)"
                 " (fn-owner-recover-rows rows " + str(frontier)
-                + " '" + config + " " + str(self.max_conns) + " fn-arena state)))))")
+                + " '" + config + " " + str(self.max_conns) + " fn-arena fn-hist state)))))")
         timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                       self.form_timeout(form))
         return self._symbol(form, timeout=timeout)
@@ -163,7 +163,7 @@ class Acl2Owner(Acl2Store):
         form = "(fn-owner-prepare '" + self.literal(msgid) + " '" + self.literal(payload)
         form += " '" + self.numeric_list(group_codes) + " '" + self.literal(obligation_id)
         form += " '" + self.literal(subject) + " '" + self.literal(evidence)
-        form += " " + str(charge) + " fn-arena state)"
+        form += " " + str(charge) + " fn-arena fn-hist state)"
         output = self.call(form)
         body = acl2_result(output)
         # An accepted prepare answers (:SEAL OCTETS); the bridge seals exactly

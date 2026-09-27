@@ -439,7 +439,16 @@ PRF-271, equated with the streamed decision the host calls by
 freed-octets=F ...` and one `reclaimed MSGID` line each; `--dry-run` prints
 `dry-run would-reclaim=N ...` and changes nothing; nothing to do is
 `reclaimed=0`. `store checkpoint` publishes the checkpoint alone (the same
-rotate and drop). The per-file layout's `pack`, `pack-reclaim` and
+rotate and drop). `store ROOT digest` opens the store read-only (refused while an
+owner runs) and prints ACL2's SHA-256 digests of the state the open folded
+(`fn-store-sn-replay-digest-report`, host/store-node-host.lisp, over
+books/state-digest.lisp): `history` (the records as wire events, in log
+order), `pool` (the payload arena's logical value), one `field` line per
+Store-node field, `config`, `canonical` (history and configuration history:
+what anyone holding the log recomputes) and `state` (all of them). Two opens
+of one history print the same lines, by full replay or from a checkpoint, on
+any box (tests/test_native_replay_determinism.py;
+planning/evidence/proto-determinism-2026-09-27.md). The per-file layout's `pack`, `pack-reclaim` and
 `pack-retire` refuse by name on every store an image opens
 (`... refused reason=record-log: a format-9 store has no packs`).
 
@@ -917,7 +926,7 @@ which answers nothing on a production image.
 | `FN_NATIVE_OWNER_TEST_BARRIER_MS` | decimal milliseconds | a sleep before each batch's barrier (`fnn-owner-commit-sync`), holding a batch in flight for the scheduler's native cases |
 | `FN_NATIVE_TEST_DISK_STALL_FILE` | a path | while the file exists each batch's barrier waits before its fdatasync (`fnn-owner-commit-sync`): a stalled device for the slow-disk native case; removing the file is the device coming back |
 | `FN_NATIVE_OWNER_TEST_PIPELINE_TRACE` | any value | one stderr line per START (`start: seal=S bmax=N members=K`) and per batch prepared behind a barrier (`pipeline: K members prepared behind the barrier`) |
-| `FN_NATIVE_FAULT_BACKTRACE` | any value | a diagnostic, not a fault: a serious condition other than a store error inside an owner action (`fnn-owner-shared-action-locked`) prints `fault backtrace: CONDITION` and 80 frames to stderr where it is signalled, before the handler unwinds it into exit 4 |
+| `FN_NATIVE_FAULT_BACKTRACE` | any value | a diagnostic, not a fault: a serious condition other than a store error inside an owner action (`fnn-owner-shared-action-locked`) prints `fault backtrace: CONDITION` and 80 frames to stderr where it is signalled, before the handler unwinds it into exit 4; a control-stack exhaustion on any thread prints `fault backtrace (thread NAME): control stack exhausted` and every frame as run-length rows `frames FUNCTION xDEPTH`, innermost first (a per-line recursion is one deep row; the rows under it are its callers) |
 | `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
 
 `FN_NATIVE_FAULT_BACKTRACE` changes no outcome: the fence, the exit code and

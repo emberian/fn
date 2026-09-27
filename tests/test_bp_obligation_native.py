@@ -122,7 +122,31 @@ class NativeBpObligationTests(unittest.TestCase):
                 str(self.journal), "work-a", attempt, str(self.tmp / "fnbs"),
                 "dtn://fn-a/", "127.0.0.1", str(dead_port)]
 
+    def route_to_a_dead_contact(self):
+        """The Store's route table names a boundary for dtn://fn-b/ whose
+        contact nothing listens on.  Since PRF-103 (spec 4.6) the carrier
+        queues a job only to a boundary the route table names: without one
+        the request is refused by routing (`decision=no-route`, exit 1)
+        after its durable attempt, and this test's carrier never meets the
+        dead contact it is about."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            dead_port = reservation.getsockname()[1]
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            listen_port = reservation.getsockname()[1]
+        config = self.tmp / "fn.toml"
+        config.write_text(f'[store]\npath = "{self.store}"\n', encoding="ascii")
+        boundary = self.invoke("operator", config, "bp-boundary", "add",
+                               "fn-b-boundary", "fn-b.bp.gate.invalid",
+                               "dtn://fn-b/", listen_port, "contact", dead_port)
+        self.assertEqual(boundary.returncode, 0, boundary.stdout + boundary.stderr)
+        routed = self.invoke("operator", config, "bp-route", "add",
+                             "dtn://fn-b/*", "fn-b-boundary")
+        self.assertEqual(routed.returncode, 0, routed.stdout + routed.stderr)
+
     def test_kill_between_attempt_and_outcome_then_recover_committed(self):
+        self.route_to_a_dead_contact()
         undertaken = self.invoke("bp-obligation", "undertake", self.store,
                                  self.journal, "work-a", "3")
         self.assertEqual(undertaken.returncode, 0, undertaken.stderr)
@@ -189,7 +213,14 @@ class NativeBpObligationTests(unittest.TestCase):
         self.assertIn("BP obligation request durable attempt work=work-a "
                       "attempt=attempt-b", accepted.stdout,
                       accepted.stdout + accepted.stderr)
-        self.assertIn(accepted.returncode, (0, 3), accepted.stderr)
+        # By specification (specs/host.md "BP run classes", PRF-143): a
+        # contact that never connected is the run class :not-connected, exit
+        # 7 (before PRF-143 the test allowed 0 or 3); the job stays queued.
+        self.assertEqual(accepted.returncode, 7, accepted.stdout + accepted.stderr)
+        self.assertIn("BP obligation request carrier durable work=work-a "
+                      "attempt=attempt-b", accepted.stdout)
+        self.assertIn("BP forwarding retained reason=failed", accepted.stdout)
+        self.assertNotIn("decision=no-route", accepted.stdout)
         status = self.invoke("bp-obligation", "status", self.store,
                              self.journal, "work-a")
         self.assertEqual(status.returncode, 0, status.stderr)

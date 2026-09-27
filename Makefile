@@ -833,6 +833,12 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octets-stobj \
 	books/payload-arena-bytes \
 	books/payload-arena-paged \
+	books/payload-arena-extent-logic \
+	books/payload-arena-extent \
+	books/payload-extent \
+	books/payload-commit-extent \
+	books/frame-digest-buffer \
+	books/payload-extent-read \
 	books/payload-arena \
 	books/payload-arena-attach \
 	books/records-freeze \
@@ -866,6 +872,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/payload-arena-paged-tests \
+	tests/acl2/payload-arena-extent-tests \
+	tests/acl2/payload-extent-tests \
+	tests/acl2/payload-commit-extent-tests \
+	tests/acl2/frame-digest-buffer-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \
@@ -1026,6 +1036,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-columns-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
+	books/snapshot-segments \
+	tests/acl2/snapshot-segments-tests \
 	books/consumer-poll-index \
 	tests/acl2/consumer-poll-index-tests \
 	books/consumer-event-index-store-invariants \
@@ -1154,12 +1166,19 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-commit-steps-tests \
 	books/owner-commit-pipeline \
 	tests/acl2/owner-commit-pipeline-tests \
+	books/owner-ack-after-barrier \
+	tests/acl2/owner-ack-after-barrier-tests \
 	books/owner-reader-view \
 	tests/acl2/owner-reader-view-tests \
 	books/owner-reader-read \
 	tests/acl2/owner-reader-read-tests \
+	books/clock-wall-reading \
 	books/owner-time-model \
+	books/owner-time-journal \
+	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
+	books/state-digest \
+	tests/acl2/state-digest-tests \
 	books/store-log-route-programs \
 	tests/acl2/store-log-route-programs-tests \
 	books/store-log-open-barriers \

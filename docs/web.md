@@ -6,20 +6,28 @@ may not know are in [the short glossary](README.md#words-you-will-meet).
 
 ## Starting it
 
-You need Python 3, the node's address, its certificate file and your login.
+You need Python 3 (nothing else), the node's address, its certificate file
+and your login. The web reader is not in the release: it is
+`tools/fn_web.py` in fn's source, and it needs the files beside it in
+`tools/`. On your own computer:
 
-1. Get the node's certificate once, and make two folders:
+1. Get fn's source once, the node's certificate from its operator, and make
+   two folders:
 
    ```sh
+   git clone https://github.com/emberian/fn ~/fn
    mkdir -p ~/.fn ~/.fn-web
-   scp hbox:/tank/fn/node/tls/cert.pem ~/.fn/hbox-cert.pem
+   cp cert.pem ~/.fn/news-cert.pem      # the file the operator gave you
    ```
 
-2. Start the reader:
+2. Start the reader. `--node` is the node's name and its **plain** port
+   (119, or the `--port` its operator chose): the reader switches to TLS
+   itself (STARTTLS). The TLS-only port (563) does not work here:
 
    ```sh
-   python3 tools/fn_web.py --node 192.168.50.39:1119 --tls-cert ~/.fn/hbox-cert.pem \
-     --user ember --outbox ~/.fn-web/outbox-hbox-ember
+   cd ~/fn
+   python3 tools/fn_web.py --node news.example.org:119 --tls-cert ~/.fn/news-cert.pem \
+     --user carol --outbox ~/.fn-web/outbox
    ```
 
 3. Type your password when asked. (Or set `FN_CLIENT_PASSWORD`, or use
@@ -28,7 +36,7 @@ You need Python 3, the node's address, its certificate file and your login.
 4. You will see:
 
    ```
-   fn web client: ember at 192.168.50.39:1119 · TLSv1.3, certificate verified; open http://127.0.0.1:8919/
+   fn web client: carol at news.example.org:119 · TLSv1.3, certificate verified; open http://127.0.0.1:8919/
    ```
 
    Open that address in your browser.

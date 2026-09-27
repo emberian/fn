@@ -624,12 +624,18 @@ directories because one encoded label can be a prefix of a longer label.
     (nreverse peers))))
 
 (defun fnn-owner-feed-open-all (service configured)
+  ;; The order is the configured peers, then the historical journals by name:
+  ;; never the directory's listing order, which differs between filesystems
+  ;; and copies of one store (lane proto-determinism: the owner's feeds were
+  ;; in readdir order, a configured peer included, because remove-duplicates
+  ;; keeps the LAST occurrence).
   (let* ((store (fnn-owner-service-store service))
-         (peers (append configured (fnn-owner-feed-existing-peers store)))
+         (peers (append configured
+                        (sort (copy-list (fnn-owner-feed-existing-peers store)) #'string<)))
          (opened nil))
     (handler-case
         (progn
-          (dolist (peer (remove-duplicates peers :test #'string=))
+          (dolist (peer (remove-duplicates peers :test #'string= :from-end t))
             (push (cons peer (fnn-owner-feed-open store peer)) opened))
           (nreverse opened))
       (error (e)
@@ -939,7 +945,7 @@ event is appended on demand first, so the figures are at the render's time."
     (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
       (fnn-owner-gate-sched gate))))
 
-;;; The disk's events (books/owner-time-model.lisp, lane time-model, PRF-308).
+;;; The disk's events (books/owner-time-model.lisp, lane time-model, PRF-311).
 ;;; Each carries one monotonic reading, which ACL2 records before it applies
 ;;; the event; every disk decision reads the recorded time.  The reading is
 ;;; taken INSIDE the gate mutex, which orders every clock event, so a
@@ -1662,15 +1668,17 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                       (fnn-store-indeterminate (e) (error e))
                       (fnn-store-fault (e) (error e))
                       (fnn-store-error () :refused)))))
-        (fnn-log-line (fnn-owner-core 'fn-owner-key-statement-log-line plan
-                                      outcome (and at-open t)))
+        (fnn-owner-line-after-barrier
+         (fnn-owner-core 'fn-owner-key-statement-log-line plan
+                         outcome (and at-open t)))
         outcome))))
 
 ;;; The cut between the statement's commit and its key change's
 ;;; (books/key-statements.lisp fn-ks-cut).  A developer image started with
 ;;; FN_NATIVE_KEY_STATEMENT_FAULT=statement-committed:kill dies here, after a
-;;; kind-4 composite is durable and before the executor runs; production has
-;;; no injection branch.
+;;; statement's kind-4 composite is durable (fnn-owner-statement-barrier
+;;; returned) and before the executor runs; production has no injection
+;;; branch.  tests/campaign/native_cuts.py STATEMENT_CUTS names it.
 (defun fnn-owner-key-statement-cut ()
   (let ((raw (fnn-developer-selector "FN_NATIVE_KEY_STATEMENT_FAULT")))
     (when raw
@@ -1679,15 +1687,52 @@ reason before any Store call.  An ordinary article's groups are unchanged."
       (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
       (fnn-fault "test SIGKILL did not terminate the process"))))
 
-;;; WORD is the kind-4 commit's outcome.  After a durable composite the
-;;; executor runs; a refused key change leaves WORD (the article is
+;;; A line that names a record committed in this step: inside the owner's
+;;; batch quantum it waits for the batch's COMPLETE, after the barrier that
+;;; persists the record (as fnn-owner-log's lines do); outside one the
+;;; record's own barrier has returned (fnn-log-publish, a batch of one).
+(defun fnn-owner-line-after-barrier (line)
+  (unless (fnn-octet-list-p line)
+    (fnn-fault "owner returned a malformed log line"))
+  (if *fnn-owner-deferred*
+      (push (cons :log line) (cdr *fnn-owner-deferred*))
+    (fnn-log-line line)))
+
+;;; Lane ack-before-barrier: the statement's own barrier.  Inside the owner's
+;;; batch quantum (*fnn-log-batch*, fnn-owner-commit-start-locked) the
+;;; statement's record is only in the log's open batch when its commit
+;;; returns; the open batch -- the statement and every member drained before
+;;; it -- is appended and fenced here (fnn-log-commit-open-batch, cuts
+;;; log-written and log-fenced; behind a batch in flight it first awaits that
+;;; batch's barrier), so the cut and the executor that follow run with the
+;;; statement durable (books/owner-ack-after-barrier.lisp
+;;; fn-oab-quantum-reports-after-its-barrier).  Those members' replies still
+;;; leave only in their batch's COMPLETE.  Outside a quantum the commit was a
+;;; batch of one, fenced before fnn-log-publish returned: nothing is open.
+(defun fnn-owner-statement-barrier (service)
+  (let* ((store (fnn-owner-service-store service))
+         (log (fnn-store-log store)))
+    (cond (*fnn-log-batch* (fnn-log-commit-open-batch store))
+          ((and log (plusp (fnn-log-count log)))
+           (fnn-fault "a statement committed outside a batch left its record unfenced")))))
+
+;;; WORD is the kind-4 commit's outcome.  A durable composite that carries a
+;;; key statement (ACL2's fn-oab-fence-before-change, through
+;;; host/owner-host.lisp fn-owner-statement-fence) is fenced first, then the
+;;; cut, then the executor; a refused key change leaves WORD (the article is
 ;;; accepted) and names the refusal in the transit detail, so the reported
-;;; outcome names both.
+;;; outcome names both.  Any other composite has no executor
+;;; (fn-oab-plan-only-after-the-fence: the plan is nil).
 (defun fnn-owner-statement-committed (service event word)
   (when (eq word :durable)
-    (fnn-owner-key-statement-cut)
-    (when (eq (fnn-owner-key-statement service event) :refused)
-      (setq *fnn-owner-transit-detail* :key-change-refused)))
+    (let ((fence (fnn-owner-core 'fn-owner-statement-fence event)))
+      (unless (booleanp fence)
+        (fnn-fault "owner returned a malformed statement fence ~a" fence))
+      (when fence
+        (fnn-owner-statement-barrier service)
+        (fnn-owner-key-statement-cut)
+        (when (eq (fnn-owner-key-statement service event) :refused)
+          (setq *fnn-owner-transit-detail* :key-change-refused)))))
   word)
 
 ;;; The open's recovery (books/key-statements.lisp fn-ks-recover-recorded):
@@ -2557,7 +2602,7 @@ leave only in its COMPLETE, after its barrier returned
      :commit)
     (loop while (eq action :sync) do
       (multiple-value-setq (syncer result) (fnn-owner-start-syncer service))
-      ;; Lane time-model (PRF-308): the barrier is a request with a
+      ;; Lane time-model (PRF-311): the barrier is a request with a
       ;; deadline; its issue is a disk event at this reading.
       (fnn-owner-disk-event service :issue limits)
       (setq action nil stall-told nil)
@@ -2595,7 +2640,7 @@ leave only in its COMPLETE, after its barrier returned
           (when expired
             (fnn-owner-disk-event service :clock)
             (setq wake :expired))
-          ;; Lane time-model-2 (PRF-308): past H the disk is :stalled (entered
+          ;; Lane time-model-2 (PRF-311): past H the disk is :stalled (entered
           ;; by whichever clock event came first: this committer's, a served
           ;; read's, a status render's).  Once per barrier: every member of
           ;; the batch in flight and of the next batch is told the outcome
@@ -3238,7 +3283,7 @@ EPIPE and the client saw a bare close)."
                      (t (setq completion nil uncertain t))))
              (setq submitted nil))
            (when (and submitted (fnn-owner-service-batching service))
-             ;; Lane time-model (PRF-308): while the disk is slow (a barrier
+             ;; Lane time-model (PRF-311): while the disk is slow (a barrier
              ;; pending past its deadline at this quantum's recorded time,
              ;; books/owner-time-model.lisp fn-otm-admit-post), the queued
              ;; served POSTs -- this one included -- are refused try-later
@@ -3395,6 +3440,9 @@ the crash keystone) and serving continues."
   ;; The publication allocates in proportion to the history: the open's
   ;; trigger while it runs, the service trigger again when it ends.
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
+  ;; It reads the live arena outside the owner's mutex: no staged page is
+  ;; released while it runs (host/native/io.lisp fnn-log-reseat-fenced).
+  (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
   (unwind-protect
   (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
                         base-payloads)
@@ -3478,6 +3526,7 @@ the crash keystone) and serving continues."
                 (fnn-owner-service-workers service)
                 (delete sb-thread:*current-thread*
                         (fnn-owner-service-workers service) :test #'eq))))))
+    (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))
     (fnn-owner-service-nursery))
   ;; PKT-583 (b): the publication finished; decide again from the newest
   ;; committed frontier now, not at the next accept (a load's tail has

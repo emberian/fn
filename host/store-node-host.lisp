@@ -68,6 +68,8 @@
 (include-book "../books/provenance-codec")
 ;; host-decisions-2 packet C: the inspect lookup (fn-provi-of-msgid).
 (include-book "../books/provenance-inspect")
+;; lane proto-determinism: fn-store-sn-replay-digest-report (the end of this file).
+(include-book "../books/state-digest")
 
 ; This wrapper reuses the established decimal-octet boundary helpers from the
 ; store host. Python supplies only ordered filesystem observations.
@@ -1504,3 +1506,61 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (value (fn-provi-of-msgid (fn-sn-node (f-get-global 'fn-store-sn state))
                             (fn-store-octets->string msgid-octets))))
+
+;; ---------------------------------------------------------------------------
+;; Replay determinism (lane proto-determinism, 2026-09-27): the digest of the
+;; state an open folded, `store ROOT digest' (host/native/io.lisp
+;; fnn-command-store-digest).  Every digest is books/state-digest.lisp's over
+;; the LOGICAL value (fn-sdg-canon: an object's value, never its layout):
+;;   history    the history's rows as wire events, in log order
+;;              (fn-sdg-rows-history): the log, independent of handles;
+;;   pool       the payload arena's logical value (fn-sdg-arena-pool);
+;;   field NAME each field of the Store node `fn-store-sn' (books/store-node.lisp
+;;              fn-sn-make-v6's order), the derived indexes included;
+;;   config     the replayed configuration `fn-store-cfg';
+;;   canonical  history and the node's config-history: the log's content,
+;;              what a peer holding the log recomputes;
+;;   state      every line above: the whole folded state.
+;; A difference between two opens of the same log names the field.
+
+(defconst *fn-store-sn-digest-fields*
+  '("groups" "capacity" "files" "node" "keyring" "index" "keyring-generation"
+    "verdicts" "snapshots" "identity-next" "config-history" "consumer" "topic"
+    "event-index"))
+
+(defun fn-store-sn-digest-line (words digest)
+  (declare (xargs :mode :program))
+  (append (fn-shs-string-octets (concatenate 'string "digest " words " "))
+          (fn-sdg-hex digest) (list 10)))
+
+(defun fn-store-sn-digest-fields (s names i)
+  (declare (xargs :mode :program))
+  (if (atom s)
+      nil
+    (append (fn-store-sn-digest-line
+             (concatenate 'string "field "
+                          (if (consp names) (car names)
+                            (concatenate 'string "field-" (coerce (explode-atom i 10) 'string))))
+             (fn-sdg-digest (car s)))
+            (fn-store-sn-digest-fields (cdr s) (if (consp names) (cdr names) nil) (1+ i)))))
+
+(defun fn-store-sn-replay-digest-report (fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let* ((s (and (boundp-global 'fn-store-sn state) (f-get-global 'fn-store-sn state)))
+         (cfg (and (boundp-global 'fn-store-cfg state) (f-get-global 'fn-store-cfg state)))
+         (rows (fn-sf-records (fn-sn-files s)))
+         (history (fn-sdg-rows-history rows fn-arena))
+         (config-history (fn-sdg-digest (nth 10 s)))
+         (count (fn-arena-count fn-arena))
+         (body (append
+                (fn-store-sn-digest-line
+                 (concatenate 'string "history records=" (coerce (explode-atom (len rows) 10) 'string))
+                 history)
+                (fn-store-sn-digest-line
+                 (concatenate 'string "pool payloads=" (coerce (explode-atom count 10) 'string))
+                 (fn-sdg-arena-pool fn-arena))
+                (fn-store-sn-digest-fields s *fn-store-sn-digest-fields* 0)
+                (fn-store-sn-digest-line "config" (fn-sdg-digest cfg))
+                (fn-store-sn-digest-line "canonical"
+                                         (fn-sha256-stobj (append history config-history))))))
+    (value (append body (fn-store-sn-digest-line "state" (fn-sha256-stobj body))))))

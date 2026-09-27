@@ -3388,7 +3388,7 @@
     {
       "id": "PRF-077",
       "title": "The native request is the workflow's request for exactly that work, over the plan bp-obligation request executes",
-      "statement": "fn-bprq-plan S WORK ATTEMPT (books/bp-request-plan.lisp), called by host/workflow-host.lisp fn-workflow-request-plan, which host/native/bp-obligation.lisp fnn-bpo-request-publish calls, returns nil or (:request ATTEMPT-RECORD OUTCOME KEY ADU DESTINATION RETRY). fn-bprq-plan-is-the-works-request: whenever it returns a plan, the attempt record is an :attempt naming exactly WORK and ATTEMPT, KEY (the FNBS job key the host enqueues under) is (WORK ATTEMPT generation) with the attempt's generation, ADU decodes exactly (fn-bpa-decode-exact) to fn-bpa-make-request over the work WORK holds in the image reached by publishing RETRY (if any), the attempt and its durable outcome (fn-bprq-published-state), that request is fn-bpa-requestp with work id WORK, and DESTINATION is that work's peer EID. Hypothesis: the plan exists. The published image is the host's: fn-bpiw-apply on these records is fn-bprl-apply-journal-record (reachable witness in the test book, not a general theorem). ION is an adapter: fn-bpiw-attempt-record-is-the-generic-attempt (test book) equates the ION constructor with fn-bprq-attempt-record, which host/workflow-host.lisp fn-workflow-ion-attempt-record now calls. Not claimed: that the image's work fields equal those before the attempt (they are stated over the published image), any transport or receipt property, or recovery of a fenced attempt.",
+      "statement": "fn-bprq-plan S WORK ATTEMPT FN-ARENA (books/bp-request-plan.lisp), called by host/workflow-host.lisp fn-workflow-request-plan, which host/native/bp-obligation.lisp fnn-bpo-request-publish calls, returns nil or (:request ATTEMPT-RECORD OUTCOME KEY ADU DESTINATION RETRY). fn-bprq-plan-is-the-works-request: whenever it returns a plan, the attempt record is an :attempt naming exactly WORK and ATTEMPT, KEY (the FNBS job key the host enqueues under) is (WORK ATTEMPT generation) with the attempt's generation, ADU decodes exactly (fn-bpa-decode-exact) to fn-bpa-make-request over the work WORK holds in the image reached by publishing RETRY (if any), the attempt and its durable outcome (fn-bprq-published-state), with the article field the octets fn-arena-payload reads from the payload arena under that work's committed node article's handle, which is a sealed handle (natp, below fn-arena-count; the records flip, PKT-RT-1: the arena is only read, and the ADU never carries the handle), that request is fn-bpa-requestp with work id WORK, and DESTINATION is that work's peer EID. Hypothesis: the plan exists. The published image is the host's: fn-bpiw-apply on these records is fn-bprl-apply-journal-record (reachable witness in the test book, not a general theorem). ION is an adapter: fn-bpiw-attempt-record-is-the-generic-attempt (test book) equates the ION constructor with fn-bprq-attempt-record, which host/workflow-host.lisp fn-workflow-ion-attempt-record now calls. Not claimed: that the image's work fields equal those before the attempt (they are stated over the published image), any transport or receipt property, or recovery of a fenced attempt.",
       "milestone": "M4",
       "requirements": [
         "REP-006"
@@ -3397,7 +3397,7 @@
         "PRF-012"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/bp-request-plan.lisp",
         "tests/acl2/bp-request-plan-tests.lisp",
@@ -3405,9 +3405,12 @@
         "host/native/bp-obligation.lisp",
         "tests/bp-dtn7/run_fn_dtn7_app_receipt.py",
         "planning/evidence/m4-native-request-2026-09-24.md",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "planning/evidence/bp-sender-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T170314Z-800039.json",
+        "planning/evidence/manifests/certify-20260927T181644Z-2000680.json"
       ],
-      "progress_note": "Lane m4-native-request (2026-09-24). Certified on hbox, w28 ACL2 8.7, 2 jobs: run-20260924T230759Z-4d2f (manifest certify-20260924T230813Z-2144048, bp-request-plan 7.6 s, tests 1.9 s) at the source of commit 41799aaf; the first run (certify-20260924T230223Z-2118502) certified the plan before the retry-request clause. Teeth: reachable witness over the committed-article image of bp-outbound-tests (the plan's attempt and ADU are the hand trace's exact record and octets); must-fail at the refusal witness for the one hypothesis; refusals for an in-flight attempt, a pending image, a fenced image and a work bound to no article (where the attempt alone would be admitted); a restart-observed work planned with its :retry-request replays through fn-bpiw-replay-journal while the same history without it is refused. Status stays in-progress: the lab evidence is on a scratch DTN developer image, and the recovery of an attempt fenced by a cut between the attempt and its outcome has no native verb.",
+      "progress_note": "Lane m4-native-request (2026-09-24). Certified on hbox, w28 ACL2 8.7, 2 jobs: run-20260924T230759Z-4d2f (manifest certify-20260924T230813Z-2144048, bp-request-plan 7.6 s, tests 1.9 s) at the source of commit 41799aaf; the first run (certify-20260924T230223Z-2118502) certified the plan before the retry-request clause. Teeth: reachable witness over the committed-article image of bp-outbound-tests (the plan's attempt and ADU are the hand trace's exact record and octets); must-fail at the refusal witness for the one hypothesis; refusals for an in-flight attempt, a pending image, a fenced image and a work bound to no article (where the attempt alone would be admitted); a restart-observed work planned with its :retry-request replays through fn-bpiw-replay-journal while the same history without it is refused. Status stays in-progress: the lab evidence is on a scratch DTN developer image, and the recovery of an attempt fenced by a cut between the attempt and its outcome has no native verb. Lane bp-sender (2026-09-27, PKT-RT-1): after the records flip the plan's ADU carried the article's arena handle and every request was refused; fn-bprq-plan and fn-bpo-request-adu now take fn-arena (read only) and the keystone is restated over fn-arena-payload of the article's handle; teeth over an arena holding the article, an empty arena, and other octets (tests/acl2/bp-outbound-tests, bp-request-plan-tests). Certified on hbox (manifest certify-20260927T170314Z-800039: 13 roots affected by books/bp-outbound, passed, no book over 10 s); fn-bprq-plan-unfolds 15.9 s -> 0.03 s. Recertified after merging origin/dev 2d1964848 (the arena's extent logic moved the closure): hbox certify-20260927T181644Z-2000680, 13 roots, passed, no book over 10 s.",
       "events": [
         "fn-bprq-plan-is-the-works-request"
       ]
@@ -4438,7 +4441,7 @@
     {
       "id": "PRF-098",
       "title": "Key succession and revocation over the acceptance plan: the owner's key-statement executor, the :revoked token and its replay binding",
-      "statement": "Over fn-pa-current-plan (host/owner-host.lisp fn-owner-peer-carrier-plan, called by host/native/owner.lisp fnn-owner-attempt-transit), which now takes TRANSITP and has a fifth outcome :revoked: while a principal's newest snapshot is its tombstone no plan for it is :ok on any path (fn-pa-no-ok-plan-for-a-revoked-principal, fn-pa-revocation-leaves-no-ok-plan), and on NNTP transit a carrier under keys once enrolled is :revoked at the tombstone's generation, elsewhere refused :local-enrollment (fn-pa-revoked-principal-on-transit-is-revoked-at-its-tombstone); fn-pa-revoked-event exists only with both primitive observations verified and is the composite replay's revoked branch admits at those snapshots (fn-pa-revoked-event-binds-the-arm-and-both-observations), and replay admits a :revoked composite exactly when its generation names a tombstone of that principal (fn-osp-replay-admits-a-revoked-composite-exactly-at-its-tombstone), leaving the keyring unchanged, as the carried composite does (fn-osp-*-composite-keeps-the-keyring). Over the key-statement executor fn-ks-plan / fn-ks-execute (host/owner-host.lisp fn-owner-key-statement-plan / -event, called by host/native/owner.lisp fnn-owner-key-statement after a :verified kind-4 commit): a statement acts only on its own stored :verified verdict with a keys grant covering its groups (C2's fn-ctl-authorize), so a :carried or :revoked statement never changes a keyring; the verdict's generation was the principal's current enrollment and a succession's old key is that enrollment's; the PoP is a D09 signature by the new keys over the statement's Message-ID and old key with both observations verified; after the succession's kind-3 event the new keys are selected and any other key set, the old one included, is refused :local-enrollment; after a revocation's no plan is :ok. The executor runs after every durable kind-4 composite, :carried and :revoked included (host/native/owner.lisp fnn-owner-statement-committed), and a Store refusal of the key change leaves the article accepted and is reported as such (transit detail :key-change-refused; log line `key-statement ... refused`). The crash cut between the statement's commit and its change's is a model crash point: the open's recovery (fn-ks-recover; host/native/owner.lisp fnn-owner-key-statement-recover over the newest record, through host/owner-host.lisp fn-owner-key-statement-pending) reaches from the cut exactly the uninterrupted acceptance under the recovery's rows and observations (fn-ks-recover-completes-the-cut) and, after an acceptance that acted, changes nothing under any rows or observations (fn-ks-recover-after-an-acting-acceptance-changes-nothing); executing a statement whose change is already the newest snapshot yields nothing (fn-ks-execute-is-idempotent). The verb keys is grantable (fn-cfg-grant-control-admissible-iff over *fn-cfg-control-verbs* = (cancel keys)). The rendered item for :revoked begins `r`, never `v` (fn-stx-verified-item-first-octet-names-the-token), and token code 5 round-trips. The next generation is ACL2's (fn-hl-next-generation; control kinds 7 and 8). Evidence is never rewritten: a kind-3 completion keeps every stored verdict (fn-hls-finish-snapshot-keeps-historical-verdicts, existing) and a kind-4 one conses its own (fn-hls-finish-kind4-verdicts, existing).",
+      "statement": "Over fn-pa-current-plan (host/owner-host.lisp fn-owner-peer-carrier-plan, called by host/native/owner.lisp fnn-owner-attempt-transit), which now takes TRANSITP and has a fifth outcome :revoked: while a principal's newest snapshot is its tombstone no plan for it is :ok on any path (fn-pa-no-ok-plan-for-a-revoked-principal, fn-pa-revocation-leaves-no-ok-plan), and on NNTP transit a carrier under keys once enrolled is :revoked at the tombstone's generation, elsewhere refused :local-enrollment (fn-pa-revoked-principal-on-transit-is-revoked-at-its-tombstone); fn-pa-revoked-event exists only with both primitive observations verified and is the composite replay's revoked branch admits at those snapshots (fn-pa-revoked-event-binds-the-arm-and-both-observations), and replay admits a :revoked composite exactly when its generation names a tombstone of that principal (fn-osp-replay-admits-a-revoked-composite-exactly-at-its-tombstone), leaving the keyring unchanged, as the carried composite does (fn-osp-*-composite-keeps-the-keyring). Over the key-statement executor fn-ks-plan / fn-ks-execute (host/owner-host.lisp fn-owner-key-statement-plan / -event, called by host/native/owner.lisp fnn-owner-key-statement after a :verified kind-4 commit): a statement acts only on its own stored :verified verdict with a keys grant covering its groups (C2's fn-ctl-authorize), so a :carried or :revoked statement never changes a keyring; the verdict's generation was the principal's current enrollment and a succession's old key is that enrollment's; the PoP is a D09 signature by the new keys over the statement's Message-ID and old key with both observations verified; after the succession's kind-3 event the new keys are selected and any other key set, the old one included, is refused :local-enrollment; after a revocation's no plan is :ok. The executor runs after every durable kind-4 composite that carries a statement, :carried and :revoked included, once the statement's own barrier returned (host/native/owner.lisp fnn-owner-statement-committed; PRF-310), and a Store refusal of the key change leaves the article accepted and is reported as such (transit detail :key-change-refused; log line `key-statement ... refused`). The crash cut between the statement's commit and its change's is a model crash point: the open's recovery (fn-ks-recover; host/native/owner.lisp fnn-owner-key-statement-recover over the newest record, through host/owner-host.lisp fn-owner-key-statement-pending) reaches from the cut exactly the uninterrupted acceptance under the recovery's rows and observations (fn-ks-recover-completes-the-cut) and, after an acceptance that acted, changes nothing under any rows or observations (fn-ks-recover-after-an-acting-acceptance-changes-nothing); executing a statement whose change is already the newest snapshot yields nothing (fn-ks-execute-is-idempotent). The verb keys is grantable (fn-cfg-grant-control-admissible-iff over *fn-cfg-control-verbs* = (cancel keys)). The rendered item for :revoked begins `r`, never `v` (fn-stx-verified-item-first-octet-names-the-token), and token code 5 round-trips. The next generation is ACL2's (fn-hl-next-generation; control kinds 7 and 8). Evidence is never rewritten: a kind-3 completion keeps every stored verdict (fn-hls-finish-snapshot-keeps-historical-verdicts, existing) and a kind-4 one conses its own (fn-hls-finish-kind4-verdicts, existing).",
       "milestone": "M4",
       "requirements": [
         "NNT-014"
@@ -7579,7 +7582,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-heap-decide-admits-every-store-the-profile-admits",
         "fn-heap-decide-refuses-exactly-past-the-machine",
@@ -8217,7 +8220,7 @@
     {
       "id": "PRF-218",
       "title": "The served path's per-line and per-octet-of-line folds run as loops: serving and posting an article uses a control stack independent of its line count and line length",
-      "statement": "Three keystones, each with no hypotheses, each the :exec of an mbe whose :logic is the unchanged recursive definition, so the guard proof makes the loop the executable the host runs. fn-nntp-stuff-lines-iter-is-stuff-lines (books/nntp-session.lisp): (fn-nntp-stuff-lines-iter lines) = (fn-nntp-stuff-lines lines), the dot-stuffed CRLF block of every multi-line reply (ARTICLE, HEAD, BODY, OVER, HDR, LIST), built by a tail-recursive accumulator (fn-nntp-stuff-lines-onto) turned round once. fn-post-body-octets-iter-is-body-octets (books/nntp-post.lisp): (fn-post-body-octets-iter lines) = (fn-post-body-octets lines), the POST's article reassembled from the wire's (:article lines) event. fn-wire-list-length-onto-is-list-length (books/wire.lisp): (fn-wire-list-length-onto xs 0) = (fn-wire-list-length xs), the length fn-wire-after-line charges each article line (fn-wire-line-cost). The recursions they replaced took one control-stack frame per article line (stuff-lines, post-body-octets) or per octet of one line (fn-inj-append inside post-body-octets, fn-wire-list-length); the profile admits a line as long as the article (fn-wire-article-line-limit), so each was a remote stop. Host chain: host/native/owner.lisp fnn-owner-handle-chunk -> host/owner-host.lisp fn-owner-chunk-span -> fn-scar-ocfg-read-span, whose wire fold (fn-wire-feed-span -> fn-wire-feed-byte -> fn-wire-after-line) calls fn-wire-line-cost, whose served POST (fn-nntp-post-step-pinned -> fn-nntp-post-step) calls fn-post-body-octets, and whose retrievals (fn-nntp-article-response) call fn-nntp-stuff-lines. Scope: a measured constant, not a theorem about frames: the native witness posts, serves, reopens and serves articles of 2,000,000 lines and of one 4 MiB line at 1 MiB of control stack per thread on both images.",
+      "statement": "Four keystones, each with no hypotheses, each the :exec of an mbe whose :logic is the unchanged recursive definition, so the guard proof makes the loop the executable the host runs. fn-nntp-stuff-lines-iter-is-stuff-lines (books/nntp-session.lisp): (fn-nntp-stuff-lines-iter lines) = (fn-nntp-stuff-lines lines), the dot-stuffed CRLF block of every multi-line reply (ARTICLE, HEAD, BODY, OVER, HDR, LIST), built by a tail-recursive accumulator (fn-nntp-stuff-lines-onto) turned round once. fn-post-body-octets-iter-is-body-octets (books/nntp-post.lisp): (fn-post-body-octets-iter lines) = (fn-post-body-octets lines), the POST's article reassembled from the wire's (:article lines) event. fn-wire-list-length-onto-is-list-length (books/wire.lisp): (fn-wire-list-length-onto xs 0) = (fn-wire-list-length xs), the length fn-wire-after-line charges each article line (fn-wire-line-cost). fn-hf-crlf-count-onto-is-crlf-count (books/catalog-record.lisp, lane line-stack 2026-09-27): (fn-hf-crlf-count-onto bytes inline 0) = (fn-hf-crlf-count bytes inline), the body line count the committer's intern decides once per article (host/native/owner.lisp fnn-owner-buffer-arena-action -> fn-owner-prepare-buffer -> fn-apc-intern-row-at -> fn-apc-held-facts-of -> fn-hf-body-lines-of); the recursion it replaced added one after its recursive call, a frame per body line, and stopped the owner on a 2,000,000-line POST at 1 MiB of stack. The recursions they replaced took one control-stack frame per article line (stuff-lines, post-body-octets) or per octet of one line (fn-inj-append inside post-body-octets, fn-wire-list-length); the profile admits a line as long as the article (fn-wire-article-line-limit), so each was a remote stop. Host chain: host/native/owner.lisp fnn-owner-handle-chunk -> host/owner-host.lisp fn-owner-chunk-span -> fn-scar-ocfg-read-span, whose wire fold (fn-wire-feed-span -> fn-wire-feed-byte -> fn-wire-after-line) calls fn-wire-line-cost, whose served POST (fn-nntp-post-step-pinned -> fn-nntp-post-step) calls fn-post-body-octets, and whose retrievals (fn-nntp-article-response) call fn-nntp-stuff-lines. Scope: a measured constant, not a theorem about frames: the native witness posts, serves, reopens and serves articles of 2,000,000 lines and of one 4 MiB line at 1 MiB of control stack per thread on both images.",
       "milestone": "M5",
       "requirements": [
         "HST-001"
@@ -8232,9 +8235,13 @@
         "tests/acl2/served-line-iterative-tests.lisp",
         "tests/test_native_served_line_stack.py",
         "planning/evidence/served-line-iterative-2026-09-26.md",
-        "planning/evidence/manifests/certify-20260927T021015Z-1915504.json"
+        "planning/evidence/manifests/certify-20260927T021015Z-1915504.json",
+        "books/catalog-record.lisp",
+        "tests/acl2/catalog-record-tests.lisp",
+        "planning/evidence/line-stack-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T160812Z-252949.json"
       ],
-      "progress_note": "Lane served-line-iterative (2026-09-26; image-floor packet 2, PKT-481's class, D27). Cause by persvati REPL backtrace (FN-POST-BODY-OCTETS frames to exhaustion on 3,000,000 lines) and by the native witness (one 4 MiB line: Control stack exhausted in fn-owner-chunk-span until fn-wire-list-length was a loop). Teeth: tests/acl2/served-line-iterative-tests.lisp (reachable witnesses, the composed BODY reply, served-size witnesses of 2,100,000 lines and of one 20,000,000-octet line through the compiled executables, labelled MUTATION witnesses refuted on ground instances).",
+      "progress_note": "Lane served-line-iterative (2026-09-26; image-floor packet 2, PKT-481's class, D27). Cause by persvati REPL backtrace (FN-POST-BODY-OCTETS frames to exhaustion on 3,000,000 lines) and by the native witness (one 4 MiB line: Control stack exhausted in fn-owner-chunk-span until fn-wire-list-length was a loop). Teeth: tests/acl2/served-line-iterative-tests.lisp (reachable witnesses, the composed BODY reply, served-size witnesses of 2,100,000 lines and of one 20,000,000-octet line through the compiled executables, labelled MUTATION witnesses refuted on ground instances). Lane line-stack (Opus 5.5, 2026-09-27): the fourth keystone; cause read from the frames of FN_NATIVE_FAULT_BACKTRACE's stack-exhaustion report (FN-HF-CRLF-COUNT x60795 on the committer); teeth in tests/acl2/catalog-record-tests.lisp (reachable witnesses by loop and definition; 5,000,000 lines through fn-hf-body-lines-of).",
       "events": [
         "fn-nntp-stuff-lines-iter-is-stuff-lines",
         "fn-post-body-octets-iter-is-body-octets",
@@ -10609,7 +10616,7 @@
     {
       "id": "PRF-301",
       "title": "The store's history is an abstract stobj of columns whose logical value is the history list, and the store node's event index answers what it answers",
-      "statement": "books/history-columns.lisp (lane history-columns, stage 1 of 3; the coordinator's decision on PKT-PRS-1's event-index half, PKT-PRS-3, PKT-PRS-4). defabsstobj fn-hist: logical value the true list of retained events (fn-sf-records, oldest first, sequence = position); executable fn-hist$c: a resizable rows column by sequence, the count, and a Message-ID table from a salted 32-bit FNV-1a hash of the Message-ID of an event's article (taken by digest-free shape, fn-hist-key-article) to the sequences carrying it, newest first; a lookup compares every candidate exactly (fn-cei-event-article, fn-held-p, equal), so no answer assumes Message-ID uniqueness or hash separation (PKT-774 worst case: an adversary who learns the salt puts all N articles in one bucket; a lookup is then N exact comparisons, an append stays O(1)). Correspondence fn-hist$corr: the object IS the fold of the history's appends from the empty object with its salt (supporters digest-free; :corr-fn-exists t). Exports refined by defabsstobj: fn-hist-count (len), fn-hist-at (nth), fn-hist-msgid-records (fn-cei-article-records-for), fn-hist-append (append one) and fn-hist-clear, all exec functions guard-verified. KEYSTONE fn-hist-load-is-the-history: the open's load (clear with a salt, one append per event) is the history. Bridges over the store node's index under its correspondence fn-cei-correspondencep (PRF-144): fn-hist-count-serves-cei-count, fn-hist-at-serves-cei-get (every natural sequence, the history within 2^32 events), fn-hist-msgid-records-serve-cei (every Message-ID). Stage 2a (books/history-columns-store.lisp): R(o, fn-hist) := fn-hist = (fn-sf-records (fn-sn-files (fn-own-store o))); fn-hist-sync appends the rows past the stobj's count (fn-sf-records-nth); KEYSTONE fn-hist-sync-after-run-is-the-history: under fn-own-relation, R before any fn-own-run implies the synced stobj is the history after it (by fn-own-run-records-prefix); fn-hist-sync-of-prefix-is-the-history. The store's carried folds from the stobj under R alone, for every cache: fn-hist-count-is-used (fn-sbud-used), fn-hist-bytes-carried-is-bytes-extend, fn-hist-debt-carried-is-debt-extend, fn-hist-usage-carried-is-usage-extend (the EXTEND specifications fn-sbud-bytes-carried, fn-scf-debt-carried, fn-scf-usage-carried meet under the index). Host call: none yet (stage 2 threads fn-hist where the index is read: store-budget, carried folds, checkpoint tables, poll index, control-visible, owner refresh, BP receiver, acceptance payload ref). Local policy; no RFC requirement.",
+      "statement": "books/history-columns.lisp (lane history-columns, stage 1 of 3; the coordinator's decision on PKT-PRS-1's event-index half, PKT-PRS-3, PKT-PRS-4). defabsstobj fn-hist: logical value the true list of retained events (fn-sf-records, oldest first, sequence = position); executable fn-hist$c: a resizable rows column by sequence, the count, and a Message-ID table from a salted 32-bit FNV-1a hash of the Message-ID of an event's article (taken by digest-free shape, fn-hist-key-article) to the sequences carrying it, newest first; a lookup compares every candidate exactly (fn-cei-event-article, fn-held-p, equal), so no answer assumes Message-ID uniqueness or hash separation (PKT-774 worst case: an adversary who learns the salt puts all N articles in one bucket; a lookup is then N exact comparisons, an append stays O(1)). Correspondence fn-hist$corr: the object IS the fold of the history's appends from the empty object with its salt (supporters digest-free; :corr-fn-exists t). Exports refined by defabsstobj: fn-hist-count (len), fn-hist-at (nth), fn-hist-msgid-records (fn-cei-article-records-for), fn-hist-append (append one) and fn-hist-clear, all exec functions guard-verified. KEYSTONE fn-hist-load-is-the-history: the open's load (clear with a salt, one append per event) is the history. Bridges over the store node's index under its correspondence fn-cei-correspondencep (PRF-144): fn-hist-count-serves-cei-count, fn-hist-at-serves-cei-get (every natural sequence, the history within 2^32 events), fn-hist-msgid-records-serve-cei (every Message-ID). Stage 2a (books/history-columns-store.lisp): R(o, fn-hist) := fn-hist = (fn-sf-records (fn-sn-files (fn-own-store o))); fn-hist-sync appends the rows past the stobj's count (fn-sf-records-nth); KEYSTONE fn-hist-sync-after-run-is-the-history: under fn-own-relation, R before any fn-own-run implies the synced stobj is the history after it (by fn-own-run-records-prefix); fn-hist-sync-of-prefix-is-the-history. The store's carried folds from the stobj under R alone, for every cache: fn-hist-count-is-used (fn-sbud-used), fn-hist-bytes-carried-is-bytes-extend, fn-hist-debt-carried-is-debt-extend, fn-hist-usage-carried-is-usage-extend (the EXTEND specifications fn-sbud-bytes-carried, fn-scf-debt-carried, fn-scf-usage-carried meet under the index). Stage 2b path E (lane history-columns-2): host/owner-host.lisp fn-owner-install-extended calls fn-hist-load on the installed store's history (every recovery: fn-owner-recover-from-store-open, -recover-rows, -recover-from-checkpoint), establishing R; fn-owner-record-octets, fn-owner-record-debt and fn-owner-carried-usage call fn-hist-sync on the owner store's files then fn-hist-bytes-carried, fn-hist-debt-carried and fn-hist-usage-carried (guard-verified), preserving R between installs by fn-hist-sync-after-run-is-the-history; the committed count the budget reads is fn-sf-records-count (fn-sf-records-count-is-used-by-definition), no longer the event index. Not yet switched (stage 2b remainder): the Message-ID readers (acceptance payload ref on the store node, the BP receiver's fast lookups), the consumer poll window, the owner completion refresh, the checkpoint tables and the in-book prepares' fn-sbud-count. Local policy; no RFC requirement.",
       "milestone": "M4",
       "requirements": [
         "STO-001",
@@ -10989,6 +10996,166 @@
     },
     {
       "id": "PRF-308",
+      "title": "An operator command that does not act names why: a run whose control path cannot be bound, a verb with no owner to answer, a start whose base exceeds the machine",
+      "statement": "books/native-operator.lisp fn-native-operator-control-outcome (host/native/operator.lisp fnn-operator-store-outcome, on every plan before any action): KEYSTONE fn-native-operator-long-control-path-is-refused: a run whose control path (the [control] path, else the store path with /control.sock) is longer than 103 octets, the longest every supported platform's sun_path binds whole, is refused :control-path-too-long with the refusal code and native action :none (it had bound a truncated path and faulted ENOENT, exit 4); fn-native-operator-control-outcome-passes-a-bindable-path: every other plan is unchanged. books/native-control-reason.lisp fn-native-control-transport-word (host/native/control.lisp fnn-control-reasoned-exchange, every live operator verb): fn-native-control-transport-word-names-the-refusal: an exchange whose connect failed is refused and the operator's line names no-owner; one lost after submission is uncertain and names nothing. books/connection-budget.lisp fn-cbud-run-refusal-line (host/owner-host.lisp fn-owner-connection-budget): the run's memory refusal names base-exceeds-machine with the heap figure, the dynamic space and the fixed part when the base does not fit (holds=0), and is the old line otherwise (text; the test book's witnesses).",
+      "milestone": "M4",
+      "requirements": [
+        "HST-009"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/native-operator.lisp",
+        "books/native-control-reason.lisp",
+        "books/connection-budget.lisp",
+        "host/native/operator.lisp",
+        "host/native/control.lisp",
+        "host/owner-host.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "tests/acl2/native-control-reason-tests.lisp",
+        "tests/acl2/connection-budget-tests.lisp",
+        "tests/test_native_control.py",
+        "tests/test_native_heap_from_profile.py"
+      ],
+      "progress_note": "Lane ops-fixes (Opus 5.5, 2026-09-27): the silent-start reports (arena-offheap-2's systemd-run --scope; AW's heap_from_profile exit 4). planning/evidence/ops-fixes-2026-09-27.md."
+    },
+    {
+      "id": "PRF-294",
+      "title": "Payloads off the heap: the arena's extent handles, the open's verified extent seals and the served read's trailer check",
+      "statement": "books/payload-arena-extent.lisp, books/payload-arena-extent-logic.lisp, books/payload-extent.lisp, books/payload-arena.lisp: payloads off the heap (arena-offheap stage 2). The generic fn-arena gains the export fn-arena-seal-extent (logic: append of fn-durable-octets FILE POFF PLEN, A-DURABLE-EXTENT); KEYSTONE fn-arena-seal-extent-payload: the new handle is the old count and denotes the extent's durable octets, every older handle keeps its payload, the count grows by one. The attachment fn-arena-extent (books/payload-arena-extent.lisp) nests the paged arena (PRF-281) as a child plus an EXT array; an extent handle holds no octets; its relation fn-arena$xcorr is fn-arx-view of the child's logical value, and every {correspondence}/{guard-thm}/{preserved} obligation is proved (fn-arena-extent-get{correspondence} reads an extent handle through the realizer fn-durable-realize-octet, equal to the durable octet by A-DURABLE-EXTENT; fn-arena-extent-seal-extent{correspondence}). At the open (books/payload-extent.lisp): fn-arx-positions answers each log entry's start, frame length and trailer; fn-arx-extent-of finds the payload's place by the codec's suffix length and VERIFIES it octet for octet; fn-arx-extent-of-denotes-payload: under the faithful read the extent's durable octets are the decoded payload; KEYSTONE fn-arx-intern-step-refines: the host's chunk step with extents (host/native/io.lisp fnn-bridge-recover calls fn-arx-intern-step on each chunk fnn-recover-record-chunks answers with its places) equals fn-srs-intern-step when fn-arx-faithful-p (each placed record's octets are its entry's durable octets: A-HOST's read and A-DURABLE-EXTENT; a record with no place needs nothing, fn-arx-intern-event-without-place); KEYSTONE fn-arx-steps-are-one-step-of-the-concatenation: folding that step over ANY chunking of the history (fn-arx-steps, the host's loop) answers what one resident step over the whole history answers (fn-srs-steps-are-one-step-of-the-concatenation), so every theorem about the open's rows and arena holds. Served reads of an extent handle: the host realizer (host/native/extent.lisp) preads the entry's protected prefix and asks fn-arx-entry-ok (SHA-256 equals the recorded trailer); fn-arx-entry-ok-of-durable: a faithful read passes; a mismatch is refused by name (arena-extent-digest), a store fault. Host subject: host/native/io.lisp fnn-bridge-recover (fn-arx-intern-step), fnn-log-scan-segments (fn-arx-positions via fnn-extent-positions), host/native/extent.lisp fnn-extent-entry (fn-arx-entry-ok, fn-arx-read-cache-entries).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [
+        "PRF-221",
+        "PRF-281"
+      ],
+      "assumptions": [
+        "A-HOST",
+        "A-DURABLE-EXTENT"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-arena-seal-extent-payload",
+        "fn-arena-extent-get{correspondence}",
+        "fn-arena-extent-seal-extent{correspondence}",
+        "fn-arx-extent-of-denotes-payload",
+        "fn-arx-intern-step-refines",
+        "fn-arx-entry-ok-of-durable",
+        "fn-arx-steps-are-one-step-of-the-concatenation"
+      ],
+      "evidence": [
+        "books/assumptions.lisp",
+        "books/payload-arena-extent-logic.lisp",
+        "books/payload-arena-extent.lisp",
+        "books/payload-arena.lisp",
+        "books/payload-extent.lisp",
+        "tests/acl2/payload-arena-extent-tests.lisp",
+        "tests/acl2/payload-extent-tests.lisp",
+        "planning/evidence/arena-offheap-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane arena-offheap-2 (2026-09-27): stage 2 of the coordinator's off-heap decision. The open of a format-9 store seals extents on its full replay; the state-checkpoint route, the commit and format 8 stay resident (the record's section on what is not done). Lane arena-offheap-3 (2026-09-27): rebased onto dev's chunk stream (rm2-format9 / log-recovery: fnn-bridge-recover folds a next-chunk source); the scan's places ride in the chunks (fnn-recover-record-chunks answers each chunk's places) and the composed keystone is fn-arx-steps-are-one-step-of-the-concatenation."
+    },
+    {
+      "id": "PRF-295",
+      "title": "The frame digest over an octet buffer (P3's obstruction): a buffer digest attached together with fn-frame-digest, and the served read's entry check in the realizer's buffer",
+      "statement": "books/frame-digest-buffer.lisp: fn-frame-digest-buffer PREFIX BUF is constrained to be fn-frame-digest of PREFIX followed by the buffer's octets (KEYSTONE fn-frame-digest-buffer-is-the-frame-digest), and one defattach attaches it together with fn-frame-digest (fn-sha256-stobj, as books/crypto-attach.lisp) to the buffer SHA-256 (fn-sha256-of-prefixed-buffer-any); the attachment's obligation is books/sha256-buffer.lisp's keystone; A-CRYPTO still says only 32 octets. books/payload-extent-read.lisp: the realizer's own buffer fn-octets-rd (congruent to fn-octets) and fn-arx-entry-ok-buffer TRAILER BUF; KEYSTONE fn-arx-entry-ok-buffer-is-the-frame-check: it is (equal (fn-frame-digest BUF) TRAILER), the log's own frame check (fn-lg-frame through fn-frame-seal); fn-arx-entry-ok-buffer-of-durable: a faithful read of an intact entry passes. Host subject: host/native/extent.lisp fnn-extent-entry-ok (called by fnn-extent-entry, the realizer's read) calls fn-arx-entry-ok-buffer over fn-octets-rd. NOT done: the record decode reading the buffer by index (the rest of recover-memory-2's P3); the obstruction it named is removed.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [
+        "PRF-294"
+      ],
+      "assumptions": [
+        "A-CRYPTO",
+        "A-HOST",
+        "A-DURABLE-EXTENT"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/frame-digest-buffer.lisp",
+        "books/payload-extent-read.lisp",
+        "tests/acl2/frame-digest-buffer-tests.lisp",
+        "planning/evidence/arena-offheap-3-2026-09-27.md"
+      ],
+      "progress_note": "Lane arena-offheap-3 (2026-09-27): P3 stage 1.",
+      "events": [
+        "fn-frame-digest-buffer-is-the-frame-digest",
+        "fn-arx-entry-ok-buffer-is-the-frame-check",
+        "fn-arx-entry-ok-buffer-of-durable"
+      ]
+    },
+    {
+      "id": "PRF-309",
+      "title": "The commit moves a durable payload off the heap: staged buffer seals, the reseat as the log extent after the barrier, and the release",
+      "statement": "books/payload-arena-extent.lisp: the extent arena's per-handle STAGE (an array of page stobjs): fn-arena$x-seal-buffer stages the buffer's copy in the handle's own page (:staged); fn-arena$x-reseat-extent re-points a handle at an extent; fn-arena$x-release empties an EXTENT handle's page; every {correspondence}/{guard-thm}/{preserved} obligation proved, the exec functions guard-verified. books/payload-arena.lisp: the generic exports fn-arena-reseat-extent (logic: the handle becomes the extent's durable octets) and fn-arena-release (the identity); KEYSTONE fn-arena-reseat-extent-payload (the handle is the extent's durable octets, every other handle keeps its payload, the count is unchanged) and KEYSTONE fn-arena-reseat-extent-keeps-a-faithful-arena (when the extent's durable octets are the handle's payload the arena is unchanged). books/payload-commit-extent.lisp: fn-arx-commit-extent finds the handle's payload in the record the log wrote (the entry's frame must be the record's; the payload compared octet for octet against the arena's copy, by index, in a window before the record's end); KEYSTONE fn-arx-commit-reseat-keeps-the-arena and fn-arx-commit-reseats-keep-the-arena: under the faithful write (the file holds, at each entry's record position, the record the log wrote there: A-HOST, A-DURABLE-EXTENT) the reseat leaves every handle's payload unchanged -- the extent reads the same bytes the commit wrote. Host subject: host/native/io.lisp fnn-log-reseat-fenced (called by fnn-log-batch-finish, the COMPLETE after the batch's barrier) calls fn-arx-commit-reseats and fn-arena-release; fnn-log-members-in-flight places the batch's members with fn-arx-positions from the append's frontier.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [
+        "PRF-294"
+      ],
+      "assumptions": [
+        "A-HOST",
+        "A-DURABLE-EXTENT"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/payload-arena-extent.lisp",
+        "books/payload-arena-extent-logic.lisp",
+        "books/payload-arena.lisp",
+        "books/payload-commit-extent.lisp",
+        "tests/acl2/payload-arena-extent-tests.lisp",
+        "tests/acl2/payload-commit-extent-tests.lisp",
+        "planning/evidence/arena-offheap-3-2026-09-27.md"
+      ],
+      "progress_note": "Lane arena-offheap-3 (2026-09-27): item 2.",
+      "events": [
+        "fn-arena-reseat-extent-payload",
+        "fn-arena-reseat-extent-keeps-a-faithful-arena",
+        "fn-arena-extent-seal-buffer{correspondence}",
+        "fn-arena-extent-reseat-extent{correspondence}",
+        "fn-arena-extent-release{correspondence}",
+        "fn-arx-commit-extent-denotes-the-payload",
+        "fn-arx-commit-reseat-keeps-the-arena",
+        "fn-arx-commit-reseats-keep-the-arena"
+      ]
+    },
+    {
+      "id": "PRF-310",
+      "title": "Every durability report follows the barrier that persisted it: a key statement's commit is fenced before its crash cut and its executor, and the owner's batch quantum tells, logs and cuts only fenced records, for every record kind",
+      "statement": "books/owner-ack-after-barrier.lisp. The decision fn-oab-fence-before-change (host/owner-host.lisp fn-owner-statement-fence, called by host/native/owner.lisp fnn-owner-statement-committed after every durable kind-4 composite fnn-owner-attempt-transit commits): an event whose authored source carries a key statement is fenced -- fnn-owner-statement-barrier commits the log's open batch, the statement and every member drained before it (fnn-log-commit-open-batch, awaiting a batch in flight first) -- before the statement-committed cut and the executor run. fn-oab-plan-only-after-the-fence (fn-ks-plan non-nil implies the fence), fn-oab-execute-only-after-the-fence, fn-oab-recovered-statement-was-fenced (fn-ks-pending, the open's recovery, acts only on such a record). KEYSTONE fn-oab-quantum-reports-after-its-barrier: over fn-oab-quantum, the host's schedule of one batch quantum (START's drain with the statement fence, cut and key-change take; SYNC's barrier when the word is :fenced; COMPLETE's deferred lines -- each member's outcome line and the executor's line naming the statement and its key change -- and the replies fn-ocs-member-releases names over fn-ocs-commit-step's action), fn-oab-reports-follow-fences-p holds: every cut, line and rendered reply names only records a barrier has fenced since their take. fn-oab-pipeline-reports-after-its-barriers: the same for a batch in flight and the next batch prepared behind its barrier (START-NEXT), a statement among them. fn-oab-every-kind-reports-after-its-barrier: for each of the fourteen record kinds in *fn-oab-record-kinds* (served and relayed articles, statements and their key changes in the quantum; the control post, BP applications, identity events, the key change at open, keys redecide, consumer, topic and retention events as a batch of one; configuration records and XREDEEM's publication through their own immutable publication), its route's trace reports only after its barrier; a kind with no route is unaccounted. The host's order is the model's by tests/campaign/native_cuts.py verify_statement_cut_map (run by tools/native_program_check.py and tests/test_native_cut_map.py): fence, barrier, cut, executor in fnn-owner-statement-committed; the executor's line deferred inside a quantum (fnn-owner-line-after-barrier); every kind-4 commit of fnn-owner-attempt-transit through fnn-owner-statement-committed; *fnn-log-batch* bound only by fnn-owner-commit-start-locked and fnn-log-write-history; COMPLETE's lines after the acknowledgement. The served cut table now names record-completing (absent inside a quantum, present in a batch of one).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023",
+        "NNT-014"
+      ],
+      "depends_on": [
+        "PRF-098",
+        "PRF-267",
+        "PRF-288"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/owner-ack-after-barrier.lisp",
+        "tests/acl2/owner-ack-after-barrier-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/campaign/native_cuts.py",
+        "tools/native_program_check.py"
+      ],
+      "progress_note": "Lane ack-before-barrier (Opus 5.5, 2026-09-27), from log-recovery-2's diagnosis (planning/evidence/log-recovery-2026-09-27.md section 8): a served statement's cut and executor ran inside the drain, before the batch's barrier, so FN_NATIVE_KEY_STATEMENT_FAULT=statement-committed:kill killed with the statement in memory only and the key-statement line reported an unfenced key change. Teeth: tests/acl2/owner-ack-after-barrier-tests.lisp (reachable: an ordinary article, the acting succession and the declining carried statement in one batch, trace non-vacuous; the pipeline; every kind; hypothesis removal: an ordinary composite is not fenced, an unrouted kind fails; mutations M1 the pre-fix unfenced cut, M2 an undeferred executor line, M3 replies without the barrier, each failing the property)."
+    },
+    {
+      "id": "PRF-311",
       "title": "A batch barrier is a request with a deadline and the disk's mode is ACL2's over recorded time: reads and status never wait on a pending barrier, a deadline never tells a member anything, and a POST arriving while the disk is slow is refused try-later with the reason exactly when health says so",
       "statement": "Subjects: fn-otm-next, fn-otm-observe, fn-otm-commit-event, fn-otm-committer-wake (host/native/owner.lisp fnn-owner-gate-pick, fnn-owner-gate-leave, fnn-owner-commit-event, fnn-owner-commit-wake), fn-otm-disk-event (fnn-owner-disk-event: the committer's :issue at the syncer's start, :clock at each expiry of its timed wait, :return at the completion it observes; :clock on demand before a POST admission and a health/status render), fn-otm-wait-ms (fnn-owner-disk-wait-ms), fn-otm-admit-post (fnn-owner-disk-admit, in the served read quantum that queued a POST), fn-otm-disk-lines / fn-otm-health-lines (host/native-live-status-host.lisp). KEYSTONE fn-otm-barrier-reader-bound (books/owner-time-model.lisp): for S with the pipeline's phase :staged (the barrier pending) and every sequence WS of pick observations (W EVENT) with a reader waiting at every pick and the commit class waiting only when the committer's wake is :start-next (fn-otm-barrier-walk-okp), the quanta picked before the first :reader pick (fn-otm-barrier-walk) contain no control, poster or transit quantum, at most one :commit whose event is :next-started, and at most one more :inspect than :commit; EVENT is unconstrained and the device's latency is not a quantity of the walk. KEYSTONE fn-otm-disk-event-keeps-the-pipeline: every disk event leaves the pipeline's value unchanged (so fn-ocs-members-told-only-after-the-barrier and fn-ocp-complete-only-after-the-barrier hold of every run with deadlines: a deadline never tells a member anything). fn-otm-next-is-ocp-next, fn-otm-commit-event-is-ocp-commit-event, fn-otm-observe-keeps-the-disk: the pipeline's keystones (PRF-248, PRF-267, PRF-272, PRF-288) hold of the host's calls. fn-otm-recorded-time-is-monotone (the recorded time is the max of the readings; a lower reading increments the regression count and moves nothing); fn-otm-shed-only-past-the-deadline and fn-otm-past-the-deadline-sheds (a POST is shed exactly while a barrier is pending D or more at the recorded time); fn-otm-shed-iff-slow (shed iff the health/status disk line says disk slow); fn-otm-return-recovers, fn-otm-clock-event-never-issues (the completion is the recovery; no clock event re-enters slow without a new barrier); fn-otm-return-records-the-latency; fn-otm-wait-reaches-the-deadline (a clock event WAIT-MS after the recorded time finds the barrier past its deadline and enters :slow once); fn-otm-issue-only-when-none-pending, fn-otm-issue-is-pending-and-admits. Hypotheses of the wall-clock reading (stated, not proved): the store commits through the record log (format 9); the quanta admitted during a barrier contain no I/O wait (true of :inspect, :reader and START-NEXT; the inline barrier of :control/:poster/:transit quanta is not admitted in flight, PKT-825 (c)); the served read's octets are in memory; the committer thread is scheduled (its clock events can be late, never early).",
       "milestone": "M5",

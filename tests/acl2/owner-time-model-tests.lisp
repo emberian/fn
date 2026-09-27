@@ -1,5 +1,5 @@
 ; Witnesses and teeth for books/owner-time-model.lisp (lane time-model,
-; 2026-09-27; PRF-308).  Every scheduler state is REACHED from fn-otm-init
+; 2026-09-27; PRF-311).  Every scheduler state is REACHED from fn-otm-init
 ; through the picks, the commit events and the disk events the host makes
 ; (fnn-owner-gate-pick, fnn-owner-commit-event, fnn-owner-disk-event).
 (in-package "ACL2")

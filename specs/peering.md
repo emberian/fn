@@ -1809,9 +1809,19 @@ Ed25519 key, the new key set differs, and both primitive observations of
 the proof of possession verified (the host observes over the preimage ACL2
 names, `fn-ks-pop-request`). `fn-ks-execute` builds the kind-3 event with
 `fn-hl-enroll-event` or `fn-hl-revoke-event` at `fn-hl-next-generation`.
-The owner runs it right after committing any kind-4 composite, carried and
-revoked ones included, which it declines (`host/native/owner.lisp`
-`fnn-owner-statement-committed`, `fnn-owner-key-statement`). The operator
+The owner runs it right after committing a kind-4 composite that carries a
+statement, carried and revoked ones included, which it declines
+(`host/native/owner.lisp` `fnn-owner-statement-committed`,
+`fnn-owner-key-statement`), and only once the statement is durable: inside
+the served commit's batch quantum the statement's commit first fences the
+log's open batch, the statement and every member drained before it
+(`fnn-owner-statement-barrier`; ACL2 decides which commits fence,
+`books/owner-ack-after-barrier.lisp` `fn-oab-fence-before-change`, and the
+executor decides only those, `fn-oab-plan-only-after-the-fence`). The key
+change then joins the open batch, and its `key-statement ...` line is written
+at that batch's COMPLETE, after the barrier that persists it (PRF-310,
+`fn-oab-quantum-reports-after-its-barrier`). An ordinary composite does not
+fence: its POST keeps the batch. The operator
 grants the verb with `operator CONFIG control grant PRINCIPAL keys
 NAMESPACE`; `keys` is grantable beside `cancel`.
 
@@ -1832,7 +1842,12 @@ Every other accepted POST's reply is the plain `240 article received OK`. An unc
 recovery event, like any other.
 
 **The crash cut.** A process death after the statement's commit and before
-its change's leaves the statement accepted and unexecuted. The model names
+its change's leaves the statement accepted and unexecuted. The native cut
+`statement-committed` (`FN_NATIVE_KEY_STATEMENT_FAULT`,
+`tests/campaign/native_cuts.py` `STATEMENT_CUTS`, checked by
+`verify_statement_cut_map`) lies after the statement's barrier; before
+lane ack-before-barrier it lay inside the batch, before any barrier, and a
+death there lost the statement. The model names
 the cut (`fn-ks-cut`) and the open's recovery (`fn-ks-recover`): at open
 the owner executes the newest Store record when it is a statement, exactly
 as at acceptance (`fnn-owner-key-statement-recover`), and logs `...

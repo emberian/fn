@@ -1,6 +1,6 @@
 ; fn: the disk as an adversarial environment -- the barrier's deadline, the
 ; disk's mode and the owner's answers relative to it (lane time-model,
-; 2026-09-27, slice 1 of planning/design-time-model-2026-09-27.md; PRF-308).
+; 2026-09-27, slice 1 of planning/design-time-model-2026-09-27.md; PRF-311).
 ;
 ; books/owner-commit-pipeline.lisp runs a batch's barrier (append and
 ; fdatasync) in the syncer thread with the owner released; its completion is
@@ -48,7 +48,7 @@
 ; policy belongs to the profile), the live configuration's `:set-limit'
 ; rows, read like `log-batch-records' (books/owner-log-route.lisp
 ; fn-olr-bmax) and set by `policy set SLOT N' (books/native-admin.lisp).  An
-; absent or zero row is the default (PKT-845 (a)):
+; absent or zero row is the default (PKT-853 (a)):
 ;   barrier-deadline-ms  D: a barrier pending this long makes the disk :slow
 ;   barrier-stall-ms     H: pending this long, :stalled (slice 2; never below D)
 ;   clock-event-ms       the committer's clock-event cadence (slice 2)
@@ -863,7 +863,7 @@
   :hints (("Goal" :in-theory (enable fn-otm-limits fn-otm-deadline-of-limit
                                      fn-otm-stall-of-limit fn-otm-cadence-of-limit))))
 
-; KEYSTONE (PRF-308): reads and status never wait for the barrier.
+; KEYSTONE (PRF-311): reads and status never wait for the barrier.
 ;
 ; The subject is the gate's pick, fn-otm-next (host/native/owner.lisp
 ; fnn-owner-gate-pick calls it at every release of the owner and every
@@ -1115,7 +1115,7 @@
    :hints (("Goal" :induct (fn-otm-barrier-walk s ws)))))
 
 (defthm fn-otm-barrier-reader-bound
-  ; KEYSTONE (PRF-308).  While the batch's barrier is pending and a reader
+  ; KEYSTONE (PRF-311).  While the batch's barrier is pending and a reader
   ; waits at every pick (fn-otm-barrier-walk-okp), before the reader is
   ; admitted: no control, poster or transit quantum runs; at most one
   ; START-NEXT that took members runs; and the :inspect quanta are at most
@@ -1164,7 +1164,7 @@
            (fn-otm-uncertain-releases-p (cdr rs)))
     t))
 
-;; KEYSTONE (PRF-308, slice 2).  When H fires no member is told acceptance
+;; KEYSTONE (PRF-311, slice 2).  When H fires no member is told acceptance
 ;; or refusal: every release is uncertain (:own-uncertain, :uncertain-reply
 ;; or :close), one per member.  With fn-otm-disk-event-keeps-the-pipeline
 ;; (the stall produced no :complete and no phase change), a member's own
@@ -1285,7 +1285,7 @@
 (local (in-theory (disable fn-otm-disk-event fn-otm-disk-stall-due-p fn-otm-clock-word
                            fn-otm-clock-step fn-otm-now fn-otm-regressions fn-otm-jseq)))
 
-;; KEYSTONE F4-W (PRF-308, slice 2).  From a barrier pending and not yet past
+;; KEYSTONE F4-W (PRF-311, slice 2).  From a barrier pending and not yet past
 ;; H (since <= the recorded time), committer clock events each within its
 ;; wait plus LATE: if one of them entered :stalled (the posters told) its
 ;; reading is at most since + H + LATE; if none did, every reading so far

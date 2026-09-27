@@ -3,9 +3,19 @@
 ;
 ; This book performs no BP transport, storage publication, signature check, or
 ; A-POLICY decision.  The caller supplies an explicit trusted policy result.
+;
+; The records flip (2026-09-27): a node article's payload is a HANDLE into
+; the payload arena (books/acceptance.lisp, books/payload-arena.lisp), so
+; the request ADU reads the article's octets through the arena
+; (fn-bpo-article-octets).  The arena is only READ here: every entry takes
+; fn-arena and none returns it (flip-L6-2's rule).  A payload that is not a
+; handle of this arena refuses the request; it never becomes the ADU's
+; article.  PKT-RT-1 (lane red-tail): before this, the ADU carried the handle
+; and fn-bpa-requestp refused every request.
 (in-package "ACL2")
 (include-book "bp-workflow-records")
 (include-book "bp-adu")
+(include-book "payload-arena")
 
 ; Result: (:ok value) or (:error reason).
 (defun fn-bpo-make-ok (value)
@@ -34,8 +44,22 @@
          (equal (fn-bp-attempt-generation attempt) attempt-generation)
          (equal (fn-bp-attempt-status attempt) :intent))))
 
-(defun fn-bpo-request-message (s work-id attempt-id attempt-generation)
-  (declare (xargs :guard t))
+; The article's payload names a sealed payload of this arena.
+(defun fn-bpo-article-handlep (article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (let ((h (fn-article-payload article)))
+    (and (natp h) (< h (fn-arena-count fn-arena)))))
+
+; The article's octets: the arena's payload under the article's handle, read
+; through the arena's own read API (whatever implementation is attached).
+(defun fn-bpo-article-octets (article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (fn-bpo-article-handlep article fn-arena)
+      (fn-arena-payload (fn-article-payload article) fn-arena)
+    nil))
+
+(defun fn-bpo-request-message (s work-id attempt-id attempt-generation fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (or (not (fn-bp-statep s))
           (consp (fn-bp-state-pending s))
           (fn-bp-state-fenced s))
@@ -50,7 +74,8 @@
               (not (fn-bpo-current-attemptp
                     work attempt-id attempt-generation))
               (not (fn-bp-work-boundp node work))
-              (not (consp article)))
+              (not (consp article))
+              (not (fn-bpo-article-handlep article fn-arena)))
           nil
         (let ((request
                (fn-bpa-make-request
@@ -62,14 +87,15 @@
                 (fn-bp-work-incarnation work)
                 (fn-bp-work-auth-context work)
                 (fn-bp-work-terms-id work)
-                (fn-article-payload article))))
+                (fn-bpo-article-octets article fn-arena))))
           ; This is also the portable metadata and exact article-size gate.
           (if (fn-bpa-requestp request) request nil))))))
 
-(defun fn-bpo-request-adu (s work-id attempt-id attempt-generation)
-  (declare (xargs :guard t))
+(defun fn-bpo-request-adu (s work-id attempt-id attempt-generation fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((request
-         (fn-bpo-request-message s work-id attempt-id attempt-generation)))
+         (fn-bpo-request-message s work-id attempt-id attempt-generation
+                                 fn-arena)))
     (if (consp request)
         (fn-bpo-make-ok (fn-bpa-encode request))
       (fn-bpo-make-error :request-refused))))
@@ -154,10 +180,10 @@
 (defthm fn-bpo-request-message-is-request
   (implies
    (consp (fn-bpo-request-message
-           s work-id attempt-id attempt-generation))
+           s work-id attempt-id attempt-generation fn-arena))
    (fn-bpa-requestp
     (fn-bpo-request-message
-     s work-id attempt-id attempt-generation)))
+     s work-id attempt-id attempt-generation fn-arena)))
   :hints (("Goal"
            :in-theory
            (e/d (fn-bpo-request-message)
@@ -171,9 +197,9 @@
 (defthm fn-bpo-request-result-okp
   (equal
    (fn-bpo-result-okp
-    (fn-bpo-request-adu s work-id attempt-id attempt-generation))
+    (fn-bpo-request-adu s work-id attempt-id attempt-generation fn-arena))
    (consp (fn-bpo-request-message
-           s work-id attempt-id attempt-generation)))
+           s work-id attempt-id attempt-generation fn-arena)))
   :hints (("Goal"
            :in-theory
            (e/d (fn-bpo-request-adu fn-bpo-result-okp
@@ -183,13 +209,13 @@
 (defthm fn-bpo-request-result-value
   (implies
    (consp (fn-bpo-request-message
-           s work-id attempt-id attempt-generation))
+           s work-id attempt-id attempt-generation fn-arena))
    (equal
     (fn-bpo-result-value
-     (fn-bpo-request-adu s work-id attempt-id attempt-generation))
+     (fn-bpo-request-adu s work-id attempt-id attempt-generation fn-arena))
     (fn-bpa-encode
      (fn-bpo-request-message
-      s work-id attempt-id attempt-generation))))
+      s work-id attempt-id attempt-generation fn-arena))))
   :hints (("Goal"
            :in-theory
            (e/d (fn-bpo-request-adu fn-bpo-result-value fn-bpo-make-ok)
@@ -198,19 +224,19 @@
 (defthm fn-bpo-request-success-decodes-exactly
   (implies
    (fn-bpo-result-okp
-    (fn-bpo-request-adu s work-id attempt-id attempt-generation))
+    (fn-bpo-request-adu s work-id attempt-id attempt-generation fn-arena))
    (equal
     (fn-bpa-decode-exact
      (fn-bpo-result-value
-      (fn-bpo-request-adu s work-id attempt-id attempt-generation)))
+      (fn-bpo-request-adu s work-id attempt-id attempt-generation fn-arena)))
     (list :ok
           (fn-bpo-request-message
-           s work-id attempt-id attempt-generation))))
+           s work-id attempt-id attempt-generation fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-bpa-round-trip
                             (message
                              (fn-bpo-request-message
-                              s work-id attempt-id attempt-generation))))
+                              s work-id attempt-id attempt-generation fn-arena))))
            :in-theory (disable fn-bpa-round-trip
                                fn-bpa-decode-exact
                                fn-bpa-encode
@@ -219,28 +245,33 @@
                                fn-bpo-result-okp
                                fn-bpo-result-value))))
 
+; The request is exactly the work's fields and the article's octets read
+; through the arena under the node article's handle, which is a sealed handle.
 (defthm fn-bpo-request-message-is-exact-construction
   (implies
    (consp (fn-bpo-request-message
-           s work-id attempt-id attempt-generation))
+           s work-id attempt-id attempt-generation fn-arena))
    (let* ((work (fn-bp-find-work work-id (fn-bp-state-works s)))
           (article
            (fn-find-article
             (fn-bp-work-msgid work)
             (fn-state-articles
              (fn-node-acceptance (fn-bp-state-node s))))))
-     (equal
-      (fn-bpo-request-message s work-id attempt-id attempt-generation)
-      (fn-bpa-make-request
-       (fn-bp-work-id work)
-       (fn-bp-work-subject work)
-       (fn-bp-config-local-eid (fn-bp-state-config s))
-       (fn-bp-work-peer-eid work)
-       (fn-bp-work-policy-id work)
-       (fn-bp-work-incarnation work)
-       (fn-bp-work-auth-context work)
-       (fn-bp-work-terms-id work)
-       (fn-article-payload article)))))
+     (and
+      (natp (fn-article-payload article))
+      (< (fn-article-payload article) (fn-arena-count fn-arena))
+      (equal
+       (fn-bpo-request-message s work-id attempt-id attempt-generation fn-arena)
+       (fn-bpa-make-request
+        (fn-bp-work-id work)
+        (fn-bp-work-subject work)
+        (fn-bp-config-local-eid (fn-bp-state-config s))
+        (fn-bp-work-peer-eid work)
+        (fn-bp-work-policy-id work)
+        (fn-bp-work-incarnation work)
+        (fn-bp-work-auth-context work)
+        (fn-bp-work-terms-id work)
+        (fn-arena-payload (fn-article-payload article) fn-arena))))))
   :hints (("Goal"
            :in-theory
            (e/d (fn-bpo-request-message)
@@ -252,13 +283,19 @@
                  fn-bp-work-boundp fn-bpa-requestp
                  fn-bpa-make-request)))))
 
+; KEYSTONE (PKT-RT-1).  Subject: fn-bpo-request-adu, which
+; host/workflow-host.lisp calls through fn-bprq-plan (fn-workflow-request-plan,
+; `bp-obligation request') and directly (fn-workflow-ion-request-adu, the ION
+; submit).  A request ADU the sender builds carries every workflow/config
+; field and, as its article, the octets the arena holds under the committed
+; node article's handle.
 (defthm fn-bpo-request-success-preserves-context-and-article
   (implies
    (fn-bpo-result-okp
-    (fn-bpo-request-adu s work-id attempt-id attempt-generation))
+    (fn-bpo-request-adu s work-id attempt-id attempt-generation fn-arena))
    (let* ((request
            (fn-bpo-request-message
-            s work-id attempt-id attempt-generation))
+            s work-id attempt-id attempt-generation fn-arena))
           (work (fn-bp-find-work work-id (fn-bp-state-works s)))
           (article
            (fn-find-article
@@ -279,8 +316,12 @@
                  (fn-bp-work-auth-context work))
           (equal (fn-bpa-request-terms-id request)
                  (fn-bp-work-terms-id work))
+          ; The article crosses as the octets the arena holds under the
+          ; node article's handle, never as the handle.
+          (natp (fn-article-payload article))
+          (< (fn-article-payload article) (fn-arena-count fn-arena))
           (equal (fn-bpa-request-article request)
-                 (fn-article-payload article)))))
+                 (fn-arena-payload (fn-article-payload article) fn-arena)))))
   :hints (("Goal"
            :use ((:instance fn-bpo-request-message-is-exact-construction))
            :in-theory (disable fn-bpo-request-adu

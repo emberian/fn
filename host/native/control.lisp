@@ -424,7 +424,7 @@ transition."
                          (:status (list :consumer-status-reply :refused nil nil nil))
                          (otherwise (list :consumer-reply :refused nil)))
                        :not-owner)))
-                   ;; Lane time-model-2 (PRF-308): a mutating request --
+                   ;; Lane time-model-2 (PRF-311): a mutating request --
                    ;; an operator post, a live configuration change, a
                    ;; moderation decision -- while the disk is slow or
                    ;; stalled is answered BUSY (try later: nothing stored,

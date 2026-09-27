@@ -1,0 +1,12 @@
+{
+ "campaign": "node",
+ "class": "shape",
+ "minimized_hex": [
+  "515549540d0a41555448494e464f20555345522066757a7a0d0a41555448494e464f20504153532066757a7a2d70617373776f72640d0a"
+ ],
+ "note": "Production owner: the credential is checked after QUIT's 205.",
+ "packet": "F1 (after-QUIT)",
+ "role": "reader",
+ "status": "open",
+ "tls": false
+}

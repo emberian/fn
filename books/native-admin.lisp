@@ -582,7 +582,7 @@
        ; (books/owner-log-route.lisp fn-olr-bmax / fn-olr-omax read these
        ; `:set-limit' rows), each keyed (SLOT, ""), staged, published and
        ; replayed like the transit limits.  A bound is positive and under the
-       ; row's ceiling.  Lane time-model-2 (PRF-308): the disk's profile
+       ; row's ceiling.  Lane time-model-2 (PRF-311): the disk's profile
        ; fields ride the same rows, `policy set barrier-deadline-ms N' (D),
        ; `barrier-stall-ms N' (H; read as at least D,
        ; books/owner-time-model.lisp fn-otm-limits) and `clock-event-ms N'

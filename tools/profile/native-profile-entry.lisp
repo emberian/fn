@@ -5,7 +5,8 @@
 ;;; cpu or alloc) starts SBCL's statistical profiler over every thread; creating
 ;;; P.stop stops it and writes P.N.txt: wall seconds, bytes consed (whole process)
 ;;; and sb-sprof's flat and graph reports.  Without FN_PROF_OUT it is the
-;;; ordinary entry.  Exists to find which work a served quantum does
+;;; ordinary entry.  FN_PROF_HOOK=FILE loads FILE first (phase timers).
+;;; Exists to find which work a served quantum does
 ;;; (lane control-quanta, 2026-09-27).
 (require :sb-sprof)
 
@@ -49,6 +50,11 @@
 
 (defun fn-native-entry (st)
   (declare (ignore st))
+  ;; FN_PROF_HOOK=FILE: a Lisp file loaded before the entry runs (phase
+  ;; timers by sb-int:encapsulate; lane snapshot-open).
+  (let ((hook (sb-ext:posix-getenv "FN_PROF_HOOK")))
+    (when (and hook (plusp (length hook)))
+      (load hook)))
   (let ((out (sb-ext:posix-getenv "FN_PROF_OUT")))
     (when (and out (plusp (length out)))
       (sb-thread:make-thread (lambda () (fnn-prof-watch out))

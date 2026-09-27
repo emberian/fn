@@ -51,7 +51,7 @@
 ;; PKT-828: readers during a barrier at the reader view (host/owner-host.lisp
 ;; fn-owner-at-reader-view, fn-owner-reader-views-capture).
 (include-book "books/owner-reader-view")
-;; Lane time-model (PRF-308): the gate's value with the disk's deadline
+;; Lane time-model (PRF-311): the gate's value with the disk's deadline
 ;; (fn-otm-*), over fn-ocp-*.
 (include-book "books/owner-time-model")
 ;; Lane time-model-2: the decision journal (fn-otm-disk-step, fn-otm-note-step,
@@ -130,10 +130,16 @@
 ;; fn-owner-prepare-identity, fn-owner-prepare-topic, fn-owner-reconfigure-unstage
 ;; call books/owner-prepare-served (fn-psrv-).
 (include-book "books/owner-prepare-served")
+;; Stage 2b (lane history-columns-2): host/owner-host.lisp loads and syncs the
+;; history stobj fn-hist and reads the carried budget folds from it.
+(include-book "books/history-columns-store")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).
 (include-book "books/replay-identity-index")
+;; lane proto-determinism: `store ROOT digest' (host/store-node-host.lisp
+;; fn-store-sn-replay-digest-report) calls books/state-digest (fn-sdg-).
+(include-book "books/state-digest")
 ;; The subject digest over the buffer (D27 wave C): host/native/io.lisp
 ;; fnn-subject-id-buffer calls fn-shb-subject-id-bounded.
 (include-book "books/sha256-buffer")
@@ -328,6 +334,8 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
+        (load "host/native/extent.lisp")
         ; Build-time entry profile.  tools/build_native_host.sh always supplies
         ; one of these two values.  It is serialized into the image: the
         ; restarted process cannot expose diagnostics by changing its
