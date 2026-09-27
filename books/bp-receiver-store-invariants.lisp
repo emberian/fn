@@ -263,13 +263,14 @@
        (equal context
               (fn-bpr-context-from-request record (fn-bpr-context-request context)))))
 ;; RECORDS are the history's article records: retained rows (records-flip).
-;; The search answers the WIRE form of the first row that binds CONTEXT, its
-;; bytes read through the arena: the record the receiver was handed.
+;; The search answers the WIRE form of the first held row that binds CONTEXT,
+;; its bytes read through the arena: the record the receiver was handed.
 (defun fn-bprv-find-record (store config context records fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp records)
-      (if (fn-bprv-record-binds store config context
-                                (fn-row-wire-of (car records) fn-arena) fn-arena)
+      (if (and (fn-held-p (car records))
+               (fn-bprv-record-binds store config context
+                                     (fn-row-wire-of (car records) fn-arena) fn-arena))
           (fn-row-wire-of (car records) fn-arena)
         (fn-bprv-find-record store config context (cdr records) fn-arena))
     nil))
@@ -303,7 +304,7 @@
  :rule-classes :forward-chaining)
 (local (in-theory (disable fn-bprv-record-binds)))
 (defthm fn-bprv-find-record-from-member
-  (implies (and (member-equal row records)
+  (implies (and (member-equal row records) (fn-held-p row)
                 (fn-bprv-record-binds store config context
                                       (fn-row-wire-of row fn-arena) fn-arena))
            (consp (fn-bprv-find-record store config context records fn-arena)))

@@ -852,50 +852,11 @@
                          fn-bprv-replay-node-commits-history-record)
                        (theory 'minimal-theory)))))
 
-;; A row of a Store history's article records whose wire form is a WIRE
-;; record is a held row (records-flip): a composite row's article is its held
-;; row, and no other retained event is an article record.
-(defthm fn-bprv-hstxa-held-is-held
-  (implies (fn-hstxa-p x) (fn-held-p (fn-hstxa-held x)))
-  :hints (("Goal" :in-theory (enable fn-hstxa-p fn-hstxa-held))))
-(defthm fn-bprv-hstxa-stxa-is-no-record
-  (implies (fn-hstxa-p x) (not (fn-record-p (fn-hstxa-stxa x))))
-  :hints (("Goal" :in-theory (e/d (fn-hstxa-p fn-hstxa-stxa) (fn-stxa-p fn-record-p fn-held-p))
-           :use ((:instance fn-stxa-is-no-other-wire-event (x (cadr x)))))))
-(defthm fn-bprv-store-event-is-no-stxa
-  (implies (fn-store-event-p x) (not (fn-stxa-p x)))
-  :hints (("Goal" :in-theory (e/d (fn-store-event-p) (fn-stxa-p fn-held-p fn-hstxa-p))
-           :use ((:instance fn-stxa-is-no-other-wire-event)
-                 (:instance fn-held-is-no-wire-event)
-                 (:instance fn-hstxa-is-no-wire-event)))))
-(defthm fn-bprv-store-event-other-is-no-record
-  (implies (and (fn-store-event-p x) (not (fn-held-p x)) (not (fn-hstxa-p x)))
-           (not (fn-record-p x)))
-  :hints (("Goal" :in-theory (enable fn-store-event-p))))
-(defthm fn-bprv-wire-article-row-is-held
-  (implies (and (fn-sf-record-valuesp rows)
-                (member-equal x (fn-bpr-article-records rows))
-                (fn-record-p (fn-row-wire-of x fn-arena)))
-           (fn-held-p x))
-  :hints (("Goal" :induct (len rows)
-           :in-theory (e/d (fn-bpr-article-records fn-bpr-event-article fn-row-wire-of
-                              fn-sf-record-valuesp)
-                           (fn-stxa-p fn-held-p fn-hstxa-p fn-record-p fn-store-event-p
-                            fn-held-wire fn-hstxa-stxa fn-hstxa-held fn-replay-composite-record)))))
-(defthm fn-bprv-record-listp-values
-  (implies (fn-sf-record-listp records sequence lower frontier)
-           (fn-sf-record-valuesp records))
-  :hints (("Goal" :in-theory (e/d (fn-sf-record-listp fn-sf-record-valuesp) (fn-store-event-p)))))
-(defthm fn-bprv-statep-history-values
-  (implies (fn-sn-statep s) (fn-sf-record-valuesp (fn-sf-records (fn-sn-files s))))
-  :hints (("Goal" :in-theory (enable fn-sn-statep fn-sf-statep))))
-
 ; A WIRE record standing for a row of an idle related Store's article records
 ; is committed in its node, its bytes read through the arena.
 (defthm fn-bprv-standing-record-is-node-wire-committed-when-idle
   (implies (and (fn-snt-relation store)
                 (member-equal (fn-bprv-phase store) '(:ready :recovering :fenced-recovery))
-                (fn-record-p record)
                 (fn-bpr-rows-stand-for record (fn-bpr-article-records (fn-bprv-history store))
                                        fn-arena))
            (fn-bpi-node-wire-committedp (fn-sn-node store) record fn-arena))
@@ -908,23 +869,15 @@
                  (:instance fn-bpr-node-committed-row-is-wire-committed
                   (node (fn-sn-node store))
                   (row (fn-bpr-row-standing-for
-                        record (fn-bpr-article-records (fn-bprv-history store)) fn-arena)))
-                 (:instance fn-bprv-wire-article-row-is-held
-                  (rows (fn-bprv-history store))
-                  (x (fn-bpr-row-standing-for
-                      record (fn-bpr-article-records (fn-bprv-history store)) fn-arena)))
-                 (:instance fn-snt-relation-implies-structural-state (s store))
-                 (:instance fn-bprv-statep-history-values (s store)))
-           :in-theory (e/d (fn-bprv-history)
+                        record (fn-bpr-article-records (fn-bprv-history store)) fn-arena))))
+           :in-theory (e/d (fn-bpr-row-stands-for)
                            (fn-bpr-row-standing-for-witnesses
                             fn-bprv-history-record-is-node-committed-when-idle
                             fn-bpr-node-committed-row-is-wire-committed
-                            fn-bprv-wire-article-row-is-held fn-bprv-statep-history-values
-                            fn-snt-relation-implies-structural-state
                             fn-bpr-row-standing-for fn-bpr-rows-stand-for fn-row-wire-of
                             fn-bpi-node-wire-committedp fn-bpi-node-record-committedp
                             fn-held-p fn-record-p fn-sn-statep fn-snt-relation
-                            fn-bpr-article-records)))))
+                            fn-bpr-article-records fn-bprv-history fn-bprv-phase)))))
 
 ; -----------------------------------------------------------------------------
 ; The original node conclusion, under the relation the Store maintains instead

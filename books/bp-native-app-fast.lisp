@@ -35,8 +35,8 @@
 ; on every node satisfying fn-node-statep
 ; (fn-bpaj-node-record-committed-carriedp-is-committedp).  The two lookups
 ; that remain are pointer walks that allocate nothing (PKT-638).
-(defun fn-bpaj-node-record-committed-carriedp (node record)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-bpaj-node-record-committed-carriedp (node record fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (mbe :logic
        (let ((article (fn-find-article
                        (fn-record-msgid record)
@@ -44,7 +44,8 @@
              (binding (fn-node-find-binding
                        (fn-record-msgid record) (fn-node-bindings node))))
          (and (consp article) (consp binding)
-              (equal (fn-article-payload article) (fn-record-payload record))
+              (equal (fn-handle-bytes (fn-article-payload article) fn-arena)
+                     (fn-record-payload record))
               (equal (fn-article-groups article) (fn-record-groups record))
               (equal (fn-node-binding-subject binding)
                      (fn-record-content-subject record))
@@ -57,7 +58,7 @@
              (binding (fn-node-find-binding
                        (fn-bpi-ag-record-msgid record) (fn-node-bindings node))))
          (and (consp article) (consp binding)
-              (equal (fn-article-payload article)
+              (equal (fn-handle-bytes (fn-article-payload article) fn-arena)
                      (fn-bpi-ag-record-payload record))
               (equal (fn-article-groups article)
                      (fn-bpi-ag-record-groups record))
@@ -68,16 +69,17 @@
 (verify-guards fn-bpaj-node-record-committed-carriedp)
 
 ; KEYSTONE (PRF-220): on a node satisfying the recognizer, the carried check
-; is the checked one.  No other hypothesis.
+; is the checked one (the node's article bytes read through the arena,
+; records-flip: fn-bpi-node-wire-committedp).  No other hypothesis.
 (defthm fn-bpaj-node-record-committed-carriedp-is-committedp
   (implies (fn-node-statep node)
-           (equal (fn-bpaj-node-record-committed-carriedp node record)
-                  (fn-bpi-node-record-committedp node record)))
+           (equal (fn-bpaj-node-record-committed-carriedp node record fn-arena)
+                  (fn-bpi-node-wire-committedp node record fn-arena)))
   :hints (("Goal" :in-theory
            (union-theories
             (theory 'minimal-theory)
             '(fn-bpaj-node-record-committed-carriedp
-              fn-bpi-node-record-committedp)))))
+              fn-bpi-node-wire-committedp)))))
 
 (defthm fn-bpaj-sn-statep-carries-node-statep
   (implies (fn-sn-statep store)
@@ -88,23 +90,27 @@
 ; Message-ID selects its candidates, so no walk of the history and no decode
 ; of a composite happens here (PKT-291).  The node check is the carried one:
 ; no whole-node recognizer runs per request (PRF-220).
-(defun fn-bpaj-store-record-accepted-fast (store record)
-  (declare (xargs :guard t))
+; The index's candidates are retained rows (records-flip): RECORD, a WIRE
+; record, must stand for one of them (`fn-bpr-rows-stand-for': a held row
+; whose wire form through the arena is RECORD).
+(defun fn-bpaj-store-record-accepted-fast (store record fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (and (fn-record-p record)
        (equal (fn-sf-phase (fn-sn-files store)) :ready)
-       (member-equal record
-                     (fn-cei-msgid-records (fn-record-msgid record)
-                                           (fn-sn-event-index store)))
-       (fn-bpaj-node-record-committed-carriedp (fn-sn-node store) record)))
+       (fn-bpr-rows-stand-for record
+                              (fn-cei-msgid-records (fn-record-msgid record)
+                                                    (fn-sn-event-index store))
+                              fn-arena)
+       (fn-bpaj-node-record-committed-carriedp (fn-sn-node store) record fn-arena)))
 
 (defun fn-bpaj-request-acceptable-fast
-    (store config record request policy-authorizedp)
-  (declare (xargs :guard t))
+    (store config record request policy-authorizedp fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (and (equal policy-authorizedp t)
        (fn-bpr-configp config)
        (fn-bpa-requestp request)
        (fn-record-p record)
-       (fn-bpaj-store-record-accepted-fast store record)
+       (fn-bpaj-store-record-accepted-fast store record fn-arena)
        (equal (fn-bpa-request-destination-eid request)
               (fn-bpr-config-destination config))
        (equal (fn-bpa-request-policy-id request)
@@ -114,12 +120,12 @@
        (equal (fn-bpa-request-article request) (fn-record-payload record))))
 
 (defun fn-bpaj-bpr-accept-request-fast
-    (st store record request policy-authorizedp)
-  (declare (xargs :guard t))
+    (st store record request policy-authorizedp fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (not (and (not (consp (fn-bpr-state-pending st)))
                 (fn-bpaj-request-acceptable-fast
                  store (fn-bpr-state-config st) record request
-                 policy-authorizedp)))
+                 policy-authorizedp fn-arena)))
       (list :refused st)
     (let* ((context (fn-bpr-context-from-request record request))
            (prior (fn-bpr-find-context (fn-bpr-context-work-id context)
@@ -139,13 +145,13 @@
                  (fn-bpr-state-receipts st) nil)))))))
 
 (defun fn-bpaj-projected-request-acceptable-fast
-    (store config record request stored-octets policy-authorizedp)
-  (declare (xargs :guard t))
+    (store config record request stored-octets policy-authorizedp fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (and (equal policy-authorizedp t)
        (fn-bpr-configp config)
        (fn-bpa-requestp request)
        (fn-record-p record)
-       (fn-bpaj-store-record-accepted-fast store record)
+       (fn-bpaj-store-record-accepted-fast store record fn-arena)
        (equal (fn-bpa-request-destination-eid request)
               (fn-bpr-config-destination config))
        (equal (fn-bpa-request-policy-id request)
@@ -153,18 +159,18 @@
        (equal stored-octets (fn-record-payload record))))
 
 (defun fn-bpaj-bpr-accept-projected-request-fast
-    (st store record request stored-octets policy-authorizedp)
-  (declare (xargs :guard t))
+    (st store record request stored-octets policy-authorizedp fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (not (and (not (consp (fn-bpr-state-pending st)))
                 (fn-bpaj-projected-request-acceptable-fast
                  store (fn-bpr-state-config st) record request
-                 stored-octets policy-authorizedp)))
+                 stored-octets policy-authorizedp fn-arena)))
       (list :refused st)
     (fn-bpr-bind-request-context st record request)))
 
 (defun fn-bpaj-transit-context-matches-intent-fastp
-    (store context intent)
-  (declare (xargs :guard t))
+    (store context intent fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 context)))
          (record (fn-bprr-decode-value (fn-bpaj-nth 3 context) :record))
          (fields (fn-bpaj-transit-article-fields request)))
@@ -176,7 +182,7 @@
          (equal (fn-bpaj-nth 7 context) (fn-bpaj-nth 5 intent))
          (fn-record-p record)
          (fn-bpa-requestp request)
-         (fn-bpaj-store-record-accepted-fast store record)
+         (fn-bpaj-store-record-accepted-fast store record fn-arena)
          (equal (fn-record-payload record) (fn-bpaj-nth 9 intent))
          (equal (car fields) :ok)
          (equal (fn-record-msgid record)
@@ -245,8 +251,8 @@
           (if entry (fn-bpa-encode (fn-bpr-receipt-entry-receipt entry)) nil))
       nil)))
 
-(defun fn-bpaj-bprr-apply-record-fast (st store r)
-  (declare (xargs :guard t))
+(defun fn-bpaj-bprr-apply-record-fast (st store r fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (not (fn-bprr-recordp r)) (list nil st)
     (let ((kind (car r)))
       (cond
@@ -254,7 +260,7 @@
         (let* ((request (fn-bprr-decode-value (fn-bprr-nth 2 r) :request))
                (record (fn-bprr-decode-value (fn-bprr-nth 3 r) :record))
                (answer (fn-bpaj-bpr-accept-request-fast
-                        st store record request (fn-bprr-nth 4 r))))
+                        st store record request (fn-bprr-nth 4 r) fn-arena)))
           (if (equal (car answer) :accepted)
               (list t (fn-bprr-nth 1 answer))
             (list nil st))))
@@ -288,8 +294,8 @@
             (list nil st))))
        (t (list nil st))))))
 
-(defun fn-bpaj-apply-record-fast (joined store r)
-  (declare (xargs :guard t))
+(defun fn-bpaj-apply-record-fast (joined store r fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((kind (fn-bpaj-nth 0 r)))
     (cond
      ((equal kind :request-transit-intent)
@@ -310,13 +316,13 @@
       (let ((intent (fn-bpaj-context-intent joined r)))
         (if (not (and intent
                       (fn-bpaj-transit-context-matches-intent-fastp
-                       store r intent)))
+                       store r intent fn-arena)))
             (list nil joined)
           (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 r)))
                  (record (fn-bprr-decode-value (fn-bpaj-nth 3 r) :record))
                  (answer (fn-bpaj-bpr-accept-projected-request-fast
                           (fn-bpaj-receiver joined) store record request
-                          (fn-bpaj-nth 9 intent) t)))
+                          (fn-bpaj-nth 9 intent) t fn-arena)))
             (if (not (equal (car answer) :accepted)) (list nil joined)
               (list t (fn-bpaj-make-state
                        (fn-bprr-nth 1 answer)
@@ -343,7 +349,7 @@
             (list nil joined)
           (let ((answer (fn-bpaj-bprr-apply-record-fast
                          (fn-bpaj-receiver joined) store
-                         (fn-bpaj-base-record r))))
+                         (fn-bpaj-base-record r) fn-arena)))
             (if (not (car answer)) (list nil joined)
               (list t (fn-bpaj-make-state
                        (fn-bprr-nth 1 answer)
@@ -352,7 +358,7 @@
      ((equal kind :request-context)
       (if (fn-bpaj-strictp joined) (list nil joined)
         (let ((answer (fn-bpaj-bprr-apply-record-fast
-                       (fn-bpaj-receiver joined) store r)))
+                       (fn-bpaj-receiver joined) store r fn-arena)))
           (if (not (car answer)) (list nil joined)
             (list t (fn-bpaj-make-state
                      (fn-bprr-nth 1 answer)
@@ -360,7 +366,7 @@
                      (fn-bpaj-facts joined) nil))))))
      (t
       (let ((answer (fn-bpaj-bprr-apply-record-fast
-                     (fn-bpaj-receiver joined) store r)))
+                     (fn-bpaj-receiver joined) store r fn-arena)))
         (if (not (car answer)) (list nil joined)
           (list t (fn-bpaj-make-state
                    (fn-bprr-nth 1 answer)
@@ -439,19 +445,19 @@
         :match
       :conflict)))
 
-(defun fn-bpaj-record-matches-request-fast (store record request)
-  (declare (xargs :guard t))
+(defun fn-bpaj-record-matches-request-fast (store record request fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (and (fn-record-p record) (fn-bpa-requestp request)
        (equal (fn-record-payload record) (fn-bpa-request-article request))
        (equal (fn-record-content-subject record)
               (fn-bpa-request-subject request))
-       (fn-bpaj-store-record-accepted-fast store record)))
+       (fn-bpaj-store-record-accepted-fast store record fn-arena)))
 
 ; The existing semantic search and conflict rule, over the Store's
 ; maintained Message-ID index instead of a walk of the history
 ; (`fn-bpaj-record-lookup-fast-is-checked' under `fn-ceis-indexedp').
-(defun fn-bpaj-record-lookup-fast (store request)
-  (declare (xargs :guard t))
+(defun fn-bpaj-record-lookup-fast (store request fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((fields (fn-bpaj-article-fields request)))
     (if (not (equal (car fields) :ok)) (list :conflict)
       (let ((records (fn-cei-msgid-records
@@ -460,12 +466,12 @@
         (cond ((endp records) (list :absent))
               ((consp (cdr records)) (list :conflict))
               ((fn-bpaj-record-matches-request-fast
-                store (car records) request)
-               (list :found (car records)))
+                store (fn-row-wire-of (car records) fn-arena) request fn-arena)
+               (list :found (fn-row-wire-of (car records) fn-arena)))
               (t (list :conflict)))))))
 
-(defun fn-bpaj-transit-record-lookup-fast (store request intent)
-  (declare (xargs :guard t))
+(defun fn-bpaj-transit-record-lookup-fast (store request intent fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((fields (fn-bpaj-transit-article-fields request)))
     (if (not (and (equal (car fields) :ok)
                   (fn-bpaj-transit-intentp intent)))
@@ -475,19 +481,20 @@
                       (fn-sn-event-index store))))
         (cond ((endp records) (list :absent))
               ((consp (cdr records)) (list :conflict))
-              ((and (fn-record-p (car records))
+              ((and (fn-record-p (fn-row-wire-of (car records) fn-arena))
                     (fn-bpa-requestp request)
-                    (fn-bpaj-store-record-accepted-fast store (car records))
-                    (equal (fn-record-payload (car records))
+                    (fn-bpaj-store-record-accepted-fast
+                     store (fn-row-wire-of (car records) fn-arena) fn-arena)
+                    (equal (fn-record-payload (fn-row-wire-of (car records) fn-arena))
                            (fn-bpaj-nth 9 intent))
-                    (equal (fn-record-msgid (car records))
+                    (equal (fn-record-msgid (fn-row-wire-of (car records) fn-arena))
                            (fn-record-octets-string (cadr fields))))
-               (list :found (car records)))
+               (list :found (fn-row-wire-of (car records) fn-arena)))
               (t (list :conflict)))))))
 
 (defun fn-bpaj-dispatch-fast
-    (joined store request-octets current-generation)
-  (declare (xargs :guard t))
+    (joined store request-octets current-generation fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let* ((request (fn-bpaj-request request-octets))
          (status (fn-bpaj-request-status-fast joined request-octets)))
     (case status
@@ -497,8 +504,8 @@
               (lookup (if (equal (fn-bpaj-nth 0 intent)
                                  :request-transit-intent)
                           (fn-bpaj-transit-record-lookup-fast
-                           store request intent)
-                        (fn-bpaj-record-lookup-fast store request))))
+                           store request intent fn-arena)
+                        (fn-bpaj-record-lookup-fast store request fn-arena))))
          (if (and (not (equal (fn-bpaj-nth 0 intent)
                               :request-transit-intent))
                   (not (equal current-generation
@@ -584,7 +591,7 @@
            (enable fn-bpaj-context-matches-intentp))))
 
 (defthm fn-bpaj-transit-context-match-implies-contextp
-  (implies (fn-bpaj-transit-context-matches-intentp store context intent)
+  (implies (fn-bpaj-transit-context-matches-intentp store context intent fn-arena)
            (fn-bpaj-transit-contextp context))
   :hints (("Goal" :in-theory
            (union-theories
@@ -625,19 +632,31 @@
                            (fn-record-p fn-replay-composite-record
                             fn-stxa-p fn-held-p fn-hstxa-p)))))
 
+; A row that stands for a WIRE record is a held row with its Message-ID.
+(local
+ (defthm fn-bpaj-standing-row-is-held-with-the-msgid
+   (implies (fn-bpr-row-stands-for row record fn-arena)
+            (and (fn-held-p row)
+                 (equal (fn-record-msgid row) (fn-record-msgid record))))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :use fn-bpr-row-stands-for-held-accessors
+            :in-theory (disable fn-bpr-row-stands-for-held-accessors fn-held-p
+                                fn-row-wire-of)))))
+
 (local
  (defthm fn-bpaj-member-fold-is-member-article-records
    (implies (fn-record-p record)
-            (iff (member-equal record
-                               (fn-cei-article-records-for
-                                (fn-record-msgid record) events))
-                 (member-equal record (fn-bpr-article-records events))))
-   :hints (("Goal" :induct (fn-bpr-article-records events)
-            :in-theory (e/d (fn-bpr-article-records
-                             fn-cei-article-records-for
-                             fn-bpr-event-article fn-cei-event-article)
-                            (fn-record-p fn-replay-composite-record
-                             fn-stxa-p))))))
+            (iff (fn-bpr-rows-stand-for record
+                                        (fn-bpaj-record-for-msgid
+                                         (fn-record-msgid record) events)
+                                        fn-arena)
+                 (fn-bpr-rows-stand-for record (fn-bpr-article-records events) fn-arena)))
+   :hints (("Goal" :induct (len events)
+            :in-theory (e/d (fn-bpr-article-records fn-bpaj-record-for-msgid
+                             fn-bpr-rows-stand-for)
+                            (fn-bpaj-record-for-msgid-is-cei-fold fn-record-p
+                             fn-bpr-event-article fn-held-p fn-row-wire-of
+                             fn-bpr-row-stands-for))))))
 
 (local
  (defthm fn-bpaj-record-msgid-is-a-string
@@ -663,36 +682,34 @@
 (local
  (defthm fn-bpaj-indexed-membership-is-history-membership
    (implies (and (fn-ceis-indexedp store) (fn-record-p record))
-            (iff (member-equal record
-                               (fn-cei-msgid-records
-                                (fn-record-msgid record)
-                                (fn-sn-event-index store)))
-                 (member-equal record
-                               (fn-bpr-article-records
-                                (fn-sf-records (fn-sn-files store))))))
-   :hints (("Goal" :use ((:instance fn-cei-msgid-records-of-correspondence
-                                    (msgid (fn-record-msgid record))
-                                    (index (fn-sn-event-index store))
-                                    (events (fn-sf-records
-                                             (fn-sn-files store))))
-                         fn-bpaj-record-msgid-is-a-string
+            (iff (fn-bpr-rows-stand-for record
+                                        (fn-cei-msgid-records
+                                         (fn-record-msgid record)
+                                         (fn-sn-event-index store))
+                                        fn-arena)
+                 (fn-bpr-rows-stand-for record
+                                        (fn-bpr-article-records
+                                         (fn-sf-records (fn-sn-files store)))
+                                        fn-arena)))
+   :hints (("Goal" :use (fn-bpaj-record-msgid-is-a-string
+                         (:instance fn-bpaj-indexed-records-are-the-walk
+                                    (msgid (fn-record-msgid record)))
                          (:instance fn-bpaj-member-fold-is-member-article-records
-                                    (events (fn-sf-records
-                                             (fn-sn-files store)))))
-            :in-theory (e/d (fn-ceis-indexedp)
-                            (fn-cei-msgid-records-of-correspondence
+                                    (events (fn-sf-records (fn-sn-files store)))))
+            :in-theory (e/d ()
+                            (fn-bpaj-indexed-records-are-the-walk
                              fn-bpaj-member-fold-is-member-article-records
                              fn-bpaj-record-msgid-is-a-string
-                             fn-cei-msgid-records fn-cei-correspondencep
-                             fn-record-p fn-cei-article-records-for
-                             fn-bpr-article-records))))))
+                             fn-cei-msgid-records fn-bpaj-record-for-msgid
+                             fn-record-p fn-bpr-rows-stand-for
+                             fn-bpr-article-records fn-ceis-indexedp))))))
 
 (in-theory (disable fn-bpaj-record-for-msgid-is-cei-fold))
 
 (defthm fn-bpaj-store-record-accepted-fast-is-checked
   (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
-           (equal (fn-bpaj-store-record-accepted-fast store record)
-                  (fn-bpr-store-record-acceptedp store record)))
+           (equal (fn-bpaj-store-record-accepted-fast store record fn-arena)
+                  (fn-bpr-store-record-acceptedp store record fn-arena)))
   :hints (("Goal" :in-theory
            (union-theories
             (theory 'minimal-theory)
@@ -705,9 +722,9 @@
 (defthm fn-bpaj-request-acceptable-fast-is-checked
   (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
            (equal (fn-bpaj-request-acceptable-fast
-                   store config record request policy-authorizedp)
+                   store config record request policy-authorizedp fn-arena)
                   (fn-bpr-request-acceptablep
-                   store config record request policy-authorizedp)))
+                   store config record request policy-authorizedp fn-arena)))
   :hints (("Goal" :in-theory
            (union-theories
             (theory 'minimal-theory)
@@ -719,9 +736,9 @@
   (implies (and (fn-bpr-statep st) (fn-sn-statep store)
                 (fn-ceis-indexedp store))
            (equal (fn-bpaj-bpr-accept-request-fast
-                   st store record request policy-authorizedp)
+                   st store record request policy-authorizedp fn-arena)
                   (fn-bpr-accept-request
-                   st store record request policy-authorizedp)))
+                   st store record request policy-authorizedp fn-arena)))
   :hints (("Goal" :in-theory
            (enable fn-bpaj-bpr-accept-request-fast
                    fn-bpr-accept-request
@@ -757,17 +774,17 @@
 (defthm fn-bpaj-bprr-apply-record-fast-is-checked
   (implies (and (fn-bpr-statep st) (fn-sn-statep store)
                 (fn-ceis-indexedp store))
-           (equal (fn-bpaj-bprr-apply-record-fast st store r)
-                  (fn-bprr-apply-record st store r)))
+           (equal (fn-bpaj-bprr-apply-record-fast st store r fn-arena)
+                  (fn-bprr-apply-record st store r fn-arena)))
   :hints (("Goal" :in-theory
            (enable fn-bpaj-bprr-apply-record-fast fn-bprr-apply-record))))
 
 (defthm fn-bpaj-projected-request-acceptable-fast-is-checked
   (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
            (equal (fn-bpaj-projected-request-acceptable-fast
-                   store config record request stored-octets authorizedp)
+                   store config record request stored-octets authorizedp fn-arena)
                   (fn-bpr-projected-request-acceptablep
-                   store config record request stored-octets authorizedp)))
+                   store config record request stored-octets authorizedp fn-arena)))
   :hints (("Goal" :in-theory
            (enable fn-bpaj-projected-request-acceptable-fast
                    fn-bpr-projected-request-acceptablep
@@ -777,9 +794,9 @@
   (implies (and (fn-bpr-statep st) (fn-sn-statep store)
                 (fn-ceis-indexedp store))
            (equal (fn-bpaj-bpr-accept-projected-request-fast
-                   st store record request stored-octets authorizedp)
+                   st store record request stored-octets authorizedp fn-arena)
                   (fn-bpr-accept-projected-request
-                   st store record request stored-octets authorizedp)))
+                   st store record request stored-octets authorizedp fn-arena)))
   :hints (("Goal" :in-theory
            (enable fn-bpaj-bpr-accept-projected-request-fast
                    fn-bpr-accept-projected-request
@@ -788,9 +805,9 @@
 (defthm fn-bpaj-transit-context-matches-intent-fast-is-checked
   (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
            (equal (fn-bpaj-transit-context-matches-intent-fastp
-                   store context intent)
+                   store context intent fn-arena)
                   (fn-bpaj-transit-context-matches-intentp
-                   store context intent)))
+                   store context intent fn-arena)))
   :hints (("Goal" :in-theory
            (e/d (fn-bpaj-transit-context-matches-intent-fastp
                  fn-bpaj-transit-context-matches-intentp
@@ -803,8 +820,8 @@
 (defthm fn-bpaj-apply-record-fast-is-checked
   (implies (and (fn-bpaj-statep joined) (fn-sn-statep store)
                 (fn-ceis-indexedp store))
-           (equal (fn-bpaj-apply-record-fast joined store r)
-                  (fn-bpaj-apply-record joined store r)))
+           (equal (fn-bpaj-apply-record-fast joined store r fn-arena)
+                  (fn-bpaj-apply-record joined store r fn-arena)))
   :hints (("Goal"
            :use ((:instance fn-bpaj-bprr-apply-record-fast-is-checked
                             (st (fn-bpaj-receiver joined))
@@ -869,8 +886,8 @@
 
 (defthm fn-bpaj-record-matches-request-fast-is-checked
   (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
-           (equal (fn-bpaj-record-matches-request-fast store record request)
-                  (fn-bpaj-record-matches-requestp store record request)))
+           (equal (fn-bpaj-record-matches-request-fast store record request fn-arena)
+                  (fn-bpaj-record-matches-requestp store record request fn-arena)))
   :hints (("Goal" :in-theory
            (union-theories
             (theory 'minimal-theory)
@@ -880,8 +897,8 @@
 
 (defthm fn-bpaj-record-lookup-fast-is-checked
   (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
-           (equal (fn-bpaj-record-lookup-fast store request)
-                  (fn-bpaj-record-lookup store request)))
+           (equal (fn-bpaj-record-lookup-fast store request fn-arena)
+                  (fn-bpaj-record-lookup store request fn-arena)))
   :hints (("Goal" :in-theory
            (union-theories
             (theory 'minimal-theory)
@@ -892,8 +909,8 @@
 
 (defthm fn-bpaj-transit-record-lookup-fast-is-checked
   (implies (and (fn-sn-statep store) (fn-ceis-indexedp store))
-           (equal (fn-bpaj-transit-record-lookup-fast store request intent)
-                  (fn-bpaj-transit-record-lookup store request intent)))
+           (equal (fn-bpaj-transit-record-lookup-fast store request intent fn-arena)
+                  (fn-bpaj-transit-record-lookup store request intent fn-arena)))
   :hints (("Goal" :in-theory
            (e/d (fn-bpaj-transit-record-lookup-fast
                  fn-bpaj-transit-record-lookup
@@ -908,9 +925,9 @@
   (implies (and (fn-bpaj-statep joined) (fn-sn-statep store)
                 (fn-ceis-indexedp store))
            (equal (fn-bpaj-dispatch-fast
-                   joined store request-octets current-generation)
+                   joined store request-octets current-generation fn-arena)
                   (fn-bpaj-dispatch
-                   joined store request-octets current-generation)))
+                   joined store request-octets current-generation fn-arena)))
   :hints (("Goal" :in-theory
            (union-theories
             (theory 'minimal-theory)
@@ -921,9 +938,9 @@
 
 (defthm fn-bpaj-apply-record-preserves-statep
   (implies (and (fn-bpaj-statep joined)
-                (car (fn-bpaj-apply-record joined store r)))
+                (car (fn-bpaj-apply-record joined store r fn-arena)))
            (fn-bpaj-statep
-            (fn-bpaj-nth 1 (fn-bpaj-apply-record joined store r))))
+            (fn-bpaj-nth 1 (fn-bpaj-apply-record joined store r fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-bpaj-statep-components)
                  (:instance fn-bprr-apply-record-preserves-statep
@@ -961,10 +978,10 @@
   (implies (and (fn-bpaj-statep joined)
                 (fn-sn-statep store)
                 (fn-ceis-indexedp store)
-                (car (fn-bpaj-apply-record-fast joined store r)))
+                (car (fn-bpaj-apply-record-fast joined store r fn-arena)))
            (fn-bpaj-statep
             (fn-bpaj-nth 1
-                         (fn-bpaj-apply-record-fast joined store r))))
+                         (fn-bpaj-apply-record-fast joined store r fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-bpaj-apply-record-fast-is-checked)
                  (:instance fn-bpaj-apply-record-preserves-statep))
@@ -972,18 +989,18 @@
 
 (defthm fn-bpaj-replay-rest-preserves-statep
   (implies (and (fn-bpaj-statep joined)
-                (car (fn-bpaj-replay-rest joined store records)))
+                (car (fn-bpaj-replay-rest joined store records fn-arena)))
            (fn-bpaj-statep
             (fn-bpaj-nth 1
-                         (fn-bpaj-replay-rest joined store records))))
+                         (fn-bpaj-replay-rest joined store records fn-arena))))
   :hints (("Goal"
-           :induct (fn-bpaj-replay-rest joined store records)
+           :induct (fn-bpaj-replay-rest joined store records fn-arena)
            :in-theory (enable fn-bpaj-replay-rest))))
 
 (defthm fn-bpaj-successful-replay-has-statep
-  (implies (car (fn-bpaj-replay store records))
+  (implies (car (fn-bpaj-replay store records fn-arena))
            (fn-bpaj-statep
-            (fn-bpaj-nth 1 (fn-bpaj-replay store records))))
+            (fn-bpaj-nth 1 (fn-bpaj-replay store records fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-bpaj-replay-rest-preserves-statep
                             (joined
@@ -1039,23 +1056,23 @@
 ; record whose Message-ID is not the article's own.
 (defthm fn-bpaj-record-lookup-fast-found-is-an-accepted-match
   (implies (and (fn-sn-statep store) (fn-ceis-indexedp store)
-                (equal (car (fn-bpaj-record-lookup-fast store request)) :found))
-           (let ((record (cadr (fn-bpaj-record-lookup-fast store request))))
+                (equal (car (fn-bpaj-record-lookup-fast store request fn-arena)) :found))
+           (let ((record (cadr (fn-bpaj-record-lookup-fast store request fn-arena))))
              (and (fn-record-p record)
                   (equal (fn-record-payload record)
                          (fn-bpa-request-article request))
                   (equal (fn-record-content-subject record)
                          (fn-bpa-request-subject request))
-                  (fn-bpr-store-record-acceptedp store record))))
+                  (fn-bpr-store-record-acceptedp store record fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-bpaj-store-record-accepted-fast-is-checked
-                            (record (car (fn-cei-msgid-records
+                            (record (fn-row-wire-of (car (fn-cei-msgid-records
                                           (fn-record-octets-string
                                            (cadr (fn-bpaj-article-fields request)))
-                                          (fn-sn-event-index store))))))
+                                          (fn-sn-event-index store))) fn-arena))))
            :in-theory (e/d (fn-bpaj-record-lookup-fast
                             fn-bpaj-record-matches-request-fast)
                            (fn-bpaj-store-record-accepted-fast
                             fn-bpr-store-record-acceptedp fn-record-p
                             fn-cei-msgid-records fn-bpaj-article-fields
-                            fn-sn-statep fn-ceis-indexedp)))))
+                            fn-sn-statep fn-ceis-indexedp fn-row-wire-of)))))

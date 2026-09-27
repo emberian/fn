@@ -379,13 +379,13 @@
 ; the first does not (see above).
 (local (defthm fn-sob-evolving-invariant-reads-the-journal
   (implies (equal (fn-sn-files a) (fn-sn-files b))
-           (equal (fn-bprv-evolving-invariantp a st journal)
-                  (fn-bprv-evolving-invariantp b st journal)))
+           (equal (fn-bprv-evolving-invariantp a st journal fn-arena)
+                  (fn-bprv-evolving-invariantp b st journal fn-arena)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-bprv-evolving-invariantp fn-bprv-history)))))
 
 (defthm fn-bprv-evolving-invariant-survives-observed-reopen-of-host-open
-  (implies (and (fn-bprv-system-invariantp store st journal)
+  (implies (and (fn-bprv-system-invariantp store st journal fn-arena)
                 (fn-csi-full-relationp store)
                 (fn-sf-crash-imagep (fn-sn-files store) frontier records)
                 (fn-sn-observed-identity-okp records)
@@ -393,7 +393,7 @@
                 (fn-sob-configured-openp configs frontier records))
            (let ((opened (fn-cpo-open-observed configs frontier records)))
              (and (fn-sn-open-okp opened)
-                  (fn-bprv-evolving-invariantp (fn-sn-open-state opened) st journal))))
+                  (fn-bprv-evolving-invariantp (fn-sn-open-state opened) st journal fn-arena))))
   :hints (("Goal"
            :use (fn-bprv-evolving-invariant-survives-observed-reopen
                  (:instance fn-cpo-open-observed-is-sn-open-observed-on-the-kernel

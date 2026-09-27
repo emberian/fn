@@ -80,11 +80,11 @@
          (equal (fn-bpa-request-subject request) text))))
 
 
-(defun fn-bpaj-transit-record-matchp (store record request stored-octets)
-  (declare (xargs :guard t))
+(defun fn-bpaj-transit-record-matchp (store record request stored-octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (and (fn-record-p record)
        (fn-bpa-requestp request)
-       (fn-bpr-store-record-acceptedp store record)
+       (fn-bpr-store-record-acceptedp store record fn-arena)
        (equal (fn-record-payload record) stored-octets)
        (let ((fields (fn-bpaj-transit-article-fields request)))
          (and (equal (car fields) :ok)
@@ -138,8 +138,8 @@
        (fn-record-uint32p (fn-bpaj-nth 6 r))
        (member-equal (fn-bpaj-nth 7 r) '(:accepted :duplicate))))
 
-(defun fn-bpaj-transit-context-matches-intentp (store context intent)
-  (declare (xargs :guard t))
+(defun fn-bpaj-transit-context-matches-intentp (store context intent fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 context)))
          (record (fn-bprr-decode-value (fn-bpaj-nth 3 context) :record)))
     (and (fn-bpaj-transit-contextp context)
@@ -149,7 +149,7 @@
          (equal (fn-bpaj-nth 4 context) (fn-bpaj-nth 3 intent))
          (equal (fn-bpaj-nth 7 context) (fn-bpaj-nth 5 intent))
          (fn-bpaj-transit-record-matchp
-          store record request (fn-bpaj-nth 9 intent))
+          store record request (fn-bpaj-nth 9 intent) fn-arena)
          (equal (fn-record-txid record) (fn-bpaj-nth 5 context))
          (equal (fn-record-generation record) (fn-bpaj-nth 6 context))
          (or (equal (fn-bpaj-nth 5 intent) :duplicate)
@@ -270,8 +270,8 @@
 
 ; Result is (okp joined-state).  Legacy context-first records are accepted only
 ; before this journal has observed its first request intent.
-(defun fn-bpaj-apply-record (joined store r)
-  (declare (xargs :guard t))
+(defun fn-bpaj-apply-record (joined store r fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (not (fn-bpaj-statep joined)) (list nil joined)
     (let ((kind (fn-bpaj-nth 0 r)))
       (cond
@@ -305,7 +305,7 @@
               (list nil joined)
             (let ((answer (fn-bprr-apply-record
                            (fn-bpaj-receiver joined) store
-                           (fn-bpaj-base-record r))))
+                           (fn-bpaj-base-record r) fn-arena)))
               (if (not (car answer)) (list nil joined)
                 (list t (fn-bpaj-make-state
                          (fn-bprr-nth 1 answer)
@@ -319,13 +319,13 @@
         (let ((intent (fn-bpaj-context-intent joined r)))
           (if (not (and intent
                         (fn-bpaj-transit-context-matches-intentp
-                         store r intent)))
+                         store r intent fn-arena)))
               (list nil joined)
             (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 r)))
                    (record (fn-bprr-decode-value (fn-bpaj-nth 3 r) :record))
                    (answer (fn-bpr-accept-projected-request
                             (fn-bpaj-receiver joined) store record request
-                            (fn-bpaj-nth 9 intent) t)))
+                            (fn-bpaj-nth 9 intent) t fn-arena)))
               (if (not (equal (car answer) :accepted)) (list nil joined)
                 (list t (fn-bpaj-make-state
                          (fn-bprr-nth 1 answer)
@@ -334,35 +334,35 @@
        ((equal kind :request-context)
         (if (fn-bpaj-strictp joined) (list nil joined)
           (let ((answer (fn-bprr-apply-record
-                         (fn-bpaj-receiver joined) store r)))
+                         (fn-bpaj-receiver joined) store r fn-arena)))
             (if (not (car answer)) (list nil joined)
               (list t (fn-bpaj-make-state (fn-bprr-nth 1 answer)
                                           (fn-bpaj-intents joined)
                                           (fn-bpaj-facts joined) nil))))))
        (t
         (let ((answer (fn-bprr-apply-record
-                       (fn-bpaj-receiver joined) store r)))
+                       (fn-bpaj-receiver joined) store r fn-arena)))
           (if (not (car answer)) (list nil joined)
             (list t (fn-bpaj-make-state (fn-bprr-nth 1 answer)
                                         (fn-bpaj-intents joined)
                                         (fn-bpaj-facts joined)
                                         (fn-bpaj-strictp joined))))))))))
 
-(defun fn-bpaj-replay-rest (joined store records)
-  (declare (xargs :guard t :measure (acl2-count records)))
+(defun fn-bpaj-replay-rest (joined store records fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :measure (acl2-count records)))
   (if (endp records) (list t joined)
-    (let ((answer (fn-bpaj-apply-record joined store (car records))))
+    (let ((answer (fn-bpaj-apply-record joined store (car records) fn-arena)))
       (if (not (car answer)) (list nil joined)
-        (fn-bpaj-replay-rest (fn-bpaj-nth 1 answer) store (cdr records))))))
+        (fn-bpaj-replay-rest (fn-bpaj-nth 1 answer) store (cdr records) fn-arena)))))
 
-(defun fn-bpaj-replay (store records)
-  (declare (xargs :guard t))
+(defun fn-bpaj-replay (store records fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (or (endp records) (not (fn-bprr-configp (car records))))
       (list nil nil)
     (let ((receiver (fn-bpr-initial-state (fn-bprr-config (car records)))))
       (if (not (fn-bpr-statep receiver)) (list nil nil)
         (fn-bpaj-replay-rest (fn-bpaj-make-state receiver nil nil nil)
-                             store (cdr records))))))
+                             store (cdr records) fn-arena)))))
 
 (defun fn-bpaj-request-status (joined request-octets)
   (declare (xargs :guard t))
@@ -493,18 +493,22 @@
           rest))
     nil))
 
-(defun fn-bpaj-record-matches-requestp (store record request)
-  (declare (xargs :guard t))
+(defun fn-bpaj-record-matches-requestp (store record request fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (and (fn-record-p record) (fn-bpa-requestp request)
        (equal (fn-record-payload record) (fn-bpa-request-article request))
        (equal (fn-record-content-subject record)
               (fn-bpa-request-subject request))
-       (fn-bpr-store-record-acceptedp store record)))
+       (fn-bpr-store-record-acceptedp store record fn-arena)))
 
 ; (:found record), (:absent), or (:conflict).  Multiple same-Message-ID
 ; records are conflict even if byte-identical: the host never picks a first.
-(defun fn-bpaj-record-lookup (store request)
-  (declare (xargs :guard t))
+; The found RECORD is the WIRE form of the Store's own row, its bytes read
+; through the arena (records-flip): the host journals it through the record
+; codec and hands it to the receiver, which reads the row back through the
+; same arena (fn-bpr-store-record-acceptedp).
+(defun fn-bpaj-record-lookup (store request fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((fields (fn-bpaj-article-fields request)))
     (if (not (equal (car fields) :ok)) (list :conflict)
       (let ((records (fn-bpaj-record-for-msgid
@@ -512,12 +516,13 @@
                       (fn-sf-records (fn-sn-files store)))))
         (cond ((endp records) (list :absent))
               ((consp (cdr records)) (list :conflict))
-              ((fn-bpaj-record-matches-requestp store (car records) request)
-               (list :found (car records)))
+              ((fn-bpaj-record-matches-requestp
+                store (fn-row-wire-of (car records) fn-arena) request fn-arena)
+               (list :found (fn-row-wire-of (car records) fn-arena)))
               (t (list :conflict)))))))
 
-(defun fn-bpaj-transit-record-lookup (store request intent)
-  (declare (xargs :guard t))
+(defun fn-bpaj-transit-record-lookup (store request intent fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((fields (fn-bpaj-transit-article-fields request)))
     (if (not (and (equal (car fields) :ok)
                   (fn-bpaj-transit-intentp intent)))
@@ -528,8 +533,9 @@
         (cond ((endp records) (list :absent))
               ((consp (cdr records)) (list :conflict))
               ((fn-bpaj-transit-record-matchp
-                store (car records) request (fn-bpaj-nth 9 intent))
-               (list :found (car records)))
+                store (fn-row-wire-of (car records) fn-arena) request
+                (fn-bpaj-nth 9 intent) fn-arena)
+               (list :found (fn-row-wire-of (car records) fn-arena)))
               (t (list :conflict)))))))
 
 ; This is the dispatcher the native callback calls.  It is intentionally a
@@ -538,8 +544,8 @@
 ; only while its pinned owner generation is still current and no committed
 ; record exists.  A unique exact record is bound; conflicting or multiple
 ; candidates are refused without choosing one.
-(defun fn-bpaj-dispatch (joined store request-octets current-generation)
-  (declare (xargs :guard t))
+(defun fn-bpaj-dispatch (joined store request-octets current-generation fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let* ((request (fn-bpaj-request request-octets))
          (status (fn-bpaj-request-status joined request-octets)))
     (case status
@@ -548,8 +554,8 @@
        (let* ((intent (fn-bpaj-request-intent joined request-octets))
                 (lookup (if (equal (fn-bpaj-nth 0 intent)
                                    :request-transit-intent)
-                            (fn-bpaj-transit-record-lookup store request intent)
-                          (fn-bpaj-record-lookup store request))))
+                            (fn-bpaj-transit-record-lookup store request intent fn-arena)
+                          (fn-bpaj-record-lookup store request fn-arena))))
            (if (and (not (equal (fn-bpaj-nth 0 intent)
                                 :request-transit-intent))
                     (not (equal current-generation
@@ -603,13 +609,13 @@
         (fn-bpaj-context-matches-intentp
          context (fn-bpaj-context-intent joined context))
         (car (fn-bprr-apply-record (fn-bpaj-receiver joined) store
-                                   (fn-bpaj-base-record context))))
+                                   (fn-bpaj-base-record context) fn-arena)))
    (equal (fn-bpaj-receiver
-           (fn-bpaj-nth 1 (fn-bpaj-apply-record joined store context)))
+           (fn-bpaj-nth 1 (fn-bpaj-apply-record joined store context fn-arena)))
           (fn-bprr-nth 1
                        (fn-bprr-apply-record
                         (fn-bpaj-receiver joined) store
-                        (fn-bpaj-base-record context)))))
+                        (fn-bpaj-base-record context) fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-bpaj-apply-record)
                 (fn-bpaj-statep fn-bpaj-context-v2p
@@ -628,9 +634,9 @@
                 (equal (fn-bpaj-request-planned-result
                         joined request-octets) :accepted)
                 (equal (car (fn-bpaj-record-lookup
-                             store (fn-bpaj-request request-octets))) :absent))
+                             store (fn-bpaj-request request-octets) fn-arena)) :absent))
            (equal (fn-bpaj-dispatch joined store request-octets
-                                    current-generation)
+                                    current-generation fn-arena)
                   (list :submit)))
   :hints (("Goal" :in-theory
            (e/d (fn-bpaj-dispatch)
@@ -650,10 +656,10 @@
                :accepted)
         (equal (car (fn-bpaj-transit-record-lookup
                      store (fn-bpaj-request request-octets)
-                     (fn-bpaj-request-intent joined request-octets)))
+                     (fn-bpaj-request-intent joined request-octets) fn-arena))
                :absent))
    (equal (fn-bpaj-dispatch joined store request-octets
-                            current-generation)
+                            current-generation fn-arena)
           (list :submit)))
   :hints (("Goal" :in-theory
            (e/d (fn-bpaj-dispatch)
@@ -664,7 +670,7 @@
 (defthm fn-bpaj-dispatch-committed-never-retries
   (implies (equal (fn-bpaj-request-status joined request-octets) :committed)
            (equal (fn-bpaj-dispatch joined store request-octets
-                                    current-generation)
+                                    current-generation fn-arena)
                   (list :return-receipt)))
   :hints (("Goal" :in-theory
            (e/d (fn-bpaj-dispatch)

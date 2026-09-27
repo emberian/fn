@@ -63,23 +63,26 @@
 
 (local (defthm fn-bpsb-record-for-msgid-finds-a-member
   (implies (and (member-equal record (fn-bpr-article-records events))
-                (fn-record-p record)
+                (fn-held-p record)
                 (equal (fn-record-msgid record) msgid))
            (consp (fn-bpaj-record-for-msgid msgid events)))
   :hints (("Goal" :induct (fn-bpr-article-records events)
            :in-theory (e/d (fn-bpr-article-records fn-bpaj-record-for-msgid)
-                           (fn-bpr-event-article fn-record-p))))))
+                           (fn-bpr-event-article fn-held-p))))))
 
+;; After the records flip the history's article records are retained held
+;; rows (a plain article's, or the one a composite row retains): RECORD is
+;; such a row.
 (defthm fn-bpaj-dispatch-never-resubmits-under-index
   (implies (and (fn-ceis-indexedp store)
                 (member-equal record
                               (fn-bpr-article-records
                                (fn-sf-records (fn-sn-files store))))
-                (fn-record-p record)
+                (fn-held-p record)
                 (equal (fn-record-msgid record)
                        (fn-bpaj-dispatch-msgid joined request-octets)))
            (not (equal (fn-bpaj-dispatch-fast joined store request-octets
-                                              generation)
+                                              generation fn-arena)
                        (list :submit))))
   :hints (("Goal" :use ((:instance fn-bpsb-record-for-msgid-finds-a-member
                                    (events (fn-sf-records (fn-sn-files store)))
@@ -88,7 +91,7 @@
                             fn-bpaj-transit-record-lookup-fast
                             fn-bpaj-record-lookup-fast)
                            (fn-bpsb-record-for-msgid-finds-a-member
-                            fn-bpaj-record-for-msgid fn-record-p
+                            fn-bpaj-record-for-msgid fn-held-p fn-row-wire-of
                             fn-record-octets-string fn-sn-event-index
                             fn-cei-msgid-records
                             fn-bpr-article-records
@@ -98,33 +101,35 @@
                             fn-bpaj-store-record-accepted-fast
                             fn-bpaj-record-matches-request-fast)))))
 
-;; The first event of EVENTS whose article record is RECORD.
-(defun fn-bpaj-article-event (record events)
-  (declare (xargs :guard t :verify-guards nil))
+;; The first event of EVENTS whose article record is the retained row that
+;; stands for RECORD (a held row whose wire form through the arena is RECORD).
+(defun fn-bpaj-article-event (record events fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (consp events)
-      (if (equal (fn-bpr-event-article (car events)) record)
+      (if (fn-bpr-row-stands-for (fn-bpr-event-article (car events)) record fn-arena)
           (car events)
-        (fn-bpaj-article-event record (cdr events)))
+        (fn-bpaj-article-event record (cdr events) fn-arena))
     nil))
 
 (local (defthm fn-bpsb-record-for-msgid-members
-  (implies (member-equal record (fn-bpaj-record-for-msgid msgid events))
-           (and (member-equal record (fn-bpr-article-records events))
-                (fn-record-p record)
-                (equal (fn-record-msgid record) msgid)))
+  (implies (member-equal row (fn-bpaj-record-for-msgid msgid events))
+           (and (member-equal row (fn-bpr-article-records events))
+                (fn-held-p row)
+                (equal (fn-record-msgid row) msgid)))
   :hints (("Goal" :induct (fn-bpr-article-records events)
            :in-theory (e/d (fn-bpr-article-records fn-bpaj-record-for-msgid)
-                           (fn-bpr-event-article fn-record-p))))))
+                           (fn-bpr-event-article fn-held-p))))))
 
 (local (defthm fn-bpsb-article-event-of-member
-  (implies (member-equal record (fn-bpr-article-records events))
-           (and (member-equal (fn-bpaj-article-event record events) events)
-                (equal (fn-bpr-event-article
-                        (fn-bpaj-article-event record events))
-                       record)))
+  (implies (and (member-equal row (fn-bpr-article-records events))
+                (fn-bpr-row-stands-for row record fn-arena))
+           (and (member-equal (fn-bpaj-article-event record events fn-arena) events)
+                (fn-bpr-row-stands-for
+                 (fn-bpr-event-article (fn-bpaj-article-event record events fn-arena))
+                 record fn-arena)))
   :hints (("Goal" :induct (fn-bpr-article-records events)
            :in-theory (e/d (fn-bpr-article-records fn-bpaj-article-event)
-                           (fn-bpr-event-article))))))
+                           (fn-bpr-event-article fn-bpr-row-stands-for))))))
 
 (local (defthm fn-bpsb-composite-article-binds
   (implies (and (fn-stxa-p event)
@@ -133,23 +138,43 @@
   :hints (("Goal" :in-theory (enable fn-bpr-event-article
                                      fn-replay-composite-record)))))
 
+;; A composite row's composite, whose article record decodes (what the
+;; intern established: fn-row-composite-okp, books/history-fold-refinement.lisp),
+;; binds its verdict to that article.
+(local (defthm fn-bpsb-composite-row-binds
+  (implies (and (fn-hstxa-p event)
+                (fn-record-p (fn-bpr-event-article (fn-hstxa-stxa event))))
+           (fn-stxa-bindsp (fn-hstxa-stxa event)))
+  :hints (("Goal" :use ((:instance fn-bpsb-composite-article-binds
+                                   (event (fn-hstxa-stxa event))))
+           :in-theory (e/d (fn-hstxa-p fn-hstxa-stxa)
+                           (fn-bpsb-composite-article-binds fn-stxa-p fn-stxa-bindsp
+                            fn-bpr-event-article fn-held-p))))))
+
 (local (defthm fn-bpsb-car-member
   (implies (consp x) (member-equal (car x) x))))
 
 (local (defthm fn-bpsb-transit-lookup-found
   (implies (and (fn-ceis-indexedp store)
                 (equal (car (fn-bpaj-transit-record-lookup-fast
-                             store request intent))
+                             store request intent fn-arena))
                        :found))
            (let ((fields (fn-bpaj-transit-article-fields request))
                  (record (cadr (fn-bpaj-transit-record-lookup-fast
-                                store request intent))))
+                                store request intent fn-arena))))
              (and (equal (car fields) :ok)
-                  (member-equal record
+                  (member-equal (car (fn-bpaj-record-for-msgid
+                                      (fn-record-octets-string (cadr fields))
+                                      (fn-sf-records (fn-sn-files store))))
                                 (fn-bpaj-record-for-msgid
                                  (fn-record-octets-string (cadr fields))
                                  (fn-sf-records (fn-sn-files store))))
-                  (fn-bpaj-store-record-accepted-fast store record))))
+                  (equal record (fn-row-wire-of
+                                 (car (fn-bpaj-record-for-msgid
+                                       (fn-record-octets-string (cadr fields))
+                                       (fn-sf-records (fn-sn-files store))))
+                                 fn-arena))
+                  (fn-bpaj-store-record-accepted-fast store record fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-bpaj-transit-record-lookup-fast)
                                   (fn-bpaj-record-for-msgid fn-record-p
                                    fn-sn-event-index fn-cei-msgid-records
@@ -160,15 +185,22 @@
 
 (local (defthm fn-bpsb-direct-lookup-found
   (implies (and (fn-ceis-indexedp store)
-                (equal (car (fn-bpaj-record-lookup-fast store request)) :found))
+                (equal (car (fn-bpaj-record-lookup-fast store request fn-arena)) :found))
            (let ((fields (fn-bpaj-article-fields request))
-                 (record (cadr (fn-bpaj-record-lookup-fast store request))))
+                 (record (cadr (fn-bpaj-record-lookup-fast store request fn-arena))))
              (and (equal (car fields) :ok)
-                  (member-equal record
+                  (member-equal (car (fn-bpaj-record-for-msgid
+                                      (fn-record-octets-string (cadr fields))
+                                      (fn-sf-records (fn-sn-files store))))
                                 (fn-bpaj-record-for-msgid
                                  (fn-record-octets-string (cadr fields))
                                  (fn-sf-records (fn-sn-files store))))
-                  (fn-bpaj-store-record-accepted-fast store record))))
+                  (equal record (fn-row-wire-of
+                                 (car (fn-bpaj-record-for-msgid
+                                       (fn-record-octets-string (cadr fields))
+                                       (fn-sf-records (fn-sn-files store))))
+                                 fn-arena))
+                  (fn-bpaj-store-record-accepted-fast store record fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-bpaj-record-lookup-fast
                                    fn-bpaj-record-matches-request-fast)
                                   (fn-bpaj-record-for-msgid fn-record-p
@@ -179,19 +211,19 @@
 
 (local (defthm fn-bpsb-dispatch-bind-is-a-found-lookup
   (implies (equal (car (fn-bpaj-dispatch-fast joined store request-octets
-                                              generation))
+                                              generation fn-arena))
                   :bind)
            (let ((request (fn-bpaj-request request-octets))
                  (intent (fn-bpaj-request-intent joined request-octets))
                  (record (cadr (fn-bpaj-dispatch-fast joined store request-octets
-                                                      generation))))
+                                                      generation fn-arena))))
              (if (equal (fn-bpaj-nth 0 intent) :request-transit-intent)
                  (and (equal (car (fn-bpaj-transit-record-lookup-fast
-                                   store request intent)) :found)
+                                   store request intent fn-arena)) :found)
                       (equal (cadr (fn-bpaj-transit-record-lookup-fast
-                                    store request intent)) record))
-               (and (equal (car (fn-bpaj-record-lookup-fast store request)) :found)
-                    (equal (cadr (fn-bpaj-record-lookup-fast store request))
+                                    store request intent fn-arena)) record))
+               (and (equal (car (fn-bpaj-record-lookup-fast store request fn-arena)) :found)
+                    (equal (cadr (fn-bpaj-record-lookup-fast store request fn-arena))
                            record)))))
   :hints (("Goal" :in-theory (e/d (fn-bpaj-dispatch-fast)
                                   (fn-bpaj-transit-record-lookup-fast
@@ -202,22 +234,30 @@
                                    fn-bpaj-request-planned-result
                                    fn-bpaj-request-planned-txid))))))
 
+(local (defthm fn-bpsb-accepted-fast-is-a-record
+  (implies (fn-bpaj-store-record-accepted-fast store record fn-arena)
+           (fn-record-p record))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn-bpaj-store-record-accepted-fast)))))
+
 (defthm fn-bpaj-dispatch-binds-the-stores-own-record-under-index
   (implies (and (fn-ceis-indexedp store)
                 (equal (car (fn-bpaj-dispatch-fast joined store request-octets
-                                                   generation))
+                                                   generation fn-arena))
                        :bind))
            (let* ((record (cadr (fn-bpaj-dispatch-fast
-                                 joined store request-octets generation)))
+                                 joined store request-octets generation fn-arena)))
                   (events (fn-sf-records (fn-sn-files store)))
-                  (event (fn-bpaj-article-event record events)))
+                  (event (fn-bpaj-article-event record events fn-arena)))
              (and (fn-record-p record)
                   (equal (fn-record-msgid record)
                          (fn-bpaj-dispatch-msgid joined request-octets))
-                  (fn-bpaj-store-record-accepted-fast store record)
+                  (fn-bpaj-store-record-accepted-fast store record fn-arena)
                   (member-equal event events)
-                  (equal (fn-bpr-event-article event) record)
-                  (implies (fn-stxa-p event) (fn-stxa-bindsp event)))))
+                  (fn-bpr-row-stands-for (fn-bpr-event-article event) record fn-arena)
+                  (implies (and (fn-hstxa-p event)
+                                (fn-record-p (fn-bpr-event-article (fn-hstxa-stxa event))))
+                           (fn-stxa-bindsp (fn-hstxa-stxa event))))))
   :hints (("Goal"
            :use (fn-bpsb-dispatch-bind-is-a-found-lookup
                  (:instance fn-bpsb-transit-lookup-found
@@ -226,33 +266,53 @@
                  (:instance fn-bpsb-direct-lookup-found
                             (request (fn-bpaj-request request-octets)))
                  (:instance fn-bpsb-record-for-msgid-members
-                            (record (cadr (fn-bpaj-dispatch-fast
-                                           joined store request-octets generation)))
+                            (row (car (fn-bpaj-record-for-msgid
+                                       (fn-record-octets-string
+                                        (cadr (fn-bpaj-transit-article-fields
+                                               (fn-bpaj-request request-octets))))
+                                       (fn-sf-records (fn-sn-files store)))))
                             (events (fn-sf-records (fn-sn-files store)))
                             (msgid (fn-record-octets-string
                                     (cadr (fn-bpaj-transit-article-fields
                                            (fn-bpaj-request request-octets))))))
                  (:instance fn-bpsb-record-for-msgid-members
-                            (record (cadr (fn-bpaj-dispatch-fast
-                                           joined store request-octets generation)))
+                            (row (car (fn-bpaj-record-for-msgid
+                                       (fn-record-octets-string
+                                        (cadr (fn-bpaj-article-fields
+                                               (fn-bpaj-request request-octets))))
+                                       (fn-sf-records (fn-sn-files store)))))
                             (events (fn-sf-records (fn-sn-files store)))
                             (msgid (fn-record-octets-string
                                     (cadr (fn-bpaj-article-fields
                                            (fn-bpaj-request request-octets))))))
                  (:instance fn-bpsb-article-event-of-member
+                            (row (car (fn-bpaj-record-for-msgid
+                                       (fn-record-octets-string
+                                        (cadr (fn-bpaj-transit-article-fields
+                                               (fn-bpaj-request request-octets))))
+                                       (fn-sf-records (fn-sn-files store)))))
                             (record (cadr (fn-bpaj-dispatch-fast
-                                           joined store request-octets generation)))
+                                           joined store request-octets generation fn-arena)))
                             (events (fn-sf-records (fn-sn-files store))))
-                 (:instance fn-bpsb-composite-article-binds
+                 (:instance fn-bpsb-article-event-of-member
+                            (row (car (fn-bpaj-record-for-msgid
+                                       (fn-record-octets-string
+                                        (cadr (fn-bpaj-article-fields
+                                               (fn-bpaj-request request-octets))))
+                                       (fn-sf-records (fn-sn-files store)))))
+                            (record (cadr (fn-bpaj-dispatch-fast
+                                           joined store request-octets generation fn-arena)))
+                            (events (fn-sf-records (fn-sn-files store))))
+                 (:instance fn-bpsb-composite-row-binds
                             (event (fn-bpaj-article-event
                                     (cadr (fn-bpaj-dispatch-fast
-                                           joined store request-octets generation))
-                                    (fn-sf-records (fn-sn-files store))))))
-           :in-theory (e/d (fn-bpaj-dispatch-msgid)
+                                           joined store request-octets generation fn-arena))
+                                    (fn-sf-records (fn-sn-files store)) fn-arena))))
+           :in-theory (e/d (fn-bpaj-dispatch-msgid fn-bpr-row-stands-for fn-row-wire-of)
                            (fn-bpsb-record-for-msgid-members
                             fn-bpsb-article-event-of-member
-                            fn-bpsb-composite-article-binds
-                            fn-record-msgid fn-stxa-p fn-stxa-bindsp
+                            fn-bpsb-composite-row-binds
+                            fn-stxa-p fn-stxa-bindsp fn-held-p fn-held-wire fn-hstxa-p
                             fn-bpsb-dispatch-bind-is-a-found-lookup
                             fn-bpsb-transit-lookup-found fn-bpsb-direct-lookup-found
                             fn-bpaj-dispatch-fast

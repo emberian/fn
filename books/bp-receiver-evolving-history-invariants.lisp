@@ -282,12 +282,13 @@
          (equal (fn-bpa-request-article request) (fn-record-payload record))
          (equal context (fn-bpr-context-from-request record request)))))
 ;; HISTORY's article records are retained rows (records-flip): the search
-;; answers the WIRE form of the first row that grounds CONTEXT, its bytes
+;; answers the WIRE form of the first held row that grounds CONTEXT, its bytes
 ;; read through the arena.
 (defun fn-bprv-find-grounding-record (config context history fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp history)
-      (if (fn-bprv-record-grounds config context (fn-row-wire-of (car history) fn-arena))
+      (if (and (fn-held-p (car history))
+               (fn-bprv-record-grounds config context (fn-row-wire-of (car history) fn-arena)))
           (fn-row-wire-of (car history) fn-arena)
         (fn-bprv-find-grounding-record config context (cdr history) fn-arena))
     nil))
@@ -346,7 +347,7 @@
   :rule-classes :forward-chaining)
 (local (in-theory (disable fn-bprv-record-grounds)))
 (defthm fn-bprv-find-grounding-record-from-member
-  (implies (and (member-equal row history)
+  (implies (and (member-equal row history) (fn-held-p row)
                 (fn-bprv-record-grounds config context (fn-row-wire-of row fn-arena)))
            (consp (fn-bprv-find-grounding-record config context history fn-arena)))
   :hints (("Goal" :induct (fn-bprv-find-grounding-record config context history fn-arena)
