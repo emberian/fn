@@ -5227,6 +5227,66 @@
         "planning/evidence/friend-blockers-2-2026-09-27.md",
         "planning/evidence/manifests/certify-20260927T085904Z-2813563.json"
       ]
+    },
+    {
+      "id": "SCN-179",
+      "title": "Compaction over the record log: a checkpoint rotates the log and the covered segments are dropped; every article is served as before, and a process death at each rotation and drop cut reopens to the same history; a missing, spliced or uncovered segment is refused by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-034",
+        "STO-007"
+      ],
+      "steps": [
+        "A format-9 store filled by the served node (12 articles); `store compact`; 6 more articles; `store compact` again.",
+        "On the developer image, `store compact` killed at rotate-created, rotate-fenced, rotate-durable, drop-unlinked and drop-durable (FN_NATIVE_LOG_FAULT); `store recover`; `store compact`.",
+        "A stale copy of the active segment as the next one; the checkpoint's first segment renamed away; the checkpoint removed after a drop."
+      ],
+      "expected": [
+        "journal/ holds 000002.log then 000003.log only; `store inspect` answers for every article as before each compaction; the node commits after it.",
+        "The recover exits 0 and serves every article as before; after a drop cut the covered segment is gone, before rotate-durable segments 1 and 2 remain; the later compaction succeeds and leaves one segment.",
+        "`store recover` exits 1 naming log-chain-broken, history-short-of-checkpoint and checkpoint-damaged."
+      ],
+      "implementation": {
+        "test": "tests/test_native_log_compaction.py",
+        "cases": [
+          "test_compaction_rotates_drops_and_serves_the_same_history",
+          "test_a_death_at_each_rotation_and_drop_cut",
+          "test_refusals_by_name"
+        ],
+        "native": true,
+        "record": "planning/evidence/log-recovery-2026-09-27.md"
+      }
+    },
+    {
+      "id": "SCN-180",
+      "title": "Export and import over the record log: a compacted format-9 store exports the checkpoint's records then the log's; the import writes a format-9 store whose export is the same archive; a death at the import's log cuts publishes no store",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-028",
+        "STO-034"
+      ],
+      "steps": [
+        "Export a format-9 store served by the node; import it; export the import.",
+        "Export a store compacted twice; import; export the import.",
+        "Import with FN_NATIVE_LOG_FAULT=log-written and =log-fenced (developer image); import again; remove the stage; import."
+      ],
+      "expected": [
+        "The two archives are equal file for file; the imported store holds journal/000001.log and no transaction file; `store inspect` answers the same.",
+        "The same, over the checkpoint's records and the remaining segment.",
+        "The killed import leaves ROOT.import-XXXX and no store at ROOT; the next import is refused interrupted-import (exit 1); after the stage is removed the import succeeds."
+      ],
+      "implementation": {
+        "test": "tests/test_native_store_export.py",
+        "cases": [
+          "test_export_then_import_serves_the_same_history",
+          "test_an_import_killed_in_the_log_publishes_no_store",
+          "tests.test_native_log_compaction test_compaction_rotates_drops_and_serves_the_same_history"
+        ],
+        "native": true,
+        "record": "planning/evidence/log-recovery-2026-09-27.md"
+      }
     }
   ]
 }

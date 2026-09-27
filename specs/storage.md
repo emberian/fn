@@ -412,6 +412,30 @@ valid, and the framed pack reconstructs the identical record list, so replay
 and every served fact are unchanged. The plan reads the open path's own
 namespace gate, `fn-profile-txn-observation`.
 
+STO-034: Segments, rotation and drop (format `fn-store-9`; design
+2026-09-27 storage-log section 6; books/store-log-segments.lisp). The record
+log is the segments `journal/NNNNNN.log` (six digits, from 000001); the
+highest present is the active one. A state checkpoint's capture ROTATES the
+log: the next segment is created, preallocated and fenced and `journal/` is
+fenced (cuts `rotate-created`, `rotate-fenced`, `rotate-durable`) before the
+checkpoint's F row names it with the closed segment's last trailer as its
+genesis; after the checkpoint is installed (rename and root fence) the
+segments below it are unlinked and `journal/` fenced (cuts `drop-unlinked`,
+`drop-durable`): the replacement is durable and reachable before old storage
+is reclaimed (STO-007). The open reads the checkpoint first, scans the
+segments from the one its F row names with the chain carried across them,
+and refuses by name, exit 1: a segment missing between that one and the
+active one (`history-short-of-checkpoint`), segment 1 gone with no checkpoint
+the open can use (`checkpoint-damaged`), and an entry that validates under
+another predecessor (`log-chain-broken`, never read as a torn tail). A death
+at any rotation or drop cut reopens to the same history: before
+`rotate-durable` the new segment is an interrupted rotation the open
+completes, and a covered segment left by a drop is dropped again
+(`fn-lgs-open-plan-scan-ignores-covered`). The history the open replays after
+the drop is the full chain's (T8, `fn-lg-segment-drop-preserves-the-open`).
+`store compact` on a `fn-store-9` store is a checkpoint with rotation
+followed by the drop; the owner's automatic checkpoint does the same.
+
 STO-006: replacing history with a checkpoint preserves the full logical state
 needed for future behavior, including allocation watermarks, duplicate history,
 outstanding obligations, relevant policy context, and receipt/release evidence.
@@ -1152,17 +1176,24 @@ store made before batch AS, sixteen now) is refused by name with both counts:
 layout 13 fields, this release expects 16): export it with the release that
 made it, then import it here` (`newer-release` for a wider layout), exit 1,
 never the generic fault (PRF-258, PKT-705); `install.sh` refuses such a node
-before copying anything. On a `fn-store-9` store, `store compact`, `store
-reclaim` and `store export` refuse by name (`reason=record-log`) until segment
-rotation lands (PKT-750). `store export DIR` writes the committed history the open
-reads (the profile frame, the allocation frontier, each configuration record
-and each committed record, packs included, in sequence order) with a
-MANIFEST whose names and SHA-256 lines ACL2 renders; `store import DIR
-[--FIELD N ...]` builds a new store from it, refusing a MANIFEST mismatch, a
-record out of sequence and a profile the codec cannot represent by name, and
-admits it by the ordinary open (full replay) before it appears at its path.
-The import of an export replays the same history under the same profile
-(PRF-205). The MANIFEST is a transport check: the digest seam is abstract.
+before copying anything. On a `fn-store-9` store `store reclaim` refuses by
+name (`reason=record-log`) until content reclamation over the log lands
+(PKT-750); `store compact` is the log's rotation and drop (STO-034). `store
+export DIR` writes the committed history the open reads (the profile frame,
+the allocation frontier -- on `fn-store-9` the one the log derives -- each
+configuration record and each committed record in sequence order: on
+`fn-store-9` the checkpoint's records then the log's, T8) with a MANIFEST
+whose names and SHA-256 lines ACL2 renders; `store import DIR [--FIELD N
+...]` builds a new `fn-store-9` store from it (the archive's profile fields
+under the `fn-store-9` word, `fn-sxp-log-profile`: an archive the previous
+release exported from a `fn-store-8` store imports as a `fn-store-9` store
+holding the same history, which is the migration path across a reinstall),
+writing the records into `journal/000001.log` from the genesis through the
+log's own append and barrier, refusing a MANIFEST mismatch, a record out of
+sequence and a profile the codec cannot represent by name, and admits it by
+the ordinary open before it appears at its path. The import of an export
+replays the same history under the same profile (PRF-205). The MANIFEST is a
+transport check: the digest seam is abstract.
 
 STO-029: `store import` publishes by an explicit program (P-IMPORT,
 books/store-import-publication.lisp): the staged `ROOT.import-XXXX` is

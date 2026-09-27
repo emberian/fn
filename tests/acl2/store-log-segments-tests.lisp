@@ -149,3 +149,36 @@
             (equal (append prefix (fn-lgs-chain-records remaining genesis unit max))
                    (fn-lgs-chain-records (append covered remaining) genesis0 unit max)))
    :hints (("Goal" :in-theory (disable fn-lgs-chain-records fn-lgs-chain-last)))))
+
+; -----------------------------------------------------------------------------
+; fn-lgs-open-plan-scan-ignores-covered (the drop's crash points).
+
+; Reachable: segment 1 left by a drop cut, the checkpoint names segment 2.
+(assert-event (and (posp 2) (fn-lgs-all-below-p (fn-lgs-indices '("000001.log")) 2)))
+(assert-event (equal (fn-lgs-open-plan (append '("000001.log") '("000002.log" "000003.log")) 2)
+                     '(:scan (2 3) (1))))
+(assert-event (equal (cadr (fn-lgs-open-plan '("000002.log" "000003.log") 2)) '(2 3)))
+; Without all-below: a "covered" segment at the first suffix segment itself.
+(assert-event (posp 2))
+(assert-event (not (fn-lgs-all-below-p (fn-lgs-indices '("000002.log")) 2)))
+(assert-event (not (equal (car (fn-lgs-open-plan (append '("000002.log") '("000003.log")) 2))
+                          (car (fn-lgs-open-plan '("000003.log") 2)))))
+(must-fail
+ (with-prover-step-limit
+  20000
+ (defthm slst-plan-without-below
+   (implies (posp first)
+            (equal (car (fn-lgs-open-plan (append covered names) first))
+                   (car (fn-lgs-open-plan names first)))))))
+; Without posp first: no checkpoint names a first segment; segment 1 decides.
+(assert-event (not (posp nil)))
+(assert-event (fn-lgs-all-below-p (fn-lgs-indices nil) nil))
+(assert-event (not (equal (car (fn-lgs-open-plan (append '("000001.log") '("000002.log")) nil))
+                          (car (fn-lgs-open-plan '("000002.log") nil)))))
+(must-fail
+ (with-prover-step-limit
+  20000
+ (defthm slst-plan-without-first
+   (implies (fn-lgs-all-below-p (fn-lgs-indices covered) first)
+            (equal (car (fn-lgs-open-plan (append covered names) first))
+                   (car (fn-lgs-open-plan names first)))))))

@@ -7561,7 +7561,7 @@
     {
       "id": "PRF-205",
       "title": "store export and store import: the import of an export replays the same history under the same profile",
-      "statement": "books/store-export.lisp fn-sxp-import-of-export-replays-the-same-history: for a valid profile VALUES, records in strictly increasing sequence and configuration names in order, fn-sxp-import-plan over the archive fn-sxp-entries and fn-sxp-manifest render (the export's, host/native/io.lisp fnn-command-store-export) with no field raised is (:import VALUES FRONTIER CONFIGS RECORDS): the same profile, frontier, configuration records and records in the same order, which host/native/io.lisp fnn-command-store-import writes and admits through the ordinary open's full replay (fn-store-sn-recover). The MANIFEST is a transport check under the abstract digest seam, not an integrity proof.",
+      "statement": "books/store-export.lisp fn-sxp-import-of-export-replays-the-same-history: for a format-9 profile VALUES (fn-bs-profile-logp, which implies fn-bs-profile-validp), records in strictly increasing sequence and configuration names in order, fn-sxp-import-plan over the archive fn-sxp-entries and fn-sxp-manifest render (the export's, host/native/io.lisp fnn-command-store-export: on format 9 the history the open recovered, the checkpoint's records then the log's) with no field raised is (:import VALUES FRONTIER CONFIGS RECORDS): the same profile, frontier, configuration records and records in the same order, which host/native/io.lisp fnn-command-store-import writes into the stage's record log from the genesis (fnn-log-write-history: fn-olr-consume-to, fn-olr-take, P-BATCH's append and barrier) and admits through the ordinary open. fn-sxp-log-profile-is-a-valid-log-profile: every valid archive profile, a format-8 one the previous release exported included, is imported as a valid format-9 profile with the archive's fields (the migration). The MANIFEST is a transport check under the abstract digest seam, not an integrity proof.",
       "milestone": "M5",
       "requirements": [
         "STO-028",
@@ -7574,11 +7574,13 @@
         "books/store-export.lisp",
         "tests/acl2/store-export-tests.lisp",
         "host/native/io.lisp",
-        "planning/evidence/migration-removal-2026-09-26.md"
+        "planning/evidence/migration-removal-2026-09-26.md",
+        "planning/evidence/log-recovery-2026-09-27.md"
       ],
-      "progress_note": "Lane migration-removal 2026-09-26: admitted in the persvati REPL (session mr1); certification is the batch's.",
+      "progress_note": "Lane log-recovery 2026-09-27: restated over the record log (the import writes format 9; fn-bs-profile-logp replaces fn-bs-profile-validp after the weakened theorem was proved); admitted in the persvati REPL; certification is the batch's.",
       "events": [
         "fn-sxp-import-of-export-replays-the-same-history",
+        "fn-sxp-log-profile-is-a-valid-log-profile",
         "fn-spo-config-open-store-format-is-exactly-a-foreign-frame"
       ]
     },
@@ -9725,6 +9727,33 @@
         "fn-cwd-scan-is-the-poll-scan-unless-a-withdrawal",
         "fn-cwd-page-of-a-refusal",
         "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
+      ]
+    },
+    {
+      "id": "PRF-270",
+      "title": "The record log's segments: the drop of the segments a checkpoint covers preserves the history the open replays (T8), the open's plan ignores covered leftovers, and the rotation's kernel is the recovered kernel of the new segment",
+      "statement": "books/store-log-segments.lisp. KEYSTONE fn-lg-segment-drop-preserves-the-open: when the checkpoint's prefix is the covered segments' chain (fn-lgs-chain-records from the first genesis) and the F row's genesis their last trailer (fn-lgs-chain-last), the checkpoint's records followed by the scan of the remaining segments from that genesis are the full chain over every segment (host: host/native/io.lisp fnn-recover-log through fnn-log-scan-segments and fnn-recover-log-from-log-checkpoint; the replay of that split is the full replay by fn-sn-recover-from-checkpoint-equals-full-recover). fn-lgs-open-plan-scan-ignores-covered: at the drop's cuts (fnn-log-drop: drop-unlinked, drop-durable) the open's plan (fn-lgs-open-plan, called by fnn-recover-log) scans the same segments and refuses the same stores whatever covered segments remain. fn-lgs-rotate-is-the-recovered-kernel: the rotated kernel (fnn-log-rotate) is the kernel recovery derives from the new segment's durable zeros with the closed segment's last trailer, so R holds for the new segment by the fact that establishes it at log-recovered. fn-lgs-chain-records-of-append: the chain splits at any segment boundary.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-034",
+        "STO-007"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-segments.lisp",
+        "tests/acl2/store-log-segments-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_log_compaction.py",
+        "planning/evidence/log-recovery-2026-09-27.md"
+      ],
+      "progress_note": "Lane log-recovery 2026-09-27: admitted in the persvati REPL with its test book; certification is the batch's.",
+      "events": [
+        "fn-lg-segment-drop-preserves-the-open",
+        "fn-lgs-open-plan-scan-ignores-covered",
+        "fn-lgs-rotate-is-the-recovered-kernel",
+        "fn-lgs-chain-records-of-append"
       ]
     }
   ]

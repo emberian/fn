@@ -228,6 +228,67 @@
                   :in-theory (disable fn-lg-scan fn-lg-scan-last))))
 
 ; -----------------------------------------------------------------------------
+; The drop's crash points (P-DROP, host/native/io.lisp fnn-log-drop: cuts
+; drop-unlinked after each unlink, drop-durable after journal/'s fence).  At
+; each, journal/ holds the remaining segments and some of the covered ones;
+; the open's plan scans exactly what it scans once all are gone.
+
+(defun fn-lgs-all-below-p (ks k)
+  (declare (xargs :guard t))
+  (if (consp ks)
+      (and (natp (car ks)) (natp k) (< (car ks) k) (fn-lgs-all-below-p (cdr ks) k))
+    t))
+(defun fn-lgs-all-at-least-p (ks k)
+  (declare (xargs :guard t))
+  (if (consp ks)
+      (and (natp (car ks)) (natp k) (<= k (car ks)) (fn-lgs-all-at-least-p (cdr ks) k))
+    t))
+(local (defthm fn-lgs-indices-of-append
+  (equal (fn-lgs-indices (append a b)) (append (fn-lgs-indices a) (fn-lgs-indices b)))
+  :hints (("Goal" :in-theory (disable fn-lgs-segment-index)))))
+(local (defthm fn-lgs-max-index-of-append
+  (equal (fn-lgs-max-index (append x y) acc) (fn-lgs-max-index y (fn-lgs-max-index x acc)))))
+(local (defun fn-lgs-max2-ind (y a b)
+  (if (consp y) (fn-lgs-max2-ind (cdr y) (max a (nfix (car y))) (max b (nfix (car y)))) (list a b))))
+(local (defthm fn-lgs-max-index-shift
+  (implies (and (natp a) (natp b) (<= b a))
+           (equal (fn-lgs-max-index y a) (max a (fn-lgs-max-index y b))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-lgs-max2-ind y a b)))))
+(local (defthm fn-lgs-max-index-from-acc
+  (implies (and (syntaxp (not (equal acc ''0))) (natp acc))
+           (equal (fn-lgs-max-index y acc) (max acc (fn-lgs-max-index y 0))))
+  :hints (("Goal" :use ((:instance fn-lgs-max-index-shift (a acc) (b 0)))))))
+(local (defthm fn-lgs-max-index-below
+  (implies (and (fn-lgs-all-below-p x k) (natp acc) (< acc k))
+           (< (fn-lgs-max-index x acc) k))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-lgs-max-index-from-acc)))))
+(local (defthm fn-lgs-range-at-least
+  (implies (and (natp k) (natp from) (<= k from))
+           (fn-lgs-all-at-least-p (fn-lgs-range from to) k))))
+(local (defthm fn-lgs-member-of-append
+  (iff (member-equal a (append x y)) (or (member-equal a x) (member-equal a y)))))
+(local (defthm fn-lgs-member-of-below
+  (implies (and (fn-lgs-all-below-p x k) (natp j) (<= k j))
+           (not (member-equal j x)))))
+(local (defthm fn-lgs-all-present-of-covered
+  (implies (and (fn-lgs-all-below-p x k) (fn-lgs-all-at-least-p ks k))
+           (equal (fn-lgs-all-present ks (append x y)) (fn-lgs-all-present ks y)))))
+; P-DROP's cuts: a death between two unlinks leaves covered segments beside
+; the remaining ones; the open's plan scans the same segments and refuses the
+; same stores (the covered ones are only dropped again).
+(defthm fn-lgs-open-plan-scan-ignores-covered
+  (implies (and (posp first)
+                (fn-lgs-all-below-p (fn-lgs-indices covered) first))
+           (and (equal (car (fn-lgs-open-plan (append covered names) first))
+                       (car (fn-lgs-open-plan names first)))
+                (equal (cadr (fn-lgs-open-plan (append covered names) first))
+                       (cadr (fn-lgs-open-plan names first)))))
+  :hints (("Goal" :in-theory (disable fn-lgs-range fn-lgs-all-present fn-lgs-below
+                                      fn-lgs-indices))))
+
+; -----------------------------------------------------------------------------
 ; Rotation.  The active segment is closed where its kernel stands (no batch
 ; open, none in flight: fn-lgs-rotate-admitsp) and the next segment -- created
 ; preallocated to zeros and fenced with journal/ before anything names it --
@@ -253,6 +314,29 @@
 (defun fn-lgs-rotate (ks)
   (declare (xargs :guard (true-listp ks)))
   (fn-lgk-make nil (fn-lgk-last ks) 0 (fn-lgk-next-txid ks) nil nil 0 :ready))
+
+; The rotation's and the drop's byte programs, as the host performs them
+; (host/native/io.lisp fnn-log-rotate, fnn-log-drop; the order is checked by
+; tests/campaign/native_cuts.py verify_log_segment_cut_map).  Their crash
+; points: before rotate-durable no checkpoint names NEXT, so the open scans
+; it as the active segment (an interrupted rotation, completed by the open:
+; fnn-log-complete-rotation); at drop-unlinked and drop-durable the open's
+; plan scans the remaining segments (fn-lgs-open-plan-scan-ignores-covered).
+(defun fn-lgs-rotate-program ()
+  (declare (xargs :guard t))
+  (list (list :create :journal :next)
+        (list :cut "rotate-created")
+        (list :fsync-file :journal :next)
+        (list :cut "rotate-fenced")
+        (list :fsync-dir :journal)
+        (list :cut "rotate-durable")))
+
+(defun fn-lgs-drop-program ()
+  (declare (xargs :guard t))
+  (list (list :unlink :journal :covered)
+        (list :cut "drop-unlinked")
+        (list :fsync-dir :journal)
+        (list :cut "drop-durable")))
 
 (defthm fn-lgs-rotate-is-the-recovered-kernel
   (implies (fn-lg-zerosp z)
