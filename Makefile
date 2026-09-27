@@ -357,6 +357,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-kernel-tests \
 	books/store-log-txid \
 	tests/acl2/store-log-txid-tests \
+	books/store-log-decode \
+	tests/acl2/store-log-decode-tests \
 	books/byte-store-k0-step-lemmas \
 	books/byte-store-k0-step-root-fence \
 	books/byte-store-k0-step \
