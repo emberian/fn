@@ -46,6 +46,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/article-work-tests \
 	books/article-fields \
 	tests/acl2/article-fields-tests \
+	books/post-fields \
+	tests/acl2/post-fields-tests \
 	books/store-config \
 	books/sha256 \
 	tests/acl2/sha256-tests \

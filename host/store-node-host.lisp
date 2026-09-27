@@ -1070,12 +1070,13 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((s (f-get-global 'fn-store-sn state))
          (groups (fn-store-groups-from-codes group-codes (fn-store-sn-domain state))))
-    (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (not (fn-octet-listp payload)) (> (len payload) *fn-record-max-payload*)
-            (equal groups :bad) (null groups)
-            (not (fn-store-text-octetsp id-octets))
-            (not (fn-store-text-octetsp subject-octets))
-            (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
+    ; The fields' checks are ACL2's (books/post-fields.lisp
+    ; fn-pfld-article-inputsp): the Message-ID grammar, the codec's payload
+    ; ceiling, the resolved groups, the record's metadata domain, the charge.
+    (if (or (not (fn-octet-listp payload))
+            (not (fn-pfld-article-inputsp msgid-octets (len payload) groups
+                                          id-octets subject-octets
+                                          evidence-octets charge)))
         (mv nil :invalid fn-arena state)
       ; A name in the domain but not served at the live generation (a retired
       ; group) is refused by the prepare itself (fn-psrv-store-prepare-next,
@@ -1134,11 +1135,9 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   (let* ((s (f-get-global 'fn-store-sn state))
          (node (fn-sn-node s)))
-    (if (or (not (member-equal kind '(:undertake :release)))
-            (not (fn-store-text-octetsp id-octets))
-            (not (fn-store-text-octetsp subject-octets))
-            (not (fn-store-text-octetsp evidence-octets))
-            (not (natp charge)))
+    ; books/post-fields.lisp fn-pfld-retention-inputsp.
+    (if (not (fn-pfld-retention-inputsp kind id-octets subject-octets
+                                        evidence-octets charge))
         (value :invalid)
       (let* ((txid (fn-state-next-txid (fn-node-acceptance node)))
              (event (fn-store-retention-event-make
@@ -1226,8 +1225,8 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-sn-existing-action (msgid-octets payload group-codes fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((groups (fn-store-groups-from-codes group-codes (fn-store-sn-domain state))))
-    (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
+    (if (or (not (fn-pfld-lookup-inputsp msgid-octets groups))
+            (not (fn-octet-listp payload)))
         (value :absent)
       ; books/store-intern.lisp fn-store-existing-action-is-the-verdict-over-alpha.
       (let ((action (fn-store-existing-action
@@ -1255,7 +1254,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 (defun fn-store-sn-lookup (msgid-octets fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (if (not (fn-store-msgid-octetsp msgid-octets))
+  (if (not (fn-af-message-idp msgid-octets))
       (value nil)
     ; The row's HANDLE through the event index, not the acceptance state's
     ; article (fn-apr-payload-of-is-the-article-payload,
@@ -1268,7 +1267,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 (defun fn-store-sn-lookup-foundp (msgid-octets state)
   (declare (xargs :stobjs state :mode :program))
-  (if (not (fn-store-msgid-octetsp msgid-octets))
+  (if (not (fn-af-message-idp msgid-octets))
       (value nil)
     ; fn-apr-foundp-is-article-found (books/acceptance-payload-ref.lisp).
     (value (fn-apr-foundp (fn-store-octets->string msgid-octets)
@@ -1344,7 +1343,7 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; are the reader-safe :fn-verified item octets.
 (defun fn-store-sn-verdict (msgid-octets state)
   (declare (xargs :stobjs state :mode :program))
-  (if (not (fn-store-msgid-octetsp msgid-octets))
+  (if (not (fn-af-message-idp msgid-octets))
       (value nil)
     (let ((verdict
            (fn-sn-verdict-lookup
@@ -1432,25 +1431,16 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; marshal octets.
 
 (defun fn-store-prov-post (state)
-  ; The provenance of an article this node injected: the principal is the
-  ; node's configured <path-identity> (books/path.lisp syntax, the same slot
-  ; `fn-peer-local-identity' reads) and the generation is the configuration
-  ; generation the acceptance is made under.  ACL2 also decides which FORM
-  ; goes to the store: the canonical wire when the record fits the record
-  ; grammar's evidence field, and otherwise the legacy rendering, so the
-  ; host can never hand the store a value the grammar refuses.
+  ; The provenance of an article this node injected, decided by ACL2
+  ; (books/post-fields.lisp fn-pfld-post-evidence: the principal, "local"
+  ; when no <path-identity> is configured, and the form the store gets; KEYSTONE
+  ; fn-pfld-post-evidence-is-admitted: the POST's field check admits it).  The
+  ; host reads the live configuration's policy slot and generation.
   (declare (xargs :stobjs state :mode :program))
-  (let* ((cfg (f-get-global 'fn-store-cfg state))
-         (identity (fn-cfg-policy (fn-cfg-value cfg) "path-identity"))
-         ; An unset "path-identity" policy reads as the empty string; a
-         ; provenance never names an empty principal, so ACL2 substitutes
-         ; the one honest word for "this node, unidentified".
-         (principal (if (and (stringp identity) (not (equal identity "")))
-                        identity
-                      "local"))
-         (p (fn-prov-make-post principal (fn-cfg-generation cfg))))
-    (value (fn-record-string-octets
-            (if (fn-prov-durablep p) (fn-prov-wire p) (fn-prov-render p))))))
+  (let ((cfg (f-get-global 'fn-store-cfg state)))
+    (value (fn-pfld-post-evidence
+            (fn-cfg-policy (fn-cfg-value cfg) "path-identity")
+            (fn-cfg-generation cfg)))))
 
 (defun fn-store-prov-describe (evidence-octets state)
   ; The lossless line the CLI prints for one stored evidence value.  A value

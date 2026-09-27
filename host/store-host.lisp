@@ -29,31 +29,15 @@
 (include-book "../books/store-profile-namespace")
 (include-book "../books/native-operator")
 (include-book "../books/article-fields")
+(include-book "../books/post-fields")
 (include-book "../books/store-log-route")
 (include-book "../books/store-log-segments")
 (include-book "../books/store-log-extend")
 (include-book "../books/store-init-log-publication")
 
-(defconst *fn-store-max-text* 512)
-
-(defun fn-store-text-octetsp-tail (xs)
-  (if (consp xs)
-      (and (fn-octetp (car xs)) (<= 33 (car xs)) (<= (car xs) 126)
-           (fn-store-text-octetsp-tail (cdr xs)))
-    (null xs)))
-
-(defun fn-store-text-octetsp (xs)
-  (and (consp xs)
-       (<= (len xs) *fn-store-max-text*)
-       (fn-octet-listp xs)
-       (<= 33 (car xs)) (<= (car xs) 126)
-       (fn-store-text-octetsp-tail (cdr xs))))
-
-; One Message-ID bound for the whole system.  `books/article-fields` owns the
-; RFC 5536 section 3.1.3 grammar and its 250-octet limit; this wrapper adds
-; nothing and subtracts nothing.
-(defun fn-store-msgid-octetsp (xs)
-  (fn-af-message-idp xs))
+; The field checks of the Store's prepares (the metadata text domain, the
+; Message-ID grammar, the composed POST verdicts) are ACL2's:
+; books/post-fields.lisp (fn-pfld-).  This file defines none of them.
 
 (defun fn-store-octets->string (xs)
   (fn-record-octets-string xs))
@@ -379,9 +363,6 @@
 
 (defun fn-store-charge (length)
   (if (natp length) (fn-charge-for-payload length) 0))
-
-(defun fn-store-msgid-validp (octets)
-  (if (fn-store-msgid-octetsp octets) t nil))
 
 (defun fn-store-group-name-octets (groups)
   (if (consp groups)
