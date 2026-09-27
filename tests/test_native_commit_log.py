@@ -286,35 +286,38 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
 
     def test_format_9_history_is_read_from_the_log_after_the_open(self):
         # The open answers the history's COUNT and keeps no records (PKT-823);
-        # a verb that needs the records reads them after the open
-        # (fnn-history-records), which on format 9 is the log kernel's
-        # committed records, never transactions/ (lane rm2-format9).
-        root = self.root / "history"
-        root.mkdir()
-        store = root / "store"
-        env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
-        env.pop("FN_NATIVE_STORE_FORMAT", None)
-
-        def fn(*argv):
-            return subprocess.run([self.image, "--fn", *argv], env=env,
-                                  capture_output=True, timeout=600)
-        init = fn("store", str(store), "init", GROUP)
-        self.assertEqual(init.returncode, 0, init.stderr[-800:])
-        for i in (910, 911, 912):
-            payload = root / ("payload-%d" % i)
-            payload.write_bytes(article(i))
-            posted = fn("store", str(store), "post", msgid(i), str(payload), "-", "-", GROUP)
-            self.assertEqual(posted.returncode, 0, posted.stderr[-800:])
-            self.assertIn(b"committed sequence=", posted.stdout)
-        self.assertFalse((store / "transactions").exists()
-                         and any((store / "transactions").iterdir()))
-        recovered = fn("store", str(store), "recover")
+        # a reader that needs records reads them after the open
+        # (fnn-history-records / fnn-history-last-record), which on format 9
+        # is the log kernel's committed records, never transactions/ (lane
+        # rm2-format9).  `store recover' reports the log's count; the owner
+        # start reads the newest record for its pending key statement
+        # (fnn-owner-install), so a restarted owner that answers the duplicate
+        # 441 and admits the next POST 240 read the history through the log.
+        node = Node(self.image, self.root)
+        node.init()
+        node.start()
+        try:
+            c = Conn(node.port)
+            for i in (910, 911, 912):
+                self.assertTrue(c.post(i).startswith(b"240"), i)
+            c.close()
+        finally:
+            node.stop()
+        self.assertEqual(node.transaction_files(), [])
+        recovered = node.fn("store", str(node.store), "recover")
         self.assertEqual(recovered.returncode, 0, recovered.stderr[-800:])
         self.assertIn(b"recovered transactions=3 articles=3", recovered.stdout)
-        published = fn("checkpoint", "publish", str(store))
-        self.assertEqual(published.returncode, 0,
-                         (published.stdout[-800:], published.stderr[-800:]))
-        self.assertIn(b"records=3", published.stdout)
+        node.start()
+        try:
+            c = Conn(node.port)
+            self.assertTrue(c.post(911).startswith(b"441"))
+            self.assertTrue(c.post(913).startswith(b"240"))
+            c.close()
+        finally:
+            node.stop()
+        recovered = node.fn("store", str(node.store), "recover")
+        self.assertEqual(recovered.returncode, 0, recovered.stderr[-800:])
+        self.assertIn(b"recovered transactions=4 articles=4", recovered.stdout)
 
     def test_format_8_selector_keeps_the_per_file_layout(self):
         node = Node(self.image, self.root)
