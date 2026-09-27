@@ -891,6 +891,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
 	tests/acl2/served-catalog-chain-tests \
+	tests/acl2/served-catalog-scan-tests \
 	tests/acl2/served-catalog-owner-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \

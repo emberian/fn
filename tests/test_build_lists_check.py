@@ -78,6 +78,9 @@ CHECKPOINT_BUFFER_INCLUDES = (
 # carry (books/post-retain-carried), which replaced fn-pidx-sbud-prepare.
 # commit-onto-log: the bare copy drops books/owner-log-route too, so the
 # owner's four log-route names are findings in any loader.
+# catalog-slice step 8: the served read is fn-scr-ocfg-read-span, and
+# host/owner-host.lisp includes books/served-catalog-owner itself (its closure
+# holds served-catalog-chain and served-span), so the served-span finding is gone.
 LOG_ROUTE_NAMES = ("fn-olr-bmax", "fn-olr-ocfg-order", "fn-olr-ocfg-reserve", "fn-olr-omax")
 BUFFER_FINDINGS = [
     f"included: host/owner-host.lisp uses {name}, defined in "
@@ -90,10 +93,7 @@ BUFFER_FINDINGS = [
     for name, book in (
         ("fn-pidx-existing-action", "books/post-identity-index.lisp"),
         ("fn-prc-refresh", "books/post-retain-carried.lisp"),
-        ("fn-prc-sbud-prepare", "books/post-retain-carried.lisp"))] + [
-    "included: host/owner-host.lisp uses fn-scar-ocfg-read-span, defined in "
-    "books/served-span.lisp, which host/native/build-dtn.lisp has not "
-    "included when it loads host/owner-host.lisp"]
+        ("fn-prc-sbud-prepare", "books/post-retain-carried.lisp"))]
 # checkpoint-pipeline (2026-09-26): host/store-node-host.lisp includes
 # books/store-checkpoint-tables-reader and books/owner-checkpoint-pipeline
 # itself (their closure holds octets-stobj, the buffer and the reader), so
