@@ -11,7 +11,7 @@
 (in-package "ACL2")
 (include-book "bp-signed-binding-tests")
 (include-book "../../books/owner-store-indexed")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *osi-configs* (list *fn-cfg-default-record*))
 (defconst *osi-events* (fn-sf-records (fn-sn-files *bsb-store*)))
@@ -196,7 +196,7 @@
       (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-joined* *osi-before*
                                              *bsb-request-octets* 1)
              (list :submit))))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-joined* *osi-before*
                                      *bsb-request-octets* 1)
@@ -215,7 +215,7 @@
       (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-other-joined* *osi-store*
                                              *bsb-other-request-octets* 1)
              (list :submit))))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-other-joined* *osi-store*
                                      *bsb-other-request-octets* 1)
@@ -240,7 +240,7 @@
  (not (equal (car (in-arena-fn-bpaj-dispatch-fast *sr-arena* *bsb-joined* *osi-before*
                                          *bsb-request-octets* 1))
              :bind)))
-(must-fail
+(must-fail-checked
  (assert-event
   (in-arena-bsb-binds-own-record-conclusion *sr-arena* *bsb-joined* *osi-before*
                                    *bsb-request-octets* 1)))
@@ -343,7 +343,7 @@
 (assert-event (not (fn-node-statep *osi-bad-node*)))
 (assert-event (in-arena-fn-bpaj-node-record-committed-carriedp *sr-arena* *osi-bad-node* *bsb-record*))
 (assert-event (not (in-arena-fn-bpi-node-wire-committedp *sr-arena* *osi-bad-node* *bsb-record*)))
-(must-fail
+(must-fail-checked
  (thm (equal (in-arena-fn-bpaj-node-record-committed-carriedp *sr-arena* *osi-bad-node* *bsb-record*)
              (in-arena-fn-bpi-node-wire-committedp *sr-arena* *osi-bad-node* *bsb-record*))))
 
@@ -374,7 +374,7 @@
 (assert-event (not (fn-ocl-relation *osi-bad-oc*)))
 (assert-event (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* *osi-bad-oc-store* *bsb-record*))
 (assert-event (not (in-arena-fn-bpr-store-record-acceptedp *sr-arena* *osi-bad-oc-store* *bsb-record*)))
-(must-fail
+(must-fail-checked
  (thm (let ((store (fn-own-store (fn-ocfg-owner *osi-bad-oc*))))
         (implies (fn-ceis-indexedp store)
                  (equal (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* store *bsb-record*)
@@ -393,7 +393,7 @@
 (assert-event (not (fn-ceis-indexedp *osi-stale-oc-store*)))
 (assert-event (not (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* *osi-stale-oc-store* *bsb-record*)))
 (assert-event (in-arena-fn-bpr-store-record-acceptedp *sr-arena* *osi-stale-oc-store* *bsb-record*))
-(must-fail
+(must-fail-checked
  (thm (let ((store (fn-own-store (fn-ocfg-owner *osi-stale-oc*))))
         (implies (fn-ocl-relation *osi-stale-oc*)
                  (equal (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* store *bsb-record*)

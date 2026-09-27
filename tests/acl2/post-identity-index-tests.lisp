@@ -1,7 +1,7 @@
 ; Teeth for books/post-identity-index.lisp (PRF-191).
 (in-package "ACL2")
 (include-book "../../books/post-identity-index")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-prepare-carried-tests")
 
 ; -----------------------------------------------------------------------------
@@ -108,7 +108,7 @@
                    (not (equal (fn-pidx-find-article *pit-fresh* *pit-arts*
                                                      *pit-bad-visible-view*)
                                (fn-find-article *pit-fresh* *pit-arts*)))))
-(must-fail
+(must-fail-checked
  (defthm pit-find-without-visible
    (equal (fn-pidx-find-article *pit-fresh* *pit-arts* *pit-bad-visible-view*)
           (fn-find-article *pit-fresh* *pit-arts*))))
@@ -126,7 +126,7 @@
                    (not (equal (fn-pidx-find-article *pit-fresh* *pit-arts*
                                                      *pit-bad-index-view*)
                                (fn-find-article *pit-fresh* *pit-arts*)))))
-(must-fail
+(must-fail-checked
  (defthm pit-find-without-index
    (equal (fn-pidx-find-article *pit-fresh* *pit-arts* *pit-bad-index-view*)
           (fn-find-article *pit-fresh* *pit-arts*))))
@@ -242,11 +242,11 @@
                   (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*)))
       (not (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-index-o*)
                   (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*)))))
-(must-fail
+(must-fail-checked
  (defthm pit-existing-without-visible
    (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-visible-o*)
           (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
-(must-fail
+(must-fail-checked
  (defthm pit-existing-without-index
    (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-index-o*)
           (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
@@ -344,11 +344,11 @@
                   (fn-pcar-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100)))
       (not (equal *pit-bad-index-prepared*
                   (fn-pcar-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100)))))
-(must-fail
+(must-fail-checked
  (defthm pit-prepare-without-visible
    (equal (fn-pidx-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100)
           (fn-pcar-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100))))
-(must-fail
+(must-fail-checked
  (defthm pit-prepare-without-index
    (equal (fn-pidx-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100)
           (fn-pcar-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100))))
@@ -380,7 +380,7 @@
              *pit-bad-count-oc*)
       (equal (pit-phase (fn-pcar-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100))
              :record-staged)))
-(must-fail
+(must-fail-checked
  (defthm pit-prepare-without-indexed-store
    (equal (fn-pidx-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100)
           (fn-pcar-sbud-prepare *pit-bad-count-oc* *pit-fresh-record* 100))))
