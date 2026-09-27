@@ -3658,6 +3658,22 @@
         {
           "kind": "theorem",
           "name": "fn-pbb-existing-action-is-pb-existing-action"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-append-back{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-get-word{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-octets-append-word{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oct-word-octets-of-word-at"
         }
       ]
     },
@@ -9552,6 +9568,14 @@
         {
           "kind": "theorem",
           "name": "fn-lz-run-extends-out"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-lits-words-is-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-match-bulk-is-copy-match"
         }
       ]
     },

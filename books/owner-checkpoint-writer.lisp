@@ -81,7 +81,12 @@
             (fn-octets-pub-from-list :logic fn-octets$a-from-list
                                      :exec fn-octets$c-from-list :protect t)
             (fn-octets-pub-append-list :logic fn-octets$a-append-list
-                                       :exec fn-oct-write-list :protect t))
+                                       :exec fn-oct-write-list :protect t)
+            (fn-octets-pub-append-back :logic fn-octets$a-append-back
+                                       :exec fn-octets$c-append-back :protect t)
+            (fn-octets-pub-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
+            (fn-octets-pub-append-word :logic fn-octets$a-append-word
+                                       :exec fn-octets$c-append-word :protect t))
   :congruent-to fn-octets)
 
 ; -----------------------------------------------------------------------------
