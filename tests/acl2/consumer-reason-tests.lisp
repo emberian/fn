@@ -6,7 +6,7 @@
 (in-package "ACL2")
 (include-book "../../books/consumer-reason")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *crt-unknown* (fn-record-string-octets "unknown-consumer"))
 (defconst *crt-msgid* (fn-record-string-octets "<q1@alice.invalid>"))
@@ -67,7 +67,7 @@
 (assert-event (equal (fn-ncr-client-read :poll (fn-native-control-reasoned-reply-encode
                                                 :no-such-status :x))
                      '(:transport)))
-(must-fail
+(must-fail-checked
  (defthm crt-without-membership
    (equal (fn-ncr-client-read operation
                               (fn-native-control-reasoned-reply-encode status reason))

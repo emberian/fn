@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/peer-inbound-invariants")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The peer record and the configuration (books/peer-config.lisp)
@@ -733,7 +733,7 @@
                                   "" "From the fn INN interop lab.")))))
 ; The statement has no hypothesis.  Tooth: the stronger claim that the relay
 ; changes nothing is false, and INN's article is the value that says so.
-(must-fail
+(must-fail-checked
  (defthm pt-relay-changes-nothing
    (equal (fn-peer-relayed-octets cfg peer octets) octets)
    :hints (("Goal" :in-theory (e/d (fn-peer-relayed-octets)
@@ -752,7 +752,7 @@
                                    (list (fn-cfg-set-policy "path-identity" "fnB.hbox.test")
                                          (fn-cfg-set-peer-delta *pt-peer*)))
                            *fn-cfg-default-stamp*))))
-(must-fail
+(must-fail-checked
  (defthm pt-relay-by-another-node-changes-nothing
    (equal (fn-peer-relayed-octets cfg2 peer (fn-peer-relayed-octets cfg peer octets))
           (fn-peer-relayed-octets cfg peer octets))
@@ -764,7 +764,7 @@
 ; Keystone: no Xref is stored.
 (assert-event (fn-pu-xref-freep *pt-inn-stored*))
 ; No hypothesis.  Tooth: what arrived had one.
-(must-fail
+(must-fail-checked
  (defthm pt-every-article-is-xref-free
    (fn-pu-xref-freep octets)))
 (assert-event (not (fn-pu-xref-freep *pt-inn-fed*)))
@@ -774,7 +774,7 @@
 (assert-event (not (fn-pu-path-markedp *pt-inn-fed* (fn-peer-local-identity *pt-cfg*))))
 ; Tooth for the one hypothesis: a node with no path identity updates no Path
 ; (the policy slot is unset), so what it stores names nothing.
-(must-fail
+(must-fail-checked
  (defthm pt-relay-names-a-node-without-an-identity
    (fn-pu-path-markedp (fn-peer-relayed-octets cfg peer octets)
                        (fn-peer-local-identity cfg))
@@ -864,7 +864,7 @@
 (assert-event (not (equal (fn-pu-path-contents
                            (fn-peer-relayed-octets *pt-cfg-anon* "innA" *pt-inn-fed*))
                           (pt-tail-expected *pt-cfg-anon* "innA" *pt-inn-fed*))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-pu-path-contents
                        (fn-peer-relayed-octets *pt-cfg-anon* "innA" *pt-inn-fed*))
                       (pt-tail-expected *pt-cfg-anon* "innA" *pt-inn-fed*))))

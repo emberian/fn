@@ -12,7 +12,7 @@
 ;   "1"  query fn.private.x  unbound (the operator's; a plain wait)
 ;   "2"  query fn.public     bound to bob (a bound wait)
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/consumer-wait")
 ; The record and statement decoders execute through their attachments.
 (include-book "../../books/codec-attach")
@@ -178,20 +178,20 @@
 (defmacro cwt-k2 (elapsed seconds)
   `(<= (fn-cwait-deadline-ms ,seconds) ,elapsed))
 (assert-event (equal (car (cwt-step *cwt-oc-empty* *cwt-c1* nil 'x 30)) :answer))
-(must-fail
+(must-fail-checked
  (assert-event (let ((r (cwt-step *cwt-oc-empty* *cwt-c1* nil 'x 30)))
                  (implies (fn-cwait-empty-pagep (cadr r))
                           (cwt-k2 'x 30)))))
-(must-fail
+(must-fail-checked
  (assert-event (let ((r (cwt-step *cwt-oc-full* *cwt-c2* *cwt-secret* 5 30)))
                  (implies (natp 5)
                           (cwt-k2 5 30)))))
 ; Conjunct 3 without its hypothesis (before the deadline): a sleep.
-(must-fail
+(must-fail-checked
  (assert-event (equal (cwt-step *cwt-oc-empty* *cwt-c1* nil 29999 30)
                       (list :answer (cwt-poll *cwt-oc-empty* *cwt-c1* nil)))))
 ; Conjunct 4 without its hypothesis (an empty page): a sleep.
-(must-fail
+(must-fail-checked
  (assert-event (equal (cwt-step *cwt-oc-empty* *cwt-c1* nil 0 30)
                       (list :answer (cwt-poll *cwt-oc-empty* *cwt-c1* nil)))))
 
@@ -220,18 +220,18 @@
 (assert-event (fn-cwait-empty-pagep (cadr (cwt-timeout))))
 (assert-event (equal (cadddr (cwt-timeout)) 30000))
 ; Without its hypothesis (the run answered): no observation answers.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-cwait-run (list (cons *cwt-oc-empty* 0)) *cwt-acfg* *cwt-c1* nil 30))
          :answer)))
 ; The inner implication without each hypothesis: the answer not empty (the
 ; news at 1 200 ms is before the deadline); elapsed not natural.
-(must-fail
+(must-fail-checked
  (assert-event (<= (fn-cwait-deadline-ms 30) (cadddr (cwt-run)))))
 (defun cwt-bad-run ()
   (fn-cwait-run (list (cons *cwt-oc-empty* 'x)) *cwt-acfg* *cwt-c1* nil 30))
 (assert-event (fn-cwait-empty-pagep (cadr (cwt-bad-run))))
-(must-fail
+(must-fail-checked
  (assert-event (<= (fn-cwait-deadline-ms 30) (cadddr (cwt-bad-run)))))
 
 ; --- fn-cwait-run-sleeps-only-over-empty-pages ------------------------------
@@ -241,7 +241,7 @@
         (fn-cwait-run (list (cons *cwt-oc-full* 1200))
                       *cwt-acfg* *cwt-c2* *cwt-secret* 30)))
 ; Without its hypothesis (the first step answered): the page is not empty.
-(must-fail
+(must-fail-checked
  (assert-event (fn-cwait-empty-pagep
                 (cwt-poll *cwt-oc-full* *cwt-c2* *cwt-secret*))))
 
@@ -300,23 +300,23 @@
         (<= (fn-cwait-deadline-ms 30) (cadddr r)))))
 ; Without its hypothesis (the run answered): no observation answers.
 (assert-event (null (car (cwt-run-over (list (list* *cwt-oc-empty* 0 nil)) *cwt-c1* nil))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (car (cwt-run-over (list (list* *cwt-oc-empty* 0 nil)) *cwt-c1* nil)))
          :answer)))
 ; The inner implication without each hypothesis: the answer not empty (the
 ; news at 1 200 ms is before the deadline); elapsed not natural (a malformed
 ; elapsed answers the empty page at once).
-(must-fail
+(must-fail-checked
  (assert-event (<= (fn-cwait-deadline-ms 30) (cadddr (car (cwt-run-over-news))))))
 (defun cwt-bad-over () (cwt-run-over (list (list* *cwt-oc-empty* 'x nil)) *cwt-c1* nil))
 (assert-event (and (fn-cwait-empty-pagep (cadr (car (cwt-bad-over))))
                    (not (natp (cadddr (car (cwt-bad-over)))))))
-(must-fail
+(must-fail-checked
  (assert-event (<= (fn-cwait-deadline-ms 30) (cadddr (car (cwt-bad-over))))))
 ; Mutation witness (no hypothesis of the keystone): without the news's seal
 ; the row names a handle the arena lacks, and the answer is not the news.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (cadr (car (cwt-run-over (list (list* *cwt-oc-full* 1200 nil)) *cwt-c2* *cwt-secret*)))
          (cwt-news))))
@@ -330,7 +330,7 @@
       (equal (car (cwt-run-over-news))
              (car (cwt-run-over (cdr *cwt-obs*) *cwt-c2* *cwt-secret*)))))
 ; Without its hypothesis (the step answered): the page is not empty.
-(must-fail
+(must-fail-checked
  (assert-event (fn-cwait-empty-pagep
                 (cwt-poll *cwt-oc-full* *cwt-c2* *cwt-secret*))))
 
@@ -340,6 +340,6 @@
 (assert-event (equal (fn-cwait-admit 11) :admit))
 (assert-event (equal (fn-cwait-admit 12) '(:refused :waiters)))
 ; Without the first conjunct's hypothesis: 12 is not admitted.
-(must-fail (assert-event (<= (+ 1 12) (fn-cwait-capacity))))
+(must-fail-checked (assert-event (<= (+ 1 12) (fn-cwait-capacity))))
 ; Without the second's: 11 is admitted.
-(must-fail (assert-event (equal (fn-cwait-admit 11) '(:refused :waiters))))
+(must-fail-checked (assert-event (equal (fn-cwait-admit 11) '(:refused :waiters))))

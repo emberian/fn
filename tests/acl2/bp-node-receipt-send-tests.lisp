@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-node-receipt-send")
 (include-book "../../books/bp-node-receive-boundary")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *rs-local* (cons :dtn '(47 47 102 110 45 97 47)))
 (defconst *rs-peer* (cons :dtn '(47 47 102 110 45 98 47)))
@@ -93,7 +93,7 @@
 
 ; Hypothesis "the event is non-nil": without it the conclusion's
 ; (equal event (:contact peer t)) fails.
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-bpnp-receipt-contact-event *rs-st* *rs-local*)
                       (list :contact *rs-local* t))))
 ; Hypothesis "token below the journal bound": at the bound the same event
@@ -105,7 +105,7 @@
                                         nil nil *fn-bpn-machine-max-records*)))
 (assert-event (equal (fn-bpnp-receipt-contact-event *rs-full* *rs-peer*)
                      (list :contact *rs-peer* t)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (car (car (fn-bpnf-answer-effects
                                  (fn-bpnp-step *rs-full*
                                                (list :base (list :contact *rs-peer* t))))))
@@ -178,13 +178,13 @@
 (assert-event (null (fn-bpnf-answer-effects
                      (fn-bpnp-step *rs-x-issued*
                                    (list :base (list :forward-result *rs-key* :uncertain))))))
-(must-fail (assert-event (rs-owes-requeue-p *rs-x-issued* *rs-key*)))
+(must-fail-checked (assert-event (rs-owes-requeue-p *rs-x-issued* *rs-key*)))
 ;   no delivery uncertain
 (defconst *rs-x-delivery* (update-nth 7 '(:delivery-uncertain 0) *rs-after*))
 (assert-event (null (fn-bpnf-answer-effects
                      (fn-bpnp-step *rs-x-delivery*
                                    (list :base (list :forward-result *rs-key* :uncertain))))))
-(must-fail (assert-event (rs-owes-requeue-p *rs-x-delivery* *rs-key*)))
+(must-fail-checked (assert-event (rs-owes-requeue-p *rs-x-delivery* *rs-key*)))
 ;   base not fenced
 (defconst *rs-x-fenced*
   (fn-bpnf-with-base *rs-after*
@@ -195,23 +195,23 @@
 (assert-event (null (fn-bpnf-answer-effects
                      (fn-bpnp-step *rs-x-fenced*
                                    (list :base (list :forward-result *rs-key* :uncertain))))))
-(must-fail (assert-event (rs-owes-requeue-p *rs-x-fenced* *rs-key*)))
+(must-fail-checked (assert-event (rs-owes-requeue-p *rs-x-fenced* *rs-key*)))
 ;   base not pending: the requeue itself in flight
 (assert-event (null (fn-bpnf-answer-effects
                      (fn-bpnp-step *rs-u*
                                    (list :base (list :forward-result *rs-key* :uncertain))))))
-(must-fail (assert-event (rs-owes-requeue-p *rs-u* *rs-key*)))
+(must-fail-checked (assert-event (rs-owes-requeue-p *rs-u* *rs-key*)))
 ;   a job with that key
 (defconst *rs-x-key* (list '(119 111 114 107 45 50) (nth 1 *rs-key*) (nth 2 *rs-key*)))
 (assert-event (null (fn-bpnf-answer-effects
                      (fn-bpnp-step *rs-after*
                                    (list :base (list :forward-result *rs-x-key* :uncertain))))))
-(must-fail (assert-event (rs-owes-requeue-p *rs-after* *rs-x-key*)))
+(must-fail-checked (assert-event (rs-owes-requeue-p *rs-after* *rs-x-key*)))
 ;   the job is :attempting: the same job still :queued (before its contact)
 (assert-event (null (fn-bpnf-answer-effects
                      (fn-bpnp-step *rs-st*
                                    (list :base (list :forward-result *rs-key* :uncertain))))))
-(must-fail (assert-event (rs-owes-requeue-p *rs-st* *rs-key*)))
+(must-fail-checked (assert-event (rs-owes-requeue-p *rs-st* *rs-key*)))
 ;   token below the journal bound: at the bound the answer is the refusal
 (defconst *rs-x-full*
   (fn-bpnf-with-base *rs-after*
@@ -223,7 +223,7 @@
                                 (fn-bpnp-step *rs-x-full*
                                               (list :base (list :forward-result *rs-key* :uncertain))))))
                      :bundle-queue-refused))
-(must-fail (assert-event (rs-owes-requeue-p *rs-x-full* *rs-key*)))
+(must-fail-checked (assert-event (rs-owes-requeue-p *rs-x-full* *rs-key*)))
 ;   the machine state (keystone d) and the lifecycle invariant (keystone e):
 ;   a base whose configuration is not one.  The step's guard excludes it,
 ;   so these evaluate the logical definition with guard checking off: the
@@ -240,7 +240,7 @@
                       (fn-bpnp-step *rs-x-malformed*
                                     (list :base (list :forward-result *rs-key*
                                                       :uncertain)))))))
-(must-fail (assert-event (with-guard-checking
+(must-fail-checked (assert-event (with-guard-checking
                           :none (rs-owes-requeue-p *rs-x-malformed* *rs-key*))))
 (defun rs-reoffered-p (st key peer)
   (let* ((tok (fn-bpn-machine-state-next-token (fn-bpnf-base st)))
@@ -250,11 +250,11 @@
               (fn-bpnp-step s1 (list :base (list :persist-result tok :durable))))))
     (equal (fn-bpnp-receipt-contact-event s2 peer) (list :contact peer t))))
 (assert-event (rs-reoffered-p *rs-after* *rs-key* *rs-peer*))
-(must-fail (assert-event (with-guard-checking
+(must-fail-checked (assert-event (with-guard-checking
                           :none (rs-reoffered-p *rs-x-malformed* *rs-key* *rs-peer*))))
 ; Keystone (e) under the other hypotheses (issued, uncertain delivery,
 ; fenced, not :attempting): the job is never queued again by the pair.
-(must-fail (assert-event (rs-reoffered-p *rs-x-issued* *rs-key* *rs-peer*)))
-(must-fail (assert-event (rs-reoffered-p *rs-x-delivery* *rs-key* *rs-peer*)))
-(must-fail (assert-event (rs-reoffered-p *rs-x-fenced* *rs-key* *rs-peer*)))
-(must-fail (assert-event (rs-reoffered-p *rs-x-full* *rs-key* *rs-peer*)))
+(must-fail-checked (assert-event (rs-reoffered-p *rs-x-issued* *rs-key* *rs-peer*)))
+(must-fail-checked (assert-event (rs-reoffered-p *rs-x-delivery* *rs-key* *rs-peer*)))
+(must-fail-checked (assert-event (rs-reoffered-p *rs-x-fenced* *rs-key* *rs-peer*)))
+(must-fail-checked (assert-event (rs-reoffered-p *rs-x-full* *rs-key* *rs-peer*)))

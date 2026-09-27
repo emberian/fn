@@ -1,7 +1,7 @@
 ; Witnesses and teeth for books/store-history-required.
 (in-package "ACL2")
 (include-book "../../books/store-history-required")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The fixtures that hold a marker frame are zero-ary functions, not
 ; constants: a defconst is evaluated without the SHA-256 attachment.
@@ -129,16 +129,16 @@
 ; catch-up, the newest file then lost, is admitted.
 (assert-event (and (not (fn-hmr-invp (hrt-no-catch-up)))
                    (natp 1) (< 1 (nfix (nth 2 (fn-hmr-run '((:resolve 1)) (hrt-no-catch-up)))))))
-(must-fail (assert-event (hrt-k2-concl '((:resolve 1)) (hrt-no-catch-up) 1)))
+(must-fail-checked (assert-event (hrt-k2-concl '((:resolve 1)) (hrt-no-catch-up) 1)))
 (assert-event (equal (fn-hmr-open-verdict *hrt-unmarked* (list :present (fn-hm-after-commit 0)) 1)
                      '(:admitted :marked 1)))
 ; Removal of (natp k).
 (assert-event (and (fn-hmr-invp *hrt-st0*) (not (natp -1))
                    (< -1 (nfix (nth 2 (hrt-end))))))
-(must-fail (assert-event (hrt-k2-concl *hrt-retry* *hrt-st0* -1)))
+(must-fail-checked (assert-event (hrt-k2-concl *hrt-retry* *hrt-st0* -1)))
 ; Removal of (< k A): the whole history is there.
 (assert-event (and (fn-hmr-invp *hrt-st0*) (natp 2) (not (< 2 (nfix (nth 2 (hrt-end)))))))
-(must-fail (assert-event (hrt-k2-concl *hrt-retry* *hrt-st0* 2)))
+(must-fail-checked (assert-event (hrt-k2-concl *hrt-retry* *hrt-st0* 2)))
 
 ; Keystone 3, fn-hmr-required-store-never-admits-an-absent-marker.
 (defun hrt-k3-concl (ops st k)
@@ -148,10 +148,10 @@
                    (hrt-k3-concl *hrt-retry* (hrt-required-end) 2)))
 ; Removal of the requirement: an `unmarked' store admits the absence.
 (assert-event (and (not (fn-bs-profile-marker-requiredp (nth 3 (hrt-end)))) (natp 2)))
-(must-fail (assert-event (hrt-k3-concl nil (hrt-end) 2)))
+(must-fail-checked (assert-event (hrt-k3-concl nil (hrt-end) 2)))
 ; Removal of (natp k).
 (assert-event (and (fn-bs-profile-marker-requiredp (nth 3 (hrt-required-end))) (not (natp -1))))
-(must-fail (assert-event (hrt-k3-concl nil (hrt-required-end) -1)))
+(must-fail-checked (assert-event (hrt-k3-concl nil (hrt-required-end) -1)))
 
 ; Keystone 4, fn-hmr-step-keeps-the-profile and fn-hmr-run-keeps-the-profile
 ; (no hypotheses): a run from the birth with commits, an unanswered death

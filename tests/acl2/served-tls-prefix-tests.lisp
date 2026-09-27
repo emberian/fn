@@ -1,7 +1,7 @@
 ; Tests and teeth for the STARTTLS physical receive-prefix projection.
 (in-package "ACL2")
 (include-book "../../books/served-tls-prefix")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defconst *stp-groups* (list (fn-nntp-string-octets "fn.test")))
@@ -71,7 +71,7 @@
 (assert-event (fn-wire-fast-statep *stp-cheap-only-wire*))
 (assert-event (not (fn-wire-statep *stp-cheap-only-wire*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm stp-fast-equals-reference-without-full-invariant
     (equal (fn-served-step-counted-fast *stp-cheap-only-conn* '(65) fn-arena)
            (fn-served-step-counted *stp-cheap-only-conn* '(65) fn-arena)))))

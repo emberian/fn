@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-fnbs-family-publication")
 (include-book "bp-node-fragment-step-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bpnfpub-record ()
   (declare (xargs :guard t :verify-guards nil))
@@ -35,7 +35,7 @@
  (equal (fn-bpnf-family-publication-authorize
          (bpnfs-uncertain) 3 0 (bpnfpub-record) t t)
         '(:fault :family-authority)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-bpnf-family-publication-authorize
                (bpnfs-uncertain) 3 0 (bpnfpub-record) t t))

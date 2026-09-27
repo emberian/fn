@@ -11,7 +11,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-receiver-evolving-store-invariants")
 (include-book "bp-receipt-records-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
@@ -229,7 +229,7 @@
 (assert-event (not (in-arena-fn-bprv-context-groundedp (list *bpre-adu2*) *bpr-config* *bprr-context*
                                                      (list *bpr-row*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-grounded-without-history-record
     (let ((record (fn-bprv-find-grounding-record *bpr-config* *bprr-context* (list *bpre-row2*) *bpre-arena*)))
       (and (fn-record-p record)
@@ -244,7 +244,7 @@
 ; and groundedness does not carry to it.
 (assert-event (not (fn-sf-prefixp (list *bpr-row*) (list *bpre-row2*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-monotone-without-prefix
     (implies (fn-bprv-context-groundedp *bpr-config* *bprr-context* (list *bpr-row*) *bpre-arena*)
              (fn-bprv-context-groundedp *bpr-config* *bprr-context* (list *bpre-row2*) *bpre-arena*))
@@ -261,7 +261,7 @@
 (assert-event (in-arena-fn-bprv-system-invariantp *bpre-payloads* *bpr-store* *bpre-intent-state* *bpre-intent-journal*))
 (assert-event (not (member-equal *bprr-decision-record* *bpre-intent-journal*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-system-step-without-journaled-record
     (let ((next (fn-bprv-system-step *bpr-store* *bpre-intent-state*
                                      (list :receiver *bprr-decision-record*) *bpre-arena*)))
@@ -274,7 +274,7 @@
 ; Without the idle phase: the :completing Store holds the second record in
 ; its history and its node has not completed it.
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-committed-without-idle-phase
     (implies (and (fn-snt-relation (car *bpre-completing*))
                   (fn-held-p *bpre-row2*)
@@ -294,7 +294,7 @@
 (assert-event (equal (fn-bprv-phase *bpre-forged-store*) :ready))
 (assert-event (not (fn-snt-relation *bpre-forged-store*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-committed-without-relation
     (implies (and (member-equal (fn-bprv-phase *bpre-forged-store*)
                                 '(:ready :recovering :fenced-recovery))
@@ -331,7 +331,7 @@
 (assert-event (fn-store-event-p *bpre-retention*))
 (assert-event (not (fn-held-p *bpre-retention*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-committed-without-article-record
     (implies (and (fn-snt-relation *bpre-retained-store*)
                   (member-equal (fn-bprv-phase *bpre-retained-store*)
@@ -352,7 +352,7 @@
 (assert-event (fn-bpi-node-record-committedp (fn-sn-node *bpre-retained-store*) *bpr-row*))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-committed-without-membership
     (implies (and (fn-snt-relation *bpr-store*)
                   (member-equal (fn-bprv-phase *bpr-store*) '(:ready :recovering :fenced-recovery))
@@ -383,7 +383,7 @@
                    (equal *bpre-replaying-context*
                           (fn-bpr-context-from-request *bpre-replaying-record* *bpr-request*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-node-grounded-without-idle-phase
     (implies (and (fn-bprv-evolving-invariantp (car *bpre-replaying*) (cadr *bpre-replaying*)
                                                (caddr *bpre-replaying*) *bpre-arena*)
@@ -405,7 +405,7 @@
 (assert-event (fn-bprv-extendsp *bpre-final-store* *bpre-recovering-probe*))
 (assert-event (not (equal (fn-bprv-phase *bpre-recovering-probe*) :ready)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-live-replay-without-ready-probe
     (implies (and (fn-snt-relation *bpr-store*)
                   (equal (fn-bprr-replay *bpre-recovering-probe* (list *bprr-config-record*) *bpre-arena*)
@@ -431,7 +431,7 @@
 (assert-event (equal (fn-bprv-phase *bpre-empty-probe*) :ready))
 (assert-event (not (fn-bprv-extendsp *bpre-final-store* *bpre-empty-probe*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-live-replay-without-extension
     (implies (and (fn-snt-relation *bpr-store*)
                   (equal (fn-bprr-replay *bpre-empty-probe* (list *bprr-config-record*) *bpre-arena*)
@@ -455,7 +455,7 @@
 (assert-event (not (equal (in-arena-fn-bprr-replay *bpre-payloads* *bpre-probe* (caddr *bpre-ahead-live0*))
                           (list t (cadr *bpre-ahead-live0*)))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-live-replay-without-base-agreement
     (implies (and (fn-snt-relation *bpr-store*)
                   (fn-snt-relation *bpre-probe*)
@@ -488,7 +488,7 @@
                (equal (fn-snrt-step *bpre-untyped-store* '(:io :start-frontier nil))
                       *bpre-untyped-store*)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-live-extension-without-relation
     (fn-bprv-extendsp *bpre-untyped-store*
                       (car (fn-bpr-live-step (list *bpre-untyped-store* *bpr-initial*
@@ -500,7 +500,7 @@
 ; grounded in.
 (assert-event (not (fn-sf-crash-imagep (fn-sn-files *bpre-final-store*) *bpre-frontier* nil)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm bpre-teeth-reopen-without-admissible-image
     (implies (and (fn-bprv-system-invariantp *bpre-final-store* *bpre-final-state* *bpre-journal* *bpre-arena*)
                   (fn-sn-observed-identity-okp nil))

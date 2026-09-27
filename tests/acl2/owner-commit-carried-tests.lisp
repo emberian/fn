@@ -1,7 +1,7 @@
 ; Teeth for books/owner-commit-carried.lisp.
 (in-package "ACL2")
 (include-book "../../books/owner-commit-carried")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
 
 ; Reachable witness: owner-served-invariants-tests' *osi-completing*,
@@ -107,14 +107,14 @@
                (null (fn-ccar-completion-record *ccar-t-bad-store*))))
 
 ; fn-ccar-seek-is-find-record without fn-sf-record-listp.
-(must-fail
+(must-fail-checked
  (defthm fn-ccar-t-seek-without-record-listp
    (equal (fn-ccar-seek (fn-sf-completion *ccar-t-bad-files*)
                         (fn-sf-records *ccar-t-bad-files*) 0)
           (fn-sn-find-record (fn-sf-completion *ccar-t-bad-files*)
                              (fn-sf-records *ccar-t-bad-files*)))))
 ; fn-ccar-completion-record-is-completion-record without fn-sn-statep.
-(must-fail
+(must-fail-checked
  (defthm fn-ccar-t-completion-record-without-statep
    (equal (fn-ccar-completion-record *ccar-t-bad-store*)
           (fn-sn-completion-record *ccar-t-bad-store*))))
@@ -126,7 +126,7 @@
 (assert-event
  (with-guard-checking :none
   (not (ccar-t-names *ccar-t-bad-o* *ccar-t-cfg* *ccar-t-prior*))))
-(must-fail
+(must-fail-checked
  (defthm fn-ccar-t-names-submission-without-statep
    (equal (fn-ccar-completion-names-submission-p *ccar-t-bad-o* *ccar-t-cfg* fn-arena)
           (fn-own-completion-names-submission-p *ccar-t-bad-o* *ccar-t-cfg* fn-arena))))
@@ -146,9 +146,9 @@
                      (guard 'fn-own-finish nil (w state))))
 ; The preservation theorems without their hypotheses: the bad owner is left
 ; as it was, so neither the premise nor the relation holds after.
-(must-fail
+(must-fail-checked
  (defthm fn-ccar-t-preserves-statep-without-statep
    (fn-sn-statep (fn-own-store (cdr (fn-ccar-own-finish *ccar-t-bad-o* *ccar-t-cfg* fn-arena))))))
-(must-fail
+(must-fail-checked
  (defthm fn-ccar-t-preserves-relation-without-relation
    (fn-own-relation (cdr (fn-ccar-own-finish *ccar-t-bad-o* *ccar-t-cfg* fn-arena)))))

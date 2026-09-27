@@ -15,7 +15,7 @@
 (include-book "held-rows-tests")
 (include-book "../../books/poster-bytes-invariants")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun pbt-text (s) (fn-record-string-octets s))
 
@@ -106,7 +106,7 @@
 (assert-event (not (fn-pb-same-articlep *pbt-idless-msgid-a*
                                         (pbt-octets *pbt-idless* *pbt-b*)
                                         (pbt-octets *pbt-idless* *pbt-a*))))
-(must-fail
+(must-fail-checked
  (defthm pbt-one-article-without-msgid-agreement
    (implies (and (fn-inj-injectedp (fn-inj-decide source config a))
                  (fn-inj-injectedp (fn-inj-decide source config b))
@@ -135,7 +135,7 @@
 (assert-event (fn-inj-infixp (fn-inj-date-line (fn-inj-date-octets (fn-inj-instant-of 843004800000)))
                              *pbt-dated-at-a*))
 ; Tooth for the one distinguishing hypothesis: equal sources are one article.
-(must-fail
+(must-fail-checked
  (defthm pbt-two-articles-without-distinct-sources
    (implies (and (fn-inj-injectedp (fn-inj-decide source1 config a))
                  (fn-inj-injectedp (fn-inj-decide source2 config b))
@@ -276,7 +276,7 @@
 (assert-event (null (fn-hrt-existing-action *pbt-prior* "<d25-second@example.invalid>"
                                            (pbt-octets *pbt-new-id* *pbt-b*)
                                            *pbt-groups* *pbt-store*)))
-(must-fail (assert-event (null (fn-hrt-existing-action *pbt-prior* *pbt-msgid* *pbt-resend*
+(must-fail-checked (assert-event (null (fn-hrt-existing-action *pbt-prior* *pbt-msgid* *pbt-resend*
                                                       *pbt-groups* *pbt-store*))))
 
 ; -----------------------------------------------------------------------------
@@ -322,10 +322,10 @@
 ; Teeth for the duplicate theorems: each hypothesis deleted, with the
 ; evaluated value that refutes the conclusion.
 ; No connection with that id: no reply at all.
-(must-fail (assert-event (equal (pbt-reply *pbt-owner* 7 *pbt-resend* *pbt-groups*)
+(must-fail-checked (assert-event (equal (pbt-reply *pbt-owner* 7 *pbt-resend* *pbt-groups*)
                                 *pbt-duplicate-line*)))
 ; Nothing in flight.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-own-outcome
                (fn-own-make nil nil (list *pbt-conn*) 1 4 nil nil *pbt-b* nil
@@ -334,16 +334,16 @@
                                         *pbt-store*)))
          *pbt-duplicate-line*)))
 ; The in-flight submission is another connection's.
-(must-fail (assert-event (equal (car (fn-own-outcome
+(must-fail-checked (assert-event (equal (car (fn-own-outcome
                                       (pbt-owner 3 nil) 0
                                       (fn-hrt-existing-action
                                        *pbt-prior* *pbt-msgid* *pbt-resend* *pbt-groups* *pbt-store*)))
                                 *pbt-duplicate-line*)))
 ; A completion consumed after the take: the reply is the uncertain line.
-(must-fail (assert-event (equal (pbt-reply *pbt-consumed* 0 *pbt-resend* *pbt-groups*)
+(must-fail-checked (assert-event (equal (pbt-reply *pbt-consumed* 0 *pbt-resend* *pbt-groups*)
                                 *pbt-duplicate-line*)))
 ; No held article under that Message-ID.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-own-outcome *pbt-owner* 0
                               (fn-hrt-existing-action *pbt-prior* "<missing@example.invalid>"
@@ -351,16 +351,16 @@
                                                      *pbt-store*)))
          *pbt-duplicate-line*)))
 ; Another source (the resend's injection held by the other theorem): conflict.
-(must-fail (assert-event (equal (pbt-reply *pbt-owner* 0 *pbt-other* *pbt-groups*)
+(must-fail-checked (assert-event (equal (pbt-reply *pbt-owner* 0 *pbt-other* *pbt-groups*)
                                 *pbt-duplicate-line*)))
 ; Different groups: the conflict line.
-(must-fail (assert-event (equal (pbt-reply *pbt-owner* 0 *pbt-resend* '("fn.other"))
+(must-fail-checked (assert-event (equal (pbt-reply *pbt-owner* 0 *pbt-resend* '("fn.other"))
                                 *pbt-duplicate-line*)))
 ; Teeth for the conflict theorems: with the difference deleted the reply is
 ; the duplicate line; with the consumed completion, the uncertain line.
-(must-fail (assert-event (equal (pbt-reply *pbt-owner* 0 *pbt-resend* *pbt-groups*)
+(must-fail-checked (assert-event (equal (pbt-reply *pbt-owner* 0 *pbt-resend* *pbt-groups*)
                                 *pbt-conflict-line*)))
-(must-fail (assert-event (equal (pbt-reply *pbt-consumed* 0 *pbt-other* *pbt-groups*)
+(must-fail-checked (assert-event (equal (pbt-reply *pbt-consumed* 0 *pbt-other* *pbt-groups*)
                                 *pbt-conflict-line*)))
 
 ; Keystone fn-pb-an-existing-action-writes-nothing: the duplicate outcome

@@ -4,7 +4,7 @@
 ; without a server name; each keystone's hypotheses fail by name.
 (in-package "ACL2")
 (include-book "../../books/owner-xref-read")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-xrt-payload (id subject)
   (append (fn-nntp-string-octets "Message-ID: ")
@@ -133,7 +133,7 @@
                    (list (cons "fn.one" 5) (cons "fn.one" 6))
                    t 841000000))
 (assert-event (equal (fn-xref-pairs *xrt-dup*) (list (cons "fn.one" 5))))
-(must-fail
+(must-fail-checked
  (defthm fn-xrt-pairs-without-the-number-condition
    (iff (member-equal (cons g n) (fn-xref-pairs article))
         (and (member-equal (cons g n) (fn-article-memberships article))
@@ -152,13 +152,13 @@
 (assert-event
  (not (fn-nov-clean-linep
        (fn-nov-served-line 1 (in-arena-fn-nov-overview *sr-arena* *xrt-a-wire*) '(97 10 98) *xrt-a-wire*))))
-(must-fail
+(must-fail-checked
  (defthm fn-xrt-served-line-clean-without-server-word
    (implies (fn-nov-overviewp over)
             (fn-nov-clean-linep (fn-nov-served-line number over server article)))))
 
 ; fn-nntp-archive-command-pinned-over-range-served: each hypothesis.
-(must-fail
+(must-fail-checked
  (defthm fn-xrt-over-range-served-without-server
    (implies (and (fn-nntp-keywordp keyword "OVER")
                  (fn-gidx-pinp index)
@@ -175,7 +175,7 @@
 
 ; fn-oag-listing-server-is-the-path-identity: its hypothesis.  Unset, the
 ; server is the .invalid agent, not the (empty) identity.
-(must-fail
+(must-fail-checked
  (defthm fn-xrt-listing-server-without-identity
    (equal (fn-nntp-listing-server
            (fn-inj-config-listing (fn-oag-post-config cfg max-octets)))

@@ -5,7 +5,7 @@
 ; counterexample and the must-fail of the keystone without it.
 (in-package "ACL2")
 (include-book "../../books/store-reclaim-stream")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
 
 (defconst *rst-s* (fn-own-store (cdr (osi-finish *osi-completing* *osi-cfg* *osi-completing-prior*))))
@@ -61,7 +61,7 @@
                                           (rst-n) (rst-n) nil '(0) 0 1000000 nil)
                           (fn-rclp-decide *rst-profile* *rst-rule* 0 *rst-s* (rst-events)
                                           (rst-n) (rst-n) nil '(0) 0 1000000 nil))))
-(must-fail
+(must-fail-checked
  (defthm rst-without-fold
    (implies (true-listp records)
             (equal (fn-rcls-decide profile rule now s acc frontier lower names generations
@@ -82,7 +82,7 @@
                                           (rst-n) (rst-n) nil '(0) 0 1000000 nil)
                           (fn-rclp-decide *rst-profile* *rst-rule* 0 *rst-s* (rst-dotted)
                                           (rst-n) (rst-n) nil '(0) 0 1000000 nil))))
-(must-fail
+(must-fail-checked
  (defthm rst-without-true-list
    (implies (equal acc (fn-rcls-fold records (fn-rclp-ctx rule now s) (fn-rcls-init)))
             (equal (fn-rcls-decide profile rule now s acc frontier lower names generations

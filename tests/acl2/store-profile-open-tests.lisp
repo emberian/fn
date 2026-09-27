@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-profile-open")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The witness store's profile, BY HAND: the scale preset's fields with R at
 ; the codec's u32 (4 294 967 295, the old relation's ceiling) and H raised
@@ -89,7 +89,7 @@
                      :max-history-octets-below-max-record-octets))
 (assert-event (equal (fn-spo-config-open (fn-spo-saved-frame *spot-short-history*))
                      '(:rejected)))
-(must-fail
+(must-fail-checked
  (thm (implies (equal values *spot-short-history*)
                (equal (fn-spo-config-open (fn-spo-saved-frame values))
                       (if (<= (fn-bs-pf 4 values) *fn-stxa-max-octets*)
@@ -239,7 +239,7 @@
 (assert-event (equal (car *fn-bs-profile-development*) *fn-bs-meta-format-9*))
 (assert-event (equal (fn-spo-config-open (fn-bs-config-encode *fn-bs-profile-development*))
                      (list :opened *fn-bs-profile-development*)))
-(must-fail
+(must-fail-checked
  (with-prover-time-limit 10
   (thm (implies (and (equal values *fn-bs-profile-development*)
                      (fn-bs-profile-validp values))
@@ -255,7 +255,7 @@
 (assert-event (not (fn-bs-profile-validp *spot-format-8-short*)))
 (assert-event (equal (fn-spo-config-open (fn-spo-saved-frame *spot-format-8-short*))
                      '(:rejected)))
-(must-fail
+(must-fail-checked
  (with-prover-time-limit 10
   (thm (implies (and (equal values *spot-format-8-short*)
                      (not (equal (car values) *fn-bs-meta-format-9*)))
@@ -339,7 +339,7 @@
                   *fn-bs-meta-max-config-payload*))
 (assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 16 *fn-bs-profile-scale*))
                      (list :opened *fn-bs-profile-scale*)))
-(must-fail
+(must-fail-checked
  (thm (implies (and (equal n 16) (equal values *fn-bs-profile-scale*))
                (equal (fn-spo-config-open (fn-spo-layout-frame n values))
                       (list :refused :profile-layout n)))))
@@ -352,7 +352,7 @@
 (thm (fn-frame-values-okp (fn-spo-layout-spec -1) *spot-no-fields*))
 (assert-event (equal (fn-spo-config-open (fn-spo-layout-frame -1 *spot-no-fields*))
                      '(:refused :profile-layout 0)))
-(must-fail
+(must-fail-checked
  (thm (implies (and (equal n -1) (equal values *spot-no-fields*))
                (equal (fn-spo-config-open (fn-spo-layout-frame n values))
                       (list :refused :profile-layout n)))))
@@ -379,7 +379,7 @@
                                   (:e fn-spo-layout-frame)))))
 (assert-event (null (fn-spo-layout-fields (spot-empty-text-frame))))
 (assert-event (equal (fn-spo-config-open (spot-empty-text-frame)) '(:rejected)))
-(must-fail
+(must-fail-checked
  (thm (implies (and (equal n 13) (equal values *spot-empty-text*))
                (equal (fn-spo-config-open (fn-spo-layout-frame n values))
                       (list :refused :profile-layout n)))))
@@ -392,7 +392,7 @@
 (assert-event (not (fn-bs-meta-formatp (car *spot-other-word*))))
 (assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 13 *spot-other-word*))
                      '(:refused :store-format)))
-(must-fail
+(must-fail-checked
  (thm (implies (and (equal n 13) (equal values *spot-other-word*))
                (equal (fn-spo-config-open (fn-spo-layout-frame n values))
                       (list :refused :profile-layout n)))))
@@ -407,7 +407,7 @@
 (assert-event (equal (len (fn-frame-fields-octets (fn-spo-layout-spec 70) *spot-long*)) 604))
 (assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 70 *spot-long*))
                      '(:rejected)))
-(must-fail
+(must-fail-checked
  (thm (implies (and (equal n 70) (equal values *spot-long*))
                (equal (fn-spo-config-open (fn-spo-layout-frame n values))
                       (list :refused :profile-layout n)))))

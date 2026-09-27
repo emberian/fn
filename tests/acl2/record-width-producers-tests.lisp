@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "store-node-tests")
 (include-book "../../books/record-width-producers")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *rwpt-obs* (fn-clock-observation 1 841000000000 0 t))
 ; The POST entry the keystones name (records-flip): books/store-intern
@@ -67,7 +67,7 @@
  (let ((r (rwpt-article *rwpt-big* 18446744073709551616)))
    (and (not (fn-record-p r))
         (equal (rwpt-prepare *rwpt-big* r) *rwpt-big*))))
-(must-fail
+(must-fail-checked
  (defthm rwpt-narrow-without-the-charge-hypothesis
    (implies (not (equal (mv-nth 0 (fn-store-prepare-interned
                          s (fn-sn-article-record s obs msgid payload groups
@@ -99,7 +99,7 @@
         (fn-record-widep r)
         (equal (fn-record-sequence r) 4294967296)
         (equal (rwpt-prepare *rwpt-corrupt* r) *rwpt-corrupt*))))
-(must-fail
+(must-fail-checked
  (defthm rwpt-narrow-without-the-prepare-hypothesis
    (implies (fn-record-uint32p charge)
             (not (fn-record-widep
@@ -238,7 +238,7 @@
  (let ((r (rwpt-wide (list *rwpt-group256*) 4294967296)))
    (and (fn-record-p r)
         (equal (len (fn-record-encode r)) 66881))))
-(must-fail
+(must-fail-checked
  (defthm rwpt-producer-ceiling-without-the-charge-hypothesis
    (<= (len (fn-record-encode record))
        (fn-record-encoded-octets-ceiling (len (fn-record-payload record))
@@ -262,7 +262,7 @@
  (let ((r (rwpt-article *rwpt-big* 18446744073709551615)))
    (and (not (fn-record-uint32p 18446744073709551615))
         (not (equal (rwpt-prepare *rwpt-big* r) *rwpt-big*)))))
-(must-fail
+(must-fail-checked
  (defthm rwpt-within-ceiling-without-the-prepare-hypothesis
    (implies (fn-record-uint32p charge)
             (<= (len (fn-record-encode

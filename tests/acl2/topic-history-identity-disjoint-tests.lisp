@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/topic-history-identity-disjoint")
 (include-book "topic-history-store-events-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Reachable events of all three topic forms take the identity-neutral arm.
 (assert-event (and (fn-th-topic-eventp *thla-install*)
@@ -12,6 +12,6 @@
                    (not (fn-stxa-p *thad-report-event*))))
 
 ; The topic premise matters: a real keyring event is an identity event.
-(must-fail
+(must-fail-checked
  (defthm thid-all-events-are-identity-neutral
    (not (fn-stxk-p event))))

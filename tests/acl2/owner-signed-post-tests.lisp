@@ -11,7 +11,7 @@
 (include-book "../../books/owner-signed-post")
 (include-book "peer-authored-accept-tests")
 (include-book "store-identity-traces-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *ospt-groups* '("fn.test"))
 (defconst *ospt-msgid* "<topic-binding@example.invalid>")
@@ -133,14 +133,14 @@
 ; nil event either; an enabled completion always has a record, so this
 ; hypothesis cannot fail alone.
 (assert-event (null (ospt-event *ospt-staged* nil)))
-(must-fail (assert-event (in-arena-ospt-finish-conclusion *sr-arena* *ospt-completing* *ospt-staged* nil)))
+(must-fail-checked (assert-event (in-arena-ospt-finish-conclusion *sr-arena* *ospt-completing* *ospt-staged* nil)))
 ; Without completion-record = event: another authorized event (the same
 ; carrier under a generation-2 enrollment) is not the record completing.
 (make-event `(defconst *ospt-g2*
                ',(list (fn-hsig-keyring-event 0 0 0 2 *tha-principal* *tha-keys*))))
 (assert-event (ospt-event *ospt-staged* *ospt-g2*))
 (assert-event (not (equal (ospt-event *ospt-staged* *ospt-g2*) *ospt-event*)))
-(must-fail (assert-event (in-arena-ospt-finish-conclusion *sr-arena* *ospt-completing* *ospt-staged* *ospt-g2*)))
+(must-fail-checked (assert-event (in-arena-ospt-finish-conclusion *sr-arena* *ospt-completing* *ospt-staged* *ospt-g2*)))
 ; Without fn-sn-completion-enabledp: the same completion record with the
 ; identity sequence one ahead; the gate is closed and nothing is recorded.
 (defun ospt-with-store (o s)
@@ -156,7 +156,7 @@
 (assert-event (not (fn-sn-completion-enabledp (fn-own-store *ospt-off*))))
 (assert-event (equal (fn-hstxa-stxa (fn-sn-completion-record (fn-own-store *ospt-off*)))
                      *ospt-event*))
-(must-fail (assert-event (in-arena-ospt-finish-conclusion *sr-arena* *ospt-off* *ospt-staged* *ospt-snapshots*)))
+(must-fail-checked (assert-event (in-arena-ospt-finish-conclusion *sr-arena* *ospt-off* *ospt-staged* *ospt-snapshots*)))
 
 ; ---------------------------------------------------------------------------
 ; The served outcome: 240 after the finish (fn-osp-finished-post-outcome-is-
@@ -212,10 +212,10 @@
                    (fn-own-clock *ospt-completing*) (fn-own-facts *ospt-completing*)
                    (fn-own-config *ospt-completing*) (fn-own-queue *ospt-completing*)
                    (fn-own-inflight *ospt-completing*) (fn-own-feeds *ospt-completing*) (fn-own-node-secret *ospt-completing*) (fn-own-refused *ospt-completing*))))
-(must-fail (assert-event (in-arena-ospt-reader-verdict *sr-arena* *ospt-full*)))
+(must-fail-checked (assert-event (in-arena-ospt-reader-verdict *sr-arena* *ospt-full*)))
 ; The other three hypotheses of the reader theorem are the finish theorem's:
 ; with the gate closed the reader's pin has no verdict for the Message-ID.
-(must-fail
+(must-fail-checked
  (assert-event (equal (in-arena-ospt-reader-verdict *sr-arena* *ospt-off*)
                       (fn-stx-reader-item
                        (fn-stx-make-verdict :verified *tha-principal* 1)))))
@@ -231,7 +231,7 @@
                      '(:refused :carrier)))
 (assert-event (not (equal (fn-pa-carrier-form *ospt-malformed*) :absent)))
 ; Without the refused plan, the plan's second element is not a reason.
-(must-fail
+(must-fail-checked
  (assert-event
   (member-equal (cadr (fn-pa-current-plan *ospt-staged* *ospt-snapshots* nil nil))
                 '(:article :carrier :carrier-shape :local-enrollment))))
@@ -268,20 +268,20 @@
                  "441 posting failed; the author signature does not verify")
                 '(13 10))))
 ; Without the reason in the relayed set: a Store word is not relayed.
-(must-fail (assert-event (ospt-refusal-conclusion *ospt-taken* *ospt-poster*
+(must-fail-checked (assert-event (ospt-refusal-conclusion *ospt-taken* *ospt-poster*
                                                   :duplicate)))
 ; Without a completion unconsumed: after the kind-4 finish the word is
 ; :uncertain, never a refusal line.
-(must-fail (assert-event (ospt-refusal-conclusion *ospt-finished* *ospt-poster*
+(must-fail-checked (assert-event (ospt-refusal-conclusion *ospt-finished* *ospt-poster*
                                                   :signature)))
 ; Without the in-flight submission being this connection's: reader A.
-(must-fail (assert-event (ospt-refusal-conclusion *ospt-taken* 0 :signature)))
+(must-fail-checked (assert-event (ospt-refusal-conclusion *ospt-taken* 0 :signature)))
 ; Without an in-flight submission: the queued POST before the take.
-(must-fail (assert-event (ospt-refusal-conclusion
+(must-fail-checked (assert-event (ospt-refusal-conclusion
                           (in-arena-ospt-submit *sr-arena* *ospt-open* *tha-received*)
                           *ospt-poster* :signature)))
 ; Without the connection: the in-flight submission's connection is gone.
-(must-fail
+(must-fail-checked
  (assert-event
   (ospt-refusal-conclusion
    (fn-own-make (fn-own-store *ospt-taken*) (fn-own-view *ospt-taken*)
@@ -343,7 +343,7 @@
                       (fn-replay-identity-step *ospt-bare-ctx* (ospt-row *ospt-carried*)))
                      :ok))
 ; Tooth (the sequence): the same event one identity sequence late faults.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-stxk-context-kind
           (fn-replay-identity-step
@@ -370,7 +370,7 @@
  (equal (in-arena-ospt-reader-verdict *sr-arena* *ospt-carried-completing*)
         (append (fn-nntp-string-octets "carried ")
                 (fn-stx-hex-octets *tha-principal*))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (in-arena-ospt-reader-verdict *sr-arena* *ospt-carried-completing*)
          (fn-stx-reader-item
@@ -434,27 +434,27 @@
                  "437 transfer rejected; refused by acceptance")
                 '(13 10))))
 ; Without the reason in the relayed set: the word stays :refused.
-(must-fail (assert-event (ospt-transit-conclusion *ospt-transit* *ospt-poster*
+(must-fail-checked (assert-event (ospt-transit-conclusion *ospt-transit* *ospt-poster*
                                                   :want :duplicate)))
 ; Without the in-flight submission being this connection's: reader A.
-(must-fail (assert-event (ospt-transit-conclusion *ospt-transit* 0 :want
+(must-fail-checked (assert-event (ospt-transit-conclusion *ospt-transit* 0 :want
                                                   :control-not-filed)))
 ; Without a transit submission: the POST in flight is fn-own-outcome's.
-(must-fail (assert-event (ospt-transit-conclusion *ospt-taken* *ospt-poster*
+(must-fail-checked (assert-event (ospt-transit-conclusion *ospt-taken* *ospt-poster*
                                                   :want :control-not-filed)))
 ; Without IHAVE: TAKETHIS answers 439 with the Message-ID (RFC 4644 2.5).
-(must-fail (assert-event (ospt-transit-conclusion
+(must-fail-checked (assert-event (ospt-transit-conclusion
                           (ospt-with-transit *ospt-taken* :takethis)
                           *ospt-poster* :want :control-not-filed)))
 ; Without the :want decision: no attempt ran and the decision is rendered.
-(must-fail (assert-event (ospt-transit-conclusion *ospt-transit* *ospt-poster*
+(must-fail-checked (assert-event (ospt-transit-conclusion *ospt-transit* *ospt-poster*
                                                   :refuse :control-not-filed)))
 ; Without a completion unconsumed: after the finish the word is :uncertain.
-(must-fail (assert-event (ospt-transit-conclusion
+(must-fail-checked (assert-event (ospt-transit-conclusion
                           (ospt-with-transit *ospt-finished* :ihave)
                           *ospt-poster* :want :control-not-filed)))
 ; Without the connection: the in-flight submission's connection is gone.
-(must-fail
+(must-fail-checked
  (assert-event
   (ospt-transit-conclusion
    (fn-own-make (fn-own-store *ospt-transit*) (fn-own-view *ospt-transit*)
@@ -488,7 +488,7 @@
                     (fn-stx-make-verdict :revoked *tha-principal* 5)))))
 ; Tooth (the tombstone): the same composite over the history without the
 ; revocation faults.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-stxk-context-kind
           (fn-replay-identity-step
@@ -496,7 +496,7 @@
            (ospt-row *pat-revoked-event*)))
          :ok)))
 ; Tooth (the sequence): at another cursor it faults.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-stxk-context-kind
           (fn-replay-identity-step
@@ -540,7 +540,7 @@
 ; enrolled nobody forms no event, and the conclusion fails.
 (assert-event (equal (car (fn-pa-carrier-form *ospt-staged*)) :ok))
 (assert-event (not (ospt-event *ospt-staged* nil)))
-(must-fail (assert-event (ospt-keeps-conclusion *ospt-staged* nil)))
+(must-fail-checked (assert-event (ospt-keeps-conclusion *ospt-staged* nil)))
 
 ; ---------------------------------------------------------------------------
 ; PKT-473 (PRF-184): fn-osp-served-post-names-a-refused-key-change and its
@@ -573,10 +573,10 @@
 ; attempt not durable, the detail not the executor's refusal, another
 ; connection's id.
 (assert-event (not (fn-own-completion-consumedp *ospt-taken*)))
-(must-fail (assert-event (ospt-kc-conclusion *ospt-taken* *ospt-poster* :durable :key-change-refused)))
-(must-fail (assert-event (ospt-kc-conclusion *ospt-finished* *ospt-poster* :refused :key-change-refused)))
-(must-fail (assert-event (ospt-kc-conclusion *ospt-finished* *ospt-poster* :durable :carried)))
-(must-fail (assert-event (ospt-kc-conclusion *ospt-finished* 0 :durable :key-change-refused)))
+(must-fail-checked (assert-event (ospt-kc-conclusion *ospt-taken* *ospt-poster* :durable :key-change-refused)))
+(must-fail-checked (assert-event (ospt-kc-conclusion *ospt-finished* *ospt-poster* :refused :key-change-refused)))
+(must-fail-checked (assert-event (ospt-kc-conclusion *ospt-finished* *ospt-poster* :durable :carried)))
+(must-fail-checked (assert-event (ospt-kc-conclusion *ospt-finished* 0 :durable :key-change-refused)))
 ; The converse's antecedent on the witness, and its conclusion.
 (defun ospt-kc-reply-p (o id attempt detail)
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))

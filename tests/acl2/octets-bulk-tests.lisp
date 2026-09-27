@@ -12,7 +12,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/octets-stobj")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (and (eq (symbol-class 'fn-octets$c-append-back (w state)) :common-lisp-compliant)
@@ -105,7 +105,7 @@
        (not (fn-octets$corr (fn-octets$c-append-back 4 2 *obt-c*)
                             (fn-octets$a-append-back 4 2 *obt-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm obt-t-back-no-within
    (implies (and (fn-octets$corr *obt-c* *obt-a*) (natp 4) (<= 1 4) (natp 2))
             (fn-octets$corr (fn-octets$c-append-back 4 2 *obt-c*)
@@ -120,7 +120,7 @@
        (not (fn-octets$corr (fn-octets$c-append-back 0 2 *obt-c*)
                             (fn-octets$a-append-back 0 2 *obt-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm obt-t-back-no-positive
    (implies (and (fn-octets$corr *obt-c* *obt-a*) (natp 0) (<= 0 (fn-octets$a-len *obt-a*))
                  (natp 2))
@@ -136,7 +136,7 @@
        (not (fn-octets$corr (fn-octets$c-append-back 1 -1 *obt-c*)
                             (fn-octets$a-append-back 1 -1 *obt-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm obt-t-back-no-natp-n
    (implies (and (fn-octets$corr *obt-c* *obt-a*) (natp 1) (<= 1 1)
                  (<= 1 (fn-octets$a-len *obt-a*)))
@@ -152,7 +152,7 @@
        (not (fn-octets$corr (fn-octets$c-append-back 1 1 *obt-c-long*)
                             (fn-octets$a-append-back 1 1 *obt-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm obt-t-back-no-corr
    (implies (and (natp 1) (<= 1 1) (<= 1 (fn-octets$a-len *obt-a*)) (natp 1))
             (fn-octets$corr (fn-octets$c-append-back 1 1 *obt-c-long*)
@@ -179,7 +179,7 @@
        (not (equal (fn-octets$c-get-word 2 2 *obt-c-spare*)
                    (fn-octets$a-get-word 2 2 *obt-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm obt-t-word-no-bound
    (implies (and (fn-octets$corr *obt-c-spare* *obt-a*) (natp 2) (natp 2))
             (equal (fn-octets$c-get-word 2 2 *obt-c-spare*)
@@ -194,7 +194,7 @@
        (not (equal (fn-octets$c-get-word 1 1 *obt-c*)
                    (fn-octets$a-get-word 1 1 *obt-a-other*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm obt-t-word-no-corr
    (implies (and (natp 1) (natp 1) (<= (+ 1 1) (fn-octets$a-len *obt-a-other*)))
             (equal (fn-octets$c-get-word 1 1 *obt-c*)
@@ -217,7 +217,7 @@
        (not (fn-octets$corr (fn-octets$c-append-word 258 -1 *obt-c*)
                             (fn-octets$a-append-word 258 -1 *obt-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm obt-t-append-word-no-natp-k
    (implies (and (fn-octets$corr *obt-c* *obt-a*) (natp 258))
             (fn-octets$corr (fn-octets$c-append-word 258 -1 *obt-c*)
@@ -230,7 +230,7 @@
        (not (fn-octets$corr (fn-octets$c-append-word 258 1 *obt-c-long*)
                             (fn-octets$a-append-word 258 1 *obt-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm obt-t-append-word-no-corr
    (implies (and (natp 258) (natp 1))
             (fn-octets$corr (fn-octets$c-append-word 258 1 *obt-c-long*)
@@ -256,7 +256,7 @@
        (not (equal (fn-oct-word-octets (fn-oct-word-at 0 2 '(256 0)) 2)
                    (take 2 (nthcdr 0 '(256 0))))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm obt-t-rt-no-octets
    (implies (and (natp 0) (<= (+ 0 2) (len '(256 0))))
             (equal (fn-oct-word-octets (fn-oct-word-at 0 2 '(256 0)) 2)
@@ -269,7 +269,7 @@
        (not (equal (fn-oct-word-octets (fn-oct-word-at 0 2 '(5)) 2)
                    (take 2 (nthcdr 0 '(5))))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm obt-t-rt-no-bound
    (implies (and (fn-cbor-octet-listp '(5)) (natp 0))
             (equal (fn-oct-word-octets (fn-oct-word-at 0 2 '(5)) 2)
@@ -284,7 +284,7 @@
        (not (equal (fn-oct-word-octets (fn-oct-word-at -5 3 '(1)) 3)
                    (take 3 (nthcdr -5 '(1))))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm obt-t-rt-no-natp-i
    (implies (and (fn-cbor-octet-listp '(1)) (<= (+ -5 3) (len '(1))))
             (equal (fn-oct-word-octets (fn-oct-word-at -5 3 '(1)) 3)

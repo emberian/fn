@@ -1,6 +1,6 @@
 ; Teeth for books/store-import-publication (PRF-217).
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/store-import-publication")
 
 ; A parent directory with no store at ROOT, next inode 5; the staged tree
@@ -90,7 +90,7 @@
   (fn-bs-imp-run *imp-t-bs* nil (fn-bs-imp-program "store" "store" *imp-t-subdirs* *imp-t-files*)
                  nil nil 0))
 (assert-event (not (fn-bs-imp-inputp *imp-t-bs* "store" "store" *imp-t-subdirs* *imp-t-files* nil)))
-(must-fail
+(must-fail-checked
  (defthm imp-t-without-distinct-names
    (fn-bs-imp-no-store-or-completep (fn-bs-crash (car (nth 0 *imp-t-same-run*)) '(:apply))
                                     "store" *imp-t-subdirs* *imp-t-files* 5 nil)))
@@ -100,7 +100,7 @@
   (fn-bs-make 4 nil (list (cons :parent nil)) (list (list :set-entry :parent "store" :other)) 5))
 (assert-event (not (fn-bs-imp-inputp *imp-t-busy* "store.import-1" "store"
                                      *imp-t-subdirs* *imp-t-files* nil)))
-(must-fail
+(must-fail-checked
  (defthm imp-t-without-quiet-start
    (fn-bs-imp-no-store-or-completep
     (fn-bs-crash (car (nth 0 (fn-bs-imp-run *imp-t-busy* nil *imp-t-program* nil nil 0))) '(:apply))
@@ -110,7 +110,7 @@
 (defconst *imp-t-stray-files* '((:parent "store" 1)))
 (assert-event (not (fn-bs-imp-inputp *imp-t-bs* "store.import-1" "store"
                                      *imp-t-subdirs* *imp-t-stray-files* nil)))
-(must-fail
+(must-fail-checked
  (defthm imp-t-without-staged-files
    (fn-bs-imp-no-store-or-completep
     (fn-bs-crash (car (nth 6 (fn-bs-imp-run *imp-t-bs* nil
@@ -127,7 +127,7 @@
 (defconst *imp-t-parent-files* '((:parent "store" 1)))
 (assert-event (not (fn-bs-imp-inputp *imp-t-noparent* "store.import-1" "store"
                                      *imp-t-parent-subdirs* *imp-t-parent-files* nil)))
-(must-fail
+(must-fail-checked
  (defthm imp-t-without-parent-directory
    (fn-bs-imp-no-store-or-completep
     (fn-bs-crash (car (nth 4 (fn-bs-imp-run *imp-t-noparent* nil
@@ -146,13 +146,13 @@
 (defconst *imp-t-short-run*
   (fn-bs-imp-run *imp-t-bs* nil *imp-t-program* *imp-t-short-outs* nil 0))
 (assert-event (equal (len *imp-t-short-run*) (len *imp-t-program*)))
-(must-fail
+(must-fail-checked
  (defthm imp-t-without-honest-outcomes
    (fn-bs-imp-no-store-or-completep (fn-bs-crash (car (car (last *imp-t-short-run*))) nil)
                                     "store" *imp-t-subdirs* *imp-t-files* 5 nil)))
 
 ; (6) OLD is not ROOT's durable entry.
-(must-fail
+(must-fail-checked
  (defthm imp-t-without-old-entry
    (fn-bs-imp-no-store-or-completep (fn-bs-crash (car (nth 0 *imp-t-run*)) nil)
                                     "store" *imp-t-subdirs* *imp-t-files* 5 :other)))

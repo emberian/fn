@@ -10,7 +10,7 @@
 ; are R1 after a forwarding undertaking and then its release, applied by the
 ; Store's own retention transition (fn-replay-apply-retention-event).
 (in-package "ACL2")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/post-retain-carried")
 (include-book "owner-prepare-carried-tests")
 
@@ -171,7 +171,7 @@
       (equal *prct-bad-prepared* *pit-oc*)
       (equal (pit-phase (fn-pidx-sbud-prepare *pit-oc* *pit-fresh-record* 100))
              :record-staged)))
-(must-fail
+(must-fail-checked
  (defthm prct-prepare-without-carryp
    (equal (fn-prc-sbud-prepare *pit-oc* *pit-fresh-record* 100 *prct-bad-carry*)
           (fn-pidx-sbud-prepare *pit-oc* *pit-fresh-record* 100))
@@ -193,7 +193,7 @@
       (not (fn-prc-has "own-pin:pit" (cdr *prct-short-carry*)))
       (consp (fn-node-stage *prct-short-prepared*))
       (null (fn-node-stage (fn-sn-prepare-node *prct-node1* *prct-reuse-record*)))))
-(must-fail
+(must-fail-checked
  (defthm prct-sn-prepare-without-carryp
    (equal (fn-prc-sn-prepare-node *prct-node1* *prct-reuse-record*
                                   (fn-own-view *pit-o*) *prct-short-carry*)

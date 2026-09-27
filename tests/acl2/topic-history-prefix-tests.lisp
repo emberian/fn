@@ -2,7 +2,7 @@
 (include-book "../../books/topic-history-prefix")
 (include-book "topic-history-admission-tests")
 (include-book "topic-history-local-admin-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; This is the recovery step's historical context after T10 completed the
 ; root event. The topic event cannot supply its own source or snapshot.
@@ -67,7 +67,7 @@
          (fn-th-prefix-step *thpx-before*
                             (fn-stmt-value *thla-anchor*)))
         :ok))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-th-at 0
           (fn-th-prefix-step

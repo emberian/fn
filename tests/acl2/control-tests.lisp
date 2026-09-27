@@ -4,7 +4,7 @@
 ; without it.
 (in-package "ACL2")
 (include-book "../../books/peer-authored-accept")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun ct-line (text)
   (declare (xargs :guard t))
@@ -119,12 +119,12 @@
                                               (nthcdr 5 *ct-cancel-fields*))))
         (fn-ctl-classify-fields (append (take 4 *ct-cancel-fields*)
                                         (nthcdr 5 *ct-cancel-fields*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ctl-classify-fields (append (take 5 *ct-cancel-fields*)
                                          (cons *ct-control-field* nil)))
          (fn-ctl-classify-fields (take 5 *ct-cancel-fields*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-ctl-classify-fields (append *ct-cancel-fields*
                                          (cons *ct-supersedes-field* nil)))
@@ -154,7 +154,7 @@
                      (list :refused :control-not-filed)))
 ; Teeth (the one hypothesis: classified :control).  An ordinary article is
 ; filed in its Newsgroups' group, which is not a control group.
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((plan (fn-pa-filing-plan *ct-cmsg* *ct-fn-test* *ct-with-cancel*)))
     (or (not (equal (car plan) :file))
@@ -163,14 +163,14 @@
                       (fn-ctl-filing-group
                        (cadr (fn-ctl-classify-octets *ct-cmsg*))))))))))
 ; The filing step is what does it: the ingress's own groups name fn.test.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-pa-filing-plan *ct-cancel* *ct-fn-test* *ct-with-cancel*)
          (list :file *ct-fn-test*))))
 
 ; fn-ctl-control-filing-by-definition: its one hypothesis (classified
 ; :control).  The cmsg article is ordinary and keeps fn.test.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-pa-filing-plan *ct-cmsg* *ct-fn-test* *ct-with-cancel*)
          (list :refused :control-not-filed))))
@@ -184,7 +184,7 @@
 (assert-event (equal (fn-pa-filing-plan *ct-also-control* *ct-fn-test*
                                         *ct-with-cancel*)
                      (list :file *ct-fn-test*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-pa-filing-plan *ct-cancel* *ct-fn-test* *ct-without*)
                       (list :file *ct-fn-test*))))
 

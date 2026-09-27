@@ -9,7 +9,7 @@
 (include-book "../../books/byte-store-k0-step-bridge-frontier")
 (include-book "byte-store-k0-tests")
 (include-book "byte-store-k0-step-bridge-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bskc-f (k) (nth k (bsk0-f-good)))
 (defun bskc-r (k) (nth k (bsk5-record-2-run)))
@@ -33,7 +33,7 @@
 (assert-event (bsks-ok (car (bskc-r 10)) (cdr (bskc-r 10)) '(:fsync-dir :root) :ok))
 ; Tooth: the relation.  The initial byte image under the same kernel.
 (assert-event (not (fn-bs-store-relation (bsk5-initial) (cdr (bskc-f 11)) *bsk5-arena*)))
-(must-fail (assert-event (bskc-fence-ok (bsk5-initial) (cdr (bskc-f 11)))))
+(must-fail-checked (assert-event (bskc-fence-ok (bsk5-initial) (cdr (bskc-f 11)))))
 ; (not (fn-bs-replay-visiblep ks)) has no must-fail: it is the recovery-window
 ; guard every kind of fn-bs-k0-step-inputp carries, and the fence is not
 ; shown to need it.
@@ -60,10 +60,10 @@
 (assert-event (bskc-stage-concl (bskc-rb) (bskc-rk) ".stage-k5-2" (bsk5-frame-2)))
 (assert-event (equal (car (bskc-r 5)) (fn-bs-k0p-s3 (bskc-rb) ".stage-k5-2" (bsk5-frame-2))))
 ; Teeth.  The relation: the initial image under the prepared kernel.
-(must-fail (assert-event (bskc-stage-concl (bsk5-initial) (bskc-rk) ".stage-k5-2" (bsk5-frame-2))))
+(must-fail-checked (assert-event (bskc-stage-concl (bsk5-initial) (bskc-rk) ".stage-k5-2" (bsk5-frame-2))))
 ; A name: stage 7 is not one, and the create's entry makes the state ill-formed.
 (assert-event (not (fn-bs-namep 7)))
-(must-fail (assert-event (bskc-stage-concl (bskc-rb) (bskc-rk) 7 (bsk5-frame-2))))
+(must-fail-checked (assert-event (bskc-stage-concl (bskc-rb) (bskc-rk) 7 (bsk5-frame-2))))
 ; The stage absent: occupied by inode 0, the write lands on that inode.
 (defun bskc-occupied ()
   (let ((bs (bskc-rb)))
@@ -74,9 +74,9 @@
                                  (fn-bs-dirs bs))
                 (fn-bs-pending bs) (fn-bs-next-ino bs))))
 (assert-event (fn-bs-lookup (bskc-occupied) :staging ".stage-k5-2"))
-(must-fail (assert-event (bskc-stage-concl (bskc-occupied) (bskc-rk) ".stage-k5-2" (bsk5-frame-2))))
+(must-fail-checked (assert-event (bskc-stage-concl (bskc-occupied) (bskc-rk) ".stage-k5-2" (bsk5-frame-2))))
 ; Typed octets.
-(must-fail (assert-event (bskc-stage-concl (bskc-rb) (bskc-rk) ".stage-k5-2" '(300))))
+(must-fail-checked (assert-event (bskc-stage-concl (bskc-rb) (bskc-rk) ".stage-k5-2" '(300))))
 ; The quiet root and transaction directories and the recovery-window guard
 ; are the keystone's step-input guards (the file barrier's and every kind's);
 ; the conclusion is not shown to need them.  At the frontier run's replaced
@@ -111,19 +111,19 @@
                        (list :link :staging ".stage-k5-2" :transactions (fn-bs-txn-name 1)) :ok))
 ; Teeth, per hypothesis.  The relation: the initial byte image under the
 ; same kernels.
-(must-fail (assert-event (bskc-frontier-cuts (bsk5-initial) (bskc-fk) ".allocation-k0" (fn-bs-frontier-encode 2))))
-(must-fail (assert-event (bskc-record-cuts (bsk5-initial) (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))
+(must-fail-checked (assert-event (bskc-frontier-cuts (bsk5-initial) (bskc-fk) ".allocation-k0" (fn-bs-frontier-encode 2))))
+(must-fail-checked (assert-event (bskc-record-cuts (bsk5-initial) (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))
 ; The input contract, by its octet type: untyped octets make the write's
 ; state ill-formed (and the frontier input and record input fail).
 (assert-event (not (fn-bs-frontier-inputp (bskc-fk) ".allocation-k0" '(300))))
-(must-fail (assert-event (bskc-frontier-cuts (bskc-fb) (bskc-fk) ".allocation-k0" '(300))))
+(must-fail-checked (assert-event (bskc-frontier-cuts (bskc-fb) (bskc-fk) ".allocation-k0" '(300))))
 (assert-event (not (fn-bs-record-inputp (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) '(300) *bsk5-arena*)))
-(must-fail (assert-event (bskc-record-cuts (bskc-rb) (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) '(300))))
+(must-fail-checked (assert-event (bskc-record-cuts (bskc-rb) (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) '(300))))
 ; The record input contract by its frame: the FIRST record's frame under the
 ; second name; the link lands on a target that does not read as the
 ; candidate, and the linked cut (pair 8) is not related.
 (assert-event (not (fn-bs-record-inputp (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame) *bsk5-arena*)))
-(must-fail (assert-event (bsk0-related-at (bsk0-r-run (bskc-rb) (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame)) 8)))
+(must-fail-checked (assert-event (bsk0-related-at (bsk0-r-run (bskc-rb) (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame)) 8)))
 ; The absent stage: O_EXCL fails and the run stops at its first syscall.
-(must-fail (assert-event (bskc-frontier-cuts (bsk0-f-occupied) (bskc-fk) ".allocation-k0" (fn-bs-frontier-encode 2))))
-(must-fail (assert-event (bskc-record-cuts (bskc-occupied) (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))
+(must-fail-checked (assert-event (bskc-frontier-cuts (bsk0-f-occupied) (bskc-fk) ".allocation-k0" (fn-bs-frontier-encode 2))))
+(must-fail-checked (assert-event (bskc-record-cuts (bskc-occupied) (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))))

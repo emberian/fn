@@ -17,7 +17,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/catalog-number-index")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (and (eq (symbol-class 'fn-cnx-view-seq (w state)) :common-lisp-compliant)
@@ -120,7 +120,7 @@
        (equal (fn-cnx-view-seq "fn.test" nil 5 *cnxt-c*) nil))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm cnxt-f-view-seq-without-n
    (equal (fn-cnx-view-seq "fn.test" nil 5 *cnxt-c*)
           (fn-cat-view-number-find "fn.test" nil (fn-cat-count *cnxt-c*) 5 *cnxt-c*))
@@ -149,7 +149,7 @@
        (equal (fn-cat-view-number-find "fn.test" 1 (fn-cat-count *cnxt-bad*) 2 *cnxt-bad*) 1))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm cnxt-f-view-seq-without-freshp
    (equal (fn-cnx-view-seq "fn.test" 1 2 *cnxt-bad*)
           (fn-cat-view-number-find "fn.test" 1 (fn-cat-count *cnxt-bad*) 2 *cnxt-bad*))
@@ -172,7 +172,7 @@
        (equal (fn-cnx-walk-range "fn.test" 1 3 2 *cnxt-bad*) '(1)))
   :rule-classes nil)
 
-(must-fail
+(must-fail-checked
  (defthm cnxt-f-view-range-without-freshp
    (equal (fn-cnx-view-range "fn.test" 1 3 2 *cnxt-bad*)
           (fn-cnx-walk-range "fn.test" 1 3 2 *cnxt-bad*))

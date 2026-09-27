@@ -6,7 +6,7 @@
 ; runs) and then the feed machine the host's tick and reply entries run.
 (in-package "ACL2")
 (include-book "../../books/owner")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun off-o (s) (fn-record-string-octets s))
 (defun off-line (s) (append (fn-record-string-octets s) '(13 10)))
@@ -96,7 +96,7 @@
 (assert-event (and (null (off-offer *off-b-ih* "nodeB" (off-o "<none@a.fn.test>")))
                    (not (equal (off-offer *off-b-ih* "nodeB" (off-o "<none@a.fn.test>"))
                                (list (list :command 3 (fn-feed-ihave-line (off-o "<none@a.fn.test>"))))))))
-(must-fail
+(must-fail-checked
  (defthm off-ihave-form-without-an-offer
    (let* ((f (fn-own-feed-entry-feed
               (fn-own-feed-entry-of peer (fn-own-feeds (fn-own-feed-connect o peer conn :ihave)))))
@@ -114,7 +114,7 @@
                                                    *off-article*)))))
 ; Tooth: nothing offered, nothing sent.
 (assert-event (null (off-send-unoffered *off-b-ih* "nodeB" *off-msgid* *off-article*)))
-(must-fail
+(must-fail-checked
  (defthm off-bare-article-without-a-send
    (let* ((f (fn-own-feed-entry-feed
               (fn-own-feed-entry-of peer (fn-own-feeds (fn-own-feed-connect o peer conn :ihave)))))
@@ -137,7 +137,7 @@
                           (list (list :command 5 (fn-feed-ihave-line *off-msgid*))))
                    (not (equal (off-offer *off-e-st* "nodeE" *off-msgid*)
                                (list (list :command 5 (fn-feed-check-line *off-msgid*)))))))
-(must-fail
+(must-fail-checked
  (defthm off-stream-form-without-a-streaming-record
    (let* ((f (fn-own-feed-entry-feed
               (fn-own-feed-entry-of peer (fn-own-feeds (fn-own-feed-connect o peer conn nil)))))
@@ -147,7 +147,7 @@
    :hints (("Goal" :in-theory (disable fn-own-feed-connect fn-feed-offer)))))
 ; Tooth for the offer hypothesis: no offer, nil is not the CHECK command.
 (assert-event (null (off-offer *off-b-st* "nodeB" (off-o "<none@a.fn.test>"))))
-(must-fail
+(must-fail-checked
  (defthm off-stream-form-without-an-offer
    (let* ((e (fn-own-feed-entry-of peer (fn-own-feeds o)))
           (f (fn-own-feed-entry-feed

@@ -1380,6 +1380,17 @@ check:
 # skip keyed on a failure that carries no `waiver-ok:` declaration.  All three
 # are static, need no ACL2 and take about a second.
 	@$(CHECK_STEP) $(PYTHON) tools/harness_check.py
+# A tooth whose body does not translate passes as a must-fail and bites
+# nothing: std must-fail accepts ANY error, silently.  The keystone audit of
+# 2026-09-27 found 41 forms in two test books calling functions at pre-flip
+# arities, so PRF-191/132/144 had never been evaluated while certification
+# was green.  Every must-fail in tests/acl2 is `must-fail-checked`
+# (tests/acl2/must-fail-checked.lisp), which translates the body's claim
+# first and so makes certification refuse such a tooth; this fails on a bare
+# must-fail unless its line declares `; must-fail-ok: <reason>`.
+# `--convert` rewrites bare ones after a merge.  Static, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/must_fail_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_must_fail_check
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make

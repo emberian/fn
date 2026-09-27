@@ -6,7 +6,7 @@
 (in-package "ACL2")
 (include-book "bp-request-plan-tests")
 (include-book "../../books/bp-request-recovery")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bprv-history*
   (list *bpo-config-record* *bpo-enqueue-record*
@@ -87,12 +87,12 @@
 ; Keystone hypotheses.  (car open): a history that does not open has no
 ; image to recover.  (equal (car plan) :recover): a recovery outcome the
 ; plan did not produce (wrong transaction) is not accepted live.
-(must-fail
+(must-fail-checked
  (assert-event (car (fn-bpiw-replay-journal *bpo-node* (cdr *bprv-history*)))))
-(must-fail
+(must-fail-checked
  (assert-event (car (fn-bpiw-apply (nth 1 *bprv-open*) (nth 3 *bprv-open*)
                                    '(:outcome 99 0 :recovery :committed)))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (car (fn-bprq-recovery-plan (nth 1 *bprv-open*) "work:out"
                                                   "attempt:other" :committed))
                       :recover)))
@@ -111,7 +111,7 @@
        (append *bprq-history*
                (list (car *bprv-ion*) (cadr *bprv-ion*)
                      '(:outcome 12 0 :ordinary :durable))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (car (fn-bpiw-replay-journal
         *bpo-node*

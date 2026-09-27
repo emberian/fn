@@ -5,7 +5,7 @@
 ; codec at a given txid).
 (in-package "ACL2")
 (include-book "../../books/store-log-route")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; A recovered empty kernel at next txid 1, and records at txids 1 and 2.
 (defconst *slrt-ks* (fn-lgk-make nil *fn-lg-genesis* 0 1 nil nil 0 :ready))
@@ -60,7 +60,7 @@
 ; first record of a batch is taken whatever OMAX says, so the octet bound's
 ; conclusion fails without it.
 (assert-event (equal (car (fn-olr-take *slrt-ks* *slrt-r1* 1 0 0 64 100 4096)) :taken))
-(must-fail
+(must-fail-checked
  (assert-event
   (<= (+ 0 (fn-olr-entry-octets (len *slrt-r1*) 4096)) 100)))
 
@@ -107,6 +107,6 @@
 ; take that was not :taken (a refused record) does not extend it.
 (assert-event (not (fn-olr-linkp nil (slrt-k1))))
 (assert-event (not (fn-olr-linkp (list *slrt-r1* *slrt-r1*) (slrt-k5))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-olr-linkp (list *slrt-r2*)
                              (cadr (fn-olr-take *slrt-ks* *slrt-r2* 2 0 0 64 16777216 4096)))))

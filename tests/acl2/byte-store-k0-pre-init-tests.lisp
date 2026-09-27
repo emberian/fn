@@ -3,7 +3,7 @@
 ; preservation by the initializer's steps, :mkdir and :link-eexist included.
 (in-package "ACL2")
 (include-book "../../books/byte-store-k0-pre-init")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bski-record* '(1 2 3 4))
 (defun bski-step-bs (bs step outcome)
@@ -44,13 +44,13 @@
     (bski-step-bs s2 '(:fsync-file :staging ".f") :ok)))
 (assert-event (fn-bs-k0i-pre-init-relation (bski-stage) (fn-sf-initial-state)))
 (assert-event (not (fn-bs-k0i-step-inputp (list :link :staging ".f" :root *fn-bs-frontier-name*))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bs-k0i-pre-init-relation
                 (bski-step-bs (bski-stage) (list :link :staging ".f" :root *fn-bs-frontier-name*) :ok)
                 (fn-sf-initial-state))))
 ; Tooth: the relation.  An initialised store is not pre-init, and a step
 ; the precondition admits does not make it so.
-(must-fail
+(must-fail-checked
  (assert-event (fn-bs-k0i-pre-init-relation
                 (bski-step-bs *fn-bs-initialized-store* '(:cut "x") :ok)
                 (fn-sf-initial-state))))

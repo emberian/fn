@@ -15,7 +15,7 @@
 ; windows).
 (in-package "ACL2")
 (include-book "../../books/served-plan")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *spt-stale* '(88 88 88 88 88 88 88 88 88 88 88 88))
 (defconst *spt-effects*
@@ -78,7 +78,7 @@
 (defconst *spt-pbad* (cons '(300 51) nil))
 (assert-event (equal (first (spt-window *spt-stale* *spt-pbad* 5)) :malformed))
 (assert-event (not (fn-splan-donep *spt-pbad*)))
-(must-fail (assert-event (posp (third (spt-window *spt-stale* *spt-pbad* 5)))))
+(must-fail-checked (assert-event (posp (third (spt-window *spt-stale* *spt-pbad* 5)))))
 ; The prefix law still holds there (it is unconditional): the bad octet
 ; stays in the continuation.
 (assert-event
@@ -90,13 +90,13 @@
 (assert-event (equal (first (spt-window *spt-stale* *spt-p* 0)) :ok))
 (assert-event (not (fn-splan-donep *spt-p*)))
 (assert-event (equal (third (spt-window *spt-stale* *spt-p* 0)) 0))
-(must-fail (assert-event (posp (third (spt-window *spt-stale* *spt-p* 0)))))
+(must-fail-checked (assert-event (posp (third (spt-window *spt-stale* *spt-p* 0)))))
 ; (c) an unfinished plan -- a done plan writes nothing (the status is :ok
 ; and W is positive).
 (defconst *spt-done* (fn-splan-of-effects (list (list :close))))
 (assert-event (fn-splan-donep *spt-done*))
 (assert-event (equal (first (spt-window *spt-stale* *spt-done* 5)) :ok))
-(must-fail (assert-event (posp (third (spt-window *spt-stale* *spt-done* 5)))))
+(must-fail-checked (assert-event (posp (third (spt-window *spt-stale* *spt-done* 5)))))
 
 ; -----------------------------------------------------------------------------
 ; The window size ACL2 hands the host (fn-splan-window-size): the whole of
@@ -121,7 +121,7 @@
 (assert-event (and (not (fn-splan-donep *spt-mid*)) (equal (fn-splan-window-size *spt-mid*) 2)))
 ; The other side of the iff: a done plan's size is zero.
 (assert-event (equal (fn-splan-window-size *spt-done*) 0))
-(must-fail (assert-event (posp (fn-splan-window-size *spt-done*))))
+(must-fail-checked (assert-event (posp (fn-splan-window-size *spt-done*))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE 2: the drained windows are the reply (W = 5: three windows; W =
@@ -140,7 +140,7 @@
 (assert-event
  (mv-let (status octets p3) (fn-splan-drain *spt-p* 5 2)
    (and (equal status :ok) (not (fn-splan-donep p3)) (equal (len octets) 10))))
-(must-fail
+(must-fail-checked
  (assert-event
   (mv-let (status octets p3) (fn-splan-drain *spt-p* 5 2)
     (declare (ignore status p3))

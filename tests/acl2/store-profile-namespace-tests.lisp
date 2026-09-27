@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-profile-namespace")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; D27, PRF-102: the namespace accessors read the profile a store runs under.
 ; The default profile and the development preset give 2^20 for each; an
@@ -25,7 +25,7 @@
                      :namespace-count-outside-width))
 ; `fn-bs-profile-namespace-counts-within-width' needs its hypothesis: a value
 ; that is no profile reads 0 for every count.
-(must-fail
+(must-fail-checked
  (defthm spnt-namespace-counts-without-admission
    (fn-bs-profile-countp (fn-bs-profile-max-credentials nil))
    :rule-classes nil))

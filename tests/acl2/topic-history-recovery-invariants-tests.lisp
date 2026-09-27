@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/topic-history-recovery-invariants")
 (include-book "consumer-topic-store-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event (not (equal (fn-sn-topic *cts-admitted*)
                           (fn-th-prefix-state :ok 0 nil nil nil nil nil))))
@@ -25,7 +25,7 @@
 ; Without a valid crash choice, the actual transition is a no-op and retains
 ; the nonempty live topic projection rather than resetting it.
 (assert-event (not (fn-sf-crash-choicep :old :sideways)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-sn-topic (fn-sn-crash *cts-admitted* :old :sideways))
          (fn-th-prefix-state :ok 0 nil nil nil nil nil))))
@@ -35,7 +35,7 @@
  (not (fn-sn-open-okp
        (fn-sn-open-observed '(:not-a-group) 32 8
                             (fn-sf-records (fn-sn-files *cts-admitted*))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-sn-topic
           (fn-sn-open-state

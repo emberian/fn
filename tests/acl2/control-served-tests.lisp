@@ -5,7 +5,7 @@
 (include-book "../../books/control-served")
 (include-book "../../books/control-visible")
 (include-book "held-rows-tests")   ; fn-hrt-row-at: the history's rows
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun csv-line (text)
   (append (fn-record-string-octets text) '(13 10)))
@@ -70,7 +70,7 @@
 (defconst *csv-a*
   (fn-make-article "<a@example.invalid>" nil (list "fn.misc")
                    (list (cons "fn.misc" 1)) t nil))
-(must-fail
+(must-fail-checked
  (assert-event
   (iff (member-equal *csv-a* *csv-w*) (not (member-equal *csv-a* *csv-vis*)))))
 
@@ -87,7 +87,7 @@
                (fn-ctl-withdrawn-articles new ws *csv-verdicts*)))))
 ; Hypothesis 1 removed (the carried W was the merge): a stale W (O) is kept
 ; by an ordinary visible arrival.
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((old (list *csv-t* *csv-o*))
          (new (cons *csv-a* old))
@@ -96,7 +96,7 @@
     (equal (fn-ctl-refresh-withdrawn new old vis old (list *csv-o*))
            (fn-ctl-withdrawn-articles new ws *csv-verdicts*)))))
 ; Hypothesis 2 removed (the visible list is the view's): the unfiltered list.
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((old (list *csv-t* *csv-o*))
          (new (cons *csv-c* old))
@@ -119,7 +119,7 @@
 ; lookup found something): fn.mod.a 7 finds nothing, and nil is not in raw.
 (assert-event
  (equal (fn-ctl-number-withdrawn "fn.mod.a" 1 *csv-w*) *csv-t*))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((y (fn-ctl-number-withdrawn "fn.mod.a" 7 *csv-w*)))
     (and (member-equal y *csv-raw*) (not (member-equal y *csv-vis*))))))
@@ -127,13 +127,13 @@
 ; T at fn.mod.a 1 is found; O's number 2 (served) and A's fn.misc 1 (not
 ; in raw) are not.
 (assert-event (consp (fn-ctl-number-withdrawn "fn.mod.a" 1 *csv-w*)))
-(must-fail (assert-event (consp (fn-ctl-number-withdrawn "fn.mod.a" 2 *csv-w*))))
-(must-fail (assert-event (consp (fn-ctl-number-withdrawn "fn.misc" 1 *csv-w*))))
+(must-fail-checked (assert-event (consp (fn-ctl-number-withdrawn "fn.mod.a" 2 *csv-w*))))
+(must-fail-checked (assert-event (consp (fn-ctl-number-withdrawn "fn.misc" 1 *csv-w*))))
 
 ; fn-ctl-msgid-withdrawn-is-a-withdrawn-article (430 withdrawn).
 (assert-event
  (equal (fn-ctl-msgid-withdrawn "<t@example.invalid>" *csv-w*) *csv-t*))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((y (fn-ctl-msgid-withdrawn "<o@example.invalid>" *csv-w*)))
     (and (member-equal y *csv-raw*) (not (member-equal y *csv-vis*))))))
@@ -160,7 +160,7 @@
         (w (fn-ctl-withdrawn-articles raw *csv-ws* *csv-verdicts*)))
    (equal (car (fn-ctl-control-status *csv-c* vis w *csv-ws* *csv-verdicts*))
           :executed)))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((raw (list *csv-t* *csv-o*))
          (vis (fn-ctl-visible-articles raw *csv-ws* *csv-verdicts*))
@@ -168,13 +168,13 @@
     (not (member-equal (fn-ctl-find-held "<t@example.invalid>" vis w) vis)))))
 ; Executed, hypothesis 1 removed (the status is executed): O's held target
 ; is nil, not a member of raw.
-(must-fail
+(must-fail-checked
  (assert-event
   (member-equal (fn-ctl-find-held (fn-ctl-target-octets (fn-article-payload *csv-o*))
                                   *csv-vis* *csv-w*)
                 *csv-raw*)))
 ; Owed, hypothesis 1 removed (the status is owed): C's target T is held.
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (fn-article-msgid *csv-t*)
               (fn-ctl-target-octets (fn-article-payload *csv-c*))))))
@@ -184,7 +184,7 @@
   (fn-make-article "<u@example.invalid>" nil (list "fn.mod.a")
                    (list (cons "fn.mod.a" 3)) t nil))
 (assert-event (not (member-equal *csv-u* *csv-raw*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (fn-article-msgid *csv-u*)
               (fn-ctl-target-octets (fn-article-payload *csv-d*))))))

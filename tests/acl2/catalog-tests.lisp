@@ -18,7 +18,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/catalog")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The host runs compiled code: every exec function is guard-verified.
@@ -132,7 +132,7 @@
                                         (fn-cat-commit *cat-h2* *cat-a*))
                    (fn-cat-count *cat-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm cat-r-fresh-numbers-without-member
    (equal (fn-cat-group-number "fn.nowhere" (fn-cat-group-next "fn.nowhere" *cat-a*)
                                (fn-cat-commit *cat-h2* *cat-a*))
@@ -165,7 +165,7 @@
        (not (equal (fn-cat-visible-at 0 3 *cat-a*)
                    (and (< 0 3) (<= 3 (car (fn-held-withdrawn (fn-cat-at 0 *cat-a*))))))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm cat-r-visible-without-withdrawn
    (equal (fn-cat-visible-at 0 3 *cat-a*)
           (and (< 0 3) (<= 3 (car (fn-held-withdrawn (fn-cat-at 0 *cat-a*))))))
@@ -184,7 +184,7 @@
   (and (natp 2) (not (< 2 (fn-cat-count *cat-a*)))
        (not (equal (fn-cat-at 2 (fn-cat-commit *cat-h2* *cat-a*)) (fn-cat-at 2 *cat-a*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm cat-r-commit-keeps-rows-without-bound
    (equal (fn-cat-at 2 (fn-cat-commit *cat-h2* *cat-a*)) (fn-cat-at 2 *cat-a*))
    :rule-classes nil))

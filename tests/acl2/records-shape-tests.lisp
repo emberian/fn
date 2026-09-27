@@ -17,7 +17,7 @@
 (in-package "ACL2")
 (include-book "../../books/records-shape")
 (include-book "../../books/article-fields")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; Witness set: accepted names.  Uppercase, all-digit components and a leading
@@ -123,7 +123,7 @@
 (assert-event (and (not (member-equal 32 (fn-record-string-octets "fn.test")))
                    (fn-record-group-namep "fn.test")))
 (local
- (must-fail
+ (must-fail-checked
   (defthm rst-forbidden-without-member
     (implies (and (not (equal x 46))
                   (not (fn-record-group-component-octetp x)))
@@ -133,7 +133,7 @@
 ; component-char.
 (assert-event (not (fn-record-group-component-octetp 46)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm rst-forbidden-without-not-dot
     (implies (and (member-equal x (fn-record-string-octets text))
                   (not (fn-record-group-component-octetp x)))
@@ -142,7 +142,7 @@
 ; Without "not a component-char": "f" (102) is a member of "fn.test".
 (assert-event (member-equal 102 (fn-record-string-octets "fn.test")))
 (local
- (must-fail
+ (must-fail-checked
   (defthm rst-forbidden-without-not-component
     (implies (and (member-equal x (fn-record-string-octets text))
                   (not (equal x 46)))
@@ -155,7 +155,7 @@
 (assert-event (equal (car (fn-record-string-octets ".fn")) 46))
 (assert-event (not (equal (car (fn-record-string-octets "fn.test")) 46)))
 (local
- (must-fail
+ (must-fail-checked
   (defthm rst-leading-dot-without-hypothesis
     (not (fn-record-group-namep text)))))
 
@@ -167,7 +167,7 @@
                      (append (fn-record-string-octets "fn")
                              (cons 46 (cons 46 (fn-record-string-octets "test"))))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm rst-empty-component-without-hypothesis
     (implies (equal (fn-record-string-octets text) (append xs ys))
              (not (fn-record-group-namep text))))))
@@ -178,7 +178,7 @@
 (assert-event (equal (fn-record-string-octets "fn.test.")
                      (append (fn-record-string-octets "fn.test") (list 46))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm rst-trailing-dot-without-hypothesis
     (implies (equal (fn-record-string-octets text) (append xs ys))
              (not (fn-record-group-namep text))))))
@@ -189,7 +189,7 @@
 (assert-event (< *fn-record-max-group-name*
                  (len (fn-record-string-octets *rst-overlong-name*))))
 (local
- (must-fail
+ (must-fail-checked
   (defthm rst-length-without-hypothesis
     (implies (<= 1 (len (fn-record-string-octets text)))
              (not (fn-record-group-namep text))))))

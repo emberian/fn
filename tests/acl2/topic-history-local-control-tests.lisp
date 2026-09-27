@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/topic-history-local-control")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event (equal (fn-thlc-request-decode
                       (fn-thlc-request-encode :install nil nil))
@@ -36,7 +36,7 @@
 (assert-event (equal (fn-thlc-reply-decode
                       (fn-nctrl-seal *fn-thlc-reply-kind* '(4 0)))
                      '(:refused :reply)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-thlc-request-decode
           (fn-nctrl-seal *fn-thlc-request-kind* '(1 0 0 0 1 0)))

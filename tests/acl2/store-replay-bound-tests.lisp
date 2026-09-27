@@ -6,7 +6,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-replay-bound")
 (include-book "../../books/heap-figure")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defconst *srt-small* *fn-heap-small-profile*)
@@ -40,7 +40,7 @@
   (fn-srb-replay-within-boundp profile (fn-srb-sum encoded)))
 
 (defmacro srt-must-fail (name &rest hyps)
-  `(must-fail
+  `(must-fail-checked
     (defthm ,name
       (implies (and ,@hyps)
                (fn-srb-replay-within-boundp profile (fn-srb-sum encoded)))

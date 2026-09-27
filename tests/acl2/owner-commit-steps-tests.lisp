@@ -7,7 +7,7 @@
 ; at an idle owner and the START's :started event.
 (in-package "ACL2")
 (include-book "../../books/owner-commit-steps")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun ocst-class (s w)
   (mv-let (class s2) (fn-ocs-next s w) (declare (ignore s2)) class))
@@ -70,7 +70,7 @@
 (assert-event (not (fn-ocs-in-flight-p (fn-ocs-phase *ocst-s-done*))))
 (assert-event (equal (ocst-class *ocst-s-done* *ocst-readers*) :reader))
 (assert-event (equal (ocst-class *ocst-s-done* *ocst-control-poster-transit*) :control))
-(must-fail
+(must-fail-checked
  (assert-event (member-equal (ocst-class *ocst-s-done* *ocst-control-poster-transit*)
                              '(:inspect :commit :reader nil))))
 
@@ -127,8 +127,8 @@
 ; failed, are never :complete.
 (assert-event (equal (ocst-step-action :idle :fenced) :fault))
 (assert-event (equal (ocst-step-action :staged :failed) :stop))
-(must-fail (assert-event (equal (ocst-step-action :idle :fenced) :complete)))
-(must-fail (assert-event (equal (ocst-step-action :staged :failed) :complete)))
+(must-fail-checked (assert-event (equal (ocst-step-action :idle :fenced) :complete)))
+(must-fail-checked (assert-event (equal (ocst-step-action :staged :failed) :complete)))
 ; A second START while a batch is in flight is a fault, and the batch stays
 ; in flight until :completed.
 (assert-event (equal (ocst-step-action :staged :started) :fault))
@@ -158,7 +158,7 @@
         (list *ocst-readers-inspect* nil)))
 (assert-event (not (fn-ocs-inspect-waitsp *ocst-ws-late*)))
 (assert-event (equal (fn-ocs-inspect-delay (fn-ocs-init) *ocst-ws-late*) 3))
-(must-fail
+(must-fail-checked
  (assert-event (<= (fn-ocs-inspect-delay (fn-ocs-init) *ocst-ws-late*) 1)))
 
 ; --- the keystone's per-pick subjects -------------------------------------------
@@ -240,10 +240,10 @@
 
 ; Mutation witnesses (labelled: a release that told a stopped batch's members
 ; their rendered outcome is what the keystone refuses).
-(must-fail
+(must-fail-checked
  (assert-event (member-equal :rendered
                              (fn-ocs-member-releases *ocst-a-failed* *ocst-members*))))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-ocs-member-release :stop :refused nil) :rendered)))
 
 ; -----------------------------------------------------------------------------

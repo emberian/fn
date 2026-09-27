@@ -16,7 +16,7 @@
 (in-package "ACL2")
 (include-book "../../books/relay-source-routes")
 (include-book "bp-transit-join-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *rst-crlf* '(13 10))
 (defun rst-lines (strings)
@@ -80,7 +80,7 @@
 (assert-event (and (not (rst-parsesp *rst-unframed*))
                    (not (equal (rst-authored *rst-unframed*)
                                (fn-rs-source-walk (fn-pu-strip *rst-unframed* nil) nil)))))
-(must-fail
+(must-fail-checked
  (defthm rst-walk-without-the-parse
    (equal (fn-hc-authored-source (fn-article-result-article (fn-article-parse y)))
           (fn-rs-source-walk (fn-pu-strip y nil) nil))
@@ -134,7 +134,7 @@
                    (rst-parsesp *rst-long-xref-b*)
                    (not (equal (rst-authored *rst-long-xref-b*)
                                (rst-authored *rst-long-xref*)))))
-(must-fail
+(must-fail-checked
  (defthm rst-relay-without-the-received-parse
    (implies (fn-article-result-okp
              (fn-article-parse (fn-peer-relayed-octets cfg peer octets)))
@@ -158,7 +158,7 @@
                    (not (rst-parsesp *rst-long-path-b*))
                    (not (equal (rst-authored *rst-long-path-b*)
                                (rst-authored *rst-long-path*)))))
-(must-fail
+(must-fail-checked
  (defthm rst-relay-without-the-stored-parse
    (implies (fn-article-result-okp (fn-article-parse octets))
             (equal (fn-hc-authored-source
@@ -201,7 +201,7 @@
                    (not (rst-parsesp (nth 2 *rst-refused-args*)))
                    (not (equal (rst-authored (nth 2 *rst-refused-args*))
                                (rst-authored *rst-long-path*)))))
-(must-fail
+(must-fail-checked
  (defthm rst-transfer-without-the-want
    (let ((stored (nth 2 (fn-peer-injection-arguments node cfg peer msgid octets
                                                      generation id subject clock))))
@@ -250,7 +250,7 @@
                    (equal (fn-bpa-request-article (fn-bpaj-request *rst-bad-request-octets*))
                           *rst-long-xref*)
                    (not (rst-parsesp *rst-long-xref*))))
-(must-fail
+(must-fail-checked
  (defthm rst-bp-transit-without-the-submit
    (let ((plan (fn-bpaj-transit-plan node cfg ingress source-eid request-octets clock))
          (article (fn-bpa-request-article (fn-bpaj-request request-octets))))

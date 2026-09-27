@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/heap-figure")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defconst *hft-core* 389141032)              ; the 69046a76 fn-host.core
@@ -118,7 +118,7 @@
                          (list *hft-2g*) *hft-h* *hft-t* *hft-h* *hft-t*))
 
 (defmacro hft-must-fail (name &rest hyps)
-  `(must-fail
+  `(must-fail-checked
     (defthm ,name
       (let* ((decision (fn-heap-decide profile core nursery observations))
              (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
@@ -256,7 +256,7 @@
                                                (list (+ (* 1536 *fn-heap-mib*) 1/2))
                                                '(0 . 0)))
                 :refused))
-(must-fail
+(must-fail-checked
  (defthm hft-small-without-machine-bound
    (implies (and (<= (fn-heap-core-dynamic core) (* 512 *fn-heap-mib*))
                  (posp machine))
@@ -315,7 +315,7 @@
 ; Without acceptance: the image does not fit 256 MiB (a refusal's MB is 0).
 (assert! (equal (hft-sl-hyps *hft-core* *hft-nursery* (* 256 *fn-heap-mib*)) '(nil)))
 (assert! (not (hft-sl-conclusion *hft-core* *hft-nursery* (* 256 *fn-heap-mib*))))
-(must-fail
+(must-fail-checked
  (defthm hft-sl-without-heap
    (let ((d (fn-heap-storeless-decide core nursery machine)))
      (<= (+ (nfix core) (nfix nursery))
@@ -449,7 +449,7 @@
                             (list *hft-4g*) '(7271160 . 3000) 7271160))
 
 (defmacro hft-op-must-fail (name &rest hyps)
-  `(must-fail
+  `(must-fail-checked
     (defthm ,name
       (let ((decision (fn-heap-operation-decide action profile core nursery observations
                                                 observed)))
@@ -606,7 +606,7 @@
                             (list *hft-2g*) *hft-1000* *hft-h* *hft-t* 2465160 1000))
 
 (defmacro hft-st-must-fail (name &rest hyps)
-  `(must-fail
+  `(must-fail-checked
     (defthm ,name
       (let* ((decision (fn-heap-operation-decide action profile core nursery observations
                                                  observed))
@@ -732,7 +732,7 @@
 (assert! (not (<= (+ *hft-base* (* 2 (fn-heap-nursery-trigger (- *hft-base* *fn-heap-mib*)
                                                               *hft-nursery*)))
                   (- *hft-base* *fn-heap-mib*))))
-(must-fail
+(must-fail-checked
  (defthm hft-with-nursery-without-the-figure
    (implies (and (natp d) (natp base))
             (<= (+ base (* 2 (fn-heap-nursery-trigger d nursery))) d))
@@ -776,7 +776,7 @@
 (assert! (not (hft-sf-conclusion *hft-fig0* '(0 . 0) *hft-h* *hft-t* 0 *hft-t*)))
 
 (defmacro hft-sf-must-fail (name &rest hyps)
-  `(must-fail
+  `(must-fail-checked
     (defthm ,name
       (implies (and ,@hyps)
                (<= (fn-heap-store-need profile core used n ou on

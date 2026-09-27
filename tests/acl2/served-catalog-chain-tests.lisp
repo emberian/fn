@@ -15,7 +15,7 @@
 (in-package "ACL2")
 
 (include-book "../../books/served-catalog-chain")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *scct-p0* (append (fn-record-string-octets "Subject: a") '(13 10 13 10 65 13 10)))
 (defconst *scct-p1* (append (fn-record-string-octets "Subject: b") '(13 10 13 10 66 13 10)))
@@ -159,7 +159,7 @@
            :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                       (theory 'minimal-theory)))))
 
-(must-fail
+(must-fail-checked
  (defthm scct-read-span-needs-ocl-relation
    (implies (and (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
@@ -170,7 +170,7 @@
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                        (theory 'minimal-theory))))))
 
-(must-fail
+(must-fail-checked
  (defthm scct-read-span-needs-view-indexedp
    (implies (and (fn-ocl-relation oc)
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
@@ -181,7 +181,7 @@
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                        (theory 'minimal-theory))))))
 
-(must-fail
+(must-fail-checked
  (defthm scct-read-span-needs-the-catalog-relation
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
@@ -192,7 +192,7 @@
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                        (theory 'minimal-theory))))))
 
-(must-fail
+(must-fail-checked
  (defthm scct-read-span-needs-natp-start
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
@@ -204,7 +204,7 @@
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                        (theory 'minimal-theory))))))
 
-(must-fail
+(must-fail-checked
  (defthm scct-read-span-needs-natp-end
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))

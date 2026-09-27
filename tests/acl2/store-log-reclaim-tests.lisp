@@ -4,7 +4,7 @@
 ; store after its article completed, released by all holders).
 (in-package "ACL2")
 (include-book "../../books/store-log-reclaim")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "store-reclaim-pack-tests")
 
 (defmacro lgrt-d (dry) `(fn-lgr-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events) ,dry))
@@ -27,10 +27,10 @@
 (assert-event (equal (lgrt-d t)
                      (list :dry-run (rpt-msgids) (rpt-freed)
                            (fn-rcl-store-counts *rpt-rule* 0 *rpt-s*))))
-(must-fail (assert-event (equal (nth 3 (lgrt-d t)) (rpt-new))))
+(must-fail-checked (assert-event (equal (nth 3 (lgrt-d t)) (rpt-new))))
 (assert-event (equal (car (fn-lgr-decide *rpt-profile* '(:keep-forever) 0 *rpt-s* (rpt-events) nil))
                      :none))
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (equal (nth 3 (fn-lgr-decide *rpt-profile* '(:keep-forever) 0 *rpt-s* (rpt-events) nil))
                    (rpt-new))))
 ; A rerun over the rewritten history rewrites nothing more.
@@ -58,6 +58,6 @@
 (assert-event (equal (car (fn-lgr-decide-stream *rpt-profile* *rpt-rule* 0 *rpt-s*
                                                 (lgrt-acc (rpt-new)) nil))
                      :none))
-(must-fail (assert-event (equal (car (fn-lgr-decide-stream *rpt-profile* *rpt-rule* 0 *rpt-s*
+(must-fail-checked (assert-event (equal (car (fn-lgr-decide-stream *rpt-profile* *rpt-rule* 0 *rpt-s*
                                                            (lgrt-acc (rpt-new)) nil))
                                 (car (lgrt-d nil)))))

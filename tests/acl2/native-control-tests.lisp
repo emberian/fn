@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-control")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fn-nctrl-test-msgid*
   (fn-record-string-octets "<control-1@example.invalid>"))
@@ -382,13 +382,13 @@
 (assert-event (fn-native-control-liveness-offlinep
                 (nct-livep-by-node-alone nil :held)))
 ; Without the lock: the node alone does not decide stale.
-(must-fail
+(must-fail-checked
  (defthm nct-stale-without-lock
    (iff (equal (fn-native-control-liveness socket-node lock) :stale)
         socket-node)
    :rule-classes nil))
 ; Without the node: a free lock alone is not stale.
-(must-fail
+(must-fail-checked
  (defthm nct-stale-without-node
    (iff (equal (fn-native-control-liveness socket-node lock) :stale)
         (member-equal lock '(:free :absent)))

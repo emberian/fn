@@ -9,7 +9,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-k0-step-bridge")
 (include-book "byte-store-k0-step-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bskb-rec (k) (nth k (bsk5-record-2-run)))
 (defun bskb-file-ok (bs ks) (fn-bs-store-relation bs (fn-sf-record-file-result ks :ok) *bsk5-arena*))
@@ -32,9 +32,9 @@
 ; Teeth: each lemma's one hypothesis is the relation.  Without it (the
 ; initial byte image under the same kernels) the conclusion fails.
 (assert-event (not (fn-bs-store-relation (bsk5-initial) (cdr (bskb-rec 4)) *bsk5-arena*)))
-(must-fail (assert-event (bskb-file-ok (bsk5-initial) (cdr (bskb-rec 4)))))
+(must-fail-checked (assert-event (bskb-file-ok (bsk5-initial) (cdr (bskb-rec 4)))))
 (assert-event (not (fn-bs-store-relation (bsk5-initial) (cdr (bskb-rec 8)) *bsk5-arena*)))
-(must-fail (assert-event (bskb-link-ok (bsk5-initial) (cdr (bskb-rec 8)))))
+(must-fail-checked (assert-event (bskb-link-ok (bsk5-initial) (cdr (bskb-rec 8)))))
 
 ; The marker error arms.
 (defconst *bskb-stage* ".stage-marker-k0")
@@ -64,16 +64,16 @@
 (assert-event (bskb-concl (bskb-b) (bskb-k) *bskb-stage* (bskb-octets) '(:eio . nil)))
 ; Teeth, one per hypothesis that has one.
 ; The relation: the initial byte image under the completing kernel.
-(must-fail (assert-event (bskb-concl (bsk5-initial) (bskb-k) *bskb-stage* (bskb-octets) :ok)))
+(must-fail-checked (assert-event (bskb-concl (bsk5-initial) (bskb-k) *bskb-stage* (bskb-octets) :ok)))
 ; The completion window: the related record-attempted pair of the record run.
 (assert-event (fn-bs-store-relation (car (bskb-rec 10)) (cdr (bskb-rec 10)) *bsk5-arena*))
 (assert-event (not (fn-bs-finish-inputp (cdr (bskb-rec 10)) (car (fn-sf-completion (cdr (bskb-rec 10))))
                                         (cdr (fn-sf-completion (cdr (bskb-rec 10)))))))
-(must-fail (assert-event (bskb-concl (car (bskb-rec 10)) (cdr (bskb-rec 10)) *bskb-stage* (bskb-octets) :ok)))
+(must-fail-checked (assert-event (bskb-concl (car (bskb-rec 10)) (cdr (bskb-rec 10)) *bskb-stage* (bskb-octets) :ok)))
 ; A string stage name.
-(must-fail (assert-event (bskb-concl (bskb-b) (bskb-k) 7 (bskb-octets) :ok)))
+(must-fail-checked (assert-event (bskb-concl (bskb-b) (bskb-k) 7 (bskb-octets) :ok)))
 ; An absent stage: the stage the marker run itself created.
 (assert-event (fn-bs-lookup (car (nth 1 (bskm-good))) :staging *bskb-stage*))
-(must-fail (assert-event (bskb-concl (car (nth 1 (bskm-good))) (bskb-k) *bskb-stage* (bskb-octets) :ok)))
+(must-fail-checked (assert-event (bskb-concl (car (nth 1 (bskm-good))) (bskb-k) *bskb-stage* (bskb-octets) :ok)))
 ; Typed octets.
-(must-fail (assert-event (bskb-concl (bskb-b) (bskb-k) *bskb-stage* '(300) :ok)))
+(must-fail-checked (assert-event (bskb-concl (bskb-b) (bskb-k) *bskb-stage* '(300) :ok)))

@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-mission")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun nmt-argv (words)
   (if (consp words)
@@ -22,7 +22,7 @@
                      16))
 ; Teeth for fn-native-mission-store-opens-with-its-profile: a name outside
 ; the table has no profile.
-(must-fail (assert-event (fn-bs-profile-admittedp (fn-native-mission-profile "moon"))))
+(must-fail-checked (assert-event (fn-bs-profile-admittedp (fn-native-mission-profile "moon"))))
 
 ; The verb: `mission relay' at a config path writes the relay rendering.
 (defconst *nmt-path* (fn-record-string-octets "/tank/fn/scratch/operator-config/relay/fn.toml"))
@@ -79,22 +79,22 @@
 ; Without a mission in the configuration: the plain init plans the defaults.
 (defconst *nmt-plain* (append (fn-record-string-octets "[store]") '(10)
                               (fn-record-string-octets "path = \"/x\"") '(10)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-native-operator-result-init-profile
                        (fn-native-operator-run *nmt-plain* (nmt-argv '("init" "fn.test"))))
                       (fn-native-mission-request nil))))
 ; Without the init command: another verb plans no profile.
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-native-operator-result-init-profile
                        (fn-native-operator-run *nmt-text* (nmt-argv '("status"))))
                       (fn-native-mission-request "relay"))))
 ; Without acceptance: a refused init plans no profile.
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-native-operator-result-init-profile
                        (fn-native-operator-run *nmt-text* (nmt-argv '("init" "--profile" "scale" "x"))))
                       (fn-native-mission-request "relay"))))
 ; Without a loadable configuration: nothing is planned.
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-native-operator-result-init-profile
                        (fn-native-operator-run '(255) (nmt-argv '("init" "fn.test"))))
                       (fn-native-mission-request "relay"))))

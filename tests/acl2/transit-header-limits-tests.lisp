@@ -7,7 +7,7 @@
 (include-book "../../books/transit-header-limits")
 (include-book "../../books/codec-attach")
 (include-book "peer-inbound-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *thlt-stored* (fn-peer-relayed-octets *pt-cfg* "innA" *pt-noloop*))
 ; The census: the stored article (Path grown by this node's identity) has 6
@@ -52,7 +52,7 @@
                                                     *pt-loop* nil "ob" "s" '(0 0 0))
                      (fn-peer-decision :refuse :loop)))
 (assert-event (not (fn-article-limit-reasonp :loop)))
-(must-fail
+(must-fail-checked
  (defthm thlt-without-want-or-defer
    (let* ((u (fn-peer-decide-transfer-under node cfg peer msgid octets clock id
                                             subject limits))
@@ -81,7 +81,7 @@
 (assert-event (not (equal (thlt-under '(5 6 200))
                           (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop*
                                                    *pt-noloop* nil "ob" "s"))))
-(must-fail
+(must-fail-checked
  (defthm thlt-without-want
    (equal (fn-peer-decide-transfer-under node cfg peer msgid octets clock id
                                          subject limits)
@@ -125,7 +125,7 @@
                      :header-octets-limit))
 ; fn-own-bp-transit-submits-only-within-the-limits: without :submitted, the
 ; refused delivery's parse under the limits fails.
-(must-fail
+(must-fail-checked
  (defthm thlt-bp-without-submitted
    (fn-article-result-okp
     (fn-article-parse-under (fn-peer-relayed-octets cfg peer octets)
@@ -135,7 +135,7 @@
                                        fn-own-config-header-limits)))))
 ; fn-own-bp-transit-refuses-past-the-limits: without the failed parse, the
 ; delivery at the limits is submitted.
-(must-fail
+(must-fail-checked
  (defthm thlt-bp-without-past-the-limits
    (equal (fn-own-bp-transit-submit-result o cfg peer msgid octets id subject)
           :refused)
@@ -161,7 +161,7 @@
                                                 (fn-inj-post-bound 32768 '(5 6 186)) nil nil)
                        *pt-id1* (list (pt-o "fn.letters")) *pt-a1*))
                      :control-invalid))
-(must-fail
+(must-fail-checked
  (defthm thlt-ctl-without-gate
    (implies (and (fn-article-result-okp (fn-article-parse octets))
                  (not (fn-article-result-okp
@@ -183,7 +183,7 @@
 (assert-event (not (fn-article-result-okp (fn-article-parse *thlt-garbage*))))
 (assert-event (fn-inj-injectedp (thlt-ctl '(6 6 186) *thlt-garbage*)))
 (assert-event (not (fn-article-result-okp (fn-article-parse-under *thlt-garbage* '(6 6 186)))))
-(must-fail
+(must-fail-checked
  (defthm thlt-ctl-inject-without-reading-parse
    (implies (fn-inj-injectedp (fn-own-control-decision cfg msgid groups octets))
             (fn-article-result-okp
@@ -198,7 +198,7 @@
                              fn-af-message-idp fn-inj-group-namesp fn-octet-listp))))))
 ; Without the injection: the refusal past the fields limit.
 (assert-event (not (fn-article-result-okp (fn-article-parse-under *pt-a1* '(5 6 186)))))
-(must-fail
+(must-fail-checked
  (defthm thlt-ctl-without-injected
    (implies (fn-article-result-okp (fn-article-parse octets))
             (fn-article-result-okp
@@ -206,7 +206,7 @@
    :hints (("Goal" :in-theory (disable fn-article-parse fn-article-parse-under
                                        fn-own-config-header-limits)))))
 ; Without the failed parse under the limits: injected.
-(must-fail
+(must-fail-checked
  (defthm thlt-ctl-refuse-without-past-the-limits
    (implies (and (fn-thl-control-gatep cfg msgid groups octets)
                  (fn-article-result-okp (fn-article-parse octets)))

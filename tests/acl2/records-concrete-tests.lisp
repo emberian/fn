@@ -4,7 +4,7 @@
 (include-book "../../books/records-concrete")
 (include-book "../../books/records-concrete-owner")
 (include-book "../../books/records-attach-concrete")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
 
 ; Reachable witness: the article record owner-served-invariants-tests'
@@ -157,7 +157,7 @@
        (equal (fn-record-ascii-octet-listp
                (fn-record-string-octets-aux (nthcdr -1 (coerce *rcon-t-s-high* 'list))))
               nil))))
-(must-fail
+(must-fail-checked
  (defthm rcon-t-ascii-walk-without-natp
    (equal (fn-rcon-ascii-from *rcon-t-s-high* -1)
           (fn-record-ascii-octet-listp
@@ -264,7 +264,7 @@
 ; store-level observation's guard, fn-sn-statep, is needed for its compiled
 ; code (the file step reads the files' phase, fn-sf-statep's), so a copy
 ; with guard t is refused.
-(must-fail
+(must-fail-checked
  (defun rcon-t-sn-io-unguarded (s operation result)
    (declare (xargs :guard t :verify-guards t))
    (let* ((old-files (fn-sn-files s))
@@ -314,7 +314,7 @@
                    (equal (fn-rcon-record-encode-impl *rcon-t-msgid-250*)
                           (fn-record-encode-impl *rcon-t-msgid-250*))))
 ; So "the encoder encodes every shaped record" is refuted at that record.
-(must-fail
+(must-fail-checked
  (defthm rcon-t-encode-shaped-251
    (implies (fn-record-shapep *rcon-t-msgid-251*)
             (consp (fn-rcon-record-encode-impl *rcon-t-msgid-251*)))))

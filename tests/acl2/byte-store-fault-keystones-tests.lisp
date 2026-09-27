@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-fault-keystones")
 (include-book "../../books/byte-store-frame")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "../../books/codec-attach")
 
 (defconst *fn-bsfk-groups* '("fn.letters" "fn.test"))
@@ -69,7 +69,7 @@
                                   "00000000000000000000.txn" outcome))))
 
 ; Each remaining issued-link hypothesis is essential.
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 6 *fn-bsfk-record-run*)) (bs (car pair)))
    (and (not (fn-sf-statep *fn-bsfk-bad-record-state*))
         (equal (fn-sf-phase *fn-bsfk-bad-record-state*) :record-data-durable)
@@ -77,24 +77,24 @@
         (not (fn-bs-lookup bs :transactions "00000000000000000000.txn"))
         (fn-bsfk-link-conclusion bs *fn-bsfk-bad-record-state* ".stage-1"
                                   "00000000000000000000.txn" (cons :eio :issued))))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 5 *fn-bsfk-record-run*)) (bs (car pair)) (ks (cdr pair)))
    (and (fn-sf-statep ks) (not (equal (fn-sf-phase ks) :record-data-durable))
         (fn-bs-inop (fn-bs-lookup bs :staging ".stage-1"))
         (not (fn-bs-lookup bs :transactions "00000000000000000000.txn"))
         (fn-bsfk-link-conclusion bs ks ".stage-1"
                                   "00000000000000000000.txn" (cons :eio :issued))))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 6 *fn-bsfk-record-run*)) (bs (car pair)) (ks (cdr pair)))
    (and (not (fn-bs-inop (fn-bs-lookup bs :staging ".missing")))
         (fn-bsfk-link-conclusion bs ks ".missing"
                                   "00000000000000000000.txn" (cons :eio :issued))))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 7 *fn-bsfk-record-run*)) (bs (car pair)) (ks (cdr pair)))
    (and (fn-bs-lookup bs :transactions "00000000000000000000.txn")
         (fn-bsfk-link-conclusion bs ks ".stage-1"
                                   "00000000000000000000.txn" (cons :eio :issued))))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 6 *fn-bsfk-record-run*)) (bs (car pair)) (ks (cdr pair)))
    (and (not (equal (cdr (cons :eio :not-issued)) :issued))
         (fn-bsfk-link-conclusion bs ks ".stage-1"
@@ -114,7 +114,7 @@
         (fn-bs-dir-quietp (fn-bs-fence-dir bs :transactions) :transactions))))
 
 ; Without an issued operation there is nothing for recovery to drain.
-(must-fail
+(must-fail-checked
  (assert-event
   (mv-let (result bs)
     (fn-bs-link (car (nth 6 *fn-bsfk-record-run*)) :staging ".stage-1"
@@ -136,7 +136,7 @@
         (not (fn-bs-dir-quietp (fn-bs-fence-dir bs :root) :staging)))))
 
 ; A failure reported before rename was issued leaves :root quiet.
-(must-fail
+(must-fail-checked
  (assert-event
   (mv-let (result bs)
     (fn-bs-rename (car (nth 7 *fn-bsfk-frontier-run*))
@@ -159,7 +159,7 @@
           (fn-sf-fencedp (fn-sf-record-dir-result ks :error))))))
 
 ; Fencing the unrelated staging directory cannot resolve the authority choice.
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((pair (nth 10 *fn-bsfk-record-run*))
          (bs (car pair)))
@@ -179,7 +179,7 @@
           (fn-bs-dir-quietp bs1 :root)
           (fn-sf-fencedp (fn-sf-frontier-dir-result ks :error))))))
 
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((pair (nth 10 *fn-bsfk-frontier-run*))
          (bs (car pair)))
@@ -197,20 +197,20 @@
         (fn-bs-inop (fn-bs-lookup bs :staging ".allocation-1"))
         (equal (cdr outcome) :issued)
         (fn-bsfk-rename-conclusion bs ks ".allocation-1" outcome))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 7 *fn-bsfk-frontier-run*)) (bs (car pair)))
    (and (not (fn-sf-statep *fn-bsfk-bad-frontier-state*))
         (fn-bsfk-rename-conclusion bs *fn-bsfk-bad-frontier-state*
                                     ".allocation-1" (cons :eio :issued))))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 5 *fn-bsfk-frontier-run*)) (bs (car pair)) (ks (cdr pair)))
    (and (not (equal (fn-sf-phase ks) :frontier-data-durable))
         (fn-bsfk-rename-conclusion bs ks ".allocation-1" (cons :eio :issued))))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 7 *fn-bsfk-frontier-run*)) (bs (car pair)) (ks (cdr pair)))
    (and (not (fn-bs-inop (fn-bs-lookup bs :staging ".missing")))
         (fn-bsfk-rename-conclusion bs ks ".missing" (cons :eio :issued))))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 7 *fn-bsfk-frontier-run*)) (bs (car pair)) (ks (cdr pair)))
    (and (not (equal (cdr (cons :eio :not-issued)) :issued))
         (fn-bsfk-rename-conclusion bs ks ".allocation-1"
@@ -224,16 +224,16 @@
         (bs (car pair)) (ks (cdr pair)) (outcome (cons :eio '(:drop))))
    (and (fn-sf-statep ks) (equal (fn-sf-phase ks) :record-attempted)
         (consp outcome) (fn-bsfk-dir-conclusion bs ks :transactions outcome))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 10 *fn-bsfk-record-run*)) (bs (car pair)))
    (and (not (fn-sf-statep *fn-bsfk-bad-record-attempted-state*))
         (fn-bsfk-dir-conclusion bs *fn-bsfk-bad-record-attempted-state*
                                  :transactions (cons :eio '(:drop)))))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 8 *fn-bsfk-record-run*)) (bs (car pair)) (ks (cdr pair)))
    (and (not (equal (fn-sf-phase ks) :record-attempted))
         (fn-bsfk-dir-conclusion bs ks :transactions (cons :eio '(:drop)))))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 10 *fn-bsfk-record-run*)) (bs (car pair)) (ks (cdr pair)))
    (and (not (consp :eio)) (fn-bsfk-dir-conclusion bs ks :transactions :eio)))))
 
@@ -242,15 +242,15 @@
         (bs (car pair)) (ks (cdr pair)) (outcome (cons :eio '(:apply :drop))))
    (and (fn-sf-statep ks) (equal (fn-sf-phase ks) :frontier-attempted)
         (consp outcome) (fn-bsfk-dir-conclusion bs ks :root outcome))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 10 *fn-bsfk-frontier-run*)) (bs (car pair)))
    (and (not (fn-sf-statep *fn-bsfk-bad-frontier-attempted-state*))
         (fn-bsfk-dir-conclusion bs *fn-bsfk-bad-frontier-attempted-state*
                                  :root (cons :eio '(:apply :drop)))))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 8 *fn-bsfk-frontier-run*)) (bs (car pair)) (ks (cdr pair)))
    (and (not (equal (fn-sf-phase ks) :frontier-attempted))
         (fn-bsfk-dir-conclusion bs ks :root (cons :eio '(:apply :drop)))))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
  (let* ((pair (nth 10 *fn-bsfk-frontier-run*)) (bs (car pair)) (ks (cdr pair)))
    (and (not (consp :eio)) (fn-bsfk-dir-conclusion bs ks :root :eio)))))

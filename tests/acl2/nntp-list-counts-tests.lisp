@@ -1,7 +1,7 @@
 ; Teeth for books/nntp-list-counts.lisp and books/owner-list-counts-read.lisp.
 (in-package "ACL2")
 (include-book "../../books/owner-list-counts-read")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun nlc-t-payload (id)
   (append (fn-nntp-string-octets "Message-ID: ") (fn-nntp-string-octets id)
@@ -89,7 +89,7 @@
 (assert-event
  (not (equal (nlc-t-cmd *nlc-t-open* *nlc-t-stale* "LIST" ("COUNTS"))
              (nlc-t-cmd *nlc-t-open* *nlc-t-trie* "LIST" ("COUNTS")))))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   200000
  (defthm nlc-t-fold-false-without-buckets
@@ -120,7 +120,7 @@
               *nlc-t-open* *nlc-t-dup*
               (fn-gidx-build (fn-state-articles *nlc-t-dup*)) nil)
              (fn-nntp-list-counts-command *nlc-t-open* *nlc-t-dup* nil))))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   200000
  (defthm nlc-t-fold-false-without-projection
@@ -135,7 +135,7 @@
        (len (fn-index-build (fn-state-articles *nlc-t-a2*))))
     (fn-gidx-counts-work *nlc-t-buckets*
                          '("fn.letters" "fn.letters" "fn.letters" "fn.letters"))))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   200000
  (defthm nlc-t-work-false-with-repeats
@@ -202,7 +202,7 @@
 (assert-event
  (not (equal (in-arena-fn-nntp-number-retrieval *sr-arena* (nlc-t-in "fn.letters") *nlc-t-clash* :stat (fn-nntp-string-octets "2"))
              (in-arena-fn-nntp-article-response *sr-arena* (nlc-t-in "fn.letters") *nlc-t-art2* 2 :stat t "fn.letters"))))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   200000
  (defthm nlc-t-number-false-without-state
@@ -220,7 +220,7 @@
 (assert-event
  (not (equal (in-arena-fn-nntp-number-retrieval *sr-arena* *nlc-t-open* *nlc-t-a2* :stat (fn-nntp-string-octets "0"))
              (in-arena-fn-nntp-article-response *sr-arena* *nlc-t-open* *nlc-t-art2* 0 :stat t nil))))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   200000
  (defthm nlc-t-number-false-without-positive
@@ -238,7 +238,7 @@
 (assert-event
  (not (equal (in-arena-fn-nntp-number-retrieval *sr-arena* (nlc-t-in "fn.letters") *nlc-t-a2* :stat (fn-nntp-string-octets "1"))
              (in-arena-fn-nntp-article-response *sr-arena* (nlc-t-in "fn.letters") *nlc-t-art2* 2 :stat t "fn.letters"))))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   200000
  (defthm nlc-t-number-false-without-value
@@ -252,7 +252,7 @@
 (assert-event
  (equal (in-arena-fn-nntp-number-retrieval *sr-arena* (nlc-t-in "fn.letters") *nlc-t-a2* :stat (fn-nntp-string-octets "2x"))
         (fn-nntp-single (nlc-t-in "fn.letters") "501 syntax error")))
-(must-fail
+(must-fail-checked
  (with-prover-step-limit
   200000
  (defthm nlc-t-number-false-without-token

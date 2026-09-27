@@ -9,7 +9,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-k0-step-bridge-root")
 (include-book "byte-store-k0-cuts-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bskr-cuts-ok (run ks)
   (and (fn-bs-store-relation (car (nth 1 run)) ks *bsk5-arena*)
@@ -40,20 +40,20 @@
 
 ; Teeth, one per hypothesis of the cuts theorems.
 ; The relation: the initial image under the same kernel.
-(must-fail (assert-event (bskr-scp (bsk5-initial) (bskc-rk) ".stage-ck-1" *bskr-ck*)))
+(must-fail-checked (assert-event (bskr-scp (bsk5-initial) (bskc-rk) ".stage-ck-1" *bskr-ck*)))
 ; A name for the stage: 7 is not one.
-(must-fail (assert-event (bskr-scp (bskc-rb) (bskc-rk) 7 *bskr-ck*)))
+(must-fail-checked (assert-event (bskr-scp (bskc-rb) (bskc-rk) 7 *bskr-ck*)))
 ; The stage absent: occupied by inode 0 (bskc-occupied, the cuts tests').
 (assert-event (fn-bs-lookup (bskc-occupied) :staging ".stage-k5-2"))
-(must-fail (assert-event (bskr-scp (bskc-occupied) (bskc-rk) ".stage-k5-2" *bskr-ck*)))
+(must-fail-checked (assert-event (bskr-scp (bskc-occupied) (bskc-rk) ".stage-k5-2" *bskr-ck*)))
 ; Typed octets: (300).
-(must-fail (assert-event (bskr-scp (bskc-rb) (bskc-rk) ".stage-ck-1" '(300))))
+(must-fail-checked (assert-event (bskr-scp (bskc-rb) (bskc-rk) ".stage-ck-1" '(300))))
 ; :root quiet: the frontier run's attempted pair 11 (related, the frontier
 ; rename pending): the checkpoint's rename joins a second root entry, and the
 ; replaced cut is neither related nor covered.
 (assert-event (fn-bs-store-relation (car (bskc-f 11)) (cdr (bskc-f 11)) *bsk5-arena*))
 (assert-event (not (fn-bs-lookup (car (bskc-f 11)) :staging ".stage-ck-1")))
-(must-fail (assert-event (bskr-scp (car (bskc-f 11)) (cdr (bskc-f 11)) ".stage-ck-1" *bskr-ck*)))
+(must-fail-checked (assert-event (bskr-scp (car (bskc-f 11)) (cdr (bskc-f 11)) ".stage-ck-1" *bskr-ck*)))
 ; No must-fail: :transactions quiet and the recovery-window guard are the
 ; keystone's step-input guards (stage lemma, lane k0-cuts); the conclusion is
 ; not shown to need them.
@@ -84,8 +84,8 @@
                           (bskr-fd (car (bskc-r 10)) :transactions '(:eio :drop)))))
 (assert-event (bsks-ok (car (bskc-r 10)) (cdr (bskc-r 10)) '(:fsync-dir :transactions) '(:eio :drop)))
 ; Tooth: the relation.  The initial byte image under the same kernels.
-(must-fail (assert-event (bskr-error-ok (bsk5-initial) (cdr (bskc-f 11)) :root '(:eio :drop))))
-(must-fail (assert-event (bskr-error-ok (bsk5-initial) (cdr (bskc-r 10)) :transactions '(:eio :drop))))
+(must-fail-checked (assert-event (bskr-error-ok (bsk5-initial) (cdr (bskc-f 11)) :root '(:eio :drop))))
+(must-fail-checked (assert-event (bskr-error-ok (bsk5-initial) (cdr (bskc-r 10)) :transactions '(:eio :drop))))
 ; No must-fail, and why: the recovery-window guard is every step kind's; the
 ; directory is :root or :transactions (the staging barrier's error arm is
 ; lane k0-steps', and landing or dropping staging entries keeps the relation

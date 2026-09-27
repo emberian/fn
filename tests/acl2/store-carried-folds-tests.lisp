@@ -17,7 +17,7 @@
 (include-book "peer-carriage-tests")
 (include-book "store-capacity-vector-tests")
 (include-book "../../books/store-carried-folds")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *scft-before-records* (fn-sf-records (fn-sn-files *osi-before*)))
 (defconst *scft-after-records* (fn-sf-records (fn-sn-files *osi-after*)))
@@ -42,7 +42,7 @@
 (assert-event (equal (fn-sbud-used *osi-crashed*) 2))
 (assert-event (not (equal (fn-sbud-count *osi-crashed*)
                           (fn-sbud-used *osi-crashed*))))
-(must-fail
+(must-fail-checked
  (defthm scft-count-without-the-relation
    (equal (fn-sbud-count *osi-crashed*) (fn-sbud-used *osi-crashed*))))
 
@@ -67,7 +67,7 @@
                                            (fn-sf-records (fn-sn-files *osi-crashed*))))
 (assert-event (not (equal (fn-sbud-bytes-carried '(0 . 0) *osi-crashed*)
                           (fn-sbud-bytes-used *osi-crashed*))))
-(must-fail
+(must-fail-checked
  (defthm scft-octets-without-the-relation
    (implies (fn-sbud-octets-cache-validp '(0 . 0)
                                          (fn-sf-records (fn-sn-files *osi-crashed*)))
@@ -79,7 +79,7 @@
 (assert-event (not (fn-sbud-octets-cache-validp '(1 . 999) *scft-after-records*)))
 (assert-event (not (equal (fn-sbud-bytes-carried '(1 . 999) *osi-after*)
                           (fn-sbud-bytes-used *osi-after*))))
-(must-fail
+(must-fail-checked
  (defthm scft-octets-without-a-valid-cache
    (implies (fn-ceis-indexedp *osi-after*)
             (equal (fn-sbud-bytes-carried '(1 . 999) *osi-after*)
@@ -92,7 +92,7 @@
 (assert-event (equal (car (fn-sbud-headroom-carried *scft-profile* *osi-after* 7)) 2))
 (assert-event (not (equal (fn-sbud-headroom-carried *scft-profile* *osi-crashed* 7)
                           (fn-sbud-headroom-at *scft-profile* *osi-crashed* 7))))
-(must-fail
+(must-fail-checked
  (defthm scft-headroom-without-the-relation
    (equal (fn-sbud-headroom-carried *scft-profile* *osi-crashed* 7)
           (fn-sbud-headroom-at *scft-profile* *osi-crashed* 7))))
@@ -111,7 +111,7 @@
 (assert-event (not (fn-cvec-debt-cache-validp '(1 . 7) *scft-after-records*)))
 (assert-event (not (equal (fn-scf-debt-carried '(1 . 7) *osi-after*)
                           (fn-cvec-record-debt *scft-after-records*))))
-(must-fail
+(must-fail-checked
  (defthm scft-debt-without-a-valid-cache
    (implies (fn-ceis-indexedp *osi-after*)
             (equal (fn-scf-debt-carried '(1 . 7) *osi-after*)
@@ -137,7 +137,7 @@
 (assert-event (not (fn-ceis-indexedp *scft-debt-stale*)))
 (assert-event (not (equal (fn-scf-debt-carried '(0 . 0) *scft-debt-stale*)
                           (fn-cvec-record-debt *scft-debt-records*))))
-(must-fail
+(must-fail-checked
  (defthm scft-debt-without-the-relation
    (implies (fn-cvec-debt-cache-validp '(0 . 0) *scft-debt-records*)
             (equal (fn-scf-debt-carried '(0 . 0) *scft-debt-stale*)
@@ -183,13 +183,13 @@
                                             (fn-scf-usage-carried '(0 . nil)
                                                                   *scft-carried-stale*))
                           (fn-pcb-usage *pcb-records* *pcb-evidence*))))
-(must-fail
+(must-fail-checked
  (defthm scft-usage-without-a-valid-cache
    (implies (fn-ceis-indexedp *osi-after*)
             (equal (fn-pcb-tally-get "r" (fn-scf-usage-carried *scft-bad-tally*
                                                                 *osi-after*))
                    (fn-pcb-usage *scft-after-records* "r")))))
-(must-fail
+(must-fail-checked
  (defthm scft-usage-without-the-relation
    (implies (fn-pcb-cache-validp '(0 . nil) *pcb-records*)
             (equal (fn-pcb-tally-get *pcb-evidence*

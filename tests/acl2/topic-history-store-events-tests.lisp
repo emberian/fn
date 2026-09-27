@@ -2,7 +2,7 @@
 (include-book "../../books/topic-history-store-events")
 (include-book "topic-history-admission-tests")
 (include-book "topic-history-local-admin-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event (fn-th-topic-eventp *thad-anchor-event*))
 (assert-event (fn-th-topic-eventp *thad-report-event*))
@@ -85,7 +85,7 @@
  (not (fn-th-topic-eventp
        (list :topic-anchor 8 9 10 *thad-topic*
              (fn-th-auth-ref-of *tha-event*) 65 *tha-principal*))))
-(must-fail
+(must-fail-checked
  (defthm thae-duplicate-parent-can-encode
    (fn-th-topic-event-encode
     (list :topic-admit 11 12 13 *thad-topic*

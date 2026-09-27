@@ -9,7 +9,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-k0-step")
 (include-book "byte-store-k0-marker-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bsks-concl (bs ks step outcome)
   (mv-let (r bs1 ks1) (fn-bs-step bs ks step outcome *bsk5-groups* *bsk5-capacity*)
@@ -58,7 +58,7 @@
 ; the related completing pair.
 (assert-event (fn-bs-k0-coveredp (car (bskm-pair)) (bsks-k) *bsk5-arena*))
 (assert-event (not (fn-bs-k0-step-inputp (car (bskm-pair)) (bsks-k) (list :write-all :root "config.json" '(1 2 3)) :ok *bsk5-arena*)))
-(must-fail (assert-event (bsks-concl (car (bskm-pair)) (bsks-k) (list :write-all :root "config.json" '(1 2 3)) :ok)))
+(must-fail-checked (assert-event (bsks-concl (car (bskm-pair)) (bsks-k) (list :write-all :root "config.json" '(1 2 3)) :ok)))
 
 ; k0-steps (PKT-086): the staging barrier's error outcome.  Pair 1 of the
 ; marker run holds one pending staging entry operation (the create); an
@@ -83,7 +83,7 @@
                             (bsks-k) *bsk5-arena*)))
 ; Drop the relation: the initial byte image under the completing kernel.
 (assert-event (not (fn-bs-store-relation (bsk5-initial) (bsks-k) *bsk5-arena*)))
-(must-fail
+(must-fail-checked
  (assert-event (fn-bs-store-relation
                 (bsks-staging-fsd (bsk5-initial) '(:eio))
                 (bsks-k) *bsk5-arena*)))

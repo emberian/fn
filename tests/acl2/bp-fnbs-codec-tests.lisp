@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/bp-fnbs-codec")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpnfc-local* (cons :dtn '(47 47 102 110 45 97 47)))
 (defconst *bpnfc-peer* (cons :dtn '(47 47 102 110 45 98 47)))
@@ -93,7 +93,7 @@
          (fn-bpnf-stored-record 9 2
            (fn-bpnf-frame-held *bpnfc-ingress* 1 *bpnfc-bundle* '(1 2 3))))
         :bad))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpnf-stored-record-unframe '(1 2 3))
          *bpnfc-record*)))

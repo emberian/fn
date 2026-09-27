@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-reclaim-holders")
 (include-book "../../books/native-live-status")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
 ; A verified article (*stxt-r1*) and the keyring it verifies under.
 (include-book "stx-transit-tests")
@@ -35,20 +35,20 @@
                      :held-consumer-cursor))
 (assert-event (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-caught*) nil *rht-art*))
 ; Tooth (a lagging consumer): caught up, the conclusion fails.
-(must-fail (assert-event (not (fn-rcl-reclaimable *rht-rule* 0
+(must-fail-checked (assert-event (not (fn-rcl-reclaimable *rht-rule* 0
                                                   (fn-rcl-store-holders *rht-caught*)
                                                   nil *rht-art*))))
 ; Tooth (numbered, posp n): an article with no membership is not held.
 (defconst *rht-bare* (fn-make-article (fn-article-msgid *rht-art*) (fn-article-payload *rht-art*)
                                       (fn-article-groups *rht-art*) nil t
                                       (fn-article-stamp *rht-art*)))
-(must-fail (assert-event (not (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-lag*)
+(must-fail-checked (assert-event (not (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-lag*)
                                                   nil *rht-bare*))))
 ; Tooth (the group is served): numbered only in a group the store lacks.
 (defconst *rht-other* (fn-make-article (fn-article-msgid *rht-art*) (fn-article-payload *rht-art*)
                                        (fn-article-groups *rht-art*) '(("zz.none" . 1)) t
                                        (fn-article-stamp *rht-art*)))
-(must-fail (assert-event (not (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-lag*)
+(must-fail-checked (assert-event (not (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-lag*)
                                                   nil *rht-other*))))
 
 ; The verdict list.  Every article the fixture accepted has a verdict
@@ -63,7 +63,7 @@
 (assert-event (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-caught*)
                                   (fn-sn-verdicts *rht-caught*) *rht-art*))
 ; Tooth (the entry is :absent): an :unverified verdict holds the article.
-(must-fail (assert-event (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-caught*)
+(must-fail-checked (assert-event (fn-rcl-reclaimable *rht-rule* 0 (fn-rcl-store-holders *rht-caught*)
                                              (list (cons *rht-msgid* '(:unverified :signature 0)))
                                              *rht-art*)))
 
@@ -79,7 +79,7 @@
 (assert-event (equal (fn-stx-verdict-token
                       (fn-stx-verdict-of-octets (fn-article-payload *stxt-r1*) nil 0))
                      :unverified))
-(must-fail (assert-event (equal (fn-stx-delta (fn-article-payload *stxt-r1*) *stxt-keyring*)
+(must-fail-checked (assert-event (equal (fn-stx-delta (fn-article-payload *stxt-r1*) *stxt-keyring*)
                                 nil)))
 
 ; The counts: caught up, the article is counted reclaimable and nothing

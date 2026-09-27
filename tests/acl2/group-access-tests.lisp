@@ -8,7 +8,7 @@
 (in-package "ACL2")
 (include-book "../../books/nntp-auth")
 (include-book "../../books/native-admin")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun gat-payload (id)
   (append (fn-nntp-string-octets "Message-ID: ") (fn-nntp-string-octets id)
@@ -225,7 +225,7 @@
 ; fn-gac-restrict-state-is-a-projection
 (assert-event (and (fn-nntp-projectionp *gat-state*)
                    (fn-nntp-projectionp (fn-gac-restrict-state "fn.*" *gat-state*))))
-(must-fail
+(must-fail-checked
  (defthm gat-projection-without-projection
    (fn-nntp-projectionp (fn-gac-restrict-state text s))))
 
@@ -235,7 +235,7 @@
   (fn-nntp-set-cursor (fn-nntp-open-session *gat-state*) "fn.private.x" 1))
 (assert-event (fn-nntp-session-consistentp *gat-ns-private* *gat-state*))
 (assert-event (not (fn-nntp-session-consistentp *gat-ns-private* *gat-view*)))
-(must-fail
+(must-fail-checked
  (defthm gat-into-view-without-readable
    (implies (and (fn-nntp-session-consistentp ns s)
                  (fn-nntp-session-projected ns))
@@ -246,7 +246,7 @@
                    (fn-nntp-session-projected *gat-ns-public*)
                    (fn-gac-readablep "fn.*,!fn.private.*" "fn.public")
                    (fn-nntp-session-consistentp *gat-ns-public* *gat-view*)))
-(must-fail
+(must-fail-checked
  (defthm gat-into-view-without-projected
    (implies (and (fn-nntp-session-consistentp ns s)
                  (or (null (fn-nntp-session-group ns))
@@ -266,7 +266,7 @@
  (not (equal (fn-gac-restrict-state "fn.*"
                                     (fn-gac-restrict-state "fn.*,!fn.private.x" *gat-state*))
              (fn-gac-restrict-state "fn.*" *gat-state*))))
-(must-fail
+(must-fail-checked
  (defthm gat-absent-without-covers
    (implies (fn-statep s)
             (equal (fn-gac-restrict-state text (fn-gac-restrict-state text2 s))
@@ -333,12 +333,12 @@
                    (not (fn-gac-views-find "fn.none" *gat-views*))
                    (not (equal (cdr (fn-gac-views-find "fn.none" *gat-views*))
                                (fn-gac-view-entry "fn.none" *gat-state* *gat-ctl*)))))
-(must-fail
+(must-fail-checked
  (defthm gat-views-find-without-okp
    (implies (fn-gac-views-find text views)
             (equal (cdr (fn-gac-views-find text views))
                    (fn-gac-view-entry text archive control)))))
-(must-fail
+(must-fail-checked
  (defthm gat-views-find-without-find
    (implies (fn-gac-views-okp views archive control)
             (equal (cdr (fn-gac-views-find text views))
@@ -352,7 +352,7 @@
                    (not (fn-gac-views-find
                          (fn-gac-pattern *gat-table* (fn-nntp-string-octets "carol") 1)
                          *gat-views*))))
-(must-fail
+(must-fail-checked
  (defthm gat-covers-without-pattern
    (fn-gac-views-find (fn-gac-pattern table login 1)
                       (fn-gac-access-views (fn-gac-read-texts table) archive control))))

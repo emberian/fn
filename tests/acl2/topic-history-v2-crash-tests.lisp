@@ -3,7 +3,7 @@
 (in-package "ACL2")
 (include-book "../../books/topic-history-store-invariants")
 (include-book "consumer-topic-store-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; The fixture is a real completed Store trace: consumer bootstrap/register,
 ; T10 enrollment and exact-source acceptance, admin install, v2 anchor, and
@@ -26,7 +26,7 @@
 (assert-event (equal (fn-sn-prepare-topic
                       (thsn-reserve *cts-installed*) *thv2-wrong-anchor*)
                      (thsn-reserve *cts-installed*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (fn-sn-prepare-topic
                (thsn-reserve *cts-installed*) *thv2-wrong-anchor*)

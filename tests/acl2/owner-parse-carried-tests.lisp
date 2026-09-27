@@ -1,7 +1,7 @@
 ; Teeth for books/owner-parse-carried.lisp.
 (in-package "ACL2")
 (include-book "../../books/owner-parse-carried")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-commit-carried-tests")
 
 ; The host runs compiled code: every function it calls here is
@@ -252,22 +252,22 @@
                           (apc-t-c-intent *apc-t-c-carry*))))
 
 ; The keystone and the host-line equalities without fn-apc-p.
-(must-fail
+(must-fail-checked
  (defthm apc-t-parse-without-apc-p
    (equal (fn-apc-parse octets carry) (fn-article-parse octets))))
-(must-fail
+(must-fail-checked
  (defthm apc-t-filing-without-apc-p
    (equal (fn-apc-filing-plan received groups domain carry)
           (fn-pa-filing-plan received groups domain))))
-(must-fail
+(must-fail-checked
  (defthm apc-t-transit-verdict-without-apc-p
    (equal (fn-apc-transit-verdict received snapshots carried transitp ed ml carry)
           (fn-pcb-transit-verdict received snapshots carried transitp ed ml))))
-(must-fail
+(must-fail-checked
  (defthm apc-t-row-without-apc-p
    (equal (fn-apc-intern-row-at w keyring generation h carry)
           (fn-intern-row-at w keyring generation h))))
-(must-fail
+(must-fail-checked
  (defthm apc-t-intent-without-apc-p
    (implies (fn-icar-carryp icar)
             (equal (fn-apc-submission-intent o icar carry evidence generation txid)

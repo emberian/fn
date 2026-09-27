@@ -1,6 +1,6 @@
 (in-package "ACL2")
 (include-book "../../books/topic-history-store-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *sti-initial-store* (fn-sn-initial nil 4))
 (assert-event (fn-sti-livep *sti-initial-store*))
@@ -14,4 +14,4 @@
   (fn-sn-with-topic *sti-initial-store*
                     (fn-th-prefix-state :ok 1 nil nil nil nil nil)))
 (assert-event (fn-csi-livep *sti-wrong-cursor*))
-(must-fail (assert-event (fn-sti-livep *sti-wrong-cursor*)))
+(must-fail-checked (assert-event (fn-sti-livep *sti-wrong-cursor*)))

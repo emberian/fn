@@ -2,7 +2,7 @@
 ; and the [alerts]/[ops] rows of books/native-config.lisp.
 (in-package "ACL2")
 (include-book "../../books/native-config-show")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun ncst-lines (lines)
   (if (consp lines)
@@ -87,14 +87,14 @@
   (fn-native-config-make "/srv/\"fn" "127.0.0.1" 1119 nil nil nil nil "/a" t nil nil nil "/c"
                          nil nil nil 10 30 900 nil nil "user" 3 67108864 7 nil nil))
 (assert-event (not (fn-native-config-show-wfp *ncst-quoted*)))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-native-config-load (fn-native-config-show-octets *ncst-quoted*))
                       (list :accepted *ncst-quoted*))))
 ; ... and one whose port is outside the grammar is not rendered as itself.
 (defconst *ncst-port*
   (fn-native-config-make "/srv/fn" "127.0.0.1" 70000 nil nil nil nil "/a" t nil nil nil "/c"
                          nil nil nil 10 30 900 nil nil "user" 3 67108864 7 nil nil))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-native-config-load (fn-native-config-show-octets *ncst-port*))
                       (list :accepted *ncst-port*))))
 
@@ -120,10 +120,10 @@
                      (list :shown (fn-native-config-show-octets *ncst-c*))))
 ; Teeth (the one hypothesis, an accepted load): a refused load's payload is
 ; not a renderable configuration.
-(must-fail
+(must-fail-checked
  (assert-event (fn-native-config-show-wfp
                 (cadr (ncst-with '("[alerts]" "headroom_min_percent = 101"))))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-native-config-show-wfp
                 (cadr (fn-native-config-load (ncst-lines '("[listener]" "port = 1119")))))))
 
@@ -159,6 +159,6 @@
                      '(:refused :listener)))
 ; Teeth for fn-native-mission-plan-loads-back (one hypothesis: accepted).
 (defconst *ncst-refused* (fn-native-mission-plan "relay" *ncst-node* "0.0.0.0" 1))
-(must-fail
+(must-fail-checked
  (assert-event (equal (fn-native-config-load (caddr *ncst-refused*))
                       (list :accepted (cadr *ncst-refused*)))))

@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/topic-history-local-admin")
 (include-book "topic-history-admission-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; A store-specific entropy observation, distinct from the UID and all T10
 ; principals.  The host's connected same-euid gate supplies the UID only.
@@ -47,7 +47,7 @@
          8 9 10 *tha-event* *tha-snapshot* 502 2
          *thla-install* nil)
         (fn-stmt-error :administrator)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-stmt-okp
    (fn-th-prepare-anchor-local

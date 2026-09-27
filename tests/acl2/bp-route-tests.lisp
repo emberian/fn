@@ -7,7 +7,7 @@
 (include-book "../../books/bp-route-step")
 (include-book "../../books/bp-node-receive-boundary")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 
 (defconst *rt-local* (cons :dtn '(47 47 98 112 45 108 111 99 97 108 47)))
@@ -107,21 +107,21 @@
 (assert-event (equal (car (car (fn-bpnf-answer-effects
                                 (fn-bpnp-step *rt-opened* *rt-resume-routed*))))
                      :persist-attempt))
-(must-fail (assert-event (equal (car (car (fn-bpnf-answer-effects
+(must-fail-checked (assert-event (equal (car (car (fn-bpnf-answer-effects
                                            (fn-bpnp-step *rt-opened*
                                                          (list :resume *rt-dest* *rt-session*
                                                                *rt-obs*)))))
                                 :persist-attempt)))
 ;; Hypothesis "the table names HOP": a session to an unlisted neighbour
 ;; proposes nothing, whatever it announces (even the listed hop's EID).
-(must-fail (assert-event (equal (car (rt-first-effect "other" *rt-relay-octets* *rt-table*))
+(must-fail-checked (assert-event (equal (car (rt-first-effect "other" *rt-relay-octets* *rt-table*))
                                 :persist-attempt)))
 (assert-event (equal (rt-first-effect "other" *rt-relay-octets* *rt-table*)
                      (list :forward-no-route (fn-bpn-nth 3 (car (fn-bpnf-held-list *rt-s2*)))
                            "other" :no-live-hop)))
 ;; Hypothesis "the contact announced HOP's EID": the listed hop, a wrong
 ;; announcement.
-(must-fail (assert-event (equal (car (rt-first-effect "relay" (fn-record-string-octets "dtn://evil/")
+(must-fail-checked (assert-event (equal (car (rt-first-effect "relay" (fn-record-string-octets "dtn://evil/")
                                                       *rt-table*))
                                 :persist-attempt)))
 (assert-event (equal (fn-bpn-nth 3 (rt-first-effect "relay" (fn-record-string-octets "dtn://evil/")
@@ -131,7 +131,7 @@
 (assert-event (equal (car (rt-first-effect "relay-b" (fn-record-string-octets "dtn://relay-b/")
                                            (list *rt-wild*)))
                      :persist-attempt))
-(must-fail (assert-event (equal (car (rt-first-effect "relay" *rt-relay-octets* (list *rt-wild*)))
+(must-fail-checked (assert-event (equal (car (rt-first-effect "relay" *rt-relay-octets* (list *rt-wild*)))
                                 :persist-attempt)))
 
 ;; Teeth of fn-bpnp-step-unrouted-bundle-stays-held-and-is-reported.
@@ -146,7 +146,7 @@
                      (fn-bpnf-held-list *rt-s2*)))
 (assert-event (consp (fn-bpnf-held-list *rt-s2*)))
 ;; Hypothesis "no route matches": with the route, the effect is the attempt.
-(must-fail (assert-event (equal (car (rt-first-effect "relay" *rt-relay-octets* *rt-table*))
+(must-fail-checked (assert-event (equal (car (rt-first-effect "relay" *rt-relay-octets* *rt-table*))
                                 :forward-no-route)))
 ;; A table whose only route is for another destination is no route.
 (assert-event (equal (car (rt-first-effect "relay" *rt-relay-octets*
@@ -165,7 +165,7 @@
                      "relay-b"))
 ;; Hypothesis "the matching sets agree": drop the preferred route and the
 ;; answer changes.
-(must-fail (assert-event (equal (fn-bprt-next-hop "dtn://bp-dest/" (list *rt-route* *rt-r2*)
+(must-fail-checked (assert-event (equal (fn-bprt-next-hop "dtn://bp-dest/" (list *rt-route* *rt-r2*)
                                                   '("relay" "relay-b"))
                                 (fn-bprt-next-hop "dtn://bp-dest/" (list *rt-route*)
                                                   '("relay" "relay-b")))))
@@ -175,7 +175,7 @@
 ;; :no-live-hop and names no route.
 (assert-event (equal (fn-bprt-next-hop "dtn://bp-dest/" (list *rt-route*) '("relay-b"))
                      :no-live-hop))
-(must-fail (assert-event (member-equal (fn-bprt-hop-route "dtn://bp-dest/" (list *rt-route*) '("relay-b"))
+(must-fail-checked (assert-event (member-equal (fn-bprt-hop-route "dtn://bp-dest/" (list *rt-route*) '("relay-b"))
                                        (list *rt-route*))))
 (assert-event (equal (fn-bprt-next-hop "dtn://nobody/" (list *rt-route*) '("relay")) :no-route))
 
@@ -269,7 +269,7 @@
                      (fn-bpn-nth 3 (cadr *rt-b-held*))))
 ;; Without the filter (the scan over every row, the old routed gate) the
 ;; chosen row is the older one, whose decision is :no-route: it blocked.
-(must-fail (assert-event (equal (fn-bpn-nth 1 (fn-bprts-scan-all *rt-b-s4* *rt-dest* 32768
+(must-fail-checked (assert-event (equal (fn-bpn-nth 1 (fn-bprts-scan-all *rt-b-s4* *rt-dest* 32768
                                                                 *rt-obs* 3))
                                 (cadr *rt-b-held*))))
 (assert-event (equal (fn-bprt-offer-decision (fn-bpnp-held-dest (car *rt-b-held*))

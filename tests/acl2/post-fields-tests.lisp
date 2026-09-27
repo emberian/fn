@@ -12,7 +12,7 @@
 (include-book "../../books/post-fields")
 ; The digest seam's realiser, so the identities the POST carries evaluate.
 (include-book "../../books/crypto-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *pft-msgid* '(60 97 64 98 62))                    ; "<a@b>"
 (defconst *pft-payload* '(83 117 98 106 101 99 116 58 32 120 13 10 13 10 121))
@@ -118,10 +118,10 @@
 
 ; The keystones hold of every input: none of the three is provable without
 ; its hypothesis.
-(must-fail (defthm pft-textp-without-printable
+(must-fail-checked (defthm pft-textp-without-printable
              (equal (fn-pfld-textp xs)
                     (fn-record-metadata-bytes-p (fn-record-octets-string xs)))))
-(must-fail (defthm pft-identity-text-without-bound
+(must-fail-checked (defthm pft-identity-text-without-bound
              (implies (and (fn-cbor-octet-listp identity) (consp identity))
                       (fn-pfld-textp (fn-id-text identity)))))
 

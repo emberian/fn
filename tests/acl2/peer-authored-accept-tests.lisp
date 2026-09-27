@@ -1,7 +1,7 @@
 (in-package "ACL2")
 (include-book "../../books/peer-authored-accept")
 (include-book "topic-history-authorship-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *pat-snapshots* (list *tha-snapshot*))
 ; D23: a boundary allowlisting the fixture's author (32 octets of 7), as the
@@ -55,7 +55,7 @@
 (assert-event (equal (fn-pa-carrier-kind *pat-malformed*) :present))
 (assert-event (equal (fn-pa-current-plan *pat-malformed* *pat-snapshots* nil nil)
                      (list :refused :carrier)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-pa-current-plan *pat-malformed* *pat-snapshots* nil nil) :absent)))
 
@@ -107,7 +107,7 @@
         (list :carried *tha-root-source* *tha-principal* *tha-keys*
               *tha-signatures*)))
 ; Tooth (the list): the same node without the list refuses, as D02 did.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-pa-current-plan *pat-relayed* nil nil nil)) :carried)))
 ; Tooth (the list names this principal): a list naming another principal.
@@ -116,7 +116,7 @@
          "0808080808080808080808080808080808080808080808080808080808080808")))
 (assert-event (equal (fn-pa-current-plan *pat-relayed* nil *pat-other-carries* nil)
                      (list :refused :local-enrollment)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-pa-current-plan *pat-relayed* nil *pat-other-carries* nil))
          :carried)))
@@ -126,7 +126,7 @@
 (assert-event
  (equal (fn-pa-current-plan *pat-relayed* *pat-snapshots* *pat-carries* nil)
         (fn-pa-current-plan *pat-relayed* *pat-snapshots* nil nil)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-pa-current-plan *pat-relayed* *pat-snapshots* *pat-carries* nil))
          :carried)))
@@ -168,7 +168,7 @@
         (fn-charge-for-payload (len *pat-relayed*))
         *pat-snapshots* *pat-carries*
         (fn-clock-observation 1 841000000000 0 t))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-pa-carried-event
    2 3 4 "<topic-binding@example.invalid>" *pat-relayed*
@@ -202,12 +202,12 @@
         (list :revoked *tha-root-source* *tha-principal* *tha-keys*
               *tha-signatures* *pat-revoked* 5)))
 ; Tooth (transit): every other path refuses :local-enrollment.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-pa-current-plan *pat-relayed* *pat-after-revocation* nil nil))
          :revoked)))
 ; Tooth (the tombstone): before the revocation the same carrier is :ok.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-pa-current-plan *pat-relayed* *pat-snapshots* nil t))
          :revoked)))
@@ -223,7 +223,7 @@
  (equal (fn-pa-current-plan *pat-relayed*
                             (list *pat-other-revoked* *pat-other-enrolled*) nil t)
         (list :refused :local-enrollment)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-pa-current-plan *pat-relayed*
                                   (list *pat-other-revoked* *pat-other-enrolled*)
@@ -245,7 +245,7 @@
  (equal (fn-stxk-profile (fn-hl-current-for-principal *tha-other-principal*
                                                       *pat-q-history*))
         *fn-hl-revoked-profile*))
-(must-fail
+(must-fail-checked
  (assert-event
   (not (equal (car (fn-pa-current-plan *pat-relayed* *pat-q-history* nil t))
               :ok))))
@@ -274,7 +274,7 @@
   *pat-after-revocation*))
 ; Replay's revoked binding needs a tombstone of exactly this principal at
 ; that generation: at the snapshots without the tombstone it fails.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-hsig-revoked-tombstone-bindsp
    (fn-stmt-value (fn-stxe-decode-exact (fn-stxa-verdict-event *pat-revoked-event*)))
@@ -286,7 +286,7 @@
                                      (list (fn-hsig-keyring-event
                                             1 2 3 4 *tha-other-principal*
                                             *tha-keys*)))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-hsig-revoked-tombstone-bindsp
    (fn-stmt-value (fn-stxe-decode-exact (fn-stxa-verdict-event *pat-revoked-event*)))
@@ -294,7 +294,7 @@
    (list *pat-q-at-5* (fn-hsig-keyring-event 1 2 3 4 *tha-other-principal*
                                              *tha-keys*)))))
 ; Tooth (both observations): either refused gives no composite.
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-pa-revoked-event
    2 3 4 "<topic-binding@example.invalid>" *pat-relayed*
@@ -302,7 +302,7 @@
    (fn-charge-for-payload (len *pat-relayed*))
    *pat-after-revocation* *tha-ml-key* :refused :verified
    (fn-clock-observation 1 841000000000 0 t))))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-pa-revoked-event
    2 3 4 "<topic-binding@example.invalid>" *pat-relayed*
@@ -315,7 +315,7 @@
  (equal (take 7 (fn-stx-verified-item
                  (fn-stx-make-verdict :revoked *tha-principal* 5)))
         (fn-record-string-octets "revoked")))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (car (fn-stx-verified-item
                (fn-stx-make-verdict :revoked *tha-principal* 5)))
@@ -332,7 +332,7 @@
 (assert-event (equal (fn-pa-served-post-word :refused :signature) :signature))
 ;; The hypothesis (WORD is not the new word itself): with it dropped the
 ;; word is :durable-key-change-refused while WORD is not :durable.
-(must-fail
+(must-fail-checked
  (assert-event
   (iff (equal (fn-pa-served-post-word :durable-key-change-refused nil)
               :durable-key-change-refused)

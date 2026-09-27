@@ -1,7 +1,7 @@
 ; Physical boot domain is an ACL2-owned recovery gate for persisted BP age.
 (in-package "ACL2")
 (include-book "../../books/bp-clock-domain")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpcdt-boot-a*
   '(48 49 50 51 52 53 54 55 45 56 57 97 98 45 99 100 101 102 45
@@ -23,7 +23,7 @@
 (assert-event (equal (fn-bpcd-frame-limit) 82))
 (assert-event (equal (len (bpcdt-saved)) 82))
 (assert-event (equal (fn-bpcd-unframe (bpcdt-saved)) *bpcdt-boot-a*))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpcd-unframe
           (fn-bpcd-frame (cons 65 (cdr *bpcdt-boot-a*))))
@@ -74,7 +74,7 @@
  (equal (bpcdt-plan (bpcdt-saved) t
                     (bpcdt-observed *bpcdt-boot-b*) nil t t)
         '(:fence :different-boot)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (bpcdt-plan (bpcdt-saved) t
                      (bpcdt-observed *bpcdt-boot-b*) nil t nil)
@@ -101,7 +101,7 @@
 (assert-event
  (equal (bpcdt-plan nil nil (bpcdt-observed *bpcdt-boot-a*) nil t nil)
         '(:fence :name-observation)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (bpcdt-plan nil nil (bpcdt-observed *bpcdt-boot-a*) t t t)
          (list :initialize (bpcdt-saved) (fn-jpub-initial t)))))

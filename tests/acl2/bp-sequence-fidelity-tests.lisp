@@ -1,7 +1,7 @@
 ; Reachable teeth for observed-file BP sequence recovery and returned values.
 (in-package "ACL2")
 (include-book "../../books/bp-sequence-fidelity")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; Ground correspondence witnesses for the exact recover subject.
 (assert-event
@@ -180,7 +180,7 @@
  (not (no-duplicatesp-equal (fn-bpn-sf-returned (bsft-regressed)))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm bsft-admissibility-hypothesis-has-teeth
     (no-duplicatesp-equal
      (fn-bpn-sf-returned

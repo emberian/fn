@@ -2,7 +2,7 @@
 (include-book "../../books/bp-node-report-step")
 (include-book "bp-report-deletion-tests")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bprst-held* (update-nth 3 0 *bprd-request-held*))
 (defconst *bprst-state*
@@ -66,7 +66,7 @@
             (list :persist-result (second (bprst-effect))
                   (third (bprst-effect)) :uncertain)))))
         :uncertain))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-bpn-nth 14
           (car (fn-bpnf-held-list (bprst-issued))))

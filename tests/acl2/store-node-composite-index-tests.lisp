@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (include-book "store-node-index-tests")
 (include-book "../../books/hybrid-store")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *sni-hybrid-principal* (make-list 32 :initial-element 7))
 (defconst *sni-hybrid-ed-key* (make-list 32 :initial-element 11))
@@ -130,7 +130,7 @@
 (assert-event (fn-sn-statep *sni-composite-stale*))
 (assert-event (not (fn-sn-indexedp *sni-composite-stale*)))
 (assert-event (not (fn-sn-indexedp (fn-sn-finish *sni-composite-stale*))))
-(must-fail
+(must-fail-checked
  (assert-event (fn-sn-indexedp (fn-sn-finish *sni-composite-stale*))))
 
 ; -----------------------------------------------------------------------------
@@ -237,9 +237,9 @@
 (assert-event (equal (nth 0 *sni-served-stale*) nil))
 (assert-event (equal (nth 3 *sni-served-stale*) *sni-stmt-2*))
 (assert-event (equal (nth 5 *sni-served-stale*) t))
-(must-fail
+(must-fail-checked
  (assert-event (equal (nth 2 *sni-served-stale*) (nth 3 *sni-served-stale*))))
-(must-fail
+(must-fail-checked
  (assert-event (iff (nth 4 *sni-served-stale*) (nth 5 *sni-served-stale*))))
 
 ; HYPOTHESIS REMOVAL, fn-rows-contexts-okp (MIS-PAIRED ARENA: the reachable
@@ -257,7 +257,7 @@
 (assert-event (equal (nth 1 *sni-served-short*) nil))
 (assert-event (equal (nth 2 *sni-served-short*) *sni-stmt-2*))
 (assert-event (equal (nth 4 *sni-served-short*) t))
-(must-fail
+(must-fail-checked
  (assert-event (equal (nth 2 *sni-served-short*) (nth 3 *sni-served-short*))))
-(must-fail
+(must-fail-checked
  (assert-event (iff (nth 4 *sni-served-short*) (nth 5 *sni-served-short*))))

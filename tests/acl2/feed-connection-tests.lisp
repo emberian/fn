@@ -1,7 +1,7 @@
 ; Teeth for the ACL2-owned outbound connection phase.
 (in-package "ACL2")
 (include-book "../../books/feed-connection")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *fc-stream* (fn-fc-initial-state t 7 :clear))
 (assert-event (fn-fc-statep *fc-stream*))
@@ -115,7 +115,7 @@
 (assert-event (fn-fc-stopped-reason "hub" (fn-fc-stopped-put "hub" :mode-stream-refused nil)))
 ; Tooth for PRF-207's added hypothesis (not 500/501): 501 is no longer a
 ; refusal, so the old statement is false, and its counterexample is below.
-(must-fail
+(must-fail-checked
  (defthm fc-old-prf-130-mode-stream-refusal-stops-the-dial
    (implies (and (fn-fc-statep st)
                  (equal (fn-fc-phase st) :mode)
@@ -167,7 +167,7 @@
 (assert-event (equal (fn-fc-user (fn-fc-next-state (fn-fc-step *fc-cred-mode* *fc-501-line*))) '(117)))
 
 (defmacro fc-fallback-tooth (name hyps)
-  `(must-fail
+  `(must-fail-checked
     (defthm ,name
       (implies (and ,@hyps) (fc-fallback-conclusion st octets))
       :hints (("Goal" :in-theory (disable fn-fc-step fn-fwi-step fn-fwi-kind

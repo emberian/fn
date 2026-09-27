@@ -20,7 +20,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/assumptions")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; A-DURABILITY
@@ -39,7 +39,7 @@
 
 ; Losing a barriered record is not A-DURABILITY.
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-assume-check-drop-oldest-retains-barriered
     (implies (member-equal 1 '(1 2))
              (member-equal 1 (fn-assume-check-drop-oldest '(1 2) nil))))))
@@ -47,7 +47,7 @@
 ; Inventing a record is not A-DURABILITY either: :phantom survives the crash
 ; without having been written, barriered or not.
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-assume-check-phantom-invents-nothing
     (implies (member-equal :phantom (fn-assume-check-phantom '(1 2) '(3)))
              (or (member-equal :phantom '(1 2))
@@ -65,7 +65,7 @@
 (local (assert-event (member-equal :unit-a (list :unit-a :unit-b))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-assume-check-shared-sector-retains-committed
     (implies (member-equal :unit-a '(:unit-a :unit-b))
              (member-equal :unit-a
@@ -93,19 +93,19 @@
 (local (assert-event (equal (nth 0 '(:a :b)) :a)))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-assume-check-optimistic-success-is-earned
     (implies (equal (fn-assume-check-optimistic :indeterminate) :success)
              (equal :indeterminate :success)))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-assume-check-refusing-keeps-uncertainty
     (implies (equal :indeterminate :indeterminate)
              (equal (fn-assume-check-refusing :indeterminate) :indeterminate)))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-assume-check-reordering-preserves-event-order
     (equal (nth 0 (fn-assume-check-reordering '(:a :b)))
            (nth 0 '(:a :b))))))
@@ -122,7 +122,7 @@
 (local (assert-event (not (consp nil))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-assume-check-credulous-needs-a-receipt
     (implies (not (consp nil))
              (not (fn-assume-check-credulous nil :none))))))
@@ -141,7 +141,7 @@
 (local (assert-event (member-equal '(:origin 1 7) '((:origin 1 7)))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-assume-check-always-fresh-issued-is-not-fresh
     (implies (member-equal '(:origin 1 7) '((:origin 1 7)))
              (not (fn-assume-check-always-fresh '(:origin 1 7) '((:origin 1 7))))))))
@@ -158,13 +158,13 @@
 (local (assert-event (not (consp nil))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-assume-check-stored-bit-needs-evidence
     (implies (not (consp nil))
              (not (fn-assume-check-stored-bit '(:policy 0) '(:terms 0) nil))))))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-assume-check-stored-bit-needs-terms
     (implies (not (consp nil))
              (not (fn-assume-check-stored-bit '(:policy 0) nil '(:evidence 0)))))))
@@ -181,6 +181,6 @@
 (local (assert-event (natp 0)))
 
 (local
- (must-fail
+ (must-fail-checked
   (defthm fn-assume-check-never-contact-index-is-finite
     (natp (fn-assume-check-never :route-a :schedule-a)))))

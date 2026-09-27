@@ -13,7 +13,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/catalog-relation")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (and (eq (symbol-class 'fn-cat-load (w state)) :common-lisp-compliant)
@@ -134,7 +134,7 @@
          (fn-cat-load (list *crl-w3*) nil 0 *crl-a* *crl-c-bad*)
          (not (fn-cat-history-relation (append *crl-h* (list *crl-w3*)) a c))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm crl-r-load-without-relation
    (mv-let (a c)
      (fn-cat-load (list *crl-w3*) nil 0 *crl-a* *crl-c-bad*)
@@ -181,7 +181,7 @@
        (not (fn-cat-history-relation (append *crl-h* (list *crl-w3*)) *crl-a3*
                                      (mv-nth 2 (fn-cat-complete (cons 5 2) *crl-pc* *crl-c*)))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm crl-r-complete-without-token
    (fn-cat-history-relation (append *crl-h* (list *crl-w3*)) *crl-a3*
                             (mv-nth 2 (fn-cat-complete (cons 5 2) *crl-pc* *crl-c*)))

@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/tcpcl-delivery-invariants")
 (include-book "tcpcl-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *t-delivery-events* (fn-tcl-result-events *t-b3*))
 (defconst *t-delivery-held*
@@ -116,13 +116,13 @@
    (fn-tcl-events-after-first-bundle *t-delivery-two-events*)) 1))
 
 ; Dropping either premise of the host boundary theorem is materially wrong.
-(must-fail
+(must-fail-checked
  (defthm fn-tcl-events-without-first-bundle-held-final
    (implies (fn-tcl-delivery-eventsp events)
             (fn-tcl-held-final-ackp
              (fn-tcl-held-before-first-bundle events)
              (cadr (fn-tcl-first-bundle-event events))))))
-(must-fail
+(must-fail-checked
  (defthm fn-tcl-arbitrary-events-have-held-final
    (implies (fn-tcl-first-bundle-event events)
             (fn-tcl-held-final-ackp
@@ -134,7 +134,7 @@
 
 ; An accepted path must be NIL (exact duplicate) or a native path string.
 ; If its type premise is dropped, an invalid callback is a fault, not release.
-(must-fail
+(must-fail-checked
  (defthm fn-tcl-accepted-without-path-type-releases-held
    (implies (fn-tcl-held-final-ackp messages xfer-id)
             (equal (fn-tcl-delivery-plan-messages
@@ -145,7 +145,7 @@
  (equal (fn-tcl-delivery-plan-status
          (fn-tcl-delivery-plan *t-delivery-held* 0 '(:accepted 99)))
         :fault))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-tcl-delivery-plan-status
           (fn-tcl-delivery-plan nil 0 '(:refused :capacity)))

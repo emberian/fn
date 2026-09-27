@@ -11,7 +11,7 @@
 (include-book "../../books/owner-reader-read")
 (include-book "owner-log-ocl-tests")
 (include-book "arena-lift")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (equal (list (symbol-class 'fn-orr-read-span (w state))
@@ -200,7 +200,7 @@
 ; ground owners here (a related owner's configuration is its history's
 ; replay); the keystone's own proof does not go through without it (failed
 ; proof search with the keystone's hints, not a counterexample).
-(must-fail
+(must-fail-checked
  (defthm orrt-needs-the-configuration
    (implies (and (consp views)
                  (equal (car views) (fn-own-view (fn-ocfg-owner oc0)))
@@ -230,7 +230,7 @@
 
 ; Without the catalog premise the keystone's own proof does not go through
 ; (failed proof search with its hints, not a counterexample).
-(must-fail
+(must-fail-checked
  (defthm orrt-needs-the-catalog
    (implies (and (consp views)
                  (equal (car views) (fn-own-view (fn-ocfg-owner oc0)))

@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/heap-reservation")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defconst *hrt-core* 192152584)              ; lane image-floor's fn-host.core
@@ -95,7 +95,7 @@
 (assert! (equal (hrt-hyps nil *hrt-core* *hrt-nursery* (list *hrt-datasize*) 32)
                 '(nil t)))
 (assert! (not (hrt-conclusion nil *hrt-core* *hrt-nursery* (list *hrt-datasize*) 32)))
-(must-fail
+(must-fail-checked
  (defthm hrt-without-admitted
    (let ((r (fn-heap-reserve-decide profile core nursery observations connections)))
      (implies (equal (car r) :heap)
@@ -117,7 +117,7 @@
                 '(t nil)))
 (assert! (not (hrt-conclusion *fn-heap-small-profile* *hrt-core* *hrt-nursery*
                               (list (* 1800 *fn-heap-mib*)) 32)))
-(must-fail
+(must-fail-checked
  (defthm hrt-without-heap
    (let ((r (fn-heap-reserve-decide profile core nursery observations connections)))
      (implies (fn-bs-profile-admittedp profile)
@@ -279,7 +279,7 @@
            (and (not (equal (car d) :init))
                 (not (hrt-init-conclusion d *hrt-core* *hrt-nursery* *hrt-hbox* *hrt-half*
                                           nil)))))
-(must-fail
+(must-fail-checked
  (defthm hrt-init-fits-without-acceptance
    (let* ((d (fn-heap-init-decide request core nursery physical limits
                                   budget-octets sizing-octets))
@@ -301,7 +301,7 @@
            (and (equal (car d) :init) (not (nth 6 d))
                 (not (hrt-init-conclusion d *hrt-core* *hrt-nursery* *hrt-hbox* *hrt-2g*
                                           nil)))))
-(must-fail
+(must-fail-checked
  (defthm hrt-init-fits-without-held
    (let* ((d (fn-heap-init-decide request core nursery physical limits
                                   budget-octets sizing-octets))
@@ -332,7 +332,7 @@
 (assert! (equal (car (fn-bs-profile-resolve '(:default ((3 . 4096))) nil)) :invalid))
 (assert! (equal (car (hrt-init '(:default ((3 . 4096))) *hrt-hbox* nil)) :refused))
 (defmacro hrt-honors-without (&rest hyps)
-  `(must-fail
+  `(must-fail-checked
     (defthm hrt-honors-without-a-hypothesis
       (implies (and ,@hyps)
                (let ((d (fn-heap-init-decide request core nursery physical
@@ -366,7 +366,7 @@
 (assert! (nth 6 (hrt-init *hrt-bare* *hrt-hbox* *hrt-2g*)))
 (assert! (not (nth 6 (hrt-init *hrt-mission* *hrt-hbox* *hrt-half*))))
 (defmacro hrt-held-without (&rest hyps)
-  `(must-fail
+  `(must-fail-checked
     (defthm hrt-held-without-a-hypothesis
       (implies (and ,@hyps)
                (nth 6 (fn-heap-init-decide request core nursery physical
@@ -389,7 +389,7 @@
 (assert! (not (member-equal (fn-heap-init-decision-request
                              (hrt-init *hrt-bare* *hrt-hbox* nil nil *hrt-largest*))
                             (fn-heap-friend-ladder *hrt-bare* *fn-heap-friend-rungs*))))
-(must-fail
+(must-fail-checked
  (defthm hrt-conservative-without-the-sizing
    (let ((d (fn-heap-init-decide request core nursery physical limits
                                  budget-octets sizing-octets)))
@@ -413,7 +413,7 @@
 (assert! (equal (fn-heap-init-decision-request
                  (hrt-init *hrt-bare* *hrt-hbox* *hrt-2g* nil *hrt-largest*))
                 *fn-heap-small-request*))
-(must-fail
+(must-fail-checked
  (defthm hrt-largest-without-scale-fitting
    (implies (and (fn-heap-machine-sized-requestp request)
                  (not (equal (fn-heap-init-explicit-budget budget-octets) :bad)))
@@ -525,7 +525,7 @@
                                           '((1 . 5)))
                 :bad))
 (assert! (not (hrt-held-conclusion *hrt-bad-field*)))
-(must-fail
+(must-fail-checked
  (defthm hrt-held-without-the-fields
    (implies (and (fn-bs-profile-requestp request)
                  (equal request *hrt-bad-field*))
@@ -561,7 +561,7 @@
                              (hrt-init '(:development nil) *hrt-hbox* nil))
                             (fn-heap-friend-ladder '(:development nil)
                                                    *fn-heap-friend-rungs*))))
-(must-fail
+(must-fail-checked
  (defthm hrt-rung-without-machine-sized
    (let ((d (fn-heap-init-decide request core nursery physical limits
                                  budget-octets nil)))
@@ -595,7 +595,7 @@
 (assert! (< (fn-heap-request-transactions (fn-heap-init-decision-request
                                            (hrt-init '(:development nil) *hrt-hbox* nil)))
             16384))
-(must-fail
+(must-fail-checked
  (defthm hrt-floor-without-machine-sized
    (let ((d (fn-heap-init-decide request core nursery physical limits
                                  budget-octets nil)))
@@ -614,7 +614,7 @@
 (assert! (equal (fn-heap-request-transactions (fn-heap-init-decision-request
                                                (hrt-init *hrt-mission* *hrt-hbox* *hrt-half*)))
                 0))
-(must-fail
+(must-fail-checked
  (defthm hrt-floor-without-init
    (let ((d (fn-heap-init-decide request core nursery physical limits
                                  budget-octets nil)))
@@ -633,7 +633,7 @@
 ;; witness is hbox's; without the fit (2 GiB) another rung is written.
 (assert! (not (equal (fn-heap-init-decision-request (hrt-init *hrt-mission* *hrt-hbox* *hrt-2g*))
                      (fn-heap-friend-candidate *hrt-mission* 67108864))))
-(must-fail
+(must-fail-checked
  (defthm hrt-top-without-fit
    (implies (and (fn-heap-machine-sized-requestp request)
                  (not (equal (fn-heap-init-explicit-budget budget-octets) :bad)))
@@ -651,7 +651,7 @@
                                 fn-heap-machine-sized-requestp)))))
 ;; Without a usable budget word: refused.
 (assert! (equal (car (hrt-init *hrt-mission* *hrt-hbox* nil '(120))) :refused))
-(must-fail
+(must-fail-checked
  (defthm hrt-top-without-budget
    (implies (and (fn-heap-machine-sized-requestp request)
                  (fn-heap-reserve-acceptsp
@@ -671,7 +671,7 @@
                                 fn-heap-profile-word fn-heap-mb-of
                                 fn-heap-machine-sized-requestp)))))
 ;; Without the machine-sized request: the operator's own is written.
-(must-fail
+(must-fail-checked
  (defthm hrt-top-without-machine-sized
    (implies (and (not (equal (fn-heap-init-explicit-budget budget-octets) :bad))
                  (fn-heap-reserve-acceptsp
@@ -779,7 +779,7 @@
                 '(nil)))
 (assert! (not (hrt-op-conclusion :reclaim *fn-heap-small-profile* 195856696 *hrt-nursery*
                                  (list *hrt-datasize*) 0 nil)))
-(must-fail
+(must-fail-checked
  (defthm hrt-op-without-heap
    (let ((r (fn-heap-reserve-operation-decide action profile core nursery
                                               observations connections observed))

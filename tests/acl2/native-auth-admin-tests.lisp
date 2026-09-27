@@ -2,7 +2,7 @@
 (in-package "ACL2")
 (include-book "../../books/native-auth-admin")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (equal (symbol-class 'fn-native-auth-admin-set-password (w state))
@@ -425,20 +425,20 @@
 (assert-event (equal (fn-native-auth-admin-effect-word nil nil) :restart-required))
 ; Teeth: "never restart-required" and "always restart-required" (the answer
 ; the spike saw) are both false.
-(must-fail
+(must-fail-checked
  (defthm naat-effect-word-always-restart
    (equal (fn-native-auth-admin-effect-word observation live) :restart-required)))
-(must-fail
+(must-fail-checked
  (defthm naat-effect-word-never-restart
    (not (equal (fn-native-auth-admin-effect-word observation live) :restart-required))))
 ; Teeth for the `applied' keystone: each literal of its right side is needed.
 ; Without the owner's :accepted, a held lock is not `applied'; with it, a
 ; lock seen free is still `effective-at-next-start'.
-(must-fail
+(must-fail-checked
  (defthm naat-effect-word-applied-without-acceptance
    (implies (not (member-equal observation '(:free :absent)))
             (equal (fn-native-auth-admin-effect-word observation live) :applied))))
-(must-fail
+(must-fail-checked
  (defthm naat-effect-word-applied-whenever-accepted
    (implies (equal live :accepted)
             (equal (fn-native-auth-admin-effect-word observation live) :applied))))

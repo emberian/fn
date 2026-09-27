@@ -1,7 +1,7 @@
 ; Teeth for books/owner-config-observe.lisp.
 (in-package "ACL2")
 (include-book "../../books/owner-config-observe")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "config-owner-live-tests")
 
 (defconst *oco-t-obs* (fn-clock-observation 999999 1790000000000 10 t))
@@ -40,7 +40,7 @@
 ; The equation has no hypothesis.  Its separation: the reading is not
 ; ignored -- two readings give two owners -- so the equation is not the
 ; trivial one of a transition that drops its argument.
-(must-fail
+(must-fail-checked
  (defthm fn-oco-t-observe-ignores-the-reading
    (equal (fn-ocfg-observe oc obs1) (fn-ocfg-observe oc obs2))
    :hints (("Goal" :in-theory (enable fn-ocfg-observe)))))

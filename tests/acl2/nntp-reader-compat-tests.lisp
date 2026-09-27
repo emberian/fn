@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-xref-read")
 (include-book "../../books/nntp-pinned-msgid")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-rct-payload (id subject)
   (append (fn-nntp-string-octets "Message-ID: ")
@@ -164,7 +164,7 @@
  (and (not (consp nil))
       (not (equal (fn-rcompat-subscription-names nil *rct-groups*)
                   (fn-rcompat-names-held *rct-groups* nil)))))
-(must-fail
+(must-fail-checked
  (thm (equal (fn-rcompat-subscription-names configured groups)
              (fn-rcompat-names-held groups configured))))
 
@@ -271,7 +271,7 @@
               (in-arena-fn-rcompat-retrieval *sr-arena* *rct-no-cursor* *rct-state* (fn-gidx-pin-trie *rct-pin*) :head (fn-nntp-string-list-octets '("7" "x")) *rct-server*))
              (fn-nntp-result-session
               (in-arena-fn-nntp-retrieval *sr-arena* *rct-no-cursor* *rct-state* :head (fn-nntp-string-list-octets '("7" "x")))))))
-(must-fail
+(must-fail-checked
  (thm (equal (fn-nntp-result-session
               (fn-rcompat-retrieval session archive trie kind args server fn-arena))
              (fn-nntp-result-session

@@ -11,7 +11,7 @@
 ; a 3 MiB reply, the size that stopped the owner before the fix.
 (in-package "ACL2")
 (include-book "../../books/public-exposure-reply")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *pxr-lim* (fn-exp-lim-make 3 2 2 600 60 2 1 :none))
 (defconst *pxr-xs* (fn-exp-register (fn-exp-initial) 5 '(:inet 127 0 0 2) 5000))
@@ -36,7 +36,7 @@
 (assert-event (equal (fn-exp-481-count '(52 56 49) t) 0))
 
 ; MUTATION: the recognizer started off a line start misses the first reply.
-(must-fail
+(must-fail-checked
  (assert-event (equal (car (fn-exp-481-scan *pxr-stream* 0 0))
                       (fn-exp-481-count *pxr-stream* t))))
 
@@ -78,7 +78,7 @@
 (defconst *pxr-mid-line*
   (list (list :reply '(88)) (list :reply '(52 56 49 32 13 10))))
 (assert-event (equal (car (fn-exp-effects-scan *pxr-mid-line* 1 0 nil)) 0))
-(must-fail
+(must-fail-checked
  (assert-event (equal (pxr-restart-scan *pxr-mid-line* 0)
                       (fn-exp-481-count (fn-served-reply-octets *pxr-mid-line*) t))))
 

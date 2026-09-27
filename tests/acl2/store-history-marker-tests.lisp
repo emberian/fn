@@ -1,7 +1,7 @@
 ; Witnesses and teeth for books/store-history-marker.
 (in-package "ACL2")
 (include-book "../../books/store-history-marker")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *hmt-max* 4294967295)
 
@@ -58,11 +58,11 @@
 
 ; Keystone 1 (fn-hm-run-keeps-every-open-admitted).
 ;   admission of the start state: a marker above the records it reads.
-(must-fail (assert-event (fn-hm-admittedp (fn-hm-run nil (list 1 :present (fn-hm-after-commit 4))))))
+(must-fail-checked (assert-event (fn-hm-admittedp (fn-hm-run nil (list 1 :present (fn-hm-after-commit 4))))))
 ;   the uint32 count domain: the start is admitted, a commit at the last
 ;   count has no marker to write.
 (assert-event (fn-hm-admittedp (cons *hmt-max* '(:absent))))
-(must-fail (assert-event (fn-hm-admittedp (fn-hm-run '((:commit :marker-durable nil))
+(must-fail-checked (assert-event (fn-hm-admittedp (fn-hm-run '((:commit :marker-durable nil))
                                                      (cons *hmt-max* '(:absent))))))
 
 ; Keystone 2 (fn-hm-open-refuses-a-lost-acknowledged-record): END and its
@@ -80,11 +80,11 @@
                       (cdr (hmt-k2-end '((:burn) (:commit :marker-created nil)) '(2 :absent))) 2)
                      '(:refused :history-short-of-marker 3)))
 ;   k <= the acknowledged sequence: k = 3 (record 2 present) is admitted.
-(must-fail (assert-event (hmt-k2-holds nil '(2 :absent) 3)))
+(must-fail-checked (assert-event (hmt-k2-holds nil '(2 :absent) 3)))
 ;   natp k: a malformed count is refused for another reason.
-(must-fail (assert-event (hmt-k2-holds nil '(2 :absent) -1)))
+(must-fail-checked (assert-event (hmt-k2-holds nil '(2 :absent) -1)))
 ;   natp of the acknowledged sequence: no marker can name it.
-(must-fail (assert-event (hmt-k2-holds nil '(x :absent) 0)))
+(must-fail-checked (assert-event (hmt-k2-holds nil '(x :absent) 0)))
 ;   the count domain: a later commit past uint32 damages the marker.
-(must-fail (assert-event (hmt-k2-holds '((:commit :marker-durable nil))
+(must-fail-checked (assert-event (hmt-k2-holds '((:commit :marker-durable nil))
                                        (cons (1- *hmt-max*) '(:absent)) 0)))

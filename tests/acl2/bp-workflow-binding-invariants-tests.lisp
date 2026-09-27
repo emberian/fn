@@ -1,7 +1,7 @@
 ; Executable witnesses for the joint workflow/node binding invariant.
 (in-package "ACL2")
 (include-book "../../books/bp-workflow-binding-invariants")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bpb-groups* '("fn.letters"))
 (defconst *bpb-node-empty* (fn-node-initial-state *bpb-groups* 16))
@@ -119,7 +119,7 @@
                                (fn-node-bindings *bpb-node*)))
         (fn-bp-work-archive-id *bpb-wrong-subject*)))
 (assert-event (not (fn-bp-work-boundp *bpb-node* *bpb-wrong-subject*)))
-(must-fail (assert-event (fn-bp-binding-statep (fn-bpbt-state *bpb-wrong-subject*))))
+(must-fail-checked (assert-event (fn-bp-binding-statep (fn-bpbt-state *bpb-wrong-subject*))))
 
 ; Wrong archive obligation id, article present, subject exact.
 (defconst *bpb-wrong-archive* (fn-bpbt-work "subject-bound" "not-the-archive"))
@@ -130,7 +130,7 @@
                                (fn-node-bindings *bpb-node*)))
         (fn-bp-work-subject *bpb-wrong-archive*)))
 (assert-event (not (fn-bp-work-boundp *bpb-node* *bpb-wrong-archive*)))
-(must-fail (assert-event (fn-bp-binding-statep (fn-bpbt-state *bpb-wrong-archive*))))
+(must-fail-checked (assert-event (fn-bp-binding-statep (fn-bpbt-state *bpb-wrong-archive*))))
 
 ; The production enqueue cannot construct either: prepare-enqueue derives the
 ; subject and archive id from the node binding, so a caller cannot supply them.

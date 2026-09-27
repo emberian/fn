@@ -8,7 +8,7 @@
 ; exec path runs on a live local buffer, the way the host runs it.
 (in-package "ACL2")
 (include-book "../../books/store-reclaim-buffer")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "octets-stobj-tests")
 
 (defconst *rbt-mo* (fn-record-string-octets *ost-msgid*))
@@ -97,7 +97,7 @@
 ; list to its last cons), so the separating store is the live one: the list
 ; side compares the improper source by `equal', the buffer side the octets
 ; it holds.
-(must-fail
+(must-fail-checked
  (defthm rbt-t-existing-action-without-octets-p
    (equal (fn-rclb-existing-action *ost-msgid* *rbt-improper* *ost-groups* *ost-s-wire*)
           (fn-rcl-existing-action *ost-msgid* *rbt-improper* *ost-groups* *ost-s-wire*))))

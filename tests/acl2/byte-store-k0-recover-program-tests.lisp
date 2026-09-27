@@ -16,7 +16,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-k0-recover-program")
 (include-book "byte-store-k0-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *bskv-configs* (list *fn-cfg-default-record*))
 (defun bskv-f (k) (nth k (bsk0-f-good)))
@@ -84,16 +84,16 @@
 (assert-event (not (fn-bs-k0-step-inputp (bskv-link) (bskv-k (bskv-link) 0)
                                          '(:fsync-dir :transactions) '(:eio :drop) *bsk5-arena*)))
 (assert-event (fn-bs-store-relation (bskv-dir-eio (bskv-link) :apply) (bskv-k (bskv-link) 0) *bsk5-arena*))
-(must-fail (assert-event (fn-bs-store-relation (bskv-dir-eio (bskv-link) :drop) (bskv-k (bskv-link) 0) *bsk5-arena*)))
+(must-fail-checked (assert-event (fn-bs-store-relation (bskv-dir-eio (bskv-link) :drop) (bskv-k (bskv-link) 0) *bsk5-arena*)))
 ; (b) The quiet clause of an observation that leaves the window: the fifth
 ; barrier with the link still pending lands the kernel on :ready, whose
 ; relation reads the durable records, which lack the linked one.
 (assert-event (not (fn-bs-k0-step-inputp (bskv-link) (bskv-k (bskv-link) 4)
                                          '(:observe (:recovery-barrier :ok)) :ok *bsk5-arena*)))
 (assert-event (fn-bs-store-relation (bskv-link) (bskv-k (bskv-link) 4) *bsk5-arena*))
-(must-fail (assert-event (fn-bs-store-relation (bskv-link) (bskv-k (bskv-link) 5) *bsk5-arena*)))
+(must-fail-checked (assert-event (fn-bs-store-relation (bskv-link) (bskv-k (bskv-link) 5) *bsk5-arena*)))
 ; (c) The relation: the initial byte image under the reopened kernel.
-(must-fail (assert-event (bskv-prog-concl (bsk5-initial) (bskv-k (bskv-link) 0))))
+(must-fail-checked (assert-event (bskv-prog-concl (bsk5-initial) (bskv-k (bskv-link) 0))))
 ; The fenced-target clause of :fsync-file has no must-fail here: the
 ; recovery program fsyncs only authority inodes, which the relation fences.
 
@@ -125,7 +125,7 @@
 (assert-event (not (fn-bs-recovered-rowsp (bskv-admin)
                                           (fn-bs-scan-records (fn-bs-scan-store (bskv-admin)))
                                           *bsk5-arena*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (fn-bs-store-relation (bskv-admin)
                         (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store (bskv-admin)))
@@ -134,7 +134,7 @@
 (assert-event (equal (bskv-host *bskv-configs* (bskv-admin)) (bskv-k (bskv-admin) 0)))
 ; Teeth.  Open success: no configuration record, the open is refused.
 (assert-event (not (fn-sn-open-okp (bskv-open nil (bskv-admin)))))
-(must-fail (assert-event (bskv-rerecovery-concl nil (bskv-admin))))
+(must-fail-checked (assert-event (bskv-rerecovery-concl nil (bskv-admin))))
 ; The relation: a pending write to the config inode with the octets it
 ; already holds.  The view, the scan and the open are unchanged; the config
 ; inode is no longer fenced, so no kernel is related to the state.
@@ -147,7 +147,7 @@
 (assert-event (equal (fn-bs-scan-store (bskv-unfenced)) (fn-bs-scan-store (bskv-admin))))
 (assert-event (fn-bs-k0w-authority-quietp (bskv-unfenced)))
 (assert-event (fn-sn-open-okp (bskv-open *bskv-configs* (bskv-unfenced))))
-(must-fail (assert-event (bskv-rerecovery-concl *bskv-configs* (bskv-unfenced))))
+(must-fail-checked (assert-event (bskv-rerecovery-concl *bskv-configs* (bskv-unfenced))))
 ; The quiet hypothesis has no separating instance among these witnesses: the
 ; pending-link pair under its own publish-window kernel is related, and the
 ; re-recovery from it holds as well (it is the window witness above).  The

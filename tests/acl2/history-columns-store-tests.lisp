@@ -12,7 +12,7 @@
 (include-book "history-columns-tests")
 (include-book "../../books/history-columns-store")
 (include-book "owner-operator-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (assert-event
  (and (eq (symbol-class 'fn-hist-sync (w state)) :common-lisp-compliant)
@@ -53,7 +53,7 @@
                    (true-listp *hcs-records*)
                    (not (equal (hcs-sync-run (list *hct-b*) *hcs-files*)
                                *hcs-records*))))
-(must-fail
+(must-fail-checked
  (defthm hcs-false-sync-without-prefix
    (implies (true-listp (fn-sf-records files))
             (equal (fn-hist-sync files fn-hist) (fn-sf-records files)))))
@@ -125,7 +125,7 @@
 ; count and other octets than the store's history.
 (assert-event (not (equal (hcs-folds (take 2 *hcs-records*) *hcs-s* (list (cons 0 0)))
                           (hcs-spec *hcs-records* *hcs-s* (cons 0 0)))))
-(must-fail
+(must-fail-checked
  (defthm hcs-false-bytes-without-r
    (equal (fn-hist-bytes-carried cache s fn-hist)
           (fn-sbud-bytes-extend cache (fn-sf-records (fn-sn-files s))))))

@@ -6,7 +6,7 @@
 (in-package "ACL2")
 (include-book "../../books/nntp-range-indexed")
 (include-book "../../books/owner")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun fn-tgn-payload (id subject)
   (append (fn-nntp-string-octets "Message-ID: ")
@@ -59,7 +59,7 @@
 (assert-event (and (not (posp 0)) (posp 1)
                    (not (equal (fn-gnix-get 0 (fn-gnix-set 1 :v nil))
                                (if (equal 0 1) :v (fn-gnix-get 0 nil))))))
-(must-fail
+(must-fail-checked
  (defthm fn-tgn-get-of-set-without-posp-n
    (implies (posp 1)
             (equal (fn-gnix-get 0 (fn-gnix-set 1 :v nil))
@@ -68,7 +68,7 @@
 (assert-event (and (posp 1) (not (posp 0))
                    (not (equal (fn-gnix-get 1 (fn-gnix-set 0 :v nil))
                                (if (equal 1 0) :v (fn-gnix-get 1 nil))))))
-(must-fail
+(must-fail-checked
  (defthm fn-tgn-get-of-set-without-posp-m
    (implies (posp 1)
             (equal (fn-gnix-get 1 (fn-gnix-set 0 :v nil))
@@ -133,7 +133,7 @@
                   (fn-gidx-entry-number-article
                    "fn.one" 2 (fn-gidx-bucket "fn.one" *tgn-corrupt-buckets*)
                    *tgn-trie*)))))
-(must-fail
+(must-fail-checked
  (defthm fn-tgn-keystone-without-relation
    (equal (fn-gidx-nidx-number-article
            2 (fn-gidx-bucket-numbers "fn.one" *tgn-corrupt-buckets*) *tgn-trie*)
@@ -156,7 +156,7 @@
       (not (fn-gidx-numbers-okp
             (fn-gidx-put (list "fn.two" 71 "<tgn-two@example.invalid>")
                          *tgn-corrupt-buckets*)))))
-(must-fail
+(must-fail-checked
  (defthm fn-tgn-put-without-relation
    (fn-gidx-numbers-okp
     (fn-gidx-put (list "fn.two" 71 "<tgn-two@example.invalid>")
@@ -174,10 +174,10 @@
       (not (fn-gidx-numbers-okp (fn-gidx-put-all nil *tgn-corrupt-buckets*)))
       (not (fn-gidx-numbers-okp
             (fn-gidx-refresh *tgn-corrupt-buckets* *tgn-new* *tgn-new*)))))
-(must-fail
+(must-fail-checked
  (defthm fn-tgn-put-all-without-relation
    (fn-gidx-numbers-okp (fn-gidx-put-all nil *tgn-corrupt-buckets*))))
-(must-fail
+(must-fail-checked
  (defthm fn-tgn-refresh-without-relation
    (fn-gidx-numbers-okp
     (fn-gidx-refresh *tgn-corrupt-buckets* *tgn-new* *tgn-new*))))
@@ -210,7 +210,7 @@
  (and (not (fn-gidx-numbers-okp *tgn-corrupt-buckets*))
       (not (equal (in-arena-fn-nntp-over-range-indexed *sr-arena* *tgn-session* *tgn-corrupt-buckets* *tgn-trie* *tgn-range* nil)
                   (in-arena-fn-nntp-over-range-walk *sr-arena* *tgn-session* *tgn-corrupt-buckets* *tgn-trie* *tgn-range* nil)))))
-(must-fail
+(must-fail-checked
  (defthm fn-tgn-over-range-without-relation
    (equal (fn-nntp-over-range-indexed *tgn-session* *tgn-corrupt-buckets* *tgn-trie* *tgn-range* nil fn-arena)
           (fn-nntp-over-range-walk *tgn-session* *tgn-corrupt-buckets* *tgn-trie* *tgn-range* nil fn-arena))))

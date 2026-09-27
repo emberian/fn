@@ -3,7 +3,7 @@
 ; boundary), and a port two boundaries share.
 (in-package "ACL2")
 (include-book "../../books/bp-listener-set")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bpls-boundary (name eid port)
   (declare (xargs :guard t :verify-guards nil))
@@ -61,12 +61,12 @@
 ;; Hypothesis "the port is a bound listener": on the shared port (not in
 ;; the set) the session is :ambiguous-peer, neither conclusion arm; on a port
 ;; no row names, :no-trust-profile.
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (member-equal 4101 (fn-bpaj-listener-ports *bpls-shared*))))
 (assert-event (equal (fn-bpaj-session-principal
                       *bpls-shared* (fn-bpaj-loopback-channel 4101) *bpls-a*)
                      (list :refused :ambiguous-peer)))
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (member-equal (fn-bpaj-session-principal
                            *bpls-shared* (fn-bpaj-loopback-channel 4101) *bpls-a*)
                           (list (list :refused :eid-mismatch)
@@ -76,7 +76,7 @@
                      (list :refused :no-trust-profile)))
 ;; Hypothesis "the announced value is an EID": a malformed one is refused
 ;; :channel, neither arm.
-(must-fail (assert-event (fn-bpp-eidp '(:dtn 47))))
+(must-fail-checked (assert-event (fn-bpp-eidp '(:dtn 47))))
 (assert-event (equal (fn-bpaj-session-principal
                       *bpls-x* (fn-bpaj-loopback-channel 4101) '(:dtn 47))
                      (list :refused :channel)))
@@ -88,11 +88,11 @@
                      :admitted))
 (assert-event (member-equal 4102 (fn-bpaj-listener-ports *bpls-x*)))
 ;; Hypothesis "admitted": a refused session on an unbound port.
-(must-fail (assert-event (equal (car (fn-bpaj-session-principal
+(must-fail-checked (assert-event (equal (car (fn-bpaj-session-principal
                                       *bpls-shared* (fn-bpaj-loopback-channel 4101)
                                       *bpls-a*))
                                 :admitted)))
-(must-fail (assert-event (member-equal 4101 (fn-bpaj-listener-ports *bpls-shared*))))
+(must-fail-checked (assert-event (member-equal 4101 (fn-bpaj-listener-ports *bpls-shared*))))
 ;; Hypothesis "a positive port": a listener row on port 0 admits a session
 ;; the kernel can never observe (it asks for an ephemeral port), and the set
 ;; does not bind it.
@@ -100,8 +100,8 @@
 (assert-event (equal (car (fn-bpaj-session-principal
                            *bpls-zero* (fn-bpaj-loopback-channel 0) *bpls-a*))
                      :admitted))
-(must-fail (assert-event (posp 0)))
-(must-fail (assert-event (member-equal 0 (fn-bpaj-listener-ports *bpls-zero*))))
+(must-fail-checked (assert-event (posp 0)))
+(must-fail-checked (assert-event (member-equal 0 (fn-bpaj-listener-ports *bpls-zero*))))
 
 ;; fn-bpaj-listener-ports-are-distinct: a duplicated listener row binds once.
 (defconst *bpls-dup*

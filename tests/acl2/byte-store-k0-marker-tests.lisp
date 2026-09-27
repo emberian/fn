@@ -9,7 +9,7 @@
 (in-package "ACL2")
 (include-book "../../books/byte-store-k0-marker")
 (include-book "byte-store-stable-prefix-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defun bskm-pair () (car (last (bsk5-record-2-run))))
 (defun bskm-run (bs ks stage octets)
@@ -152,7 +152,7 @@
         (not (member-equal (fn-bs-hm-observation (fn-bs-crash b c))
                            (list (list :present (fn-hm-after-commit 1))
                                  (list :present (fn-hm-after-commit 2))))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((b (bskm-replaced-busy)) (c (bskm-busy-choices))
          (dropped (fn-bs-root-rename-dropped b)))
@@ -174,7 +174,7 @@
 (assert-event
  (and (fn-bs-k0m-root-rename-onlyp (fn-bs-pending (bskm-rootless)) *fn-bs-history-marker-name* 0)
       (not (consp (assoc-equal :root (fn-bs-dirs (bskm-rootless)))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let* ((b (bskm-rootless)) (c (list :apply :apply)) (dropped (fn-bs-root-rename-dropped b)))
     (equal (fn-bs-crash b c)
@@ -188,7 +188,7 @@
 
 ; Drop the relation: the completing kernel over the initial byte image.
 (assert-event (not (fn-bs-store-relation (bsk5-initial) (cdr (bskm-pair)) *bsk5-arena*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (bskm-k0-conclusion (bskm-run (bsk5-initial) (cdr (bskm-pair))
                                 ".stage-marker-k0" (fn-hm-after-commit 1)))))
@@ -213,7 +213,7 @@
                                       (fn-hm-after-commit 1))))))
 
 ; Drop the stage-name type.
-(must-fail
+(must-fail-checked
  (assert-event
   (bskm-k0-conclusion (bskm-run (car (bskm-pair)) (cdr (bskm-pair))
                                 'not-a-name (fn-hm-after-commit 1)))))
@@ -227,13 +227,13 @@
                                        (cdr (assoc-equal :staging (fn-bs-dirs bs))))
                                  (fn-bs-dirs bs))
                 (fn-bs-pending bs) (fn-bs-next-ino bs))))
-(must-fail
+(must-fail-checked
  (assert-event
   (bskm-k0-conclusion (bskm-run (bskm-occupied) (cdr (bskm-pair))
                                 ".stage-marker-k0" (fn-hm-after-commit 1)))))
 
 ; Drop the octet type.
-(must-fail
+(must-fail-checked
  (assert-event
   (bskm-k0-conclusion (bskm-run (car (bskm-pair)) (cdr (bskm-pair))
                                 ".stage-marker-k0" '(256)))))
@@ -259,7 +259,7 @@
                 (append (fn-bs-pending bs) (list (list :write old 0 '(7 7 7))))
                 (fn-bs-next-ino bs))))
 (assert-event (not (fn-bs-marker-inputp (bskm-unfenced) ".stage-marker-k0b")))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((run (bskm-run (bskm-unfenced) (cdr (bskm-pair)) ".stage-marker-k0b" (fn-hm-after-commit 2))))
     (equal (bskm-obs run 5 t) (fn-bs-hm-observation (bskm-unfenced))))))
@@ -273,7 +273,7 @@
                         (list (list :set-entry :root *fn-bs-history-marker-name*
                                     (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*))))
                 (fn-bs-next-ino bs))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((run (bskm-run (bskm-root-busy) (cdr (bskm-pair)) ".stage-marker-k0" (fn-hm-after-commit 1))))
     (member-equal (bskm-obs run 5 t)
@@ -283,7 +283,7 @@
 ; Drop admission before the commit: sequence 0 over a marker already at 2
 ; (a marker ahead of the history).  The open after the commit refuses.
 (assert-event (not (fn-hm-admittedp (cons 0 (fn-bs-hm-observation (car (nth 9 (bskm-good))))))))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((run (bskm-run (car (nth 9 (bskm-good))) (cdr (bskm-pair))
                        ".stage-marker-k0b" (fn-hm-after-commit 0))))

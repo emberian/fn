@@ -15,7 +15,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/catalog-record")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ; -----------------------------------------------------------------------------
 ; The host runs compiled code: every function it may reach is guard-verified.
@@ -68,7 +68,7 @@
        (not (equal (fn-nntp-split-okp (fn-nntp-split-article *crt-art-bad*))
                    (if (fn-hf-split-index *crt-art-bad* 0) t nil))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm crt-r-split-without-octets
    (equal (fn-nntp-split-okp (fn-nntp-split-article *crt-art-bad*))
           (if (fn-hf-split-index *crt-art-bad* 0) t nil))
@@ -91,7 +91,7 @@
        (not (equal (equal (car (fn-nntp-crlf-lines *crt-body-bad*)) :ok)
                    (if (fn-hf-crlf-count *crt-body-bad* nil) t nil))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm crt-r-lines-without-octets
    (equal (equal (car (fn-nntp-crlf-lines *crt-body-bad*)) :ok)
           (if (fn-hf-crlf-count *crt-body-bad* nil) t nil))
@@ -119,7 +119,7 @@
                            (if (equal (car lines) :ok) (len (car (cdr lines))) 0))
                        0)))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm crt-r-body-lines-without-octets
    (equal (fn-hf-body-lines-of *crt-art-bad*)
           (let ((split (fn-nntp-split-article *crt-art-bad*)))
@@ -153,7 +153,7 @@
          (fn-cat-intern-list *crt-w12* nil 0 nil)
          (not (equal (fn-held-wire-of held fn-arena) *crt-w12*))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm crt-r-materializes-without-shape
    (mv-let (held fn-arena)
      (fn-cat-intern-list *crt-w12* nil 0 nil)
@@ -172,7 +172,7 @@
   (and (not (fn-record-p *crt-w-badid*)) (natp 0)
        (not (fn-held-p (mv-nth 0 (fn-cat-intern-list *crt-w-badid* nil 0 nil)))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm crt-r-held-p-without-record-p
    (fn-held-p (mv-nth 0 (fn-cat-intern-list *crt-w-badid* nil 0 nil)))
    :rule-classes nil))
@@ -180,7 +180,7 @@
   (and (fn-record-p *crt-w*) (not (natp -1))
        (not (fn-held-p (mv-nth 0 (fn-cat-intern-list *crt-w* nil -1 nil)))))
   :rule-classes nil)
-(must-fail
+(must-fail-checked
  (defthm crt-r-held-p-without-generation
    (fn-held-p (mv-nth 0 (fn-cat-intern-list *crt-w* nil -1 nil)))
    :rule-classes nil))

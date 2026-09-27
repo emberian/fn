@@ -12,7 +12,7 @@
 (include-book "../../books/store-existing-alpha")
 (include-book "../../books/codec-attach")
 (include-book "held-rows-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *snex-groups* '("fn.letters" "fn.test"))
 (defconst *snex-record-wire*
@@ -77,23 +77,23 @@
 
 ; Each deleted premise makes the corresponding outcome false on the same
 ; committed article: payload equality, group equality, or a held binding.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (snex-sn
           "<held@example>" '(99) *snex-groups* *snex-finished*)
          :duplicate)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (snex-sn
           "<held@example>" '(65 66) '("fn.letters") *snex-finished*)
          :duplicate)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (snex-sn
           "<missing@example>" '(65 66) *snex-groups* *snex-finished*)
          :duplicate)))
 ; A difference without a held Message-ID is missing, not a conflict.
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (snex-sn
           "<missing@example>" '(99) *snex-groups* *snex-finished*)
@@ -116,22 +116,22 @@
                      :conflict))
 (assert-event (null (fn-hrt-existing-action
                      *snex-prior* "<missing@example>" '(65 66) *snex-groups* *snex-finished*)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-hrt-existing-action
           *snex-prior* "<held@example>" '(99) *snex-groups* *snex-finished*)
          :duplicate)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-hrt-existing-action
           *snex-prior* "<held@example>" '(65 66) '("fn.letters") *snex-finished*)
          :duplicate)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-hrt-existing-action
           *snex-prior* "<missing@example>" '(65 66) *snex-groups* *snex-finished*)
          :duplicate)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (fn-hrt-existing-action
           *snex-prior* "<missing@example>" '(99) *snex-groups* *snex-finished*)

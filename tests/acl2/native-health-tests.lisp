@@ -6,7 +6,7 @@
 (include-book "../../books/native-health")
 (include-book "../../books/owner-store-budget")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "held-rows-tests")
 
 (defconst *nht-groups* '("fn.letters" "fn.test"))
@@ -131,7 +131,7 @@
 (assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0
                                                       *nht-idle-feeds*)))
                      :clear))
-(must-fail
+(must-fail-checked
  (defthm nht-deferring-without-deferred
    (implies (member-equal e feeds)
             (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds))) :held))
@@ -139,7 +139,7 @@
 ;; Without the member: a deferring feed outside the table holds nothing.
 (assert-event (equal (car (fn-nh-nth 6 (fn-nh-verdict nil (nht-store *nht-scale*) 0 nil)))
                      :clear))
-(must-fail
+(must-fail-checked
  (defthm nht-deferring-without-member
    (implies (fn-nh-feed-deferredp (fn-own-feed-entry-feed e))
             (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds))) :held))
@@ -190,7 +190,7 @@
 (defconst *nht-long* (append (make-list 80 :initial-element '(:clear)) '((:held))))
 (assert-event (equal (fn-nh-exit-code *nht-long*) 100))
 (assert-event (equal (fn-nh-report-exit (fn-nh-render *nht-long*)) 0))
-(must-fail
+(must-fail-checked
  (defthm nht-report-exit-of-any-render
    (equal (fn-nh-report-exit (fn-nh-render v)) (fn-nh-exit-code v))
    :rule-classes nil))
@@ -205,14 +205,14 @@
 ; Without covers: W holds nothing V holds.
 (assert-event (not (fn-nh-held-covers *nht-v* '((:clear) (:clear) (:clear) (:clear)))))
 (assert-event (null (fn-nh-first-held-index '((:clear) (:clear) (:clear) (:clear)) 0)))
-(must-fail
+(must-fail-checked
  (defthm nht-monotone-without-covers
    (implies (and (natp i) (fn-nh-first-held-index v i))
             (fn-nh-first-held-index w i))
    :rule-classes nil))
 ; Without a held state in V: both hold nothing.
 (assert-event (fn-nh-held-covers '((:clear)) '((:clear))))
-(must-fail
+(must-fail-checked
  (defthm nht-monotone-without-held
    (implies (and (fn-nh-held-covers v w) (natp i))
             (fn-nh-first-held-index w i))
@@ -225,17 +225,17 @@
 (assert-event (not (fn-nh-pressedp 50 100 10)))  ; less use: clear
 (assert-event (not (fn-nh-pressedp 95 100 1)))   ; lower threshold: clear
 (assert-event (not (fn-nh-pressedp 0 100 0)))    ; no premise: clear
-(must-fail
+(must-fail-checked
  (defthm nht-pressure-without-more-use
    (implies (and (fn-nh-pressedp used bound min) (<= (nfix min) (nfix min2)))
             (fn-nh-pressedp used2 bound min2))
    :rule-classes nil))
-(must-fail
+(must-fail-checked
  (defthm nht-pressure-without-higher-threshold
    (implies (and (fn-nh-pressedp used bound min) (<= (nfix used) (nfix used2)))
             (fn-nh-pressedp used2 bound min2))
    :rule-classes nil))
-(must-fail
+(must-fail-checked
  (defthm nht-pressure-without-pressure
    (implies (and (<= (nfix used) (nfix used2)) (<= (nfix min) (nfix min2)))
             (fn-nh-pressedp used2 bound min2))
@@ -257,7 +257,7 @@
  (not (equal (fn-nh-live-report *nht-profile* *nht-oc* (nht-stale) 100)
              (fn-nh-render (fn-nh-verdict nil (nht-store *nht-profile*) 100
                                           (fn-own-feeds (fn-ocfg-owner *nht-oc*)))))))
-(must-fail
+(must-fail-checked
  (defthm nht-live-is-store-report-without-a-valid-sum
    (equal (fn-nh-live-report *nht-profile* *nht-oc* (nht-stale) 100)
           (fn-nh-render (fn-nh-verdict nil (nht-store *nht-profile*) 100
@@ -277,7 +277,7 @@
 (assert-event (equal (fn-nh-fence-of :offline :unknown nil t) :store-held))
 (assert-event (equal (fn-nh-fence-of :offline :free t t) :clone-fence))
 (assert-event (equal (fn-nh-fence-of :uncertain :free nil t) :owner-unanswering))
-(must-fail
+(must-fail-checked
  (defthm nht-fence-without-route
    (equal (fn-nh-fence-of route lock clone listener)
           (cond (clone :clone-fence)
@@ -302,7 +302,7 @@
 (assert-event (null (fn-nh-fence-of :offline :absent nil t)))
 ; Without no-clone: a clone fence wins over a held lock.
 (assert-event (equal (fn-nh-fence-of :offline :held t t) :clone-fence))
-(must-fail
+(must-fail-checked
  (defthm nht-starting-without-no-clone
    (implies (not (equal route :uncertain))
             (iff (equal (fn-nh-fence-of route lock clone listener) :starting)
@@ -310,7 +310,7 @@
    :rule-classes nil))
 ; Without a route that missed the owner: an uncertain route is unanswering.
 (assert-event (equal (fn-nh-fence-of :uncertain :held nil t) :owner-unanswering))
-(must-fail
+(must-fail-checked
  (defthm nht-starting-without-route
    (implies (not clone)
             (iff (equal (fn-nh-fence-of route lock clone listener) :starting)
@@ -341,7 +341,7 @@
 ; is not an answer (the host never produces one; ACL2 does not trust it).
 (assert-event (equal (fn-nh-health-step nil '(:done (104 101)) :held nil t)
                      '(:fenced :starting)))
-(must-fail
+(must-fail-checked
  (defthm nht-clears-without-socket-present
    (equal (fn-nh-health-step sp (list :done octets) lock clone listener)
           (list :answered octets))
@@ -349,7 +349,7 @@
                                       fn-nh-fence-of fn-nls-route)))
    :rule-classes nil))
 ; The iff without its route conjunct fails (an uncertain route is unanswering).
-(must-fail
+(must-fail-checked
  (defthm nht-starting-step-without-route
    (iff (equal (fn-nh-health-step sp outcome lock clone listener) '(:fenced :starting))
         (and (not clone) (equal lock :held) listener))
@@ -373,7 +373,7 @@
 (assert-event (fn-outcome-codep 7))
 (assert-event (equal (fn-outcome-code :accepted) 0))
 ; fn-nh-exit-code-cases without (<= (len v) 8): *nht-long* above has code 100.
-(must-fail
+(must-fail-checked
  (defthm nht-exit-code-cases-without-len
    (member-equal (fn-nh-exit-code v) '(0 19 20 21 22 23 24 25 26 27))
    :rule-classes nil))
@@ -408,7 +408,7 @@
 (assert-event
  (equal (fn-nh-report-exit (append (fn-nh-render *nht-long*) (fn-nh-log-sink-line *nht-sink*)))
         0))
-(must-fail
+(must-fail-checked
  (defthm nht-render-and-more-without-length
    (implies (and (equal v *nht-long*) (equal more (fn-nh-log-sink-line *nht-sink*))
                  (true-listp more))
@@ -416,7 +416,7 @@
    :rule-classes nil))
 ; Without (true-listp more): an improper tail makes the page malformed.
 (assert-event (equal (fn-nh-report-exit (append (fn-nh-render *nht-v26*) 7)) :malformed))
-(must-fail
+(must-fail-checked
  (defthm nht-render-and-more-without-true-list
    (implies (and (equal v *nht-v26*) (equal more 7) (<= (len v) 8))
             (equal (fn-nh-report-exit (append (fn-nh-render v) more)) (fn-nh-exit-code v)))

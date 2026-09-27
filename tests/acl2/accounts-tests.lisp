@@ -8,7 +8,7 @@
 (in-package "ACL2")
 (include-book "../../books/accounts")
 (include-book "../../books/crypto-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (defconst *at-code* (fn-record-string-octets "k3y-friend-0001-7f3a"))
 (defconst *at-code-2* (fn-record-string-octets "k3y-friend-0002-19c4"))
@@ -117,7 +117,7 @@
   '(fn-acct-redeem-plan (at-v1) *at-stamp* *at-code* *at-login*
                         *at-password* *at-salt* t))
 (assert-event (equal (at-plan-taken) '(:refused :account-login-taken)))
-(must-fail (assert-event (null (fn-cfg-delta-reason
+(must-fail-checked (assert-event (null (fn-cfg-delta-reason
                                 (at-v1) 2 *at-stamp* 0 0
                                 (fn-acct-plan-delta (at-plan-taken))))))
 
@@ -133,7 +133,7 @@
   '(fn-acct-redeem-plan (at-v1) *at-stamp-late* *at-code* *at-login*
                         *at-password* *at-salt* nil))
 (assert-event (equal (at-plan-expired) '(:refused :account-expired)))
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (equal (fn-acct-redeem-plan
                     (fn-cfg-apply-delta (at-v1) 2 *at-stamp-late*
                                         (fn-acct-plan-delta (at-plan-expired)))
@@ -150,13 +150,13 @@
                                           *at-login-2* *at-password* *at-salt* nil)
                      '(:refused :account-redeemed)))
 ; Removal of the redeemed hypothesis: while pending, another login redeems.
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (equal (fn-acct-redeem-plan (at-v1) *at-stamp* *at-code*
                                         *at-login-2* *at-password* *at-salt* nil)
                    '(:refused :account-redeemed))))
 ; Removal of the other-login hypothesis: the same login with its password
 ; resumes.
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (equal (fn-acct-redeem-plan (at-v2) *at-stamp* *at-code*
                                         *at-login* *at-password* *at-salt* nil)
                    '(:refused :account-redeemed))))
@@ -172,7 +172,7 @@
                                           *at-password* *at-salt* nil)
                      '(:refused :account-unknown)))
 ; Removal: with the row, the plan redeems.
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (not (equal (car (at-plan1)) :redeem))))
 
 ; KEYSTONE fn-acct-redeemed-refuses-another-redeem: reachable witness.
@@ -185,13 +185,13 @@
                      :account-redeemed))
 ; Removal of the rows-differ hypothesis: the identical redeem is admitted
 ; (the delta-level resume).
-(must-fail (assert-event (fn-cfg-delta-reason (at-v2) 3 *at-stamp* 0 0
+(must-fail-checked (assert-event (fn-cfg-delta-reason (at-v2) 3 *at-stamp* 0 0
                                               (fn-acct-plan-delta (at-plan1)))))
 ; Removal of the redeemed hypothesis: while pending, that redeem is admitted.
-(must-fail (assert-event (fn-cfg-delta-reason (at-v1) 3 *at-stamp* 0 0
+(must-fail-checked (assert-event (fn-cfg-delta-reason (at-v1) 3 *at-stamp* 0 0
                                               (at-other-redeem))))
 ; Removal of the kind hypothesis: another kind naming the digest is admitted.
-(must-fail (assert-event (fn-cfg-delta-reason (at-v2) 3 *at-stamp* 0 0
+(must-fail-checked (assert-event (fn-cfg-delta-reason (at-v2) 3 *at-stamp* 0 0
                                               (fn-cfg-set-limit (at-digest) 1))))
 ; A login held by a redeemed row refuses a second code's redeem.
 (defmacro at-v3 () '(fn-cfg-apply-delta (at-v2) 3 *at-stamp* (at-invite-2)))
@@ -209,12 +209,12 @@
 ; Removal of admissibility: a re-issued invite of the digest overwrites.
 (assert-event (fn-cfg-admissible-reason (at-v2) 3 *at-stamp* 0 0
                                         (list (at-invite))))
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (equal (at-row (fn-cfg-apply (at-v2) 3 *at-stamp* (list (at-invite)))
                            (at-digest))
                    (at-row (at-v2) (at-digest)))))
 ; Removal of redeemed: a pending row changes under an admitted redeem.
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (equal (at-row (at-v2) (at-digest)) (at-row (at-v1) (at-digest)))))
 
 ; KEYSTONE fn-acct-redeemed-row-stays-across-replay: witness over the fold

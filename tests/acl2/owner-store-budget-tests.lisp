@@ -7,7 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-store-budget")
 (include-book "../../books/codec-attach")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "held-rows-tests")
 
 (defconst *osbt-groups* '("fn.letters" "fn.test"))
@@ -94,20 +94,20 @@
 
 ;; One must-fail per hypothesis, each at the concrete owner above.
 ; Without "at or over the budget": budget 2 admits, and the owner moves.
-(must-fail
+(must-fail-checked
  (defthm osbt-refuses-without-the-budget-hypothesis
    (equal (fn-sbud-prepare *osbt-reserved* *osbt-second* 2) *osbt-reserved*)))
 ; Without (natp budget): 3/2 exceeds the count but is no budget.
-(must-fail
+(must-fail-checked
  (defthm osbt-below-budget-without-natp
    (equal (fn-sbud-prepare *osbt-reserved* *osbt-second* 3/2)
           (fn-opc-prepare *osbt-reserved* *osbt-second*))))
 ; Without "below the budget": budget 1 is the count.
-(must-fail
+(must-fail-checked
  (defthm osbt-below-budget-without-below
    (equal (fn-sbud-prepare *osbt-reserved* *osbt-second* 1)
           (fn-opc-prepare *osbt-reserved* *osbt-second*))))
 ; The refusal word without "at or over the budget".
-(must-fail
+(must-fail-checked
  (defthm osbt-unaffordable-without-the-budget-hypothesis
    (equal (fn-sbud-refusal-kind *osbt-reserved* 2) :unaffordable)))

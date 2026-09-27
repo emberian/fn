@@ -2,7 +2,7 @@
 ; PRF-119): the reclaiming pack `store reclaim' publishes.
 (in-package "ACL2")
 (include-book "../../books/store-reclaim-pack")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 (include-book "owner-served-invariants-tests")
 
 ; The owner fixture's store after its article completed (as in
@@ -55,7 +55,7 @@
                    (not (equal (nth (rpt-i) (rpt-new)) (nth (rpt-i) (rpt-events))))))
 ; Tooth (rewrites-p): an event that is not rewritten decodes to itself,
 ; so the conclusion (a tombstone payload) fails for it.
-(must-fail (assert-event (fn-rcl-tombstonep
+(must-fail-checked (assert-event (fn-rcl-tombstonep
                           (fn-record-payload
                            (fn-record-result-record
                             (fn-record-decode-exact
@@ -65,7 +65,7 @@
 ; fn-rclp-events-keep-the-summary-shape: witness; tooth (the hypothesis): a
 ; list that is not a summary list (a byte dropped) stays not one.
 (assert-event (fn-cc-octet-event-listp (rpt-new) 0 0 (len (rpt-events))))
-(must-fail (assert-event (fn-cc-octet-event-listp
+(must-fail-checked (assert-event (fn-cc-octet-event-listp
                           (fn-rclp-events (list (cdr (nth (rpt-i) (rpt-events)))) *rpt-ctx*)
                           0 0 (len (rpt-events)))))
 
@@ -93,7 +93,7 @@
                      (rpt-events)))
 ; Tooth: with no holder, no needing verdict and a releasing rule, the
 ; conclusion fails.
-(must-fail (assert-event (equal (nth (rpt-i) (rpt-new)) (nth (rpt-i) (rpt-events)))))
+(must-fail-checked (assert-event (equal (nth (rpt-i) (rpt-new)) (nth (rpt-i) (rpt-events)))))
 
 ; fn-rclp-events-keep-every-other-kind: every event that is not a legacy
 ; record is unchanged; tooth: the article record (a legacy record) changes.
@@ -105,7 +105,7 @@
            (rpt-others-same (cdr old) (cdr new)))
     t))
 (assert-event (rpt-others-same (rpt-events) (rpt-new)))
-(must-fail (assert-event (fn-record-result-okp
+(must-fail-checked (assert-event (fn-record-result-okp
                           (fn-record-decode-exact (list 0 1 2)))))
 
 ; fn-rclp-freed-is-the-admission-count: the committed record octets the
@@ -131,7 +131,7 @@
                              (fn-rclp-freed-charge (rpt-events) *rpt-ctx*)))))
 ; Tooth (the rewrite test): under keep-forever nothing is rewritten and the
 ; article keeps its whole charge; it is not the unit.
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (equal (fn-rclp-charge-of
                     (nth (rpt-i) (fn-rclp-events (rpt-events)
                                                  (fn-rclp-ctx '(:keep-forever) 0 *rpt-s*))))
@@ -162,7 +162,7 @@
 (assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
                                      (rpt-n) (rpt-n) nil '(0) 0 nil nil)
                      '(:refused :temporary-space)))
-(must-fail (assert-event (<= (rpt-pack-file) (1- (rpt-pack-file)))))
+(must-fail-checked (assert-event (<= (rpt-pack-file) (1- (rpt-pack-file)))))
 ;; fn-rclp-reclaiming-pack-is-a-first-link (pack-chain-join): the summary the
 ;; reclaim publishes is a version-0 pack, the first link of a new chain with
 ;; no predecessor covering what the selected chain covered; its bytes decode
@@ -180,7 +180,7 @@
 (assert-event (equal (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-events)
                                      (rpt-n) 0 nil nil nil 1000000 nil)
                      '(:compact-first)))
-(must-fail (assert-event (equal (fn-ccc-boundary (rpt-link)) 0)))
+(must-fail-checked (assert-event (equal (fn-ccc-boundary (rpt-link)) 0)))
 ;; A rewritten history past one quantum is refused by name, nothing written
 ;; (PKT-332: the chain of rewritten links is not built): the fixture's
 ;; history followed by 4096 more records (bytes the rewrite keeps as they
@@ -210,7 +210,7 @@
 (assert-event (equal (car (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-new)
                                           (rpt-n) (rpt-n) nil '(0 1) 1 1000000 nil))
                      :resume-retire))
-(must-fail (assert-event
+(must-fail-checked (assert-event
             (equal (car (fn-rclp-decide *rpt-profile* *rpt-rule* 0 *rpt-s* (rpt-new)
                                         (rpt-n) (rpt-n) nil '(1) 1 1000000 nil))
                    :resume-retire)))

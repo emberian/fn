@@ -433,7 +433,7 @@ class Book:
 
 
 TRANSPARENT = {"local", "progn", "progn!", "with-output", "defsection", "defsection-progn"}
-SUPPRESSING = {"must-fail", "must-fail!", "must-succeed", "must-succeed*",
+SUPPRESSING = {"must-fail", "must-fail!", "must-fail-checked", "must-succeed", "must-succeed*",
                "must-fail-with-error", "must-fail-with-soft-error",
                "must-fail-with-hard-error", "must-not-prove", "must-prove",
                "thm"}
