@@ -14,9 +14,13 @@
 ;; The quiet-image theorems of byte-store-k0-recovery are the special case
 ;; of an empty authority pending list.
 ;;
-;; fn-bs-k0v-host-rerecovery-keeps-relation-at-every-cut: the in-process
-;; re-recovery at host/native/admin.lisp:107 (fnn-admin-verify-under-lock:
-;; fnn-bridge-reset, then fnn-recover in the same process).  fnn-recover
+;; fn-bs-k0v-host-rerecovery-keeps-relation-at-every-cut: an in-process
+;; re-recovery (fnn-bridge-reset, then fnn-recover in the same process).
+;; Its host line, the offline request's verification, is retired
+;; (PKT-601 (2)): host/native/admin.lisp fnn-admin-verify-under-lock now
+;; reads the published record back (books/config-carried-candidate.lisp
+;; fn-cfgc-readback-verified-is-the-reopen), so no host line calls this
+;; re-recovery and the theorem is model-level.  fnn-recover
 ;; reads the LIVE view (fnn-load-frontier, fnn-durable-records), which is
 ;; fn-bs-scan-store of the byte state itself, not of a crash image, and
 ;; passes it to fnn-bridge-recover (host/native/io.lisp), which calls
@@ -27,7 +31,7 @@
 ;; image and its kernel need not carry an empty success list: the reset
 ;; discards the old kernel and the reopen builds one with none.
 ;;
-;; The quiet hypothesis is what the host line has: the administrative
+;; The quiet hypothesis is what the retired host line had: the administrative
 ;; process opened the store through the same recovery (whose fences drain
 ;; :root and :transactions) and published only a configuration record, which
 ;; touches neither directory.  It is sufficient, not shown necessary.  Not

@@ -176,13 +176,12 @@
                    (append configs (list record))))
    :hints (("Goal" :in-theory (enable fn-native-admin-append-record)))))
 
-(local
- (defthm fn-cfgc-open-okp-is-observed
-   (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier events))
-            (fn-sn-observed-historyp frontier events))
-   :hints (("Goal" :in-theory (e/d (fn-cpo-open-observed)
-                                   (fn-cpr-replay fn-sn-statep fn-cnode-statep
-                                    fn-sn-observed-historyp))))))
+(defthm fn-cfgc-open-okp-is-observed
+  (implies (fn-sn-open-okp (fn-cpo-open-observed configs frontier events))
+           (fn-sn-observed-historyp frontier events))
+  :hints (("Goal" :in-theory (e/d (fn-cpo-open-observed)
+                                  (fn-cpr-replay fn-sn-statep fn-cnode-statep
+                                   fn-sn-observed-historyp)))))
 
 (defthm fn-cfgc-observed-is-below
   (implies (and (fn-sn-observed-historyp frontier events)
@@ -526,3 +525,123 @@
                             fn-native-admin-publication-authorize
                             fn-cpr-replay fn-cpo-open-observed fn-cvec-group-names-within
                             fn-cvec-config-generations)))))
+
+; -----------------------------------------------------------------------------
+; The published record read back under the lock (PKT-601 (2)).
+;
+; host/native/admin.lisp fnn-admin-verify-under-lock reopened the whole store
+; after the publication (fnn-bridge-reset, fnn-recover) to observe that the
+; reopened configuration's generation is the one the authorization named.
+; The reopen is decided already: the authorization accepted only a candidate
+; whose open over CONFIGS ++ (R) succeeds.  What the publication adds is the
+; durable file, so the host reads that one file back and ACL2 compares it
+; with the authorized octets; the reopen over the history the directory now
+; holds is then the candidate, at the named generation.
+
+; The record is filed after every Store event (its txid at or past FRONTIER,
+; as the host builds it at the opened node's next txid), so the reopen's fold
+; is one configuration step from the open's.
+(defun fn-cfgc-readback-verdict (readback authorized generation frontier)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (equal readback authorized))
+      :mismatch
+    (let ((parsed (fn-cfg-decode-exact readback)))
+      (cond ((not (fn-record-parse-okp parsed)) :undecodable)
+            ((not (equal (fn-cfg-record-generation (fn-record-parse-value parsed))
+                         generation))
+             :generation-mismatch)
+            ((< (nfix (fn-cfg-record-txid (fn-record-parse-value parsed)))
+                (nfix frontier))
+             :before-frontier)
+            (t :verified)))))
+
+(verify-guards fn-cfgc-readback-verdict)
+
+(local
+ (defthm fn-cfgc-cpr-loop-of-nothing
+   (equal (fn-replay-result-node (fn-cpr-loop cn nil nil cs es)) cn)
+   :hints (("Goal" :expand ((fn-cpr-loop cn nil nil cs es))
+            :in-theory (enable fn-cpr-config-firstp)))))
+
+; One configuration step that succeeds leaves the record's generation.
+(defthm fn-cfgc-cpr-loop-one-config-generation
+  (implies (equal (fn-replay-result-kind (fn-cpr-loop cn (list r) nil cs es)) :ok)
+           (equal (fn-cfg-generation
+                   (fn-cnode-config
+                    (fn-replay-result-node (fn-cpr-loop cn (list r) nil cs es))))
+                  (fn-cfg-record-generation r)))
+  :hints (("Goal"
+           :expand ((fn-cpr-loop cn (list r) nil cs es))
+           :use ((:instance fn-cnode-apply-config-bumps-the-generation
+                            (cn (fn-cnode-make (fn-replay-advance-txid
+                                                (fn-cnode-node cn)
+                                                (fn-cfg-record-txid r))
+                                               (fn-cnode-config cn)))
+                            (record r) (ceiling (fn-cnode-line-ceiling))))
+           :in-theory (e/d (fn-cpr-config-firstp fn-cnode-record-acceptablep
+                            fn-cfg-record-acceptablep)
+                           (fn-cnode-apply-config-bumps-the-generation
+                            fn-cnode-statep fn-cnode-apply-config
+                            fn-replay-advance-okp fn-replay-advance-txid
+                            fn-cfg-admissiblep fn-cfg-recordp fn-cfgp)))))
+
+(defthm fn-cfgc-append-of-true-list-fix
+  (equal (append (true-list-fix x) y) (append x y)))
+
+(defthm fn-cfgc-append-record-is-append-always
+  (equal (fn-native-admin-append-record configs record)
+         (append configs (list record)))
+  :hints (("Goal" :in-theory (enable fn-native-admin-append-record))))
+
+; KEYSTONE (PKT-601 (2): the readback replaces the reopen).  When the
+; authorization accepted RECORD, decoded from AUTHORIZED, and the octets
+; read back from its published file are AUTHORIZED at GENERATION, the open of
+; the configuration history the directory now holds (the observed history,
+; then the record read back) succeeds and serves GENERATION: what the
+; retired reopen observed.
+(defthm fn-cfgc-readback-verified-is-the-reopen
+  (implies (and (equal (fn-native-admin-publication-status
+                        (fn-native-admin-publication-authorize
+                         records frontier config-records record lock-owned
+                         observed-names max-generations))
+                       :accepted)
+                (equal record (fn-record-parse-value (fn-cfg-decode-exact authorized)))
+                (equal (fn-cfgc-readback-verdict readback authorized generation
+                                                 frontier)
+                       :verified))
+           (let ((reopened (append config-records
+                                   (list (fn-record-parse-value
+                                          (fn-cfg-decode-exact readback))))))
+             (and (fn-sn-open-okp (fn-cpo-open-observed reopened frontier records))
+                  (equal (fn-replay-result-kind (fn-cpr-replay reopened records)) :ok)
+                  (equal (fn-cfg-generation
+                          (fn-cnode-config
+                           (fn-replay-result-node (fn-cpr-replay reopened records))))
+                         generation))))
+  :hints (("Goal"
+           :do-not-induct t
+           :use ((:instance fn-cfgc-open-okp-is-observed
+                            (configs (append config-records (list record)))
+                            (events records))
+                 (:instance fn-cfgc-observed-is-below
+                            (events records)
+                            (bound (fn-cfg-record-txid record)))
+                 (:instance fn-cfgc-cpr-replay-of-one-more
+                            (configs (true-list-fix config-records)) (events records))
+                 (:instance fn-cfgc-cpr-loop-one-config-generation
+                            (cn (fn-replay-result-node
+                                 (fn-cpr-replay (true-list-fix config-records) records)))
+                            (r record) (cs (len (true-list-fix config-records)))
+                            (es (len records))))
+           :in-theory (e/d (fn-native-admin-publication-authorize
+                            fn-native-admin-candidate-openp
+                            fn-native-admin-candidate-open-result
+                            fn-cfgc-readback-verdict fn-cfgc-cpr-extend)
+                           (fn-cpo-open-observed fn-cpr-replay fn-cpr-loop
+                            fn-cnode-config-replay fn-sn-observed-historyp
+                            fn-cfgc-events-below fn-native-admin-config-name
+                            fn-cfg-recordp fn-cfg-decode-exact
+                            fn-cfgc-open-okp-is-observed fn-cfgc-observed-is-below
+                            fn-cfgc-cpr-replay-of-one-more
+                            fn-cfgc-cpr-loop-one-config-generation
+                            fn-sn-open-okp fn-cnode-statep)))))
