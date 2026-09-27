@@ -1939,68 +1939,78 @@ acknowledged without its marker."
 
 (defun fnn-initialize (store &optional (groups +fnn-default-groups+) (profile :development))
   ;; One durable configuration record at generation 1, built and admitted by
-  ;; the core from the operator's group names.
-  (fnn-safe-directory (fnn-store-root store) t store
-                      "init-root-mkdir" "init-root-parent-fenced")
-  (fnn-require-clone-activated store)
-  (let ((lock-fd (fnn-open-lock store t t)))
-    (unwind-protect
-         (progn
-           (fnn-init-cut store "init-lock-created")
-           (fnn-safe-directory (fnn-transactions store) t store
-                               "init-transactions-mkdir" "init-transactions-parent-fenced")
-           (fnn-safe-directory (fnn-staging store) t store
-                               "init-staging-mkdir" "init-staging-parent-fenced")
-           (fnn-safe-directory (fnn-config-dir store) t store
-                               "init-config-dir-mkdir" "init-config-dir-parent-fenced")
-           (let ((config (fnn-metadata-config-frame profile)))
-             (if (eq (fnn-publish-initial-file store (fnn-config-path store) config "init-config-")
-                     :published)
-                 (setf (fnn-store-config store) (fnn-metadata-config-decode config))
-                 (fnn-load-config store)))
-           (when (null (fnn-config-record-names store :init-config-records-first-enumerate t))
-             (when (eq (fnn-publish-initial-file store (fnn-config-record-path store 1)
-                                              (fnn-bridge-config-initial groups) "init-history-")
-                       :existing)
-               ;; The exclusive writer lock does not authorize an external
-               ;; writer.  Preserve this conflicting durable evidence for
-               ;; recovery instead of silently accepting a racing history.
-               (fnn-indeterminate "configuration history appeared during initialization"))
-             (fnn-fsync-dir (fnn-config-dir store))
-             (fnn-init-cut store "init-config-history-fenced"))
-           ;; A missing allocator alongside committed history would permit
-           ;; reuse of an aborted ID.  It is a fault, never an implicit 0.
-           (when (and (null (fnn-check-regular (fnn-frontier-path store)))
-                      (fnn-transaction-files store))
-             (fnn-fault "refusing missing allocator frontier with committed history"))
-           (if (eq (fnn-publish-initial-file store (fnn-frontier-path store)
-                                             (fnn-metadata-frontier-frame 0) "init-frontier-")
-                   :published)
-               (setf (fnn-store-frontier store) 0)
-               (fnn-load-frontier store))
-           (fnn-fsync-regular (fnn-config-path store))
-           (fnn-init-cut store "init-final-config-file-fenced")
-           (dolist (name (fnn-config-record-names store :init-config-records-final-enumerate))
-             (fnn-fsync-regular (fnn-join (fnn-config-dir store) name))
-             ;; The fresh branch has generation 1 only.  Existing history is
-             ;; intentionally outside this packet.
-             (fnn-init-cut store "init-final-config-record-file-fenced"))
-           (fnn-fsync-regular (fnn-frontier-path store))
-           (fnn-init-cut store "init-final-frontier-file-fenced")
-           (fnn-fsync-dir (fnn-transactions store))
-           (fnn-init-cut store "init-transactions-fenced")
-           (fnn-fsync-dir (fnn-store-root store))
-           (fnn-init-cut store "init-root-fenced")
-           (fnn-fsync-dir (fnn-parent (fnn-store-root store)))
-           (fnn-init-cut store "init-parent-fenced")
-           ;; Format 9: the record log's segment, after the per-file init
-           ;; program (whose frontier file and transactions/ directory a
-           ;; format-9 store never reads: PKT-COL-2 gives format 9 its own
-           ;; init program).
-           (when (fnn-core 'fn-store-profile-logp (fnn-store-config store))
-             (fnn-log-init-segment store)))
-      (ignore-errors (fnn-flock lock-fd +fnn-lock-un+))
-      (fnn-close lock-fd))))
+  ;; the core from the operator's group names.  The program is ACL2's by the
+  ;; profile's route: format 8 books/byte-store-initializer.lisp
+  ;; fn-bsi-current-init-program; format 9 (fn-store-profile-logp)
+  ;; books/byte-store-log-initializer.lisp fn-bsi-log-init-program (journal/
+  ;; and the segment in place of transactions/ and the allocator file).
+  (let ((logp (fnn-core 'fn-store-profile-logp
+                        (fnn-metadata-config-decode (fnn-metadata-config-frame profile)))))
+    (fnn-safe-directory (fnn-store-root store) t store
+                        "init-root-mkdir" "init-root-parent-fenced")
+    (fnn-require-clone-activated store)
+    (let ((lock-fd (fnn-open-lock store t t)))
+      (unwind-protect
+           (progn
+             (fnn-init-cut store "init-lock-created")
+             (unless logp
+               (fnn-safe-directory (fnn-transactions store) t store
+                                   "init-transactions-mkdir" "init-transactions-parent-fenced"))
+             (fnn-safe-directory (fnn-staging store) t store
+                                 "init-staging-mkdir" "init-staging-parent-fenced")
+             (fnn-safe-directory (fnn-config-dir store) t store
+                                 "init-config-dir-mkdir" "init-config-dir-parent-fenced")
+             (when logp
+               (fnn-safe-directory (fnn-journal-dir store) t store
+                                   "init-journal-mkdir" "init-journal-parent-fenced"))
+             (let ((config (fnn-metadata-config-frame profile)))
+               (if (eq (fnn-publish-initial-file store (fnn-config-path store) config "init-config-")
+                       :published)
+                   (setf (fnn-store-config store) (fnn-metadata-config-decode config))
+                   (fnn-load-config store)))
+             (when (null (fnn-config-record-names store :init-config-records-first-enumerate t))
+               (when (eq (fnn-publish-initial-file store (fnn-config-record-path store 1)
+                                                (fnn-bridge-config-initial groups) "init-history-")
+                         :existing)
+                 ;; The exclusive writer lock does not authorize an external
+                 ;; writer.  Preserve this conflicting durable evidence for
+                 ;; recovery instead of silently accepting a racing history.
+                 (fnn-indeterminate "configuration history appeared during initialization"))
+               (fnn-fsync-dir (fnn-config-dir store))
+               (fnn-init-cut store "init-config-history-fenced"))
+             (cond
+               (logp
+                ;; fn-bsi-log-segment-steps.
+                (fnn-log-init-segment store))
+               (t
+                ;; A missing allocator alongside committed history would permit
+                ;; reuse of an aborted ID.  It is a fault, never an implicit 0.
+                (when (and (null (fnn-check-regular (fnn-frontier-path store)))
+                           (fnn-transaction-files store))
+                  (fnn-fault "refusing missing allocator frontier with committed history"))
+                (if (eq (fnn-publish-initial-file store (fnn-frontier-path store)
+                                                  (fnn-metadata-frontier-frame 0) "init-frontier-")
+                        :published)
+                    (setf (fnn-store-frontier store) 0)
+                    (fnn-load-frontier store))))
+             (fnn-fsync-regular (fnn-config-path store))
+             (fnn-init-cut store "init-final-config-file-fenced")
+             (dolist (name (fnn-config-record-names store :init-config-records-final-enumerate))
+               (fnn-fsync-regular (fnn-join (fnn-config-dir store) name))
+               ;; The fresh branch has generation 1 only.  Existing history is
+               ;; intentionally outside this packet.
+               (fnn-init-cut store "init-final-config-record-file-fenced"))
+             (unless logp
+               (fnn-fsync-regular (fnn-frontier-path store))
+               (fnn-init-cut store "init-final-frontier-file-fenced")
+               (fnn-fsync-dir (fnn-transactions store))
+               (fnn-init-cut store "init-transactions-fenced"))
+             (fnn-fsync-dir (fnn-store-root store))
+             (fnn-init-cut store "init-root-fenced")
+             (fnn-fsync-dir (fnn-parent (fnn-store-root store)))
+             (fnn-init-cut store "init-parent-fenced"))
+        (ignore-errors (fnn-flock lock-fd +fnn-lock-un+))
+        (fnn-close lock-fd)))))
 
 (defun fnn-acquire (store)
   (fnn-safe-directory (fnn-store-root store))
@@ -3178,7 +3188,11 @@ prints its octets."
     "init-frontier-linked" "init-frontier-link-eexist" "init-frontier-root-fenced" "init-frontier-stage-unlinked"
     "init-final-config-file-fenced" "init-final-config-record-file-fenced"
     "init-final-frontier-file-fenced" "init-transactions-fenced"
-    "init-root-fenced" "init-parent-fenced"))
+    "init-root-fenced" "init-parent-fenced"
+    ;; books/byte-store-log-initializer.lisp fn-bsi-log-init-program (format 9).
+    "init-journal-mkdir" "init-journal-parent-fenced"
+    "init-segment-created" "init-segment-written" "init-segment-file-fenced"
+    "init-journal-segment-fenced"))
 
 ;; These controls are intentionally outside fn-bsi-current-init-program: they
 ;; fail *before* a directory enumeration to verify the host does not confuse
@@ -5194,17 +5208,28 @@ number of units is a fault: init and every extension leave whole units."
     (sb-posix:stat-size st)))
 
 (defun fnn-log-init-segment (store)
-  "Create the store's segment, preallocated to ACL2's initial extent and
-fenced with journal/ (fnn-log-open-segment).  An existing segment of any
-positive extent is kept: a re-run init completes, never truncates."
+  "books/byte-store-log-initializer.lisp fn-bsi-log-segment-steps: create the
+store's segment (O_EXCL), its ACL2 initial extent of zeros
+(fnn-log-preallocate), fence it and journal/, a cut after each.  The caller
+made journal/.  An existing segment of any positive extent is kept (a re-run
+init completes, never truncates): the retry branch, not the program."
   (let ((path (fnn-segment-path store)) (unit (fnn-store-log-unit)))
-    (fnn-safe-directory (fnn-journal-dir store) t store
-                        "init-journal-mkdir" "init-journal-parent-fenced")
-    (let ((fd (fnn-log-open-segment
-               path (if (fnn-check-regular path) (fnn-log-observed-extent path)
-                      (fnn-nat (fnn-core 'fn-store-log-initial-extent)))
-               unit)))
-      (fnn-close fd))
+    (unless (fnn-check-regular path)
+      (let ((extent (fnn-nat (fnn-core 'fn-store-log-initial-extent))))
+        (unless (fnn-core 'fn-lg-extent-okp extent unit)
+          (fnn-fault "ACL2 returned an invalid initial log extent"))
+        (let ((fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat sb-posix:o-excl
+                                         +fnn-o-nofollow+)
+                            #o600)))
+          (unwind-protect
+               (progn
+                 (fnn-init-cut store "init-segment-created")
+                 (fnn-log-preallocate fd extent)
+                 (fnn-init-cut store "init-segment-written")
+                 (fnn-fsync-file fd)
+                 (fnn-init-cut store "init-segment-file-fenced"))
+            (fnn-close fd)))))
+    (fnn-fsync-dir (fnn-journal-dir store))
     (fnn-init-cut store "init-journal-segment-fenced")))
 
 (defun fnn-log-open-read-only (path unit max)
