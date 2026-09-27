@@ -418,29 +418,50 @@
   (list :served-step word reply closep starttlsp submittedp consumed log-line))
 
 ; ---------------------------------------------------------------------------
-; Capture: the checkpoint capture (checkpoint-pipeline's tables; the field
-; names are the design's, section 4.6; that lane's loader adopts them).
+; Capture: the checkpoint capture, in checkpoint-pipeline-5's names and order
+; (its host/owner-host.lisp fn-owner-sco-capture answers these ten values
+; positionally, 2026-09-27; its LANEDUMP section "The schema"):
+;   BASE     the checkpoint the publication extends
+;   CONFIGS  the configuration history (by pointer)
+;   RECORDS  the record list (by pointer)
+;   SEGMENT  the profile's record bound (fn-bs-profile-max-record-octets)
+;   COUNT    the records captured (the F row's S)
+;   SUFFIX   the records past the durable checkpoint
+;   BUDGET   the checkpoint budget (fn-owner-sco-budget)
+;   FRONTIER the store's frontier txid at the capture (the F row)
+;   FREE     the free octets the host observed (statvfs)
+;   REVISION the writer's source revision (a string the host supplies)
+; The native host only checks the shape and hands the whole value back to
+; ACL2 off the mutex (fnn-owner-publish-captured), so the recognizer checks
+; the tag, the length and the three counts the publication's bounds read.
+; Wiring fn-owner-sco-capture to return this is that lane's step (or the
+; first batch holding both lanes); this book only fixes the names.
 
 (defun fn-ores-capture-p (x)
   (declare (xargs :guard t))
   (and (true-listp x)
-       (equal (len x) 6)
+       (equal (len x) 11)
        (equal (nth 0 x) :capture)
-       (natp (nth 1 x))
-       (natp (nth 2 x))
-       (true-listp (nth 3 x))
-       (natp (nth 4 x))
-       (natp (nth 5 x))))
+       (natp (nth 5 x))
+       (natp (nth 6 x))
+       (natp (nth 7 x))))
 
-(defun fn-ores-capture-count (x) (declare (xargs :guard t)) (fn-frame-item 1 x))
-(defun fn-ores-capture-fill (x) (declare (xargs :guard t)) (fn-frame-item 2 x))
-(defun fn-ores-capture-roots (x) (declare (xargs :guard t)) (fn-frame-item 3 x))
-(defun fn-ores-capture-frontier (x) (declare (xargs :guard t)) (fn-frame-item 4 x))
-(defun fn-ores-capture-budget (x) (declare (xargs :guard t)) (fn-frame-item 5 x))
+(defun fn-ores-capture-base (x) (declare (xargs :guard t)) (fn-frame-item 1 x))
+(defun fn-ores-capture-configs (x) (declare (xargs :guard t)) (fn-frame-item 2 x))
+(defun fn-ores-capture-records (x) (declare (xargs :guard t)) (fn-frame-item 3 x))
+(defun fn-ores-capture-segment (x) (declare (xargs :guard t)) (fn-frame-item 4 x))
+(defun fn-ores-capture-count (x) (declare (xargs :guard t)) (fn-frame-item 5 x))
+(defun fn-ores-capture-suffix (x) (declare (xargs :guard t)) (fn-frame-item 6 x))
+(defun fn-ores-capture-budget (x) (declare (xargs :guard t)) (fn-frame-item 7 x))
+(defun fn-ores-capture-frontier (x) (declare (xargs :guard t)) (fn-frame-item 8 x))
+(defun fn-ores-capture-free (x) (declare (xargs :guard t)) (fn-frame-item 9 x))
+(defun fn-ores-capture-revision (x) (declare (xargs :guard t)) (fn-frame-item 10 x))
 
-(defun fn-ores-capture (count fill-octets roots frontier budget)
+(defun fn-ores-capture (base configs records segment count suffix budget
+                             frontier free revision)
   (declare (xargs :guard t))
-  (list :capture count fill-octets roots frontier budget))
+  (list :capture base configs records segment count suffix budget
+        frontier free revision))
 
 ; ---------------------------------------------------------------------------
 ; ConfigResult: the live configuration staging step (fn-owner-reconfigure*,
@@ -523,12 +544,18 @@
          (equal (fn-ores-served-log-line x) log-line))))
 
 (defthm fn-ores-capture-by-definition
-  (let ((x (fn-ores-capture count fill-octets roots frontier budget)))
-    (and (equal (fn-ores-capture-count x) count)
-         (equal (fn-ores-capture-fill x) fill-octets)
-         (equal (fn-ores-capture-roots x) roots)
+  (let ((x (fn-ores-capture base configs records segment count suffix budget
+                            frontier free revision)))
+    (and (equal (fn-ores-capture-base x) base)
+         (equal (fn-ores-capture-configs x) configs)
+         (equal (fn-ores-capture-records x) records)
+         (equal (fn-ores-capture-segment x) segment)
+         (equal (fn-ores-capture-count x) count)
+         (equal (fn-ores-capture-suffix x) suffix)
+         (equal (fn-ores-capture-budget x) budget)
          (equal (fn-ores-capture-frontier x) frontier)
-         (equal (fn-ores-capture-budget x) budget))))
+         (equal (fn-ores-capture-free x) free)
+         (equal (fn-ores-capture-revision x) revision))))
 
 (defthm fn-ores-config-staged-result-by-definition
   (let ((x (fn-ores-config-staged-result staged reason)))

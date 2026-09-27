@@ -92,8 +92,18 @@
                     (fn-ores-served-step :ok '(256) nil t nil 5 '(97)))))
 
 ; Capture.
-(assert-event (fn-ores-capture-p (fn-ores-capture 10 4096 '(1 2) 9 65536)))
-(assert-event (not (fn-ores-capture-p (fn-ores-capture 10 -1 '(1 2) 9 65536))))
+; Capture, in checkpoint-pipeline-5's order (fn-owner-sco-capture):
+; base, configs, records, segment, count, suffix, budget, frontier, free,
+; revision.
+(assert-event (fn-ores-capture-p
+               (fn-ores-capture nil nil '(r1 r2) 4096 2 2 65536 9 1000 "rev")))
+(assert-event (equal (fn-ores-capture-revision
+                      (fn-ores-capture nil nil '(r1 r2) 4096 2 2 65536 9 1000 "rev"))
+                     "rev"))
+(assert-event (not (fn-ores-capture-p
+                    (fn-ores-capture nil nil '(r1 r2) 4096 -1 2 65536 9 1000 "rev"))))
+(assert-event (not (fn-ores-capture-p
+                    (cdr (fn-ores-capture nil nil '(r1 r2) 4096 2 2 65536 9 1000 "rev")))))
 
 ; ConfigResult: a refusal names ACL2's reason; a staged result carries a
 ; non-empty record; each other combination is refused by the host.
