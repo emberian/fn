@@ -91,6 +91,7 @@
 (include-book "../books/peer-pull-session")
 (include-book "../books/consumer-owner-local")
 (include-book "../books/consumer-bound")
+(include-book "../books/consumer-wait")
 (include-book "../books/acceptance-payload-ref")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
@@ -1350,6 +1351,21 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cbind-poll (fn-owner-ocfg state) (fn-owner-auth state)
                         consumer secret)))
+
+;; PRF-252: one step of a consumer wait (books/consumer-wait.lisp
+;; fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page): the poll a
+;; `poll' (SECRET nil) or `bound-poll' request answers now, or (:sleep MS)
+;; when that is an empty page before the deadline.  The admission of one
+;; more waiter.  host/native/owner.lisp fnn-owner-consumer-local-wait calls
+;; both under the owner mutex.
+(defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cwait-step (fn-owner-ocfg state) (fn-owner-auth state)
+                        consumer secret elapsed seconds)))
+
+(defun fn-owner-consumer-local-wait-admit (waiters state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cwait-admit waiters)))
 
 (defun fn-owner-consumer-local-bound-ack (cursor-octets secret state)
   (declare (xargs :stobjs state :mode :program))

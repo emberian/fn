@@ -107,15 +107,16 @@ unlinked; the lease is released before the verb runs."
       (replace joined chunk :start1 offset)
       (incf offset (length chunk)))))
 
-(defun fnn-control-read-frame (socket maximum)
-  "Read one half-closed frame under one deadline and retained-input bound."
+(defun fnn-control-read-frame (socket maximum
+                               &optional (seconds +fnn-control-io-seconds+))
+  "Read one half-closed frame under one deadline and retained-input bound.
+SECONDS is the deadline; a consumer wait's client allows its timeout more."
   (unless (and (integerp maximum) (>= maximum 0))
     (fnn-fault "invalid local-control frame maximum"))
   (let ((fd (fnn-socket-fd socket))
         (chunks nil) (total 0)
         (deadline (+ (fnn-now)
-                     (* +fnn-control-io-seconds+
-                        internal-time-units-per-second))))
+                     (* seconds internal-time-units-per-second))))
     (loop
       (let ((remaining-seconds (fnn-seconds-to-deadline deadline)))
         (when (<= remaining-seconds 0) (return :timeout))
@@ -390,11 +391,17 @@ transition."
                         (list :topic-reply :refused))))
                    ((and (consp consumer) (eq (car consumer) :consumer))
                       (if (fnn-control-peer-is-owner-p socket)
-                        (fnn-owner-consumer-local-serialized
-                         service (second consumer) (third consumer)
-                         (fourth consumer))
+                        (if (member (second consumer) '(:wait :bound-wait))
+                            ;; PRF-252: a wait sleeps outside the owner
+                            ;; mutex and answers a poll's reply.
+                            (fnn-owner-consumer-local-wait
+                             service (second consumer) (third consumer)
+                             (fourth consumer))
+                          (fnn-owner-consumer-local-serialized
+                           service (second consumer) (third consumer)
+                           (fourth consumer)))
                       (case (second consumer)
-                        ((:poll :bound-poll)
+                        ((:poll :bound-poll :wait :bound-wait)
                          (list :consumer-poll-reply :refused nil nil))
                         (:status (list :consumer-status-reply :refused nil nil nil))
                         (otherwise (list :consumer-reply :refused nil)))))
@@ -782,16 +789,22 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                  (let* ((frame (fnn-control-read-frame
                                 socket (fnn-core
                                         (case operation
-                                          ((:poll :bound-poll)
+                                          ((:poll :bound-poll :wait :bound-wait)
                                            'fn-native-control-host-consumer-poll-max-frame)
                                           (:status
                                            'fn-native-control-host-consumer-status-max-frame)
                                           (otherwise
-                                           'fn-native-control-host-max-frame)))))
+                                           'fn-native-control-host-max-frame)))
+                                ;; PRF-252: a wait answers after its timeout.
+                                (+ +fnn-control-io-seconds+
+                                   (case operation
+                                     (:wait second)
+                                     (:bound-wait (first second))
+                                     (otherwise 0)))))
                         (reply (and (typep frame 'fnn-octets)
                                     (fnn-core
                                      (case operation
-                                       ((:poll :bound-poll)
+                                       ((:poll :bound-poll :wait :bound-wait)
                                         'fn-native-control-host-consumer-poll-reply-decode)
                                        (:status
                                         'fn-native-control-host-consumer-status-reply-decode)
@@ -805,7 +818,7 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                    (if (and (consp reply)
                             (eq (first reply)
                                 (case operation
-                                  ((:poll :bound-poll) :consumer-poll-reply)
+                                  ((:poll :bound-poll :wait :bound-wait) :consumer-poll-reply)
                                   (:status :consumer-status-reply)
                                   (otherwise :consumer-reply)))
                             (member (second reply)
@@ -822,12 +835,13 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                                          (null (fifth reply))))
                               (and (fnn-octet-list-p (third reply))
                                    (or (not (member operation
-                                                    '(:poll :bound-poll)))
+                                                    '(:poll :bound-poll
+                                                      :wait :bound-wait)))
                                        (fnn-octet-list-p (fourth reply)))))
                             )
                        reply
                      (list (case operation
-                             ((:poll :bound-poll) :consumer-poll-reply)
+                             ((:poll :bound-poll :wait :bound-wait) :consumer-poll-reply)
                              (:status :consumer-status-reply)
                              (otherwise :consumer-reply))
                            (if (member ordinary-status
@@ -838,7 +852,7 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
                            nil nil nil)))))
            (error ()
              (list (case operation
-                     ((:poll :bound-poll) :consumer-poll-reply)
+                     ((:poll :bound-poll :wait :bound-wait) :consumer-poll-reply)
                      (:status :consumer-status-reply)
                      (otherwise :consumer-reply))
                    (fnn-control-transport-outcome stage) nil nil nil)))

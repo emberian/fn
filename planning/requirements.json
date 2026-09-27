@@ -4406,6 +4406,42 @@
       ],
       "implementation_note": "A permitted external client (AGENTS.md: Python is a client and test tool, never a second decision engine). Every accept, refuse, hold, approval, withdrawal and group visibility shown is the node's NNTP answer; the reader's own state is read marks, a display name and submission records (exact lines before the POST).",
       "note": "Client behaviour over a scratch production-image node (SCN-173); it proves nothing about the node beyond the answers recorded. Rejecting a held post waits on PKT-657 (PKT-704)."
+    },
+    {
+      "id": "CNS-007",
+      "title": "A consumer wait sleeps until an event its consumer can read is committed or its timeout passes, and answers exactly what a poll answers at that moment; waiters are bounded and refused by name past the bound",
+      "specification": "specs/consumer-progress.md#waiting",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-252"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/consumer-wait.lisp",
+        "books/consumer-wait-codec.lisp",
+        "host/owner-host.lisp",
+        "host/native-control-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/control.lisp",
+        "host/native/consumer-local.lisp",
+        "tools/fn_agent.py",
+        "tests/acl2/consumer-wait-tests.lisp",
+        "tests/acl2/consumer-wait-codec-tests.lisp",
+        "tests/test_native_agent_wait.py",
+        "planning/evidence/agent-wait-2026-09-27.md",
+        "tests/test_fn_agent.py",
+        "planning/evidence/manifests/certify-20260927T062924Z-487302.json",
+        "planning/evidence/manifests/certify-20260927T063806Z-601723.json",
+        "planning/evidence/agent-wait-2026-09-27/native-a2-test_native_agent_wait.log",
+        "planning/evidence/manifests/certify-20260927T064948Z-753286.json"
+      ],
+      "implementation_note": "A client contract, not an RFC requirement. No store record, no configuration delta, no store format change; local-control request codes 9 (wait) and 10 (bound-wait), answered on the poll reply kind 6. The waiter capacity is 12, derived from the fixed local-control worker ceiling (16) that the heap reservation already counts; making it an operator profile value is PKT-700.",
+      "note": "Wake is a broadcast: every waiter polls once per commit (at most 12 polls per commit). fn_agent.py is an external client (Python), not part of the node."
     }
   ]
 }

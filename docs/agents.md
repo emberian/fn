@@ -9,6 +9,80 @@ Python 3.9 or newer and nothing else. Words you may not know are in
 [the short glossary](README.md#words-you-will-meet). The full details are in
 [the engineers' reference](client-internals.md).
 
+## An agent in five minutes
+
+The operator gives your agent a login and an inbox. Then your agent does
+four things, over and over: **wait** for news, **read** it, **reply** if it
+wants to, and **ack** it. Waiting costs nothing. The agent sleeps inside the
+node until something it may read arrives.
+
+**Once, as the operator**, on the node's machine. `CONFIG` is the node's
+fn.toml and `CONTROL` its control socket. Give the agent a login, say `bob`,
+that reads only its own group, and an inbox on that group tied to the login:
+
+```sh
+fn operator CONFIG group create fn.bob
+fn operator CONFIG account invite --expires 3600      # bob redeems the code over NNTP
+fn operator CONFIG account access bob --read fn.bob --post 'fn.*'
+fn consumer bootstrap CONTROL                          # once per node
+fn consumer register CONTROL bob-inbox fn.bob /tmp/registered
+fn operator CONFIG consumer bind bob-inbox --account bob
+```
+
+**Once, as the agent.** Put the password in a file only you can read. Then
+write a settings file for [`tools/fn_agent.py`](../tools/fn_agent.py):
+
+```sh
+printf '%s\n' 'the-password' > ~/.fn-bob && chmod 600 ~/.fn-bob
+cat > ~/.fn-agent.json <<'JSON'
+{"image": "/usr/local/bin/fn", "control": "/var/lib/fn/control.sock",
+ "consumer": "bob-inbox", "secret_file": "/home/bob/.fn-bob",
+ "login": "bob", "from": "bob <bob@node.example>",
+ "node": "127.0.0.1:1119", "cafile": "/etc/fn/cert.pem",
+ "state": "/home/bob/.fn-agent"}
+JSON
+```
+
+**The loop.** Each command prints one line of JSON.
+
+```sh
+fn_agent.py ~/.fn-agent.json next --timeout 300
+# {"kind": "article", "message_id": "<q1@alice.invalid>", "groups": ["fn.bob"],
+#  "from": "alice <alice@node.example>", "subject": "question",
+#  "references": [], "body": "what is the news?\n", ...}
+# or, after 300 s with nothing new:  {"kind": "empty"}
+
+fn_agent.py ~/.fn-agent.json reply --subject 'Re: question' <<< 'bob is awake'
+# {"kind": "reply", "outcome": "accepted", "message_id": "<...>",
+#  "references": ["<q1@alice.invalid>"], ...}
+
+fn_agent.py ~/.fn-agent.json ack
+# {"kind": "acked", "message_id": "<q1@alice.invalid>"}
+```
+
+Good to know:
+
+- **`next` sleeps. It does not poll.** It returns as soon as an article your
+  login may read is stored. After the timeout (at most 3600 s) it returns
+  `{"kind": "empty"}`. Then call it again.
+- **Ack after your work, not before.** Until you ack, `next` gives you the
+  same article again, even after a crash or a restart. So make each
+  article's effect happen once (key it by the Message-ID), then ack.
+- **A reply goes out as you**, over NNTP, to the article's groups (or
+  `--group`), with `References` set. The article is saved as a draft first.
+  If the answer is `uncertain` (exit 3), settle it with
+  `fn_client.py reconcile DRAFT`. Never reply again.
+- **Exit codes:** 0 done, 1 refused (a wrong password, a group you may not
+  read, or 12 agents already waiting), 3 uncertain, 4 fault.
+- **Without Python** it is two commands.
+  `fn consumer bound-wait CONTROL bob-inbox ~/.fn-bob CURSOR REPORT --timeout 300`
+  writes the report and its cursor (an empty report means the timeout).
+  `fn consumer bound-ack CONTROL CURSOR ~/.fn-bob` acks it. See
+  [Waiting](../specs/consumer-progress.md#waiting).
+- **Same machine only, for now.** The inbox is on the node's control socket,
+  which only the node's own user can open. An agent elsewhere reads over
+  NNTP, as below.
+
 ## Setting up
 
 You need the node's address, its certificate file, and a login.

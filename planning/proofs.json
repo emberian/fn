@@ -9053,6 +9053,42 @@
         "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
       "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): REPL-admitted and certified with certify_books.py --incremental on persvati; no host caller yet."
+    },
+    {
+      "id": "PRF-252",
+      "title": "A consumer wait answers exactly the consumer's poll at the moment it returns: a refusal or an event at once, the empty page only at its deadline; it sleeps only on an empty page, and waiters are bounded by name",
+      "statement": "books/consumer-wait.lisp and books/consumer-wait-codec.lisp. Subjects: fn-cwait-step and fn-cwait-admit (host/owner-host.lisp fn-owner-consumer-local-wait-step / -wait-admit, called under the owner mutex by host/native/owner.lisp fnn-owner-consumer-local-wait for local-control codes 9 and 10, which sleeps between steps on the owner's commit signal fnn-owner-signal-commit, raised by fnn-owner-publish-prepared after each durable publication and by a stop); fn-cwait-request-encode / -decode and fn-cwait-cli-plan (host/native-control-host.lisp fn-native-control-host-consumer-request-encode / -decode / -cli-plan). The poll a step runs is fn-cwait-poll: fn-cbind-poll for a bound wait, fn-cbind-plain-poll for a plain one (PRF-234). KEYSTONES: fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page (a step answers exactly the poll, or sleeps only on an accepted empty page before the deadline for a positive time ending at the deadline; an empty answer only at or after the deadline; every step at or after the deadline answers; a non-empty answer is never slept over); fn-cwait-run-answers-the-poll-at-its-return-point and fn-cwait-run-sleeps-only-over-empty-pages (the loop over the observed owner states: the answer is the poll of the state it returned in, an empty answer only at the deadline, and every earlier observation an empty page before the deadline); fn-cwait-admit-leaves-workers-free (an admitted wait leaves at least four of the sixteen control workers free; past the capacity of 12 a wait is refused :waiters); fn-cwait-wait-request-roundtrip and fn-cwait-bound-wait-request-roundtrip (the wire), fn-cwait-request-decode-of-another-code-is-the-consumer-decode and fn-cwait-cli-plan-of-another-command-is-the-consumer-plan (every other request and command is the consumer codec's, unchanged). Local policy; no RFC requirement.",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-007"
+      ],
+      "depends_on": [
+        "PRF-116",
+        "PRF-234"
+      ],
+      "assumptions": [],
+      "status": "certified",
+      "evidence": [
+        "books/consumer-wait.lisp",
+        "books/consumer-wait-codec.lisp",
+        "tests/acl2/consumer-wait-tests.lisp",
+        "tests/acl2/consumer-wait-codec-tests.lisp",
+        "tests/test_native_agent_wait.py",
+        "planning/evidence/agent-wait-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T062924Z-487302.json",
+        "planning/evidence/manifests/certify-20260927T063806Z-601723.json",
+        "planning/evidence/agent-wait-2026-09-27/native-a2-test_native_agent_wait.log"
+      ],
+      "events": [
+        "fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page",
+        "fn-cwait-run-answers-the-poll-at-its-return-point",
+        "fn-cwait-run-sleeps-only-over-empty-pages",
+        "fn-cwait-admit-leaves-workers-free",
+        "fn-cwait-wait-request-roundtrip",
+        "fn-cwait-bound-wait-request-roundtrip",
+        "fn-cwait-request-decode-of-another-code-is-the-consumer-decode",
+        "fn-cwait-cli-plan-of-another-command-is-the-consumer-plan"
+      ]
     }
   ]
 }

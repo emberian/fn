@@ -8907,6 +8907,43 @@
           "name": "fn-bpfr-run-finishes"
         }
       ]
+    },
+    {
+      "id": "PRF-252",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-run-answers-the-poll-at-its-return-point"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-run-sleeps-only-over-empty-pages"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-admit-leaves-workers-free"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-wait-request-roundtrip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-bound-wait-request-roundtrip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-request-decode-of-another-code-is-the-consumer-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-cli-plan-of-another-command-is-the-consumer-plan"
+        }
+      ]
     }
   ]
 }
