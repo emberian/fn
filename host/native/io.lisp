@@ -3549,6 +3549,69 @@ intentionally not timed by this function."
              (otherwise (fnn-fault "connect boundary returned an invalid status"))))
       (unless completed (fnn-socket-shut socket)))))
 
+;;; PKT-613 (PRF-231): a peer's host, dialled the way ACL2 decides.
+;;; `fn-peer-dial-target' (books/peer-host.lisp) answers (:address OCTETS)
+;;; for an IPv4 literal, which is dialled without a resolver; (:resolve NAME)
+;;; for an RFC 1123 host name, resolved by one getaddrinfo on this attempt
+;;; (nothing is cached here; the OS's resolver may cache); or (:refused
+;;; :host-syntax).  A resolution that fails, or answers no IPv4 address, is
+;;; FNN-PEER-DIAL-ERROR with its outcome: a named, retried condition for the
+;;; feed and pull workers, never a fault.
+(define-condition fnn-peer-dial-error (error)
+  ((outcome :initarg :outcome :reader fnn-peer-dial-error-outcome)
+   (detail :initarg :detail :initform nil :reader fnn-peer-dial-error-detail))
+  (:report (lambda (c s)
+             (format s "peer dial ~(~a~)~@[: ~a~]" (fnn-peer-dial-error-outcome c)
+                     (fnn-peer-dial-error-detail c)))))
+
+(defvar *fnn-peer-resolver*
+  (lambda (name)
+    (sb-bsd-sockets:host-ent-addresses (sb-bsd-sockets:get-host-by-name name)))
+  "Resolver seam: NAME -> the IPv4 addresses getaddrinfo answers now.")
+
+(defun fnn-peer-resolve-ipv4 (name)
+  "The first IPv4 address one resolution of NAME answers."
+  (let ((addresses (handler-case (funcall *fnn-peer-resolver* name)
+                     (sb-bsd-sockets:name-service-error (condition)
+                       (error 'fnn-peer-dial-error :outcome :unresolved
+                                                   :detail (princ-to-string condition))))))
+    (or (find-if (lambda (a) (= (length a) 4)) addresses)
+        (error 'fnn-peer-dial-error :outcome :no-address
+                                    :detail "no IPv4 address"))))
+
+(defun fnn-peer-connect (host port &key (timeout 10))
+  "Dial a configured peer HOST (an ACL2 string or octet list) on PORT."
+  (let* ((octets (if (stringp host) (map 'list #'char-code host) (fnn-octet-list host)))
+         (target (fnn-core 'fn-peer-dial-target octets)))
+    (case (and (consp target) (first target))
+      (:address
+       (fnn-connect (coerce (second target) '(simple-array (unsigned-byte 8) (*)))
+                    port :timeout timeout))
+      (:resolve
+       (fnn-connect (fnn-peer-resolve-ipv4 (map 'string #'code-char (second target)))
+                    port :timeout timeout))
+      (:refused (error 'fnn-peer-dial-error :outcome :host-syntax))
+      (otherwise (fnn-fault "ACL2 returned a malformed peer dial target")))))
+
+(defun fnn-peer-dial-outcome (condition)
+  "The host's classification of a failed peer dial: an observation for ACL2's line."
+  (typecase condition
+    (fnn-peer-dial-error (fnn-peer-dial-error-outcome condition))
+    (t (if (and (find-class 'fnn-tls-verify-error nil)
+                (typep condition 'fnn-tls-verify-error))
+           (slot-value condition 'outcome)
+         (if (and (find-class 'fnn-tls-error nil) (typep condition 'fnn-tls-error))
+             :tls
+           :connect)))))
+
+(defun fnn-peer-dial-report (via peer host condition)
+  "Write ACL2's service-log line for one failed dial of PEER (octets) at HOST."
+  (fnn-log-line (fnn-core 'fn-peer-dial-log-line via
+                          (fnn-octet-list peer)
+                          (if (stringp host) (map 'list #'char-code host)
+                            (fnn-octet-list host))
+                          (fnn-peer-dial-outcome condition))))
+
 (defun fnn-accept-observe (listener seconds)
   "Return one accepted socket or :TIMEOUT after a bounded readiness wait.
 

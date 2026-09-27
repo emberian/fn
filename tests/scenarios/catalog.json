@@ -4292,6 +4292,42 @@
         "Four 239s in order, each echoing its Message-ID, then 205; all four stored byte-identical.",
         "340 240 340 240 340 240 340 240 205 in that order (no 340 before the 240 of the article preceding it); all four stored."
       ]
+    },
+    {
+      "id": "SCN-157",
+      "title": "A peer named by a DNS name: the feed dials `localhost` under the system roots, a name mismatch is refused by name and retried, an unresolvable name is reported and retried, and peer add refuses a non-host",
+      "milestone": "M3",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peer_by_name",
+        "cases": [
+          "test_feed_by_name_under_the_system_roots",
+          "test_name_mismatch_is_refused_by_name_and_retried",
+          "test_resolution_failure_is_named_and_retried",
+          "test_peer_add_refuses_a_host_that_is_not_a_host"
+        ],
+        "native": true,
+        "record": "planning/evidence/peers-by-name-2026-09-27.md"
+      },
+      "requirements": [
+        "NNT-048"
+      ],
+      "steps": [
+        "Scratch CA; nodes A and B with CA-signed certificates; A started with SSL_CERT_FILE=CA; A's peer B added as host localhost, starttls - - (the host's name, the system roots); post on A.",
+        "Same, B's certificate names other.test.",
+        "A's peer B at no-such-peer.invalid; post on A.",
+        "peer add with host bad_host.example, and with 127.0.0.1 and server name `-`."
+      ],
+      "evidence": [
+        "tests/acl2/peer-host-tests.lisp",
+        "tests/test_native_peer_by_name.py"
+      ],
+      "expected": [
+        "The article arrives on B byte-identical; no dial failure line.",
+        "At least two `peer dial via=feed ... host=localhost outcome=name-mismatch retry=yes` lines; nothing arrives; both nodes alive.",
+        "At least two `outcome=unresolved retry=yes` lines; A alive and serving the article.",
+        "Both refused with a nonzero exit; no record written."
+      ]
     }
   ]
 }

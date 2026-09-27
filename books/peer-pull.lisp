@@ -1835,7 +1835,7 @@
           ((and (member-equal (fn-cfg-row-c ts) '("starttls" "implicit"))
                 sn ta (stringp (fn-cfg-row-c sn)) (stringp (fn-cfg-row-c ta)))
            (list :tls (if (equal (fn-cfg-row-c ts) "implicit") :implicit :starttls)
-                 (fn-cfg-row-c sn) (fn-cfg-row-c ta)))
+                 (fn-cfg-row-c sn) (fn-cfg-peer-trust-of-row ta)))
           (t nil))))
 
 (defun fn-pull-auth-of-rows (rows)
