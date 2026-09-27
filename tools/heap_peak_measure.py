@@ -108,21 +108,26 @@ def copy_store(kept: Path, work: Path, label: str):
 
 
 def run_open(image, config, heap_mb, timeout=3600):
+    """`operator CONFIG run' to its LISTENING line (then SIGTERM), or to its
+    death; the output goes to a file so a death's report is kept whole."""
     started = time.perf_counter()
-    proc = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"],
-                            env=environment(heap_mb), stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT)
-    try:
-        wait_for_announcement(proc, b"LISTENING ", timeout=timeout)
-    except BaseException:  # noqa: BLE001 - the process died or hung: its output is the answer
-        proc.kill()
-        out = proc.communicate()[0]
-        return (proc.returncode if proc.returncode is not None else -9), \
-            time.perf_counter() - started, out
-    dt = time.perf_counter() - started
-    proc.send_signal(signal.SIGTERM)
-    out = proc.communicate(timeout=600)[0]
-    return 0, dt, out
+    log = Path(str(config) + ".run.out")
+    with open(log, "wb") as out:
+        proc = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"],
+                                env=environment(heap_mb), stdout=out, stderr=subprocess.STDOUT)
+        while True:
+            text = log.read_bytes()
+            if b"LISTENING " in text:
+                dt = time.perf_counter() - started
+                proc.send_signal(signal.SIGTERM)
+                proc.wait(timeout=600)
+                return 0, dt, log.read_bytes()
+            if proc.poll() is not None or time.perf_counter() - started > timeout:
+                if proc.poll() is None:
+                    proc.kill()
+                proc.wait()
+                return proc.returncode or -9, time.perf_counter() - started, log.read_bytes()
+            time.sleep(0.2)
 
 
 def probe(image, kept, work, operation, heap_mb, big_mb):
