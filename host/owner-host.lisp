@@ -558,7 +558,10 @@
 ; fn-scka-next-checkpoint: BASE extended over the canonical rows of the rows
 ; after it, handles from H0; KEYSTONE fn-scka-next-checkpoint-is-capture;
 ; the whole capture when no H0 was noted), then the setup of the arena run
-; (fn-scka-write-setup) and of the file (fn-scka-publication-setup: the
+; from WALKED, the host's bounded fn-scka-srcs-n calls over RECORDS (ROWS'
+; LACC SACC: each canonical payload's length and source, reversed;
+; fn-scka-srcs-n-compose, fn-scka-srcs-n-complete), by fn-scka-lens-setup,
+; and of the file (fn-scka-publication-setup: the
 ; decision by name over the whole file's octets before anything is
 ; allocated).  LOG is the record log's position at the capture's S (a
 ; format-9 owner rotated the log there; NIL otherwise): the F row carries it.
@@ -568,7 +571,7 @@
 ; thread only appends to it (a seal never moves a sealed payload's bytes),
 ; so what is read is what was sealed before the capture.
 (defun fn-owner-sco-prepare (base h0 configs records frontier revision log seg budget free
-                                  fn-arena)
+                                  walked fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
   (let* ((next0 (and base (natp h0) (<= (len (fn-sco-records base)) (len records))
                      (fn-scka-next-checkpoint base h0 configs records fn-arena)))
@@ -576,13 +579,14 @@
                    (let ((canon (fn-scka-canon-rows records fn-arena 0)))
                      (if (equal canon :bad) :bad (fn-sco-capture configs canon)))
                  next0)))
-    (if (equal next :bad)
+    (if (or (equal next :bad) (not (and (consp walked) (atom (nth 0 walked)))))
         (list (list :unencodable nil nil nil nil 0 0) nil 0 nil)
-      (let* ((ws (fn-scka-write-setup records seg fn-arena))
+      (let* ((ws (fn-scka-lens-setup (reverse (nth 1 walked)) seg))
              (setup (fn-scka-publication-setup next frontier revision log seg budget free
                                                (nth 3 ws))))
         (list setup next (nth 0 ws)
-              (list (nth 0 ws) (nth 2 ws) (fn-scka-initial-state records (nth 1 ws) 0)))))))
+              (list (nth 0 ws) (nth 2 ws)
+                    (fn-scka-initial-state (reverse (nth 2 walked)) (nth 1 ws) 0)))))))
 
 ; Outside the mutex, the host calls `fn-ock-next-checkpoint' (NEXT, the
 ; capture of the captured history: fn-ock-next-checkpoint-is-the-capture),

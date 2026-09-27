@@ -2762,7 +2762,8 @@ the crash keystone) and serving continues."
               ;; READS the live arena below the captured count).
               (destructuring-bind (setup prepared-next n arun)
                   (fnn-core 'fn-owner-sco-prepare base base-payloads configs records
-                            frontier revision position segment budget free (fnn-live-arena))
+                            frontier revision position segment budget free
+                            (fnn-checkpoint-walk records) (fnn-live-arena))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
                 (setq next prepared-next payloads n)

@@ -2794,6 +2794,20 @@ which the process is killed, or NIL."
             (fnn-fault "invalid FN_NATIVE_CHECKPOINT_BATCH_FAULT (expected K:kill)"))
           k)))))
 
+(defun fnn-checkpoint-walk (records)
+  "The walk of the owner's captured RECORDS: each canonical payload's length
+and source (books/store-checkpoint-arena-writer.lisp fn-scka-srcs-n), a
+bounded number of rows per call (+fnn-checkpoint-batch-rows+; the calls are
+one walk: fn-scka-srcs-n-compose).  READS the arena.  The last state,
+(ROWS' LACC SACC), ROWS' empty."
+  (let ((walk (list records nil nil)) (arena (fnn-live-arena)))
+    (loop
+      (when (atom (first walk)) (return walk))
+      (setq walk (fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+
+                           (second walk) (third walk) arena))
+      (unless (and (consp walk) (= (length walk) 3))
+        (fnn-fault "ACL2 returned a malformed checkpoint walk")))))
+
 (defun fnn-checkpoint-write-arena-steps (fd arun sequence segment-bound file-bound st fault)
   "Write the arena run's frames to FD step by step (fn-scka-write-step: step 0
 the head, each later step one batch of whole canonical payloads read through
@@ -2878,9 +2892,17 @@ it covers are dropped (fnn-log-drop; T8)."
                             +fnn-checkpoint-batch-octets+))
          (budget (fnn-core 'fn-ock-capture-budget profile))
          (position (and (fnn-store-logp store) (fnn-log-rotate store)))
+         ;; one walk of the live rows, a bounded number per call: each
+         ;; canonical payload's length and source (fn-store-sco-pass-step)
+         (walked (progn
+                   (fnn-core-state 'fn-store-sco-pass-begin)
+                   (loop until (fnn-core-arena-state 'fn-store-sco-pass-step
+                                                     +fnn-checkpoint-batch-rows+))
+                   t))
          (answer (fnn-core-arena-state 'fn-store-sco-publish-setup segment budget
                                        (fnn-disk-free-octets store)
                                        (fnn-checkpoint-revision) position)))
+    (declare (ignore walked))
     (unless (and (consp answer) (= (length answer) 3)
                  (consp (first answer)) (integerp (second answer))
                  (= (second answer) (length records)))
