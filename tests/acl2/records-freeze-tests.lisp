@@ -208,7 +208,7 @@
 ; carries a verdict the bytes do not decide (its delta nil, as the bytes'
 ; is).  The verdict fold differs from the wire view's.
 (defconst *rft-c-bad*
-  (list (fn-held-with-context (car *rft-c*) (fn-hc-make :verified nil 0))
+  (list (fn-held-with-context (car *rft-c*) (fn-hc-make (fn-stx-make-verdict :verified nil 0) nil 0))
         (car (cdr *rft-c*))))
 (defthm rft-w-replay-verdicts-without-contexts
   (and (fn-rfz-handles-inp *rft-c-bad* *rft-a*)
@@ -229,7 +229,7 @@
 ; evaluation (assert-event), not a theorem and not a must-fail: a defthm
 ; over it would fail for want of the attachment, not for the reason.
 (defconst *rft-cs-bad*
-  (list (fn-held-with-context (car *rft-cs*) (fn-hc-make :verified nil 7))))
+  (list (fn-held-with-context (car *rft-cs*) (fn-hc-make (fn-stx-make-verdict :verified nil 7) nil 7))))
 (assert-event
   (and (not (equal (fn-held-context (car *rft-cs-bad*))
                    (fn-held-context-of (nth 0 *rft-as*) *rft-keyring* 7)))

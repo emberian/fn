@@ -83,7 +83,7 @@
 
 (verify-guards fn-scat-msgid-article
   :hints (("Goal" :in-theory (disable fn-cat-handles-inp fn-cat-view-last-visible
-                                      fn-cat-msgid-seqs fn-cat-p-is-held-listp
+                                      fn-cat-msgid-seqs fn-cat-p-is-rowsp
                                       fn-cat-count-is-len fn-cat-at-is-nth))))
 (verify-guards fn-scat-number-article)
 
@@ -516,7 +516,7 @@
 
 (defun fn-scat-range-keep (group seqs fn-cat)
   (declare (xargs :stobjs fn-cat :guard t
-                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len
                                                             fn-cat-at-is-nth)))))
   (if (consp seqs)
       (let ((s (car seqs)))
