@@ -3138,7 +3138,7 @@
       ],
       "expected": [
         "Every row is recorded with the owner's OWNER-OPEN line, owner CPU, VmHWM, disk octets and inodes, the box load and (ZFS) zfs/zpool state; a row past its time budget says `capped`; a case that cannot run (the 40G ceiling, a unit's 30 minutes) is recorded with why, never replaced by a smaller N.",
-        "docs/operator.md publishes the table and the weaker tier where storage misses the targets (250 ms p95, 10 POST/s)."
+        "docs/operator-internals.md publishes the table (docs/operator.md its plain summary) and the weaker tier where storage misses the targets (250 ms p95, 10 POST/s)."
       ],
       "evidence": [
         "tools/service_envelope.py",

@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import fn_web  # noqa: E402
 
-HISTORICAL = "<dt>The node's historical verdict</dt><dd>"
+HISTORICAL = "<dt>Signature, as the node found it</dt><dd>"
 
 
 @unittest.skipUnless(shutil.which("openssl"), "openssl is required for the socket fixture")
@@ -123,14 +123,14 @@ class WebClientTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("&lt;script&gt;steal()&lt;/script&gt;", page)
         self.assertNotIn("<script>steal()", page)
-        self.assertIn("<dt>Authorship evidence carried</dt><dd>FN-Statement present in "
+        self.assertIn("<dt>Signature data in the article</dt><dd>FN-Statement present in "
                       "the article</dd>", page)
-        self.assertIn("<dt>Independent verification here</dt><dd><span class='badge "
+        self.assertIn("<dt>Signature, checked by this reader</dt><dd><span class='badge "
                       "not-performed'>not-performed</span> not performed: no keyring of "
                       "this reader&#x27;s is configured", page)
-        self.assertIn("<dt>Claimed author</dt><dd>&lt;script&gt;alert(1)&lt;/script&gt;", page)
+        self.assertIn("<dt>From (not checked)</dt><dd>&lt;script&gt;alert(1)&lt;/script&gt;", page)
         self.assertIn("Path: peer!other", page)
-        self.assertIn("Viewing does not acknowledge application processing", page)
+        self.assertIn("Opening an article only marks it read", page)
 
     def test_recent_window_and_older_newer_boundaries_are_number_based(self):
         for number in range(1, 96):
@@ -138,7 +138,7 @@ class WebClientTests(unittest.TestCase):
 
         status, _, recent = self.request("GET", "/g?name=fn.agents")
         self.assertEqual(status, 200)
-        self.assertIn("Local article numbers 56–95", recent)
+        self.assertIn("Showing numbers 56–95", recent)
         self.assertIn("slot-095", recent)
         self.assertNotIn("slot-055", recent)
         self.assertIn("start=16&amp;end=55", recent)
@@ -148,7 +148,7 @@ class WebClientTests(unittest.TestCase):
         status, _, oldest = self.request(
             "GET", "/g?name=fn.agents&start=1&end=40")
         self.assertEqual(status, 200)
-        self.assertIn("Local article numbers 1–40", oldest)
+        self.assertIn("Showing numbers 1–40", oldest)
         self.assertNotIn("rel='prev'", oldest)
         self.assertIn("start=41&amp;end=80", oldest)
         self.assertIn("OVER 1-40", self.node.seen)
@@ -160,7 +160,7 @@ class WebClientTests(unittest.TestCase):
         status, _, at_low = self.request(
             "GET", "/g?name=fn.agents&start=31&end=70")
         self.assertEqual(status, 200)
-        self.assertIn("group currently spans 31–95", at_low)
+        self.assertIn("the group holds 31–95", at_low)
         self.assertNotIn("rel='prev'", at_low)
 
     def test_empty_group_has_no_window_or_overview_request(self):
@@ -170,9 +170,9 @@ class WebClientTests(unittest.TestCase):
         self.node.summary_overrides["fn.empty"] = (0, 100, 99)
         status, _, page = self.request("GET", "/g?name=fn.empty")
         self.assertEqual(status, 200)
-        self.assertIn("No local article numbers", page)
+        self.assertIn("No numbers to show", page)
         self.assertIn("No articles in this number window", page)
-        self.assertIn("group currently has no articles", page)
+        self.assertIn("the group has no articles yet", page)
         self.assertNotIn("rel='prev'", page)
         self.assertNotIn("rel='next'", page)
         self.assertNotIn("OVER", self.node.seen)
@@ -183,7 +183,7 @@ class WebClientTests(unittest.TestCase):
         status, _, explicit = self.request(
             "GET", "/g?name=fn.empty&start=5&end=10")
         self.assertEqual(status, 200)
-        self.assertIn("Local article numbers 5–10", explicit)
+        self.assertIn("Showing numbers 5–10", explicit)
         self.assertNotIn("rel='prev'", explicit)
         self.assertNotIn("rel='next'", explicit)
         self.assertIn("OVER 5-10", self.node.seen)
@@ -222,16 +222,16 @@ class WebClientTests(unittest.TestCase):
         path = "/g?name=fn.agents&start=61&end=100"
         status, _, before = self.request("GET", path)
         self.assertEqual(status, 200)
-        self.assertIn("Local article numbers 61–100", before)
+        self.assertIn("Showing numbers 61–100", before)
         self.assertIn("slot-100", before)
         self.assertNotIn("slot-060", before)
 
         self.node.seed("fn.agents", "arrived-after-request", "body")
         status, _, after = self.request("GET", path)
         self.assertEqual(status, 200)
-        self.assertIn("Local article numbers 61–100", after)
+        self.assertIn("Showing numbers 61–100", after)
         self.assertNotIn("arrived-after-request", after)
-        self.assertIn("group currently spans 1–101", after)
+        self.assertIn("the group holds 1–101", after)
         self.assertIn("start=101&amp;end=140", after)
         self.assertEqual(self.node.seen.count("OVER 61-100"), 2)
 
@@ -280,7 +280,7 @@ class WebClientTests(unittest.TestCase):
         self.assertIn("a key retired later does not change this record", page)
         # A node without the item: the fourth fact is the node's non-answer,
         # never a guess and never the historical verdict.
-        self.assertIn("<dt>Current enrollment or authorization</dt><dd><span class='badge "
+        self.assertIn("<dt>The signer's key today</dt><dd><span class='badge "
                       "unavailable'>unavailable</span> not available: the node did not "
                       "answer :fn-enrollment (503", page)
         self.assertIn("HDR :fn-verified 1", self.node.seen)
@@ -424,7 +424,7 @@ class WebClientTests(unittest.TestCase):
         self.assertIn(HISTORICAL + "<span class='badge verified'>verified</span> <code>"
                       "verified by principal " + "ab" * 32 + " under keyring generation 1",
                       page)
-        self.assertIn("<dt>Current enrollment or authorization</dt><dd><span class='badge "
+        self.assertIn("<dt>The signer's key today</dt><dd><span class='badge "
                       "retired'>retired</span> principal " + "ab" * 32 + " has enrolled "
                       "again since: its current keyring generation is 4", page)
         self.assertIn("HDR :fn-enrollment " + msgid, self.node.seen)
@@ -892,7 +892,7 @@ class WebClientTests(unittest.TestCase):
         self.assertIn("<code>430 withdrawn", page)
         # A number never assigned is the node's other answer, not "withdrawn".
         status, _, page = self.request("GET", "/g?name=fn.agents&start=1&end=5")
-        self.assertIn("numbers after 3 are not assigned yet", page)
+        self.assertIn("nothing after 3 yet", page)
 
     def test_conversation_follows_references_across_a_withdrawn_middle(self):
         self.node.seed("fn.agents", "root", "r", msgid="<root@fake.invalid>")
@@ -1146,7 +1146,7 @@ class IndependentCheckTests(unittest.TestCase):
 
         status, page = get("/a?group=fn.agents&number=%d" % number)
         self.assertEqual(status, 200)
-        self.assertIn("<dt>Independent verification here</dt><dd><span class='badge "
+        self.assertIn("<dt>Signature, checked by this reader</dt><dd><span class='badge "
                       "verified-here'>verified-here</span> verified here: principal " +
                       "55" * 32, page)
         self.assertIn("<span class='badge active'>active</span>", page)

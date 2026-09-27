@@ -115,7 +115,7 @@ class NativeWebClientTests(unittest.TestCase):
                 status, page = request("GET", "/a?group=fn.agents&number=1")
                 self.assertEqual(status, 200)
                 self.assertIn("First native owner body &lt;visible&gt;", page)
-                self.assertIn("Viewing does not acknowledge application processing", page)
+                self.assertIn("Opening an article only marks it read", page)
             finally:
                 if server is not None:
                     server.shutdown()
@@ -518,7 +518,7 @@ class NativeProtectedWebClientTests(unittest.TestCase):
         self.assertIn("<span class='badge absent'>node verdict: absent</span>", article[2])
         # The node's whole recorded verdict line, as its historical record
         # (reader-daily f1941527 moved it under this heading).
-        self.assertIn("<dt>The node's historical verdict</dt><dd><span class='badge absent'>"
+        self.assertIn("<dt>Signature, as the node found it</dt><dd><span class='badge absent'>"
                       "absent</span> <code>absent: no-field</code>", article[2])
         group = self.http(server, "GET", "/g?name=fn.agents")
         self.assertIn("<span class='badge absent' title='absent: no-field'>absent</span>",
@@ -757,9 +757,9 @@ class NativeProvenanceWebTests(unittest.TestCase):
 
         def facts(msgid, keyring):
             page = self.page(msgid, keyring)
-            return (self.fact(page, "The node's historical verdict"),
-                    self.fact(page, "Current enrollment or authorization"),
-                    self.fact(page, "Independent verification here"))
+            return (self.fact(page, "Signature, as the node found it"),
+                    self.fact(page, "The signer's key today"),
+                    self.fact(page, "Signature, checked by this reader"))
 
         verdict, current, own = facts(signed, self.reader_keyring)
         self.assertIn("<span class='badge active'>active</span> principal %s is enrolled "
