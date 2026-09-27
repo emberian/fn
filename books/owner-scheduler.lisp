@@ -434,29 +434,44 @@
                                            (<= (fn-osch-bucket ms) 5)))
                   (:type-prescription :corollary (integerp (fn-osch-bucket ms))))))
 
+; The fold, one layer at a time, with the recursive accessors closed: what a
+; field is after one update and after one bump.  (One lemma over the whole
+; five-layer fold cost 17 s at two jobs; these two cost nothing.)
 (local
- (defthm fn-osch-field-of-row-observe
-   (equal (fn-osch-field j (fn-osch-row-observe row hold-ms wait-ms))
-          (cond ((equal (nfix j) 0) (+ 1 (fn-osch-field 0 row)))
-                ((equal (nfix j) (fn-osch-bucket hold-ms)) (+ 1 (fn-osch-field j row)))
-                ((equal (nfix j) 6) (max (nfix hold-ms) (fn-osch-field 6 row)))
-                ((equal (nfix j) 7) (max (nfix wait-ms) (fn-osch-field 7 row)))
-                ((equal (nfix j) 8) (if (<= 1000 (nfix wait-ms))
-                                        (+ 1 (fn-osch-field 8 row))
-                                      (fn-osch-field 8 row)))
-                (t (fn-osch-field j row))))
-   :hints (("Goal" :in-theory (e/d (fn-osch-row-observe fn-osch-bump fn-osch-field)
-                                   (fn-osch-bucket fn-osch-nth fn-osch-update-nth))))))
+ (defthm fn-osch-field-of-update-nth
+   (equal (fn-osch-field j (fn-osch-update-nth i v row))
+          (if (equal (nfix j) (nfix i)) (nfix v) (fn-osch-field j row)))
+   :hints (("Goal" :in-theory (enable fn-osch-field)))))
+
+(local (in-theory (disable fn-osch-field fn-osch-nth fn-osch-update-nth)))
+
+(local
+ (defthm fn-osch-field-natp
+   (natp (fn-osch-field j row))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-osch-field)))))
+
+(local
+ (defthm fn-osch-field-of-bump
+   (equal (fn-osch-field j (fn-osch-bump i row))
+          (if (equal (nfix j) (nfix i))
+              (+ 1 (fn-osch-field i row))
+            (fn-osch-field j row)))
+   :hints (("Goal" :in-theory (enable fn-osch-bump)))))
+
+(local (in-theory (disable fn-osch-bump)))
 
 (local
  (defthm fn-osch-nth-of-two
    (and (equal (fn-osch-nth 0 (list a b)) a)
-        (equal (fn-osch-nth 1 (list a b)) b))))
+        (equal (fn-osch-nth 1 (list a b)) b))
+   :hints (("Goal" :in-theory (enable fn-osch-nth)))))
 
 (local
  (defthm fn-osch-nth-when-not-natp
    (implies (not (natp i))
-            (equal (fn-osch-nth i x) (fn-osch-nth 0 x)))))
+            (equal (fn-osch-nth i x) (fn-osch-nth 0 x)))
+   :hints (("Goal" :in-theory (enable fn-osch-nth)))))
 
 (defthm fn-osch-observe-holds
   (equal (fn-osch-holds i (fn-osch-observe s class hold-ms wait-ms))
@@ -464,16 +479,13 @@
              (+ 1 (fn-osch-holds i s))
            (fn-osch-holds i s)))
   :hints (("Goal" :in-theory (e/d (fn-osch-observe fn-osch-holds fn-osch-row fn-osch-rows
-                                   fn-osch-cursor)
-                                  (fn-osch-bucket fn-osch-row-observe fn-osch-field
-                                   fn-osch-nth fn-osch-update-nth fn-osch-norm)))))
+                                   fn-osch-cursor fn-osch-row-observe)
+                                  (fn-osch-bucket fn-osch-norm)))))
 
 (defthm fn-osch-row-observe-keeps-okp
   (implies (fn-osch-row-okp row)
            (fn-osch-row-okp (fn-osch-row-observe row hold-ms wait-ms)))
-  :hints (("Goal" :in-theory (e/d (fn-osch-row-okp)
-                                  (fn-osch-bucket fn-osch-row-observe fn-osch-field
-                                   fn-osch-nth fn-osch-update-nth))
+  :hints (("Goal" :in-theory (e/d (fn-osch-row-okp fn-osch-row-observe) (fn-osch-bucket))
            :cases ((equal (fn-osch-bucket hold-ms) 1) (equal (fn-osch-bucket hold-ms) 2)
                    (equal (fn-osch-bucket hold-ms) 3) (equal (fn-osch-bucket hold-ms) 4)
                    (equal (fn-osch-bucket hold-ms) 5)))))
@@ -486,7 +498,6 @@
   (equal (fn-osch-cursor (fn-osch-observe s class hold-ms wait-ms))
          (fn-osch-cursor s))
   :hints (("Goal" :in-theory (e/d (fn-osch-observe fn-osch-cursor)
-                                  (fn-osch-norm fn-osch-nth fn-osch-row-observe
-                                   fn-osch-class-index)))))
+                                  (fn-osch-norm fn-osch-row-observe fn-osch-class-index)))))
 
 (in-theory (disable fn-osch-pick fn-osch-next fn-osch-observe fn-osch-health-lines))
