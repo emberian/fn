@@ -198,7 +198,7 @@
 ;; exec branches run under (the :logic definitions are unchanged, so no
 ;; codec or seam theorem moves).  An item the decoder read from the checked
 ;; input is already an octet list: its payload check is the length bound.
-(defthm fn-record-payloadp-of-octets-is-len-bound
+(defthm fn-record-payloadp-of-octets-by-definition
   (implies (fn-cbor-octet-listp payload)
            (equal (fn-record-payloadp payload)
                   (<= (len payload) *fn-record-max-payload*))))
@@ -325,7 +325,7 @@
                             ;; PRF-333: the item's octets are already an octet list (the
                             ;; whole input's one check, fn-record-read-bytes-success-domain);
                             ;; only the length bound is left to test
-                            ;; (fn-record-payloadp-of-octets-is-len-bound).
+                            ;; (fn-record-payloadp-of-octets-by-definition).
                             (if (not (mbe :logic (fn-record-payloadp payload)
                                           :exec (<= (len payload) *fn-record-max-payload*)))
                                 (fn-record-parse-error :payload)

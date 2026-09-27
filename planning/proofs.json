@@ -11581,6 +11581,30 @@
         "fn-lgb-decode-next-exec-decode",
         "fn-lgb-decode-next-exec-fold"
       ]
+    },
+    {
+      "id": "PRF-333",
+      "title": "The record decode checks each payload once: the payload's length bound and the record check without the payload, under mbe",
+      "statement": "books/records.lisp (the codec implementation behind the seam; books/records-attach.lisp attaches fn-record-decode-exact-impl to fn-record-decode-exact): the :logic definitions of fn-record-decode-after-header and fn-record-decode-tail are unchanged; their :exec branches test the payload once. fn-record-payloadp-of-octets-by-definition (definitional, not cited): (implies (fn-cbor-octet-listp payload) (equal (fn-record-payloadp payload) (<= (len payload) *fn-record-max-payload*))) -- the item the decoder read from the checked input is an octet list (fn-record-read-bytes-success-domain), so after-header's exec tests only the length. fn-record-p-of-make-is-without-payload: (implies (fn-record-payloadp payload) (equal (fn-record-p (fn-record-make ... payload ...)) (fn-record-p (fn-record-make ... nil ...)))) -- decode-tail's final check runs over the record with the empty payload in place (the payload is in its guard). Both discharge the guard obligations of the mbe (verify-guards of the two decoders). Host subject: host/native/io.lisp's recovery decode (fnn-recover-log-stream-flush -> fn-lgb-decode-next -> fn-srs-decode -> fn-store-event-decode-exact -> fn-record-decode-exact, attached to fn-record-decode-exact-impl). Measured (hbox REPL, 100k decodes of a 2083-octet record): 3.99/3.78 s -> 2.59/2.14 s.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003"
+      ],
+      "depends_on": [
+        "PRF-331"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/records.lisp",
+        "tests/acl2/records-teeth-tests.lisp"
+      ],
+      "progress_note": "Lane served-columns (sub-lane served-columns-rec, 2026-09-27): snapshot-open-3 section 9's 'the record decode validates each payload twice'.",
+      "events": [
+        "fn-record-p-of-make-is-without-payload"
+      ]
     }
   ]
 }

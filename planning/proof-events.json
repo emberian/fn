@@ -11171,6 +11171,15 @@
           "name": "fn-lgb-decode-next-exec-fold"
         }
       ]
+    },
+    {
+      "id": "PRF-333",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-record-p-of-make-is-without-payload"
+        }
+      ]
     }
   ]
 }
