@@ -190,7 +190,7 @@
 (defun fn-cat-complete-hidden (token pending by fn-cat)
   (declare (xargs :stobjs fn-cat
                   :guard (and (fn-pc-optionp pending) (natp by))
-                  :guard-hints (("Goal" :in-theory (enable fn-pc-p)))))
+                  :guard-hints (("Goal" :in-theory (enable fn-pc-p fn-held-withdrawnp)))))
   (if (or (null pending) (not (equal token (fn-pc-token pending))))
       (mv (list :stale-token) pending fn-cat)
     (let ((expected (fn-pc-expected pending)))

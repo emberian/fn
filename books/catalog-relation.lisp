@@ -447,7 +447,7 @@
                 (natp by))
            (fn-cat-history-relation (append records (list w)) fn-arena
                                     (mv-nth 2 (fn-cat-complete-hidden token pending by fn-cat))))
-  :hints (("Goal" :in-theory (e/d (fn-cat-complete-hidden fn-cat-history-relation)
+  :hints (("Goal" :in-theory (e/d (fn-cat-complete-hidden fn-cat-history-relation fn-held-withdrawnp)
                                   (fn-pc-p fn-arena-payload-is-nth fn-arena-count-is-len
                                    fn-held-wire-of fn-cat-commit-is-append fn-cat-count-is-len
                                    fn-cat-at-is-nth fn-cat-p-is-held-listp fn-cat-handles-inp
@@ -466,8 +466,9 @@
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (and (fn-record-p w) (fn-prin-keyringp keyring) (natp generation))
                   :guard-hints (("Goal"
-                                 :in-theory (disable fn-held-p fn-held-with-withdrawn
-                                                     fn-cat-intern-list)
+                                 :in-theory (e/d (fn-held-withdrawnp)
+                                                 (fn-held-p fn-held-with-withdrawn
+                                                  fn-cat-intern-list))
                                  :use ((:instance fn-held-p-of-intern-list)
                                        (:instance fn-held-p-of-fn-held-with-withdrawn
                                                   (h (mv-nth 0 (fn-cat-intern-list
@@ -485,7 +486,8 @@
            (mv-let (fn-arena2 fn-cat2)
              (fn-cat-load-row-hidden w keyring generation fn-arena fn-cat)
              (fn-cat-history-relation (append records (list w)) fn-arena2 fn-cat2)))
-  :hints (("Goal" :in-theory (e/d (fn-cat-load-row-hidden fn-cat-history-relation)
+  :hints (("Goal" :in-theory (e/d (fn-cat-load-row-hidden fn-cat-history-relation
+                                   fn-held-withdrawnp)
                                   (fn-cat-intern-list fn-held-wire-of
                                    fn-arena-payload-is-nth fn-arena-count-is-len
                                    fn-arena-seal-list-is-append fn-arena-p-is-payload-listp
