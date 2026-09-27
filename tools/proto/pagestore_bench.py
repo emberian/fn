@@ -377,12 +377,78 @@ def q3(a):
     return 0 if viol == 0 and dmg["violations"] == 0 else 1
 
 
+def summarize(a):
+    """Tables (medians) from the jsonl files in --out; writes summary.md."""
+    d = Path(a.out)
+    lines = []
+    med = lambda xs: round(statistics.median(xs), 1) if xs else None
+    q1f = d / "q1.jsonl"
+    if q1f.exists():
+        rows = [json.loads(l) for l in q1f.read_text().splitlines()]
+        sizes = {(r["fs"], r["n"]): r["bytes"] for r in rows if r.get("phase") == "size"}
+        lines += ["## Q1 open (ms, median of runs)", "",
+                  "| fs | records | MB on disk | mode | cache | commit | table | bulk read | verify | open total | seq lookup | msgid lookup | bg pass | RSS MiB |",
+                  "|---|---:|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+        keys = sorted({(r["fs"], r["n"], r["mode"], r["temp"]) for r in rows if "mode" in r},
+                      key=lambda k: (k[0], k[1], k[2], k[3]))
+        for k in keys:
+            rs = [r for r in rows if (r.get("fs"), r.get("n"), r.get("mode"), r.get("temp")) == k
+                  and r.get("open")]
+            g = lambda f: med([r["open"][f] for r in rs])
+            fr = lambda f: med([r["first"]["requests"][f] for r in rs if r.get("first")])
+            bg = med([r["first"]["ms-background-pass"] for r in rs if r.get("first")])
+            rss = med([r["open"]["rss-kib"] / 1024 for r in rs])
+            lines.append(f"| {k[0]} | {k[1]:,} | {sizes.get((k[0], k[1]), 0) / 1e6:.0f} | {k[2]} | {k[3]} | "
+                         f"{g('ms-commit')} | {g('ms-table')} | {g('ms-bulk')} | {g('ms-verify')} | "
+                         f"{g('ms-total')} | {fr('ms-lookup-seq')} | {fr('ms-lookup-msgid')} | {bg} | {rss} |")
+        lines.append("")
+    for fsn in ("nvme", "zfs"):
+        q2f = d / "q2.jsonl"
+        if not q2f.exists():
+            break
+        rows = [json.loads(l) for l in q2f.read_text().splitlines()]
+        rows = [r for r in rows if r.get("fs") == fsn and r.get("commit")]
+        if not rows:
+            continue
+        lines += [f"## Q2 snapshot on {fsn} (ms, median)", "",
+                  "| kind | dirty pages | barriers | plan+digest | page writes | table | sync 1 | record | sync 2 | total | fdatasync calls | write calls | MB written | table pages |",
+                  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+        for kind in ("append", "random"):
+            for fs_ in (1, 2):
+                for cnt in sorted({r["count"] for r in rows}):
+                    rs = [r["commit"] for r in rows if r["kind"] == kind and r["fsyncs"] == fs_
+                          and r["count"] == cnt]
+                    if not rs:
+                        continue
+                    g = lambda f: med([c[f] for c in rs])
+                    st = [r.get("strace", "") for r in rows if r["kind"] == kind and r["fsyncs"] == fs_
+                          and r["count"] == cnt and r.get("strace")]
+                    calls = "-"
+                    if st:
+                        import re
+                        got = {m.group(2): int(m.group(1))
+                               for m in re.finditer(r"^\s*[\d.]+\s+[\d.]+\s+\d+\s+(\d+)\s+(?:\d+\s+)?(f?d?a?t?a?sync)\s*$", st[0], re.M)}
+                        calls = f"{rs[0]['syncs']} (strace: {got or 'none'})"
+                    else:
+                        calls = str(rs[0]['syncs'])
+                    lines.append(f"| {kind} | {cnt:,} | {fs_} | {g('ms-plan')} | {g('ms-pages')} | "
+                                 f"{g('ms-table')} | {g('ms-sync1')} | {g('ms-record')} | {g('ms-sync2')} | "
+                                 f"{g('ms-total')} | {calls} | {rs[0]['runs']} | "
+                                 f"{rs[0]['bytes'] / 1e6:.2f} | {rs[0]['table-pages']} |")
+        lines.append("")
+    out = d / "summary.md"
+    out.write_text("\n".join(lines) + "\n")
+    print(out.read_text())
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("ship").set_defaults(fn=ship)
     sub.add_parser("build").set_defaults(fn=build)
-    for name, fn in (("q1", q1), ("q2", q2), ("q4", q4), ("cut-map", cut_map), ("q3", q3)):
+    for name, fn in (("q1", q1), ("q2", q2), ("q4", q4), ("cut-map", cut_map), ("q3", q3),
+                     ("summarize", summarize)):
         p = sub.add_parser(name)
         p.set_defaults(fn=fn)
         p.add_argument("--out", default=str(ROOT / "results"))
