@@ -1995,7 +1995,7 @@ acknowledged without its marker."
            (fnn-init-cut store "init-parent-fenced")
            ;; Format 9: the record log's segment, after the per-file init
            ;; program (whose frontier file and transactions/ directory a
-           ;; format-9 store never reads: PKT-COL-2 gives format 9 its own
+           ;; format-9 store never reads: PKT-831 gives format 9 its own
            ;; init program).
            (when (fnn-core 'fn-store-profile-logp (fnn-store-config store))
              (fnn-log-init-segment store)))
@@ -3449,7 +3449,7 @@ or refuses by name, saying what to run."
        (lambda (stage)
          (fnn-record-filesystem-at-init stage profile policy)
          ;; Format 9: the record log's segment is part of the published
-         ;; stage (PKT-COL-2: fn-bs-init-pub-program does not name it yet).
+         ;; stage (PKT-831: fn-bs-init-pub-program does not name it yet).
          (when (fnn-core 'fn-store-profile-logp
                          (fnn-metadata-config-decode
                           (fnn-metadata-config-frame profile)))
@@ -3520,7 +3520,7 @@ entries and MANIFEST are ACL2's (fn-sxp-entries, fn-sxp-manifest)."
     (fnn-refuse "export refused reason=archive-exists"))
   (let ((store (make-fnn-store root :writable nil)))
     (fnn-acquire store)
-    ;; A format-9 store's export reads the log (PKT-COL-3; w6-log-recovery's
+    ;; A format-9 store's export reads the log (PKT-750; w6-log-recovery's
     ;; export/import over the log): refused by name until then.
     (when (fnn-store-logp store)
       (fnn-store-close store)
@@ -4916,7 +4916,7 @@ tree root), or stop the build."
     "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"
     "FN_NATIVE_LOG_FAULT"
     ;; commit-onto-log: `8' makes a developer image's init write the
-    ;; per-file layout (format 8) for the modules that read it (PKT-COL-1).
+    ;; per-file layout (format 8) for the modules that read it (PKT-830).
     "FN_NATIVE_STORE_FORMAT"))
 
 (defun fnn-developer-selector (name)
@@ -5375,7 +5375,7 @@ first (inside a batch quantum the batch closes at the operator's bounds)."
   "Grow the segment when the open batch does not fit (fn-lgk-fitsp): ACL2's
 next extent (fn-olr-next-extent), posix_fallocate and one barrier.  The
 octets past the frontier stay zeros (the relation's tail).  The extension is
-not a P-BATCH step (PKT-COL-4: its program and cut): a death during it leaves
+not a P-BATCH step (PKT-832: its program and cut): a death during it leaves
 the old extent or the new one, zeros past the frontier either way."
   (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
     (unless (fnn-core 'fn-lgk-fitsp ks unit extent)

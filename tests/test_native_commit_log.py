@@ -12,7 +12,7 @@ a process death at each POST_LOG_CUTS cut on the developer image, the next
 owner serving the article whole (a lost-reply POST is durable or absent, and
 from log-fenced on it is durable) and admitting the next POST; the
 per-file layout still written under FN_NATIVE_STORE_FORMAT=8 (the developer
-selector for the modules that read it, PKT-COL-1); and the format-9 refusals
+selector for the modules that read it, PKT-830); and the format-9 refusals
 by name of compact, reclaim and export.
 
 The oracle compares only what the node answers (the reply codes and the

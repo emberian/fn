@@ -105,7 +105,7 @@
 ; The txid is the owner's, not read back from the record: the log holds every
 ; event kind (articles, retention, identity, consumer and topic events), and
 ; the core's T5 reader (books/store-log-txid.lisp fn-lgt-txid) decodes only
-; the article codec (PKT-COL-9).
+; the article codec (PKT-836).
 (defun fn-olr-take (ks record txid count octets bmax omax unit)
   (declare (xargs :guard (true-listp ks)))
   (let ((entry (fn-olr-entry-octets (len record) unit)))

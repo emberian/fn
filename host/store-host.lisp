@@ -431,7 +431,7 @@
   (fn-bs-profile-logp values))
 
 ;; The frame a developer `init' writes under FN_NATIVE_STORE_FORMAT=8: the
-;; same profile in the per-file layout (PKT-COL-1), or NIL.
+;; same profile in the per-file layout (PKT-830), or NIL.
 (defun fn-store-metadata-config-frame-format-8 (profile)
   (let ((frame (fn-bs-config-frame-for-profile profile)))
     (and frame
@@ -442,7 +442,7 @@
 ;; txid of every record the log holds, of every event kind (the codec's
 ;; dispatch, as fn-store-decode-records decodes them), or FLOOR.  The core's
 ;; own recovered next txid (books/store-log-txid.lisp fn-lgt-next-after)
-;; reads article records only (PKT-COL-9); the log holds retention, identity,
+;; reads article records only (PKT-836); the log holds retention, identity,
 ;; consumer and topic events too, and a txid below one of them must never be
 ;; handed out again.
 (defun fn-store-log-next-txid-loop (records acc)

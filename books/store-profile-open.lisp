@@ -142,7 +142,7 @@
             nil))))))
 
 ; D34: a sealed profile frame whose format is not a format this image opens
-; (9, and 8 while PKT-COL-1 stands).
+; (9, and 8 while PKT-830 stands).
 (defun fn-spo-foreign-formatp (octets)
   (declare (xargs :guard t))
   (let ((word (fn-spo-saved-format-word octets)))
