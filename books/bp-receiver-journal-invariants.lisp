@@ -282,7 +282,7 @@
  (equal (fn-bprr-nth 1 x) (cadr x))
  :hints (("Goal" :in-theory (enable fn-bprr-nth))))
 (defthm fn-bprv-accept-receipts-unchanged
- (equal (fn-bpr-state-receipts (cadr (fn-bpr-accept-request st store record request authorized)))
+ (equal (fn-bpr-state-receipts (cadr (fn-bpr-accept-request st store record request authorized fn-arena)))
         (fn-bpr-state-receipts st))
  :hints (("Goal" :in-theory (enable fn-bpr-accept-request))))
 (defthm fn-bprv-prepare-receipts-unchanged
@@ -303,25 +303,25 @@
       (fn-bprv-entry-decidedp fn-bprv-entry-decided-from-member)))))
 (local (in-theory (disable fn-bprv-relationalp fn-bprv-entries-decidedp)))
 (defthm fn-bprv-apply-record-preserves-relation
- (implies (fn-bprv-relationalp store st)
-          (fn-bprv-relationalp store (cadr (fn-bprr-apply-record st store r))))
+ (implies (fn-bprv-relationalp store st fn-arena)
+          (fn-bprv-relationalp store (cadr (fn-bprr-apply-record st store r fn-arena)) fn-arena))
  :hints (("Goal" :in-theory (enable fn-bprr-apply-record))))
 (defthm fn-bprv-apply-record-preserves-decisions
  (implies (and (fn-bprv-entries-decidedp (fn-bpr-state-receipts st) journal)
                (member-equal r journal))
           (fn-bprv-entries-decidedp
-           (fn-bpr-state-receipts (cadr (fn-bprr-apply-record st store r))) journal))
+           (fn-bpr-state-receipts (cadr (fn-bprr-apply-record st store r fn-arena))) journal))
  :hints (("Goal" :use fn-bprv-decision-addition-covered
   :in-theory (e/d (fn-bprr-apply-record) (fn-bprv-decision-addition-covered)))))
 (defthm fn-bprv-replay-rest-preserves-relation
- (implies (fn-bprv-relationalp store st)
-          (fn-bprv-relationalp store (cadr (fn-bprr-replay-rest st store records))))
- :hints (("Goal" :induct (fn-bprr-replay-rest st store records)
+ (implies (fn-bprv-relationalp store st fn-arena)
+          (fn-bprv-relationalp store (cadr (fn-bprr-replay-rest st store records fn-arena)) fn-arena))
+ :hints (("Goal" :induct (fn-bprr-replay-rest st store records fn-arena)
     :in-theory (enable fn-bprr-replay-rest))))
 (defthm fn-bprv-replay-rest-preserves-decisions
  (implies (and (fn-bprv-entries-decidedp (fn-bpr-state-receipts st) journal)
                (fn-bprv-journal-subsetp records journal))
           (fn-bprv-entries-decidedp
-           (fn-bpr-state-receipts (cadr (fn-bprr-replay-rest st store records))) journal))
- :hints (("Goal" :induct (fn-bprr-replay-rest st store records)
+           (fn-bpr-state-receipts (cadr (fn-bprr-replay-rest st store records fn-arena))) journal))
+ :hints (("Goal" :induct (fn-bprr-replay-rest st store records fn-arena)
     :in-theory (enable fn-bprr-replay-rest fn-bprv-journal-subsetp))))

@@ -12,6 +12,7 @@
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/codec-attach")
 (include-book "../../books/crypto-attach")
+(include-book "arena-lift")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
@@ -44,9 +45,16 @@
 (defconst *ry-prepared*
   (fn-bpi-ingress-prepare (ry-reserve (fn-sn-initial *ry-groups* 20))
                           *ry-policy* *ry-ingress-context* *ry-adu* 0))
-(defconst *ry-record* (fn-bpi-result-record *ry-prepared*))
+;; The Store retains the held row (payload handle 0); the relay's receiver
+;; is handed the wire record and reads the row through an arena holding the
+;; ADU at handle 0 (records-flip).
+(defconst *ry-row* (fn-bpi-result-record *ry-prepared*))
+(defconst *ry-record* (fn-bpi-result-wire *ry-prepared*))
 (defconst *ry-store* (fn-bpi-finish-prepared (fn-bpi-result-store *ry-prepared*)))
-(assert-event (fn-bpi-durably-acceptedp *ry-store* *ry-record*))
+(assert-event (fn-bpi-durably-acceptedp *ry-store* *ry-row*))
+(defconst *ry-payloads* (list *ry-adu*))
+(bpr-lift fn-relay-accept 4)
+
 (defconst *ry-msgid* (fn-record-msgid *ry-record*))
 
 ; -----------------------------------------------------------------------------
@@ -69,7 +77,7 @@
                           *ry-terms*))
 (assert-event (fn-relay-invp *ry-initial*))
 
-(make-event `(defconst *ry-accepted* ',(fn-relay-accept *ry-initial* *ry-record* *ry-request* t)))
+(make-event `(defconst *ry-accepted* ',(in-arena-fn-relay-accept *ry-payloads* *ry-initial* *ry-record* *ry-request* t)))
 (assert-event (equal (car *ry-accepted*) :accepted))
 (make-event `(defconst *ry-ctx-state* ',(car (cdr *ry-accepted*))))
 (assert-event (fn-relay-invp *ry-ctx-state*))

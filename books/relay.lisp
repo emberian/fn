@@ -144,10 +144,10 @@
 ; Transitions
 
 ; Receiver side: exactly fn-bpr-accept-request.  Result: (tag state).
-(defun fn-relay-accept (rs record request policy-authorizedp)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-relay-accept (rs record request policy-authorizedp fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((answer (fn-bpr-accept-request (fn-relay-receiver rs) (fn-relay-store rs)
-                                       record request policy-authorizedp)))
+                                       record request policy-authorizedp fn-arena)))
     (list (car answer)
           (fn-relay-make-state (fn-relay-store rs) (car (cdr answer))
                                (fn-relay-sender rs) (fn-relay-terms rs)
