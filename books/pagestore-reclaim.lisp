@@ -307,6 +307,16 @@
 (defthm pgs-root-slots-of-cons-roots
   (equal (pgs-root-slots r (cons a (pgs-roots disk))) (pgs-root-slots r disk)))
 
+(defthm pgs-subset-cons-reserved
+  ; The reserved page stays kept: a kept set with it prepended is covered by
+  ; a cover with it prepended.
+  (implies (pgs-subset x (append (cons a y) n))
+           (pgs-subset (cons a x) (append (cons a y) n))))
+
+(defthm pgs-subset-into-cons
+  (implies (pgs-subset x (append y n))
+           (pgs-subset x (append (cons a y) n))))
+
 (defthm pgs-keeps-after-commit
   (implies (and (equal (car (pgs-open disk r mode)) :ok)
                 (pgs-lpages-ok (pgs-dirty-lpages dirty) (len (fourth (pgs-open disk r mode))) 0)
@@ -316,7 +326,7 @@
   :hints (("Goal" :in-theory (union-theories '(pgs-commit pgs-crash pgs-set-root-slot pgs-disk-keeps
                                                pgs-pages-roots-of-cons pgs-roots-keeps pgs-c-new pgs-c-cur
                                                pgs-c-writes pgs-c-rec pgs-c-lpages-ok-is pgs-plan-commit-unfold
-                                               pgs-root-slots-of-cons-roots pgs-subset-of-nil
+                                               pgs-root-slots-of-cons-roots pgs-subset-of-nil pgs-subset-cons-reserved pgs-subset-into-cons pgs-subset-cons-right
                                                car-cons cdr-cons member-equal)
                                              (theory 'minimal-theory))
                   :use ((:instance pgs-c-open-facts)
@@ -860,11 +870,14 @@
 
 (in-theory (disable pgs-fork-is))
 
+(defthm pgs-subset-cons-same
+  (implies (pgs-subset x (cons a y)) (pgs-subset (cons a x) (cons a y))))
+
 (defthm pgs-keeps-after-fork
   (pgs-subset (pgs-disk-keeps (pgs-fork disk r r2 mode)) (pgs-disk-keeps disk))
   :hints (("Goal" :in-theory (union-theories '(pgs-disk-keeps pgs-pages-roots-of-cons pgs-fork-is
                                                pgs-roots-keeps-of-cons-binding pgs-subset-refl
-                                               pgs-subset-append-nil)
+                                               pgs-subset-append-nil pgs-subset-cons-same pgs-subset-cons-right)
                                              (theory 'minimal-theory))
                   :use (
                         (:instance pgs-slots-keeps-single (a (pgs-c-cur disk r mode)) (p (pgs-pages disk)))

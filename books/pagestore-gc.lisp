@@ -158,12 +158,16 @@
 
 (defun pgs-g-start (hwm0 pgs-gc)
   ; Both flag arrays cleared to HWM0 addresses (a resize to nothing, then to
-  ; HWM0: fresh zeros).
+  ; HWM0: fresh zeros), and the reserved page marked: `pgs-disk-keeps'
+  ; keeps it whatever the roots hold, so the cycle keeps it too.
   (declare (xargs :stobjs pgs-gc :guard (natp hwm0)))
   (let* ((pgs-gc (resize-pgs-gm 0 pgs-gc))
          (pgs-gc (resize-pgs-gm hwm0 pgs-gc))
-         (pgs-gc (resize-pgs-gf 0 pgs-gc)))
-    (resize-pgs-gf hwm0 pgs-gc)))
+         (pgs-gc (resize-pgs-gf 0 pgs-gc))
+         (pgs-gc (resize-pgs-gf hwm0 pgs-gc)))
+    (if (< *pgs-reserved-page* (nfix hwm0))
+        (update-pgs-gmi *pgs-reserved-page* 1 pgs-gc)
+      pgs-gc)))
 
 (local (defun pgs-g-down2 (i n) (if (zp n) i (pgs-g-down2 (1- (nfix i)) (1- n)))))
 
@@ -175,11 +179,24 @@
   (equal (len (resize-list l n d)) (nfix n))
   :hints (("Goal" :in-theory (enable resize-list))))
 
+(local (defthm pgs-g-len-cdr-zeros
+  (implies (posp n) (equal (len (cdr (resize-list nil n 0))) (- n 1)))
+  :hints (("Goal" :expand ((resize-list nil n 0))))))
+
+(local (defthm pgs-g-nth-of-marked-zeros
+  (implies (and (natp x) (< x (nfix n)))
+           (equal (nth x (cons 1 (cdr (resize-list nil n 0)))) (if (equal x 0) 1 0)))
+  :hints (("Goal" :cases ((equal x 0))
+                  :use ((:instance pgs-g-nth-of-zeros (i x)))
+                  :expand ((resize-list nil n 0))))))
+
 (defthm pgs-g-start-facts
-  ; After the start: both arrays have HWM0 flags and none is set.
+  ; After the start: both arrays have HWM0 flags; the only mark is the
+  ; reserved page's (when HWM0 reaches it) and no FREE0 flag is set.
   (and (equal (len (pgs-g-m (pgs-g-start hwm0 pgs-gc))) (nfix hwm0))
        (equal (len (pgs-g-f (pgs-g-start hwm0 pgs-gc))) (nfix hwm0))
-       (not (member-equal x (pgs-g-marks-list (pgs-g-start hwm0 pgs-gc))))
+       (iff (member-equal x (pgs-g-marks-list (pgs-g-start hwm0 pgs-gc)))
+            (and (equal x *pgs-reserved-page*) (< *pgs-reserved-page* (nfix hwm0))))
        (not (member-equal x (pgs-g-free0-list (pgs-g-start hwm0 pgs-gc))))))
 
 (in-theory (disable pgs-g-start))
@@ -680,6 +697,13 @@
   (equal (pgs-g-install alloc (pgs-sweep 0 hwm0 marks free0))
          (pgs-reclaim alloc marks free0 hwm0)))
 
+; The model's reclamation step IS the install the host calls
+; (host/native/proto-pagestore.lisp fnps-reclaim), over the swept list.
+(defthm pgs-reclaim-is-g-install
+  (implies (equal swept (pgs-sweep 0 hwm0 marks free0))
+           (equal (pgs-reclaim alloc marks free0 hwm0) (pgs-g-install alloc swept)))
+  :rule-classes nil)
+
 (in-theory (disable pgs-g-install))
 
 ; What runs during the cycle: commits and forks.  OPS is a list of
@@ -815,10 +839,11 @@
       r)))
 
 (defthm pgs-g-witness-cycle-ok
-  ; Marked exactly 5, 7, 9; two quanta equal one sweep; the first step
-  ; swept [6, 10) and left the cursor at 6.
+  ; Marked exactly the reserved page 0 (by the start) and 5, 7, 9; two
+  ; quanta equal one sweep; the first step swept [6, 10) and left the
+  ; cursor at 6.
   (equal (pgs-g-witness-cycle)
-         '((0 0 0 0 0 1 0 1 0 1) (0 1 3 4 6 8) (0 1 3 4 6 8) (6 (6 8)))))
+         '((1 0 0 0 0 1 0 1 0 1) (1 3 4 6 8) (1 3 4 6 8) (6 (6 8)))))
 
 ; The same record on the model's disk: root :r, slot 0 a valid record
 ; (txid 1, directory at 5, 1 logical page); page 5 is the directory, page 7
@@ -827,18 +852,18 @@
   (cons (list (cons 5 '((7 1 0))) (cons 7 '((9 1 0))))
         (list (cons :r (cons (pgs-make-rec 1 5 1 0) nil)))))
 
-(defconst *pgs-g-w-gm* '(0 0 0 0 0 1 0 1 0 1))     ; the witness's marks
+(defconst *pgs-g-w-gm* '(1 0 0 0 0 1 0 1 0 1))     ; the witness's marks
 (defconst *pgs-g-w-gf* '(0 0 1 0 0 0 0 0 0 0))     ; FREE0 = (2)
 
 (defthm pgs-g-witness-keeps
-  (equal (pgs-disk-keeps (pgs-g-w-disk)) '(5 7 9))
+  (equal (pgs-disk-keeps (pgs-g-w-disk)) '(0 5 7 9))
   :hints (("Goal" :in-theory (enable pgs-rec-keeps pgs-rec-valid pgs-rec-ok pgs-rec-body pgs-rec-shape-p
                                      pgs-rec-npages pgs-rec-dir-addr pgs-ntables))))
 
 (defthm pgs-g-witness-reclaim
   ; `pgs-g-reclaim-sound''s complete antecedent (no commits during the
   ; cycle) and its conclusion, on the witness's arrays: the installed free
-  ; list is (2 0 1 3 4 6 8).
+  ; list is (2 1 3 4 6 8).
   (let ((disk (pgs-g-w-disk)) (alloc '((2) 10)) (st (list *pgs-g-w-gm* *pgs-g-w-gf* nil)))
     (and (pgs-alloc-inv alloc disk)
          (pgs-subset (pgs-disk-keeps disk) (pgs-g-marks-list st))
@@ -847,7 +872,7 @@
          (<= 10 (len (pgs-g-m st))) (<= 10 (len (pgs-g-f st)))
          (pgs-g-ops-ok disk alloc nil)
          (equal (pgs-g-install (cdr (pgs-g-cycle-run disk alloc nil)) (pgs-g-sweep-all 10 4 nil st))
-                '((2 0 1 3 4 6 8) 10))
+                '((2 1 3 4 6 8) 10))
          (pgs-alloc-inv (pgs-g-install (cdr (pgs-g-cycle-run disk alloc nil)) (pgs-g-sweep-all 10 4 nil st))
                         (car (pgs-g-cycle-run disk alloc nil)))))
   :hints (("Goal" :in-theory (e/d (pgs-g-m pgs-g-f pgs-g-flags pgs-g-install pgs-g-sweep-step)
@@ -862,7 +887,7 @@
   ; other hypothesis holds, the marks miss a kept address, the sweep frees
   ; 9, and the allocator invariant fails.
   (let ((disk (pgs-g-w-disk)) (alloc '((2) 10))
-        (st (list '(0 0 0 0 0 1 0 1 0 0) *pgs-g-w-gf* nil)))
+        (st (list '(1 0 0 0 0 1 0 1 0 0) *pgs-g-w-gf* nil)))
     (and (pgs-alloc-inv alloc disk)
          (not (pgs-subset (pgs-disk-keeps disk) (pgs-g-marks-list st)))
          (pgs-subset (pgs-alloc-free alloc) (pgs-g-free0-list st))

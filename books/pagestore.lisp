@@ -381,10 +381,14 @@
             (pgs-roots-keeps (cdr roots) pages
                              (if (consp (car roots)) (cons (caar roots) seen) seen)))))
 
+(defconst *pgs-reserved-page* 0)   ; the page holding the owner's root slots
+
 (defun pgs-disk-keeps (disk)
-  ; Every address a valid record of any root keeps.
+  ; Every address a valid record of any root keeps, and the reserved page
+  ; (page 0: the owner's root's two record slots live there in the one-barrier
+  ; layout, so no allocation or reclamation may ever hand it out).
   (declare (xargs :guard t))
-  (pgs-roots-keeps (pgs-roots disk) (pgs-pages disk) nil))
+  (cons *pgs-reserved-page* (pgs-roots-keeps (pgs-roots disk) (pgs-pages disk) nil)))
 
 ; -----------------------------------------------------------------------------
 ; Allocation (shared).

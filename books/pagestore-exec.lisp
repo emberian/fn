@@ -2522,18 +2522,35 @@
                      (pgs-memp (resize-pgs-d k pgs-mem)))))
   :hints (("Goal" :in-theory (enable pgs-v-length pgs-memp))))
 
+(defun pgs-x-set-tflags (i k v pgs-mem)
+  (declare (xargs :stobjs pgs-mem
+                  :guard (and (natp i) (natp k) (unsigned-byte-p 64 v)
+                              (<= k (pgs-tv-length pgs-mem)))
+                  :measure (nfix (- (nfix k) (nfix i)))))
+  (if (mbe :logic (zp (- (nfix k) (nfix i))) :exec (<= k i))
+      pgs-mem
+    (let ((pgs-mem (update-pgs-tvi i v pgs-mem)))
+      (pgs-x-set-tflags (+ 1 (nfix i)) k v pgs-mem))))
+
 (defun pgs-x-grow-image (npages2 pgs-mem)
-  ; Appended logical pages N..NPAGES2-1: zero, clean, verified.  Resizing
-  ; copies the image (O(image)); the host grows by as many pages as it
-  ; means to append.
+  ; Appended logical pages N..NPAGES2-1: zero, clean, verified; and the
+  ; table pages they add to (pgs-ntables NPAGES2) resident, since the
+  ; commit's plan builds them in memory.  Resizing copies the image
+  ; (O(image)); the host grows by as many pages as it means to append.
   (declare (xargs :stobjs pgs-mem :guard (natp npages2)))
   (let ((n (pgs-v-length pgs-mem)))
     (if (<= npages2 n)
         pgs-mem
       (let* ((pgs-mem (resize-pgs-w (* 2048 npages2) pgs-mem))
              (pgs-mem (resize-pgs-d npages2 pgs-mem))
-             (pgs-mem (resize-pgs-v npages2 pgs-mem)))
-        (pgs-x-set-flags n npages2 2 pgs-mem)))))
+             (pgs-mem (resize-pgs-v npages2 pgs-mem))
+             (pgs-mem (pgs-x-set-flags n npages2 2 pgs-mem))
+             (nt (pgs-tv-length pgs-mem))
+             (nt2 (pgs-ntables npages2)))
+        (if (<= nt2 nt)
+            pgs-mem
+          (let ((pgs-mem (resize-pgs-tv nt2 pgs-mem)))
+            (pgs-x-set-tflags nt nt2 2 pgs-mem)))))))
 
 (defun pgs-x-commit-durable (lpages pgs-mem)
   ; After the host reports the record durable: the dirty pages are clean
@@ -2884,3 +2901,28 @@
   ; (both invariants over the empty store, in-order dirty pages, a plan)
   ; and its conclusion's equalities, on the executable.
   (equal (pgs-x-witness-commit) '(t t t t t t t t)))
+
+(defun pgs-x-witness-grow ()
+  ; An empty image grown to 343 logical pages (across a table-page
+  ; boundary): (TV-LENGTH TABLE-FLAGS V-LENGTH LAST-PAGE-FLAG W-LENGTH READ)
+  ; -- both table pages resident, the appended pages verified, and a read of
+  ; the last appended page answers :ok (it answered :out-of-range when the
+  ; grow left pgs-tv short).
+  (declare (xargs :guard t :verify-guards nil))
+  (with-local-stobj pgs-mem
+    (mv-let (r pgs-mem)
+      (with-local-stobj fn-shs
+        (mv-let (r pgs-mem fn-shs)
+          (let* ((pgs-mem (pgs-x-reset-table 0 pgs-mem))
+                 (pgs-mem (pgs-x-grow-image 343 pgs-mem)))
+            (mv-let (v w pgs-mem fn-shs)
+              (pgs-x-read 342 0 pgs-mem fn-shs)
+              (mv (list (pgs-tv-length pgs-mem) (list (pgs-tvi 0 pgs-mem) (pgs-tvi 1 pgs-mem))
+                        (pgs-v-length pgs-mem) (pgs-vi 342 pgs-mem) (pgs-w-length pgs-mem)
+                        (list v w))
+                  pgs-mem fn-shs)))
+          (mv r pgs-mem)))
+      r)))
+
+(defthm pgs-x-witness-grow-ok
+  (equal (pgs-x-witness-grow) (list 2 '(2 2) 343 2 702464 '(:ok 0))))

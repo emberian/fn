@@ -5379,6 +5379,43 @@
         "native": true,
         "record": "planning/evidence/time-model-2026-09-27.md"
       }
+    },
+    {
+      "id": "SCN-186",
+      "title": "The snapshot page store: a commit writes only fresh pages and one record, a crash at every cut opens on the committed or the previous state, other roots and forks are untouched, allocation answers fresh addresses and reclamation never frees the reserved page or a page a valid record keeps",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-035"
+      ],
+      "steps": [
+        "Build store D0 (root :main, one commit: directory at 6, one table page at 1 naming two data pages at 2 and 3, a stale page at 4; page 0 reserved; allocator FREE (5 4), HWM 7). Commit one dirty page (pgs-plan-commit, pgs-commit) and open it eagerly and lazily (pgs-open); grow it across a table-page boundary (341 to 343 logical pages).",
+        "Take the crash image at every host cut (pgs-cut-crash-point over *pgs-snapshot-cuts*, each write landed or not, the record old, torn or new; pgs-crash) and open each image in both modes.",
+        "Fork :main to :b (pgs-fork) and commit on each; commit on :main with an allocator state that violates pgs-alloc-inv.",
+        "Allocate singles and a directory run in each of pgs-alloc's three branches (one-page run, a run in FREE, a run at HWM).",
+        "Run a reclamation cycle started before a second commit and one started after it: on the model (pgs-reclaim over pgs-disk-keeps) and on the executable cycle the host runs (pgs-g-start, which marks the reserved page, pgs-g-load-free0-all, pgs-g-mark-run-all and pgs-g-mark-words-all per record, pgs-g-sweep-all in quanta, pgs-g-install).",
+        "Remove each keystone hypothesis in turn (no open, dirty pages out of order, no allocator invariant, a forged record, r2 = r, a colliding digest, marks missing a kept address, marks missing the reserved page, FREE0 flags missing a free address) with the retained hypotheses checked affirmatively; label the corrupted-state witnesses separately."
+      ],
+      "expected": [
+        "The committed open answers the next txid and the dirty pages applied (pgs-open-after-commit); the plan writes the data page, the table page and the directory to fresh addresses and the record to the older slot.",
+        "Every cut opens on the committed or the previous state, the previous one unless the new record landed; a missing page is refused by name (:page-damaged, :table-damaged, :dir-damaged, :commit-torn) in both modes (pgs-open-after-crash).",
+        "A commit on one root leaves every other root's open unchanged (pgs-crash-isolates-other-roots, pgs-fork-denotes); without the allocator invariant another root's open changes.",
+        "Every allocation answer is distinct and no valid record of any root keeps it (pgs-alloc-fresh).",
+        "The sweep frees exactly the dead record's directory, table page and replaced data page, never the reserved page 0 and never a page the surviving record keeps; the executable cycle's installed free list keeps pgs-alloc-inv (pgs-reclaim-never-frees-live, pgs-g-reclaim-sound).",
+        "Every removed hypothesis has a witness whose conclusion fails."
+      ],
+      "evidence": [
+        "tests/acl2/pagestore-tests.lisp",
+        "books/pagestore-gc.lisp",
+        "books/pagestore-keystones.lisp",
+        "books/pagestore-reclaim.lisp"
+      ],
+      "implementation": {
+        "test": "tests/acl2/pagestore-tests.lisp",
+        "native": false,
+        "record": "planning/evidence/arena-store-2026-09-27.md"
+      },
+      "note": "Lane arena-store (2026-09-27): the ACL2 witnesses of tests/acl2/pagestore-tests.lisp and books/pagestore-gc.lisp are the executable evidence; the host driver host/native/proto-pagestore.lisp ran the process-death (210 cuts) and power-loss (220 cuts) campaigns on hbox with 0 violations (record section 4), outside the native test modules. No native module exercises it: the owner does not call the page store until fn-hist moves onto it (lane arena-store-2)."
     }
   ]
 }

@@ -511,8 +511,8 @@
 ;; `pgs-g-sweep-all' (quanta of +fnps-gc-quantum+, cursor descending) and
 ;; `pgs-g-install' -- the subjects of pgs-g-mark-record-covers,
 ;; pgs-g-sweep-all-is and pgs-g-reclaim-sound.  Page 0 (the inline layout's
-;; slot page, which the model's disk does not hold) is marked too: marks
-;; that are a superset of the keeps are what the keystone assumes.
+;; slot page) is the model's reserved page: `pgs-disk-keeps' keeps it and
+;; `pgs-g-start' marks it, so no host step marks it by hand.
 
 (defmacro fnps-gc () '(fnps-live 'pgs-gc))
 (defun fnps-gs () (svref (fnps-gc) 2))           ; 0 gm, 1 gf, 2 gs
@@ -581,7 +581,6 @@
          (progn
            (pgs-g-start hwm0 (fnps-gc))
            (pgs-g-load-free0-all free0 q (fnps-gc))
-           (pgs-g-mark-run-all 0 1 q (fnps-gc))
            (dolist (r roots)
              (dolist (rec (fnps-valid-records (cdr r)))
                (incf nrec)

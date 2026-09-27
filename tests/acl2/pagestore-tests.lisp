@@ -7,12 +7,13 @@
 ; `pgs-writes-faithful'.  A later defattach replaces an earlier one; every
 ; disk below is built under the attachment it is judged under.
 ;
-; Store D0: root :main, one commit (txid 1).  Its directory at address 0
-; names one table page at 1; the table page names "alpha" at 2 and "beta"
-; at 3; address 4 holds a stale page no record keeps.  The allocator state
-; is FREE (5 4), HWM 6.  The commit of DIRTY = ((1 . "new")) takes the
-; directory run at 5, the data page at 4 (the stale one) and the table page
-; at 6, and writes the record to slot 1.
+; Store D0: root :main, one commit (txid 1).  Address 0 is the reserved
+; page (the owner's root slots; `pgs-disk-keeps' keeps it).  The directory
+; at address 6 names one table page at 1; the table page names "alpha" at 2
+; and "beta" at 3; address 4 holds a stale page no record keeps.  The
+; allocator state is FREE (5 4), HWM 7.  The commit of DIRTY = ((1 . "new"))
+; takes the directory run at 5, the data page at 4 (the stale one) and the
+; table page at 7, and writes the record to slot 1.
 (in-package "ACL2")
 (include-book "../../books/pagestore-reclaim")
 (include-book "std/testing/assert-bang" :dir :system)
@@ -27,12 +28,12 @@
 
 (defun pgs-t-tab () (list (list 2 1 (pgs-digest "alpha")) (list 3 1 (pgs-digest "beta"))))
 (defun pgs-t-dir () (list (list 1 1 (pgs-digest (pgs-t-tab)))))
-(defun pgs-t-rec () (pgs-make-rec 1 0 2 (pgs-digest (pgs-t-dir))))
+(defun pgs-t-rec () (pgs-make-rec 1 6 2 (pgs-digest (pgs-t-dir))))
 (defun pgs-t-pages ()
-  (list (cons 0 (pgs-t-dir)) (cons 1 (pgs-t-tab)) (cons 2 "alpha") (cons 3 "beta")
+  (list (cons 6 (pgs-t-dir)) (cons 1 (pgs-t-tab)) (cons 2 "alpha") (cons 3 "beta")
         (cons 4 "stale")))
 (defun pgs-t-d0 () (cons (pgs-t-pages) (list (cons :main (cons (pgs-t-rec) nil)))))
-(defun pgs-t-alloc () (list (list 5 4) 6))
+(defun pgs-t-alloc () (list (list 5 4) 7))
 (defun pgs-t-dirty () (list (cons 1 "new")))
 (defun pgs-t-plan (mode) (pgs-plan-commit (pgs-t-d0) :main mode (pgs-t-dirty) (pgs-t-alloc)))
 (defun pgs-t-image (mode keep sv)
@@ -40,18 +41,19 @@
     (pgs-crash (pgs-t-d0) :main (second p) keep (third p) sv)))
 
 ; The store opens on txid 1, eagerly and lazily; the allocator invariant
-; holds; the plan writes the data page at 4, the table page at 6, the
-; directory at 5, the record to slot 1.
+; holds; the reserved page and the record's pages are kept; the plan
+; writes the data page at 4, the table page at 7, the directory at 5, the
+; record to slot 1.
 (assert-event (equal (pgs-view (pgs-open (pgs-t-d0) :main :eager)) '(1 ("alpha" "beta"))))
 (assert-event (equal (pgs-view (pgs-open (pgs-t-d0) :main :lazy)) '(1 ("alpha" "beta"))))
 (assert-event (pgs-alloc-inv (pgs-t-alloc) (pgs-t-d0)))
-(assert-event (equal (pgs-disk-keeps (pgs-t-d0)) '(0 1 2 3)))
+(assert-event (equal (pgs-disk-keeps (pgs-t-d0)) '(0 6 1 2 3)))
 (assert-event (let ((p (pgs-t-plan :eager)))
                 (and (equal (car p) :plan)
-                     (equal (strip-cars (second p)) '(4 6 5))
+                     (equal (strip-cars (second p)) '(4 7 5))
                      (equal (third p) 1)
                      (equal (pgs-rec-txid (fourth p)) 2)
-                     (equal (fifth p) '(nil 7)))))
+                     (equal (fifth p) '(nil 8)))))
 
 ; -----------------------------------------------------------------------------
 ; pgs-open-after-commit: reachable witnesses (antecedent and conclusion),
@@ -96,8 +98,8 @@
 (defun pgs-t-bigdisk ()
   (let* ((tab (pgs-t-bigtab 0 341))
          (dir (list (list 1 1 (pgs-digest tab)))))
-    (cons (append (list (cons 0 dir) (cons 1 tab)) (pgs-t-bigpages 0 341))
-          (list (cons :main (cons (pgs-make-rec 1 0 341 (pgs-digest dir)) nil))))))
+    (cons (append (list (cons 2 dir) (cons 1 tab)) (pgs-t-bigpages 0 341))
+          (list (cons :main (cons (pgs-make-rec 1 2 341 (pgs-digest dir)) nil))))))
 (defun pgs-t-bigdirty () (list (cons 5 :five) (cons 341 :a) (cons 342 :b)))
 (defun pgs-t-bigalloc () (list nil 400))
 (defun pgs-t-touched-of (dirty) (pgs-touched (pgs-dirty-lpages dirty) nil))
@@ -131,7 +133,7 @@
 ; (3) Without the allocator invariant: a free list holding "alpha"'s page 2.
 ; The commit's directory overwrites it; the eager open refuses both slots
 ; (both name page 2), the lazy open answers the directory as page 0.
-(defun pgs-t-badalloc () (list (list 2) 6))
+(defun pgs-t-badalloc () (list (list 2) 7))
 (assert-event
  (and (equal (car (pgs-open (pgs-t-d0) :main :eager)) :ok)
       (pgs-lpages-ok (pgs-dirty-lpages (pgs-t-dirty)) 2 0)
@@ -181,13 +183,13 @@
         (pgs-t-k2-concl :lazy '(nil t t) (pgs-t-new-rec :lazy))
         (equal (pgs-view o) '(1 ("alpha" "beta")))
         (equal (fifth o) '((:slot 1 :page-damaged 1 4))))))
-; The table page did not land: refused :table-damaged (table page 0 at 6).
+; The table page did not land: refused :table-damaged (table page 0 at 7).
 (assert-event
  (let ((o (pgs-open (pgs-t-image :eager '(t nil t) (pgs-t-new-rec :eager)) :main :eager)))
    (and (pgs-t-k2-hyps :eager (pgs-t-new-rec :eager))
         (pgs-t-k2-concl :eager '(t nil t) (pgs-t-new-rec :eager))
         (equal (pgs-view o) '(1 ("alpha" "beta")))
-        (equal (fifth o) '((:slot 1 :table-damaged 0 6))))))
+        (equal (fifth o) '((:slot 1 :table-damaged 0 7))))))
 ; The directory did not land: refused :dir-damaged (at 5).
 (assert-event
  (let ((o (pgs-open (pgs-t-image :eager '(t t nil) (pgs-t-new-rec :eager)) :main :eager)))
@@ -225,7 +227,7 @@
 ; Teeth for the record hypothesis: a valid record that is neither the old
 ; nor the new one (a forged txid 99 naming the old directory) is opened, and
 ; the conclusion fails; every other hypothesis holds.
-(defun pgs-t-forged () (pgs-make-rec 99 0 2 (pgs-digest (pgs-t-dir))))
+(defun pgs-t-forged () (pgs-make-rec 99 6 2 (pgs-digest (pgs-t-dir))))
 (assert-event
  (let ((p (pgs-t-plan :eager)))
    (and (pgs-t-k1-hyps (pgs-t-d0) :eager (pgs-t-dirty) (pgs-t-alloc))
@@ -262,7 +264,7 @@
 ; Teeth (no allocator invariant): a free list holding "beta"'s page 3 lets a
 ; commit on :main overwrite a page :b keeps; :b's open changes.
 (assert-event
- (let* ((bad (list (list 3) 6))
+ (let* ((bad (list (list 3) 7))
         (p (pgs-plan-commit (pgs-t-df) :main :eager (pgs-t-dirty) bad))
         (d1 (pgs-crash (pgs-t-df) :main (second p) nil (third p) (fourth p))))
    (and (not (equal :b :main))
@@ -296,7 +298,7 @@
          (no-duplicatesp-equal new) (pgs-avoids new (pgs-disk-keeps disk)))))
 ; one-page run (the singles' first), a run found in FREE, a run at HWM
 (assert-event (and (pgs-alloc-inv (pgs-t-alloc) (pgs-t-d0)) (pgs-t-fresh-ok 3 1 (pgs-t-alloc) (pgs-t-d0))
-                   (equal (pgs-alloc 3 1 (pgs-t-alloc)) '(5 (4 6 7) nil 8))))
+                   (equal (pgs-alloc 3 1 (pgs-t-alloc)) '(5 (4 7 8) nil 9))))
 (assert-event (let ((a (list (list 9 7 8 5) 10)))
                 (and (pgs-alloc-inv a (pgs-t-d0)) (pgs-t-fresh-ok 2 2 a (pgs-t-d0))
                      (equal (first (pgs-alloc 2 2 a)) 7))))
@@ -309,7 +311,7 @@
 ; -----------------------------------------------------------------------------
 ; Reclamation.  D1 = D0 after the commit (record 2 in slot 1), D2 = D1
 ; after a second commit (record 3 overwrites record 1 in slot 0): record 1's
-; directory (0), table page (1) and "beta"'s page (3) are then garbage,
+; directory (6), table page (1) and "beta"'s page (3) are then garbage,
 ; and the reclaimed free list holds exactly them.
 (defun pgs-t-d1 () (pgs-commit (pgs-t-d0) :main :eager (pgs-t-dirty) (pgs-t-alloc)))
 (defun pgs-t-a1 () (fifth (pgs-plan-commit (pgs-t-d0) :main :eager (pgs-t-dirty) (pgs-t-alloc))))
@@ -333,8 +335,8 @@
       (pgs-cycle-inv (pgs-t-d2c) (pgs-t-marks) (pgs-alloc-free (pgs-t-a1)) (pgs-alloc-hwm (pgs-t-a1)) (pgs-t-a2))
       (pgs-alloc-inv (pgs-reclaim (pgs-t-a2) (pgs-t-marks) (pgs-alloc-free (pgs-t-a1)) (pgs-alloc-hwm (pgs-t-a1)))
                      (pgs-t-d2c))))
-; A cycle started at D2 frees the garbage: record 1's directory 0, its
-; table page 1 and "beta" at 3.  "alpha" at 2 is not freed: record 2, still
+; A cycle started at D2 frees the garbage: record 1's directory 6, its
+; table page 1 and "beta" at 3 (never the reserved page 0).  "alpha" at 2 is not freed: record 2, still
 ; valid in slot 1, keeps it.
 (assert-event
  (let ((a (pgs-reclaim (pgs-t-a2) (pgs-disk-keeps (pgs-t-d2c)) (pgs-alloc-free (pgs-t-a2))
@@ -342,23 +344,35 @@
    (and (pgs-alloc-inv (pgs-t-a2) (pgs-t-d2c))
         (pgs-alloc-inv a (pgs-t-d2c))
         (equal (pgs-sweep 0 (pgs-alloc-hwm (pgs-t-a2)) (pgs-disk-keeps (pgs-t-d2c)) (pgs-alloc-free (pgs-t-a2)))
-               '(0 1 3))
+               '(1 3 6))
         (not (member-equal 2 (pgs-alloc-free a))))))
 ; The sweep in two quanta is the sweep (pgs-sweep-split).
 (assert-event
  (let ((k (pgs-disk-keeps (pgs-t-d2c))) (f (pgs-alloc-free (pgs-t-a2))) (h (pgs-alloc-hwm (pgs-t-a2))))
    (equal (append (pgs-sweep 0 3 k f) (pgs-sweep 3 h k f)) (pgs-sweep 0 h k f))))
 ; Teeth for pgs-reclaim-never-frees-live: marks missing a kept address (the
-; new directory, 7) -- the cycle invariant fails, the sweep frees a page a
+; new directory, 8) -- the cycle invariant fails, the sweep frees a page a
 ; live record keeps, and the invariant after the sweep fails.  (Corrupted
 ; marking state.)
 (assert-event
- (let* ((marks (remove-equal 7 (pgs-disk-keeps (pgs-t-d2c))))
+ (let* ((marks (remove-equal 8 (pgs-disk-keeps (pgs-t-d2c))))
         (f0 (pgs-alloc-free (pgs-t-a2))) (h0 (pgs-alloc-hwm (pgs-t-a2))))
    (and (pgs-alloc-inv (pgs-t-a2) (pgs-t-d2c))
-        (member-equal 7 (pgs-disk-keeps (pgs-t-d2c)))
+        (member-equal 8 (pgs-disk-keeps (pgs-t-d2c)))
         (not (pgs-cycle-inv (pgs-t-d2c) marks f0 h0 (pgs-t-a2)))
-        (member-equal 7 (pgs-sweep 0 h0 marks f0))
+        (member-equal 8 (pgs-sweep 0 h0 marks f0))
+        (not (pgs-alloc-inv (pgs-reclaim (pgs-t-a2) marks f0 h0) (pgs-t-d2c))))))
+; The reserved page: marks missing page 0 (a cycle whose start did not mark
+; it; corrupted marking state) sweep it, and the invariant after the sweep
+; fails although no root's record names page 0.
+(assert-event
+ (let* ((marks (remove-equal 0 (pgs-disk-keeps (pgs-t-d2c))))
+        (f0 (pgs-alloc-free (pgs-t-a2))) (h0 (pgs-alloc-hwm (pgs-t-a2))))
+   (and (pgs-alloc-inv (pgs-t-a2) (pgs-t-d2c))
+        (member-equal 0 (pgs-disk-keeps (pgs-t-d2c)))
+        (not (member-equal 0 (pgs-roots-keeps (pgs-roots (pgs-t-d2c)) (pgs-pages (pgs-t-d2c)) nil)))
+        (not (pgs-cycle-inv (pgs-t-d2c) marks f0 h0 (pgs-t-a2)))
+        (member-equal 0 (pgs-sweep 0 h0 marks f0))
         (not (pgs-alloc-inv (pgs-reclaim (pgs-t-a2) marks f0 h0) (pgs-t-d2c))))))
 ; Teeth for the allocator hypothesis: with a free list already holding a
 ; kept address, the reclaimed state still violates the invariant.
