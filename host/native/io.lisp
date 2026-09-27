@@ -5458,11 +5458,15 @@ old extent are never written, the new ones read zeros, and the kernel is
 unchanged (fn-lg-extend-program-keeps-the-relation).  A death at
 log-extended recovers exactly the committed records
 (fn-lg-extension-written-crash-reads-the-committed-records)."
-  (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
+  (let* ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log))
+         ;; The open batch's log length, digest-free (PKT-749: one packed
+         ;; entry padded once; books/store-log.lisp fn-lg-log-len, which
+         ;; fn-olr-log-need-is-the-append-end ties to the append's end).
+         (octets (fnn-nat (fnn-core 'fn-lg-log-len (fnn-core 'fn-lgk-batch ks) unit))))
     (when (fnn-core 'fn-olr-extension-needed-p (fnn-core 'fn-lgk-frontier ks)
-                    (fnn-log-octets log) extent unit)
+                    octets extent unit)
       (let ((next (fnn-nat (fnn-core 'fn-olr-extension-target
-                                     (fnn-core 'fn-lgk-frontier ks) (fnn-log-octets log)
+                                     (fnn-core 'fn-lgk-frontier ks) octets
                                      extent unit))))
         (unless (and (fnn-core 'fn-lg-extent-okp next unit) (> next extent))
           (fnn-fault "ACL2 returned an invalid log extent"))

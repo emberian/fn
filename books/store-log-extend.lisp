@@ -38,7 +38,9 @@
 (include-book "store-log-kernel")
 
 ; The host's rule: extend when the open batch, and one spare unit after it,
-; do not fit the extent (OCTETS: the open batch's entry octets).  The spare
+; do not fit the extent (OCTETS: the open batch's log length, which the host
+; takes from books/store-log.lisp fn-lg-log-len: fn-olr-log-need-is-the-
+; append-end).  The spare
 ; unit keeps zeros past the frontier after every append, so an extension
 ; never starts at a full segment (the crash keystone's hypothesis).
 (defun fn-olr-extension-needed-p (frontier octets extent unit)
