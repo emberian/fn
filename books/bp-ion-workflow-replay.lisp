@@ -105,7 +105,10 @@
                              (result (fn-bp-journal-nth 4 r))))
             :in-theory (e/d (fn-bp-apply-journal-record fn-bpiw-replay-fence
                              fn-bpiw-recovery-outcomep)
+                            ; the restart's work marking is closed by the
+                            ; lemmas above (8.0 s, 3.2M steps -> 1.3 s, 0.6M)
                             (fn-bp-statep fn-bp-journal-recordp
+                             fn-bp-restart-works fn-bp-restart-work
                              fn-bp-restart-preserves-state
                              fn-bp-step-preserves-state
                              fn-bp-recover-preserves-state))))))
