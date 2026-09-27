@@ -47,7 +47,10 @@ sys.path.insert(0, str(ROOT / "tools"))
 import fn_web  # noqa: E402
 from tests import native_log_observation
 
-IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
+# A developer image: the lost reply is FN_NATIVE_POST_FAULT, a developer
+# selector a production image refuses to start with (tools/native_env.py:
+# FN_NATIVE_HOST always names the production image).
+IMAGE_TEXT = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
 IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
 READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
 FAULT = "finish-durable:kill"
@@ -68,7 +71,7 @@ def cancel_article(message_id, target):
                 m=message_id, t=target).encode("ascii")
 
 
-@unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native developer launcher")
+@unittest.skipUnless(READY, "set FN_NATIVE_DEVELOPER_HOST to a native developer launcher")
 class NativeVisibilityJoinTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-vj-")

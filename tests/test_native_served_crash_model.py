@@ -73,7 +73,11 @@ if IMAGE_AVAILABLE:
                         killed = node.stop_owner(owner)
                         self.assertEqual(killed["rc"], -9, (cut.name, result, killed))
                         at_cut = self.history(node.store)
-                        self.assert_cut_history(cut.name, cut.candidate, before, at_cut)
+                        # `operator post' (the control socket) is a batch of
+                        # one in its own quantum: POST_LOG_ONE_CANDIDATE.
+                        self.assert_cut_history(cut.name,
+                                                native_cuts.POST_LOG_ONE_CANDIDATE[cut.name],
+                                                before, at_cut)
                         present = self.recovered_as(node, cut.name, at_cut, prior_bytes)
                         self.assertEqual(present, len(at_cut) == len(before) + 1, cut.name)
                     finally:

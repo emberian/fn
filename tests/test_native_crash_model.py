@@ -108,7 +108,10 @@ class NativeCampaignMixin:
             killed = self.native_post(store, "<candidate@example.invalid>", candidate, env)
             self.assertEqual(killed.returncode, -9, killed.stderr)
             at_cut = self.history(store)
-            self.assert_cut_history(cut.name, cut.candidate, before, at_cut)
+            # `store post' commits a batch of one: the append and its barrier
+            # precede the member's finish (POST_LOG_ONE_CANDIDATE).
+            self.assert_cut_history(cut.name, native_cuts.POST_LOG_ONE_CANDIDATE[cut.name],
+                                    before, at_cut)
             recovered = self.invoke(store, "recover")
             self.assertIn(b"articles=", recovered.stdout)
             self.assertEqual(self.history(store), at_cut, cut.name)

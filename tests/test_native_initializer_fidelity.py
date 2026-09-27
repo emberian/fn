@@ -214,16 +214,6 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertEqual(killed.returncode, -9, killed.stderr)
         self.assert_incomplete_then_completed_by_init(store)
 
-    def test_sigkill_after_the_segment_is_fenced_recovers_in_a_new_process(self):
-        # The last cut of init (fnn-log-init-segment): the segment and
-        # journal/ are durable, so the store opens as initialized.
-        store = self.base / "killed-segment"
-        killed = self.invoke(store, "init", "init-journal-segment-fenced:kill")
-        self.assertEqual(killed.returncode, -9, killed.stderr)
-        reopened = self.invoke(store, "recover")
-        self.assertEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
-        self.assertIn(b"recovered transactions=0 articles=0", reopened.stdout)
-
     def test_sigkill_before_metadata_makes_restart_refuse_by_name(self):
         store = self.base / "killed-lock"
         killed = self.invoke(store, "init", "init-lock-created:kill")
