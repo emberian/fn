@@ -626,16 +626,6 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :mode :program))
   (fn-scka-select-named status sequence count (fn-bs-profile-max-open-suffix profile)))
 
-; How many of the ACL2-bound transaction sequences (ascending, from
-; fn-store-txn-observation-selected) lie below S: the host drops exactly
-; those and reads the rest.  A wrong split cannot open: fn-sco-open runs
-; the history recognizer over the checkpoint's records and the suffix.
-(defun fn-store-sco-covered-count (sequences s)
-  (declare (xargs :mode :program))
-  (if (and (consp sequences) (natp (car sequences)) (natp s) (< (car sequences) s))
-      (+ 1 (fn-store-sco-covered-count (cdr sequences) s))
-    0))
-
 ; The open from the loaded checkpoint and the suffix's ROWS.  It mirrors the
 ; full recover (fn-store-sn-recover-records, the intern,
 ; fn-store-sn-recover-rows): the host decodes the suffix with

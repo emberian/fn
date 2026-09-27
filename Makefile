@@ -305,8 +305,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-observation-scan-tests \
 	tests/acl2/byte-store-scan-tests \
 	tests/acl2/byte-store-sweep-tests \
-	books/byte-store-compaction-correspondence \
-	tests/acl2/byte-store-compaction-correspondence-tests \
 	books/byte-store-programs \
 	tests/acl2/byte-store-tests \
 	books/byte-store-frame \
@@ -335,23 +333,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-codec-tests \
 	books/checkpoint-publish \
 	tests/acl2/checkpoint-publish-tests \
-	books/checkpoint-pack-retire \
-	tests/acl2/checkpoint-pack-retire-tests \
 	books/checkpoint-compaction \
 	tests/acl2/checkpoint-compaction-tests \
-	books/checkpoint-compaction-preservation \
-	tests/acl2/checkpoint-compaction-preservation-tests \
-	books/checkpoint-pack-chain \
-	tests/acl2/checkpoint-pack-chain-tests \
 	books/store-event-fields \
-	books/checkpoint-pack-chain-once \
-	tests/acl2/checkpoint-pack-chain-once-tests \
 	books/catalog-load-index \
 	tests/acl2/catalog-load-index-tests \
-	books/store-compact-verb \
-	tests/acl2/store-compact-verb-tests \
-	books/store-compact-window \
-	tests/acl2/store-compact-window-tests \
 	books/reclaim-tombstone \
 	books/reclaim-rule \
 	books/store-reclaim \

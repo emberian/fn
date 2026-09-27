@@ -164,8 +164,8 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
   (fnn-core 'fn-heap-init-decision-request (fnn-heap-init-decision request)))
 
 ;; The store's history octets on disk (PKT-686 item 1): the sizes of the
-;; regular files directly under transactions/, packs/ and checkpoints/ and
-;; the state checkpoint's, summed before the image starts.  An upper bound
+;; regular files directly under journal/ (the record log's segments) and
+;; checkpoints/ and the state checkpoint's, summed before the image starts.  An upper bound
 ;; of the stored octets the offline verbs hold copies of (heap-figure's
 ;; fn-heap-operation-history-octets states the use).  NIL -- the profile's H
 ;; then -- when a directory holds more entries than ACL2's listing bound, an

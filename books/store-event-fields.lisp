@@ -5,9 +5,10 @@
 ; txid and generation" through four dispatchers per vocabulary, each of which
 ; re-runs the event recognizers from the first (a record recognizer walks the
 ; payload).  The history recognizer (books/replay-identity-index.lisp, over
-; the RETAINED rows of fn-sf-records) and the pack-chain link check
-; (books/checkpoint-pack-chain-once.lisp, over the decoded WIRE events of a
-; link) each read all four at once.  They read them here, from ONE function:
+; the RETAINED rows of fn-sf-records) reads all four at once, as did the
+; pack chain's link check over decoded WIRE events (deleted with the pack
+; layer, 2026-09-27; the WIRE arm has no other reader now).  They read them
+; here, from ONE function:
 ; the two vocabularies differ only at an article (a held row, or a wire
 ; record) and at an accepted statement (the composite beside its interned
 ; article, or the wire composite), which WIREP selects; every other kind is
