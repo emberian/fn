@@ -38,7 +38,7 @@
                 (consp args) (null (cdr args))
                 (fn-nntp-number-withdrawn-p session archive index (car args)))
            (equal (fn-nntp-archive-command-pinned
-                   session archive index verdicts env keyword args)
+                   session archive index verdicts env keyword args fn-arena)
                   (fn-nntp-single session "423 withdrawn")))
   :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command-pinned fn-nntp-keywordp
                                    fn-nntp-withdrawn-reply)
@@ -87,7 +87,7 @@
                   (not (consp (fn-nntp-find-group-number
                                group number (fn-state-articles archive)))))
              (equal (fn-nntp-archive-command-pinned
-                     session archive index verdicts env keyword args)
+                     session archive index verdicts env keyword args fn-arena)
                     (fn-nntp-single session "423 withdrawn"))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-number-withdrawn-p)
                                   (fn-ctl-withdrawn-articles fn-ctl-visible-articles
@@ -106,7 +106,7 @@
                 (fn-nntp-message-id-tokenp (car args))
                 (fn-nntp-msgid-withdrawn-p index (car args)))
            (equal (fn-nntp-archive-command-pinned
-                   session archive index verdicts env keyword args)
+                   session archive index verdicts env keyword args fn-arena)
                   (fn-nntp-single session "430 withdrawn")))
   :hints (("Goal" :in-theory (e/d (fn-nntp-archive-command-pinned fn-nntp-keywordp
                                    fn-nntp-number-withdrawn-p fn-nntp-withdrawn-reply)
@@ -167,7 +167,7 @@
                   (equal (fn-article-msgid x) msgid)
                   (not (consp (fn-find-article msgid (fn-state-articles archive)))))
              (equal (fn-nntp-archive-command-pinned
-                     session archive index verdicts env keyword args)
+                     session archive index verdicts env keyword args fn-arena)
                     (fn-nntp-single session "430 withdrawn"))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-msgid-withdrawn-p)
                                   (fn-ctl-withdrawn-articles fn-ctl-visible-articles
@@ -202,7 +202,7 @@
                   (fn-nntp-message-id-tokenp (cadr args))
                   (fn-octet-listp (cadr args)))
              (equal (fn-nntp-archive-command-pinned
-                     session archive index verdicts env keyword args)
+                     session archive index verdicts env keyword args fn-arena)
                     (if (consp c)
                         (let ((item (fn-nntp-string-octets
                                      (fn-ctl-control-item

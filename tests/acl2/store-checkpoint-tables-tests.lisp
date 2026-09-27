@@ -60,7 +60,7 @@
         (fn-cfg-record-make 1 7 2 (list (fn-cfg-set-capacity 1))
                             *fn-cfg-default-stamp*)))
 (defconst *sctt-capture* (fn-sco-capture *sctt-configs* *sctt-events*))
-(defconst *sctt-tables* (fn-sct-tables-of-capture *sctt-capture* 9 "rev-test"))
+(defconst *sctt-tables* (fn-sct-tables-of-capture *sctt-capture* 9 "rev-test" nil))
 (defconst *sctt-index* (fn-sco-event-index *sctt-capture*))
 (defconst *sctt-progs* (fn-sct-table-programs *sctt-tables* *sctt-index*))
 (defconst *sctt-seg* 64)
@@ -114,7 +114,7 @@
   (declare (xargs :guard (and (natp b) (natp budget)) :verify-guards nil))
   (with-local-stobj fn-octets
     (mv-let (result fn-octets)
-      (let* ((setup (fn-ockp-setup *sctt-capture* 9 "rev-test" *sctt-seg* budget free))
+      (let* ((setup (fn-ockp-setup *sctt-capture* 9 "rev-test" nil *sctt-seg* budget free))
              (verdict (car setup)))
         (if (not (and (consp verdict) (eq (car verdict) :plan)))
             (mv (list verdict nil 0 nil) fn-octets)
@@ -265,7 +265,7 @@
             fn-octets))
       result)))
 
-(defconst *sctt-setup* (fn-ockp-setup *sctt-capture* 9 "rev-test" *sctt-seg* 100000000 *sctt-free*))
+(defconst *sctt-setup* (fn-ockp-setup *sctt-capture* 9 "rev-test" nil *sctt-seg* 100000000 *sctt-free*))
 
 (defun sctt-initial (tables)
   ; (STATE STATEP) of the pipeline's start over a fresh buffer
@@ -287,7 +287,7 @@
         (mv (list v octets) fn-octets))
       r)))
 (defconst *sctt-bad-capture* (fn-sco-capture *sctt-configs* (list (expt 2 2040))))
-(defconst *sctt-bad-tables* (fn-sct-tables-of-capture *sctt-bad-capture* 9 "r"))
+(defconst *sctt-bad-tables* (fn-sct-tables-of-capture *sctt-bad-capture* 9 "r" nil))
 ; A hand-made setup over the unencodable tables (fn-ockp-setup refuses them,
 ; so the step is never reached this way in the composition: the witness
 ; for the hypothesis that says so).
@@ -384,16 +384,61 @@
 ; whose S is 2^64 wraps the header field, so the read sequence differs.
 (assert-event
  (let* ((big (expt 2 64))
-        (segs (fn-sct-run-segments (fn-sct-rows-program (list (fn-sct-f-row big 9 "r")) 0 nil nil big nil)
+        (segs (fn-sct-run-segments (fn-sct-rows-program (list (fn-sct-f-row big 9 "r" nil)) 0 nil nil big nil)
                                    64 big)))
    (not (equal (nth 3 (fn-scc-parse-header (car segs))) big))))
 (must-fail
  (defthm sctt-r-decode-file-without-width
    (let* ((c (fn-sco-capture configs records))
-          (tables (fn-sct-tables-of-capture c frontier revision))
+          (tables (fn-sct-tables-of-capture c frontier revision log))
           (progs (fn-sct-table-programs tables (fn-sco-event-index c))))
      (implies (and (fn-sct-tables-treep tables)
+                   (fn-sct-log-positionp log)
                    (<= (len records) (1+ *fn-cbor-max-uint*)))
+              (equal (fn-sct-decode-file (fn-sct-file-segments progs seg (len records)))
+                     (list :ok tables))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (disable fn-sct-decode-file fn-sct-file-segments fn-sct-table-programs
+                                fn-sct-tables-of-capture fn-sco-capture
+                                fn-sct-decode-file-of-file-is-the-capture
+                                fn-sct-decode-file-of-file-segments)))))
+
+; The F row's log position (lane log-recovery): a reachable witness of
+; fn-sct-decode-file-of-file-is-the-capture with a position (segment 3, a
+; 32-octet genesis): every hypothesis holds and the file reads back the tables,
+; the position included.
+(defconst *sctt-log* (list 3 (make-list 32 :initial-element 7)))
+(defconst *sctt-log-tables* (fn-sct-tables-of-capture *sctt-capture* 9 "rev-test" *sctt-log*))
+(defconst *sctt-log-progs* (fn-sct-table-programs *sctt-log-tables* *sctt-index*))
+(assert-event
+ (and (fn-sct-tables-treep *sctt-log-tables*)
+      (fn-sct-log-positionp *sctt-log*)
+      (<= (len *sctt-events*) (1+ *fn-cbor-max-uint*))
+      (fn-sct-programs-widthp *sctt-log-progs*)
+      (equal (fn-sct-decode-file (fn-sct-file-segments *sctt-log-progs* *sctt-seg* *sctt-s*))
+             (list :ok *sctt-log-tables*))
+      (equal (fn-sct-tables-log *sctt-log-tables*) *sctt-log*)
+      (equal (fn-sct-capture-of-tables *sctt-log-tables*) *sctt-capture*)))
+; Its log-position hypothesis: a position of segment 0 is written and the
+; read refuses the F row by name; the other hypotheses hold.
+(defconst *sctt-bad-log* (list 0 (make-list 32 :initial-element 7)))
+(defconst *sctt-bad-log-tables* (fn-sct-tables-of-capture *sctt-capture* 9 "rev-test" *sctt-bad-log*))
+(defconst *sctt-bad-log-progs* (fn-sct-table-programs *sctt-bad-log-tables* *sctt-index*))
+(assert-event
+ (and (fn-sct-tables-treep *sctt-bad-log-tables*)
+      (not (fn-sct-log-positionp *sctt-bad-log*))
+      (fn-sct-programs-widthp *sctt-bad-log-progs*)
+      (equal (fn-sct-decode-file (fn-sct-file-segments *sctt-bad-log-progs* *sctt-seg* *sctt-s*))
+             (list :refused :f-row))))
+(must-fail
+ (defthm sctt-r-decode-file-without-log-position
+   (let* ((c (fn-sco-capture configs records))
+          (tables (fn-sct-tables-of-capture c frontier revision log))
+          (progs (fn-sct-table-programs tables (fn-sco-event-index c))))
+     (implies (and (fn-sct-tables-treep tables)
+                   (<= (len records) (1+ *fn-cbor-max-uint*))
+                   (fn-sct-programs-widthp progs))
               (equal (fn-sct-decode-file (fn-sct-file-segments progs seg (len records)))
                      (list :ok tables))))
    :rule-classes nil
@@ -452,9 +497,9 @@
 ; a natural of 2^2040 is) has a file of :unencodable frames, length 0.
 (assert-event
  (let* ((c (fn-sco-capture *sctt-configs* (list (expt 2 2040))))
-        (tables (fn-sct-tables-of-capture c 9 "r")))
+        (tables (fn-sct-tables-of-capture c 9 "r" nil)))
    (and (not (fn-ockp-tables-encodablep tables))
-        (equal (car (fn-ockp-setup c 9 "r" 64 1000000 nil)) :unencodable))))
+        (equal (car (fn-ockp-setup c 9 "r" nil 64 1000000 nil)) :unencodable))))
 (must-fail
  (defthm sctt-r-estimate-without-encodable
    (equal (len (fn-sct-file-octets (fn-sct-table-programs tables index) seg s))

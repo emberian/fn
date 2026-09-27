@@ -421,8 +421,8 @@
                                      fn-nntp-env-full
                                      fn-nntp-env-closed))))
 
-(defun fn-nntp-post-step (ps archive config observation injection wire-event)
-  (declare (xargs :guard t))
+(defun fn-nntp-post-step (ps archive config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (not (fn-post-sessionp ps))
       (fn-post-make-result ps nil nil)
     (if (fn-post-session-awaiting ps)
@@ -471,7 +471,7 @@
       ; POST gate's list, and the reader listing (PRF-195) with it.
       (let ((r (fn-nntp-step (fn-post-session-base ps) archive
                              (fn-post-reader-env config observation)
-                             wire-event)))
+                             wire-event fn-arena)))
         (if (fn-post-offeredp (fn-nntp-result-effects r))
             (if (fn-inj-config-allow config)
                 (fn-post-make-result
@@ -645,7 +645,7 @@
   (implies (fn-post-session-consistentp ps archive)
            (fn-post-session-consistentp
             (fn-post-result-session
-             (fn-nntp-post-step ps archive config observation injection wire-event))
+             (fn-nntp-post-step ps archive config observation injection wire-event fn-arena))
             archive))
   :hints (("Goal"
            :use ((:instance fn-nntp-step-preserves-consistent-session
@@ -656,7 +656,7 @@
                                       (fn-nntp-step (fn-post-session-base ps)
                                                     archive
                                                     (fn-post-reader-env config observation)
-                                                    wire-event))))
+                                                    wire-event fn-arena))))
                  (:instance fn-nntp-consistent-session-is-session
                             (session (fn-post-session-base ps))))
            :in-theory (disable fn-nntp-step-preserves-consistent-session
@@ -671,7 +671,7 @@
   (implies (fn-post-session-consistentp ps archive)
            (fn-nntp-effectsp
             (fn-post-result-effects
-             (fn-nntp-post-step ps archive config observation injection wire-event))))
+             (fn-nntp-post-step ps archive config observation injection wire-event fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-nntp-step-effects-well-formed
                             (session (fn-post-session-base ps))
@@ -706,10 +706,10 @@
 ; certify-20260923T000250Z-1473169).
 (defthm fn-post-submission-is-an-injected-article
   (implies (fn-post-result-submission
-            (fn-nntp-post-step ps archive config observation injection wire-event))
+            (fn-nntp-post-step ps archive config observation injection wire-event fn-arena))
            (fn-inj-injectedp
             (fn-post-result-submission
-             (fn-nntp-post-step ps archive config observation injection wire-event))))
+             (fn-nntp-post-step ps archive config observation injection wire-event fn-arena))))
   :hints (("Goal" :in-theory (disable fn-inj-decide fn-inj-injectedp
                                       fn-nntp-step fn-post-offeredp
                                       fn-post-refusal-line
@@ -721,7 +721,7 @@
                                 injection)))
            (equal (fn-post-result-submission
                    (fn-nntp-post-step ps archive config observation injection
-                                      (list :article body)))
+                                      (list :article body) fn-arena))
                   nil))
   :hints (("Goal" :in-theory (disable fn-inj-decide fn-inj-injectedp
                                       fn-nntp-step fn-post-offeredp
@@ -756,11 +756,11 @@
                 (not (fn-clock-observationp injection)))
            (and (equal (fn-post-result-submission
                         (fn-nntp-post-step ps archive config observation
-                                           injection (list :article body)))
+                                           injection (list :article body) fn-arena))
                        nil)
                 (equal (fn-post-result-effects
                         (fn-nntp-post-step ps archive config observation
-                                           injection (list :article body)))
+                                           injection (list :article body) fn-arena))
                        (fn-post-single
                         ps
                         "441 posting failed; this server has no usable clock reading"))))
@@ -774,7 +774,7 @@
            (not (fn-post-session-awaiting
                  (fn-post-result-session
                   (fn-nntp-post-step ps archive config observation injection
-                                     wire-event)))))
+                                     wire-event fn-arena)))))
   :hints (("Goal" :in-theory (disable fn-nntp-step fn-post-offeredp
                                       fn-inj-decide fn-inj-injectedp
                                       fn-post-refusal-line fn-post-sessionp))))
@@ -882,10 +882,10 @@
 (defthm fn-post-submission-is-the-gated-decision-by-definition
   (implies (fn-post-result-submission
             (fn-nntp-post-step ps archive config observation injection
-                               (list :article body)))
+                               (list :article body) fn-arena))
            (equal (fn-post-result-submission
                    (fn-nntp-post-step ps archive config observation injection
-                                      (list :article body)))
+                                      (list :article body) fn-arena))
                   (fn-post-gated-decision (fn-post-body-octets body) config
                                           injection)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-post-step)
@@ -924,18 +924,18 @@
 (defthm fn-post-submission-is-the-decision-or-its-envelope
   (implies (fn-post-result-submission
             (fn-nntp-post-step ps archive config observation injection
-                               (list :article body)))
+                               (list :article body) fn-arena))
            (and (fn-inj-injectedp
                  (fn-inj-decide (fn-post-body-octets body) config injection))
                 (or (equal (fn-post-result-submission
                             (fn-nntp-post-step ps archive config observation
-                                               injection (list :article body)))
+                                               injection (list :article body) fn-arena))
                            (fn-inj-decide (fn-post-body-octets body) config
                                           injection))
                     (equal (fn-inj-decision-msgid
                             (fn-post-result-submission
                              (fn-nntp-post-step ps archive config observation
-                                                injection (list :article body))))
+                                                injection (list :article body) fn-arena)))
                            (fn-mod-envelope-msgid
                             (fn-inj-decision-msgid
                              (fn-inj-decide (fn-post-body-octets body) config
@@ -965,10 +965,10 @@
   (implies (and (fn-clock-observationp ca) (fn-clock-observationp cb)
                 (fn-post-result-submission
                  (fn-nntp-post-step ps archive config observation ca
-                                    (list :article b1)))
+                                    (list :article b1) fn-arena))
                 (fn-post-result-submission
                  (fn-nntp-post-step ps archive config observation cb
-                                    (list :article b2)))
+                                    (list :article b2) fn-arena))
                 (not (fn-inj-nth 1 (fn-af-proto-article-check
                                     (fn-article-result-article
                                      (fn-article-parse
@@ -983,11 +983,11 @@
            (not (equal (fn-inj-decision-msgid
                         (fn-post-result-submission
                          (fn-nntp-post-step ps archive config observation ca
-                                            (list :article b1))))
+                                            (list :article b1) fn-arena)))
                        (fn-inj-decision-msgid
                         (fn-post-result-submission
                          (fn-nntp-post-step ps archive config observation cb
-                                            (list :article b2)))))))
+                                            (list :article b2) fn-arena))))))
   :hints (("Goal"
            :use ((:instance fn-post-submission-is-the-decision-or-its-envelope
                             (injection ca) (body b1))
@@ -1049,14 +1049,14 @@
 ; command arm.  While awaiting an article the original machine performs the
 ; injection decision, and no Message-ID lookup can occur in that state.
 (defun fn-nntp-post-step-pinned
-    (ps archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard t :verify-guards nil))
+    (ps archive index verdicts config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (or (not (fn-post-sessionp ps)) (fn-post-session-awaiting ps))
-      (fn-nntp-post-step ps archive config observation injection wire-event)
+      (fn-nntp-post-step ps archive config observation injection wire-event fn-arena)
     (let ((r (fn-nntp-step-pinned
               (fn-post-session-base ps) archive index verdicts
               (fn-post-reader-env config observation)
-              wire-event)))
+              wire-event fn-arena)))
       (if (fn-post-offeredp (fn-nntp-result-effects r))
           (if (fn-inj-config-allow config)
               (fn-post-make-result
@@ -1077,7 +1077,7 @@
            (fn-post-session-consistentp
             (fn-post-result-session
              (fn-nntp-post-step-pinned
-              ps archive index verdicts config observation injection wire-event))
+              ps archive index verdicts config observation injection wire-event fn-arena))
             archive))
   :hints (("Goal"
            :in-theory
@@ -1092,4 +1092,4 @@
                               (fn-nntp-step-pinned
                                (fn-post-session-base ps) archive index verdicts
                                (fn-post-reader-env config observation)
-                               wire-event))))))))
+                               wire-event fn-arena))))))))

@@ -14,6 +14,74 @@
 ; persvati); left open for the books above, nntp-invariants went from
 ; 4.5 s to 16.0 s.  A proof that needs it enables it in a hint.
 (in-theory (disable fn-rcl-tombstonep))
+;; Whether an article is reclaimed, read through the arena (lane served-readers,
+;; 2026-09-27, F2): at most the tombstone's fixed head of the sealed payload
+;; is read in place, and no octet list is built.  Logically it IS
+;; fn-rcl-tombstonep of the article's bytes (the definition expands in every
+;; proof); fn-nntp-article-tombstonep-exec-is-logic is the guard obligation.
+(defun fn-nntp-arena-prefixp (prefix h i fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (true-listp prefix) (natp h) (natp i)
+                              (< h (fn-arena-count fn-arena)))
+                  :measure (len prefix)))
+  (if (consp prefix)
+      (and (< i (fn-arena-payload-len h fn-arena))
+           (equal (car prefix) (fn-arena-get h i fn-arena))
+           (fn-nntp-arena-prefixp (cdr prefix) h (+ 1 i) fn-arena))
+    t))
+
+(encapsulate ()
+  (local (defthm fn-nntp-car-nthcdr (equal (car (nthcdr i xs)) (nth i xs))))
+  (local (defthm fn-nntp-cdr-nthcdr
+           (implies (natp i) (equal (cdr (nthcdr i xs)) (nthcdr (+ 1 i) xs)))))
+  (local (defthm fn-nntp-nthcdr-of-nil (equal (nthcdr i nil) nil)))
+  (local (defthm fn-nntp-consp-nthcdr
+           (implies (natp i) (iff (consp (nthcdr i xs)) (< i (len xs))))))
+  (local (in-theory (disable nthcdr nth)))
+  (defthm fn-nntp-arena-prefixp-is-rcl-prefixp
+    (implies (natp i)
+             (equal (fn-nntp-arena-prefixp prefix h i fn-arena)
+                    (fn-rcl-prefixp prefix (nthcdr i (nth h fn-arena)))))
+    :hints (("Goal" :induct (fn-nntp-arena-prefixp prefix h i fn-arena)
+             :in-theory (enable fn-rcl-prefixp fn-arena-get-is-nth
+                                fn-arena-payload-len-is-len-nth)))))
+
+(defthm fn-nntp-arena-prefixp-at-0
+  (equal (fn-nntp-arena-prefixp prefix h 0 fn-arena)
+         (fn-rcl-prefixp prefix (nth h fn-arena)))
+  :hints (("Goal" :use ((:instance fn-nntp-arena-prefixp-is-rcl-prefixp (i 0)))
+           :in-theory (enable nthcdr))))
+
+(local
+ (defthm fn-nntp-rcl-at-leastp-is-len
+   (implies (natp n)
+            (equal (fn-rcl-at-leastp n xs) (<= n (len xs))))
+   :hints (("Goal" :in-theory (enable fn-rcl-at-leastp)))))
+
+(local
+ (defthm fn-nntp-tombstonep-unfolds
+   (equal (fn-rcl-tombstonep payload)
+          (and (<= *fn-rcl-tombstone-fixed* (len payload))
+               (fn-rcl-prefixp *fn-rcl-magic* payload)))
+   :hints (("Goal" :in-theory '(fn-rcl-tombstonep fn-nntp-rcl-at-leastp-is-len
+                                 (:e natp))))))
+
+(defun fn-nntp-article-tombstonep (article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t
+                  :guard-hints (("Goal" :in-theory '(fn-nntp-tombstonep-unfolds
+                                                     fn-nntp-payload-bytes
+                                                     fn-nntp-article-bytes
+                                                     fn-arena-payload-is-nth
+                                                     fn-arena-count-is-len
+                                                     fn-arena-payload-len-is-len-nth
+                                                     fn-nntp-arena-prefixp-at-0)))))
+  (mbe :logic (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena))
+       :exec (let ((p (fn-article-payload article)))
+               (if (and (natp p) (< p (fn-arena-count fn-arena)))
+                   (and (<= *fn-rcl-tombstone-fixed* (fn-arena-payload-len p fn-arena))
+                        (fn-nntp-arena-prefixp *fn-rcl-magic* p 0 fn-arena))
+                 (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena))))))
+
 
 ; The books below this one withdraw their definitions at their export events
 ; (2026-09-19 split of books/nntp.lisp).  This book is the continuation of
@@ -46,14 +114,15 @@
 ; article that fails fn-nntp-article-idp, and a Message-ID retrieval matched the
 ; stored identifier against a token that is itself at most 250 printable
 ; octets, so no composed path reaches it; it is not the subject of any theorem.
-(defun fn-nntp-article-response (session article number kind updatep group)
+(defun fn-nntp-article-response (session article number kind updatep group fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (not (fn-nntp-article-idp article))
       (fn-nntp-single session "503 stored article identifier unavailable")
     ; D13 (STO-014): a reclaimed article's history stays -- its Message-ID
     ; is still held and its number never reused -- but its bytes are gone.
     ; By number or as the current article it is 423, by Message-ID 430,
     ; and the text says why.  The cursor does not move.
-    (if (fn-rcl-tombstonep (fn-article-payload article))
+    (if (fn-nntp-article-tombstonep article fn-arena)
         (fn-nntp-single session (if updatep
                                     "423 article reclaimed"
                                   "430 article reclaimed"))
@@ -65,8 +134,8 @@
            next-session
            (list (fn-nntp-reply-effect
                   (fn-nntp-crlf (fn-nntp-retrieval-initial kind number article)))))
-        (let ((section (fn-nntp-article-section article kind)))
-          (if (and (fn-nntp-article-framedp article)
+        (let ((section (fn-nntp-article-section article kind fn-arena)))
+          (if (and (fn-nntp-article-framedp article fn-arena)
                    (equal (car section) :ok))
               (fn-nntp-make-result
                next-session
@@ -82,15 +151,16 @@
 ; and the session is unchanged.
 (defthm fn-nntp-reclaimed-article-answers-reclaimed
   (implies (and (fn-nntp-article-idp article)
-                (fn-rcl-tombstonep (fn-article-payload article)))
+                (fn-nntp-article-tombstonep article fn-arena))
            (equal (fn-nntp-article-response session article number kind
-                                            updatep group)
+                                            updatep group fn-arena)
                   (fn-nntp-single session (if updatep
                                               "423 article reclaimed"
                                             "430 article reclaimed"))))
   :hints (("Goal" :in-theory (disable fn-rcl-tombstonep fn-nntp-article-idp))))
 
-(defun fn-nntp-current-retrieval (session archive kind)
+(defun fn-nntp-current-retrieval (session archive kind fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((group (fn-nntp-session-group session))
         (current (fn-nntp-session-current session)))
     (if (null group)
@@ -100,10 +170,11 @@
         (let ((article (fn-nntp-available-article group current
                                                   (fn-state-articles archive))))
           (if (consp article)
-              (fn-nntp-article-response session article current kind t group)
+              (fn-nntp-article-response session article current kind t group fn-arena)
             (fn-nntp-single session "420 no current article")))))))
 
-(defun fn-nntp-number-retrieval (session archive kind token)
+(defun fn-nntp-number-retrieval (session archive kind token fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (not (fn-nntp-number-tokenp token))
       (fn-nntp-single session "501 syntax error")
     (let ((group (fn-nntp-session-group session))
@@ -113,7 +184,7 @@
         (let ((article (fn-nntp-find-group-number group number
                                                   (fn-state-articles archive))))
           (if (consp article)
-              (fn-nntp-article-response session article number kind t group)
+              (fn-nntp-article-response session article number kind t group fn-arena)
             (fn-nntp-single session "423 no article with that number")))))))
 
 ;
@@ -133,7 +204,8 @@
         (fn-nntp-article-number group article)
       0)))
 
-(defun fn-nntp-msgid-retrieval (session archive kind token)
+(defun fn-nntp-msgid-retrieval (session archive kind token fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (not (fn-nntp-message-id-tokenp token))
       (fn-nntp-single session "501 syntax error")
     (let ((article (fn-find-article (fn-nntp-token-string token)
@@ -143,35 +215,40 @@
           ; current article number (section 6.2.1.2).
           (fn-nntp-article-response
            session article (fn-nntp-msgid-local-number session article)
-           kind nil nil)
+           kind nil nil fn-arena)
         (fn-nntp-single session "430 no article with that message-id")))))
 
 (defthm fn-nntp-msgid-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-msgid-retrieval session archive kind token))
-         session))
+          (fn-nntp-msgid-retrieval session archive kind token fn-arena))
+         session)
+  ; The reply's octets never touch the session: 28 M prover steps with the
+  ; reply constructors open, 41 K without (lane served-readers).
+  :hints (("Goal" :in-theory (disable fn-nntp-article-tombstonep fn-nntp-article-section fn-nntp-article-framedp fn-nntp-stuff-lines fn-nntp-crlf fn-nntp-retrieval-initial fn-nntp-reply-effect))))
 
-(defun fn-nntp-retrieval (session archive kind args)
+(defun fn-nntp-retrieval (session archive kind args fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (mbe :logic
        (if (null args)
-           (fn-nntp-current-retrieval session archive kind)
+           (fn-nntp-current-retrieval session archive kind fn-arena)
          (if (null (cdr args))
              (let ((token (car args)))
                (if (fn-nntp-number-tokenp token)
-                   (fn-nntp-number-retrieval session archive kind token)
-                 (fn-nntp-msgid-retrieval session archive kind token)))
+                   (fn-nntp-number-retrieval session archive kind token fn-arena)
+                 (fn-nntp-msgid-retrieval session archive kind token fn-arena)))
            (fn-nntp-single session "501 syntax error")))
        :exec
        (if (null args)
-           (fn-nntp-current-retrieval session archive kind)
+           (fn-nntp-current-retrieval session archive kind fn-arena)
          (if (null (fn-ag-cdr args))
              (let ((token (fn-ag-car args)))
                (if (fn-nntp-number-tokenp token)
-                   (fn-nntp-number-retrieval session archive kind token)
-                 (fn-nntp-msgid-retrieval session archive kind token)))
+                   (fn-nntp-number-retrieval session archive kind token fn-arena)
+                 (fn-nntp-msgid-retrieval session archive kind token fn-arena)))
            (fn-nntp-single session "501 syntax error")))))
 
-(defun fn-nntp-next-or-last (session archive direction)
+(defun fn-nntp-next-or-last (session archive direction fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((group (fn-nntp-session-group session))
         (current (fn-nntp-session-current session)))
     (if (null group)
@@ -186,7 +263,7 @@
           (if (posp number)
               (let ((article (fn-nntp-available-article
                               group number (fn-state-articles archive))))
-                (fn-nntp-article-response session article number :stat t group))
+                (fn-nntp-article-response session article number :stat t group fn-arena))
             (if (equal direction :next)
                 (fn-nntp-single session "421 no next article")
               (fn-nntp-single session "422 no previous article"))))))))
@@ -1083,18 +1160,48 @@
 ; The :lines metadata item counts the body lines of the exact retained octets;
 ; :bytes counts those octets themselves.  Neither is stored beside the article
 ; and neither is recomputed from a normalized copy.
+;; The body's line count without building its lines (lane served-readers, F2:
+;; OVER 1-2000 built every body's line list to take its length).  The count
+;; walks the octets as fn-nntp-crlf-lines-aux does and answers NIL where that
+;; answers :error (fn-nov-crlf-count-aux-is-len-of-lines).
+(defun fn-nov-crlf-count-aux (bytes pending n)
+  (declare (xargs :guard (natp n) :measure (acl2-count bytes)))
+  (if (consp bytes)
+      (if (equal (car bytes) 13)
+          (if (and (consp (cdr bytes)) (equal (car (cdr bytes)) 10))
+              (fn-nov-crlf-count-aux (cdr (cdr bytes)) nil (+ 1 n))
+            nil)
+        (if (or (equal (car bytes) 10) (equal (car bytes) 0))
+            nil
+          (fn-nov-crlf-count-aux (cdr bytes) t n)))
+    (if pending nil n)))
+
+(defthm fn-nov-crlf-count-aux-is-len-of-lines
+  (let ((r (fn-nntp-crlf-lines-aux bytes line-rev lines-rev)))
+    (equal (fn-nov-crlf-count-aux bytes (consp line-rev) (len lines-rev))
+           (if (equal (car r) :ok) (len (car (cdr r))) nil)))
+  :hints (("Goal" :induct (fn-nntp-crlf-lines-aux bytes line-rev lines-rev)
+           :in-theory (enable fn-nntp-crlf-lines-aux))))
+
 (defun fn-nov-body-line-count (payload)
   (declare (xargs :guard t :verify-guards nil))
   (let ((split (fn-nntp-split-article payload)))
     (if (fn-nntp-split-okp split)
-        (let ((lines (fn-nntp-crlf-lines (fn-nntp-split-body split))))
-          (if (equal (car lines) :ok) (fn-ng-len (car (cdr lines))) 0))
+        (mbe :logic
+             (let ((lines (fn-nntp-crlf-lines (fn-nntp-split-body split))))
+               (if (equal (car lines) :ok) (fn-ng-len (car (cdr lines))) 0))
+             :exec
+             (let ((body (fn-nntp-split-body split)))
+               (if (fn-octet-listp body)
+                   (let ((n (fn-nov-crlf-count-aux body nil 0)))
+                     (if n n 0))
+                 0)))
       0)))
 
-(defun fn-nov-overview (article)
+(defun fn-nov-overview (article fn-arena)
   ; (:ok subject from date message-id references bytes lines) | (:error)
-  (declare (xargs :guard t :verify-guards nil))
-  (let* ((payload (fn-article-payload article))
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (let* ((payload (fn-nntp-article-bytes article fn-arena))
          (parsed (fn-article-parse payload)))
     (if (not (and (true-listp parsed)
                   (fn-article-result-okp parsed)
@@ -1149,7 +1256,8 @@
          (fn-nntp-decimal-field (fn-nov-bytes over)) '(9)
          (fn-nntp-decimal-field (fn-nov-lines over)))))
 
-(defun fn-nov-lines-for-numbers (group numbers articles)
+(defun fn-nov-lines-for-numbers (group numbers articles fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   ; An article whose retained octets cannot be parsed produces no line: RFC
   ; 3977 section 8.3.2 says the server SHOULD NOT produce output for articles
   ; it cannot report, and an unprojectable article degrades only itself.
@@ -1159,13 +1267,13 @@
              ; D13: a reclaimed article has no overview; it is skipped
              ; before its tombstone reaches the parser.
              (over (if (and (consp article)
-                            (not (fn-rcl-tombstonep (fn-article-payload article))))
-                       (fn-nov-overview article)
+                            (not (fn-nntp-article-tombstonep article fn-arena)))
+                       (fn-nov-overview article fn-arena)
                      (list :error))))
         (if (fn-nov-okp over)
             (cons (fn-nov-line number over)
-                  (fn-nov-lines-for-numbers group (cdr numbers) articles))
-          (fn-nov-lines-for-numbers group (cdr numbers) articles)))
+                  (fn-nov-lines-for-numbers group (cdr numbers) articles fn-arena))
+          (fn-nov-lines-for-numbers group (cdr numbers) articles fn-arena)))
     nil))
 
 
@@ -1173,7 +1281,8 @@
 ; -----------------------------------------------------------------------------
 ; OVER (RFC 3977 section 8.3)
 
-(defun fn-nntp-over-current (session archive)
+(defun fn-nntp-over-current (session archive fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((group (fn-nntp-session-group session))
         (current (fn-nntp-session-current session)))
     (if (null group)
@@ -1184,16 +1293,17 @@
                         group current (fn-state-articles archive))))
           (if (not (consp article))
               (fn-nntp-single session "420 no current article")
-            (if (fn-rcl-tombstonep (fn-article-payload article))
+            (if (fn-nntp-article-tombstonep article fn-arena)
                 (fn-nntp-single session "423 article reclaimed")
-            (let ((over (fn-nov-overview article)))
+            (let ((over (fn-nov-overview article fn-arena)))
               (if (fn-nov-okp over)
                   (fn-nntp-multi session "224 overview information follows"
                                  (list (fn-nov-line current over)))
                 (fn-nntp-single
                  session "503 stored article framing unavailable"))))))))))
 
-(defun fn-nntp-over-range (session archive token)
+(defun fn-nntp-over-range (session archive token fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
     (if (null group)
@@ -1202,47 +1312,49 @@
                        group (fn-nntp-range-low range)
                        (fn-nntp-range-high range) (fn-state-articles archive)))
              (lines (fn-nov-lines-for-numbers group numbers
-                                              (fn-state-articles archive))))
+                                              (fn-state-articles archive) fn-arena)))
         (if (consp lines)
             (fn-nntp-multi session "224 overview information follows" lines)
           (fn-nntp-single session "423 no articles in that range"))))))
 
-(defun fn-nntp-over-msgid (session archive token)
+(defun fn-nntp-over-msgid (session archive token fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   ; RFC 3977 section 8.3.2: the number is zero for the message-id form, and
   ; this form never alters the selected group or the current article.
   (let ((article (fn-find-article (fn-nntp-token-string token)
                                   (fn-state-articles archive))))
     (if (not (consp article))
         (fn-nntp-single session "430 no article with that message-id")
-      (if (fn-rcl-tombstonep (fn-article-payload article))
+      (if (fn-nntp-article-tombstonep article fn-arena)
           (fn-nntp-single session "430 article reclaimed")
-      (let ((over (fn-nov-overview article)))
+      (let ((over (fn-nov-overview article fn-arena)))
         (if (fn-nov-okp over)
             (fn-nntp-multi session "224 overview information follows"
                            (list (fn-nov-line 0 over)))
           (fn-nntp-single session "503 stored article framing unavailable")))))))
 
-(defun fn-nntp-over-response (session archive args)
+(defun fn-nntp-over-response (session archive args fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (mbe :logic
        (if (null args)
-           (fn-nntp-over-current session archive)
+           (fn-nntp-over-current session archive fn-arena)
          (if (null (cdr args))
              (let ((token (car args)))
                (if (fn-nntp-range-okp (fn-nntp-parse-range token))
-                   (fn-nntp-over-range session archive token)
+                   (fn-nntp-over-range session archive token fn-arena)
                  (if (fn-nntp-message-id-tokenp token)
-                     (fn-nntp-over-msgid session archive token)
+                     (fn-nntp-over-msgid session archive token fn-arena)
                    (fn-nntp-single session "501 syntax error"))))
            (fn-nntp-single session "501 syntax error")))
        :exec
        (if (null args)
-           (fn-nntp-over-current session archive)
+           (fn-nntp-over-current session archive fn-arena)
          (if (null (fn-ag-cdr args))
              (let ((token (fn-ag-car args)))
                (if (fn-nntp-range-okp (fn-nntp-parse-range token))
-                   (fn-nntp-over-range session archive token)
+                   (fn-nntp-over-range session archive token fn-arena)
                  (if (fn-nntp-message-id-tokenp token)
-                     (fn-nntp-over-msgid session archive token)
+                     (fn-nntp-over-msgid session archive token fn-arena)
                    (fn-nntp-single session "501 syntax error"))))
            (fn-nntp-single session "501 syntax error")))))
 
@@ -1461,7 +1573,11 @@
   :hints (("Goal" :in-theory (disable fn-article-get-headers
                                       fn-article-syntax-p))))
 
-(verify-guards fn-nov-body-line-count)
+(verify-guards fn-nov-body-line-count
+  :hints (("Goal" :in-theory (enable fn-nntp-crlf-lines)
+           :use ((:instance fn-nov-crlf-count-aux-is-len-of-lines
+                            (bytes (fn-nntp-split-body (fn-nntp-split-article payload)))
+                            (line-rev nil) (lines-rev nil))))))
 
 ; The article accessors stay closed here so that
 ; fn-nov-get-headers-car-is-a-field (local, above) is what discharges
@@ -1544,7 +1660,8 @@
 ; The agreement is proved, not asserted: see
 ; fn-nntp-xover-agrees-with-over-on-a-nonempty-range in books/nntp-legacy.lisp.
 
-(defun fn-nntp-xover-range (session archive token)
+(defun fn-nntp-xover-range (session archive token fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
     (if (null group)
@@ -1553,17 +1670,18 @@
                        group (fn-nntp-range-low range)
                        (fn-nntp-range-high range) (fn-state-articles archive)))
              (lines (fn-nov-lines-for-numbers group numbers
-                                              (fn-state-articles archive))))
+                                              (fn-state-articles archive) fn-arena)))
         (if (consp lines)
             (fn-nntp-multi session "224 overview information follows" lines)
           (fn-nntp-single session "420 no article(s) selected"))))))
 
-(defun fn-nntp-xover-response (session archive args)
+(defun fn-nntp-xover-response (session archive args fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (null args)
-      (fn-nntp-over-current session archive)
+      (fn-nntp-over-current session archive fn-arena)
     (if (and (consp args) (null (cdr args))
              (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
-        (fn-nntp-xover-range session archive (car args))
+        (fn-nntp-xover-range session archive (car args) fn-arena)
       (fn-nntp-single session "501 syntax error"))))
 
 ; -----------------------------------------------------------------------------
@@ -1608,19 +1726,19 @@
 (defun fn-nntp-hdr-octets (x)
   (mbe :logic (car (cdr x)) :exec (fn-ag-car (fn-ag-cdr x))))
 
-(defun fn-nntp-hdr-content (field article)
+(defun fn-nntp-hdr-content (field article fn-arena)
   ; (:ok octets) | (:error).  :error only where the retained octets do not
   ; parse: section 8.5.2 produces a line for every article in the range that
   ; exists, and an unparsable article degrades only itself, exactly as in
   ; fn-nov-lines-for-numbers.
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (fn-nntp-hdr-metadata-tokenp field)
       (list :ok
             (fn-nntp-decimal-field
              (if (fn-nntp-keywordp field ":BYTES")
-                 (fn-ng-len (fn-article-payload article))
-               (fn-nov-body-line-count (fn-article-payload article)))))
-    (let* ((payload (fn-article-payload article))
+                 (fn-ng-len (fn-nntp-article-bytes article fn-arena))
+               (fn-nov-body-line-count (fn-nntp-article-bytes article fn-arena)))))
+    (let* ((payload (fn-nntp-article-bytes article fn-arena))
            (parsed (fn-article-parse payload)))
       (if (not (and (true-listp parsed)
                     (fn-article-result-okp parsed)
@@ -1634,25 +1752,27 @@
   ; the field.
   (fn-nntp-append-pieces (list label '(32) content)))
 
-(defun fn-nntp-hdr-lines-for-numbers (field group numbers articles)
+(defun fn-nntp-hdr-lines-for-numbers (field group numbers articles fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-nntp-available-article group number articles))
              (content (if (consp article)
-                          (fn-nntp-hdr-content field article)
+                          (fn-nntp-hdr-content field article fn-arena)
                         (list :error))))
         (if (fn-nntp-hdr-okp content)
             (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
                                     (fn-nntp-hdr-octets content))
                   (fn-nntp-hdr-lines-for-numbers field group (cdr numbers)
-                                                 articles))
-          (fn-nntp-hdr-lines-for-numbers field group (cdr numbers) articles)))
+                                                 articles fn-arena))
+          (fn-nntp-hdr-lines-for-numbers field group (cdr numbers) articles fn-arena)))
     nil))
 
 (defun fn-nntp-hdr-initial (legacyp)
   (if legacyp "221 header follows" "225 headers follow"))
 
-(defun fn-nntp-hdr-current (session archive field legacyp)
+(defun fn-nntp-hdr-current (session archive field legacyp fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((group (fn-nntp-session-group session))
         (current (fn-nntp-session-current session)))
     (if (null group)
@@ -1663,7 +1783,7 @@
                         group current (fn-state-articles archive))))
           (if (not (consp article))
               (fn-nntp-single session "420 no current article")
-            (let ((content (fn-nntp-hdr-content field article)))
+            (let ((content (fn-nntp-hdr-content field article fn-arena)))
               (if (fn-nntp-hdr-okp content)
                   (fn-nntp-multi
                    session (fn-nntp-hdr-initial legacyp)
@@ -1672,7 +1792,8 @@
                 (fn-nntp-single
                  session "503 stored article framing unavailable")))))))))
 
-(defun fn-nntp-hdr-range (session archive field token legacyp)
+(defun fn-nntp-hdr-range (session archive field token legacyp fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
     (if (null group)
@@ -1681,14 +1802,15 @@
                        group (fn-nntp-range-low range)
                        (fn-nntp-range-high range) (fn-state-articles archive)))
              (lines (fn-nntp-hdr-lines-for-numbers
-                     field group numbers (fn-state-articles archive))))
+                     field group numbers (fn-state-articles archive) fn-arena)))
         (if (consp lines)
             (fn-nntp-multi session (fn-nntp-hdr-initial legacyp) lines)
           (if legacyp
               (fn-nntp-single session "420 no article(s) selected")
             (fn-nntp-single session "423 no articles in that range")))))))
 
-(defun fn-nntp-hdr-msgid (session archive field token legacyp)
+(defun fn-nntp-hdr-msgid (session archive field token legacyp fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   ; RFC 3977 section 8.5.2 renders the article number as zero; RFC 2980
   ; section 2.6 renders the message-id itself.  Neither form alters the
   ; selected group or the current article.  The legacy label goes through
@@ -1698,7 +1820,7 @@
                                   (fn-state-articles archive))))
     (if (not (consp article))
         (fn-nntp-single session "430 no article with that message-id")
-      (let ((content (fn-nntp-hdr-content field article)))
+      (let ((content (fn-nntp-hdr-content field article fn-arena)))
         (if (fn-nntp-hdr-okp content)
             (fn-nntp-multi
              session (fn-nntp-hdr-initial legacyp)
@@ -1708,26 +1830,29 @@
                                      (fn-nntp-hdr-octets content))))
           (fn-nntp-single session "503 stored article framing unavailable"))))))
 
-(defun fn-nntp-hdr-command (session archive args legacyp)
+(defun fn-nntp-hdr-command (session archive args legacyp fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (not (and (consp args) (fn-nntp-hdr-fieldp (car args))))
       (fn-nntp-single session "501 syntax error")
     (let ((field (car args)) (rest (cdr args)))
       (if (null rest)
-          (fn-nntp-hdr-current session archive field legacyp)
+          (fn-nntp-hdr-current session archive field legacyp fn-arena)
         (if (and (consp rest) (null (cdr rest)))
             (let ((token (car rest)))
               (if (fn-nntp-range-okp (fn-nntp-parse-range token))
-                  (fn-nntp-hdr-range session archive field token legacyp)
+                  (fn-nntp-hdr-range session archive field token legacyp fn-arena)
                 (if (fn-nntp-message-id-tokenp token)
-                    (fn-nntp-hdr-msgid session archive field token legacyp)
+                    (fn-nntp-hdr-msgid session archive field token legacyp fn-arena)
                   (fn-nntp-single session "501 syntax error"))))
           (fn-nntp-single session "501 syntax error"))))))
 
-(defun fn-nntp-hdr-response (session archive args)
-  (fn-nntp-hdr-command session archive args nil))
+(defun fn-nntp-hdr-response (session archive args fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-nntp-hdr-command session archive args nil fn-arena))
 
-(defun fn-nntp-xhdr-response (session archive args)
-  (fn-nntp-hdr-command session archive args t))
+(defun fn-nntp-xhdr-response (session archive args fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-nntp-hdr-command session archive args t fn-arena))
 
 ; -----------------------------------------------------------------------------
 ; XPAT (RFC 2980 section 2.9)
@@ -1803,26 +1928,26 @@
                 patterns (fn-wildmat-result-value decoded))))
          t)))
 
-(defun fn-nntp-xpat-lines-for-numbers (field patterns group numbers articles)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-nntp-xpat-lines-for-numbers (field patterns group numbers articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (consp numbers)
       (let* ((number (car numbers))
              (article (fn-nntp-available-article group number articles))
              (content (if (consp article)
-                          (fn-nntp-hdr-content field article)
+                          (fn-nntp-hdr-content field article fn-arena)
                         (list :error))))
         (if (and (fn-nntp-hdr-okp content)
                  (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
             (cons (fn-nntp-hdr-line (fn-nntp-decimal-field number)
                                     (fn-nntp-hdr-octets content))
                   (fn-nntp-xpat-lines-for-numbers field patterns group
-                                                  (cdr numbers) articles))
+                                                  (cdr numbers) articles fn-arena))
           (fn-nntp-xpat-lines-for-numbers field patterns group (cdr numbers)
-                                          articles)))
+                                          articles fn-arena)))
     nil))
 
-(defun fn-nntp-xpat-range (session archive field patterns token)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-nntp-xpat-range (session archive field patterns token fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((group (fn-nntp-session-group session)))
     (if (null group)
         (fn-nntp-single session "412 no newsgroup selected")
@@ -1834,34 +1959,34 @@
          group (fn-nntp-range-low (fn-nntp-parse-range token))
          (fn-nntp-range-high (fn-nntp-parse-range token))
          (fn-state-articles archive))
-        (fn-state-articles archive))))))
+        (fn-state-articles archive) fn-arena)))))
 
 ; The zero-or-one line the message-id form renders, as its own function so
 ; that its cleanliness is one induction-free lemma in books/nntp-legacy.lisp
 ; and books/nntp-effects.lisp reads the block back through the same
 ; clean-field-list route the range form uses.
-(defun fn-nntp-xpat-msgid-lines (field patterns token article)
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((content (fn-nntp-hdr-content field article)))
+(defun fn-nntp-xpat-msgid-lines (field patterns token article fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (let ((content (fn-nntp-hdr-content field article fn-arena)))
     (if (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content))
         (list (fn-nntp-hdr-line (fn-nov-scrub token)
                                 (fn-nntp-hdr-octets content)))
       nil)))
 
-(defun fn-nntp-xpat-msgid (session archive field patterns token)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-nntp-xpat-msgid (session archive field patterns token fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((article (fn-find-article (fn-nntp-token-string token)
                                   (fn-state-articles archive))))
     (if (not (consp article))
         (fn-nntp-single session "430 no article with that message-id")
-      (if (not (fn-nntp-hdr-okp (fn-nntp-hdr-content field article)))
+      (if (not (fn-nntp-hdr-okp (fn-nntp-hdr-content field article fn-arena)))
           (fn-nntp-single session "503 stored article framing unavailable")
         (fn-nntp-multi session (fn-nntp-hdr-initial t)
                        (fn-nntp-xpat-msgid-lines field patterns token
-                                                 article))))))
+                                                 article fn-arena))))))
 
-(defun fn-nntp-xpat-response (session archive args)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-nntp-xpat-response (session archive args fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   ; (field range-or-msgid pat pat...): at least three tokens, at least one
   ; pattern.  Section 2.9 makes the range and the message-id mutually
   ; exclusive, which is what the two-branch test below is.
@@ -1877,9 +2002,9 @@
           (fn-nntp-single session "501 syntax error")
         (let ((patterns (fn-wildmat-result-value parsed)))
           (if (fn-nntp-range-okp (fn-nntp-parse-range token))
-              (fn-nntp-xpat-range session archive field patterns token)
+              (fn-nntp-xpat-range session archive field patterns token fn-arena)
             (if (fn-nntp-message-id-tokenp token)
-                (fn-nntp-xpat-msgid session archive field patterns token)
+                (fn-nntp-xpat-msgid session archive field patterns token fn-arena)
               (fn-nntp-single session "501 syntax error"))))))))
 
 ; -----------------------------------------------------------------------------
@@ -2133,21 +2258,21 @@
         (floor (fn-clock-wall obs) 1000)
       :none)))
 
-(defun fn-nntp-newnews-scan (groups threshold articles horizon)
+(defun fn-nntp-newnews-scan (groups threshold articles horizon fn-arena)
   ; The committed list is newest first.  Every natural stamp advances the
   ; legacy horizon, even when its article belongs to another group.
-  (declare (xargs :guard t :verify-guards nil :measure (acl2-count articles)))
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil :measure (acl2-count articles)))
   (if (not (consp articles))
       nil
     (let* ((article (fn-ag-car articles))
            (stamp (fn-article-stamp article))
            (rest (fn-nntp-newnews-scan
                   groups threshold (fn-ag-cdr articles)
-                  (if (natp stamp) stamp horizon))))
+                  (if (natp stamp) stamp horizon) fn-arena)))
       ; D13: a reclaimed article is not listed.  The test reads at most
       ; the tombstone's fixed head of the payload, never parses it.
       (if (and (fn-nntp-newnews-candidatep groups article)
-               (not (fn-rcl-tombstonep (fn-article-payload article)))
+               (not (fn-nntp-article-tombstonep article fn-arena))
                (fn-nntp-newnews-newp threshold stamp horizon))
           (cons (fn-nntp-string-octets (fn-article-msgid article)) rest)
         rest))))
@@ -2155,13 +2280,13 @@
 ; -----------------------------------------------------------------------------
 ; The command
 
-(defun fn-nntp-newnews-response (session archive env args)
+(defun fn-nntp-newnews-response (session archive env args fn-arena)
   ; NEWNEWS wildmat date time [GMT].  The date and time grammar is section
   ; 7.3's, so the parse is NEWGROUPS' parse and not a second one; fn's local
   ; time zone is UTC, so the GMT token changes nothing but is accepted
   ; exactly where the grammar allows it.  This function is what
   ; books/nntp.lisp's fn-nntp-archive-command calls for NEWNEWS.
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (not (and (consp args) (consp (cdr args)) (consp (cdr (cdr args)))
                 (or (null (cdr (cdr (cdr args))))
                     (and (consp (cdr (cdr (cdr args))))
@@ -2193,7 +2318,7 @@
              (fn-nntp-parse-3 date) (fn-nntp-parse-1 time)
              (fn-nntp-parse-2 time) (fn-nntp-parse-3 time))
             (fn-state-articles archive)
-            (fn-nntp-newnews-reader-horizon env))))))))
+            (fn-nntp-newnews-reader-horizon env) fn-arena)))))))
 
 ; -----------------------------------------------------------------------------
 ; LIST ACTIVE.TIMES (RFC 3977 section 7.6.4, RFC 2980 section 2.1.3)
@@ -2591,40 +2716,42 @@
   :hints (("Goal" :in-theory (enable fn-nntp-message-id-tokenp
                                       fn-nntp-token-string fn-midx-key-chars))))
 
-(defun fn-nntp-msgid-retrieval-indexed (session archive index kind token)
+(defun fn-nntp-msgid-retrieval-indexed (session archive index kind token fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (not (fn-nntp-message-id-tokenp token))
       (fn-nntp-single session "501 syntax error")
     ; A raw direct caller can supply a dotted token accepted by the older
     ; token predicate.  Wire tokenization never does, but retaining the old
     ; answer on that malformed shape makes this refinement unconditional.
     (if (not (fn-octet-listp token))
-        (fn-nntp-msgid-retrieval session archive kind token)
+        (fn-nntp-msgid-retrieval session archive kind token fn-arena)
       (let ((article (fn-midx-lookup (fn-nntp-token-string token) index)))
         (if (consp article)
             (fn-nntp-article-response
              session article (fn-nntp-msgid-local-number session article)
-             kind nil nil)
+             kind nil nil fn-arena)
           (fn-nntp-single session "430 no article with that message-id"))))))
 
 (defthm fn-nntp-msgid-retrieval-indexed-refines-scan
   (implies (fn-midx-correspondencep index (fn-state-articles archive))
-           (equal (fn-nntp-msgid-retrieval-indexed session archive index kind token)
-                  (fn-nntp-msgid-retrieval session archive kind token)))
+           (equal (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena)
+                  (fn-nntp-msgid-retrieval session archive kind token fn-arena)))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-msgid-retrieval-indexed fn-nntp-msgid-retrieval)
                 (fn-midx-lookup fn-midx-key-chars fn-nntp-token-string)))))
 
 (defthm fn-nntp-article-response-without-update-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-article-response session article number kind nil group))
+          (fn-nntp-article-response session article number kind nil group fn-arena))
          session)
   :hints (("Goal" :in-theory
-           (enable fn-nntp-article-response fn-nntp-result-session
-                   fn-nntp-single fn-nntp-make-result))))
+           (e/d (fn-nntp-article-response fn-nntp-result-session
+                 fn-nntp-single fn-nntp-make-result)
+                (fn-nntp-article-tombstonep fn-nntp-article-section fn-nntp-article-framedp fn-nntp-stuff-lines fn-nntp-crlf fn-nntp-retrieval-initial fn-nntp-reply-effect)))))
 
 (local
  (defthm fn-nntp-msgid-car-preserves-session
-   (equal (car (fn-nntp-msgid-retrieval session archive kind token)) session)
+   (equal (car (fn-nntp-msgid-retrieval session archive kind token fn-arena)) session)
    :hints (("Goal" :use ((:instance fn-nntp-msgid-preserves-session))
             :in-theory (e/d (fn-nntp-result-session)
                             (fn-nntp-msgid-preserves-session
@@ -2633,7 +2760,7 @@
 (local
  (defthm fn-nntp-article-response-without-update-car-preserves-session
    (equal (car (fn-nntp-article-response
-                session article number kind nil group))
+                session article number kind nil group fn-arena))
           session)
    :hints (("Goal" :use ((:instance
                            fn-nntp-article-response-without-update-preserves-session))
@@ -2644,7 +2771,7 @@
 
 (defthm fn-nntp-msgid-retrieval-indexed-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-msgid-retrieval-indexed session archive index kind token))
+          (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena))
          session)
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-msgid-retrieval-indexed fn-nntp-result-session)

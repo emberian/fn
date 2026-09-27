@@ -251,7 +251,7 @@
 ;; install from the extended value with `fn-ock-recover-extended'
 ;; (fn-owner-recover-extended below).  From a verified checkpoint
 ;; (fn-owner-recover-from-checkpoint) the records are the suffix after S; on
-;; a full replay (fn-owner-recover) the checkpoint is the capture of the
+;; a full replay (fn-owner-recover-rows) the checkpoint is the capture of the
 ;; empty prefix and the records are the whole history.  The keystone
 ;; fn-owner-recover-from-checkpoint-equals-full-recover says both install the
 ;; owner of the full open, the composition
@@ -284,6 +284,9 @@
              ; next publication, the newest durable checkpoint's S (set by
              ; fn-owner-sco-note-durable), and the count of the last attempt.
              (state (f-put-global 'fn-owner-sco-base extended state))
+             ; The base's canonical payload count (the arena's count at the
+             ; open: fn-owner-sco-note-base-payloads), nil until noted.
+             (state (f-put-global 'fn-owner-sco-base-payloads nil state))
              (state (f-put-global 'fn-owner-sco-durable nil state))
              (state (f-put-global 'fn-owner-sco-attempted nil state))
              ; PKT-492: the publication the owner deferred by name, or nil.
@@ -319,49 +322,38 @@
          (fn-ock-install (cadr opened) (caddr opened) max-conns)
          (car opened) state)))))
 
-; The records flip: both opens intern the decoded journal into the arena
-; first (host/store-node-host.lisp fn-store-sn-recover's note), so the
-; extended capture is over ROWS; (mv nil KEYWORD fn-arena state).
-(defun fn-owner-recover (octet-records frontier config-octet-records max-conns
-                                       fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (let ((records (fn-store-decode-records octet-records))
-        (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (equal records :bad) (equal config-records :bad))
-        (mv nil :fault fn-arena state)
-      (let ((fn-arena (fn-arena-clear fn-arena)))
-        (mv-let (rows fn-arena)
-        (fn-store-intern-records records fn-arena)
-        (if (equal rows :bad)
-            (mv nil :fault fn-arena state)
-          (mv-let (erp val state)
-            (fn-owner-recover-extended
-             (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
-             config-records frontier max-conns state)
-            (mv erp val fn-arena state))))))))
+;; The records flip: both opens intern the decoded journal into the arena
+;; first, so the extended capture is over ROWS.  No :program entry here
+;; updates the arena (invariant-risk; host/store-node-host.lisp
+;; fn-store-sn-recover-records' note): the bridge (tools/run_owner.py
+;; recover) decodes with fn-store-sn-recover-records, empties the arena and
+;; interns with the guard-verified fn-intern-events at top level, then calls
+;; this entry over the rows.  The native owner installs from the Store open
+;; instead (fn-owner-recover-from-store-open).  (mv nil KEYWORD state).
+(defun fn-owner-recover-rows (rows frontier config-octet-records max-conns state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (equal rows :bad) (equal config-records :bad))
+        (value :fault)
+      (fn-owner-recover-extended
+       (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
+       config-records frontier max-conns state))))
 
-; The open from the checkpoint the Store open decoded and verified
-; (`fn-store-sco-checkpoint', host/store-node-host.lisp) and the octets of
-; the records after it.
-(defun fn-owner-recover-from-checkpoint (suffix-octet-records frontier config-octet-records
-                                                              max-conns fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+; The open from the checkpoint the Store open loaded (`fn-store-sco-checkpoint',
+; host/store-node-host.lisp) over the ROWS of the records after it, which the
+; caller interned ON TOP of the loaded arena (fn-intern-events records nil 0:
+; host/native/io.lisp fnn-recover-suffix-rows); the entry reads no arena.
+; books/store-checkpoint-arena.lisp fn-scka-recover-from-checkpoint-is-full-
+; recover: the extension is the full recover's.  (mv nil KEYWORD state).
+(defun fn-owner-recover-from-checkpoint (rows frontier config-octet-records max-conns state)
+  (declare (xargs :stobjs state :mode :program))
   (let ((checkpoint (fn-store-sco-current state))
-        (records (fn-store-decode-records suffix-octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (null checkpoint) (equal records :bad) (equal config-records :bad))
-        (mv nil :fault fn-arena state)
-      ; The checkpoint's rows reference no handle (fn-store-sco-decode).
-      (let ((fn-arena (fn-arena-clear fn-arena)))
-        (mv-let (rows fn-arena)
-        (fn-store-intern-records records fn-arena)
-        (if (equal rows :bad)
-            (mv nil :fault fn-arena state)
-          (mv-let (erp val state)
-            (fn-owner-recover-extended
-             (fn-rii-sco-extend checkpoint config-records rows)
-             config-records frontier max-conns state)
-            (mv erp val fn-arena state))))))))
+    (if (or (null checkpoint) (equal rows :bad) (equal config-records :bad))
+        (value :fault)
+      (fn-owner-recover-extended
+       (fn-rii-sco-extend checkpoint config-records rows)
+       config-records frontier max-conns state))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
@@ -461,6 +453,17 @@
                              state)))
     (value :noted)))
 
+; The base's canonical payload count after the Store open: the arena's
+; count the host read (host/native/owner.lisp fnn-owner-recover-core).  Both
+; opens intern at the canonical handles from the emptied arena (the full
+; recover) or from the checkpoint's canonical arena (fn-scka-load), so the
+; arena holds exactly the canonical payloads of the opened history, which is
+; the base's (fn-scka-next-checkpoint-is-capture's H0).
+(defun fn-owner-sco-note-base-payloads (count state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((state (f-put-global 'fn-owner-sco-base-payloads (and (natp count) count) state)))
+    (value :noted)))
+
 ; The publication the owner deferred by name, (:deferred REASON ESTIMATE
 ; BUDGET) as fn-ock-publication-stream answered it, or nil; the status
 ; report carries it (host/native-live-status-host.lisp).
@@ -552,7 +555,40 @@
                  (fn-owner-sco-budget override profile)
                  (fn-sf-frontier (fn-sn-files st))
                  free
-                 revision))))
+                 revision
+                 (fn-owner-sco-global 'fn-owner-sco-base-payloads state)))))
+
+; Off the mutex, over the values captured above and the live arena, READ
+; only (host/native/owner.lisp fnn-owner-publish-captured): NEXT, the capture
+; of the captured rows' canonical rows (books/store-checkpoint-arena-writer.lisp
+; fn-scka-next-checkpoint: BASE extended over the canonical rows of the rows
+; after it, handles from H0; KEYSTONE fn-scka-next-checkpoint-is-capture;
+; the whole capture when no H0 was noted), then the setup of the arena run
+; (fn-scka-write-setup) and of the file (fn-scka-publication-setup: the
+; decision by name over the whole file's octets before anything is
+; allocated).  LOG is the record log's position at the capture's S (a
+; format-9 owner rotated the log there; NIL otherwise): the F row carries it.
+; (list SETUP NEXT N ARUN), N the canonical payload count (the
+; next base's H0), ARUN (N COUNT STATE0) for fnn-checkpoint-write-steps.
+; The arena is read at handles below the count the capture saw: the owner
+; thread only appends to it (a seal never moves a sealed payload's bytes),
+; so what is read is what was sealed before the capture.
+(defun fn-owner-sco-prepare (base h0 configs records frontier revision log seg budget free
+                                  fn-arena)
+  (declare (xargs :stobjs fn-arena :mode :program))
+  (let* ((next0 (and base (natp h0) (<= (len (fn-sco-records base)) (len records))
+                     (fn-scka-next-checkpoint base h0 configs records fn-arena)))
+         (next (if (or (null next0) (equal next0 :bad))
+                   (let ((canon (fn-scka-canon-rows records fn-arena 0)))
+                     (if (equal canon :bad) :bad (fn-sco-capture configs canon)))
+                 next0)))
+    (if (equal next :bad)
+        (list (list :unencodable nil nil nil nil 0 0) nil 0 nil)
+      (let* ((ws (fn-scka-write-setup records seg fn-arena))
+             (setup (fn-scka-publication-setup next frontier revision log seg budget free
+                                               (nth 3 ws))))
+        (list setup next (nth 0 ws)
+              (list (nth 0 ws) (nth 2 ws) (fn-scka-initial-state records (nth 1 ws) 0)))))))
 
 ; Outside the mutex, the host calls `fn-ock-next-checkpoint' (NEXT, the
 ; capture of the captured history: fn-ock-next-checkpoint-is-the-capture),
@@ -567,9 +603,12 @@
 ; durable checkpoint, and a deferred VERDICT is carried (for the due path
 ; and the status report) until a later verdict replaces it.  Answers S, or
 ; :none.
-(defun fn-owner-sco-publication-done (next durablep verdict state)
+(defun fn-owner-sco-publication-done (next payloads durablep verdict state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-sco-base next state))
+         ; NEXT's canonical payload count, the next publication's H0
+         (state (f-put-global 'fn-owner-sco-base-payloads (and (natp payloads) payloads)
+                              state))
          ; nothing in flight; the durable S below is NEXT's sequence, the
          ; count the capture was handed (fn-ock-finish-binds-the-captured-
          ; prefix), never the count now
@@ -684,10 +723,10 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-sn-node (fn-owner-store state)))
 
-(defun fn-owner-step (event state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-step (event fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let ((state (fn-owner-install-ocfg
-                (fn-ocfg-step (fn-owner-ocfg state) event) state)))
+                (fn-ocfg-step (fn-owner-ocfg state) event fn-arena) state)))
     state))
 
 ; The live control path is deliberately small for this packet: a configured
@@ -697,11 +736,11 @@
 ; exact record that the host persists.  Python carries only the kind/name
 ; request and the resulting octets.
 
-(defun fn-owner-reconfigure-deltas-admitted (id deltas state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-reconfigure-deltas-admitted (id deltas fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((oc (fn-owner-ocfg state))
          (reason (fn-ocfg-reconfig-refusal oc id deltas))
-         (state (fn-owner-step (list :reconfigure id deltas) state))
+         (state (fn-owner-step (list :reconfigure id deltas) fn-arena state))
          (staged (fn-ocfg-staged (fn-owner-ocfg state))))
     ; A ConfigResult (books/owner-results.lisp): :staged with exactly one
     ; encoded configuration record, or :refused with ACL2's named reason
@@ -719,8 +758,8 @@
   (and (boundp-global 'fn-owner-connection-bound state)
        (f-get-global 'fn-owner-connection-bound state)))
 
-(defun fn-owner-reconfigure-deltas (id deltas state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-reconfigure-deltas (id deltas fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((oc (fn-owner-ocfg state))
          (memory (fn-cbud-deltas-refusal
                   (fn-cfg-value (fn-ocfg-config oc))
@@ -732,7 +771,7 @@
     ;; which every live caller's recognizer accepts.
     (if memory
         (value (fn-ores-config-refused memory))
-      (fn-owner-reconfigure-deltas-admitted id deltas state))))
+      (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state))))
 
 (defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile
                                            tlsp state)
@@ -759,11 +798,11 @@
                               state)))
     (value (car d))))
 
-(defun fn-owner-reconfigure (id kind name-octets state)
+(defun fn-owner-reconfigure (id kind name-octets fn-arena state)
   ; Answers a ConfigResult: :staged with exactly one encoded configuration
   ; record, or :refused with the named ACL2 refusal reason.  No state is
   ; published until fn-owner-reconfigure-complete follows a durable write.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let ((name (if (fn-store-text-octetsp name-octets)
                   (fn-store-octets->string name-octets) :bad)))
     (if (equal name :bad)
@@ -771,7 +810,7 @@
       (let ((deltas (fn-ocl-request-deltas kind name)))
         (if (null deltas)
             (value (fn-ores-config-refused :delta-kind))
-          (fn-owner-reconfigure-deltas id deltas state))))))
+          (fn-owner-reconfigure-deltas id deltas fn-arena state))))))
 
 (defun fn-owner-reconfigure-complete (generation state)
   ; This is called only after Store.write_config_record has named the record
@@ -941,13 +980,13 @@
               ; (tools/run_owner.py prepare), exactly when the Store changed.
               (mv nil (list :seal payload) fn-arena state))))))))))))
 
-(defun fn-owner-refuse-reservation (state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-refuse-reservation (fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((before (fn-owner-store state))
          (files (fn-sn-files before))
          (state (fn-owner-step
                  (list :store (list :refuse-reservation (1- (fn-sf-frontier files))))
-                 state))
+                 fn-arena state))
          (next (fn-owner-store state)))
     (if (and (equal (fn-sf-phase files) :reserved)
              (not (equal next before))
@@ -1065,8 +1104,8 @@
               (mv nil :seal-buffer fn-arena state))))))))))))
 
 (defun fn-owner-prepare-retention
-  (kind id-octets subject-octets evidence-octets charge state)
-  (declare (xargs :stobjs state :mode :program))
+  (kind id-octets subject-octets evidence-octets charge fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((s (fn-owner-store state))
          (node (fn-sn-node s)))
     (if (or (not (member-equal kind '(:undertake :release)))
@@ -1081,7 +1120,7 @@
                      (fn-store-octets->string id-octets)
                      (fn-store-octets->string subject-octets)
                      (fn-store-octets->string evidence-octets) charge))
-             (state (fn-owner-step (list :store (list :prepare-retention event)) state)))
+             (state (fn-owner-step (list :store (list :prepare-retention event)) fn-arena state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
 
 ; The caller supplies an ACL2-constructed kind-3 or kind-4 event.  This
@@ -1108,24 +1147,24 @@
 
 ; The consumer proposal is constructed by ACL2.  The host carries this exact
 ; bounded event into Store; it does not rebuild the scope, epoch or cursor.
-(defun fn-owner-prepare-consumer (event state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-prepare-consumer (event fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let ((s (fn-owner-store state)))
     (if (not (fn-cpe-eventp event))
         (value :invalid)
       (let ((state (fn-owner-step
-                    (list :store (list :prepare-consumer event)) state)))
+                    (list :store (list :prepare-consumer event)) fn-arena state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
 
 ; ACL2 constructs the exact topic event before this host boundary. Store's
 ; carried historical projection decides whether it may be staged.
-(defun fn-owner-prepare-topic (event state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-prepare-topic (event fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let ((s (fn-owner-store state)))
     (if (not (fn-th-topic-eventp event))
         (value :invalid)
       (let ((state (fn-owner-step
-                    (list :store (list :prepare-topic event)) state)))
+                    (list :store (list :prepare-topic event)) fn-arena state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
 
 ; This is the one owner-side proposal read. ACL2 selects an exact earlier T10
@@ -1204,11 +1243,11 @@
   (value (fn-cpa-clone-phase-of-octets
           (fn-owner-store state) marker-octets)))
 
-(defun fn-owner-known-abort (state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-known-abort (fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((before (fn-owner-store state))
          (files (fn-sn-files before))
-         (state (fn-owner-step (list :store (list :known-abort)) state))
+         (state (fn-owner-step (list :store (list :known-abort)) fn-arena state))
          (next (fn-owner-store state)))
     (if (and (member-equal (fn-sf-phase files)
                            '(:record-staged :record-data-durable))
@@ -1319,10 +1358,10 @@
              (state (fn-owner-replace-core (cdr result) state)))
         (value (car result))))))
 
-(defun fn-owner-begin (id state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-begin (id fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((before (fn-owner-core state))
-         (state (fn-owner-step (list :begin id) state)))
+         (state (fn-owner-step (list :begin id) fn-arena state)))
     (value (if (equal (fn-owner-core state) before) :refused :begun))))
 
 ; The writer step: fn-own-take-submission moves the oldest queued submission
@@ -1330,7 +1369,7 @@
 ; and the store is :ready.  The submission in flight is exposed to the host
 ; through four globals read off the injection decision; the host passes them
 ; back through fn-owner-prepare exactly as the CLI passes its own.
-(defun fn-owner-take (state)
+(defun fn-owner-take (fn-arena state)
   ; One SubmissionTaken (books/owner-results.lisp fn-ores-take-result; its
   ; fields are what the seven fn-owner-submit-* globals held,
   ; fn-ores-take-result-by-definition).  The octets are fn-own-sub-stored-
@@ -1342,9 +1381,9 @@
   ; compares with these before the store attempt, and
   ; fn-owner-finish-submission compares the completed record with the same
   ; function of the same configuration.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((before (fn-owner-core state))
-         (state (fn-owner-step (list :take) state))
+         (state (fn-owner-step (list :take) fn-arena state))
          (after (fn-owner-core state))
          (sub (fn-own-inflight after)))
     (if (or (equal after before) (null sub))
@@ -1379,8 +1418,8 @@
 ; bridge: ACL2 checks the boundary, preserves the supplied octets exactly and
 ; queues the same submission record fn-own-take-submission consumes for
 ; served POST.
-(defun fn-owner-control-submit (msgid-octets group-octets payload state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-control-submit (msgid-octets group-octets payload fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((owner (fn-owner-core state))
          (result (fn-own-control-submit-result owner msgid-octets
                                                 group-octets payload))
@@ -1397,12 +1436,12 @@
                   state))
          (state (fn-owner-step (list :control-submit msgid-octets
                                      group-octets payload)
-                               state)))
+                               fn-arena state)))
     (value result)))
 
 (defun fn-owner-bp-transit-submit
-    (peer msgid-octets payload id subject state)
-  (declare (xargs :stobjs state :mode :program))
+    (peer msgid-octets payload id subject fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((owner (fn-owner-core state))
          (cfg (fn-owner-config state))
          (result (fn-own-bp-transit-submit-result
@@ -1421,7 +1460,7 @@
                   state))
          (state (fn-owner-step
                  (list :bp-transit-submit cfg peer msgid-octets payload
-                       id subject) state)))
+                       id subject) fn-arena state)))
     (value result)))
 
 (defun fn-owner-bp-transit-raw (state)
@@ -1468,7 +1507,7 @@
                               state))
          (state (fn-owner-step (list :operator-submit msgid-octets
                                      group-octets payload stored)
-                               state)))
+                               fn-arena state)))
     (value result)))
 
 ; Why the owner refused the operator's article: the injection decision's
@@ -1885,8 +1924,8 @@
 ; Applies the record fn-owner-feed-reconcile-next published: the same
 ; function of the same intents and the same owner (the host only appended
 ; frames in between), so no result crosses a mailbox.
-(defun fn-owner-feed-reconcile-apply (state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-feed-reconcile-apply (fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let ((record (fn-owner-feed-reconcile-record state)))
     (if (or (null record)
             (not (member-equal (fn-feed-journal-kind record)
@@ -1894,7 +1933,7 @@
         (value :invalid)
       (let* ((peer (fn-record-octets-string
                     (fn-feed-record-peer (fn-feed-journal-values record))))
-             (state (fn-owner-step (list :feed-replay peer (list record)) state))
+             (state (fn-owner-step (list :feed-replay peer (list record)) fn-arena state))
              (state (f-put-global
                      'fn-owner-feed-intents
                      (fn-own-feed-intent-apply
@@ -2004,20 +2043,20 @@
 ; fn-own-feed-durable exactly as the served outcome; only wire rendering and
 ; connection re-pinning are absent because the control request has no NNTP
 ; connection.
-(defun fn-owner-control-outcome (word state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-control-outcome (word fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((owner (fn-owner-core state))
          (result (fn-own-control-outcome-result owner word))
          (state (f-put-global 'fn-owner-log-line
                               (fn-olog-control-post-line owner word) state))
-         (state (fn-owner-step (list :control-outcome word) state)))
+         (state (fn-owner-step (list :control-outcome word) fn-arena state)))
     (value result)))
 
-(defun fn-owner-bp-transit-outcome (word state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-bp-transit-outcome (word fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((owner (fn-owner-core state))
          (result (fn-own-bp-transit-outcome-result owner word))
-         (state (fn-owner-step (list :bp-transit-outcome word) state)))
+         (state (fn-owner-step (list :bp-transit-outcome word) fn-arena state)))
     (value result)))
 
 ; The allocation domain the owner's live node carries (every name ever
@@ -2479,13 +2518,13 @@
 ; The host's re-entry after the TLS handshake (RFC 4642 section 2.2.2).  It
 ; is a wire event, not octets: no client input produces it, and
 ; fn-auth-step is the only thing that reads it.
-(defun fn-owner-tls-established (id state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-tls-established (id fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
       (let* ((result (fn-ocfg-read-step (fn-owner-ocfg state)
-                                        id (list :tls-established)))
+                                        id (list :tls-established) fn-arena))
              (state (fn-owner-install-ocfg (cdr result) state))
              (state (fn-owner-install-effects (car result) state)))
         (value :ok)))))
@@ -2693,13 +2732,13 @@
                        (len (fn-own-conns (fn-owner-core state)))
                        (fn-owner-exposure-now state)))
 
-(defun fn-owner-chunk (id octets state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-chunk (id octets fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
       (let* ((result (fn-scar-ocfg-read-tls-prefix
-                      (fn-owner-ocfg state) id octets))
+                      (fn-owner-ocfg state) id octets fn-arena))
              (state (fn-owner-install-ocfg
                      (fn-own-tls-result-owner result) state))
              (state (fn-owner-install-served-effects
@@ -2735,8 +2774,8 @@
 ; are the render plan (books/served-plan.lisp), which the host renders into
 ; the connection's own buffer after the mutex is released.  The owner and
 ; exposure states are installed exactly as fn-owner-chunk installs them.
-(defun fn-owner-chunk-span (id start end fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
+(defun fn-owner-chunk-span (id start end fn-octets fn-arena state)
+  (declare (xargs :stobjs (fn-octets state fn-arena) :mode :program))
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
@@ -2744,7 +2783,7 @@
                     (<= end (fn-octets-len fn-octets))))
           (value :bad-range)
         (let* ((result (fn-scar-ocfg-read-span
-                        (fn-owner-ocfg state) id start end fn-octets))
+                        (fn-owner-ocfg state) id start end fn-octets fn-arena))
                (effects (fn-own-tls-result-effects result))
                (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg
@@ -2762,9 +2801,9 @@
                   (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
                   (f-get-global 'fn-owner-exposure-close state))))))))
 
-(defun fn-owner-close (id state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((state (fn-owner-step (list :close id) state)))
+(defun fn-owner-close (id fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (let ((state (fn-owner-step (list :close id) fn-arena state)))
     (value :closed)))
 
 ; The host-fault boundary (books/owner-fault.lisp).
@@ -2790,9 +2829,9 @@
          (state (fn-owner-install-effects (car result) state)))
     (value (if knownp :faulted :unknown))))
 
-(defun fn-owner-advance (id state)
-  (declare (xargs :stobjs state :mode :program))
-  (let ((state (fn-owner-step (list :advance id) state)))
+(defun fn-owner-advance (id fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (let ((state (fn-owner-step (list :advance id) fn-arena state)))
     (fn-owner-conn-version id state)))
 
 ; -----------------------------------------------------------------------------
@@ -2816,14 +2855,14 @@
                  (fn-ocfg-observe (fn-owner-ocfg state) obs) state)))
     (value outcome)))
 
-(defun fn-owner-declare-group (name-octets state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-declare-group (name-octets fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (if (not (fn-store-text-octetsp name-octets))
       (value :invalid)
     (let* ((before (fn-owner-core state))
            (state (fn-owner-step
                    (list :declare-group (fn-store-octets->string name-octets))
-                   state)))
+                   fn-arena state)))
       (value (if (equal (fn-owner-core state) before) :refused :declared)))))
 
 (defun fn-owner-group-facts (state)
@@ -2846,13 +2885,13 @@
 ; host appends to <journal>/feed/<peer>.fnfd and fsyncs BEFORE it writes the
 ; publication's command bytes.
 
-(defun fn-owner-feed-configure (state)
+(defun fn-owner-feed-configure (fn-arena state)
   ; Rebuild the feed table from the live configuration: at open and after
   ; every :set-peer / :remove-peer delta.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   ; Answers the peer names, a list of strings (the native host checks
   ; string-listp once and splits nothing).
-  (let ((state (fn-owner-step (list :feeds (fn-owner-config state)) state)))
+  (let ((state (fn-owner-step (list :feeds (fn-owner-config state)) fn-arena state)))
     (value (fn-own-feed-names (fn-own-feeds (fn-owner-core state))))))
 
 (defun fn-owner-feed-peers (state)
@@ -2979,12 +3018,12 @@
 ; live for selection.  FORM is ACL2's (`fn-fc-connection-form' of the ready
 ; connection state): :ihave after a 500/501 to MODE STREAM (PRF-207), so the
 ; feed offers this connection IHAVE; nil otherwise.
-(defun fn-owner-feed-connect (peer-octets conn form state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-feed-connect (peer-octets conn form fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (or (equal peer :bad) (not (natp conn)))
         (value nil)
-      (let ((state (fn-owner-step (list :feed-conn peer conn form) state)))
+      (let ((state (fn-owner-step (list :feed-conn peer conn form) fn-arena state)))
         (value :ok)))))
 
 (defun fn-owner-feed-dial-open (peer-octets conn user pass allow-clear state)
@@ -3117,12 +3156,12 @@ it is :CONNECTION-REFUSED and the raw adapter must close this peer without
 flushing the previous peer's pending projection."
   (if (equal (fn-fc-kind step) :refused) :connection-refused (fn-fc-kind step)))
 
-(defun fn-owner-feed-reply-chunk (peer-octets octets monotonic state)
+(defun fn-owner-feed-reply-chunk (peer-octets octets monotonic fn-arena state)
   "Consume one ACL2 connection/reply event; nil drains retained input.
 
 Greeting and MODE replies stay inside fn-fc.  A normal feed reply reaches the
 existing port only after fn-fc has made this connection ready."
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let ((peer (fn-store-octets->string peer-octets)))
     (if (or (equal peer :bad) (not (fn-wire-octet-listp octets)))
         (value (fn-owner-feed-word-publication :invalid nil nil))
@@ -3177,7 +3216,7 @@ existing port only after fn-fc has made this connection ready."
                                             (fn-fc-conn (fn-fc-next-state step))
                                             (fn-fc-connection-form
                                              (fn-fc-next-state step))
-                                            state)
+                                            fn-arena state)
                      (if erp (mv erp word state)
                        (value (fn-owner-feed-word-publication (if (equal word :ok) :ready :fault) nil
                                                                 (and (equal word :ok) fallback-line))))))
@@ -3231,8 +3270,8 @@ existing port only after fn-fc has made this connection ready."
 
 ; One bounded read from the physical journal. The scanner owns acceptance,
 ; the exact safe offset and the entry fed to the existing replay transition.
-(defun fn-owner-feed-journal-scan (peer-octets prefix frame state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-feed-journal-scan (peer-octets prefix frame fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((peer (fn-store-octets->string peer-octets))
          (result (fn-feed-journal-scan peer-octets prefix frame
                    (f-get-global 'fn-owner-feed-safe-offset state))))
@@ -3241,7 +3280,7 @@ existing port only after fn-fc has made this connection ready."
       (if (equal (car result) :next)
           (let* ((entry (nth 2 result))
                  (state (fn-owner-step
-                         (list :feed-replay peer (list entry)) state))
+                         (list :feed-replay peer (list entry)) fn-arena state))
                  (state (f-put-global
                          'fn-owner-feed-intents
                          (fn-own-feed-intent-apply

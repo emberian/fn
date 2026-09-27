@@ -238,6 +238,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
 	tests/acl2/store-checkpoint-tables-tests \
+	tests/acl2/store-checkpoint-arena-tests \
 	books/heap-store-figure \
 	books/heap-figure \
 	books/heap-reservation \
@@ -389,6 +390,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-programs-tests \
 	books/store-log-route \
 	tests/acl2/store-log-route-tests \
+	books/store-log-segments \
+	tests/acl2/store-log-segments-tests \
+	books/store-log-reclaim \
+	tests/acl2/store-log-reclaim-tests \
 	books/store-log-route-phases \
 	books/owner-log-route \
 	tests/acl2/owner-log-route-tests \
@@ -819,6 +824,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-carried \
 	books/owner-served-carried \
 	books/wire-span \
+	books/wire-scan \
+	books/served-scan \
 	books/served-span \
 	books/owner-offer-indexed \
 	books/store-events-carried \
@@ -851,6 +858,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-tables-reader \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
+	books/store-checkpoint-arena \
+	books/store-checkpoint-arena-load \
+	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/payload-arena-tests \
@@ -903,6 +913,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-served-carried-tests \
 	tests/acl2/wire-span-tests \
 	tests/acl2/served-span-tests \
+	tests/acl2/served-scan-tests \
 	tests/acl2/peer-offer-indexed-tests \
 	tests/acl2/peer-guard-carried-tests \
 	tests/acl2/owner-commit-carried-tests \

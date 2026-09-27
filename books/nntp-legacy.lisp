@@ -80,9 +80,9 @@
                     (fn-nntp-range-low (fn-nntp-parse-range token))
                     (fn-nntp-range-high (fn-nntp-parse-range token))
                     (fn-state-articles archive))
-                   (fn-state-articles archive)))
-           (equal (fn-nntp-xover-range session archive token)
-                  (fn-nntp-over-range session archive token)))
+                   (fn-state-articles archive) fn-arena))
+           (equal (fn-nntp-xover-range session archive token fn-arena)
+                  (fn-nntp-over-range session archive token fn-arena)))
   ; Both bodies are the same `let*' but for one octet string, so the proof is
   ; propositional once the four terms inside them stay closed.  Opened, the
   ; range walk and the overview fold appear twice each and the goal passes
@@ -95,8 +95,8 @@
                             fn-nntp-multi fn-nntp-single)))))
 
 (defthm fn-nntp-xover-with-no-argument-is-over-with-no-argument
-  (equal (fn-nntp-xover-response session archive nil)
-         (fn-nntp-over-response session archive nil))
+  (equal (fn-nntp-xover-response session archive nil fn-arena)
+         (fn-nntp-over-response session archive nil fn-arena))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-nntp-xover-response fn-nntp-over-response)
                            (fn-nntp-over-current fn-nntp-xover-range
@@ -111,7 +111,7 @@
 ; whole line -- number, space, value -- carries no TAB either.
 
 (defthm fn-nntp-hdr-content-is-clean
-  (fn-nov-clean-fieldp (fn-nntp-hdr-octets (fn-nntp-hdr-content field article))))
+  (fn-nov-clean-fieldp (fn-nntp-hdr-octets (fn-nntp-hdr-content field article fn-arena))))
 
 (defthm fn-nntp-hdr-line-is-a-clean-field
   (implies (and (fn-nov-clean-fieldp label) (fn-nov-clean-fieldp content))
@@ -130,7 +130,7 @@
 
 (defthm fn-nntp-hdr-lines-for-numbers-are-clean
   (fn-nntp-hdr-clean-field-listp
-   (fn-nntp-hdr-lines-for-numbers field group numbers articles))
+   (fn-nntp-hdr-lines-for-numbers field group numbers articles fn-arena))
   :hints (("Goal" :in-theory (disable fn-nntp-hdr-content fn-nntp-hdr-line
                                       fn-nntp-hdr-octets))))
 
@@ -141,9 +141,9 @@
   (implies (and (not (fn-nntp-hdr-metadata-tokenp field))
                 (not (consp (fn-article-get-headers
                              (fn-article-result-article
-                              (fn-article-parse (fn-article-payload article)))
+                              (fn-article-parse (fn-nntp-article-bytes article fn-arena)))
                              field))))
-           (equal (fn-nntp-hdr-octets (fn-nntp-hdr-content field article))
+           (equal (fn-nntp-hdr-octets (fn-nntp-hdr-content field article fn-arena))
                   nil)))
 
 ; The two line shapes the three HDR responses render, each with no hypothesis
@@ -151,14 +151,14 @@
 (defthm fn-nntp-hdr-numbered-line-is-clean
   (fn-nov-clean-fieldp
    (fn-nntp-hdr-line (fn-nntp-decimal-field number)
-                     (fn-nntp-hdr-octets (fn-nntp-hdr-content field article))))
+                     (fn-nntp-hdr-octets (fn-nntp-hdr-content field article fn-arena))))
   :hints (("Goal" :in-theory (disable fn-nntp-hdr-line fn-nntp-hdr-content
                                       fn-nntp-hdr-octets))))
 
 (defthm fn-nntp-hdr-labelled-line-is-clean
   (fn-nov-clean-fieldp
    (fn-nntp-hdr-line (fn-nov-scrub token)
-                     (fn-nntp-hdr-octets (fn-nntp-hdr-content field article))))
+                     (fn-nntp-hdr-octets (fn-nntp-hdr-content field article fn-arena))))
   :hints (("Goal" :in-theory (disable fn-nntp-hdr-line fn-nntp-hdr-content
                                       fn-nntp-hdr-octets fn-nov-scrub))))
 
@@ -175,25 +175,25 @@
 ; recursion, so the agreement theorem below has a hypothesis that can be
 ; discharged by evaluation on a concrete transcript rather than by a claim
 ; about the matcher.
-(defun fn-nntp-xpat-selects-everythingp (field patterns group numbers articles)
-  (declare (xargs :guard t))
+(defun fn-nntp-xpat-selects-everythingp (field patterns group numbers articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (if (consp numbers)
       (let* ((article (fn-nntp-available-article group (car numbers) articles))
              (content (if (consp article)
-                          (fn-nntp-hdr-content field article)
+                          (fn-nntp-hdr-content field article fn-arena)
                         (list :error))))
         (and (or (not (fn-nntp-hdr-okp content))
                  (fn-nntp-xpat-matchesp patterns (fn-nntp-hdr-octets content)))
              (fn-nntp-xpat-selects-everythingp field patterns group
-                                               (cdr numbers) articles)))
+                                               (cdr numbers) articles fn-arena)))
     t))
 
 (defthm fn-nntp-xpat-lines-are-hdr-lines
   (subsetp-equal
-   (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles)
-   (fn-nntp-hdr-lines-for-numbers field group numbers articles))
+   (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles fn-arena)
+   (fn-nntp-hdr-lines-for-numbers field group numbers articles fn-arena))
   :hints (("Goal" :induct (fn-nntp-xpat-lines-for-numbers field patterns group
-                                                          numbers articles)
+                                                          numbers articles fn-arena)
            :in-theory (disable fn-nntp-hdr-content fn-nntp-hdr-line
                                fn-nntp-hdr-octets fn-nntp-xpat-matchesp
                                fn-nntp-available-article))))
@@ -204,19 +204,19 @@
 ; line, which is XHDR's own (fn-nntp-hdr-initial with legacyp T).
 (defthm fn-nntp-xpat-with-a-total-filter-is-the-hdr-block
   (implies (fn-nntp-xpat-selects-everythingp field patterns group numbers
-                                             articles)
+                                             articles fn-arena)
            (equal (fn-nntp-xpat-lines-for-numbers field patterns group numbers
-                                                  articles)
-                  (fn-nntp-hdr-lines-for-numbers field group numbers articles)))
+                                                  articles fn-arena)
+                  (fn-nntp-hdr-lines-for-numbers field group numbers articles fn-arena)))
   :hints (("Goal" :induct (fn-nntp-xpat-lines-for-numbers field patterns group
-                                                          numbers articles)
+                                                          numbers articles fn-arena)
            :in-theory (disable fn-nntp-hdr-content fn-nntp-hdr-line
                                fn-nntp-hdr-octets fn-nntp-xpat-matchesp
                                fn-nntp-available-article))))
 
 (defthm fn-nntp-xpat-msgid-lines-are-clean
   (fn-nntp-hdr-clean-field-listp
-   (fn-nntp-xpat-msgid-lines field patterns token article))
+   (fn-nntp-xpat-msgid-lines field patterns token article fn-arena))
   :hints (("Goal"
            :use fn-nntp-hdr-labelled-line-is-clean
            :in-theory (e/d (fn-nntp-hdr-clean-field-listp
@@ -228,9 +228,9 @@
 
 (defthm fn-nntp-xpat-lines-are-clean
   (fn-nntp-hdr-clean-field-listp
-   (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles))
+   (fn-nntp-xpat-lines-for-numbers field patterns group numbers articles fn-arena))
   :hints (("Goal" :induct (fn-nntp-xpat-lines-for-numbers field patterns group
-                                                          numbers articles)
+                                                          numbers articles fn-arena)
            :in-theory (e/d (fn-nntp-hdr-clean-field-listp)
                            (fn-nntp-hdr-content fn-nntp-hdr-line
                             fn-nntp-hdr-octets fn-nntp-xpat-matchesp

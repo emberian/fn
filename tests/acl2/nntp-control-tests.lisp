@@ -23,9 +23,10 @@
 (defconst *nct-index* (nct-index *csv-w*))
 (defun nct-toks (args)
   (if (consp args) (cons (nct-tok (car args)) (nct-toks (cdr args))) nil))
-(defun nct-run (session archive index keyword args)
+(defun nct-run (session archive index keyword args fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-nntp-archive-command-pinned session archive index *csv-verdicts* nil
-                                  (nct-tok keyword) (nct-toks args)))
+                                  (nct-tok keyword) (nct-toks args) fn-arena))
 (defconst *nct-423* (fn-nntp-single *nct-session* "423 withdrawn"))
 (defconst *nct-430* (fn-nntp-single *nct-session* "430 withdrawn"))
 
@@ -37,10 +38,15 @@
 ; 423: fn-nntp-423-withdrawn-is-a-withdrawn-holder and
 ; fn-nntp-withdrawn-holder-answers-423-withdrawn.  Witness: ARTICLE 1 and
 ; STAT 1 answer 423 withdrawn; ARTICLE 2 (O, served) does not.
-(assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index* "ARTICLE" '("1")) *nct-423*))
-(assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index* "STAT" '("1")) *nct-423*))
+(include-book "arena-lift")
+;; The arena: empty; control-served-tests' articles carry their octets (or
+;; nil), never a handle, so no read goes through it.
+(defconst *sr-arena* nil)
+(bpr-lift nct-run 5)
+(assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "ARTICLE" '("1")) *nct-423*))
+(assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "STAT" '("1")) *nct-423*))
 (assert-event (fn-nntp-number-withdrawn-p *nct-session* *nct-archive* *nct-index* (nct-tok "1")))
-(assert-event (not (equal (nct-run *nct-session* *nct-archive* *nct-index* "ARTICLE" '("2"))
+(assert-event (not (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "ARTICLE" '("2"))
                           *nct-423*)))
 ; Sound, hypothesis 1 removed (the pin's W is RAW's withdrawn list): a stale
 ; W holding A (fn.misc 1) under group fn.misc answers 423 withdrawn for an
@@ -58,41 +64,30 @@
   (member-equal (fn-ctl-number-withdrawn "fn.mod.a" 7 *csv-w*) *csv-raw*)))
 ; Complete, per hypothesis, each with every other hypothesis kept:
 ; the pin's W (nil instead of RAW's): plain 423.
-(must-fail (assert-event (equal (nct-run *nct-session* *nct-archive* (nct-index nil)
-                                         "ARTICLE" '("1")) *nct-423*)))
+(must-fail (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* (nct-index nil) "ARTICLE" '("1")) *nct-423*)))
 ; the keyword (GROUP is not a retrieval).
-(must-fail (assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                                         "GROUP" '("1")) *nct-423*)))
+(must-fail (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "GROUP" '("1")) *nct-423*)))
 ; one argument (two).
-(must-fail (assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                                         "ARTICLE" '("1" "1")) *nct-423*)))
+(must-fail (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "ARTICLE" '("1" "1")) *nct-423*)))
 ; a number token (a Message-ID token is taken by the Message-ID arms).
-(must-fail (assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                                         "ARTICLE" '("<t@example.invalid>")) *nct-423*)))
+(must-fail (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "ARTICLE" '("<t@example.invalid>")) *nct-423*)))
 ; a selected group (none selected).
-(must-fail (assert-event (equal (nct-run (fn-nntp-open-session *nct-archive*) *nct-archive*
-                                         *nct-index* "ARTICLE" '("1"))
+(must-fail (assert-event (equal (in-arena-nct-run *sr-arena* (fn-nntp-open-session *nct-archive*) *nct-archive* *nct-index* "ARTICLE" '("1"))
                                 (fn-nntp-single (fn-nntp-open-session *nct-archive*)
                                                 "423 withdrawn"))))
 ; x in RAW, not served, holding the number: 3 is held by nothing.
-(must-fail (assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                                         "ARTICLE" '("3")) *nct-423*)))
+(must-fail (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "ARTICLE" '("3")) *nct-423*)))
 ; the archive misses the number: an archive that still serves T answers T.
 (must-fail (assert-event
-            (equal (nct-run *nct-session*
-                            (fn-ctl-visible-state-of *nct-archive* *csv-raw*)
-                            *nct-index* "ARTICLE" '("1"))
+            (equal (in-arena-nct-run *sr-arena* *nct-session* (fn-ctl-visible-state-of *nct-archive* *csv-raw*) *nct-index* "ARTICLE" '("1"))
                    *nct-423*)))
 
 ; ---------------------------------------------------------------------------
 ; 430: fn-nntp-430-withdrawn-is-a-withdrawn-article and
 ; fn-nntp-withdrawn-article-answers-430-withdrawn.
-(assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                              "ARTICLE" '("<t@example.invalid>")) *nct-430*))
-(assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                              "HEAD" '("<t@example.invalid>")) *nct-430*))
-(assert-event (not (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                                   "ARTICLE" '("<o@example.invalid>")) *nct-430*)))
+(assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "ARTICLE" '("<t@example.invalid>")) *nct-430*))
+(assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "HEAD" '("<t@example.invalid>")) *nct-430*))
+(assert-event (not (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "ARTICLE" '("<o@example.invalid>")) *nct-430*)))
 ; Sound, hypothesis 1 removed (W is RAW's): a stale W holding A.
 (must-fail
  (assert-event
@@ -116,18 +111,13 @@
   (member-equal (fn-ctl-msgid-withdrawn "<o@example.invalid>" *csv-w*) *csv-raw*)))
 ; Complete, per hypothesis: W nil; keyword; two arguments; the archive
 ; serves T (trie of the raw list).
-(must-fail (assert-event (equal (nct-run *nct-session* *nct-archive* (nct-index nil)
-                                         "ARTICLE" '("<t@example.invalid>")) *nct-430*)))
-(must-fail (assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                                         "GROUP" '("<t@example.invalid>")) *nct-430*)))
-(must-fail (assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                                         "ARTICLE" '("<t@example.invalid>" "1")) *nct-430*)))
+(must-fail (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* (nct-index nil) "ARTICLE" '("<t@example.invalid>")) *nct-430*)))
+(must-fail (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "GROUP" '("<t@example.invalid>")) *nct-430*)))
+(must-fail (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "ARTICLE" '("<t@example.invalid>" "1")) *nct-430*)))
 (must-fail (assert-event
-            (equal (nct-run *nct-session* (fn-ctl-visible-state-of *nct-archive* *csv-raw*)
-                            (fn-gidx-pin-with-control (fn-midx-build *csv-raw*)
+            (equal (in-arena-nct-run *sr-arena* *nct-session* (fn-ctl-visible-state-of *nct-archive* *csv-raw*) (fn-gidx-pin-with-control (fn-midx-build *csv-raw*)
                                                       (fn-gidx-build *csv-raw*)
-                                                      (fn-ctl-pin *csv-w* *csv-ws*))
-                            "ARTICLE" '("<t@example.invalid>"))
+                                                      (fn-ctl-pin *csv-w* *csv-ws*)) "ARTICLE" '("<t@example.invalid>"))
                    *nct-430*)))
 
 ; ---------------------------------------------------------------------------
@@ -138,35 +128,26 @@
   (fn-nntp-multi *nct-session* (fn-nntp-hdr-initial nil)
                  (list (fn-nntp-hdr-line (fn-nntp-decimal-field 0)
                                          (fn-nntp-string-octets text)))))
-(assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                              "HDR" '(":fn-control" "<c@example.invalid>"))
+(assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "HDR" '(":fn-control" "<c@example.invalid>"))
                      (nct-hdr-line "executed withdrawal <t@example.invalid> author")))
-(assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                              "HDR" '(":fn-control" "<d@example.invalid>"))
+(assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "HDR" '(":fn-control" "<d@example.invalid>"))
                      (nct-hdr-line "owed")))
-(assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                              "HDR" '(":fn-control" "<t@example.invalid>"))
+(assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "HDR" '(":fn-control" "<t@example.invalid>"))
                      (nct-hdr-line "none")))
-(assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                              "HDR" '(":fn-control" "<zz@example.invalid>"))
+(assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "HDR" '(":fn-control" "<zz@example.invalid>"))
                      (fn-nntp-single *nct-session* "430 no article with that message-id")))
 ; Hypothesis removed (the trie is the served list's): an empty trie misses C
 ; and answers 430.
 (must-fail (assert-event
-            (equal (nct-run *nct-session* *nct-archive*
-                            (fn-gidx-pin-with-control nil nil (fn-ctl-pin *csv-w* *csv-ws*))
-                            "HDR" '(":fn-control" "<c@example.invalid>"))
+            (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* (fn-gidx-pin-with-control nil nil (fn-ctl-pin *csv-w* *csv-ws*)) "HDR" '(":fn-control" "<c@example.invalid>"))
                    (nct-hdr-line "executed withdrawal <t@example.invalid> author"))))
 ; The keyword and the field name (HDR :fn-verified answers the verdict).
-(must-fail (assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                                         "HDR" '(":fn-verified" "<c@example.invalid>"))
+(must-fail (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "HDR" '(":fn-verified" "<c@example.invalid>"))
                                 (nct-hdr-line "executed withdrawal <t@example.invalid> author"))))
-(must-fail (assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                                         "OVER" '(":fn-control" "<c@example.invalid>"))
+(must-fail (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "OVER" '(":fn-control" "<c@example.invalid>"))
                                 (nct-hdr-line "executed withdrawal <t@example.invalid> author"))))
 ; A Message-ID token (a range is refused 501).
-(must-fail (assert-event (equal (nct-run *nct-session* *nct-archive* *nct-index*
-                                         "HDR" '(":fn-control" "1-2"))
+(must-fail (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "HDR" '(":fn-control" "1-2"))
                                 (nct-hdr-line "executed withdrawal <t@example.invalid> author"))))
 
 ; fn-nntp-hdr-fn-control-executed-means-withdrawn: C's executed status names

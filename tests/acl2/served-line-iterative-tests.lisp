@@ -38,13 +38,17 @@
   '(83 58 32 120 13 10  13 10  46 13 10  46 46 121 13 10))   ; "S: x", "", ".", "..y"
 (defconst *sli-t-article*
   (fn-make-article "<sli@example.invalid>" *sli-t-payload* '("fn.test") nil t nil))
-(defconst *sli-t-section* (fn-nntp-article-section *sli-t-article* :body))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-nntp-article-response 6)
+(bpr-lift fn-nntp-article-section 2)
+(defconst *sli-t-section* (in-arena-fn-nntp-article-section *sr-arena* *sli-t-article* :body))
 (assert-event (equal *sli-t-section* '(:ok ((46) (46 46 121)))))
 (assert-event (equal (fn-nntp-stuff-lines (cadr *sli-t-section*))
                      '(46 46 13 10  46 46 46 121 13 10)))
 (defconst *sli-t-reply*
-  (fn-nntp-article-response (fn-nntp-make-session t "fn.test" nil t)
-                            *sli-t-article* 1 :body t "fn.test"))
+  (in-arena-fn-nntp-article-response *sr-arena* (fn-nntp-make-session t "fn.test" nil t) *sli-t-article* 1 :body t "fn.test"))
 (assert-event
  (equal (fn-nntp-result-effects *sli-t-reply*)
         (list (fn-nntp-reply-effect

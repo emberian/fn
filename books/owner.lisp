@@ -1726,25 +1726,25 @@
 ; The read with its third answer, whether the pin moved: the configured
 ; owner (books/owner-config.lisp fn-ocfg-with-read-owner) moves the
 ; connection's configuration pin with it, exactly as it does at :advance.
-(defun fn-own-read-full (o id octets)
-  (declare (xargs :guard t))
+(defun fn-own-read-full (o id octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
         (let* ((result (fn-served-step
                         (fn-own-served-conn o conn (fn-own-conn-live-session o conn))
-                        octets))
+                        octets fn-arena))
                (finished (fn-own-finish-read o conn result)))
           (list (car finished) (cdr finished) (fn-own-result-repinned result)))
       (list nil o nil))))
 
-(defun fn-own-read (o id octets)
-  (declare (xargs :guard t))
-  (let ((r (fn-own-read-full o id octets)))
+(defun fn-own-read (o id octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (let ((r (fn-own-read-full o id octets fn-arena)))
     (cons (car r) (car (cdr r)))))
 
-(defun fn-own-read-repinned (o id octets)
-  (declare (xargs :guard t))
-  (car (cdr (cdr (fn-own-read-full o id octets)))))
+(defun fn-own-read-repinned (o id octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (car (cdr (cdr (fn-own-read-full o id octets fn-arena)))))
 
 ; The per-event law under the served port: one framed wire event is one
 ; fn-served-dispatch (fn-nntp-post-step with the article-mode switch,
@@ -1753,13 +1753,13 @@
 ; event before the next byte is framed; this is that fold's one step with the
 ; owner's bookkeeping around it.  It records no submission: the served port
 ; does that once per read.
-(defun fn-own-read-step-full (o id event)
-  (declare (xargs :guard t))
+(defun fn-own-read-step-full (o id event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
         (let* ((result (fn-served-dispatch
                         (fn-own-served-conn o conn (fn-own-conn-session conn))
-                        event))
+                        event fn-arena))
                (sconn (fn-served-result-conn result))
                (pinned (fn-served-conn-pinned sconn))
                (next (fn-own-conn-make-group-indexed (fn-own-conn-id conn)
@@ -1784,9 +1784,9 @@
                 (fn-own-result-repinned result)))
       (list nil o nil))))
 
-(defun fn-own-read-step (o id event)
-  (declare (xargs :guard t))
-  (let ((r (fn-own-read-step-full o id event)))
+(defun fn-own-read-step (o id event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (let ((r (fn-own-read-step-full o id event fn-arena)))
     (cons (car r) (car (cdr r)))))
 
 ; Advance re-pins a connection to the newest committed view.  The projection
@@ -2856,14 +2856,14 @@
 ; feeds the durable outcome of the submission in flight back through the
 ; book, which renders the reply (fn-own-outcome).
 
-(defun fn-own-step (o event)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
+(defun fn-own-step (o event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
   (case (car event)
     (:open (cdr (fn-own-open o (cadr event))))
     (:open-peer (cdr (fn-own-open-peer o (cadr event) (caddr event)
                                        (cadddr event))))
-    (:octets (cdr (fn-own-read o (cadr event) (caddr event))))
-    (:read (cdr (fn-own-read-step o (cadr event) (caddr event))))
+    (:octets (cdr (fn-own-read o (cadr event) (caddr event) fn-arena)))
+    (:read (cdr (fn-own-read-step o (cadr event) (caddr event) fn-arena)))
     (:advance (fn-own-advance o (cadr event)))
     (:close (fn-own-close o (cadr event)))
     (:begin (fn-own-begin o (cadr event)))
@@ -2899,10 +2899,10 @@
                                           (cadddr event))))
     (otherwise o)))
 
-(defun fn-own-run (o events)
-  (declare (xargs :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
+(defun fn-own-run (o events fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep (fn-own-store o)) :verify-guards nil))
   (if (consp events)
-      (fn-own-run (fn-own-step o (car events)) (cdr events))
+      (fn-own-run (fn-own-step o (car events) fn-arena) (cdr events) fn-arena)
     o))
 
 ; The compaction floor: nothing below the lowest pinned version may be

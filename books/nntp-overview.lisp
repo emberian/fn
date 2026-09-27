@@ -132,22 +132,22 @@
 ; withdraws fn-nov-overview at its own.  Inside this book the same closure is
 ; requested by hint where the rule is needed.
 (defthm fn-nov-overview-is-an-overview
-  (implies (fn-nov-okp (fn-nov-overview article))
-           (fn-nov-overviewp (fn-nov-overview article)))
+  (implies (fn-nov-okp (fn-nov-overview article fn-arena))
+           (fn-nov-overviewp (fn-nov-overview article fn-arena)))
   :hints (("Goal" :do-not-induct t
            :do-not '(generalize fertilize))))
 
 ; The two metadata items are computed from the exact retained octets, never
 ; from a normalized or re-encoded copy.
 (defthm fn-nov-bytes-is-the-retained-octet-count
-  (implies (fn-nov-okp (fn-nov-overview article))
-           (equal (fn-nov-bytes (fn-nov-overview article))
-                  (len (fn-article-payload article)))))
+  (implies (fn-nov-okp (fn-nov-overview article fn-arena))
+           (equal (fn-nov-bytes (fn-nov-overview article fn-arena))
+                  (len (fn-nntp-article-bytes article fn-arena)))))
 
 (defthm fn-nov-lines-counts-the-retained-body-lines
-  (implies (fn-nov-okp (fn-nov-overview article))
-           (equal (fn-nov-lines (fn-nov-overview article))
-                  (fn-nov-body-line-count (fn-article-payload article)))))
+  (implies (fn-nov-okp (fn-nov-overview article fn-arena))
+           (equal (fn-nov-lines (fn-nov-overview article fn-arena))
+                  (fn-nov-body-line-count (fn-nntp-article-bytes article fn-arena)))))
 
 ; -----------------------------------------------------------------------------
 ; The rendered line
@@ -177,7 +177,7 @@
                                       fn-nov-bytes fn-nov-lines))))
 
 (defthm fn-nov-lines-for-numbers-are-clean
-  (fn-nov-clean-line-listp (fn-nov-lines-for-numbers group numbers articles))
+  (fn-nov-clean-line-listp (fn-nov-lines-for-numbers group numbers articles fn-arena))
   :hints (("Goal" :in-theory (disable fn-nov-overview fn-nov-overviewp
                                       fn-nov-line))))
 

@@ -1048,10 +1048,10 @@
                     (fn-nntp-string-octets "STREAMING")))
     (fn-nntp-capability-lines postingp)))
 
-(defun fn-peer-delegate (ps archive config observation injection wire-event)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-peer-delegate (ps archive config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((r (fn-nntp-post-step (fn-peer-session-base ps) archive config
-                              observation injection wire-event)))
+                              observation injection wire-event fn-arena)))
     (fn-post-make-result (fn-peer-with-base ps (fn-post-result-session r))
                          (fn-post-result-effects r)
                          (fn-post-result-submission r))))
@@ -1126,16 +1126,16 @@
        nil))
      (t nil))))
 
-(defun fn-peer-step (ps archive config observation injection wire-event)
-  (declare (xargs :guard t :verify-guards nil))
+(defun fn-peer-step (ps archive config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (cond
    ((not (fn-peer-sessionp ps)) (fn-post-make-result ps nil nil))
    ; A reader connection: the POST-composed step, unchanged.
    ((null (fn-peer-session-peer ps))
-    (fn-peer-delegate ps archive config observation injection wire-event))
+    (fn-peer-delegate ps archive config observation injection wire-event fn-arena))
    ; A closed session serves nothing further.
    ((not (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t))
-    (fn-peer-delegate ps archive config observation injection wire-event))
+    (fn-peer-delegate ps archive config observation injection wire-event fn-arena))
    ; Awaiting the transit article: the body arrives as one (:article lines)
    ; event through the same wire article mode POST uses, and leaves as the
    ; submission the owner carries through fn-peer-transfer.
@@ -1173,9 +1173,9 @@
                (fn-nntp-keyword-tokenp (car tokens))
                (fn-nntp-command-arguments-at-mostp tokens))
           (let ((r (fn-peer-command ps (car tokens) (cdr tokens))))
-            (if r r (fn-peer-delegate ps archive config observation injection wire-event)))
-        (fn-peer-delegate ps archive config observation injection wire-event))))
-   (t (fn-peer-delegate ps archive config observation injection wire-event))))
+            (if r r (fn-peer-delegate ps archive config observation injection wire-event fn-arena)))
+        (fn-peer-delegate ps archive config observation injection wire-event fn-arena))))
+   (t (fn-peer-delegate ps archive config observation injection wire-event fn-arena))))
 
 ; -----------------------------------------------------------------------------
 ; What the composed step preserves and emits: the two facts the served fold
@@ -1343,7 +1343,7 @@
   (implies (fn-peer-session-consistentp ps archive)
            (fn-nntp-effectsp
             (fn-post-result-effects
-             (fn-peer-step ps archive config observation injection wire-event))))
+             (fn-peer-step ps archive config observation injection wire-event fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-peer-step fn-peer-delegate
                                    fn-peer-session-consistentp)
                                   (fn-peer-command fn-nntp-post-step
@@ -1524,7 +1524,7 @@
   (implies (fn-peer-session-consistentp ps archive)
            (fn-peer-session-consistentp
             (fn-post-result-session
-             (fn-peer-step ps archive config observation injection wire-event))
+             (fn-peer-step ps archive config observation injection wire-event fn-arena))
             archive))
   :hints (("Goal" :in-theory (e/d (fn-peer-step fn-peer-delegate
                                    fn-peer-with-base fn-peer-with-transfer)
@@ -1553,7 +1553,7 @@
                             (x (fn-post-result-session
                                 (fn-nntp-post-step (fn-peer-session-base ps)
                                                    archive config observation
-                                                   injection wire-event))))))
+                                                   injection wire-event fn-arena))))))
           ("Subgoal *1/1" :in-theory (enable fn-peer-session-consistentp fn-peer-sessionp
                                               fn-post-session-consistentp))))
 
@@ -1562,13 +1562,13 @@
 (defthm fn-peer-step-submission-is-typed
   (implies (and (fn-peer-sessionp ps)
                 (fn-post-result-submission
-                 (fn-peer-step ps archive config observation injection wire-event)))
+                 (fn-peer-step ps archive config observation injection wire-event fn-arena)))
            (or (fn-inj-injectedp
                 (fn-post-result-submission
-                 (fn-peer-step ps archive config observation injection wire-event)))
+                 (fn-peer-step ps archive config observation injection wire-event fn-arena)))
                (fn-peer-submissionp
                 (fn-post-result-submission
-                 (fn-peer-step ps archive config observation injection wire-event)))))
+                 (fn-peer-step ps archive config observation injection wire-event fn-arena)))))
   :hints (("Goal" :in-theory (e/d (fn-peer-step fn-peer-delegate fn-peer-command
                                    fn-peer-sessionp fn-peer-transferp
                                    fn-peer-msgid-argp)
@@ -1808,28 +1808,28 @@
 ; Message-ID retrieval, delegate through the pinned POST/NNTP path; an active
 ; transfer keeps the existing transfer transition, which never reads archive.
 (defun fn-peer-delegate-pinned
-    (ps archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard t :verify-guards nil))
+    (ps archive index verdicts config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((r (fn-nntp-post-step-pinned
             (fn-peer-session-base ps) archive index verdicts config
-            observation injection wire-event)))
+            observation injection wire-event fn-arena)))
     (fn-post-make-result (fn-peer-with-base ps (fn-post-result-session r))
                          (fn-post-result-effects r)
                          (fn-post-result-submission r))))
 
 (defun fn-peer-step-pinned
-    (ps archive index verdicts config observation injection wire-event)
-  (declare (xargs :guard t :verify-guards nil))
+    (ps archive index verdicts config observation injection wire-event fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (cond
    ((not (fn-peer-sessionp ps)) (fn-post-make-result ps nil nil))
    ((null (fn-peer-session-peer ps))
     (fn-peer-delegate-pinned ps archive index verdicts config observation
-                             injection wire-event))
+                             injection wire-event fn-arena))
    ((not (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t))
     (fn-peer-delegate-pinned ps archive index verdicts config observation
-                             injection wire-event))
+                             injection wire-event fn-arena))
    ((fn-peer-session-transfer ps)
-    (fn-peer-step ps archive config observation injection wire-event))
+    (fn-peer-step ps archive config observation injection wire-event fn-arena))
    ((and (consp wire-event)
          (equal (car wire-event) :command)
          (consp (cdr wire-event))
@@ -1842,11 +1842,11 @@
           (let ((r (fn-peer-command ps (car tokens) (cdr tokens))))
             (if r r
               (fn-peer-delegate-pinned ps archive index verdicts config
-                                       observation injection wire-event)))
+                                       observation injection wire-event fn-arena)))
         (fn-peer-delegate-pinned ps archive index verdicts config observation
-                                 injection wire-event))))
+                                 injection wire-event fn-arena))))
    (t (fn-peer-delegate-pinned ps archive index verdicts config observation
-                               injection wire-event))))
+                               injection wire-event fn-arena))))
 
 (verify-guards fn-peer-delegate-pinned)
 (verify-guards fn-peer-step-pinned)
@@ -1857,7 +1857,7 @@
 ; correspondence obligation controls which article is returned.
 (local (defthm fn-peer-indexed-article-no-update-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-article-response session article 0 kind nil nil))
+          (fn-nntp-article-response session article 0 kind nil nil fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d (fn-nntp-article-response)
                                   (fn-nntp-article-idp fn-nntp-article-framedp
@@ -1867,7 +1867,7 @@
 
 (local (defthm fn-peer-indexed-msgid-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-msgid-retrieval-indexed session archive index kind token))
+          (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d (fn-nntp-msgid-retrieval-indexed)
                                   (fn-nntp-result-session
@@ -1881,7 +1881,7 @@
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
              (fn-nntp-archive-command-pinned
-              session archive index verdicts env keyword args)) archive))
+              session archive index verdicts env keyword args fn-arena)) archive))
   :hints (("Goal"
            :use ((:instance
                   fn-nntp-archive-command-pinned-preserves-consistent-session))
@@ -1894,7 +1894,7 @@
                 (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
-             (fn-nntp-command-pinned session archive index verdicts env tokens))
+             (fn-nntp-command-pinned session archive index verdicts env tokens fn-arena))
             archive))
   ; This is exactly the reader theorem.  Reopening the command here also
   ; opens the pinned-index relation in every dispatch arm.
@@ -1909,7 +1909,7 @@
                 (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-session-consistentp
             (fn-nntp-result-session
-             (fn-nntp-step-pinned session archive index verdicts env wire-event))
+             (fn-nntp-step-pinned session archive index verdicts env wire-event fn-arena))
             archive))
   :hints (("Goal"
            :use ((:instance fn-nntp-step-pinned-preserves-consistent-session))
@@ -1923,7 +1923,7 @@
            (fn-post-session-consistentp
             (fn-post-result-session
              (fn-nntp-post-step-pinned ps archive index verdicts config
-                                       observation injection wire-event))
+                                       observation injection wire-event fn-arena))
             archive))
   :hints (("Goal"
            :use ((:instance fn-post-step-pinned-preserves-consistent-session))
@@ -1937,7 +1937,7 @@
            (fn-peer-session-consistentp
             (fn-post-result-session
              (fn-peer-delegate-pinned ps archive index verdicts config
-                                      observation injection wire-event))
+                                      observation injection wire-event fn-arena))
             archive))
   :hints (("Goal"
            :use ((:instance fn-peer-sessionp-of-fn-peer-with-base
@@ -1945,7 +1945,7 @@
                                    (fn-nntp-post-step-pinned
                                     (fn-peer-session-base ps) archive index
                                     verdicts config observation injection
-                                    wire-event))))
+                                    wire-event fn-arena))))
                  (:instance fn-peer-post-step-pinned-preserves-consistent-session
                             (ps (fn-peer-session-base ps)))
                  (:instance fn-post-session-consistentp-forward
@@ -1953,7 +1953,7 @@
                                 (fn-nntp-post-step-pinned
                                  (fn-peer-session-base ps) archive index
                                  verdicts config observation injection
-                                 wire-event)))))
+                                 wire-event fn-arena)))))
            :in-theory (e/d (fn-peer-delegate-pinned
                             fn-peer-session-consistentp)
                            (fn-nntp-post-step-pinned
@@ -1967,7 +1967,7 @@
            (fn-peer-session-consistentp
             (fn-post-result-session
              (fn-peer-step-pinned ps archive index verdicts config observation
-                                  injection wire-event))
+                                  injection wire-event fn-arena))
             archive))
   :hints (("Goal"
            :in-theory (e/d (fn-peer-step-pinned)
@@ -1986,7 +1986,7 @@
            (fn-nntp-effectsp
             (fn-post-result-effects
              (fn-peer-delegate-pinned ps archive index verdicts config
-                                      observation injection wire-event))))
+                                      observation injection wire-event fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-peer-delegate-pinned fn-peer-session-consistentp)
                 (fn-nntp-post-step-pinned fn-post-session-consistentp
@@ -2001,7 +2001,7 @@
            (fn-nntp-effectsp
             (fn-post-result-effects
              (fn-peer-step-pinned ps archive index verdicts config observation
-                                  injection wire-event))))
+                                  injection wire-event fn-arena))))
   :hints (("Goal" :in-theory
            (e/d (fn-peer-step-pinned)
                 (fn-peer-delegate-pinned fn-peer-step fn-peer-command
@@ -2021,15 +2021,15 @@
   (implies (and (fn-peer-sessionp ps)
                 (fn-post-result-submission
                  (fn-peer-step-pinned ps archive index verdicts config
-                                      observation injection wire-event)))
+                                      observation injection wire-event fn-arena)))
            (or (fn-inj-injectedp
                 (fn-post-result-submission
                  (fn-peer-step-pinned ps archive index verdicts config
-                                      observation injection wire-event)))
+                                      observation injection wire-event fn-arena)))
                (fn-peer-submissionp
                 (fn-post-result-submission
                  (fn-peer-step-pinned ps archive index verdicts config
-                                      observation injection wire-event)))))
+                                      observation injection wire-event fn-arena)))))
   :hints (("Goal"
            :use ((:instance fn-peer-step-submission-is-typed))
            :in-theory

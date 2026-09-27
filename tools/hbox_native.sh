@@ -81,12 +81,20 @@ while [ $# -gt 0 ]; do
         --label) LABEL=$2; shift 2 ;;
         --images) IMAGES=$2; shift 2 ;;
         --mem) MEM=$2; shift 2 ;;
-        --image-acl2) IMAGE_ACL2=$2; shift 2 ;;
         --jobs) JOBS=$2; shift 2 ;;
         --no-build) BUILD=0; shift ;;
         --detach) DETACH=1; shift ;;
         --dry-run) DRY=1; shift ;;
         --deadline) DEADLINE=$2; shift 2 ;;
+        # The ACL2 wrapper the IMAGE builds run under (certification keeps
+        # the toolchain's, whose identity the cache keys on).  The world is
+        # past SBCL's --tls-limit 16384 since batch AV ("Thread local
+        # storage exhausted"; recover-memory-2's packet); the default is the
+        # tls64k wrapper above.
+        --image-acl2)
+            case $2 in /*) ;; *) echo "hbox_native: --image-acl2 takes an absolute path" >&2; exit 2 ;; esac
+            case $2 in *[!A-Za-z0-9_./-]*) echo "hbox_native: bad --image-acl2 path" >&2; exit 2 ;; esac
+            IMAGE_ACL2=$2; shift 2 ;;
         --env)
             case $2 in
                 ?*=*) ;;

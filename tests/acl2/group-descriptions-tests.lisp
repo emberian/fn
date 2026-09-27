@@ -184,7 +184,7 @@
   `(fn-nntp-archive-command-pinned *gdt-open* *gdt-archive* nil nil ,env
                                    (gdt-o ,keyword)
                                    (list ,@(pairlis-x1 'fn-nntp-string-octets
-                                                      (pairlis$ args nil)))))
+                                                      (pairlis$ args nil))) fn-arena))
 (defmacro gdt-lines (&rest lines)
   `(list ,@(pairlis-x1 'fn-nntp-string-octets (pairlis$ lines nil))))
 (defconst *gdt-tab* (coerce (list (code-char 9)) 'string))
