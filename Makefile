@@ -752,6 +752,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-session \
 	books/nntp-projection \
 	books/nov-fields \
+	books/nntp-article-pass \
 	books/nntp-responses \
 	books/nntp-article-block \
 	books/nntp-reader-compat \
