@@ -964,6 +964,7 @@
     "tests/acl2/owner-prepare-served-tests",
     "tests/acl2/owner-prepare-served-events-tests",
     "tests/acl2/owner-identity-served-tests",
+    "tests/acl2/owner-prepare-served-abort-tests",
     "books/config-crash-replay",
     "tests/acl2/config-crash-replay-tests",
     "books/owner-config",
@@ -1242,26 +1243,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1285,
-    "books_in_root_closure": 1274,
-    "roots": 1238,
+    "books": 1286,
+    "books_in_root_closure": 1275,
+    "roots": 1239,
     "theorems": 19034,
-    "functions": 13037,
-    "assert_events": 18719,
+    "functions": 13043,
+    "assert_events": 18720,
     "must_fails": 2186,
     "prover_refusals": 0,
     "encapsulates": 99,
     "guards": {
       "verified": 2480,
-      "declared-off": 1560,
+      "declared-off": 1561,
       "default-guarded": 7185,
-      "default-unguarded": 1812
+      "default-unguarded": 1817
     },
     "suspect_theorems": 218,
     "export_hygiene_warnings": 225,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 225,
-    "include_hygiene_warnings": 1379,
+    "include_hygiene_warnings": 1380,
     "host_names_warnings": 1400,
     "hand_written_record_warnings": 18
   },
@@ -32038,6 +32039,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-prepare-served-abort-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 5
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "owner-identity-served-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-prepare-served-events-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -50315,6 +50342,13 @@
         "line": 57,
         "include": "arena-lift",
         "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-prepare-served-abort-tests.lisp",
+        "line": 12,
+        "include": "owner-identity-served-tests",
+        "included": "tests/acl2/owner-identity-served-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
