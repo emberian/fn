@@ -238,11 +238,12 @@
   (declare (xargs :guard t))
   (pgs-open-slots (pgs-root-slots r disk) (pgs-pages disk) mode))
 
-; What an open denotes, without the refusal trail: (TXID CONTENTS) or nil.
+; What an open denotes, without the slot and the refusal trail: (TXID
+; CONTENTS), or nil when it refused.  O is (:ok SLOT TXID CONTENTS REFUSALS).
 (defun pgs-view (o)
   (declare (xargs :guard t))
   (if (and (consp o) (eq (car o) :ok) (true-listp o))
-      (list (fourth o) (fifth o))
+      (list (third o) (fourth o))
     nil))
 
 ; -----------------------------------------------------------------------------
@@ -350,7 +351,7 @@
 
 (defun pgs-update-entry (i e ptab)
   (declare (xargs :guard (and (natp i) (true-listp ptab))))
-  (if (< i (len ptab)) (update-nth i e ptab) ptab))
+  (if (< (nfix i) (len ptab)) (update-nth (nfix i) e ptab) ptab))
 
 (defun pgs-plan-ptab (ptab lpages fresh digests txid)
   ; Shared: LPAGES, FRESH and DIGESTS are parallel lists.
