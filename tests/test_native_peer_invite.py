@@ -7,8 +7,10 @@ whose decisions are books/peer-invite.lisp's `fn-pinv-issue-plan`,
 `fn-pinv-accept-step`, `fn-pinv-confirm-plan` and `fn-pinv-confirm-step`.
 Every node is a fresh store; key directories are generated with OpenSSL
 (`FN_OPENSSL`, 3.5 or later for ML-DSA-65) and their principals by `peer
-genesis`.  The crash case needs a developer image (the
-FN_PEER_TEST_STOP_AFTER_CONSUME selector).
+genesis`.  The two crash cases need a developer image
+(FN_NATIVE_DEVELOPER_HOST: the FN_PEER_TEST_STOP_AFTER_CONSUME and
+_CONFIGURE selectors, which a production image refuses by name); the node
+that stops runs it, over a store the production image's verbs also serve.
 
 Run: FN_NATIVE_HOST=<launcher> FN_OPENSSL=<openssl> \
      python3 -m unittest -v tests.test_native_peer_invite
@@ -27,6 +29,8 @@ from tests import test_native_live_reconfiguration as live
 
 ROOT = live.ROOT
 IMAGE = live.IMAGE
+DEVELOPER_TEXT = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
+DEVELOPER = Path(DEVELOPER_TEXT) if DEVELOPER_TEXT else None
 EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN = 0, 1, 3
 OPENSSL = os.environ.get("FN_OPENSSL", "openssl")
 
@@ -58,8 +62,9 @@ def out(result):
 
 
 class Node:
-    def __init__(self, test, root, name, env=None):
+    def __init__(self, test, root, name, env=None, image=None):
         self.test, self.name = test, name
+        self.image = IMAGE if image is None else image
         self.root = root / name
         self.root.mkdir()
         self.store = self.root / "store"
@@ -75,13 +80,13 @@ class Node:
         test.assertEqual(self.operator("init", "fn.test").returncode, EXIT_OK)
 
     def operator(self, *words, timeout=240):
-        return subprocess.run([str(IMAGE), "--fn", "operator", str(self.config), *words],
+        return subprocess.run([str(self.image), "--fn", "operator", str(self.config), *words],
                               cwd=ROOT, env=live.environment(), stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, timeout=timeout, check=False)
 
     def start(self, env=None):
         self.process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(self.config), "run"], cwd=ROOT,
+            [str(self.image), "--fn", "operator", str(self.config), "run"], cwd=ROOT,
             env=dict(self.env, **(env or {})), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, bufsize=0)
         self.test.addCleanup(self.reap)
@@ -223,8 +228,15 @@ class NativePeerInviteTests(unittest.TestCase):
         for node in (a, d, e):
             node.stop()
 
+    def developer(self):
+        if DEVELOPER is None or not live.executable(DEVELOPER):
+            self.skipTest("set FN_NATIVE_DEVELOPER_HOST to a developer launcher "
+                          "(the stop selectors)")
+        return DEVELOPER
+
     def test_a_crash_between_consumption_and_enrolment_enrols_once(self):
-        a2, b2 = Node(self, self.root, "A2"), Node(self, self.root, "B2")
+        a2 = Node(self, self.root, "A2", image=self.developer())
+        b2 = Node(self, self.root, "B2")
         keys_g, _ = self.keys("g", a2)
         keys_h, ph = self.keys("h", b2)
         a2.start(env={"FN_PEER_TEST_STOP_AFTER_CONSUME": "1"})
@@ -258,7 +270,8 @@ class NativePeerInviteTests(unittest.TestCase):
         inviter as a peer at the accepting node in one configuration record
         before the enrolment; a death between the two leaves the peer and no
         enrolment, and the next accept enrols once without a second record."""
-        a, b = Node(self, self.root, "A3"), Node(self, self.root, "B3")
+        a = Node(self, self.root, "A3")
+        b = Node(self, self.root, "B3", image=self.developer())
         keys_a, pa = self.keys("a3", a)
         keys_b, pb = self.keys("b3", b)
         a.start()

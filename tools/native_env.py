@@ -98,6 +98,13 @@ FIXED = {
     "FN_OPENSSL": (OPENSSL, "the test tool OpenSSL 3.5"),
     "FN_NATIVE_TEST_ROOT": ("$T", "the shipped tree"),
 }
+# Of FIXED, the names that locate a test tool and gate nothing: set for a
+# module that reads one only through a helper too, since a module that
+# subclasses the helper's tests runs the helper's reads
+# (tests/test_native_operator_verdicts runs test_native_control_filing's
+# signed withdrawal, which needs FN_TEST_OPENSSL's ML-DSA-65; dev-health
+# 2026-09-27).  The opt-ins stay the helper's own modules'.
+TOOLS = ("FN_TEST_OPENSSL", "FN_OPENSSL", "FN_NATIVE_TEST_ROOT")
 # Read but never set by the script: each needs something this run does not
 # build or means a different image.  A module reading one gets a note, and
 # the cases it gates skip (reported, never counted as passing).
@@ -195,7 +202,8 @@ def plan(images: list[str], given: dict[str, str], modules: list[str]
         assignments = []
         own = set(own_reads(module))
         for name in reads(module):
-            if name in given or (name not in own and name not in IMAGES):
+            if name in given or (name not in own and name not in IMAGES
+                                 and name not in TOOLS):
                 continue  # a helper's opt-ins stay the helper's own modules'
             if name in IMAGES:
                 image = next((i for i in IMAGES[name] if i in images), None)
