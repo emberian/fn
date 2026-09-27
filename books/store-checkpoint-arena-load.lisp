@@ -428,7 +428,11 @@
                             (fn-sctr-run-decode-is-run-decode fn-scka-run-decode-of-run-segments
                              fn-sctr-run-decode-ok-shape fn-sctr-run-decode fn-sct-run-decode
                              fn-scka-program fn-scka-run-segments fn-sccr-planp
-                             fn-oct-slice-list-is-take-nthcdr))))))
+                             fn-oct-slice-list-is-take-nthcdr
+                             fn-scc-le-digits fn-scka-run-chunks fn-scka-chunks fn-scc-frames
+                             fn-scka-body fn-scc-chunk-listp fn-scka-payload-octets binary-append
+                             fn-scka-first-header fn-scka-car-run-segments
+                             floor mod))))))
 
 (local
  (defthm fn-scka-program-split
@@ -437,7 +441,8 @@
                (append (fn-scc-nat-octets (len ps)) (fn-scka-body ps)))
         (<= 5 (len (fn-scka-program ps))))
    :rule-classes nil
-   :hints (("Goal" :in-theory (enable fn-scka-program fn-scka-head)))))
+   :hints (("Goal" :in-theory (e/d (fn-scka-program fn-scka-head fn-scc-nat-octets)
+                                   (fn-scka-body fn-scc-le-digits))))))
 
 (local
  (defthm fn-scka-slice-head
@@ -671,5 +676,31 @@
                             fn-sccr-plan-segments fn-scka-sum fn-scka-car-run-segments
                             fn-scc-frames binary-append fn-cp-idp fn-scc-header
                             fn-sccr-scc-octet-listp-is-cbor-octet-listp
-                            fn-sccr-cbor-octet-listp-is-scc-octet-listp)))))
+                            fn-sccr-cbor-octet-listp-is-scc-octet-listp
+                            fn-sccr-at-is-nth fn-sccr-at fn-oct-bufp-true-listp
+                            fn-scc-octet-listp-true fn-arn-payload-listp-true-listp
+                            true-list-listp fn-scc-octet-listp-facts)))))
 
+
+; -----------------------------------------------------------------------------
+; 4. The open's choice with the arena refusal named.  A file whose first run
+; is not the arena run (a tables-only file written before the records flip,
+; or a later format's run with another tag) is refused by name: the open
+; replays the journal and `status' says reason=checkpoint-arena, never
+; `corrupt'.  host/store-node-host.lisp fn-store-sco-select calls it; the
+; host's load answers the status :arena for fn-store-sco-decode's
+; (:refused :arena).
+(defun fn-scka-select-named (status sequence count k)
+  (declare (xargs :guard t))
+  (if (eq status :arena)
+      (list :full-replay :checkpoint-arena)
+    (fn-sco-select-named status sequence count k)))
+
+(defthm fn-scka-select-named-refuses-the-arena-by-name
+  (equal (fn-scka-select-named :arena sequence count k)
+         (list :full-replay :checkpoint-arena)))
+
+(defthm fn-scka-select-named-unfolds
+  (implies (not (eq status :arena))
+           (equal (fn-scka-select-named status sequence count k)
+                  (fn-sco-select-named status sequence count k))))

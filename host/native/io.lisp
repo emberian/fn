@@ -2191,8 +2191,9 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
 (defun fnn-state-checkpoint-load (store)
   "Decode the checkpoint into ACL2's global: (values STATUS S) with STATUS
 :absent, :refused, :exceeds-bound, :schema (a file of another schema, D34:
-the journal replays, `status' says reason=checkpoint-schema) or :ok, the
-vocabulary of fn-sco-select-named."
+the journal replays, `status' says reason=checkpoint-schema), :arena (a file
+without the arena run: reason=checkpoint-arena) or :ok, the vocabulary of
+fn-scka-select-named."
   (multiple-value-bind (status value)
       (handler-case (fnn-state-checkpoint-plan store)
         (fnn-os-error () (values :refused :io)))
@@ -2205,7 +2206,9 @@ vocabulary of fn-sco-select-named."
                     (every (lambda (x) (and (integerp x) (>= x 0))) (rest answer)))
                (fnn-state-checkpoint-load-arena (second answer) (third answer)
                                                 (fourth answer))
-               (values :refused 0)))))))
+               ;; A file without the arena run (tables-only, written before
+               ;; the flip) is refused by name: reason=checkpoint-arena.
+               (values (if (equal answer '(:refused :arena)) :arena :refused) 0)))))))
 
 (defconstant +fnn-checkpoint-load-batch-payloads+ 1024
   "Payloads sealed into the arena per call while a state checkpoint loads

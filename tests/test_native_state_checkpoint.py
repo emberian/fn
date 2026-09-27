@@ -283,6 +283,31 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertEqual(self.open_line(), "open=full-replay reason=absent")
         self.assertEqual(self.observation(), expected)
 
+    def test_a_file_without_the_arena_run_is_refused_by_name(self):
+        """Records flip (checkpoint-arena-2): the file opens with the arena
+        run.  The same file with that run cut away is the tables-only file a
+        writer before the flip produced (the four runs chained from the
+        genesis, intact): the open refuses it BY NAME, reason=checkpoint-arena
+        (books/store-checkpoint-arena-load.lisp fn-scka-select-named), never
+        `corrupt', replays the journal, and reconstructs the same state."""
+        self.init_with_checkpoint_at_three()
+        expected = self.observation()
+        data = self.path().read_bytes()
+        # FNSC segment: magic(4) schema(1) index count length sequence (u64 LE
+        # each), the chunk, the 32-octet trailer; the first segment's count
+        # is the arena run's segment count.
+        count = int.from_bytes(data[13:21], "little")
+        at = 0
+        for _ in range(count):
+            length = int.from_bytes(data[21 + at:29 + at], "little")
+            at += 37 + length + FRAME_TRAILER_OCTETS
+        self.assertEqual(data[:4], b"FNSC")
+        self.assertEqual(data[37:41], b"fnA1")
+        self.assertEqual(data[at:at + 4], b"FNSC")
+        self.path().write_bytes(data[at:])
+        self.assertEqual(self.open_line(), "open=full-replay reason=checkpoint-arena")
+        self.assertEqual(self.observation(), expected)
+
     def test_a_checkpoint_past_the_profile_bound_is_refused_by_name(self):
         # rep-wave-d-3: the first segment's LENGTH field (u64 LE at octet 21)
         # claims a chunk past the profile's segment bound.  ACL2 refuses the

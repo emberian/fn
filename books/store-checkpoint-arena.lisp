@@ -156,7 +156,9 @@
            :in-theory (e/d (fn-intern-events fn-scka-intern-at fn-scka-payloads
                             fn-scka-intern-one fn-scka-sealsp fn-scka-payload-of)
                            (fn-intern-event fn-intern-row-at fn-held-make fn-hstxa-make
-                            fn-scka-intern-event-row fn-arena-seal-list-is-append)))))
+                            fn-scka-intern-event-row fn-arena-seal-list-is-append
+                            fn-stxa-p fn-stxa-is-no-other-wire-event
+                            fn-replay-composite-record fn-cbor-octet-listp)))))
 
 ; -----------------------------------------------------------------------------
 ; The codec's segment round trip (books/store-checkpoint-codec.lisp keeps it

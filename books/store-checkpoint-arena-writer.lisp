@@ -38,7 +38,12 @@
                            fn-sccr-scc-octet-listp-is-cbor-octet-listp
                            fn-sccr-cbor-octet-listp-is-scc-octet-listp
                            fn-row-wire-of fn-scka-sealsp fn-scka-payload-of
-                           fn-scka-canon-payloads-is-payloads-of-alpha)))
+                           fn-scka-canon-payloads-is-payloads-of-alpha
+                           ; imported rules that backchain from (true-listp x) into an
+                           ; unrelated recognizer (the NNTP response text, the NOV line)
+                           ; or open the octet recognizers on every list
+                           fn-nntp-response-text-true-listp fn-nntp-clean-line-is-response-text
+                           fn-scc-octet-listp-facts fn-sccb-scc-octetp-is-cbor-octetp)))
 
 ; -----------------------------------------------------------------------------
 ; 1. One row's canonical payload, and the lengths.

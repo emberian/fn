@@ -575,9 +575,12 @@ reopen predicate, writer-lock observation and observed final namespace."
       (nfix lower))))
 
 ; The open's choice (fn-sco-select) under the profile's K.
+; A file without the arena run is refused by name (:arena ->
+; reason=checkpoint-arena: books/store-checkpoint-arena-load.lisp
+; fn-scka-select-named), never reported as corrupt.
 (defun fn-store-sco-select (status sequence count profile)
   (declare (xargs :mode :program))
-  (fn-sco-select-named status sequence count (fn-bs-profile-max-open-suffix profile)))
+  (fn-scka-select-named status sequence count (fn-bs-profile-max-open-suffix profile)))
 
 ; How many of the ACL2-bound transaction sequences (ascending, from
 ; fn-store-txn-observation-selected) lie below S: the host drops exactly
