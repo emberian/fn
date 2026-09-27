@@ -10389,10 +10389,10 @@
       ],
       "progress_note": "Lane signed-post (Opus 5.5, 2026-09-27). The regression: records-flip c5808cd72 (fn-sn-prepare-identity's gate to fn-hstxa-p) and flip-L3 d689ec388 (the same in fn-ccar-sn-prepare-identity) changed the gate; the host entry kept passing the wire composite, and owner-signed-post-tests hand-built its row (ospt-row), so no test crossed the host line. The test book's witness is the reachable served-POST trace of owner-signed-post-tests over a flipped owner: the wire composite is refused by the gate, the interned row is staged, and the completion records the signed verdict.",
       "events": [
+        "fn-oii-ocfg-prepare-identity-is-intern-then-step",
         "fn-oii-identity-row-is-the-intern",
         "fn-oii-seal-is-the-intern-arena",
-        "fn-oii-composite-row-is-held",
-        "fn-oii-ocfg-prepare-identity-is-intern-then-step"
+        "fn-oii-composite-row-is-held"
       ]
     }
   ]
