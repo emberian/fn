@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1285 |
 | Certification roots in the Makefile | 1238 |
 | Books inside the root closure | 1274 |
-| `defthm` and `defthmd` events | 19034 |
-| `defun` events | 13037 |
-| Functions with verified guards | 2480 |
+| `defthm` and `defthmd` events | 19037 |
+| `defun` events | 13039 |
+| Functions with verified guards | 2481 |
 | Functions declared `:verify-guards nil` and never verified | 1560 |
-| Functions left at the default with an explicit guard | 7185 |
+| Functions left at the default with an explicit guard | 7186 |
 | Functions left at the default with no guard | 1812 |
-| `assert-event` checks | 18719 |
+| `assert-event` checks | 18720 |
 | `must-fail` checks | 2186 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 99 |
@@ -28,7 +28,7 @@ stale. Counts describe artifacts, not coverage; see
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 225 |
 | Include-hygiene warnings | 1379 |
-| Host-names warnings | 1400 |
+| Host-names warnings | 1401 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -324,7 +324,7 @@ that `make certify` requests.
 | `books/catalog-entries.lisp` | root | 35 | 4 | 0/1/2/1 | 0 | 0 | 0 |
 | `books/catalog-load-index.lisp` | root | 4 | 4 | 0/4/0/0 | 0 | 0 | 1 |
 | `books/catalog-number-index.lisp` | root | 44 | 8 | 0/1/6/1 | 0 | 0 | 0 |
-| `books/catalog-record.lisp` | root | 20 | 10 | 0/0/8/2 | 0 | 0 | 0 |
+| `books/catalog-record.lisp` | root | 22 | 11 | 1/0/8/2 | 0 | 0 | 0 |
 | `books/catalog-refresh.lisp` | root | 17 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/catalog-relation.lisp` | root | 42 | 8 | 1/1/4/2 | 0 | 0 | 0 |
 | `books/catalog-view.lisp` | root | 19 | 10 | 2/0/7/1 | 0 | 0 | 0 |
@@ -987,7 +987,7 @@ that `make certify` requests.
 | `tests/acl2/catalog-entries-tests.lisp` | root | 4 | 14 | 0/2/0/12 | 44 | 0 | 0 |
 | `tests/acl2/catalog-load-index-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 1 | 0 |
 | `tests/acl2/catalog-number-index-tests.lisp` | root | 8 | 4 | 0/0/0/4 | 2 | 3 | 0 |
-| `tests/acl2/catalog-record-tests.lisp` | root | 11 | 2 | 0/0/0/2 | 3 | 6 | 0 |
+| `tests/acl2/catalog-record-tests.lisp` | root | 12 | 3 | 0/0/1/2 | 4 | 6 | 0 |
 | `tests/acl2/catalog-refresh-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 25 | 0 | 0 |
 | `tests/acl2/catalog-relation-tests.lisp` | root | 7 | 3 | 0/0/0/3 | 3 | 2 | 0 |
 | `tests/acl2/catalog-tests.lisp` | root | 6 | 3 | 0/0/0/3 | 4 | 3 | 0 |
