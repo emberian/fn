@@ -1621,6 +1621,12 @@
                " reservation=" (fn-heap-decimal mb)
                " MB budget=" (fn-heap-decimal budget) " MB"))
 
+(defthm fn-heap-init-report-fields-stringp
+  (stringp (fn-heap-init-report-fields head word mode mb budget))
+  :rule-classes :type-prescription)
+
+(in-theory (disable fn-heap-init-report-fields))
+
 ; The target budget an operator named for a store made for another machine.
 (defun fn-heap-init-target-text (mb)
   (declare (xargs :guard t))

@@ -71,7 +71,7 @@
     ("docs/operator-internals.md#native-component-entry" 12 "peer" "confirm" "/ACCEPTANCE" "/INVITATION")
     ("docs/operator-internals.md#native-component-entry" 13 "policy" "set" "path-identity" "news.example.invalid")
     ("docs/operator-internals.md#native-component-entry" 14 "run")
-    ("docs/operator-internals.md#native-component-entry" 15 "init" "--max-transactions" "100000" "--max-article-octets" "20000" "fn.letters")
+    ("docs/operator-internals.md#native-component-entry" 15 "init" "--max-transactions" "100000" "--max-history-octets" "268435456" "--max-article-octets" "20000" "fn.letters")
     ("docs/operator-internals.md#native-component-entry" 16 "init" "--profile" "development" "fn.letters")
     ("docs/operator-internals.md#native-component-entry" 17 "init" "--profile" "scale" "fn.letters")
     ("docs/operator-internals.md#native-component-entry" 18 "store" "export" "/srv/fn-archive")

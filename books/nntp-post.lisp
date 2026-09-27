@@ -522,7 +522,8 @@
                        ;; A crosspost whose group memberships the history
                        ;; budget cannot pay for, the article alone fitting
                        ;; (books/store-capacity-vector.lisp
-                       ;; fn-cvec-article-refusal-word; lane membership-budget).
+                       ;; fn-cvec-article-refusal-word; lane membership-budget):
+                       ;; "441 posting failed; the store cannot pay for this article's groups: ..."
                        :memberships
                        :storage-failed
                        ;; A signed POST refused at its FN-Authorship carrier
