@@ -180,13 +180,31 @@
    (equal (fn-own-conns (fn-own-set-conns o conns)) conns)
    :hints (("Goal" :in-theory (enable fn-own-conns fn-own-set-conns fn-own-make)))))
 
+; The seventh field of a record of the owner's shape, replaced (the proof
+; with update-nth open cost 840,000 prover steps; this one, a few thousand).
+(local
+ (defthm fn-otm-update-nth-6-shape
+   (implies (and (true-listp c) (< 6 (len c)))
+            (and (equal (car (update-nth 6 v c)) (car c))
+                 (equal (car (cdr (cdr (cdr (cdr (cdr (cdr (update-nth 6 v c)))))))) v)))
+   :hints (("Goal" :expand ((update-nth 6 v c) (update-nth 5 v (cdr c)) (update-nth 4 v (cddr c))
+                            (update-nth 3 v (cdddr c)) (update-nth 2 v (cddddr c))
+                            (update-nth 1 v (cdr (cddddr c))) (update-nth 0 v (cddr (cddddr c))))
+            :in-theory (disable update-nth)))))
+
 (local
  (defthm fn-otm-conn-with-allow-id-and-config
    (and (equal (fn-own-conn-id (fn-otm-conn-with-allow c allow)) (fn-own-conn-id c))
         (implies (and (true-listp c) (< 6 (len c)))
                  (equal (fn-own-conn-config (fn-otm-conn-with-allow c allow))
                         (fn-otm-cfg-with-allow (fn-own-conn-config c) allow))))
-   :hints (("Goal" :in-theory (enable fn-own-conn-id fn-own-conn-config update-nth)))))
+   :hints (("Goal" :in-theory (union-theories '(fn-own-conn-id fn-own-conn-config
+                                                fn-otm-conn-with-allow)
+                                              (theory 'minimal-theory))
+            :expand ((update-nth 6 (fn-otm-cfg-with-allow (fn-own-conn-config c) allow) c))
+            :use ((:instance fn-otm-update-nth-6-shape
+                             (v (fn-otm-cfg-with-allow
+                                 (car (cdr (cdr (cdr (cdr (cdr (cdr c))))))) allow))))))))
 
 (local
  (defthm fn-otm-find-conn-of-replace-same
