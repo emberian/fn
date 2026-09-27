@@ -65,10 +65,11 @@
 (assert! (equal (car (fn-heap-reserve-decide *fn-bs-profile-defaults* *hrt-core*
                                              *hrt-nursery* (list 132000000000) 32))
                 :refused))
-; No store: heap-figure's machine-wide figure, SBCL's default stack, one thread.
+; No store: heap-figure's store-less figure (1,024 MB, not the machine: PKT-686
+; item 3), SBCL's default stack, one thread.
 (assert! (equal (fn-heap-reserve-decide nil *hrt-core* *hrt-nursery*
                                         (list (* 2048 *fn-heap-mib*)) 32)
-                '(:heap 2048 "none" 2048 2048 1)))
+                '(:heap 1024 "none" 2048 2048 1)))
 
 ; -----------------------------------------------------------------------------
 ; The keystone: the reachable witness, then per hypothesis a counterexample
@@ -697,14 +698,14 @@
 ; heap-figure's operation figure, every other command as before.
 ; fn-heap-reserve-operation-decide-holds-the-operation: a reachable witness
 ; (`store reclaim' of the small store on a 2 GiB machine), and per
-; hypothesis a counterexample where the other holds and the conclusion
-; fails, with the must-fail of the keystone without it.
+; hypothesis (only the accepted reservation remains) a counterexample
+; and the must-fail of the keystone without it.
 
-(defun hrt-op-conclusion (action profile core nursery observations connections)
+(defun hrt-op-conclusion (action profile core nursery observations connections observed)
   (declare (xargs :mode :program))
   (let ((r (fn-heap-reserve-operation-decide action profile core nursery observations
-                                             connections))
-        (d (fn-heap-operation-decide action profile core nursery observations)))
+                                             connections observed))
+        (d (fn-heap-operation-decide action profile core nursery observations observed)))
     (and (equal (car d) :heap)
          (equal (fn-heap-decision-mb r) (fn-heap-decision-mb d))
          (<= (+ (* *fn-heap-mib* (fn-heap-decision-mb r))
@@ -714,84 +715,96 @@
                       *fn-heap-thread-runtime-octets*)))
              (fn-heap-machine-octets observations)))))
 
-(defun hrt-op-hyps (action profile core nursery observations connections)
+(defun hrt-op-hyps (action profile core nursery observations connections observed)
   (declare (xargs :mode :program))
-  (list (fn-bs-profile-admittedp profile)
-        (equal (car (fn-heap-reserve-operation-decide action profile core nursery
-                                                      observations connections))
+  (list (equal (car (fn-heap-reserve-operation-decide action profile core nursery
+                                                      observations connections observed))
                :heap)))
 
 ; A serve-class command reserves exactly as before; `store reclaim' of the
-; small store reserves heap-figure's 1,843 MB (on the OpenBSD guest's
+; small store at H reserves heap-figure's 1,843 MB (on the OpenBSD guest's
 ; 195,856,696-octet core) and 28 threads beside it: 2,170 MB in all, so a
 ; 2 GiB machine refuses it by name (machine-cannot-hold-threads), as does
-; OpenBSD's default datasize, where `run' is accepted.
+; OpenBSD's default datasize, where `run' is accepted.  Observed at the
+; measured 3,000-article store's 7,271,160 octets (item 1) it reserves
+; 1,639 MB and fits 2 GiB; observed empty, 307 MB.
 (assert! (equal (fn-heap-reserve-operation-decide :run *fn-heap-small-profile* *hrt-core*
-                                                  *hrt-nursery* (list *hrt-datasize*) 32)
+                                                  *hrt-nursery* (list *hrt-datasize*) 32 0)
                 (fn-heap-reserve-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
                                         (list *hrt-datasize*) 32)))
 (assert! (equal (car (fn-heap-reserve-operation-decide :run *fn-heap-small-profile*
                                                        *hrt-core* *hrt-nursery*
-                                                       (list *hrt-datasize*) 32))
+                                                       (list *hrt-datasize*) 32 nil))
                 :heap))
 (defconst *hrt-2200* (list (* 2200 *fn-heap-mib*)))
 (assert! (equal (fn-heap-reserve-operation-decide :reclaim *fn-heap-small-profile* 195856696
-                                                  *hrt-nursery* *hrt-2200* 0)
+                                                  *hrt-nursery* *hrt-2200* 0 nil)
                 '(:heap 1843 "small" 2200 1024 28)))
 (assert! (equal (fn-heap-reserve-operation-decide :reclaim *fn-heap-small-profile* 195856696
-                                                  *hrt-nursery* *hrt-2g* 0)
+                                                  *hrt-nursery* *hrt-2g* 0 nil)
                 '(:refused :machine-cannot-hold-threads 2170 2048)))
+(assert! (equal (fn-heap-reserve-operation-decide :reclaim *fn-heap-small-profile* 195856696
+                                                  *hrt-nursery* *hrt-2g* 0 7271160)
+                '(:heap 1639 "small" 2048 1024 28)))
+(assert! (equal (fn-heap-reserve-operation-decide :compact *fn-heap-small-profile* 195856696
+                                                  *hrt-nursery* *hrt-2g* 0 0)
+                '(:heap 307 "small" 2048 1024 28)))
 (assert! (equal (car (fn-heap-reserve-operation-decide :reclaim *fn-heap-small-profile*
                                                        195856696 *hrt-nursery*
-                                                       (list *hrt-datasize*) 0))
+                                                       (list *hrt-datasize*) 0 nil))
                 :refused))
+; `fn --version' (no store) under the OpenBSD guest's 4 GiB datasize: 1,024
+; MB and one thread beside the core, where the machine-wide heap died in mmap.
+(defconst *hrt-4g* (list (* 4096 *fn-heap-mib*)))
+(assert! (equal (fn-heap-reserve-operation-decide :none nil 195856696 *hrt-nursery*
+                                                  *hrt-4g* 0 nil)
+                '(:heap 1024 "none" 4096 2048 1)))
 
-; The witness.
+; The witnesses: the reclaim at H on 2,200 MiB, the observed reclaim on
+; 2 GiB, and the store-less command (no profile hypothesis: PKT-686 item 3
+; removed it after proving the weakened keystone).
 (assert! (equal (hrt-op-hyps :reclaim *fn-heap-small-profile* 195856696 *hrt-nursery*
-                             *hrt-2200* 0)
-                '(t t)))
+                             *hrt-2200* 0 nil)
+                '(t)))
 (assert! (hrt-op-conclusion :reclaim *fn-heap-small-profile* 195856696 *hrt-nursery*
-                            *hrt-2200* 0))
-
-(defmacro hrt-op-must-fail (name &rest hyps)
-  `(must-fail
-    (defthm ,name
-      (let ((r (fn-heap-reserve-operation-decide action profile core nursery
-                                                 observations connections))
-            (d (fn-heap-operation-decide action profile core nursery observations)))
-        (implies (and ,@hyps)
-                 (and (equal (car d) :heap)
-                      (equal (fn-heap-decision-mb r) (fn-heap-decision-mb d))
-                      (<= (+ (* *fn-heap-mib* (fn-heap-decision-mb r))
-                             (nfix core)
-                             (* (fn-heap-reserve-threads r)
-                                (+ (* 1024 (fn-heap-reserve-stack-kib r))
-                                   *fn-heap-thread-runtime-octets*)))
-                          (fn-heap-machine-octets observations)))))
-      :hints (("Goal" :use ((:instance fn-heap-reserve-decide-is-reserve-of-heap-decide)
-                            (:instance fn-heap-reserve-of-holds-the-decision
-                                       (d (fn-heap-operation-decide action profile core
-                                                                    nursery observations)))
-                            (:instance fn-heap-reserve-of-holds-the-decision
-                                       (d (fn-heap-decide profile core nursery observations)))
-                            (:instance
-                             fn-heap-operation-decide-of-a-serve-action-is-heap-decide))
-               :in-theory (union-theories '(fn-heap-reserve-operation-decide)
-                                          (theory 'minimal-theory)))))))
-
-; Without the admitted profile: no store, whose figure is the machine, so
-; the heap, the core and a thread exceed it.
-(assert! (equal (hrt-op-hyps :reclaim nil 195856696 *hrt-nursery* *hrt-2g* 0)
-                '(nil t)))
-(assert! (not (hrt-op-conclusion :reclaim nil 195856696 *hrt-nursery* *hrt-2g* 0)))
-(hrt-op-must-fail hrt-op-without-admitted
-                  (equal (car r) :heap))
-
-; Without the accepted reservation: the reclaim under OpenBSD's datasize.
+                            *hrt-2200* 0 nil))
 (assert! (equal (hrt-op-hyps :reclaim *fn-heap-small-profile* 195856696 *hrt-nursery*
-                             (list *hrt-datasize*) 0)
-                '(t nil)))
+                             *hrt-2g* 0 7271160)
+                '(t)))
+(assert! (hrt-op-conclusion :reclaim *fn-heap-small-profile* 195856696 *hrt-nursery*
+                            *hrt-2g* 0 7271160))
+(assert! (equal (hrt-op-hyps :none nil 195856696 *hrt-nursery* *hrt-4g* 0 nil) '(t)))
+(assert! (hrt-op-conclusion :none nil 195856696 *hrt-nursery* *hrt-4g* 0 nil))
+
+; Without the accepted reservation: the reclaim at H under OpenBSD's datasize.
+(assert! (equal (hrt-op-hyps :reclaim *fn-heap-small-profile* 195856696 *hrt-nursery*
+                             (list *hrt-datasize*) 0 nil)
+                '(nil)))
 (assert! (not (hrt-op-conclusion :reclaim *fn-heap-small-profile* 195856696 *hrt-nursery*
-                                 (list *hrt-datasize*) 0)))
-(hrt-op-must-fail hrt-op-without-heap
-                  (fn-bs-profile-admittedp profile))
+                                 (list *hrt-datasize*) 0 nil)))
+(must-fail
+ (defthm hrt-op-without-heap
+   (let ((r (fn-heap-reserve-operation-decide action profile core nursery
+                                              observations connections observed))
+         (d (fn-heap-operation-decide action profile core nursery observations
+                                      observed)))
+     (and (equal (car d) :heap)
+          (equal (fn-heap-decision-mb r) (fn-heap-decision-mb d))
+          (<= (+ (* *fn-heap-mib* (fn-heap-decision-mb r))
+                 (nfix core)
+                 (* (fn-heap-reserve-threads r)
+                    (+ (* 1024 (fn-heap-reserve-stack-kib r))
+                       *fn-heap-thread-runtime-octets*)))
+              (fn-heap-machine-octets observations))))
+   :hints (("Goal" :use ((:instance fn-heap-reserve-decide-is-reserve-of-heap-decide)
+                         (:instance fn-heap-reserve-of-holds-the-decision
+                                    (d (fn-heap-operation-decide action profile core
+                                                                 nursery observations
+                                                                 observed)))
+                         (:instance fn-heap-reserve-of-holds-the-decision
+                                    (d (fn-heap-decide profile core nursery observations)))
+                         (:instance
+                          fn-heap-operation-decide-of-a-serve-action-is-heap-decide))
+            :in-theory (union-theories '(fn-heap-reserve-operation-decide
+                                         (:executable-counterpart member-equal))
+                                       (theory 'minimal-theory))))))
