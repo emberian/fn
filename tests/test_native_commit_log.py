@@ -10,10 +10,10 @@ batch's barrier.  The cases: concurrent POSTs answered 240 and every one
 served again after a restart, no transaction file written, on both images;
 a process death at each POST_LOG_CUTS cut on the developer image, the next
 owner serving the article whole (a lost-reply POST is durable or absent, and
-from log-fenced on it is durable) and admitting the next POST; the
-per-file layout still written under FN_NATIVE_STORE_FORMAT=8 (the developer
-selector for the modules that read it, PKT-COL-1); and the format-9 refusals
-by name of compact, reclaim and export.
+from log-fenced on it is durable) and admitting the next POST; and the
+format-9 refusals by name of compact and reclaim (export and import run over
+the log: tests.test_native_store_export; a format-8 store is refused at open
+by name there too).
 
 The oracle compares only what the node answers (the reply codes and the
 article's octets) and what the store directory holds.
@@ -93,7 +93,7 @@ class Node:
     def __init__(self, image: str, root: Path, env=None):
         self.image, self.root = image, root
         self.env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
-        for name in ("FN_NATIVE_POST_FAULT", "FN_NATIVE_STORE_FORMAT"):
+        for name in ("FN_NATIVE_POST_FAULT",):
             self.env.pop(name, None)
         self.env.update(env or {})
         self.store = root / "store"
@@ -259,7 +259,6 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
         root.mkdir()
         store = root / "store"
         env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
-        env.pop("FN_NATIVE_STORE_FORMAT", None)
         init = subprocess.run([self.image, "--fn", "store", str(store), "init", GROUP],
                               env=env, capture_output=True, timeout=600)
         self.assertEqual(init.returncode, 0, init.stderr[-800:])
@@ -284,25 +283,11 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
         self.assertEqual(probe.returncode, 0, probe.stderr[-800:])
         self.assertTrue((probe_root / "journal" / "000001.log").is_file())
 
-    def test_format_8_selector_keeps_the_per_file_layout(self):
-        node = Node(self.image, self.root)
-        node.init(env={"FN_NATIVE_STORE_FORMAT": "8"})
-        self.assertFalse((node.store / "journal").exists())
-        node.start({"FN_NATIVE_STORE_FORMAT": "8"})
-        try:
-            replies, errors = post_concurrently(node.port, range(4), 2)
-        finally:
-            node.stop()
-        self.assertEqual(errors, [])
-        self.assertTrue(all(r.startswith(b"240") for r in replies.values()), replies)
-        self.assertEqual(len(node.transaction_files()), 4)
-
     def test_format_9_refuses_what_the_log_does_not_do_yet_by_name(self):
         node = Node(self.image, self.root)
         node.init()
         for argv in (("operator", str(node.config), "store", "compact"),
-                     ("operator", str(node.config), "store", "reclaim"),
-                     ("store", str(node.store), "export", str(self.root / "archive"))):
+                     ("operator", str(node.config), "store", "reclaim")):
             with self.subTest(argv=argv[-2:]):
                 result = node.fn(*argv)
                 self.assertEqual(result.returncode, 1, (argv, result.stdout, result.stderr))

@@ -198,8 +198,9 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertIn(b"initialized", created.stdout)
         self.assertIn(b"accepted operator init", created.stderr)
-        for entry in ("config.json", "writer.lock", "allocation-frontier.json",
-                      "transactions", "config"):
+        # Format 9: the history is the record log's segment (the frontier
+        # and transactions/ a format-9 init still leaves are PKT-COL-2's).
+        for entry in ("config.json", "writer.lock", "journal/000001.log", "config"):
             self.assertTrue((self.store / entry).exists(), entry)
 
         status = self.operator("status")

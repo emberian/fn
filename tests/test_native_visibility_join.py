@@ -45,6 +45,7 @@ from tests.native_process import wait_for_announcement
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import fn_web  # noqa: E402
+from tests import native_log_observation
 
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
 IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
@@ -149,7 +150,9 @@ class NativeVisibilityJoinTests(unittest.TestCase):
                 process.communicate(timeout=60)
 
     def transactions(self, node):
-        return sorted(p.name for p in (node["store"] / "transactions").glob("*.txn"))
+        # The committed history (format 9: the record log), read by the image.
+        return native_log_observation.committed_history(IMAGE, node["store"],
+                                                        env=self.env, cwd=ROOT)
 
     def first_line(self, node, command):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:
