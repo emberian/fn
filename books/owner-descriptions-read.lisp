@@ -128,6 +128,19 @@
                                     fn-nntp-result-effects)
                                    (fn-nntp-motd-lines))))))
 
+; The moderation view (books/nntp-auth.lisp `fn-auth-moderation-config',
+; which the delegate composes under the access view) keeps the listing and
+; the posting flag whatever the configuration's shape.
+(defthm fn-odr-listing-of-moderation-config
+  (equal (fn-inj-config-listing (fn-auth-moderation-config as config))
+         (fn-inj-config-listing config))
+  :hints (("Goal" :in-theory (enable fn-auth-moderation-config))))
+
+(defthm fn-odr-allow-of-moderation-config
+  (equal (fn-inj-config-allow (fn-auth-moderation-config as config))
+         (fn-inj-config-allow config))
+  :hints (("Goal" :in-theory (enable fn-auth-moderation-config))))
+
 ;; One framed LIST NEWSGROUPS or LIST MOTD line, through the pinned
 ;; dispatcher chain.
 

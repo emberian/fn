@@ -162,8 +162,10 @@
                   (archive (fn-served-conn-archive conn))
                   (index (fn-served-conn-pinned-index conn))
                   (verdicts (fn-served-conn-verdicts conn))
-                  (env (fn-post-reader-env (fn-served-conn-config conn)
-                                           (fn-served-conn-observation conn)))
+                  (env (fn-post-reader-env
+                        (fn-auth-moderation-config (fn-served-conn-session conn)
+                                                   (fn-served-conn-config conn))
+                        (fn-served-conn-observation conn)))
                   (keyword (car (fn-nntp-tokenize line)))
                   (args (cdr (fn-nntp-tokenize line))))))))
 

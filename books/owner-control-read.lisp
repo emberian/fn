@@ -28,7 +28,11 @@
 (include-book "nntp-control")
 (include-book "owner-invariants")
 
-;; The pinned dispatcher's reply to one command line, over connection CONN.
+;; The pinned dispatcher's reply to one command line, over connection CONN,
+;; under the posting configuration the delegate serves it: the connection's
+;; moderation view (books/nntp-auth.lisp `fn-auth-moderation-config', P3,
+;; PRF-228; the connection's own configuration when its login moderates
+;; nothing).
 (defun fn-octl-reply (conn line)
   (declare (xargs :verify-guards nil))
   (let* ((ns (fn-post-session-base
@@ -38,7 +42,9 @@
     (fn-nntp-archive-command-pinned
      ns (fn-served-conn-archive conn) (fn-served-conn-pinned-index conn)
      (fn-served-conn-verdicts conn)
-     (fn-post-reader-env (fn-served-conn-config conn) (fn-served-conn-observation conn))
+     (fn-post-reader-env (fn-auth-moderation-config (fn-served-conn-session conn)
+                                                    (fn-served-conn-config conn))
+                         (fn-served-conn-observation conn))
      (car tokens) (cdr tokens))))
 
 (defthm fn-octl-reply-of-with-wire

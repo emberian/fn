@@ -114,9 +114,15 @@
                   (verdicts (fn-served-conn-verdicts
                              (fn-octl-served-conn
                               o (fn-own-find-conn id (fn-own-conns o)))))
-                  (env (fn-post-reader-env (fn-served-conn-config
-                               (fn-octl-served-conn
-                                o (fn-own-find-conn id (fn-own-conns o)))) (fn-served-conn-observation
+                  (env (fn-post-reader-env
+                        (fn-auth-moderation-config
+                         (fn-served-conn-session
+                          (fn-octl-served-conn
+                           o (fn-own-find-conn id (fn-own-conns o))))
+                         (fn-served-conn-config
+                          (fn-octl-served-conn
+                           o (fn-own-find-conn id (fn-own-conns o)))))
+                        (fn-served-conn-observation
                          (fn-octl-served-conn
                           o (fn-own-find-conn id (fn-own-conns o))))))
                   (keyword (car (fn-nntp-tokenize line)))

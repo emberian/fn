@@ -237,21 +237,24 @@
         (fn-record-octets-string (cons 60 rest))
       nil)))
 
-(defun fn-cev-withdrawn-by-some (msgid ws groups verdict)
+; RECEIVED is the envelope's octets: a key record's effect (the :poster arm,
+; RFC 8315 Cancel-Lock, SEC-006) reads the target's locks from them.
+(defun fn-cev-withdrawn-by-some (msgid ws groups verdict received)
   (declare (xargs :guard t))
   (if (consp ws)
       (or (and (fn-ctl-withdrawalp (car ws))
                (equal (fn-ctl-w-target (car ws)) msgid)
                (fn-ctl-effect-withdrawsp
-                (fn-ctl-withdrawal-effect (car ws) groups verdict)))
-          (fn-cev-withdrawn-by-some msgid (cdr ws) groups verdict))
+                (fn-ctl-withdrawal-effect (car ws) groups verdict received)))
+          (fn-cev-withdrawn-by-some msgid (cdr ws) groups verdict received))
     nil))
 
 (defun fn-cev-envelope-state (a ws raw verdicts)
   (declare (xargs :guard t))
   (cond ((fn-cev-withdrawn-by-some
           (fn-article-msgid a) ws (fn-article-groups a)
-          (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts))
+          (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts)
+          (fn-article-payload a))
          "rejected")
         ((consp (fn-cev-find-article
                  (fn-cev-envelope-original (fn-article-msgid a)) raw))
