@@ -27,7 +27,7 @@
                 (fn-own-pending o) (fn-own-ledger o)
                 (fn-own-clock o) (fn-own-facts o)
                 (fn-own-config o) (fn-own-queue o)
-                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o))))
+                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 
 (defun fn-ocl-store-config (st)
   (declare (xargs :guard t))
@@ -352,7 +352,7 @@
            (fn-ocl-view-historyp
             (fn-own-refresh
              (fn-own-make st view conns next-id max-conns pending ledger
-                          clock facts config queue inflight feeds node-secret))))
+                          clock facts config queue inflight feeds node-secret refused))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-own-take-of-len
@@ -552,7 +552,7 @@
                                 (fn-own-pending o) (fn-own-ledger o)
                                 (fn-own-clock o) (fn-own-facts o)
                                 (fn-own-config o) (fn-own-queue o)
-                                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)))))
+                                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))))
            :in-theory (e/d (fn-ocl-config-historyp fn-ocl-owner-with-store
                             fn-ocl-store-config fn-cpo-history-relation)
                            (fn-own-refresh fn-cpr-replay)))))
@@ -605,7 +605,7 @@
                                 (fn-own-config (fn-ocfg-owner oc))
                                 (fn-own-queue (fn-ocfg-owner oc))
                                 (fn-own-inflight (fn-ocfg-owner oc))
-                                (fn-own-feeds (fn-ocfg-owner oc)) (fn-own-node-secret (fn-ocfg-owner oc)))))
+                                (fn-own-feeds (fn-ocfg-owner oc)) (fn-own-node-secret (fn-ocfg-owner oc)) (fn-own-refused (fn-ocfg-owner oc)))))
                  (:instance fn-ocl-durable-keeps-history-proper
                             (st (fn-own-store (fn-ocfg-owner oc)))
                             (record (fn-ocfg-staged oc)))

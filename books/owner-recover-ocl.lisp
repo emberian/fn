@@ -155,7 +155,7 @@
                            nil)))
                   (conns nil) (next-id 0) (max-conns max-conns) (pending nil) (ledger nil)
                   (clock nil) (facts nil) (config nil) (queue nil) (inflight nil) (feeds nil)
-                  (node-secret nil)))
+                  (node-secret nil) (refused nil)))
            :in-theory (e/d (fn-own-start fn-ocl-view-visiblep
                             fn-ctl-visible-state fn-own-refresh-keeps-fields)
                            (fn-own-refresh fn-ocl-view-historyp fn-cst-relation fn-own-configure

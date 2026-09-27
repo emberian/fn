@@ -218,6 +218,7 @@
 ; which the operator loaded below calls.  After every `ld': no host wrapper
 ; above uses it, and it would otherwise serve their books transitively.
 (include-book "books/heap-figure")
+(include-book "books/heap-reservation")
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.
@@ -297,6 +298,17 @@
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
 
 :q
+; The saved world (HST-025, host/native/strip-world.lisp).  FN_NATIVE_WORLD
+; (tools/build_native_host.sh sets it: `stripped' for the production release,
+; `full' for the developer image and the production reference image, gpt-6's
+; wave-5 review s.4) selects it.  Stripped: what execution reads, at its
+; current value, and nothing the prover, the undo stack or the history
+; commands read, with the build-derived dependency set written beside the
+; image (IMAGE.world-deps).  Full: the certified session's world as loaded.
+; After the last event, before the save.
+(load "host/native/strip-world.lisp")
+(fnn-save-world-flavor (sb-ext:posix-getenv "FN_NATIVE_WORLD")
+                       (or (sb-ext:posix-getenv "FN_NATIVE_IMAGE") "build/fn-host-dtn"))
 (save-exec (or (sb-ext:posix-getenv "FN_NATIVE_IMAGE") "build/fn-host-dtn")
            "fn native host (DTN only, no NNTP reader)"
            :return-from-lp '(fn-native-entry state)

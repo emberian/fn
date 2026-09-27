@@ -351,9 +351,6 @@
    "fn-cfg-bp-group-map": [
     "specs/reconfiguration.md"
    ],
-   "fn-cfg-group-created": [
-    "specs/nntp-audit.md"
-   ],
    "fn-cfg-host-default-octets": [
     "specs/reconfiguration.md"
    ],

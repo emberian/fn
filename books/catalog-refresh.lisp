@@ -255,7 +255,7 @@
   (fn-own-make s (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
                (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-               (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o)))
+               (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))
 
 ; applyViewDelta(view, (:article A VERDICT), S).  VIEW is the committed view
 ; before the completion, A the article the acceptance installed, VERDICT its
@@ -316,7 +316,13 @@
                                    fn-own-store-idlep fn-state-articles fn-node-acceptance
                                    fn-sn-node fn-sn-verdicts fn-sf-records fn-sn-files
                                    fn-sf-frontier fn-sn-config-history fn-sn-keyring-snapshots
-                                   fn-article-msgid)))))
+                                   fn-article-msgid
+                                   ; The withdrawal walk is equal on both
+                                   ; sides; opened it cost 29 s (8 million
+                                   ; steps) once the cancel-lock merge grew
+                                   ; fn-ctl-withdrawal-effect.
+                                   fn-ctl-visible-filter-nil-means-all-withdrawn
+                                   fn-ctl-visible-filter fn-ctl-withdrawn-by-p)))))
 
 ; The plain case: A is a visible article that withdraws nothing.  The apply
 ; is the cons, the extend and the put; nothing is rebuilt and nothing

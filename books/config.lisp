@@ -781,7 +781,9 @@
     :grant-control :revoke-control :issue-invitation :consume-invitation
     :account-invite :account-redeem :login-binding
     :add-peer-rows :remove-peer-rows :set-group-description
-    :set-group-status))
+    :set-group-status :account-access :set-group-moderation
+    :consumer-bind
+    :set-default-subscriptions))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -806,6 +808,10 @@
         ((equal kind :remove-peer-rows) 19)
         ((equal kind :set-group-description) 20)
         ((equal kind :set-group-status) 21)
+        ((equal kind :account-access) 22)
+        ((equal kind :set-group-moderation) 23)
+        ((equal kind :consumer-bind) 24)
+        ((equal kind :set-default-subscriptions) 25)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -831,6 +837,10 @@
         ((equal code 19) :remove-peer-rows)
         ((equal code 20) :set-group-description)
         ((equal code 21) :set-group-status)
+        ((equal code 22) :account-access)
+        ((equal code 23) :set-group-moderation)
+        ((equal code 24) :consumer-bind)
+        ((equal code 25) :set-default-subscriptions)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -906,8 +916,9 @@
 ;;   (:set-group-status NAME STATUS 0 nil)                          code 21
 ;; with STATUS "y" or "n"; it rewrites the live entry's policy identifier and
 ;; nothing else (`fn-cfg-groups-set-policy').  Code 20 is
-;; :set-group-description (lane usenet-headers).  "m" (moderated, P3) and
-;; "x" are deferred; "j" and "=" are never (no junk group, no aliases).
+;; :set-group-description (lane usenet-headers).  "m" (moderated, P3) is not
+;; a policy identifier: it is the group's moderation, code 23 below; "x" is
+;; deferred; "j" and "=" are never (no junk group, no aliases).
 (defconst *fn-cfg-default-policy-id* "fn-policy-default-1")
 (defconst *fn-cfg-read-only-policy-id* "fn-policy-read-only-1")
 
@@ -1212,6 +1223,137 @@
            :binding-row)
           (t nil))))
 
+;; Group access (PRF-222, NNT-046; specs/nntp.md "Group access").  The same
+;; slot holds one access rule per login: a row (LOGIN READ POST 3), mark 3
+;; beside the account rows' 0 and 1 and the binding rows' 2, written only by
+;;
+;;   (:account-access LOGIN READ 0 ((LOGIN READ POST 3)))           code 22
+;;
+;; which replaces every mark-3 row whose login spells the same octets and
+;; leaves every other row where it was.  READ and POST are RFC 3977 section
+;; 4.2 wildmats over newsgroup names: the groups the login's connections
+;; see, and the groups they may post to.  LOGIN "" is the rule of a
+;; connection that has not authenticated.  A login with no row, and a row of
+;; "*", restricts nothing (the default, so every account keeps its view).
+;; The delta is admitted on the representation (a label, graphic ASCII);
+;; the wildmat grammar is the verb's to check (books/native-admin.lisp), and
+;; a pattern that does not parse admits nothing when it is applied
+;; (books/group-access.lisp `fn-gac-readablep': fail closed).
+(defun fn-cfg-access-patternp (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-cfg-labelp text)
+       (consp (fn-record-string-octets text))
+       (fn-cfg-graphic-octetsp (fn-record-string-octets text))))
+
+(defun fn-cfg-access-rows (login read post)
+  (declare (xargs :guard t))
+  (list (fn-cfg-row-make login read post 3)))
+
+(defun fn-cfg-account-access (login read post)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :account-access login read 0
+                     (fn-cfg-access-rows login read post)))
+
+(defun fn-cfg-access-rowp (row)
+  (declare (xargs :guard t))
+  (equal (fn-cfg-row-n row) 3))
+
+(defun fn-cfg-rows-without-access (rows login)
+  ; ROWS less every access row whose login spells LOGIN's octets.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (fn-cfg-access-rowp (car rows))
+               (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
+                      (fn-record-string-octets login)))
+          (fn-cfg-rows-without-access (cdr rows) login)
+        (cons (car rows) (fn-cfg-rows-without-access (cdr rows) login)))
+    nil))
+
+(defun fn-cfg-account-access-reason (d)
+  (declare (xargs :guard t))
+  (let ((login (fn-cfg-delta-a d)) (read (fn-cfg-delta-b d))
+        (rows (fn-cfg-delta-rows d)))
+    (cond ((not (or (equal login "") (fn-cfg-account-loginp login)))
+           :access-login)
+          ((not (fn-cfg-access-patternp read)) :access-pattern)
+          ((not (and (consp rows) (null (fn-cfg-ag-cdr rows))))
+           :access-row)
+          ((not (fn-cfg-access-patternp (fn-cfg-row-c (fn-cfg-ag-car rows))))
+           :access-pattern)
+          ((not (equal rows (fn-cfg-access-rows
+                             login read (fn-cfg-row-c (fn-cfg-ag-car rows)))))
+           :access-row)
+          (t nil))))
+
+; The access rows of the slot, in slot order.
+(defun fn-cfg-access-table (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (fn-cfg-access-rowp (car rows))
+          (cons (car rows) (fn-cfg-access-table (cdr rows)))
+        (fn-cfg-access-table (cdr rows)))
+    nil))
+
+;; Consumer bindings (PRF-234, CNS-006; specs/consumer-progress.md "Bound
+;; consumers").  The same slot holds one account binding per local consumer:
+;; a row (NAME LOGIN "" 6), mark 6 beside the account rows' 0 and 1, the
+;; login bindings' 2 and the access rules' 3, written only by
+;;
+;;   (:consumer-bind NAME LOGIN 0 ((NAME LOGIN "" 6)))            code 24
+;;   (:consumer-bind NAME "" 0 ())                            (the unbind)
+;;
+;; which replaces every mark-4 row whose name spells the same octets and
+;; leaves every other row where it was.  NAME is a local consumer's id as
+;; `fn consumer register' spells it (at most 64 graphic octets, the
+;; consumer id bound `*fn-cp-max-id*'); LOGIN is an account login.  A
+;; consumer with no row is unbound and behaves exactly as before the slot
+;; had this mark.  What a binding means is books/consumer-bound.lisp's.
+(defun fn-cfg-consumer-namep (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-cfg-labelp text)
+       (consp (fn-record-string-octets text))
+       (<= (len (fn-record-string-octets text)) 64)
+       (fn-cfg-graphic-octetsp (fn-record-string-octets text))))
+
+(defun fn-cfg-consumer-bind-rows (name login)
+  (declare (xargs :guard t))
+  (if (equal login "")
+      nil
+    (list (fn-cfg-row-make name login "" 6))))
+
+(defun fn-cfg-consumer-bind (name login)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :consumer-bind name login 0
+                     (fn-cfg-consumer-bind-rows name login)))
+
+(defun fn-cfg-consumer-bind-rowp (row)
+  (declare (xargs :guard t))
+  (equal (fn-cfg-row-n row) 6))
+
+(defun fn-cfg-rows-without-consumer-bind (rows name)
+  ; ROWS less every consumer binding row whose name spells NAME's octets.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (fn-cfg-consumer-bind-rowp (car rows))
+               (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
+                      (fn-record-string-octets name)))
+          (fn-cfg-rows-without-consumer-bind (cdr rows) name)
+        (cons (car rows) (fn-cfg-rows-without-consumer-bind (cdr rows) name)))
+    nil))
+
+(defun fn-cfg-consumer-bind-reason (d)
+  (declare (xargs :guard t))
+  (let ((name (fn-cfg-delta-a d)) (login (fn-cfg-delta-b d)))
+    (cond ((not (fn-cfg-consumer-namep name)) :consumer-name)
+          ((not (or (equal login "") (fn-cfg-account-loginp login)))
+           :consumer-login)
+          ((not (equal (fn-cfg-delta-rows d)
+                       (fn-cfg-consumer-bind-rows name login)))
+           :consumer-row)
+          (t nil))))
+
 ; The row a code's digest keys, or nil.
 (defun fn-cfg-account-row (rows digest)
   (declare (xargs :guard t))
@@ -1261,6 +1403,155 @@
              (fn-cfg-account-expiryp (fn-cfg-row-c (fn-cfg-ag-car rows)))
            (fn-cfg-account-verifier-hexp
             (fn-cfg-row-c (fn-cfg-ag-car rows)))))))
+
+;; Moderated groups (P3; PRF-228, NNT-047; specs/nntp.md "Moderated
+;; groups").  RFC 5537 section 3.5 item 7 and section 3.5.1: an article
+;; posted to a moderated group without an Approved header field is forwarded
+;; to the group's moderator, never posted.  fn's moderator is an account
+;; with a role: the accounts slot holds, beside the account rows (marks 0
+;; and 1) and the login bindings (mark 2), two more row kinds, written only
+;; by
+;;
+;;   (:set-group-moderation NAME QUEUE 0 ROWS)                       code 23
+;;
+;; ROWS is either nil, with QUEUE "" (NAME is no longer moderated), or
+;;
+;;   ((NAME QUEUE ADDRESS 5) (LOGIN-1 NAME "" 4) ... (LOGIN-k NAME "" 4))
+;;
+;; with k >= 1: the group's moderation row (mark 5: QUEUE is the live group
+;; the node forwards held articles into, ADDRESS the optional submission
+;; address, "" for none) and one role row per moderator login (mark 4).  The
+;; delta replaces every mark-5 row keyed on NAME and every mark-4 row whose
+;; group is NAME, and leaves every other row where it was.  The queue is a
+;; live group other than NAME that is not itself moderated, and NAME is not
+;; the queue of another moderated group, so a forwarded article never lands
+;; in a moderated group.
+(defun fn-cfg-moderator-rows (name logins)
+  (declare (xargs :guard t))
+  (if (consp logins)
+      (cons (fn-cfg-row-make (car logins) name "" 4)
+            (fn-cfg-moderator-rows name (cdr logins)))
+    nil))
+
+(defun fn-cfg-moderation-rows (name queue address logins)
+  (declare (xargs :guard t))
+  (cons (fn-cfg-row-make name queue address 5)
+        (fn-cfg-moderator-rows name logins)))
+
+; The verb's delta: moderate NAME into QUEUE for LOGINS (at least one), or,
+; with no LOGINS, end NAME's moderation.
+(defun fn-cfg-set-group-moderation (name queue address logins)
+  (declare (xargs :guard t))
+  (if (consp logins)
+      (fn-cfg-delta-make :set-group-moderation name queue 0
+                         (fn-cfg-moderation-rows name queue address logins))
+    (fn-cfg-delta-make :set-group-moderation name "" 0 nil)))
+
+(defun fn-cfg-moderation-rowp (row)
+  (declare (xargs :guard t))
+  (equal (fn-cfg-row-n row) 5))
+
+(defun fn-cfg-moderator-rowp (row)
+  (declare (xargs :guard t))
+  (equal (fn-cfg-row-n row) 4))
+
+(defun fn-cfg-rows-without-moderation (rows name)
+  ; ROWS less NAME's moderation row and every moderator row of NAME.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (or (and (fn-cfg-moderation-rowp (car rows))
+                   (equal (fn-cfg-row-a (car rows)) name))
+              (and (fn-cfg-moderator-rowp (car rows))
+                   (equal (fn-cfg-row-b (car rows)) name)))
+          (fn-cfg-rows-without-moderation (cdr rows) name)
+        (cons (car rows) (fn-cfg-rows-without-moderation (cdr rows) name)))
+    nil))
+
+; NAME's moderation row among ROWS, or nil.
+(defun fn-cfg-moderation-row (rows name)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (fn-cfg-moderation-rowp (car rows))
+               (equal (fn-cfg-row-a (car rows)) name))
+          (car rows)
+        (fn-cfg-moderation-row (cdr rows) name))
+    nil))
+
+; The logins of NAME's moderator rows, in slot order.
+(defun fn-cfg-moderator-logins (rows name)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (fn-cfg-moderator-rowp (car rows))
+               (equal (fn-cfg-row-b (car rows)) name))
+          (cons (fn-cfg-row-a (car rows))
+                (fn-cfg-moderator-logins (cdr rows) name))
+        (fn-cfg-moderator-logins (cdr rows) name))
+    nil))
+
+; Whether some moderation row other than NAME's own names NAME as its queue.
+(defun fn-cfg-queue-of-anotherp (rows name)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (or (and (fn-cfg-moderation-rowp (car rows))
+               (not (equal (fn-cfg-row-a (car rows)) name))
+               (equal (fn-cfg-row-b (car rows)) name))
+          (fn-cfg-queue-of-anotherp (cdr rows) name))
+    nil))
+
+; The logins a delta's moderator rows carry, in order.
+(defun fn-cfg-row-logins (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (cons (fn-cfg-row-a (car rows)) (fn-cfg-row-logins (cdr rows)))
+    nil))
+
+(defun fn-cfg-moderator-loginsp (logins)
+  (declare (xargs :guard t))
+  (if (consp logins)
+      (and (fn-cfg-account-loginp (car logins))
+           (fn-cfg-moderator-loginsp (cdr logins)))
+    (null logins)))
+
+(defun fn-cfg-moderation-addressp (text)
+  (declare (xargs :guard t))
+  (or (equal text "") (fn-cfg-account-loginp text)))
+
+; The moderation of group NAME at generation GEN: (QUEUE ADDRESS LOGINS)
+; when NAME is live and moderated, else nil.  The one reader: LIST ACTIVE's
+; "m", the POST gate and the relay gate all come from here
+; (books/owner-agent.lisp `fn-oag-moderation-entries').
+(defun fn-cfg-group-moderation (v gen name)
+  (declare (xargs :guard t))
+  (let ((row (fn-cfg-moderation-row (fn-cfg-accounts v) name)))
+    (if (and (fn-cfg-group-livep v gen name) (consp row))
+        (list (fn-cfg-row-b row) (fn-cfg-row-c row)
+              (fn-cfg-moderator-logins (fn-cfg-accounts v) name))
+      nil)))
+
+(defun fn-cfg-set-group-moderation-reason (v gen d)
+  (declare (xargs :guard t))
+  (let ((name (fn-cfg-delta-a d)) (queue (fn-cfg-delta-b d))
+        (rows (fn-cfg-delta-rows d)) (accounts (fn-cfg-accounts v)))
+    (cond ((not (fn-cfg-group-livep v gen name)) :no-such-group)
+          ((not (equal (fn-cfg-delta-n d) 0)) :moderation-row)
+          ((not (consp rows)) (if (equal queue "") nil :moderation-row))
+          ((or (equal queue name)
+               (not (fn-cfg-group-livep v gen queue))
+               (consp (fn-cfg-moderation-row accounts queue))
+               (fn-cfg-queue-of-anotherp accounts name))
+           :moderation-queue)
+          ((not (and (consp (fn-cfg-ag-cdr rows))
+                     (fn-cfg-moderator-loginsp
+                      (fn-cfg-row-logins (fn-cfg-ag-cdr rows)))))
+           :moderator-login)
+          ((not (fn-cfg-moderation-addressp
+                 (fn-cfg-row-c (fn-cfg-ag-car rows))))
+           :moderation-address)
+          ((not (equal rows (fn-cfg-moderation-rows
+                             name queue (fn-cfg-row-c (fn-cfg-ag-car rows))
+                             (fn-cfg-row-logins (fn-cfg-ag-cdr rows)))))
+           :moderation-row)
+          (t nil))))
 
 ;; Group descriptions and the node's message (PRF-195, NNT-039; specs/nntp.md
 ;; "Group descriptions and the message of the day").  The eleventh slot's
@@ -1379,6 +1670,60 @@
   (declare (xargs :guard t))
   (fn-cfg-pieces-lines
    (fn-cfg-row-pieces (fn-cfg-rows-with-key (fn-cfg-descriptions v) ""))))
+
+;; The default subscription list (PRF-243, NNT-052; RFC 6048 section 2.6,
+;; PKT-666): the groups LIST SUBSCRIPTIONS recommends to a new reader, in
+;; order.  They are rows of the eleventh slot keyed on
+;; `*fn-cfg-subscription-key*', which carries a colon and so is neither a
+;; group name (`fn-record-group-namep' admits no colon) nor the node's ""
+;; key: no description or message reads them.  They are written only by
+;;
+;;   (:set-default-subscriptions KEY "" 0 ((KEY GROUP "" 0) ...))   code 25
+;;
+;; which replaces every row keyed on KEY with the delta's rows, in order;
+;; no rows clears the list.  Each GROUP is a live group named once.  Codes
+;; 22 to 24 are claimed by lanes group-access, moderated-groups and
+;; consumer-identity.
+(defconst *fn-cfg-subscription-key* ":subscribe")
+
+(defun fn-cfg-subscription-rows (names)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (cons (fn-cfg-row-make *fn-cfg-subscription-key* (car names) "" 0)
+            (fn-cfg-subscription-rows (cdr names)))
+    nil))
+
+(defun fn-cfg-set-default-subscriptions (names)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :set-default-subscriptions *fn-cfg-subscription-key* ""
+                     0 (fn-cfg-subscription-rows names)))
+
+; The configured default list, in order.
+(defun fn-cfg-default-subscriptions (v)
+  (declare (xargs :guard t))
+  (fn-cfg-row-pieces (fn-cfg-rows-with-key (fn-cfg-descriptions v)
+                                           *fn-cfg-subscription-key*)))
+
+(defun fn-cfg-subscription-rowsp (v gen rows)
+  ; Every row is (KEY GROUP "" 0) with GROUP live.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (and (equal (car rows)
+                  (fn-cfg-row-make *fn-cfg-subscription-key*
+                                   (fn-cfg-row-b (car rows)) "" 0))
+           (fn-cfg-group-livep v gen (fn-cfg-row-b (car rows)))
+           (fn-cfg-subscription-rowsp v gen (cdr rows)))
+    (null rows)))
+
+(defun fn-cfg-set-default-subscriptions-reason (v gen d)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-cfg-delta-a d) *fn-cfg-subscription-key*)
+           (equal (fn-cfg-delta-b d) "")
+           (equal (fn-cfg-delta-n d) 0)
+           (fn-cfg-subscription-rowsp v gen (fn-cfg-delta-rows d))
+           (no-duplicatesp-equal (fn-cfg-row-pieces (fn-cfg-delta-rows d))))
+      nil
+    :subscription-row))
 
 ; -----------------------------------------------------------------------------
 ; Applying a delta.  Total, and never a deletion.
@@ -1589,6 +1934,40 @@
                                   (fn-cfg-accounts v) a)
                                  rows)
                          (fn-cfg-descriptions v)))
+     ; An access rule replaces that login's access row (PRF-222).
+     ((equal kind :account-access)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)
+                         (append (fn-cfg-rows-without-access
+                                  (fn-cfg-accounts v) a)
+                                 rows)
+                         (fn-cfg-descriptions v)))
+     ; A moderation replaces the group's moderation and moderator rows
+     ; (PRF-228).
+     ((equal kind :set-group-moderation)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)
+                         (append (fn-cfg-rows-without-moderation
+                                  (fn-cfg-accounts v) a)
+                                 rows)
+                         (fn-cfg-descriptions v)))
+     ; A consumer binding replaces that consumer's binding row (PRF-234).
+     ((equal kind :consumer-bind)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)
+                         (append (fn-cfg-rows-without-consumer-bind
+                                  (fn-cfg-accounts v) a)
+                                 rows)
+                         (fn-cfg-descriptions v)))
      ; A description replaces every row keyed on its name (PRF-195).
      ((equal kind :set-group-description)
       (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
@@ -1598,6 +1977,18 @@
                               (fn-cfg-invitations v) (fn-cfg-accounts v)
                               (append (fn-cfg-rows-without-key
                                        (fn-cfg-descriptions v) a)
+                                      rows)))
+     ; The default subscription list replaces every row keyed on the
+     ; subscription key (PRF-243).
+     ((equal kind :set-default-subscriptions)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                              (fn-cfg-quotas v) (fn-cfg-policies v)
+                              (fn-cfg-listeners v) (fn-cfg-peers v)
+                              (fn-cfg-limits v) (fn-cfg-authorities v)
+                              (fn-cfg-invitations v) (fn-cfg-accounts v)
+                              (append (fn-cfg-rows-without-key
+                                       (fn-cfg-descriptions v)
+                                       *fn-cfg-subscription-key*)
                                       rows)))
      (t v))))
 
@@ -1754,8 +2145,14 @@
                :account-login-taken)
               (t nil))))
      ((equal kind :login-binding) (fn-cfg-login-binding-reason d))
+     ((equal kind :account-access) (fn-cfg-account-access-reason d))
+     ((equal kind :consumer-bind) (fn-cfg-consumer-bind-reason d))
      ((equal kind :set-group-description)
       (fn-cfg-set-group-description-reason v gen d))
+     ((equal kind :set-group-moderation)
+      (fn-cfg-set-group-moderation-reason v gen d))
+     ((equal kind :set-default-subscriptions)
+      (fn-cfg-set-default-subscriptions-reason v gen d))
      (t nil))))
 
 (defun fn-cfg-admissible-reason (v gen stamp reserved ceiling deltas)

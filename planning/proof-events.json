@@ -7105,19 +7105,51 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-init-request-on-a-small-machine-is-small"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-heap-init-request-keeps-the-operators-request"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-heap-machine-octets-is-at-most-each-observation"
         },
         {
           "kind": "theorem",
           "name": "fn-heap-decision-exit-code-of-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-decide-holds-every-thread-the-node-runs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-decide-refuses-exactly-past-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-decide-keeps-heap-figures-refusals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-thread-refusal-exits-1"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-fits-the-budget-and-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-honors-the-operators-request"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-sized-init-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-conservative-is-development-or-small"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-largest-takes-scale-when-it-fits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-figure-octets-grows-with-history-and-record"
         }
       ]
     },
@@ -8319,6 +8351,397 @@
         {
           "kind": "theorem",
           "name": "fn-smid-refusal-text-is-nil-exactly-for-an-open-decision"
+        }
+      ]
+    },
+    {
+      "id": "PRF-222",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-state-is-a-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-index-corresponds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-state-groups-are-readable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-articles-memberships-readable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-index-withdrawn-are-readable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restricted-article-is-held"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-restrict-absent-groups"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-deselected-consistent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-consistent-back"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-when-unrestricted"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-consistent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-consistent-back"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-trie-corresponds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-delegate-pinned-preserves-consistentp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-views-find-is-restriction"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-gac-access-views-covers-pattern"
+        }
+      ]
+    },
+    {
+      "id": "PRF-228",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-set-group-moderation-sets-the-moderation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-unapproved-article-is-never-in-a-moderated-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-moderator-approved-article-is-committed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-forged-approval-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mod-session-entries-approver-iff-moderator"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mod-session-entries-keep-the-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mod-gate-unapproved-names-no-moderated-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-submission-is-the-decision-or-its-envelope"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mod-envelope-msgid-is-not-a-generated-id"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-moderation-config-closed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-transfer-never-stages-an-unapproved-moderated-article",
+          "note": "The relay refusal over fn-peer-transfer. Teeth: tests/acl2/peer-inbound-tests.lisp (P3 section)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-durable-never-enqueues-a-queue",
+          "note": "PKT-658 over the durable enqueue. Teeth: tests/acl2/owner-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-hides-the-queue-from-a-non-moderator",
+          "note": "PKT-658 reader half over fn-auth-view-archive. Teeth: tests/acl2/moderation-tests.lisp section 7."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mod-hidden-queues-is-hiddenp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-access-text-of-moderation-config"
+        }
+      ]
+    },
+    {
+      "id": "PRF-234",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-poll-delivers-only-readable-events"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-poll-is-the-consumer-poll-or-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-ack-is-the-consumer-ack-or-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack"
+        }
+      ]
+    },
+    {
+      "id": "PRF-235",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rof-record-within-capacity",
+          "note": "KEYSTONE (D27 bound). Subject fn-rof-record under fn-peer-refused-record, called by books/owner.lisp fn-own-transit-refused. Teeth: tests/acl2/transit-hygiene-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rof-record-keeps-a-bounded-memory-bounded",
+          "note": "KEYSTONE (bound from the empty memory). Teeth: tests/acl2/transit-hygiene-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rof-record-at-capacity-evicts-the-oldest",
+          "note": "KEYSTONE (oldest-first eviction); must-fail without the at-capacity hypothesis in tests/acl2/transit-hygiene-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-transfer-refuses-what-the-octets-refuse",
+          "note": "KEYSTONE. Subject fn-peer-decide-transfer (host/owner-host.lisp fn-owner-transit-decide). Positive witness from two peers, removal witnesses and a must-fail per hypothesis in tests/acl2/transit-hygiene-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prof-run-is-sound",
+          "note": "KEYSTONE (soundness over the transfers the memory was built from). Witness: tests/acl2/transit-hygiene-tests.lisp (*th-run*, *th-w*)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prof-offer-answer-is-the-reparse",
+          "note": "KEYSTONE. Subject fn-peer-decide-offer (served: fn-pgc-decide-offer = fn-pix-decide-offer = fn-peer-decide-offer, reached from host/owner-host.lisp fn-owner-chunk -> fn-own-read with the memory re-pinned by fn-own-conn-live-session). Teeth: tests/acl2/transit-hygiene-tests.lisp; native: tests/test_native_peering.py test_transit_hygiene_refused_offer_memory_and_relay_checks."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-offer-answers-the-memory",
+          "note": "-unfolds: the offer arm; must-fail without the history hypothesis in tests/acl2/transit-hygiene-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-236",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rck-skew-within-the-rfc",
+          "note": "The operator's skew never exceeds RFC 5537 section 3.6 step 2's 24 hours. Witnesses in tests/acl2/transit-hygiene-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-transfer-refuses-what-the-octets-refuse",
+          "note": "KEYSTONE shared with PRF-235: :path-syntax and :date-syntax are octet-decided refusals. :date-future and :no-path are witnessed through fn-peer-decide-transfer in tests/acl2/transit-hygiene-tests.lisp and natively in tests/test_native_peering.py."
+        }
+      ]
+    },
+    {
+      "id": "PRF-237",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-submission-targets-respect-the-distribution",
+          "note": "KEYSTONE over the host-called fn-own-submission-targets. Witnesses in tests/acl2/owner-tests.lisp (PRF-237 section): positive, filter-removal, queue, scope and in-flight literals."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-submission-targets-keep-an-admitted-peer",
+          "note": "KEYSTONE, the other direction. Witnesses in tests/acl2/owner-tests.lisp (PRF-237 section): positive, filter-removal, queue, scope and in-flight literals."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-distribution-targets-member",
+          "note": "KEYSTONE: the per-peer filter is exactly fn-own-feed-distribution-admitsp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-dists-of-reconfigure",
+          "note": "The filter is the one the peer's outbound-distributions row names; the binding hypothesis's removal witness is in tests/acl2/owner-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-243",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-newgroups-names-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-subscription-names-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-served-payload-inserts-one-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-hdr-value-is-the-field-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-article-reply-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-retrieval-session-is-the-generic-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-reply-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-reply-without-a-server"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-reply-only-for-its-commands"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-reply-preserves-consistent-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-effects-rcompat-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-hdr-lines-are-clean"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-xref-value-is-clean"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-archive-command-pinned-article-head-is-served"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-group-facts-has-the-created-stamp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-group-facts-are-group-facts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-reader-env-facts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-fmt-xref-lines-are-clean"
+        }
+      ]
+    },
+    {
+      "id": "PRF-208",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ores-sealed-plan-is-indexed-fetch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-len-of-sealed-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-feed-port-publication-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-config-staged-result-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-config-refused-is-a-result"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-nth-of-sealed-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-nth-of-record-peers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-frame-item-of-encode-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-submission-intent-publication-is-well-formed",
+          "note": "KEYSTONE: host/owner-host.lisp fn-owner-submission-intent returns this value; host/native/owner.lisp fnn-owner-feed-step checks it."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-submission-resolution-publication-is-well-formed",
+          "note": "KEYSTONE: host/owner-host.lisp fn-owner-submission-resolution returns this value; host/native/owner.lisp fnn-owner-feed-step checks it."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-feed-port-publication-p-without-effects"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-symbolp-of-submission-intent-word"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-symbolp-of-resolution-word"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-car-car-of-feed-resolution-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-take-result-by-definition",
+          "note": "host/owner-host.lisp fn-owner-take returns fn-ores-take-result; host/native/owner.lisp fnn-owner-take checks it."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-take-idle-is-a-result"
         }
       ]
     }

@@ -1301,6 +1301,35 @@
                              (list "relay" "carried-budget-count" "" 1))))))
 ; No such boundary: no delta.
 (assert-event (null (fn-native-admin-plan-deltas-over *fn-na-pcb-budget* nil)))
+
+;; PRF-237 (PKT-675): `peer distributions NAME WILDMAT' extends the peer's
+;; group by one single-valued `outbound-distributions' row over the live
+;; table (no new delta kind: :add-peer-rows, then :remove-peer-rows of the
+;; row it supersedes); a word that is not a wildmat, or another arity, is
+;; refused.
+(defconst *fn-na-dist-plan*
+  (fn-native-admin-plan (fn-na-test-argv '("peer" "distributions" "relay" "fn,us"))))
+(assert-event (equal (fn-native-admin-result-status *fn-na-dist-plan*) :accepted))
+(assert-event (equal (fn-native-admin-result-kind *fn-na-dist-plan*) :extend-peer))
+(assert-event
+ (equal (fn-native-admin-plan-deltas-over *fn-na-dist-plan* *fn-na-pcb-peers*)
+        (list (fn-cfg-add-peer-rows
+               "relay" (list (list "relay" "outbound-distributions" "fn,us" 0))))))
+(defconst *fn-na-dist-peers*
+  (append *fn-na-pcb-peers* (list (list "relay" "outbound-distributions" "fn" 0))))
+(assert-event
+ (equal (fn-native-admin-plan-deltas-over *fn-na-dist-plan* *fn-na-dist-peers*)
+        (list (fn-cfg-add-peer-rows
+               "relay" (list (list "relay" "outbound-distributions" "fn,us" 0)))
+              (fn-cfg-remove-peer-rows
+               "relay" (list (list "relay" "outbound-distributions" "fn" 0))))))
+(assert-event (null (fn-native-admin-plan-deltas-over *fn-na-dist-plan* nil)))
+(assert-event (equal (fn-native-admin-result-reason
+                      (fn-native-admin-plan (fn-na-test-argv '("peer" "distributions" "relay" "fn["))))
+                     :distributions))
+(assert-event (equal (fn-native-admin-result-status
+                      (fn-native-admin-plan (fn-na-test-argv '("peer" "distributions" "relay"))))
+                     :refused))
 ; Past a uint32 of pages (2^32 pages is 2^44 octets), and a malformed word.
 (assert-event
  (equal (fn-native-admin-result-status

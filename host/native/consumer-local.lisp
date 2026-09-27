@@ -4,7 +4,7 @@
 
 (defun fnn-command-consumer-local (command argv)
   (let* ((bounded
-           (and (<= (length argv) 4)
+           (and (<= (length argv) 5)
                 (<= (length command) 512)
                 (every (lambda (word) (<= (length word) 512)) argv)))
          (plan
@@ -18,23 +18,35 @@
       (fnn-err "consumer command refused by ACL2 argv grammar: ~a"
                (and (consp plan) (second plan)))
       (return-from fnn-command-consumer-local +fnn-exit-usage+))
-    (destructuring-bind (ignored operation control first second output) plan
+    (destructuring-bind (ignored operation control first second output
+                         &optional secret-file) plan
       (declare (ignore ignored))
       (let* ((input
-               (if (eq operation :ack)
+               (if (member operation '(:ack :bound-ack))
                    (fnn-octet-list
                     (fnn-read-regular-bounded
                      (fnn-octets-string (fnn-octets first)) 512))
                  first))
+             ;; PRF-234: the account's password, from a file; ACL2 strips
+             ;; one final line end and alone compares it.
+             (secret
+               (and secret-file
+                    (fnn-core 'fn-native-control-host-consumer-secret-of-file
+                              (fnn-octet-list
+                               (fnn-read-regular-bounded
+                                (fnn-octets-string (fnn-octets secret-file))
+                                498)))))
              (reply
                (fnn-control-consumer-local
                 (fnn-octets control) operation input
-                (if (eq operation :poll) nil second)))
+                (cond ((member operation '(:bound-poll :bound-ack)) secret)
+                      ((eq operation :poll) nil)
+                      (t second))))
              (status (and (consp reply) (second reply)))
              (cursor (and (consp reply) (third reply))))
         (unless (and (eq (first reply)
                          (case operation
-                           (:poll :consumer-poll-reply)
+                           ((:poll :bound-poll) :consumer-poll-reply)
                            (:status :consumer-status-reply)
                            (otherwise :consumer-reply)))
                      (member status '(:accepted :refused :uncertain :fault))
@@ -48,7 +60,7 @@
                            (and (null cursor) (null (fourth reply))
                                 (null (fifth reply))))
                        (and (fnn-octet-list-p cursor)
-                            (or (not (eq operation :poll))
+                            (or (not (member operation '(:poll :bound-poll)))
                                 (fnn-octet-list-p (fourth reply))))))
           (fnn-fault "local consumer control returned malformed reply"))
         (when (eq operation :status)
@@ -59,7 +71,7 @@
             (fnn-out "consumer status ~(~a~)" status))
           (return-from fnn-command-consumer-local
             (fnn-core 'fn-native-control-host-status-exit-code status)))
-        (when (and (eq status :accepted) (eq operation :poll))
+        (when (and (eq status :accepted) (member operation '(:poll :bound-poll)))
           ;; Report first, cursor last: a cursor file implies both outputs
           ;; were created.  Poll is read-only; an output failure is a local
           ;; fault and a repeat poll may redeliver the same event.
@@ -73,7 +85,7 @@
                  (fnn-octets cursor)))
             (error () (setq status :fault))))
         (when (and (eq status :accepted) output
-                   (not (eq operation :poll)))
+                   (not (member operation '(:poll :bound-poll))))
           (unless (consp cursor)
             (fnn-fault "accepted consumer command returned no cursor"))
           ;; This output file is an application convenience, never fn's

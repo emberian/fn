@@ -389,6 +389,87 @@ policy the interpreted bridge evaluates under. A `:program` wrapper therefore
 runs raw beneath its counterpart in both hosts; the complete call-graph guard
 requirement of packet C3-05 is unchanged by the packaging.
 
+### The saved image's memory
+
+HST-025: The saved image carries the execution world only, and the owner
+serves on a small collection trigger. `host/native/build.lisp` (and
+`build-dtn.lisp`) loads `host/native/strip-world.lisp` after the last event and
+immediately before `save-exec`. Every symbol keeps, at its current value, only
+the twelve execution properties (`symbol-class`, which the `*1*` dispatch
+reads, the signatures and guard the guard-failure forms read, the stobj and
+attachment properties), and the world keeps the other pairs a node was
+recorded reading (lane image-anatomy: LP's translate of the return form, two
+tables, five world globals) plus the landmarks and indices of the start path
+with `ACL2_SYSTEM_BOOKS` set, over a bottom of command 0, event 0 and
+`project-dir-alist` so that LP's `lookup-world-index` and
+`replace-project-dir-alist` still find what they walk to. The build residue
+goes too: the closed input-channel symbols of every file the build read,
+ACL2's documentation text, defconst's redundancy discriminators, the
+build-sized hons space (replaced by a small one) and memoize call array.
+`tools/build_native_host.sh` refuses an image whose log lacks the strip
+marker. (A second save of the stripped core, from a process that never ran
+ACL2, was measured and is not taken: it raised the resident set at start
+from about 36 to 63 MiB on hbox and from 39 to 47 MiB on OpenBSD.) No
+compiled definition changes: they live in function cells, not in the world.
+A guard violation inside `fnn-call` is the same fault line and exit code as
+before (the developer verb `guard-probe`), because the guard term in the
+failure is compiled into the executable counterpart. The owner collects every
+64 MiB during recovery and a checkpoint publication (PKT-316), less when the
+process reserved under 1 GiB (a sixteenth of the reservation, at least 8 MiB:
+a copying collection of the nursery needs as much again free); after recovery
+one full collection returns the recovery's garbage pages to the system; from
+`LISTENING` it collects every 8 MiB. The figures and the ACL2 8.7 source that
+reads each kept property are in `planning/evidence/image-floor-2026-09-26.md`;
+the native case is `tests/test_native_image_floor.py`. The heap a profile
+needs is still heap-from-profile's derivation (HST-013), which the list
+representation of the retained history dominates.
+
+The thread stacks are the reservation's second part
+(`books/heap-reservation.lisp` `fn-heap-reserve-decide`, called by
+`host/native/heap.lisp` `fnn-heap-reservation` from the `heap -- ARGV` probe).
+SBCL reserves for every thread its control stack and 2.5 to 3 MiB of runtime
+areas; the image's own launcher gave every thread 64 MiB, so a node with 32
+connections reserved about 4 GB beside its heap, and on OpenBSD, where a
+reservation counts against the login class's datasize, the fourteenth thread
+was refused at 1,536 MiB. The figure is the heap-figure heap, plus the
+image's own mappings outside the dynamic space (at most the core file), plus
+THREADS x (STACK + 4 MiB; measured 2.5 MiB on Linux, at most 3 on OpenBSD):
+THREADS the run's `max-connections`, the 16 control clients
+and 12 fixed threads; STACK a constant 1,024 KiB, seven times the 142 KiB
+the node needs whatever the article since the served path's per-line
+recursions became loops (lane served-line-iterative, PRF-218; before, the
+need grew by 32 octets per line and this figure carried a per-line term). A total the machine cannot hold is refused by name
+before anything runs (`refused machine-cannot-hold-threads reservation=MB MB
+machine=M MB`, exit 1), and the launcher passes `--control-stack-size KBKB`
+with the heap figure. The probe prints `heap=MB MB profile=WORD machine=M MB
+stack=KB KB threads=N`.
+`init` sizes within an explicit process budget and prints its decision
+(`fn-heap-init-decide`, PKT-582; gpt-6's wave-5 review s.8): the budget is
+the least of the physical memory less the OS's share (a quarter, at least 512
+MiB: detected memory is not all the service's), each limit the process runs
+under (RLIMIT_DATA, RLIMIT_AS, every cgroup memory.max: systemd's MemoryMax,
+OpenBSD's login class) and the operator's `FN_INIT_BUDGET_MB`. A request that
+names no capacity field (a bare `init`, and every mission: they set only the
+article bound and groups per article) takes a conservative preset: development
+when the budget holds its whole reservation at the configuration's default
+max-connections, else the small preset (R raised to the article record the
+request needs); never scale. `FN_INIT_SIZING=largest` takes the first of
+scale, development and small the budget holds. The request's own fields are
+laid over the preset and never lowered; when no preset holds them, init
+refuses by name and creates nothing: `refused init-budget-cannot-hold-profile
+profile=WORD sizing=MODE reservation=MB MB budget=MB MB`, exit 1. A request
+that names a capacity field or a preset (`--profile development|scale`) is
+the operator's: written as named, never resized
+(`fn-heap-init-decide-honors-the-operators-request`). init prints `init:
+profile=WORD sizing=conservative|largest|requested reservation=MB MB
+budget=MB MB within-budget=yes|no`; for a capacity-free request it is always
+`yes` (`-sized-init-is-held`) and the reservation is within the budget and so
+within the machine the run judges
+(`fn-heap-init-decide-fits-the-budget-and-the-machine`); `no` names an
+operator's request the launcher's probe will refuse on this machine.
+Under 2 GiB the default mission (1 MiB articles) inits on the small preset's
+capacity with its own fields (1,326 MB with 60 stacks of 1 MiB).
+
 ### The served reader path
 
 One socket read is one `fn-served-step` (books/served.lisp): a fold of
@@ -616,6 +697,34 @@ Selecting an executable counterpart does not discharge all caller preconditions
 or prove that every inner guard runs. The adapter's maintained-state and boundary
 correspondence remains explicit; no new validation/proof claim follows from its
 startup check of `guard-checking-on`.
+
+### Typed results across the native boundary
+
+HST-019: The native owner's wrappers return typed ACL2 results the host checks once; no global result mailboxes, no LF name grammar, no frame fetched by index
+
+A host/owner-host.lisp wrapper returns its whole result as one ACL2 value
+with a guard-verified recognizer (books/owner-results.lisp): a feed step
+returns a FeedPublication (its word, the peer its effect names, the sealed
+frame plan as (peer . frame) pairs in append order, the completion token,
+the rendered command and its status, the log line), a configuration staging
+step a ConfigResult (:staged with one encoded record, or :refused with the
+reason). The native host checks the recognizer once
+(host/native/owner.lisp `fnn-owner-result`; a malformed value is a core
+fault, exit 4), reads fields through ACL2's accessors, appends each pair's
+frame to that peer's journal before it writes the command, and splits no
+name list: a list of names is a list of strings. PRF-208's keystone equates
+the plan with the by-index fetch it replaced. Nothing on the wire or on disk
+changes. The take returns a SubmissionTaken (word, id, message-id, stored
+octets, groups; the host reads those five) in place of six globals; the
+submission path's FeedPublication carries the in-flight id as its token,
+and that id is one of the owner's two submission ids, a connection number or
+the control id `*fn-own-control-id*` (an `operator post`, a BP application
+or transit submission): PRF-208's keystones say the host's check holds of
+the intent's and the resolution's value for every outcome word, given that
+and a codec that accepts each journal record. A recognizer checks only the
+fields the host reads. The capture result carries the checkpoint
+pipeline's ten fields in its order; the served step's result is the owner
+scheduler's render plan (not this section's).
 
 ### Differential evidence and measurements
 

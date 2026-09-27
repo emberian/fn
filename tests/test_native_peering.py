@@ -640,6 +640,101 @@ class NativePeeringTests(unittest.TestCase):
             "identity": self.verify_process_identity(target),
         }, sort_keys=True))
 
+    def test_transit_hygiene_refused_offer_memory_and_relay_checks(self):
+        """PRF-235 / PRF-236 (NNT-049, NNT-050, SCN-161, SCN-162), INN-shaped:
+        three peers offer one article whose Path is malformed.  The first
+        peer's CHECK draws 238 and its TAKETHIS 439 (the transfer decision
+        parses it once); the refusal is remembered (books/owner.lisp
+        fn-own-transit-refused), so the second and third peers' CHECK draw
+        438 and IHAVE 435 with the remembered reason, and no transfer
+        happens.  With `relay-date-skew 3600' and `relay-require-path 1' set
+        by the operator, an article dated two hours ahead is refused 437
+        "dated in the future" and a Path-less one 437 "no Path"; an article
+        within the skew and with a Path is accepted 235.  Nothing is
+        persisted: the memory is the owner's, in memory only."""
+        target = self.initialize("hygiene-target", free_port())
+        sources = [("hyg1", "127.0.0.1"), ("hyg2", "127.0.0.2"), ("hyg3", "127.0.0.3")]
+        for name, address in sources:
+            self.command([IMAGE, "--fn", "operator", target["config"], "peer", "add",
+                          name, "{}.example.invalid".format(name), address, "9",
+                          "fn.*", "-", address, "true"])
+        self.command([IMAGE, "--fn", "operator", target["config"], "policy", "set",
+                      "relay-date-skew", "3600"])
+        self.command([IMAGE, "--fn", "operator", target["config"], "policy", "set",
+                      "relay-require-path", "1"])
+        self.start(target)
+
+        def hygienic(message_id, path, date):
+            head = b"" if path is None else b"Path: " + path + b"\r\n"
+            return (head + b"From: sender@example.invalid\r\n"
+                    b"Newsgroups: fn.test\r\nSubject: hygiene\r\n"
+                    b"Date: " + date + b"\r\nMessage-ID: " + message_id.encode()
+                    + b"\r\n\r\nbody\r\n")
+
+        def rfc5322(offset):
+            return time.strftime("%a, %d %b %Y %H:%M:%S +0000",
+                                 time.gmtime(time.time() + offset)).encode()
+
+        def session(address):
+            client = socket.create_connection(("127.0.0.1", target["port"]), timeout=15,
+                                              source_address=(address, 0))
+            stream = client.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200 "))
+            return client, stream
+
+        def ask(stream, line):
+            stream.write(line + b"\r\n")
+            return stream.readline()
+
+        bad = "<hygiene-bad-path@example.invalid>"
+        bad_article = hygienic(bad, b"inn hbox!not-for-mail", rfc5322(-60))
+        witness = {"kind": "transit-hygiene"}
+        client, stream = session("127.0.0.1")
+        with client:
+            witness["peer1-check"] = ask(stream, b"CHECK " + bad.encode()).decode()
+            stream.write(b"TAKETHIS " + bad.encode() + b"\r\n" + bad_article + b".\r\n")
+            witness["peer1-takethis"] = stream.readline().decode()
+            ask(stream, b"QUIT")
+        for name, address in sources[1:]:
+            client, stream = session(address)
+            with client:
+                witness[name + "-check"] = ask(stream, b"CHECK " + bad.encode()).decode()
+                witness[name + "-ihave"] = ask(stream, b"IHAVE " + bad.encode()).decode()
+                ask(stream, b"QUIT")
+
+        future = "<hygiene-future@example.invalid>"
+        pathless = "<hygiene-no-path@example.invalid>"
+        good = "<hygiene-good@example.invalid>"
+        client, stream = session("127.0.0.2")
+        with client:
+            for key, message_id, article in (
+                    ("future", future, hygienic(future, b"hyg2.example.invalid!not-for-mail",
+                                                rfc5322(7200))),
+                    ("no-path", pathless, hygienic(pathless, None, rfc5322(-60))),
+                    ("good", good, hygienic(good, b"hyg2.example.invalid!not-for-mail",
+                                            rfc5322(1800)))):
+                witness[key + "-offer"] = ask(stream, b"IHAVE " + message_id.encode()).decode()
+                stream.write(article + b".\r\n")
+                witness[key + "-transfer"] = stream.readline().decode()
+            ask(stream, b"QUIT")
+        print("NATIVE-PEERING-WITNESS " + json.dumps(witness, sort_keys=True))
+
+        self.assertTrue(witness["peer1-check"].startswith("238 "), witness)
+        self.assertTrue(witness["peer1-takethis"].startswith("439 "), witness)
+        for name, _ in sources[1:]:
+            self.assertTrue(witness[name + "-check"].startswith("438 "), witness)
+            self.assertEqual(witness[name + "-ihave"],
+                             "435 not wanted; malformed Path\r\n", witness)
+        self.assertTrue(witness["future-offer"].startswith("335 "), witness)
+        self.assertEqual(witness["future-transfer"],
+                         "437 transfer rejected; dated in the future\r\n", witness)
+        self.assertTrue(witness["no-path-offer"].startswith("335 "), witness)
+        self.assertEqual(witness["no-path-transfer"],
+                         "437 transfer rejected; no Path\r\n", witness)
+        self.assertTrue(witness["good-offer"].startswith("335 "), witness)
+        self.assertTrue(witness["good-transfer"].startswith("235 "), witness)
+        self.assertIsNone(target["process"].poll())
+
     def test_pipelined_takethis_in_one_read_answers_every_article(self):
         """PKT-600, repaired (PRF-213, NNT-044, SCN-144): eight TAKETHIS
         articles in one write, as innfeed pipelines them.  The served read
@@ -829,5 +924,55 @@ class NativePeeringTests(unittest.TestCase):
         print("NATIVE-PEERING-WITNESS " + json.dumps({
             "kind": "mode-stream-203-streaming", "commands": commands,
             "identical": article == served,
+            "identity": self.verify_process_identity(source),
+        }, sort_keys=True))
+
+    def test_feed_distribution_filter(self):
+        """PRF-237 / SCN-163 (RFC 5537 section 3.6 paragraph 2): with `peer
+        distributions NAME fn`, an article whose Distribution is world is not
+        fed to that peer; one whose Distribution is fn, and one with no
+        Distribution, are."""
+        peer = ScriptedTransitPeer("203 streaming permitted")
+        self.addCleanup(peer.close)
+        source = self.initialize("dist-source", free_port())
+        target = {"name": "dist-peer", "port": peer.port}
+        self.configure_peer(source, target)
+        self.command([IMAGE, "--fn", "operator", source["config"], "peer",
+                      "distributions", target["name"], "fn"])
+        self.start(source)
+        cases = [("world", "Distribution: world\r\n"),
+                 ("fn", "Distribution: FN\r\n"),
+                 ("none", "")]
+        ids = {}
+        for marker, header in cases:
+            message_id = "<dist-{}@example.invalid>".format(marker)
+            ids[marker] = message_id
+            payload = source["root"] / ("dist-" + marker + ".article")
+            payload.write_bytes((
+                "From: sender@example.invalid\r\n"
+                "Newsgroups: fn.test\r\n"
+                "Subject: distribution {}\r\n"
+                "Date: Mon, 21 Sep 2026 12:00:00 +0000\r\n"
+                "{}"
+                "Message-ID: {}\r\n\r\n{}\r\n").format(
+                    marker, header, message_id, marker).encode("ascii"))
+            self.command([IMAGE, "--fn", "operator", source["config"], "post",
+                          "--message-id", message_id, "--payload", payload,
+                          "--group", "fn.test"])
+        for marker in ("world", "fn", "none"):
+            self.assertIsNotNone(self.await_article(source, ids[marker]), marker)
+        for marker in ("fn", "none"):
+            got = peer.await_article(ids[marker])
+            self.assertIsNotNone(got, "{} never reached the peer; commands={}".format(
+                marker, peer.commands))
+        with peer.lock:
+            commands = list(peer.commands)
+            received = sorted(peer.articles)
+        self.assertNotIn(ids["world"], received, commands)
+        self.assertFalse([c for _, c in commands if ids["world"] in c], commands)
+        self.assertIsNone(source["process"].poll())
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "feed-distribution-filter-prf-237",
+            "commands": commands, "received": received,
             "identity": self.verify_process_identity(source),
         }, sort_keys=True))

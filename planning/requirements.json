@@ -1463,7 +1463,8 @@
         "PRF-191",
         "PRF-192",
         "PRF-227",
-        "PRF-218"
+        "PRF-218",
+        "PRF-208"
       ],
       "verification": [
         "proof",
@@ -4096,6 +4097,275 @@
         "planning/evidence/store-mount-identity-2026-09-27.md"
       ],
       "implementation_note": "Lane store-mount-identity (2026-09-27; PKT-579, PKT-648). The record filesystem-identity.fnmi (FNMI frame: fsid, type, mount point, source, policy) is written by init, store import and the developer probe; fnn-acquire asks fn-smid-open-verdict before any other read; fnn-owner-install asks fn-smid-start-verdict; `store rebind-filesystem [--storage-require-durable on|off]` (operator) and `store ROOT rebind-filesystem [on|off]` (developer). Policy 1 under a mission's configuration, 0 otherwise; every open warns on nobarrier/barrier=0/tmpfs/ramfs."
+    },
+    {
+      "id": "HST-025",
+      "title": "The saved image carries the execution world only, the owner serves on a small collection trigger, and the node's thread stacks are the profile's measured need: a fresh node starts in, serves from and refuses a guard violation within a 256 MB dynamic space, and a reservation the machine cannot hold is refused by name",
+      "specification": "specs/host.md#the-saved-images-memory",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-198"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "measurement"
+      ],
+      "evidence": [
+        "host/native/strip-world.lisp",
+        "host/native/build.lisp",
+        "host/native/build-dtn.lisp",
+        "host/native/owner.lisp",
+        "tools/build_native_host.sh",
+        "tests/test_native_image_floor.py",
+        "tools/runtime_image/node_measure.py",
+        "planning/evidence/image-floor-2026-09-26.md",
+        "host/native/io.lisp",
+        "books/heap-reservation.lisp",
+        "host/native/heap.lisp",
+        "packaging/fn",
+        "tests/acl2/heap-reservation-tests.lisp"
+      ],
+      "implementation_note": "Before save-exec the build keeps, at their current value, the twelve execution properties on every symbol and the other world pairs a node was recorded reading (lane image-anatomy), over a bottom of command 0, event 0 and project-dir-alist; it drops the build residue (channel symbols, documentation, defconst discriminators, the build-sized hons space and memoize array). A re-save of the stripped core was measured worse and is not taken. Core dynamic content 271.4 -> 105.6 MiB (hbox), 265.9 -> 106.2 (OpenBSD). The owner collects every 64 MiB during recovery and a publication (a sixteenth of a reservation under 1 GiB), once fully after recovery, and every 8 MiB while serving. The reservation a profile needs is still heap-from-profile's derivation (HST-013), which the list representation of the retained history dominates: see the record's packets. The thread stacks: books/heap-reservation.lisp fn-heap-reserve-decide (PRF-198's extension) adds the core once more and THREADS x (STACK + 4 MiB) to heap-figure's heap, STACK a constant 1,024 KiB (seven times the 142 KiB the node needs whatever the article since lane served-line-iterative made the served path's per-line recursions loops; before, a per-line term, 1,192 KiB for the 32 KiB-article presets; the image's launcher passed 64 MiB), and refuses a total past the machine by name; the installed launcher passes --control-stack-size."
+    },
+    {
+      "id": "NNT-046",
+      "title": "A login's access rule restricts its connections to the groups its read wildmat admits, as if the other groups were absent, and its posts to the groups its post wildmat admits",
+      "specification": "specs/nntp.md#group-access-nnt-046",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-222"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/accounts.lisp",
+        "books/account-list.lisp",
+        "books/group-access.lisp",
+        "books/nntp-auth.lisp",
+        "books/served-carried.lisp",
+        "books/owner-agent.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/native-admin-host.lisp",
+        "tests/acl2/group-access-tests.lisp",
+        "tests/test_native_group_access.py",
+        "planning/evidence/group-access-2026-09-27.md"
+      ],
+      "implementation_note": "Local policy after INN readers.conf (read and post wildmats per identity; RFC 3977 section 4.2 wildmats; RFC 4643 leaves authorization to local policy). Stronger fn guarantee: no existence oracle (an excluded group answers exactly as an absent one: 411, 430, the unknown-group 441). The verb `account access LOGIN|--anonymous --read R --post P` is a durable configuration record (:account-access, delta code 22), offline or live; no store record, no format change. Peering unchanged; the consumer poll is the owner's and reads everything."
+    },
+    {
+      "id": "SEC-007",
+      "title": "Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from peers the feed patterns name, or from the node's own consumer; confidentiality beyond that is the posters' own encryption",
+      "specification": "specs/nntp.md#group-access-nnt-046",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-222"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "specs/nntp.md",
+        "docs/operator.md",
+        "books/nntp-auth.lisp",
+        "planning/evidence/group-access-2026-09-27.md"
+      ],
+      "implementation_note": "A statement of scope, so that 'private group' is not read as a confidentiality claim: fn-auth-access-text gives a peer connection no rule; the Store, store inspect and the consumer socket are the operator's; the Newsgroups header of a cross-posted article names every group; Message-IDs are unique node-wide (a duplicate POST is refused)."
+    },
+    {
+      "id": "NNT-047",
+      "title": "A moderated group holds an unapproved local post for its moderators (never posting it), commits an article carrying Approved from a moderator's login, refuses an Approved from anyone else by name, lists the group with status m, and a relay refuses an unapproved article in it",
+      "specification": "specs/nntp.md#moderated-groups-nnt-047",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-228"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/accounts.lisp",
+        "books/account-list.lisp",
+        "books/moderation.lisp",
+        "books/nntp-post.lisp",
+        "books/nntp-responses.lisp",
+        "books/nntp-auth.lisp",
+        "books/owner-agent.lisp",
+        "books/peer-inbound.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/moderation-tests.lisp",
+        "tests/test_native_moderation.py",
+        "planning/evidence/moderated-groups-2026-09-27.md",
+        "host/native-admin-host.lisp"
+      ],
+      "implementation_note": "RFC 5537 section 3.5 item 7 and 3.5.1 (forward, never post; method 1, application/news-transmission; usage=moderate), section 7 (verify the approver by transport authentication), sections 3.6 item 6 and 3.7 item 5 (relay/serving refusal); RFC 6048 section 2.1.1 (m). fn has no mail path: the forward is an envelope article into the group's queue group (an ordinary Store article: no new persistence domain). The moderator is an account with a role (accounts slot, marks 4 and 5; delta code 23). The 441 texts naming the reason are a stronger fn guarantee. A control message is not gated. The queue group is never offered to a peer and is served only to the moderators of the groups it queues for (PKT-658; group-access's restricted view with the queue hidden). `moderation list GROUP` reports the queue (FNLS kind 3 code 10). Not done: `moderation approve/reject` (PKT-657; reject needs PKT-575's operator withdrawal), a PGPMoose-style signed approval."
+    },
+    {
+      "id": "CNS-006",
+      "title": "A local consumer bound to an account is served only while the account's read rule admits its group, only with the account's password, keeps its position when refused, and an unbound consumer is unchanged",
+      "specification": "specs/consumer-progress.md#bound-consumers",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-234"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/accounts.lisp",
+        "books/account-list.lisp",
+        "books/consumer-bound.lisp",
+        "books/consumer-local-control.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/consumer-local.lisp",
+        "tools/fn_consumer.py",
+        "tests/acl2/consumer-bound-tests.lisp",
+        "tests/test_native_consumer_identity.py",
+        "planning/evidence/consumer-identity-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T021857Z-190087.json",
+        "planning/evidence/manifests/certify-20260927T022825Z-256887.json",
+        "planning/evidence/consumer-identity-2026-09-27/native-a3-test_native_consumer_identity.log"
+      ],
+      "implementation_note": "A client contract, not an RFC requirement; the rule is NNT-046's (local policy after INN readers.conf). The binding is a durable configuration record (:consumer-bind, delta code 24), offline or live; no store record, no store format change. The credential is the account's own (AUTHINFO's verifier; no consumer-specific secret). Decided by ember 2026-09-27 (PKT-642).",
+      "note": "The local socket stays the owner's (0600): a process with the owner's uid can still use unbound consumers; carrying bound requests to a non-owner peer is PKT-673."
+    },
+    {
+      "id": "NNT-049",
+      "title": "An article refused for a reason its octets decide is remembered, within the operator's bound, and a later offer of its Message-ID from any peer is refused from the memory without a transfer",
+      "specification": "specs/peering.md#refused-offer-memory-nnt-049",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-235"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/refused-offers.lisp",
+        "books/peer-refused-offers.lisp",
+        "books/owner.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.3 (the relaying agent's history) permits it; remembering rejects is INN's practice; that the memory's answer is the re-parse's, bounded by the operator's refused-offer-capacity with oldest-first eviction and kept in memory only, is the fn guarantee (D27)."
+    },
+    {
+      "id": "NNT-050",
+      "title": "A relayed article dated more than the operator's skew (at most 24 hours) into the future, with an unreadable date, with a malformed Path, or with no Path when the operator requires one, is refused by name",
+      "specification": "specs/peering.md#relay-date-and-path-checks-nnt-050",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-236"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/relay-checks.lisp",
+        "books/peer-inbound.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.6 step 2 (MUST reject beyond 24 hours; MAY use a smaller margin) is an RFC requirement; step 4 (SHOULD reject without the mandatory fields; MAY reject invalid contents) is RFC guidance fn follows for the date and a present Path; requiring Path is local policy, off by default (PKT-674)."
+    },
+    {
+      "id": "NNT-051",
+      "title": "An article whose Distribution names no distribution a peer's feed is configured for is not fed to that peer",
+      "specification": "specs/peering.md#per-peer-distribution-filtering-nnt-051",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-237"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/owner-feed.lisp",
+        "books/owner-feed-subject.lisp",
+        "books/native-admin-peer.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.6 paragraph 2 is RFC guidance (SHOULD NOT relay) fn follows per peer; the three cases the RFC leaves open (no filter configured, no Distribution field, a malformed Distribution) are local policy, stated in the specification."
+    },
+    {
+      "id": "NNT-052",
+      "title": "NEWGROUPS and LIST ACTIVE.TIMES list the groups the configuration created, LIST SUBSCRIPTIONS answers a list, LIST OVERVIEW.FMT uses the compatibility form, and ARTICLE, HEAD and HDR carry this node's Xref",
+      "specification": "specs/nntp.md#reader-compatibility-newgroups-list-subscriptions-overviewfmt-and-xref-nnt-052",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-243"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/nntp-reader-compat.lisp",
+        "tests/acl2/nntp-reader-compat-tests.lisp",
+        "tests/test_native_reader_clients.py",
+        "planning/evidence/reader-compat-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 3977 sections 7.3, 8.4.2 and 8.5, RFC 6048 sections 2.3 and 2.6 and RFC 5536 section 3.2.14 are the RFC requirements; creation times from the creating configuration record and a view-restricted list are stronger fn guarantees; the configured default list with the view's groups as fallback, Bytes:/Lines:, and Xref generated at serve time are local policy (specs/nntp.md). Packets PKT-665 to PKT-668."
+    },
+    {
+      "id": "HST-019",
+      "title": "The native owner's wrappers return typed ACL2 results the host checks once; no global result mailboxes, no LF name grammar, no frame fetched by index",
+      "specification": "specs/host.md#typed-results-across-the-native-boundary",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-208"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "books/owner-results.lisp",
+        "host/native/feed-service.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/adapter-retirement-2026-09-26.md",
+        "tests/acl2/owner-results-tests.lisp",
+        "tests/native_bp_transit_identity_raw.lisp",
+        "tests/native_feed_service_raw.lisp",
+        "tests/native_live_config_cache_raw.lisp",
+        "tests/native_owner_bound_commit_raw.lisp",
+        "tools/run_owner.py"
+      ],
+      "implementation_note": "Lane adapter-retirement: FeedPublication and ConfigResult typed; fnn-owner-name-list and fnn-owner-config-names deleted; the feed flush consumes one sealed frame plan. Lane adapter-retirement-2: the submission path's publication admits the owner's two submission ids (the batch AM fault: the operator post's :control), with keystones for every outcome; the take returns a SubmissionTaken (six fn-owner-submit-* mailboxes retired; the transit decision's memberships are its own fn-owner-transit-groups); Capture takes checkpoint-pipeline-5's field names. ServedStep is fenced to lane owner-scheduler (its render plan replaces the served step's return)."
     }
   ]
 }

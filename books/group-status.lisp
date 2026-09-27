@@ -3,8 +3,8 @@
 ;
 ; RFC 3977 section 7.6.3 gives LIST ACTIVE a status field, "y" (posting
 ; permitted) or "n" (posting not permitted); RFC 6048 section 2.1 lists the
-; further values, of which fn serves only "y" and "n" ("m" is P3, deferred;
-; "x", "j" and "=" are not served).  A group's status is configuration: the
+; further values, of which fn serves "y", "n" and "m" ("m": moderated
+; groups, books/moderation.lisp; "x", "j" and "=" are not served).  A group's status is configuration: the
 ; operator's `group policy NAME n|y' publishes the delta
 ; (:set-group-status NAME STATUS 0 nil), code 21 (books/config.lisp), and
 ; `fn-cfg-closed-names' lists the live groups whose status is "n".  The

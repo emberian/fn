@@ -65,7 +65,7 @@
    (implies (fn-auth-configp acfg)
             (fn-auth-sessionp
              (fn-auth-make-session
-              (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil)
+              (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil nil)
               acfg nil nil nil nil)))
    :hints (("Goal" :use ((:instance fn-auth-open-session-is-consistent
                                     (peer nil) (node nil) (cfg nil) (tlsp nil)))
@@ -77,7 +77,7 @@
  (defthm fn-sit-fresh-open-session-is-a-session
    (fn-auth-sessionp
     (fn-auth-make-session
-     (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil)
+     (fn-peer-make-session (fn-post-open-session archive) nil nil 0 nil nil nil)
      (fn-auth-open-config) nil nil nil nil))
    :hints (("Goal" :use ((:instance fn-sit-fresh-session-is-a-session
                                     (acfg (fn-auth-open-config))))

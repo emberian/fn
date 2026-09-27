@@ -225,6 +225,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-checkpoint-open-tests \
 	tests/acl2/store-checkpoint-tables-tests \
 	books/heap-figure \
+	books/heap-reservation \
+	tests/acl2/heap-reservation-tests \
 	tests/acl2/heap-figure-tests \
 	books/connection-budget \
 	tests/acl2/connection-budget-tests \
@@ -703,6 +705,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-session \
 	books/nntp-projection \
 	books/nntp-responses \
+	books/nntp-reader-compat \
 	books/nntp \
 	books/nntp-overview \
 	books/nntp-legacy \
@@ -728,6 +731,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-list-counts-tests \
 	tests/acl2/group-descriptions-tests \
 	tests/acl2/nntp-xref-tests \
+	tests/acl2/nntp-reader-compat-tests \
 	tests/acl2/posting-account-tests \
 	tests/acl2/injection-info-params-tests \
 	tests/acl2/owner-injection-info-tests \
@@ -742,6 +746,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-inbound-tests \
 	books/peer-transit-forms \
 	tests/acl2/peer-transit-forms-tests \
+	books/relay-checks \
+	books/refused-offers \
+	books/peer-refused-offers \
+	tests/acl2/transit-hygiene-tests \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
 	books/served \
@@ -903,6 +911,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-retention-preparation \
 	books/owner-agent \
 	books/owner-log \
+	books/owner-results \
 	books/owner-served-bound \
 	books/owner-log-reopen \
 	books/owner-bound-commit \
@@ -916,6 +925,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-owner-local-tests \
 	books/consumer-owner-local-progress \
 	tests/acl2/consumer-owner-local-progress-tests \
+	books/consumer-bound \
+	tests/acl2/consumer-bound-tests \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
@@ -935,6 +946,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-operator-tests \
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
+	tests/acl2/owner-results-tests \
 	tests/acl2/owner-served-bound-tests \
 	tests/acl2/owner-log-reopen-tests \
 	tests/acl2/owner-bound-commit-tests \
