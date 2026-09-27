@@ -5384,7 +5384,7 @@
       "id": "SCN-185",
       "title": "A friend's node from the release: installed with --reader in a fresh Debian 12, the web reader behind Caddy on the node's TLS port; a friend makes an account from a code, reads a group, posts, sees the post and removes it",
       "milestone": "M6",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "WEB-004",
         "HST-029",
@@ -5400,7 +5400,9 @@
       ],
       "evidence": [
         "tests/fn_reader_friend_drive.mjs",
-        "planning/evidence/release-web-reader-2026-09-27.md"
+        "planning/evidence/release-web-reader-2026-09-27.md",
+        "planning/evidence/release-web-reader-2026-09-27/drive.json",
+        "planning/evidence/release-web-reader-2026-09-27/debian-transcript.md"
       ],
       "execution_scope": "One Debian 12 container on hbox and Chromium on the laptop over an ssh tunnel, with an ungated --frozen package of this lane's image. Not a public deployment, not OpenBSD, not a load test, not an external security audit.",
       "implementation": {
