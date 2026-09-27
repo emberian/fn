@@ -1178,24 +1178,24 @@
     "books": 1218,
     "books_in_root_closure": 1207,
     "roots": 1171,
-    "theorems": 17897,
-    "functions": 12393,
+    "theorems": 17923,
+    "functions": 12400,
     "assert_events": 17838,
     "must_fails": 2152,
     "prover_refusals": 0,
-    "encapsulates": 91,
+    "encapsulates": 92,
     "guards": {
       "verified": 2439,
-      "declared-off": 1328,
-      "default-guarded": 6830,
-      "default-unguarded": 1796
+      "declared-off": 1419,
+      "default-guarded": 6837,
+      "default-unguarded": 1705
     },
-    "suspect_theorems": 190,
+    "suspect_theorems": 191,
     "export_hygiene_warnings": 205,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 210,
-    "include_hygiene_warnings": 1245,
-    "host_names_warnings": 1364,
+    "include_hygiene_warnings": 1314,
+    "host_names_warnings": 1371,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -12202,12 +12202,12 @@
       "book": "books/nntp-index-runtime.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 2,
-      "functions": 16,
+      "theorems": 14,
+      "functions": 18,
       "guards": {
         "verified": 16,
-        "declared-off": 0,
-        "default-guarded": 0,
+        "declared-off": 1,
+        "default-guarded": 1,
         "default-unguarded": 0
       },
       "verify_guards_events": 16,
@@ -12261,9 +12261,9 @@
       "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 4
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -12614,12 +12614,12 @@
       "book": "books/nntp-responses.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 14,
-      "functions": 174,
+      "theorems": 23,
+      "functions": 177,
       "guards": {
         "verified": 163,
         "declared-off": 0,
-        "default-guarded": 11,
+        "default-guarded": 14,
         "default-unguarded": 0
       },
       "verify_guards_events": 163,
@@ -12628,7 +12628,7 @@
       "prover_refusals": 0,
       "defconsts": 12,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 1,
       "includes": [
         "article-fields",
         "clock",
@@ -12650,9 +12650,9 @@
       "functions": 1,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -12674,12 +12674,12 @@
       "book": "books/nntp-session.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 6,
-      "functions": 36,
+      "theorems": 11,
+      "functions": 39,
       "guards": {
         "verified": 34,
         "declared-off": 0,
-        "default-guarded": 2,
+        "default-guarded": 5,
         "default-unguarded": 0
       },
       "verify_guards_events": 34,
@@ -12690,10 +12690,13 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "nntp-syntax"
+        "nntp-syntax",
+        "payload-arena"
       ],
       "system_includes": [],
-      "suspects": [],
+      "suspects": [
+        "fn-nntp-payload-bytes-of-non-handle"
+      ],
       "read_error": null
     },
     {
@@ -20823,19 +20826,20 @@
       "functions": 5,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 5
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
       "assert_events": 26,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 16,
+      "defconsts": 17,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-auth"
+        "../../books/nntp-auth",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -25007,19 +25011,20 @@
       "functions": 39,
       "guards": {
         "verified": 0,
-        "declared-off": 1,
+        "declared-off": 5,
         "default-guarded": 0,
-        "default-unguarded": 38
+        "default-unguarded": 34
       },
       "verify_guards_events": 0,
       "assert_events": 48,
       "must_fails": 63,
       "prover_refusals": 0,
-      "defconsts": 0,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/byte-store-record-provenance",
+        "arena-lift",
         "byte-store-stable-prefix-tests"
       ],
       "system_includes": [
@@ -25403,13 +25408,14 @@
       "assert_events": 16,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 13,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/catalog-entries",
         "../../books/codec-attach",
-        "../../books/crypto-attach"
+        "../../books/crypto-attach",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -25518,13 +25524,14 @@
       "assert_events": 25,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 23,
+      "defconsts": 24,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/catalog-refresh",
         "../../books/codec-attach",
         "../../books/crypto-attach",
+        "arena-lift",
         "held-rows-tests"
       ],
       "system_includes": [
@@ -26088,11 +26095,12 @@
       "assert_events": 35,
       "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 11,
+      "defconsts": 12,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/config-crash-replay",
+        "arena-lift",
         "config-owner-publish-tests"
       ],
       "system_includes": [
@@ -26143,11 +26151,12 @@
       "assert_events": 12,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 4,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/config-owner-advance-invariants",
+        "arena-lift",
         "config-owner-live-tests"
       ],
       "system_includes": [
@@ -26172,11 +26181,12 @@
       "assert_events": 6,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 0,
+      "defconsts": 1,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/config-owner-advance-reader-invariants",
+        "arena-lift",
         "config-owner-advance-invariants-tests"
       ],
       "system_includes": [
@@ -26201,11 +26211,12 @@
       "assert_events": 55,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 19,
+      "defconsts": 20,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/config-owner-live",
+        "arena-lift",
         "config-observed-tests"
       ],
       "system_includes": [
@@ -26230,11 +26241,12 @@
       "assert_events": 39,
       "must_fails": 7,
       "prover_refusals": 0,
-      "defconsts": 20,
+      "defconsts": 21,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/config-owner-publish",
+        "arena-lift",
         "config-owner-live-tests"
       ],
       "system_includes": [
@@ -26259,11 +26271,12 @@
       "assert_events": 17,
       "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 9,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/config-owner-read-invariants",
+        "arena-lift",
         "config-owner-live-tests",
         "served-tls-prefix-tests"
       ],
@@ -27632,20 +27645,21 @@
       "functions": 13,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 5,
         "default-guarded": 0,
-        "default-unguarded": 13
+        "default-unguarded": 8
       },
       "verify_guards_events": 0,
       "assert_events": 70,
       "must_fails": 7,
       "prover_refusals": 0,
-      "defconsts": 37,
+      "defconsts": 38,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/native-admin",
-        "../../books/nntp-auth"
+        "../../books/nntp-auth",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -27726,12 +27740,13 @@
       "assert_events": 16,
       "must_fails": 7,
       "prover_refusals": 0,
-      "defconsts": 16,
+      "defconsts": 17,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/nntp-range-indexed",
-        "../../books/owner"
+        "../../books/owner",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -27747,22 +27762,23 @@
       "functions": 7,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 2,
         "default-guarded": 2,
-        "default-unguarded": 5
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
       "assert_events": 42,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 23,
+      "defconsts": 24,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/config-invariants",
         "../../books/native-admin",
         "../../books/nntp-post",
-        "../../books/owner-agent"
+        "../../books/owner-agent",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -28393,6 +28409,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/login-binding-live",
+        "arena-lift",
         "config-owner-live-tests",
         "login-binding-tests"
       ],
@@ -28462,18 +28479,18 @@
       "in_root_closure": false,
       "is_root": false,
       "theorems": 0,
-      "functions": 16,
+      "functions": 15,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 2,
         "default-guarded": 2,
-        "default-unguarded": 14
+        "default-unguarded": 11
       },
       "verify_guards_events": 0,
       "assert_events": 94,
       "must_fails": 11,
       "prover_refusals": 0,
-      "defconsts": 38,
+      "defconsts": 39,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -28481,7 +28498,8 @@
         "../../books/config-invariants",
         "../../books/native-admin",
         "../../books/nntp-auth",
-        "../../books/owner-agent"
+        "../../books/owner-agent",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -28932,13 +28950,14 @@
       "assert_events": 87,
       "must_fails": 17,
       "prover_refusals": 0,
-      "defconsts": 24,
+      "defconsts": 25,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/native-health",
         "../../books/owner-store-budget",
+        "arena-lift",
         "held-rows-tests"
       ],
       "system_includes": [
@@ -28993,13 +29012,14 @@
       "assert_events": 65,
       "must_fails": 15,
       "prover_refusals": 0,
-      "defconsts": 20,
+      "defconsts": 21,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/native-live-status",
         "../../books/owner-store-budget",
+        "arena-lift",
         "held-rows-tests"
       ],
       "system_includes": [
@@ -29109,12 +29129,13 @@
       "assert_events": 22,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 19,
+      "defconsts": 20,
       "defmacros": 5,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/nntp-auth-fold"
+        "../../books/nntp-auth-fold",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29130,20 +29151,21 @@
       "functions": 27,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 14,
         "default-guarded": 0,
-        "default-unguarded": 27
+        "default-unguarded": 13
       },
       "verify_guards_events": 0,
       "assert_events": 337,
       "must_fails": 84,
       "prover_refusals": 0,
-      "defconsts": 121,
+      "defconsts": 122,
       "defmacros": 27,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/nntp-auth-invariants"
+        "../../books/nntp-auth-invariants",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29159,20 +29181,21 @@
       "functions": 9,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 5,
         "default-guarded": 0,
-        "default-unguarded": 9
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
       "assert_events": 145,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 42,
+      "defconsts": 43,
       "defmacros": 9,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/nntp-auth"
+        "../../books/nntp-auth",
+        "arena-lift"
       ],
       "system_includes": [],
       "suspects": [],
@@ -29186,19 +29209,20 @@
       "functions": 5,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 5
+        "default-unguarded": 4
       },
       "verify_guards_events": 0,
       "assert_events": 14,
       "must_fails": 21,
       "prover_refusals": 0,
-      "defconsts": 5,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/nntp-control",
+        "arena-lift",
         "control-served-tests"
       ],
       "system_includes": [
@@ -29215,19 +29239,20 @@
       "functions": 14,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 8,
         "default-guarded": 0,
-        "default-unguarded": 14
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
       "assert_events": 24,
       "must_fails": 10,
       "prover_refusals": 0,
-      "defconsts": 17,
+      "defconsts": 18,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-help"
+        "../../books/nntp-help",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29271,19 +29296,20 @@
       "functions": 7,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 2,
         "default-guarded": 0,
-        "default-unguarded": 7
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
       "assert_events": 93,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 21,
+      "defconsts": 22,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-effects"
+        "../../books/nntp-effects",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29307,11 +29333,12 @@
       "assert_events": 27,
       "must_fails": 7,
       "prover_refusals": 0,
-      "defconsts": 12,
+      "defconsts": 13,
       "defmacros": 4,
       "encapsulates": 0,
       "includes": [
-        "../../books/owner-list-counts-read"
+        "../../books/owner-list-counts-read",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29327,19 +29354,20 @@
       "functions": 7,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 7
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
       "assert_events": 72,
       "must_fails": 9,
       "prover_refusals": 0,
-      "defconsts": 65,
+      "defconsts": 66,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-effects"
+        "../../books/nntp-effects",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29363,11 +29391,12 @@
       "assert_events": 2,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp"
+        "../../books/nntp",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29391,11 +29420,12 @@
       "assert_events": 8,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 10,
+      "defconsts": 11,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-pinned-msgid"
+        "../../books/nntp-pinned-msgid",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29419,11 +29449,12 @@
       "assert_events": 81,
       "must_fails": 6,
       "prover_refusals": 0,
-      "defconsts": 27,
+      "defconsts": 28,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-post"
+        "../../books/nntp-post",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29447,11 +29478,12 @@
       "assert_events": 13,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 19,
+      "defconsts": 20,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-range-indexed-invariants"
+        "../../books/nntp-range-indexed-invariants",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29467,20 +29499,21 @@
       "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 4
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
       "assert_events": 26,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 18,
+      "defconsts": 19,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/nntp-pinned-msgid",
-        "../../books/owner-xref-read"
+        "../../books/owner-xref-read",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29504,11 +29537,12 @@
       "assert_events": 95,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 18,
+      "defconsts": 19,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-effects"
+        "../../books/nntp-effects",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29532,11 +29566,12 @@
       "assert_events": 25,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 9,
+      "defconsts": 10,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
         "../../books/nntp-search-scope",
+        "arena-lift",
         "control-served-tests"
       ],
       "system_includes": [
@@ -29561,11 +29596,12 @@
       "assert_events": 17,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 14,
+      "defconsts": 15,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-invariants"
+        "../../books/nntp-invariants",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29589,11 +29625,12 @@
       "assert_events": 167,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 67,
+      "defconsts": 68,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-effects"
+        "../../books/nntp-effects",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29643,11 +29680,12 @@
       "assert_events": 30,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 11,
+      "defconsts": 12,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-xpat"
+        "../../books/nntp-xpat",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29671,11 +29709,12 @@
       "assert_events": 17,
       "must_fails": 4,
       "prover_refusals": 0,
-      "defconsts": 15,
+      "defconsts": 16,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/owner-xref-read"
+        "../../books/owner-xref-read",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -29862,20 +29901,21 @@
       "functions": 1,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 47,
       "must_fails": 11,
       "prover_refusals": 0,
-      "defconsts": 19,
+      "defconsts": 20,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-advance-carried",
         "../../books/owner-commit-ocl",
+        "arena-lift",
         "owner-served-carried-tests",
         "owner-served-invariants-tests"
       ],
@@ -29901,11 +29941,12 @@
       "assert_events": 22,
       "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 18,
+      "defconsts": 19,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/owner-agent"
+        "../../books/owner-agent",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -30006,18 +30047,19 @@
       "functions": 7,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 2,
         "default-guarded": 0,
-        "default-unguarded": 7
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
       "assert_events": 6,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 13,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "arena-lift",
         "owner-tests"
       ],
       "system_includes": [
@@ -30127,11 +30169,12 @@
       "assert_events": 9,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 2,
+      "defconsts": 3,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-config-observe",
+        "arena-lift",
         "config-owner-live-tests"
       ],
       "system_includes": [
@@ -30148,20 +30191,21 @@
       "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 4
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
       "assert_events": 149,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 63,
+      "defconsts": 64,
       "defmacros": 4,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/owner-config",
+        "arena-lift",
         "held-rows-tests"
       ],
       "system_includes": [
@@ -30186,11 +30230,12 @@
       "assert_events": 31,
       "must_fails": 9,
       "prover_refusals": 0,
-      "defconsts": 20,
+      "defconsts": 21,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-enrollment-read",
+        "arena-lift",
         "owner-verdict-tests"
       ],
       "system_includes": [
@@ -30458,19 +30503,20 @@
       "functions": 7,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 4,
         "default-guarded": 0,
-        "default-unguarded": 7
+        "default-unguarded": 3
       },
       "verify_guards_events": 0,
       "assert_events": 34,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 5,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-numbering",
+        "arena-lift",
         "owner-served-invariants-tests"
       ],
       "system_includes": [
@@ -30525,13 +30571,14 @@
       "assert_events": 44,
       "must_fails": 8,
       "prover_refusals": 0,
-      "defconsts": 32,
+      "defconsts": 33,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "../../books/injection-invariants",
         "../../books/owner-invariants",
         "../../books/owner-served-invariants",
+        "arena-lift",
         "held-rows-tests"
       ],
       "system_includes": [
@@ -30556,11 +30603,12 @@
       "assert_events": 20,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 9,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-prepare-carried",
+        "arena-lift",
         "owner-served-invariants-tests"
       ],
       "system_includes": [
@@ -30585,12 +30633,13 @@
       "assert_events": 26,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 26,
+      "defconsts": 27,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/owner-prepare-correspondence",
+        "arena-lift",
         "held-rows-tests"
       ],
       "system_includes": [
@@ -30664,19 +30713,20 @@
       "functions": 3,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 2,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 5,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 4,
+      "defconsts": 5,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/owner-retention-preparation"
+        "../../books/owner-retention-preparation",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -30756,11 +30806,12 @@
       "assert_events": 15,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 9,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-served-carried",
+        "arena-lift",
         "config-owner-live-tests"
       ],
       "system_includes": [
@@ -30777,19 +30828,20 @@
       "functions": 18,
       "guards": {
         "verified": 0,
-        "declared-off": 2,
+        "declared-off": 7,
         "default-guarded": 0,
-        "default-unguarded": 16
+        "default-unguarded": 11
       },
       "verify_guards_events": 0,
       "assert_events": 88,
       "must_fails": 12,
       "prover_refusals": 0,
-      "defconsts": 32,
+      "defconsts": 33,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-served-invariants",
+        "arena-lift",
         "owner-tests"
       ],
       "system_includes": [
@@ -30806,19 +30858,20 @@
       "functions": 14,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 3,
         "default-guarded": 0,
-        "default-unguarded": 14
+        "default-unguarded": 11
       },
       "verify_guards_events": 0,
       "assert_events": 70,
       "must_fails": 27,
       "prover_refusals": 0,
-      "defconsts": 17,
+      "defconsts": 18,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-signed-post",
+        "arena-lift",
         "peer-authored-accept-tests",
         "store-identity-traces-tests"
       ],
@@ -30844,12 +30897,13 @@
       "assert_events": 11,
       "must_fails": 4,
       "prover_refusals": 0,
-      "defconsts": 13,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/owner-store-budget",
+        "arena-lift",
         "held-rows-tests"
       ],
       "system_includes": [
@@ -30874,11 +30928,12 @@
       "assert_events": 67,
       "must_fails": 6,
       "prover_refusals": 0,
-      "defconsts": 17,
+      "defconsts": 18,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-store-indexed",
+        "arena-lift",
         "bp-signed-binding-tests"
       ],
       "system_includes": [
@@ -30895,15 +30950,15 @@
       "functions": 31,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 1,
-        "default-unguarded": 30
+        "default-unguarded": 29
       },
       "verify_guards_events": 0,
       "assert_events": 436,
       "must_fails": 41,
       "prover_refusals": 0,
-      "defconsts": 157,
+      "defconsts": 158,
       "defmacros": 2,
       "encapsulates": 0,
       "includes": [
@@ -30912,6 +30967,7 @@
         "../../books/owner-fault",
         "../../books/owner-feed-subject",
         "../../books/owner-invariants",
+        "arena-lift",
         "held-rows-tests"
       ],
       "system_includes": [
@@ -30936,11 +30992,12 @@
       "assert_events": 5,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 5,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-tls-prefix",
+        "arena-lift",
         "owner-verdict-tests"
       ],
       "system_includes": [
@@ -30965,12 +31022,13 @@
       "assert_events": 32,
       "must_fails": 6,
       "prover_refusals": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/hybrid-lifecycle-store-invariants",
         "../../books/owner-verdict-read",
+        "arena-lift",
         "owner-verdict-tests"
       ],
       "system_includes": [
@@ -30995,12 +31053,13 @@
       "assert_events": 14,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 13,
+      "defconsts": 14,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/nntp-verdict-effects",
         "../../books/owner",
+        "arena-lift",
         "store-identity-traces-tests"
       ],
       "system_includes": [],
@@ -31155,19 +31214,20 @@
       "functions": 8,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 7,
         "default-guarded": 0,
-        "default-unguarded": 8
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
       "assert_events": 37,
       "must_fails": 6,
       "prover_refusals": 0,
-      "defconsts": 5,
+      "defconsts": 6,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/served-carried",
+        "arena-lift",
         "peer-offer-indexed-tests"
       ],
       "system_includes": [
@@ -31222,12 +31282,13 @@
       "assert_events": 246,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 75,
+      "defconsts": 76,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/peer-inbound-invariants"
+        "../../books/peer-inbound-invariants",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -31273,19 +31334,20 @@
       "functions": 3,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 3,
         "default-guarded": 0,
-        "default-unguarded": 3
+        "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 43,
       "must_fails": 4,
       "prover_refusals": 0,
-      "defconsts": 9,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-offer-indexed",
+        "arena-lift",
         "owner-served-carried-tests",
         "peer-inbound-tests"
       ],
@@ -31359,19 +31421,20 @@
       "functions": 9,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 2,
         "default-guarded": 0,
-        "default-unguarded": 9
+        "default-unguarded": 7
       },
       "verify_guards_events": 0,
       "assert_events": 34,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 12,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/peer-transit-forms"
+        "../../books/peer-transit-forms",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -31763,13 +31826,14 @@
       "assert_events": 65,
       "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 17,
+      "defconsts": 18,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/records-attach-concrete",
         "../../books/records-concrete",
         "../../books/records-concrete-owner",
+        "arena-lift",
         "owner-served-invariants-tests"
       ],
       "system_includes": [
@@ -32151,20 +32215,21 @@
       "functions": 5,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 3,
         "default-guarded": 0,
-        "default-unguarded": 5
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
       "assert_events": 19,
       "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/served-implicit-tls"
+        "../../books/served-implicit-tls",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -32188,11 +32253,12 @@
       "assert_events": 21,
       "must_fails": 4,
       "prover_refusals": 0,
-      "defconsts": 9,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
-        "../../books/nntp-post"
+        "../../books/nntp-post",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -32208,20 +32274,21 @@
       "functions": 11,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 5,
         "default-guarded": 0,
-        "default-unguarded": 11
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
       "assert_events": 37,
       "must_fails": 3,
       "prover_refusals": 0,
-      "defconsts": 20,
+      "defconsts": 21,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/served-tls-prefix"
+        "../../books/served-tls-prefix",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -32321,20 +32388,21 @@
       "functions": 4,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 2,
         "default-guarded": 0,
-        "default-unguarded": 4
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
       "assert_events": 116,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 54,
+      "defconsts": 55,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/served"
+        "../../books/served",
+        "arena-lift"
       ],
       "system_includes": [],
       "suspects": [],
@@ -32348,20 +32416,21 @@
       "functions": 1,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 0
       },
       "verify_guards_events": 0,
       "assert_events": 9,
       "must_fails": 1,
       "prover_refusals": 0,
-      "defconsts": 12,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
-        "../../books/served-tls-prefix"
+        "../../books/served-tls-prefix",
+        "arena-lift"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -32610,13 +32679,14 @@
       "assert_events": 61,
       "must_fails": 17,
       "prover_refusals": 0,
-      "defconsts": 23,
+      "defconsts": 24,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
         "../../books/owner-store-budget",
         "../../books/store-budget-naming",
+        "arena-lift",
         "held-rows-tests"
       ],
       "system_includes": [
@@ -32991,11 +33061,12 @@
       "assert_events": 56,
       "must_fails": 11,
       "prover_refusals": 0,
-      "defconsts": 17,
+      "defconsts": 18,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
         "../../books/owner-commit-carried",
+        "arena-lift",
         "owner-signed-post-tests"
       ],
       "system_includes": [
@@ -34389,12 +34460,13 @@
       "assert_events": 57,
       "must_fails": 20,
       "prover_refusals": 0,
-      "defconsts": 45,
+      "defconsts": 46,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
         "../../books/nntp-reclaimed",
         "../../books/store-reclaim",
+        "arena-lift",
         "held-rows-tests"
       ],
       "system_includes": [
@@ -36265,9 +36337,17 @@
       ]
     },
     {
+      "theorem": "fn-nntp-payload-bytes-of-non-handle",
+      "book": "books/nntp-session.lisp",
+      "line": 83,
+      "reasons": [
+        "branch-of-definition: the hypothesis negates a branch test of fn-nntp-payload-bytes and the conclusion is that branch's value"
+      ]
+    },
+    {
       "theorem": "fn-nntp-reclaimed-article-answers-reclaimed",
       "book": "books/nntp-responses.lisp",
-      "line": 83,
+      "line": 152,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-nntp-article-response and the conclusion is that branch's value"
       ]
@@ -36331,7 +36411,7 @@
     {
       "theorem": "fn-nss-hdr-lines-of-no-numbers",
       "book": "books/nntp-search-scope.lisp",
-      "line": 77,
+      "line": 78,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-nntp-hdr-lines-for-numbers and the conclusion is that branch's value"
       ]
@@ -37695,7 +37775,7 @@
       {
         "theorem": "fn-nntp-stuff-lines-iter-is-stuff-lines",
         "book": "books/nntp-session.lisp",
-        "line": 125,
+        "line": 201,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -39098,31 +39178,31 @@
       {
         "check": "fn-ocl-advance-without-historical-relation",
         "book": "tests/acl2/config-owner-advance-invariants-tests.lisp",
-        "line": 71,
+        "line": 73,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-ocari-advance-without-reader-relation",
         "book": "tests/acl2/config-owner-advance-reader-invariants-tests.lisp",
-        "line": 26,
+        "line": 30,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-ocl-read-without-historical-input-is-not-preserved",
         "book": "tests/acl2/config-owner-live-tests.lisp",
-        "line": 179,
+        "line": 183,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-ocl-request-deltas-of-any-kind-are-nonempty",
         "book": "tests/acl2/config-owner-publish-tests.lisp",
-        "line": 192,
+        "line": 193,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "ocri-read-without-relation-is-not-preserved",
         "book": "tests/acl2/config-owner-read-invariants-tests.lisp",
-        "line": 81,
+        "line": 84,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -39152,37 +39232,37 @@
       {
         "check": "gat-projection-without-projection",
         "book": "tests/acl2/group-access-tests.lisp",
-        "line": 216,
+        "line": 228,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "gat-into-view-without-readable",
         "book": "tests/acl2/group-access-tests.lisp",
-        "line": 226,
+        "line": 238,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "gat-into-view-without-projected",
         "book": "tests/acl2/group-access-tests.lisp",
-        "line": 237,
+        "line": 249,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "gat-absent-without-covers",
         "book": "tests/acl2/group-access-tests.lisp",
-        "line": 257,
+        "line": 269,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "gat-views-find-without-okp",
         "book": "tests/acl2/group-access-tests.lisp",
-        "line": 324,
+        "line": 336,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "gat-views-find-without-find",
         "book": "tests/acl2/group-access-tests.lisp",
-        "line": 329,
+        "line": 341,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -39494,19 +39574,19 @@
       {
         "check": "lblt-pinned-without-no-repin",
         "book": "tests/acl2/login-binding-live-tests.lisp",
-        "line": 240,
+        "line": 244,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "lblt-pinned-without-inflight",
         "book": "tests/acl2/login-binding-live-tests.lisp",
-        "line": 251,
+        "line": 255,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "lblt-pinned-without-pin",
         "book": "tests/acl2/login-binding-live-tests.lisp",
-        "line": 262,
+        "line": 266,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -39530,37 +39610,37 @@
       {
         "check": "nht-report-exit-of-any-render",
         "book": "tests/acl2/native-health-tests.lisp",
-        "line": 191,
+        "line": 193,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "nht-monotone-without-covers",
         "book": "tests/acl2/native-health-tests.lisp",
-        "line": 206,
+        "line": 208,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "nht-monotone-without-held",
         "book": "tests/acl2/native-health-tests.lisp",
-        "line": 213,
+        "line": 215,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "nht-pressure-without-more-use",
         "book": "tests/acl2/native-health-tests.lisp",
-        "line": 226,
+        "line": 228,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "nht-pressure-without-higher-threshold",
         "book": "tests/acl2/native-health-tests.lisp",
-        "line": 231,
+        "line": 233,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "nht-pressure-without-pressure",
         "book": "tests/acl2/native-health-tests.lisp",
-        "line": 236,
+        "line": 238,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -39584,73 +39664,73 @@
       {
         "check": "aut-peer-open-pins-the-open-config",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1101,
+        "line": 1089,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-not-posting",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1205,
+        "line": 1190,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-the-post-command-event",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1246,
+        "line": 1230,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "npm-t-false-without-keyword",
         "book": "tests/acl2/nntp-pinned-msgid-tests.lisp",
-        "line": 65,
+        "line": 68,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-xri-without-valid-archive",
         "book": "tests/acl2/nntp-range-indexed-tests.lisp",
-        "line": 195,
+        "line": 155,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-xri-carried-without-over-keyword-scope",
         "book": "tests/acl2/nntp-range-indexed-tests.lisp",
-        "line": 225,
+        "line": 177,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "thm",
         "book": "tests/acl2/nntp-reader-compat-tests.lisp",
-        "line": 158,
+        "line": 167,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "thm",
         "book": "tests/acl2/nntp-reader-compat-tests.lisp",
-        "line": 272,
+        "line": 274,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "xp-alternation-without-positive-alternatives",
         "book": "tests/acl2/nntp-xpat-tests.lisp",
-        "line": 146,
+        "line": 142,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-xrt-pairs-without-the-number-condition",
         "book": "tests/acl2/nntp-xref-tests.lisp",
-        "line": 145,
+        "line": 136,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-xrt-served-line-clean-without-server-word",
         "book": "tests/acl2/nntp-xref-tests.lisp",
-        "line": 164,
+        "line": 155,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-xrt-listing-server-without-identity",
         "book": "tests/acl2/nntp-xref-tests.lisp",
-        "line": 199,
+        "line": 178,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -39668,13 +39748,13 @@
       {
         "check": "oat-read-without-served-invariant",
         "book": "tests/acl2/owner-agent-tests.lisp",
-        "line": 189,
+        "line": 193,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "fn-oco-t-observe-ignores-the-reading",
         "book": "tests/acl2/owner-config-observe-tests.lisp",
-        "line": 39,
+        "line": 43,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -39716,7 +39796,7 @@
       {
         "check": "opt-decision-without-injection",
         "book": "tests/acl2/owner-operator-tests.lisp",
-        "line": 139,
+        "line": 143,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -39734,31 +39814,31 @@
       {
         "check": "pt-relay-changes-nothing",
         "book": "tests/acl2/peer-inbound-tests.lisp",
-        "line": 746,
+        "line": 736,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "pt-relay-by-another-node-changes-nothing",
         "book": "tests/acl2/peer-inbound-tests.lisp",
-        "line": 765,
+        "line": 755,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "pt-every-article-is-xref-free",
         "book": "tests/acl2/peer-inbound-tests.lisp",
-        "line": 777,
+        "line": 767,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "pt-relay-names-a-node-without-an-identity",
         "book": "tests/acl2/peer-inbound-tests.lisp",
-        "line": 787,
+        "line": 777,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "ptf-k3-never-raises",
         "book": "tests/acl2/peer-transit-forms-tests.lisp",
-        "line": 192,
+        "line": 200,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -39890,13 +39970,13 @@
       {
         "check": "spt-boundary-independence-without-equal-octets",
         "book": "tests/acl2/served-pipelining-tests.lisp",
-        "line": 214,
+        "line": 232,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "spt-old-counted-result-is-whole-step",
         "book": "tests/acl2/served-pipelining-tests.lisp",
-        "line": 238,
+        "line": 256,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -39932,43 +40012,43 @@
       {
         "check": "sbnt-sequence-without-record-phase",
         "book": "tests/acl2/store-budget-naming-tests.lisp",
-        "line": 89,
+        "line": 91,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "sbnt-sequence-without-kernel-invariant",
         "book": "tests/acl2/store-budget-naming-tests.lisp",
-        "line": 95,
+        "line": 97,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "sbnt-name-without-record-phase",
         "book": "tests/acl2/store-budget-naming-tests.lisp",
-        "line": 117,
+        "line": 119,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "sbnt-name-without-kernel-invariant",
         "book": "tests/acl2/store-budget-naming-tests.lisp",
-        "line": 140,
+        "line": 142,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "sbnt-publishable-without-ok",
         "book": "tests/acl2/store-budget-naming-tests.lisp",
-        "line": 289,
+        "line": 291,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "sbnt-refusals-distinct-without-a-named-word",
         "book": "tests/acl2/store-budget-naming-tests.lisp",
-        "line": 371,
+        "line": 373,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "sbnt-refusals-distinct-without-distinct-words",
         "book": "tests/acl2/store-budget-naming-tests.lisp",
-        "line": 376,
+        "line": 378,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -42560,7 +42640,7 @@
       },
       {
         "book": "books/nntp-responses.lisp",
-        "line": 2578,
+        "line": 2703,
         "include": "msgid-index",
         "included": "books/msgid-index.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -42595,14 +42675,14 @@
       },
       {
         "book": "books/nntp.lisp",
-        "line": 194,
+        "line": 197,
         "include": "nntp-verdict",
         "included": "books/nntp-verdict.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/nntp.lisp",
-        "line": 195,
+        "line": 198,
         "include": "nntp-range-indexed",
         "included": "books/nntp-range-indexed.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -43809,6 +43889,13 @@
         "line": 9,
         "include": "../../books/accounts",
         "included": "books/accounts.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/accounts-wire-tests.lisp",
+        "line": 58,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -45730,6 +45817,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/byte-store-record-provenance-tests.lisp",
+        "line": 1257,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/byte-store-relation-tests.lisp",
         "line": 5,
         "include": "../../books/byte-store-relation",
@@ -45933,6 +46027,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/catalog-entries-tests.lisp",
+        "line": 152,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/catalog-load-index-tests.lisp",
         "line": 5,
         "include": "../../books/codec-attach",
@@ -45958,6 +46059,13 @@
         "line": 37,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/catalog-refresh-tests.lisp",
+        "line": 79,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46143,10 +46251,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/config-crash-replay-tests.lisp",
+        "line": 25,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/config-owner-advance-invariants-tests.lisp",
         "line": 3,
         "include": "config-owner-live-tests",
         "included": "tests/acl2/config-owner-live-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-owner-advance-invariants-tests.lisp",
+        "line": 24,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46164,6 +46286,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/config-owner-advance-reader-invariants-tests.lisp",
+        "line": 8,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/config-owner-live-tests.lisp",
         "line": 6,
         "include": "config-observed-tests",
@@ -46171,10 +46300,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/config-owner-live-tests.lisp",
+        "line": 95,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/config-owner-publish-tests.lisp",
         "line": 10,
         "include": "config-owner-live-tests",
         "included": "tests/acl2/config-owner-live-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-owner-publish-tests.lisp",
+        "line": 17,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46196,6 +46339,13 @@
         "line": 6,
         "include": "served-tls-prefix-tests",
         "included": "tests/acl2/served-tls-prefix-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/config-owner-read-invariants-tests.lisp",
+        "line": 27,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46507,6 +46657,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/group-access-tests.lisp",
+        "line": 99,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/group-bucket-index-tests.lisp",
         "line": 3,
         "include": "../../books/group-bucket-invariants",
@@ -46528,10 +46685,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/group-number-index-tests.lisp",
+        "line": 194,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/group-status-tests.lisp",
         "line": 10,
         "include": "../../books/owner-agent",
         "included": "books/owner-agent.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/group-status-tests.lisp",
+        "line": 181,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46710,6 +46881,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/login-binding-live-tests.lisp",
+        "line": 208,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/login-binding-tests.lisp",
         "line": 9,
         "include": "peer-authored-accept-tests",
@@ -46728,6 +46906,13 @@
         "line": 15,
         "include": "../../books/account-list",
         "included": "books/account-list.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/moderation-tests.lisp",
+        "line": 364,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46836,6 +47021,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/native-health-tests.lisp",
+        "line": 46,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/native-hybrid-control-tests.lisp",
         "line": 2,
         "include": "../../books/native-hybrid-control",
@@ -46861,6 +47053,13 @@
         "line": 10,
         "include": "held-rows-tests",
         "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/native-live-status-tests.lisp",
+        "line": 46,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46892,6 +47091,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/nntp-auth-fold-tests.lisp",
+        "line": 71,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
         "line": 49,
         "include": "../../books/codec-attach",
@@ -46899,10 +47105,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
+        "line": 144,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/nntp-auth-tests.lisp",
         "line": 12,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-auth-tests.lisp",
+        "line": 225,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46920,10 +47140,52 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/nntp-control-tests.lisp",
+        "line": 41,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-help-tests.lisp",
+        "line": 49,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-legacy-tests.lisp",
+        "line": 57,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/nntp-list-counts-tests.lisp",
         "line": 3,
         "include": "../../books/owner-list-counts-read",
         "included": "books/owner-list-counts-read.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-list-counts-tests.lisp",
+        "line": 45,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-newnews-tests.lisp",
+        "line": 289,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-pinned-index-tests.lisp",
+        "line": 33,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46934,10 +47196,31 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/nntp-pinned-msgid-tests.lisp",
+        "line": 37,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-post-tests.lisp",
+        "line": 41,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/nntp-range-indexed-tests.lisp",
         "line": 3,
         "include": "../../books/nntp-range-indexed-invariants",
         "included": "books/nntp-range-indexed-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-range-indexed-tests.lisp",
+        "line": 57,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46952,6 +47235,20 @@
         "line": 7,
         "include": "../../books/nntp-pinned-msgid",
         "included": "books/nntp-pinned-msgid.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-reader-compat-tests.lisp",
+        "line": 81,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-reader-profile-tests.lisp",
+        "line": 78,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -46969,6 +47266,27 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/nntp-search-scope-tests.lisp",
+        "line": 67,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-teeth-tests.lisp",
+        "line": 62,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-tests.lisp",
+        "line": 70,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/nntp-verdict-tests.lisp",
         "line": 3,
         "include": "../../books/nntp-verdict-effects",
@@ -46983,10 +47301,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/nntp-xpat-tests.lisp",
+        "line": 32,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/nntp-xref-tests.lisp",
         "line": 6,
         "include": "../../books/owner-xref-read",
         "included": "books/owner-xref-read.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/nntp-xref-tests.lisp",
+        "line": 37,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47039,10 +47371,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-advance-carried-tests.lisp",
+        "line": 39,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-agent-tests.lisp",
         "line": 24,
         "include": "../../books/owner-agent",
         "included": "books/owner-agent.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-agent-tests.lisp",
+        "line": 79,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47057,6 +47403,13 @@
         "line": 23,
         "include": "owner-tests",
         "included": "tests/acl2/owner-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-cancel-refresh-tests.lisp",
+        "line": 71,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47095,6 +47448,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-config-observe-tests.lisp",
+        "line": 26,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-config-tests.lisp",
         "line": 17,
         "include": "held-rows-tests",
@@ -47109,6 +47469,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-config-tests.lisp",
+        "line": 95,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-enrollment-read-tests.lisp",
         "line": 7,
         "include": "owner-verdict-tests",
@@ -47120,6 +47487,13 @@
         "line": 8,
         "include": "../../books/owner-enrollment-read",
         "included": "books/owner-enrollment-read.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-enrollment-read-tests.lisp",
+        "line": 51,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47172,6 +47546,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-numbering-tests.lisp",
+        "line": 50,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-open-carried-tests.lisp",
         "line": 6,
         "include": "owner-advance-carried-tests",
@@ -47200,10 +47581,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-operator-tests.lisp",
+        "line": 86,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-prepare-carried-tests.lisp",
         "line": 5,
         "include": "owner-served-invariants-tests",
         "included": "tests/acl2/owner-served-invariants-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-prepare-carried-tests.lisp",
+        "line": 12,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47218,6 +47613,13 @@
         "line": 7,
         "include": "held-rows-tests",
         "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-prepare-correspondence-tests.lisp",
+        "line": 57,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47249,6 +47651,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-retention-preparation-tests.lisp",
+        "line": 26,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-served-bound-tests.lisp",
         "line": 7,
         "include": "../../books/owner-served-bound",
@@ -47263,10 +47672,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-served-carried-tests.lisp",
+        "line": 13,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-served-invariants-tests.lisp",
         "line": 10,
         "include": "owner-tests",
         "included": "tests/acl2/owner-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-served-invariants-tests.lisp",
+        "line": 120,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47291,6 +47714,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-signed-post-tests.lisp",
+        "line": 36,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-store-budget-tests.lisp",
         "line": 9,
         "include": "../../books/codec-attach",
@@ -47305,10 +47735,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-store-budget-tests.lisp",
+        "line": 54,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-store-indexed-tests.lisp",
         "line": 12,
         "include": "bp-signed-binding-tests",
         "included": "tests/acl2/bp-signed-binding-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-store-indexed-tests.lisp",
+        "line": 57,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47326,10 +47770,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-tests.lisp",
+        "line": 111,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-tls-pin-tests.lisp",
         "line": 5,
         "include": "owner-verdict-tests",
         "included": "tests/acl2/owner-verdict-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-tls-pin-tests.lisp",
+        "line": 16,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47347,6 +47805,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-verdict-read-tests.lisp",
+        "line": 13,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-verdict-tests.lisp",
         "line": 6,
         "include": "store-identity-traces-tests",
@@ -47358,6 +47823,13 @@
         "line": 7,
         "include": "../../books/nntp-verdict-effects",
         "included": "books/nntp-verdict-effects.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-verdict-tests.lisp",
+        "line": 16,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47382,6 +47854,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/peer-guard-carried-tests.lisp",
+        "line": 63,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/peer-inbound-tests.lisp",
         "line": 8,
         "include": "../../books/peer-inbound-invariants",
@@ -47393,6 +47872,13 @@
         "line": 9,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-inbound-tests.lisp",
+        "line": 228,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47424,10 +47910,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/peer-offer-indexed-tests.lisp",
+        "line": 45,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/peer-transit-forms-tests.lisp",
         "line": 7,
         "include": "../../books/peer-transit-forms",
         "included": "books/peer-transit-forms.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/peer-transit-forms-tests.lisp",
+        "line": 165,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47578,6 +48078,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/records-concrete-tests.lisp",
+        "line": 196,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/records-freeze-tests.lisp",
         "line": 24,
         "include": "crypto-seam-tests",
@@ -47669,10 +48176,31 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/served-implicit-tls-tests.lisp",
+        "line": 45,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-line-iterative-tests.lisp",
+        "line": 41,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/served-pipelining-tests.lisp",
         "line": 12,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-pipelining-tests.lisp",
+        "line": 62,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47683,10 +48211,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/served-tests.lisp",
+        "line": 114,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/served-tls-prefix-tests.lisp",
         "line": 5,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/served-tls-prefix-tests.lisp",
+        "line": 30,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47771,6 +48313,13 @@
         "line": 10,
         "include": "held-rows-tests",
         "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-budget-naming-tests.lisp",
+        "line": 57,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -47904,6 +48453,13 @@
         "line": 6,
         "include": "owner-signed-post-tests",
         "included": "tests/acl2/owner-signed-post-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-events-carried-tests.lisp",
+        "line": 139,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -48422,6 +48978,13 @@
         "line": 7,
         "include": "held-rows-tests",
         "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-reclaim-tests.lisp",
+        "line": 210,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -54497,217 +55060,245 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 623,
+        "line": 280,
+        "name": "make-hash-table",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/io.lisp",
+        "line": 282,
+        "name": "gethash",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/io.lisp",
+        "line": 282,
+        "name": "stobjs-in",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/io.lisp",
+        "line": 282,
+        "name": "w",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/io.lisp",
+        "line": 647,
         "name": "pushnew",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 667,
+        "line": 691,
         "name": "defclass",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 667,
+        "line": 691,
         "name": "target",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 670,
+        "line": 694,
         "name": "clear-output",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 670,
+        "line": 694,
         "name": "fnn-stdout-target",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 679,
+        "line": 703,
         "name": "defmethod",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 679,
+        "line": 703,
         "name": "stream",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 686,
+        "line": 710,
         "name": "start",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 1211,
+        "line": 1235,
         "name": "minusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2531,
+        "line": 2555,
         "name": "fnn-%statfs",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2564,
+        "line": 2588,
         "name": "plusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2564,
+        "line": 2588,
         "name": "fill-pointer",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3022,
+        "line": 3046,
         "name": "functionp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3656,
+        "line": 3680,
         "name": "search",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4722,
+        "line": 4746,
         "name": "find-if",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4746,
+        "line": 4770,
         "name": "find-class",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4746,
+        "line": 4770,
         "name": "slot-value",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5010,
+        "line": 5034,
         "name": "char/=",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5019,
+        "line": 5043,
         "name": "read-line",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5594,
+        "line": 5618,
         "name": "*fn-lg-genesis*",
         "source": "books/store-log.lisp",
         "reason": "defined in books/store-log.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5901,
+        "line": 5925,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6063,
+        "line": 6087,
         "name": "open",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6063,
+        "line": 6087,
         "name": "*standard-input*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6063,
+        "line": 6087,
         "name": "*error-output*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6063,
+        "line": 6087,
         "name": "logandc2",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6097,
+        "line": 6121,
         "name": "fnn-tls-send-all",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6097,
+        "line": 6121,
         "name": "fnn-tls-read",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6097,
+        "line": 6121,
         "name": "fnn-tls-open-client-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6097,
+        "line": 6121,
         "name": "fnn-tls-connect",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6097,
+        "line": 6121,
         "name": "fnn-tls-close-channel",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6097,
+        "line": 6121,
         "name": "fnn-tls-close-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -58344,6 +58935,27 @@
         "name": "fn-native-operator-result-keys-control-path-octets",
         "source": "books/native-operator.lisp",
         "reason": "defined in books/native-operator.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
+      },
+      {
+        "host": "host/reader-host.lisp",
+        "line": 92,
+        "name": "fn-arena-clear",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/reader-host.lisp",
+        "line": 92,
+        "name": "fn-arena-seal-list",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
+      },
+      {
+        "host": "host/reader-host.lisp",
+        "line": 92,
+        "name": "mv",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-host.lisp",
