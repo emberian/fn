@@ -892,15 +892,17 @@
            (equal (fn-heap-init-exit-code decision) 1)))
 
 ; -----------------------------------------------------------------------------
-; The figure is heap-figure's formula and grows with H and R: the default
-; preset's 73,402,949 MB is 32 x (2 x 2^40 + 2^26) octets of lists and not a
-; unit error.
+; The figure is heap-figure's formula and grows with H, R and the header
+; bound (field 17, batch AS's header-limits-profile: three list copies of
+; the header in flight): the default preset's figure is 32 x (2 x 2^40 +
+; 2^26 + 3 x field 17) octets of lists and not a unit error.
 
 (defthm fn-heap-figure-octets-is-the-formula-by-definition
   (equal (fn-heap-figure-octets profile core nursery)
          (+ (nfix core) (nfix nursery)
             (* 32 (+ (* 2 (fn-bs-profile-max-history-octets profile))
-                     (fn-bs-profile-max-record-octets profile)))
+                     (fn-bs-profile-max-record-octets profile)
+                     (* *fn-heap-header-copies* (fn-bs-profile-field 17 profile))))
             (* 2 (fn-ock-capture-budget profile))))
   :hints (("Goal" :in-theory (enable fn-heap-figure-octets fn-heap-list-octets
                                      fn-heap-buffer-octets))))
@@ -910,6 +912,7 @@
                     (fn-bs-profile-max-history-octets p2))
                 (<= (fn-bs-profile-max-record-octets p1)
                     (fn-bs-profile-max-record-octets p2))
+                (<= (fn-bs-profile-field 17 p1) (fn-bs-profile-field 17 p2))
                 (<= (fn-ock-capture-budget p1) (fn-ock-capture-budget p2)))
            (<= (fn-heap-figure-octets p1 core nursery)
                (fn-heap-figure-octets p2 core nursery)))
@@ -918,4 +921,5 @@
                                    fn-heap-buffer-octets)
                                   (fn-ock-capture-budget
                                    fn-bs-profile-max-history-octets
-                                   fn-bs-profile-max-record-octets)))))
+                                   fn-bs-profile-max-record-octets
+                                   fn-bs-profile-field)))))

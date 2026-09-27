@@ -136,7 +136,7 @@
 ; owner's vocabulary (a corrupted state: no fn-own-sub-make builds it).
 (defmacro ort-owner (id)
   `(fn-own-make nil nil nil 0 1 nil nil 0 nil nil nil
-                (fn-own-sub-make ,id 0 nil nil) nil))
+                (fn-own-sub-make ,id 0 nil nil) nil nil nil))
 
 ; The pre-fix value: the recognizer refuses a publication whose token is
 ; :control only if :control is not a submission id; now it is one.
@@ -164,7 +164,7 @@
         (fn-ores-feed-publication-p (fn-ores-submission-intent-publication o nil 7 0 0))
         (equal (fn-ores-feedpub-token (fn-ores-submission-intent-publication o nil 7 0 0)) 3))))
 (assert-event
- (let ((o (fn-own-make nil nil nil 0 1 nil nil 0 nil nil nil nil nil)))
+ (let ((o (fn-own-make nil nil nil 0 1 nil nil 0 nil nil nil nil nil nil nil)))
    (and (fn-ores-inflight-idp o)
         (equal (fn-ores-feedpub-word (fn-ores-submission-intent-publication o nil 7 0 0))
                :absent)
