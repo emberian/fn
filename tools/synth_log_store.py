@@ -19,6 +19,15 @@ FNLG, version 1, kind 1 for one record or kind 2 for B records packed, the
 previous trailer first in the payload, SHA-256 trailer, zero padding to the
 4096-octet unit), chained from the zero genesis.
 
+The seed's profile and configuration must hold N: a 2 KiB article is charged
+2 units of the store's capacity (fn-charge-for-payload), and the default
+capacity (1,048,576) refuses the replay past ~524k articles.  For 1M: import
+the seed's export with --max-transactions 4000000 --max-history-octets
+8000000000, run it once and set `capacity 4000000` (a configuration record at
+the txid after the seed's; the renumbered history ties it, configuration
+first, as the replay orders a tie).  The record's
+planning/evidence/snapshot-open-2-2026-09-27.md section 5 has the commands.
+
 This is a TEST FIXTURE writer: it decides nothing the node relies on.  The
 node's own open verifies every frame, chain link and record (a fixture it
 refuses is refused by name), so a wrong byte here is a refused fixture, never
