@@ -21,10 +21,12 @@
 ; any wider profile); and the default parser is the default limits'
 ; instance (`fn-article-parse', definitionally).
 ;
-; Host: the injection decision `fn-inj-decide' (books/injection), called
-; by host/native/owner.lisp's POST through `fn-owner-post-step', parses with
-; `fn-inj-config-header-limits' of the configuration the host builds from
-; the opened profile (`fn-bs-profile-header-limits').
+; Host: the injection decision `fn-inj-decide' (books/injection) refuses by
+; `fn-article-census-refusal' against `fn-inj-config-header-limits' of the
+; configuration the host installs from the opened profile
+; (host/owner-host.lisp `fn-owner-served-post-bound' ->
+; `fn-bs-profile-header-limits'); by the keystone that is exactly the parse
+; under the profile's limits (`fn-article-census-refusal-is-the-parse').
 
 (in-package "ACL2")
 (include-book "article-properties")
@@ -278,12 +280,17 @@
            :use (fn-article-parse-under-within-its-limits
                  (:instance fn-article-parse-under-admits-exactly-the-limits
                   (wider limits) (limits wider)))
-           :in-theory (disable fn-article-parse-under fn-article-header-census))))
+           :in-theory (e/d (fn-article-census-within fn-article-limits-within)
+                           (fn-article-parse-under fn-article-header-census
+                            fn-article-census-fields fn-article-census-lines
+                            fn-article-census-octets fn-article-limit-fields
+                            fn-article-limit-lines fn-article-limit-octets
+                            fn-article-limit-reasonp fn-article-result-okp)))))
 
-;; The default parser is the default limits' instance.
-(defthm fn-article-parse-is-the-default-limits
+;; The reading parser is the ceiling limits' instance.
+(defthm fn-article-parse-is-the-ceiling-limits
   (equal (fn-article-parse octets)
-         (fn-article-parse-under octets *fn-article-default-limits*))
+         (fn-article-parse-under octets *fn-article-ceiling-limits*))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-article-parse))))
 
@@ -300,3 +307,42 @@
            :in-theory (e/d (fn-article-line-okp)
                            (fn-article-next-line fn-article-next-line-value-listp)))))
 (verify-guards fn-article-header-census)
+
+;; The admission's refusal by the census: the first limit the census
+;; passes, by name, in the order fields, lines, octets; NIL within.
+(defun fn-article-census-refusal (c limits)
+  (declare (xargs :guard t))
+  (cond ((< (fn-article-limit-fields limits) (fn-article-census-fields c))
+         :header-fields-limit)
+        ((< (fn-article-limit-lines limits) (fn-article-census-lines c))
+         :header-lines-limit)
+        ((< (fn-article-limit-octets limits) (fn-article-census-octets c))
+         :header-octets-limit)
+        (t nil)))
+
+;; KEYSTONE (the admission's subject).  For an input the reading parser
+;; admits, the census refusal is NIL exactly when the parse under LIMITS
+;; admits it (and then that parse is the reading parse), and otherwise a
+;; limit's name while the parse under LIMITS refuses by a limit's name.
+(defthm fn-article-census-refusal-is-the-parse
+  (implies (fn-article-result-okp (fn-article-parse octets))
+           (let ((refusal (fn-article-census-refusal
+                           (fn-article-header-census octets) limits)))
+             (if refusal
+                 (and (fn-article-limit-reasonp refusal)
+                      (not (fn-article-result-okp
+                            (fn-article-parse-under octets limits)))
+                      (fn-article-limit-reasonp
+                       (cadr (fn-article-parse-under octets limits))))
+               (equal (fn-article-parse-under octets limits)
+                      (fn-article-parse octets)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-article-parse-under-admits-exactly-the-limits
+                  (wider *fn-article-ceiling-limits*)))
+           :in-theory (e/d (fn-article-parse fn-article-census-within
+                            fn-article-census-refusal fn-article-result-okp)
+                           (fn-article-parse-under fn-article-header-census
+                            fn-article-census-fields fn-article-census-lines
+                            fn-article-census-octets fn-article-limit-fields
+                            fn-article-limit-lines fn-article-limit-octets)))))

@@ -146,7 +146,7 @@
            (+ 1 (fn-aw-c preflight) (fn-aw-c validation))))))))
 
 (defun fn-aw-parse (octets)
-  (fn-aw-parse-under octets *fn-article-default-limits*))
+  (fn-aw-parse-under octets *fn-article-ceiling-limits*))
 
 (defthm fn-article-parse-under-work-value
   (equal (fn-aw-v (fn-aw-parse-under octets limits))

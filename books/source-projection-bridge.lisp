@@ -192,8 +192,8 @@
    (implies (fn-article-result-okp (fn-article-parse x))
             (true-listp (fn-article-result-article (fn-article-parse x))))
    :hints (("Goal" :use ((:instance fn-spj-parsed-article-is-a-true-list
-                                    (lim *fn-article-default-limits*)
-                                    (l (1+ *fn-article-max-header-lines*)) (b 0) (nf 0)
+                                    (lim *fn-article-ceiling-limits*)
+                                    (l (1+ *fn-article-max-octets*)) (b 0) (nf 0)
                                     (fr nil) (cur nil) (hr nil)))
             :in-theory (e/d (fn-article-parse fn-article-parse-under)
                             (fn-article-parse-lines fn-spj-parsed-article-is-a-true-list))))))
@@ -218,25 +218,25 @@
   :hints (("Goal"
            :use ((:instance fn-spj-parse-lines-of-a-field-line
                             (l l1) (rest (append l2 (list* 13 10 src)))
-                            (lim *fn-article-default-limits*)
-                            (n (1+ *fn-article-max-header-lines*)) (b 0) (nf 0)
+                            (lim *fn-article-ceiling-limits*)
+                            (n (1+ *fn-article-max-octets*)) (b 0) (nf 0)
                             (fr nil) (cur nil) (hr nil))
                  (:instance fn-spj-parse-lines-of-a-field-line
                             (l l2) (rest src)
-                            (lim *fn-article-default-limits*)
-                            (n *fn-article-max-header-lines*) (b (+ (len l1) 2)) (nf 0)
+                            (lim *fn-article-ceiling-limits*)
+                            (n *fn-article-max-octets*) (b (+ (len l1) 2)) (nf 0)
                             (fr nil)
                             (cur (fn-article-line-value (fn-article-new-field l1)))
                             (hr (fn-article-header-rev-add-line nil l1)))
                  (:instance fn-spj-parse-lines-after-two-fields
-                            (lim *fn-article-default-limits*)
-                            (x src) (l (1- *fn-article-max-header-lines*))
+                            (lim *fn-article-ceiling-limits*)
+                            (x src) (l (1- *fn-article-max-octets*))
                             (b (+ (len l1) 2 (len l2) 2))
                             (f1 (fn-article-line-value (fn-article-new-field l1)))
                             (f2 (fn-article-line-value (fn-article-new-field l2)))
                             (hr (fn-article-header-rev-add-line
                                  (fn-article-header-rev-add-line nil l1) l2))
-                            (l2 (1+ *fn-article-max-header-lines*)) (b2 0) (hr2 nil)))
+                            (l2 (1+ *fn-article-max-octets*)) (b2 0) (hr2 nil)))
            :in-theory (e/d (fn-article-parse fn-article-parse-under)
                            (fn-article-parse-lines fn-article-new-field binary-append
                             fn-article-header-rev-add-line fn-article-wspp)))))

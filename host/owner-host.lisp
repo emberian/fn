@@ -360,10 +360,18 @@
     (value (list (nfix (fn-sbud-payload-bound profile))
                  (nfix (fn-sbud-group-bound profile))))))
 
+; The served posting bound: the profile's article octets and its header
+; limits (fields 15 to 17, PRF-230), read from the opened profile; the host
+; computes nothing (ACL2's `fn-inj-post-bound', read back by
+; `fn-inj-make-config-full').  A store with no admitted profile keeps the
+; codec ceiling and the default header limits, as before.
 (defun fn-owner-served-post-bound (state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((bound (fn-sbud-payload-bound (fn-owner-store-profile state))))
-    (if (posp bound) bound *fn-record-max-payload*)))
+  (let* ((profile (fn-owner-store-profile state))
+         (bound (fn-sbud-payload-bound profile)))
+    (if (and (posp bound) (fn-bs-profile-admittedp profile))
+        (fn-inj-post-bound bound (fn-bs-profile-header-limits profile))
+      (if (posp bound) bound *fn-record-max-payload*))))
 
 
 ;; The owner's publication (books/owner-checkpoint-open.lisp).  These read

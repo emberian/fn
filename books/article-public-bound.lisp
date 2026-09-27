@@ -137,29 +137,31 @@
                      fn-aw-octets-cost-bound fn-aw-parse-lines-cost-bound)))))
 
 (defun fn-article-parse-work-budget (octets)
-  (fn-article-parse-under-work-budget octets *fn-article-default-limits*))
+  (fn-article-parse-under-work-budget octets *fn-article-ceiling-limits*))
 
 (defthm fn-article-parse-work-input-bound
   (<= (fn-aw-c (fn-aw-parse octets)) (fn-article-parse-work-budget octets))
   :hints (("Goal"
     :use ((:instance fn-article-parse-under-work-input-bound
-                     (limits *fn-article-default-limits*)))
+                     (limits *fn-article-ceiling-limits*)))
     :in-theory (e/d (fn-aw-parse fn-article-parse-work-budget)
                     (fn-aw-parse-under fn-article-parse-under-work-budget
                      fn-article-parse-under-work-input-bound)))))
 
+;; The figure under the default limits (the default profile's parse), at the
+;; codec ceiling: unchanged from before the limits became the profile's.
 (defthm fn-article-parse-work-profile-bound
-  (<= (fn-aw-c (fn-aw-parse octets))
+  (<= (fn-aw-c (fn-aw-parse-under octets *fn-article-default-limits*))
       (+ 3 (* 2 *fn-article-max-octets*)
          (fn-aw-budget (1+ *fn-article-max-header-lines*)
                        *fn-article-max-octets* 0)))
   :hints (("Goal"
-    :use (fn-article-parse-work-input-bound
+    :use ((:instance fn-article-parse-under-work-input-bound
+                     (limits *fn-article-default-limits*))
           (:instance fn-aw-budget-monotone
              (fuel (1+ *fn-article-max-header-lines*))
              (n (min (len octets) *fn-article-max-octets*)) (s 0)
              (n2 *fn-article-max-octets*) (s2 0)))
-    :in-theory (e/d (fn-article-parse-work-budget
-                     fn-article-parse-under-work-budget)
-                    (fn-aw-parse fn-article-parse-work-input-bound
-                     fn-aw-budget-monotone)))))
+    :in-theory (e/d (fn-article-parse-under-work-budget)
+                    (fn-aw-parse-under fn-article-parse-under-work-input-bound
+                     fn-aw-budget-monotone (:e fn-aw-budget))))))

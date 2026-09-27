@@ -60,21 +60,26 @@
 (assert-event (fn-article-result-okp (fn-aw-v (fn-aw-parse *fn-aw-test-max-folds*))))
 (assert-event (equal (fn-aw-v (fn-aw-parse *fn-aw-test-max-folds*))
                      (fn-article-parse *fn-aw-test-max-folds*)))
-(assert-event (equal (fn-aw-v (fn-aw-parse
-  (append '(65 58 32 120 13 10) (fn-aw-test-folds 256) '(13 10)))) '(:error :header-lines-limit)))
-(assert-event (fn-article-result-okp (fn-aw-v (fn-aw-parse
-  (append (fn-aw-test-fields 64) '(13 10))))))
-(assert-event (equal (fn-aw-v (fn-aw-parse
-  (append (fn-aw-test-fields 65) '(13 10)))) '(:error :header-fields-limit)))
+(assert-event (equal (fn-aw-v (fn-aw-parse-under
+  (append '(65 58 32 120 13 10) (fn-aw-test-folds 256) '(13 10)) *fn-article-default-limits*))
+  '(:error :header-lines-limit)))
+(assert-event (fn-article-result-okp (fn-aw-v (fn-aw-parse-under
+  (append (fn-aw-test-fields 64) '(13 10)) *fn-article-default-limits*))))
+(assert-event (equal (fn-aw-v (fn-aw-parse-under
+  (append (fn-aw-test-fields 65) '(13 10)) *fn-article-default-limits*))
+  '(:error :header-fields-limit)))
 
 ; The measured charge and the envelope quoted in specs/article-work.md.
 (assert-event (equal (len *fn-aw-test-fold-sample*) 520))
 (assert-event (equal (fn-aw-c (fn-aw-parse *fn-aw-test-fold-sample*)) 30195))
 (assert-event
- (equal (fn-article-parse-work-budget *fn-aw-test-fold-sample*) 1103275316))
+ (equal (fn-article-parse-under-work-budget *fn-aw-test-fold-sample*
+                                            *fn-article-default-limits*)
+        1103275316))
 (assert-event
- (<= (fn-aw-c (fn-aw-parse *fn-aw-test-fold-sample*))
-     (fn-article-parse-work-budget *fn-aw-test-fold-sample*)))
+ (<= (fn-aw-c (fn-aw-parse-under *fn-aw-test-fold-sample* *fn-article-default-limits*))
+     (fn-article-parse-under-work-budget *fn-aw-test-fold-sample*
+                                         *fn-article-default-limits*)))
 (assert-event (equal (fn-aw-v (fn-aw-parse *fn-aw-test-fold-sample*))
                      (fn-article-parse *fn-aw-test-fold-sample*)))
 

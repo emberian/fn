@@ -26,10 +26,14 @@
 (defconst *ahlt-ceiling*
   (fn-article-limits 4261412864 4261412864 4261412864))
 
-; The default parser is today's: 64 fields admitted, the 65th refused by name.
-(assert-event (fn-article-result-okp (fn-article-parse *ahlt-64*)))
-(assert-event (equal (fn-article-parse *ahlt-65*) '(:error :header-fields-limit)))
-(assert-event (equal (fn-article-parse *ahlt-900*) '(:error :header-fields-limit)))
+; The default limits are today's: 64 fields admitted, the 65th refused by
+; name; the reading parser (the ceiling) admits every one.
+(assert-event (fn-article-result-okp (fn-article-parse-under *ahlt-64* *fn-article-default-limits*)))
+(assert-event (equal (fn-article-parse-under *ahlt-65* *fn-article-default-limits*)
+                     '(:error :header-fields-limit)))
+(assert-event (equal (fn-article-parse-under *ahlt-900* *fn-article-default-limits*)
+                     '(:error :header-fields-limit)))
+(assert-event (fn-article-result-okp (fn-article-parse *ahlt-1001*)))
 ; The raised profile: 900 and 1,000 admitted, 1,001 refused by name.
 (assert-event (fn-article-result-okp (fn-article-parse-under *ahlt-900* *ahlt-raised*)))
 (assert-event (fn-article-result-okp (fn-article-parse-under *ahlt-1000* *ahlt-raised*)))
@@ -54,7 +58,8 @@
 ; Folded to depth 2,000 (the hostile campaign's case): refused by the
 ; default profile by name, admitted by a profile raised to 2,001 lines.
 (defconst *ahlt-folded-2000* (append '(88 58 32 120 13 10) (fn-ahlt-folds 2000) '(13 10)))
-(assert-event (equal (fn-article-parse *ahlt-folded-2000*) '(:error :header-lines-limit)))
+(assert-event (equal (fn-article-parse-under *ahlt-folded-2000* *fn-article-default-limits*)
+                     '(:error :header-lines-limit)))
 (assert-event (fn-article-result-okp
                (fn-article-parse-under *ahlt-folded-2000* (fn-article-limits 1 2001 1048576))))
 
@@ -115,3 +120,31 @@
  (assert-event
   (equal (fn-article-parse-under *ahlt-64* (fn-article-limits 10 256 16384))
          (fn-article-parse-under *ahlt-64* *fn-article-default-limits*))))
+
+; Keystone fn-article-census-refusal-is-the-parse.  Witness (refused): 65
+; fields under the defaults, the census names the fields limit and the
+; parse refuses by a limit name.  Witness (admitted): 64 fields.
+(assert-event
+ (and (fn-article-result-okp (fn-article-parse *ahlt-65*))
+      (equal (fn-article-census-refusal (fn-article-header-census *ahlt-65*)
+                                        *fn-article-default-limits*)
+             :header-fields-limit)
+      (not (fn-article-result-okp (fn-article-parse-under *ahlt-65* *fn-article-default-limits*)))))
+(assert-event
+ (and (fn-article-result-okp (fn-article-parse *ahlt-64*))
+      (null (fn-article-census-refusal (fn-article-header-census *ahlt-64*)
+                                       *fn-article-default-limits*))
+      (equal (fn-article-parse-under *ahlt-64* *fn-article-default-limits*)
+             (fn-article-parse *ahlt-64*))))
+; Tooth (the reading parser admits the input): a line with no colon, then
+; 65 fields.  The census passes the field limit, but the parse refuses the
+; first line as :invalid-header, not by a limit's name.
+(defconst *ahlt-bad-then-65* (append '(98 97 100 13 10) *ahlt-65*))
+(assert-event (not (fn-article-result-okp (fn-article-parse *ahlt-bad-then-65*))))
+(assert-event (equal (fn-article-census-refusal (fn-article-header-census *ahlt-bad-then-65*)
+                                                *fn-article-default-limits*)
+                     :header-fields-limit))
+(must-fail
+ (assert-event
+  (fn-article-limit-reasonp
+   (cadr (fn-article-parse-under *ahlt-bad-then-65* *fn-article-default-limits*)))))

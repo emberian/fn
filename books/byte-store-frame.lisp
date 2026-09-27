@@ -88,11 +88,14 @@
   (if (zp n) (if (consp values) (car values) nil)
     (fn-bs-meta-nth (1- n) (if (consp values) (cdr values) nil))))
 
-; Format 8: two texts, then thirteen eight-octet frame naturals, in this
-; order.  The last is the committed-history requirement (D31): 0 `unmarked',
-; 1 `required' (books/store-history-required.lisp).
+; Format 8: two texts, then sixteen eight-octet frame naturals, in this
+; order.  Field 14 is the committed-history requirement (D31): 0 `unmarked',
+; 1 `required' (books/store-history-required.lisp); fields 15 to 17 are the
+; header limits (D27, lane header-limits-profile: one format, D34, so the
+; layout grows and fresh installs write it).
 (defconst *fn-bs-meta-profile-spec*
-  '(:text :text :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat))
+  '(:text :text :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat :nat
+    :nat :nat :nat))
 
 (defconst *fn-bs-pf-max-transactions* 2)        ; T
 (defconst *fn-bs-pf-max-history-octets* 3)      ; H
@@ -107,6 +110,11 @@
 (defconst *fn-bs-pf-max-credentials* 12)
 (defconst *fn-bs-pf-max-policy-members* 13)
 (defconst *fn-bs-pf-history-marker* 14)         ; 0 unmarked, 1 required
+; The header limits of one article (D27; books/article `fn-article-parse-
+; under'): fields, physical lines and octets of the header.
+(defconst *fn-bs-pf-max-header-fields* 15)
+(defconst *fn-bs-pf-max-header-lines* 16)
+(defconst *fn-bs-pf-max-header-octets* 17)
 
 ; The fields in order, with the operator's name for each (the `init' and
 ; `store import' flag is `--' followed by the name).
@@ -116,7 +124,9 @@
     (6 . "max-groups-per-article") (7 . "max-group-name-octets")
     (8 . "max-open-suffix") (9 . "max-consumers") (10 . "max-bp-rows")
     (11 . "max-config-generations") (12 . "max-credentials")
-    (13 . "max-policy-members") (14 . "history-marker")))
+    (13 . "max-policy-members") (14 . "history-marker")
+    (15 . "max-header-fields") (16 . "max-header-lines")
+    (17 . "max-header-octets")))
 
 ; The codec ceilings no field may pass.  Each is the width the codec that
 ; carries the bounded quantity accepts today; packet P2 (codec ceilings) and
@@ -204,6 +214,18 @@
                      (fn-bs-profile-countp (fn-bs-pf 13 values))))
            :namespace-count-outside-width)
           ((< 1 (fn-bs-pf 14 values)) :history-marker-not-a-word)
+          ; The header limits: 1 <= fields <= lines <= octets <= the article
+          ; codec's ceiling (a header is part of one article).  The parse
+          ; represents any such limits (books/article-header-limits: its work
+          ; is linear in the input per line of the line limit, and the
+          ; limits are naturals it compares, never allocates).
+          ((or (< (fn-bs-pf 15 values) 1)
+               (< (fn-bs-pf 16 values) (fn-bs-pf 15 values)))
+           :max-header-fields-outside-lines)
+          ((< (fn-bs-pf 17 values) (fn-bs-pf 16 values))
+           :max-header-lines-above-octets)
+          ((< *fn-bs-profile-article-ceiling-codec* (fn-bs-pf 17 values))
+           :max-header-octets-above-codec)
           (t nil))))
 
 (defun fn-bs-profile-validp (values)
@@ -219,6 +241,13 @@
 ; values the presets have had since format 8; D34 keeps the values and drops
 ; the older format they were once derived from.)
 (defconst *fn-bs-profile-default-namespace-count* 1048576)
+
+; The header limits' defaults: the parser's constants before they became
+; the operator's (books/article `*fn-article-default-limits*': 64 fields,
+; 256 lines, 16,384 octets), so a profile that names none behaves as before.
+(defconst *fn-bs-profile-default-header-fields* 64)
+(defconst *fn-bs-profile-default-header-lines* 256)
+(defconst *fn-bs-profile-default-header-octets* 16384)
 
 (defun fn-bs-profile-preset (tx h a)
   (declare (xargs :guard t))
@@ -237,7 +266,10 @@
           *fn-bs-profile-default-namespace-count*
           *fn-bs-profile-default-namespace-count*
           *fn-bs-profile-default-namespace-count*
-          0)))
+          0
+          *fn-bs-profile-default-header-fields*
+          *fn-bs-profile-default-header-lines*
+          *fn-bs-profile-default-header-octets*)))
 
 ; The profile a store is run under: a valid format-8 profile as it is,
 ; anything else NIL (one format, D34: nothing is translated).
@@ -287,6 +319,13 @@
   (fn-bs-profile-field 8 values))
 ; D31: the committed-history requirement of the profile a store runs under.
 ; T when absence of the marker is damage (`required'), NIL for `unmarked'.
+; The header limits of the profile a store runs under, as the parser takes
+; them (books/article `fn-article-limits' shape: (FIELDS LINES OCTETS)).
+(defun fn-bs-profile-header-limits (values)
+  (declare (xargs :guard t))
+  (list (fn-bs-profile-field 15 values)
+        (fn-bs-profile-field 16 values)
+        (fn-bs-profile-field 17 values)))
 (defun fn-bs-profile-marker-requiredp (values)
   (declare (xargs :guard t))
   (equal (fn-bs-profile-field 14 values) 1))
@@ -998,7 +1037,10 @@
         *fn-bs-profile-default-namespace-count*
         *fn-bs-profile-default-namespace-count*
         *fn-bs-profile-default-namespace-count*
-        0))
+        0
+        *fn-bs-profile-default-header-fields*
+        *fn-bs-profile-default-header-lines*
+        *fn-bs-profile-default-header-octets*))
 
 (defun fn-bs-config-for-profile (profile)
   (declare (xargs :guard t))

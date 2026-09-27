@@ -121,7 +121,7 @@
                   octets))
   :hints (("Goal"
            :use ((:instance fn-article-parse-lines-preserves-source
-                  (limits *fn-article-default-limits*) (lines-left (1+ *fn-article-max-header-lines*))
+                  (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
                   (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
            :in-theory (disable fn-article-parse-lines fn-cbor-at-mostp))))
 
@@ -613,7 +613,7 @@
              (fn-article-result-article (fn-article-parse octets)))))
   :hints (("Goal"
            :use ((:instance fn-article-parse-lines-fields-correspond
-                  (limits *fn-article-default-limits*) (lines-left (1+ *fn-article-max-header-lines*))
+                  (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
                   (header-bytes 0) (nfields 0) (fields-rev nil) (current nil)
                   (header-rev nil)))
            :in-theory (e/d (fn-article-parse fn-article-parse-under)
@@ -632,7 +632,7 @@
                    (fn-article-result-article (fn-article-parse octets)))))
   :hints (("Goal"
            :use ((:instance fn-article-parse-lines-fields-recompose-header
-                  (limits *fn-article-default-limits*) (lines-left (1+ *fn-article-max-header-lines*))
+                  (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
                   (header-bytes 0) (nfields 0) (fields-rev nil) (current nil)
                   (header-rev nil)))
            :in-theory (e/d (fn-article-parse fn-article-parse-under)

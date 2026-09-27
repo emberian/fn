@@ -130,16 +130,16 @@
 (defthm fn-article-successful-parse-is-parse-lines
   (implies (fn-article-result-okp (fn-article-parse octets))
            (equal (fn-article-parse octets)
-                  (fn-article-parse-lines octets *fn-article-default-limits*
-                                          (1+ *fn-article-max-header-lines*)
+                  (fn-article-parse-lines octets *fn-article-ceiling-limits*
+                                          (1+ *fn-article-max-octets*)
                                            0 0 nil nil nil)))
   :hints (("Goal" :in-theory (enable fn-article-parse fn-article-parse-under))))
 
 (defthm fn-article-successful-parse-lines-okp
   (implies (fn-article-result-okp (fn-article-parse octets))
            (fn-article-result-okp
-            (fn-article-parse-lines octets *fn-article-default-limits*
-                                    (1+ *fn-article-max-header-lines*)
+            (fn-article-parse-lines octets *fn-article-ceiling-limits*
+                                    (1+ *fn-article-max-octets*)
                                      0 0 nil nil nil)))
   :hints (("Goal" :use fn-article-successful-parse-is-parse-lines)))
 
@@ -153,7 +153,7 @@
     :use (fn-article-successful-parse-is-parse-lines
           fn-article-successful-parse-lines-okp
           (:instance fn-ap-parse-lines-fields-wellformed
-           (limits *fn-article-default-limits*) (lines-left (1+ *fn-article-max-header-lines*))
+           (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
            (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
     :in-theory (disable fn-article-parse fn-article-parse-lines))))
 
@@ -257,7 +257,7 @@
     :use (fn-article-successful-parse-is-parse-lines
           fn-article-successful-parse-lines-okp
           (:instance fn-ap-parse-lines-components-are-octets
-           (limits *fn-article-default-limits*) (lines-left (1+ *fn-article-max-header-lines*))
+           (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
            (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil))))))
 
 (defthm fn-ap-parse-lines-article-shape
@@ -299,7 +299,7 @@
     :use (fn-article-successful-parse-is-parse-lines
           fn-article-successful-parse-lines-okp
           (:instance fn-ap-parse-lines-article-shape
-           (limits *fn-article-default-limits*) (lines-left (1+ *fn-article-max-header-lines*))
+           (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
            (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
     :in-theory (disable fn-article-parse fn-article-parse-lines))))
 
@@ -388,13 +388,13 @@
     (len
      (fn-article-header
       (fn-article-result-article (fn-article-parse octets))))
-    *fn-article-max-header-octets*))
+    *fn-article-max-octets*))
   :hints
   (("Goal"
     :use (fn-article-successful-parse-is-parse-lines
           fn-article-successful-parse-lines-okp
           (:instance fn-ap-parse-lines-header-bound
-           (limits *fn-article-default-limits*) (lines-left (1+ *fn-article-max-header-lines*))
+           (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
            (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
     :in-theory (disable fn-article-parse fn-article-parse-lines)))
   :rule-classes :linear)
@@ -461,13 +461,13 @@
     (len
      (fn-article-fields
       (fn-article-result-article (fn-article-parse octets))))
-    *fn-article-max-fields*))
+    *fn-article-max-octets*))
   :hints
   (("Goal"
     :use (fn-article-successful-parse-is-parse-lines
           fn-article-successful-parse-lines-okp
           (:instance fn-ap-parse-lines-field-count-bound
-           (limits *fn-article-default-limits*) (lines-left (1+ *fn-article-max-header-lines*))
+           (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
            (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
     :in-theory (disable fn-article-parse fn-article-parse-lines)))
   :rule-classes :linear)
@@ -480,11 +480,11 @@
      (and (<= (len (fn-article-source article))
               *fn-article-max-octets*)
           (<= (len (fn-article-header article))
-              *fn-article-max-header-octets*)
+              *fn-article-max-octets*)
           (<= (len (fn-article-body article))
               *fn-article-max-octets*)
           (<= (len (fn-article-fields article))
-              *fn-article-max-fields*))))
+              *fn-article-max-octets*))))
   :hints
   (("Goal"
     :use (fn-article-successful-parse-source-bound

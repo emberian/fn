@@ -30,9 +30,8 @@
 ; handed to `fn-article-parse-under' as LIMITS = (FIELDS LINES OCTETS) by
 ; every admission (the injection configuration, `fn-inj-config-header-
 ; limits').  The three constants below are the defaults: every profile's
-; value unless the operator writes another, and the limits of
-; `fn-article-parse' (the one-argument parser every non-admission caller
-; uses), so a store under the default profile behaves exactly as before.
+; value unless the operator writes another, so a store under the default
+; profile admits exactly what it admitted before.
 ; The parse's work stays bounded per header line whatever the limits: each
 ; step reads one line (at most 998 octets, the RFC's MUST), and the field
 ; count is carried, never recounted.
@@ -391,11 +390,20 @@
                               (1+ (fn-article-limit-lines limits))
                               0 0 nil nil nil))))
 
-; The parser under the default limits: what every caller that is not an
-; admission uses.
+; The parser every reader of a stored or received article uses: the widest
+; limits any profile can write (each the article codec's ceiling, the
+; relation of books/byte-store-frame's fields 15 to 17), so it never refuses
+; an article some profile admitted: an article parses here exactly as under
+; the limits it was admitted by (`fn-article-parse-under-raised-limits-
+; agree', books/article-header-limits).  Admission applies the profile's
+; limits (books/injection `fn-inj-decide').  Its work is bounded by the
+; input: every step consumes one line of at most 998 octets and its CRLF.
+(defconst *fn-article-ceiling-limits*
+  (list *fn-article-max-octets* *fn-article-max-octets* *fn-article-max-octets*))
+
 (defun fn-article-parse (octets)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-article-parse-under octets *fn-article-default-limits*))
+  (fn-article-parse-under octets *fn-article-ceiling-limits*))
 
 ; A limit refusal, by name.
 (defun fn-article-limit-reasonp (code)
