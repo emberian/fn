@@ -100,7 +100,7 @@
                        :ok))
                 (fn-bs-k0-step-inputp (car (nth k (fn-bs-run bs ks steps nil g c)))
                                       (cdr (nth k (fn-bs-run bs ks steps nil g c)))
-                                      (nth (1+ k) steps) :ok))
+                                      (nth (1+ k) steps) :ok arena))
            (let ((p (nth (+ 2 k) (fn-bs-run bs ks steps nil g c))))
              (fn-bs-k0-coveredp (car p) (cdr p) arena)))
   :rule-classes nil
@@ -243,13 +243,13 @@
   :hints (("Goal" :in-theory (e/d (fn-bs-k0p-s2) (fn-bs-k0p-s1 fn-bs-authority-inode-list fn-bs-lookup)))))
 (defthm fn-bs-k0p-stage-step-inputs
   (implies (fn-bs-k0p-stage-hyps)
-           (and (fn-bs-k0-step-inputp bs ks (list :create :staging stage) :ok)
+           (and (fn-bs-k0-step-inputp bs ks (list :create :staging stage) :ok arena)
                 (implies (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s1 bs stage) ks
-                                               (list :write-all :staging stage octets) :ok))
+                                               (list :write-all :staging stage octets) :ok arena))
                 (implies (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s2 bs stage octets) ks
-                                               (list :fsync-file :staging stage) :ok))))
+                                               (list :fsync-file :staging stage) :ok arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-unfolds))
@@ -503,7 +503,7 @@
                 (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((s3 (fn-bs-k0p-s3 bs stage frame)) (k5 (fn-sf-dispatch ks '(:record-file :ok) g c)))
-             (and (fn-bs-k0-step-inputp s3 k5 (list :link :staging stage :transactions name) :ok)
+             (and (fn-bs-k0-step-inputp s3 k5 (list :link :staging stage :transactions name) :ok arena)
                   (equal (mv-nth 0 (fn-bs-step s3 k5 (list :link :staging stage :transactions name) :ok g c)) :ok))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t

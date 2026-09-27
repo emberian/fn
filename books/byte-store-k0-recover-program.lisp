@@ -176,7 +176,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (if (consp steps)
       (and (consp pairs)
-           (fn-bs-k0-step-inputp (car (car pairs)) (cdr (car pairs)) (car steps) :ok)
+           (fn-bs-k0-step-inputp (car (car pairs)) (cdr (car pairs)) (car steps) :ok arena)
            (fn-bs-k0v-steps-coveredp (cdr pairs) (cdr steps)))
     t))
 (local

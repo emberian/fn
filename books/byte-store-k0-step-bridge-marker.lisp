@@ -91,21 +91,21 @@
                               (fn-bs-unit b2)))))
 (defthm fn-bs-k0b-marker-step-inputs
   (implies (fn-bs-k0b-marker-hyps)
-           (and (fn-bs-k0-step-inputp bs ks (list :create :staging stage) outcome)
+           (and (fn-bs-k0-step-inputp bs ks (list :create :staging stage) outcome arena)
                 (implies (fn-bs-store-relation (fn-bs-marker-b1 bs stage) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-marker-b1 bs stage) ks
-                                               (list :write-all :staging stage octets) outcome))
+                                               (list :write-all :staging stage octets) outcome arena))
                 (implies (and (fn-bs-store-relation (fn-bs-marker-b2 bs stage octets) ks arena)
                               (fn-bs-k0b-marker-fsync-outcomep bs stage octets outcome))
                          (fn-bs-k0-step-inputp (fn-bs-marker-b2 bs stage octets) ks
-                                               (list :fsync-file :staging stage) outcome))
+                                               (list :fsync-file :staging stage) outcome arena))
                 (implies (fn-bs-store-relation (fn-bs-marker-b3 bs stage octets) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-marker-b3 bs stage octets) ks
                                                (list :rename :staging stage :root *fn-bs-history-marker-name*)
-                                               outcome))
+                                               outcome arena))
                 (implies (fn-bs-k0s-root-rename-pendingp (fn-bs-marker-b4 bs stage octets) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-marker-b4 bs stage octets) ks
-                                               (list :fsync-dir :root) outcome))))
+                                               (list :fsync-dir :root) outcome arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0m-completing-window-facts fn-bs-k0b-completing-transactions-quiet

@@ -23,7 +23,7 @@
 (defun bskv-r (k) (nth k (bsk5-record-2-run)))
 ; The keystone's precondition and conclusion at one step.
 (defun bskv-step-ok (bs ks step outcome)
-  (and (fn-bs-k0-step-inputp bs ks step outcome)
+  (and (fn-bs-k0-step-inputp bs ks step outcome *bsk5-arena*)
        (mv-let (r bs1 ks1) (fn-bs-step bs ks step outcome *bsk5-groups* *bsk5-capacity*)
          (declare (ignore r))
          (and (fn-bs-k0-coveredp bs1 ks1 *bsk5-arena*)
@@ -76,14 +76,14 @@
     (declare (ignore r))
     bs1))
 (assert-event (not (fn-bs-k0-step-inputp (bskv-link) (bskv-k (bskv-link) 0)
-                                         '(:fsync-dir :transactions) '(:eio :drop))))
+                                         '(:fsync-dir :transactions) '(:eio :drop) *bsk5-arena*)))
 (assert-event (fn-bs-store-relation (bskv-dir-eio (bskv-link) :apply) (bskv-k (bskv-link) 0) *bsk5-arena*))
 (must-fail (assert-event (fn-bs-store-relation (bskv-dir-eio (bskv-link) :drop) (bskv-k (bskv-link) 0) *bsk5-arena*)))
 ; (b) The quiet clause of an observation that leaves the window: the fifth
 ; barrier with the link still pending lands the kernel on :ready, whose
 ; relation reads the durable records, which lack the linked one.
 (assert-event (not (fn-bs-k0-step-inputp (bskv-link) (bskv-k (bskv-link) 4)
-                                         '(:observe (:recovery-barrier :ok)) :ok)))
+                                         '(:observe (:recovery-barrier :ok)) :ok *bsk5-arena*)))
 (assert-event (fn-bs-store-relation (bskv-link) (bskv-k (bskv-link) 4) *bsk5-arena*))
 (must-fail (assert-event (fn-bs-store-relation (bskv-link) (bskv-k (bskv-link) 5) *bsk5-arena*)))
 ; (c) The relation: the initial byte image under the reopened kernel.

@@ -102,7 +102,7 @@
                             (fn-bs-statep fn-sf-statep fn-bs-pending-shape-okp
                              fn-bs-authority-fencedp fn-bs-authority-knownp
                              fn-bs-ops-for-dir)))))
-(defun fn-bs-k0-observation-inputp (bs ks event)
+(defun fn-bs-k0-observation-inputp (bs ks event arena)
   (declare (xargs :guard t :verify-guards nil))
   (or (fn-bs-frontier-noncommit-observationp event)
       (member-equal event '((:record-file :ok) (:record-link :ok) (:record-link :error) (:record-dir :error)))
@@ -120,7 +120,7 @@
      (not (fn-bs-replay-visiblep ks))
      (case (car step)
        (:cut (fn-bs-k0-coveredp bs ks arena))
-       (:observe (and (fn-bs-store-relation bs ks arena) (fn-bs-k0-observation-inputp bs ks d1)))
+       (:observe (and (fn-bs-store-relation bs ks arena) (fn-bs-k0-observation-inputp bs ks d1 arena)))
        (:create (and (fn-bs-store-relation bs ks arena) (equal d1 :staging) (fn-bs-namep n2)))
        (:write-all (and (fn-bs-store-relation bs ks arena) (fn-cbor-octet-listp d3)
                         (not (member-equal (fn-bs-lookup bs d1 n2) (fn-bs-authority-inode-list bs)))))
@@ -173,10 +173,10 @@
                           (equal n4 (fn-bs-txn-name (len (fn-bs-durable-names bs :transactions))))
                           (fn-sf-record-present-visiblep ks)
                           (equal (fn-bs-durable-records bs) (fn-bs-rows-wire (fn-sf-records ks) arena))
-                          (equal (fn-bs-record-of (fn-bs-durable bs) ino) (fn-sf-record-candidate ks))))))
+                          (equal (fn-bs-record-of (fn-bs-durable bs) ino) (fn-bs-row-wire (fn-sf-record-candidate ks) arena))))))
        (otherwise nil)))))
 (defthm fn-bs-k0s-observation-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-k0-observation-inputp bs ks event))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-k0-observation-inputp bs ks event arena))
            (fn-bs-store-relation bs (fn-sf-dispatch ks event g c) arena))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-frontier-noncommit-observation-preserves-relation (outcome :ok) (groups g) (capacity c))
@@ -295,7 +295,7 @@
 ; (books/byte-store-k0-window.lisp).  Disabled below: an includer that
 ; discharges this predicate at a pair outside the window proves the first
 ; disjunct.
-(defun fn-bs-k0-step-inputp (bs ks step outcome)
+(defun fn-bs-k0-step-inputp (bs ks step outcome arena)
   (declare (xargs :guard t :verify-guards nil))
   (or (fn-bs-k0-outside-step-inputp bs ks step outcome arena)
       (fn-bs-k0w-step-inputp bs ks step outcome arena)))
@@ -325,7 +325,7 @@
                             fn-bs-store-relation fn-bs-k0-coveredp fn-sf-dispatch fn-bs-k0-observation-inputp
                             fn-bs-k0s-root-rename-pendingp fn-bs-lookup fn-bs-authority-inode-list))))))
 (defthm fn-bs-step-preserves-k0-coverage
-  (implies (fn-bs-k0-step-inputp bs ks step outcome)
+  (implies (fn-bs-k0-step-inputp bs ks step outcome arena)
            (let ((bs1 (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)))
                  (ks1 (mv-nth 2 (fn-bs-step bs ks step outcome groups capacity))))
              (and (fn-bs-k0-coveredp bs1 ks1 arena)

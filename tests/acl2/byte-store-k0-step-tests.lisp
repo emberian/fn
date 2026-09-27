@@ -18,7 +18,7 @@
          (or (equal ks1 ks) (equal (car step) :observe)))))
 (defun bsks-ok (bs ks step outcome)
   (and (fn-bs-k0-coveredp bs ks *bsk5-arena*)
-       (fn-bs-k0-step-inputp bs ks step outcome)
+       (fn-bs-k0-step-inputp bs ks step outcome *bsk5-arena*)
        (bsks-concl bs ks step outcome)))
 (defconst *bsks-stage* ".stage-marker-k0")
 (defun bsks-b (k) (car (nth k (bskm-good))))
@@ -52,12 +52,12 @@
 ; coverage is not a separate hypothesis (lane k0-corollaries dropped it).
 ; Without the precondition: the completing kernel over the initial byte image.
 (assert-event (not (fn-bs-k0-coveredp (bsk5-initial) (bsks-k) *bsk5-arena*)))
-(assert-event (not (fn-bs-k0-step-inputp (bsk5-initial) (bsks-k) (list :create :staging *bsks-stage*) :ok)))
+(assert-event (not (fn-bs-k0-step-inputp (bsk5-initial) (bsks-k) (list :create :staging *bsks-stage*) :ok *bsk5-arena*)))
 (assert-event (not (bsks-concl (bsk5-initial) (bsks-k) (list :create :staging *bsks-stage*) :ok)))
 ; Drop the step precondition: a write to the configuration inode (D2) from
 ; the related completing pair.
 (assert-event (fn-bs-k0-coveredp (car (bskm-pair)) (bsks-k) *bsk5-arena*))
-(assert-event (not (fn-bs-k0-step-inputp (car (bskm-pair)) (bsks-k) (list :write-all :root "config.json" '(1 2 3)) :ok)))
+(assert-event (not (fn-bs-k0-step-inputp (car (bskm-pair)) (bsks-k) (list :write-all :root "config.json" '(1 2 3)) :ok *bsk5-arena*)))
 (must-fail (assert-event (bsks-concl (car (bskm-pair)) (bsks-k) (list :write-all :root "config.json" '(1 2 3)) :ok)))
 
 ; k0-steps (PKT-086): the staging barrier's error outcome.  Pair 1 of the

@@ -564,6 +564,7 @@
   :hints (("Goal"
            :use (fn-bs-crash-image-relates-to-recovery-entry-kernel
                  fn-bs-crash-image-recovery-facts
+                 (:instance fn-bs-recovered-rowsp (image image))
                  fn-bs-recovery-entry-kernel-recovers
                  (:instance fn-bs-recover-program-keeps-relation-at-every-cut
                   (k (fn-bs-recovery-entry-kernel image rows))))
@@ -604,6 +605,7 @@
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-crash-image-recovery-facts
+                 (:instance fn-bs-recovered-rowsp (image image))
                  (:instance fn-bs-host-reopened-kernel-is-the-recovered-kernel
                   (frontier (fn-bs-scan-frontier (fn-bs-scan-store image)))
                   (events rows))
@@ -625,7 +627,7 @@
  (defthm k0r-run-relatedp-nth
    (implies (and (fn-bs-run-relatedp pairs arena) (natp k) (< k (len pairs)))
             (fn-bs-store-relation (car (nth k pairs)) (cdr (nth k pairs)) arena))
-   :hints (("Goal" :in-theory (e/d (fn-bs-run-relatedp nth arena) (fn-bs-store-relation))))))
+   :hints (("Goal" :in-theory (e/d (fn-bs-run-relatedp nth) (fn-bs-store-relation))))))
 
 (defthm fn-bs-host-recovery-sweep-starts-related
   (implies (and (fn-bs-store-relation bs ks arena)

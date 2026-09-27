@@ -138,20 +138,20 @@
                               (fn-bs-unit b2)))))
 (defthm fn-bs-k0r-step-inputs
   (implies (fn-bs-k0r-hyps)
-           (and (fn-bs-k0-step-inputp bs ks (list :create :staging stage) outcome)
+           (and (fn-bs-k0-step-inputp bs ks (list :create :staging stage) outcome arena)
                 (implies (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s1 bs stage) ks
-                                               (list :write-all :staging stage octets) outcome))
+                                               (list :write-all :staging stage octets) outcome arena))
                 (implies (and (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks arena)
                               (fn-bs-k0r-fsync-outcomep bs stage octets outcome))
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s2 bs stage octets) ks
-                                               (list :fsync-file :staging stage) outcome))
+                                               (list :fsync-file :staging stage) outcome arena))
                 (implies (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s3 bs stage octets) ks
-                                               (list :rename :staging stage :root name) outcome))
+                                               (list :rename :staging stage :root name) outcome arena))
                 (implies (fn-bs-k0s-root-rename-pendingp (fn-bs-k0r-s4 bs stage octets name) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0r-s4 bs stage octets name) ks
-                                               (list :fsync-dir :root) outcome))))
+                                               (list :fsync-dir :root) outcome arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-unfolds)
