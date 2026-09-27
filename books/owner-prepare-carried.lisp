@@ -285,6 +285,11 @@
 (in-theory (disable fn-pcar-opc-prepare))
 
 ; The function host/owner-host.lisp fn-owner-prepare installs.
+; The O(1) count is the budget's committed-transaction count, for every Store.
+(defthm fn-pcar-records-count-is-sbud-used
+  (equal (fn-sf-records-count (fn-sn-files s)) (fn-sbud-used s))
+  :hints (("Goal" :in-theory (enable fn-sf-records-count fn-sbud-used))))
+
 ; The budget test reads the history's length in O(1)
 ; (fn-sf-records-count, whose logic is fn-sbud-used's LEN).
 (defun fn-pcar-sbud-prepare (oc record budget)
