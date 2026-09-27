@@ -204,19 +204,17 @@
               (fn-arena-bytes-payload-len 1 fn-arena-bytes) (fn-arena-bytes-payload 1 fn-arena-bytes))
         fn-arena-bytes)))
 
-(assert-event
- (and (equal (with-local-stobj fn-arena
-               (mv-let (result fn-arena) (pat-range-run fn-arena) result))
-             '(2 (11 12 13) 0 nil))
-      (equal (with-local-stobj fn-arena-bytes
-               (mv-let (result fn-arena-bytes) (pat-range-bytes-run fn-arena-bytes) result))
-             '(2 (11 12 13) 0 nil))))
+(defun pat-range-exec ()
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena) (pat-range-run fn-arena) result)))
 
-(defthm pat-w-seal-range-is-seal-list
-  (and (equal (fn-arena-seal-range 1 4 '(10 11 12 13 14) *pat-a*)
-              (fn-arena-seal-list (fn-oct-slice-list 1 4 '(10 11 12 13 14)) *pat-a*))
-       (equal (fn-arena-seal-range 1 4 '(10 11 12 13 14) *pat-a*) '((1 2 3) (4 5) (11 12 13))))
-  :rule-classes nil)
+(defun pat-range-bytes-exec ()
+  (with-local-stobj fn-arena-bytes
+    (mv-let (result fn-arena-bytes) (pat-range-bytes-run fn-arena-bytes) result)))
+
+(assert-event (and (equal (pat-range-exec) '(2 (11 12 13) 0 nil))
+                   (equal (pat-range-bytes-exec) '(2 (11 12 13) 0 nil))))
+
 
 ; -----------------------------------------------------------------------------
 ; The obligations on ground values.  *pat-c* is a concrete arena holding
@@ -229,6 +227,13 @@
 (defconst *pat-a* '((1 2 3) (4 5)))
 
 (assert-event (fn-arena$corr *pat-c* *pat-a*))
+
+; The range seal on the ground arena is the list seal of the slice.
+(defthm pat-w-seal-range-is-seal-list
+  (and (equal (fn-arena-seal-range 1 4 '(10 11 12 13 14) *pat-a*)
+              (fn-arena-seal-list (fn-oct-slice-list 1 4 '(10 11 12 13 14)) *pat-a*))
+       (equal (fn-arena-seal-range 1 4 '(10 11 12 13 14) *pat-a*) '((1 2 3) (4 5) (11 12 13))))
+  :rule-classes nil)
 
 ; get: the positive witness, complete antecedent and conclusion.
 (defthm pat-w-get
