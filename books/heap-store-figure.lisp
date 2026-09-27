@@ -174,10 +174,29 @@
 (defconst *fn-heap-open-record-octets* 16384)
 (defconst *fn-heap-inflight-header-copies* 3)
 
+; THE ARENA's cost, a named parameter: today's in-heap byte array, three
+; octets per payload octet at a resize's peak.  Lane arena-offheap (the
+; coordinator's decision, 2026-09-27: payloads read on demand from the
+; transaction and log files, a paged arena) replaces this term with its cache
+; bound; the keystones below hold for any definition of it that grows with
+; USED (fn-heap-arena-octets-monotone is all they use of it).
+(defun fn-heap-arena-octets (used)
+  (declare (xargs :guard t))
+  (* *fn-heap-arena-octets-per-octet* (nfix used)))
+
+(defthm fn-heap-arena-octets-monotone
+  (implies (<= (nfix u1) (nfix u2))
+           (<= (fn-heap-arena-octets u1) (fn-heap-arena-octets u2)))
+  :rule-classes nil)
+
+(defthm fn-heap-arena-octets-natp
+  (natp (fn-heap-arena-octets used))
+  :rule-classes :type-prescription)
+
 ; The state a store of USED payload octets and N records keeps.
 (defun fn-heap-store-state-octets (profile used n)
   (declare (xargs :guard t))
-  (+ (* *fn-heap-arena-octets-per-octet* (nfix used))
+  (+ (fn-heap-arena-octets used)
      (* *fn-heap-handle-octets* (nfix n))
      (* 2 (nfix n)
         (+ *fn-heap-record-octets*
@@ -290,7 +309,9 @@
             (<= (fn-heap-store-state-octets profile used n)
                 (fn-heap-store-state-octets profile h tt)))
    :rule-classes nil
-   :hints (("Goal" :in-theory (disable fn-bs-profile-max-groups-per-article)
+   :hints (("Goal" :in-theory (disable fn-bs-profile-max-groups-per-article
+                                       fn-heap-arena-octets)
+            :use ((:instance fn-heap-arena-octets-monotone (u1 used) (u2 h)))
             :nonlinearp t))))
 
 (local
