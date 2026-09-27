@@ -381,6 +381,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-segments-tests \
 	books/store-log-reclaim \
 	tests/acl2/store-log-reclaim-tests \
+	books/reclaim-instant \
+	tests/acl2/reclaim-instant-tests \
 	books/store-log-route-phases \
 	books/store-log-extend \
 	tests/acl2/store-log-extend-tests \

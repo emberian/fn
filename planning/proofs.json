@@ -11440,6 +11440,40 @@
         "fn-otm-read-span-while-shedding",
         "fn-otm-closed-posting-never-awaits-an-article"
       ]
+    },
+    {
+      "id": "PRF-327",
+      "title": "`store reclaim` records its instant before it rewrites, and the rewrite is a function of the pre-reclaim store and that record",
+      "statement": "books/reclaim-instant.lisp. The reclaim's instant NOW (the clock's stamp the context reads, host/checkpoint-host.lisp fn-store-reclaim-rule-and-stamp) is the configuration limit row `retention-reclaim-at` (CODE = NOW + 1, 0 for no wall reading), staged as the one delta fn-rci-delta by fn-store-reclaim-instant-record (host/checkpoint-host.lisp, over the configuration record path fn-store-cfg-peer-delta-record) and published, before any rewrite, by host/native/checkpoint.lisp fnn-reclaim-record-instant (through host/native/admin.lisp fnn-admin-publish-record: authorization, publication, read-back), called by fnn-log-reclaim-steps on the :reclaim decision. fn-rci-recorded-instant-reads-back: for NOW nil or a natural (fn-rci-instantp), the configuration the published record yields (fn-rci-recorded-config: fn-cfg-apply-record, what every open applies) records an instant, reads back NOW, and keeps the retention rule. KEYSTONE fn-rci-recorded-context-is-the-decided-context: the context a replay derives from that configuration (fn-rci-context) is fn-rclp-ctx of the rule and NOW the host decided under. KEYSTONE fn-rci-recorded-decision-is-the-decision: the decision over the recorded configuration (fn-rci-decide-stream; `store reclaim --recorded`, host/checkpoint-host.lisp fn-store-log-reclaim-decide-recorded from fnn-log-reclaim-steps) is fn-lgr-decide-stream at that rule and NOW over the same store and fold, so with PRF-271 the history the host checkpointed is determined by the pre-reclaim history and the record. With no recorded instant `--recorded` is refused :no-recorded-instant (fn-rci-decide-stream's first arm). fn-rci-delta-is-a-delta: for a representable NOW the staged delta passes fn-cfg-delta-listp. The operator keystones: `store reclaim --recorded` is exactly the :reclaim-recorded native action (fn-native-operator-run-store-reclaim-recorded-is-the-reclaim-recorded-action, fn-native-operator-run-reclaim-recorded-action-is-only-store-reclaim-recorded). Not a store-format change: a :set-limit row of a slot no reader names is admitted by every image (books/config.lisp fn-cfg-limit-ceiling) and read by none; a new record-log kind would be (books/store-recover-stream.lisp fn-srs-decode refuses an undecodable record).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-017"
+      ],
+      "depends_on": [
+        "PRF-271"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/reclaim-instant.lisp",
+        "tests/acl2/reclaim-instant-tests.lisp",
+        "books/native-operator.lisp",
+        "tests/acl2/native-operator-tests.lisp",
+        "host/checkpoint-host.lisp",
+        "host/native/checkpoint.lisp",
+        "host/native/admin.lisp",
+        "tests/test_native_replay_determinism.py",
+        "planning/evidence/log-leftovers-reclaim-2026-09-27.md"
+      ],
+      "progress_note": "Lane log-leftovers (sub-lane log-leftovers-reclaim), 2026-09-27: PKT-857 (N2 of lane proto-determinism; time-model-2's PKT-861). Open: a process death between the instant's record and the checkpoint's install leaves the instant recorded and the history unrewritten; `store reclaim --recorded` completes it, a plain rerun records a later instant (the open does not apply a recorded instant by itself). The hypothesis fn-rci-instantp is shown necessary for the context keystone (tests: :late); for the decision keystone no counterexample is claimed (the decision reads NOW only through fn-rcl-rule-permits' natp test).",
+      "events": [
+        "fn-rci-recorded-instant-reads-back",
+        "fn-rci-recorded-context-is-the-decided-context",
+        "fn-rci-recorded-decision-is-the-decision",
+        "fn-rci-delta-is-a-delta",
+        "fn-native-operator-run-store-reclaim-recorded-is-the-reclaim-recorded-action",
+        "fn-native-operator-run-reclaim-recorded-action-is-only-store-reclaim-recorded"
+      ]
     }
   ]
 }

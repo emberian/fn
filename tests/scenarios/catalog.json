@@ -2151,7 +2151,8 @@
         "On a copy per cut, stop or kill `store reclaim` at every publication, selection and retirement cut and kill and EIO at each reclaim-* cut; reopen with `status`, rerun `store reclaim`.",
         "Run `store reclaim`; record files, octets and du before and after, and `status` headroom; rerun it.",
         "Serve: GROUP, ARTICLE by Message-ID and number, OVER, STAT, NEWNEWS; re-POST a reclaimed article's original bytes.",
-        "On a store refused for history headroom, run `store compact` and `store reclaim`."
+        "On a store refused for history headroom, run `store compact` and `store reclaim`.",
+        "PKT-857 (tests/test_native_replay_determinism.py test f): `retention set released-by-all-holders` on a copy of the mixed store; `store reclaim` on copy A; copy the one new config/ file A published into copy B and run `store reclaim --recorded` on B; run `store reclaim --recorded` on copy C, which has no recorded instant."
       ],
       "expected": [
         "keep-forever writes nothing (reclaimed=0, exit 0).",
@@ -2159,7 +2160,8 @@
         "Every reopen exits 0 and every rerun exits 0 with the clean run's selected pack bytes.",
         "Files and octets fall by the old generation; bytes-used falls by the freed octets; a rerun reclaims 0.",
         "GROUP is unchanged; ARTICLE answers 430 and 423 article reclaimed; OVER 423; NEWNEWS lists no reclaimed article; the re-POST is 441 (a duplicate).",
-        "Both refuse by name (temporary-space), exit 1, nothing written: the maintenance reservation finding (PKT-169)."
+        "Both refuse by name (temporary-space), exit 1, nothing written: the maintenance reservation finding (PKT-169).",
+        "A's report names its instant record (instant-record=NAME) and it is the one new config/ file; B's report equals A's (reclaimed, freed octets, the Message-IDs) and B's `store digest` equals A's; C is refused by name (no-recorded-instant) and its digest is the pre-reclaim store's."
       ],
       "evidence": [
         "tests/reclaim_lifecycle_native.py",
