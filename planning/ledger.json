@@ -941,6 +941,9 @@
     "tests/acl2/config-owner-publish-tests",
     "books/config-owner-carried",
     "tests/acl2/config-owner-carried-tests",
+    "books/config-store-steps",
+    "books/owner-log-ocl",
+    "tests/acl2/owner-log-ocl-tests",
     "books/config-crash-replay",
     "tests/acl2/config-crash-replay-tests",
     "books/owner-config",
@@ -1210,26 +1213,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1253,
-    "books_in_root_closure": 1242,
-    "roots": 1206,
-    "theorems": 18451,
-    "functions": 12706,
-    "assert_events": 18172,
+    "books": 1256,
+    "books_in_root_closure": 1245,
+    "roots": 1209,
+    "theorems": 18573,
+    "functions": 12721,
+    "assert_events": 18278,
     "must_fails": 2173,
     "prover_refusals": 0,
     "encapsulates": 99,
     "guards": {
       "verified": 2453,
-      "declared-off": 1499,
-      "default-guarded": 7006,
-      "default-unguarded": 1748
+      "declared-off": 1505,
+      "default-guarded": 7010,
+      "default-unguarded": 1753
     },
-    "suspect_theorems": 205,
+    "suspect_theorems": 206,
     "export_hygiene_warnings": 212,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 215,
-    "include_hygiene_warnings": 1340,
+    "include_hygiene_warnings": 1346,
     "host_names_warnings": 1380,
     "hand_written_record_warnings": 18
   },
@@ -8513,12 +8516,12 @@
       "book": "books/config-owner-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 24,
-      "functions": 8,
+      "theorems": 27,
+      "functions": 9,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 7,
+        "default-guarded": 8,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
@@ -8772,6 +8775,33 @@
         "config",
         "records-seam",
         "replay"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/config-store-steps.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 84,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 3,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-store-traces",
+        "store-prepare-correspondence"
       ],
       "system_includes": [],
       "suspects": [],
@@ -14088,6 +14118,39 @@
       "system_includes": [],
       "suspects": [
         "fn-olc-pin-trie-of-unpinned"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/owner-log-ocl.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 35,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "config-owner-carried",
+        "config-store-steps",
+        "owner-checkpoint-open",
+        "owner-commit-ocl",
+        "owner-log-route",
+        "post-identity-index"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-lgoc-store-of-rcon-io"
       ],
       "read_error": null
     },
@@ -31137,6 +31200,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/owner-log-ocl-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 106,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 30,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/owner-log-ocl",
+        "config-owner-publish-tests",
+        "owner-advance-carried-tests"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/owner-log-reopen-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -37381,6 +37472,14 @@
       "line": 362,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-lg-log and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-lgoc-store-of-rcon-io",
+      "book": "books/owner-log-ocl.lisp",
+      "line": 331,
+      "reasons": [
+        "closed-theory-corollary: proved only by fn-lgoc-rcon-io-is-owner-with-store, fn-lgoc-store-of-owner-with-store"
       ]
     },
     {
@@ -44070,6 +44169,34 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/owner-log-ocl.lisp",
+        "line": 7,
+        "include": "owner-commit-ocl",
+        "included": "books/owner-commit-ocl.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-log-ocl.lisp",
+        "line": 8,
+        "include": "owner-log-route",
+        "included": "books/owner-log-route.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-log-ocl.lisp",
+        "line": 10,
+        "include": "owner-checkpoint-open",
+        "included": "books/owner-checkpoint-open.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/owner-log-ocl.lisp",
+        "line": 11,
+        "include": "config-owner-carried",
+        "included": "books/config-owner-carried.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/owner-log-reopen.lisp",
         "line": 14,
         "include": "owner-log",
@@ -48823,6 +48950,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/owner-log-ocl-tests.lisp",
+        "line": 9,
+        "include": "owner-advance-carried-tests",
+        "included": "tests/acl2/owner-advance-carried-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/owner-log-ocl-tests.lisp",
+        "line": 10,
+        "include": "config-owner-publish-tests",
+        "included": "tests/acl2/config-owner-publish-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/owner-log-reopen-tests.lisp",
         "line": 3,
         "include": "../../books/owner-log-reopen",
@@ -51535,91 +51676,91 @@
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 244,
+        "line": 251,
         "name": "fnn-csprng-octets",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 244,
+        "line": 251,
         "name": "fnn-profile-nat",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 244,
+        "line": 251,
         "name": "fnn-owner-result",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 244,
+        "line": 251,
         "name": "fnn-developer-selector",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 244,
+        "line": 251,
         "name": "fnn-err",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 244,
+        "line": 251,
         "name": "fnn-log-line",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 244,
+        "line": 251,
         "name": "fnn-owner-octets-global",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 277,
+        "line": 284,
         "name": "fnn-owner-serialized",
         "source": "host/native/owner.lisp",
         "reason": "defined in host/native/owner.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 296,
+        "line": 303,
         "name": "fnn-open-live-store",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 296,
+        "line": 303,
         "name": "*fnn-stdout*",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 296,
+        "line": 303,
         "name": "fnn-store-close",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 318,
+        "line": 325,
         "name": "fnn-require-writer",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/admin.lisp",
-        "line": 318,
+        "line": 325,
         "name": "fnn-out",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -60320,42 +60461,42 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 914,
+        "line": 926,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1032,
+        "line": 1044,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1032,
+        "line": 1044,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1838,
+        "line": 1850,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2793,
+        "line": 2805,
         "name": "fn-scar-ocfg-read-span",
         "source": "books/served-span.lisp",
         "reason": "defined in books/served-span.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2935,
+        "line": 2947,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

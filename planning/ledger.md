@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1253 |
-| Certification roots in the Makefile | 1206 |
-| Books inside the root closure | 1242 |
-| `defthm` and `defthmd` events | 18451 |
-| `defun` events | 12706 |
+| Books read | 1256 |
+| Certification roots in the Makefile | 1209 |
+| Books inside the root closure | 1245 |
+| `defthm` and `defthmd` events | 18573 |
+| `defun` events | 12721 |
 | Functions with verified guards | 2453 |
-| Functions declared `:verify-guards nil` and never verified | 1499 |
-| Functions left at the default with an explicit guard | 7006 |
-| Functions left at the default with no guard | 1748 |
-| `assert-event` checks | 18172 |
+| Functions declared `:verify-guards nil` and never verified | 1505 |
+| Functions left at the default with an explicit guard | 7010 |
+| Functions left at the default with no guard | 1753 |
+| `assert-event` checks | 18278 |
 | `must-fail` checks | 2173 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 99 |
-| Theorems flagged SUSPECT by shape | 205 |
+| Theorems flagged SUSPECT by shape | 206 |
 | Export-hygiene warnings | 212 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 215 |
-| Include-hygiene warnings | 1340 |
+| Include-hygiene warnings | 1346 |
 | Host-names warnings | 1380 |
 | Hand-written-record warnings | 18 |
 
@@ -351,7 +351,7 @@ that `make certify` requests.
 | `books/config-observed.lisp` | root | 5 | 4 | 3/0/1/0 | 0 | 0 | 0 |
 | `books/config-owner-advance-invariants.lisp` | root | 21 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-owner-advance-reader-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/config-owner-carried.lisp` | root | 24 | 8 | 0/1/7/0 | 0 | 0 | 0 |
+| `books/config-owner-carried.lisp` | root | 27 | 9 | 0/1/8/0 | 0 | 0 | 0 |
 | `books/config-owner-live-complete.lisp` | closure | 29 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/config-owner-live-open.lisp` | closure | 52 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-owner-live-read.lisp` | closure | 47 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -361,6 +361,7 @@ that `make certify` requests.
 | `books/config-physical-replay.lisp` | root | 15 | 5 | 3/0/2/0 | 0 | 0 | 0 |
 | `books/config-policy-delta.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-records.lisp` | root | 15 | 15 | 2/0/13/0 | 0 | 0 | 0 |
+| `books/config-store-steps.lisp` | root | 84 | 7 | 0/3/3/1 | 0 | 0 | 0 |
 | `books/config-store-traces.lisp` | root | 2 | 7 | 5/0/2/0 | 0 | 0 | 0 |
 | `books/config-stream.lisp` | root | 21 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/config.lisp` | root | 59 | 238 | 1/0/237/0 | 0 | 0 | 0 |
@@ -549,6 +550,7 @@ that `make certify` requests.
 | `books/owner-invariants-step.lisp` | closure | 42 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-invariants.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-list-counts-read.lisp` | root | 13 | 3 | 0/3/0/0 | 0 | 0 | 1 |
+| `books/owner-log-ocl.lisp` | root | 35 | 3 | 0/3/0/0 | 0 | 0 | 1 |
 | `books/owner-log-reopen.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/owner-log-route.lisp` | root | 2 | 4 | 0/2/2/0 | 0 | 0 | 0 |
 | `books/owner-log.lisp` | root | 29 | 41 | 0/0/41/0 | 0 | 0 | 0 |
@@ -1147,6 +1149,7 @@ that `make certify` requests.
 | `tests/acl2/owner-feed-txid-reuse-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 6 | 0 | 0 |
 | `tests/acl2/owner-injection-info-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 2 | 1 | 0 |
 | `tests/acl2/owner-intent-carried-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 28 | 5 | 0 |
+| `tests/acl2/owner-log-ocl-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 106 | 0 | 0 |
 | `tests/acl2/owner-log-reopen-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 3 | 0 |
 | `tests/acl2/owner-log-route-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/owner-log-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 73 | 13 | 0 |
@@ -1441,6 +1444,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-lg-log-unfolds` | `books/store-log.lisp` | 856 | branch-of-definition: the hypothesis is a branch test of fn-lg-log and the conclusion is that branch's value |
 | `fn-lgd-slice-when-short` | `books/store-log-decode.lisp` | 207 | branch-of-definition: the hypothesis negates a branch test of fn-lg-slice and the conclusion is that branch's value |
 | `fn-lgkc-log-of-atom` | `books/store-log-kernel.lisp` | 362 | branch-of-definition: the hypothesis negates a branch test of fn-lg-log and the conclusion is that branch's value |
+| `fn-lgoc-store-of-rcon-io` | `books/owner-log-ocl.lisp` | 331 | closed-theory-corollary: proved only by fn-lgoc-rcon-io-is-owner-with-store, fn-lgoc-store-of-owner-with-store |
 | `fn-lgr-rewrites-are-the-events` | `books/store-log-reclaim.lisp` | 82 | definition-restated: the conclusion is the body of fn-rclp-events |
 | `fn-mod-inj-append-of-a-cons` | `books/moderation.lisp` | 358 | branch-of-definition: the hypothesis is a branch test of fn-inj-append and the conclusion is that branch's value |
 | `fn-mod-named-entries-of-no-groups` | `books/moderation.lisp` | 101 | branch-of-definition: the hypothesis negates a branch test of fn-mod-named-entries and the conclusion is that branch's value |
