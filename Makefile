@@ -944,6 +944,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/config-owner-publish-tests \
 	books/config-owner-carried \
 	tests/acl2/config-owner-carried-tests \
+	books/config-store-steps \
+	books/owner-log-ocl \
+	tests/acl2/owner-log-ocl-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \
