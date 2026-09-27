@@ -375,3 +375,313 @@
            :use ((:functional-instance fn-lgk-recover-establishes-relation
                                        (fn-assume-log-sole-pending-writer
                                         fn-owb-sole-pending-writer))))))
+
+; -----------------------------------------------------------------------------
+; The crash images of a related state: the committed records are read by
+; every admissible image's scan.
+
+(defthm fn-owb-prefixp-of-append
+  (fn-lg-prefixp a (append a b)))
+
+(defthm fn-owb-prefixp-reflexive
+  (fn-lg-prefixp a a))
+
+(local
+ (defthm fn-owb-take-then-nthcdr
+   (implies (and (true-listp c) (natp n) (<= n (len c)))
+            (equal (append (fn-bs-take n c) (nthcdr n c)) c))))
+
+(local
+ (defthm fn-owb-len-of-take
+   (implies (and (true-listp c) (natp n) (<= n (len c)))
+            (equal (len (fn-bs-take n c)) n))))
+
+; A content whose prefix scans completely and whose tail is zeros scans to
+; that prefix's records: the zeros end the scan (fn-lg-scan-of-zeros).
+(defthm fn-owb-scan-of-whole-content
+  (implies (and (true-listp c) (natp f) (<= f (len c))
+                (equal (fn-lg-scan (fn-bs-take f c) genesis unit max) (cons committed f))
+                (fn-lg-zerosp (nthcdr f c)))
+           (equal (fn-lg-scan c genesis unit max) (cons committed f)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-owb-take-then-nthcdr (n f))
+                 (:instance fn-lg-scan-of-complete-append
+                            (d (fn-bs-take f c)) (x (nthcdr f c)) (prev genesis)))
+           :in-theory (disable fn-lg-scan fn-lg-scan-last fn-bs-take fn-lg-zerosp
+                               fn-lg-scan-of-complete-append fn-owb-take-then-nthcdr))))
+
+(defthm fn-owb-scan-of-related-content
+  (implies (and (fn-lgk-relp bs ks ino genesis max) (not (consp (fn-lgk-inflight ks))))
+           (equal (fn-lg-scan (fn-bs-durable-content bs ino) genesis (fn-bs-unit bs) max)
+                  (cons (fn-lgk-committed ks) (fn-lgk-frontier ks))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgk-relp fn-lgk-content-okp)
+                           (fn-lg-scan fn-lg-scan-last fn-lg-log fn-lg-recordsp fn-lg-zerosp
+                            fn-bs-take fn-frame-digestp mod fn-bs-durable-content
+                            fn-owb-scan-of-whole-content))
+           :use ((:instance fn-owb-scan-of-whole-content
+                            (c (fn-bs-durable-content bs ino)) (f (fn-lgk-frontier ks))
+                            (unit (fn-bs-unit bs)) (committed (fn-lgk-committed ks)))))))
+
+(defthm fn-owb-related-state-with-nothing-in-flight-is-fenced
+  (implies (and (fn-lgk-relp bs ks ino genesis max) (not (consp (fn-lgk-inflight ks))))
+           (fn-bs-fencedp bs ino))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-relp fn-bs-fencedp) (fn-lgk-content-okp fn-lg-log)))))
+
+; A batch in flight: the image's scan is the committed records then a prefix
+; of the batch (store-log-crash's corollary under A-CRYPTO-TRAILER; the
+; tear of the pending write is the platform's, fn-lg-platform-tears-p).
+(defthm fn-owb-image-scan-of-related-state
+  (implies (and (fn-lgk-relp bs ks ino genesis max) (consp (fn-lgk-inflight ks))
+                (fn-bs-crash-imagep bs image)
+                (fn-lg-platform-tears-p (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content image ino))
+                                        (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs)))
+           (fn-lg-crash-verdictp (fn-lg-scan (fn-bs-durable-content image ino) genesis (fn-bs-unit bs) max)
+                                 (fn-lgk-committed ks) (fn-lgk-frontier ks) (fn-lgk-inflight ks)
+                                 (fn-lgk-last ks) (fn-bs-unit bs)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-lgk-relp-gives-the-tear-hypotheses)
+                 (:instance fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer
+                            (s bs) (k (floor (fn-lgk-frontier ks) (fn-bs-unit bs)))
+                            (d (fn-bs-take (fn-lgk-frontier ks) (fn-bs-durable-content bs ino)))
+                            (z (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content bs ino)))
+                            (committed (fn-lgk-committed ks)) (last (fn-lgk-last ks))
+                            (batch (fn-lgk-inflight ks)))))))
+
+(local
+ (defthm fn-owb-member-of-append-left
+   (implies (member-equal x a) (member-equal x (append a b)))))
+
+(defthm fn-owb-committed-record-survives-crash
+  (implies (and (fn-lgk-relp bs ks ino genesis max)
+                (member-equal r (fn-lgk-committed ks))
+                (fn-bs-crash-imagep bs image)
+                (implies (consp (fn-lgk-inflight ks))
+                         (fn-lg-platform-tears-p
+                          (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content image ino))
+                          (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs))))
+           (member-equal r (car (fn-lg-scan (fn-bs-durable-content image ino)
+                                            genesis (fn-bs-unit bs) max))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-owb-image-scan-of-related-state)
+                 (:instance fn-bs-crash-keeps-fenced-content (s bs)))
+           :in-theory (e/d (fn-lg-crash-verdictp)
+                           (fn-lg-scan fn-lgk-relp fn-bs-crash-imagep fn-bs-durable-content
+                            fn-lg-platform-tears-p fn-lg-prefixp fn-lg-log
+                            fn-bs-crash-keeps-fenced-content)))))
+
+(local
+ (defthm fn-owb-member-record-in-records
+   (implies (member-equal m ms)
+            (member-equal (fn-owb-member-record m) (fn-owb-records ms)))))
+
+; T1.  An acknowledged member's record is in every admissible crash image.
+; Hypotheses: the layer aligned with the kernel, R at the cut (fn-lgk-relp),
+; A-CRASH-IMAGE (fn-bs-crash-imagep), and when a batch is in flight the tear
+; of its pending write is the platform's (fn-lg-platform-tears-p).  The ack
+; discipline is the layer's: fn-owb-finish-member acknowledges only a member
+; of WAITING, which fn-owb-fence filled from the fenced batch, so ACKED's
+; records are a prefix of the kernel's committed records.
+(defthm fn-owb-acknowledged-record-survives-crash
+  (implies (and (fn-owb-alignedp st)
+                (fn-lgk-relp bs (fn-owb-ks st) ino genesis max)
+                (member-equal m (fn-owb-acked st))
+                (fn-bs-crash-imagep bs image)
+                (implies (consp (fn-lgk-inflight (fn-owb-ks st)))
+                         (fn-lg-platform-tears-p
+                          (nthcdr (fn-lgk-frontier (fn-owb-ks st)) (fn-bs-durable-content image ino))
+                          (fn-lgk-inflight (fn-owb-ks st)) (fn-lgk-last (fn-owb-ks st))
+                          (fn-bs-unit bs))))
+           (member-equal (fn-owb-member-record m)
+                         (car (fn-lg-scan (fn-bs-durable-content image ino)
+                                          genesis (fn-bs-unit bs) max))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-owb-committed-record-survives-crash
+                            (ks (fn-owb-ks st)) (r (fn-owb-member-record m)))
+                 (:instance fn-owb-member-record-in-records (ms (fn-owb-acked st)))
+                 (:instance fn-owb-member-of-append-left
+                            (x (fn-owb-member-record m))
+                            (a (fn-owb-records (fn-owb-acked st)))
+                            (b (fn-owb-records (fn-owb-waiting st)))))
+           :in-theory (e/d (fn-owb-alignedp)
+                           (fn-lg-scan fn-lgk-relp fn-bs-crash-imagep fn-bs-durable-content
+                            fn-lg-platform-tears-p fn-owb-committed-record-survives-crash
+                            fn-owb-member-record-in-records fn-owb-member-of-append-left
+                            fn-owb-records-of-append)))))
+
+; -----------------------------------------------------------------------------
+; T7.  The failed barrier (fsyncgate).
+
+; The store a failed fsync of the segment leaves is the crash image of the
+; environment's selection: the pending write is the segment's alone.
+(defthm fn-owb-failed-fence-is-the-crash-image
+  (implies (and ino (equal (fn-bs-pending bs) (list (list :write ino f w))))
+           (equal (mv-nth 1 (fn-bs-fsync-file bs ino (cons :eio choices)))
+                  (fn-bs-crash bs choices)))
+  :hints (("Goal" :in-theory (e/d (fn-bs-fsync-file fn-bs-crash)
+                                  (fn-bs-apply-ops fn-bs-crash-select)))))
+
+(defthm fn-owb-failed-fence-image-is-admissible
+  (implies (and ino (equal (fn-bs-pending bs) (list (list :write ino f w)))
+                (fn-bs-crash-choicesp choices (fn-bs-pending bs) (fn-bs-unit bs)))
+           (fn-bs-crash-imagep bs (mv-nth 1 (fn-bs-fsync-file bs ino (cons :eio choices)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bs-crash-imagep-suff (s bs) (image (fn-bs-crash bs choices))))
+           :in-theory (disable fn-bs-crash fn-bs-crash-imagep fn-bs-fsync-file
+                               fn-bs-crash-choicesp))))
+
+;; The pending write of a related state with a batch in flight (R's conjunct 3).
+(defthm fn-owb-related-pending-in-flight
+  (implies (and (fn-lgk-relp bs ks ino genesis max) (consp (fn-lgk-inflight ks)))
+           (and ino
+                (equal (fn-bs-pending bs)
+                       (list (list :write ino (fn-lgk-frontier ks)
+                                   (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-lgk-relp) (fn-lgk-content-okp fn-lg-log)))))
+
+; The layer's half: the kernel faulted, every member in flight or waiting
+; :uncertain, no acknowledgement.
+(defthm fn-owb-fence-failed-answers-uncertain
+  (implies (true-listp st)
+           (let ((st1 (fn-owb-fence-failed st)))
+             (and (equal (fn-lgk-phase (fn-owb-ks st1)) :fault)
+                  (equal (fn-owb-fault-words st1)
+                         (fn-owb-uncertain-words (append (fn-owb-waiting st) (fn-owb-inflight st))))
+                  (equal (mv-nth 0 (fn-owb-finish-member st1)) nil))))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-fence-failed) (fn-lgk-committed fn-lgk-last fn-lgk-frontier
+                                                          fn-lgk-next-txid fn-lgk-batch fn-lgk-inflight
+                                                          fn-lgk-acked)))))
+
+; The kernel's half: recovered from the store the failed fsync left, the
+; committed records then a prefix of the batch in flight.
+(defthm fn-owb-recovered-kernel-after-a-failed-fence
+  (let* ((bs1 (mv-nth 1 (fn-bs-fsync-file bs ino (cons :eio choices))))
+         (ks2 (fn-lgk-recover (fn-bs-durable-content bs1 ino) genesis (fn-bs-unit bs) max next-txid)))
+    (implies (and (fn-lgk-relp bs ks ino genesis max)
+                  (consp (fn-lgk-inflight ks))
+                  (fn-bs-crash-choicesp choices (fn-bs-pending bs) (fn-bs-unit bs))
+                  (fn-lg-platform-tears-p (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content bs1 ino))
+                                          (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs)))
+             (and (equal (fn-lgk-committed ks2)
+                         (append (fn-lgk-committed ks)
+                                 (nthcdr (len (fn-lgk-committed ks)) (fn-lgk-committed ks2))))
+                  (fn-lg-prefixp (nthcdr (len (fn-lgk-committed ks)) (fn-lgk-committed ks2))
+                                 (fn-lgk-inflight ks)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-owb-related-pending-in-flight)
+                 (:instance fn-owb-failed-fence-image-is-admissible
+                            (f (fn-lgk-frontier ks))
+                            (w (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs))))
+                 (:instance fn-owb-image-scan-of-related-state
+                            (image (mv-nth 1 (fn-bs-fsync-file bs ino (cons :eio choices))))))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-lg-crash-verdictp fn-lgk-recover fn-lgk-fields-of-make)))))
+
+; T7.  After a failed barrier the kernel is faulted, every member in flight
+; or waiting is answered :uncertain, no member is acknowledged, and the
+; kernel recovered from the store the failure left holds the committed
+; records followed by a prefix of the batch in flight.
+(defthm fn-owb-uncertain-batch-recovers-to-a-prefix
+  (let* ((ks (fn-owb-ks st))
+         (st1 (fn-owb-fence-failed st))
+         (bs1 (mv-nth 1 (fn-bs-fsync-file bs ino (cons :eio choices))))
+         (ks2 (fn-lgk-recover (fn-bs-durable-content bs1 ino) genesis (fn-bs-unit bs) max next-txid)))
+    (implies (and (fn-owb-alignedp st)
+                  (fn-lgk-relp bs ks ino genesis max)
+                  (consp (fn-lgk-inflight ks))
+                  (fn-bs-crash-choicesp choices (fn-bs-pending bs) (fn-bs-unit bs))
+                  (fn-lg-platform-tears-p (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content bs1 ino))
+                                          (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs)))
+             (and (equal (fn-lgk-phase (fn-owb-ks st1)) :fault)
+                  (equal (fn-owb-fault-words st1)
+                         (fn-owb-uncertain-words (append (fn-owb-waiting st) (fn-owb-inflight st))))
+                  (equal (mv-nth 0 (fn-owb-finish-member st1)) nil)
+                  (equal (fn-lgk-committed ks2)
+                         (append (fn-lgk-committed ks)
+                                 (nthcdr (len (fn-lgk-committed ks)) (fn-lgk-committed ks2))))
+                  (fn-lg-prefixp (nthcdr (len (fn-lgk-committed ks)) (fn-lgk-committed ks2))
+                                 (fn-lgk-inflight ks)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-owb-fence-failed-answers-uncertain)
+                 (:instance fn-owb-recovered-kernel-after-a-failed-fence (ks (fn-owb-ks st))))
+           :in-theory (union-theories (theory 'minimal-theory) '(fn-owb-alignedp)))))
+
+; -----------------------------------------------------------------------------
+; T4.  The batch of tokens is the sequential token protocol.
+
+; A prepare AHEAD of n members already in the batch: fn-cat-prepare's intern
+; (the bytes are the buffer's, the catalog is not read) with EXPECTED the
+; count the n predecessors' completes will leave.
+(defun fn-owb-cat-prepare (w plan reservation fn-octets keyring generation ahead
+                             fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat)
+                  :guard (and (fn-prin-keyringp keyring) (natp generation) (natp ahead))))
+  (mv-let (held fn-arena)
+    (fn-cat-intern w fn-octets keyring generation fn-arena)
+    (let ((expected (+ (fn-cat-count fn-cat) ahead)))
+      (mv (fn-pc-make (cons (nfix (fn-record-txid w)) expected) expected held plan reservation)
+          fn-arena))))
+
+(defthm fn-owb-cat-prepare-with-nothing-ahead-is-cat-prepare-by-definition
+  (equal (fn-owb-cat-prepare w plan reservation fn-octets keyring generation 0 fn-arena fn-cat)
+         (fn-cat-prepare w plan reservation fn-octets keyring generation nil fn-arena fn-cat))
+  :hints (("Goal" :in-theory (e/d (fn-cat-prepare fn-owb-cat-prepare)
+                                  (fn-cat-intern fn-pc-make fn-record-txid fn-cat-count)))))
+
+; T4's content, one step: the token minted AHEAD of n pending completes is
+; the token the sequential protocol mints after them.
+(defthm fn-owb-prepare-ahead-is-the-sequential-prepare
+  (implies (and (natp ahead)
+                (equal (fn-cat-count fn-cat2) (+ ahead (fn-cat-count fn-cat))))
+           (equal (fn-owb-cat-prepare w plan reservation fn-octets keyring generation ahead
+                                      fn-arena fn-cat)
+                  (fn-cat-prepare w plan reservation fn-octets keyring generation nil
+                                  fn-arena fn-cat2)))
+  :hints (("Goal" :in-theory (e/d (fn-cat-prepare fn-owb-cat-prepare)
+                                  (fn-cat-intern fn-pc-make fn-record-txid fn-cat-count)))))
+
+; The batch's finishes, in order by token.
+(defun fn-owb-complete-two (pc1 pc2 fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (and (fn-pc-p pc1) (fn-pc-p pc2))))
+  (mv-let (r1 p1 fn-cat)
+    (fn-cat-complete (fn-pc-token pc1) pc1 fn-cat)
+    (declare (ignore p1))
+    (mv-let (r2 p2 fn-cat)
+      (fn-cat-complete (fn-pc-token pc2) pc2 fn-cat)
+      (declare (ignore p2))
+      (mv r1 r2 fn-cat))))
+
+; T4.  Two members prepared as a batch against the catalog (the second AHEAD
+; of the first) and completed in order equal the sequential protocol
+; (prepare, complete, prepare, complete): the same deltas, the same catalog,
+; the same arena, the count advanced by two.  The fold over a longer batch
+; is this step repeated (fn-owb-prepare-ahead-is-the-sequential-prepare with
+; fn-cat-commit-count).
+(defthm fn-owb-batch-complete-is-the-sequential-complete
+  (mv-let (pc1 arena1)
+    (fn-owb-cat-prepare w1 plan1 res1 fn-octets keyring gen 0 fn-arena fn-cat)
+    (declare (ignorable arena1))
+    (mv-let (pc2 arena2)
+      (fn-owb-cat-prepare w2 plan2 res2 fn-octets keyring gen 1 arena1 fn-cat)
+      (mv-let (b1 b2 cat-b)
+        (fn-owb-complete-two pc1 pc2 fn-cat)
+        (mv-let (q1 arena-s1)
+          (fn-cat-prepare w1 plan1 res1 fn-octets keyring gen nil fn-arena fn-cat)
+          (mv-let (s1 p1 cat-s1)
+            (fn-cat-complete (fn-pc-token q1) q1 fn-cat)
+            (declare (ignorable p1))
+            (mv-let (q2 arena-s2)
+              (fn-cat-prepare w2 plan2 res2 fn-octets keyring gen nil arena-s1 cat-s1)
+              (mv-let (s2 p2 cat-s2)
+                (fn-cat-complete (fn-pc-token q2) q2 cat-s1)
+                (declare (ignorable p2))
+                (and (equal b1 s1) (equal b2 s2)
+                     (equal cat-b cat-s2) (equal arena2 arena-s2)
+                     (equal (fn-cat-count cat-b) (+ 2 (fn-cat-count fn-cat)))))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-owb-cat-prepare fn-cat-prepare fn-owb-complete-two fn-cat-complete)
+                           (fn-cat-commit fn-cat-intern fn-cat-at fn-delta-of-row
+                            fn-cat-count-is-len fn-cat-at-is-nth fn-cat-commit-is-append)))))
