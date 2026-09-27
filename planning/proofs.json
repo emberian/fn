@@ -10533,6 +10533,8 @@
       "events": [
         "fn-psrv-prepare-preserves-invariant",
         "fn-psrv-prepare-identity-preserves-invariant",
+        "fn-oiis-prepare-identity-preserves-invariant",
+        "fn-oiis-prepare-identity-unfolds",
         "fn-psrv-prepare-retention-preserves-invariant",
         "fn-psrv-prepare-consumer-preserves-invariant",
         "fn-psrv-prepare-topic-preserves-invariant",
