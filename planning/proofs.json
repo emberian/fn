@@ -1362,7 +1362,7 @@
         "PRF-004"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "The transit path's DURABLE provenance is not covered: fn-peer-injection-arguments still passes fn-peer-evidence's rendering, and fn-peer-evidence-is-the-legacy-rendering is the equation between the typed record and that string, not evidence that the record reaches the store. books/peer-inbound and books/peer-inbound-invariants have no certificate on dev (blocked on fn-peer-echo-reply-effects-well-formed), so those two events are admitted, not certified, and are not listed here.",
       "events": [
         "fn-provp-of-string",
@@ -1570,7 +1570,7 @@
       "assumptions": [
         "A-CRYPTO"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "note": "Lane w11/one-owner. Keystones fn-frame-protected-plus-trailer-is-seal, fn-frame-decode-of-host-framing and their store instances fn-frame-store-protected-plus-trailer-is-seal and fn-frame-store-decode-of-host-framing, all in books/frame-trailer.lisp. Subject-to-host: the host lines that call fn-frame-trailer are tools/frame_bridge.py FrameSession.trailer (called by seal and digest_of), host/native/io.lisp fnn-trailer (called by fnn-seal and fnn-digest-of) and tools/run_owner.py Acl2Owner.trailer (called by feed_frames and feed_replay_frame); each replaced a separate SHA-256 in that host. Teeth in tests/acl2/frame-trailer-tests.lisp: 25 assert-events, including two FIPS 180-4 vectors, the exact store prefix and trailer octets, the :bad boundary arm, and one violating value per clause (a magic whose third octet is 300 for the shape clause keystone 1 needs, a max-payload of 2 for the bound clause keystone 2 needs, and a non-octet record for the store instance). Byte identity with the deleted host copies was cross-checked outside ACL2 against CPython hashlib.sha256 at 32, 4096, 32768, 262144 and 1048576 octets. NOT closed by this target: fn-frame-digest's collision resistance, and the marshalling cost of sealing a 4 MiB staged inbound bundle through the decimal-octet bridge. Lane rep-sha256 (D27 boundary 3, 2026-09-25): the executable digest is fn-sha256-stobj, SHA-256 over a word stobj (books/sha256-stobj.lisp), attached in crypto-attach under fn-sha256-stobj-is-sha256; fn-sha256-stobj-is-sha256-of-octets is its instance on octet lists and fn-sha256-of-string-is-sha256-of-octets covers the string entry the host sha256 verb calls (host/native/io.lisp, the verb; the host SHA-256 twin fnn-sha256 is deleted). Teeth in tests/acl2/sha256-stobj-tests.lisp: the FIPS vectors through both entries, the padding boundaries against the list model, a must-fail and a separating witness for the string theorem's stringp; the keystone has no hypothesis. No statement of an existing theorem moved.",
       "events": [
         "fn-frame-protected-plus-trailer-is-seal",
@@ -7936,6 +7936,45 @@
         "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
       "progress_note": "Lane bp-fragments-10mib (2026-09-27): farm r2 run-20260927T020859Z-118b passed 189/189 (manifest planning/evidence/manifests/certify-20260927T021005Z-134473.json; bp-primary 9.5 s at 2 jobs). SCN-077 reassembly and handoff 280.3 s -> 117.2 s (native v2)."
+    },
+    {
+      "id": "PRF-244",
+      "title": "The receipt journal holds a local BP request by reference, and every read resolves the reference to exactly the request",
+      "statement": "books/bp-request-reference.lisp over books/bp-native-app.lisp and books/bp-native-app-fast.lisp (PKT-646, D27). The FNRJ local intent and context the host publishes (host/bp-receipt-journal-host.lisp fn-bprj-request-intent-record and fn-bprj-request-context-v2-record, called by host/native/bp-app.lisp fnn-bpapp-request-intent and fnn-bpapp-bind-context) are built by fn-bpaj-intent-record and fn-bpaj-context-v2-record and carry the request's reference (HEAD LENGTH DIGEST), fn-bpaj-request-ref, never the request ADU or the Store record. KEYSTONE fn-bpaj-ref-request-resolves-exactly: (implies (fn-bpa-requestp request) (equal (fn-bpaj-ref-request HEAD LENGTH DIGEST (fn-bpa-request-article request)) request)) for (HEAD LENGTH DIGEST) = (fn-bpaj-request-ref request); fn-bpaj-ref-request-resolves-to-the-bytes: its encoding is the request's octets. KEYSTONE fn-bpaj-context-read-resolves-exactly: for ctx = (fn-bpaj-context-v2-record inbound octets store-record g txid rg result), whenever (fn-bpaj-context-record store ctx) is a record whose payload is the request's article, fn-bpaj-context-request of ctx over it is exactly (fn-bpaj-request octets) and encodes to octets; the read is fn-bpaj-apply-record (fn-bpaj-context-v2-receiver-is-existing-transition) and its fast twin (fn-bpaj-apply-record-fast-is-checked, fn-bpaj-context-record-fast-is-checked) at fn-bprj-install (every journal open, recovery included), fn-bprj-preflight and fn-bprj-apply. fn-bpaj-context-request-is-the-referenced-article: any successful resolution's article IS the Store record's payload, of the recorded length and digest. fn-bpaj-intent-names-its-request; fn-bpaj-one-reference-is-one-request-or-a-digest-collision: two requests with one reference are equal or their articles differ with one length and one fn-frame-digest (A-CRYPTO, books/frame-octets; for n distinct articles the SHA-256 collision probability is at most n(n-1)/2^257). What it does not say: that the Store keeps the record the context names (the Store's retention; the replay refuses a context whose record is gone, as it did before); the transit kinds and the legacy :request-context still carry the request (PKT-646's remainder).",
+      "milestone": "M4",
+      "requirements": [
+        "STO-015"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpaj-ref-request-resolves-exactly",
+        "fn-bpaj-ref-request-resolves-to-the-bytes",
+        "fn-bpaj-context-read-resolves-exactly",
+        "fn-bpaj-context-request-is-the-referenced-article",
+        "fn-bpaj-intent-names-its-request",
+        "fn-bpaj-one-reference-is-one-request-or-a-digest-collision",
+        "fn-bpaj-context-record-fast-is-checked",
+        "fn-bpaj-context-v2-receiver-is-existing-transition"
+      ],
+      "evidence": [
+        "books/bp-request-reference.lisp",
+        "books/bp-native-app.lisp",
+        "books/bp-native-app-fast.lisp",
+        "books/frame-journal.lisp",
+        "books/frame.lisp",
+        "tests/acl2/bp-request-reference-tests.lisp",
+        "tests/acl2/bp-native-app-tests.lisp",
+        "tests/acl2/bp-native-app-fast-tests.lisp",
+        "tests/acl2/frame-tests.lisp",
+        "host/bp-receipt-journal-host.lisp",
+        "host/native/bp-app.lisp",
+        "tests/test_bp_fragment_node_native.py",
+        "specs/bp-node-machine.md",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      ],
+      "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): REPL-admitted and certified with certify_books.py --incremental on persvati; the farm manifest is cited in the evidence record."
     }
   ]
 }

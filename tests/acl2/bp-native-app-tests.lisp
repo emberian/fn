@@ -10,13 +10,13 @@
    "sender-inc-native" "wire-auth-context" "terms-1" *bpr-adu*))
 (defconst *bpaj-request-octets* (fn-bpa-encode *bpaj-request*))
 (defconst *bpaj-config* *bprr-config-record*)
-(defconst *bpaj-intent*
-  (list :request-intent "bundle-original" *bpaj-request-octets* 7
-        (fn-record-txid *bpr-record*) :duplicate))
-(defconst *bpaj-context*
-  (list :request-context-v2 "bundle-original" *bpaj-request-octets*
-        (fn-record-encode-impl *bpr-record*) 7 (fn-record-txid *bpr-record*)
-        (fn-record-generation *bpr-record*) t :duplicate))
+; PKT-646: the records carry the request's reference, never its bytes.
+(make-event `(defconst *bpaj-intent* ',(fn-bpaj-intent-record "bundle-original" *bpaj-request-octets* 7
+                         (fn-record-txid *bpr-record*) :duplicate)))
+(make-event `(defconst *bpaj-context* ',(fn-bpaj-context-v2-record "bundle-original" *bpaj-request-octets*
+                             (fn-record-encode-impl *bpr-record*) 7
+                             (fn-record-txid *bpr-record*)
+                             (fn-record-generation *bpr-record*) :duplicate)))
 
 (assert-event (fn-bpaj-intentp *bpaj-intent*))
 (assert-event (fn-bpaj-context-v2p *bpaj-context*))
@@ -71,8 +71,7 @@
 ; over an absent Store submits, while a stale generation or committed context
 ; does not.
 (defconst *bpaj-fresh-store* (fn-sn-initial *bpr-groups* 20))
-(defconst *bpaj-accept-intent*
-  (list :request-intent "bundle-new" *bpaj-request-octets* 9 0 :accepted))
+(make-event `(defconst *bpaj-accept-intent* ',(fn-bpaj-intent-record "bundle-new" *bpaj-request-octets* 9 0 :accepted)))
 (make-event `(defconst *bpaj-accept-replay* ',(fn-bpaj-replay *bpaj-fresh-store*
                    (list *bpaj-config* *bpaj-accept-intent*))))
 (assert-event (car *bpaj-accept-replay*))

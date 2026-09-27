@@ -225,6 +225,15 @@
             (list nil st))))
        (t (list nil st))))))
 
+; The Store record a context names, through the Message-ID index
+; (`fn-bpaj-context-record-fast-is-checked').
+(defun fn-bpaj-context-record-fast (store r)
+  (declare (xargs :guard t))
+  (and (stringp (fn-bpaj-nth 3 r))
+       (fn-bpaj-context-record-of
+        (fn-cei-msgid-records (fn-bpaj-nth 3 r) (fn-sn-event-index store))
+        r)))
+
 (defun fn-bpaj-apply-record-fast (joined store r)
   (declare (xargs :guard t))
   (let ((kind (fn-bpaj-nth 0 r)))
@@ -278,12 +287,13 @@
         (if (not (and intent
                       (fn-bpaj-context-matches-intentp r intent)))
             (list nil joined)
-          (let ((answer (fn-bpaj-bprr-apply-record-fast
-                         (fn-bpaj-receiver joined) store
-                         (fn-bpaj-base-record r))))
-            (if (not (car answer)) (list nil joined)
+          (let* ((record (fn-bpaj-context-record-fast store r))
+                 (answer (fn-bpaj-bpr-accept-request-fast
+                          (fn-bpaj-receiver joined) store record
+                          (fn-bpaj-context-request r record) t)))
+            (if (not (equal (car answer) :accepted)) (list nil joined)
               (list t (fn-bpaj-make-state
-                       (fn-bprr-nth 1 answer)
+                       (fn-bpa-nth 1 answer)
                        (fn-bpaj-intents joined)
                        (append (fn-bpaj-facts joined) (list r)) t)))))))
      ((equal kind :request-context)
@@ -329,9 +339,7 @@
                                   (fn-bpr-context-request context))))
                  :conflict)
                 ((and intent
-                      (not (equal request
-                                  (fn-bpaj-request
-                                   (fn-bpaj-nth 2 intent)))))
+                      (not (fn-bpaj-intent-names-requestp intent request)))
                  :conflict)
                 ((and context
                       (fn-bpaj-bpr-receipt-adu-fast receiver request))
@@ -716,6 +724,16 @@
                  fn-bprr-decode-value
                  fn-bpr-store-record-acceptedp)))))
 
+(defthm fn-bpaj-context-record-fast-is-checked
+  (implies (fn-ceis-indexedp store)
+           (equal (fn-bpaj-context-record-fast store r)
+                  (fn-bpaj-context-record store r)))
+  :hints (("Goal" :in-theory
+           (union-theories
+            (theory 'minimal-theory)
+            '(fn-bpaj-context-record-fast fn-bpaj-context-record
+              fn-bpaj-indexed-records-are-the-walk)))))
+
 (defthm fn-bpaj-apply-record-fast-is-checked
   (implies (and (fn-bpaj-statep joined) (fn-sn-statep store)
                 (fn-ceis-indexedp store))
@@ -725,9 +743,13 @@
            :use ((:instance fn-bpaj-bprr-apply-record-fast-is-checked
                             (st (fn-bpaj-receiver joined))
                             (r r))
-                 (:instance fn-bpaj-bprr-apply-record-fast-is-checked
+                 (:instance fn-bpaj-bpr-accept-request-fast-is-checked
                             (st (fn-bpaj-receiver joined))
-                            (r (fn-bpaj-base-record r)))
+                            (record (fn-bpaj-context-record store r))
+                            (request (fn-bpaj-context-request
+                                      r (fn-bpaj-context-record store r)))
+                            (policy-authorizedp t))
+                 (:instance fn-bpaj-context-record-fast-is-checked)
                  (:instance fn-bpaj-bpr-accept-projected-request-fast-is-checked
                             (st (fn-bpaj-receiver joined))
                             (record (fn-bprr-decode-value
@@ -845,9 +867,12 @@
                  (:instance fn-bprr-apply-record-preserves-statep
                             (st (fn-bpaj-receiver joined))
                             (record r))
-                 (:instance fn-bprr-apply-record-preserves-statep
+                 (:instance fn-bpr-accept-request-preserves-statep
                             (st (fn-bpaj-receiver joined))
-                            (record (fn-bpaj-base-record r)))
+                            (record (fn-bpaj-context-record store r))
+                            (request (fn-bpaj-context-request
+                                      r (fn-bpaj-context-record store r)))
+                            (policy-authorizedp t))
                  (:instance fn-bpr-accept-projected-request-preserves-statep
                             (st (fn-bpaj-receiver joined))
                             (record (fn-bprr-decode-value

@@ -66,9 +66,12 @@
                         "old-subject" "old-issuer" "dtn://old.lab"
                         "old-policy" "old-incarnation" "old-auth"
                         "old-terms")))
+; PKT-646: a local intent carries the request's reference.  This one's HEAD
+; names the live request's work id, but its LENGTH and DIGEST are no
+; article's (a two-octet digest), so it is no intent.
 (defconst *bpaj-semantically-invalid-old-intent*
-  (list :request-intent "bundle-old" *bpaj-not-a-request-adu*
-        3 4 :accepted))
+  (list :request-intent "bundle-old" (fn-bpaj-head-octets *bpaj-request*)
+        3 4 :accepted 99 '(1 2)))
 (defconst *bpaj-fast-hypothesis-counterexample*
   (fn-bpaj-make-state
    (fn-bpaj-receiver (fn-bpaj-nth 1 *bpaj-intent-replay*))

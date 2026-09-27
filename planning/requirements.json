@@ -2051,7 +2051,8 @@
       "proof_targets": [
         "PRF-102",
         "PRF-131",
-        "PRF-134"
+        "PRF-134",
+        "PRF-244"
       ],
       "verification": [
         "proof",
@@ -2063,7 +2064,9 @@
         "books/native-admin.lisp",
         "books/native-auth-profile.lisp",
         "books/native-auth-admin.lisp",
-        "planning/evidence/bounds-profile-2026-09-25.md"
+        "planning/evidence/bounds-profile-2026-09-25.md",
+        "books/bp-request-reference.lisp",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
       "implementation_note": "Configuration generations (field 11) and credentials (field 12) are read from the profile the store opened; consumers (9) are read too since community-bounds (PRF-167, STO-021); BP rows (10) and policy members (13) still have constants (4096, 64), recorded as open in the evidence. fn.toml's size bounds are classified as work."
     },

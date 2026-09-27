@@ -41,9 +41,11 @@
 ; its-payload', `fn-frame-receipt-table-within-its-payload' below), so neither
 ; refuses a record its own encoder builds.  Every FNWF field is node-built
 ; (names, reasons, counters, enumerations).  The FNRJ blobs are `:blob' fields
-; at 131 072 octets, and two of them carry operator data (the request ADU and
-; the Store record of an application ingress): that width is a data cap, open
-; (planning/evidence/bounds-blob-2026-09-25.md, deferrals).
+; at 131 072 octets.  A local request's intent and context carry its
+; reference, not its bytes (PKT-646); the legacy context and the two transit
+; kinds still carry the request ADU and the Store record or projection: that
+; width is a data cap for TRANSIT requests, open
+; (planning/evidence/bounds-blob-2026-09-25.md, deferrals; PKT-646's record).
 (defconst *fn-frame-max-workflow-payload* 16342)
 (defconst *fn-frame-max-receipt-payload* 269958)
 ; The BP inbound journal's physical ceiling, the u32 LENGTH width; the
@@ -97,13 +99,22 @@
    (cons :config '(:text :text :text))
    (cons :request-context
          (list :text :blob :blob (cons :enum *fn-frame-authorized*)))
+   ; PKT-646 (D27, D34: one format, fresh deploys): a local intent and
+   ; context carry the request's REFERENCE -- its metadata HEAD (at most
+   ; 8 x 259 octets by the BP ADU grammar), the article's LENGTH and
+   ; DIGEST -- and the context names the Store record by Message-ID, txid
+   ; and generation; neither carries the request ADU or the Store record
+   ; (books/bp-native-app.lisp `fn-bpaj-request-ref',
+   ; books/bp-request-reference.lisp).
    (cons :request-intent
          (list :text :blob :nat :nat
-               (cons :enum *fn-frame-application-results*)))
+               (cons :enum *fn-frame-application-results*)
+               :nat :blob))
    (cons :request-context-v2
-         (list :text :blob :blob :nat :nat :nat
+         (list :text :blob :text :nat :nat :nat
                (cons :enum *fn-frame-authorized*)
-               (cons :enum *fn-frame-application-results*)))
+               (cons :enum *fn-frame-application-results*)
+               :nat :blob))
    (cons :request-transit-intent
          (list :text :blob :nat :nat
                (cons :enum *fn-frame-application-results*)

@@ -283,18 +283,21 @@
          (fn-frame-receipt-decode
           (fn-frame-receipt-encode
            :request-intent
-           (list '(98) '(1 2 3) 7 9 :accepted) *fn-frame-test-digest*)
+           (list '(98) '(1 2 3) 7 9 :accepted 11 '(4 5))
+           *fn-frame-test-digest*)
           *fn-frame-test-digest*))
-        (list '(98) '(1 2 3) 7 9 :accepted)))
+        (list '(98) '(1 2 3) 7 9 :accepted 11 '(4 5))))
 (assert-event
  (equal (fn-frame-result-payload
          (fn-frame-receipt-decode
           (fn-frame-receipt-encode
            :request-context-v2
-           (list '(98) '(1 2 3) '(4 5) 7 9 9 :authorized :duplicate)
+           (list '(98) '(1 2 3) '(60 97 62) 7 9 9 :authorized :duplicate
+                 11 '(4 5))
            *fn-frame-test-digest*)
           *fn-frame-test-digest*))
-        (list '(98) '(1 2 3) '(4 5) 7 9 9 :authorized :duplicate)))
+        (list '(98) '(1 2 3) '(60 97 62) 7 9 9 :authorized :duplicate
+              11 '(4 5))))
 
 ; Transit records retain the authored request separately from its pinned
 ; local relay projection, and their kinds remain after the legacy grammar.

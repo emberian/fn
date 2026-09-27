@@ -1857,6 +1857,49 @@ oversize, the kind 7 of that refusal became durable, and the node printed
   (`fn-bpnp-publication-fault-effect`), which reports `:uncertain`; that
   pass-through is not a theorem here.
 
+#### 4.9.4 The receipt journal holds a local request by reference (2026-09-27, lane bp-fragments-10mib-2, PKT-646, PRF-244)
+
+FNRJ's local request intent and context carried a copy of the request ADU
+(and the context a copy of the Store record) in 131,072-octet blobs, so
+every BP request past 128 KiB was refused "ACL2 refused application journal
+record" before the Store (PKT-646; a data cap, D27). Decided by the
+coordinator (2026-09-27): the record carries a REFERENCE to bytes the
+delivery already made durable, plus a digest, never the bytes; one format,
+fresh deploys (D34).
+
+- The reference of a request is `(HEAD LENGTH DIGEST)`
+  (`fn-bpaj-request-ref`, books/bp-native-app.lisp): HEAD its eight metadata
+  items encoded as the ADU encodes them (at most 8 x 259 octets by the ADU
+  grammar), LENGTH and DIGEST the article's length and `fn-frame-digest`.
+  The intent is `(:request-intent INBOUND HEAD GENERATION TXID RESULT LENGTH
+  DIGEST)`; the context is `(:request-context-v2 INBOUND HEAD MSGID
+  GENERATION TXID STORE-GENERATION t RESULT LENGTH DIGEST)`, naming the Store
+  record by Message-ID, txid and generation. The article's bytes are the
+  delivered bundle's (INBOUND, in the BP node's held journal) while the
+  delivery is held, and the Store record's payload once the Store committed
+  it.
+- Every read of a context resolves the reference over the Store record it
+  names (`fn-bpaj-context-record`, through the Message-ID index in the fast
+  twin) and binds that request (`fn-bpaj-context-request`): at
+  `fn-bprj-install` (recovery, every journal open) and at publication
+  (`fn-bprj-preflight`, `fn-bprj-apply`). A read whose record's payload has
+  another length or digest resolves to nothing and the replay refuses it.
+- A live request is compared with an intent through its reference
+  (`fn-bpaj-intent-names-requestp`): the same metadata and an article of the
+  same length and digest. Two different articles of one length and digest
+  (a SHA-256 collision; for n distinct articles at most n(n-1)/2^257) would
+  be taken for one request: the scope of the comparison, named by
+  `fn-bpaj-one-reference-is-one-request-or-a-digest-collision`.
+- KEYSTONES (books/bp-request-reference.lisp): `fn-bpaj-ref-request-resolves-exactly`
+  and `-to-the-bytes` (a request's reference over its own article resolves
+  to it, and encodes to its octets); `fn-bpaj-context-read-resolves-exactly`
+  (a context the host published for request octets R resolves, at any read
+  whose Store names a record with R's article, to exactly R).
+- Scope: the transit kinds (`:request-transit-intent`,
+  `:request-transit-context`) and the legacy `:request-context` still carry
+  the request ADU and the Store record or projection: a transit request past
+  128 KiB is still refused at FNRJ (open, PKT-646's remainder).
+
 ## 5. The theorems
 
 Notation, fixed for every statement:

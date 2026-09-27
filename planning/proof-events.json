@@ -7419,6 +7419,45 @@
           "note": "KEYSTONE. Subject fn-bpp-crc16-scan (its mbe :exec); host: every fn-bpp-crc16 call (fn-bpb-encode). Teeth: tests/acl2/bp-primary-tests.lisp (PRF-225 block)."
         }
       ]
+    },
+    {
+      "id": "PRF-244",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-ref-request-resolves-exactly",
+          "note": "KEYSTONE. Subject fn-bpaj-ref-request (the resolution fn-bpaj-context-request applies at every read). Teeth: tests/acl2/bp-request-reference-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-ref-request-resolves-to-the-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-context-read-resolves-exactly",
+          "note": "KEYSTONE at the read: fn-bpaj-apply-record(-fast) via fn-bprj-install / fn-bprj-preflight / fn-bprj-apply (host/bp-receipt-journal-host.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-context-request-is-the-referenced-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-intent-names-its-request"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-one-reference-is-one-request-or-a-digest-collision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-context-record-fast-is-checked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-context-v2-receiver-is-existing-transition"
+        }
+      ]
     }
   ]
 }

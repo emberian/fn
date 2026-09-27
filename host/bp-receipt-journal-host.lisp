@@ -100,20 +100,22 @@
  (value (fn-bpaj-config-status-fast
          (f-get-global 'fn-bpaj-state state) destination policy issuer)))
 
+; PKT-646: the local intent and context carry the request's reference (its
+; metadata, the article's length and digest) and the Store record's identity,
+; never their bytes; ACL2 builds both (books/bp-native-app.lisp).
 (defun fn-bprj-request-intent-record
  (inbound-id request-octets generation txid application-result state)
  (declare (xargs :stobjs state :mode :program))
- (let ((record (list :request-intent inbound-id request-octets generation txid
-                     application-result)))
-  (value (if (fn-bpaj-intentp record) record nil))))
+ (value (fn-bpaj-intent-record inbound-id request-octets generation txid
+                               application-result)))
 
 (defun fn-bprj-request-context-v2-record
  (inbound-id request-octets store-record generation txid record-generation
              application-result state)
  (declare (xargs :stobjs state :mode :program))
- (let ((record (list :request-context-v2 inbound-id request-octets store-record
-                     generation txid record-generation t application-result)))
-  (value (if (fn-bpaj-context-v2p record) record nil))))
+ (value (fn-bpaj-context-v2-record inbound-id request-octets store-record
+                                   generation txid record-generation
+                                   application-result)))
 
 (defun fn-bprj-request-transit-intent-record (record state)
  (declare (xargs :stobjs state :mode :program))
