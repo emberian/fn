@@ -201,9 +201,13 @@ the owner resolved the source address to, or nil for a reader."
 
 ; The completion fn-own-transit-outcome renders with: the owner's completion
 ; for the host word when the transfer decision was :want, else none.
+;; PKT-711: the rendering, as fn-own-transit-outcome passes it to the reply
+;; (fn-own-outcome-rendering: the completion, except that a refusal keeps
+;; the Store's word), so the logged code is the code the peer was sent: a
+;; full Store's :unaffordable is 436 on the wire and in the log alike.
 (defun fn-olog-transit-completion (o kind word)
   (declare (xargs :guard t))
-  (if (equal kind :want) (fn-own-outcome-completion o word) nil))
+  (if (equal kind :want) (fn-own-outcome-rendering o word) nil))
 
 (defun fn-olog-transit-code (o kind reason word)
   (declare (xargs :guard t))
