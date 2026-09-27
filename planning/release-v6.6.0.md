@@ -76,7 +76,7 @@ A row changes to MET only in the commit that adds that evidence.
 | F1 | The records freeze landed (PKT-293, PKT-635; records-freeze) | Retained heap about 1 octet per stored payload octet plus stated per-record metadata (today 16 B/octet: the history and the acceptance node hold octet lists). A reopen of the 1,000-post store under 128 MB RSS. | MET | planning/evidence/fundamentals-2026-09-27/F1.md |
 | F2 | The served machine reads through the catalog (catalog-slice step 7b/8) | GROUP/LISTGROUP/ARTICLE/OVER read v/fn-cat; R established at every host entry; the index lookups per served command measured on the served path, with the before/after at N = 10,000 | OPEN | planning/evidence/fundamentals-2026-09-27/F2.md |
 | F3 | The storage log (storage-log-design, PKT-636) | fsyncs per POST at batch 8 well under today's 7 barriers per commit, the figure stated by the design and measured; POST/s on the public node's edge disk stated (node-disk's mount) | OPEN | planning/evidence/fundamentals-2026-09-27/F3.md |
-| F4 | The owner scheduler (owner-scheduler, PKT-321) | Under the mixed hour (3 tight-loop readers, 1 POST every 0.5 s), every control request answered within its 10 s deadline, control p99 stated and bounded; no served read outlier past the work-quantum bound | OPEN | planning/evidence/fundamentals-2026-09-27/F4.md |
+| F4 | The owner scheduler (owner-scheduler, PKT-321) | Under the mixed hour (3 tight-loop readers, 1 POST every 0.5 s), every control request answered within its 10 s client deadline, control p99 stated; F4-R: every served read and status/health answered within D_R = 3 x Q_max, in the hour and under an injected 30 s disk stall; F4-W: every POST answered within H + Q_max (planning/design-time-model-2026-09-27.md section 4; mutating control its named exception, tail stated) | OPEN | planning/evidence/fundamentals-2026-09-27/F4.md |
 | F5 | Connection multiplexing (connection-multiplexing) | Memory per idle connection measured and stated (today one worker thread and its stack per connection, PKT-605); the capacity check against memory | MET | planning/evidence/fundamentals-2026-09-27/F5.md |
 | F6 | Opens at scale | The owner's open of a 20,000- and a 40,000-article store in seconds, not tens of seconds (the coordinator reads the bar as under 10 s each; ember may set it), peak RSS stated; checkpoint-pipeline measured 28.8 s and 5.15 GB at 40,000 x 2 KiB | OPEN | planning/evidence/fundamentals-2026-09-27/F6.md |
 | F7 | BP 10 MiB validated (SCN-077, PKT-630 (7); bp-fragments-10mib) | tests.test_bp_fragment_node_native wholly OK on dtn and dtn-developer, SCN-077 delivering a 10 MiB ADU into a Store profiled for it | OPEN | planning/evidence/fundamentals-2026-09-27/F7.md |
@@ -119,31 +119,35 @@ the common conditions in planning/evidence/fundamentals-2026-09-27/README.md):
 
 ## 3. The gates, in order
 
-`tools/cut_release.sh` runs gates 01 to 16 in this order and stops at the
+`tools/cut_release.sh` runs gates 01 to 17 in this order and stops at the
 first red. It writes `build/cut/vVERSION-REV12/verdict.txt`, whose last line
 is `VERDICT GREEN ...` or `VERDICT RED at NN NAME`, and one log per gate.
 Run it from a clean checkout at REV (a `git worktree add --detach`), never
 from the shared ~/dev/fn. `--dry-run` runs the read-only local gates and
-prints every other gate's commands. `--from N` resumes at gate N.
+prints every other gate's commands and checks the box preconditions it can
+(the glibc-floor runtime, the OpenBSD build VM provisioned and stopped,
+`sudo -n`). `--from N` resumes at gate N; `--to N` stops after gate N
+(`VERDICT PARTIAL`: one gate run for real, never a cut).
 
 | # | gate | green when | where |
 | --- | --- | --- | --- |
 | 01 | version | `VERSION` at REV is the next entry of the release sequence (D37) after the newest `v*` tag by sequence position, or 6.6.0 when there is none (`tools/release_sequence.py cut-check`; no numeric comparison); the tag `vVERSION` is free or already at REV; this checklist exists as planning/release-vVERSION.md | local |
 | 02 | tree | HEAD is REV with no tracked change | local |
 | 03 | fundamentals | every row of section 2 is MET with its evidence at REV | local |
-| 04 | changelog | `CHANGELOG.md` at REV is what `tools/changelog.py --rev REV` writes | local |
+| 04 | changelog | `CHANGELOG.md` at REV is what `tools/changelog.py --rev REV` writes, twice alike, and what it writes regenerates byte for byte at a scratch commit of it onto REV (`git commit-tree`: no ref moves) | local |
 | 05 | closure certified at the cut | `tools/green_check.py --strict` (every book green at its current digest in a committed manifest) and `--profile default --strict` (the image's closure). The batch cite that certified REV's closure is the manifest this reads. | local |
 | 06 | make check | the registries, the current view, proof cost and the throughput comparison, as `make check` runs them | local |
 | 07 | docs_check | `tools/docs_check.py --check`: every command the docs name exists with the grammar the docs give | local |
 | 08 | runpath check (static) | `tools/runpath_check.py`: every process site in host/ listed, no Python in the shipped packaging | local |
-| 09 | the four images; every native module | `tools/hbox_native.sh --images developer,production,dtn,dtn-developer REV` builds fn-host, fn-host-developer, fn-host-dtn and fn-host-dtn-developer from `git archive REV`, then runs every `tests/test_*native*.py` and `tests/test_bp_*.py` module except the `exclude` lines of planning/release-native-gate.txt, with its `env` opt-ins; status 0: no module FAILED, none wholly SKIPPED | hbox |
+| 09 | the six images; every native module | `tools/hbox_native.sh --images developer,production,dtn,dtn-developer,reference,developer-stripped REV` builds fn-host, fn-host-developer, fn-host-dtn, fn-host-dtn-developer and tests.test_native_image_differential's pair (fn-host-reference, the production image with its full world; fn-host-developer-stripped) from `git archive REV`, then runs every `tests/test_*native*.py` and `tests/test_bp_*.py` module except the `exclude` lines of planning/release-native-gate.txt, with its `env` opt-ins; status 0: no module FAILED, none wholly SKIPPED | hbox |
 | 10 | the throughput gate, quiet | `tools/throughput_gate.py run` on REV's developer image with `--wait-quiet 1800` (never `--under-load`: a cut is measured on a quiet box), then `check` within planning/throughput-baseline.json | hbox |
 | 11 | the hostile campaign | `tools/hostile_campaign.py` on REV's developer image, every family (malformed, header, body, connection, pipelining, transit, tls, bp); exit 0 = no defect | hbox |
-| 12 | the Linux tarball (glibc floor) | packaging/release-tarball.sh `--runtime-from` the glibc-floor runtime builds `fn-VERSION-linux-x86_64.tar.gz` from the archive (its own green_check, acquire, validate, production image, runpath `--tree`, `--version` check); `runpath_check.py --tarball`; installed fresh from the tarball and SHA256SUMS with `install.sh --no-service`; tests.test_release_tarball `OK` with no skip (the format-7 fixture given); `fn --version` in a bare `debian:12` container with only libssl3 prints `fn VERSION (REV12)` | hbox + docker |
-| 13 | the OpenBSD tarball | the same build in the OpenBSD 7.9 build VM (planning/evidence/release-openbsd-2026-09-26.md section 2): `fn-VERSION-openbsd-amd64.tar.gz`, runpath `--tarball`, installed fresh, tests.test_release_tarball `OK`. Needs `--openbsd-host` and `--openbsd-root`; without them the gate is red, not skipped | the VM |
+| 12 | the Linux tarball (glibc floor) | packaging/release-tarball.sh `--runtime-from` the glibc-floor runtime builds `fn-VERSION-linux-x86_64.tar.gz` from the archive (its own green_check, acquire, validate, production image, runpath `--tree`, `--version` check); `runpath_check.py --tarball`; installed fresh from the tarball and SHA256SUMS with `install.sh --no-service`; tests.test_release_tarball `OK` with no skip (the format-7 fixture given); `fn --version` in a bare `debian:12` container with only libssl3 prints `fn 6.7.N (REV12)` | hbox + docker |
+| 13 | the OpenBSD tarball | in the cut's OpenBSD 7.9 build VM on hbox (`--openbsd-vm`, default `cutbld`: a tools/power_loss_openbsd.py configuration whose root is a copy of openbsd-release-fixes' orfbld; provisioning in the header of tools/cut_release.sh): REV's default closure certified in the guest, `fn-6.7.N-openbsd-amd64.tar.gz` built by packaging/release-tarball.sh, runpath `--tarball`, installed fresh, tests.test_release_tarball `OK`, the installed `fn --version` under root's login limits prints `fn 6.7.N (REV12)`; the VM is booted and shut down by the gate, and a VM already running (someone's) is red, never taken | hbox (the VM) |
 | 14 | the power-loss cut list on the release image | tools/power_loss.py's reproduction (planning/evidence/power-loss-2026-09-26.md section 7): rig, workload of 600 POSTs, index, the cut plan `init=8,post=150,checkpoint=60,compact=60,reclaim=50,control=8` with recovery cut at 0.2, on the INSTALLED tarball's launcher; the summary's `all` row: 0 violations, controls caught > 0, 0 harness errors | hbox (sudo -n for the block layer) |
 | 15 | the friends session from the tarball | tests.test_native_friends_feed with `FN_FRIEND_FN` the fresh install's `bin/fn` (the friend) and the developer image as the author: `OK` with no skip | hbox |
-| 16 | the tag | prints `git tag -a vVERSION -m 'fn VERSION' REV` for the coordinator; the script creates no tag | local |
+| 16 | extract-check | `make extract-check` (lane extract-2's N-version differential) when REV's Makefile has the target; `SKIPPED` (never green) until it does | local |
+| 17 | the tag | prints `git tag -a vVERSION -m 'fn VERSION' REV` for the coordinator; the script creates no tag | local |
 
 What the gates do not decide (the cut's qualification record, section 4):
 
@@ -154,7 +158,7 @@ What the gates do not decide (the cut's qualification record, section 4):
   (frozen_relocation). The record lists each one as unexercised with its
   reason.
 - **The per-image split.** hbox_native.sh gives each module the variables
-  it reads for the four images. A module that picks one image runs on that
+  it reads for the six images. A module that picks one image runs on that
   image only. The qualification of 69046a76 ran the non-BP modules on prod
   and dev and the BP modules on dtn and dtndev by hand (`env.sh`,
   PKT-499 (d)). The record says which modules ran on which image.
@@ -168,19 +172,24 @@ What the gates do not decide (the cut's qualification record, section 4):
 
 ## 4. The cut, step by step (the coordinator)
 
-1. Every fundamental MET on dev (section 2), each with its record.
+1. Every fundamental MET on dev (section 2), each with its record:
+   `python3 tools/fundamentals.py run --image TREE --revision REV` on a
+   hbox_native tree of the candidate (the four images) measures F1 to F8
+   with the scoreboard's methods, writes
+   planning/evidence/fundamentals-DATE-REV12/ and updates the table's rows
+   it measured (MET only when that evidence meets the bar; the bars that
+   need a reading are its parameters, printed in the record).
 2. `python3 tools/changelog.py --write`; commit CHANGELOG.md (and VERSION if
    it changes) on dev. That commit is REV.
 3. `git worktree add --detach build/cut-VERSION REV`; there, `tools/cut_release.sh
-   --dry-run --rev REV`, then `tools/cut_release.sh --rev REV
-   --openbsd-host H --openbsd-root DIR` (start it in the background; gates 09
-   to 15 take hours).
+   --dry-run --rev REV`, then `tools/cut_release.sh --rev REV` (start it in
+   the background; gates 09 to 15 take hours).
 4. On `VERDICT GREEN`: write planning/evidence/qual-vVERSION-DATE.md from the
    verdict, the logs and the module table (the shape of
    qual-69046a76-2026-09-26.md). Commit the throughput JSON gate 10 wrote
    under planning/evidence/throughput/, the verdict and the tarballs'
    SHA256SUMS.
-5. Tag `vVERSION` at REV (gate 16's line); push the tag.
+5. Tag `vVERSION` at REV (gate 17's line); push the tag.
 6. The release notes (section 7), final, beside the tarballs. ember's go
    before any friend is sent a link.
 
