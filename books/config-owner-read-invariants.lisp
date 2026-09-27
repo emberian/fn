@@ -222,6 +222,14 @@
                              fn-sn-verdict-listp fn-own-served-conn
                              fn-own-conn-live-session))))))
 
+;; No connection ID: the read returns the owner unchanged (fn-own-read-full's
+;; missing branch).
+(local
+ (defthm fn-ocri-missing-read-keeps-owner
+   (implies (not (fn-own-find-conn id (fn-own-conns o)))
+            (equal (cdr (fn-own-read o id octets)) o))
+   :hints (("Goal" :in-theory (enable fn-own-read fn-own-read-full)))))
+
 (defthm fn-ocri-own-read-preserves-reader-pins
   (implies (and (fn-ocri-viewp (fn-own-view o))
                 (fn-ocri-conns-p (fn-own-conns o)))
@@ -231,7 +239,11 @@
            :use ((:instance fn-ocri-read-survivor-is-a-reader-pin)
                  (:instance fn-ocl-own-read-survivor-is-replacement)
                  (:instance fn-ocl-own-read-nonsurvivor-is-removal)
-                 (:instance fn-ocl-missing-read-keeps-owner-conns))
+                 (:instance fn-ocri-missing-read-keeps-owner)
+                 (:instance fn-ocri-conns-p-of-replace
+                            (conns (fn-own-conns o))
+                            (conn (fn-own-find-conn
+                                   id (fn-own-conns (cdr (fn-own-read o id octets)))))))
            :in-theory (e/d ()
                            (fn-own-read fn-own-read-full fn-own-finish-read
                             fn-served-step fn-ocri-connp fn-ocri-viewp
@@ -254,12 +266,17 @@
    (fn-ocri-relation (cdr (fn-ocfg-read oc id octets))))
   :hints (("Goal"
            :use ((:instance fn-ocri-own-read-preserves-reader-pins
+                            (o (fn-ocfg-owner oc)))
+                 (:instance fn-ocri-own-read-keeps-view
                             (o (fn-ocfg-owner oc))))
+           ; fn-ocfg-read takes the owner from fn-own-read-full; fn-own-read
+           ; is its projection, opened so the reader-pins theorem meets it
            :in-theory (e/d (fn-ocri-relation fn-ocfg-read
-                            fn-ocfg-with-read-owner)
+                            fn-ocfg-with-read-owner fn-own-read)
                            (fn-ocl-relation
                             fn-ocri-own-read-preserves-reader-pins
-                            fn-own-read fn-ocri-conns-p fn-ocri-viewp)))))
+                            fn-own-read-full fn-own-finish-read
+                            fn-ocri-conns-p fn-ocri-viewp)))))
 
 (defthm fn-ocri-read-preserves-historical-reader-relation
   (implies (fn-ocri-relation oc)
