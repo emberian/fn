@@ -63,7 +63,7 @@ class MountIdentitySourceTests(unittest.TestCase):
                         acquire.index("(fnn-load-config store)"))
         check = io[io.index("(defun fnn-check-filesystem-identity"):
                    io.index("(defun fnn-publish-filesystem-record")]
-        self.assertIn("'fn-smid-open-verdict", check)
+        self.assertIn("'fn-smid-open-decision", check)
         self.assertIn("'fn-smid-start-verdict", check)
         self.assertIn("'fn-smid-refusal-text", check)
 
@@ -144,10 +144,23 @@ class MountIdentityNativeTests(unittest.TestCase):
         text = self.expect(self.fn("store", store, "recover"), EXIT_REFUSED, "corrupted")
         self.assertIn("store filesystem record invalid: ", text)
         record.unlink()
-        text = self.expect(self.fn("store", store, "recover"), EXIT_REFUSED, "removed")
+        # A complete store with no record is a store made before the record:
+        # it opens offline with a warning, and its owner does not start.
+        text = self.expect(self.fn("store", store, "recover"), EXIT_OK, "removed")
+        self.assertIn("warning: store filesystem unrecorded: ", text)
+        config = self.tmp / "fn.toml"
+        config.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+                          '[control]\npath = "{}"\n'.format(store, free_port(), self.tmp / "c.sock"),
+                          encoding="ascii")
+        started = subprocess.run([str(IMAGE), "--fn", "operator", str(config), "run"],
+                                 cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, timeout=180, check=False)
+        text = self.expect(started, EXIT_REFUSED, "start without a record")
         self.assertIn("store filesystem unrecorded: ", text)
-        self.expect(self.fn("store", store, "rebind-filesystem"), EXIT_OK, "rebind")
-        self.expect(self.fn("store", store, "recover"), EXIT_OK, "recover after rebind")
+        rebound = self.expect(self.fn("store", store, "rebind-filesystem"), EXIT_OK, "rebind")
+        self.assertIn("; no valid record before", rebound)
+        text = self.expect(self.fn("store", store, "recover"), EXIT_OK, "recover after rebind")
+        self.assertNotIn("unrecorded", text)
 
     # --- PKT-648: the durability policy at the owner's start -----------------
 
@@ -208,9 +221,12 @@ class MountIdentityNativeTests(unittest.TestCase):
         if not os.path.exists("/proc/self/mountinfo") or not self.memory_filesystem():
             self.skipTest("the temporary directory is not on tmpfs here")
         config = self.operator_node(self.tmp)
-        # Offline, every open warns; the operator store defaults to policy 0.
+        # status and health warn; an ordinary open does not.  An operator
+        # store made without a mission has policy 0.
         status = self.expect(self.fn("operator", config, "status"), EXIT_OK, "status")
         self.assertIn("warning: store filesystem tmpfs at ", status)
+        recovered = self.expect(self.fn("operator", config, "recover"), EXIT_OK, "recover")
+        self.assertNotIn("warning: store filesystem", recovered)
         process, err = self.start(config)
         self.assertIsNone(err, "a policy-0 store on tmpfs starts")
         self.reap(process)

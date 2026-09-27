@@ -7509,6 +7509,71 @@
           "name": "fn-apr-foundp-is-article-found"
         }
       ]
+    },
+    {
+      "id": "PRF-232",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-smid-record-decode-of-seal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-payload-decode-of-payload"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-mountinfo-step-preserves-best-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-recorded-store-opens-iff-same-filesystem"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-moved-mount-point-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-absent-record-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-open-verdict-opens-only-on-a-match"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-start-refused-iff-required-and-unsafe"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-rebound-store-opens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-refusal-text-is-nil-exactly-for-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-refusal-text-is-nil-exactly-for-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-open-decision-is-the-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-empty-root-is-refused"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-unrecorded-store-never-starts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-smid-refusal-text-is-nil-exactly-for-an-open-decision"
+        }
+      ]
     }
   ]
 }

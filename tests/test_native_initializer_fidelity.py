@@ -204,12 +204,22 @@ class NativeInitializerFidelityTests(unittest.TestCase):
         self.assertEqual(reopened.returncode, run_store.EXIT_OK, reopened.stderr)
         self.assertIn(b"recovered transactions=0 articles=0", reopened.stdout)
 
-    def test_sigkill_before_metadata_makes_restart_fault(self):
+    def test_sigkill_before_metadata_makes_restart_refuse_by_name(self):
         store = self.base / "killed-lock"
         killed = self.invoke(store, "init", "init-lock-created:kill")
         self.assertEqual(killed.returncode, -9, killed.stderr)
+        # PKT-579 (books/store-mount-identity.lisp fn-smid-empty-root-is-refused):
+        # a root with no filesystem record and no config.json is refused by
+        # name before the structural checks that used to fault here; the
+        # line names `init' again as the remedy.  Nothing is written.
         reopened = self.invoke(store, "recover")
-        self.assertEqual(reopened.returncode, run_store.EXIT_FAULT, reopened.stderr)
+        self.assertEqual(reopened.returncode, run_store.EXIT_REFUSED, reopened.stderr)
+        self.assertIn(b"store filesystem unrecorded: ", reopened.stderr)
+        self.assertIn(b"run init again if it was interrupted", reopened.stderr)
+        self.assertFalse((store / "config.json").exists())
+        retried = self.invoke(store, "init")
+        self.assertEqual(retried.returncode, run_store.EXIT_OK, retried.stderr)
+        self.assertEqual(self.invoke(store, "recover").returncode, run_store.EXIT_OK)
 
 
 if __name__ == "__main__":

@@ -42,6 +42,9 @@
 ;   * `fn-smid-linux-observation' FSID BEST and `fn-smid-statfs-observation'
 ;     FSID FSTYPE MOUNT SOURCE: the observation (io.lisp
 ;     `fnn-filesystem-observation');
+;   * `fn-smid-open-decision' RECORD OBSERVATION CONFIGURED: the host's open,
+;     which is `fn-smid-open-verdict' wherever a record is present
+;     (`fn-smid-open-decision-is-the-verdict');
 ;   * `fn-smid-open-verdict' RECORD OBSERVATION: the open's decision (io.lisp
 ;     `fnn-check-filesystem-identity', called by `fnn-acquire', so every
 ;     open: owner start, recover, status, inspect, export, checkpoint, the
@@ -49,6 +52,8 @@
 ;   * `fn-smid-record-plan' OBSERVATION: the record's protected bytes for
 ;     `init' and `store rebind-filesystem' (io.lisp
 ;     `fnn-record-filesystem-identity');
+;   * `fn-smid-start-verdict' RECORD OBSERVATION: the owner's start
+;     (host/native/owner.lisp fnn-owner-install, PKT-648);
 ;   * `fn-smid-refusal-text' VERDICT, `fn-smid-rebind-text',
 ;     `fn-smid-durability-warning' OBSERVATION: every line the host prints.
 ;
@@ -879,6 +884,43 @@
                             (policy (fn-smid-rebind-policy record requested)))))))
 
 ; -----------------------------------------------------------------------------
+; The open the host calls: a store made before the record
+
+; Every store made before 2026-09-27 (and a store whose `init' died before
+; its record) has a complete root and no record.  An offline open of such a
+; store proceeds with a warning naming the remedy (`store rebind-filesystem');
+; its owner's START is refused (`fn-smid-start-verdict' above is strict), so
+; no node serves a store whose filesystem is not required.  A root with no
+; record and no config.json (the empty directory underneath a missing
+; volume) is refused at every open.  CONFIGURED is the host's observation
+; that config.json is present as a regular file.
+(defun fn-smid-open-decision (record observation configured)
+  (declare (xargs :guard t))
+  (if (and (equal record (list :absent)) configured
+           (fn-smid-observationp observation))
+      (list :open-unrecorded (fn-smid-observed-identity observation))
+    (fn-smid-open-verdict record observation)))
+
+; KEYSTONE (the host's open is the verdict).  Wherever a record is present,
+; or the root holds no configuration, the host's open decision is
+; `fn-smid-open-verdict', so every keystone above is about it.
+(defthm fn-smid-open-decision-is-the-verdict
+  (implies (or (not (equal record (list :absent))) (not configured))
+           (equal (fn-smid-open-decision record observation configured)
+                  (fn-smid-open-verdict record observation))))
+
+; KEYSTONE (the missing volume, the empty directory).  No record and no
+; configuration: refused by name, whatever is observed.
+(defthm fn-smid-empty-root-is-refused
+  (implies (not configured)
+           (equal (car (fn-smid-open-decision (list :absent) observation configured))
+                  :refused)))
+
+; KEYSTONE (a store made before the record is never started).
+(defthm fn-smid-unrecorded-store-never-starts
+  (not (equal (fn-smid-start-verdict (list :absent) observation) (list :start))))
+
+; -----------------------------------------------------------------------------
 ; Text: every line the host prints for this boundary
 
 (defun fn-smid-codes (chars)
@@ -1025,9 +1067,28 @@
 
 (verify-guards fn-smid-rebind-text)
 
-; PKT-648's warning: printed at every open of a store on such a mount
-; (status and health included), whatever its policy.  NIL when the mount
-; shows nothing unsafe.
+;; An offline open of a store made before the record.
+(defun fn-smid-unrecorded-warning (decision)
+  (declare (xargs :guard t))
+  (if (and (true-listp decision) (equal (car decision) :open-unrecorded))
+      (append (fn-smid-text "warning: store filesystem unrecorded: this store predates its filesystem record (found ")
+              (fn-smid-describe (nth 1 decision))
+              (fn-smid-text "); its owner will not start until `store rebind-filesystem` records where it is"))
+    nil))
+
+(defthm fn-smid-refusal-text-is-nil-exactly-for-an-open-decision
+  (iff (fn-smid-refusal-text (fn-smid-open-decision record obs configured))
+       (not (member-equal (car (fn-smid-open-decision record obs configured))
+                          (list :open :open-unrecorded))))
+  :hints (("Goal" :in-theory (disable fn-smid-describe fn-smid-text
+                                      fn-smid-record-decode
+                                      fn-smid-same-filesystemp
+                                      fn-smid-observationp))))
+
+; PKT-648's warning: printed by the owner's start and by `status' and
+; `health' for a store on such a mount, whatever its policy (host/native/
+; io.lisp fnn-filesystem-durability-warn).  NIL when the mount shows nothing
+; unsafe.
 (defun fn-smid-durability-warning (observation)
   (declare (xargs :guard t))
   (let ((reason (fn-smid-unsafe-reason observation)))

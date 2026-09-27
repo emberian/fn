@@ -2317,22 +2317,38 @@ does not decode."
     (fnn-fault "ACL2 returned a malformed filesystem line"))
   (fnn-octets-string (fnn-octets octets)))
 
+(defun fnn-filesystem-durability-warn (root &optional observation)
+  "PKT-648: print ACL2's warning when the filesystem under ROOT observably
+disables durability (nobarrier, barrier=0, tmpfs, ramfs); nothing otherwise.
+The owner's start and `status'/`health' call it, not every open."
+  (let ((warning (fnn-core 'fn-smid-durability-warning
+                           (or observation (fnn-filesystem-observation root)))))
+    (when warning (fnn-err "~a" (fnn-filesystem-text warning)))))
+
 (defun fnn-check-filesystem-identity (store &optional start)
   "The open's decision (ACL2 fn-smid-open-verdict), or with START the owner
 start's (fn-smid-start-verdict): refused by name, never opened elsewhere.
-The durability warning is printed for every open it applies to."
+A start that proceeds prints the durability warning."
   (let* ((observation (fnn-filesystem-observation (fnn-store-root store)))
          (record (fnn-filesystem-record-observation store))
-         (verdict (fnn-core (if start 'fn-smid-start-verdict 'fn-smid-open-verdict)
-                            record observation)))
+         (verdict (if start
+                      (fnn-core 'fn-smid-start-verdict record observation)
+                      ;; CONFIGURED: config.json is a regular file here (a
+                      ;; store made before the record opens offline with a
+                      ;; warning; an empty root is refused).
+                      (fnn-core 'fn-smid-open-decision record observation
+                                (if (fnn-check-regular (fnn-config-path store)) t nil)))))
+    (when (and (not start) (consp verdict) (eq (first verdict) :open-unrecorded))
+      (fnn-err "~a" (fnn-filesystem-text
+                     (fnn-core 'fn-smid-unrecorded-warning verdict)))
+      (return-from fnn-check-filesystem-identity verdict))
     (unless (equal verdict (if start '(:start) '(:open)))
       (let ((text (fnn-core 'fn-smid-refusal-text verdict)))
         (unless text
           (fnn-fault "ACL2 returned no text for a filesystem refusal"))
         (error 'fnn-store-open-refusal :message (fnn-filesystem-text text))))
-    (unless start
-      (let ((warning (fnn-core 'fn-smid-durability-warning observation)))
-        (when warning (fnn-err "~a" (fnn-filesystem-text warning)))))
+    (when start
+      (fnn-filesystem-durability-warn (fnn-store-root store) observation))
     verdict))
 
 (defun fnn-publish-filesystem-record (store protected)
@@ -3386,6 +3402,7 @@ an owner holds the Store: `operator CONFIG status' asks that owner instead."
       (fnn-store-close store))))
 
 (defun fnn-command-status (root)
+  (fnn-filesystem-durability-warn root)
   (fnn-command-live-report root :status))
 
 (defun fnn-command-retention (root)

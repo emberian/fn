@@ -381,3 +381,44 @@
  (defthm smid-t-rebound-without-plan
    (equal (fn-smid-open-verdict (fn-smid-sealed protected) obs)
           (list :open))))
+
+; -----------------------------------------------------------------------------
+; The host's open decision: a store made before the record.
+
+; fn-smid-open-decision-is-the-verdict: a recorded store, configured.
+(assert-event (equal (fn-smid-open-decision (smid-t-record) *smid-t-mounted* t)
+                     (fn-smid-open-verdict (smid-t-record) *smid-t-mounted*)))
+(assert-event (equal (fn-smid-open-decision (smid-t-record) *smid-t-unmounted* t)
+                     (fn-smid-open-verdict (smid-t-record) *smid-t-unmounted*)))
+; Without the hypothesis: no record, configured, observed -- the decision
+; opens the store made before the record while the verdict refuses it.
+(assert-event (equal (fn-smid-open-decision (list :absent) *smid-t-mounted* t)
+                     (list :open-unrecorded *smid-t-id*)))
+(assert-event (not (equal (fn-smid-open-decision (list :absent) *smid-t-mounted* t)
+                          (fn-smid-open-verdict (list :absent) *smid-t-mounted*))))
+(must-fail
+ (defthm smid-t-decision-without-hypothesis
+   (equal (fn-smid-open-decision record observation configured)
+          (fn-smid-open-verdict record observation))))
+
+; fn-smid-empty-root-is-refused: the empty directory underneath a volume.
+(assert-event (equal (fn-smid-open-decision (list :absent) *smid-t-unmounted* nil)
+                     (list :refused :filesystem-unrecorded
+                           (fn-smid-observed-identity *smid-t-unmounted*))))
+; Without (not configured): a configured root with no record is opened.
+(assert-event (not (equal (car (fn-smid-open-decision (list :absent) *smid-t-unmounted* t))
+                          :refused)))
+(must-fail
+ (defthm smid-t-empty-root-without-hypothesis
+   (equal (car (fn-smid-open-decision (list :absent) observation configured))
+          :refused)))
+
+; fn-smid-unrecorded-store-never-starts, on the witness; the warning names
+; the remedy.
+(assert-event (equal (fn-smid-start-verdict (list :absent) *smid-t-mounted*)
+                     (list :refused :filesystem-unrecorded *smid-t-id*)))
+(assert-event (consp (fn-smid-unrecorded-warning
+                      (fn-smid-open-decision (list :absent) *smid-t-mounted* t))))
+(assert-event (null (fn-smid-unrecorded-warning (list :open))))
+(assert-event (null (fn-smid-refusal-text
+                     (fn-smid-open-decision (list :absent) *smid-t-mounted* t))))

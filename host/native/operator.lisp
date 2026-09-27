@@ -550,6 +550,8 @@ observation into the outcome and this function only carries it out."
                      result))
          (control-path (and (fnn-octet-list-p path-list) (consp path-list)
                             (fnn-octets path-list))))
+    ;; PKT-648: the store's mount, as this process observes it (live or not).
+    (ignore-errors (fnn-filesystem-durability-warn root))
     (loop
       (let ((code (handler-case (fnn-operator-status-once root control-path kind)
                     (error (condition)
@@ -612,6 +614,8 @@ observation into the outcome and this function only carries it out."
          (control-path (and (fnn-octet-list-p path-list) (consp path-list)
                             (fnn-octets path-list)))
          (min (fnn-core 'fn-native-operator-host-result-health-min-percent result)))
+    ;; PKT-648: the store's mount, as this process observes it (live or not).
+    (ignore-errors (fnn-filesystem-durability-warn root))
     (handler-case
         (let ((report (fnn-operator-health-report root control-path min)))
           (if (eq report :refused)
