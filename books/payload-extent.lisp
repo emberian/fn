@@ -1,5 +1,5 @@
 ; fn: the payload arena's extents at the open, and the served read's trailer
-; check (lane arena-offheap-2, 2026-09-27; PRF-281; design:
+; check (lane arena-offheap-2, 2026-09-27; PRF-294; design:
 ; planning/evidence/arena-offheap-2026-09-27.md section 3).
 ;
 ; The open of a format-9 store scans each log segment (host/native/io.lisp
@@ -343,7 +343,7 @@
            :in-theory (e/d (fn-intern-events)
                            (fn-arx-intern-event fn-intern-event fn-intern-event-arena)))))
 
-; KEYSTONE (PRF-281).  The host's chunk step with extents
+; KEYSTONE (PRF-294).  The host's chunk step with extents
 ; (host/native/io.lisp fnn-bridge-recover calls fn-arx-intern-step) is the
 ; resident chunk step whenever each record's octets are the durable octets at
 ; its entry: the same rows, the same arena (whose extent handles hold no

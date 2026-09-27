@@ -1,4 +1,4 @@
-; Tests for books/payload-extent.lisp (lane arena-offheap-2, PRF-281).
+; Tests for books/payload-extent.lisp (lane arena-offheap-2, PRF-294).
 ;
 ; 1. The exec functions the host calls are guard-verified.
 ; 2. The codec's place of the payload is right on a real record: a record

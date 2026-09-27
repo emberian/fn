@@ -1,5 +1,5 @@
 ; fn: the payload arena with EXTENT handles, attached to the generic (lane
-; arena-offheap-2, 2026-09-27; PRF-281; design:
+; arena-offheap-2, 2026-09-27; PRF-294; design:
 ; planning/evidence/arena-offheap-2026-09-27.md section 3).
 ;
 ; `fn-arena-extent' is an abstract stobj over `fn-arena$x', a concrete stobj
@@ -11,7 +11,8 @@
 ; seal (`fn-arena$x-seal-extent') seals the EMPTY payload into the child
 ; (keeping the handle numbering: 16 octets of handle arrays, no payload
 ; octets) and records the extent.  A read of an extent handle calls the
-; host's realizer `fn-durable-realize-octet' (A-DURABLE-EXTENT,
+; host's realizers `fn-durable-realize-octet' (one octet) and
+; `fn-durable-realize-octets' (the payload) (A-DURABLE-EXTENT,
 ; books/assumptions.lisp): the host preads the entry into its bounded
 ; cache, ACL2 checks the entry's trailer, and a mismatch is refused by name
 ; (books/payload-extent.lisp; host/native/extent.lisp).
@@ -169,7 +170,7 @@
                               (fn-arena$x-wfp fn-arena$x))))
   (let ((e (fn-arena$x-exti h fn-arena$x)))
     (if (fn-arn-extentp e)
-        (fn-arx-realize-down (nth 4 e) (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e) nil)
+        (fn-durable-realize-octets (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e))
       (stobj-let ((fn-arena-paged (fn-arena$x-inner fn-arena$x)))
                  (v)
                  (fn-arena-paged-payload h fn-arena-paged)

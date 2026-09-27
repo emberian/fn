@@ -431,7 +431,7 @@
     :rule-classes :type-prescription))
 
 ; -----------------------------------------------------------------------------
-; A-DURABLE-EXTENT (lane arena-offheap-2, 2026-09-27; PRF-281; the payload
+; A-DURABLE-EXTENT (lane arena-offheap-2, 2026-09-27; PRF-294; the payload
 ; arena's stage 2, planning/evidence/arena-offheap-2026-09-27.md section 3).
 ;
 ; "A durable file holds, at an extent the host durably wrote and never
@@ -454,6 +454,11 @@
 ; books/payload-extent.lisp) and answers the payload's octet I; a mismatch
 ; is refused by name (arena-extent-digest: a recovery event), never
 ; answered.  The constraint says the realizer's answer is the durable octet.
+; `(fn-durable-realize-octets file eoff elen poff plen trailer)' is the same
+; realizer for the whole payload in one call (lane arena-offheap-3: one
+; pread, one trailer check, one list, where the per-octet call took the
+; realizer's lock once per octet); the constraint says it is the payload's
+; durable octets.
 ;
 ; Theorems that take it: fn-arena-extent-payload (books/payload-arena.lisp:
 ; an extent handle's payload is fn-durable-octets of its extent), and every
@@ -462,7 +467,8 @@
 (encapsulate
   (((fn-durable-octet * *) => *)
    ((fn-durable-octets * * *) => *)
-   ((fn-durable-realize-octet * * * * * * *) => *))
+   ((fn-durable-realize-octet * * * * * * *) => *)
+   ((fn-durable-realize-octets * * * * * *) => *))
 
   (local (defun fn-durable-octet (file pos)
            (declare (ignore file pos))
@@ -477,6 +483,10 @@
   (local (defun fn-durable-realize-octet (file eoff elen poff plen trailer i)
            (declare (ignore eoff elen trailer))
            (nth i (fn-durable-octets file poff plen))))
+
+  (local (defun fn-durable-realize-octets (file eoff elen poff plen trailer)
+           (declare (ignore eoff elen trailer))
+           (fn-durable-octets file poff plen)))
 
   (defthm fn-durable-octet-is-octet
     (fn-cbor-octetp (fn-durable-octet file pos)))
@@ -493,7 +503,11 @@
 
   (defthm fn-durable-realize-octet-is-durable
     (equal (fn-durable-realize-octet file eoff elen poff plen trailer i)
-           (nth i (fn-durable-octets file poff plen)))))
+           (nth i (fn-durable-octets file poff plen))))
+
+  (defthm fn-durable-realize-octets-is-durable
+    (equal (fn-durable-realize-octets file eoff elen poff plen trailer)
+           (fn-durable-octets file poff plen))))
 
 (local
  (defun fn-durable-ind (off len)

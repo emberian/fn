@@ -1,5 +1,5 @@
 ; Tests for books/payload-arena-extent.lisp and the generic's extent seal
-; (lane arena-offheap-2, PRF-281).
+; (lane arena-offheap-2, PRF-294).
 ;
 ; 1. Every exec function of the extent arena is guard-verified.
 ; 2. The extent arena run directly (not attached): resident seals, an extent
@@ -27,7 +27,6 @@
       (eq (symbol-class 'fn-arena$x-clear (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arena$x-seal-extent (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arx-mark (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arx-realize-down (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arena$l-seal-extent (w state)) :common-lisp-compliant)))
 
 ; The run: seal (1 2 3); seal the extent (file 7, entry [100, 200), payload
@@ -126,15 +125,9 @@
          20)
   :rule-classes nil)
 
-; The realizer is the durable octets, octet by octet and as a list (the
-; reads of an extent handle, books/payload-arena-extent-logic.lisp).
+; The whole-payload realizer is the durable octets (A-DURABLE-EXTENT's
+; constraint: the read of an extent handle's payload, one call).
 (defthm paxt-realize-witness
-  (equal (fn-arx-realize-down 20 7 100 100 120 20 99 nil)
+  (equal (fn-durable-realize-octets 7 100 100 120 20 99)
          (fn-durable-octets 7 120 20))
   :rule-classes nil)
-
-(local
- (must-fail
-  (with-prover-step-limit 50000 (defthm paxt-realize-without-natp
-    (equal (fn-arx-realize-down plen 7 100 100 120 plen 99 nil)
-           (fn-durable-octets 7 120 plen))))))

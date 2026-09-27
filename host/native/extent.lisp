@@ -55,15 +55,25 @@
               (t (return)))))
     done))
 
+(defun fnn-extent-cache-limit ()
+  "ACL2's bound on the verified entries the realizer keeps
+(fn-arx-read-cache-entries); 0 on a developer image started with
+FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
+  (if (equal (fnn-developer-selector "FN_NATIVE_EXTENT_CACHE_TEST_OFF") "1")
+      0
+    (fnn-core 'fn-arx-read-cache-entries)))
+
 (defun fnn-extent-entry (file eoff elen trailer)
   (declare (ignore trailer))
   "The verified protected prefix of the entry at [EOFF, EOFF+ELEN) of FILE,
-from the cache or read and checked by ACL2 (fn-arx-entry-ok)."
+from the cache or read once (one pread of the prefix and its trailer) and
+checked by ACL2 (fn-arx-entry-ok).  Called with the realizer's lock held."
   (let ((hit (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)))
                       *fnn-extent-cache*)))
     (if hit
         (progn (incf (first *fnn-extent-stats*))
-               (setq *fnn-extent-cache* (cons hit (remove hit *fnn-extent-cache* :test #'eq)))
+               (unless (eq hit (first *fnn-extent-cache*))
+                 (setq *fnn-extent-cache* (cons hit (delete hit *fnn-extent-cache* :test #'eq))))
                (cddr hit))
       (let ((fd (gethash file *fnn-extent-fds*))
             (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8))))
@@ -82,10 +92,11 @@ from the cache or read and checked by ACL2 (fn-arx-entry-ok)."
           (error 'fnn-extent-fault
                  :message (format nil "arena-extent-digest: the entry at ~a of ~a does not match its trailer"
                                   eoff (gethash file *fnn-extent-paths*))))
-        (let ((limit (fnn-core 'fn-arx-read-cache-entries)))
-          (push (list* file eoff octets) *fnn-extent-cache*)
-          (when (> (length *fnn-extent-cache*) limit)
-            (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit))))
+        (let ((limit (fnn-extent-cache-limit)))
+          (when (plusp limit)
+            (push (list* file eoff octets) *fnn-extent-cache*)
+            (when (> (length *fnn-extent-cache*) limit)
+              (setq *fnn-extent-cache* (subseq *fnn-extent-cache* 0 limit)))))
         octets))))
 
 ;;; The realizer (A-DURABLE-EXTENT's constrained function), raw and *1*.
@@ -96,6 +107,23 @@ from the cache or read and checked by ACL2 (fn-arx-entry-ok)."
 
 (defun acl2_*1*_acl2::fn-durable-realize-octet (file eoff elen poff plen trailer i)
   (fn-durable-realize-octet file eoff elen poff plen trailer i))
+
+;;; The whole payload in one call (fn-durable-realize-octets): one lock, one
+;;; cache lookup or one pread and one trailer check, one list of PLEN octets
+;;; built from the verified buffer.
+(defun fn-durable-realize-octets (file eoff elen poff plen trailer)
+  (let ((entry (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+                 (fnn-extent-entry file eoff elen trailer)))
+        (start (- poff eoff))
+        (acc nil))
+    (declare (type (simple-array (unsigned-byte 8) (*)) entry)
+             (type fixnum start plen))
+    (loop for i of-type fixnum from (+ start plen -1) downto start do
+      (push (aref entry i) acc))
+    acc))
+
+(defun acl2_*1*_acl2::fn-durable-realize-octets (file eoff elen poff plen trailer)
+  (fn-durable-realize-octets file eoff elen poff plen trailer))
 
 (defun fnn-extent-reset ()
   "Forget the cache (a store close or a reopen); descriptors stay open."
