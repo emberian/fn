@@ -835,6 +835,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/octets-stobj \
 	books/payload-arena-bytes \
 	books/payload-arena-paged \
+	books/payload-arena-extent-logic \
+	books/payload-arena-extent \
 	books/payload-arena \
 	books/payload-arena-attach \
 	books/records-freeze \
@@ -862,6 +864,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/payload-arena-tests \
 	tests/acl2/payload-arena-paged-tests \
+	tests/acl2/payload-arena-extent-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \

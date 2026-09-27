@@ -429,3 +429,57 @@
   (defthm fn-assume-bp-contact-asks-is-a-count
     (natp (fn-assume-bp-contact-asks peer))
     :rule-classes :type-prescription))
+
+; -----------------------------------------------------------------------------
+; A-DURABLE-EXTENT (lane arena-offheap-2, 2026-09-27; PRF-281; the payload
+; arena's stage 2, planning/evidence/arena-offheap-2026-09-27.md section 3).
+;
+; "A durable file holds, at an extent the host durably wrote and never
+; rewrites, the octets written there; and the host's realizer answers them."
+;
+; `(fn-durable-octets file off len)' is the octet list of length LEN that the
+; durable file named FILE holds at [OFF, OFF+LEN).  FILE is a natural the host
+; assigns to a file it holds open for the process's life (a log segment); a
+; log segment is append-only per offset (an offset is written once, fenced,
+; never rewritten; log recovery zeroes only past the last complete entry,
+; which no extent names), and an unlinked segment stays readable through its
+; open descriptor.
+;
+; `(fn-durable-realize-octet file eoff elen poff plen trailer i)' is the
+; host's REALIZER: the payload extent [POFF, POFF+PLEN) lies inside the log
+; entry whose protected prefix is [EOFF, EOFF+ELEN) and whose trailer (the
+; entry's fn-frame-digest, read and checked by the open) is TRAILER.  The
+; host's raw definition (host/native/extent.lisp) preads the entry into a
+; bounded cache, checks the trailer through ACL2 (`fn-arx-entry-ok',
+; books/payload-extent.lisp) and answers the payload's octet I; a mismatch
+; is refused by name (arena-extent-digest: a recovery event), never
+; answered.  The constraint says the realizer's answer is the durable octet.
+;
+; Theorems that take it: fn-arena-extent-payload (books/payload-arena.lisp:
+; an extent handle's payload is fn-durable-octets of its extent), and every
+; theorem of the arena's consumers through it; fn-arx-entry-ok-of-durable
+; (books/payload-extent.lisp: a faithful read passes the trailer check).
+(encapsulate
+  (((fn-durable-octets * * *) => *)
+   ((fn-durable-realize-octet * * * * * * *) => *))
+
+  (local (defun fn-durable-zeros (n)
+           (if (zp n) nil (cons 0 (fn-durable-zeros (1- n))))))
+
+  (local (defun fn-durable-octets (file off len)
+           (declare (ignore file off))
+           (fn-durable-zeros len)))
+
+  (local (defun fn-durable-realize-octet (file eoff elen poff plen trailer i)
+           (declare (ignore eoff elen trailer))
+           (nth i (fn-durable-octets file poff plen))))
+
+  (defthm fn-durable-octets-are-octets
+    (fn-cbor-octet-listp (fn-durable-octets file off len)))
+
+  (defthm fn-durable-octets-len
+    (equal (len (fn-durable-octets file off len)) (nfix len)))
+
+  (defthm fn-durable-realize-octet-is-durable
+    (equal (fn-durable-realize-octet file eoff elen poff plen trailer i)
+           (nth i (fn-durable-octets file poff plen)))))

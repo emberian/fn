@@ -60,7 +60,7 @@
 ; (host/native/owner.lisp fnn-owner-attempt); no host code reaches an array.
 
 (in-package "ACL2")
-(include-book "payload-arena-bytes")
+(include-book "payload-arena-extent-logic")
 
 ; -----------------------------------------------------------------------------
 ; The list-backed reference foundation.
@@ -117,6 +117,19 @@
   (update-fn-arena$l-items (fn-oct-snoc (fn-arena$l-items fn-arena$l)
                                         (fn-oct-slice-list a b fn-octets))
                            fn-arena$l))
+
+; The extent seal over the reference: the payload built through the host's
+; realizer (fn-arx-realize-is-durable: it is fn-durable-octets of the extent).
+; The node's arena is the attachment (books/payload-arena-extent.lisp), which
+; records the extent and holds no octets.
+(defun fn-arena$l-seal-extent (file eoff elen poff plen trailer fn-arena$l)
+  (declare (xargs :stobjs fn-arena$l
+                  :guard (and (fn-arena$l-wfp fn-arena$l)
+                              (fn-arn-extent-guardp file eoff elen poff plen trailer))))
+  (update-fn-arena$l-items
+   (fn-oct-snoc (fn-arena$l-items fn-arena$l)
+                (fn-arx-realize-down plen file eoff elen poff plen trailer nil))
+   fn-arena$l))
 
 ; The abstraction relation of the reference: the field is the logical value.
 (defun fn-arena$lcorr (fn-arena$l fn-arena$a)
@@ -265,6 +278,26 @@
   :hints (("Goal" :in-theory (e/d (fn-oct-octets-p-is-octet-listp)
                                   (fn-oct-slice-list-is-take-nthcdr)))))
 
+(defthm fn-arena-seal-extent{correspondence}
+  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
+                (fn-arn-extent-guardp file eoff elen poff plen trailer))
+           (fn-arena$lcorr (fn-arena$l-seal-extent file eoff elen poff plen trailer fn-arena$l)
+                           (fn-arena$a-seal-extent file eoff elen poff plen trailer fn-arena)))
+  :rule-classes nil)
+
+(defthm fn-arena-seal-extent{guard-thm}
+  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
+                (fn-arn-extent-guardp file eoff elen poff plen trailer))
+           (and (fn-arena$l-wfp fn-arena$l)
+                (fn-arn-extent-guardp file eoff elen poff plen trailer)))
+  :rule-classes nil)
+
+(defthm fn-arena-seal-extent{preserved}
+  (implies (and (fn-arena$ap fn-arena)
+                (fn-arn-extent-guardp file eoff elen poff plen trailer))
+           (fn-arena$ap (fn-arena$a-seal-extent file eoff elen poff plen trailer fn-arena)))
+  :rule-classes nil)
+
 ; -----------------------------------------------------------------------------
 ; The generic.  `:attachable t' is what lets (attach-stobj fn-arena IMPL),
 ; evaluated before this book is included, replace the foundation and the
@@ -285,7 +318,9 @@
                                   :protect t)
             (fn-arena-clear :logic fn-arena$a-clear :exec fn-arena$l-clear :protect t)
             (fn-arena-seal-range :logic fn-arena$a-seal-range :exec fn-arena$l-seal-range
-                                 :protect t))
+                                 :protect t)
+            (fn-arena-seal-extent :logic fn-arena$a-seal-extent :exec fn-arena$l-seal-extent
+                                  :protect t))
   :attachable t)
 
 ; -----------------------------------------------------------------------------
@@ -330,6 +365,13 @@
   (implies (fn-arena-p fn-arena)
            (equal (fn-arena-seal-range a b fn-octets fn-arena)
                   (append fn-arena (list (fn-oct-slice-list a b fn-octets))))))
+
+; The extent seal (stage 2, PRF-281): an append of the extent's durable
+; octets (A-DURABLE-EXTENT).
+(defthm fn-arena-seal-extent-is-append
+  (implies (fn-arena-p fn-arena)
+           (equal (fn-arena-seal-extent file eoff elen poff plen trailer fn-arena)
+                  (append fn-arena (list (fn-durable-octets file poff plen))))))
 
 (defthm fn-arena-p-forward
   (implies (fn-arena-p x)
@@ -383,6 +425,22 @@
   (equal (fn-arena-payload (fn-arena-count fn-arena) (fn-arena-seal-list xs fn-arena))
          xs)
   :hints (("Goal" :in-theory (enable fn-arena-payload fn-arena-seal-list fn-arena-count))))
+
+; KEYSTONE (PRF-281) fn-arena-seal-extent-payload: the extent seal's new
+; handle is the old count and denotes the durable octets of its extent, every
+; older handle keeps its payload, and the count grows by one.  No hypothesis:
+; the extent's octets are what A-DURABLE-EXTENT says the file holds there.
+(defthm fn-arena-seal-extent-payload
+  (and (equal (fn-arena-payload (fn-arena-count fn-arena)
+                                (fn-arena-seal-extent file eoff elen poff plen trailer fn-arena))
+              (fn-durable-octets file poff plen))
+       (implies (and (natp h) (< h (fn-arena-count fn-arena)))
+                (equal (fn-arena-payload h (fn-arena-seal-extent file eoff elen poff plen trailer
+                                                                 fn-arena))
+                       (fn-arena-payload h fn-arena)))
+       (equal (fn-arena-count (fn-arena-seal-extent file eoff elen poff plen trailer fn-arena))
+              (1+ (fn-arena-count fn-arena))))
+  :hints (("Goal" :in-theory (enable fn-arena-payload fn-arena-seal-extent fn-arena-count))))
 
 (defthm fn-arena-seal-count
   (equal (fn-arena-count (fn-arena-seal-list xs fn-arena))
