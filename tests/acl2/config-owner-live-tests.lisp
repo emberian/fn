@@ -269,7 +269,7 @@
                   (fn-own-view-withdrawals v) (fn-own-view-raw v)
                   (fn-own-view-withdrawn v) (fn-own-view-keyring v))
                  (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
-                 (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
+                 (fn-own-pending o) (fn-own-ledger-field o) (fn-own-clock o)
                  (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
                  (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (defconst *ocl-t-hist-bad* (ocl-t-bad-view-owner *ocl-t-hist-o*))

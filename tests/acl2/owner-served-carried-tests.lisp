@@ -55,7 +55,7 @@
   (let ((o *scar-t-o*))
     (fn-own-make (update-nth 3 *scar-t-bad-node* (fn-own-store o))
                  (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
-                 (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+                 (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                  (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                  (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (defconst *scar-t-bad-oc*

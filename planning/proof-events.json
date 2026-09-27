@@ -3471,6 +3471,26 @@
         {
           "kind": "theorem",
           "name": "fn-scka-select-named-refuses-the-arena-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sshr-share-is-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-src-payloads-of-canon-srcs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-srcs-n-compose"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-srcs-n-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-restore-base-of-strip-of-capture"
         }
       ]
     },
@@ -10478,7 +10498,211 @@
       ]
     },
     {
+      "id": "PRF-283",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-ledger-of-fn-own-make"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-refresh-ix-keeps-ledger-field"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rix-own-complete-enabled-ledger-field"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rix-own-complete-enabled-ledger"
+        }
+      ]
+    },
+    {
+      "id": "PRF-284",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-article-budget-carried-is-cvec-article-budget-for"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-post-boundary-carried-is-sbud-post-boundary"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-verdict-carried-is-cvec-verdict-at"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-carryp-of-make"
+        }
+      ]
+    },
+    {
       "id": "PRF-289",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rit-hasp-of-put"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-set-okp-is-knownp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-set-okp-of-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-set-okp-of-delta"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-carryp-of-refresh"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-admissiblep-is-admissiblep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prc-sbud-prepare-is-pidx-sbud-prepare"
+        }
+      ]
+    },
+    {
+      "id": "PRF-266",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-srs-checked-decode-is-the-per-file-check",
+          "note": "KEYSTONE (PKT-823). Host: host/native/io.lisp fnn-recover-file-chunks answers fn-srs-checked-decode of each numbered chunk; fnn-bridge-recover faults on :sequence and passes a list to fn-srs-intern-step. Teeth: tests/acl2/store-recover-stream-tests.lisp (numbered history; misnumbered files; an undecodable record; the :sequence hypothesis removal)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srs-checked-step-is-the-step",
+          "note": "The host's two calls per numbered chunk are fn-srs-step over its records, so PRF-261's fold keystone applies."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srs-unframe-is-the-frame-decode",
+          "note": "KEYSTONE (PKT-823), no hypothesis. Host: host/native/io.lisp fnn-unframe-list calls host/store-host.lisp fn-store-unframe-split (fn-srs-unframe of the file's protected prefix and trailer). Teeth: a real frame opens to its record; a wrong trailer is :integrity; a non-octet prefix is the decode's refusal."
+        }
+      ]
+    },
+    {
+      "id": "PRF-290",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-prepare-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-prepare-buffer and fn-owner-prepare: fn-psrv-prepare. No served hypothesis: the retired-group witness is refused by name. Teeth: tests/acl2/owner-prepare-served-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-prepare-identity-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-prepare-identity: fn-psrv-prepare-identity (the signed composite's article groups are tested)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-prepare-retention-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-prepare-retention: (:store (:prepare-retention E)) through fn-owner-step. Teeth: tests/acl2/owner-prepare-served-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-prepare-consumer-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-prepare-consumer: (:store (:prepare-consumer E))."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-prepare-topic-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-prepare-topic: fn-psrv-prepare-topic (the consumer projection test the completion needs)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-prepare-topic-is-ocfg-step-when-admitted",
+          "note": "Where the consumer test admits E the topic prepare is the configured owner's (:store (:prepare-topic E))."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-known-abort-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-known-abort: (:store (:known-abort)). Teeth: tests/acl2/owner-prepare-served-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-rcon-io-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-io: every record-file/link/directory observation of ANY staged record, the reservation's and the barriers'."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-log-order-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-io :log-order: fn-olr-ocfg-order whatever is staged. Teeth: tests/acl2/owner-prepare-served-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-deferred-record-dir-preserves-relation",
+          "note": "Store level: the directory observation publishing a staged deferred record keeps fn-cst-relation under fn-cstp-carriedp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-known-abort-preserves",
+          "note": "Store level: fn-sn-known-abort keeps fn-cst-relation and fn-cstp-carriedp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-prepare-is-sbud-prepare-when-served",
+          "note": "The bridge from the host's fn-psrv-prepare to fn-sbud-prepare (planning/current-view.json P9)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-store-prepare-next-cases",
+          "note": "host/store-node-host.lisp fn-store-sn-prepare: fn-psrv-store-prepare-next stages only a record whose groups are served."
+        }
+      ]
+    },
+    {
+      "id": "PRF-291",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-unstage-preserves-invariant",
+          "note": "host/owner-host.lisp fn-owner-reconfigure-unstage (host/native/admin.lisp fnn-owner-live-reconfigure-locked, the pre-publication refusal arms): fn-psrv-unstage keeps the invariant, the owner and its Store, and releases the configuration lock. Teeth: tests/acl2/owner-prepare-served-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-292",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-block-rev-is-the-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-crlf-validp-is-crlf-lines-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-blank-linep-is-split-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-article-response-is-of-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-response-of-bytes-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-article-reply-exec-is-the-reply"
+        }
+      ]
+    },
+    {
+      "id": "PRF-293",
       "events": [
         {
           "kind": "theorem",

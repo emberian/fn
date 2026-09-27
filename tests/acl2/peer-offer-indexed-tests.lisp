@@ -151,7 +151,7 @@
                 (fn-own-view-group-index (fn-own-view *scar-t-o*)))
                (fn-own-conns *scar-t-o*) (fn-own-next-id *scar-t-o*)
                (fn-own-max-conns *scar-t-o*) (fn-own-pending *scar-t-o*)
-               (fn-own-ledger *scar-t-o*) (fn-own-clock *scar-t-o*)
+               (fn-own-ledger-field *scar-t-o*) (fn-own-clock *scar-t-o*)
                (fn-own-facts *scar-t-o*) (fn-own-config *scar-t-o*)
                (fn-own-queue *scar-t-o*) (fn-own-inflight *scar-t-o*)
                (fn-own-feeds *scar-t-o*) (fn-own-node-secret *scar-t-o*) (fn-own-refused *scar-t-o*)))

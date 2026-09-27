@@ -103,7 +103,8 @@ class StoreExportTests(ProfileFixture):
         # archive, file for file: the same profile, frontier, configuration
         # records and records (PRF-205 over the log).
         self.assertTrue((store2 / "journal" / "000001.log").is_file())
-        self.assertEqual([p for p in (store2 / "transactions").iterdir() if p.is_file()], [])
+        self.assertFalse((store2 / "transactions").exists())
+        self.assertFalse((store2 / "allocation-frontier.json").exists())
         again_archive = self.root / "archive-again"
         reexported = self.operator_with(config2, "store", "export", str(again_archive))
         self.assertEqual(reexported.returncode, EXIT_OK, reexported.stderr.decode())
@@ -114,7 +115,11 @@ class StoreExportTests(ProfileFixture):
             self.assertEqual(a.returncode, EXIT_OK, a.stderr.decode())
             self.assertEqual(a.stdout, b.stdout)
         a, b = self.op("status"), self.operator_with(config2, "status")
-        strip = lambda out: [l for l in out.decode().splitlines() if str(self.root) not in l]
+        # The heap line is the launcher's figure from the store's size on
+        # disk (reservation-after-flip), not the history: the imported log's
+        # preallocated extent differs from the served one's.
+        strip = lambda out: [l for l in out.decode().splitlines()
+                             if str(self.root) not in l and not l.startswith("heap=")]
         self.assertEqual(strip(a.stdout), strip(b.stdout))
 
         # Refusals by name, exit 1, no store written.

@@ -86,15 +86,40 @@ A session holds one slot of the machine's ACL2 pool for its whole life, so
 it belongs to its lane and ends with it (PKT-346: fifteen finished lanes'
 sessions once held fifteen of persvati's sixteen slots).  `start` records
 the lane (`--lane`, else $FN_LANE, else the worktree's name under
-build/lanes/, or persvati's ~/fn-gates/NAME-repl) and an idle deadline
-(`--idle-seconds`, default 7200: longer than a farm wait of 3400 s or an
-hbox_native run of 5400 s between two sends, short enough that an abandoned session frees its slot within two
-hours); a session with no `send` for that long stops itself.  `list` prints
-each session's lane, age, idle time and deadline; `reap` stops the sessions
-this tool started that are dead, past their own deadline, idle longer than
-`--older-than S`, or tagged `--lane NAME` (the coordinator runs
-`reap --lane NAME` when it merges that lane).  It signals only the PIDs a
-session's state names, after checking each is still that session's process.
+build/lanes/, or persvati's ~/fn-gates/NAME-repl) and an idle deadline.
+
+Idle timeout (post-alloc-3, 2026-09-27: hbox's 22 slots were held mostly by
+other lanes' idle sessions under the old 2-hour default):
+
+    proof_repl.py start NAME BOOK --idle-timeout 90    # minutes; 0 = never
+    FN_REPL_IDLE_MIN=90 proof_repl.py start NAME BOOK  # the same, as a default
+    proof_repl.py reap --idle 60 [--dry-run] [--host hbox]
+
+A session with no form sent for 20 minutes (the default) stops itself: ACL2
+exits (its pool slot with it), the socket goes, and the session directory
+keeps `stopped.json`, so a later `send` answers "session NAME stopped after
+N min idle; start it again" instead of "no live session".  Every command
+that runs forms resets the clock (send, send-range, a probe -- which also
+touches the session it probes beside); `status`, `list` and `reap` do not.
+Before a long wait between sends (a farm run, an hbox_native run), start
+with a longer `--idle-timeout` or 0.  (`--idle-seconds S` overrides in
+seconds; the tests use it.)  `status` prints the time since the last send
+and when the session stops; `list` prints each session's lane, age, idle
+time, deadline and time left.
+
+`reap` stops the sessions this tool started that are dead, past their own
+deadline, idle longer than `--idle MIN` (or `--older-than S`), or tagged
+`--lane NAME` (the coordinator runs `reap --lane NAME` when it merges that
+lane).  `--idle` and `--all` read every session tree on the machine: this
+tree, the main checkout's build/lanes/*, and /tank/fn/gates/*,
+/tank/fn/scratch/* and ~/fn-gates/* (each TREE/build/proof-repl/NAME),
+and, where /proc exists, the working tree of every running server (a
+deeper scratch tree, or a lane that exported its path as FN_LANE -- now
+read as its basename); `--root TREE` names trees instead.  It signals only the PIDs a session's
+state names, after checking each is still that session's `proof_repl.py
+serve NAME` (and, where /proc exists, that its working directory is that
+session's tree); never by pattern.  A reaped session keeps a
+`stopped.json` naming why.
 """
 from __future__ import annotations
 
@@ -123,8 +148,66 @@ import acl2_toolchain  # noqa: E402
 import certs  # noqa: E402
 
 SESSIONS = ROOT / "build" / "proof-repl"
-# A session with no `send` for this long stops itself (see the header).
-DEFAULT_IDLE_SECONDS = 7200.0
+# A session with no `send` for this long stops itself (see the header);
+# FN_REPL_IDLE_MIN (minutes, 0 = never) changes the default.
+DEFAULT_IDLE_MINUTES = 20.0
+STOP_NOTE = "stopped.json"
+# Where session trees live on a machine, besides this tree and the main
+# checkout's build/lanes/* (reap --idle / --all).
+BOX_TREE_BASES = ("/tank/fn/gates", "/tank/fn/scratch", "~/fn-gates")
+
+
+def default_idle_seconds(environ=os.environ) -> float:
+    """The idle deadline a session gets unless told otherwise, in seconds."""
+    configured = environ.get("FN_REPL_IDLE_MIN", "").strip()
+    if configured:
+        try:
+            minutes = float(configured)
+        except ValueError:
+            raise SystemExit(f"proof-repl: FN_REPL_IDLE_MIN={configured!r} is not a "
+                             "number of minutes") from None
+        return max(0.0, minutes) * 60
+    return DEFAULT_IDLE_MINUTES * 60
+
+
+def idle_from_args(args, fallback: float | None = None) -> float:
+    """--idle-timeout MIN wins, then --idle-seconds S, then the default."""
+    minutes = getattr(args, "idle_timeout", None)
+    if minutes is not None:
+        return max(0.0, minutes) * 60
+    seconds = getattr(args, "idle_seconds", None)
+    if seconds is not None:
+        return max(0.0, seconds)
+    return default_idle_seconds() if fallback is None else fallback
+
+
+def write_stop_note(directory: Path, reason: str, idle: float | None,
+                    deadline: float | None, by: str) -> None:
+    """Leave why the session ended, for the next `send` and `status`."""
+    note = {"reason": reason, "idle": idle, "deadline": deadline, "by": by,
+            "at": time.time()}
+    with contextlib.suppress(OSError):
+        staged = directory / f".{STOP_NOTE}-{os.getpid()}.tmp"
+        staged.write_text(json.dumps(note) + "\n")
+        os.replace(staged, directory / STOP_NOTE)
+
+
+def read_stop_note(directory: Path) -> dict | None:
+    try:
+        return json.loads((directory / STOP_NOTE).read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def stop_note_words(name: str, note: dict) -> str:
+    idle = note.get("idle")
+    when = time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime(note.get("at") or 0))
+    if note.get("reason") == "idle" and idle is not None:
+        head = f"session {name} stopped after {idle / 60:.0f} min idle"
+    else:
+        head = f"session {name} stopped ({note.get('reason')})"
+    return (f"{head} at {when} (by {note.get('by')}); start it again: "
+            f"proof_repl.py start {name} BOOK [--idle-timeout MIN]")
 SENTINEL = "FN-REPL-DONE"
 EVENT_HEADS = ("defthm", "defthmd", "defun", "defund", "defrule", "defruled",
                "encapsulate", "verify-guards", "thm", "defthm-flag", "mutual-recursion",
@@ -715,7 +798,9 @@ def default_lane(root: Path | None = None) -> str | None:
     """
     configured = os.environ.get("FN_LANE")
     if configured:
-        return configured
+        # A lane that exported its worktree's path (batch-aw on hbox, whose
+        # tree became /tank/fn/gates/Users/ember/...-repl) means its name.
+        return configured.rstrip("/").rsplit("/", 1)[-1] or None
     root = root or ROOT
     if root.parent.name == "lanes":
         return root.name
@@ -810,10 +895,13 @@ def load_book(acl2: Acl2, book: str, state: dict, load_timeout: float,
 
 def serve(name: str, book: str, upto: str | None, through: str | None,
           limit: float, load_timeout: float, lock_fd: int,
-          lane: str | None = None, idle_seconds: float = DEFAULT_IDLE_SECONDS,
+          lane: str | None = None, idle_seconds: float | None = None,
           ld: list[str] | None = None, ld_local: bool = False) -> int:
+    if idle_seconds is None:
+        idle_seconds = default_idle_seconds()
     directory = session_dir(name)
     directory.mkdir(parents=True, exist_ok=True)
+    (directory / STOP_NOTE).unlink(missing_ok=True)
     state_path = directory / "state.json"
     sock_path = directory / "sock"
     now = time.time()
@@ -873,14 +961,26 @@ def serve(name: str, book: str, upto: str | None, through: str | None,
                 idle = time.time() - state["last_active"]
                 if idle >= idle_seconds:
                     state["ended"] = f"idle {int(idle)} s (deadline {idle_seconds:g} s)"
+                    write_stop_note(directory, "idle", idle, idle_seconds, "its own idle timeout")
                     break
                 continue
             with connection:
                 connection.settimeout(None)
                 request = json.loads(read_all(connection))
-                if request.get("op", "send") == "send":
+                # Forms (and a probe's touch) reset the idle clock; status and
+                # stop do not.  The clock restarts when the answer is ready,
+                # so a long proof is not counted as idleness.
+                active = request.get("op", "send") in ("send", "touch")
+                if active:
                     state["last_active"] = time.time()
                 answer = handle(request, acl2, state, limit)
+                if active:
+                    state["last_active"] = time.time()
+                if request.get("op") == "stop" and request.get("reason"):
+                    state["ended"] = request["reason"]
+                    write_stop_note(directory, request["reason"],
+                                    time.time() - state["last_active"], idle_seconds,
+                                    request.get("by") or "stop")
                 if request.get("op") == "stop":
                     # A successful stop reply means the process group and
                     # endpoint are gone, not merely that a request was read.
@@ -911,6 +1011,8 @@ def handle(request: dict, acl2: Acl2, state: dict, default_limit: float) -> dict
     op = request.get("op", "send")
     if op == "status":
         return {"state": state}
+    if op == "touch":
+        return {"touched": True}
     if op == "stop":
         try:
             acl2.send("(good-bye)", 1)
@@ -954,13 +1056,16 @@ def ask(name: str, request: dict, timeout: float = 3600,
         sock_path: Path | None = None) -> dict:
     sock_path = sock_path or session_dir(name) / "sock"
     if not sock_path.exists():
+        note = read_stop_note(sock_path.parent)
+        if note:
+            raise SystemExit("proof-repl: " + stop_note_words(name, note))
         raise SystemExit(f"proof-repl: no live session {name!r} (start it first)")
-    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    client.settimeout(timeout)
-    client.connect(str(sock_path))
-    client.sendall(json.dumps(request).encode("utf-8"))
-    client.shutdown(socket.SHUT_WR)
-    return json.loads(read_all(client))
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        client.settimeout(timeout)
+        client.connect(str(sock_path))
+        client.sendall(json.dumps(request).encode("utf-8"))
+        client.shutdown(socket.SHUT_WR)
+        return json.loads(read_all(client))
 
 
 def normalize_book(name: str) -> str:
@@ -1183,11 +1288,12 @@ def start(args) -> int:
             return 1
         directory.mkdir(parents=True, exist_ok=True)
         (directory / "state.json").unlink(missing_ok=True)
+        (directory / STOP_NOTE).unlink(missing_ok=True)
         with open(directory / "server.log", "a", encoding="utf-8") as log:
             command = [sys.executable, __file__, "serve", args.name, args.book,
                        "--limit", str(args.limit), "--load-timeout", str(args.load_timeout),
                        "--lock-fd", str(lock_fd),
-                       "--idle-seconds", str(getattr(args, "idle_seconds", DEFAULT_IDLE_SECONDS))]
+                       "--idle-seconds", str(idle_from_args(args))]
             lane = getattr(args, "lane", None) or default_lane()
             if lane:
                 command += ["--lane", lane]
@@ -1244,6 +1350,16 @@ def status(args) -> int:
         print("  " + (state["error"] or "").replace("\n", "\n  "))
     elif state["loaded"]:
         print(f"  last loaded: {state['loaded'][-1]}")
+    last = state.get("last_active")
+    deadline = state.get("idle_seconds")
+    if live and last:
+        idle = time.time() - last
+        print(f"  last send {_duration(idle)} ago; idle deadline "
+              + (f"{_duration(deadline)}, stops in {_duration(deadline - idle)} "
+                 "without a send (status does not count)" if deadline else "none (never stops)"))
+    note = read_stop_note(session_dir(args.name))
+    if not live and note:
+        print("  " + stop_note_words(args.name, note))
     load = state.get("load_cost")
     if load:
         print(f"  loading cost ACL2 time {load['time']:.2f} s, prover steps {load['steps']:,}"
@@ -1507,6 +1623,11 @@ def probe(args) -> int:
         if normalize_book(extra) not in from_source:
             from_source.append(normalize_book(extra))
     name = f"{args.name}.probe"
+    idle_seconds = idle_from_args(args)
+    if (session_dir(args.name) / "sock").exists():
+        # A probe is work on the session it probes beside: keep that one alive too.
+        with contextlib.suppress(SystemExit, OSError, ValueError):
+            ask(args.name, {"op": "touch"}, timeout=30)
     identity = probe_identity(book, text, places[index][0], from_source)
     marker = session_dir(name) / "probe.json"
     replacement = args.form
@@ -1527,7 +1648,7 @@ def probe(args) -> int:
             name=name, book=book, upto=f"#{index + 1}", through=None,
             limit=args.limit or 60.0, load_timeout=args.load_timeout,
             lane=main_state.get("lane") or getattr(args, "lane", None),
-            idle_seconds=args.idle_seconds, ld=from_source, ld_missing=False,
+            idle_seconds=idle_seconds, ld=from_source, ld_missing=False,
             certify_missing=False, certify_jobs=4,
             ld_local=bool(main_state.get("ld_local")) and not args.book))
         state = read_state(name) or {}
@@ -1607,7 +1728,8 @@ def probe(args) -> int:
         stop(argparse.Namespace(name=name))
     else:
         print(f"[session {name} stays at the event for the next probe; it stops itself "
-              f"after {args.idle_seconds:g} s idle, or: proof_repl.py stop {name}]")
+              f"after {_duration(idle_seconds) if idle_seconds else 'never'} idle, "
+              f"or: proof_repl.py stop {name}]")
     return 1 if refused else 0
 
 
@@ -1674,13 +1796,31 @@ def _command_of(pid: int) -> str:
     return answer.stdout.strip() if answer.returncode == 0 else ""
 
 
-def _is_server(pid, name: str) -> bool:
-    """PID is still this session's `proof_repl.py serve NAME` (not a reused PID)."""
+def _process_cwd(pid: int) -> Path | None:
+    """PID's working directory where /proc says (Linux); None elsewhere."""
+    try:
+        return Path(os.readlink(f"/proc/{pid}/cwd")).resolve()
+    except OSError:
+        return None
+
+
+def _is_server(pid, name: str, tree: Path | None = None) -> bool:
+    """PID is still this session's `proof_repl.py serve NAME` (not a reused PID).
+
+    With TREE, and where /proc names the process's working directory, it
+    must also be TREE: the same session name exists in many lanes' trees.
+    """
     if not isinstance(pid, int) or pid <= 1:
         return False
     words = _command_of(pid).split()
-    return ("serve" in words and name in words
-            and any(word.endswith("proof_repl.py") for word in words))
+    if not ("serve" in words and name in words
+            and any(word.endswith("proof_repl.py") for word in words)):
+        return False
+    if tree is not None:
+        cwd = _process_cwd(pid)
+        if cwd is not None and cwd != tree.resolve():
+            return False
+    return True
 
 
 def _is_acl2_group(pgid) -> bool:
@@ -1688,6 +1828,64 @@ def _is_acl2_group(pgid) -> bool:
     if not isinstance(pgid, int) or pgid <= 1:
         return False
     return any(word.endswith("tools/acl2") for word in _command_of(pgid).split())
+
+
+def live_server_trees(proc: Path = Path("/proc")) -> list[Path]:
+    """The trees of this machine's running `proof_repl.py serve` processes.
+
+    Where /proc exists (the boxes): a server runs with its tree as its
+    working directory, which finds trees the bases miss (a scratch tree one
+    level deeper, a lane whose remote tree took a path as its name).  Only
+    finds where to read state; what is stopped is still decided by each
+    session's own state and the checks on its recorded PID.
+    """
+    found = []
+    if not proc.is_dir():
+        return found
+    for entry in proc.iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            words = (entry / "cmdline").read_bytes().split(b"\0")
+        except OSError:
+            continue
+        if not (b"serve" in words and any(word.endswith(b"proof_repl.py") for word in words)):
+            continue
+        with contextlib.suppress(OSError):
+            found.append(Path(os.readlink(entry / "cwd")))
+    return sorted(set(found))
+
+
+def box_trees(environ=os.environ) -> list[str]:
+    """Every tree on this machine that holds proof_repl sessions.
+
+    This tree; the main checkout and its build/lanes/* (a lane worktree's
+    main checkout is three levels up); and each directory under the boxes'
+    gate and scratch bases (/tank/fn/gates, /tank/fn/scratch on hbox,
+    ~/fn-gates on persvati).  Only trees with a build/proof-repl count.
+    """
+    candidates = [ROOT]
+    main = ROOT.parents[2] if ROOT.parent.name == "lanes" and ROOT.parent.parent.name == "build" \
+        else ROOT
+    candidates.append(main)
+    lanes = main / "build" / "lanes"
+    if lanes.is_dir():
+        candidates += sorted(lanes.iterdir())
+    for base in BOX_TREE_BASES:
+        directory = Path(os.path.expanduser(base))
+        if directory.is_dir():
+            candidates += sorted(directory.iterdir())
+    candidates += live_server_trees()
+    found, seen = [], set()
+    for tree in candidates:
+        with contextlib.suppress(OSError):
+            if not (tree / "build" / "proof-repl").is_dir():
+                continue
+            key = tree.resolve()
+            if key not in seen:
+                seen.add(key)
+                found.append(str(tree))
+    return found
 
 
 def session_rows(roots: list[str] | None = None) -> list[dict]:
@@ -1717,9 +1915,11 @@ def session_rows(roots: list[str] | None = None) -> list[dict]:
             # The older tool: the session's first write was its server.log.
             first = directory / "server.log"
             started = first.stat().st_mtime if first.exists() else saved
-        server = _is_server(state.get("pid"), directory.name)
+        tree = directory.parent.parent.parent
+        server = _is_server(state.get("pid"), directory.name, tree)
         socket_file = (directory / "sock").exists()
         rows.append({"name": directory.name, "state": state, "directory": directory,
+                     "tree": tree,
                      "server": server, "socket": socket_file,
                      "live": server and socket_file,
                      "age": now - started,
@@ -1738,20 +1938,25 @@ def _duration(seconds: float) -> str:
 
 
 def list_sessions(args) -> int:
-    rows = session_rows(getattr(args, "root", None))
+    roots = getattr(args, "root", None) or (box_trees() if getattr(args, "all", False) else None)
+    if roots is not None and getattr(args, "all", False):
+        args.root = roots
+    rows = session_rows(roots)
     if not rows:
         print("proof-repl: no sessions")
         return 0
-    print(f"{'name':24} {'status':6} {'lane':24} {'age':>7} {'idle':>7} {'deadline':>8} book")
+    print(f"{'name':24} {'status':6} {'lane':24} {'age':>7} {'idle':>7} {'deadline':>8} "
+          f"{'left':>7} book")
     for row in rows:
         state = row["state"]
         status_word = ("live" if row["live"] else
                        "stale" if row["socket"] else
                        "ended" if state.get("ended") else "dead")
         deadline = row["deadline"]
+        left = (_duration(deadline - row["idle"]) if deadline and row["live"] else "-")
         print(f"{row['name']:24} {status_word:6} {(state.get('lane') or '-'):24} "
               f"{_duration(row['age']):>7} {_duration(row['idle']):>7} "
-              f"{(_duration(deadline) if deadline else 'none'):>8} {state.get('book')}"
+              f"{(_duration(deadline) if deadline else 'none'):>8} {left:>7} {state.get('book')}"
               + (f"  [{row['directory'].parent.parent.parent}]" if getattr(args, "root", None) else ""))
     return 0
 
@@ -1774,47 +1979,59 @@ def reap_reason(row: dict, lane: str | None, older_than: float | None) -> str | 
     return None
 
 
-def reap_one(row: dict) -> str:
+def reap_one(row: dict, reason: str | None = None) -> str:
     """Stop one session: its own `stop` first, then only the PIDs its state names."""
     name, state = row["name"], row["state"]
+    tree = row.get("tree")
+    kind = "idle" if reason and reason.startswith("idle") else f"reaped: {reason}"
     if row["server"] and row["socket"]:
         try:
-            if ask(name, {"op": "stop"}, timeout=30,
-                   sock_path=row["directory"] / "sock").get("stopped"):
+            if ask(name, {"op": "stop", "reason": kind, "by": "proof_repl.py reap"},
+                   timeout=30, sock_path=row["directory"] / "sock").get("stopped"):
                 return "stopped through its socket"
         except (SystemExit, OSError, ValueError):
             pass
     signalled = []
-    if row["server"] and _is_server(state.get("pid"), name):
+    if row["server"] and _is_server(state.get("pid"), name, tree):
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.kill(state["pid"], signal.SIGTERM)
             signalled.append(f"server {state['pid']}")
         deadline = time.monotonic() + 10
-        while time.monotonic() < deadline and _is_server(state.get("pid"), name):
+        while time.monotonic() < deadline and _is_server(state.get("pid"), name, tree):
             time.sleep(0.1)
     pgid = state.get("acl2_pgid")
     if _is_acl2_group(pgid):
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.killpg(pgid, signal.SIGTERM)
             signalled.append(f"ACL2 group {pgid}")
-    if not _is_server(state.get("pid"), name):
+    if not _is_server(state.get("pid"), name, tree):
         (row["directory"] / "sock").unlink(missing_ok=True)
+    if signalled and reason:
+        write_stop_note(row["directory"], kind, row["idle"], row["deadline"],
+                        "proof_repl.py reap (signal)")
     return ("signalled " + ", ".join(signalled)) if signalled else "removed a stale socket"
 
 
 def reap(args) -> int:
-    rows = session_rows(args.root)
+    older_than = args.older_than
+    if getattr(args, "idle", None) is not None:
+        older_than = args.idle * 60
+    everywhere = getattr(args, "all", False) or getattr(args, "idle", None) is not None
+    roots = args.root or (box_trees() if everywhere else None)
+    rows = session_rows(roots)
     chosen = [(row, reason) for row in rows
-              for reason in [reap_reason(row, args.lane, args.older_than)] if reason]
+              for reason in [reap_reason(row, args.lane, older_than)] if reason]
     if not chosen:
-        print("proof-repl: nothing to reap")
+        print("proof-repl: nothing to reap" + (f" in {len(roots)} trees" if roots else ""))
         return 0
     for row, reason in chosen:
         lane = row["state"].get("lane") or "-"
+        where = f" [{row['tree']}]" if roots else ""
         if args.dry_run:
-            print(f"would reap {row['name']} (lane {lane}): {reason}")
+            print(f"would reap {row['name']} (lane {lane}, book {row['state'].get('book')}): "
+                  f"{reason}{where}")
             continue
-        print(f"reaped {row['name']} (lane {lane}): {reason}; {reap_one(row)}")
+        print(f"reaped {row['name']} (lane {lane}): {reason}; {reap_one(row, reason)}{where}")
     return 0
 
 
@@ -1973,6 +2190,8 @@ def run_remote(args, argv: list[str]) -> int:
             raise SystemExit(f"proof-repl: --host probe: no record of session {args.name!r}'s "
                              "book here (start it with --host from this tree, or pass --book)")
         books += list(args.ld or [])
+    elif command in ("list", "reap") and not getattr(args, "no_sync", False):
+        extra.append("tools/proof_repl.py")  # sync_files adds the rest of tools/
     elif command == "send-range":
         path = book_path(args.book)
         try:
@@ -2036,9 +2255,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="hard limit per form while loading the book")
     p.add_argument("--lane", default=None,
                    help="the owning lane (default $FN_LANE, else build/lanes/NAME)")
-    p.add_argument("--idle-seconds", type=float, default=DEFAULT_IDLE_SECONDS,
-                   help="stop the session after this long with no send "
-                        f"(default {DEFAULT_IDLE_SECONDS:g}; 0: never)")
+    p.add_argument("--idle-timeout", type=float, default=None, metavar="MIN",
+                   help="stop the session after MIN minutes with no send (default "
+                        f"$FN_REPL_IDLE_MIN, else {DEFAULT_IDLE_MINUTES:g}; 0: never)")
+    p.add_argument("--idle-seconds", type=float, default=None, help=argparse.SUPPRESS)
     p.add_argument("--ld", action="append", default=[], metavar="BOOK",
                    help="load this dependency from source, not from a certificate "
                         "(repeatable); the closure's books that include it follow")
@@ -2067,7 +2287,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--load-timeout", type=float, default=600.0)
     p.add_argument("--lock-fd", type=int, required=True)
     p.add_argument("--lane", default=None)
-    p.add_argument("--idle-seconds", type=float, default=DEFAULT_IDLE_SECONDS)
+    p.add_argument("--idle-seconds", type=float, default=None)
     p.add_argument("--ld", action="append", default=[])
     p.add_argument("--ld-local", action="store_true")
     p.set_defaults(run=lambda a: serve(a.name, a.book, a.upto, a.through, a.limit,
@@ -2118,8 +2338,10 @@ def main(argv: list[str] | None = None) -> int:
                    help="also load this dependency from source")
     p.add_argument("--limit", type=float, default=None)
     p.add_argument("--load-timeout", type=float, default=600.0)
-    p.add_argument("--idle-seconds", type=float, default=1800.0,
-                   help="the probe session stops itself after this long idle (default 1800)")
+    p.add_argument("--idle-timeout", type=float, default=None, metavar="MIN",
+                   help="the probe session stops itself after MIN minutes idle "
+                        f"(default $FN_REPL_IDLE_MIN, else {DEFAULT_IDLE_MINUTES:g}; 0: never)")
+    p.add_argument("--idle-seconds", type=float, default=None, help=argparse.SUPPRESS)
     p.add_argument("--full", action="store_true")
     p.add_argument("--stop", action="store_true", help="stop the probe session afterwards")
     add_remote_options(p, sync=True)
@@ -2135,16 +2357,23 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("list", help="each session's lane, age, idle time and deadline")
     p.add_argument("--root", action="append", default=None, metavar="TREE",
                    help="read TREE/build/proof-repl instead of this tree's (repeatable)")
-    add_remote_options(p)
+    p.add_argument("--all", action="store_true",
+                   help="every session tree on this machine (see the header)")
+    add_remote_options(p, sync=True)
     p.set_defaults(run=list_sessions)
     p = sub.add_parser("reap", help="stop dead, overdue or a lane's sessions")
     p.add_argument("--lane", default=None, help="every session tagged with this lane")
     p.add_argument("--older-than", type=float, default=None, metavar="S",
                    help="live sessions idle at least S seconds")
+    p.add_argument("--idle", type=float, default=None, metavar="MIN",
+                   help="live sessions idle at least MIN minutes, in every session tree "
+                        "on this machine (implies --all)")
+    p.add_argument("--all", action="store_true",
+                   help="every session tree on this machine, not only this tree's")
     p.add_argument("--dry-run", action="store_true", help="say what would be reaped")
     p.add_argument("--root", action="append", default=None, metavar="TREE",
                    help="reap in TREE/build/proof-repl instead of this tree's (repeatable)")
-    add_remote_options(p)
+    add_remote_options(p, sync=True)
     p.set_defaults(run=reap)
     argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)

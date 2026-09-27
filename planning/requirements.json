@@ -1482,7 +1482,10 @@
         "PRF-208",
         "PRF-242",
         "PRF-261",
-        "PRF-277"
+        "PRF-277",
+        "PRF-284",
+        "PRF-289",
+        "PRF-266"
       ],
       "verification": [
         "proof",
@@ -1584,7 +1587,8 @@
         "PRF-220",
         "PRF-275",
         "PRF-276",
-        "PRF-278"
+        "PRF-278",
+        "PRF-283"
       ],
       "verification": [
         "proof",
@@ -2838,7 +2842,8 @@
       "proof_targets": [
         "PRF-138",
         "PRF-180",
-        "PRF-275"
+        "PRF-275",
+        "PRF-283"
       ],
       "verification": [
         "proof",
@@ -3525,7 +3530,8 @@
         "PRF-186",
         "PRF-209",
         "PRF-242",
-        "PRF-261"
+        "PRF-261",
+        "PRF-266"
       ],
       "verification": [
         "proof",
@@ -4297,7 +4303,8 @@
       "milestone": "M6",
       "status": "specified",
       "proof_targets": [
-        "PRF-243"
+        "PRF-243",
+        "PRF-292"
       ],
       "verification": [
         "proof",
@@ -4535,7 +4542,9 @@
         "PRF-285",
         "PRF-286",
         "PRF-287",
-        "PRF-289"
+        "PRF-290",
+        "PRF-291",
+        "PRF-293"
       ],
       "verification": [
         "proof",
@@ -4559,7 +4568,10 @@
         "books/config-store-steps.lisp",
         "books/owner-log-ocl.lisp",
         "planning/evidence/control-quanta-2-2026-09-27.md",
-        "books/owner-reader-read.lisp"
+        "books/owner-reader-read.lisp",
+        "books/owner-prepare-served.lisp",
+        "books/owner-prepare-served-ocl.lisp",
+        "planning/evidence/prepare-served-2026-09-27.md"
       ],
       "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read). Slice 2 (PKT-688 (4), PRF-267, books/owner-commit-steps.lisp): on a log-route store the committer's batch is three steps, START and COMPLETE as :commit quanta and the log barrier between them with the owner released; while a batch is in flight only :commit and :inspect (the live status and health pages) are admitted, and a waiting :inspect runs within one quantum in either regime."
     },

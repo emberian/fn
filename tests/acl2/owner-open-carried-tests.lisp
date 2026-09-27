@@ -191,7 +191,7 @@
   (fn-own-make (update-nth 3 *scar-t-bad-node* (fn-own-store *ocar-t-raw*))
                (fn-own-view *ocar-t-raw*) (fn-own-conns *ocar-t-raw*)
                (fn-own-next-id *ocar-t-raw*) (fn-own-max-conns *ocar-t-raw*)
-               (fn-own-pending *ocar-t-raw*) (fn-own-ledger *ocar-t-raw*)
+               (fn-own-pending *ocar-t-raw*) (fn-own-ledger-field *ocar-t-raw*)
                (fn-own-clock *ocar-t-raw*) (fn-own-facts *ocar-t-raw*)
                (fn-own-config *ocar-t-raw*) (fn-own-queue *ocar-t-raw*)
                (fn-own-inflight *ocar-t-raw*) (fn-own-feeds *ocar-t-raw*) (fn-own-node-secret *ocar-t-raw*) (fn-own-refused *ocar-t-raw*)))

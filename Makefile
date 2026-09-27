@@ -510,6 +510,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-identity-index-tests \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
+	books/store-profile-carried \
+	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
 	books/owner-store-indexed \
@@ -778,6 +780,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-session \
 	books/nntp-projection \
 	books/nntp-responses \
+	books/nntp-article-block \
 	books/nntp-reader-compat \
 	books/nntp \
 	books/nntp-overview \
@@ -805,6 +808,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/group-descriptions-tests \
 	tests/acl2/nntp-xref-tests \
 	tests/acl2/nntp-reader-compat-tests \
+	tests/acl2/nntp-article-block-tests \
 	tests/acl2/posting-account-tests \
 	tests/acl2/injection-info-params-tests \
 	tests/acl2/owner-injection-info-tests \
@@ -874,6 +878,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
 	books/store-checkpoint-arena \
+	books/store-checkpoint-share \
 	books/store-checkpoint-arena-load \
 	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
@@ -951,6 +956,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config-store-steps \
 	books/owner-log-ocl \
 	tests/acl2/owner-log-ocl-tests \
+	books/owner-prepare-served \
+	books/store-prepare-served \
+	books/owner-prepare-served-ocl \
+	tests/acl2/owner-prepare-served-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \

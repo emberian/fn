@@ -76,6 +76,22 @@ set, exact record, candidate replay/open result and generated final name."
       (fnn-refuse "ACL2 refused administrative publication: ~a"
                   (fnn-core 'fn-native-admin-host-publication-reason result)))))
 
+(defun fnn-admin-authorize-owner (store config-records record observed-names)
+  "A live owner's authorization on a format-9 store: ACL2's
+fn-owner-cfg-native-admin-authorize over the owner's carried history (its
+rows), the same decision fnn-admin-authorize asks over a history it reads."
+  (let ((result (fnn-owner-core
+                 'fn-owner-cfg-native-admin-authorize
+                 (mapcar #'fnn-octet-list config-records) (fnn-octet-list record)
+                 (fnn-admin-lock-observation store)
+                 (mapcar (lambda (name) (fnn-octet-list (fnn-string-octets name)))
+                         observed-names)
+                 (fnn-store-config store))))
+    (if (eq (fnn-core 'fn-native-admin-host-publication-status result) :accepted)
+        result
+      (fnn-refuse "ACL2 refused administrative publication: ~a"
+                  (fnn-core 'fn-native-admin-host-publication-reason result)))))
+
 (defun fnn-admin-authorize-carried (store config-records record observed-names)
   "The offline request's authorization from the open's carried fold
 (PKT-510 (1)): ACL2's fn-store-cfg-native-admin-authorize-carried, which is
@@ -181,6 +197,16 @@ it cannot continue with its old group-code table."
         (fnn-indeterminate
          "durable configuration needs owner cache recovery: ~a" e)))))
 
+;; lane prepare-served: ACL2's un-stage of a configuration record whose
+;; publication was refused before anything was written (host/owner-host.lisp
+;; fn-owner-reconfigure-unstage: books/owner-prepare-served.lisp
+;; fn-psrv-unstage).  The caller holds the owner mutex.
+(defun fnn-owner-reconfigure-unstage ()
+  (let ((word (fnn-owner-action 'fn-owner-reconfigure-unstage)))
+    (unless (member word '(:unstaged :none))
+      (fnn-fault "owner returned a malformed un-stage word ~a" word))
+    word))
+
 (defun fnn-owner-live-reconfigure-locked (service stage)
   "Stage, publish and complete one ACL2-constructed configuration record.
 
@@ -222,16 +248,35 @@ Answers :accepted once the record is durable and the owner installed it, or
   ;; fn-owner-reconfigure-authorizedp).  A refusal here is a refusal before
   ;; publication, as fnn-admin-authorize's below.
   (unless (fnn-owner-core 'fn-owner-reconfigure-authorizedp)
+    (fnn-owner-reconfigure-unstage)
     (fnn-refuse "ACL2 refused administrative publication: the staged record does not apply to the carried configuration"))
-  (let* ((store (fnn-owner-service-store service))
-         (observation (fnn-config-record-observation store))
-         (config-records (fnn-config-records-from-observation observation))
-         (authorization
-           (fnn-admin-authorize store (fnn-durable-records store)
-                                config-records record
-                                (mapcar #'car observation))))
+  (let ((store (fnn-owner-service-store service)))
     (multiple-value-bind (published ignored-name)
-        (fnn-admin-publish store record authorization)
+        ;; lane prepare-served: a refusal here is before anything was written
+        ;; (the candidate open's refusal, or the immutable publisher's
+        ;; :refused), so the staged record is dropped (ACL2's
+        ;; fn-psrv-unstage) and the refusal passes on.  An uncertain
+        ;; publication or a fault is not a refusal: the owner keeps the
+        ;; stage, the store is fenced, and recovery decides.
+        (handler-case
+            (let* ((observation (fnn-config-record-observation store))
+                   (config-records (fnn-config-records-from-observation observation))
+                   (authorization
+                     (if (fnn-store-logp store)
+                         ;; Format 9 (log-recovery): over the history the
+                         ;; owner carries (its rows), not a re-read of the
+                         ;; per-file layout, which a format-9 store does not
+                         ;; have.
+                         (fnn-admin-authorize-owner store config-records record
+                                                    (mapcar #'car observation))
+                       (fnn-admin-authorize store (fnn-durable-records store)
+                                            config-records record
+                                            (mapcar #'car observation)))))
+              (fnn-admin-publish store record authorization))
+          (fnn-store-error (e)
+            (when (eq (type-of e) 'fnn-store-error)
+              (fnn-owner-reconfigure-unstage))
+            (error e)))
       (declare (ignore ignored-name))
       (unless (eq (fnn-owner-action
                    'fn-owner-reconfigure-complete published)
@@ -336,7 +381,8 @@ turning a refusal into a physical mutation."
     ; refusal; this command never starts another owner.
     (let ((store nil))
       (unwind-protect
-           (multiple-value-bind (opened records) (fnn-open-live-store root t)
+           (multiple-value-bind (opened count) (fnn-open-live-store root t)
+             (declare (ignore count))
              (setq store opened)
              (fnn-require-writer store)
              (multiple-value-bind (record reason) (fnn-admin-reconfigure plan (fnn-admin-clock-plan))
@@ -347,7 +393,8 @@ turning a refusal into a physical mutation."
                       (config-records (fnn-config-records-from-observation observation))
                       (authorization
                         (or (fnn-admin-authorize-carried store config-records record names)
-                            (fnn-admin-authorize store records config-records record names))))
+                            (fnn-admin-authorize store (fnn-history-records store)
+                                                 config-records record names))))
                  (multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
                  ; The durable publisher is the acceptance boundary.  Verify
                  ; the published file under the retained exclusive lock:

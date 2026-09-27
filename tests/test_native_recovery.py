@@ -43,11 +43,17 @@ def missing_enrollment_fixture():
         " (event (fn-stxa-make 0 0 0 7 profile"
         "                       (fn-record-string-octets subject)"
         "                       (fn-record-encode record)"
-        "                       (fn-stxe-encode verdict))))"
+        "                       (fn-stxe-encode verdict)))"
+        # The store's predicates read the HELD history the open interns
+        # (records flip: host/store-host.lisp fn-store-intern-records-local,
+        # the open's intern into a local arena); the journal stores the
+        # wire event.
+        " (rows (fn-store-intern-records-local (list event))))"
         " (if (and (fn-stxa-bindsp event)"
-        "          (fn-sn-observed-historyp 1 (list event))"
-        "          (fn-sf-history-recoverablep '(\"fn.test\") 32 (list event) 1)"
-        "          (equal (fn-stxk-context-kind (fn-replay-identity (list event)))"
+        "          (consp rows)"
+        "          (fn-sn-observed-historyp 1 rows)"
+        "          (fn-sf-history-recoverablep '(\"fn.test\") 32 rows 1)"
+        "          (equal (fn-stxk-context-kind (fn-replay-identity rows))"
         "                 :fault))"
         "     (fn-store-event-encode event) nil))"))
     if not transaction:
@@ -204,9 +210,13 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         fnn-advance-frontier stages, the content what a staged frontier holds.
         """
         store = self.initialized("allocation-orphans")
-        frontier = (store / "allocation-frontier.json").read_bytes()
+        # Format 9 holds no allocator file (the log derives the frontier):
+        # the orphans' bytes are what a per-file store's staged frontier held,
+        # and the recovery must leave the history (the segment) as it was.
+        segment = (store / "journal" / "000001.log").read_bytes()
         for number in range(65):
-            (store / "staging" / ".allocation-4242-{:024x}".format(number)).write_bytes(frontier)
+            (store / "staging" / ".allocation-4242-{:024x}".format(number)).write_bytes(
+                b'{"next_txid": 4242}')
         # A reader does not sweep; it reports one bounded observation and
         # says there is more.  It still opens.
         status = self.invoke(store, "status")
@@ -218,7 +228,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
         self.assertIn(b"staging-orphans=0", recovered.stdout)
         self.assertEqual(list((store / "staging").iterdir()), [])
-        self.assertEqual((store / "allocation-frontier.json").read_bytes(), frontier)
+        self.assertEqual((store / "journal" / "000001.log").read_bytes(), segment)
         again = self.invoke(store, "status")
         self.assertEqual(again.returncode, run_store.EXIT_OK, again.stderr)
         self.assertIn(b"staging-orphans=0", again.stdout)

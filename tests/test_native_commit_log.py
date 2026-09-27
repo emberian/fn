@@ -378,6 +378,41 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
         self.assertEqual(probe.returncode, 0, probe.stderr[-800:])
         self.assertTrue((probe_root / "journal" / "000001.log").is_file())
 
+    def test_format_9_history_is_read_from_the_log_after_the_open(self):
+        # The open answers the history's COUNT and keeps no records (PKT-823);
+        # a reader that needs records reads them after the open
+        # (fnn-history-records / fnn-history-last-record), which on format 9
+        # is the log kernel's committed records, never transactions/ (lane
+        # rm2-format9).  `store recover' reports the log's count; the owner
+        # start reads the newest record for its pending key statement
+        # (fnn-owner-install), so a restarted owner that answers the duplicate
+        # 441 and admits the next POST 240 read the history through the log.
+        node = Node(self.image, self.root)
+        node.init()
+        node.start()
+        try:
+            c = Conn(node.port)
+            for i in (910, 911, 912):
+                self.assertTrue(c.post(i).startswith(b"240"), i)
+            c.close()
+        finally:
+            node.stop()
+        self.assertEqual(node.transaction_files(), [])
+        recovered = node.fn("store", str(node.store), "recover")
+        self.assertEqual(recovered.returncode, 0, recovered.stderr[-800:])
+        self.assertIn(b"recovered transactions=3 articles=3", recovered.stdout)
+        node.start()
+        try:
+            c = Conn(node.port)
+            self.assertTrue(c.post(911).startswith(b"441"))
+            self.assertTrue(c.post(913).startswith(b"240"))
+            c.close()
+        finally:
+            node.stop()
+        recovered = node.fn("store", str(node.store), "recover")
+        self.assertEqual(recovered.returncode, 0, recovered.stderr[-800:])
+        self.assertIn(b"recovered transactions=4 articles=4", recovered.stdout)
+
     def test_format_9_compact_reclaim_and_export_run_over_the_log(self):
         # Lane log-recovery: `store compact' (rotation and drop), `store
         # reclaim' (the rewritten history's checkpoint and the drop) and
