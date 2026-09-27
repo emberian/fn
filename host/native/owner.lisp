@@ -1162,6 +1162,12 @@ follows is justified only by this line."
                        'fn-owner-prepare-buffer (fnn-octet-list msgid) codes
                        (fnn-octet-list obligation) (fnn-octet-list subject)
                        (fnn-octet-list evidence) charge)))
+                ;; The prepare reads the arena only; on acceptance it answers
+                ;; :seal-buffer and the host seals the buffer's payload
+                ;; (host/owner-host.lisp fn-owner-prepare-buffer).
+                (when (eq prepared :seal-buffer)
+                  (fnn-seal-live-buffer)
+                  (setq prepared :prepared))
                 (unless (eq prepared :prepared)
                   (setf (fnn-store-fenced store) t)
                   (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation)

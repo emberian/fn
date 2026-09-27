@@ -304,7 +304,7 @@ ARENA_RESULT_SUFFIX = b" <fn-arena> <state>)"
 
 def acl2_result(output):
     """The printed value of one bridge call.  An entry that seals into the
-    payload arena (the records flip: `fn-store-sn-recover`, `-prepare`,
+    payload arena (the records flip: the recover form, `-prepare`,
     `-recover-from-checkpoint`) returns (mv nil VALUE fn-arena state), which
     ACL2 prints as `(NIL VALUE <fn-arena> <state>)`; its VALUE is the answer.
     A non-nil error flag there is not unwrapped, so its parser refuses it."""
@@ -547,8 +547,16 @@ class Acl2Store:
     def recover(self, records, frontier, config_records=()):
         literal = "(" + " ".join(self.literal(record) for record in records) + ")"
         config = "(" + " ".join(self.literal(record) for record in config_records) + ")"
-        form = ("(fn-store-sn-recover '" + literal + " " + str(frontier)
-                + " '" + config + " fn-arena state)")
+        # Decode, intern, open (host/store-node-host.lisp): the arena is
+        # emptied and the rows made by the guard-verified fn-intern-events at
+        # top level, so no :program entry updates the arena (invariant-risk).
+        form = ("(let ((records (fn-store-sn-recover-records '" + literal + " '" + config + ")))"
+                " (if (eq records :bad) (mv nil :fault fn-arena state)"
+                " (let ((fn-arena (fn-arena-clear fn-arena)))"
+                " (mv-let (rows fn-arena) (fn-intern-events records nil 0 fn-arena)"
+                " (mv-let (erp val state) (fn-store-sn-recover-rows rows " + str(frontier)
+                + " '" + config + " state)"
+                " (mv erp val fn-arena state))))))")
         # Replay cost grows with the recovered history, so the bound does too.
         timeout = max(ACL2_RECOVER_BASE_SECONDS + ACL2_RECOVER_PER_RECORD_SECONDS * len(records),
                       self.form_timeout(form))

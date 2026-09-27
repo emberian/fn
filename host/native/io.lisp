@@ -1047,9 +1047,21 @@ The core (host/store-node-host.lisp `fn-store-sn-recover') replays
 allocation domain and the capacity from the configured node, and opens the
 observed store through `fn-cpo-open-observed'; a store with no configuration record never reaches
 here.  The host supplies octets and decides nothing about them."
-  (fnn-action (fnn-core-arena-state 'fn-store-sn-recover
-                                    (mapcar #'fnn-octet-list records) frontier
-                                    (mapcar #'fnn-octet-list config-records))))
+  (let* ((octets (mapcar #'fnn-octet-list records))
+         (configs (mapcar #'fnn-octet-list config-records))
+         (decoded (fnn-core 'fn-store-sn-recover-records octets configs)))
+    (if (eq decoded :bad)
+        :fault
+      ;; The intern at the open: the arena emptied, then the decoded wire
+      ;; events sealed and made rows by the guard-verified fn-intern-events
+      ;; (books/store-intern.lisp; KEYSTONES fn-intern-events-materializes,
+      ;; -are-store-events, -keep-coordinates, -contexts-okp), called here so
+      ;; that no :program entry updates the arena (invariant-risk).
+      (let ((arena (fnn-live-arena)))
+        (fnn-call 'fn-arena-clear arena)
+        (let ((rows (first (fnn-call 'fn-intern-events decoded nil 0 arena))))
+          (fnn-action (fnn-core-state 'fn-store-sn-recover-rows
+                                      rows frontier configs)))))))
 (defun fnn-bridge-config-observation-limit (store)
   "The config reader consumes an ACL2-owned bound before readdir retains names:
 the operator's max-config-generations of the profile STORE opened."
@@ -1176,6 +1188,13 @@ answered with) through the guard-verified `fn-arena-seal-list'
 that also sealed would carry ACL2's invariant-risk and run through its *1*
 body, checking every callee's guard (the whole history, per POST)."
   (fnn-call 'fn-arena-seal-list octets (fnn-live-arena))
+  t)
+
+(defun fnn-seal-live-buffer ()
+  "The arena update the owner's buffer prepare names (:seal-buffer): seal the
+octet buffer's payload through the guard-verified `fn-arena-seal-buffer'
+(books/payload-arena.lisp); see FNN-SEAL-OCTETS."
+  (fnn-call 'fn-arena-seal-buffer (fnn-live-octets) (fnn-live-arena))
   t)
 
 (defun fnn-bridge-prepare (msgid payload codes obligation subject evidence charge)

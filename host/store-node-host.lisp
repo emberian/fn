@@ -342,30 +342,38 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; -are-store-events, -keep-coordinates, -contexts-okp).  The open runs over the
 ; rows; alpha of the opened history is the decoded journal
 ; (fn-intern-events-materializes), which is what the byte-store relation
-; compares (books/byte-store-k0-recovery: fn-bs-recovered-rowsp).  The answer
-; is (mv nil KEYWORD fn-arena state).
-(defun fn-store-sn-recover (octet-records frontier config-octet-records fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+; compares (books/byte-store-k0-recovery: fn-bs-recovered-rowsp).  The
+; open's answer (fn-store-sn-recover-rows) is (mv nil KEYWORD state).
+; The host makes three calls (host/native/io.lisp fnn-bridge-recover,
+; tools/run_store.py recover): fn-store-sn-recover-records decodes; the host
+; clears the arena and calls the guard-verified fn-intern-events itself
+; (records nil 0: the open's keyring and generation); fn-store-sn-recover-rows
+; opens over the rows.  Neither :program entry calls an arena updater: one that
+; did would carry ACL2's invariant-risk, run through its *1* body (every
+; guard-verified callee re-checking its guard) and print a warning on
+; standard output (flip-L6-2 LANEDUMP).
+(defun fn-store-sn-recover-records (octet-records config-octet-records)
+  (declare (xargs :mode :program))
   (let ((records (fn-store-decode-records octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (equal records :bad) (equal config-records :bad)
             (null config-records))
-        (mv nil :fault fn-arena state)
-      (let ((fn-arena (fn-arena-clear fn-arena)))
-        (mv-let (rows fn-arena)
-          (fn-store-intern-records records fn-arena)
-          (if (equal rows :bad)
-              (mv nil :fault fn-arena state)
-            ; The full open is the empty capture extended over the whole
-            ; history, opened once (fn-store-sn-open-extended below).  It is
-            ; the full open fn-cpo-open-observed and the full replay
-            ; fn-cpr-replay by fn-sco-store-open-of-extended-capture
-            ; (books/owner-checkpoint-open.lisp) with PREFIX = NIL.
-            (mv-let (erp val state)
-              (fn-store-sn-open-extended
-               (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
-               config-records frontier state)
-              (mv erp val fn-arena state))))))))
+        :bad
+      records)))
+
+(defun fn-store-sn-recover-rows (rows frontier config-octet-records state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (equal config-records :bad) (null config-records))
+        (value :fault)
+      ; The full open is the empty capture extended over the whole
+      ; history, opened once (fn-store-sn-open-extended below).  It is
+      ; the full open fn-cpo-open-observed and the full replay
+      ; fn-cpr-replay by fn-sco-store-open-of-extended-capture
+      ; (books/owner-checkpoint-open.lisp) with PREFIX = NIL.
+      (fn-store-sn-open-extended
+       (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
+       config-records frontier state))))
 
 ;; ---------------------------------------------------------------------------
 ;; P3: the state checkpoint (books/store-checkpoint-open.lisp,
@@ -493,7 +501,8 @@ reopen predicate, writer-lock observation and observed final namespace."
     0))
 
 ; The open from the decoded checkpoint and the suffix's octets.  It mirrors
-; fn-store-sn-recover line for line; the keystone
+; the full recover (fn-store-sn-recover-records, the intern,
+; fn-store-sn-recover-rows); the keystone
 ; fn-sn-recover-from-checkpoint-equals-full-recover is about the fn-sco-open
 ; call below.
 ; The suffix is interned on top of the arena the checkpoint's load left

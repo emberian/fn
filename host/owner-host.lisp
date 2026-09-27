@@ -881,8 +881,11 @@
                 (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
                 (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
-              (let ((fn-arena (fn-arena-seal-list payload fn-arena)))
-                (mv nil :prepared fn-arena state)))))))))))))
+              ; The entry reads the arena only (no invariant-risk: it runs
+              ; compiled, no callee re-checks its guard); it names the payload
+              ; and the host seals it with one fn-arena-seal-list call
+              ; (tools/run_owner.py prepare), exactly when the Store changed.
+              (mv nil (list :seal payload) fn-arena state))))))))))))
 
 (defun fn-owner-refuse-reservation (state)
   (declare (xargs :stobjs state :mode :program))
@@ -976,8 +979,12 @@
                 (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
                 (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
-              (let ((fn-arena (fn-arena-seal-buffer fn-octets fn-arena)))
-                (mv nil :prepared fn-arena state)))))))))))))
+              ; Reads the arena and the buffer only (no invariant-risk; see
+              ; fn-owner-prepare): :seal-buffer tells the host to seal the
+              ; buffer's payload with one fn-arena-seal-buffer call
+              ; (host/native/owner.lisp fnn-owner-attempt), exactly when the
+              ; Store changed.
+              (mv nil :seal-buffer fn-arena state))))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge state)
