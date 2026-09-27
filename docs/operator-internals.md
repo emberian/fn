@@ -161,8 +161,9 @@ result line, so `init` with a stray word shows the full `init` grammar.
 
 **Store profile (M5, D27).** The store profile is the operator's: every
 bound on the data a store holds is a field `init` writes into `config.json`
-(format `fn-store-8`, `books/byte-store-frame.lisp`, the one store format:
-D34) and nothing rewrites in place; a different profile is a reinstall and an
+(format `fn-store-9`, `books/byte-store-frame.lisp`, the one store format:
+D34; `fn-store-8`, the per-file layout, is still read, STO-028) and nothing
+rewrites in place; a different profile is a reinstall and an
 import. ACL2 fixes the relations between the fields
 (`fn-bs-profile-validp`) and the codec ceilings no field may pass, not the
 values.
@@ -2014,8 +2015,12 @@ a start never creates a secret. A store imported without its key files needs
 `node-secret create`, and the posts its accounts made before then cancel only
 by a signed canceller or the poster's own RFC 8315 key.
 
-The store has one format (`fn-store-8`). A store of any other format is
-refused at open by name (`open refused reason=store-format: reinstall from
+The store has one format (`fn-store-9`: its commits go to the record log,
+`journal/000001.log`, one fsync per batch of POSTs; `store compact`,
+`store reclaim` and `store export` refuse such a store by name,
+`reason=record-log`, until segment rotation lands, PKT-750). A store of the
+per-file layout (`fn-store-8`) still opens and commits as before. A store of
+any other format is refused at open by name (`open refused reason=store-format: reinstall from
 the release and import`, exit 1). The archive carries the committed records,
 the configuration records, the profile and the allocation frontier; the
 store identity and consumer state are records, so they travel with them.

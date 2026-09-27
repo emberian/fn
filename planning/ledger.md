@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1198 |
-| Certification roots in the Makefile | 1151 |
-| Books inside the root closure | 1187 |
-| `defthm` and `defthmd` events | 17603 |
-| `defun` events | 12225 |
-| Functions with verified guards | 2431 |
-| Functions declared `:verify-guards nil` and never verified | 1274 |
-| Functions left at the default with an explicit guard | 6739 |
-| Functions left at the default with no guard | 1781 |
-| `assert-event` checks | 17623 |
-| `must-fail` checks | 2136 |
+| Books read | 1210 |
+| Certification roots in the Makefile | 1163 |
+| Books inside the root closure | 1199 |
+| `defthm` and `defthmd` events | 17711 |
+| `defun` events | 12303 |
+| Functions with verified guards | 2433 |
+| Functions declared `:verify-guards nil` and never verified | 1291 |
+| Functions left at the default with an explicit guard | 6788 |
+| Functions left at the default with no guard | 1791 |
+| `assert-event` checks | 17731 |
+| `must-fail` checks | 2142 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 91 |
 | Theorems flagged SUSPECT by shape | 188 |
 | Export-hygiene warnings | 204 |
 | Enabled-projection warnings | 49 |
-| Teeth-form warnings | 206 |
-| Include-hygiene warnings | 1224 |
-| Host-names warnings | 1338 |
+| Teeth-form warnings | 210 |
+| Include-hygiene warnings | 1235 |
+| Host-names warnings | 1357 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -162,7 +162,8 @@ that `make certify` requests.
 | `books/bp-handoff-status.lisp` | root | 6 | 6 | 6/0/0/0 | 0 | 0 | 0 |
 | `books/bp-held-payload.lisp` | root | 8 | 2 | 0/0/2/0 | 0 | 0 | 0 |
 | `books/bp-held-projection.lisp` | root | 4 | 3 | 0/0/3/0 | 0 | 0 | 0 |
-| `books/bp-ingress.lisp` | root | 35 | 48 | 45/0/3/0 | 0 | 0 | 0 |
+| `books/bp-ingress-carried.lisp` | root | 2 | 2 | 1/0/1/0 | 0 | 0 | 0 |
+| `books/bp-ingress.lisp` | root | 36 | 48 | 45/0/3/0 | 0 | 0 | 0 |
 | `books/bp-ion-observation.lisp` | root | 1 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/bp-ion-workflow-replay.lisp` | root | 14 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-ion-workflow.lisp` | root | 2 | 17 | 0/17/0/0 | 0 | 0 | 0 |
@@ -272,7 +273,7 @@ that `make certify` requests.
 | `books/byte-store-arena.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/byte-store-compaction-correspondence.lisp` | root | 31 | 11 | 4/7/0/0 | 0 | 0 | 0 |
 | `books/byte-store-fault-keystones.lisp` | root | 9 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `books/byte-store-frame.lisp` | root | 32 | 43 | 2/0/38/3 | 0 | 0 | 2 |
+| `books/byte-store-frame.lisp` | root | 32 | 46 | 2/0/41/3 | 0 | 0 | 2 |
 | `books/byte-store-initializer.lisp` | root | 8 | 10 | 0/8/0/2 | 0 | 0 | 0 |
 | `books/byte-store-invariants.lisp` | root | 127 | 8 | 0/7/0/1 | 0 | 0 | 0 |
 | `books/byte-store-k0-authority-error.lisp` | root | 23 | 3 | 0/3/0/0 | 0 | 0 | 0 |
@@ -418,8 +419,9 @@ that `make certify` requests.
 | `books/group-bucket-invariants.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/group-number-index.lisp` | root | 2 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/group-status.lisp` | closure | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/heap-figure.lisp` | root | 15 | 19 | 0/0/19/0 | 0 | 0 | 0 |
-| `books/heap-reservation.lisp` | root | 62 | 43 | 0/0/43/0 | 0 | 0 | 1 |
+| `books/heap-figure.lisp` | root | 30 | 26 | 0/0/26/0 | 0 | 0 | 0 |
+| `books/heap-reservation.lisp` | root | 64 | 46 | 0/0/46/0 | 0 | 0 | 0 |
+| `books/heap-store-figure.lisp` | root | 28 | 15 | 0/0/15/0 | 0 | 0 | 0 |
 | `books/held-record.lisp` | closure | 57 | 46 | 23/0/23/0 | 0 | 0 | 1 |
 | `books/history-fold-refinement.lisp` | closure | 29 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/history-wire.lisp` | closure | 3 | 1 | 0/0/1/0 | 0 | 0 | 2 |
@@ -522,6 +524,7 @@ that `make certify` requests.
 | `books/owner-checkpoint-pipeline.lisp` | root | 73 | 4 | 0/3/0/1 | 0 | 0 | 3 |
 | `books/owner-checkpoint-writer.lisp` | root | 53 | 34 | 2/5/27/0 | 0 | 0 | 0 |
 | `books/owner-commit-carried.lisp` | root | 34 | 17 | 8/0/9/0 | 0 | 0 | 0 |
+| `books/owner-commit-class.lisp` | root | 4 | 9 | 0/0/9/0 | 0 | 0 | 0 |
 | `books/owner-commit-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-config-observe.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-config.lisp` | root | 44 | 44 | 0/6/38/0 | 0 | 0 | 1 |
@@ -541,6 +544,7 @@ that `make certify` requests.
 | `books/owner-invariants.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-list-counts-read.lisp` | root | 13 | 3 | 0/3/0/0 | 0 | 0 | 1 |
 | `books/owner-log-reopen.lisp` | root | 1 | 2 | 0/0/2/0 | 0 | 0 | 0 |
+| `books/owner-log-route.lisp` | root | 2 | 4 | 0/2/2/0 | 0 | 0 | 0 |
 | `books/owner-log.lisp` | root | 29 | 41 | 0/0/41/0 | 0 | 0 | 0 |
 | `books/owner-numbering.lisp` | root | 47 | 4 | 0/0/2/2 | 0 | 0 | 0 |
 | `books/owner-offer-indexed.lisp` | root | 55 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -613,7 +617,7 @@ that `make certify` requests.
 | `books/records-invariants.lisp` | root | 45 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/records-schema-v1.lisp` | root | 9 | 4 | 0/3/0/1 | 0 | 0 | 0 |
 | `books/records-seam.lisp` | root | 21 | 2 | 0/0/2/0 | 0 | 0 | 0 |
-| `books/records-shape.lisp` | root | 48 | 54 | 40/0/14/0 | 0 | 0 | 0 |
+| `books/records-shape.lisp` | root | 61 | 55 | 41/0/14/0 | 0 | 0 | 0 |
 | `books/records-stamp.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/records.lisp` | root | 23 | 13 | 8/0/4/1 | 0 | 0 | 0 |
 | `books/refused-offers.lisp` | root | 11 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -666,6 +670,7 @@ that `make certify` requests.
 | `books/store-checkpoint-tables-reader.lisp` | root | 42 | 12 | 1/0/10/1 | 0 | 0 | 1 |
 | `books/store-checkpoint-tables.lisp` | root | 62 | 37 | 2/4/30/1 | 1 | 0 | 1 |
 | `books/store-compact-verb.lisp` | root | 24 | 6 | 0/3/3/0 | 0 | 0 | 0 |
+| `books/store-compact-window.lisp` | root | 10 | 7 | 0/6/1/0 | 0 | 0 | 1 |
 | `books/store-config.lisp` | root | 7 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/store-event-fields.lisp` | root | 2 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/store-events-carried.lisp` | root | 24 | 13 | 0/0/13/0 | 0 | 0 | 1 |
@@ -686,6 +691,8 @@ that `make certify` requests.
 | `books/store-log-kernel.lisp` | root | 48 | 20 | 0/7/13/0 | 0 | 0 | 1 |
 | `books/store-log-programs.lisp` | root | 6 | 13 | 0/8/5/0 | 0 | 0 | 0 |
 | `books/store-log-recover.lisp` | root | 40 | 4 | 0/0/0/4 | 0 | 0 | 0 |
+| `books/store-log-route-phases.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/store-log-route.lisp` | root | 26 | 10 | 0/2/8/0 | 0 | 0 | 0 |
 | `books/store-log-txid.lisp` | root | 25 | 7 | 0/1/6/0 | 0 | 0 | 0 |
 | `books/store-log.lisp` | root | 59 | 15 | 0/12/3/0 | 0 | 0 | 0 |
 | `books/store-maintenance-reserve.lisp` | root | 10 | 7 | 0/0/7/0 | 0 | 0 | 0 |
@@ -829,8 +836,9 @@ that `make certify` requests.
 | `tests/acl2/bp-handoff-status-tests.lisp` | root | 0 | 3 | 0/1/1/1 | 18 | 3 | 0 |
 | `tests/acl2/bp-held-payload-tests.lisp` | root | 3 | 3 | 0/2/1/0 | 2 | 1 | 0 |
 | `tests/acl2/bp-held-projection-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 11 | 1 | 0 |
+| `tests/acl2/bp-ingress-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
 | `tests/acl2/bp-ingress-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 113 | 0 | 0 |
-| `tests/acl2/bp-ingress-tests.lisp` | root | 0 | 5 | 0/4/0/1 | 35 | 0 | 0 |
+| `tests/acl2/bp-ingress-tests.lisp` | root | 0 | 7 | 0/6/0/1 | 37 | 0 | 0 |
 | `tests/acl2/bp-ion-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 13 | 0 | 0 |
 | `tests/acl2/bp-ion-workflow-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 2 | 0 |
 | `tests/acl2/bp-ion-workflow-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 0 | 0 |
@@ -904,7 +912,7 @@ that `make certify` requests.
 | `tests/acl2/bp-workflow-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 50 | 7 | 0 |
 | `tests/acl2/byte-store-compaction-correspondence-tests.lisp` | root | 0 | 2 | 0/2/0/0 | 10 | 4 | 0 |
 | `tests/acl2/byte-store-fault-keystones-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 8 | 19 | 0 |
-| `tests/acl2/byte-store-frame-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 103 | 3 | 0 |
+| `tests/acl2/byte-store-frame-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 104 | 3 | 0 |
 | `tests/acl2/byte-store-initializer-tests.lisp` | root | 0 | 9 | 0/4/0/5 | 12 | 3 | 0 |
 | `tests/acl2/byte-store-k0-cuts-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 25 | 12 | 0 |
 | `tests/acl2/byte-store-k0-marker-tests.lisp` | root | 0 | 19 | 0/0/0/19 | 11 | 9 | 0 |
@@ -919,7 +927,7 @@ that `make certify` requests.
 | `tests/acl2/byte-store-native-correspondence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 2 | 0 |
 | `tests/acl2/byte-store-observation-scan-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 1 | 3 | 0 |
 | `tests/acl2/byte-store-observation-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 0 | 0 |
-| `tests/acl2/byte-store-profile-v1-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 2 | 0 |
+| `tests/acl2/byte-store-profile-v1-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 23 | 2 | 0 |
 | `tests/acl2/byte-store-program-invariants-tests.lisp` | root | 0 | 3 | 0/1/0/2 | 9 | 8 | 0 |
 | `tests/acl2/byte-store-record-fence-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 7 | 5 | 0 |
 | `tests/acl2/byte-store-record-provenance-tests.lisp` | root | 1 | 39 | 0/1/0/38 | 48 | 63 | 0 |
@@ -1019,7 +1027,7 @@ that `make certify` requests.
 | `tests/acl2/group-descriptions-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 1 | 0 |
 | `tests/acl2/group-number-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 7 | 0 |
 | `tests/acl2/group-status-tests.lisp` | - | 0 | 7 | 0/0/2/5 | 42 | 2 | 0 |
-| `tests/acl2/heap-figure-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 0 | 6 | 0 |
+| `tests/acl2/heap-figure-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 0 | 3 | 0 |
 | `tests/acl2/heap-reservation-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 0 | 14 | 0 |
 | `tests/acl2/held-rows-intern-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `tests/acl2/held-rows-tests.lisp` | root | 0 | 17 | 0/17/0/0 | 9 | 0 | 0 |
@@ -1100,6 +1108,7 @@ that `make certify` requests.
 | `tests/acl2/owner-cancel-refresh-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 6 | 1 | 0 |
 | `tests/acl2/owner-checkpoint-open-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 34 | 10 | 0 |
 | `tests/acl2/owner-commit-carried-tests.lisp` | root | 0 | 6 | 0/2/0/4 | 26 | 5 | 0 |
+| `tests/acl2/owner-commit-class-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 16 | 2 | 0 |
 | `tests/acl2/owner-config-observe-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 9 | 1 | 0 |
 | `tests/acl2/owner-config-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 149 | 1 | 0 |
 | `tests/acl2/owner-enrollment-read-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 31 | 9 | 0 |
@@ -1110,6 +1119,7 @@ that `make certify` requests.
 | `tests/acl2/owner-injection-info-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 2 | 1 | 0 |
 | `tests/acl2/owner-intent-carried-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 28 | 5 | 0 |
 | `tests/acl2/owner-log-reopen-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 3 | 0 |
+| `tests/acl2/owner-log-route-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/owner-log-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 73 | 13 | 0 |
 | `tests/acl2/owner-numbering-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 34 | 5 | 0 |
 | `tests/acl2/owner-open-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 43 | 10 | 0 |
@@ -1159,7 +1169,7 @@ that `make certify` requests.
 | `tests/acl2/records-concrete-tests.lisp` | root | 0 | 3 | 0/0/1/2 | 65 | 3 | 0 |
 | `tests/acl2/records-freeze-tests.lisp` | root | 22 | 5 | 0/0/1/4 | 7 | 11 | 0 |
 | `tests/acl2/records-schema-v1-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 20 | 6 | 0 |
-| `tests/acl2/records-shape-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 25 | 7 | 0 |
+| `tests/acl2/records-shape-tests.lisp` | root | 1 | 4 | 0/0/0/4 | 38 | 7 | 0 |
 | `tests/acl2/records-teeth-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 23 | 9 | 0 |
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 0 | 0 |
 | `tests/acl2/relay-source-routes-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 15 | 5 | 0 |
@@ -1196,6 +1206,7 @@ that `make certify` requests.
 | `tests/acl2/store-checkpoint-open-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 25 | 11 | 0 |
 | `tests/acl2/store-checkpoint-tables-tests.lisp` | root | 2 | 6 | 0/6/0/0 | 13 | 8 | 0 |
 | `tests/acl2/store-compact-verb-tests.lisp` | root | 1 | 1 | 0/0/0/1 | 50 | 8 | 0 |
+| `tests/acl2/store-compact-window-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 21 | 4 | 0 |
 | `tests/acl2/store-event-replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 0 | 0 |
 | `tests/acl2/store-events-carried-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 56 | 11 | 0 |
 | `tests/acl2/store-events-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 0 | 0 |
@@ -1216,6 +1227,7 @@ that `make certify` requests.
 | `tests/acl2/store-log-decode-tests.lisp` | root | 0 | 4 | 0/1/3/0 | 4 | 0 | 0 |
 | `tests/acl2/store-log-kernel-tests.lisp` | root | 0 | 20 | 0/15/5/0 | 11 | 0 | 0 |
 | `tests/acl2/store-log-programs-tests.lisp` | root | 0 | 23 | 0/19/4/0 | 19 | 0 | 0 |
+| `tests/acl2/store-log-route-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 30 | 2 | 0 |
 | `tests/acl2/store-log-tests.lisp` | root | 0 | 11 | 0/6/5/0 | 12 | 0 | 0 |
 | `tests/acl2/store-log-txid-tests.lisp` | root | 0 | 16 | 0/13/3/0 | 5 | 0 | 0 |
 | `tests/acl2/store-maintenance-reserve-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 2 | 0 |
@@ -1239,7 +1251,7 @@ that `make certify` requests.
 | `tests/acl2/store-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/store-profile-facts-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 17 | 1 | 0 |
 | `tests/acl2/store-profile-namespace-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
-| `tests/acl2/store-profile-open-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 77 | 6 | 0 |
+| `tests/acl2/store-profile-open-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 86 | 6 | 0 |
 | `tests/acl2/store-reclaim-buffer-tests.lisp` | root | 1 | 3 | 0/3/0/0 | 8 | 1 | 0 |
 | `tests/acl2/store-reclaim-holders-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 13 | 5 | 0 |
 | `tests/acl2/store-reclaim-pack-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 29 | 8 | 0 |
@@ -1334,8 +1346,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bs-k0s-fsync-file-preserves-relation` | `books/byte-store-k0-step-lemmas.lisp` | 176 | preserves-no-subject-call: the statement never calls fn-bs-k0s-fsync-file or a fn-bs-k0s-fsync-file- transition |
 | `fn-bs-k0s-root-rename-landed-preserves-relation` | `books/byte-store-k0-step-lemmas.lisp` | 327 | preserves-no-subject-call: the statement never calls fn-bs-k0s-root-rename-landed or a fn-bs-k0s-root-rename-landed- transition |
 | `fn-bs-names-outcomes-of-no-ops` | `books/byte-store-scan.lisp` | 311 | branch-of-definition: the hypothesis negates a branch test of fn-bs-names-outcomes and the conclusion is that branch's value |
-| `fn-bs-profile-of-valid` | `books/byte-store-frame.lisp` | 388 | branch-of-definition: the hypothesis is a branch test of fn-bs-profile-of and the conclusion is that branch's value |
-| `fn-bs-profile-validp-of-profile-of` | `books/byte-store-frame.lisp` | 393 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bs-profile-admittedp |
+| `fn-bs-profile-of-valid` | `books/byte-store-frame.lisp` | 416 | branch-of-definition: the hypothesis is a branch test of fn-bs-profile-of and the conclusion is that branch's value |
+| `fn-bs-profile-validp-of-profile-of` | `books/byte-store-frame.lisp` | 421 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bs-profile-admittedp |
 | `fn-bs-rows-wire-of-atom` | `books/byte-store-scan.lisp` | 481 | branch-of-definition: the hypothesis is a branch test of fn-bs-rows-wire and the conclusion is that branch's value |
 | `fn-cat-abandon-stale-refused` | `books/catalog-commit.lisp` | 273 | branch-of-definition: the hypothesis is a branch test of fn-cat-abandon and the conclusion is that branch's value |
 | `fn-cat-complete-expected-mismatch-refused` | `books/catalog-commit.lisp` | 263 | branch-of-definition: the hypothesis is a branch test of fn-cat-complete and the conclusion is that branch's value |
@@ -1355,6 +1367,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-cvec-history-admittedp-of-cons` | `books/store-capacity-vector.lisp` | 623 | branch-of-definition: the hypothesis is a branch test of fn-cvec-history-admittedp and the conclusion is that branch's value |
 | `fn-cvec-record-octets-of-atom` | `books/store-capacity-vector.lisp` | 651 | branch-of-definition: the hypothesis negates a branch test of fn-sbud-record-octets and the conclusion is that branch's value |
 | `fn-cvec-record-octets-of-cons` | `books/store-capacity-vector.lisp` | 642 | branch-of-definition: the hypothesis is a branch test of fn-sbud-record-octets and the conclusion is that branch's value |
+| `fn-cverb-link-octets-of-window` | `books/store-compact-window.lisp` | 122 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-drt-mark-unfolds-to-a-tagged-list` | `tests/acl2/defrecord-tests.lisp` | 169 | definition-restated: the conclusion is the body of fn-drt-mark; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-drt-point-unfolds-to-a-list` | `tests/acl2/defrecord-tests.lisp` | 174 | definition-restated: the conclusion is the body of fn-drt-point; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-evc-event-nth-of-atom` | `books/store-events-carried.lisp` | 185 | branch-of-definition: the hypothesis negates a branch test of fn-store-event-nth and the conclusion is that branch's value |
@@ -1365,7 +1378,6 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-fc-wire-next-unconsumed-is-bounded-linear` | `books/feed-connection-invariants.lisp` | 26 | instance-corollary: the statement is fn-wire-next-unconsumed-is-bounded instantiated, discharging nothing |
 | `fn-fr-disjointp-of-all-memberships-left` | `books/acceptance.lisp` | 259 | instance-corollary: the statement is fn-fr-disjointp-commutes instantiated, discharging nothing |
 | `fn-frame-decode-refuses-oversize-before-validation` | `books/frame-invariants.lisp` | 697 | branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value |
-| `fn-heap-reserve-operation-decide-of-a-serve-action-by-definition` | `books/heap-reservation.lisp` | 279 | branch-of-definition: the hypothesis negates a branch test of fn-heap-reserve-operation-decide and the conclusion is that branch's value |
 | `fn-held-accessors-are-the-wire-accessors` | `books/held-record.lisp` | 128 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-hrt-event-is-intern-event-by-definition` | `tests/acl2/held-rows-intern-tests.lisp` | 9 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-hrt-row-at-is-intern-row-at-by-definition` | `tests/acl2/held-rows-intern-tests.lisp` | 30 | reflexive-conclusion: a conjunct is (equal X X) |

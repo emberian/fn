@@ -238,6 +238,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
 	tests/acl2/store-checkpoint-tables-tests \
+	books/heap-store-figure \
 	books/heap-figure \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
@@ -346,6 +347,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-load-index-tests \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
+	books/store-compact-window \
+	tests/acl2/store-compact-window-tests \
 	books/store-history-marker \
 	books/reclaim-tombstone \
 	books/reclaim-rule \
@@ -384,6 +387,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-decode-tests \
 	books/store-log-programs \
 	tests/acl2/store-log-programs-tests \
+	books/store-log-route \
+	tests/acl2/store-log-route-tests \
+	books/store-log-route-phases \
+	books/owner-log-route \
+	tests/acl2/owner-log-route-tests \
 	books/payload-lz \
 	tests/acl2/payload-lz-tests \
 	books/byte-store-k0-step-lemmas \
@@ -1090,6 +1098,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-plan-tests \
 	books/owner-scheduler \
 	tests/acl2/owner-scheduler-tests \
+	books/owner-commit-class \
+	tests/acl2/owner-commit-class-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \
@@ -1316,6 +1326,7 @@ check:
 # at 32842f50 build-dtn.lisp lacked books/octets-stobj and the image failed.
 # Static, under a second, with its teeth test.
 	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/host_defun_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).

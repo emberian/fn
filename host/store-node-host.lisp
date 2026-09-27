@@ -949,7 +949,14 @@ reopen predicate, writer-lock observation and observed final namespace."
   (declare (xargs :stobjs state :mode :program))
   ; fn-rcon-sn-io-is-sn-io (books/records-concrete): fn-sn-io with the
   ; concrete record dispatchers.
-  (let ((next (fn-rcon-sn-io (f-get-global 'fn-store-sn state) operation result)))
+  ; :log-reserve and :log-order are the record log's two composite steps
+  ; (books/store-log-route.lisp fn-olr-sn-reserve / fn-olr-sn-order: the file
+  ; route's success sequences, by definition), called on a format-9 store.
+  (let* ((s (f-get-global 'fn-store-sn state))
+         (next (case operation
+                 (:log-reserve (fn-olr-sn-reserve s))
+                 (:log-order (fn-olr-sn-order s))
+                 (t (fn-rcon-sn-io s operation result)))))
     (let ((state (f-put-global 'fn-store-sn next state)))
       (value (fn-sf-phase (fn-sn-files next))))))
 

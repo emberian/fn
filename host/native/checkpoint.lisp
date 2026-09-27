@@ -69,6 +69,17 @@
         (fnn-checkpoint-corrupt "pack selection marker does not decode"))
       (second answer))))
 
+(defun fnn-compact-window (records lower)
+  "The octet lists of the records the next link above LOWER takes, as ACL2's
+`fn-store-compact-window-count' names them from the records' lengths: one
+link's window, never the history (PKT-686 item 2)."
+  (let* ((rest (nthcdr lower records))
+         (count (fnn-core 'fn-store-compact-window-count
+                          (mapcar #'length records) lower)))
+    (unless (and (integerp count) (<= 0 count (length rest)))
+      (fnn-fault "ACL2 returned an invalid compaction window: ~s" count))
+    (loop for record in rest repeat count collect (fnn-octet-list record))))
+
 (defun fnn-pack-publish-generation (store records &key chain coverage selected summary)
   "Publish one pack generation, unselected.  The one publication of both pack
 callers:
@@ -88,8 +99,10 @@ covers (the chain's coverage for SUMMARY)."
   (let ((directory (fnn-pack-directory store))
         (captured (if summary
                       (list :ok summary (if coverage (second coverage) 0))
-                      (fnn-core 'fn-store-checkpoint-chain-capture
-                                (mapcar #'fnn-octet-list records)
+                      (fnn-core 'fn-store-checkpoint-chain-capture-window
+                                (length records)
+                                (fnn-compact-window records
+                                                    (if coverage (second coverage) 0))
                                 (if coverage (second coverage) 0)
                                 (if coverage (third coverage) 0)
                                 (or selected 0)
@@ -657,6 +670,17 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 
 (setq *fnn-checkpoint-recover-callback* #'fnn-checkpoint-restore-selected)
 
+;;; Lane commit-onto-log: a format-9 store holds its history in the record
+;;; log.  Packs, compaction and content reclamation over the log are segment
+;;; rotation and drop (design 2026-09-27 section 6, lane w6-log-recovery,
+;;; PKT-750); until they land these verbs refuse by name on such a store and
+;;; touch nothing.
+(defun fnn-refuse-on-log-route (store verb)
+  (when (fnn-store-logp store)
+    (fnn-store-close store)
+    (fnn-refuse "~a refused reason=record-log: a format-9 store's ~a is segment rotation (w6-log-recovery, PKT-750)"
+                verb verb)))
+
 (defun fnn-checkpoint-command-publish (root selectp)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
     (unwind-protect
@@ -690,6 +714,7 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 
 (defun fnn-checkpoint-command-pack (root selectp)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
+    (fnn-refuse-on-log-route store "pack")
     (unwind-protect
          (multiple-value-bind (generation line) (fnn-pack-publish store records selectp)
            (if (eq generation :nothing-uncovered)
@@ -701,6 +726,7 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 (defun fnn-checkpoint-command-pack-reclaim (root)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
     (declare (ignore records))
+    (fnn-refuse-on-log-route store "pack-reclaim")
     (unwind-protect
          (let ((removed (fnn-pack-prefix-reclaim store)))
            (fnn-out "reclaimed transaction-prefix=~d" (length removed))
@@ -710,6 +736,7 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 (defun fnn-checkpoint-command-pack-retire (root)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
     (declare (ignore records))
+    (fnn-refuse-on-log-route store "pack-retire")
     (unwind-protect
          (let ((retired (fnn-pack-retire-older-generations store)))
            (fnn-out "retired pack-generations=~d" (length retired))
@@ -762,10 +789,11 @@ namespaces, the disk's free octets) and ask ACL2's one compaction decision."
                          (fnn-transactions store) (fnn-config-max-transactions store)
                          "transaction namespace")
                         #'string<))
-           (decision (fnn-core 'fn-store-compact-decide
+           (decision (fnn-core 'fn-store-compact-decide-window
                                (fnn-store-config store)
-                               (mapcar #'fnn-octet-list records)
-                               lower names retirable selected
+                               (length records) lower
+                               (fnn-compact-window records lower)
+                               names retirable selected
                                (fnn-disk-free-octets store))))
       (unless (and (listp decision) (member (first decision) '(:compact :refused)))
         (fnn-fault "ACL2 returned no compaction decision"))
@@ -809,6 +837,7 @@ kept, and a rerun continues from them."
 
 (defun fnn-command-compact (root)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
+    (fnn-refuse-on-log-route store "compact")
     (unwind-protect
          (progn (fnn-out "~a" (fnn-compact-steps store records))
                 +fnn-exit-ok+)
@@ -960,6 +989,7 @@ kept, and a rerun continues from them."
 
 (defun fnn-command-reclaim (root dry)
   (multiple-value-bind (store records) (fnn-open-live-store root (not dry))
+    (fnn-refuse-on-log-route store "reclaim")
     (unwind-protect
          (progn (fnn-out "~a" (fnn-reclaim-steps store records dry))
                 +fnn-exit-ok+)

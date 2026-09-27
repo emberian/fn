@@ -70,7 +70,13 @@
   (inbox nil) (conns nil) wake-read wake-write
   (handshaking 0) (waiting nil)
   ;; Implicit-TLS sockets not yet admitted, waiting for a handshake slot.
-  (queued nil))
+  (queued nil)
+  ;; Lane commit-onto-log: (CONN . COMPLETION) pairs the committer thread
+  ;; handed over for connections waiting on their batch (under LOCK); the
+  ;; loop's completed passes and whether it sleeps in poll(2) now, which the
+  ;; committer reads to know every ready connection was stepped
+  ;; (host/native/owner.lisp fnn-owner-loops-passed-p).
+  (arrived nil) (passes 0) (polling nil))
 
 (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn))
   socket fd implicit-tls channel ssl cid opened-cid
@@ -83,7 +89,10 @@
   ;; The service class this connection's quanta are admitted as (:reader, or
   ;; :transit when ACL2 named a peer at open) and the render plan whose
   ;; windows the loop is writing (nil between replies).
-  (class :reader) plan)
+  (class :reader) plan
+  ;; Lane commit-onto-log: (STEP REDEEM AFTER) while the step's submission
+  ;; waits for its commit quantum; nil otherwise.
+  (await nil))
 
 (defun fnn-mux-ticks (seconds)
   (+ (fnn-now) (round (* seconds internal-time-units-per-second))))
@@ -391,6 +400,14 @@ the same octets are handed to the next step."
                    (fnn-owner-handle-chunk service (fnn-mux-conn-cid conn) incoming
                                            (fnn-mux-conn-socket conn)
                                            (fnn-mux-conn-class conn)))))
+    ;; Format 9 (lane commit-onto-log): the step queued its submission for the
+    ;; next commit quantum.  The rest is the submitted step's handling, with
+    ;; the plan built when the completion arrives (fnn-mux-await-done).
+    (when (eq (first results) :await)
+      (destructuring-bind (tag step redeem closing starttls consumed) results
+        (declare (ignore tag))
+        (setq results (list (list :await step redeem) closing starttls consumed
+                            (and redeem t) t))))
     (when (eq (first results) :defer)
       (let ((ms (second results)))
         (unless (and (integerp ms) (> ms 0))
@@ -433,7 +450,41 @@ the same octets are handed to the next step."
           (fnn-fault "owner requested STARTTLS without a TLS context")))
       (setf (fnn-mux-conn-close-after-handshake conn) (and starttls closing))
       (let ((after (cond (starttls :starttls) (closing :close) (t nil))))
-        (fnn-mux-queue-plan loop conn plan after)))))
+        (if (and (consp plan) (eq (first plan) :await))
+            (fnn-mux-await loop conn (second plan) (third plan) after)
+          (fnn-mux-queue-plan loop conn plan after))))))
+
+(defun fnn-mux-await (loop conn step redeem after)
+  "CONN waits for its submission's completion from the next commit quantum
+(host/native/owner.lisp fnn-owner-commit-queued-locked)."
+  (let ((service (fnn-mux-service loop)))
+    (setf (fnn-mux-conn-await conn) (list step redeem after))
+    (let ((early (fnn-owner-await-register
+                  service (fnn-mux-conn-cid conn)
+                  (lambda (completion)
+                    (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+                      (push (cons conn completion) (fnn-mux-loop-arrived loop)))
+                    (fnn-mux-wake loop))
+                  (fnn-mux-conn-socket conn))))
+      (when early
+        (fnn-mux-await-done loop conn early)))))
+
+(defun fnn-mux-await-done (loop conn completion)
+  "The batch answered: COMPLETION is the member's rendered completion, (:close
+. OCTETS) for the uncertain line ACL2 gave it, or :uncertain (the batch's
+barrier failed or another member was uncertain: no reply, the connection
+closes).  The plan is ACL2's (fn-splan-step-plan), as fnn-owner-handle-chunk
+builds it for a step that drained in its own quantum."
+  (destructuring-bind (step redeem after) (fnn-mux-conn-await conn)
+    (setf (fnn-mux-conn-await conn) nil)
+    (cond ((eq completion :uncertain)
+           (fnn-mux-begin-drain loop conn))
+          (t
+           (let* ((closing (and (consp completion) (eq (car completion) :close)))
+                  (octets (if closing (cdr completion) completion)))
+             (fnn-mux-queue-plan loop conn
+                                 (fnn-core 'fn-splan-step-plan step octets redeem)
+                                 (if closing :close after)))))))
 
 (defun fnn-mux-work (loop conn)
   "Step the held input while the connection may: serving, no reply queued,
@@ -442,6 +493,7 @@ no exposure wait pending."
     (loop while (and (eq (fnn-mux-conn-phase conn) :serving)
                      (fnn-mux-conn-input conn)
                      (null (fnn-mux-conn-out conn))
+                     (null (fnn-mux-conn-await conn))
                      (null (fnn-mux-conn-resume-at conn)))
           do (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service))
                (return))
@@ -637,6 +689,9 @@ call (books/public-exposure.lisp fn-exp-open), as the worker did it."
 (defun fnn-mux-interest (conn)
   "The poll events CONN waits for, or 0 when it waits for nothing on its
 descriptor (a timer, or a step it can take now)."
+  (when (fnn-mux-conn-await conn)
+    ;; Waiting for its batch's completion: nothing is read or written.
+    (return-from fnn-mux-interest 0))
   (let ((want (fnn-mux-conn-want conn)))
     (flet ((bits (direction)
              (if (eq direction :output) +fnn-mux-pollout+ +fnn-mux-pollin+)))
@@ -695,6 +750,7 @@ operation then observes the error or the end of input)."
               ((and (eq (fnn-mux-conn-phase conn) :serving)
                     (null (fnn-mux-conn-out conn))
                     (null (fnn-mux-conn-input conn))
+                    (null (fnn-mux-conn-await conn))
                     (null (fnn-mux-conn-resume-at conn))
                     (due (fnn-mux-conn-idle-at conn)))
                (fnn-mux-idle loop conn))))
@@ -704,7 +760,8 @@ operation then observes the error or the end of input)."
               ((:handshake :tls-queued) (note (fnn-mux-conn-hs-deadline conn)))
               (:draining (note (fnn-mux-conn-drain-deadline conn)))
               (:serving (note (fnn-mux-conn-resume-at conn))
-               (unless (or (fnn-mux-conn-out conn) (fnn-mux-conn-input conn))
+               (unless (or (fnn-mux-conn-out conn) (fnn-mux-conn-input conn)
+                           (fnn-mux-conn-await conn))
                  (note (fnn-mux-conn-idle-at conn)))))))))
     next))
 
@@ -725,12 +782,25 @@ whatever the descriptor says."
                         (fnn-mux-conn-channel conn)
                         (null (fnn-mux-conn-out conn))
                         (null (fnn-mux-conn-input conn))
+                        (null (fnn-mux-conn-await conn))
                         (null (fnn-mux-conn-resume-at conn))
                         (fnn-tls-pending-p (fnn-mux-conn-channel conn))))
                  (fnn-mux-loop-conns loop)))
 
+(defun fnn-mux-take-arrived (loop)
+  "Build and queue the reply of every connection whose batch completed."
+  (let ((arrived (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+                   (prog1 (nreverse (fnn-mux-loop-arrived loop))
+                     (setf (fnn-mux-loop-arrived loop) nil)))))
+    (dolist (pair arrived)
+      (let ((conn (car pair)))
+        (unless (eq (fnn-mux-conn-phase conn) :done)
+          (fnn-mux-guarded (loop conn)
+            (fnn-mux-await-done loop conn (cdr pair))))))))
+
 (defun fnn-mux-iterate (loop)
   (fnn-mux-take-inbox loop)
+  (fnn-mux-take-arrived loop)
   (let* ((next (fnn-mux-timers loop (fnn-now)))
          (pending (fnn-mux-pending-tls loop)))
     (dolist (conn pending)
@@ -741,7 +811,7 @@ whatever the descriptor says."
            (fds (make-array n)) (events (make-array n))
            (timeout (if (or pending
                             (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
-                              (fnn-mux-loop-inbox loop)))
+                              (or (fnn-mux-loop-inbox loop) (fnn-mux-loop-arrived loop))))
                         0
                       (min +fnn-mux-tick-ms+
                            (if next
@@ -753,12 +823,30 @@ whatever the descriptor says."
       (loop for conn in polled for i from 1
             do (setf (aref fds i) (fnn-mux-conn-fd conn)
                      (aref events i) (fnn-mux-interest conn)))
-      (let ((revents (fnn-mux-poll fds events timeout)))
+      (let ((revents (progn (setf (fnn-mux-loop-polling loop) t)
+                            ;; A committer waiting for this loop's pass sees
+                            ;; it idle now (fnn-owner-loops-passed-p).
+                            (fnn-mux-signal-committer loop)
+                            (unwind-protect (fnn-mux-poll fds events timeout)
+                              (setf (fnn-mux-loop-polling loop) nil)))))
         (unless (zerop (aref revents 0)) (fnn-mux-drain-wake loop))
         (loop for conn in polled for i from 1
               unless (or (zerop (aref revents i))
                          (eq (fnn-mux-conn-phase conn) :done))
-                do (fnn-mux-dispatch loop conn))))))
+                do (fnn-mux-dispatch loop conn)))))
+  ;; A pass is complete: every connection ready in it was stepped.  A
+  ;; committer waiting for the passes (format 9) looks again.
+  (incf (fnn-mux-loop-passes loop))
+  (fnn-mux-signal-committer loop))
+
+(defun fnn-mux-signal-committer (loop)
+  "Wake a committer waiting on this loop's pass (format 9, a submission
+queued); nothing otherwise."
+  (let ((service (fnn-mux-service loop)))
+    (when (and (fnn-owner-service-batching service)
+               (plusp (fnn-owner-service-queued service)))
+      (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+        (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service))))))
 
 (defun fnn-mux-stop-loop (loop)
   "The service is stopping: deliver what a connection still has queued (the
@@ -862,8 +950,18 @@ stop shuts it down whichever thread holds it."
 (defvar *fnn-mux-control-clients* 64)
 
 (defun fnn-mux-thread-count (service)
+  "ACL2's count of the node's threads (books/heap-reservation.lisp
+fn-heap-thread-count: the fixed threads, the I/O loops and the control
+clients' ceiling), the one the launcher's reservation holds; the host's own
+constants must agree with it or the budget is refused as a fault."
   (declare (ignore service))
-  (+ +fnn-mux-fixed-threads+ +fnn-mux-loops+ *fnn-mux-control-clients*))
+  (let ((threads (fnn-core 'fn-heap-thread-count 0)))
+    (unless (and (= +fnn-mux-loops+ (fnn-core 'fn-heap-mux-loops))
+                 (>= threads (+ +fnn-mux-fixed-threads+ +fnn-mux-loops+
+                                (min *fnn-mux-control-clients*
+                                     (fnn-core 'fn-native-control-max-active-clients)))))
+      (fnn-fault "the host's thread constants disagree with ACL2's thread count"))
+    threads))
 
 (defun fnn-mux-budget-install (service tls-context)
   "ACL2 decides whether this machine holds the live capacity; a refusal is

@@ -288,7 +288,12 @@ def workload(a):
               if a.refuse_every and i % a.refuse_every == a.refuse_every // 2}
     attempted = 0
 
+    import threading
+    log_lock = threading.Lock()
+
     def post_range(lo, hi, errname):
+        if a.posters > 1:
+            return post_range_concurrent(lo, hi, errname)
         nonlocal attempted
         p, err = start_owner(image, cfg, work / errname)
         seen = 0
@@ -330,6 +335,85 @@ def workload(a):
                 c.close()
         finally:
             out_line(log, tag="owner-stop", exit=stop_owner(p, err))
+
+    def post_range_concurrent(lo, hi, errname):
+        """POSTERS threads, thread t posting lo+t, lo+t+POSTERS, ...; each
+        marks and logs after its own reply, under one lock (the mark follows
+        the 240, as the sequential client's does)."""
+        nonlocal attempted
+        p, err = start_owner(image, cfg, work / errname)
+        errors = []
+
+        def poster(t):
+            nonlocal attempted
+            try:
+                c = m.Conn(port)
+                for i in range(lo + t, hi, a.posters):
+                    with log_lock:
+                        attempted = max(attempted, i + 1)
+                        out_line(log, tag="attempt", i=i)
+                    r = c.line("POST")
+                    if not r.startswith(b"340"):
+                        raise SystemExit("POST %d: %r" % (i, r))
+                    art = article_bytes(i, sizes[i])
+                    if i in refuse:
+                        art = art.replace(b"Newsgroups: fn.test", b"Newsgroups: fn.not-carried")
+                    c.stream.write(art + b".\r\n")
+                    r = c.readline()
+                    with log_lock:
+                        if r.startswith(b"240"):
+                            mark("ack-%d" % i)
+                            out_line(log, tag="ack", i=i)
+                        elif r.startswith(b"441") or r.startswith(b"437"):
+                            mark("refuse-%d" % i)
+                            out_line(log, tag="refuse", i=i, reply=r.decode("ascii", "replace").strip())
+                        else:
+                            raise SystemExit("POST %d body: %r" % (i, r))
+                c.close()
+            except BaseException as e:  # noqa: BLE001 - reported below
+                errors.append(repr(e))
+        try:
+            mark("conn")
+            ts = [threading.Thread(target=poster, args=(t,)) for t in range(a.posters)]
+            for t in ts:
+                t.start()
+            for t in ts:
+                t.join()
+            if errors:
+                raise SystemExit("posters: %s" % errors[:3])
+        finally:
+            out_line(log, tag="owner-stop", exit=stop_owner(p, err))
+
+    if a.log_route:
+        # Three posting windows with a restart between them (each open
+        # recovers the log: P-LOG-RECOVER's zeroing and fence); then the
+        # reference.  No compact, reclaim or export: refused by name.
+        bounds = [0, a.posts // 2, (3 * a.posts) // 4, a.posts]
+        for k in range(3):
+            mark("phase:post")
+            post_range(bounds[k], bounds[k + 1], "owner-%d.stderr" % (k + 1))
+        mark("phase:reference")
+        p, err = start_owner(image, cfg, work / "owner-ref.stderr")
+        try:
+            ref = read_all(port, a.posts)
+            c = m.Conn(port)
+            ref_over = read_overview(c)
+            c.close()
+        finally:
+            stop_owner(p, err)
+        code, so, se = native(image, "operator", cfg, "status")
+        out_line(log, tag="status", exit=code, stdout=so, stderr=se[-400:])
+        mark("phase:end")
+        refdir = work / "reference"
+        refdir.mkdir(exist_ok=True)
+        (refdir / "ref.json").write_text(json.dumps([x.decode("latin-1") for x in ref]))
+        (refdir / "ref2.json").write_text(json.dumps([x.decode("latin-1") for x in ref]))
+        (refdir / "over.json").write_text(json.dumps({mid: n for n, mid in ref_over}))
+        out_line(log, tag="done", posts=a.posts, attempted=attempted, sizes=sizes, checkpoints=[],
+                 ref_220=sum(1 for x in ref if x.startswith(b"220")), ref2_220=None,
+                 ref2_heads=[], store_path=str(store), port=port, log_route=True,
+                 posters=a.posters)
+        return
 
     # Two compactions: the first packs the history, the second packs it again
     # with the records since (on this image: a new pack generation, the
@@ -648,7 +732,9 @@ def cuts(a):
         # The attempted bound: every i whose attempt could have begun by the
         # cut: the last answered + 1 (one POST in flight), never past the run.
         answered = acked + refused
-        attempted = min(posts, (max(answered) + 2) if answered else 1)
+        # With POSTERS concurrent clients up to POSTERS POSTs are in flight
+        # past the last answered one.
+        attempted = min(posts, (max(answered) + 1 + a.posters) if answered else a.posters)
         if phase in ("reference", "retention", "reclaim", "reference-reclaimed", "end",
                      "export", "import"):
             attempted = posts
@@ -1334,6 +1420,12 @@ def main(argv=None):
     w.add_argument("--seed", type=int, default=1)
     w.add_argument("--history-octets", type=int, default=0, help="a near-full store's bound")
     w.add_argument("--refuse-every", type=int, default=0)
+    # Lane commit-onto-log: a format-9 store (the record log).  Its compact,
+    # reclaim and export are refused by name until w6-log-recovery (PKT-750),
+    # so those phases are skipped; POSTERS concurrent connections post (the
+    # owner commits them in batches), each client marking after its own 240.
+    w.add_argument("--log-route", action="store_true")
+    w.add_argument("--posters", type=int, default=1)
     i = sub.add_parser("index")
     i.add_argument("work")
     c = sub.add_parser("cuts")
@@ -1345,6 +1437,8 @@ def main(argv=None):
     c.add_argument("--limit", type=int, default=0)
     c.add_argument("--recover-crash", type=float, default=0.0,
                    help="the fraction of cuts whose recovery is itself cut")
+    c.add_argument("--posters", type=int, default=1,
+                   help="the workload's concurrent posters: POSTs in flight at a cut")
     lw = sub.add_parser("log-workload", help="the record log's workload (lane w6-log-core)")
     lw.add_argument("work")
     lw.add_argument("--image", required=True, help="the developer image")

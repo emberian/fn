@@ -76,7 +76,14 @@ CHECKPOINT_BUFFER_INCLUDES = (
 # which includes store-reclaim-buffer), so those two are the findings.
 # post-alloc-2: the prepare is fn-prc-sbud-prepare over fn-prc-refresh's
 # carry (books/post-retain-carried), which replaced fn-pidx-sbud-prepare.
+# commit-onto-log: the bare copy drops books/owner-log-route too, so the
+# owner's four log-route names are findings in any loader.
+LOG_ROUTE_NAMES = ("fn-olr-bmax", "fn-olr-ocfg-order", "fn-olr-ocfg-reserve", "fn-olr-omax")
 BUFFER_FINDINGS = [
+    f"included: host/owner-host.lisp uses {name}, defined in "
+    "books/owner-log-route.lisp, which host/native/build-dtn.lisp has not "
+    "included when it loads host/owner-host.lisp"
+    for name in LOG_ROUTE_NAMES] + [
     f"included: host/owner-host.lisp uses {name}, defined in "
     f"{book}, which host/native/build-dtn.lisp has not "
     "included when it loads host/owner-host.lisp"
@@ -117,6 +124,9 @@ OWNER_HOST_PIDX_INCLUDE = ('(include-book "../books/post-identity-index")\n'
                            '; The retention admission of a POST through a carried obligation-id trie\n'
                            '; (fn-prc-refresh, fn-prc-sbud-prepare; fn-owner-prepare-buffer).\n'
                            '(include-book "../books/post-retain-carried")\n')
+# commit-onto-log: the owner's log-route composites (it includes
+# books/records-concrete-owner too, so the bare copy drops it with the rest).
+OWNER_HOST_LOG_ROUTE_INCLUDE = ('(include-book "../books/owner-log-route")\n')
 
 
 @contextlib.contextmanager
@@ -133,8 +143,10 @@ def bare_owner_host():
         text = owner.read_text()
         assert OWNER_HOST_SELF_INCLUDES in text
         assert OWNER_HOST_PIDX_INCLUDE in text
+        assert OWNER_HOST_LOG_ROUTE_INCLUDE in text
         owner.write_text(text.replace(OWNER_HOST_SELF_INCLUDES, "")
-                         .replace(OWNER_HOST_PIDX_INCLUDE, ""))
+                         .replace(OWNER_HOST_PIDX_INCLUDE, "")
+                         .replace(OWNER_HOST_LOG_ROUTE_INCLUDE, ""))
         yield root
 
 
@@ -251,7 +263,7 @@ class BuildListsCheckTests(unittest.TestCase):
         self.assertEqual(found, [
             f"included: host/owner-host.lisp uses {name}, defined in {book}, "
             f"which {loader} has not included when it loads host/owner-host.lisp"
-            for name, book in (
+            for name, book in tuple((n, "books/owner-log-route.lisp") for n in LOG_ROUTE_NAMES) + (
                 # rep-wave-d-2: books/octets-stobj is in STORE_FORMS now (the
                 # store-node host takes the buffer), so fn-octets is served.
                 # post-identity-index: the served POST calls the two below

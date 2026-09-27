@@ -222,7 +222,8 @@ kind-4 composites round-trip through the actual Store-event dispatcher.
 
 FNST's 196,608-octet ceiling counts its payload, excluding the fixed 42-octet
 frame header and trailer. The store profile (FNSM kind 1, format
-`fn-store-8`, books/byte-store-frame.lisp) is two texts (the format and the
+`fn-store-9`, or `fn-store-8` for the per-file layout: STO-028,
+books/byte-store-frame.lisp) is two texts (the format and the
 frontier format) and twelve eight-octet frame naturals, the operator's fields
 in the order of `*fn-bs-profile-field-names*`; `fn-bs-profile-validp` states
 the relations between them and the codec ceilings (the per-record field R is
