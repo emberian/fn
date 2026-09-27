@@ -2136,17 +2136,19 @@ empties it first (fnn-bridge-recover)."
           (values :ok (second answer))
           (values :refused 0)))))
 
-(defun fnn-recover-suffix-rows (store suffix config-records)
+(defun fnn-recover-suffix-rows (store suffix config-records &optional decoded)
   "The open from the loaded checkpoint: the suffix decoded
-(fn-store-sn-recover-records), interned ON TOP of the arena the load left by
+(fn-store-sn-recover-records; DECODED when the caller decoded SUFFIX with it
+already), interned ON TOP of the arena the load left by
 the guard-verified fn-intern-events (records nil 0: the canonical handles
 continue from the checkpoint's payload count), then the open over the rows
 (fn-store-sn-recover-from-checkpoint).  The three calls are
 fn-scka-recover-rows over the host's extension (books/store-checkpoint-
 arena.lisp, KEYSTONE fn-scka-recover-from-checkpoint-is-full-recover)."
   (let* ((configs (mapcar #'fnn-octet-list config-records))
-         (decoded (fnn-core 'fn-store-sn-recover-records
-                            (mapcar #'fnn-octet-list suffix) configs)))
+         (decoded (or decoded
+                      (fnn-core 'fn-store-sn-recover-records
+                                (mapcar #'fnn-octet-list suffix) configs))))
     (if (eq decoded :bad)
         :fault
         (let ((rows (first (fnn-call 'fn-intern-events decoded nil 0 (fnn-live-arena)))))
@@ -5611,7 +5613,7 @@ and last trailer must be the kernel's, or the read is a fault."
              (fnn-fault "the active log segment does not read back its committed records")))
       (fnn-close fd))))
 
-(defun fnn-recover-log-from-log-checkpoint (store config-records suffix s)
+(defun fnn-recover-log-from-log-checkpoint (store config-records suffix s &optional decoded)
   "The open from a checkpoint whose F row names the log's first suffix
 segment: SUFFIX is the scan from there (T8: with the checkpoint's records it
 is the whole history), replayed over the checkpoint
@@ -5620,7 +5622,7 @@ there is no full replay to fall back to: a checkpoint the open cannot use is
 refused by name."
   (progn
     ;; S: the loaded checkpoint's (fnn-recover-log loaded it once, first).
-    (unless (eq (fnn-recover-suffix-rows store suffix config-records) :recovering)
+    (unless (eq (fnn-recover-suffix-rows store suffix config-records decoded) :recovering)
       (fnn-core-state 'fn-store-sco-clear)
       (fnn-bridge-reset)
       (error 'fnn-store-open-refusal
@@ -5687,18 +5689,24 @@ does, and records how the log holds the history (fnn-store-log-history) for
                                   (fnn-fault "ACL2 returned a malformed checkpoint selection"))
                                 (and (eq (first choice) :full-replay) choice))))
                    (config-records (fnn-config-records store))
-                   (acc 0) (kept nil) (scanned 0) (newest nil)
+                   (acc 0) (kept nil) (decoded nil) (scanned 0) (newest nil)
                    (replay (and full (fnn-recover-log-stream-begin)))
                    (log (fnn-log-scan-segments
                          store (second plan) genesis
                          (lambda (record)
                            (incf scanned)
                            (setq newest record)
-                           (if replay
-                               (fnn-recover-log-stream-take replay record)
-                             (progn
-                               (setq acc (fnn-core 'fn-store-log-next-txid-step record acc))
-                               (push (fnn-octets record) kept))))
+                           (cond (replay
+                                  (fnn-recover-log-stream-take replay record))
+                                 ;; Over a checkpoint whose F row names the
+                                 ;; suffix, every scanned record is the
+                                 ;; suffix, decoded once below: its txids
+                                 ;; are folded from that decode.
+                                 (log-position
+                                  (push (fnn-octets record) kept))
+                                 (t
+                                  (setq acc (fnn-core 'fn-store-log-next-txid-step record acc))
+                                  (push (fnn-octets record) kept))))
                          ;; the full replay seals extents: each record's place
                          replay)))
               ;; The streamed replay folded the txids from its decoded chunks
@@ -5706,6 +5714,19 @@ does, and records how the log holds the history (fnn-store-log-history) for
               (when replay
                 (fnn-recover-log-stream-flush replay)
                 (setq acc (fourth replay)))
+              ;; The suffix over a log checkpoint, decoded once (ACL2's
+              ;; fn-store-sn-recover-records): the txid fold reads the decoded
+              ;; events (fn-store-log-next-txid-of-events, as the streamed
+              ;; replay's does), and the replay over the checkpoint takes the
+              ;; same decode (fnn-recover-suffix-rows).  A suffix that does not
+              ;; decode folds nothing here; its replay refuses the open.
+              (when (and log-position (not replay))
+                (setq kept (nreverse kept)
+                      decoded (fnn-core 'fn-store-sn-recover-records
+                                        (mapcar #'fnn-octet-list kept)
+                                        (mapcar #'fnn-octet-list config-records)))
+                (unless (eq decoded :bad)
+                  (setq acc (fnn-core 'fn-store-log-next-txid-of-events decoded acc))))
               (fnn-log-batch-reset log)
               (setf (fnn-store-log-last store)
                     (and newest (list (fnn-core 'fn-lgc-count (fnn-log-kernel log)) newest)))
@@ -5727,11 +5748,11 @@ does, and records how the log holds the history (fnn-store-log-history) for
                            (fnn-recover-log-stream-end store replay config-records)
                            scanned)
                           (t
-                           (let ((records (nreverse kept)))
+                           (let ((records (if log-position kept (nreverse kept))))
                              (setq kept nil)
                              (if log-position
                                  (fnn-recover-log-from-log-checkpoint store config-records records
-                                                                      sequence)
+                                                                      sequence decoded)
                                (or (fnn-recover-log-from-state-checkpoint store config-records records)
                                    (fnn-recover-log-replay store records config-records)))))))))
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
