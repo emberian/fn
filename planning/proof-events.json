@@ -5086,7 +5086,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-arena-seal-buffer{correspondence}"
+          "name": "fn-arena-bytes-seal-buffer{correspondence}"
         },
         {
           "kind": "theorem",
