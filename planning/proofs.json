@@ -7610,7 +7610,8 @@
         "fn-heap-store-figure-observed-is-at-most-unobserved",
         "fn-heap-operation-decide-holds-the-store",
         "fn-heap-reserve-first-run-accepted-is-within-the-machine",
-        "fn-heap-storeless-decide-is-small-and-fits"
+        "fn-heap-storeless-decide-is-small-and-fits",
+        "fn-heap-status-decide-is-the-launchers-run-reservation"
       ],
       "evidence": [
         "books/heap-figure.lisp",
