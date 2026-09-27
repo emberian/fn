@@ -7834,7 +7834,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config-carried-candidate.lisp",
         "tests/acl2/config-carried-candidate-tests.lisp",
@@ -7844,7 +7844,10 @@
         "planning/evidence/config-consumer-catalog-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T221758Z-3334374.json",
         "planning/evidence/manifests/certify-20260927T001141Z-384911.json",
-        "planning/evidence/config-consumer-catalog-2-2026-09-27.md"
+        "planning/evidence/config-consumer-catalog-2-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T014915Z-1653648.json",
+        "planning/evidence/manifests/certify-20260927T015210Z-1700160.json",
+        "planning/evidence/manifests/certify-20260927T021118Z-1928382.json"
       ],
       "progress_note": "Id confirmed at the batch AN merge (lane config-consumer-catalog). config-consumer-catalog-2 (2026-09-27): PKT-601 (1) and (2) proved and REPL-admitted (the candidate open from the open's result; the readback verdict), the host changed (fn-store-cfg-native-admin-authorize-carried passes the carried result; fnn-admin-verify-under-lock reads back); certification and the hbox measurement are in the record. Not done: the configuration-only fold's per-request replay (it needs the monotonicity of admission in the reservation to be derived from the physical fold), the consumer poll's measurement at depth (PKT-601 (4)).",
       "events": [
@@ -7974,7 +7977,8 @@
       "evidence": [
         "books/config-policy-delta.lisp",
         "tests/acl2/config-policy-delta-tests.lisp",
-        "planning/evidence/config-consumer-catalog-2-2026-09-27.md"
+        "planning/evidence/config-consumer-catalog-2-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T014915Z-1653648.json"
       ],
       "pending_subject": "No host line calls fn-cat-apply-in-quanta or fn-cat-apply-delta yet: the catalog's delta is applied only by the test books until the catalog serves the view (PKT-585).",
       "events": [
