@@ -31,6 +31,9 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             "--max-record-octets", "33554432",
             "--max-history-octets", "268435456"],
     }
+    BOUNDARY_MAX_OCTETS = {
+        "test_ten_mebibyte_article_through_four_kib_fragments": 11534336,
+    }
 
     @classmethod
     def setUpClass(cls):
@@ -49,10 +52,12 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.receipts = self.tmp / "fnrj"
         self.workflow = self.tmp / "fnwf"
         # SCN-077 step 1's Store half: the development base admits 32,768-
-        # octet articles, so the 10 MiB case's Store is raised to 11 MiB
-        # articles (and the record and history bounds that admit one).
-        # Without it the Store refuses the article as oversize and the
-        # handoff is reported refused (PRF-224, PKT-630 (7)).
+        # octet articles, and the neighbour's inbound bound (bp-boundary
+        # MAX-OCTETS, the peer record's inbound max) was 32,768 too, so the
+        # 10 MiB case raises both to 11 MiB (and the Store's record and
+        # history bounds that admit one).  Without them the article is
+        # refused :oversize and the handoff is reported refused (PRF-224,
+        # PKT-630 (7)).
         profile = self.STORE_PROFILES.get(self._testMethodName, [])
         initialized = self.invoke("store", self.store, "init", *profile,
                                   "fn.test")
@@ -69,7 +74,8 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         trusted = self.invoke(
             "operator", self.config, "bp-boundary", "add", "sender-boundary",
             "sender.bp.gate.invalid", "dtn://sender/", self.port,
-            "fn.test", 32768, 16)
+            "fn.test", self.BOUNDARY_MAX_OCTETS.get(self._testMethodName, 32768),
+            16)
         self.assertEqual(trusted.returncode, 0, trusted.stderr)
         self.fragments = self.author_fragments()
 

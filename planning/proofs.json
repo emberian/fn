@@ -7913,6 +7913,29 @@
         "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
       "progress_note": "Lane bp-fragments-10mib (2026-09-27): certified on hbox with certify_books.py --incremental (2 jobs); the farm manifest is cited in the evidence record."
+    },
+    {
+      "id": "PRF-225",
+      "title": "The executed BP CRC-16/X.25 is table-driven and equals the bitwise definition every bundle theorem reasons about",
+      "statement": "books/bp-primary.lisp. fn-bpp-crc16-scan executes (mbe :exec) fn-bpp-crc16-scan-table: per octet, c = (logand (logxor crc x) 65535) and the next register (logand (logxor (ash c -8) (fn-bpp-crc16-table-ref (logand c 255))) 65535), the 256-entry table *fn-bpp-crc16-table* evaluated from fn-bpp-crc16-octet at every octet value by the defconst (it cannot drift). KEYSTONE fn-bpp-crc16-scan-table-is-scan: (implies (and (natp crc) (fn-cbor-octet-listp xs)) (equal (fn-bpp-crc16-scan-table crc xs) (fn-bpp-crc16-scan crc xs))), the guard proof of fn-bpp-crc16-scan. The octet step is checked at every one of the 65,536 16-bit registers by evaluation inside the proof (local fn-bpp-crc16-step-agrees), so the logical definitions, and every theorem about fn-bpp-crc16, fn-bpb-encode and the bundle codec, are unchanged. Host: every block CRC the node computes (fn-bpb-encode-block-with-crc, the decoders' checks) through fn-bpp-crc16; the reassembled whole bundle's encode in fn-bpnf-family-plan (bp-service.lisp fnn-bps-fragment-progress -> fn-bpnf-family-next, and the kind-18 publication). Why: sb-sprof over the receiver that reassembled and delivered a 1 MiB fragment family: 77 percent of CPU in fn-bpp-crc16-scan's bitwise steps (FLOOR 25.8 percent self, FN-BPP-CRC16-BIT 37 percent cumulative); a 1 MiB CRC now takes 0.06 s in the REPL. What it does not say: anything about CRC-32C (PRF-190) or the list representation of the payload (D27's by-handle encoder, PKT-630 (4)).",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008"
+      ],
+      "depends_on": [
+        "PRF-190"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpp-crc16-scan-table-is-scan"
+      ],
+      "evidence": [
+        "books/bp-primary.lisp",
+        "tests/acl2/bp-primary-tests.lisp",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      ],
+      "progress_note": "Lane bp-fragments-10mib (2026-09-27): admitted in the hbox REPL; the farm manifest is cited in the evidence record."
     }
   ]
 }

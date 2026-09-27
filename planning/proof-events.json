@@ -7409,6 +7409,16 @@
           "name": "fn-bpnf-step-persist-delivery-is-step"
         }
       ]
+    },
+    {
+      "id": "PRF-225",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpp-crc16-scan-table-is-scan",
+          "note": "KEYSTONE. Subject fn-bpp-crc16-scan (its mbe :exec); host: every fn-bpp-crc16 call (fn-bpb-encode). Teeth: tests/acl2/bp-primary-tests.lisp (PRF-225 block)."
+        }
+      ]
     }
   ]
 }
