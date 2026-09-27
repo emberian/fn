@@ -710,6 +710,14 @@ class NativeControlTests(unittest.TestCase):
                 owner.wait(timeout=10)
             owner.stdout.close()
             owner.stderr.close()
+        # No owner at the control path: the connect fails before anything is
+        # submitted, so the post is refused, and names why (ACL2's
+        # fn-native-control-transport-word; lane ops-fixes: it printed
+        # `refused operator post REFUSED` and nothing else).
+        stopped_id = "<native-control-reason-stopped@example.invalid>"
+        stopped = self.post(stopped_id, self.article(stopped_id))
+        self.assertEqual(stopped.returncode, 1, stopped.stderr.decode())
+        self.assertIn(b"refused operator post REFUSED no-owner", stopped.stderr)
 
     def test_an_old_clients_plain_request_gets_the_plain_reply(self):
         # PKT-453 (a): a client that sends the plain kind-3 request (every

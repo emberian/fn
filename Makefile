@@ -398,6 +398,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-route-tests \
 	books/store-log-kernel-concrete \
 	tests/acl2/store-log-kernel-concrete-tests \
+	books/store-log-stream \
+	tests/acl2/store-log-stream-tests \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
 	books/store-log-reclaim \
@@ -967,6 +969,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-prepare-served-tests \
 	tests/acl2/owner-prepare-served-events-tests \
 	tests/acl2/owner-identity-served-tests \
+	tests/acl2/owner-prepare-served-abort-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \
@@ -1029,6 +1032,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-bound-commit \
 	books/consumer-event-index \
 	tests/acl2/consumer-event-index-tests \
+	books/history-columns \
+	tests/acl2/history-columns-tests \
+	books/history-columns-store \
+	tests/acl2/history-columns-store-tests \
 	books/consumer-poll-index \
 	tests/acl2/consumer-poll-index-tests \
 	books/consumer-event-index-store-invariants \
@@ -1392,6 +1399,10 @@ check:
 # Static, under a second, with its teeth test.
 	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
 	@$(CHECK_STEP) $(PYTHON) tools/host_defun_check.py
+# A host macro used before its definition in load order compiles as a
+# function call (batch AW: every format-9 restart faulted; lane ops-fixes).
+	@$(CHECK_STEP) $(PYTHON) tools/host_macro_order_check.py
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_macro_order_check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).

@@ -1025,6 +1025,19 @@ def main() -> int:
     if missing:
         parser.error("a book to recertify is not in the selected roots' closure: "
                      + ", ".join(missing))
+    if not args.books and args.affected_by:
+        # A book no Makefile root reaches (a new book whose root was never
+        # added) is not "unaffected": nothing would ever certify it.  Say so
+        # and fail, instead of answering success (batch AW: a lane's new
+        # book passed a farm run that certified nothing).
+        everything = set(local_closure(default_books()))
+        orphans = [book for book in (normalize_book(b) for b in args.affected_by)
+                   if book not in everything]
+        if orphans:
+            print("certify_books: in no Makefile root's closure (add it to ACL2_BOOKS "
+                  "in the Makefile, or include it from a root): " + ", ".join(orphans),
+                  file=sys.stderr)
+            return 2
     if args.dry_run:
         for book in args.books:
             print(book)

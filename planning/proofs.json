@@ -10757,9 +10757,10 @@
         "books/owner-prepare-served-ocl.lisp",
         "tests/acl2/store-identity-traces-tests.lisp",
         "tests/acl2/consumer-store-node-tests.lisp",
-        "tests/acl2/topic-history-store-node-tests.lisp"
+        "tests/acl2/topic-history-store-node-tests.lisp",
+        "tests/acl2/owner-prepare-served-abort-tests.lisp"
       ],
-      "progress_note": "Lane host-decisions-abort (Opus 5.5, 2026-09-27; lane host-decisions item 2, prepare-served's liveness finding). Teeth, reachable (the real reserve and prepare of each kind, then fn-sn-known-abort; antecedent and conclusion asserted): tests/acl2/store-identity-traces-tests *sit-identity-aborted* (keyring snapshot, :record-staged) and *sit-composite-aborted* (signed composite fn-hstxa-p, :record-data-durable); tests/acl2/consumer-store-node-tests *csnt-ack-aborted* (consumer ack; restaged after at the same sequence); tests/acl2/topic-history-store-node-tests *thsn-install-aborted* (topic admin install). CORRUPTED-STATE witness: *sit-corrupt-staged-identity* (node advanced past the event: gate refuses, abort is the identity, relation false). Owner-level reachable witnesses of identity/consumer/topic prepares are item 3 of lane host-decisions. The host needed no change: fn-owner-known-abort already answers :aborted exactly when ACL2 moved the Store to :ready.",
+      "progress_note": "Lane host-decisions-abort (Opus 5.5, 2026-09-27; lane host-decisions item 2, prepare-served's liveness finding). Teeth, reachable (the real reserve and prepare of each kind, then fn-sn-known-abort; antecedent and conclusion asserted): tests/acl2/store-identity-traces-tests *sit-identity-aborted* (keyring snapshot, :record-staged) and *sit-composite-aborted* (signed composite fn-hstxa-p, :record-data-durable); tests/acl2/consumer-store-node-tests *csnt-ack-aborted* (consumer ack; restaged after at the same sequence); tests/acl2/topic-history-store-node-tests *thsn-install-aborted* (topic admin install). CORRUPTED-STATE witness: *sit-corrupt-staged-identity* (node advanced past the event: gate refuses, abort is the identity, relation false). Owner-level reachable witnesses (lane host-decisions-teeth): tests/acl2/owner-prepare-served-abort-tests.lisp *psa-topic-aborted*, *psa-consumer-aborted*, *psa-keyring-aborted*, *psa-composite-aborted* -- the host's (:store (:known-abort)) on the topic, consumer, keyring and interned-composite-row candidates the host's own prepares staged (owner-prepare-served-events-tests, owner-identity-served-tests): fn-owner-known-abort's word :aborted, :ready, the node's next txid advanced to the frontier, no record published, fn-lgoc-invariantp before and after, and a second prepare (a fresh topic install) admitted and staged with the invariant (the owner is not fenced). Affected roots of store-node-resolution, owner-prepare-served-ocl, post-fields and these test books at 4 jobs on hbox, certify-20260927T153827Z-94348: 308 passed, 9 red, all nine listed in planning/evidence/batch-au-flip-reds-2026-09-27.md (records-flip wire-vs-row assertions: bp-release-authority, bp-request-reference, owner-store-indexed, post-identity-index, reader-open-carried, records-concrete, store-carried-folds, store-events-carried, store-reclaim-holders tests); none reads the known abort. The host needed no change: fn-owner-known-abort already answers :aborted exactly when ACL2 moved the Store to :ready.",
       "events": [
         "fn-sn-known-abort-preserves-relation",
         "fn-sn-known-abort-is-exact-node-abort",
@@ -10803,6 +10804,65 @@
         "fn-orr-reader-relation-at-a-captured-view",
         "fn-orr-relation-of-with-view",
         "fn-ocvp-step-preserves-inv"
+      ]
+    },
+    {
+      "id": "PRF-301",
+      "title": "The store's history is an abstract stobj of columns whose logical value is the history list, and the store node's event index answers what it answers",
+      "statement": "books/history-columns.lisp (lane history-columns, stage 1 of 3; the coordinator's decision on PKT-PRS-1's event-index half, PKT-PRS-3, PKT-PRS-4). defabsstobj fn-hist: logical value the true list of retained events (fn-sf-records, oldest first, sequence = position); executable fn-hist$c: a resizable rows column by sequence, the count, and a Message-ID table from a salted 32-bit FNV-1a hash of the Message-ID of an event's article (taken by digest-free shape, fn-hist-key-article) to the sequences carrying it, newest first; a lookup compares every candidate exactly (fn-cei-event-article, fn-held-p, equal), so no answer assumes Message-ID uniqueness or hash separation (PKT-774 worst case: an adversary who learns the salt puts all N articles in one bucket; a lookup is then N exact comparisons, an append stays O(1)). Correspondence fn-hist$corr: the object IS the fold of the history's appends from the empty object with its salt (supporters digest-free; :corr-fn-exists t). Exports refined by defabsstobj: fn-hist-count (len), fn-hist-at (nth), fn-hist-msgid-records (fn-cei-article-records-for), fn-hist-append (append one) and fn-hist-clear, all exec functions guard-verified. KEYSTONE fn-hist-load-is-the-history: the open's load (clear with a salt, one append per event) is the history. Bridges over the store node's index under its correspondence fn-cei-correspondencep (PRF-144): fn-hist-count-serves-cei-count, fn-hist-at-serves-cei-get (every natural sequence, the history within 2^32 events), fn-hist-msgid-records-serve-cei (every Message-ID). Stage 2a (books/history-columns-store.lisp): R(o, fn-hist) := fn-hist = (fn-sf-records (fn-sn-files (fn-own-store o))); fn-hist-sync appends the rows past the stobj's count (fn-sf-records-nth); KEYSTONE fn-hist-sync-after-run-is-the-history: under fn-own-relation, R before any fn-own-run implies the synced stobj is the history after it (by fn-own-run-records-prefix); fn-hist-sync-of-prefix-is-the-history. The store's carried folds from the stobj under R alone, for every cache: fn-hist-count-is-used (fn-sbud-used), fn-hist-bytes-carried-is-bytes-extend, fn-hist-debt-carried-is-debt-extend, fn-hist-usage-carried-is-usage-extend (the EXTEND specifications fn-sbud-bytes-carried, fn-scf-debt-carried, fn-scf-usage-carried meet under the index). Host call: none yet (stage 2 threads fn-hist where the index is read: store-budget, carried folds, checkpoint tables, poll index, control-visible, owner refresh, BP receiver, acceptance payload ref). Local policy; no RFC requirement.",
+      "milestone": "M4",
+      "requirements": [
+        "STO-001",
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-180"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-columns.lisp",
+        "tests/acl2/history-columns-tests.lisp",
+        "books/history-columns-store.lisp",
+        "tests/acl2/history-columns-store-tests.lisp"
+      ],
+      "progress_note": "history-columns stage 1 2026-09-27: measured in an hbox ACL2 session over the same held rows, the structure's own live bytes per record: fn-hist 58.6 B (10k, 27-char Message-IDs), 56.8 B (10k, 47-char), 76.4 B (1k); the store node's index fn-cei-build 692 B, 1,429 B, 681 B. Stage 2 (switch the store node's index) and stage 3 (held-row strings into a byte pool) open.",
+      "events": [
+        "fn-hist-load-is-the-history",
+        "fn-hist-count-serves-cei-count",
+        "fn-hist-at-serves-cei-get",
+        "fn-hist-msgid-records-serve-cei",
+        "fn-hist-append{correspondence}",
+        "fn-hist-msgid-records{correspondence}",
+        "fn-hist-sync-after-run-is-the-history",
+        "fn-hist-sync-of-prefix-is-the-history",
+        "fn-hist-bytes-carried-is-bytes-extend",
+        "fn-hist-debt-carried-is-debt-extend",
+        "fn-hist-usage-carried-is-usage-extend",
+        "fn-hist-count-is-used"
+      ]
+    },
+    {
+      "id": "PRF-297",
+      "title": "The format-9 open reads a segment one entry at a time, and the stream it runs is the recovered kernel's scan",
+      "statement": "Subjects: the calls host/native/io.lisp fnn-log-stream-segment makes per entry (fn-lgw-start, fn-lgw-header-len, fn-lgw-entry-len, fn-lgw-step, fn-lgw-stop, fn-lgw-pos, fn-lgw-broken, fn-lgw-kernel), reached from fnn-log-recover, fnn-log-open-read-only and fnn-log-scan-segments (fnn-recover-log, whose full replay takes each record straight into the replay's chunk), and from the history reads fnn-log-read-closed-segment and fnn-log-read-active-segment (the active segment to the concrete kernel's frontier). The host reads the header octets fn-lgw-header-len names at the state's offset, then the entry fn-lgw-entry-len names (or none), and fn-lgw-step decides it from one frame open (fn-lgw-decide-is-okp-and-records): the record (handed to the replay, not kept), the next offset past the padding, the chain's trailer, the count, the next txid, the stop and the splice verdict. KEYSTONE fn-lgw-run-is-the-open (books/store-log-stream.lisp): over the segment's octets C, with no hypothesis, the run from (fn-lgw-start GENESIS FLOOR) emits exactly the committed records (a batch entry's several in order, PKT-749) of (fn-lgt-recover C GENESIS UNIT MAX FLOOR) in order, ends in a state whose kernel is fn-lgc-of that recovered kernel (the kernel fn-lg-recover-program-establishes-the-relation names; PRF-276's refinement starts from it), and whose splice verdict is fn-lgs-chain-broken-p of C. Composed from one window = the scan's slice (fn-lgw-window-is-the-slice), one step = one scan step (fn-lgw-step-when-entry, -when-no-entry), and fn-lgw-run-is-the-scan (the run over the steps with the step closed); fn-lgw-run-is-fn-lgc-open equates it with the whole-segment open. The host's reads are windows of C (A-HOST's read of a regular file, the assumption the whole-segment read made). Measured in planning/evidence/log-open-stream-2026-09-27.md.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-276"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/store-log-stream.lisp",
+        "tests/acl2/store-log-stream-tests.lisp",
+        "tests/test_native_log.py",
+        "tests/test_native_commit_log.py",
+        "planning/evidence/log-open-stream-2026-09-27.md"
       ]
     }
   ]
