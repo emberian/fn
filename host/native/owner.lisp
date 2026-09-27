@@ -330,6 +330,15 @@ function supplied no observation at all, which is a defect here."
 (defun fnn-owner-feed-step (name &rest args)
   (apply #'fnn-owner-result 'fn-ores-feed-publication-p name args))
 
+(defun fnn-owner-feed-arena-step (name &rest args)
+  "fnn-owner-feed-step for an entry that READS the payload arena (the reply
+chunk: a 335/238's article is the row's bytes through the arena,
+books/owner-feed-article.lisp fn-ofa-feed-article).  It seals nothing."
+  (let ((value (apply #'fnn-core-arena-state name args)))
+    (unless (fnn-core 'fn-ores-feed-publication-p value)
+      (fnn-fault "owner returned a malformed result from ~(~a~)" name))
+    value))
+
 (defun fnn-owner-feed-word (publication)
   (fnn-core 'fn-ores-feedpub-word publication))
 

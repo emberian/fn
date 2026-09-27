@@ -250,8 +250,13 @@ closed by this worker, preserving the one-closer rule."
                                               (fnn-feed-link-peer-octets link) now))
             (word (fnn-feed-checked-word
                    (fnn-owner-feed-word publication)
-                   '(:offer :idle :refused) 'fn-owner-feed-tick)))
+                   '(:offer :idle :refused :unsendable) 'fn-owner-feed-tick)))
        (fnn-owner-feed-flush service publication)
+       ;; :unsendable (books/owner-feed-article.lisp fn-ofa-publication): the
+       ;; records are flushed above; its ACL2 line names the reason and the
+       ;; caller drops the link, so fn-feed-lost requeues the offer.
+       (when (eq word :unsendable)
+         (fnn-owner-feed-log publication))
        (values word
                (if (eq word :offer)
                    (let ((command (fnn-owner-feed-command publication)))
@@ -265,19 +270,23 @@ closed by this worker, preserving the one-closer rule."
   (fnn-owner-transit-serialized
    service nil
    (lambda ()
-     (let* ((publication (fnn-owner-feed-step 'fn-owner-feed-reply-chunk
-                                              (fnn-feed-link-peer-octets link)
-                                              (fnn-octet-list octets) now))
+     (let* ((publication (fnn-owner-feed-arena-step 'fn-owner-feed-reply-chunk
+                                                    (fnn-feed-link-peer-octets link)
+                                                    (fnn-octet-list octets) now))
             (word (fnn-feed-checked-word
                   (fnn-owner-feed-word publication)
-                  '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :refused :connection-refused :streaming-refused :need-input :closed :invalid :fault)
+                  '(:starttls :tls :auth-user :auth-pass :mode :ready :send :quiet :refused :unsendable :connection-refused :streaming-refused :need-input :closed :invalid :fault)
                   'fn-owner-feed-reply-chunk)))
        (when (eq word :fault)
          (fnn-fault "feed reply framer state is malformed"))
        ;; Only a complete post-ready :line reaches the feed port and replaces
        ;; its FNFD projection.  MODE is a connection-phase command, not a
        ;; delivery effect, and :ready has no socket bytes.
-       (when (member word '(:send :quiet :refused))
+       ;; :unsendable (fn-ofa-publication-command-words-have-octets): the
+       ;; port moved and its records are flushed like a :send's; the line
+       ;; names ACL2's reason and fnn-feed-consume drops the link, so
+       ;; fn-feed-lost requeues the offer.  Never an owner stop.
+       (when (member word '(:send :quiet :refused :unsendable))
          (fnn-owner-feed-flush service publication)
          ;; A reply outcome (not a 335/238 prompt) has one ACL2-rendered
          ;; line: a peer's refusal or deferral is never silent.
@@ -424,7 +433,7 @@ ACL2 framer."
                (declare (ignore ignored host port timeout security auth))
                (fnn-feed-drop-link runtime link now backoff)))
            (return))
-          ((:closed :invalid :connection-refused :streaming-refused)
+          ((:closed :invalid :connection-refused :streaming-refused :unsendable)
            (multiple-value-bind (ignored host port backoff timeout security auth)
                (fnn-feed-dial-plan service (fnn-feed-link-peer-octets link))
              (declare (ignore ignored host port timeout security auth))
@@ -451,9 +460,15 @@ ACL2 framer."
           (when (fnn-feed-link-ready link)
             (multiple-value-bind (word command)
                 (fnn-feed-tick (fnn-feed-runtime-service runtime) link now)
-              (declare (ignore word))
               (when (> (length command) 0)
-                (fnn-feed-send link command))))
+                (fnn-feed-send link command))
+              (when (eq word :unsendable)
+                (multiple-value-bind (ignored host port backoff timeout security auth)
+                    (fnn-feed-dial-plan (fnn-feed-runtime-service runtime)
+                                        (fnn-feed-link-peer-octets link))
+                  (declare (ignore ignored host port timeout security auth))
+                  (fnn-feed-drop-link runtime link now backoff))
+                (return-from fnn-feed-pump-link nil))))
           (unless (fnn-feed-stoppingp runtime)
             ;; The ACL2-projected limit sizes this buffer before read(2); a
             ;; peer cannot make the host allocate a larger coalesced batch.
