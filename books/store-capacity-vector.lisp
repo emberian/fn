@@ -522,6 +522,18 @@ vector holds after it at its worst case, its own promise included."
           (fn-cvec-roomp profile used b d))))
 
 
+; A wire article record stores its encoding (it is no held or composite row).
+(local
+ (defthm fn-cvec-wire-record-row-octets
+   (implies (fn-record-p record)
+            (equal (fn-sbud-row-octets record)
+                   (len (fn-store-event-encode record))))
+   :hints (("Goal" :use ((:instance fn-held-p-forward-shape (x record))
+                         (:instance fn-sbud-row-octets-of-wire-row (row record)))
+            :in-theory (e/d (fn-record-p fn-record-shapep fn-held-shapep fn-hstxa-p)
+                            (fn-held-p fn-sbud-row-octets-of-wire-row
+                             fn-store-event-encode))))))
+
 ;  KEYSTONE (one committed record of any kind keeps the vector).
 (defthm fn-cvec-record-keeps-the-vector
   (implies (and (fn-cvec-roomp profile used bytes-used debt)
