@@ -5338,11 +5338,15 @@ concrete input of fn-lg-decode (its model is fn-lgd-octets)."
 that stops at an entry validating under another predecessor is a splice or
 a stale segment, refused by name (fn-lgs-chain-broken-string-p), never read
 as a torn tail."
-  (let ((text (fnn-log-read-string fd extent)))
-    (when (fnn-core 'fn-lgs-chain-broken-string-p text genesis unit max)
+  (let* ((text (fnn-log-read-string fd extent))
+         (ks (fnn-core 'fn-lg-open-kernel text genesis unit max 1)))
+    ;; The check at the kernel's own stop (fn-lgs-chain-broken-at-is-the-
+    ;; model): one decode of the segment, not two.
+    (when (fnn-core 'fn-lgs-chain-broken-at text (fnn-core 'fn-lgk-frontier ks)
+                    genesis unit max)
       (error 'fnn-store-open-refusal
              :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
-    (fnn-core 'fn-lg-open-kernel text genesis unit max 1)))
+    ks))
 
 (defun fnn-log-recover (path extent unit max &optional (genesis *fn-lg-genesis*))
   "P-LOG-RECOVER (fn-lg-recover-program): the kernel of the segment's decode
@@ -5546,6 +5550,21 @@ parent."
         (lambda () (fnn-fsync-dir (fnn-store-root store)))
         (lambda () (fnn-fsync-dir (fnn-parent (fnn-store-root store))))))
 
+(defconstant +fnn-log-next-txid-chunk+ 1024
+  "Records per ACL2 call of the frontier's fold at an open (a work quantum per
+call, never a bound on the store).")
+
+(defun fnn-log-next-txid-streamed (records floor)
+  "ACL2's fn-store-log-next-txid over RECORDS (octet vectors) a chunk at a
+time, the fold's floor carried: the fold is a running maximum, so the chunks'
+answer is the whole list's; only one chunk is an octet list at a time."
+  (let ((next floor))
+    (loop while records do
+      (let ((chunk (loop repeat +fnn-log-next-txid-chunk+ while records
+                         collect (fnn-octet-list (pop records)))))
+        (setq next (fnn-nat (fnn-core 'fn-store-log-next-txid chunk next)))))
+    next))
+
 (defun fnn-log-segment-names (store)
   "journal/'s entries (bounded by the segment index's width)."
   (fnn-list-directory-bounded (fnn-journal-dir store)
@@ -5745,10 +5764,8 @@ an interrupted drop."
               ;; scan holds, of every event kind (ACL2's fn-store-log-next-
               ;; txid), at least the checkpoint's frontier at S (the dropped
               ;; segments' txids), and the log kernel caught up to it.
-              (let ((next (fnn-nat (fnn-core 'fn-store-log-next-txid
-                                             (mapcar #'fnn-octet-list scanned)
-                                             (max floor (fnn-core 'fn-lgk-next-txid
-                                                                  (fnn-log-kernel log)))))))
+              (let ((next (fnn-log-next-txid-streamed
+                           scanned (max floor (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log))))))
                 (setf (fnn-log-kernel log) (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) next)
                       (fnn-store-log store) log
                       (fnn-store-frontier store) next))

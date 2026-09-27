@@ -218,20 +218,38 @@
             (equal (car (nthcdr n (fn-lgd-codes x))) 0))
    :hints (("Goal" :induct (nthcdr n x) :in-theory (enable nth nthcdr)))))
 
+; The check at a stop the host already has: STOP is the frontier of the
+; kernel the host decoded from S (fn-lg-open-kernel), so no second decode runs
+; (host/native/io.lisp fnn-log-open-kernel, fnn-log-scan-segments).
+(defun fn-lgs-chain-broken-at (s stop prev unit max)
+  (declare (xargs :guard (and (stringp s) (natp stop)) :verify-guards nil))
+  (and (< stop (length s))
+       (not (equal (char s stop) (code-char 0)))
+       (fn-lgs-chain-broken-p (fn-lgd-octets s) prev unit max)))
+
+(defthm fn-lgs-chain-broken-at-is-the-model
+  (implies (and (stringp s)
+                (equal stop (fn-lgk-frontier (fn-lg-open-kernel s prev unit max floor))))
+           (equal (fn-lgs-chain-broken-at s stop prev unit max)
+                  (fn-lgs-chain-broken-p (fn-lgd-octets s) prev unit max)))
+  :hints (("Goal" :in-theory (e/d (fn-lgd-octets)
+                                  (fn-lg-open-kernel fn-lg-scan fn-lg-scan-last fn-lg-entry-okp
+                                   fn-lgs-claimed-prev fn-lg-slice nth nthcdr)))))
+
 (defun fn-lgs-chain-broken-string-p (s prev unit max)
   (declare (xargs :guard (stringp s) :verify-guards nil))
-  (let ((stop (fn-lgk-frontier (fn-lg-open-kernel s prev unit max 1))))
-    (and (< stop (length s))
-         (not (equal (char s stop) (code-char 0)))
-         (fn-lgs-chain-broken-p (fn-lgd-octets s) prev unit max))))
+  (fn-lgs-chain-broken-at s (fn-lgk-frontier (fn-lg-open-kernel s prev unit max 1))
+                          prev unit max))
 
 (defthm fn-lgs-chain-broken-string-p-is-the-model
   (implies (stringp s)
            (equal (fn-lgs-chain-broken-string-p s prev unit max)
                   (fn-lgs-chain-broken-p (fn-lgd-octets s) prev unit max)))
-  :hints (("Goal" :in-theory (e/d (fn-lgd-octets)
-                                  (fn-lg-open-kernel fn-lg-scan fn-lg-scan-last fn-lg-entry-okp
-                                   fn-lgs-claimed-prev fn-lg-slice nth nthcdr)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-lgs-chain-broken-string-p)
+                                             (theory 'minimal-theory))
+                  :use ((:instance fn-lgs-chain-broken-at-is-the-model
+                                   (stop (fn-lgk-frontier (fn-lg-open-kernel s prev unit max 1)))
+                                   (floor 1))))))
 
 ; -----------------------------------------------------------------------------
 ; The chain over several segments.

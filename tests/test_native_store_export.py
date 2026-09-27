@@ -115,7 +115,11 @@ class StoreExportTests(ProfileFixture):
             self.assertEqual(a.returncode, EXIT_OK, a.stderr.decode())
             self.assertEqual(a.stdout, b.stdout)
         a, b = self.op("status"), self.operator_with(config2, "status")
-        strip = lambda out: [l for l in out.decode().splitlines() if str(self.root) not in l]
+        # The heap line is the launcher's figure from the store's size on
+        # disk (reservation-after-flip), not the history: the imported log's
+        # preallocated extent differs from the served one's.
+        strip = lambda out: [l for l in out.decode().splitlines()
+                             if str(self.root) not in l and not l.startswith("heap=")]
         self.assertEqual(strip(a.stdout), strip(b.stdout))
 
         # Refusals by name, exit 1, no store written.
