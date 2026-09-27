@@ -4,6 +4,7 @@
 (include-book "store-identity-traces-tests")
 (include-book "../../books/acceptance-stamp-invariants")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "held-rows-tests")
 
 (defconst *ast-observation* (fn-clock-observation 1 841000000000 0 t))
 (defconst *ast-no-wall* (fn-clock-observation 1 0 0 nil))
@@ -17,8 +18,12 @@
 (assert-event (fn-record-p *ast-built*))
 (assert-event (equal (fn-record-stamp *ast-built*) 841000000))
 (assert-event (equal *ast-built* *sn-record*))
+; The store retains the row the entry interns from it (records-flip:
+; store-intern fn-intern-row-at, the first payload of the run at handle 0).
+(defconst *ast-row* (fn-hrt-row-at *ast-built* 0))
+(assert-event (fn-held-p *ast-row*))
 (assert-event (equal (fn-sf-phase
-                      (fn-sn-files (fn-sn-prepare *sn-reserved* *ast-built*)))
+                      (fn-sn-files (fn-sn-prepare *sn-reserved* *ast-row*)))
                      :record-staged))
 (assert-event (equal (fn-sn-article-record *sn-reserved* *ast-no-wall*
                                            "<sn@example>" '(65 66) *sn-groups*
@@ -43,15 +48,16 @@
 ; stages a natural stamp and refuses the old marker before any record write.
 (defconst *ast-legacy* (fn-record-with-stamp *ast-built* :legacy))
 (assert-event (fn-record-p *ast-legacy*))
-(assert-event (equal (fn-sn-prepare *sn-reserved* *ast-legacy*)
+(defconst *ast-legacy-row* (fn-hrt-row-at *ast-legacy* 0))
+(assert-event (equal (fn-sn-prepare *sn-reserved* *ast-legacy-row*)
                      *sn-reserved*))
 ; Direct replay of a staged node must not complete a different pending
 ; article that happens to share the record's transaction coordinates.
 (assert-event (null (fn-replay-apply-record (fn-sn-node *sn-prepared*)
-                                            *sn-record*)))
+                                            *sn-row*)))
 (must-fail
  (defthm ast-prepare-refusal-without-legacy-hypothesis-fails
-   (equal (fn-sn-prepare *sn-reserved* *ast-built*) *sn-reserved*)
+   (equal (fn-sn-prepare *sn-reserved* *ast-row*) *sn-reserved*)
    :rule-classes nil))
 
 ; The positive finish witness uses the exact pre-completion record staged by
@@ -62,6 +68,7 @@
 (assert-event (not (fn-stxe-p (fn-sn-completion-record *sn-completing*))))
 (assert-event (not (fn-stxk-p (fn-sn-completion-record *sn-completing*))))
 (assert-event (not (fn-stxa-p (fn-sn-completion-record *sn-completing*))))
+(assert-event (not (fn-hstxa-p (fn-sn-completion-record *sn-completing*))))
 (assert-event (not (fn-cpe-eventp (fn-sn-completion-record *sn-completing*))))
 (assert-event (not (fn-th-topic-eventp (fn-sn-completion-record *sn-completing*))))
 (assert-event (equal (fn-article-stamp
@@ -93,7 +100,7 @@
 (assert-event (not (fn-replay-article-eventp *ast-consumer-bootstrap*)))
 (assert-event
  (equal (fn-replay-journal-article-stamps
-         (list *ast-built* *ast-consumer-bootstrap*))
+         (list *ast-row* *ast-consumer-bootstrap*))
         (list (cons (fn-record-msgid *ast-built*)
                     (fn-record-stamp *ast-built*)))))
 
@@ -110,10 +117,10 @@
                    (not (fn-stxa-p *ast-topic-install*))
                    (not (fn-cpe-eventp *ast-topic-install*))))
 (assert-event (not (fn-replay-article-eventp *ast-topic-install*)))
-(assert-event (fn-replay-article-eventp *ast-built*))
+(assert-event (fn-replay-article-eventp *ast-row*))
 (assert-event
  (equal (fn-replay-journal-article-stamps
-         (list *ast-built* *ast-topic-install*))
+         (list *ast-row* *ast-topic-install*))
         (list (cons (fn-record-msgid *ast-built*)
                     (fn-record-stamp *ast-built*)))))
 (must-fail
@@ -160,10 +167,10 @@
 ; Four durable events in one namespace: old grammar, new grammar, retention,
 ; and a composite whose fn-r child carries its own schema-1 stamp.
 (defconst *ast-journal-groups* '("stamp.test"))
-(defconst *ast-journal-r0*
+(defconst *ast-journal-r0-wire*
   (fn-record-make 0 0 0 "<legacy@stamp.test>" '(65) *ast-journal-groups*
                   "a0" "s0" "e0" 2 :legacy))
-(defconst *ast-journal-r1*
+(defconst *ast-journal-r1-wire*
   (fn-record-make 1 1 1 "<new@stamp.test>" '(66) *ast-journal-groups*
                   "a1" "s1" "e1" 2 841000001))
 (defconst *ast-journal-retention*
@@ -175,16 +182,27 @@
 (defconst *ast-journal-verdict*
   (fn-stxe-make 3 3 3 "<composite@stamp.test>" :unverified
                 *fn-stx-token-signature* 0 '(112)))
-(defconst *ast-journal-composite*
+(defconst *ast-journal-composite-wire*
   (fn-stxa-make 3 3 3 0 '(112) (fn-record-string-octets "s3")
                 (fn-record-encode-impl *ast-journal-r3*)
                 (fn-stxe-encode *ast-journal-verdict*)))
-(defconst *ast-mixed-journal*
-  (list *ast-journal-r0* *ast-journal-r1*
-        *ast-journal-retention* *ast-journal-composite*))
-(assert-event (equal (fn-record-decode-exact (fn-record-encode *ast-journal-r0*))
-                     (list :ok *ast-journal-r0*)))
-(assert-event (fn-stxa-bindsp *ast-journal-composite*))
+(defconst *ast-mixed-journal-wire*
+  (list *ast-journal-r0-wire* *ast-journal-r1-wire*
+        *ast-journal-retention* *ast-journal-composite-wire*))
+; The retained journal (records-flip): the open interns the decoded events in
+; order (store-intern fn-intern-events, keyring nil at generation 0): the two
+; records become held rows at handles 0 and 1, the retention event is
+; unchanged, the composite becomes its row with the article at handle 2.
+(make-event `(defconst *ast-mixed-journal* ',(fn-hrt-rows *ast-mixed-journal-wire* nil 0)))
+(defconst *ast-journal-r0* (nth 0 *ast-mixed-journal*))
+(defconst *ast-journal-r1* (nth 1 *ast-mixed-journal*))
+(defconst *ast-journal-composite* (nth 3 *ast-mixed-journal*))
+(assert-event (and (fn-held-p *ast-journal-r0*) (fn-held-p *ast-journal-r1*)
+                   (equal (nth 2 *ast-mixed-journal*) *ast-journal-retention*)
+                   (fn-hstxa-p *ast-journal-composite*)))
+(assert-event (equal (fn-record-decode-exact (fn-record-encode *ast-journal-r0-wire*))
+                     (list :ok *ast-journal-r0-wire*)))
+(assert-event (fn-stxa-bindsp *ast-journal-composite-wire*))
 (assert-event (fn-replay-okp
                (fn-replay *ast-journal-groups* 20 *ast-mixed-journal*)))
 (assert-event
@@ -238,9 +256,10 @@
        *ast-journal-composite*)))))
   841000003))
 
-(defconst *ast-refused-article*
+(defconst *ast-refused-article-wire*
   (fn-record-make 0 0 0 "<wrong-group@stamp.test>" '(68) '("not-local")
                   "bad" "bad-subject" "bad-evidence" 2 841000009))
+(defconst *ast-refused-article* (fn-hrt-row-at *ast-refused-article-wire* 0))
 (assert-event (fn-replay-article-eventp *ast-refused-article*))
 (assert-event (null (fn-replay-apply-record *ast-replay-initial*
                                            *ast-refused-article*)))
@@ -304,7 +323,10 @@
  `(defconst *ast-composite-completing*
     ',(fn-sit-publish *ast-composite-prepared*)))
 (assert-event (fn-sn-completion-enabledp *ast-composite-completing*))
-(assert-event (fn-stxa-p (fn-sn-completion-record *ast-composite-completing*)))
+; by specification: the flip: the retained completion record is the composite
+; ROW (fn-hstxa-p); the wire composite it carries is the kind-4 statement.
+(assert-event (fn-hstxa-p (fn-sn-completion-record *ast-composite-completing*)))
+(assert-event (fn-stxa-p (fn-hstxa-stxa (fn-sn-completion-record *ast-composite-completing*))))
 (assert-event
  (consp
   (fn-find-article
@@ -332,13 +354,15 @@
        (fn-sn-node (fn-sn-finish *ast-composite-prepared*))))))
    :rule-classes nil))
 (assert-event (fn-sn-completion-enabledp *sn-completing*))
-(assert-event (not (fn-stxa-p (fn-sn-completion-record *sn-completing*))))
+; by specification: the flip: the retained composite kind is fn-hstxa-p (a
+; retained record is never the wire fn-stxa-p, so that test would be vacuous).
+(assert-event (not (fn-hstxa-p (fn-sn-completion-record *sn-completing*))))
 (must-fail
  (defthm ast-composite-without-composite-kind-fails
    (consp
     (fn-find-article
      (fn-record-msgid
-      (fn-replay-composite-record (fn-sn-completion-record *sn-completing*)))
+      (fn-replay-composite-held (fn-sn-completion-record *sn-completing*)))
      (fn-state-articles
       (fn-node-acceptance (fn-sn-node (fn-sn-finish *sn-completing*))))))
    :rule-classes nil))

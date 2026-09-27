@@ -32,11 +32,16 @@
   :hints (("Goal" :in-theory (enable fn-hrt-row-at fn-intern-row-at))))
 
 ; The verdict helper is store-intern's entry (its keystone, instantiated).
+; For a Message-ID string, the keystone's hypothesis.
 (defthm fn-hrt-existing-action-in-is-the-entry
-  (equal (mv-nth 0 (fn-hrt-existing-action-in prior msgid payload groups s fn-arena))
-         (fn-store-existing-action msgid payload groups s
-                                   (mv-nth 1 (fn-intern-events prior nil 0 fn-arena))))
-  :hints (("Goal" :in-theory (e/d (fn-hrt-existing-action-in
-                                   fn-store-existing-action-is-the-verdict-over-alpha)
-                                  (fn-store-existing-action fn-rcl-action-over
-                                   fn-hrt-articles-alpha fn-articles-wire-of)))))
+  (implies (stringp msgid)
+           (equal (mv-nth 0 (fn-hrt-existing-action-in prior msgid payload groups s fn-arena))
+                  (fn-store-existing-action msgid payload groups s
+                                            (mv-nth 1 (fn-intern-events prior nil 0 fn-arena)))))
+  :hints (("Goal" :use ((:instance fn-store-existing-action-is-the-verdict-over-alpha
+                                    (fn-arena (mv-nth 1 (fn-intern-events prior nil 0 fn-arena)))))
+                  :in-theory (e/d (fn-hrt-existing-action-in)
+                                  (fn-store-existing-action-is-the-verdict-over-alpha
+                                   fn-store-existing-action fn-rcl-action-over
+                                   fn-hrt-articles-alpha fn-articles-wire-of
+                                   fn-intern-events)))))
