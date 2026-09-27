@@ -66,6 +66,8 @@
 
 (include-book "../books/peer-config")
 (include-book "../books/provenance-codec")
+;; host-decisions-2 packet C: the inspect lookup (fn-provi-of-msgid).
+(include-book "../books/provenance-inspect")
 
 ; This wrapper reuses the established decimal-octet boundary helpers from the
 ; store host. Python supplies only ordered filesystem observations.
@@ -1496,17 +1498,9 @@ reopen predicate, writer-lock observation and observed final namespace."
   ; The provenance of the article with this Message-ID, from the LIVE node:
   ; the binding gives the obligation id, the retention pin gives the evidence
   ; the acceptance recorded.  NIL when the node holds no such binding or the
-  ; pin has been released.
+  ; pin has been released.  The lookup and the wire/legacy dispatch are ACL2's
+  ; (books/provenance-inspect.lisp fn-provi-of-msgid); the host decodes the
+  ; octets and relays.
   (declare (xargs :stobjs state :mode :program))
-  (let* ((node (fn-sn-node (f-get-global 'fn-store-sn state)))
-         (msgid (fn-store-octets->string msgid-octets))
-         (binding (and (not (equal msgid :bad))
-                       (fn-node-find-binding msgid (fn-node-bindings node))))
-         (pin (and binding
-                   (fn-retain-find-id (fn-node-binding-id binding)
-                                      (fn-retain-pins (fn-node-retention node))))))
-    (value (if pin
-               (let ((ev (fn-retain-obligation-evidence pin)))
-                 (fn-record-string-octets
-                  (fn-prov-describe (if (stringp ev) (fn-prov-of-wire ev) ev))))
-             nil))))
+  (value (fn-provi-of-msgid (fn-sn-node (f-get-global 'fn-store-sn state))
+                            (fn-store-octets->string msgid-octets))))

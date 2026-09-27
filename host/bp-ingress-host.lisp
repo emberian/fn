@@ -7,6 +7,8 @@
 (include-book "../books/article-header-census")
 (include-book "../books/bp-primary")
 (include-book "../books/clock")
+;; host-decisions-2 packet C: the reading-to-observation decision (fn-clkr-).
+(include-book "../books/clock-reading")
 ;
 ; Loaded here, not left to a bridge's `ld' order: this file uses names
 ; host/store-node-host.lisp (and host/store-host.lisp under it) defines, so a session that loads this file alone
@@ -21,7 +23,6 @@
 (defconst *fn-bpi-host-policy-id* "bp-lab-policy-v0")
 (defconst *fn-bpi-host-terms-id* "bp-lab-terms-v0")
 (defconst *fn-bpi-host-issuer-eid* "dtn://fn.lab/issuer")
-(defconst *fn-bpi-host-dtn-epoch-ms* 946684800000)
 
 (defun fn-bpi-host-policy (archive-id subject evidence charge)
   ; The host obtains these per-ADU values only after fn-bpi-host-message-id
@@ -32,20 +33,13 @@
                       *fn-bpi-host-issuer-eid*))
 
 (defun fn-bpi-host-observation (monotonic-ns wall-ns wall-error-ms has-wall)
-  ; The host reads two counters and states one error bound; the units and the
-  ; DTN epoch are converted here, not in Python.  A wall reading before the
+  ; The host reads two counters and states one error bound; the units, the
+  ; DTN epoch and whether the wall is usable are ACL2's
+  ; (books/clock-reading.lisp fn-clkr-observation-of-ns, KEYSTONE
+  ; fn-clkr-observation-of-ns-decides-the-wall).  A wall reading before the
   ; DTN epoch, or a host that claims no wall clock, yields has-wall nil, which
   ; `fn-clock-expiry-decision` answers :uncertain for.
-  (let* ((monotonic (if (natp monotonic-ns) (floor monotonic-ns 1000000) 0))
-         (unix-ms (if (natp wall-ns) (floor wall-ns 1000000) 0))
-         (usable (and has-wall (natp wall-ns)
-                      (<= *fn-bpi-host-dtn-epoch-ms* unix-ms)
-                      (natp wall-error-ms)))
-         (wall (if usable (- unix-ms *fn-bpi-host-dtn-epoch-ms*) 0)))
-    (fn-clock-observation (min monotonic *fn-clock-max*)
-                          (min wall *fn-clock-max*)
-                          (if usable (min wall-error-ms *fn-clock-max*) 0)
-                          usable)))
+  (fn-clkr-observation-of-ns monotonic-ns wall-ns wall-error-ms has-wall))
 
 (defun fn-bpi-host-context (destination source-eid bundle-id lifetime
                                        monotonic-ns wall-ns wall-error-ms has-wall)

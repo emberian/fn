@@ -1,6 +1,8 @@
 ; ACL2-facing boundary for the native local-control transport.
 (in-package "ACL2")
 (include-book "../books/native-control")
+;; host-decisions-2 packet B: the control launch decision (fn-ncla-).
+(include-book "../books/native-control-launch")
 (include-book "../books/native-control-reason")
 (include-book "../books/consumer-local-control")
 (include-book "../books/consumer-wait-codec")
@@ -67,6 +69,15 @@
 (defun fn-native-control-host-max-active-clients ()
   (declare (xargs :mode :program))
   (fn-native-control-max-active-clients))
+
+;; host-decisions-2 packet B: whether an accepted control connection gets a
+;; worker (:launch), is answered BUSY (:busy) or is closed (:stopping), from
+;; the stop flag and the live worker count the host observes
+;; (books/native-control-launch.lisp, KEYSTONE
+;; fn-ncla-launch-exactly-below-the-ceiling).
+(defun fn-native-control-host-launch-disposition (stoppingp active)
+  (declare (xargs :mode :program))
+  (fn-ncla-launch-disposition stoppingp active))
 
 ;; PKT-344: the offline control verb's path, decided from the socket node and
 ;; the writer lock (fn-native-control-liveness-decides), and its note line.

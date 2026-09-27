@@ -10902,6 +10902,53 @@
           "kind": "theorem",
           "name": "fn-pout-prepare-article-is-sbud-prepare-when-served",
           "note": "planning/current-view.json P9's bridge: host/owner-host.lisp fn-owner-prepare-buffer and fn-owner-prepare call fn-pout-prepare-article."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-staged-topic-passes-the-consumer-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pout-topic-entry-is-the-store-prepare-under-the-consumer-relation",
+          "note": "host/owner-host.lisp fn-owner-prepare-topic calls fn-pout-prepare-topic."
+        }
+      ]
+    },
+    {
+      "id": "PRF-302",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ncla-launch-exactly-below-the-ceiling",
+          "note": "host/native/control.lisp fnn-control-launch-client: fn-native-control-host-launch-disposition."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncla-at-the-ceiling-is-busy"
+        }
+      ]
+    },
+    {
+      "id": "PRF-303",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-clkr-observation-of-ns-decides-the-wall",
+          "note": "host/bp-ingress-host.lisp fn-bpi-host-observation: fn-clkr-observation-of-ns."
+        }
+      ]
+    },
+    {
+      "id": "PRF-304",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-provi-of-msgid-unfolds",
+          "note": "host/store-node-host.lisp fn-store-prov-for-msgid: fn-provi-of-msgid."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-provi-bad-msgid-has-no-provenance"
         }
       ]
     }

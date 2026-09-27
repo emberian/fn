@@ -970,6 +970,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-prepare-served-abort-tests \
 	books/owner-prepare-outcome \
 	tests/acl2/owner-prepare-outcome-tests \
+	books/owner-prepare-outcome-topic \
+	tests/acl2/owner-prepare-outcome-topic-tests \
+	books/native-control-launch \
+	tests/acl2/native-control-launch-tests \
+	books/clock-reading \
+	tests/acl2/clock-reading-tests \
+	books/provenance-inspect \
+	tests/acl2/provenance-inspect-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \
