@@ -1,7 +1,7 @@
 ; fn: the Store's transaction budget, decided by the served prepare (M5).
 ;
 ; Where the budget comes from.  A store's persisted profile
-; (books/byte-store-frame.lisp, format 8: the operator's fields, validated by
+; (books/byte-store-frame.lisp: the operator's fields, validated by
 ; `fn-bs-profile-validp') is written by `init' and decoded by
 ; `fn-bs-config-decode' at every open.  Its max_transactions field T is the
 ; transaction budget and its max_history_octets field H bounds the committed

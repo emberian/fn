@@ -531,14 +531,14 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 ; those records.  DIR is an absolute path within the path bound.  The import's
 ; flags are field overrides over the archive's profile (base :current; no
 ; --profile), resolved at the import by `fn-bs-profile-resolve', not here.
-; `store compact': the offline compaction (books/store-compact-verb.lisp).
-; It takes no argument; what it does to the store (pack and reclaim, resume a
-; reclaim, or refuse) is `fn-cverb-decide' at the store, not here.
+; `store compact': the offline compaction (host/native/checkpoint.lisp
+; `fnn-command-compact': a state checkpoint with the log rotated, then the
+; covered segments dropped).  It takes no argument.
 ; `store checkpoint': publish the exact-state checkpoint (P3,
 ; books/store-checkpoint-open.lisp).  It takes no argument.
 ; `store reclaim [--dry-run]': content reclamation's durable step (D13,
-; STO-017, books/store-reclaim-pack.lisp).  What it removes is
-; `fn-rclp-decide' at the store, not here; `--dry-run' writes nothing.
+; STO-017, books/store-log-reclaim.lisp).  What it removes is
+; `fn-lgr-decide-stream' at the store, not here; `--dry-run' writes nothing.
 ; A Message-ID as a command word: "<", printable US-ASCII, ">" (RFC 3977
 ; section 3.6), within the store's Message-ID bound (fn-record-msgidp).
 (defun fn-nop-msgid-wordp (word)

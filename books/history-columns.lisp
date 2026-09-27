@@ -40,9 +40,10 @@
 ; and per event whose article has a Message-ID one cons in its bucket
 ; (16 B) plus one hash-table entry per distinct hash; the row itself is
 ; shared with the list, not copied.  Worst case (PKT-774): the hash is not
-; a keyed PRF (FNV-1a from a per-process 32-bit salt the host draws), so an
-; adversary who can choose Message-IDs and learn the salt can put every
-; article in one bucket: a lookup is then N exact comparisons of held
+; a keyed PRF.  It is FNV-1a from a 32-bit salt, and the one host call
+; passes the constant 0 (host/owner-host.lisp, `fn-hist-load' at install),
+; so the function is public: an adversary who can choose Message-IDs can put
+; every article in one bucket.  A lookup is then N exact comparisons of held
 ; records, an append stays O(1) (a cons onto the bucket).  No answer
 ; depends on the hash.
 (in-package "ACL2")

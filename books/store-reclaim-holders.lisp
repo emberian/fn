@@ -313,10 +313,9 @@
                             fn-rcl-article-alpha)))))
 
 ; KEYSTONE.  The counts the host calls (status's reclaim line,
-; books/native-live-status.lisp fn-nls-reclaim-words; the reclaim verbs'
-; decisions, books/store-reclaim-pack.lisp fn-rclp-decide,
-; books/store-reclaim-stream.lisp fn-rcls-decide, books/store-log-reclaim.lisp
-; fn-lgr-decide(-stream)) are the octet-list model's summary and held count
+; books/native-live-status.lisp fn-nls-reclaim-words; the reclaim verb's
+; decision, books/store-log-reclaim.lisp fn-lgr-decide(-stream)) are the
+; octet-list model's summary and held count
 ; over ALPHA of the Store's articles: each reclaimable article counts its
 ; stored octets, each tombstone its freed octets.
 (defthm fn-rcl-store-counts-is-the-model-over-alpha

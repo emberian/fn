@@ -78,18 +78,6 @@
 (include-book "books/store-observed-traces")
 (include-book "books/store-node")
 (include-book "books/checkpoint-publish")
-(include-book "books/checkpoint-pack-retire")
-; The native pack-reclaim command calls fn-bs-pack-reclaim-plan from this
-; guard-verified book; checkpoint-publish does not include it.
-(include-book "books/byte-store-compaction-correspondence")
-; Recovery after a reclaim calls fn-ccp-observe-framed and fn-ccp-coverage-framed
-; through host/checkpoint-host.lisp.
-(include-book "books/checkpoint-compaction-preservation")
-; The pack chain the open walks and compaction extends (P5).
-(include-book "books/checkpoint-pack-chain")
-; Each link decoded once per open (PRF-240): host/checkpoint-host.lisp's
-; chain step, coverage and observation call fn-ccco-*.
-(include-book "books/checkpoint-pack-chain-once")
 (include-book "books/node-config")
 (include-book "books/nntp")
 (include-book "books/served")
