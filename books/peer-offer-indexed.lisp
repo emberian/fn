@@ -378,6 +378,9 @@
              (fn-nntp-message-id-tokenp (car args))
              (fn-nntp-msgid-withdrawn-p index (car args)))
         (fn-nntp-withdrawn-reply session t))
+       ;; PRF-243: the served compatibility arms, as in the dispatcher.
+       ((fn-rcompat-reply session archive index env keyword args)
+        (fn-rcompat-reply session archive index env keyword args))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
                  (fn-nntp-keywordp keyword "BODY")

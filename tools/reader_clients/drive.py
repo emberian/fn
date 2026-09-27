@@ -190,6 +190,15 @@ def slrn(args, wire, out):
     pane.shot("groups")
     act = {"groups_screen": bool(ready)}
     if ready:
+        # Put the cursor on the group: slrn lists a group NEWGROUPS reports
+        # as new ("N") first, so the first line is not always args.group.
+        for _ in range(8):
+            if re.search(r"^->\S*\s+\d+\s+{}\s*$".format(re.escape(args.group)),
+                         pane.text(), re.M):
+                break
+            pane.keys("Down")
+            time.sleep(0.5)
+        act["cursor"] = [l for l in pane.text().splitlines() if l.startswith("->")][:1]
         pane.keys("Space")
         act["group"] = pane.wait(r"Group: {}".format(re.escape(args.group)), 60)
         pane.keys("Space")

@@ -8250,6 +8250,83 @@
           "name": "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
         }
       ]
+    },
+    {
+      "id": "PRF-243",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-newgroups-names-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-subscription-names-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-served-payload-inserts-one-line"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-hdr-value-is-the-field-value"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-article-reply-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-retrieval-session-is-the-generic-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-reply-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-reply-without-a-server"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-reply-only-for-its-commands"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-reply-preserves-consistent-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-effects-rcompat-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-hdr-lines-are-clean"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-xref-value-is-clean"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-archive-command-pinned-article-head-is-served"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-group-facts-has-the-created-stamp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oag-group-facts-are-group-facts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-reader-env-facts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nov-fmt-xref-lines-are-clean"
+        }
+      ]
     }
   ]
 }

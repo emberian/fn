@@ -18,9 +18,10 @@ Every row's verdict is the node's reply line in the client's own transcript
 JSON on stderr, so the module log is the evidence.  Assertions are what the
 RFCs and specs/nntp.md require of the node; a known defect's assertion is an
 expectedFailure naming its packet, so the fix turns it into an unexpected
-success that must be looked at.  Measurements with no settled expectation
-(slrn's --create against LIST SUBSCRIPTIONS 503, slrn's Xref marking, pan's
-refresh on a pinned connection) are printed, not asserted.
+success that must be looked at.  PKT-665..668 are asserted since lane
+reader-compat (2026-09-27): NEWGROUPS after a live `group create`, slrn's
+--create against LIST SUBSCRIPTIONS 215, slrn on XOVER, and slrn's Xref
+marking.  pan's refresh on a pinned connection is printed, not asserted.
 
 Needs docker on the host (hbox has it; the image is built from
 tools/reader_clients/ on first use).  About six minutes per image.
@@ -43,6 +44,7 @@ IMAGES = [(name, path) for name, path in (
     ("production", os.environ.get("FN_NATIVE_HOST")),
     ("developer", os.environ.get("FN_NATIVE_DEVELOPER_HOST"))) if path]
 GROUP, SECOND = "local.general", "local.crosspost"
+LATER = "local.later"  # tools/reader_clients_phase.py LATER_GROUP
 RUNS = {}
 
 
@@ -161,27 +163,67 @@ class ReaderClientRows(unittest.TestCase):
                     self.assertEqual(new["newnews_future"]["lines"], [])
                     self.assertTrue(new["newnews_future"]["status"].startswith("230"))
 
-    @unittest.expectedFailure
     def test_newgroups_lists_the_groups_created_since_the_instant(self):
         # RFC 3977 7.3: 231 and every group created since the instant.  The
-        # phase's `operator init` created all three during this run, so a
-        # day-old instant must list them, in slrn's yymmdd form and the
-        # four-digit one; LIST ACTIVE.TIMES (RFC 3977 7.6.4) too.  PKT-665:
-        # no host path records a group creation fact (fn-own-declare-group
-        # has no caller), so both are always empty.
+        # phase's `operator init` created three groups during this run and
+        # the slrn row then created local.later on the running node, so a
+        # day-old instant lists all four, in slrn's yymmdd form and the
+        # four-digit one; LIST ACTIVE.TIMES (RFC 3977 7.6.4) too, and an
+        # instant a day ahead none.  PKT-665 (PRF-243, lane reader-compat).
         for name, report in RUNS.items():
-            new = report.get("clients", {}).get("slrn", {}).get("new", {})
+            slrn = report.get("clients", {}).get("slrn", {})
+            new = slrn.get("new", {})
             with self.subTest(image=name):
-                emit(name, "NEWGROUPS", **{k: new.get(k) for k in (
-                    "newgroups_slrn", "newgroups_4digit", "newgroups_future",
-                    "active_times")})
+                emit(name, "NEWGROUPS", group_create=slrn.get("group_create"),
+                     **{k: new.get(k) for k in (
+                         "newgroups_slrn", "newgroups_4digit", "newgroups_future",
+                         "active_times")})
+                self.assertEqual((slrn.get("group_create") or {}).get("exit"), 0,
+                                 slrn.get("group_create"))
+                every = {GROUP, SECOND, "control.cancel", LATER}
                 for key in ("newgroups_slrn", "newgroups_4digit"):
                     listed = {line.split()[0] for line in new[key]["lines"] if line.strip()}
                     self.assertTrue(new[key]["status"].startswith("231"))
-                    self.assertTrue({GROUP, SECOND, "control.cancel"} <= listed, (key, listed))
+                    self.assertTrue(every <= listed, (key, listed))
                 self.assertEqual(new["newgroups_future"]["lines"], [])
                 times = {line.split()[0] for line in new["active_times"]["lines"]}
-                self.assertTrue({GROUP, SECOND} <= times, times)
+                self.assertTrue(every <= times, times)
+
+    def test_slrn_create_subscribes_from_list_subscriptions(self):
+        # RFC 6048 2.6 (PKT-666): LIST SUBSCRIPTIONS answers 215, so slrn's
+        # first run (--create) stays connected and reaches its group list.
+        for name, report in RUNS.items():
+            slrn = report.get("clients", {}).get("slrn", {})
+            acts = (slrn.get("driver") or {}).get("actions", {})
+            lists = slrn.get("seen", {}).get("create") or {}
+            with self.subTest(image=name):
+                emit(name, "SLRN-CREATE", lists=lists, client=acts.get("create"))
+                self.assertTrue((lists.get("LIST SUBSCRIPTIONS") or "").startswith("215"),
+                                lists)
+                self.assertTrue((acts.get("create") or {}).get("completed"),
+                                acts.get("create"))
+
+    def test_slrn_reads_overview_with_xover(self):
+        # RFC 3977 8.4.2 (PKT-667): with OVERVIEW.FMT's Bytes:/Lines: form slrn
+        # keeps XOVER; its read action enters the group with XOVER, answered 224.
+        for name, report in RUNS.items():
+            slrn = report.get("clients", {}).get("slrn", {})
+            log = Path(slrn.get("log", ""))
+            text = log.read_text(encoding="utf-8") if log.is_file() else ""
+            read = text.split("--- action read", 1)[-1].split("--- action ", 1)[0]
+            with self.subTest(image=name):
+                self.assertRegex(read, r" C: XOVER \d+-\d+\n[^\n]* S: 224 ")
+
+    def test_slrn_marks_a_cross_post_read_in_the_other_group(self):
+        # RFC 5536 3.2.14 (PKT-668): the cross-post read in local.general is
+        # read in local.crosspost too, through the Xref slrn now receives.
+        for name, report in RUNS.items():
+            slrn = report.get("clients", {}).get("slrn", {})
+            acts = (slrn.get("driver") or {}).get("actions", {})
+            with self.subTest(image=name):
+                emit(name, "SLRN-XREF", xref=acts.get("xref"))
+                self.assertEqual((acts.get("xref") or {}).get("unread_in_second_group"), 0,
+                                 acts.get("xref"))
 
     def test_measurements_are_recorded(self):
         # Printed for the record; see the lane's evidence for the packets.
@@ -189,9 +231,6 @@ class ReaderClientRows(unittest.TestCase):
             slrn = report.get("clients", {}).get("slrn", {})
             pan = report.get("clients", {}).get("pan", {})
             acts = (slrn.get("driver") or {}).get("actions", {})
-            emit(name, "SLRN-CREATE", lists=slrn.get("seen", {}).get("create"),
-                 client=acts.get("create"))
-            emit(name, "SLRN-XREF", xref=acts.get("xref"))
             emit(name, "PAN-REFRESH",
                  refresh=((pan.get("driver") or {}).get("actions", {}).get("refresh")))
             with self.subTest(image=name):

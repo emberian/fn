@@ -312,6 +312,13 @@
            (fn-native-admin-lines-fitp (cdr lines)))
     t))
 
+(defun fn-native-admin-group-namesp (words)
+  (declare (xargs :guard t))
+  (if (consp words)
+      (and (fn-record-group-namep (car words))
+           (fn-native-admin-group-namesp (cdr words)))
+    t))
+
 (defun fn-native-admin-describe-plan (words argv)
   (declare (xargs :guard t))
   (let ((name (fn-native-admin-arg 2 words))
@@ -627,6 +634,17 @@
              (equal (car words) "group")
              (equal (cadr words) "moderate"))
         (fn-native-admin-moderate-plan words argv))
+       ; PRF-243 (RFC 6048 section 2.6): `group subscribe-default [NAME ...]'
+       ; sets the list LIST SUBSCRIPTIONS recommends, in order; no NAME
+       ; clears it.  One :set-default-subscriptions record (code 25); that
+       ; each NAME is a live group named once is the delta's admission.
+       ((and (<= 2 (len words))
+             (equal (car words) "group")
+             (equal (cadr words) "subscribe-default"))
+        (if (fn-native-admin-group-namesp (nthcdr 2 words))
+            (fn-native-admin-result :accepted nil :set-default-subscriptions
+                                    nil 0 nil (nthcdr 2 (true-list-fix argv)))
+          (fn-native-admin-result :refused :group-name nil nil 0 nil nil)))
        ((and (consp words) (equal (car words) "motd"))
         (fn-native-admin-motd-plan words argv))
        ((and (consp words) (equal (car words) "bp-boundary"))
@@ -713,6 +731,10 @@
                     name
                     (fn-native-admin-text-pieces
                      (true-list-fix (fn-native-admin-result-value plan))))))
+            ((equal kind :set-default-subscriptions)
+             (list (fn-cfg-set-default-subscriptions
+                    (fn-native-admin-line-pieces
+                     (fn-native-admin-result-value plan)))))
             ((equal kind :set-motd)
              (list (fn-cfg-set-group-description
                     "" (fn-native-admin-line-pieces

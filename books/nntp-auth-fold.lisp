@@ -240,6 +240,24 @@
                                    fn-nntp-over-msgid-served
                                    fn-nntp-list-overview-fmt-served)))))
 
+(defthm fn-auth-fold-rcompat-reply-has-no-offer
+  (not (fn-post-offeredp
+        (fn-nntp-result-effects
+         (fn-rcompat-reply session archive index env keyword args))))
+  :hints (("Goal" :in-theory (e/d (fn-rcompat-reply fn-rcompat-newgroups
+                                   fn-rcompat-active-times
+                                   fn-rcompat-subscriptions
+                                   fn-rcompat-retrieval
+                                   fn-rcompat-article-reply fn-rcompat-hdr
+                                   fn-nntp-newgroups-response
+                                   fn-nntp-list-active-times
+                                   fn-nntp-article-response fn-post-offeredp
+                                   fn-nntp-reply-effect)
+                                  (fn-nntp-single fn-nntp-multi
+                                   fn-nntp-multi-octets fn-nntp-keywordp
+                                   fn-nntp-xref-server fn-nntp-stuff-lines
+                                   fn-nntp-crlf fn-rcompat-served-article)))))
+
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects

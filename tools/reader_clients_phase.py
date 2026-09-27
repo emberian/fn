@@ -380,6 +380,10 @@ def check(node, wire, login, password, mids):
     return out
 
 
+# The group the slrn row creates live before the NEWGROUPS probe (PKT-665).
+LATER_GROUP = "local.later"
+
+
 def probe_new(node, wire, login, password, groups):
     """NEWGROUPS and NEWNEWS as the clients use them, and the RFC's other forms.
 
@@ -505,6 +509,13 @@ def main(argv=None):
                     entry["check"] = check(node, wire, login, password,
                                            {"seed": entry["prelude"].get("seed_id", ""),
                                             "cancelled": targets[0] if targets else ""})
+                    if client == "slrn":
+                        # PKT-665: a group created on the running node after
+                        # the clients' first contact; NEWGROUPS must list it.
+                        made = node.operator("group", "create", LATER_GROUP)
+                        entry["group_create"] = {
+                            "group": LATER_GROUP, "exit": made.returncode,
+                            "stdout": made.stdout.decode("utf-8", "replace")[-300:]}
                     entry["new"] = probe_new(node, wire, login, password,
                                              [args.group, args.second_group])
                 else:

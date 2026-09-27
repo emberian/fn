@@ -112,9 +112,11 @@
                             fn-cfg-description-rows fn-cfg-row-pieces
                             fn-cfg-rows-with-key fn-cfg-rows-without-key)))))
 
-; KEYSTONE.  No other kind of delta changes the slot.
+; KEYSTONE.  No other kind of delta changes the slot (the default
+; subscription list, PRF-243, shares the slot under its own key).
 (defthm fn-cfg-descriptions-of-other-kinds
-  (implies (not (equal (fn-cfg-delta-kind d) :set-group-description))
+  (implies (and (not (equal (fn-cfg-delta-kind d) :set-group-description))
+                (not (equal (fn-cfg-delta-kind d) :set-default-subscriptions)))
            (equal (fn-cfg-descriptions (fn-cfg-apply-delta v gen stamp d))
                   (fn-cfg-descriptions v)))
   :hints (("Goal" :in-theory (e/d (fn-cfg-set-groups fn-cfg-apply-delta)

@@ -692,6 +692,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-session \
 	books/nntp-projection \
 	books/nntp-responses \
+	books/nntp-reader-compat \
 	books/nntp \
 	books/nntp-overview \
 	books/nntp-legacy \
@@ -717,6 +718,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-list-counts-tests \
 	tests/acl2/group-descriptions-tests \
 	tests/acl2/nntp-xref-tests \
+	tests/acl2/nntp-reader-compat-tests \
 	tests/acl2/posting-account-tests \
 	tests/acl2/nntp-post-tests \
 	tests/acl2/served-line-iterative-tests \

@@ -1148,8 +1148,14 @@ name contains (`fn-store-cfg-join-names', host/store-node-host.lisp)."
 
 (defun fnn-bridge-config-initial (names)
   "Generation 1 of a fresh store, built and admitted by the core."
-  (let ((value (fnn-core 'fn-cfg-host-initial-octets
-                         (mapcar (lambda (n) (fnn-octet-list (fnn-string-octets n))) names))))
+  ;; PKT-665: the record carries this host's clock (DTN seconds), the
+  ;; creation time of every initial group.
+  (let ((value (multiple-value-bind (wall has-wall) (fnn-owner-wall-milliseconds)
+                 (fnn-core 'fn-cfg-host-initial-octets-at
+                           (mapcar (lambda (n) (fnn-octet-list (fnn-string-octets n))) names)
+                           (floor (* (get-internal-real-time) 1000)
+                                  (* 1000 internal-time-units-per-second))
+                           (if has-wall (floor wall 1000) 0)))))
     (when (or (keywordp value) (not (fnn-octet-list-p value)))
       (fnn-refuse "refused initial group table"))
     (fnn-octets value)))
