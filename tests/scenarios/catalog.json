@@ -4160,6 +4160,44 @@
         "planning/evidence/tls-reload-2026-09-26.md",
         "planning/evidence/tls-reload-2026-09-26/test-tests.test_native_tls_reload.log"
       ]
+    },
+    {
+      "id": "SCN-146",
+      "title": "A hostile network is thrown at a running node: malformed command lines, header and body abuse, connection floods and slowloris, pipelining and transit storms, and raw TCPCL/BP abuse; the node stays up, answers a clean session throughout, holds memory bounded, and refuses every ill-formed input by name",
+      "milestone": "M5",
+      "status": "validated",
+      "requirements": [
+        "NNT-031",
+        "NNT-043",
+        "NNT-045",
+        "NNT-012",
+        "REP-012",
+        "REP-008",
+        "HST-013"
+      ],
+      "steps": [
+        "Start a scratch loopback owner under systemd-run (MemoryMax=8G) on the developer image; never the live node.",
+        "Per family (malformed, header, body, connection, pipelining, transit, bp) send bounded adversarial traffic and log the first line the node returned.",
+        "After each family run the oracle: a clean authenticated GROUP/DATE/LIST session answers, the owner is alive with RSS under the profile's heap figure, no served request exceeded the wall bound, and the service log holds no fault.",
+        "For BP, drive a bp-node serve listener with wrong TCPCL magic, a never-completing contact, and an XFER_SEGMENT declaring a 4 GiB payload with tiny data."
+      ],
+      "expected": [
+        "Every malformed command line is refused 501; header/body abuse is refused 441 by a distinct named reason or accepted only when valid (a supplied Path is injected per NNT-012); a connection flood is refused 400 past the capacity and slowloris is closed silently at the timer; 1000 pipelined DATEs all answer and non-peer TAKETHIS/CHECK/IHAVE are refused 502; the bp-node answers an oversized XFER_SEGMENT with MSG_REJECT and does not preallocate the declared length.",
+        "The node never crashes, never hangs past its bounds, never grows memory without bound, and answers a clean session correctly after every family."
+      ],
+      "evidence": [
+        "planning/evidence/hostile-input-2026-09-26.md",
+        "planning/evidence/hostile-input-2026-09-26/campaign-report.json",
+        "planning/evidence/hostile-input-2026-09-26/bp-report.json"
+      ],
+      "execution_scope": "Executed on hbox (developer image, code-identical to dev b4b343d51) against a scratch loopback owner and bp-node under systemd-run MemoryMax=8G. All seven families green, no defects. Not exercised: transit interior abuse (announced sizes, million-id promises, pipelined TAKETHIS/PKT-600) from an authenticated peer session (a non-peer connection is uniformly refused 502; the peer path is covered by SCN-138); a real 100 MiB body under a peer feed; TLS-port handshake garbage on 563 (no TLS listener configured in this run).",
+      "implementation": {
+        "test": "tools/hostile_campaign.py",
+        "cases": [],
+        "native": true,
+        "log": "planning/evidence/hostile-input-2026-09-26/campaign-report.json",
+        "record": "planning/evidence/hostile-input-2026-09-26.md"
+      }
     }
   ]
 }
