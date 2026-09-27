@@ -333,6 +333,23 @@
   (declare (xargs :guard t))
   *fn-ncfg-default-max-connections*)
 
+; The connections a run's threads are reserved for.  Since PRF-211
+; (books/native-operator.lisp fn-native-operator-result-run-max-connections)
+; a run's owner bound is structural, one past a limit row's width, and the
+; capacity is the `exposure-connections' policy row, 31 by default plus the
+; operator's one: the configuration's former 32.  The reservation holds that
+; default; a live raise of the row past it is not held by the reservation
+; made at start (PKT-605, capacity against memory, is its owner).  A smaller
+; owner bound is kept.
+(defun fn-heap-reserve-run-connections (owner-bound)
+  (declare (xargs :guard t))
+  (min (nfix owner-bound) *fn-ncfg-default-max-connections*))
+
+(defthm fn-heap-reserve-run-connections-is-at-most-the-default
+  (<= (fn-heap-reserve-run-connections owner-bound)
+      *fn-ncfg-default-max-connections*)
+  :rule-classes nil)
+
 (defun fn-heap-reserve-acceptsp (request core nursery observations)
   (declare (xargs :guard t))
   (let ((p (fn-bs-profile-resolve request nil)))

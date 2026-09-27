@@ -182,8 +182,11 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
                                  result)
                        :init)
                    (fnn-core 'fn-heap-reserve-init-connections)
-                 (fnn-core 'fn-native-operator-host-result-run-max-connections
-                           result)))))))
+                 ;; A run's owner bound is structural since PRF-211; ACL2
+                 ;; says which connections the reservation's threads hold.
+                 (fnn-core 'fn-heap-reserve-run-connections
+                           (fnn-core 'fn-native-operator-host-result-run-max-connections
+                                     result))))))))
     (error () nil)))
 
 (defun fnn-heap-command-profile (argv)

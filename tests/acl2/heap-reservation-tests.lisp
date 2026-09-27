@@ -427,3 +427,9 @@
                                 fn-heap-init-observations fn-heap-init-explicit-budget
                                 fn-heap-profile-word fn-heap-mb-of
                                 fn-heap-machine-sized-requestp)))))
+
+; A run's connections: the structural owner bound (PRF-211) is held at the
+; default 32; a smaller bound is kept.
+(assert! (equal (fn-heap-reserve-run-connections (+ 1 *fn-cbor-max-uint*)) 32))
+(assert! (equal (fn-heap-reserve-run-connections 5) 5))
+(assert! (equal (fn-heap-reserve-run-connections nil) 0))
