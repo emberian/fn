@@ -150,7 +150,6 @@
 ; rows' reading (WIREP nil) does not recognize it.
 (assert-event (fn-record-p *ct-a0*))
 (assert-event (equal (fn-event-fields *ct-a0* nil) (list nil nil nil nil)))
-
 ; fn-ccco-coverage-headers-is-coverage-chain (PKT-686): the coverage over
 ; link headers is the reference's coverage.  Reachable witness: the decoded
 ; two-link chain, with the open's memo and with none (compaction's case),
