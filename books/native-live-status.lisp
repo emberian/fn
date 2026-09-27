@@ -416,21 +416,38 @@ freed-octets=N'."
   (declare (xargs :guard t))
   (if (equal kind :forward) (fn-nls-text "forward") (fn-nls-text "archive")))
 
+; PRF-336: one obligation's line, and the lines of a ledger by a loop.  The
+; ledger has one obligation per held article, so its length is the Store's
+; history; a recursion with one frame per obligation is a stack bound, not a
+; work bound.  `fn-nls-obligation-lines' keeps its logical definition and
+; executes `fn-nls-obligation-lines-rev' (`mbe', the equation is its guard).
+(defun fn-nls-obligation-line (o)
+  (declare (xargs :guard t :verify-guards nil))
+  (append (fn-nls-text "obligation id=")
+          (fn-nls-text (fn-retain-obligation-id o))
+          (fn-nls-text " kind=")
+          (fn-nls-kind-words (fn-retain-obligation-kind o))
+          (fn-nls-field "charge" (fn-retain-obligation-charge o))
+          (fn-nls-text " subject=")
+          (fn-nls-text (fn-retain-obligation-subject o))
+          *fn-nls-lf*))
+
+(defun fn-nls-obligation-lines-rev (pins acc)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp pins)
+      (fn-nls-obligation-lines-rev (cdr pins)
+                                   (revappend (fn-nls-obligation-line (car pins)) acc))
+    acc))
+
 (defun fn-nls-obligation-lines (pins)
   "One line per held retention obligation, in the ledger's order."
   (declare (xargs :guard t :verify-guards nil))
-  (if (consp pins)
-      (let ((o (car pins)))
-        (append (fn-nls-text "obligation id=")
-                (fn-nls-text (fn-retain-obligation-id o))
-                (fn-nls-text " kind=")
-                (fn-nls-kind-words (fn-retain-obligation-kind o))
-                (fn-nls-field "charge" (fn-retain-obligation-charge o))
-                (fn-nls-text " subject=")
-                (fn-nls-text (fn-retain-obligation-subject o))
-                *fn-nls-lf*
-                (fn-nls-obligation-lines (cdr pins))))
-    nil))
+  (mbe :logic
+       (if (consp pins)
+           (append (fn-nls-obligation-line (car pins))
+                   (fn-nls-obligation-lines (cdr pins)))
+         nil)
+       :exec (revappend (fn-nls-obligation-lines-rev pins nil) nil)))
 
 (defun fn-nls-retention (s)
   (declare (xargs :guard t :verify-guards nil))
@@ -731,12 +748,63 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
 ; the whole report.  `fn-nls-page-of-buffer-is-reply' equates it to the
 ; octet-list page `fn-nls-reply', whatever the report.  The renderer itself
 ; still builds octet lists; its twin is open.
+; PRF-336: the report's string, built by a loop.  `fn-record-octets-string'
+; conses its characters by non-tail recursion, one frame per octet: on the
+; owner's 1,024 KB control stack a report past about 50,000 octets exhausted
+; it and stopped the owner (`operator CONFIG obligations' at about 1,029
+; obligations, planning/evidence/openbsd-rehearsal-2026-09-27.md stop 2).
+; `fn-nls-octets-string' is its twin with constant stack, and
+; `fn-nls-octets-string-is-record-octets-string' is the equation.
+(defun fn-nls-octets-chars-rev (octets acc)
+  (declare (xargs :guard (and (fn-cbor-octet-listp octets) (character-listp acc))))
+  (if (consp octets)
+      (fn-nls-octets-chars-rev (cdr octets) (cons (code-char (car octets)) acc))
+    acc))
+
+(local
+ (defthm fn-nls-octets-chars-rev-is-revappend
+   (equal (fn-nls-octets-chars-rev octets acc)
+          (revappend (fn-record-octets-chars octets) acc))))
+
+(local
+ (defthm fn-nls-revappend-revappend
+   (equal (revappend (revappend x y) z)
+          (revappend y (append x z)))))
+
+(local
+ (defthm fn-nls-true-listp-of-octets-chars
+   (true-listp (fn-record-octets-chars octets))))
+
+(local
+ (defthm fn-nls-append-nil-when-true-listp
+   (implies (true-listp x) (equal (append x nil) x))))
+
+(local
+ (defthm fn-nls-character-listp-of-revappend
+   (implies (and (character-listp x) (character-listp y))
+            (character-listp (revappend x y)))))
+
+(local
+ (defthm fn-nls-character-listp-of-octets-chars
+   (character-listp (fn-record-octets-chars octets))))
+
+(defun fn-nls-octets-string (octets)
+  (declare (xargs :guard t))
+  (if (fn-cbor-octet-listp octets)
+      (coerce (reverse (fn-nls-octets-chars-rev octets nil)) 'string)
+    ""))
+
+(defthm fn-nls-octets-string-is-record-octets-string
+  (equal (fn-nls-octets-string octets)
+         (fn-record-octets-string octets))
+  :hints (("Goal" :in-theory (enable fn-record-octets-string))))
+
 (defun fn-nls-buffer (report)
   "(TEXT . DIGEST): REPORT as one string and the frame trailer over it, or
 :bad for a report that is not octets."
   (declare (xargs :guard t :verify-guards nil))
   (if (fn-cbor-octet-listp report)
-      (cons (fn-record-octets-string report) (fn-frame-trailer report))
+      (cons (fn-nls-octets-string report) (fn-frame-trailer report))
     :bad))
 
 (defun fn-nls-page (buffer offset)
@@ -1214,6 +1282,29 @@ malformed page."
 ; PKT-269 (PRF-187): the retention lines the health verdict reads
 ; (books/native-health.lisp fn-nh-forward-pins) run guard-verified.
 (verify-guards fn-nls-connection-lines)
-(verify-guards fn-nls-obligation-lines)
+(encapsulate ()
+  (local
+   (defthm fn-nls-revappend-revappend-lines
+     (equal (revappend (revappend x y) z)
+            (revappend y (append x z)))))
+  (local
+   (defthm fn-nls-revappend-of-append-lines
+     (equal (revappend (append x y) z)
+            (revappend y (revappend x z)))))
+  (local
+   (defthm fn-nls-obligation-lines-rev-is-revappend
+     (equal (fn-nls-obligation-lines-rev pins acc)
+            (revappend (fn-nls-obligation-lines pins) acc))
+     :hints (("Goal" :in-theory (disable fn-nls-obligation-line)))))
+  (local
+   (defthm fn-nls-true-listp-of-obligation-lines
+     (true-listp (fn-nls-obligation-lines pins))))
+  (local
+   (defthm fn-nls-append-nil-lines
+     (implies (true-listp x) (equal (append x nil) x))))
+  (verify-guards fn-nls-obligation-line)
+  (verify-guards fn-nls-obligation-lines-rev)
+  (verify-guards fn-nls-obligation-lines
+    :hints (("Goal" :in-theory (disable fn-nls-obligation-line)))))
 (verify-guards fn-nls-retention)
 (verify-guards fn-nls-pins-line)

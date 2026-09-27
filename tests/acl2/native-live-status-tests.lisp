@@ -595,3 +595,23 @@ open-cost replay-records=")
 (defconst *nlst-hr-hshort* (quote (1 128 2 12 2 10)))
 (assert-event (and (equal (fn-nls-articles-left *nlst-hr-hshort*) 5)
                    (< (fn-nls-articles-left *nlst-hr-hshort*) (- 128 1))))
+
+;; PRF-336: the report's string and the obligation lines run as loops.  The
+;; twin equals the reference on octets and on a non-octet list; the lines of
+;; two obligations are the two lines in ledger order (the evaluation runs the
+;; loop, the right side the logical definition).
+(assert-event (equal (fn-nls-octets-string '(111 98 108 10)) "obl
+"))
+(assert-event (equal (fn-nls-octets-string '(111 98 108 10))
+                     (fn-record-octets-string '(111 98 108 10))))
+(assert-event (equal (fn-nls-octets-string '(300)) ""))
+(defconst *nlst-obligations*
+  (list (fn-retain-make-obligation "w1" "<one@x>" :forward nil 3)
+        (fn-retain-make-obligation "a1" "<two@x>" :archive nil 2)))
+(assert-event (equal (fn-nls-obligation-lines *nlst-obligations*)
+                     (append (fn-nls-obligation-line (car *nlst-obligations*))
+                             (fn-nls-obligation-line (cadr *nlst-obligations*)))))
+(assert-event (equal (fn-record-octets-string
+                      (fn-nls-obligation-line (car *nlst-obligations*)))
+                     "obligation id=w1 kind=forward charge=3 subject=<one@x>
+"))

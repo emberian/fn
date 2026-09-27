@@ -25,7 +25,10 @@
 ;   5 stranded-transfer    a feed entry dropped at its retry bound: never
 ;                          offered again without the operator;
 ;   6 unavailable-peer     an outbound peer with pending work and no open
-;                          connection;
+;                          connection, one that defers this node's
+;                          articles, or one whose feed queue is saturated
+;                          (PRF-335: every local post then refuses
+;                          feed-queue-full);
 ;   7 receipt-debt         forwarding obligations held, awaiting the receipt
 ;                          that releases them.
 ;
@@ -185,11 +188,29 @@ profile's."
   (declare (xargs :guard t))
   (< 0 (fn-nh-deferred-count (fn-feed-queue f))))
 
+;; PRF-335: the queue has no room for another obligation.  The owner's
+;; submission intent then answers :capacity for any article this peer is a
+;; target of (books/owner-feed.lisp fn-own-feed-target-capacityp), which POST
+;; renders as the named feed-queue-full refusal.  The queue holds only
+;; undelivered entries, so a saturated peer is one that is behind.
+(defun fn-nh-feed-saturatedp (f)
+  (declare (xargs :guard t))
+  (<= (nfix (fn-feed-max-queue (fn-feed-limits-of f)))
+      (len (fn-feed-queue f))))
+
 (defun fn-nh-feed-unavailablep (f)
   (declare (xargs :guard t))
   (or (and (fn-nh-feed-pendingp f)
            (not (natp (fn-feed-conn f))))
-      (fn-nh-feed-deferredp f)))
+      (fn-nh-feed-deferredp f)
+      (fn-nh-feed-saturatedp f)))
+
+(defun fn-nh-saturated-total (tbl)
+  (declare (xargs :guard t))
+  (if (consp tbl)
+      (+ (if (fn-nh-feed-saturatedp (fn-own-feed-entry-feed (car tbl))) 1 0)
+         (fn-nh-saturated-total (cdr tbl)))
+    0))
 
 (defun fn-nh-stranded-peers (tbl)
   (declare (xargs :guard t))
@@ -379,6 +400,7 @@ profile's."
       *fn-nh-no-owner*
     (fn-nh-outcome (consp (fn-nh-unavailable-peers feeds))
                    (append (fn-nls-field "deferred" (fn-nh-deferred-total feeds))
+                           (fn-nls-field "saturated" (fn-nh-saturated-total feeds))
                            (fn-nls-text " peers:")
                            (fn-nh-name-list-words (fn-nh-unavailable-peers feeds))))))
 
@@ -689,6 +711,170 @@ and feed table, with the committed octets extended from the carried sum."
            (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds))) :held))
   :hints (("Goal" :in-theory (disable fn-nh-verdict fn-nh-feed-deferredp fn-nh-nth)
            :use ((:instance fn-nh-verdict-states)))))
+
+;; KEYSTONE (PRF-335).  When the owner refuses a submission because a target
+;; peer's feed queue has no room (`fn-own-feed-target-capacityp' false: the
+;; intent answers :capacity, POST answers feed-queue-full), `health' holds
+;; unavailable-peer.  Before PRF-335 the queue filled with delivered entries
+;; and health said healthy while every post was refused
+;; (planning/evidence/openbsd-rehearsal-2026-09-27.md, stop 1).  NAMES are
+;; the submission's targets; each has an entry in the table
+;; (books/owner-feed.lisp `fn-own-feed-target-has-an-entry').
+(defun fn-nh-names-have-entriesp (names tbl)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (and (fn-own-feed-entry-of (car names) tbl)
+           (fn-nh-names-have-entriesp (cdr names) tbl))
+    t))
+
+(local
+ (defthm fn-nh-entry-of-is-a-member
+   (implies (fn-own-feed-entry-of p tbl)
+            (member-equal (fn-own-feed-entry-of p tbl) tbl))
+   :hints (("Goal" :in-theory (enable fn-own-feed-entry-of)))))
+
+;; The first target without room: its entry is in the table and its feed is
+;; saturated.
+(defun fn-nh-full-target (names tbl msgid)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (let ((f (fn-own-feed-find (car names) tbl)))
+        (if (or (consp (fn-feed-find msgid (fn-feed-queue f)))
+                (< (len (fn-feed-queue f))
+                   (nfix (fn-feed-max-queue (fn-feed-limits-of f)))))
+            (fn-nh-full-target (cdr names) tbl msgid)
+          (car names)))
+    nil))
+
+(local
+ (defthm fn-nh-full-target-is-saturated
+   (implies (and (fn-nh-names-have-entriesp names tbl)
+                 (not (fn-own-feed-target-capacityp names tbl msgid)))
+            (and (fn-own-feed-entry-of (fn-nh-full-target names tbl msgid) tbl)
+                 (fn-nh-feed-saturatedp
+                  (fn-own-feed-entry-feed
+                   (fn-own-feed-entry-of (fn-nh-full-target names tbl msgid) tbl)))))
+   :hints (("Goal" :in-theory (e/d (fn-own-feed-target-capacityp fn-own-feed-find)
+                                   (fn-own-feed-entry-of))))))
+
+(local
+ (defthm fn-nh-unavailable-peers-of-a-saturated-member
+   (implies (and (member-equal e tbl)
+                 (fn-nh-feed-saturatedp (fn-own-feed-entry-feed e)))
+            (consp (fn-nh-unavailable-peers tbl)))
+   :hints (("Goal" :induct (fn-nh-unavailable-peers tbl)
+            :in-theory (e/d (fn-nh-unavailable-peers fn-nh-feed-unavailablep)
+                            (fn-nh-feed-saturatedp fn-nh-feed-deferredp))))))
+
+(defthm fn-nh-saturated-peer-is-held
+  (implies (and (member-equal e feeds)
+                (fn-nh-feed-saturatedp (fn-own-feed-entry-feed e)))
+           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds))) :held))
+  :hints (("Goal" :in-theory (disable fn-nh-verdict fn-nh-feed-saturatedp fn-nh-nth)
+           :use ((:instance fn-nh-verdict-states)))))
+
+(defthm fn-nh-feed-queue-refusal-is-held
+  (implies (and (fn-nh-names-have-entriesp names feeds)
+                (not (fn-own-feed-target-capacityp names feeds msgid)))
+           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min feeds))) :held))
+  :hints (("Goal" :use ((:instance fn-nh-full-target-is-saturated (tbl feeds))
+                        (:instance fn-nh-saturated-peer-is-held
+                                   (e (fn-own-feed-entry-of
+                                       (fn-nh-full-target names feeds msgid) feeds))))
+           :in-theory (disable fn-nh-full-target-is-saturated
+                               fn-nh-saturated-peer-is-held
+                               fn-nh-verdict fn-nh-nth fn-nh-feed-saturatedp
+                               fn-own-feed-target-capacityp fn-nh-full-target
+                               fn-own-feed-entry-of))))
+
+;; The owner-level form, over the function the host calls for the intent
+;; (host/owner-host.lisp fn-owner-submission-intent, through
+;; fn-icar-submission-intent's reference `fn-own-submission-intent-result'):
+;; a :capacity intent -- the feed-queue-full refusal -- holds
+;; unavailable-peer in the running owner's health over the same table.
+(local
+ (defthm fn-nh-subsetp-cons
+   (implies (subsetp-equal x y) (subsetp-equal x (cons a y)))))
+
+(local
+ (defthm fn-nh-subsetp-reflexive
+   (subsetp-equal x x)))
+
+(local
+ (defthm fn-nh-feed-targets-have-entries
+   (implies (and (fn-own-feed-tablep tbl)
+                 (subsetp-equal names (fn-own-feed-targets tbl origin groups path)))
+            (fn-nh-names-have-entriesp names tbl))
+   :hints (("Goal" :induct (fn-nh-names-have-entriesp names tbl)
+            :in-theory (disable fn-own-feed-targets fn-own-feed-tablep
+                                fn-own-feed-entry-of)))))
+
+(local
+ (defthm fn-nh-distribution-targets-have-entries
+   (implies (fn-nh-names-have-entriesp names tbl)
+            (fn-nh-names-have-entriesp
+             (fn-own-feed-distribution-targets names tbl dists) tbl))
+   :hints (("Goal" :in-theory (e/d (fn-own-feed-distribution-targets)
+                                   (fn-own-feed-distribution-admitsp
+                                    fn-own-feed-dists-of fn-own-feed-entry-of))))))
+
+(local
+ (defthm fn-nh-new-targets-have-entries
+   (implies (fn-nh-names-have-entriesp names tbl)
+            (fn-nh-names-have-entriesp
+             (fn-own-feed-new-targets names tbl msgid) tbl))
+   :hints (("Goal" :in-theory (e/d (fn-own-feed-new-targets)
+                                   (fn-own-feed-find fn-own-feed-entry-of))))))
+
+(local
+ (defthm fn-nh-names-have-entriesp-of-atom
+   (implies (atom names) (fn-nh-names-have-entriesp names tbl))))
+
+(local
+ (defthm fn-nh-new-targets-of-atom
+   (implies (atom names) (equal (fn-own-feed-new-targets names tbl msgid) nil))
+   :hints (("Goal" :in-theory (enable fn-own-feed-new-targets)))))
+
+(local
+ (defthm fn-nh-submission-targets-have-entries
+   (implies (fn-own-feed-tablep (fn-own-feeds o))
+            (fn-nh-names-have-entriesp (fn-own-submission-targets o)
+                                       (fn-own-feeds o)))
+   :hints (("Goal" :in-theory (e/d (fn-own-submission-targets)
+                                   (fn-own-feed-targets fn-own-feed-tablep
+                                    fn-own-feed-distribution-targets
+                                    fn-own-feed-new-targets
+                                    fn-nh-names-have-entriesp))
+            :use ((:instance fn-nh-feed-targets-have-entries
+                             (tbl (fn-own-feeds o))
+                             (names (fn-own-feed-targets
+                                     (fn-own-feeds o)
+                                     (fn-own-sub-origin (fn-own-inflight o))
+                                     (fn-own-sub-feed-groups (fn-own-inflight o))
+                                     (fn-own-feed-path-of
+                                      (fn-own-sub-octets (fn-own-inflight o)))))
+                             (origin (fn-own-sub-origin (fn-own-inflight o)))
+                             (groups (fn-own-sub-feed-groups (fn-own-inflight o)))
+                             (path (fn-own-feed-path-of
+                                    (fn-own-sub-octets (fn-own-inflight o))))))))))
+
+(defthm fn-nh-feed-queue-full-intent-is-held
+  (implies (and (fn-own-feed-tablep (fn-own-feeds o))
+                (equal (fn-own-submission-intent-result o evidence generation txid)
+                       :capacity))
+           (equal (car (fn-nh-nth 6 (fn-nh-verdict fence store min (fn-own-feeds o))))
+                  :held))
+  :hints (("Goal" :use ((:instance fn-nh-feed-queue-refusal-is-held
+                                   (names (fn-own-submission-targets o))
+                                   (feeds (fn-own-feeds o))
+                                   (msgid (fn-own-sub-msgid (fn-own-inflight o))))
+                        (:instance fn-nh-submission-targets-have-entries))
+           :in-theory (e/d (fn-own-submission-intent-result)
+                           (fn-nh-feed-queue-refusal-is-held
+                            fn-nh-submission-targets-have-entries
+                            fn-own-submission-targets fn-own-feed-tablep
+                            fn-nh-verdict fn-nh-nth fn-own-feed-target-capacityp
+                            fn-nh-names-have-entriesp)))))
 
 (local
  (defthm fn-nh-first-held-index-bounds
