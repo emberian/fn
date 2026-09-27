@@ -7,6 +7,11 @@ name, the system's public roots) verifies against it exactly as a node
 anchored on the system bundle verifies a Let's Encrypt chain.  The name is
 `localhost`, resolved by getaddrinfo on each attempt (no /etc/hosts edit).
 
+SSL_CERT_FILE is an OpenSSL behaviour.  LibreSSL (OpenBSD) reads only
+/etc/ssl/cert.pem for the default roots and ignores the variable (observed
+on LibreSSL 4.3.0, planning/evidence/peers-by-name-2026-09-27.md), so the
+two system-roots cases need the scratch CA in that file of a scratch VM there.
+
 Cases:
   * by name: the feed dials `localhost`, verifies the chain under the
     system roots and the name `localhost`, and the article arrives;
@@ -30,14 +35,17 @@ import unittest
 from tests import test_native_peering as peer
 from tests import test_native_protected_peering as protected
 
-READY = peer.READY
 IMAGE = peer.IMAGE
+# The image the batch built (tools/native_env.py sets FN_NATIVE_HOST); its
+# SHA-256 goes into the record from the run's SHA256SUMS, so this module does
+# not require the v0 matrix's pinned launcher/core/runtime hashes.
+READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
 free_port = peer.free_port
 
 Base = protected.NativeProtectedPeeringTests
 
 
-@unittest.skipUnless(READY, "set explicit source-matched native image and hashes")
+@unittest.skipUnless(READY, "set FN_NATIVE_HOST to a built native image")
 class NativePeerByNameTests(unittest.TestCase):
     command = Base.command
     process_identity = Base.process_identity
@@ -46,13 +54,17 @@ class NativePeerByNameTests(unittest.TestCase):
     post = Base.post
     await_article = Base.await_article
     start = Base.start
-    verify_process_identity = Base.verify_process_identity
     initialize = Base.initialize
     profile = Base.profile
     assert_not_received = Base.assert_not_received
     article_from = Base.article_from
 
     setUp = Base.setUp
+
+    def verify_process_identity(self, node):
+        found = self.process_identity(node["process"])
+        node.setdefault("identities", []).append(found)
+        return found
 
     def scratch_ca(self):
         if getattr(self, "ca", None):
@@ -203,6 +215,10 @@ class NativePeerByNameTests(unittest.TestCase):
         self.assertNotIn("b path-identity", self.peer_list(a))
         self.witness({"case": "refused-words", "hosts": ["bad_host.example", "127.0.0.1 with -"]})
 
+
+# Keep the borrowed class out of this module's namespace, or the loader runs
+# its tests here too.
+del Base
 
 if __name__ == "__main__":
     unittest.main()
