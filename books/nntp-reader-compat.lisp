@@ -598,6 +598,18 @@
                                    fn-rcompat-retrieval fn-nntp-retrieval
                                    fn-nntp-single fn-nntp-multi)))))
 
+(defthm fn-rcompat-reply-effects-true-listp
+  (true-listp (fn-nntp-result-effects
+               (fn-rcompat-reply session archive index env keyword args)))
+  :hints (("Goal" :in-theory (enable fn-rcompat-newgroups fn-rcompat-active-times
+                                     fn-rcompat-subscriptions fn-rcompat-retrieval
+                                     fn-rcompat-article-reply fn-rcompat-hdr
+                                     fn-nntp-newgroups-response
+                                     fn-nntp-list-active-times
+                                     fn-nntp-article-response
+                                     fn-nntp-single fn-nntp-multi
+                                     fn-nntp-make-result fn-nntp-result-effects))))
+
 (verify-guards fn-rcompat-newgroups)
 (verify-guards fn-rcompat-active-times)
 (verify-guards fn-rcompat-subscriptions)

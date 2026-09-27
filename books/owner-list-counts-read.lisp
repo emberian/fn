@@ -227,20 +227,22 @@
                             fn-nntp-command-inputp
                             fn-nntp-command-arguments-at-mostp)))))
 
-;; ARTICLE, HEAD, BODY and STAT with a Message-ID argument.
+;; BODY and STAT with a Message-ID argument.  Since PRF-243 (lane
+;; reader-compat, 2026-09-27) ARTICLE and HEAD on the served path answer
+;; the article's served representation, which carries its Xref line
+;; (books/nntp-reader-compat.lisp; at the dispatcher,
+;; fn-nntp-archive-command-pinned-article-head-is-served in
+;; books/nntp-pinned-msgid.lisp); the served-step composition for them is
+;; an open item of that lane, recorded in its evidence.
 
 (defun fn-olc-retrieval-kind (keyword)
   (declare (xargs :guard t :verify-guards nil))
-  (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
-        ((fn-nntp-keywordp keyword "HEAD") :head)
-        ((fn-nntp-keywordp keyword "BODY") :body)
+  (cond ((fn-nntp-keywordp keyword "BODY") :body)
         (t :stat)))
 
 (defun fn-olc-retrieval-keywordp (keyword)
   (declare (xargs :guard t :verify-guards nil))
-  (or (fn-nntp-keywordp keyword "ARTICLE")
-      (fn-nntp-keywordp keyword "HEAD")
-      (fn-nntp-keywordp keyword "BODY")
+  (or (fn-nntp-keywordp keyword "BODY")
       (fn-nntp-keywordp keyword "STAT")))
 
 (local
