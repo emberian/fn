@@ -198,8 +198,9 @@ class NativeOperatorInitTests(NativeOperatorVerbFixture):
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.assertIn(b"initialized", created.stdout)
         self.assertIn(b"accepted operator init", created.stderr)
-        for entry in ("config.json", "writer.lock", "allocation-frontier.json",
-                      "transactions", "config"):
+        # Format 9: the history is the record log's segment (the frontier
+        # and transactions/ a format-9 init still leaves are PKT-COL-2's).
+        for entry in ("config.json", "writer.lock", "journal/000001.log", "config"):
             self.assertTrue((self.store / entry).exists(), entry)
 
         status = self.operator("status")
@@ -653,7 +654,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
                                 "--max-article-octets", "20000", "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         fields = self.profile_line()
-        self.assertEqual(fields["format"], 8)
+        self.assertEqual(fields["format"], 9)   # the record log (fn-store-9)
         self.assertEqual(fields["max-transactions"], 1000)
         self.assertEqual(fields["max-article-octets"], 20000)
         self.assertEqual(fields["max-history-octets"], 1 << 40)
@@ -677,7 +678,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         # development's 128 transactions (books/heap-reservation.lisp
         # fn-heap-init-decide-conservative-holds-the-floor).
         self.assertIn(line.group(1), (b"custom", b"small"), created.stdout.decode())
-        self.assertEqual(fields["format"], 8)
+        self.assertEqual(fields["format"], 9)   # the record log (fn-store-9)
         self.assertIn(fields["max-transactions"], (131072, 65536, 32768, 16384))
         status = self.operator("status")
         self.assertIn(b"capacity articles-left=", status.stdout, status.stdout.decode())

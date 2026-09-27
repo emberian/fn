@@ -529,7 +529,7 @@
 (local
  (defthm fn-scka-f-of-tables-of-capture
    (equal (nth 1 (nth 0 (fn-sct-tables-of-capture (fn-sco-capture configs records)
-                                                  frontier revision)))
+                                                  frontier revision log)))
           (len records))
    :hints (("Goal" :in-theory (e/d (fn-sct-tables-of-capture fn-sco-capture fn-sco-make
                                     fn-sco-records fn-sco-at)
@@ -594,13 +594,14 @@
 (local
  (defthm fn-scka-load-of-written-tables
    (let* ((c (fn-sco-capture configs records))
-          (tables (fn-sct-tables-of-capture c frontier revision))
+          (tables (fn-sct-tables-of-capture c frontier revision log))
           (progs (fn-sct-table-programs tables (fn-sco-event-index c))))
      (implies (and (fn-octets-p fn-octets)
                    (fn-sccr-planp rest b fn-octets)
                    (equal (fn-sccr-plan-segments rest fn-octets)
                           (fn-sct-file-segments progs seg (len records)))
                    (fn-sct-tables-treep tables)
+                   (fn-sct-log-positionp log)
                    (<= (len records) (1+ *fn-cbor-max-uint*))
                    (fn-sct-programs-widthp progs))
               (equal (fn-sct-load rest fn-octets) (list :ok tables))))
@@ -612,20 +613,20 @@
                   (:instance fn-scka-planp-first-a (plan rest) (pos b))
                   (:instance fn-scka-plan-segments-consp (plan rest))
                   (:instance fn-scka-file-segments-consp (progs (fn-sct-table-programs
-                     (fn-sct-tables-of-capture (fn-sco-capture configs records) frontier revision)
+                     (fn-sct-tables-of-capture (fn-sco-capture configs records) frontier revision log)
                      (fn-sco-event-index (fn-sco-capture configs records)))) (s (len records))))
             :in-theory (e/d ()
                             (fn-sct-load-is-decode-file fn-sct-decode-file-of-file-is-the-capture
                              fn-scka-planp-first-a fn-scka-plan-segments-consp
                              fn-scka-file-segments-consp fn-sct-load fn-sct-decode-file
-                             fn-sct-file-segments fn-sct-tables-of-capture fn-sco-capture
+                              fn-sct-file-segments fn-sct-tables-of-capture fn-sco-capture
                              fn-sct-table-programs fn-sct-tables-treep fn-sct-programs-widthp
-                             fn-sccr-planp fn-sco-event-index))))))
+                             fn-sccr-planp fn-sco-event-index fn-sct-log-positionp))))))
 
 (local
  (defthm fn-scka-f-count-of-tables-of-capture
    (equal (fn-sco-at 1 (fn-sct-tables-f (fn-sct-tables-of-capture (fn-sco-capture configs records)
-                                                                  frontier revision)))
+                                                                  frontier revision log)))
           (len records))
    :hints (("Goal" :in-theory (e/d (fn-sct-tables-f fn-sct-tables-of-capture fn-sco-capture
                                     fn-sco-make fn-sco-records fn-sco-at)
@@ -635,7 +636,7 @@
 
 (defthm fn-scka-load-of-written-file
   (let* ((c (fn-sco-capture configs records))
-         (tables (fn-sct-tables-of-capture c frontier revision))
+         (tables (fn-sct-tables-of-capture c frontier revision log))
          (progs (fn-sct-table-programs tables (fn-sco-event-index c)))
          (s (len records)))
     (implies (and (fn-octets-p fn-octets)
@@ -647,6 +648,7 @@
                   (fn-scc-chunk-listp (fn-scka-run-chunks ps ks))
                   (< (+ 1 (len ks)) *fn-scc-u64-bound*) (< s *fn-scc-u64-bound*)
                   (fn-sct-tables-treep tables)
+                  (fn-sct-log-positionp log)
                   (<= (len records) (1+ *fn-cbor-max-uint*))
                   (fn-sct-programs-widthp progs))
              (and (equal (mv-nth 0 (fn-scka-load plan fn-octets fn-arena)) (list :ok tables))
@@ -656,7 +658,7 @@
                             (tsegs (fn-sct-file-segments
                                     (fn-sct-table-programs
                                      (fn-sct-tables-of-capture (fn-sco-capture configs records)
-                                                               frontier revision)
+                                                               frontier revision log)
                                      (fn-sco-event-index (fn-sco-capture configs records)))
                                     seg (len records))))
                  (:instance fn-scka-seal-all

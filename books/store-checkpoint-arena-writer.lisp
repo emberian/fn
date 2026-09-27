@@ -221,10 +221,10 @@
 ; allocated, over the WHOLE file's octets: the arena run's (ALEN, from
 ; fn-scka-write-setup) and the tables'.  (list VERDICT TABLES COUNTS MTRIE
 ; INDEX N ESTIMATE), ESTIMATE the whole file's.
-(defun fn-scka-publication-setup (next frontier revision seg budget free alen)
+(defun fn-scka-publication-setup (next frontier revision log seg budget free alen)
   (declare (xargs :guard (and (natp seg) (natp budget) (natp alen))
                   :guard-hints (("Goal" :in-theory (disable fn-ockp-setup fn-ockp-decide)))))
-  (let ((setup (fn-ockp-setup next frontier revision seg budget free)))
+  (let ((setup (fn-ockp-setup next frontier revision log seg budget free)))
     (if (eq (car setup) :unencodable)
         setup
       (let ((estimate (+ alen (nfix (fn-sco-at 6 setup)))))

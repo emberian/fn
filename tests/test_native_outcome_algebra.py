@@ -141,7 +141,11 @@ class OutcomeAlgebraNativeTests(verbs.NativeOperatorUncertainOutcomeTests):
                                 cwd=ROOT, env=environment(), stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, timeout=180, check=False)
         self.expect(absent, REFUSED, "refused operator status NO-STORE", "run: fn operator")
-        (self.store / "allocation-frontier.json").write_bytes(b"not json\n")
+        # A durable authority file that is no frame: the host's fault class.
+        # (Format 9 holds no allocation frontier file; the profile frame is
+        # read at every open, and octets that are no sealed frame are the
+        # open's (:rejected), never a named refusal.)
+        (self.store / "config.json").write_bytes(b"not a frame\n")
         self.expect(self.operator("status"), FAULT)
 
     # -- store ------------------------------------------------------------

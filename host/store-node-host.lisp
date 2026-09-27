@@ -518,14 +518,29 @@ reopen predicate, writer-lock observation and observed final namespace."
         ; The tables mean the capture (fn-sct-capture-of-tables-of-capture):
         ; the 7-tuple the open extends, its event index rebuilt from E.
         (let* ((checkpoint (fn-sct-capture-of-tables (cadr loaded)))
-               (state (f-put-global 'fn-store-sco-checkpoint checkpoint state)))
+               (state (f-put-global 'fn-store-sco-checkpoint checkpoint state))
+               ; The F row's log position and frontier (a format-9 store's
+               ; open starts its scan there: books/store-log-segments.lisp).
+               (state (f-put-global 'fn-store-sco-log-position
+                                    (list (fn-sct-tables-log (cadr loaded))
+                                          (fn-sco-at 2 (fn-sct-tables-f (cadr loaded))))
+                                    state)))
           (mv nil (list :ok (fn-sco-sequence checkpoint)) state fn-octets))
-      (let ((state (f-put-global 'fn-store-sco-checkpoint nil state)))
+      (let* ((state (f-put-global 'fn-store-sco-checkpoint nil state))
+             (state (f-put-global 'fn-store-sco-log-position nil state)))
         (mv nil
             (list :refused (if (and (consp loaded) (consp (cdr loaded)))
                                (cadr loaded)
                              :malformed))
             state fn-octets)))))
+
+; The loaded checkpoint's F row: (LOG FRONTIER), LOG its log position
+; (fn-sct-log-positionp: NIL or (K GENESIS)) and FRONTIER the txid frontier at
+; its S; NIL when no checkpoint is loaded.
+(defun fn-store-sco-log-position (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (and (boundp-global 'fn-store-sco-log-position state)
+              (f-get-global 'fn-store-sco-log-position state))))
 
 ; The checkpoint's file name: the rename target of the byte program
 ; fn-bs-scp-program (step 6, (:rename :staging STAGE :root NAME)).
@@ -667,8 +682,10 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; fnn-command-state-checkpoint then loops on fn-scka-write-step (the arena
 ; run, first) and fn-ockp-step (the four tables) into the same staged file.
 ; KEYSTONES: fn-scka-write-run-is-run-segments (the run's octets) and the
-; pipeline's fn-ockp-run-writes-the-file (the tables').
-(defun fn-store-sco-publish-setup (segment-octets budget free revision fn-arena state)
+; pipeline's fn-ockp-run-writes-the-file (the tables').  LOG: the record
+; log's position at S (a format-9 store rotated at this capture; NIL
+; otherwise), the F row's (fn-sct-log-positionp).
+(defun fn-store-sco-publish-setup (segment-octets budget free revision log fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let* ((st (f-get-global 'fn-store-sn state))
          (records (fn-sf-records (fn-sn-files st)))
@@ -684,7 +701,7 @@ reopen predicate, writer-lock observation and observed final namespace."
                      (fn-sco-capture configs canon)))
              (ws (fn-scka-write-setup records segment-octets fn-arena))
              (setup (fn-scka-publication-setup next (fn-sf-frontier (fn-sn-files st))
-                                               revision segment-octets budget free
+                                               revision log segment-octets budget free
                                                (nth 3 ws))))
         (value (list setup (fn-sco-sequence next)
                      (list (nth 0 ws) (nth 2 ws)

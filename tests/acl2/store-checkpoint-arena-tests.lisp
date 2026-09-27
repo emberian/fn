@@ -203,7 +203,7 @@
          (next (fn-sco-capture *sckat-configs* canon))
          (ws (fn-scka-write-setup rows *sckat-seg* fn-arena))
          (ks (or ks-override (nth 1 ws)))
-         (setup (fn-scka-publication-setup next 9 "rev-test" *sckat-seg* 1000000000
+         (setup (fn-scka-publication-setup next 9 "rev-test" nil *sckat-seg* 1000000000
                                            1000000000000 (nth 3 ws)))
          (s (len rows)))
     (mv-let (v1 aoct fn-octets)

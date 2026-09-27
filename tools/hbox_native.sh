@@ -73,6 +73,7 @@ DETACH=0
 DRY=0
 DEADLINE=5400
 ENVS=
+IMAGE_ACL2=
 POSITIONAL=
 usage() { sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
@@ -87,6 +88,15 @@ while [ $# -gt 0 ]; do
         --detach) DETACH=1; shift ;;
         --dry-run) DRY=1; shift ;;
         --deadline) DEADLINE=$2; shift 2 ;;
+        # The ACL2 wrapper the IMAGE builds run under (certification keeps
+        # the toolchain's, whose identity the cache keys on).  The world is
+        # past SBCL's --tls-limit 16384 since batch AV ("Thread local
+        # storage exhausted"; recover-memory-2's packet): e.g.
+        # --image-acl2 /tank/fn/scratch/recover-memory-2/acl2-tls64k.
+        --image-acl2)
+            case $2 in /*) ;; *) echo "hbox_native: --image-acl2 takes an absolute path" >&2; exit 2 ;; esac
+            case $2 in *[!A-Za-z0-9_./-]*) echo "hbox_native: bad --image-acl2 path" >&2; exit 2 ;; esac
+            IMAGE_ACL2=$2; shift 2 ;;
         --env)
             case $2 in
                 ?*=*) ;;

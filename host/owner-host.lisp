@@ -560,12 +560,14 @@
 ; the whole capture when no H0 was noted), then the setup of the arena run
 ; (fn-scka-write-setup) and of the file (fn-scka-publication-setup: the
 ; decision by name over the whole file's octets before anything is
-; allocated).  (list SETUP NEXT N ARUN), N the canonical payload count (the
+; allocated).  LOG is the record log's position at the capture's S (a
+; format-9 owner rotated the log there; NIL otherwise): the F row carries it.
+; (list SETUP NEXT N ARUN), N the canonical payload count (the
 ; next base's H0), ARUN (N COUNT STATE0) for fnn-checkpoint-write-steps.
 ; The arena is read at handles below the count the capture saw: the owner
 ; thread only appends to it (a seal never moves a sealed payload's bytes),
 ; so what is read is what was sealed before the capture.
-(defun fn-owner-sco-prepare (base h0 configs records frontier revision seg budget free
+(defun fn-owner-sco-prepare (base h0 configs records frontier revision log seg budget free
                                   fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
   (let* ((next0 (and base (natp h0) (<= (len (fn-sco-records base)) (len records))
@@ -577,7 +579,7 @@
     (if (equal next :bad)
         (list (list :unencodable nil nil nil nil 0 0) nil 0 nil)
       (let* ((ws (fn-scka-write-setup records seg fn-arena))
-             (setup (fn-scka-publication-setup next frontier revision seg budget free
+             (setup (fn-scka-publication-setup next frontier revision log seg budget free
                                                (nth 3 ws))))
         (list setup next (nth 0 ws)
               (list (nth 0 ws) (nth 2 ws) (fn-scka-initial-state records (nth 1 ws) 0)))))))
