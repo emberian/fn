@@ -173,8 +173,13 @@ LOG_STEP_HOST = {"write-at": "(fnn-log-pwrite ", "fence": "(fnn-log-fdatasync ",
 # from log-fenced on the whole batch (present).  A batch of one outside a
 # quantum (fnn-log-publish: the control socket's post, retention, identity,
 # consumer and topic events) runs append and barrier first and its finish
-# cuts are then present: POST_LOG_ONE_CANDIDATE.
+# cuts are then present: POST_LOG_ONE_CANDIDATE.  record-completing (the
+# record's place, fnn-log-publish) is the same: inside a quantum it precedes
+# the append (absent), in a batch of one it follows the barrier (present);
+# lane ack-before-barrier added it here (the served table had omitted a cut
+# the served route reaches).
 POST_LOG_CUTS = (
+    NativeCut("record-completing", "fn-lg-order-program", "absent", book=LOG_ROUTE_BOOK),
     NativeCut("finish-consumed", "fn-bs-finish-program", "absent"),
     NativeCut("finish-durable", "fn-bs-finish-program", "absent"),
     NativeCut("log-written", "fn-lg-append-program", "either", book=LOG_BOOK),
@@ -182,6 +187,7 @@ POST_LOG_CUTS = (
               follows="fn-lg-append-program", book=LOG_BOOK),
 )
 POST_LOG_ONE_CANDIDATE = {"log-written": "either", "log-fenced": "present",
+                          "record-completing": "present",
                           "finish-consumed": "present", "finish-durable": "present"}
 # The host's order for the batch's two programs: the program's host call,
 # then the `fnn-at' of its cut.
@@ -656,7 +662,7 @@ def verify_post_log_cut_map() -> None:
         raise AssertionError("native/model post-log cuts differ")
     program_cuts = (model_cut_names("fn-lg-append-program", LOG_BOOK)
                     + model_cut_names("fn-lg-fence-program", LOG_BOOK))
-    if declared[2:] != program_cuts:
+    if declared[3:] != program_cuts:
         raise AssertionError("post-log cuts are not the log programs': {!r}".format(program_cuts))
     source = (ROOT / "host/native/io.lisp").read_text()
     body = host_function(source, "fnn-log-commit-open-batch")
@@ -671,8 +677,10 @@ def verify_post_log_cut_map() -> None:
     commit, order = publish.find("(fnn-log-commit-open-batch "), publish.find("(fnn-observe store :log-order)")
     if not (0 <= commit < order):
         raise AssertionError("fnn-log-publish observes the record's place before a batch of one is fenced")
+    if "(fnn-at store :record-completing)" not in publish:
+        raise AssertionError("fnn-log-publish lacks the record-completing cut")
     finish = host_function(source, "fnn-finish")
-    for name in declared[:2]:
+    for name in declared[1:3]:
         if "(fnn-at store :{})".format(name) not in finish:
             raise AssertionError("fnn-finish lacks the {} cut".format(name))
     # The pipelined commit (lane log-2): SEAL is P-BATCH's append and its
@@ -713,9 +721,107 @@ def verify_post_log_cut_map() -> None:
                                         "(fnn-log-seal-open-batch store)")]
     if not (0 <= order[0] < order[1] < order[2] < order[3]):
         raise AssertionError("the committer's order is not SYNC, collect, COMPLETE, seal the next batch")
-    for cut in POST_LOG_CUTS[2:]:
+    for cut in POST_LOG_CUTS[3:]:
         cut_step_index(cut)
 
+
+
+# The key-statement route (lane ack-before-barrier; books/key-statements.lisp
+# fn-ks-cut, books/owner-ack-after-barrier.lisp).  One process-death cut,
+# FN_NATIVE_KEY_STATEMENT_FAULT=statement-committed:kill
+# (host/native/owner.lisp fnn-owner-key-statement-cut): the statement's
+# kind-4 composite is durable and its kind-3 key change is not, so the next
+# open's recovery (fn-ks-recover-recorded) makes the change.  The candidate
+# is the statement's fate at the cut.
+STATEMENT_BOOK = "key-statements.lisp"
+STATEMENT_BARRIER_BOOK = "owner-ack-after-barrier.lisp"
+STATEMENT_CUTS = (NativeCut("statement-committed", "fn-ks-cut", "present",
+                            book=STATEMENT_BOOK),)
+# The only host functions that commit inside a batch (*fnn-log-batch* bound):
+# the owner's START and the import's history write.  Every other commit is a
+# batch of one, fenced before fnn-log-publish returns.
+LOG_BATCH_BINDERS = ("fnn-owner-commit-start-locked", "fnn-log-write-history")
+
+
+def _enclosing_defun(source: str, at: int) -> str:
+    start = source.rfind("\n(defun ", 0, at)
+    match = re.match(r"\n\(defun (\S+)", source[start:])
+    return match.group(1) if match else ""
+
+
+def _in_order(body: str, needles, where: str) -> None:
+    at = 0
+    for needle in needles:
+        found = body.find(needle, at)
+        if found < 0:
+            raise AssertionError("{}: {} missing or out of order".format(where, needle))
+        at = found + len(needle)
+
+
+def verify_statement_cut_map() -> None:
+    """The statement route's cut follows the statement's barrier, and every
+    line or reply that names a record follows the barrier that persists it:
+    the cut's name is the host's only FN_NATIVE_KEY_STATEMENT_FAULT value;
+    fnn-owner-statement-committed asks ACL2 (fn-owner-statement-fence), then
+    fences (fnn-owner-statement-barrier), then cuts, then runs the executor;
+    the barrier commits the open batch inside a quantum; the executor's line
+    waits for the COMPLETE inside a quantum; every commit of a kind-4
+    composite in fnn-owner-attempt-transit goes through
+    fnn-owner-statement-committed; only LOG_BATCH_BINDERS bind
+    *fnn-log-batch*; COMPLETE writes the deferred lines after the
+    acknowledgement."""
+    books = ROOT / "books"
+    ks = (books / STATEMENT_BOOK).read_text()
+    for name in ("fn-ks-cut", "fn-ks-recover-recorded"):
+        if "(defun {} ".format(name) not in ks:
+            raise AssertionError("{} lacks {}".format(STATEMENT_BOOK, name))
+    oab = (books / STATEMENT_BARRIER_BOOK).read_text()
+    for name in ("(defun fn-oab-fence-before-change ",
+                 "(defthm fn-oab-plan-only-after-the-fence",
+                 "(defthm fn-oab-quantum-reports-after-its-barrier",
+                 "(defthm fn-oab-pipeline-reports-after-its-barriers"):
+        if name not in oab:
+            raise AssertionError("{} lacks {}".format(STATEMENT_BARRIER_BOOK, name))
+    owner = (ROOT / "host/native/owner.lisp").read_text()
+    cut = host_function(owner, "fnn-owner-key-statement-cut")
+    names = set(re.findall(r'"([a-z-]+):kill"', cut))
+    if names != {c.name for c in STATEMENT_CUTS}:
+        raise AssertionError("fnn-owner-key-statement-cut names {} not {}".format(
+            sorted(names), [c.name for c in STATEMENT_CUTS]))
+    _in_order(host_function(owner, "fnn-owner-statement-committed"),
+              ("(fnn-owner-core 'fn-owner-statement-fence event)",
+               "(fnn-owner-statement-barrier service)",
+               "(fnn-owner-key-statement-cut)",
+               "(fnn-owner-key-statement service event)"),
+              "fnn-owner-statement-committed")
+    _in_order(host_function(owner, "fnn-owner-statement-barrier"),
+              ("(*fnn-log-batch* (fnn-log-commit-open-batch store))",),
+              "fnn-owner-statement-barrier")
+    executor = host_function(owner, "fnn-owner-key-statement")
+    if "(fnn-log-line " in executor or "(fnn-owner-line-after-barrier" not in executor:
+        raise AssertionError("fnn-owner-key-statement writes its line before the barrier")
+    _in_order(host_function(owner, "fnn-owner-line-after-barrier"),
+              ("(if *fnn-owner-deferred*", "(push (cons :log line)", "(fnn-log-line line)"),
+              "fnn-owner-line-after-barrier")
+    transit = host_function(owner, "fnn-owner-attempt-transit")
+    commits = transit.count("(fnn-owner-identity-commit service event)")
+    wrapped = len(re.findall(r"\(fnn-owner-statement-committed\s+service event\s+"
+                             r"\(fnn-owner-identity-commit service event\)\)", transit))
+    if commits == 0 or wrapped != commits:
+        raise AssertionError("fnn-owner-attempt-transit: {} kind-4 commits, {} through "
+                             "fnn-owner-statement-committed".format(commits, wrapped))
+    complete = host_function(owner, "fnn-owner-commit-complete-locked")
+    _in_order(complete, ("(:complete", "(fnn-log-batch-finish store)",
+                         "(fnn-log-line (cdr item))", "(fnn-owner-commit-release-member "),
+              "fnn-owner-commit-complete-locked")
+    binders = set()
+    for path in sorted((ROOT / "host/native").glob("*.lisp")):
+        text = path.read_text()
+        for match in re.finditer(r"\(\*fnn-log-batch\* t\)", text):
+            binders.add(_enclosing_defun(text, match.start()))
+    if binders != set(LOG_BATCH_BINDERS):
+        raise AssertionError("*fnn-log-batch* is bound in {}, not only {}".format(
+            sorted(binders), list(LOG_BATCH_BINDERS)))
 
 # The record-log route's arms (lane log-2; books/store-log-route-programs.lisp).
 # Each per-file host function above has a format-9 arm, `(when (fnn-store-logp

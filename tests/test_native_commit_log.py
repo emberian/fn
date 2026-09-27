@@ -253,7 +253,8 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
 
     def test_every_post_log_cut_is_old_or_new_and_the_node_goes_on(self):
         names = tuple(cut.name for cut in native_cuts.POST_LOG_CUTS)
-        self.assertEqual(names, ("finish-consumed", "finish-durable", "log-written", "log-fenced"))
+        self.assertEqual(names, ("record-completing", "finish-consumed", "finish-durable",
+                                 "log-written", "log-fenced"))
         for k, cut in enumerate(native_cuts.POST_LOG_CUTS):
             with self.subTest(cut=cut.name):
                 root = self.root / cut.name

@@ -3725,12 +3725,15 @@ books/store-init-log-publication.lisp)."
   '(:frontier-reserved :record-completing :finish-consumed :finish-durable))
 
 ;; The log route's commit cuts (format 9; tests/campaign/native_cuts.py
-;; POST_LOG_CUTS), in a served batch's order: each member's finish (its
-;; in-memory completion, fnn-finish's two cuts), then P-BATCH's append and
-;; barrier (fnn-log-commit-open-batch).  A batch of one runs the append and
-;; the barrier before its finish.
+;; POST_LOG_CUTS), in a served batch's order: each member's place
+;; (fnn-log-publish's record-completing) and finish (its in-memory
+;; completion, fnn-finish's two cuts), then P-BATCH's append and barrier
+;; (fnn-log-commit-open-batch).  Inside a batch the first three precede the
+;; append: the record is absent at them (lane ack-before-barrier: the table
+;; named record-completing only as a batch of one's, present).  A batch of
+;; one runs the append and the barrier before its place and finish.
 (defparameter +fnn-post-log-model-cuts+
-  '(:finish-consumed :finish-durable :log-written :log-fenced))
+  '(:record-completing :finish-consumed :finish-durable :log-written :log-fenced))
 
 (defun fnn-post-test-fault ()
   "Developer-only FN_NATIVE_POST_FAULT=MODEL-CUT:eio|kill selector.

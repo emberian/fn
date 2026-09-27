@@ -1533,15 +1533,17 @@ reason before any Store call.  An ordinary article's groups are unchanged."
                       (fnn-store-indeterminate (e) (error e))
                       (fnn-store-fault (e) (error e))
                       (fnn-store-error () :refused)))))
-        (fnn-log-line (fnn-owner-core 'fn-owner-key-statement-log-line plan
-                                      outcome (and at-open t)))
+        (fnn-owner-line-after-barrier
+         (fnn-owner-core 'fn-owner-key-statement-log-line plan
+                         outcome (and at-open t)))
         outcome))))
 
 ;;; The cut between the statement's commit and its key change's
 ;;; (books/key-statements.lisp fn-ks-cut).  A developer image started with
 ;;; FN_NATIVE_KEY_STATEMENT_FAULT=statement-committed:kill dies here, after a
-;;; kind-4 composite is durable and before the executor runs; production has
-;;; no injection branch.
+;;; statement's kind-4 composite is durable (fnn-owner-statement-barrier
+;;; returned) and before the executor runs; production has no injection
+;;; branch.  tests/campaign/native_cuts.py STATEMENT_CUTS names it.
 (defun fnn-owner-key-statement-cut ()
   (let ((raw (fnn-developer-selector "FN_NATIVE_KEY_STATEMENT_FAULT")))
     (when raw
@@ -1550,15 +1552,52 @@ reason before any Store call.  An ordinary article's groups are unchanged."
       (sb-posix:kill (sb-posix:getpid) sb-unix:sigkill)
       (fnn-fault "test SIGKILL did not terminate the process"))))
 
-;;; WORD is the kind-4 commit's outcome.  After a durable composite the
-;;; executor runs; a refused key change leaves WORD (the article is
+;;; A line that names a record committed in this step: inside the owner's
+;;; batch quantum it waits for the batch's COMPLETE, after the barrier that
+;;; persists the record (as fnn-owner-log's lines do); outside one the
+;;; record's own barrier has returned (fnn-log-publish, a batch of one).
+(defun fnn-owner-line-after-barrier (line)
+  (unless (fnn-octet-list-p line)
+    (fnn-fault "owner returned a malformed log line"))
+  (if *fnn-owner-deferred*
+      (push (cons :log line) (cdr *fnn-owner-deferred*))
+    (fnn-log-line line)))
+
+;;; Lane ack-before-barrier: the statement's own barrier.  Inside the owner's
+;;; batch quantum (*fnn-log-batch*, fnn-owner-commit-start-locked) the
+;;; statement's record is only in the log's open batch when its commit
+;;; returns; the open batch -- the statement and every member drained before
+;;; it -- is appended and fenced here (fnn-log-commit-open-batch, cuts
+;;; log-written and log-fenced; behind a batch in flight it first awaits that
+;;; batch's barrier), so the cut and the executor that follow run with the
+;;; statement durable (books/owner-ack-after-barrier.lisp
+;;; fn-oab-quantum-reports-after-its-barrier).  Those members' replies still
+;;; leave only in their batch's COMPLETE.  Outside a quantum the commit was a
+;;; batch of one, fenced before fnn-log-publish returned: nothing is open.
+(defun fnn-owner-statement-barrier (service)
+  (let* ((store (fnn-owner-service-store service))
+         (log (fnn-store-log store)))
+    (cond (*fnn-log-batch* (fnn-log-commit-open-batch store))
+          ((and log (plusp (fnn-log-count log)))
+           (fnn-fault "a statement committed outside a batch left its record unfenced")))))
+
+;;; WORD is the kind-4 commit's outcome.  A durable composite that carries a
+;;; key statement (ACL2's fn-oab-fence-before-change, through
+;;; host/owner-host.lisp fn-owner-statement-fence) is fenced first, then the
+;;; cut, then the executor; a refused key change leaves WORD (the article is
 ;;; accepted) and names the refusal in the transit detail, so the reported
-;;; outcome names both.
+;;; outcome names both.  Any other composite has no executor
+;;; (fn-oab-plan-only-after-the-fence: the plan is nil).
 (defun fnn-owner-statement-committed (service event word)
   (when (eq word :durable)
-    (fnn-owner-key-statement-cut)
-    (when (eq (fnn-owner-key-statement service event) :refused)
-      (setq *fnn-owner-transit-detail* :key-change-refused)))
+    (let ((fence (fnn-owner-core 'fn-owner-statement-fence event)))
+      (unless (booleanp fence)
+        (fnn-fault "owner returned a malformed statement fence ~a" fence))
+      (when fence
+        (fnn-owner-statement-barrier service)
+        (fnn-owner-key-statement-cut)
+        (when (eq (fnn-owner-key-statement service event) :refused)
+          (setq *fnn-owner-transit-detail* :key-change-refused)))))
   word)
 
 ;;; The open's recovery (books/key-statements.lisp fn-ks-recover-recorded):
