@@ -63,8 +63,13 @@
     (error () nil)))
 
 ;; Linux cgroup v2: /proc/self/cgroup's `0::PATH' line names the process's
-;; group; memory.max there and in each ancestor bounds it.  Each file's
-;; octets go to ACL2 (`fn-heap-limit-of-octets'), which reads the number.
+;; group; memory.max there and in each ancestor bounds it, up to and
+;; including the mount's root: inside a cgroup namespace (a container, an LXC
+;; guest) that root IS a limited group, and its memory.max is the container's
+;; limit (friend-path 2026-09-27: a 6 GiB container observed as the host's
+;; 126 GB).  On a host the true root has no memory.max, and a missing file is
+;; no observation.  Each file's octets go to ACL2 (`fn-heap-limit-of-octets'),
+;; which reads the number.
 #+linux
 (defun fnn-heap-cgroup-observations ()
   (let* ((octets (fnn-heap-read-small "/proc/self/cgroup"))
@@ -80,6 +85,9 @@
                  (push (fnn-core 'fn-heap-limit-of-octets octets) found)))
              (let ((slash (position #\/ path :from-end t)))
                (setq path (and slash (plusp slash) (subseq path 0 slash)))))
+    (let ((octets (and text (fnn-heap-read-small "/sys/fs/cgroup/memory.max"))))
+      (when octets
+        (push (fnn-core 'fn-heap-limit-of-octets octets) found)))
     found))
 
 (defun fnn-heap-observations ()

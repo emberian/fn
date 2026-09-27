@@ -71,6 +71,9 @@ If it goes wrong:
 Use your reader's cancel command, logged in as yourself. The post
 disappears on this node, and on peers that get the cancel. Another
 login's cancel of your post is kept but does nothing. This was tested with tin and Thunderbird.
+In tin: `D`, then `d`; tin may ask for a cancel secret: press Enter.
+Readers then get `430 withdrawn`. The node must have been set up
+with a `mission` (which serves `control.cancel`).
 pan cancels only a post whose Sender line matches your pan profile.
 
 ## slrn and pan
