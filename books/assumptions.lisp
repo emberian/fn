@@ -402,6 +402,26 @@
     (implies (fn-assume-host-exclusive-read before after ino)
              (equal (fn-bs-content after ino) (fn-bs-content before ino)))))
 
+;------------------------------------------------------------------------------
+; An fn OBLIGATION, not a platform assumption: the log's sole pending writer
+; (books/store-log-recover.lisp, P-LOG-RECOVER).  While the log recovers, no
+; store operation other than the log segment's own writes is pending.  fn
+; proves it of its own owner; nothing here is assumed of the platform.  It is
+; stated as a constrained function so that the recovery theorems are proved
+; once, over the obligation, and each caller discharges it by functional
+; instantiation with its own state's predicate:
+;   fn-lgk-recover-establishes-relation   books/store-log-recover.lisp (user)
+;   fn-owb-recover-establishes-relation   books/owner-batch.lisp (discharge:
+;     fn-owb-related-state-is-the-sole-pending-writer, a related state)
+; specs/failures.md, "fn obligations stated as constrained functions".
+(encapsulate
+  (((fn-assume-log-sole-pending-writer * *) => *))
+  (local (defun fn-assume-log-sole-pending-writer (bs ino)
+           (not (fn-bs-ops-not-for-ino (fn-bs-pending bs) ino))))
+  (defthm fn-assume-log-sole-pending-writer-names-only-the-log
+    (implies (fn-assume-log-sole-pending-writer bs ino)
+             (not (fn-bs-ops-not-for-ino (fn-bs-pending bs) ino)))))
+
 ; -----------------------------------------------------------------------------
 ; A-BP-CONTACT (spec bp-node-machine 5.7; mandate 9, "a blocked oldest row
 ; must not starve unrelated ready work").  A base contact to PEER sustains at

@@ -184,3 +184,28 @@
  (must-fail
   (defthm fn-assume-check-never-contact-index-is-finite
     (natp (fn-assume-check-never :route-a :schedule-a)))))
+
+; -----------------------------------------------------------------------------
+; The log's sole pending writer (an fn obligation, not an assumption; lane
+; audit-fixes 2026-09-27).  Positive: the local witness holds of a store
+; whose only pending operation is a write of the segment (inode 0).  Negative
+; (a ground evaluation, not a proof search): a candidate that ignores the
+; pending list claims a store with a pending entry operation elsewhere, where
+; the constraint's conclusion fails.
+(local (defun fn-assume-check-any-writer (bs ino)
+         (declare (ignore bs ino))
+         t))
+
+(local
+ (assert-event
+  (not (fn-bs-ops-not-for-ino
+        (fn-bs-pending (fn-bs-make 4 (list (cons 0 nil)) nil
+                                   (list (list :write 0 0 (list 1 2 3 4))) 1))
+        0))))
+
+(local
+ (assert-event
+  (let ((bs (fn-bs-make 4 (list (cons 0 nil)) nil
+                        (list (list :set-entry :journal "x" 0)) 1)))
+    (and (fn-assume-check-any-writer bs 0)
+         (fn-bs-ops-not-for-ino (fn-bs-pending bs) 0)))))
