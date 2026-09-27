@@ -23,9 +23,9 @@
 (include-book "store-node")
 
 (defthm fn-bs-k0-node-article-prepare-preserves-relation
-  (implies (fn-bs-store-relation bs (fn-sn-files s))
+  (implies (fn-bs-store-relation bs (fn-sn-files s) arena)
            (fn-bs-store-relation
-            bs (fn-sn-files (fn-sn-prepare s record))))
+            bs (fn-sn-files (fn-sn-prepare s record)) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0-record-prepare-preserves-relation
@@ -55,33 +55,25 @@
                             fn-sn-prepare-node fn-sn-record-bindsp
                             fn-sf-history-recoverablep fn-sf-candidatep))))))
 
-(local (defthm fn-bs-k0-node-article-prepare-success-has-recordp
-  (implies (and (equal (fn-sf-phase (fn-sn-files s)) :reserved)
-                (equal (fn-sf-phase (fn-sn-files (fn-sn-prepare s record)))
-                       :record-staged))
-           (fn-record-p record))
-  :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-sn-prepare
-                            fn-sf-prepare-record)
-                           (fn-sn-update fn-sn-make-v6
-                            fn-sn-statep fn-node-statep
-                            fn-sn-prepare-node fn-sn-record-bindsp
-                            fn-sf-history-recoverablep fn-sf-candidatep))))))
-
+;; After the records flip the node stages the RETAINED row the entry
+;; interned (fn-sn-prepare admits a held row only), and the frame the host
+;; writes is the encoding of the row's alpha through the arena.
 (defthm fn-bs-k0-served-article-prepare-to-attempted-relation
   (implies
-   (and (fn-bs-store-relation bs (fn-sn-files s))
+   (and (fn-bs-store-relation bs (fn-sn-files s) arena)
         (equal (fn-sf-phase (fn-sn-files s)) :reserved)
         (equal (fn-sf-phase (fn-sn-files (fn-sn-prepare s record)))
                :record-staged)
+        (fn-record-p (fn-bs-row-wire record arena))
         (fn-bs-namep stage)
         (not (fn-bs-lookup bs :staging stage)))
    (let* ((ks (fn-sn-files (fn-sn-prepare s record)))
           (frame (append
-                  (fn-frame-store-protected (fn-store-event-encode record))
+                  (fn-frame-store-protected
+                   (fn-store-event-encode (fn-bs-row-wire record arena)))
                   (fn-frame-trailer
-                   (fn-frame-store-protected (fn-store-event-encode record)))))
+                   (fn-frame-store-protected
+                    (fn-store-event-encode (fn-bs-row-wire record arena))))))
           (name (fn-bs-txn-name (fn-store-event-sequence record))))
      (fn-bs-store-relation
       (car (nth 10 (fn-bs-run bs ks
@@ -89,14 +81,14 @@
                               nil groups capacity)))
       (cdr (nth 10 (fn-bs-run bs ks
                               (fn-bs-record-program stage name frame)
-                              nil groups capacity))))))
+                              nil groups capacity))) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0-node-article-prepare-preserves-relation)
                  (:instance fn-bs-k0-node-article-prepare-binds-candidate)
-                 (:instance fn-bs-k0-node-article-prepare-success-has-recordp)
                  (:instance fn-bs-k0-article-host-arguments-reach-related-attempted-cut
-                            (ks (fn-sn-files (fn-sn-prepare s record)))))
+                            (ks (fn-sn-files (fn-sn-prepare s record)))
+                            (row record)))
            :in-theory (theory 'minimal-theory))))
 
 ; K0 allocator entry.  host/native/io.lisp:fnn-advance-frontier calls
@@ -322,7 +314,7 @@
                                fn-bs-record-program fn-bs-durable-content))))
 
 (defthm fn-bs-k0-frontier-file-cut-keeps-old-frontier
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-durable-frontier
@@ -345,7 +337,7 @@
                             fn-bs-statep)))))
 
 (defthm fn-bs-k0-frontier-file-cut-keeps-config
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((file (car (nth 5 (fn-bs-run bs ks
@@ -399,7 +391,7 @@
 
 (local
  (defthm fn-bs-k0-frontier-file-cut-txn-content-is-input
-   (implies (and (fn-bs-store-relation bs ks)
+   (implies (and (fn-bs-store-relation bs ks arena)
                  (fn-bs-frontier-inputp ks stage octets)
                  (not (fn-bs-lookup bs :staging stage)))
             (let ((file (car (nth 5 (fn-bs-run bs ks
@@ -454,7 +446,7 @@
 
 (local
  (defthm fn-bs-k0-frontier-file-cut-durable-txn-content-is-input
-   (implies (and (fn-bs-store-relation bs ks)
+   (implies (and (fn-bs-store-relation bs ks arena)
                  (fn-bs-frontier-inputp ks stage octets)
                  (not (fn-bs-lookup bs :staging stage)))
             (let ((file (car (nth 5 (fn-bs-run bs ks
@@ -502,7 +494,7 @@
 
 (local
  (defthm fn-bs-k0-frontier-file-cut-prefix-agrees
-   (implies (and (fn-bs-store-relation bs ks)
+   (implies (and (fn-bs-store-relation bs ks arena)
                  (fn-bs-frontier-inputp ks stage octets)
                  (not (fn-bs-lookup bs :staging stage)))
             (fn-bs-txn-prefix-agreesp
@@ -531,7 +523,7 @@
                              (name (fn-bs-txn-name n))))))))
 
 (defthm fn-bs-k0-frontier-file-cut-keeps-durable-records
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal
@@ -606,7 +598,7 @@
                              fn-bs-lookup fn-bs-ops-not-for-ino))))))
 
 (defthm fn-bs-k0-frontier-file-cut-authority-quiet
-   (implies (and (fn-bs-store-relation bs ks)
+   (implies (and (fn-bs-store-relation bs ks arena)
                  (fn-bs-frontier-inputp ks stage octets)
                  (not (fn-bs-lookup bs :staging stage)))
             (let ((file (car (nth 5 (fn-bs-run bs ks
@@ -677,7 +669,7 @@
                              (frame octets) (other (car xs))))))))
 
 (defthm fn-bs-k0-frontier-file-cut-authority-known
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-authority-knownp
@@ -696,7 +688,7 @@
                             fn-bs-statep fn-bs-inode-list-knownp
                             fn-bs-authority-fencedp fn-bs-durable-records
                             fn-bs-replay-matches-scan
-                            fn-bs-pending-matches-phase fn-sf-crash-imagep)))))
+                            fn-bs-pending-matches-phase fn-sf-crash-imagep fn-bs-alpha-crash-imagep)))))
 
 (local
  (defthm fn-bs-k0-frontier-file-cut-keeps-fenced-list
@@ -721,7 +713,7 @@
                              (frame octets) (other (car xs))))))))
 
 (defthm fn-bs-k0-frontier-file-cut-authority-fenced
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-authority-fencedp
@@ -740,14 +732,14 @@
                             fn-bs-statep fn-bs-all-fencedp
                             fn-bs-authority-knownp fn-bs-durable-records
                             fn-bs-replay-matches-scan
-                            fn-bs-pending-matches-phase fn-sf-crash-imagep)))))
+                            fn-bs-pending-matches-phase fn-sf-crash-imagep fn-bs-alpha-crash-imagep)))))
 
 ; Structural projection transport: while there is no pending authority
 ; entry, the relation depends only on exact durable config, frontier and
 ; record observations plus the separate state/authority invariants.  This
 ; is a helper, not a new K0 keystone and not a scan-equality assumption.
 (defthm fn-bs-k0-quiet-projection-transports-relation
-   (implies (and (fn-bs-store-relation bs k)
+   (implies (and (fn-bs-store-relation bs k arena)
                  (not (fn-bs-replay-visiblep k))
                  (fn-bs-statep file)
                  (equal (fn-bs-dirs file) (fn-bs-dirs bs))
@@ -767,7 +759,7 @@
                          (fn-bs-pending file) :root) nil)
                  (equal (fn-bs-ops-for-dir
                          (fn-bs-pending file) :transactions) nil))
-            (fn-bs-store-relation file k))
+            (fn-bs-store-relation file k arena))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
             :use (fn-bs-store-relation-unfolds
@@ -779,15 +771,15 @@
                             (fn-bs-statep fn-sf-statep
                              fn-bs-durable-records fn-bs-durable-frontier
                              fn-bs-authority-fencedp fn-bs-authority-knownp
-                             fn-bs-ops-for-dir fn-sf-crash-imagep
+                             fn-bs-ops-for-dir fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                              fn-bs-replay-matches-scan)))))
 
 (local
  (defthm fn-bs-k0-frontier-file-kernel-relation
-   (implies (fn-bs-store-relation bs ks)
+   (implies (fn-bs-store-relation bs ks arena)
             (fn-bs-store-relation
              bs (fn-sf-frontier-file-result
-                 (fn-sf-start-frontier ks) :ok)))
+                 (fn-sf-start-frontier ks) :ok) arena))
    :rule-classes nil
    :hints (("Goal"
             :use (fn-bs-start-frontier-preserves-relation
@@ -812,7 +804,7 @@
 ; replacement.  No output relation is assumed.  This is a complete
 ; physical/logical relation at this cut, not yet at :reserved.
 (defthm fn-bs-k0-frontier-file-observation-establishes-relation
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-store-relation
@@ -821,7 +813,7 @@
                            nil groups capacity)))
             (cdr (nth 6 (fn-bs-run bs ks
                            (fn-bs-frontier-program stage octets)
-                           nil groups capacity)))))
+                           nil groups capacity))) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-unfolds
@@ -969,7 +961,7 @@
 
 (local
  (defthm fn-bs-k0-frontier-dir-cut-durable-entry
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-durable-entry
@@ -997,7 +989,7 @@
                             fn-bs-fence-dir fn-bs-lookup))))))
 
 (defthm fn-bs-k0-frontier-dir-cut-exact-octets
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-durable-content
@@ -1029,7 +1021,7 @@
                             fn-bs-rename fn-bs-fence-dir)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-decodes-candidate
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-durable-frontier
@@ -1133,7 +1125,7 @@
                                fn-bs-lookup))))
 
 (defthm fn-bs-k0-frontier-dir-cut-kernel-is-replace-observation
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (cdr (nth 12 (fn-bs-run bs ks
@@ -1168,7 +1160,7 @@
                             fn-sf-frontier-replace-result)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-kernel-candidate-and-phase
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (and (equal (fn-sf-phase
@@ -1198,7 +1190,7 @@
 ; frontier-directory callback theorem.  Its remaining pre-callback relation
 ; premise is an actual K0 obligation, not silently assumed here.
 (defthm fn-bs-k0-frontier-dir-cut-committedp
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-frontier-directory-committedp
@@ -1262,7 +1254,7 @@
 
 (local
  (defthm fn-bs-k0-frontier-dir-cut-transaction-quiet
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-ops-for-dir
@@ -1296,7 +1288,7 @@
                             fn-bs-k0-root-fence-keeps-transaction-quiet))))))
 
 (defthm fn-bs-k0-frontier-dir-cut-pending-matches-phase
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-pending-matches-phase
@@ -1305,7 +1297,7 @@
                            nil groups capacity)))
             (cdr (nth 12 (fn-bs-run bs ks
                            (fn-bs-frontier-program stage octets)
-                           nil groups capacity)))))
+                           nil groups capacity))) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-unfolds
@@ -1318,7 +1310,7 @@
                             fn-bs-ops-for-dir fn-bs-store-relation)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-statep
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-statep
@@ -1415,7 +1407,7 @@
                            (fn-bs-read-records fn-bs-txn-prefix-agreesp)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-keeps-inodes
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-inodes
@@ -1442,7 +1434,7 @@
                             fn-bs-fence-dir fn-bs-lookup fn-bs-store-relation)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-keeps-transaction-table
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (cdr (assoc-equal :transactions
@@ -1469,7 +1461,7 @@
                             fn-bs-fence-dir fn-bs-lookup fn-bs-store-relation)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-keeps-durable-records
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-durable-records
@@ -1496,23 +1488,23 @@
                             fn-bs-durable-records fn-bs-store-relation)))))
 
 (defthm fn-bs-k0-ready-input-durable-records-match
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :ready))
-           (equal (fn-bs-durable-records bs) (fn-sf-records ks)))
+           (equal (fn-bs-durable-records bs) (fn-bs-rows-wire (fn-sf-records ks) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-window-unfolds)
-           :in-theory (e/d (fn-bs-replay-visiblep fn-sf-crash-imagep
+           :in-theory (e/d (fn-bs-replay-visiblep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                             fn-sf-record-present-visiblep)
                            (fn-bs-store-relation fn-bs-durable-records
                             fn-bs-durable-frontier fn-bs-pending-matches-phase
                             fn-sf-statep)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-crash-imagep
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
-           (fn-sf-crash-imagep
+           (fn-bs-alpha-crash-imagep
             (cdr (nth 12 (fn-bs-run bs ks
                            (fn-bs-frontier-program stage octets)
                            nil groups capacity)))
@@ -1523,7 +1515,7 @@
             (fn-bs-durable-records
              (car (nth 12 (fn-bs-run bs ks
                             (fn-bs-frontier-program stage octets)
-                            nil groups capacity))))))
+                            nil groups capacity)))) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-unfolds
@@ -1538,7 +1530,7 @@
                  (:instance fn-sf-frontier-replace-result-preserves-state
                             (s (fn-sf-frontier-file-result
                                 (fn-sf-start-frontier ks) :ok)) (result :ok)))
-           :in-theory (e/d (fn-bs-frontier-inputp fn-sf-crash-imagep
+           :in-theory (e/d (fn-bs-frontier-inputp fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                             fn-sf-frontier-new-visiblep
                             fn-sf-record-present-visiblep
                             fn-sf-start-frontier fn-sf-frontier-file-result
@@ -1573,7 +1565,7 @@
                             fn-bs-apply-entries)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-keeps-config-entry
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-durable-entry
@@ -1601,7 +1593,7 @@
                             fn-bs-store-relation)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-keeps-config-content
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-durable-content
@@ -1634,7 +1626,7 @@
            :in-theory (enable fn-bs-pending-entry-targets fn-bs-ops-for-dir))))
 
 (defthm fn-bs-k0-frontier-dir-cut-authority-list
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-authority-inode-list
@@ -1696,7 +1688,7 @@
                             fn-bs-k0-directory-filter-keeps-inode-ops)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-preserves-fencedp-rewrite
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-fencedp
@@ -1726,7 +1718,7 @@
                             fn-bs-store-relation)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-preserves-fenced-list
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal
@@ -1823,7 +1815,7 @@
            :in-theory (enable fn-bs-inode-list-knownp))))
 
 (defthm fn-bs-k0-frontier-file-observation-authority-known
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-authority-knownp
@@ -1839,7 +1831,7 @@
                             fn-bs-authority-fencedp fn-bs-durable-records)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-preserves-known-list
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal
@@ -1865,7 +1857,7 @@
                             fn-bs-inode-list-knownp)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-authority-known
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-authority-knownp
@@ -1899,7 +1891,7 @@
                             fn-bs-inode-list-knownp fn-bs-store-relation)))))
 
 (defthm fn-bs-k0-frontier-file-observation-authority-fenced
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-authority-fencedp
@@ -1920,7 +1912,7 @@
                                fn-bs-store-relation fn-bs-authority-fencedp))))
 
 (defthm fn-bs-k0-frontier-dir-cut-authority-fenced
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-authority-fencedp
@@ -1954,7 +1946,7 @@
                             fn-bs-all-fencedp fn-bs-store-relation)))))
 
 (defthm fn-bs-k0-frontier-dir-cut-establishes-relation
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-store-relation
@@ -1963,7 +1955,7 @@
                            nil groups capacity)))
             (cdr (nth 12 (fn-bs-run bs ks
                            (fn-bs-frontier-program stage octets)
-                           nil groups capacity)))))
+                           nil groups capacity))) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-unfolds
@@ -1988,7 +1980,7 @@
                             fn-sf-statep fn-bs-durable-records
                             fn-bs-durable-frontier fn-bs-authority-knownp
                             fn-bs-authority-fencedp fn-bs-lookup
-                            fn-bs-pending-matches-phase fn-sf-crash-imagep)))))
+                            fn-bs-pending-matches-phase fn-sf-crash-imagep fn-bs-alpha-crash-imagep)))))
 
 ; The final host frontier callback follows the directory-fenced pair.
 (local
@@ -2045,7 +2037,7 @@
 )
 
 (defthm fn-bs-k0-frontier-reserved-pair-is-directory-callback
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (nth 14 (fn-bs-run bs ks
@@ -2080,13 +2072,13 @@
                             fn-bs-lookup fn-sf-frontier-dir-result)))))
 
 (defthm fn-bs-k0-frontier-reserved-cut-establishes-relation
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((pair (nth 14 (fn-bs-run bs ks
                                    (fn-bs-frontier-program stage octets)
                                    nil groups capacity))))
-             (and (fn-bs-store-relation (car pair) (cdr pair))
+             (and (fn-bs-store-relation (car pair) (cdr pair) arena)
                   (equal (fn-sf-phase (cdr pair)) :reserved))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
@@ -2118,7 +2110,7 @@
 (defthm fn-bs-k0-frontier-native-call-sequence-matches-run
   (implies
    (and (fn-sn-statep s)
-        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-store-relation bs (fn-sn-files s) arena)
         (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
         (not (fn-bs-lookup bs :staging stage)))
    (let* ((s1 (fn-sn-io s :start-frontier :ok))
@@ -2133,7 +2125,7 @@
      (and (equal (cdr file-pair) (fn-sn-files s3))
           (equal (car return-pair) (car file-pair))
           (equal (cdr return-pair) (fn-sn-files s4))
-          (fn-bs-store-relation (car return-pair) (fn-sn-files s4))
+          (fn-bs-store-relation (car return-pair) (fn-sn-files s4) arena)
           (equal (fn-sf-phase (fn-sn-files s4)) :reserved))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t

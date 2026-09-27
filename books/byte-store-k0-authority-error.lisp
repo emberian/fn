@@ -131,8 +131,8 @@
   (equal (fn-bs-inode-list-knownp (fn-bs-k0a-drop-dir b dir) xs) (fn-bs-inode-list-knownp b xs))
   :hints (("Goal" :induct (len xs) :in-theory (e/d (fn-bs-inode-list-knownp) (fn-bs-k0a-drop-dir)))))
 (defthm fn-bs-k0a-drop-dir-preserves-relation
-  (implies (and (fn-bs-store-relation b k) (not (fn-bs-replay-visiblep k)))
-           (fn-bs-store-relation (fn-bs-k0a-drop-dir b dir) k))
+  (implies (and (fn-bs-store-relation b k arena) (not (fn-bs-replay-visiblep k)))
+           (fn-bs-store-relation (fn-bs-k0a-drop-dir b dir) k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-unfolds (bs b) (ks k))
@@ -144,7 +144,7 @@
                            (fn-bs-durable fn-bs-durable-names fn-bs-statep fn-bs-k0a-drop-dir
                             fn-bs-durable-records fn-bs-durable-frontier fn-bs-durable-entry
                             fn-bs-durable-content fn-bs-record-of fn-bs-k0a-targets-sublist
-                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-sf-statep
+                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-sf-statep
                             fn-bs-contiguous-namesp fn-bs-replay-visiblep
                             fn-bs-all-fencedp fn-bs-inode-list-knownp fn-bs-fencedp
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
@@ -159,14 +159,14 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-bs-pending-shape-okp) (fn-bs-fencedp fn-bs-durable-names)))))
 (defthm fn-bs-k0a-authority-fsync-error-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (member-equal dir '(:root :transactions))
                 (not (equal outcome :ok))
                 (or (equal dir :root)
                     (not (fn-bs-ops-for-dir (fn-bs-pending b) :transactions))
                     (equal (fn-sf-phase k) :record-attempted)))
-           (fn-bs-store-relation (mv-nth 1 (fn-bs-fsync-dir b dir outcome)) k))
+           (fn-bs-store-relation (mv-nth 1 (fn-bs-fsync-dir b dir outcome)) k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0a-error-is-fence-or-drop fn-bs-k0a-drop-dir-preserves-relation
@@ -178,4 +178,4 @@
                  (:instance fn-bs-k8-pending-link-fence-preserves-relation (bs b) (ks k)))
            :in-theory (e/d () (fn-bs-store-relation fn-bs-fsync-dir fn-bs-fence-dir fn-bs-k0a-drop-dir
                                fn-bs-pending-shape-okp fn-bs-pending-matches-phase fn-bs-replay-visiblep
-                               fn-sf-crash-imagep fn-bs-ops-for-dir)))))
+                               fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-bs-ops-for-dir)))))

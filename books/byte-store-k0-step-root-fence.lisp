@@ -48,7 +48,7 @@
            :in-theory (e/d (fn-bs-fence-dir fn-bs-statep fn-bs-apply-ops)
                            (fn-bs-k0s-make-of-parts fn-bs-op-listp-implies-true-listp)))))
 (defthm fn-bs-k0r-related-root-pending-facts
-  (implies (and (fn-bs-store-relation bs ks) (not (fn-bs-replay-visiblep ks))
+  (implies (and (fn-bs-store-relation bs ks arena) (not (fn-bs-replay-visiblep ks))
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root)))
            (let* ((r (fn-bs-ops-for-dir (fn-bs-pending bs) :root)) (ino (nth 3 (car r))))
              (and (not (consp (cdr r)))
@@ -62,7 +62,7 @@
   :rule-classes nil
   :hints (("Goal" :use (fn-bs-store-relation-window-unfolds fn-bs-pending-matches-phase-unfolds)
            :in-theory (e/d (fn-bs-pending-shape-okp fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)
-                           (fn-bs-store-relation fn-bs-pending-matches-phase fn-sf-crash-imagep
+                           (fn-bs-store-relation fn-bs-pending-matches-phase fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                             fn-bs-fencedp fn-bs-inop fn-bs-durable-records fn-bs-durable-content)))))
 (defthm fn-bs-k0r-single-set-entry-lookups
   (implies (and (consp r) (not (consp (cdr r)))
@@ -122,7 +122,7 @@
                             fn-bs-read-records-under-agreement fn-bs-fence-dir fn-bs-k0r-root-fence-keeps-transactions)))))
 (defthm fn-bs-k0r-root-fence-matches-phase
   (implies (not (fn-bs-ops-for-dir (fn-bs-pending b) :transactions))
-           (fn-bs-pending-matches-phase (fn-bs-fence-dir b :root) ks))
+           (fn-bs-pending-matches-phase (fn-bs-fence-dir b :root) ks arena))
   :hints (("Goal" :use ((:instance fn-bs-ops-for-dir-of-ops-not-for-dir (ops (fn-bs-pending b)) (dir :root))
                         (:instance fn-bs-k8-other-directory-ops-survive-filter (ops (fn-bs-pending b)) (removed :root) (kept :transactions)))
            :in-theory (e/d (fn-bs-pending-matches-phase fn-bs-pending-shape-okp fn-bs-fence-dir)
@@ -151,8 +151,8 @@
                            (fn-bs-fence-dir fn-bs-durable-entry)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-authority-inode-list fn-bs-fence-dir) (fn-bs-durable-entry fn-bs-apply-ops))))))
 (defthm fn-bs-k0s-root-fence-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks) (not (fn-bs-replay-visiblep ks)))
-           (fn-bs-store-relation (fn-bs-fence-dir bs :root) ks))
+  (implies (and (fn-bs-store-relation bs ks arena) (not (fn-bs-replay-visiblep ks)))
+           (fn-bs-store-relation (fn-bs-fence-dir bs :root) ks arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :cases ((consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root))))
@@ -165,7 +165,7 @@
                              (:instance fn-bs-k0r-root-fence-matches-phase (b bs))
                              (:instance fn-bs-fence-dir-preserves-statep (s bs) (dir :root)))
            :in-theory (e/d (fn-bs-store-relation fn-bs-authority-fencedp fn-bs-authority-knownp
-                            fn-sf-crash-imagep fn-bs-durable-frontier fn-bs-all-fencedp fn-bs-inode-list-knownp)
+                            fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-bs-durable-frontier fn-bs-all-fencedp fn-bs-inode-list-knownp)
                            (fn-bs-durable fn-bs-durable-names fn-bs-statep fn-bs-fence-dir
                             fn-bs-durable-records fn-bs-durable-entry fn-bs-fencedp
                             fn-bs-durable-content fn-bs-authority-inode-list fn-bs-record-of

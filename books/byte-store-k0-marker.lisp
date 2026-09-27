@@ -114,12 +114,12 @@
   :hints (("Goal" :induct (fn-bs-ops-for-dir p dir)
            :in-theory (enable fn-bs-ops-for-dir fn-bs-pending-entry-targets))))
 (defthm fn-bs-k0m-with-content-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (natp x)
                 (not (member-equal x (fn-bs-authority-inode-list b)))
                 (fn-bs-statep (fn-bs-k0m-with-content b x c)))
-           (fn-bs-store-relation (fn-bs-k0m-with-content b x c) k))
+           (fn-bs-store-relation (fn-bs-k0m-with-content b x c) k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-unfolds (bs b) (ks k))
@@ -134,7 +134,7 @@
                            (fn-bs-durable fn-bs-durable-names fn-bs-statep fn-bs-k0m-with-content
                             fn-bs-durable-records fn-bs-durable-entry fn-bs-k0m-with-content-knownp
                             fn-bs-durable-content fn-bs-record-of
-                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-sf-statep
+                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-sf-statep
                             fn-bs-contiguous-namesp fn-bs-replay-visiblep
                             fn-bs-all-fencedp fn-bs-inode-list-knownp fn-bs-fencedp
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
@@ -195,12 +195,12 @@
                             fn-bs-read-records-under-agreement fn-bs-k0m-with-root-entry
                             fn-bs-k0m-with-root-entry-projections)))))
 (defthm fn-bs-k0m-with-root-entry-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (not (equal name *fn-bs-scan-config-name*))
                 (not (equal name *fn-bs-scan-frontier-name*))
                 (fn-bs-statep (fn-bs-k0m-with-root-entry b name ino)))
-           (fn-bs-store-relation (fn-bs-k0m-with-root-entry b name ino) k))
+           (fn-bs-store-relation (fn-bs-k0m-with-root-entry b name ino) k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0m-with-root-entry-projections (n2 *fn-bs-scan-config-name*))
@@ -214,7 +214,7 @@
                            (fn-bs-durable fn-bs-durable-names fn-bs-statep fn-bs-k0m-with-root-entry
                             fn-bs-durable-records fn-bs-durable-frontier fn-bs-durable-entry
                             fn-bs-durable-content fn-bs-authority-inode-list fn-bs-record-of
-                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-sf-statep
+                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-sf-statep
                             fn-bs-contiguous-namesp fn-bs-replay-visiblep
                             fn-bs-all-fencedp fn-bs-inode-list-knownp fn-bs-fencedp
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
@@ -222,14 +222,14 @@
 ; The run's states, from the syscalls, and the two resolutions of the
 ; pending rename at marker-replaced.
 (defthm fn-bs-k0m-completing-window-facts
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-finish-inputp ks sequence txid))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-finish-inputp ks sequence txid))
            (and (not (fn-bs-replay-visiblep ks))
                 (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-bs-store-relation-window-unfolds))
            :in-theory (e/d (fn-bs-replay-visiblep fn-bs-finish-inputp fn-bs-pending-matches-phase
                             fn-sf-frontier-new-visiblep)
-                           (fn-bs-store-relation fn-bs-pending-shape-okp fn-sf-crash-imagep)))))
+                           (fn-bs-store-relation fn-bs-pending-shape-okp fn-sf-crash-imagep fn-bs-alpha-crash-imagep)))))
 (local (defthm fn-bs-k0m-statep-fresh
   (implies (fn-bs-statep bs)
            (and (true-listp (fn-bs-pending bs))
@@ -328,21 +328,21 @@
 
 ; K0 at the marker's cuts.
 (defthm fn-bs-k0-marker-cuts-relation
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-finish-inputp ks sequence txid)
                 (stringp stage)
                 (not (fn-bs-lookup bs :staging stage))
                 (fn-cbor-octet-listp octets) (consp octets))
            (let ((run (fn-bs-run bs ks (fn-bs-marker-program stage octets) nil groups capacity)))
              (and (equal (len run) 10)
-                  (fn-bs-store-relation (car (nth 1 run)) (cdr (nth 1 run)))
-                  (fn-bs-store-relation (car (nth 3 run)) (cdr (nth 3 run)))
-                  (fn-bs-store-relation (car (nth 5 run)) (cdr (nth 5 run)))
+                  (fn-bs-store-relation (car (nth 1 run)) (cdr (nth 1 run)) arena)
+                  (fn-bs-store-relation (car (nth 3 run)) (cdr (nth 3 run)) arena)
+                  (fn-bs-store-relation (car (nth 5 run)) (cdr (nth 5 run)) arena)
                   (fn-bs-store-relation (fn-bs-root-rename-dropped (car (nth 7 run)))
-                                        (cdr (nth 7 run)))
+                                        (cdr (nth 7 run)) arena)
                   (equal (mv-nth 1 (fn-bs-fsync-dir (car (nth 7 run)) :root :ok))
                          (car (nth 9 run)))
-                  (fn-bs-store-relation (car (nth 9 run)) (cdr (nth 9 run))))))
+                  (fn-bs-store-relation (car (nth 9 run)) (cdr (nth 9 run)) arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0m-completing-window-facts
@@ -585,7 +585,7 @@
   :hints (("Goal" :use ((:instance fn-bs-k0m-root-entry-means-root-dir (b bs) (name *fn-bs-scan-config-name*)))
            :in-theory (e/d (fn-bs-marker-b4) (fn-bs-inop fn-bs-durable-entry)))))
 (defthm fn-bs-k0-marker-replaced-cut-relation
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-finish-inputp ks sequence txid)
                 (stringp stage)
                 (not (fn-bs-lookup bs :staging stage))
@@ -593,8 +593,8 @@
            (let* ((run (fn-bs-run bs ks (fn-bs-marker-program stage octets) nil groups capacity))
                   (b (car (nth 7 run))) (k (cdr (nth 7 run)))
                   (landed (mv-nth 1 (fn-bs-fsync-dir b :root :ok))))
-             (and (fn-bs-store-relation (fn-bs-root-rename-dropped b) k)
-                  (fn-bs-store-relation landed k)
+             (and (fn-bs-store-relation (fn-bs-root-rename-dropped b) k arena)
+                  (fn-bs-store-relation landed k arena)
                   (implies (fn-bs-crash-imagep b image)
                            (or (fn-bs-crash-imagep (fn-bs-root-rename-dropped b) image)
                                (fn-bs-crash-imagep landed image))))))

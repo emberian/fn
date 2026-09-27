@@ -247,6 +247,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-record-fence \
 	tests/acl2/byte-store-record-fence-tests \
 	books/byte-store-record-provenance-bytes \
+	books/byte-store-arena \
 	books/byte-store-record-provenance-node \
 	books/byte-store-record-provenance-owner \
 	books/byte-store-record-provenance \

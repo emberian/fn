@@ -174,7 +174,7 @@
   :hints (("Goal" :in-theory (enable fn-bs-statep fn-bs-fencedp))))
 
 (defthm fn-bs-k8-related-view-transaction-lookup-is-fenced
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-namep name))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-namep name))
            (fn-bs-fencedp bs (fn-bs-lookup bs :transactions name)))
   :hints (("Goal"
            :use (fn-bs-store-relation-unfolds
@@ -219,7 +219,7 @@
                               fn-bs-durable-content))))
 
 (defthm fn-bs-k8-fenced-durable-agrees-with-view
-  (implies (and (fn-bs-store-relation bs ks) (natp n))
+  (implies (and (fn-bs-store-relation bs ks arena) (natp n))
            (fn-bs-txn-prefix-agreesp
             (fn-bs-durable (fn-bs-fence-dir bs :transactions))
             (fn-bs-fence-dir bs :transactions) n
@@ -251,7 +251,7 @@
            :in-theory (enable fn-bs-namep))))
 
 (defthm fn-bs-k8-fenced-durable-records-are-pre-fence-view-read
-  (implies (fn-bs-store-relation bs ks)
+  (implies (fn-bs-store-relation bs ks arena)
            (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
                   (fn-bs-read-records bs 0
                                       (len (fn-bs-names bs :transactions)))))
@@ -281,7 +281,7 @@
                                     fn-bs-durable-content))))
 
 (defthm fn-bs-k8-pending-link-view-record-is-candidate
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-attempted)
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
            (equal (fn-bs-record-of
@@ -289,7 +289,7 @@
                        bs :transactions
                        (fn-bs-txn-name
                         (len (fn-bs-durable-names bs :transactions)))))
-                  (fn-sf-record-candidate ks)))
+                  (fn-bs-row-wire (fn-sf-record-candidate ks) arena)))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-store-relation-window-unfolds
@@ -310,11 +310,11 @@
 (defthm fn-bs-k8-one-record-read
   (implies (and (natp n)
                 (fn-bs-inop (fn-bs-lookup s :transactions (fn-bs-txn-name n)))
-                (fn-store-event-p
+                (fn-wire-event-p
                  (fn-bs-record-of s
                                   (fn-bs-lookup s :transactions
                                                 (fn-bs-txn-name n))))
-                (equal (fn-store-event-sequence
+                (equal (fn-wire-event-sequence
                         (fn-bs-record-of s
                                          (fn-bs-lookup s :transactions
                                                        (fn-bs-txn-name n))))
@@ -328,13 +328,13 @@
                            (fn-bs-read-records s (1+ n) (1+ n))))))
 
 (defthm fn-bs-k8-pending-link-view-read-is-one-candidate
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-attempted)
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
            (equal (fn-bs-read-records
                    bs (len (fn-bs-durable-names bs :transactions))
                    (1+ (len (fn-bs-durable-names bs :transactions))))
-                  (list (fn-sf-record-candidate ks))))
+                  (list (fn-bs-row-wire (fn-sf-record-candidate ks) arena))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-k8-pending-link-view-record-is-candidate
@@ -345,6 +345,17 @@
                  fn-bs-kernel-candidates-are-typed
                  fn-bs-durable-records-length
                  fn-bs-shape-at-the-pending-link-name
+                 (:instance fn-bs-row-wire-of-a-store-event-is-a-cons
+                            (row (fn-sf-record-candidate ks)))
+                 (:instance fn-bs-row-wire-keeps-the-sequence
+                            (row (fn-sf-record-candidate ks)))
+                 (:instance fn-bs-record-of-is-a-wire-event-or-nil
+                            (s bs)
+                            (ino (fn-bs-lookup
+                                  bs :transactions
+                                  (fn-bs-txn-name
+                                   (len (fn-bs-durable-names
+                                         bs :transactions))))))
                  (:instance fn-bs-k8-one-record-read
                             (s bs) (n (len (fn-bs-durable-names bs :transactions))))
                  (:instance fn-bs-lookup-of-a-pending-target
@@ -355,16 +366,20 @@
                             (ops (fn-bs-pending bs)) (dir :transactions)
                             (name (fn-bs-txn-name
                                    (len (fn-bs-durable-names bs :transactions))))))
-           :in-theory (enable fn-bs-pending-shape-okp fn-bs-replay-visiblep))))
+           :in-theory (e/d (fn-bs-pending-shape-okp fn-bs-replay-visiblep)
+                           (fn-bs-record-of fn-wire-event-p
+                            fn-bs-row-wire-of-a-store-event-is-a-cons
+                            fn-bs-row-wire-keeps-the-sequence
+                            fn-bs-record-of-is-a-wire-event-or-nil)))))
 
 (defthm fn-bs-k8-pending-link-view-record-list
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-attempted)
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
            (equal (fn-bs-read-records
                    bs 0 (len (fn-bs-names bs :transactions)))
                   (append (fn-bs-durable-records bs)
-                          (list (fn-sf-record-candidate ks)))))
+                          (list (fn-bs-row-wire (fn-sf-record-candidate ks) arena)))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-view-reads-the-durable-records
@@ -380,13 +395,13 @@
                                fn-bs-names fn-bs-txn-names))))
 
 (defthm fn-bs-k8-pending-link-fence-durable-records
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-attempted)
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
            (equal (fn-bs-durable-records
                    (fn-bs-fence-dir bs :transactions))
                   (append (fn-bs-durable-records bs)
-                          (list (fn-sf-record-candidate ks)))))
+                          (list (fn-bs-row-wire (fn-sf-record-candidate ks) arena)))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-k8-fenced-durable-records-are-pre-fence-view-read
@@ -412,7 +427,7 @@
            :in-theory (enable fn-bs-ops-for-dir))))
 
 (defthm fn-bs-k8-pending-link-fence-durable-entries
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-attempted)
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
            (equal (cdr (assoc-equal
@@ -462,7 +477,7 @@
                               fn-bs-ops-for-dir))))
 
 (defthm fn-bs-k8-attempted-pending-link-has-no-root-ops
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-attempted)
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
            (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root)))
@@ -474,7 +489,7 @@
                               fn-sf-frontier-new-visiblep))))
 
 (defthm fn-bs-k8-pending-link-fence-keeps-authority-list
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-attempted)
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
            (equal (fn-bs-authority-inode-list
@@ -519,11 +534,11 @@
            :in-theory (enable fn-bs-inode-list-knownp))))
 
 (defthm fn-bs-k8-pending-link-fence-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-attempted)
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
            (fn-bs-store-relation
-            (fn-bs-fence-dir bs :transactions) ks))
+            (fn-bs-fence-dir bs :transactions) ks arena))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-k8-fence-materializes-names
@@ -540,7 +555,7 @@
                             (n (1+ (len (fn-bs-durable-names
                                           bs :transactions))))))
            :in-theory (e/d (fn-bs-store-relation fn-bs-replay-visiblep
-                             fn-bs-contiguous-namesp fn-sf-crash-imagep
+                             fn-bs-contiguous-namesp fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                              fn-sf-record-present-visiblep
                              fn-bs-pending-matches-phase
                              fn-bs-pending-shape-okp
@@ -549,7 +564,7 @@
                             fn-bs-inode-list-knownp)))))
 
 (defthm fn-bs-k8-quiet-transaction-crash-scans-durable-records
-  (implies (and (fn-bs-store-relation fs ks)
+  (implies (and (fn-bs-store-relation fs ks arena)
                 (fn-bs-crash-imagep fs image)
                 (not (consp (fn-bs-ops-for-dir
                              (fn-bs-pending fs) :transactions))))
@@ -566,14 +581,14 @@
 ; exact candidate, independent of remaining staging operations or crash
 ; choices.  The issued-link premise is an explicit K0 call-trace obligation.
 (defthm fn-bs-k8-issued-link-fence-crash-scans-exact-candidate
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-attempted)
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
                 (fn-bs-crash-imagep
                  (fn-bs-fence-dir bs :transactions) image))
            (equal (fn-bs-scan-records (fn-bs-scan-store image))
-                  (append (fn-sf-records ks)
-                          (list (fn-sf-record-candidate ks)))))
+                  (append (fn-bs-rows-wire (fn-sf-records ks) arena)
+                          (list (fn-bs-row-wire (fn-sf-record-candidate ks) arena)))))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-k8-pending-link-fence-preserves-relation

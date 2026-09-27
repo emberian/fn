@@ -13,14 +13,14 @@
 
 (defun bskc-f (k) (nth k (bsk0-f-good)))
 (defun bskc-r (k) (nth k (bsk5-record-2-run)))
-(defun bskc-fence-ok (bs ks) (fn-bs-store-relation (fn-bs-fence-dir bs :root) ks))
+(defun bskc-fence-ok (bs ks) (fn-bs-store-relation (fn-bs-fence-dir bs :root) ks *bsk5-arena*))
 
 ; ---------------------------------------------------------------------------
 ; The root barrier.  Witness: the frontier run's attempted pair 11 -- related,
 ; the frontier rename pending on :root, kernel :frontier-attempted.  The
 ; fence lemma's conclusion holds there, and so do the keystone's new :ok arm
 ; and its conclusion for the step the frontier program takes next.
-(assert-event (fn-bs-store-relation (car (bskc-f 11)) (cdr (bskc-f 11))))
+(assert-event (fn-bs-store-relation (car (bskc-f 11)) (cdr (bskc-f 11)) *bsk5-arena*))
 (assert-event (consp (fn-bs-ops-for-dir (fn-bs-pending (car (bskc-f 11))) :root)))
 (assert-event (equal (fn-sf-phase (cdr (bskc-f 11))) :frontier-attempted))
 (assert-event (not (fn-bs-replay-visiblep (cdr (bskc-f 11)))))
@@ -32,7 +32,7 @@
 (assert-event (not (fn-bs-ops-for-dir (fn-bs-pending (car (bskc-r 10))) :root)))
 (assert-event (bsks-ok (car (bskc-r 10)) (cdr (bskc-r 10)) '(:fsync-dir :root) :ok))
 ; Tooth: the relation.  The initial byte image under the same kernel.
-(assert-event (not (fn-bs-store-relation (bsk5-initial) (cdr (bskc-f 11)))))
+(assert-event (not (fn-bs-store-relation (bsk5-initial) (cdr (bskc-f 11)) *bsk5-arena*)))
 (must-fail (assert-event (bskc-fence-ok (bsk5-initial) (cdr (bskc-f 11)))))
 ; (not (fn-bs-replay-visiblep ks)) has no must-fail: it is the recovery-window
 ; guard every kind of fn-bs-k0-step-inputp carries, and the fence is not
@@ -41,11 +41,11 @@
 ; ---------------------------------------------------------------------------
 ; The stage prefix: create, write-all and fsync-file on a fresh staging name.
 (defun bskc-stage-concl (bs ks stage octets)
-  (and (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks)
-       (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks)
-       (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks)))
+  (and (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks *bsk5-arena*)
+       (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks *bsk5-arena*)
+       (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks *bsk5-arena*)))
 (defun bskc-stage-hyps (bs ks stage octets)
-  (and (fn-bs-store-relation bs ks)
+  (and (fn-bs-store-relation bs ks *bsk5-arena*)
        (not (fn-bs-replay-visiblep ks))
        (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
        (not (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
@@ -98,12 +98,12 @@
   (let ((run (bsk0-r-run bs ks stage name frame)))
     (and (bsk0-related-at run 1) (bsk0-related-at run 3) (bsk0-related-at run 6)
          (bsk0-related-at run 8))))
-(assert-event (and (fn-bs-store-relation (bskc-fb) (bskc-fk))
+(assert-event (and (fn-bs-store-relation (bskc-fb) (bskc-fk) *bsk5-arena*)
                    (fn-bs-frontier-inputp (bskc-fk) ".allocation-k0" (fn-bs-frontier-encode 2))
                    (not (fn-bs-lookup (bskc-fb) :staging ".allocation-k0"))))
 (assert-event (bskc-frontier-cuts (bskc-fb) (bskc-fk) ".allocation-k0" (fn-bs-frontier-encode 2)))
-(assert-event (and (fn-bs-store-relation (bskc-rb) (bskc-rk))
-                   (fn-bs-record-inputp (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2))
+(assert-event (and (fn-bs-store-relation (bskc-rb) (bskc-rk) *bsk5-arena*)
+                   (fn-bs-record-inputp (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2) *bsk5-arena*)
                    (not (fn-bs-lookup (bskc-rb) :staging ".stage-k5-2"))))
 (assert-event (bskc-record-cuts (bskc-rb) (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame-2)))
 ; The link inputs at pair 6 hold on the witness, and the link lands.
@@ -117,12 +117,12 @@
 ; state ill-formed (and the frontier input and record input fail).
 (assert-event (not (fn-bs-frontier-inputp (bskc-fk) ".allocation-k0" '(300))))
 (must-fail (assert-event (bskc-frontier-cuts (bskc-fb) (bskc-fk) ".allocation-k0" '(300))))
-(assert-event (not (fn-bs-record-inputp (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) '(300))))
+(assert-event (not (fn-bs-record-inputp (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) '(300) *bsk5-arena*)))
 (must-fail (assert-event (bskc-record-cuts (bskc-rb) (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) '(300))))
 ; The record input contract by its frame: the FIRST record's frame under the
 ; second name; the link lands on a target that does not read as the
 ; candidate, and the linked cut (pair 8) is not related.
-(assert-event (not (fn-bs-record-inputp (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame))))
+(assert-event (not (fn-bs-record-inputp (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame) *bsk5-arena*)))
 (must-fail (assert-event (bsk0-related-at (bsk0-r-run (bskc-rb) (bskc-rk) ".stage-k5-2" (fn-bs-txn-name 1) (bsk5-frame)) 8)))
 ; The absent stage: O_EXCL fails and the run stops at its first syscall.
 (must-fail (assert-event (bskc-frontier-cuts (bsk0-f-occupied) (bskc-fk) ".allocation-k0" (fn-bs-frontier-encode 2))))
