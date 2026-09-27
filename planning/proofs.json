@@ -3963,7 +3963,11 @@
         "fn-pbb-block-agent-is-pb-block-agent",
         "fn-pbb-path-agent-is-pb-path-agent",
         "fn-pbb-same-articlep-is-pb-same-articlep",
-        "fn-pbb-existing-action-is-pb-existing-action"
+        "fn-pbb-existing-action-is-pb-existing-action",
+        "fn-octets-append-back{correspondence}",
+        "fn-octets-get-word{correspondence}",
+        "fn-octets-append-word{correspondence}",
+        "fn-oct-word-octets-of-word-at"
       ]
     },
     {
@@ -9533,7 +9537,9 @@
         "fn-lz-decode-of-literal-block",
         "fn-lz-run-out-len-bound",
         "fn-lz-decode-buf-out-len-bound",
-        "fn-lz-run-extends-out"
+        "fn-lz-run-extends-out",
+        "fn-lz-lits-words-is-append",
+        "fn-lz-match-bulk-is-copy-match"
       ]
     },
     {

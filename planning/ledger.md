@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1181 |
-| Certification roots in the Makefile | 1141 |
-| Books inside the root closure | 1170 |
-| `defthm` and `defthmd` events | 17412 |
-| `defun` events | 12068 |
-| Functions with verified guards | 2419 |
+| Books read | 1182 |
+| Certification roots in the Makefile | 1142 |
+| Books inside the root closure | 1171 |
+| `defthm` and `defthmd` events | 17477 |
+| `defun` events | 12090 |
+| Functions with verified guards | 2421 |
 | Functions declared `:verify-guards nil` and never verified | 1235 |
-| Functions left at the default with an explicit guard | 6658 |
-| Functions left at the default with no guard | 1756 |
-| `assert-event` checks | 17446 |
-| `must-fail` checks | 2116 |
+| Functions left at the default with an explicit guard | 6672 |
+| Functions left at the default with no guard | 1762 |
+| `assert-event` checks | 17449 |
+| `must-fail` checks | 2127 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 89 |
+| `encapsulate` events | 91 |
 | Theorems flagged SUSPECT by shape | 186 |
 | Export-hygiene warnings | 201 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 205 |
-| Include-hygiene warnings | 1205 |
+| Include-hygiene warnings | 1204 |
 | Host-names warnings | 1341 |
 | Hand-written-record warnings | 18 |
 
@@ -507,7 +507,7 @@ that `make certify` requests.
 | `books/node-secret.lisp` | root | 23 | 34 | 0/0/33/1 | 0 | 0 | 0 |
 | `books/node-traces.lisp` | root | 12 | 24 | 0/0/24/0 | 0 | 0 | 0 |
 | `books/node.lisp` | root | 48 | 38 | 28/0/10/0 | 0 | 0 | 2 |
-| `books/octets-stobj.lisp` | root | 72 | 35 | 0/1/29/5 | 0 | 0 | 0 |
+| `books/octets-stobj.lisp` | root | 105 | 49 | 0/1/42/6 | 0 | 0 | 0 |
 | `books/outcome-class.lisp` | root | 8 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/owner-advance-carried.lisp` | root | 23 | 7 | 0/2/5/0 | 0 | 0 | 0 |
 | `books/owner-agent.lisp` | root | 40 | 13 | 0/0/13/0 | 0 | 0 | 0 |
@@ -558,7 +558,7 @@ that `make certify` requests.
 | `books/payload-arena-attach.lisp` | root | 0 | 1 | 0/0/0/1 | 1 | 0 | 0 |
 | `books/payload-arena-bytes.lisp` | root | 79 | 28 | 3/3/19/3 | 0 | 0 | 0 |
 | `books/payload-arena.lisp` | root | 49 | 13 | 0/1/9/3 | 0 | 0 | 0 |
-| `books/payload-lz.lisp` | root | 51 | 19 | 1/0/16/2 | 0 | 0 | 0 |
+| `books/payload-lz.lisp` | root | 68 | 23 | 3/0/17/3 | 0 | 0 | 0 |
 | `books/peer-authored-accept.lisp` | root | 22 | 13 | 0/0/13/0 | 0 | 0 | 1 |
 | `books/peer-carriage-rows.lisp` | root | 40 | 13 | 0/0/13/0 | 0 | 0 | 0 |
 | `books/peer-carriage.lisp` | root | 45 | 21 | 0/1/19/1 | 0 | 0 | 0 |
@@ -1075,6 +1075,7 @@ that `make certify` requests.
 | `tests/acl2/nntp-xref-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 17 | 4 | 0 |
 | `tests/acl2/node-secret-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 19 | 1 | 0 |
 | `tests/acl2/node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 92 | 0 | 0 |
+| `tests/acl2/octets-bulk-tests.lisp` | root | 15 | 4 | 0/0/0/4 | 3 | 11 | 0 |
 | `tests/acl2/octets-stobj-tests.lisp` | root | 30 | 14 | 0/4/1/9 | 24 | 19 | 0 |
 | `tests/acl2/open-one-pass-tests.lisp` | root | 0 | 8 | 0/6/0/2 | 56 | 1 | 0 |
 | `tests/acl2/outcome-class-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 37 | 7 | 0 |

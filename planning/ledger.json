@@ -831,6 +831,7 @@
     "books/owner-checkpoint-writer",
     "books/owner-checkpoint-pipeline",
     "tests/acl2/octets-stobj-tests",
+    "tests/acl2/octets-bulk-tests",
     "tests/acl2/payload-arena-tests",
     "tests/acl2/records-freeze-tests",
     "tests/acl2/catalog-record-tests",
@@ -1145,26 +1146,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1181,
-    "books_in_root_closure": 1170,
-    "roots": 1141,
-    "theorems": 17412,
-    "functions": 12068,
-    "assert_events": 17446,
-    "must_fails": 2116,
+    "books": 1182,
+    "books_in_root_closure": 1171,
+    "roots": 1142,
+    "theorems": 17477,
+    "functions": 12090,
+    "assert_events": 17449,
+    "must_fails": 2127,
     "prover_refusals": 0,
-    "encapsulates": 89,
+    "encapsulates": 91,
     "guards": {
-      "verified": 2419,
+      "verified": 2421,
       "declared-off": 1235,
-      "default-guarded": 6658,
-      "default-unguarded": 1756
+      "default-guarded": 6672,
+      "default-unguarded": 1762
     },
     "suspect_theorems": 186,
     "export_hygiene_warnings": 201,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 205,
-    "include_hygiene_warnings": 1205,
+    "include_hygiene_warnings": 1204,
     "host_names_warnings": 1341,
     "hand_written_record_warnings": 18
   },
@@ -12840,13 +12841,13 @@
       "book": "books/octets-stobj.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 72,
-      "functions": 35,
+      "theorems": 105,
+      "functions": 49,
       "guards": {
         "verified": 0,
         "declared-off": 1,
-        "default-guarded": 29,
-        "default-unguarded": 5
+        "default-guarded": 42,
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -12854,11 +12855,13 @@
       "prover_refusals": 0,
       "defconsts": 0,
       "defmacros": 0,
-      "encapsulates": 0,
+      "encapsulates": 2,
       "includes": [
         "cbor"
       ],
-      "system_includes": [],
+      "system_includes": [
+        "arithmetic-5/top"
+      ],
       "suspects": [],
       "read_error": null
     },
@@ -14272,15 +14275,15 @@
       "book": "books/payload-lz.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 51,
-      "functions": 19,
+      "theorems": 68,
+      "functions": 23,
       "guards": {
-        "verified": 1,
+        "verified": 3,
         "declared-off": 0,
-        "default-guarded": 16,
-        "default-unguarded": 2
+        "default-guarded": 17,
+        "default-unguarded": 3
       },
-      "verify_guards_events": 1,
+      "verify_guards_events": 3,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -28965,6 +28968,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/octets-bulk-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 15,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 3,
+      "must_fails": 11,
+      "prover_refusals": 0,
+      "defconsts": 5,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/octets-stobj"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/octets-stobj-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -37543,7 +37574,7 @@
       {
         "function": "fn-octets$a-list",
         "book": "books/octets-stobj.lisp",
-        "line": 339,
+        "line": 512,
         "stated_in": [
           "tests/acl2/octets-stobj-tests.lisp"
         ],
@@ -39988,7 +40019,7 @@
       },
       {
         "book": "books/bp-node-rotation-buffer.lisp",
-        "line": 459,
+        "line": 464,
         "include": "bp-node-rotation",
         "included": "books/bp-node-rotation.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -45976,13 +46007,6 @@
         "line": 7,
         "include": "../../books/nntp-verdict-effects",
         "included": "books/nntp-verdict-effects.lisp",
-        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
-      },
-      {
-        "book": "tests/acl2/payload-lz-tests.lisp",
-        "line": 9,
-        "include": "../../books/payload-lz",
-        "included": "books/payload-lz.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
