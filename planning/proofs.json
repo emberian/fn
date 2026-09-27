@@ -7230,7 +7230,7 @@
     {
       "id": "PRF-181",
       "title": "The served read the host calls over the octet buffer is the reference list read: fn-owner-chunk-span -> fn-scar-ocfg-read-span reads the range by index and equals fn-ocfg-read-tls-prefix over the range's octets, and the wire read is fn-wire-feed-proper over the slice",
-      "statement": "Subject fn-scar-ocfg-read-span (books/served-span.lisp), called by host/owner-host.lisp fn-owner-chunk-span from host/native/owner.lisp fnn-owner-handle-chunk (which fills fn-octets from the socket vector with fnn-octets-fill and calls fn-owner-chunk-span with the range [0, len), no fnn-octet-list on the read path). KEYSTONE fn-scar-feed-span-is-feed-counted (no hypothesis): the served buffer fold fn-scar-feed-span, reading the range's bytes by fn-octets-get, equals the carried list counted fold fn-scar-feed-counted over (fn-oct-slice-list i end fn-octets), byte for byte. fn-scar-ocfg-read-span-is-read-tls-prefix: for natural i, end the span read is fn-scar-ocfg-read-tls-prefix over the slice. KEYSTONE fn-scar-ocfg-read-span-is-reference-under-ocl-relation: under the configured owner's relation (fn-ocl-relation) and its view trie's correspondence, the span read is fn-ocfg-read-tls-prefix over the slice, the reference read the list path already establishes (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation). fn-scar-ocfg-read-span-keeps-store and fn-scar-ocfg-read-span-preserves-node-premise: the read leaves the store and its node premise. Every executable function is guard-verified (fn-scar-feed-span-consumed-is-natural). The executable (PKT-479, lane input-loop): fn-scar-step-span-core runs (mbe :logic fn-scar-feed-span :exec fn-scar-scan-span); books/served-scan.lisp fn-scar-scan-span dispatches once per framed event and books/wire-scan.lisp fn-wire-scan runs the wire machine a line at a time (the run of ordinary octets found by index, consed once onto line-rev; a whole line inside the read, from an empty retained line, built forward from the buffer by fn-wscan-slice-onto and handed to fn-wire-after-line, one cons per octet instead of two (lane input-loop-2); CR, LF, refusals and limits through fn-wire-feed-byte). KEYSTONE fn-scar-scan-span-is-feed-counted (no hypothesis): the event scan IS fn-scar-feed-counted over the slice; KEYSTONE fn-wire-scan-is-span-fold (no hypothesis): the line scan IS the octet fold fn-wire-span-fold, hence fn-wire-feed-proper over the octets it consumed (fn-wire-span-fold-is-feed-proper). Teeth: tests/acl2/served-scan-tests.lisp. What it does not say: the retained partial line and the article body are still octet lists (the model's line-rev and body-rev, O(article) retained by definition); the body in a concrete buffer is not claimed.",
+      "statement": "Subject fn-scar-ocfg-read-span (books/served-span.lisp), called by host/owner-host.lisp fn-owner-chunk-span from host/native/owner.lisp fnn-owner-handle-chunk (which fills fn-octets from the socket vector with fnn-octets-fill and calls fn-owner-chunk-span with the range [0, len), no fnn-octet-list on the read path). KEYSTONE fn-scar-feed-span-is-feed-counted (no hypothesis): the served buffer fold fn-scar-feed-span, reading the range's bytes by fn-octets-get, equals the carried list counted fold fn-scar-feed-counted over (fn-oct-slice-list i end fn-octets), byte for byte. fn-scar-ocfg-read-span-is-read-tls-prefix: for natural i, end the span read is fn-scar-ocfg-read-tls-prefix over the slice. KEYSTONE fn-scar-ocfg-read-span-is-reference-under-ocl-relation: under the configured owner's relation (fn-ocl-relation) and its view trie's correspondence, the span read is fn-ocfg-read-tls-prefix over the slice, the reference read the list path already establishes (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation). fn-scar-ocfg-read-span-keeps-store and fn-scar-ocfg-read-span-preserves-node-premise: the read leaves the store and its node premise. Every executable function is guard-verified (fn-scar-feed-span-consumed-is-natural). The executable (PKT-479, lane input-loop): fn-scar-step-span-core runs (mbe :logic fn-scar-feed-span :exec fn-scar-scan-span); books/served-scan.lisp fn-scar-scan-span dispatches once per framed event and books/wire-scan.lisp fn-wire-scan runs the wire machine a line at a time (the run of ordinary octets found by index, consed once onto line-rev; a whole line inside the read, from an empty retained line, built forward from the buffer by fn-wscan-slice-onto and handed to fn-wire-after-line, one cons per octet instead of two (lane input-loop-2); CR, LF, refusals and limits through fn-wire-feed-byte). KEYSTONE fn-scar-scan-span-is-feed-counted (no hypothesis): the event scan IS fn-scar-feed-counted over the slice; KEYSTONE fn-wire-scan-is-span-fold (no hypothesis): the line scan IS the octet fold fn-wire-span-fold, hence fn-wire-feed-proper over the octets it consumed (fn-wire-span-fold-is-feed-proper). Teeth: tests/acl2/served-scan-tests.lisp. Since the catalog slice (step 8) the host-called read is books/served-catalog-chain.lisp fn-scr-ocfg-read-span (equal to fn-scar-ocfg-read-span under fn-scr-owner-catalogp, fn-scr-ocfg-read-span-is-scar-ocfg-read-span); its core fn-scr-step-span-core runs (mbe :logic fn-scr-feed-span :exec fn-scr-scan-span), the same event scan with the catalog carried to the dispatcher (lane catalog-scan). KEYSTONE fn-scr-scan-span-is-feed-span (no hypothesis): that scan IS the catalog chain's byte fold on every connection and range. Teeth: tests/acl2/served-catalog-scan-tests.lisp (every sub-range of a command stream through the catalog arms, every read cut of two pipelined POSTs, against fn-scr-feed-span and fn-scar-scan-span; the PKT-600 yield through the host-called fn-scr-step-span-fast). What it does not say: the retained partial line and the article body are still octet lists (the model's line-rev and body-rev, O(article) retained by definition); the body in a concrete buffer is not claimed.",
       "milestone": "M5",
       "requirements": [
         "REP-012"
@@ -7251,9 +7251,11 @@
         "books/wire-span.lisp",
         "books/served-scan.lisp",
         "books/wire-scan.lisp",
+        "books/served-catalog-chain.lisp",
         "tests/acl2/served-span-tests.lisp",
         "tests/acl2/wire-span-tests.lisp",
         "tests/acl2/served-scan-tests.lisp",
+        "tests/acl2/served-catalog-scan-tests.lisp",
         "planning/evidence/ingress-span-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T143902Z-2971338.json",
         "planning/evidence/manifests/certify-20260926T141846Z-2775311.json"
@@ -10655,6 +10657,34 @@
         "fn-nntp-article-response-is-of-bytes",
         "fn-nntp-response-of-bytes-session",
         "fn-rcompat-article-reply-exec-is-the-reply"
+      ]
+    },
+    {
+      "id": "PRF-293",
+      "title": "The owner's identity prepare stages the row the intern makes of a signed composite, and seals its article's payload only when the Store took it",
+      "statement": "books/owner-identity-intern.lisp fn-oii-ocfg-prepare-identity (host/owner-host.lisp fn-owner-prepare-identity, called by host/native/owner.lisp fnn-owner-identity-commit for every signed POST's, signed NNTP transit's and signed BP application's kind-4 composite and every keyring snapshot). Since the records flip the identity prepare's gate (fn-ccar-sn-prepare-identity) admits the retained kinds only (fn-stxe-p, fn-stxk-p, fn-hstxa-p); the owner's composite (fn-pa-authorized-event) is a wire fn-stxa-p, so it was refused and every signed POST answered 441. The entry stages fn-oii-identity-row, the row fn-intern-event makes, at the arena's count under the Store's keyring and generation. fn-oii-identity-row-is-the-intern: at h = (fn-arena-count fn-arena) the row is (mv-nth 0 (fn-intern-event w k g fn-arena)); fn-oii-seal-is-the-intern-arena: the intern's arena is the arena with fn-oii-identity-payload sealed when fn-oii-identity-sealsp holds, else unchanged (the host seals exactly that, and only when the Store changed); fn-oii-composite-row-is-held: a composite whose article decodes interns to an fn-hstxa-p row carrying the composite unchanged (D25: the relayed octets, which the test book shows are the poster's post-injection octets). KEYSTONE fn-oii-ocfg-prepare-identity-is-intern-then-step (hypothesis fn-own-relation of the owner): the entry at the arena's count is (fn-ocfg-step oc (list :store (list :prepare-identity ROW)) fn-arena) for ROW the intern's row, by PRF-144's fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-004",
+        "REP-009"
+      ],
+      "depends_on": [
+        "PRF-144"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-identity-intern.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "tests/acl2/owner-identity-intern-tests.lisp"
+      ],
+      "progress_note": "Lane signed-post (Opus 5.5, 2026-09-27). The regression: records-flip c5808cd72 (fn-sn-prepare-identity's gate to fn-hstxa-p) and flip-L3 d689ec388 (the same in fn-ccar-sn-prepare-identity) changed the gate; the host entry kept passing the wire composite, and owner-signed-post-tests hand-built its row (ospt-row), so no test crossed the host line. The test book's witness is the reachable served-POST trace of owner-signed-post-tests over a flipped owner: the wire composite is refused by the gate, the interned row is staged, and the completion records the signed verdict.",
+      "events": [
+        "fn-oii-ocfg-prepare-identity-is-intern-then-step",
+        "fn-oii-identity-row-is-the-intern",
+        "fn-oii-seal-is-the-intern-arena",
+        "fn-oii-composite-row-is-held"
       ]
     }
   ]

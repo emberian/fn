@@ -1625,7 +1625,19 @@ reason before any Store call.  An ordinary article's groups are unchanged."
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
-      (let ((prepared (fnn-owner-action 'fn-owner-prepare-identity event)))
+      ;; The entry stages the interned row and reads the arena only; when
+      ;; the Store took a composite it names the article's payload and the
+      ;; host seals exactly those octets (host/owner-host.lisp
+      ;; fn-owner-prepare-identity, books/owner-identity-intern.lisp).
+      (let ((prepared (fnn-core-arena-state 'fn-owner-prepare-identity event)))
+        (when (and (consp prepared) (eq (first prepared) :seal))
+          (unless (and (consp (rest prepared)) (null (cddr prepared))
+                       (fnn-octet-list-p (second prepared)))
+            (fnn-fault "ACL2 returned a malformed identity seal"))
+          (fnn-seal-octets (second prepared))
+          (setq prepared :prepared))
+        (unless (keywordp prepared)
+          (fnn-fault "owner returned non-action from fn-owner-prepare-identity"))
         (unless (eq prepared :prepared)
           (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
             (fnn-indeterminate "owner could not consume refused identity reservation"))
