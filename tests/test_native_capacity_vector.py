@@ -11,10 +11,13 @@ store, in order:
      the full store (debt=0, pinned=no);
   4. release eligible content: `retention set released-by-all-holders' (a
      configuration record, the generation the vector keeps for it);
-  5. maintain across crashes: `store compact' and `store reclaim', each at
-     every publication, selection and retirement cut (SIGSTOP then SIGKILL)
-     on a copy, and reclaim's kill and EIO faults; each copy reopens
-     (`status' exit 0) and its rerun converges to the clean run's pack;
+  5. maintain across crashes: `store compact' and `store reclaim' (format 9:
+     a state checkpoint with the record log rotated, then the covered
+     segments dropped; lane log-recovery), each killed at every rotation and
+     drop cut (FN_NATIVE_LOG_FAULT, SIGKILL) on a copy; each copy reopens
+     (`status' exit 0) and its rerun converges to the clean run's history
+     (the `store export' archive of the copy equals the clean run's, file for
+     file);
   6. recover and use the reclaimed capacity: the clean run, `status', and
      the next POST is 240.
 
@@ -43,14 +46,10 @@ FLAGS = ["--max-transactions", "4096",
          "--max-article-octets", "131072", "--max-groups-per-article", "16"]
 LOG = os.environ.get("FN_CV_LOG")
 GROUP = "fn.test"
-STOP_CUTS = ["candidate-file", "candidate-link", "candidate-directory",
-             "selection-file", "selection-replace", "selection-directory",
-             "pack-retire-unlink", "pack-retire-directory"]
-RECLAIM_FAULTS = [(a, c) for c in ("reclaim-state-checkpoint-unlink",
-                                   "reclaim-state-checkpoint-directory",
-                                   "reclaim-pack-published",
-                                   "reclaim-pack-selected", "reclaim-retired")
-                  for a in ("kill", "eio")]
+# The rotation and drop cuts of compaction and reclamation over the log
+# (host/native/io.lisp fnn-log-rotate / fnn-log-drop: FN_NATIVE_LOG_FAULT).
+LOG_CUTS = ["rotate-created", "rotate-fenced", "rotate-durable",
+            "drop-unlinked", "drop-durable"]
 
 
 class _Bp(base.NativeBpApplicationTests):
@@ -85,15 +84,9 @@ def footprint(store):
     return {"inodes": files, "octets": octets, "du": int(du[0]) if du else -1}
 
 
-def selected_pack(store):
-    packs = Path(store) / "packs"
-    if not packs.exists():
-        return []
-    files = [p for p in packs.iterdir() if p.is_file()]
-    sizes = sorted((p.stat().st_size, p) for p in files)
-    marker = sizes[0][1] if len(sizes) > 1 else None
-    return sorted(hashlib.sha256(p.read_bytes()).hexdigest()
-                  for p in files if p != marker)
+def archive_tree(root):
+    return {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(Path(root).rglob("*")) if p.is_file()}
 
 
 class NativeCapacityVectorTests(_Bp):
@@ -152,59 +145,44 @@ class NativeCapacityVectorTests(_Bp):
         shutil.copytree(store, copy)
         return copy, self.config(copy, name)[0]
 
-    def stop_cut(self, cfg, verb, point):
-        env = dict(self.env)
-        env["FN_CHECKPOINT_TEST_STOP"] = point
-        p = subprocess.Popen([str(base.IMAGE), "--fn", "operator", str(cfg),
-                              "store", verb], env=env, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
-        stopped = False
-        for _ in range(36000):
-            state = open("/proc/%d/stat" % p.pid).read().split(")")[-1].split()[0]
-            if state == "T":
-                stopped = True
-                break
-            if p.poll() is not None:
-                break
-            time.sleep(0.05)
-        p.kill()
-        p.wait()
-        p.stdout.close()
-        p.stderr.close()
-        return "stopped" if stopped else "exit-%s" % p.returncode
+    def history(self, store):
+        """The committed history the store's open reads, as `store export'
+        writes it (the archive's files and their digests)."""
+        archive = self.temp / "history-archive"
+        shutil.rmtree(archive, ignore_errors=True)
+        r = self.invoke("store", store, "export", archive, timeout=3600)
+        self.assertEqual(r.returncode, 0, r.stderr.decode(errors="replace"))
+        tree = archive_tree(archive)
+        shutil.rmtree(archive, ignore_errors=True)
+        return tree
 
     def cuts(self, store, verb):
-        """Every cut of VERB on a copy of STORE; returns the failures."""
+        """A death at every rotation and drop cut of VERB on a copy of STORE;
+        returns the failures."""
         ref, rcfg = self.cut_copy(store, "cut-ref")
         code, _, err = self.verb(rcfg, "store", verb)
         self.assertEqual(code, 0, err)
-        reference = selected_pack(ref)
+        reference = self.history(ref)
         shutil.rmtree(ref, ignore_errors=True)
-        plan = [("stop", p) for p in STOP_CUTS]
-        if verb == "reclaim":
-            plan += RECLAIM_FAULTS
         bad = []
-        for action, point in plan:
-            copy, ccfg = self.cut_copy(store, "cut-%s-%s-%s" % (verb, action, point))
-            if action == "stop":
-                first = self.stop_cut(ccfg, verb, point)
-            else:
-                env = dict(self.env)
-                env["FN_NATIVE_RECLAIM_FAULT"] = "%s:%s" % (point, action)
-                first = "exit-%d" % self.verb(ccfg, "store", verb, env=env)[0]
+        for point in LOG_CUTS:
+            copy, ccfg = self.cut_copy(store, "cut-%s-%s" % (verb, point))
+            env = dict(self.env)
+            env["FN_NATIVE_LOG_FAULT"] = point
+            first = "exit-%d" % self.verb(ccfg, "store", verb, env=env)[0]
             reopened = self.status(ccfg)
             rerun = self.verb(ccfg, "store", verb)
-            converged = selected_pack(copy) == reference
-            # A stop point the verb never reaches (a first compaction retires
-            # no older generation) is an unexercised cut, not a pass: the
-            # verb completed, and its rerun is the rerun of a finished verb.
-            reached = not (action == "stop" and first == "exit-0")
-            self.out(tag="cut", verb=verb, action=action, point=point, first=first,
+            converged = self.history(copy) == reference
+            # A cut the verb never reaches (nothing to rotate or drop) is an
+            # unexercised cut, not a pass.
+            reached = first == "exit--9"
+            self.out(tag="cut", verb=verb, point=point, first=first,
                      reached=reached, reopen_status=reopened["exit"],
                      rerun_exit=rerun[0], rerun_head=rerun[1][:120],
                      rerun_stderr=rerun[2][-160:], converged=converged)
-            if reopened["exit"] != 0 or not converged or (reached and rerun[0] != 0):
-                bad.append((verb, action, point))
+            if (not reached or reopened["exit"] != 0 or not converged
+                    or rerun[0] != 0):
+                bad.append((verb, point, first))
             shutil.rmtree(copy, ignore_errors=True)
         return bad
 
