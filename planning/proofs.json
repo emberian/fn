@@ -7900,7 +7900,11 @@
         "fn-cfgc-cpr-replay-of-one-more",
         "fn-cfgc-candidate-open-result-is-the-replayed-candidate",
         "fn-cfgc-publication-authorize-is-the-replayed-authorization",
-        "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization"
+        "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization",
+        "fn-cfgc-advance-okp-is-replay-advance-okp",
+        "fn-cfgc-cpo-open-of-other-configs",
+        "fn-cfgc-candidate-open-carried-is-the-replayed-candidate",
+        "fn-cfgc-readback-verified-is-the-reopen"
       ]
     },
     {
