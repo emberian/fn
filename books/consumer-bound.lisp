@@ -123,11 +123,16 @@
   (or (fn-cbind-gate oc acfg consumer secret)
       (fn-col-poll-report (fn-ocfg-owner oc) consumer)))
 
+; The consumer a cursor names (its fourth field), or nil.
+(defun fn-cbind-cursor-consumer (cursor-octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-cp-nth 3 (fn-cp-nth 1 (fn-cp-cursor-decode cursor-octets))))
+
 (defun fn-cbind-ack (oc acfg cursor-octets secret)
   (declare (xargs :guard t :verify-guards nil))
   (let ((decoded (fn-cp-cursor-decode cursor-octets)))
     (if (not (eq (fn-cp-nth 0 decoded) :ok)) decoded
-      (or (fn-cbind-gate oc acfg (fn-cp-nth 3 (fn-cp-nth 1 decoded)) secret)
+      (or (fn-cbind-gate oc acfg (fn-cbind-cursor-consumer cursor-octets) secret)
           (fn-col-ack (fn-ocfg-owner oc) cursor-octets)))))
 
 ; The plain forms: exactly today's answer for an unbound consumer; a bound
@@ -142,7 +147,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (let ((decoded (fn-cp-cursor-decode cursor-octets)))
     (if (and (eq (fn-cp-nth 0 decoded) :ok)
-             (fn-cbind-config-login oc (fn-cp-nth 3 (fn-cp-nth 1 decoded))))
+             (fn-cbind-config-login oc (fn-cbind-cursor-consumer cursor-octets)))
         (list :refused :bound)
       (fn-col-ack (fn-ocfg-owner oc) cursor-octets))))
 
@@ -195,6 +200,24 @@
                                     fn-cbind-group-readablep
                                     fn-cbind-config-login))))))
 
+; The event a scan selects matches the scanned group (PRF-116's page
+; contract, over variables).
+(local
+ (defthm fn-cbind-scan-event-matches
+   (let ((scan (fn-col-poll-scan events group position frontier budget)))
+     (implies (and (eq (car scan) :scan) (natp position) (caddr scan))
+              (fn-col-matchp (caddr scan) group)))
+   :hints (("Goal" :use ((:instance fn-col-poll-scan-page-contract))
+            :in-theory (disable fn-col-poll-scan fn-col-matchp
+                                fn-col-none-matchp
+                                fn-col-poll-scan-page-contract)))))
+
+(local
+ (defthm fn-cbind-cp-nth-2-is-caddr
+   (equal (fn-cp-nth 2 x) (caddr x))
+   :hints (("Goal" :expand ((fn-cp-nth 2 x) (fn-cp-nth 1 (cdr x))
+                            (fn-cp-nth 0 (cddr x)))))))
+
 ; The event fn-col-poll selects matches its entry's query group.
 (local
  (defthm fn-cbind-col-poll-event-matches-its-query
@@ -208,33 +231,15 @@
    :hints (("Goal"
             :use ((:instance fn-col-poll-is-the-index-window-scan-unfolds)
                   (:instance fn-col-scope-entry-position-is-natural
-                             (s (fn-sn-consumer (fn-own-store o))))
-                  (:instance fn-col-poll-scan-page-contract
-                             (events (fn-col-poll-index-window
-                                      (fn-sn-event-index (fn-own-store o))
-                                      (fn-cp-nth 7 (fn-cp-nth 1 (fn-col-scope-entry
-                                                                 (fn-sn-consumer (fn-own-store o))
-                                                                 consumer)))
-                                      (fn-cp-nth 3 (fn-sn-consumer (fn-own-store o)))
-                                      *fn-col-poll-max-scan*))
-                             (group (fn-cp-nth 3 (fn-cp-nth 1 (fn-col-scope-entry
-                                                               (fn-sn-consumer (fn-own-store o))
-                                                               consumer))))
-                             (position (fn-cp-nth 7 (fn-cp-nth 1 (fn-col-scope-entry
-                                                                  (fn-sn-consumer (fn-own-store o))
-                                                                  consumer))))
-                             (frontier (fn-cp-nth 3 (fn-sn-consumer (fn-own-store o))))
-                             (budget *fn-col-poll-max-scan*)))
-            :in-theory (e/d (fn-cp-nth)
+                             (s (fn-sn-consumer (fn-own-store o)))))
+            :in-theory (e/d (fn-cbind-cp-nth-2-is-caddr
+                             fn-cbind-scan-event-matches)
                             (fn-col-poll fn-col-poll-scan fn-col-scope-entry
                              fn-col-poll-index-window fn-col-matchp
                              fn-cp-cursor-encode fn-cp-scope-cursor
+                             fn-cp-nth update-nth
                              fn-col-poll-is-the-index-window-scan-unfolds
-                             fn-col-scope-entry-position-is-natural
-                             fn-col-poll-scan-page-contract))))))
-
-; -----------------------------------------------------------------------------
-; Keystones
+                             fn-col-scope-entry-position-is-natural))))))
 
 (local
  (defthm fn-cbind-poll-when-gate-admits
@@ -351,6 +356,7 @@
                  (equal (fn-col-ack o bytes) (fn-cp-cursor-decode bytes))))
    :hints (("Goal" :in-theory (e/d (fn-cbind-ack fn-col-ack)
                                    (fn-cp-cursor-decode fn-cbind-gate
+                                    fn-cbind-cursor-consumer
                                     fn-cp-ack fn-col-result-event))))))
 
 (local
@@ -358,11 +364,12 @@
    (implies (equal (fn-cp-nth 0 (fn-cp-cursor-decode bytes)) :ok)
             (equal (fn-cbind-ack oc acfg bytes secret)
                    (or (fn-cbind-gate oc acfg
-                                      (fn-cp-nth 3 (fn-cp-nth 1 (fn-cp-cursor-decode bytes)))
+                                      (fn-cbind-cursor-consumer bytes)
                                       secret)
                        (fn-col-ack (fn-ocfg-owner oc) bytes))))
    :hints (("Goal" :in-theory (e/d (fn-cbind-ack)
-                                   (fn-cp-cursor-decode fn-cbind-gate fn-col-ack))))))
+                                   (fn-cp-cursor-decode fn-cbind-gate fn-col-ack
+                                    fn-cbind-cursor-consumer))))))
 
 ; KEYSTONE 3.  A bound ack answers the consumer ack's own answer (the same
 ; kernel: a write only of a forward declaration in scope, a no-op when
@@ -370,7 +377,7 @@
 ; consumer is bound, the credential checks and its query group is readable.
 (defthm fn-cbind-ack-is-the-consumer-ack-or-a-refusal
   (let ((r (fn-cbind-ack oc acfg bytes secret))
-        (consumer (fn-cp-nth 3 (fn-cp-nth 1 (fn-cp-cursor-decode bytes)))))
+        (consumer (fn-cbind-cursor-consumer bytes)))
     (and (or (equal r (fn-col-ack (fn-ocfg-owner oc) bytes))
              (equal (car r) :refused))
          (implies (not (equal (car r) :refused))
@@ -388,9 +395,9 @@
                                                     consumer)))))))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-cbind-gate-is-a-refusal
-                                   (consumer (fn-cp-nth 3 (fn-cp-nth 1 (fn-cp-cursor-decode bytes)))))
+                                   (consumer (fn-cbind-cursor-consumer bytes)))
                         (:instance fn-cbind-gate-nil-facts
-                                   (consumer (fn-cp-nth 3 (fn-cp-nth 1 (fn-cp-cursor-decode bytes)))))
+                                   (consumer (fn-cbind-cursor-consumer bytes)))
                         (:instance fn-cbind-cursor-decode-tag)
                         (:instance fn-cbind-ack-of-an-undecodable-cursor
                                    (o (fn-ocfg-owner oc)))
@@ -411,7 +418,7 @@
                                   (fn-cbind-config-login fn-col-poll-report)))))
 
 (defthm fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack
-  (let ((consumer (fn-cp-nth 3 (fn-cp-nth 1 (fn-cp-cursor-decode bytes)))))
+  (let ((consumer (fn-cbind-cursor-consumer bytes)))
     (and (implies (not (fn-cbind-config-login oc consumer))
                   (equal (fn-cbind-plain-ack oc bytes)
                          (fn-col-ack (fn-ocfg-owner oc) bytes)))
@@ -421,8 +428,9 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cbind-plain-ack)
                                   (fn-cbind-config-login fn-col-ack
-                                   fn-cp-cursor-decode)))))
+                                   fn-cp-cursor-decode fn-cbind-cursor-consumer)))))
 
+(verify-guards fn-cbind-cursor-consumer)
 (verify-guards fn-cbind-poll)
 (verify-guards fn-cbind-ack)
 (verify-guards fn-cbind-plain-poll)
