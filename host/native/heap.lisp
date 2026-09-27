@@ -11,14 +11,15 @@
 ;;;
 ;;;   heap -- ARGV...   the installed launcher's probe (packaging/fn): the
 ;;;                     figure for the command ARGV names, one line on stdout
-;;;                     `heap=MB MB profile=WORD machine=M MB', exit 0; or
+;;;                     `heap=MB MB profile=WORD machine=M MB stack=KB KB
+;;;                     threads=N' (books/heap-reservation.lisp), exit 0; or
 ;;;                     ACL2's refusal line on stderr, exit 1 (outcome-class
 ;;;                     :refused).  The launcher then execs the image with
-;;;                     `--dynamic-space-size MB'.
+;;;                     `--dynamic-space-size MB --control-stack-size KBKB'.
 ;;;
 ;;; `operator CONFIG status' and `health' print the same line after their
-;;; report; `operator CONFIG init' with a bare request resolves ACL2's
-;;; `fn-heap-init-request' against the observed machine.
+;;; report; `operator CONFIG init' asks ACL2's `fn-heap-init-decide' what to
+;;; write (fnn-heap-init-decision) and prints its line.
 
 (in-package "ACL2")
 
@@ -107,8 +108,18 @@ that)."
     (error () nil)))
 
 (defun fnn-heap-decision (profile)
-  (fnn-core 'fn-heap-decide profile (fnn-heap-core-octets) +fnn-gc-nursery-octets+
-            (fnn-heap-observations)))
+  ;; heap-figure's figure for the store, then the room the served connections'
+  ;; heap parts need beside it (books/connection-budget.lisp
+  ;; fn-cbud-launch-decide; PKT-605): the connections this machine holds
+  ;; beside the store, the fixed threads and their stacks, at most 1,024.
+  (let ((observations (fnn-heap-observations))
+        (core (fnn-heap-core-octets)))
+    (fnn-core 'fn-cbud-launch-decide
+              (fnn-core 'fn-heap-decide profile core +fnn-gc-nursery-octets+
+                        observations)
+              profile core
+              (fnn-mux-thread-count nil) (fnn-mux-thread-stack-octets)
+              observations)))
 
 (defun fnn-heap-report-line (profile)
   (fnn-core 'fn-heap-report-line (fnn-heap-decision profile)))
@@ -118,9 +129,29 @@ that)."
   (when (stringp root)
     (fnn-out "~a" (fnn-heap-report-line (fnn-heap-store-profile root)))))
 
+(defun fnn-heap-env-octets (name)
+  "NAME's value in the environment as octets for ACL2 to read (at most 32
+of them: a longer value is refused there as malformed), or NIL when unset."
+  (let ((value (sb-posix:getenv name)))
+    (and value
+         (map 'list (lambda (c) (min 255 (char-code c)))
+              (subseq value 0 (min 33 (length value)))))))
+
+(defun fnn-heap-init-decision (request)
+  "ACL2's decision for what `init' writes (books/heap-reservation.lisp
+fn-heap-init-decide, PKT-582 in gpt-6's wave-5 shape): the request, or for
+a capacity-free one the preset the budget holds (conservative unless
+FN_INIT_SIZING=largest), within the budget of the physical memory less the
+OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
+  (let ((observations (fnn-heap-observations)))
+    (fnn-core 'fn-heap-init-decide request (fnn-heap-core-octets)
+              +fnn-gc-nursery-octets+ (first observations) (rest observations)
+              (fnn-heap-env-octets "FN_INIT_BUDGET_MB")
+              (fnn-heap-env-octets "FN_INIT_SIZING"))))
+
 (defun fnn-heap-init-request (request)
-  "The request `init' resolves: ACL2's small default on a small machine."
-  (fnn-core 'fn-heap-init-request request (fnn-heap-machine-octets)))
+  "The request `init' writes, or NIL when ACL2 refuses it."
+  (fnn-core 'fn-heap-init-decision-request (fnn-heap-init-decision request)))
 
 ;; The profile the command ARGV will run under: the store its operator
 ;; configuration names (the init request's target for `init'), the store a
@@ -144,28 +175,55 @@ that)."
                  (root (fnn-core 'fn-native-operator-host-result-store-root result)))
             (when (and (eq (fnn-core 'fn-native-operator-host-result-status result) :accepted)
                        (stringp root))
-              (if (eq (fnn-core 'fn-native-operator-host-result-native-action result) :init)
-                  (let ((request (fnn-core 'fn-native-operator-host-result-init-profile
-                                           result)))
-                    (and (consp request)
-                         (let ((profile (fnn-core 'fn-bs-profile-resolve
-                                                  (fnn-heap-init-request request) nil)))
-                           (and (not (eq (car profile) :invalid)) profile))))
-                (fnn-heap-store-profile (fnn-absolute root)))))))
+              (values
+               (if (eq (fnn-core 'fn-native-operator-host-result-native-action result) :init)
+                   (let ((request (fnn-core 'fn-native-operator-host-result-init-profile
+                                            result)))
+                     (and (consp request)
+                          (let ((profile (fnn-core 'fn-bs-profile-resolve
+                                                   (fnn-heap-init-request request) nil)))
+                            (and (not (eq (car profile) :invalid)) profile))))
+                 (fnn-heap-store-profile (fnn-absolute root)))
+               ;; The owner's client workers a `run' admits, ACL2's figure
+               ;; fnn-operator-execute passes on; for `init' the connections
+               ;; init judged the store by (fn-heap-reserve-init-connections),
+               ;; so the probe judges the store init makes as it will run.
+               (if (eq (fnn-core 'fn-native-operator-host-result-native-action
+                                 result)
+                       :init)
+                   (fnn-core 'fn-heap-reserve-init-connections)
+                 ;; A run's owner bound is structural since PRF-211; ACL2
+                 ;; says which connections the reservation's threads hold.
+                 (fnn-core 'fn-heap-reserve-run-connections
+                           (fnn-core 'fn-native-operator-host-result-run-max-connections
+                                     result))))))))
     (error () nil)))
 
 (defun fnn-heap-command-profile (argv)
+  "The command's store profile (or NIL) and the client connections its run
+admits (0 when it is not a run)."
   (cond ((and (string= (or (first argv) "") "operator") (second argv))
-         (fnn-heap-operator-profile (second argv) (cddr argv)))
+         (multiple-value-bind (profile connections)
+             (fnn-heap-operator-profile (second argv) (cddr argv))
+           (values profile (if (integerp connections) connections 0))))
         ((and (string= (or (first argv) "") "store") (third argv))
-         (fnn-heap-store-profile (second argv)))
-        (t nil)))
+         (values (fnn-heap-store-profile (second argv)) 0))
+        (t (values nil 0))))
+
+;; The whole reservation (books/heap-reservation.lisp fn-heap-reserve-decide,
+;; HST-025): heap-figure's heap, then the thread stacks the node's threads
+;; reserve beside it; the launcher passes `--control-stack-size KB' too.
+(defun fnn-heap-reservation (profile connections)
+  (fnn-core 'fn-heap-reserve-decide profile (fnn-heap-core-octets)
+            +fnn-gc-nursery-octets+ (fnn-heap-observations) connections))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")
     (error 'fnn-usage-error :message "heap -- ARGV..."))
-  (let* ((decision (fnn-heap-decision (fnn-heap-command-profile argv)))
-         (line (fnn-core 'fn-heap-report-line decision))
+  (let* ((decision (multiple-value-bind (profile connections)
+                       (fnn-heap-command-profile argv)
+                     (fnn-heap-reservation profile connections)))
+         (line (fnn-core 'fn-heap-reserve-report-line decision))
          (code (fnn-core 'fn-heap-decision-exit-code decision)))
     (if (eql code +fnn-exit-ok+)
         (fnn-out "~a" line)

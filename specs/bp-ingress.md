@@ -16,6 +16,19 @@ bytes. The model passes those bytes directly to `fn-article-parse` and later
 uses the same list as `fn-record-payload`; it does not reconstruct the article
 from selected headers or use a host-language parser.
 
+Since the records flip (2026-09-27) the Store retains a held ROW whose
+payload is an arena handle, not the ADU list. `fn-bpi-ingress-prepare` takes a
+fifth value, the handle H, stages `fn-intern-row-at` of the composed wire
+record at H, and answers `(:prepared store row record)`. The host calls the
+entry `fn-bpi-ingress-prepare-interned`, which passes the arena's next handle
+and seals the ADU into the arena exactly when the Store staged it; its theorem
+`fn-bpi-ingress-prepare-interned-row-is-the-received-adu` says the staged row
+read through the arena is the wire record whose payload is the received ADU,
+octet for octet, and that a rejected ADU retains no bytes. The restart query
+`fn-bpi-adu-durably-acceptedp` reads the node article's bytes through the
+arena (`fn-bpi-node-wire-committedp`, equal to the byte comparison over the
+articles with every handle replaced by its bytes).
+
 A host integration must stage a bounded downloaded ADU safely before invoking
 this model: inventory a BPA bundle ID, obtain it using the non-destructive
 BPA download operation, write a temporary file, fsync it, publish an immutable

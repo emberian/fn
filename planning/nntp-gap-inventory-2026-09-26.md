@@ -138,8 +138,8 @@ The 431/436 versus 437/439 split matches innfeed's retry switch
 | Client | Evidence | What it needs that is missing |
 | --- | --- | --- |
 | tin 2.6.2 | measured: `planning/evidence/sanding-2026-09-26.md` (log in, read, follow up, post and cancel over TLS on 1563) and path-and-login (D32) | its cancel has no effect (P1); cross-posts need Xref (R3); descriptions (R2). A From domain is the client's own setting (docs/human-web-client.md) |
-| slrn 1.0.3 | measured 2026-09-20, plain, loopback, reading only (specs/nntp-audit.md): MODE READER, XOVER, `XHDR Path`, LIST OVERVIEW.FMT, LIST, LIST SUBSCRIPTIONS, all answered | posting and TLS are unmeasured; Xref (R3) *(unmeasured)* |
-| pan | **unmeasured** | expected: implicit TLS, AUTHINFO, heavy XOVER, 2-4 connections (within `exposure-per-address` 8), LIST NEWSGROUPS; freshness (R1) |
+| slrn 1.0.3 | measured 2026-09-27 over TLS with a redeemed account: read, follow-up, post and cancel all answered (planning/evidence/reader-clients-2-2026-09-27.md, tests/test_native_reader_clients.py) | it disables XOVER on `:bytes`/`:lines` (PKT-667), so cross-posts stay unread in the other group (PKT-668); `--create` meets LIST SUBSCRIPTIONS 503 (PKT-666); its NEWGROUPS check finds nothing (PKT-665); its cancel has no effect (P1); it verifies no certificate (a client property) |
+| pan 0.162 | measured 2026-09-27 over TLS (CA verified, trust 0) with a redeemed account: XOVER, read, follow-up, post and cancel answered (planning/evidence/reader-clients-2-2026-09-27.md) | freshness: a second connection kept its pinned GROUP count, so "get new headers" missed two posts (R1, PKT-571); its cancel has no effect (P1) and pan itself only cancels an article carrying a Sender header |
 | Thunderbird | **unmeasured** | expected: MODE READER, LIST ACTIVE with a wildmat, XOVER, XHDR, XPAT (server search), NEWGROUPS, STARTTLS or 563, AUTHINFO USER/PASS. It caches connections (R1), and its cancel runs into P1 |
 | OpenBSD friend | tin and slrn are in OpenBSD packages; the node side is D35 | nothing NNTP-specific; the release tarball is the gap (D35) |
 

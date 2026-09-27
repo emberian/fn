@@ -51,10 +51,15 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ORDER = ("developer", "production", "dtn", "dtn-developer")
+ORDER = ("developer", "production", "dtn", "dtn-developer", "reference",
+         "developer-stripped")
 IMAGE_PATH = {
     "production": "$T/build/fn-host",
     "developer": "$T/build/fn-host-developer",
+    # The production image with its full world (the release's reference
+    # twin) and the developer image stripped (gpt-6's wave-5 review s.4).
+    "reference": "$T/build/fn-host-reference",
+    "developer-stripped": "$T/build/fn-host-developer-stripped",
     "dtn": "$T/build/fn-host-dtn",
     "dtn-developer": "$T/build/fn-host-dtn-developer",
 }
@@ -64,6 +69,8 @@ OPENSSL = "$FN_TEST_OPENSSL_BIN"
 IMAGES = {
     "FN_NATIVE_HOST": ("production",),
     "FN_NATIVE_DEVELOPER_HOST": ("developer",),
+    "FN_NATIVE_REFERENCE_HOST": ("reference",),
+    "FN_NATIVE_DEVELOPER_STRIPPED_HOST": ("developer-stripped",),
     "FN_NATIVE_CRASH_HOST": ("developer",),
     "FN_NATIVE_BP_HOST": ("dtn", "dtn-developer"),
     "FN_NATIVE_CONTACT_SENDER": ("dtn", "dtn-developer"),
@@ -109,6 +116,7 @@ MANUAL = {
     "FN_NATIVE_READER_HOST": "falls back to FN_NATIVE_DEVELOPER_HOST",
     "FN_NATIVE_SOURCE_ROOT": "defaults to the tree the module runs from",
     "FN_OLD_NATIVE_HOST": "an older image (upgrade cases)",
+    "FN_SPAN_REFERENCE_HOST": "the base image of the ingress-span differential (SCN-110; built from the lane base, by --env)",
     "FN_OLD_IMAGE": "an older image (upgrade cases)",
     "FN_PRE_T2_NATIVE_DEVELOPER_HOST": "a pre-T2 developer image (migration)",
     "FN_T2_NATIVE_DEVELOPER_HOST": "a T2 developer image (migration)",

@@ -27,11 +27,13 @@
 #  3. install the tarball (digest verified first, then its SHA256SUMS) into
 #     TARGET/fn-REV12, from either layout: top fn-REV12 (the friends release)
 #     or top fn (D35's release product, whose libexec/fn/source-revision must
-#     be the expected revision); `bin/fn --version` must print it too.
+#     be the expected revision); `bin/fn --version` must print it too
+#     (`fn 6.7.N (REV12)` from a versioned release, `fn REV` before VERSION).
 #  4. the store: `--store fresh` (default) inits TARGET/store and enrols the
 #     retired credentials.txt logins (the password fed on stdin, never argv);
 #     `--store import` is `cp -a` of the STOPPED retired store (the release
-#     has no store import verb), control.sock* dropped.
+#     has no store import verb), control.sock* dropped, and `store STORE
+#     node-secret create` when it has no keys/node-secret.key (SEC-006).
 #  5. TLS: `--cert-dir DIR` with fullchain.pem and privkey.pem (a Let's
 #     Encrypt layout, certbot or lego) when given; else the retired node's
 #     LAN pair, copied, never regenerated.  The key must match the certificate.
@@ -361,8 +363,13 @@ fi
 if [ "$MODE" = go ]; then
   ver=$(clean_env "$FN" --version 2>&1 || true)
   say "  $FN --version: $ver"
-  [ "$ver" = "fn $EXPECT_REV" ] || die "--version printed '$ver', expected 'fn $EXPECT_REV'"
-else echo "  would: $FN --version (must print fn $EXPECT_REV)"; fi
+  case $ver in
+    "fn $EXPECT_REV") ;;
+    "fn 6.7."*" ($REV12)") n=${ver#fn 6.7.}; n=${n% ($REV12)}
+      case $n in 0) ;; ''|0*|*[!0-9]*) die "--version printed '$ver', not a release version 6.7.N" ;; esac ;;
+    *) die "--version printed '$ver', expected 'fn 6.7.N ($REV12)' or 'fn $EXPECT_REV'" ;;
+  esac
+else echo "  would: $FN --version (must print fn 6.7.N ($REV12), or fn $EXPECT_REV before VERSION)"; fi
 
 step "configuration"
 if [ -f "$TARGET/fn.toml" ]; then say "  skip: $TARGET/fn.toml present"
@@ -401,6 +408,15 @@ elif [ "$STORE" = import ]; then
   run cp -a "$RETIRED/store" "$TARGET/store"
   [ "$MODE" = go ] && for s in "$TARGET"/store/control.sock*; do [ -e "$s" ] && mv "$s" "$TARGET/store.dropped-$(basename "$s")-$STAMP"; done
   say "  imported by cp -a of the stopped store"
+  # SEC-006: a store from before the node key files gets its secret once
+  # (`run' refuses a store without one and never creates it).
+  if [ ! -f "$TARGET/store/keys/node-secret.key" ]; then
+    run clean_env "$FN" --fn store "$TARGET/store" node-secret create
+  fi
+  # PKT-579: the copy is a deliberate move onto TARGET's filesystem (and a
+  # store older than the filesystem record has none): record where it is
+  # now, keeping its durability policy.
+  run clean_env "$FN" operator "$TARGET/fn.toml" store rebind-filesystem
 else
   # shellcheck disable=SC2086
   run clean_env "$FN" operator "$TARGET/fn.toml" init $INIT_ARGS $NODE_GROUPS

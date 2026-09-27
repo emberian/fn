@@ -202,7 +202,11 @@
 (assert-event (fn-node-statep *pt-node0*))
 (defconst *pt-archive* (fn-node-acceptance *pt-node0*))
 (defconst *pt-inj* (fn-inj-make-config t (pt-o "fn.example.invalid") (list (pt-o "fn.letters")) 32768))
-(defconst *pt-obs* (fn-clock-observation 1000000 843004800000 500 t))
+; DTN 2026-09-26T00:00:00Z: after every Date these articles carry, so the
+; relay date check (RFC 5537 section 3.6 step 2, PRF-236) passes them.  The
+; 2026-09-18 reading this was before put the 2026-09-19 to -25 dates more
+; than 24 hours into the future.
+(defconst *pt-obs* (fn-clock-observation 1000000 843696000000 500 t))
 (defconst *pt-ps0* (fn-peer-open-session *pt-archive* "innA" *pt-node0* *pt-cfg*))
 (assert-event (fn-peer-sessionp *pt-ps0*))
 (assert-event (fn-peer-session-consistentp *pt-ps0* *pt-archive*))
@@ -237,7 +241,7 @@
 ; The owner's transit port: the transfer is one fn-node-prepare on the
 ; arguments computed from the octets.  Two Newsgroups, one membership
 ; (non-degenerate: alt.test is not carried here).
-(defconst *pt-t1* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* *pt-obs* 1 "ob-a1" "subject-a1")))
+(defconst *pt-t1* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* *pt-obs* 1 "ob-a1" "subject-a1" 0)))
 (assert-event (equal (nth 1 *pt-t1*) (fn-peer-decision :want nil)))
 (assert-event (not (equal (nth 0 *pt-t1*) *pt-node0*)))
 (assert-event (fn-node-statep (nth 0 *pt-t1*)))
@@ -246,7 +250,7 @@
 (assert-event (equal (fn-node-stage-msgid (fn-node-stage (nth 0 *pt-t1*))) "<a1@example.invalid>"))
 (assert-event (equal (fn-node-stage-evidence (fn-node-stage (nth 0 *pt-t1*))) "peer-transit:innA"))
 (assert-event (equal (nth 0 *pt-t1*)
-                     (fn-node-prepare *pt-node0* 1 "<a1@example.invalid>" *pt-a1-stored* '("fn.letters")
+                     (fn-node-prepare *pt-node0* 1 "<a1@example.invalid>" 0 '("fn.letters")
                                       "ob-a1" "subject-a1" "peer-transit:innA" (fn-charge-for-payload (len *pt-a1-stored*))
                                       (fn-record-stamp-of-observation *pt-obs*))))
 (defconst *pt-no-wall* (fn-clock-observation 1000000 0 0 nil))
@@ -263,23 +267,70 @@
 (assert-event
  (equal (nth 0 (mv-list 2 (fn-peer-transfer
                          *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1*
-                         *pt-no-wall* 1 "ob-a1" "subject-a1")))
+                         *pt-no-wall* 1 "ob-a1" "subject-a1" 0)))
         *pt-node0*))
 (assert-event
  (equal
   (let ((a (fn-peer-injection-arguments
             *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* 1
             "ob-a1" "subject-a1" *pt-no-wall*)))
-    (fn-node-prepare *pt-node0* (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a)
+    (fn-node-prepare *pt-node0* (nth 0 a) (nth 1 a) 0 (nth 3 a)
                      (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a)))
   *pt-node0*))
+; The separating witness: the same arguments with a usable stamp stage, so
+; the clock is the refusal (the handle 0 is a payload the acceptance state
+; takes; the relayed OCTETS it refuses, fn-accept-prepare).
+(assert-event
+ (not (equal
+       (let ((a (fn-peer-injection-arguments
+                 *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* 1
+                 "ob-a1" "subject-a1" *pt-obs*)))
+         (fn-node-prepare *pt-node0* (nth 0 a) (nth 1 a) 0 (nth 3 a)
+                          (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a)))
+       *pt-node0*)))
 ; Nothing is published by the prepare: the archive is unchanged until the
 ; store's :durable completion.
 (assert-event (equal (fn-state-articles (fn-node-acceptance (nth 0 *pt-t1*))) nil))
 (defconst *pt-node1* (fn-node-complete (nth 0 *pt-t1*) 0 1 :durable))
 (assert-event (fn-node-statep *pt-node1*))
 (assert-event (fn-peer-history-hasp "<a1@example.invalid>" *pt-node1*))
-(assert-event (equal (fn-article-payload (car (fn-state-articles (fn-node-acceptance *pt-node1*)))) *pt-a1-stored*))
+(assert-event (equal (fn-article-payload (car (fn-state-articles (fn-node-acceptance *pt-node1*)))) 0))
+; THE TRANSIT ENTRY over a local arena (fn-peer-transfer-interned-stores-
+; the-relayed-octets): (node decision count bytes-at-the-staged-handle).
+(defun pt-interned-in (node cfg peer msgid octets clock generation id subject fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (next d fn-arena)
+    (fn-peer-transfer-interned node cfg peer msgid octets clock generation id subject
+                               fn-arena)
+    (let ((h (fn-pending-payload (fn-state-pending (fn-node-acceptance next)))))
+      (mv (list next d (fn-arena-count fn-arena)
+                (if (and (natp h) (< h (fn-arena-count fn-arena)))
+                    (fn-arena-payload h fn-arena)
+                  :no-handle))
+          fn-arena))))
+(defun pt-interned (node cfg peer msgid octets clock generation id subject)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (pt-interned-in node cfg peer msgid octets clock generation id subject fn-arena)
+      r)))
+(defconst *pt-i1* (pt-interned *pt-node0* *pt-cfg* "innA" *pt-id1* *pt-a1* *pt-obs* 1 "ob-a1" "subject-a1"))
+; Positive: the entry's node is the transfer's at handle 0 (the empty
+; arena's next), one seal, and the staged handle reads back the stored
+; (relayed) octets, which differ from the received ones.
+(assert-event (equal (nth 0 *pt-i1*) (nth 0 *pt-t1*)))
+(assert-event (equal (nth 1 *pt-i1*) (fn-peer-decision :want nil)))
+(assert-event (equal (nth 2 *pt-i1*) 1))
+(assert-event (equal (nth 3 *pt-i1*) *pt-a1-stored*))
+(assert-event (equal (nth 3 *pt-i1*) (fn-peer-relayed-octets *pt-cfg* "innA" *pt-a1*)))
+(assert-event (not (equal *pt-a1-stored* *pt-a1*)))
+; The refused arm retains nothing: the loop leaves the node and the arena.
+(defconst *pt-i2* (pt-interned *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-loop* *pt-obs* 1 "ob" "s"))
+(assert-event (equal (nth 0 *pt-i2*) *pt-node0*))
+(assert-event (equal (nth 2 *pt-i2*) 0))
+; Tooth for the keystone's hypothesis (the node staged): without it the
+; staged handle need not read back the stored octets -- here there is none.
+(assert-event (not (equal (nth 3 *pt-i2*) (fn-peer-relayed-octets *pt-cfg* "innA" *pt-loop*))))
 ; 235 only on the durable completion.
 (assert-event (equal (fn-post-result-effects (fn-peer-transit-outcome (fn-post-result-session *pt-r2*) (fn-post-result-submission *pt-r2*) (nth 1 *pt-t1*) :durable))
                      (list (pt-reply "235 article transferred OK"))))
@@ -288,7 +339,7 @@
 ; Transcript: the loop is refused at transfer (K2), and the two acceptances
 
 (assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-loop* nil "ob" "s") (fn-peer-decision :refuse :loop)))
-(assert-event (equal (nth 0 (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-loop* *pt-obs* 1 "ob" "s"))) *pt-node0*))
+(assert-event (equal (nth 0 (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-loop* *pt-obs* 1 "ob" "s" 0))) *pt-node0*))
 ; Separating witness: the same article with a Path that does not name us.
 (assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-noloop* nil "ob" "s") (fn-peer-decision :want nil)))
 ; Tail-entry and POSTED variants are accepted: the test is not substring search.
@@ -299,7 +350,7 @@
 ; The IHAVE transcript of a loop: 335, the article, 437 with the reason.
 (defconst *pt-l1* (fn-peer-step *pt-ps0* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <loop@example.invalid>")))
 (defconst *pt-l2* (fn-peer-step (fn-post-result-session *pt-l1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-loop-lines*)))
-(defconst *pt-lt* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-loop* *pt-obs* 1 "ob" "s")))
+(defconst *pt-lt* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idloop* *pt-loop* *pt-obs* 1 "ob" "s" 0)))
 (assert-event (equal (fn-post-result-effects (fn-peer-transit-outcome (fn-post-result-session *pt-l2*) (fn-post-result-submission *pt-l2*) (nth 1 *pt-lt*) nil))
                      (list (pt-reply "437 transfer rejected; path loop"))))
 
@@ -313,7 +364,7 @@
 (assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps1* (fn-node-acceptance *pt-node1*) *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
                      (list (pt-echo "438 " *pt-id1*))))
 (assert-event (equal (fn-peer-decide-transfer *pt-node1* *pt-cfg* "innA" *pt-id1* *pt-a1* nil "ob-a1" "subject-a1") (fn-peer-decision :have :history)))
-(assert-event (equal (nth 0 (mv-list 2 (fn-peer-transfer *pt-node1* *pt-cfg* "innA" *pt-id1* *pt-a1* *pt-obs* 2 "ob-a1" "subject-a1"))) *pt-node1*))
+(assert-event (equal (nth 0 (mv-list 2 (fn-peer-transfer *pt-node1* *pt-cfg* "innA" *pt-id1* *pt-a1* *pt-obs* 2 "ob-a1" "subject-a1" 1))) *pt-node1*))
 ; The separating witness: a fresh Message-ID on the same node is wanted.
 (assert-event (equal (fn-peer-decide-offer *pt-node1* *pt-cfg* "innA" *pt-ps1* *pt-idloop* nil 0) (fn-peer-decision :want nil)))
 ; A binding is a tombstone: released of its pin, the article is still :have.
@@ -462,7 +513,7 @@
 (assert-event (equal (fn-peer-session-inflight (fn-post-result-session *pt-c2*)) 0))
 (defconst *pt-c3* (fn-peer-step (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (list :article *pt-alt-lines*)))
 (assert-event (equal (fn-post-result-submission *pt-c3*) (fn-peer-make-submission "innA" :takethis *pt-idalt* *pt-alt*)))
-(defconst *pt-ct* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idalt* *pt-alt* *pt-obs* 1 "ob" "s")))
+(defconst *pt-ct* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-idalt* *pt-alt* *pt-obs* 1 "ob" "s" 0)))
 (assert-event (equal (nth 1 *pt-ct*) (fn-peer-decision :refuse :out-of-scope)))
 (assert-event (equal (nth 0 *pt-ct*) *pt-node0*))
 (assert-event (equal (fn-post-result-effects (fn-peer-transit-outcome (fn-post-result-session *pt-c3*) (fn-post-result-submission *pt-c3*) (nth 1 *pt-ct*) nil))
@@ -524,7 +575,7 @@
                      (list (pt-reply "437 transfer rejected; duplicate"))))
 ; The remaining offer cells: 436 (defer at offer: the inflight limit) and
 ; 431, 435 not wanted / 438 for a refusal (not a peer).
-(defconst *pt-ps-full* (fn-peer-make-session (fn-peer-session-base *pt-ps0*) "innA" nil 16 *pt-node0* *pt-cfg*))
+(defconst *pt-ps-full* (fn-peer-make-session (fn-peer-session-base *pt-ps0*) "innA" nil 16 *pt-node0* *pt-cfg* nil))
 (assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps-full* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
                      (list (pt-reply "436 retry later; too many offers outstanding"))))
 (assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps-full* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
@@ -536,7 +587,7 @@
                      (list (pt-echo "438 " *pt-id1*))))
 ; A feed-only peer cannot inject.
 (defconst *pt-ps-dtn* (fn-peer-open-session *pt-archive* "dtnB" *pt-node0* *pt-cfg*))
-(assert-event (equal (fn-post-result-effects (fn-peer-step (fn-peer-make-session (fn-peer-session-base *pt-ps-dtn*) "dtnB" nil 0 *pt-node0* *pt-cfg3*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
+(assert-event (equal (fn-post-result-effects (fn-peer-step (fn-peer-make-session (fn-peer-session-base *pt-ps-dtn*) "dtnB" nil 0 *pt-node0* *pt-cfg3* nil) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
                      (list (pt-echo "238 " *pt-id1*))))
 ; Transfer refusals by article: no date, and an offered id that is not the article's.
 (assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idnodate* *pt-nodate* nil "ob" "s") (fn-peer-decision :refuse :no-date)))
@@ -638,14 +689,15 @@
                                                          1 "ob-inn" "subject-inn" *pt-obs*))
                      (fn-charge-for-payload (len *pt-inn-stored*))))
 ; Through the transfer to the durable article a reader is served.
-(defconst *pt-inn-node*
-  (fn-node-complete
-   (nth 0 (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg* "innA" *pt-inn-id*
-                                       *pt-inn-fed* *pt-obs* 1 "ob-inn" "subject-inn")))
-   0 1 :durable))
+(defconst *pt-inn-i* (pt-interned *pt-node0* *pt-cfg* "innA" *pt-inn-id*
+                                  *pt-inn-fed* *pt-obs* 1 "ob-inn" "subject-inn"))
+(defconst *pt-inn-node* (fn-node-complete (nth 0 *pt-inn-i*) 0 1 :durable))
+; The durable article's payload is the handle the entry sealed, and that
+; handle's bytes in the entry's arena are the stored octets.
 (assert-event (equal (fn-article-payload
                       (car (fn-state-articles (fn-node-acceptance *pt-inn-node*))))
-                     *pt-inn-stored*))
+                     0))
+(assert-event (equal (nth 3 *pt-inn-i*) *pt-inn-stored*))
 ; The stored article parses and names fnA.hbox.test in its Path, and has no
 ; Xref, as the reader's parser sees it.
 (assert-event
@@ -826,3 +878,52 @@
  (assert-event (equal (fn-pu-path-contents
                        (fn-peer-relayed-octets *pt-cfg-anon* "innA" *pt-inn-fed*))
                       (pt-tail-expected *pt-cfg-anon* "innA" *pt-inn-fed*))))
+
+; -----------------------------------------------------------------------------
+; P3 (PRF-228): the relay refusal and its keystone
+; (books/peer-inbound-invariants.lisp
+; `fn-peer-transfer-never-stages-an-unapproved-moderated-article').
+; fn.letters moderated (queue fn.test, moderator alice) at generation 2.
+(defconst *pt-mod-record*
+  (fn-cfg-record-make 1 1 2 (list (fn-cfg-set-group-moderation
+                                   "fn.letters" "fn.test" "" '("alice")))
+                      *fn-cfg-default-stamp*))
+(defconst *pt-cfg-mod* (fn-config-replay 0 510 (list *pt-record* *pt-mod-record*)))
+(assert-event (equal (fn-cfg-generation *pt-cfg-mod*) 2))
+(assert-event (fn-peer-moderated-namesp '("fn.letters")
+                                        (fn-cfg-value *pt-cfg-mod*) 2))
+(defconst *pt-ap-lines*
+  (pt-lines '("Path: inn.hbox.test!not-for-mail" "From: poster@example.invalid"
+              "Newsgroups: fn.letters,alt.test" "Subject: approved"
+              "Approved: alice@example.invalid"
+              "Date: Sat, 19 Sep 2026 12:00:00 +0000"
+              "Message-ID: <ap1@example.invalid>" "" "Approved, news.")))
+(defconst *pt-ap* (fn-post-body-octets *pt-ap-lines*))
+(defconst *pt-idap* (pt-o "<ap1@example.invalid>"))
+; Refused by name: an unapproved article in the moderated group leaves the
+; node as it was (the keystone's hypothesis fails; nothing is staged).
+(defconst *pt-mt1* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg-mod* "innA" *pt-id1* *pt-a1* *pt-obs* 2 "ob" "s")))
+(assert-event (equal (nth 1 *pt-mt1*) (fn-peer-decision :refuse :unapproved-moderated)))
+(assert-event (equal (nth 0 *pt-mt1*) *pt-node0*))
+(assert-event (not (fn-peer-article-approvedp *pt-a1*)))
+; The same article is wanted where the group is not moderated.
+(assert-event (equal (nth 1 *pt-t1*) (fn-peer-decision :want nil)))
+; Reachable positive witness: the hypothesis holds (the node changed), the
+; staged groups name the moderated group, and the article carries Approved.
+(defconst *pt-mt2* (mv-list 2 (fn-peer-transfer *pt-node0* *pt-cfg-mod* "innA" *pt-idap* *pt-ap* *pt-obs* 2 "ob" "s")))
+(assert-event (equal (nth 1 *pt-mt2*) (fn-peer-decision :want nil)))
+(assert-event (not (equal (nth 0 *pt-mt2*) *pt-node0*)))
+(assert-event (fn-peer-article-approvedp *pt-ap*))
+(assert-event (fn-peer-moderated-namesp
+               (fn-pending-groups (fn-state-pending (fn-node-acceptance (nth 0 *pt-mt2*))))
+               (fn-cfg-value *pt-cfg-mod*) 2))
+; Hypothesis removal: on a node already staging fn.letters (the unmoderated
+; transfer *pt-t1*), an unapproved article leaves the node unchanged (the
+; hypothesis fails) and the conclusion fails: the pending groups name the
+; moderated group and the article carries no Approved.
+(defconst *pt-mt3* (mv-list 2 (fn-peer-transfer (nth 0 *pt-t1*) *pt-cfg-mod* "innA" *pt-idalt* *pt-alt* *pt-obs* 2 "ob" "s")))
+(assert-event (equal (nth 0 *pt-mt3*) (nth 0 *pt-t1*)))
+(assert-event (not (fn-peer-article-approvedp *pt-alt*)))
+(assert-event (fn-peer-moderated-namesp
+               (fn-pending-groups (fn-state-pending (fn-node-acceptance (nth 0 *pt-mt3*))))
+               (fn-cfg-value *pt-cfg-mod*) 2))

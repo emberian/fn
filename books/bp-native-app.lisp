@@ -1,6 +1,7 @@
 ; Native BP application join: intent-first FNRJ replay and exact Store binding.
 (in-package "ACL2")
 (include-book "bp-receipt-records")
+(include-book "bp-request-ref")
 ; books/owner.lisp's own includes, not owner: this book names none of
 ; owner's definitions (audit 2026-09-25, packet 2), so a change to the owner
 ; no longer recertifies the BP application join and the 80 roots above it.
@@ -80,35 +81,45 @@
          (equal (fn-bpa-request-subject request) text))))
 
 
-(defun fn-bpaj-transit-record-matchp (store record request stored-octets)
+; The Store record a live transit REQUEST binds: its payload is the relay
+; projection the intent pinned, by the projection's LENGTH and DIGEST (the
+; intent holds no bytes), and its Message-ID is the request's.
+(defun fn-bpaj-transit-record-matchp (store record request p-length p-digest)
   (declare (xargs :guard t))
   (and (fn-record-p record)
        (fn-bpa-requestp request)
        (fn-bpr-store-record-acceptedp store record)
-       (equal (fn-record-payload record) stored-octets)
+       (equal (len (fn-record-payload record)) p-length)
+       (equal (fn-frame-digest (fn-record-payload record)) p-digest)
        (let ((fields (fn-bpaj-transit-article-fields request)))
          (and (equal (car fields) :ok)
               (equal (fn-record-msgid record)
                      (fn-record-octets-string (cadr fields)))))))
 
 
-; The v3 intent is written before Store submission.  Its final three fields
-; are the selected local Path identity, expected peer Path identity, and
-; locally stored projection.  Replay verifies the projection against those
-; pinned identities, without consulting a later owner configuration.
-; (kind inbound raw-request generation planned-txid result peer
-;       local-path peer-path stored-projection)
+; PKT-646 (D27): the transit intent and context carry the request by
+; REFERENCE (books/bp-request-ref.lisp), never its bytes, and never the
+; Store record or the relay projection.
+;
+; The intent is written before Store submission, while the request's bytes
+; are the delivered bundle the BP node holds (the inbound identity):
+; (kind inbound HEAD owner-generation planned-txid result peer
+;  local-path peer-path A-LENGTH A-DIGEST P-LENGTH P-DIGEST)
+; A-LENGTH and A-DIGEST are the article's; P-LENGTH and P-DIGEST the relay
+; projection's (`fn-pu-relay-article' of the article under the pinned
+; local and peer Path identities), the bytes the Store will hold.  An intent
+; is never resolved to bytes: a live request is compared with it by
+; reference (`fn-bpaj-intent-names-requestp'), and a Store record with it
+; by the projection's length and digest.
 (defun fn-bpaj-transit-intentp (r)
   (declare (xargs :guard t))
-  (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 r)))
-         (local (fn-record-string-octets (fn-bpaj-nth 7 r)))
+  (let* ((local (fn-record-string-octets (fn-bpaj-nth 7 r)))
          (expected (fn-record-string-octets (fn-bpaj-nth 8 r))))
-    (and (true-listp r) (equal (len r) 10)
+    (and (true-listp r) (equal (len r) 13)
          (equal (fn-bpaj-nth 0 r) :request-transit-intent)
          (fn-bprr-textp (fn-bpaj-nth 1 r))
          (fn-bprr-octetsp (fn-bpaj-nth 2 r))
-         request
-         (fn-bpaj-request-subjectp request)
+         (fn-bpaj-headp (fn-bpaj-nth 2 r))
          (fn-record-uint32p (fn-bpaj-nth 3 r))
          (fn-record-uint32p (fn-bpaj-nth 4 r))
          (member-equal (fn-bpaj-nth 5 r) '(:accepted :duplicate))
@@ -116,84 +127,140 @@
          (fn-bprr-textp (fn-bpaj-nth 7 r))
          (fn-bprr-textp (fn-bpaj-nth 8 r))
          (fn-path-identityp local) (fn-path-identityp expected)
-         (fn-bprr-octetsp (fn-bpaj-nth 9 r))
-         (equal (fn-bpaj-nth 9 r)
-                (fn-pu-relay-article (fn-bpa-request-article request)
-                                     local expected)))))
+         (natp (fn-bpaj-nth 9 r))
+         (<= (fn-bpaj-nth 9 r) *fn-bpa-max-article*)
+         (fn-frame-digestp (fn-bpaj-nth 10 r))
+         (natp (fn-bpaj-nth 11 r))
+         (fn-frame-digestp (fn-bpaj-nth 12 r)))))
 
-; The context binds a recovered exact Store record to a prior validated v3
-; intent.  The raw request stays in the context for receipt construction;
-; the Store payload is compared with the independently pinned projection.
-; (kind inbound raw-request store-record owner-generation store-txid
-;       store-generation result)
+; The intent's reference to its request.
+(defun fn-bpaj-intent-ref (intent)
+  (declare (xargs :guard t))
+  (list (fn-bpaj-nth 2 intent) (fn-bpaj-nth 9 intent) (fn-bpaj-nth 10 intent)))
+
+; The context binds the Store record the Store committed for a prior intent,
+; by its identity (Message-ID, txid, generation), never a copy:
+; (kind inbound HEAD store-msgid owner-generation store-txid
+;  store-generation result A-LENGTH A-DIGEST)
 (defun fn-bpaj-transit-contextp (r)
   (declare (xargs :guard t))
-  (and (true-listp r) (equal (len r) 8)
+  (and (true-listp r) (equal (len r) 10)
        (equal (fn-bpaj-nth 0 r) :request-transit-context)
        (fn-bprr-textp (fn-bpaj-nth 1 r))
        (fn-bprr-octetsp (fn-bpaj-nth 2 r))
-       (fn-bprr-octetsp (fn-bpaj-nth 3 r))
+       (fn-bpaj-headp (fn-bpaj-nth 2 r))
+       (fn-bprr-textp (fn-bpaj-nth 3 r))
        (fn-record-uint32p (fn-bpaj-nth 4 r))
        (fn-record-uint32p (fn-bpaj-nth 5 r))
        (fn-record-uint32p (fn-bpaj-nth 6 r))
-       (member-equal (fn-bpaj-nth 7 r) '(:accepted :duplicate))))
+       (member-equal (fn-bpaj-nth 7 r) '(:accepted :duplicate))
+       (natp (fn-bpaj-nth 8 r))
+       (<= (fn-bpaj-nth 8 r) *fn-bpa-max-article*)
+       (fn-frame-digestp (fn-bpaj-nth 9 r))))
 
+; The context's reference to its request.
+(defun fn-bpaj-context-ref (context)
+  (declare (xargs :guard t))
+  (list (fn-bpaj-nth 2 context) (fn-bpaj-nth 8 context)
+        (fn-bpaj-nth 9 context)))
+
+; The article records of Store events RECORDS whose Message-ID is MSGID: a
+; plain article record, or the article record a signed kind-4 composite
+; carries (`fn-bpr-event-article'), so a signed article the Store committed
+; binds as a plain one does (PKT-247).  Cost: every composite before the end
+; of RECORDS is decoded once per lookup (its article record's octets); an
+; index from Message-ID to event beside the Message-ID trie is owed (PKT-291).
+(defun fn-bpaj-record-for-msgid (msgid records)
+  (declare (xargs :guard t :measure (acl2-count records)))
+  (if (consp records)
+      (let ((rest (fn-bpaj-record-for-msgid msgid (cdr records)))
+            (record (fn-bpr-event-article (car records))))
+        ; A history's articles are held rows after the records flip
+        ; (books/held-record.lisp): the walk is the index's fold
+        ; (fn-cei-article-records-for, books/consumer-event-index.lisp).
+        (if (and (fn-held-p record)
+                 (equal msgid (fn-record-msgid record)))
+            (cons record rest)
+          rest))
+    nil))
+
+; The Store record a context names: the one article record with its
+; Message-ID, with its txid and generation; nil otherwise.  Every read of a
+; context (recovery included) resolves it here.
+(defun fn-bpaj-context-record-of (records r)
+  (declare (xargs :guard t))
+  (and (consp records) (not (consp (cdr records)))
+       (fn-record-p (car records))
+       (equal (fn-record-txid (car records)) (fn-bpaj-nth 5 r))
+       (equal (fn-record-generation (car records)) (fn-bpaj-nth 6 r))
+       (car records)))
+
+(defun fn-bpaj-context-record (store r)
+  (declare (xargs :guard t))
+  (and (stringp (fn-bpaj-nth 3 r))
+       (fn-bpaj-context-record-of
+        (fn-bpaj-record-for-msgid (fn-bpaj-nth 3 r)
+                                  (fn-sf-records (fn-sn-files store)))
+        r)))
+
+; The context the host publishes (host/bp-receipt-journal-host.lisp
+; `fn-bprj-request-transit-context-record'), from the live request and the
+; committed Store record: the request's reference and the record's
+; identity, never either's bytes.
+(defun fn-bpaj-transit-context-record
+    (inbound-id request-octets store-record generation txid record-generation
+                result)
+  (declare (xargs :guard t))
+  (let ((request (fn-bpaj-request request-octets))
+        (record (fn-bprr-decode-value store-record :record)))
+    (and request (fn-record-p record)
+         (let* ((ref (fn-bpaj-request-ref request))
+                (r (list :request-transit-context inbound-id (car ref)
+                         (fn-record-msgid record) generation txid
+                         record-generation result (cadr ref) (caddr ref))))
+           (and (fn-bpaj-transit-contextp r) r)))))
+
+; A context binds its intent exactly: the same inbound identity, reference,
+; generation and result, the planned txid for a fresh acceptance, and a
+; Store record (the one it names) whose payload is the intent's pinned
+; projection by length and digest.
 (defun fn-bpaj-transit-context-matches-intentp (store context intent)
   (declare (xargs :guard t))
-  (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 context)))
-         (record (fn-bprr-decode-value (fn-bpaj-nth 3 context) :record)))
+  (let ((record (fn-bpaj-context-record store context)))
     (and (fn-bpaj-transit-contextp context)
          (fn-bpaj-transit-intentp intent)
          (equal (fn-bpaj-nth 1 context) (fn-bpaj-nth 1 intent))
-         (equal (fn-bpaj-nth 2 context) (fn-bpaj-nth 2 intent))
+         (equal (fn-bpaj-context-ref context) (fn-bpaj-intent-ref intent))
          (equal (fn-bpaj-nth 4 context) (fn-bpaj-nth 3 intent))
          (equal (fn-bpaj-nth 7 context) (fn-bpaj-nth 5 intent))
-         (fn-bpaj-transit-record-matchp
-          store record request (fn-bpaj-nth 9 intent))
-         (equal (fn-record-txid record) (fn-bpaj-nth 5 context))
-         (equal (fn-record-generation record) (fn-bpaj-nth 6 context))
+         (fn-record-p record)
+         (fn-bpr-store-record-acceptedp store record)
+         (equal (len (fn-record-payload record)) (fn-bpaj-nth 11 intent))
+         (equal (fn-frame-digest (fn-record-payload record))
+                (fn-bpaj-nth 12 intent))
          (or (equal (fn-bpaj-nth 5 intent) :duplicate)
              (equal (fn-record-txid record) (fn-bpaj-nth 4 intent))))))
 
 
-(defun fn-bpaj-intentp (r)
+; Whether INTENT names the live REQUEST (a decoded message): by reference.
+(defun fn-bpaj-intent-names-requestp (intent request)
   (declare (xargs :guard t))
-  (and (true-listp r) (equal (len r) 6)
-       (equal (fn-bpaj-nth 0 r) :request-intent)
-       (fn-bprr-textp (fn-bpaj-nth 1 r))
-       (fn-bprr-octetsp (fn-bpaj-nth 2 r))
-       (fn-bpaj-request (fn-bpaj-nth 2 r))
-       (fn-record-uint32p (fn-bpaj-nth 3 r))
-       (fn-record-uint32p (fn-bpaj-nth 4 r))
-       (member-equal (fn-bpaj-nth 5 r) '(:accepted :duplicate))))
+  (fn-bpaj-request-ref-matchesp request (fn-bpaj-nth 2 intent)
+                                (fn-bpaj-nth 9 intent)
+                                (fn-bpaj-nth 10 intent)))
 
 (defun fn-bpaj-intent-listp (xs)
   (declare (xargs :guard t :measure (acl2-count xs)))
   (if (consp xs)
-      (and (or (fn-bpaj-intentp (car xs))
-               (fn-bpaj-transit-intentp (car xs)))
+      (and (fn-bpaj-transit-intentp (car xs))
            (fn-bpaj-intent-listp (cdr xs)))
     (null xs)))
 
-(defun fn-bpaj-context-v2p (r)
-  (declare (xargs :guard t))
-  (and (true-listp r) (equal (len r) 9)
-       (equal (fn-bpaj-nth 0 r) :request-context-v2)
-       (fn-bprr-textp (fn-bpaj-nth 1 r))
-       (fn-bprr-octetsp (fn-bpaj-nth 2 r))
-       (fn-bprr-octetsp (fn-bpaj-nth 3 r))
-       (fn-record-uint32p (fn-bpaj-nth 4 r))
-       (fn-record-uint32p (fn-bpaj-nth 5 r))
-       (fn-record-uint32p (fn-bpaj-nth 6 r))
-       (equal (fn-bpaj-nth 7 r) t)
-       (member-equal (fn-bpaj-nth 8 r) '(:accepted :duplicate))))
-
-(defun fn-bpaj-context-v2-listp (xs)
+(defun fn-bpaj-fact-listp (xs)
   (declare (xargs :guard t :measure (acl2-count xs)))
   (if (consp xs)
-      (and (or (fn-bpaj-context-v2p (car xs))
-               (fn-bpaj-transit-contextp (car xs)))
-           (fn-bpaj-context-v2-listp (cdr xs)))
+      (and (fn-bpaj-transit-contextp (car xs))
+           (fn-bpaj-fact-listp (cdr xs)))
     (null xs)))
 
 (defun fn-bpaj-statep (x)
@@ -201,7 +268,7 @@
   (and (true-listp x) (equal (len x) 4)
        (fn-bpr-statep (fn-bpaj-receiver x))
        (fn-bpaj-intent-listp (fn-bpaj-intents x))
-       (fn-bpaj-context-v2-listp (fn-bpaj-facts x))
+       (fn-bpaj-fact-listp (fn-bpaj-facts x))
        (booleanp (fn-bpaj-strictp x))))
 
 (defthm fn-bpaj-statep-forward-shape
@@ -209,17 +276,10 @@
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (enable fn-bpaj-statep))))
 
-(defthm fn-bpaj-context-v2p-forward-kind
-  (implies (fn-bpaj-context-v2p x)
-           (and (consp x)
-                (equal (fn-bpaj-nth 0 x) :request-context-v2)))
-  :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-bpaj-context-v2p))))
-
+; An intent's or context's work id is its reference's HEAD's.
 (defun fn-bpaj-intent-work-id (intent)
   (declare (xargs :guard t))
-  (let ((request (fn-bpaj-request (fn-bpaj-nth 2 intent))))
-    (and request (fn-bpa-request-work-id request))))
+  (fn-bpaj-head-work-id (fn-bpaj-nth 2 intent)))
 
 (defun fn-bpaj-find-intent (work-id intents)
   (declare (xargs :guard t :measure (acl2-count intents)))
@@ -232,41 +292,17 @@
 (defun fn-bpaj-find-fact (work-id facts)
   (declare (xargs :guard t :measure (acl2-count facts)))
   (if (consp facts)
-      (let ((request (fn-bpaj-request (fn-bpaj-nth 2 (car facts)))))
-        (if (and request
-                 (equal work-id (fn-bpa-request-work-id request)))
+      (let ((fact-work-id (fn-bpaj-intent-work-id (car facts))))
+        (if (and fact-work-id (equal work-id fact-work-id))
             (car facts)
           (fn-bpaj-find-fact work-id (cdr facts))))
     nil))
 
 (defun fn-bpaj-context-intent (joined context)
   (declare (xargs :guard t))
-  (let ((request (fn-bpaj-request (fn-bpaj-nth 2 context))))
-    (and request
-         (fn-bpaj-find-intent (fn-bpa-request-work-id request)
-                              (fn-bpaj-intents joined)))))
-
-(defun fn-bpaj-base-record (r)
-  (declare (xargs :guard t))
-  (if (equal (fn-bpaj-nth 0 r) :request-context-v2)
-      (list :request-context (fn-bpaj-nth 1 r) (fn-bpaj-nth 2 r)
-            (fn-bpaj-nth 3 r) (fn-bpaj-nth 7 r))
-    r))
-
-(defun fn-bpaj-context-matches-intentp (context intent)
-  (declare (xargs :guard t))
-  (and (fn-bpaj-context-v2p context) (fn-bpaj-intentp intent)
-       (equal (fn-bpaj-nth 1 context) (fn-bpaj-nth 1 intent))
-       (equal (fn-bpaj-nth 2 context) (fn-bpaj-nth 2 intent))
-       (equal (fn-bpaj-nth 4 context) (fn-bpaj-nth 3 intent))
-       (equal (fn-bpaj-nth 8 context) (fn-bpaj-nth 5 intent))
-       (let ((record (fn-bprr-decode-value (fn-bpaj-nth 3 context) :record)))
-         (and (fn-record-p record)
-              (equal (fn-record-txid record) (fn-bpaj-nth 5 context))
-              (equal (fn-record-generation record) (fn-bpaj-nth 6 context))
-              (or (equal (fn-bpaj-nth 5 intent) :duplicate)
-                  (equal (fn-record-txid record)
-                         (fn-bpaj-nth 4 intent)))))))
+  (let ((work-id (fn-bpaj-intent-work-id context)))
+    (and work-id
+         (fn-bpaj-find-intent work-id (fn-bpaj-intents joined)))))
 
 ; Result is (okp joined-state).  Legacy context-first records are accepted only
 ; before this journal has observed its first request intent.
@@ -275,18 +311,6 @@
   (if (not (fn-bpaj-statep joined)) (list nil joined)
     (let ((kind (fn-bpaj-nth 0 r)))
       (cond
-       ((equal kind :request-intent)
-        (if (not (fn-bpaj-intentp r)) (list nil joined)
-          (let* ((work-id (fn-bpaj-intent-work-id r))
-                 (prior (fn-bpaj-find-intent work-id (fn-bpaj-intents joined)))
-                 (context (fn-bpr-find-context
-                           work-id
-                           (fn-bpr-state-contexts (fn-bpaj-receiver joined)))))
-            (if (or prior context) (list nil joined)
-              (list t (fn-bpaj-make-state
-                       (fn-bpaj-receiver joined)
-                       (append (fn-bpaj-intents joined) (list r))
-                       (fn-bpaj-facts joined) t))))))
        ((equal kind :request-transit-intent)
         (if (not (fn-bpaj-transit-intentp r)) (list nil joined)
           (let* ((work-id (fn-bpaj-intent-work-id r))
@@ -299,33 +323,21 @@
                        (fn-bpaj-receiver joined)
                        (append (fn-bpaj-intents joined) (list r))
                        (fn-bpaj-facts joined) t))))))
-       ((equal kind :request-context-v2)
-        (let ((intent (fn-bpaj-context-intent joined r)))
-          (if (not (and intent (fn-bpaj-context-matches-intentp r intent)))
-              (list nil joined)
-            (let ((answer (fn-bprr-apply-record
-                           (fn-bpaj-receiver joined) store
-                           (fn-bpaj-base-record r))))
-              (if (not (car answer)) (list nil joined)
-                (list t (fn-bpaj-make-state
-                         (fn-bprr-nth 1 answer)
-                         ; Retain the exact original inbound identity and
-                         ; configuration generation after binding.  Receipt
-                         ; retries may arrive in a different BP bundle, but
-                         ; they never rewrite the acceptance evidence.
-                         (fn-bpaj-intents joined)
-                         (append (fn-bpaj-facts joined) (list r)) t)))))))
        ((equal kind :request-transit-context)
         (let ((intent (fn-bpaj-context-intent joined r)))
           (if (not (and intent
                         (fn-bpaj-transit-context-matches-intentp
                          store r intent)))
               (list nil joined)
-            (let* ((request (fn-bpaj-request (fn-bpaj-nth 2 r)))
-                   (record (fn-bprr-decode-value (fn-bpaj-nth 3 r) :record))
-                   (answer (fn-bpr-accept-projected-request
-                            (fn-bpaj-receiver joined) store record request
-                            (fn-bpaj-nth 9 intent) t)))
+            ; The receiver binds the request's REFERENCE to the Store
+            ; record the context names, resolved here at every read
+            ; (recovery included); no bytes of the request are read.
+            (let* ((record (fn-bpaj-context-record store r))
+                   (answer (fn-bpr-accept-projected-ref
+                            (fn-bpaj-receiver joined) store record
+                            (fn-bpaj-context-ref r)
+                            (fn-bpaj-nth 11 intent) (fn-bpaj-nth 12 intent)
+                            t)))
               (if (not (equal (car answer) :accepted)) (list nil joined)
                 (list t (fn-bpaj-make-state
                          (fn-bprr-nth 1 answer)
@@ -384,11 +396,11 @@
                                              (fn-bpaj-intents joined)))
                (pending (fn-bpr-state-pending receiver)))
           (cond ((and context
-                      (not (equal request (fn-bpr-context-request context))))
+                      (not (equal (fn-bpaj-request-ref request)
+                                  (fn-bpr-context-request-ref context))))
                  :conflict)
                 ((and intent
-                      (not (equal request
-                                  (fn-bpaj-request (fn-bpaj-nth 2 intent)))))
+                      (not (fn-bpaj-intent-names-requestp intent request)))
                  :conflict)
                 ((and context (fn-bpr-receipt-adu receiver request)) :committed)
                 ((consp pending)
@@ -443,9 +455,7 @@
          (fact (and request
                     (fn-bpaj-find-fact (fn-bpa-request-work-id request)
                                        (fn-bpaj-facts joined)))))
-    (and fact (if (equal (fn-bpaj-nth 0 fact) :request-transit-context)
-                  (fn-bpaj-nth 7 fact)
-                (fn-bpaj-nth 8 fact)))))
+    (and fact (fn-bpaj-nth 7 fact))))
 
 (defun fn-bpaj-bp-provenance-octets (node-id bundle-identity request)
   (declare (xargs :guard t))
@@ -473,26 +483,9 @@
                                                  (caddr eid))))))
         (t "")))
 
-; The article records of Store events RECORDS whose Message-ID is MSGID: a
-; plain article record, or the article record a signed kind-4 composite
-; carries (`fn-bpr-event-article'), so a signed article the Store committed
-; binds as a plain one does (PKT-247).  Cost: every composite before the end
-; of RECORDS is decoded once per lookup (its article record's octets); an
-; index from Message-ID to event beside the Message-ID trie is owed (PKT-291).
-(defun fn-bpaj-record-for-msgid (msgid records)
-  (declare (xargs :guard t :measure (acl2-count records)))
-  (if (consp records)
-      (let ((rest (fn-bpaj-record-for-msgid msgid (cdr records)))
-            (record (fn-bpr-event-article (car records))))
-        ; A history's articles are held rows after the records flip
-        ; (books/held-record.lisp): the walk is the index's fold
-        ; (fn-cei-article-records-for, books/consumer-event-index.lisp).
-        (if (and (fn-held-p record)
-                 (equal msgid (fn-record-msgid record)))
-            (cons record rest)
-          rest))
-    nil))
-
+; The direct lookup by the request article's Message-ID (the receipt hosts,
+; host/bp-receipt-host.lisp and host/bp-receive-host.lisp, PRF-220), kept
+; beside the transit lookup after PKT-646 retired the local kinds.
 (defun fn-bpaj-record-matches-requestp (store record request)
   (declare (xargs :guard t))
   (and (fn-record-p record) (fn-bpa-requestp request)
@@ -528,7 +521,8 @@
         (cond ((endp records) (list :absent))
               ((consp (cdr records)) (list :conflict))
               ((fn-bpaj-transit-record-matchp
-                store (car records) request (fn-bpaj-nth 9 intent))
+                store (car records) request (fn-bpaj-nth 11 intent)
+                (fn-bpaj-nth 12 intent))
                (list :found (car records)))
               (t (list :conflict)))))))
 
@@ -546,16 +540,7 @@
       (:new (list :persist-intent))
       (:intent
        (let* ((intent (fn-bpaj-request-intent joined request-octets))
-                (lookup (if (equal (fn-bpaj-nth 0 intent)
-                                   :request-transit-intent)
-                            (fn-bpaj-transit-record-lookup store request intent)
-                          (fn-bpaj-record-lookup store request))))
-           (if (and (not (equal (fn-bpaj-nth 0 intent)
-                                :request-transit-intent))
-                    (not (equal current-generation
-                                (fn-bpaj-request-generation
-                                 joined request-octets))))
-               (list :refused :stale-owner-generation)
+              (lookup (fn-bpaj-transit-record-lookup store request intent)))
              (case (car lookup)
              (:absent
               (cond ((not (equal current-generation
@@ -574,7 +559,7 @@
                                     joined request-octets))))
                   (list :refused :store-binding-conflict)
                 (list :bind (cadr lookup))))
-             (otherwise (list :refused :store-conflict))))))
+             (otherwise (list :refused :store-conflict)))))
       (:context (list :prepare-receipt))
       (:pending-receipt (list :resolve-absent))
       (:committed (list :return-receipt))
@@ -587,63 +572,49 @@
       (string-append "receipt:" (fn-bpa-request-work-id request))
     ""))
 
-; Local projection for the accepted strict-context branch: after its binding
-; checks, the receiver component is the existing FNRJ transition over the
-; legacy context projection.  This equation does not prove the composed replay
-; invariant that connects every recovered context and receipt to the live
-; owner's Store; that stronger trace result remains open.
-(defthm fn-bpaj-context-v2-receiver-is-existing-transition
+; Local projection for the accepted transit-context branch: after its
+; binding checks, the receiver component is the receiver's own acceptance of
+; the context's REFERENCE bound to the Store record the context names
+; (PKT-646).  This equation does not prove the composed replay invariant
+; that connects every recovered context and receipt to the live owner's
+; Store; that stronger trace result remains open.
+(defthm fn-bpaj-transit-context-receiver-is-existing-transition
   (implies
    (and (fn-bpaj-statep joined)
-        (fn-bpaj-context-v2p context)
-        (consp joined)
-        (consp context)
-        (equal (fn-bpaj-nth 0 context) :request-context-v2)
+        (equal (fn-bpaj-nth 0 context) :request-transit-context)
         (fn-bpaj-context-intent joined context)
-        (fn-bpaj-context-matches-intentp
-         context (fn-bpaj-context-intent joined context))
-        (car (fn-bprr-apply-record (fn-bpaj-receiver joined) store
-                                   (fn-bpaj-base-record context))))
+        (fn-bpaj-transit-context-matches-intentp
+         store context (fn-bpaj-context-intent joined context))
+        (equal (car (fn-bpr-accept-projected-ref
+                     (fn-bpaj-receiver joined) store
+                     (fn-bpaj-context-record store context)
+                     (fn-bpaj-context-ref context)
+                     (fn-bpaj-nth 11 (fn-bpaj-context-intent joined context))
+                     (fn-bpaj-nth 12 (fn-bpaj-context-intent joined context))
+                     t))
+               :accepted))
    (equal (fn-bpaj-receiver
            (fn-bpaj-nth 1 (fn-bpaj-apply-record joined store context)))
           (fn-bprr-nth 1
-                       (fn-bprr-apply-record
-                        (fn-bpaj-receiver joined) store
-                        (fn-bpaj-base-record context)))))
+                      (fn-bpr-accept-projected-ref
+                       (fn-bpaj-receiver joined) store
+                       (fn-bpaj-context-record store context)
+                       (fn-bpaj-context-ref context)
+                       (fn-bpaj-nth 11 (fn-bpaj-context-intent joined context))
+                       (fn-bpaj-nth 12 (fn-bpaj-context-intent joined context))
+                       t))))
   :hints (("Goal" :in-theory
            (e/d (fn-bpaj-apply-record)
-                (fn-bpaj-statep fn-bpaj-context-v2p
-                 fn-bpaj-context-intent fn-bpaj-context-matches-intentp
-                 fn-bpaj-request fn-bprr-apply-record)))))
+                (fn-bpaj-statep fn-bpaj-transit-contextp
+                 fn-bpaj-context-intent fn-bpaj-transit-context-matches-intentp
+                 fn-bpaj-context-record fn-bpaj-context-ref
+                 fn-bpr-accept-projected-ref)))))
 
 ; Branch projection for the dispatch definition.  It records the exact facts
 ; under which this dispatcher returns :submit; it is not a replay theorem.
-(defthm fn-bpaj-dispatch-intent-absent-retries
-  (implies (and (equal (fn-bpaj-request-status joined request-octets) :intent)
-                (not (equal (fn-bpaj-nth 0
-                             (fn-bpaj-request-intent joined request-octets))
-                            :request-transit-intent))
-                (equal current-generation
-                       (fn-bpaj-request-generation joined request-octets))
-                (equal (fn-bpaj-request-planned-result
-                        joined request-octets) :accepted)
-                (equal (car (fn-bpaj-record-lookup
-                             store (fn-bpaj-request request-octets))) :absent))
-           (equal (fn-bpaj-dispatch joined store request-octets
-                                    current-generation)
-                  (list :submit)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-bpaj-dispatch)
-                (fn-bpaj-request-status fn-bpaj-request-generation
-                 fn-bpaj-request-planned-result fn-bpaj-record-lookup
-                 fn-bpaj-request)))))
-
 (defthm fn-bpaj-dispatch-transit-intent-absent-retries
   (implies
    (and (equal (fn-bpaj-request-status joined request-octets) :intent)
-        (equal (fn-bpaj-nth 0
-                (fn-bpaj-request-intent joined request-octets))
-               :request-transit-intent)
         (equal current-generation
                (fn-bpaj-request-generation joined request-octets))
         (equal (fn-bpaj-request-planned-result joined request-octets)
@@ -669,11 +640,10 @@
   :hints (("Goal" :in-theory
            (e/d (fn-bpaj-dispatch)
                 (fn-bpaj-request-status fn-bpaj-request-generation
-                 fn-bpaj-request-planned-result fn-bpaj-record-lookup
+                 fn-bpaj-request-planned-result fn-bpaj-transit-record-lookup
                  fn-bpaj-request)))))
 
-(in-theory (disable fn-bpaj-statep fn-bpaj-intentp fn-bpaj-intent-listp
-                    fn-bpaj-context-v2p
+(in-theory (disable fn-bpaj-statep fn-bpaj-intent-listp
                     fn-bpaj-apply-record fn-bpaj-replay-rest fn-bpaj-replay
-                    fn-bpaj-request-status fn-bpaj-record-lookup
+                    fn-bpaj-request-status
                     fn-bpaj-dispatch))

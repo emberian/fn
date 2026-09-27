@@ -70,25 +70,50 @@
   (if (member-equal (car plan) '(:submit :have))
       (fn-bpaj-nth 4 plan) nil))
 
-; The durable v3 context must bind the *stored* projection, not replay an old
-; config against the raw request to rediscover it.  The raw ADU and article
-; remain distinct and can still be used for the receipt's original subject.
+; The durable intent pins the *stored* projection by its LENGTH and DIGEST
+; (PKT-646: never its bytes, nor the request's), so a later read never
+; replays an old config against the raw request to rediscover it.  The
+; request is pinned by its reference (books/bp-request-ref.lisp).
 ; The called peer projection itself is certified by
 ; fn-peer-injection-arguments-payload-unfolds in peer-inbound-invariants.
 ; A finite witness in bp-transit-join-tests checks that this plan selects that
 ; projection on a Path-bearing request and separates it from the raw ADU.
+
+; A live plan retries an intent's Store submission only when it admits the
+; same peer and projects the same bytes, by the projection's length and
+; digest (the intent holds no bytes; PKT-646).  Called by
+; host/bp-native-app-host.lisp `fn-owner-app-plan-install'.
+(defun fn-bpaj-plan-matches-intentp (plan intent)
+  (declare (xargs :guard t))
+  (let ((stored (fn-bpaj-transit-stored-octets plan)))
+    (and (equal (car plan) :submit)
+         (equal (fn-bpaj-nth 1 plan) (fn-bpaj-nth 6 intent))
+         (equal (len stored) (fn-bpaj-nth 11 intent))
+         (equal (fn-frame-digest stored) (fn-bpaj-nth 12 intent)))))
 
 (defun fn-bpaj-transit-intent-from-plan
     (cfg inbound-id request-octets generation txid result plan)
   (declare (xargs :guard t))
   (let* ((peer (fn-bpaj-nth 1 plan))
          (record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))
-         (r (list :request-transit-intent inbound-id request-octets
+         (request (fn-bpaj-request request-octets))
+         (ref (fn-bpaj-request-ref request))
+         (stored (fn-bpaj-transit-stored-octets plan))
+         (r (list :request-transit-intent inbound-id (car ref)
                   generation txid result peer
                   (fn-cfg-policy (fn-cfg-value cfg) "path-identity")
                   (and record (fn-cfg-peer-path-identity record))
-                  (fn-bpaj-transit-stored-octets plan))))
+                  (cadr ref) (caddr ref)
+                  (len stored) (fn-frame-digest stored))))
     (and (member-equal (car plan) '(:submit :have))
+         request
+         ; The projection the Store will hold is the relay projection of
+         ; the request's article under the pinned identities: checked here,
+         ; once, while the bytes are live.
+         (equal stored (fn-pu-relay-article
+                        (fn-bpa-request-article request)
+                        (fn-record-string-octets (fn-bpaj-nth 7 r))
+                        (fn-record-string-octets (fn-bpaj-nth 8 r))))
          (fn-bpaj-transit-intentp r) r)))
 
 ;; -----------------------------------------------------------------------------

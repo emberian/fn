@@ -3,6 +3,7 @@
 ; and observed, explicitly configured local transport provenance.
 (in-package "ACL2")
 (include-book "../books/bp-ingress")
+(include-book "../books/article-header-census")
 (include-book "../books/bp-primary")
 (include-book "../books/clock")
 ;
@@ -86,11 +87,18 @@
 ; groups are its Newsgroups mapped through the host policy.  An ADU that
 ; composition rejects (syntax, Message-ID, an unmapped group) answers
 ; :rejected, never a budget word.
+; A header past the profile's limits (PRF-230, PKT-660) answers the limit's
+; name, as the served POST refuses it: `fn-article-census-refusal' against
+; `fn-bs-profile-header-limits' of the same profile.
 (defun fn-bpi-host-article-verdict (profile adu state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((parsed (fn-article-parse adu)))
+  (let ((parsed (fn-article-parse adu))
+        (limit (fn-article-census-refusal
+                (fn-article-header-census adu)
+                (fn-bs-profile-header-limits profile))))
     (if (not (fn-article-result-okp parsed))
         (value :rejected)
+      (if limit (value limit)
       (let ((proto (fn-af-proto-article-check
                     (fn-article-result-article parsed))))
         (if (not (and (equal (car proto) :ok) (car (cdr proto))))
@@ -101,34 +109,42 @@
                 (value :rejected)
               (fn-store-sn-article-verdict profile (len adu)
                                            (len (car (cdr mapped)))
-                                           state))))))))
+                                           state)))))))))
 
 (defun fn-bpi-host-reset (state)
   (declare (xargs :stobjs state :mode :program))
   (fn-store-sn-reset state))
 
+; The records flip (flip-L4's entry): the ADU is staged as the ROW interned at
+; the arena's count and sealed into the arena exactly when the Store staged it
+; (books/bp-ingress.lisp fn-bpi-ingress-prepare-interned, KEYSTONE
+; fn-bpi-ingress-prepare-interned-row-is-the-received-adu).  The answer is
+; (mv nil KEYWORD fn-arena state).
 (defun fn-bpi-host-prepare (destination source-eid bundle-id lifetime
                                          archive-id subject evidence charge adu
-                                         monotonic-ns wall-ns wall-error-ms has-wall state)
-  (declare (xargs :stobjs state :mode :program))
+                                         monotonic-ns wall-ns wall-error-ms has-wall
+                                         fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (if (not (fn-bpi-host-inputsp destination source-eid bundle-id lifetime
                                  archive-id subject evidence charge))
-      (value :invalid)
-    (let ((result (fn-bpi-ingress-prepare
+      (mv nil :invalid fn-arena state)
+    (mv-let (result fn-arena)
+      (fn-bpi-ingress-prepare-interned
                    (f-get-global 'fn-store-sn state)
                    (fn-bpi-host-policy (fn-store-octets->string archive-id)
                                        (fn-store-octets->string subject)
                                        (fn-store-octets->string evidence) charge)
                    (fn-bpi-host-context destination source-eid bundle-id lifetime
                                         monotonic-ns wall-ns wall-error-ms has-wall)
-                   adu)))
+                   adu fn-arena)
       (if (equal (fn-bpi-result-kind result) :prepared)
           (let ((state (f-put-global 'fn-store-sn
                                      (fn-bpi-result-store result) state)))
-            (value :prepared))
-        (value (if (equal (fn-bpi-result-store result) :clock-unusable)
-                   :clock-unusable
-                 :rejected))))))
+            (mv nil :prepared fn-arena state))
+        (mv nil (if (equal (fn-bpi-result-store result) :clock-unusable)
+                    :clock-unusable
+                  :rejected)
+            fn-arena state)))))
 
 ; An exact durable replay is recognized by the certified parser/field/group
 ; composition and node binding before another allocator reservation is made.
@@ -137,8 +153,8 @@
 (defun fn-bpi-host-already-durablep (destination source-eid bundle-id lifetime
                                                  archive-id subject evidence charge
                                                  adu monotonic-ns wall-ns wall-error-ms
-                                                 has-wall state)
-  (declare (xargs :stobjs state :mode :program))
+                                                 has-wall fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (if (not (fn-bpi-host-inputsp destination source-eid bundle-id lifetime
                                  archive-id subject evidence charge))
       (value nil)
@@ -149,7 +165,7 @@
                                 (fn-store-octets->string evidence) charge)
             (fn-bpi-host-context destination source-eid bundle-id lifetime
                                  monotonic-ns wall-ns wall-error-ms has-wall)
-            adu))))
+            adu fn-arena))))
 
 ; -----------------------------------------------------------------------------
 ; Bundle identity and expiry (RFC 9171 sections 4.1, 4.2.7, 4.3.1 and 5.5)

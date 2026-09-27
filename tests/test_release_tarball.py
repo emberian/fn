@@ -5,7 +5,7 @@ tools/runpath_check.py's GLIBC_FLOOR (the release runs on Debian 12).
 
 Needs a release built by packaging/release-tarball.sh on this platform:
 
-    FN_RELEASE_TARBALL=/abs/out/fn-REV12-linux-x86_64.tar.gz \\
+    FN_RELEASE_TARBALL=/abs/out/fn-6.7.N-linux-x86_64.tar.gz \\
         python3 -m unittest -v tests.test_release_tarball
 
 (OUT_DIR/SHA256SUMS beside it).  FN_FORMAT7_STORE optionally names a
@@ -21,6 +21,7 @@ import hashlib
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -99,14 +100,22 @@ class ReleaseTarballTests(unittest.TestCase):
         for rel, digest in listed.items():
             self.assertEqual(sha256(self.top / rel), digest, rel)
 
-    def test_version_prints_the_source_revision(self):
+    def test_version_prints_the_release_and_the_source_revision(self):
         rev = (self.top / "libexec/fn/source-revision").read_text().strip()
         self.assertRegex(rev, r"^[0-9a-f]{40}$")
-        self.assertTrue(self.tarball.name.startswith("fn-" + rev[:12] + "-"))
         out = subprocess.run([str(self.top / "bin/fn"), "--version"], env=CLEAN_ENV,
                              capture_output=True, text=True, timeout=120)
         self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertEqual(out.stdout.strip(), "fn " + rev)
+        # `fn 6.7.N (REV12)': VERSION's release version, built into the image.
+        printed = re.fullmatch(r"fn (6\.7\.(?:0|[1-9][0-9]*)) \(([0-9a-f]{12})\)\n", out.stdout)
+        self.assertIsNotNone(printed, out.stdout)
+        version, short = printed.groups()
+        self.assertEqual(short, rev[:12])
+        # A gated release is fn-6.7.N-PLATFORM.tar.gz; a --frozen package
+        # (not a release) is fn-6.7.N+REV12-PLATFORM.tar.gz.
+        self.assertRegex(self.tarball.name,
+                         "^fn-" + re.escape(version) + "(\\+" + short + ")?"
+                         + "-(linux-x86_64|openbsd-amd64)\\.tar\\.gz$")
 
     def test_the_release_was_gated(self):
         gate = (self.top / "share/fn/release-gate.txt").read_text()

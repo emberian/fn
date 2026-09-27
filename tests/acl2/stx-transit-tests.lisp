@@ -17,6 +17,8 @@
 (include-book "../../books/stx-epochs")
 (include-book "../../books/stx-authority")
 (include-book "../../books/codec-attach")
+; The lace of the retained store (records-flip): the rows' lace and ALPHA.
+(include-book "../../books/stx-lace-rows")
 
 ; -----------------------------------------------------------------------------
 ; Two principals, one keyring, and a store made of article records
@@ -194,8 +196,11 @@
 (defconst *stxt-live-0* (fn-node-initial-state '("fn.test") 100))
 (assert-event (fn-node-statep *stxt-live-0*))
 
+; The acceptance state holds an article's payload as an arena HANDLE
+; (records-flip): the entry seals the octets and stages the handle, 0 here,
+; and the lace of the live node is read through the arena (ALPHA below).
 (defconst *stxt-live-1*
-  (fn-node-prepare *stxt-live-0* 9 "<1>" (fn-article-payload *stxt-r1*)
+  (fn-node-prepare *stxt-live-0* 9 "<1>" 0
                    '("fn.test") "archive-1" "content-1" "release-1" 5 841000000))
 (assert-event (fn-node-statep *stxt-live-1*))
 (assert-event (not (equal *stxt-live-1* *stxt-live-0*)))
@@ -218,17 +223,34 @@
 (assert-event (equal (fn-article-payload
                       (fn-article-from-pending
                        (fn-state-pending (fn-node-acceptance *stxt-live-1*))))
-                     (fn-article-payload *stxt-r1*)))
-(assert-event (equal (fn-stx-lace *stxt-live-1* *stxt-keyring*) nil))
-(assert-event (equal (fn-stx-lace *stxt-live-2* *stxt-keyring*) (list *stxt-s1*)))
+                     0))
+; The wire projection of a node that holds handles reads no statement: the
+; lace of a live node is ALPHA's (each handle replaced by its bytes).
+(assert-event (equal (fn-stx-lace *stxt-live-2* *stxt-keyring*) nil))
+
+; ALPHA over an arena whose handle 0 holds BYTES: the node's articles with
+; their bytes read by handle (books/store-intern.lisp fn-articles-wire-of).
+(defun stxt-alpha-in (node bytes fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((fn-arena (fn-arena-seal-list bytes fn-arena)))
+    (mv (fn-articles-wire-of (fn-stx-store node) fn-arena) fn-arena)))
+(defun stxt-alpha (node bytes)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (x fn-arena) (stxt-alpha-in node bytes fn-arena) x)))
+(defconst *stxt-live-1-alpha* (stxt-alpha *stxt-live-1* (fn-article-payload *stxt-r1*)))
+(defconst *stxt-live-2-alpha* (stxt-alpha *stxt-live-2* (fn-article-payload *stxt-r1*)))
+(assert-event (equal (fn-stx-lace-of-store *stxt-live-1-alpha* *stxt-keyring*) nil))
+(assert-event (equal (fn-stx-lace-of-store *stxt-live-2-alpha* *stxt-keyring*)
+                     (list *stxt-s1*)))
 
 ; S3-1's conclusion, now on a run reached by the node transition rather than
 ; by a hand-built store: accepting is a lace merge of the delta.
-(assert-event (fn-stx-delta-freshp (fn-stx-lace *stxt-live-1* *stxt-keyring*)
+(assert-event (fn-stx-delta-freshp (fn-stx-lace-of-store *stxt-live-1-alpha* *stxt-keyring*)
                                    (fn-stx-delta (fn-article-payload *stxt-r1*)
                                                  *stxt-keyring*)))
-(assert-event (equal (fn-stx-lace *stxt-live-2* *stxt-keyring*)
-                     (fn-lace-merge (fn-stx-lace *stxt-live-1* *stxt-keyring*)
+(assert-event (equal (fn-stx-lace-of-store *stxt-live-2-alpha* *stxt-keyring*)
+                     (fn-lace-merge (fn-stx-lace-of-store *stxt-live-1-alpha* *stxt-keyring*)
                                     (fn-stx-delta (fn-article-payload *stxt-r1*)
                                                   *stxt-keyring*))))
 
@@ -239,19 +261,60 @@
 ; it is NOT a host line, because nothing in host/, bin/ or tools/ calls
 ; `fn-stx-index-lookup'.  See planning/lanes/HANDOFF-w11-node-index.md.
 (assert-event
- (equal (fn-stx-index-of-store (fn-stx-store *stxt-live-2*) *stxt-keyring*)
+ (equal (fn-stx-index-of-store *stxt-live-2-alpha* *stxt-keyring*)
         (fn-stx-index-add
-         (fn-stx-index-of-store (fn-stx-store *stxt-live-1*) *stxt-keyring*)
+         (fn-stx-index-of-store *stxt-live-1-alpha* *stxt-keyring*)
          (fn-stx-delta (fn-article-payload *stxt-r1*) *stxt-keyring*))))
 (assert-event
  (equal (fn-stx-index-lookup
-         (fn-stx-index-of-store (fn-stx-store *stxt-live-2*) *stxt-keyring*)
+         (fn-stx-index-of-store *stxt-live-2-alpha* *stxt-keyring*)
          (fn-stmt-id *stxt-s1*))
         *stxt-s1*))
 (assert-event
- (equal (fn-lace-lookup (fn-stx-lace *stxt-live-2* *stxt-keyring*)
+ (equal (fn-lace-lookup (fn-stx-lace-of-store *stxt-live-2-alpha* *stxt-keyring*)
                         (fn-stmt-id *stxt-s1*))
         *stxt-s1*))
+
+; -----------------------------------------------------------------------------
+; The lace of the RETAINED store (books/stx-lace-rows.lisp): the wire record
+; carrying the signed octets, interned under the keyring, is a row whose
+; context holds the delta; the rows' lace is the statement, with no byte
+; re-read, and it is the wire lace of the rows' articles through the arena.
+(defconst *stxt-w1*
+  (fn-record-make 1 0 9 "<1>" (fn-article-payload *stxt-r1*) '("fn.test")
+                  "archive-1" "content-1" "release-1" 5 841000000))
+(assert-event (fn-record-p *stxt-w1*))
+(defun stxt-rows-in (ws keyring fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-intern-events ws keyring 0 fn-arena)
+    (mv (list rows
+              (fn-rows-articles-newest-first rows fn-arena)
+              (fn-rows-contexts-okp rows *stxt-keyring* 0 fn-arena))
+        fn-arena)))
+(defun stxt-rows (ws keyring)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (x fn-arena) (stxt-rows-in ws keyring fn-arena) x)))
+(make-event (list 'defconst '*stxt-rows* (list 'quote (stxt-rows (list *stxt-w1*) *stxt-keyring*))))
+; Positive witness of fn-sn-lace-of-rows-is-the-wire-lace: the hypothesis
+; holds, both sides are the one statement.
+(assert-event (nth 2 *stxt-rows*))
+(assert-event (equal (fn-sn-lace-of-rows (nth 0 *stxt-rows*)) (list *stxt-s1*)))
+(assert-event (equal (fn-stx-lace-of-store (nth 1 *stxt-rows*) *stxt-keyring*)
+                     (list *stxt-s1*)))
+; fn-sn-index-of-rows-agrees-with-lace on the same rows.
+(assert-event (equal (fn-stx-index-lookup (fn-sn-index-of-rows (nth 0 *stxt-rows*))
+                                          (fn-stmt-id *stxt-s1*))
+                     *stxt-s1*))
+; Tooth: rows interned under ANOTHER keyring (none) fail the context
+; invariant for this one, and the conclusion fails with it: the rows' lace is
+; empty while the wire lace of the same bytes under this keyring is not.
+(make-event (list 'defconst '*stxt-rows-nil* (list 'quote (stxt-rows (list *stxt-w1*) nil))))
+(assert-event (not (nth 2 *stxt-rows-nil*)))
+(assert-event (equal (fn-sn-lace-of-rows (nth 0 *stxt-rows-nil*)) nil))
+(assert-event (not (equal (fn-sn-lace-of-rows (nth 0 *stxt-rows-nil*))
+                          (fn-stx-lace-of-store (nth 1 *stxt-rows-nil*) *stxt-keyring*))))
 
 ; The one hypothesis, dropped, on two concrete violating values.  Both calls
 ; are inside `fn-node-complete's guard (both states are node states), so no

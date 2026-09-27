@@ -100,21 +100,11 @@
  (value (fn-bpaj-config-status-fast
          (f-get-global 'fn-bpaj-state state) destination policy issuer)))
 
-(defun fn-bprj-request-intent-record
- (inbound-id request-octets generation txid application-result state)
- (declare (xargs :stobjs state :mode :program))
- (let ((record (list :request-intent inbound-id request-octets generation txid
-                     application-result)))
-  (value (if (fn-bpaj-intentp record) record nil))))
-
-(defun fn-bprj-request-context-v2-record
- (inbound-id request-octets store-record generation txid record-generation
-             application-result state)
- (declare (xargs :stobjs state :mode :program))
- (let ((record (list :request-context-v2 inbound-id request-octets store-record
-                     generation txid record-generation t application-result)))
-  (value (if (fn-bpaj-context-v2p record) record nil))))
-
+; PKT-646: the transit intent and context carry the request's reference
+; (its metadata, the article's length and digest), the projection's length
+; and digest and the Store record's identity, never their bytes; ACL2 builds
+; both (books/bp-transit-join.lisp `fn-bpaj-transit-intent-from-plan',
+; books/bp-native-app.lisp `fn-bpaj-transit-context-record').
 (defun fn-bprj-request-transit-intent-record (record state)
  (declare (xargs :stobjs state :mode :program))
  (value (if (fn-bpaj-transit-intentp record) record nil)))
@@ -123,17 +113,9 @@
  (inbound-id request-octets store-record generation txid record-generation
              application-result state)
  (declare (xargs :stobjs state :mode :program))
- (let ((record (list :request-transit-context inbound-id request-octets
-                     store-record generation txid record-generation
-                     application-result)))
-  (value (if (fn-bpaj-transit-contextp record) record nil))))
-
-(defun fn-bprj-request-transitp (request-octets state)
- (declare (xargs :stobjs state :mode :program))
- (value (equal (fn-bpaj-nth 0
-                (fn-bpaj-request-intent
-                 (f-get-global 'fn-bpaj-state state) request-octets))
-               :request-transit-intent)))
+ (value (fn-bpaj-transit-context-record inbound-id request-octets store-record
+                                        generation txid record-generation
+                                        application-result)))
 
 (defun fn-bprj-pending-receipt-resolution (state)
  (declare (xargs :stobjs state :mode :program))

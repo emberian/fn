@@ -106,8 +106,8 @@
          *xrt-session*
          (fn-nntp-string-octets "215 order of fields in overview database")
          (fn-nov-fmt-octet-lines
-          '("Subject:" "From:" "Date:" "Message-ID:" "References:" ":bytes"
-            ":lines" "Xref:full")))))
+          '("Subject:" "From:" "Date:" "Message-ID:" "References:" "Bytes:"
+            "Lines:" "Xref:full")))))
 ; A blind environment answers the eight-field lines and the seven-line
 ; format exactly as before (the without-a-server theorems).
 (assert-event

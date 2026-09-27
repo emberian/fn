@@ -38,11 +38,11 @@
         (cons (car deltas) (fn-cfg-host-non-group-deltas (cdr deltas))))
     nil))
 
-(defun fn-cfg-host-initial-octets (name-octets-list)
+(defun fn-cfg-host-initial-octets-stamped (name-octets-list stamp)
   ; The initial configuration record of a fresh store: generation 1, one
   ; creation per operator-supplied name, then the default record's capacity
-  ; and limits.  Admitted by exactly the predicate replay will apply to it,
-  ; or :bad.
+  ; and limits, stamped STAMP.  Admitted by exactly the predicate replay
+  ; will apply to it, or :bad.
   (declare (xargs :mode :program))
   (let ((names (fn-store-octet-lists->strings name-octets-list)))
     (if (or (equal names :bad) (null names)
@@ -54,8 +54,28 @@
                      0 0 1
                      (append (fn-cfg-host-creations names)
                              (fn-cfg-host-non-group-deltas *fn-cfg-default-change*))
-                     *fn-cfg-default-stamp*)))
+                     stamp)))
         (if (fn-cnode-record-acceptablep (fn-cnode-initial (fn-cfg-initial))
                                          record (fn-cnode-line-ceiling))
             (fn-cfg-encode record)
           :bad)))))
+
+(defun fn-cfg-host-initial-octets (name-octets-list)
+  ; The zero stamp (no wall claim): tools/frame_bridge.py's initializer.
+  (declare (xargs :mode :program))
+  (fn-cfg-host-initial-octets-stamped name-octets-list *fn-cfg-default-stamp*))
+
+(defun fn-cfg-host-initial-octets-at (name-octets-list monotonic wall)
+  ; PKT-665 (PRF-243): the native `init' stamps its record with the host's
+  ; clock (MONOTONIC and WALL, DTN seconds), so each initial group's
+  ; creation time is the record's commit time, durable with the record
+  ; (NEWGROUPS, LIST ACTIVE.TIMES).  The codec decides whether the reading
+  ; fits its schema (`fn-native-admin-clock-observation'); one that does not
+  ; stamps the record with the zero observation, as before.
+  (declare (xargs :mode :program))
+  (let ((clock (fn-native-admin-clock-observation monotonic wall)))
+    (fn-cfg-host-initial-octets-stamped
+     name-octets-list
+     (if (equal (fn-native-admin-clock-status clock) :accepted)
+         (fn-native-admin-clock-stamp clock)
+       *fn-cfg-default-stamp*))))

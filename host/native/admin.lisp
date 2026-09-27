@@ -26,9 +26,13 @@ or syntactically unsupported requests in `fn-native-admin-plan'."
   "Raw Lisp observes clock values but does not coerce or wrap them.  ACL2
 builds the record stamp and refuses values that its durable schema cannot
 represent."
+  ;; The wall reading is DTN seconds, the unit of the live owner's
+  ;; configuration stamps (books/owner-config.lisp `fn-ocfg-config-stamp').
+  ;; It was get-universal-time (seconds since 1900), so an offline record's
+  ;; stamp was 3155673600 s ahead of a live one's (PKT-665, 2026-09-27).
   (let ((result (fnn-core 'fn-native-admin-host-clock-observation
                           (floor (fnn-now) internal-time-units-per-second)
-                          (get-universal-time))))
+                          (floor (fnn-owner-wall-milliseconds) 1000))))
     (unless (eq (fnn-core 'fn-native-admin-host-clock-status result) :accepted)
       (fnn-refuse "ACL2 refused an unrepresentable clock observation"))
     (fnn-core 'fn-native-admin-host-clock-stamp result)))
@@ -76,7 +80,7 @@ set, exact record, candidate replay/open result and generated final name."
   "The offline request's authorization from the open's carried fold
 (PKT-510 (1)): ACL2's fn-store-cfg-native-admin-authorize-carried, which is
 fn-store-cfg-native-admin-authorize over the history the open replayed
-(books/config-carried-candidate.lisp
+(books/config-carried-open.lisp
 fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization) without
 replaying it again.  When ACL2 answers NIL (no carried open, or a
 configuration history that is not the open's) the request authorizes over the
@@ -120,22 +124,34 @@ history it read, as before."
                   (fnn-indeterminate "configuration record publication is uncertain"))
       (otherwise (fnn-fault "ACL2 returned invalid configuration publication outcome")))))
 
-(defun fnn-admin-verify-under-lock (store expected-generation)
-  "Reconstruct the just-published configuration while this command still owns
-the writer lock.  A later administrator cannot advance the generation between
-publication and this observation.  The immutable publisher's :DURABLE result
-is already this command's accepted persistence outcome, so an independent
-diagnostic failure is reported without retroactively recasting that durable
-result as a refusal or uncertainty."
+(defun fnn-admin-verify-under-lock (store record authorization)
+  "Read the just-published configuration record back while this command still
+owns the writer lock, and let ACL2 compare it with the authorized octets.
+A later administrator cannot advance the generation between publication and
+this observation.  The reopen this replaces (PKT-601 (2)) is decided already:
+the authorization accepted only a candidate whose open over the observed
+history and RECORD succeeds, and when the file holds RECORD at the named
+generation the open of the history the directory now holds is that candidate
+(books/config-carried-open.lisp fn-cfgc-readback-verified-is-the-reopen).
+The immutable publisher's :DURABLE result is already this command's accepted
+persistence outcome, so an independent diagnostic failure is reported
+without retroactively recasting that durable result as a refusal or
+uncertainty."
   (handler-case
-      (progn
-        (fnn-bridge-reset)
-        (fnn-recover store)
-        (if (= (fnn-store-config-generation store) expected-generation)
-            :verified
-          (progn
-            (setf (fnn-store-fenced store) t)
-            :generation-mismatch)))
+      (let* ((name (fnn-core 'fn-native-admin-host-publication-name authorization))
+             (generation (fnn-core 'fn-native-admin-host-publication-generation
+                                   authorization))
+             (path (fnn-join (fnn-config-dir store) name)))
+        (fnn-check-regular path)
+        (let ((word (fnn-core 'fn-cfgc-readback-verdict
+                              (fnn-octet-list
+                               (fnn-read-regular-bounded path +fnn-config-record-bytes+))
+                              record generation (fnn-store-frontier store))))
+          (if (eq word :verified)
+              :verified
+            (progn
+              (setf (fnn-store-fenced store) t)
+              word))))
     (error ()
       (setf (fnn-store-fenced store) t)
       :unavailable)))
@@ -169,7 +185,9 @@ it cannot continue with its old group-code table."
   "Stage, publish and complete one ACL2-constructed configuration record.
 
 The caller holds the owner mutex.  STAGE is called with a private logical
-connection id and answers the owner's staging word; only :staged continues.
+connection id and answers the owner's ConfigResult (books/owner-results.lisp,
+checked by fnn-owner-result); only :staged continues, and its octets are the
+one configuration record to publish.
 Answers :accepted once the record is durable and the owner installed it, or
 :refused before any publication."
   ;; Reuse the model's existing generation pin: a private logical
@@ -181,26 +199,24 @@ Answers :accepted once the record is durable and the owner installed it, or
   ;; (host/native/owner.lisp).  It is not an action keyword: through
   ;; `fnn-owner-action' every live request faulted here and stopped the
   ;; owner (the dabebb84 matrix run, V0-CFG-LIVE).
+  (let ((record nil))
   (let* ((cid (let ((opened (fnn-owner-core 'fn-owner-open)))
                 (unless (or (null opened) (and (integerp opened) (>= opened 0)))
                   (fnn-fault "owner returned a malformed connection id"))
                 opened))
-         (staged (and (integerp cid) (funcall stage cid))))
+         (result (and (integerp cid) (funcall stage cid)))
+         (staged (and result (fnn-core 'fn-ores-config-word result))))
     (when (integerp cid) (fnn-owner-action 'fn-owner-close cid))
     (unless (eq staged :staged)
-      ;; The second value is the staging step's reason, which ACL2 left in
-      ;; its reason slot (fn-owner-reconfigure-reason: fn-cfg-delta-reason's
-      ;; word, :no-such-grant and the rest), or NIL when nothing was staged.
+      ;; The second value is the staging step's reason, a field of its
+      ;; ConfigResult (fn-cfg-delta-reason's word, :no-such-grant and the
+      ;; rest), or NIL when nothing was staged.
       (return-from fnn-owner-live-reconfigure-locked
         (values :refused
-                (and (integerp cid) (eq staged :refused)
-                     (fnn-owner-core 'fn-owner-reconfigure-reason))))))
-  (let* ((record-list (fnn-owner-core 'fn-owner-reconfigure-octets))
-         (record (progn
-                   (unless (fnn-octet-list-p record-list)
-                     (fnn-fault "owner staged malformed configuration octets"))
-                   (fnn-octets record-list)))
-         (store (fnn-owner-service-store service))
+                (and (eq staged :refused)
+                     (fnn-core 'fn-ores-config-reason result)))))
+    (setq record (fnn-octets (fnn-core 'fn-ores-config-octets result))))
+  (let* ((store (fnn-owner-service-store service))
          (observation (fnn-config-record-observation store))
          (config-records (fnn-config-records-from-observation observation))
          (authorization
@@ -217,7 +233,7 @@ Answers :accepted once the record is durable and the owner installed it, or
          "owner rejected a durably published configuration"))
       (fnn-owner-refresh-config-cache service published)
       (fnn-owner-feed-refresh-configuration service)
-      :accepted)))
+      :accepted))))
 
 ;;; PRF-164 (PKT-439): the owner's side of XREDEEM.  The connection CID
 ;;; holds (books/nntp-auth.lisp fn-auth-redeem-waitp) after its read; the
@@ -237,7 +253,8 @@ Returns the ACL2-rendered reply octets for CID."
            (fnn-owner-live-reconfigure-locked
             service
             (lambda (pcid)
-              (fnn-owner-action 'fn-acct-host-owner-redeem-stage
+              (fnn-owner-result 'fn-ores-config-result-p
+                                'fn-acct-host-owner-redeem-stage
                                 pcid cid salt bound)))))
     (unless (member published '(:accepted :refused))
       (fnn-fault "owner returned a malformed publication word"))
@@ -272,7 +289,8 @@ Returns the ACL2-rendered reply octets for CID."
            (fnn-owner-live-reconfigure-locked
             service
             (lambda (cid)
-              (fnn-owner-action 'fn-native-admin-host-owner-reconfigure cid plan)))
+              (fnn-owner-result 'fn-ores-config-result-p
+                                'fn-native-admin-host-owner-reconfigure cid plan)))
          (if (eq word :refused) (list :reason :refused reason) word))))))
 
 (defun fnn-admin-query (root plan)
@@ -323,13 +341,13 @@ turning a refusal into a physical mutation."
                             (fnn-admin-authorize store records config-records record names))))
                  (multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
                  ; The durable publisher is the acceptance boundary.  Verify
-                 ; its candidate under the retained exclusive lock: releasing
-                 ; it before an exact-generation reopen would let a later
+                 ; the published file under the retained exclusive lock:
+                 ; releasing it before the readback would let a later
                  ; administrator make this already durable command appear to
                  ; fail merely by advancing the history.
                  (fnn-out "configured generation=~d record=~a verification=~a"
                           generation name
-                          (fnn-admin-verify-under-lock store generation))
+                          (fnn-admin-verify-under-lock store record authorization))
                  +fnn-exit-ok+))))
         (when store (fnn-store-close store)))))
 

@@ -209,10 +209,34 @@
           (fn-nntp-closed-memberp octets (cdr closed)))
     nil))
 
-; The status field of a group whose name is OCTETS, under CLOSED.
+;; P3 (moderated groups, PRF-228; books/moderation.lisp).  The same list
+;; carries one entry per moderated group, (:moderated G Q MODS) as the owner
+;; installs it (books/owner-agent.lisp `fn-oag-post-config') or
+;; (:approver G Q) as a connection whose login moderates G sees it
+;; (books/nntp-auth.lisp `fn-auth-moderation-config'); G is the group's
+;; octets.  An entry is never a group name's octets, so the read-only
+;; membership above is unchanged by it.
+(defun fn-nntp-moderated-entryp (e)
+  (declare (xargs :guard t))
+  (and (consp e)
+       (or (equal (car e) :moderated) (equal (car e) :approver))
+       (consp (cdr e))
+       (consp (cddr e))))
+
+(defun fn-nntp-moderated-memberp (octets closed)
+  (declare (xargs :guard t))
+  (if (consp closed)
+      (or (and (fn-nntp-moderated-entryp (car closed))
+               (equal (cadr (car closed)) octets))
+          (fn-nntp-moderated-memberp octets (cdr closed)))
+    nil))
+
+; The status field of a group whose name is OCTETS, under CLOSED: "n" when
+; closed, else "m" when moderated (RFC 6048 section 2.1.1), else "y".
 (defun fn-nntp-closed-status (octets closed)
   (declare (xargs :guard t))
-  (if (fn-nntp-closed-memberp octets closed) "n" "y"))
+  (if (fn-nntp-closed-memberp octets closed) "n"
+    (if (fn-nntp-moderated-memberp octets closed) "m" "y")))
 
 (defun fn-nntp-active-status-line (archive group closed)
   (let ((summary (fn-nntp-group-summary archive group)))
@@ -2499,6 +2523,7 @@
     fn-nntp-env-listed fn-nntp-env-listing
     fn-nntp-envp fn-nntp-blind-env
     fn-nntp-env-full fn-nntp-env-with-closed fn-nntp-env-closed fn-nntp-closed-memberp
+    fn-nntp-moderated-entryp fn-nntp-moderated-memberp
     fn-nntp-closed-status fn-nntp-active-status-line fn-nntp-active-status-lines
     fn-nntp-list-active-status fn-nntp-list-status-response
     fn-nntp-unix-dtn-ms fn-nntp-host-observation fn-nntp-div fn-nntp-mod

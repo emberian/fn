@@ -26,9 +26,8 @@
 ; sequence, so the receipt bytes are reconstructed from disk rather than from
 ; a live in-process decision.
 
-(defconst *bprt-journal*
-  (list *bprr-config-record* *bprr-request-record*
-        *bprr-intent-record* *bprr-decision-record*))
+(make-event `(defconst *bprt-journal* ',(list *bprr-config-record* *bprr-request-record*
+        *bprr-intent-record* *bprr-decision-record*)))
 (make-event `(defconst *bprt-state* ',(cadr (fn-bprr-replay *bpr-recovered-ready-store* *bprt-journal*))))
 
 (assert-event (car (fn-bprr-replay *bpr-recovered-ready-store* *bprt-journal*)))
@@ -44,13 +43,11 @@
 ; derived from the stored record and the request, and the request's article and
 ; subject are the record's payload and content subject -- three distinct
 ; identities that a witness conflating them would not separate.
-(defconst *bprt-context*
-  (fn-bpr-find-context (fn-bpa-request-work-id *bpr-request*)
-                       (fn-bpr-state-contexts *bprt-state*)))
-(defconst *bprt-record*
-  (fn-bprv-find-record *bpr-recovered-ready-store*
+(make-event `(defconst *bprt-context* ',(fn-bpr-find-context (fn-bpa-request-work-id *bpr-request*)
+                       (fn-bpr-state-contexts *bprt-state*))))
+(make-event `(defconst *bprt-record* ',(fn-bprv-find-record *bpr-recovered-ready-store*
                        (fn-bpr-state-config *bprt-state*) *bprt-context*
-                       (fn-sf-records (fn-sn-files *bpr-recovered-ready-store*))))
+                       (fn-sf-records (fn-sn-files *bpr-recovered-ready-store*)))))
 (assert-event (fn-record-p *bprt-record*))
 (assert-event
  (member-equal *bprt-record*
@@ -67,6 +64,17 @@
 (assert-event
  (not (equal (fn-bpa-request-subject *bpr-request*)
              (fn-record-msgid *bprt-record*))))
+
+; The context holds the request by REFERENCE (PKT-646): its reference is the
+; request's, it holds no copy of the article, and it resolves over the
+; grounding record's payload to exactly the request.
+(assert-event
+ (and (equal (fn-bpr-context-request-ref *bprt-context*)
+             (fn-bpaj-request-ref *bpr-request*))
+      (not (member-equal (fn-bpa-request-article *bpr-request*)
+                         (fn-bpr-context-request-ref *bprt-context*)))
+      (equal (fn-bpr-context-resolve *bprt-context* *bprt-record*)
+             *bpr-request*)))
 
 ; -----------------------------------------------------------------------------
 ; Teeth for `fn-bprv-replayed-receipt-is-grounded'
@@ -104,9 +112,14 @@
            (fn-record-p record)
            (member-equal record (fn-sf-records (fn-sn-files store)))
            (fn-bpi-node-record-committedp (fn-sn-node store) record)
-           (equal context (fn-bpr-context-from-request record request))
-           (equal (fn-bpa-request-article request) (fn-record-payload record))
-           (equal (fn-bpa-request-subject request) (fn-record-content-subject record))
+           (equal (fn-bpaj-request-ref request)
+                  (fn-bpr-context-request-ref context))
+           (equal context (fn-bpr-context-from-request
+                           record (fn-bpr-context-resolve context record)))
+           (equal (fn-bpa-request-article (fn-bpr-context-resolve context record))
+                  (fn-record-payload record))
+           (equal (fn-bpa-request-subject (fn-bpr-context-resolve context record))
+                  (fn-record-content-subject record))
            (member-equal entry (fn-bpr-state-receipts st))
            (fn-bprv-entry-decidedp entry records)
            (equal (fn-bpr-receipt-entry-receipt entry)
@@ -115,13 +128,43 @@
                                        (fn-bpr-receipt-entry-receipt entry))))
            (equal (fn-bpr-receipt-adu st request)
                   (fn-bpa-encode (fn-bpr-receipt-entry-receipt entry))))))))
+(assert-event (not (let* ((store *bpr-recovering-store*)
+           (records *bprt-journal*)
+           (request *bpr-request*)
+           (st (cadr (fn-bprr-replay store records)))
+           (context (fn-bpr-find-context (fn-bpa-request-work-id request)
+                                         (fn-bpr-state-contexts st)))
+           (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
+                                       (fn-bpr-state-receipts st)))
+           (record (fn-bprv-find-record store (fn-bpr-state-config st) context
+                                        (fn-sf-records (fn-sn-files store)))))
+      (and (fn-sn-statep store)
+           (equal (fn-sf-phase (fn-sn-files store)) :ready)
+           (fn-record-p record)
+           (member-equal record (fn-sf-records (fn-sn-files store)))
+           (fn-bpi-node-record-committedp (fn-sn-node store) record)
+           (equal (fn-bpaj-request-ref request)
+                  (fn-bpr-context-request-ref context))
+           (equal context (fn-bpr-context-from-request
+                           record (fn-bpr-context-resolve context record)))
+           (equal (fn-bpa-request-article (fn-bpr-context-resolve context record))
+                  (fn-record-payload record))
+           (equal (fn-bpa-request-subject (fn-bpr-context-resolve context record))
+                  (fn-record-content-subject record))
+           (member-equal entry (fn-bpr-state-receipts st))
+           (fn-bprv-entry-decidedp entry records)
+           (equal (fn-bpr-receipt-entry-receipt entry)
+                  (fn-bpr-receipt-for context (fn-bpr-state-config st)
+                                      (fn-bpa-receipt-id
+                                       (fn-bpr-receipt-entry-receipt entry))))
+           (equal (fn-bpr-receipt-adu st request)
+                  (fn-bpa-encode (fn-bpr-receipt-entry-receipt entry))))))) ; evaluation witness for bprt-teeth-grounded-without-an-unready-store
 
 ; Case 2: a ready Store, but the journal stops after the receipt intent with no
 ; committed decision.  No receipt is emitted, and the conclusion's
 ; entry-decided conjunct is false: an intent is not a decision, and bytes may
 ; not be produced from one.
-(defconst *bprt-intent-only*
-  (list *bprr-config-record* *bprr-request-record* *bprr-intent-record*))
+(make-event `(defconst *bprt-intent-only* ',(list *bprr-config-record* *bprr-request-record* *bprr-intent-record*)))
 (assert-event
  (null (fn-bpr-receipt-adu
         (cadr (fn-bprr-replay *bpr-recovered-ready-store* *bprt-intent-only*))
@@ -145,9 +188,14 @@
            (fn-record-p record)
            (member-equal record (fn-sf-records (fn-sn-files store)))
            (fn-bpi-node-record-committedp (fn-sn-node store) record)
-           (equal context (fn-bpr-context-from-request record request))
-           (equal (fn-bpa-request-article request) (fn-record-payload record))
-           (equal (fn-bpa-request-subject request) (fn-record-content-subject record))
+           (equal (fn-bpaj-request-ref request)
+                  (fn-bpr-context-request-ref context))
+           (equal context (fn-bpr-context-from-request
+                           record (fn-bpr-context-resolve context record)))
+           (equal (fn-bpa-request-article (fn-bpr-context-resolve context record))
+                  (fn-record-payload record))
+           (equal (fn-bpa-request-subject (fn-bpr-context-resolve context record))
+                  (fn-record-content-subject record))
            (member-equal entry (fn-bpr-state-receipts st))
            (fn-bprv-entry-decidedp entry records)
            (equal (fn-bpr-receipt-entry-receipt entry)
@@ -156,3 +204,34 @@
                                        (fn-bpr-receipt-entry-receipt entry))))
            (equal (fn-bpr-receipt-adu st request)
                   (fn-bpa-encode (fn-bpr-receipt-entry-receipt entry))))))))
+(assert-event (not (let* ((store *bpr-recovered-ready-store*)
+           (records *bprt-intent-only*)
+           (request *bpr-request*)
+           (st (cadr (fn-bprr-replay store records)))
+           (context (fn-bpr-find-context (fn-bpa-request-work-id request)
+                                         (fn-bpr-state-contexts st)))
+           (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
+                                       (fn-bpr-state-receipts st)))
+           (record (fn-bprv-find-record store (fn-bpr-state-config st) context
+                                        (fn-sf-records (fn-sn-files store)))))
+      (and (fn-sn-statep store)
+           (equal (fn-sf-phase (fn-sn-files store)) :ready)
+           (fn-record-p record)
+           (member-equal record (fn-sf-records (fn-sn-files store)))
+           (fn-bpi-node-record-committedp (fn-sn-node store) record)
+           (equal (fn-bpaj-request-ref request)
+                  (fn-bpr-context-request-ref context))
+           (equal context (fn-bpr-context-from-request
+                           record (fn-bpr-context-resolve context record)))
+           (equal (fn-bpa-request-article (fn-bpr-context-resolve context record))
+                  (fn-record-payload record))
+           (equal (fn-bpa-request-subject (fn-bpr-context-resolve context record))
+                  (fn-record-content-subject record))
+           (member-equal entry (fn-bpr-state-receipts st))
+           (fn-bprv-entry-decidedp entry records)
+           (equal (fn-bpr-receipt-entry-receipt entry)
+                  (fn-bpr-receipt-for context (fn-bpr-state-config st)
+                                      (fn-bpa-receipt-id
+                                       (fn-bpr-receipt-entry-receipt entry))))
+           (equal (fn-bpr-receipt-adu st request)
+                  (fn-bpa-encode (fn-bpr-receipt-entry-receipt entry))))))) ; evaluation witness for bprt-teeth-grounded-without-a-committed-decision

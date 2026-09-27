@@ -418,7 +418,12 @@ def measure_signed_posts(author, carriers, proc, port, control, posts, history, 
     out["carrier_sign_median_s"] = round(signs[len(signs) // 2], 3)
 
 
-CHECKPOINT_LINE = re.compile(rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) octets=(\d+) ms=(\d+)")
+# The pipeline's line carries `steps=N' since checkpoint-pipeline (2026-09-26);
+# the earlier form without it is still matched (an older image).  Batch AM's
+# gate recorded checkpoint_publish_ms null because this pattern lacked the
+# field and never matched: the gate waited out its deadline.
+CHECKPOINT_LINE = re.compile(
+    rb"CHECKPOINT auto sequence=(\d+) suffix=(\d+) octets=(\d+)(?: steps=(\d+))? ms=(\d+)")
 
 
 def measure_checkpoint(image, work, env, out, deadline=180.0):
@@ -460,7 +465,8 @@ def measure_checkpoint(image, work, env, out, deadline=180.0):
         return
     out["checkpoint_published"] = True
     out["checkpoint_sequence"], out["checkpoint_suffix"] = int(line.group(1)), int(line.group(2))
-    out["checkpoint_octets"], out["checkpoint_publish_ms"] = int(line.group(3)), int(line.group(4))
+    out["checkpoint_octets"], out["checkpoint_publish_ms"] = int(line.group(3)), int(line.group(5))
+    out["checkpoint_steps"] = int(line.group(4)) if line.group(4) is not None else None
     out["checkpoint_seen_after_load_s"] = round(seen - loaded, 3)
 
 
@@ -551,7 +557,11 @@ def run(a):
                "--work %s --json %s/result.json --wait-quiet %d%s > %s/box.log 2>&1; echo $? > %s/status"
                % (remote, shlex.quote(a.image), rev, label, work, remote, a.wait_quiet,
                   " --under-load" if a.under_load else "", remote, remote))
-    ssh("systemd-run --user --quiet --collect --unit=%s --slice=swarm.slice -p MemoryMax=24G "
+    # MemoryMax: the served store's scale profile reserves about 55 GB
+    # (books/heap-reservation.lisp) and the connection budget
+    # (books/connection-budget.lisp) refuses a run whose machine leaves no
+    # room for connections, so 24G refused every start after batch AR.
+    ssh("systemd-run --user --quiet --collect --unit=%s --slice=swarm.slice -p MemoryMax=64G "
         "-p MemorySwapMax=0 sh -c %s" % (unit, shlex.quote(box_cmd)), check=True)
     print("started %s on %s; %s" % (unit, HOST, remote), flush=True)
     waited = subprocess.run([str(ROOT / "tools" / "wait_for.sh"), "--host", HOST, "--deadline",

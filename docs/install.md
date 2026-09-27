@@ -1,242 +1,241 @@
 # Installing fn
 
-fn is a news server: it speaks NNTP (the Usenet protocol) to readers and to
-other fn nodes, and it keeps what it accepts in a store of its own. Every
-decision it makes about an article, a login, a peer or its store is taken
-by executable ACL2 code that ships inside the program. A node is one
-directory of files, one configuration file and one service. This page takes
-you from the download to a node that others reach over TLS.
+This page takes you from the download to a running node that others can
+reach safely. Words you may not know are in
+[the short glossary](README.md#words-you-will-meet).
 
-A release is one file per platform, `fn-REV-linux-x86_64.tar.gz` or
-`fn-REV-openbsd-amd64.tar.gz` (REV is the first twelve digits of the source
-revision it was built from), with a `SHA256SUMS` file beside it. The tarball
-carries its own Lisp runtime, libsodium and the ML-DSA-65 library; it uses
-your system's TLS library (OpenSSL 3.0 or later on Linux, LibreSSL on
-OpenBSD). It needs no Python, no compiler and nothing else from the build.
-On Linux it needs glibc 2.36 or later (Debian 12, Ubuntu 24.04 and newer);
-[the operator's reference](operator.md#from-the-release-tarball) says where
-that floor is set and checked.
+## What you need
 
-## 1. Download, verify, unpack, install
+- A Linux machine (x86-64, with systemd) or an OpenBSD 7.9 machine (amd64).
+- On Linux: glibc 2.36 or later (Debian 12, Ubuntu 24.04 or newer) and
+  OpenSSL 3.0 or later. On OpenBSD, nothing extra.
+- Root access, for the install and the service.
+- A disk that really saves data when asked. Read
+  [storage](operator.md#1-choose-the-disk-for-the-store) before you begin.
+  On OpenBSD this matters most: the store needs its own FFS1 partition.
 
-Linux (x86-64, systemd), as root:
+Each release is one file per platform, `fn-6.7.N-linux-x86_64.tar.gz` or
+`fn-6.7.N-openbsd-amd64.tar.gz`, with a `SHA256SUMS` file beside it. N goes
+up by one with each release. The release brings everything it needs except
+the system's TLS library.
+
+## 1. Check, unpack and install
+
+As root, on Linux:
 
 ```sh
 sha256sum -c --ignore-missing SHA256SUMS
-tar -xzf fn-REV-linux-x86_64.tar.gz
+tar -xzf fn-6.7.N-linux-x86_64.tar.gz
 sh fn/install.sh
 ```
 
-OpenBSD (amd64), as root:
+As root, on OpenBSD, unpack under `/usr/local` (not `/tmp` or `/root`:
+the installer runs the unpacked copy, and there it halts with
+`RWX mmap not supported`):
 
 ```sh
-sha256 -C SHA256SUMS fn-REV-openbsd-amd64.tar.gz
-tar -xzf fn-REV-openbsd-amd64.tar.gz
-sh fn/install.sh
+sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz
+mkdir -p /usr/local/src && tar -xzf fn-6.7.N-openbsd-amd64.tar.gz -C /usr/local/src
+sh /usr/local/src/fn/install.sh
 ```
 
-`install.sh` checks every file of the release against `fn/SHA256SUMS`,
-prints the revision (`fn REV...`, the full 40 digits), copies the release to
-`/opt/fn` (OpenBSD: `/usr/local/fn`), creates the service account `fn`
-(OpenBSD: `_fn`) and the node directory `/var/lib/fn` (OpenBSD: `/var/fn`),
-and installs the service: `/etc/systemd/system/fn.service` or
-`/etc/rc.d/fn`. It starts nothing. It refuses to install over an existing
-`/opt/fn`: an installation is one directory (see
-[Reinstalling](#4-reinstalling-and-moving-data)). `--prefix DIR`, `--node
-DIR` and `--user NAME` choose other places; `--no-service` installs no
-account and no unit and writes the rendered unit into the node directory
-instead (for a machine where you run the node yourself).
+You will see the version, like `fn 6.7.N (REV)`. The installer:
 
-On OpenBSD the directory must be on a file system mounted `wxallowed` (the
-Lisp runtime maps writable code; `/usr/local` is mounted so by default).
+- checks every file of the release;
+- copies fn to `/opt/fn` (OpenBSD: `/usr/local/fn`);
+- makes a service account `fn` (OpenBSD: `_fn`);
+- makes the node folder `/var/lib/fn` (OpenBSD: `/var/fn`);
+- installs the service. It starts nothing yet.
 
-`/opt/fn/bin/fn --version` prints the revision at any time; `fn` alone
-prints the operator's usage, and `fn operator CONFIG help VERB` the grammar
-of one verb.
+If it goes wrong:
 
-## 2. The first node
+- **It refuses because `/opt/fn` exists.** fn is never installed over itself.
+  See [Reinstalling](#4-reinstalling).
+- **You want other places.** Use `--prefix DIR`, `--node DIR` or
+  `--user NAME`. `--no-service` skips the account and the service (for
+  running fn under your own account).
+- **OpenBSD says `Cannot allocate memory` at start.** fn must live on a file
+  system mounted `wxallowed`. `/usr/local` is, by default.
+- **OpenBSD: the start fails with `Socket error in "bind": 13 (Permission
+  denied)` in `/var/log/daemon`.** The service runs as `_fn`, without
+  privileges, so it cannot listen below port 1024. Give `mission` a `--port`
+  of 1024 or more (and a `tls_port` of 1024 or more), or send 119 and 563 to
+  it with `pf`.
 
-Every command below runs as the service account, in the node directory,
-with the release on the path. Start a shell that way:
+`/opt/fn/bin/fn --version` prints the version at any time. `fn` alone lists
+the commands, and `fn operator CONFIG help VERB` explains one command.
 
-```sh
-sudo -u fn sh -c 'cd /var/lib/fn && PATH=/opt/fn/bin:$PATH exec sh'   # OpenBSD: doas -u _fn ...
-```
+## 2. Set up the first node
 
-Write the configuration. `mission small-community` is a node for a group of
-people: logins are required and only after TLS, `local.general` and
-`local.test` are served, the TLS pair and the log live under the node
-directory. `--host` is the address the node listens on (a numeric address;
-the wildcard `0.0.0.0` is refused, so you name the interface you put in
-service) and `--port` its NNTP port:
+1. Open a shell as the service account, in the node folder:
 
-```sh
-fn operator /var/lib/fn/fn.toml mission small-community --host 203.0.113.7 --port 119
-```
+   ```sh
+   sudo -u fn sh -c 'cd /var/lib/fn && PATH=/opt/fn/bin:$PATH exec sh'   # OpenBSD: su -s /bin/sh _fn (doas is off by default)
+   ```
 
-The node needs a TLS certificate and key at the two paths `fn.toml` names
-(`tls/cert.pem`, `tls/key.pem`). Use one you have (Let's Encrypt or your
-own CA: copy the pair there, key mode 0600), or make a self-signed one whose
-subjectAltName is the name or address others dial (they verify against
-exactly this certificate, so give it to them):
+2. Write the settings file. Put your server's own address after `--host`
+   (`0.0.0.0` is refused: name the address you mean) and the port after
+   `--port`:
 
-```sh
-openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 -subj /CN=news.example.org -addext subjectAltName=DNS:news.example.org,IP:203.0.113.7 -keyout tls/key.pem -out tls/cert.pem
-```
+   ```sh
+   fn operator /var/lib/fn/fn.toml mission small-community --host 203.0.113.7 --port 119
+   ```
 
-Create the store, name the node, and add a login that may post (the
-password is read twice, from the terminal or from two lines of standard
-input):
+   `small-community` means: logins are required, only over an encrypted
+   connection, and the groups `local.general` and `local.test` are served.
 
-```sh
-fn operator /var/lib/fn/fn.toml init   # docs-check: skip (init under the mission fn.toml above; the grammar book configuration names no mission)
-fn operator /var/lib/fn/fn.toml policy set path-identity news.example.org
-fn operator /var/lib/fn/fn.toml principal set-password alice --posting
-```
+3. Give the node a TLS certificate. Copy one you have (for example from
+   Let's Encrypt) to `tls/cert.pem` and `tls/key.pem`, with the key at mode
+   0600. Or make your own. Use the name or address people will dial, and
+   give them the certificate file:
 
-Leave the account's shell and start the service as root:
+   ```sh
+   openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 -subj /CN=news.example.org -addext subjectAltName=DNS:news.example.org,IP:203.0.113.7 -keyout tls/key.pem -out tls/cert.pem
+   ```
 
-```sh
-systemctl enable --now fn          # OpenBSD: rcctl enable fn && rcctl start fn
-```
+4. Create the store, name the node, and add a login that may post. The
+   password is asked twice:
 
-That is the whole installation. Check it:
+   ```sh
+   fn operator /var/lib/fn/fn.toml init   # docs-check: skip (init under the mission fn.toml above; the grammar book configuration names no mission)
+   fn operator /var/lib/fn/fn.toml policy set path-identity news.example.org
+   fn operator /var/lib/fn/fn.toml principal set-password alice --posting
+   ```
 
-```sh
-fn operator /var/lib/fn/fn.toml status
-fn operator /var/lib/fn/fn.toml health
-```
+   `init` also makes the node's secret key file. The node's name
+   (`path-identity`) should be its public host name.
 
-`status` prints the store's figures and whether the node is serving;
-`health` prints one line per condition and exits with the code of the first
-one held ([the table below](#when-the-node-refuses-something)). Under
-systemd the node logs to its log file (`log/fn.log` in the node directory);
-under rc.d to syslog.
+5. Leave the account's shell. As root, start the service:
+
+   ```sh
+   systemctl enable --now fn          # OpenBSD: rcctl enable fn && rcctl start fn
+   ```
+
+6. Check it:
+
+   ```sh
+   fn operator /var/lib/fn/fn.toml status
+   fn operator /var/lib/fn/fn.toml health
+   ```
+
+   `status` shows the store's figures and whether the node is serving.
+   `health` prints one line per possible problem. Every line should say
+   `clear`. If not, see [the table below](#when-the-node-refuses-something).
+
+The log is `log/fn.log` in the node folder. On OpenBSD it goes to syslog.
 
 ### Reading and posting from another machine
 
-Any NNTP client that speaks STARTTLS (RFC 4642) reaches the node: it
-connects to the port, sends `STARTTLS`, verifies the certificate, then logs
-in with `AUTHINFO USER` and `AUTHINFO PASS` (RFC 4643). Before TLS the node
-answers a login with `483`, so a password never crosses in the clear. A
-client that only speaks TLS from the first byte (port 563, as `tin` does)
-needs `tls_port = 563` added to `[listener]` in `fn.toml`; restart the
-service after editing it.
+Any newsreader that supports STARTTLS can connect. It connects, switches to
+TLS, checks the certificate, then logs in. fn refuses a login before TLS
+(answer `483`), so a password never travels unencrypted.
 
-## 3. Peering with a friend
+Some readers (tin, for one) want TLS from the very start, on port 563. For
+them, add `tls_port = 563` under `[listener]` in `fn.toml`, then restart the
+service. See [newsreaders](human-web-client.md).
 
-Two nodes peer by exchanging one signed invitation and one signed
-acceptance. Each node first makes its own keys (an Ed25519 pair and an
-ML-DSA-65 pair, in a new directory it makes with mode 0700; it prints the
-node's principal):
+## 3. Friends and accounts
 
-```sh
-fn operator /var/lib/fn/fn.toml peer keygen /var/lib/fn/keys
-```
+- To connect your node with a friend's node, follow
+  [Peering with a friend](peering-with-a-friend.md).
+- To give a person an account, make an invitation code. It is shown once:
 
-You invite your friend: the friend's name, the groups you offer, the
-friend's address and port and path identity, your key directory, the file
-to write, and your own address and port (carried in the invitation, signed,
-so the friend's node can configure yours):
+  ```sh
+  fn operator /var/lib/fn/fn.toml account invite --expires 86400
+  ```
 
-```sh
-fn operator /var/lib/fn/fn.toml peer invite friend 'local.*' 198.51.100.9 119 friend.example.net /var/lib/fn/keys /var/lib/fn/invitation-for-friend 203.0.113.7 119
-```
+  The person uses it once, over TLS, to choose a login and password. See
+  [accounts](operator.md#accounts-and-invitation-codes).
 
-Send the invitation file (it holds public keys only). The friend accepts it
-with their key directory, their own path identity and address, and the file
-to write back:
+## 4. Reinstalling
 
-```sh
-fn operator /var/lib/fn/fn.toml peer accept /var/lib/fn/invitation-for-friend /var/lib/fn/keys friend.example.net 198.51.100.9:119 /var/lib/fn/acceptance-for-you
-```
+fn is never upgraded in place. A new release is a fresh install, and the
+store folder stays where it is. See
+[new releases](operator.md#new-releases). Only when a release cannot open
+the old store do you move the data through an export:
 
-You confirm with the acceptance they send back and your invitation:
+1. Stop the service and export the store, with the old release still
+   installed. The export runs as root, because the service account cannot
+   make a folder in `/var/lib`; the `chown` lets the service account read it:
 
-```sh
-fn operator /var/lib/fn/fn.toml peer confirm /var/lib/fn/acceptance-for-you /var/lib/fn/invitation-for-friend
-fn operator /var/lib/fn/fn.toml peer list
-```
+   ```sh
+   systemctl stop fn                                                    # OpenBSD: rcctl stop fn
+   /opt/fn/bin/fn operator /var/lib/fn/fn.toml store export /var/lib/fn-export
+   chown -R fn:fn /var/lib/fn-export                                    # OpenBSD: _fn:_fn
+   mv /var/lib/fn /var/lib/fn.old
+   rm -rf /opt/fn
+   sh fn/install.sh
+   ```
 
-Each side now enrols the other's principal and knows its address. To carry
-the feed over TLS with each node logging in to the other, each side gives
-the other a login bound to the other node's principal and replaces the peer
-record with its STARTTLS form; `fn operator CONFIG help peer` prints the
-whole grammar of `peer add`, whose last words are `starttls SERVER-NAME
-ANCHOR-PEM` (the name the peer's certificate carries, and that certificate
-as the only anchor).
+2. As the service account, write the settings again (or copy `fn.toml` and
+   `tls/` from the old folder). Then import instead of `init`:
 
-An account for a person rather than a node is one code, printed once:
+   ```sh
+   fn operator /var/lib/fn/fn.toml store import /var/lib/fn-export
+   ```
 
-```sh
-fn operator /var/lib/fn/fn.toml account invite --expires 86400
-```
+3. Copy the node's secret keys and the logins back, then start the
+   service. Without the keys the node refuses to start
+   (`node secret .../store/keys/node-secret.key is missing`); without
+   `auth.toml` every login is gone. The node then serves the same articles,
+   numbers, Message-IDs and logins:
 
-The person redeems it over TLS with `XREDEEM CODE LOGIN` then `XREDEEM PASS
-PASSWORD`, and from then on logs in as LOGIN.
+   ```sh
+   cp -Rp /var/lib/fn.old/store/keys /var/lib/fn.old/store/auth.toml /var/lib/fn/store/
+   cp -Rp /var/lib/fn.old/keys /var/lib/fn/                             # only if you ran peer keygen
+   ```
 
-## 4. Reinstalling, and moving data
+   The export does not carry them (see
+   [the node's secret](operator.md#the-nodes-secret-key)).
 
-A node is never upgraded in place. A new release is installed fresh, and
-the data that must survive travels as an export: the exact records the
-store committed, its profile and its identity. With the old release still
-installed:
+An export is **not a backup**. It holds the store's history only. It leaves
+out the TLS keys, passwords, the node's secret keys, peer queues and program
+state kept outside the store. Copy those yourself. The export's `MANIFEST`
+checks each file, but cannot tell you whether it is the newest export.
 
-```sh
-systemctl stop fn                                                    # OpenBSD: rcctl stop fn
-fn operator /var/lib/fn/fn.toml store export /var/lib/fn-export
-mv /var/lib/fn /var/lib/fn.old
-rm -rf /opt/fn
-sh fn/install.sh
-```
+If an import was interrupted, the next one refuses and names the folder it
+left: `reason=interrupted-import` (nothing was set up: remove that folder
+and import again) or `reason=publication-uncertain` (a store is there: run
+`recover`, then remove that folder). A release refuses a store of another
+format (`reason=store-format`). `install.sh` asks the new release about the
+existing node folder before copying anything.
 
-Then, as the service account in the new node directory: write the
-configuration again (`mission`, the TLS pair; or copy `fn.toml` and `tls/`
-from the old directory) and import instead of `init`:
-
-```sh
-fn operator /var/lib/fn/fn.toml store import /var/lib/fn-export
-```
-
-and start the service. The imported store answers with the same articles,
-numbers and Message-IDs. A release refuses to open a store of another store
-format by name (`reason=store-format`), and `install.sh` asks the new
-release about an existing node directory before it copies anything, so a
-reinstall over an incompatible store stops before it starts.
-
-To remove fn entirely: stop and disable the service, then remove `/opt/fn`,
-the unit (`/etc/systemd/system/fn.service` or `/etc/rc.d/fn`), the node
-directory and the account.
+To remove fn: stop and disable the service. Then remove `/opt/fn`, the
+service file (`/etc/systemd/system/fn.service` or `/etc/rc.d/fn`), the node
+folder and the account.
 
 ## When the node refuses something
 
-fn never guesses. A request it cannot honour is refused with a reason word,
-and the same word appears in the reply, in `status` or `health`, and in the
-log. The two tables below are generated from the tables inside the program
-(the ACL2 books the release was built from), so they list every word it can
-print for these two things.
+fn never guesses. When it cannot do something, it names the reason. The same
+word shows in the reply, in `status` or `health`, and in the log. These two
+tables are made from fn's own code, so they list every word it can print.
 
 <!-- generated by docs_check --write: reasons (do not edit by hand) -->
 
-`health` exits with the code of the first condition held, in this order (0: every condition clear; 19: some condition could not be observed, as the two feed conditions cannot while the node is stopped):
+`health` ends with the code of the first problem it found, in this order. 0 means no problem. 19 means fn could not check something (the two peer checks need the node running):
 
-| exit | condition | what it means, what to do |
+| code | problem | what it means, what to do |
 | --- | --- | --- |
-| 20 | `fenced` | a process holds the store (the node is starting, or another command runs), or the owner does not answer: wait and ask again; never delete the lock |
-| 21 | `exhausted` | the store reached a counter's ceiling (a transaction id or the retention count); nothing raises it in place |
-| 22 | `unqualified-profile` | the store runs the development profile, which is for tests: make the node again with a `mission` |
-| 23 | `space-pressure` | free headroom is low on transactions, history or retention: `capacity` says which; release obligations or move to a larger profile |
-| 24 | `no-route` | forwarding obligations wait and no BP route is configured |
-| 25 | `stranded-transfer` | a peer refused an article past its retry bound: fix the peer |
-| 26 | `unavailable-peer` | a peer has articles waiting and no connection: check its address and port (`peer list`) and that it is up |
-| 27 | `receipt-debt` | forwarding obligations wait for the receipts that release them |
+| 20 | `fenced` | something holds the store: the node is starting, or another command runs, or the node does not answer. Wait and ask again. Never delete the lock |
+| 21 | `exhausted` | the store used up a counter (transactions or held space) that nothing raises in place |
+| 22 | `unqualified-profile` | the store uses the test settings. Make the node again with a `mission` |
+| 23 | `space-pressure` | the store is nearly full. `capacity` says which part; release what is held, or move to larger settings |
+| 24 | `no-route` | articles wait to be forwarded and no BP route is set |
+| 25 | `stranded-transfer` | a peer kept refusing an article and fn stopped offering it. Fix the peer |
+| 26 | `unavailable-peer` | a peer has articles waiting and is not connected. Check its address and port (`peer list`) and that it is running |
+| 27 | `receipt-debt` | articles were forwarded and wait for the receipts that confirm them |
 
-A refused POST is answered `441` with the reply below, and the log line for it starts `refused` and names the reason word:
+When fn refuses a post, the reply starts `441` and the log line starts `refused` and names the reason:
 
 | reason | the reply |
 | --- | --- |
 | `unparsable` | `441 posting failed; the article is not valid syntax` |
+| `header-fields-limit` | `441 posting failed; the header has more fields than the profile's max-header-fields` |
+| `header-lines-limit` | `441 posting failed; the header has more lines than the profile's max-header-lines` |
+| `header-octets-limit` | `441 posting failed; the header has more octets than the profile's max-header-octets` |
 | `group-read-only` | `441 posting failed; a group this article names is read-only here (LIST ACTIVE status n)` |
+| `approval-not-moderator` | `441 posting failed; Approved is accepted only from a moderator of each moderated group named (LIST ACTIVE status m)` |
+| `moderation-unavailable` | `441 posting failed; a moderated group is named and the article could not be forwarded to its moderation queue` |
 | `injection-info` | `441 posting failed; Injection-Info must not be supplied` |
 | `xref` | `441 posting failed; Xref must not be supplied` |
 | `injection-date-present` | `441 posting failed; Injection-Date must not be supplied` |

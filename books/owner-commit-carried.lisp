@@ -206,8 +206,8 @@
      ((fn-evc-stxkp event)
       (fn-th-prefix-state :ok (1+ (nfix next)) (cons event snapshots)
                           accepted anchors installed nil))
-     ; The retained composite row: the statement recorded is its wire
-     ; composite, as fn-th-prefix-step records it (the records flip).
+     ; The retained composite row records the wire composite it carries,
+     ; as books/topic-history-prefix.lisp fn-th-prefix-step does.
      ((fn-evc-stxap event)
       (fn-th-prefix-state :ok (1+ (nfix next)) snapshots
                           (cons (fn-hstxa-stxa event) accepted) anchors installed nil))
@@ -271,8 +271,6 @@
   (and (fn-evc-recordp record)
        (fn-node-pending-matchesp node (fn-record-txid record)
                                 (fn-record-generation record))
-       ; The records flip: the staged row's ten metadata positions and its
-       ; handle bind the pending acceptance (fn-sn-record-bindsp).
        (equal (fn-held-wire record (fn-record-payload record))
               (fn-sn-pending-record node (fn-record-sequence record)))))
 
@@ -310,8 +308,7 @@
                                    (fn-sn-identity-context s) record)) :ok)))
                     ((or (fn-evc-consumerp record) (fn-evc-topicp record))
                      (consp (fn-replay-apply-record (fn-sn-node s) record)))
-                    ; The row's context is of the generation in force
-                    ; (fn-sn-completion-core-enabledp after the flip).
+                    ; the row's context generation, as the reference gate
                     (t (and (fn-ccar-sn-record-bindsp (fn-sn-node s) record)
                             (equal (fn-hc-generation (fn-held-context record))
                                    (fn-sn-keyring-generation s)))))
@@ -443,8 +440,8 @@
             node
             (fn-stx-index-add (fn-sn-index s) (fn-sn-accepted-delta s))
             (fn-record-msgid record)
-            ; The records flip: the verdict is the row's context's, decided
-            ; from its bytes at the intern (fn-sn-finish reads the same).
+            ; the row's context, decided at intern (records-flip), as the
+            ; reference finish reads it
             (fn-hc-verdict (fn-held-context record))))))
       (fn-cp-nth 1 projection))
      topic-projection)))
@@ -505,7 +502,7 @@
                   (fn-ag-append (fn-own-ledger o)
                                 (list (fn-sf-completion (fn-sn-files s))))
                   (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-                  (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)))))
+                  (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))))
 
 (defun fn-ccar-own-complete (o)
   (declare (xargs :guard (fn-sn-statep (fn-own-store o))))
@@ -537,7 +534,7 @@
          (let ((w (fn-row-wire-of record fn-arena)))
            (and (equal (fn-record-msgid w)
                        (fn-record-octets-string (fn-own-sub-msgid sub)))
-                (equal (fn-record-payload w) (fn-own-sub-stored-octets cfg sub))))
+                (equal (fn-record-payload w) (fn-own-sub-stored-octets cfg sub (fn-own-node-secret o)))))
          t)))
 
 (defthm fn-ccar-completion-names-submission-p-is-reference
@@ -778,7 +775,7 @@
                    (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
                    (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
                    (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
-                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o))))))
+                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))))
 ; KEYSTONE for the host line (PRF-144 part 2): host/owner-host.lisp
 ; fn-owner-prepare-identity installs this owner; it is the configured owner
 ; event the host used to issue, on every owner the maintained owner relation

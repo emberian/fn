@@ -98,12 +98,46 @@
   (cdr (fn-ocfg-read *ocl-t-new-open* 1 *ocl-t-live-group-command*)))
 (assert-event (fn-ocl-relation *ocl-t-old-read*))
 (assert-event (fn-ocl-relation *ocl-t-new-read*))
+; BY SPECIFICATION (NNT-042, 2026-09-27): a successful GROUP acquires the
+; committed view under the current configuration (fn-ocfg-with-read-owner
+; moves the pin with it), so the OLD connection's GROUP fn.live now selects
+; the new group and its archive carries the current domain.  Before NNT-042
+; the old connection kept its pinned generation across a GROUP (411 here).
 (assert-event
- (null (fn-nntp-session-group
-        (fn-auth-reader-session
-         (fn-own-conn-session
-          (fn-own-find-conn 0
-           (fn-own-conns (fn-ocfg-owner *ocl-t-old-read*))))))))
+ (equal (fn-nntp-session-group
+         (fn-auth-reader-session
+          (fn-own-conn-session
+           (fn-own-find-conn 0
+            (fn-own-conns (fn-ocfg-owner *ocl-t-old-read*))))))
+        "fn.live"))
+(assert-event
+ (equal
+  (fn-state-groups
+   (fn-own-conn-archive
+    (fn-own-find-conn 0
+     (fn-own-conns (fn-ocfg-owner *ocl-t-old-read*)))))
+  (fn-cnode-domain-of (fn-ocfg-conn-config *ocl-t-old-read* 0))))
+; A read that is not a selection keeps the old connection on its pinned
+; generation: its archive domain is what it was, without fn.live.
+(defconst *ocl-t-stat-command*
+  (append (fn-nntp-string-octets "STAT 1") '(13 10)))
+(defconst *ocl-t-old-stat*
+  (cdr (fn-ocfg-read *ocl-t-new-open* 0 *ocl-t-stat-command*)))
+(assert-event (fn-ocl-relation *ocl-t-old-stat*))
+(assert-event
+ (equal
+  (fn-state-groups
+   (fn-own-conn-archive
+    (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocl-t-old-stat*)))))
+  (fn-state-groups
+   (fn-own-conn-archive
+    (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocl-t-new-open*)))))))
+(assert-event
+ (not (member-equal
+       "fn.live"
+       (fn-state-groups
+        (fn-own-conn-archive
+         (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocl-t-old-stat*))))))))
 (assert-event
  (equal (fn-nntp-session-group
          (fn-auth-reader-session
@@ -129,10 +163,19 @@
 ; The read theorem needs the incoming historical relation: a forged newer
 ; pin remains wrong after the old connection reads its pinned archive.
 (assert-event (not (fn-ocl-relation *ocl-t-forged-old-pin*)))
+; A read that is not a selection leaves the forged pin as it is: the state
+; stays outside the relation (the corrupted-state witness for the read
+; theorem's hypothesis).
 (assert-event
  (not (fn-ocl-relation
-       (cdr (fn-ocfg-read *ocl-t-forged-old-pin*
-                          0 *ocl-t-live-group-command*)))))
+       (cdr (fn-ocfg-read *ocl-t-forged-old-pin* 0 *ocl-t-stat-command*)))))
+; BY SPECIFICATION (NNT-042, 2026-09-27): a successful GROUP re-pins the
+; connection to the committed view under the current configuration, so the
+; forged pin is replaced by a coherent one and the relation holds again.
+; Before NNT-042 the GROUP kept the forged pin and the state stayed outside.
+(assert-event
+ (fn-ocl-relation
+  (cdr (fn-ocfg-read *ocl-t-forged-old-pin* 0 *ocl-t-live-group-command*))))
 (local
  (must-fail
   (defthm fn-ocl-read-without-historical-input-is-not-preserved
@@ -224,7 +267,7 @@
                  (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                  (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
                  (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-                 (fn-own-inflight o) (fn-own-feeds o))))
+                 (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (defconst *ocl-t-hist-bad* (ocl-t-bad-view-owner *ocl-t-hist-o*))
 (assert-event (not (fn-ocl-view-historyp *ocl-t-hist-bad*)))
 (assert-event

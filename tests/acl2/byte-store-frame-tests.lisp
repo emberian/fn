@@ -290,9 +290,12 @@
 (assert-event (equal (fn-bs-profile-report *bsft-free*)
                      (cons '("format" . 8)
                            (append
-                            (pairlis$ (strip-cdrs (butlast *fn-bs-profile-field-names* 1))
-                                      (butlast (nthcdr 2 *bsft-free*) 1))
-                            '(("history-marker" . "unmarked"))))))
+                            (pairlis$ (strip-cdrs (take 12 *fn-bs-profile-field-names*))
+                                      (take 12 (nthcdr 2 *bsft-free*)))
+                            '(("history-marker" . "unmarked")
+                              ("max-header-fields" . 64)
+                              ("max-header-lines" . 256)
+                              ("max-header-octets" . 16384))))))
 ; D31: the history requirement reads as its word.
 (assert-event (equal (cdr (assoc-equal "history-marker"
                                        (fn-bs-profile-report
@@ -381,3 +384,30 @@
             :in-theory (theory 'minimal-theory)))))
 ; The allocator ceiling is unchanged: no successor at 2^32 - 1 (PKT-244).
 (assert-event (null (fn-bs-frontier-next 4294967295)))
+
+; STO-030 (PRF-230): the header limits are profile fields 15 to 17, the
+; defaults the parser's constants, 1 <= fields <= lines <= octets <= the
+; article codec's ceiling, each refusal by name.
+(assert-event (equal (fn-bs-profile-header-limits *fn-bs-profile-defaults*)
+                     '(64 256 16384)))
+(assert-event (equal (fn-bs-profile-header-limits *fn-bs-profile-development*)
+                     '(64 256 16384)))
+(defconst *bsft-raised-headers*
+  (fn-bs-profile-resolve '(:development ((15 . 1000) (16 . 2000) (17 . 1048576))) nil))
+(assert-event (fn-bs-profile-validp *bsft-raised-headers*))
+(assert-event (equal (fn-bs-profile-header-limits *bsft-raised-headers*)
+                     '(1000 2000 1048576)))
+(assert-event (equal (fn-bs-config-decode (fn-bs-config-encode *bsft-raised-headers*))
+                     *bsft-raised-headers*))
+(assert-event (equal (fn-bs-profile-resolve '(:development ((15 . 0))) nil)
+                     '(:invalid :max-header-fields-outside-lines)))
+(assert-event (equal (fn-bs-profile-resolve '(:development ((15 . 300))) nil)
+                     '(:invalid :max-header-fields-outside-lines)))
+(assert-event (equal (fn-bs-profile-resolve '(:development ((16 . 20000))) nil)
+                     '(:invalid :max-header-lines-above-octets)))
+(assert-event (equal (fn-bs-profile-resolve
+                      '(:development ((17 . 4261412865))) nil)
+                     '(:invalid :max-header-octets-above-codec)))
+(assert-event (equal (cdr (assoc-equal "max-header-fields"
+                                       (fn-bs-profile-report *bsft-raised-headers*)))
+                     1000))

@@ -171,10 +171,11 @@
   :hints (("Goal" :in-theory (enable fn-peer-session-shapep fn-peer-session-base
                                      fn-peer-session-peer fn-peer-session-transfer
                                      fn-peer-session-inflight fn-peer-session-node
-                                     fn-peer-session-cfg fn-peer-with-base
-                                     fn-peer-make-session
+                                     fn-peer-session-cfg fn-peer-session-refused
+                                     fn-peer-with-base fn-peer-make-session
                                      fn-inj-nth fn-inj-car fn-inj-cdr)
-           :expand ((len (cdr (cddddr ps))) (len (cddr (cddddr ps)))))))
+           :expand ((len (cdr (cddddr ps))) (len (cddr (cddddr ps)))
+                    (len (cdddr (cddddr ps)))))))
 
 (defthm fn-help-rebuild-auth
   (implies (fn-auth-session-shapep as)
@@ -205,7 +206,8 @@
                 (fn-nntp-command-inputp line)
                 (fn-nntp-keyword-tokenp (car (fn-nntp-tokenize line)))
                 (fn-nntp-command-arguments-at-mostp (fn-nntp-tokenize line))
-                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line)))))
+                (not (fn-nntp-served-keywordp (car (fn-nntp-tokenize line))))
+                (fn-auth-selection-in-viewp as config))
            (and (equal (fn-post-result-effects
                         (fn-auth-step-pinned as archive index verdicts config
                                              observation injection
@@ -234,8 +236,11 @@
                            (fn-nntp-keywordp fn-nntp-tokenize
                             fn-nntp-command-inputp fn-nntp-keyword-tokenp
                             fn-nntp-command-arguments-at-mostp
-                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp))
-           :use ((:instance fn-auth-sessionp (x as))
+                            fn-auth-sessionp fn-peer-sessionp fn-post-sessionp
+                            fn-auth-view-archive fn-auth-view-index
+                            fn-auth-view-config fn-auth-selection-in-viewp))
+           :use ((:instance fn-auth-view-session-when-selection-in-view)
+                 (:instance fn-auth-sessionp (x as))
                  (:instance fn-peer-sessionp (x (fn-auth-session-base as)))
                  (:instance fn-post-sessionp (x (fn-auth-post-session as)))))))
 

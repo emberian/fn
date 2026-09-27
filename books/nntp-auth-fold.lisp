@@ -240,6 +240,24 @@
                                    fn-nntp-over-msgid-served
                                    fn-nntp-list-overview-fmt-served)))))
 
+(defthm fn-auth-fold-rcompat-reply-has-no-offer
+  (not (fn-post-offeredp
+        (fn-nntp-result-effects
+         (fn-rcompat-reply session archive index env keyword args))))
+  :hints (("Goal" :in-theory (e/d (fn-rcompat-reply fn-rcompat-newgroups
+                                   fn-rcompat-active-times
+                                   fn-rcompat-subscriptions
+                                   fn-rcompat-retrieval
+                                   fn-rcompat-article-reply fn-rcompat-hdr
+                                   fn-nntp-newgroups-response
+                                   fn-nntp-list-active-times
+                                   fn-nntp-article-response fn-post-offeredp
+                                   fn-nntp-reply-effect)
+                                  (fn-nntp-single fn-nntp-multi
+                                   fn-nntp-multi-octets fn-nntp-keywordp
+                                   fn-nntp-xref-server fn-nntp-stuff-lines
+                                   fn-nntp-crlf fn-rcompat-served-article)))))
+
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
@@ -474,6 +492,8 @@
                             (keyword (car (fn-nntp-tokenize (cadr wire-event))))
                             (args (cdr (fn-nntp-tokenize (cadr wire-event)))))))))
 
+; The delegated step serves the session's group-access view (PRF-222):
+; its session keeps the POST state (fn-auth-view-session-keeps-awaiting).
 (defthm fn-auth-fold-auth-delegate-starts-post-awaiting-only-on-post
   (implies
    (and (fn-auth-sessionp as)
@@ -489,11 +509,18 @@
    (fn-served-post-command-eventp wire-event))
   :hints (("Goal"
            :in-theory (e/d (fn-auth-delegate-pinned fn-auth-with-base
-                            fn-served-post-command-eventp fn-auth-sessionp)
+                            fn-served-post-command-eventp)
                            (fn-peer-step-pinned fn-nntp-tokenize
-                            fn-nntp-keywordp))
-           :use ((:instance fn-auth-fold-peer-step-starts-post-awaiting-only-on-post
-                            (ps (fn-auth-session-base as)))))))
+                            fn-nntp-keywordp fn-auth-sessionp
+                            fn-auth-view-session-is-a-session))
+           :use ((:instance fn-auth-view-session-is-a-session)
+                 (:instance fn-auth-fold-peer-step-starts-post-awaiting-only-on-post
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config
+                                     as (fn-auth-moderation-config as config)
+                                     archive)))))))
 
 (defun fn-auth-fold-post-awaiting (as)
   (declare (xargs :guard t))
@@ -688,7 +715,12 @@
                 (fn-peer-step-pinned fn-auth-command
                  fn-nntp-tokenize fn-nntp-keywordp))
            :use ((:instance fn-auth-fold-peer-step-no-local-submission
-                            (ps (fn-auth-session-base as)))))))
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config
+                                     as (fn-auth-moderation-config as config)
+                                     archive)))))))
 
 (defun fn-auth-fold-safe-connp (conn)
   (declare (xargs :guard t :verify-guards nil))
@@ -722,12 +754,13 @@
                             fn-auth-starttls-effect)
                            (fn-nntp-replyp fn-octet-listp)))))
 
-(defthm fn-auth-fold-dispatch-preserves-safe-connp
+(local
+ (defthm fn-auth-fold-dispatch-core-preserves-safe-connp
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-safe-connp
-            (fn-served-result-conn (fn-served-dispatch conn event))))
+            (fn-served-result-conn (fn-served-dispatch-core conn event))))
   :hints (("Goal"
-           :in-theory (e/d (fn-auth-fold-safe-connp fn-served-dispatch)
+           :in-theory (e/d (fn-auth-fold-safe-connp fn-served-dispatch-core)
                            (fn-served-connp fn-auth-step-pinned
                             fn-served-conn-pinned-index fn-gidx-pin-correspondencep
                             fn-gidx-pin-trie fn-gidx-pinp
@@ -737,7 +770,7 @@
                             fn-auth-fold-post-awaiting
                             fn-auth-config-no-postersp
                             fn-wire-begin-article-with-line-limit))
-           :use ((:instance fn-served-dispatch-preserves-connp)
+           :use ((:instance fn-served-dispatch-core-preserves-connp)
                  (:instance fn-served-connp-is-consistent-session
                             (c conn))
                  (:instance fn-served-connp-is-group-correspondence (c conn))
@@ -762,14 +795,15 @@
                             (config (fn-served-conn-config conn))
                             (observation (fn-served-conn-observation conn))
                             (injection (fn-served-conn-injection conn))
-                            (wire-event event))))))
+                            (wire-event event)))))))
 
-(defthm fn-auth-fold-dispatch-has-no-local-submission
+(local
+ (defthm fn-auth-fold-dispatch-core-has-no-local-submission
   (implies (fn-auth-fold-safe-connp conn)
            (fn-auth-fold-no-local-effectsp
-            (fn-served-result-effects (fn-served-dispatch conn event))))
+            (fn-served-result-effects (fn-served-dispatch-core conn event))))
   :hints (("Goal"
-           :in-theory (e/d (fn-auth-fold-safe-connp fn-served-dispatch
+           :in-theory (e/d (fn-auth-fold-safe-connp fn-served-dispatch-core
                             fn-served-submit-effect
                             fn-auth-fold-no-local-effectsp)
                            (fn-served-connp fn-auth-step-pinned
@@ -817,7 +851,97 @@
                                (fn-served-conn-config conn)
                                (fn-served-conn-observation conn)
                                (fn-served-conn-injection conn)
-                               event))))))))
+                               event)))))))))
+
+; NNT-042: the dispatch is the dispatch proper, on a GROUP or LISTGROUP
+; line over the re-pinned connection (kept exactly on 211, else the input
+; connection with the step's wire).  A safe connection stays safe under the
+; re-pin (the session wrappers keep the authentication configuration and the
+; POST state; the re-pinned connection is a connection) and under a wire
+; replacement; so both fold facts lift from the dispatch proper.
+(local
+ (defthm fn-auth-fold-repin-keeps-post-awaiting
+   (equal (fn-auth-fold-post-awaiting (fn-served-repin-session as archive))
+          (fn-auth-fold-post-awaiting as))
+   :hints (("Goal" :in-theory (e/d (fn-served-repin-session fn-auth-fold-post-awaiting
+                                    fn-auth-with-base fn-peer-with-base)
+                                   (fn-served-reselect fn-post-make-session))))))
+
+(local
+ (defthm fn-auth-fold-repin-preserves-safe-connp
+   (implies (fn-auth-fold-safe-connp conn)
+            (fn-auth-fold-safe-connp (fn-served-repin conn)))
+   :hints (("Goal"
+            :cases ((fn-served-conn-live conn))
+            :use ((:instance fn-served-repin-preserves-connp))
+            :in-theory (e/d (fn-auth-fold-safe-connp fn-served-repin)
+                            (fn-served-connp fn-served-repin-session
+                             fn-auth-fold-post-awaiting fn-auth-config-no-postersp
+                             fn-served-repin-preserves-connp))))))
+
+(local
+ (defthm fn-auth-fold-with-wire-preserves-safe-connp
+   (implies (and (fn-auth-fold-safe-connp conn) (fn-wire-statep wire))
+            (fn-auth-fold-safe-connp (fn-served-conn-with-wire conn wire)))
+   :hints (("Goal"
+            :use ((:instance fn-served-with-wire-preserves-connp))
+            :in-theory (e/d (fn-auth-fold-safe-connp)
+                            (fn-served-connp fn-auth-fold-post-awaiting
+                             fn-auth-config-no-postersp fn-wire-statep
+                             fn-served-with-wire-preserves-connp))))))
+
+(local
+ (defthm fn-auth-fold-safe-connp-has-a-wire-state
+   (implies (fn-auth-fold-safe-connp conn)
+            (fn-wire-statep (fn-served-conn-wire conn)))
+   :hints (("Goal" :in-theory (e/d (fn-auth-fold-safe-connp)
+                                   (fn-wire-statep fn-served-connp))
+            :use ((:instance fn-served-connp-is-wire-state (c conn)))))))
+
+(defthm fn-auth-fold-dispatch-preserves-safe-connp
+  (implies (fn-auth-fold-safe-connp conn)
+           (fn-auth-fold-safe-connp
+            (fn-served-result-conn (fn-served-dispatch conn event))))
+  :hints (("Goal"
+           :cases ((fn-served-advance-eventp event))
+           :use ((:instance fn-auth-fold-dispatch-core-preserves-safe-connp)
+                 (:instance fn-auth-fold-dispatch-core-preserves-safe-connp
+                            (conn (fn-served-repin conn)))
+                 (:instance fn-auth-fold-repin-preserves-safe-connp)
+                 (:instance fn-auth-fold-safe-connp-has-a-wire-state)
+                 (:instance fn-served-dispatch-core-preserves-wire-statep
+                            (conn (fn-served-repin conn)))
+                 (:instance fn-auth-fold-with-wire-preserves-safe-connp
+                            (wire (fn-served-conn-wire
+                                   (fn-served-result-conn
+                                    (fn-served-dispatch-core (fn-served-repin conn) event))))))
+           :in-theory (e/d (fn-served-dispatch)
+                           (fn-served-dispatch-core fn-served-repin fn-served-selectedp
+                            fn-served-advance-eventp fn-auth-fold-safe-connp
+                            fn-wire-statep fn-served-conn-with-wire
+                            fn-auth-fold-dispatch-core-preserves-safe-connp
+                            fn-auth-fold-repin-preserves-safe-connp
+                            fn-auth-fold-with-wire-preserves-safe-connp
+                            fn-auth-fold-safe-connp-has-a-wire-state
+                            fn-served-dispatch-core-preserves-wire-statep)))))
+
+(defthm fn-auth-fold-dispatch-has-no-local-submission
+  (implies (fn-auth-fold-safe-connp conn)
+           (fn-auth-fold-no-local-effectsp
+            (fn-served-result-effects (fn-served-dispatch conn event))))
+  :hints (("Goal"
+           :cases ((fn-served-advance-eventp event))
+           :use ((:instance fn-auth-fold-dispatch-core-has-no-local-submission)
+                 (:instance fn-auth-fold-dispatch-core-has-no-local-submission
+                            (conn (fn-served-repin conn)))
+                 (:instance fn-auth-fold-repin-preserves-safe-connp))
+           :in-theory (e/d (fn-served-dispatch-effects-are-the-repinned-dispatch-effects
+                            fn-served-dispatch-without-advance-is-core)
+                           (fn-served-dispatch fn-served-dispatch-core fn-served-repin
+                            fn-served-selectedp fn-served-advance-eventp
+                            fn-auth-fold-safe-connp fn-auth-fold-no-local-effectsp
+                            fn-auth-fold-dispatch-core-has-no-local-submission
+                            fn-auth-fold-repin-preserves-safe-connp)))))
 
 (defthm fn-auth-fold-dispatch-events-preserves-safe-connp
   (implies (fn-auth-fold-safe-connp conn)
@@ -840,17 +964,10 @@
 
 (defun fn-auth-fold-fed-conn (conn byte)
   (declare (xargs :guard t :verify-guards nil))
-  (fn-served-make-conn-group-indexed
+  (fn-served-conn-with-wire
+   conn
    (fn-wire-result-state
-    (fn-wire-feed-byte (fn-served-conn-wire conn) byte))
-   (fn-served-conn-session conn)
-   (fn-served-conn-archive conn)
-   (fn-served-conn-config conn)
-   (fn-served-conn-observation conn)
-   (fn-served-conn-injection conn)
-   (fn-served-conn-verdicts conn)
-   (fn-served-conn-index conn)
-   (fn-served-conn-group-index conn) (fn-served-conn-control conn)))
+    (fn-wire-feed-byte (fn-served-conn-wire conn) byte))))
 
 (defthm fn-auth-fold-fed-conn-is-a-connection
   (implies (fn-served-connp conn)

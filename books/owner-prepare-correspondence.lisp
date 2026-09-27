@@ -28,7 +28,7 @@
                 (fn-own-pending o) (fn-own-ledger o)
                 (fn-own-clock o) (fn-own-facts o)
                 (fn-own-config o) (fn-own-queue o)
-                (fn-own-inflight o) (fn-own-feeds o))))
+                (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 
 (verify-guards fn-opc-owner-prepare)
 
@@ -275,12 +275,17 @@
                      (id (fn-own-next-id (fn-ocfg-owner oc)))
                      (cfg (fn-ocfg-config oc))))
     :in-theory
+    ; the configured read arms take the owner from the full read result
+    ; (fn-own-read-full, with its REPINNED flag: NNT-042); fn-own-read and
+    ; fn-own-read-step are that result's projections, opened so that the
+    ; relation theorems over them meet the arm
     (e/d (fn-ocfg-step fn-ocfg-open fn-ocfg-open-peer fn-ocfg-read
                         fn-ocfg-read-step fn-ocfg-advance fn-ocfg-close
                         fn-ocfg-fault fn-own-fault fn-ocfg-reconfigure
-                        fn-ocfg-complete fn-ocfg-pass fn-ocfg-with-owner)
-         (fn-own-relation fn-own-open fn-own-open-peer fn-own-read
-          fn-own-read-step fn-own-advance fn-own-close fn-own-complete
+                        fn-ocfg-complete fn-ocfg-pass fn-ocfg-with-owner
+                        fn-own-read fn-own-read-step)
+         (fn-own-relation fn-own-open fn-own-open-peer fn-own-read-full
+          fn-own-read-step-full fn-own-advance fn-own-close fn-own-complete
           fn-own-step fn-own-open-preserves-relation
           fn-own-open-peer-preserves-relation fn-own-read-preserves-relation
           fn-own-read-step-preserves-relation
@@ -331,12 +336,13 @@
                      (o (fn-ocfg-owner oc))))
     :in-theory
     (e/d (fn-ocfg-open fn-ocfg-open-peer fn-ocfg-read fn-ocfg-read-step
-                        fn-ocfg-fault fn-own-fault fn-ocfg-with-owner)
-         (fn-own-relation fn-own-open fn-own-open-peer fn-own-read
-          fn-own-read-step fn-own-close fn-own-open-preserves-relation
+                        fn-ocfg-fault fn-own-fault fn-ocfg-with-owner
+                        fn-own-read fn-own-read-step)
+         (fn-own-relation fn-own-open fn-own-open-peer fn-own-read-full
+          fn-own-read-step-full fn-own-close fn-own-open-preserves-relation
           fn-own-open-peer-preserves-relation fn-own-read-preserves-relation
           fn-own-read-step-preserves-relation
-          fn-own-close-preserves-relation)))))
+          fn-own-close-preserves-relation fn-own-reader-context)))))
 
 ; Exact non-store effects: the configuration generation, pin table, and
 ; staged configuration record are unchanged by prepare.

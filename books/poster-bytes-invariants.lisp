@@ -63,7 +63,7 @@
 (local
  (defthm fn-pb-info-line-agent-of-an-info-line
    (implies (and (true-listp agent) (consp agent)
-                 (not (member-equal 10 agent)))
+                 (not (member-equal 10 agent)) (not (member-equal 59 agent)))
             (equal (fn-pb-info-line-agent
                     (append (fn-inj-injection-info-line agent) rest))
                    agent))
@@ -158,7 +158,7 @@
 (local
  (defthm fn-pb-block-agent-of-a-block
    (implies (and (true-listp agent) (consp agent)
-                 (not (member-equal 10 agent))
+                 (not (member-equal 10 agent)) (not (member-equal 59 agent))
                  (true-listp date) (equal (len date) 31))
             (equal (fn-pb-block-agent
                     (append (fn-inj-block date msgid agent gid gdate) rest)
@@ -190,7 +190,7 @@
 (local
  (defthm fn-pb-path-agent-of-a-block
    (implies (and (true-listp agent) (consp agent)
-                 (not (member-equal 10 agent))
+                 (not (member-equal 10 agent)) (not (member-equal 59 agent))
                  (true-listp date) (equal (len date) 31))
             (equal (fn-pb-path-agent
                     (fn-inj-append (fn-inj-block date msgid agent gid gdate) rest)
@@ -204,7 +204,7 @@
 
 (defthm fn-pb-dot-atom-text-has-no-lf
   (implies (fn-af-dot-atom-text-aux bytes want)
-           (not (member-equal 10 bytes)))
+           (and (not (member-equal 10 bytes)) (not (member-equal 59 bytes))))
   :hints (("Goal" :in-theory (enable fn-af-dot-atom-text-aux fn-af-atextp))))
 
 (local
@@ -212,7 +212,8 @@
    (implies (fn-inj-configp config)
             (and (true-listp (fn-inj-config-agent config))
                  (consp (fn-inj-config-agent config))
-                 (not (member-equal 10 (fn-inj-config-agent config)))))
+                 (not (member-equal 10 (fn-inj-config-agent config)))
+                 (not (member-equal 59 (fn-inj-config-agent config)))))
    :hints (("Goal" :in-theory (enable fn-inj-configp fn-af-dot-atom-textp)))))
 
 (local
@@ -300,6 +301,102 @@
 ; The comparison over two injections.
 
 (local (in-theory (disable fn-inj-decide fn-inj-injectedp fn-inj-source-of)))
+
+;; ---------------------------------------------------------------------------
+;; SEC-006: an injection opens with its block ("Path: " or "Injection-",
+;; "Message-ID: ", "Date: ") and never with "C", so the D25 projection
+;; fn-cll-skip (books/cancel-lock-lines.lisp) leaves it unchanged: every
+;; theorem below reads the injected octets exactly as before.
+
+(local (defthm fn-pb-car-of-append
+   (implies (consp a) (equal (car (append a b)) (car a)))))
+
+(local
+ (defthm fn-pb-car-of-inj-append
+   (implies (consp a)
+            (and (consp (fn-inj-append a b))
+                 (equal (car (fn-inj-append a b)) (car a))))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-pb-a-prefix-opens-with-p
+   (and (consp (fn-inj-prefix date msgid agent gid gdate))
+        (equal (car (fn-inj-prefix date msgid agent gid gdate)) 80))
+   :hints (("Goal" :in-theory (enable fn-inj-prefix fn-inj-path-line)))))
+
+(encapsulate ()
+ (local (defthm fn-pb-inj-append-of-nil
+   (equal (fn-inj-append nil b) b)
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+ (local (defthm fn-pb-first-octets-of-the-lines
+   (and (consp (fn-inj-injection-date-line date))
+        (equal (car (fn-inj-injection-date-line date)) 73)
+        (consp (fn-inj-injection-info-line agent))
+        (equal (car (fn-inj-injection-info-line agent)) 73)
+        (consp (fn-inj-message-id-line msgid))
+        (equal (car (fn-inj-message-id-line msgid)) 77)
+        (consp (fn-inj-date-line date))
+        (equal (car (fn-inj-date-line date)) 68))
+   :hints (("Goal" :in-theory (enable fn-inj-injection-date-line
+                                      fn-inj-injection-info-line
+                                      fn-inj-message-id-line fn-inj-date-line
+                                      fn-inj-append)))))
+ (defthm fn-pb-a-block-does-not-open-with-c
+   (and (consp (fn-inj-block date msgid agent gid gdate))
+        (not (equal (car (fn-inj-block date msgid agent gid gdate)) 67)))
+   :hints (("Goal" :in-theory (e/d (fn-inj-block)
+                                   (fn-inj-injection-date-line
+                                    fn-inj-message-id-line fn-inj-date-line
+                                    fn-inj-injection-info-line))))))
+
+(local
+ (defthm fn-pb-an-injected-article-does-not-open-with-c
+   (implies (fn-inj-injectedp (fn-inj-decide source config obs))
+            (not (equal (car (fn-inj-decision-octets (fn-inj-decide source config obs)))
+                        67)))
+   :hints (("Goal" :cases ((fn-inj-supplies-pathp source))
+                   :use (fn-inj-injected-octets-are-the-block-and-the-source
+                         fn-inj-injected-octets-are-the-block-and-the-prefixed-source)
+                   :in-theory (disable fn-inj-prefix fn-inj-block fn-inj-splice
+                                       fn-inj-supplies-pathp
+                                       fn-article-parse fn-af-proto-article-check
+                                       fn-article-result-article fn-inj-absentp
+                                       fn-inj-nth fn-inj-date-octets fn-inj-instant-of
+                                       fn-inj-path-offset fn-inj-path-insert)))))
+
+; No injection decision's octets open with "C": an injection opens with its
+; block, a refusal has none.
+(defthm fn-pb-an-injection-does-not-open-with-c
+  (not (equal (car (fn-inj-decision-octets (fn-inj-decide source config obs))) 67))
+  :hints (("Goal" :cases ((fn-inj-injectedp (fn-inj-decide source config obs)))
+                  :use (fn-pb-an-injected-article-does-not-open-with-c
+                        (:instance fn-inj-refusal-produces-no-octets (observation obs)))
+                  :in-theory (disable fn-inj-decide fn-inj-decision-octets))))
+
+(defthm fn-pb-path-line-opens-with-p
+  (and (consp (fn-inj-path-line agent))
+       (equal (car (fn-inj-path-line agent)) 80))
+  :hints (("Goal" :in-theory (enable fn-inj-path-line fn-inj-append))))
+
+(defthm fn-pb-skip-of-an-append-not-opening-with-c
+  (implies (and (consp a) (not (equal (car a) 67)))
+           (equal (fn-cll-skip (append a b)) (append a b)))
+  :hints (("Goal" :use ((:instance fn-cll-skip-of-an-article-not-opening-with-c
+                                   (x (append a b)))))))
+
+; Every injection decision's octets are their own D25 projection: an
+; injection opens with its block, a refusal has no octets.
+(defthm fn-pb-an-injection-is-its-own-projection
+  (equal (fn-cll-skip (fn-inj-decision-octets (fn-inj-decide source config obs)))
+         (fn-inj-decision-octets (fn-inj-decide source config obs)))
+  :hints (("Goal" :cases ((fn-inj-injectedp (fn-inj-decide source config obs)))
+                  :use (fn-pb-an-injected-article-does-not-open-with-c
+                        (:instance fn-inj-refusal-produces-no-octets (observation obs))
+                        (:instance fn-cll-skip-of-an-article-not-opening-with-c
+                                   (x (fn-inj-decision-octets
+                                       (fn-inj-decide source config obs)))))
+                  :in-theory (disable fn-cll-skip-of-an-article-not-opening-with-c
+                                      fn-inj-decide fn-inj-decision-octets))))
 
 ; KEYSTONE (retry).  One source injected by one configuration at any two
 ; clock readings, under one Message-ID, is one article: Date present or

@@ -515,7 +515,12 @@
          (id (fn-store-event-obligation-id event))
          (subject (fn-store-event-subject event))
          (evidence (fn-store-event-evidence event)))
-    (if (or (not (fn-node-statep advanced))
+    ; The advance keeps the carried node invariant
+    ; (fn-replay-advance-preserves-node-statep, above), so under the guard the
+    ; whole-node recognizer of the advanced node is t: the executed body never
+    ; runs it (PKT-448 (a): once per retention commit and per retention record
+    ; replayed).
+    (if (or (not (mbt (fn-node-statep advanced)))
             (not (equal (fn-state-next-txid (fn-node-acceptance advanced))
                         (fn-store-event-txid event)))
             (not (null (fn-node-stage advanced)))

@@ -39,12 +39,27 @@
               (equal (car (last cs)) #\>)
               (fn-cevg-printable-charsp cs)))))
 
+;; PKT-657 (PRF-228): `moderation list GROUP', the held posts of a moderated
+;; group (books/control-evidence.lisp `fn-cev-moderation-report').  GROUP is
+;; the name as typed: at least one printable non-space US-ASCII octet, at
+;; most 250 octets (the report looks it up; it never parses it further).
+(defun fn-cevg-groupp (x)
+  (declare (xargs :guard t))
+  (and (stringp x)
+       (let ((cs (coerce x 'list)))
+         (and (consp cs)
+              (<= (len cs) *fn-cevg-max-msgid-octets*)
+              (fn-cevg-printable-charsp cs)))))
+
 (defun fn-cevg-kindp (kind)
   (declare (xargs :guard t))
   (or (equal kind :control-log)
       (and (consp kind)
            (equal (car kind) :control-evidence)
-           (fn-cevg-msgidp (cdr kind)))))
+           (fn-cevg-msgidp (cdr kind)))
+      (and (consp kind)
+           (equal (car kind) :moderation-list)
+           (fn-cevg-groupp (cdr kind)))))
 
 ; The words after `control': (:kind KIND), (:usage REASON) for a word
 ; `evidence' whose argument is not a Message-ID, or nil for every other
@@ -62,8 +77,24 @@
            (list :usage :message-id)))
         (t nil)))
 
+; The words after `moderation': (:kind (:moderation-list . GROUP)) for
+; `list GROUP', else (:usage REASON).
+(defun fn-cevg-moderation-parse (words)
+  (declare (xargs :guard t))
+  (if (and (consp words) (equal (car words) "list"))
+      (if (and (consp (cdr words)) (atom (cddr words))
+               (fn-cevg-groupp (cadr words)))
+          (list :kind (cons :moderation-list (cadr words)))
+        (list :usage :group))
+    (list :usage :moderation-verb)))
+
+(defthm fn-cevg-moderation-parse-kind-is-a-kind
+  (implies (equal (car (fn-cevg-moderation-parse words)) :kind)
+           (fn-cevg-kindp (cadr (fn-cevg-moderation-parse words)))))
+
 ; What `fn-cevg-parse' accepts is a report kind the renderer takes.
 (defthm fn-cevg-parse-kind-is-a-kind
   (implies (equal (car (fn-cevg-parse words)) :kind)
            (fn-cevg-kindp (cadr (fn-cevg-parse words)))))
-(in-theory (disable fn-cevg-parse fn-cevg-kindp fn-cevg-msgidp))
+(in-theory (disable fn-cevg-parse fn-cevg-kindp fn-cevg-msgidp
+                    fn-cevg-moderation-parse fn-cevg-groupp))

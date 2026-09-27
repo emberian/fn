@@ -28,13 +28,23 @@
 ;; PRF-161: host/owner-host.lisp calls the fn-exp- exposure subjects.
 (include-book "books/public-exposure")
 (include-book "books/public-exposure-reply")
-;; PRF-192: the served read's reply as a range of the octet buffer:
-;; host/owner-host.lisp fn-owner-reply-buffer calls fn-served-reply-to-buffer.
+;; PRF-192: the served read's reply as a range of the octet buffer.  HST-023
+;; (PRF-248): the reply is a render PLAN over the step's effects, rendered off
+;; the owner mutex a window at a time: host/owner-host.lisp fn-owner-chunk-span
+;; calls fn-splan-step-make, host/native/owner.lisp fnn-owner-render-next calls
+;; fn-splan-window and the gate calls fn-osch-next (books/owner-scheduler).
 (include-book "books/served-reply-buffer")
+(include-book "books/served-plan")
+(include-book "books/owner-scheduler")
 (include-book "books/owner-open-carried")
+;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
+(include-book "books/reader-open-carried")
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
 (include-book "books/frame")
+;; The record log's kernel, decode and programs (lane w6-log-core): the host
+;; functions fnn-log-* in host/native/io.lisp call them (the `log' verb).
+(include-book "books/store-log-programs")
 (include-book "books/store-observed")
 (include-book "books/store-node-resolution")
 (include-book "books/store-observed-traces")
@@ -49,6 +59,9 @@
 (include-book "books/checkpoint-compaction-preservation")
 ; The pack chain the open walks and compaction extends (P5).
 (include-book "books/checkpoint-pack-chain")
+; Each link decoded once per open (PRF-240): host/checkpoint-host.lisp's
+; chain step, coverage and observation call fn-ccco-*.
+(include-book "books/checkpoint-pack-chain-once")
 (include-book "books/node-config")
 (include-book "books/nntp")
 (include-book "books/served")
@@ -79,6 +92,10 @@
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
 (include-book "books/post-identity-index")
+;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
+;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
+;; tries and the one-dispatch history recognizer).
+(include-book "books/replay-identity-index")
 ;; The subject digest over the buffer (D27 wave C): host/native/io.lisp
 ;; fnn-subject-id-buffer calls fn-shb-subject-id-bounded.
 (include-book "books/sha256-buffer")
@@ -102,6 +119,7 @@
 (include-book "books/native-operator")
 ; The process heap from the store profile (PKT-016): host/native/heap.lisp.
 (include-book "books/heap-figure")
+(include-book "books/heap-reservation")
 (include-book "books/native-control")
 (include-book "books/native-control-reason")
 ; PKT-209: `control log' and `control evidence'.
@@ -157,6 +175,7 @@
 ;; The fair base job offer, the named attempt result and the status-report
 ;; effect join (PRF-120): fnn-bps-foundation-step calls fn-bpnj-step.
 (include-book "books/bp-node-job-offer")
+(include-book "books/bp-node-job-cursor")
 (include-book "books/bp-fnbs-deletion-publication")
 (include-book "books/bp-fnbs-conflict-publication")
 (include-book "books/bp-report-author")
@@ -190,8 +209,14 @@
 (include-book "books/store-history-required")
 ;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
 ;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
-;; fn-sxp-import-plan.
+;; fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's
+;; publication (staged, validated, no-replace rename, parent fenced) and
+;; classifies a leftover staged directory through fn-bs-imp-classify.
 (include-book "books/store-export")
+(include-book "books/store-import-publication")
+;; `operator init` publishes the empty store by the same program (PKT-647):
+;; fnn-command-init-published asks fn-bs-init-pub-admission.
+(include-book "books/store-init-publication")
 ;; The records flip: host/store-host.lisp includes books/store-intern (the
 ;; intern at the entries), which names the payload arena `fn-arena'; the
 ;; byte-array attachment (books/payload-arena-attach.lisp) must precede the
@@ -282,6 +307,10 @@
         ; restarted process cannot expose diagnostics by changing its
         ; environment.
         (fnn-select-image-profile)
+        ; The release version (VERSION at the tree root, 6.7.N), serialized
+        ; into the image for `fn --version'; a missing or malformed file
+        ; stops the build.
+        (fnn-select-release-version)
         ; The system libssl is the explicit native STARTTLS trust boundary.  It loads
         ; after io.lisp because its deadline/descriptor helpers are physical
         ; transport primitives, not protocol decisions.
@@ -321,6 +350,8 @@
         ; The writable NNTP owner.  It registers the `owner' verb and calls
         ; only host/owner-host.lisp wrappers for protocol and state decisions.
         (load "host/native/owner.lisp")
+        ; Its connections on a fixed set of I/O loops (PKT-605).
+        (load "host/native/mux.lisp")
         ; The outbound feed is a lifecycle extension of that same owner.  The
         ; public operator activates it; the developer-only low-level owner
         ; entry retains its separate diagnostic surface.
@@ -375,6 +406,17 @@
 (value-triple (prog2$ (cw "FN_NATIVE_BUILD_LOADED~%") :loaded))
 
 :q
+; The saved world (HST-025, host/native/strip-world.lisp).  FN_NATIVE_WORLD
+; (tools/build_native_host.sh sets it: `stripped' for the production release,
+; `full' for the developer image and the production reference image, gpt-6's
+; wave-5 review s.4) selects it.  Stripped: what execution reads, at its
+; current value, and nothing the prover, the undo stack or the history
+; commands read, with the build-derived dependency set written beside the
+; image (IMAGE.world-deps).  Full: the certified session's world as loaded.
+; After the last event, before the save.
+(load "host/native/strip-world.lisp")
+(fnn-save-world-flavor (sb-ext:posix-getenv "FN_NATIVE_WORLD")
+                       (or (sb-ext:posix-getenv "FN_NATIVE_IMAGE") "build/fn-host"))
 (save-exec (or (sb-ext:posix-getenv "FN_NATIVE_IMAGE") "build/fn-host")
            "fn native host"
            :return-from-lp '(fn-native-entry state)

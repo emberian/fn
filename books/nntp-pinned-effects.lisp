@@ -210,6 +210,121 @@
                                    fn-gidx-pin-control fn-gidx-pin-trie
                                    fn-nntp-token-string fn-octet-listp)))))
 
+;; PRF-243: the served compatibility arms (books/nntp-reader-compat.lisp).
+(defthm fn-rcompat-xref-value-is-clean
+  (implies (fn-xref-serverp server)
+           (fn-nov-clean-fieldp (fn-rcompat-xref-value server article)))
+  :hints (("Goal" :in-theory (e/d (fn-rcompat-xref-value fn-xref-serverp
+                                   fn-xref-pairs)
+                                  (fn-xref-locations fn-xref-pairs-of))
+           :use ((:instance fn-xref-locations-are-clean
+                            (pairs (fn-xref-pairs-of
+                                    (fn-article-memberships article) article)))
+                 (:instance fn-xref-server-octets-are-clean (bytes server))
+                 (:instance fn-xref-pairs-of-is-a-pair-list
+                            (ms (fn-article-memberships article)))))))
+
+(defthm fn-rcompat-xref-content-is-clean
+  (implies (fn-xref-serverp server)
+           (fn-nov-clean-fieldp
+            (fn-nntp-hdr-octets (fn-rcompat-xref-content server article))))
+  :hints (("Goal" :in-theory (e/d (fn-rcompat-xref-content fn-nntp-hdr-octets)
+                                  (fn-rcompat-xref-value fn-xref-serverp)))))
+
+(defthm fn-rcompat-hdr-lines-are-clean
+  (implies (fn-xref-serverp server)
+           (fn-nntp-hdr-clean-field-listp
+            (fn-rcompat-hdr-lines group numbers articles server)))
+  :hints (("Goal" :induct (fn-rcompat-hdr-lines group numbers articles server)
+           :in-theory (e/d (fn-nntp-hdr-clean-field-listp)
+                           (fn-rcompat-xref-content fn-rcompat-xref-value
+                            fn-xref-serverp fn-nntp-available-article
+                            fn-nntp-hdr-octets fn-nntp-hdr-okp fn-nntp-hdr-line
+                            fn-nntp-decimal-field)))
+          ("Subgoal *1/1"
+           :use ((:instance fn-nntp-hdr-line-is-a-clean-field
+                            (label (fn-nntp-decimal-field (car numbers)))
+                            (content (fn-nntp-hdr-octets
+                                      (fn-rcompat-xref-content
+                                       server (fn-nntp-available-article
+                                               group (car numbers) articles)))))
+                 (:instance fn-rcompat-xref-content-is-clean
+                            (article (fn-nntp-available-article
+                                      group (car numbers) articles)))))))
+
+(defthm fn-rcompat-one-hdr-line-is-block-text
+  (implies (and (fn-nov-clean-fieldp label) (fn-nov-clean-fieldp content))
+           (fn-nntp-block-textp (list (fn-nntp-hdr-line label content))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-hdr-clean-field-listp)
+                                  (fn-nntp-hdr-line fn-nntp-block-textp
+                                   fn-nov-clean-line-listp))
+           :use ((:instance fn-nntp-hdr-line-is-a-clean-field)
+                 (:instance fn-nntp-hdr-clean-fields-are-clean-lines
+                            (lines (list (fn-nntp-hdr-line label content))))
+                 (:instance fn-nntp-clean-lines-are-block-text
+                            (lines (list (fn-nntp-hdr-line label content))))))))
+
+(defthm fn-rcompat-hdr-lines-are-block-text
+  (implies (fn-xref-serverp server)
+           (fn-nntp-block-textp
+            (fn-rcompat-hdr-lines group numbers articles server)))
+  :hints (("Goal" :in-theory (disable fn-rcompat-hdr-lines fn-nntp-block-textp
+                                      fn-nov-clean-line-listp fn-xref-serverp)
+           :use ((:instance fn-rcompat-hdr-lines-are-clean)
+                 (:instance fn-nntp-hdr-clean-fields-are-clean-lines
+                            (lines (fn-rcompat-hdr-lines group numbers articles
+                                                         server)))
+                 (:instance fn-nntp-clean-lines-are-block-text
+                            (lines (fn-rcompat-hdr-lines group numbers articles
+                                                         server)))))))
+
+(defthm fn-nntp-effects-rcompat-hdr
+  (implies (fn-xref-serverp server)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-rcompat-hdr session archive trie args legacyp server))))
+  :hints (("Goal" :in-theory (e/d (fn-rcompat-hdr fn-nntp-hdr-initial)
+                                  (fn-rcompat-hdr-lines fn-rcompat-xref-content
+                                   fn-nntp-hdr-line fn-nntp-hdr-octets
+                                   fn-nntp-hdr-okp fn-xref-serverp
+                                   fn-nntp-available-article fn-midx-lookup
+                                   fn-nov-scrub fn-nntp-decimal-field
+                                   fn-nntp-group-range-numbers fn-nntp-block-textp))
+           :use ((:instance fn-rcompat-xref-content-is-clean
+                            (article (fn-midx-lookup (fn-nntp-token-string
+                                                      (cadr args)) trie)))
+                 (:instance fn-rcompat-xref-content-is-clean
+                            (article (fn-nntp-available-article
+                                      (fn-nntp-session-group session)
+                                      (fn-nntp-session-current session)
+                                      (fn-state-articles archive))))
+                 (:instance fn-nov-scrub-is-clean (bytes (cadr args)))
+                 (:instance fn-nov-decimal-field-is-clean
+                            (number (fn-nntp-session-current session)))
+                 (:instance fn-nov-decimal-field-is-clean (number 0))))))
+
+(defthm fn-rcompat-name-lines-are-block-text
+  (fn-nntp-block-textp (fn-rcompat-name-lines names)))
+
+(defthm fn-nntp-effects-rcompat-reply
+  (implies (fn-rcompat-reply session archive index env keyword args)
+           (fn-nntp-effectsp
+            (fn-nntp-result-effects
+             (fn-rcompat-reply session archive index env keyword args))))
+  :hints (("Goal" :use ((:instance fn-nntp-xref-server-is-a-server))
+           :in-theory (e/d (fn-rcompat-reply fn-rcompat-newgroups
+                            fn-rcompat-active-times fn-rcompat-subscriptions
+                            fn-rcompat-retrieval fn-rcompat-article-reply)
+                           (fn-rcompat-hdr fn-rcompat-xref-content
+                            fn-nntp-xref-server fn-xref-serverp fn-nntp-keywordp
+                            fn-nntp-newgroups-response fn-nntp-list-active-times
+                            fn-nntp-article-response fn-rcompat-name-lines
+                            fn-rcompat-hdr-lines fn-rcompat-xref-value
+                            fn-rcompat-served-article fn-nntp-hdr-line
+                            fn-nntp-filter-groups-by-wildmat fn-wildmat-parse
+                            fn-nntp-available-article fn-nntp-find-group-number
+                            fn-midx-lookup)))))
+
 (defthm fn-nntp-archive-command-pinned-effects-well-formed
   (implies (and (fn-nntp-projectionp archive)
                 (fn-midx-correspondencep (fn-gidx-pin-trie index)
@@ -235,7 +350,8 @@
                  (:instance fn-nntp-effects-gidx-list-counts-command
                             (buckets (fn-gidx-pin-buckets index))
                             (args (cdr args)))
-                 (:instance fn-nntp-effects-xref-reply))
+                 (:instance fn-nntp-effects-xref-reply)
+                 (:instance fn-nntp-effects-rcompat-reply))
            :in-theory
            (e/d (fn-nntp-archive-command-pinned)
                 (fn-nntp-archive-command fn-nntp-msgid-retrieval-indexed
@@ -251,6 +367,7 @@
                  fn-nntp-effects-list-overview-fmt-served
                  fn-nntp-xref-server fn-xref-serverp
                  fn-nntp-xref-reply fn-nntp-effects-xref-reply
+                 fn-rcompat-reply fn-nntp-effects-rcompat-reply
                  fn-nntp-verdict-hdr-response fn-nntp-effectsp
                  fn-nntp-result-effects fn-nntp-projectionp fn-nntp-keywordp
                  fn-midx-correspondencep

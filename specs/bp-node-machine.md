@@ -1819,6 +1819,155 @@ preserved by every installed owner transition; the kernel crash, which the
 host never issues, is the one Store event that breaks it until recovery
 rebuilds it), not a hypothesis of the keystones.
 
+#### 4.9.3 The contact cursor: a drain examines each job once (2026-09-27, lane bp-cursors, PRF-226)
+
+`fn-bpnj-contact-next` answers one ask in one traversal, but the host asks
+before every offer and every ask started at the head of the job list: it
+walked the whole list for the gate's ready-peer set
+(`fn-bpn-ready-peers`), re-scanned the jobs already offered, and read its
+answer back by key from the head (`fn-bpnj-own-entryp`). Draining a
+contact that offers N jobs examined about 2N^2 job records (2,002,000 at
+N = 1,000; 200,020,000 at N = 10,000). This is a local cost property; RFC
+9171 section 5.4 leaves forwarding order and retry to the node, and the
+answer is unchanged.
+
+The host now asks `fn-bpnjc-contact-next` (books/bp-node-job-cursor.lisp)
+with a cursor `(F C HELD)` it threads between asks, as it threads OFFERED:
+F is the peer's frontier (every job ahead of it is another peer's or
+`:forwarded`/`:expired`, which no lifecycle record changes), C the
+contact's position (no job ahead of it is ready on this contact and every
+offered key is ahead of it), HELD the first held job ahead of C. The ask
+reads the jobs from C on, each once, and the gate without the ready-peer
+walk. Under the relation `fn-bpnjc-contact-relp` its answer is the head
+scan's (`fn-bpnjc-contact-next-is-the-head-scan`), so PRF-120's and
+PRF-079's theorems describe it. The relation is established at the
+contact's opening from the peer's frontier
+(`fn-bpnjc-open-establishes-the-relation`; the host's table is empty at
+open, where every frontier is 0), kept by each offer for the next ask
+(`fn-bpnjc-offer-keeps-the-relation`) and by the machine's change of the
+jobs ahead of the cursor between asks when that change is an evolution
+(`fn-bpnjc-evolution-keeps-the-relation`: same keys, and a job changed only
+if offered on this contact or not queued for the peer before and after;
+the offer's own records and a `:queued` append are such evolutions,
+`fn-bpnjc-offered-record-evolves`). Along a contact the cursor's answers
+are the head scan's, ask for ask (`fn-bpnjc-drain-is-the-head-drain`), and
+the positions all asks examine add up to at most the job list's length less
+the start (`fn-bpnjc-drain-visits-are-linear`). The contact's close
+advances the peer's frontier over the settled jobs it examined
+(`fn-bpnjc-contact-close`, `fn-bpnjc-close-keeps-the-frontiers`); every
+lifecycle record keeps every frontier
+(`fn-bpnjc-lifecycle-record-keeps-the-frontier`). The frontier is not
+persisted: a restarted node opens every contact at 0, one linear pass.
+
+Covered scope: the base job offer (`fnn-bpc-drive-contact`,
+`fnn-bpnode-send-receipts`). Not covered: a frame theorem that every served
+event (`fn-bpnj-step`) changes the base jobs only through
+`fn-bpn-apply-record` (the host drives only the offer's own events between
+two asks; the drain theorem takes the evolution as its hypothesis, as
+PRF-120's progress theorem takes A-BP-CONTACT); the machine's own per-offer
+work is still linear in the job's position (`fn-bpn-find-job`,
+`fn-bpn-replace-job` over the job list) and each ask walks to C
+(`fn-bpnjc-drop`, pointer steps, no record read): PKT-653. The job list
+cannot reach 10,000 jobs through the machine's events: the lower machine
+numbers at most 4,096 lifecycle records (`*fn-bpn-machine-max-records*`),
+PKT-654.
+
+#### 4.9.4 The handoff reports the application's disposition (2026-09-27, lane bp-fragments-10mib, PRF-224)
+
+REP-015: The BP application handoff is reported durable only when the application committed the delivered ADU (the Store holds the article, or the receipt's release is durable); a durable kind 7 recording a refusal is reported refused, naming the disposition, never durable
+
+A durable kind 7 completes a delivery at this layer whatever the
+application decided (§3.1 class 3: a refusal is a completed delivery), so
+the kind-7 publication's durability is not the application's acceptance.
+SCN-077's 10 MiB case showed the difference: the receiving Store ran the
+development base (32,768-octet articles), refused the article as
+oversize, the kind 7 of that refusal became durable, and the node printed
+`BP application handoff durable` while the Store held no article
+(PKT-630 (7)).
+
+- `fn-bpah-persist-delivery-step`'s durable answer is
+  `(:delivery-answer :durable DISPOSITION)`, DISPOSITION the kind-7
+  record's (`fn-bpah-disposition-code`'s seven).
+- `fn-bpah-handoff-report EFFECT` is `:durable` exactly for an accepting
+  disposition (`:request-accepted`, `:request-duplicate`,
+  `:request-returned`, `:receipt-accepted`, `:receipt-duplicate`),
+  `:refused` for `:request-refused` / `:receipt-refused` and for a refused
+  callback, `:uncertain` otherwise. The host (bp-service.lisp
+  `fnn-bps-drive-effects`) prints `BP application handoff durable
+  disposition=D`, `BP application handoff refused disposition=D (kind 7
+  durable)` or fences, from that word alone.
+- KEYSTONE `fn-bpah-handoff-report-is-application-disposition`
+  (books/bp-handoff-report.lisp): after the deliver-result step records the
+  application's STATUS and issues kind 7, the publication's answer reports
+  STATUS's disposition or `:uncertain`; with a durable publication that
+  applies to the held row, exactly STATUS's disposition.
+  `fn-bpnf-step-deliver-result-is-step` and
+  `fn-bpnf-step-persist-delivery-is-step` route the two host events to
+  those steps through the foundation dispatcher.
+- Scope: the statement is over the foundation steps; the layers above
+  (`fn-bpnj-step`, `fn-bpnp-step`) pass the answer's effects through or
+  replace a `:deliver` answer by `(:delivery-answer :uncertain)`
+  (`fn-bpnp-publication-fault-effect`), which reports `:uncertain`; that
+  pass-through is not a theorem here.
+
+#### 4.9.5 The receipt journal and the receiver hold a request by reference (2026-09-27, lanes bp-fragments-10mib-2 and -3, PKT-646, PRF-249)
+
+FNRJ's request intent and context carried a copy of the request ADU (and
+the relay projection or the Store record) in 131,072-octet blobs, so every
+BP request past 128 KiB was refused "ACL2 refused application journal
+record" before the Store (PKT-646; a data cap, D27). Decided by the
+coordinator (2026-09-27): a record carries a REFERENCE to bytes the delivery
+already made durable, plus a digest, never the bytes; one format, fresh
+deploys (D34).
+
+- The reference of a request is `(HEAD LENGTH DIGEST)`
+  (`fn-bpaj-request-ref`, books/bp-request-ref.lisp): HEAD its eight
+  metadata items encoded as the ADU encodes them (at most 8 x 259 octets by
+  the ADU grammar), LENGTH and DIGEST the article's length and
+  `fn-frame-digest`.
+- The transit intent is `(:request-transit-intent INBOUND HEAD GENERATION
+  TXID RESULT PEER LOCAL-PATH PEER-PATH A-LENGTH A-DIGEST P-LENGTH
+  P-DIGEST)`: the request's reference and the relay projection's length and
+  digest (`fn-pu-relay-article` of the article under the pinned Path
+  identities, checked once by the builder `fn-bpaj-transit-intent-from-plan`
+  while the bytes are live). The transit context is
+  `(:request-transit-context INBOUND HEAD MSGID GENERATION TXID
+  STORE-GENERATION RESULT A-LENGTH A-DIGEST)`, naming the Store record by
+  Message-ID, txid and generation (`fn-bpaj-transit-context-record`).
+  Digests are FNRJ blobs of exactly 32 octets. The request's bytes are the
+  delivered bundle's (INBOUND, in the BP node's held journal) while the
+  delivery is held; the Store holds the projection.
+- The receiver's context holds the request's reference, not the request
+  (books/bp-receipt.lisp `fn-bpr-context-request-ref`): the receipt
+  (`fn-bpr-receipt-adu`) and the conflict rule compare references. A context
+  bound at a read is built from the reference (`fn-bpr-context-from-ref`),
+  which is the context the live request defines
+  (`fn-bpr-context-from-ref-of-request-ref`).
+- Every read of a transit context (`fn-bprj-install` at every journal open,
+  recovery included; `fn-bprj-preflight`, `fn-bprj-apply`) resolves the
+  Store record by identity (`fn-bpaj-context-record`, through the
+  Message-ID index in the fast twin), checks its payload against the
+  intent's projection length and digest, and binds the reference
+  (`fn-bpr-accept-projected-ref`). No read touches the request's bytes.
+- A live request is compared with an intent through its reference
+  (`fn-bpaj-intent-names-requestp`), and a Store record with an intent
+  through the projection's length and digest. Two different byte strings of
+  one length and digest (a SHA-256 collision; for n distinct articles at
+  most n(n-1)/2^257) would be taken for one: the scope, named by
+  `fn-bpaj-one-reference-is-one-request-or-a-digest-collision`.
+- KEYSTONES: `fn-bpaj-ref-request-resolves-exactly` and `-to-the-bytes`;
+  `fn-bpaj-transit-context-binds-the-live-request` (every read of a context
+  the host published for request octets R binds exactly the receiver context
+  R defines, whose reference is R's); and
+  `fn-bpaj-transit-intent-pins-its-request-and-projection`
+  (books/bp-request-reference.lisp).
+- D34: the local `:request-intent` and `:request-context-v2` kinds, their
+  builders, the direct Store lookup and the host's legacy plan are deleted;
+  every request the composed node plans is a transit request. Only the
+  version-1 `:request-context` kind (the receiver-journal model's,
+  context-first, reached before a journal's first intent) still carries a
+  request ADU.
+
 ## 5. The theorems
 
 Notation, fixed for every statement:
@@ -2603,8 +2752,8 @@ first:
                 (equal generation (fn-bpaj-request-generation joined request-octets)))))
 ```
 
-`fn-bpaj-record-matches-requestp` takes three arguments, `(store record
-request)` (`bp-native-app.lisp:347`), and the store is substantive: it is
+The direct lookup's matcher (deleted with the local kinds, PKT-646, D34)
+took three arguments, `(store record request)`, and the store is substantive: it is
 what establishes that the record is an accepted record of that Store
 (`fn-bpr-store-record-acceptedp`). The first revision's two-argument call
 was an arity error. `fn-bpaj-principal-admitted-under-path-p cfg ingress

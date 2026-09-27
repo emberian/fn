@@ -46,6 +46,10 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-native-action result))
 
+(defun fn-native-operator-host-result-rebind-policy (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-rebind-policy result))
+
 (defun fn-native-operator-host-result-archive-path-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-archive-path-octets result))
@@ -127,6 +131,14 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-post-control-path-octets result))
 
+(defun fn-native-operator-host-result-moderate-request (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-moderate-request result))
+
+(defun fn-native-operator-host-result-moderate-control-path-octets (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-moderate-control-path-octets result))
+
 (defun fn-native-operator-host-result-post-msgid-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-post-msgid-octets result))
@@ -187,6 +199,10 @@
   (declare (xargs :mode :program))
   (fn-native-operator-result-init-profile result))
 
+(defun fn-native-operator-host-result-config-mission (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-config-mission result))
+
 (defun fn-native-operator-host-result-init-group-octets (result)
   (declare (xargs :mode :program))
   (fn-native-operator-result-init-group-octets result))
@@ -244,6 +260,19 @@
 (defun fn-native-operator-host-inspect-report (msgid-octets foundp)
   (declare (xargs :mode :program))
   (fn-native-operator-inspect-report msgid-octets foundp))
+
+;; PKT-597: `account hash LOGIN' (host/native/operator.lisp): the login the
+;; plan admitted, and the value ACL2 computes from the node secret the host
+;; read (books/injection-info-policy.lisp fn-ipp-account-hash), as text;
+;; nil when the octets the host read are not a node secret.
+(defun fn-native-operator-host-result-account-hash-login (result)
+  (declare (xargs :mode :program))
+  (fn-native-operator-result-account-hash-login result))
+(defun fn-native-operator-host-account-hash-text (secret login)
+  (declare (xargs :mode :program))
+  (if (and (fn-ns-ringp secret) (fn-ipp-login-wordp login))
+      (fn-record-octets-string (fn-ipp-account-hash secret login))
+    nil))
 
 ;; PRF-164: `account invite' (host/native/operator.lisp).
 (defun fn-native-operator-host-result-account-invite-seconds (result)

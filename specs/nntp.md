@@ -113,8 +113,10 @@ guess. `facts` is a list of `(:fn-nntp-group-fact name created-at-dtn-ms
 observation)` records: the group's name, the DTN time (RFC 9171 §4.2.6) at
 which it was created, and the clock observation under which that time was
 established, so a creation time carries its own provenance and can never be
-back-filled from the reader's current clock. The mutable-owner lane persists
-these records; the reader consumes the shape and stores none of its own. The
+back-filled from the reader's current clock. On the served path the facts
+are the configuration's (PRF-243, below): each served group's entry keeps
+the stamp of the record that created it, and the reader consumes the shape
+and stores none of its own. The
 POSIX-to-DTN epoch shift is `fn-nntp-unix-dtn-ms` in ACL2, not in the adapter.
 
 fn's reader has no timezone database. Its local time zone **is** Coordinated
@@ -167,7 +169,7 @@ NNT-016: XPAT is listed in the capability block and answers RFC 2980 section 2.9
   wildmat in one bounded `XPAT` window; it builds no pattern.
 
 `LIST ACTIVE.TIMES` reads the same persisted creation facts `NEWGROUPS`
-reads, so §7.6.4's "the results SHOULD be consistent" is true by construction.
+reads, so RFC 6048 §2.3's "the results SHOULD be consistent" is true by construction.
 Its third field is the plain text `unattributed`: a configuration record
 records who may reconfigure the node, not a mailbox to attribute a group to,
 and fn does not fabricate one. `LIST NEWSGROUPS` shows each group's description when the operator has set
@@ -339,14 +341,69 @@ distinction:
   unset, the `.invalid` agent); the eight fields are the eight-field
   renderer's (`fn-nov-served-lines-numbered-extend-the-eight-fields`). Local
   numbers are never merged across nodes: a peer's Xref is not read.
-- Local policy: Xref is overview metadata only. ARTICLE and HEAD serve the
-  stored octets as held (no Xref header is spliced in); a proto-article
-  carrying Xref is refused at injection (RFC 5537 §3.5 item 2), but an
-  article a peer relayed is stored as offered, so its HEAD may carry the
-  peer's Xref with the peer's numbers (PKT-597 (c)); the overview field is
-  the one naming this node's. A group whose name carries a colon is not listed (none is
+- Local policy: since PRF-243 (2026-09-27, below) ARTICLE and HEAD of an
+  article this node numbers carry the same field as the last header line,
+  generated at serve time; the stored octets are unchanged. A
+  proto-article carrying Xref is refused at injection (RFC 5537 §3.5 item
+  2) and a relayed article's Xref is deleted on receipt
+  (`fn-peer-relayed-octets`), so the served field is the one naming this
+  node's numbers. A group whose name carries a colon is not listed (none is
   admitted). Without a server name (a blind environment, not the served
   path) the eight fields and seven format lines of before are answered.
+
+## Reader compatibility: NEWGROUPS, LIST SUBSCRIPTIONS, OVERVIEW.FMT and Xref (NNT-052)
+
+NNT-052: NEWGROUPS and LIST ACTIVE.TIMES list the groups the configuration created, LIST SUBSCRIPTIONS answers a list, LIST OVERVIEW.FMT uses the compatibility form, and ARTICLE, HEAD and HDR carry this node's Xref
+
+Measured with slrn 1.0.3 and pan 0.162 over TLS (lane reader-clients-2,
+PKT-665 to PKT-668); decided on the served path by
+`books/nntp-reader-compat.lisp` `fn-rcompat-reply`, which
+`fn-nntp-archive-command-pinned` asks after the withdrawn arms (PRF-243).
+Every arm needs the environment's server name, which the served
+environment always carries; a blind environment answers as before.
+
+- **NEWGROUPS and LIST ACTIVE.TIMES** (RFC 3977 §7.3; RFC 6048 §2.3).
+  RFC requirement: the groups created since the instant. fn guarantee:
+  the creation time is the stamp of the configuration record that created
+  the group, durable with that record, never the reader's clock: `fn
+  operator CONFIG init` now stamps its record with the host clock, and `fn
+  operator CONFIG group create` (live or offline) with the owner's
+  (`fn-oag-group-facts`, `fn-oag-group-facts-has-the-created-stamp`). A
+  group is listed only when the connection's view holds it
+  (`fn-rcompat-newgroups-names-member`), so a retired group, and one a
+  per-login view excludes, is never named. Local policy: a group of a store
+  initialized before 2026-09-27 has a record with no wall reading and so no
+  creation time; both commands omit it rather than invent one. The offline
+  administrative clock was universal time (seconds since 1900) where the
+  live owner's is DTN seconds; it is DTN seconds now.
+- **LIST SUBSCRIPTIONS [wildmat]** (RFC 6048 §2.6). RFC requirement: 215
+  and one newsgroup per line, in order of importance, or 503 when not
+  maintained. Local policy (decided by the coordinator, PKT-666): the
+  operator's configured default list, set with `fn operator CONFIG group
+  subscribe-default [NAME ...]` (one `:set-default-subscriptions` record,
+  config delta kind code 25; each NAME a live group named once; no NAME
+  clears it), cut to the view's groups in the configured order; with none
+  configured, the view's groups. Never a group the view does not hold
+  (`fn-rcompat-subscription-names-member`,
+  `fn-rcompat-subscription-names-keep-the-configured-order`). slrn's
+  first run (`--create`) reads it; the 503 made slrn reconnect and leave
+  every group unsubscribed.
+- **LIST OVERVIEW.FMT** (RFC 3977 §8.4.2). The served list names the sixth
+  and seventh fields `Bytes:` and `Lines:`, the form §8.4.2 permits "for
+  compatibility with existing implementations"; the fields and their order
+  are unchanged. slrn 1.0.3 disables XOVER on `:bytes`/`:lines`.
+- **Xref on ARTICLE, HEAD, HDR and XHDR** (RFC 5536 §3.2.14; RFC 3977
+  §8.5). fn guarantee: ARTICLE and HEAD of an article this node numbers
+  serve the stored octets with the Xref field OVER carries inserted as the
+  last header line, nothing else changed
+  (`fn-rcompat-served-payload-inserts-one-line`); the session is the
+  generic retrieval's (`fn-rcompat-retrieval-session-is-the-generic-session`);
+  HDR and XHDR Xref answer that field's value
+  (`fn-rcompat-hdr-value-is-the-field-value`). The field is generated like
+  Injection-Info's path identity, outside the authored source: the stored
+  octets and the article's identity (D25) are unchanged. BODY, STAT and
+  XPAT are unchanged (XPAT Xref still matches the stored header, which has
+  none: a deferral).
 
 ## Sessions and framing
 
@@ -369,17 +426,34 @@ durability. This is the reading the power-loss campaign measured
 again": at 258 cuts the fresh POST after recovery took the lost in-flight
 POST's number, and no acknowledged or served number moved or was issued twice).
 
-NNT-042: a reader connection's view of the store is a VERSION, the committed
-count when the view was taken: the connection sees the articles committed below
+NNT-042: a reader connection's view of the store is a VERSION (the public
+concept is the ViewId: the committed count when the view was taken, until the
+catalog names it otherwise): the connection sees the articles committed below
 it, and a cancel committed after one of them leaves that article visible to the
-connection until it advances past the cancel. GROUP and LISTGROUP advance the
-connection's version to the current count between commands; within a command
-the version is fixed (C3), so a multi-line response is consistent. A long-lived
-reader therefore sees a peer's new article after its next GROUP, never only on
-reconnection. A stronger fn guarantee than RFC 3977 section 6.1.1, which fixes
-no view semantics; `fn-view-advance`, `fn-view-sees` and
-`fn-view-cancel-after-target` (books/catalog-delta.lisp) are the ACL2 half; the
-served path does not read them yet (PKT-585).
+connection until it acquires a view past the cancel. A successful GROUP or
+LISTGROUP acquires a fresh coherent view and performs that command's normal
+selection effects. Other reads remain on that view until the next specified
+refresh boundary (the next successful GROUP or LISTGROUP, the poster's own 240,
+or the control channel's advance). A failed selection (411, 412, 480, 501, 503)
+leaves the previous view and cursor unchanged. Within a command the view is
+fixed (C3), so a multi-line response is consistent, and every fact a command
+reads -- articles, numbers, visibility, verdicts, counts -- is read from that
+one view. A long-lived reader therefore sees a peer's new article after its
+next GROUP, never only on reconnection. This is an explicit specification
+change (2026-09-26, gpt-6's wave-5 review section 1): before it a connection
+kept the view it pinned at open until the control channel advanced it. A
+stronger fn guarantee than RFC 3977 section 6.1.1, which fixes no view
+semantics. The served machine: `fn-served-dispatch` (books/served.lisp)
+dispatches a GROUP or LISTGROUP line over the connection re-pinned at the
+owner's committed view (`fn-served-repin`) and keeps that connection exactly
+when the reply is 211 (`fn-served-selectedp`; `fn-served-successful-selection-
+is-the-repinned-dispatch`, `fn-served-failed-selection-keeps-the-connection`);
+the owner hands every read its committed view as the live pin
+(`fn-own-served-conn`) and takes the pin back (`fn-own-finish-read`,
+`fn-served-step-pin-is-old-or-live`). `fn-view-advance`, `fn-view-sees` and
+`fn-view-cancel-after-target` (books/catalog-delta.lisp) are the catalog's
+statement of the same semantics; the retrieval arms read the catalog through
+the view in the next increment (PKT-585).
 
 NNT-007: the session also carries the archive-configuration verdict computed
 when the connection opens. No command recomputes a whole-archive recognizer:
@@ -506,7 +580,12 @@ before the post, and moves only when the control channel advances it
 `fn-own-pinned-prefix-survives-any-trace`). A `:refused` or `:uncertain`
 outcome moves no pin. K1 covers either choice — it constrains what a
 connection reads at its pin, not which pin it holds — so this is a recorded
-policy choice, not a consequence of the keystones.
+policy choice, not a consequence of the keystones. Since NNT-042 (2026-09-26)
+that policy has one more advance: a reader's own successful GROUP or LISTGROUP
+acquires the committed view (the pinned prefix moves to the owner's view and
+the configured owner moves the connection's configuration pin with it,
+`fn-ocfg-with-read-owner`), so "keeps the version it pinned at open" holds
+between those commands and for every other command.
 The read-only reader (`tools/run_reader.py`) answers POST with 440.
 
 A submission is not an acknowledgement. No 240 is reachable from
@@ -749,8 +828,8 @@ NNT-040: a group the operator sets read-only (`group policy NAME n`) refuses a l
 
 RFC 3977 section 7.6.3 gives LIST ACTIVE a status field: `y` (posting
 permitted) or `n` (posting not permitted). RFC 6048 section 2.1 names the
-other values; fn serves `y` and `n` only (`m` is moderation, deferred with
-P3; `x`, `j` and `=` are not served). `n` means *local* postings are not
+other values; fn serves `y`, `n` and `m` (moderation, NNT-047); `x`, `j`
+and `=` are not served. `n` means *local* postings are not
 permitted: articles relayed by peers (IHAVE, TAKETHIS, BP) still arrive,
 which is the RFC's meaning of the flag and not a stronger fn guarantee.
 
@@ -790,58 +869,349 @@ which is the RFC's meaning of the flag and not a stronger fn guarantee.
   the gate refuses exactly when the article names a group whose listed
   status is `n`. LIST COUNTS still reports `y` for every group (PKT-575).
 
+### Moderated groups (NNT-047)
+
+NNT-047: A moderated group holds an unapproved local post for its moderators (never posting it), commits an article carrying Approved from a moderator's login, refuses an Approved from anyone else by name, lists the group with status m, and a relay refuses an unapproved article in it
+
+RFC 5537 section 3.5 item 7: an injecting agent that receives a
+proto-article naming a moderated group without an Approved header field
+MUST forward it to a moderator (section 3.5.1) or, if that is not possible,
+reject it; section 7: an injecting agent SHOULD verify that an approval
+comes from the moderator by the transport's authentication. Section 3.6
+item 6 lets a relaying agent reject an unapproved article in a moderated
+group ("strongly encouraged"); section 3.7 item 5 requires a serving agent
+to. RFC 6048 section 2.1.1 lists such a group with status `m`.
+
+- **Configuration.** `operator CONFIG group moderate NAME --moderators
+  LOGIN[,LOGIN...] [--queue QUEUE] [--submission ADDRESS]` and `group
+  moderate NAME --off` (offline, or live through the control socket) stage
+  `(:set-group-moderation NAME QUEUE 0 ROWS)`, configuration delta code 23
+  (`books/config.lisp`). A moderator is an account with a role: ROWS are
+  the accounts slot's `(NAME QUEUE ADDRESS 5)` (the group's moderation) and
+  one `(LOGIN NAME "" 4)` per moderator; `--off` removes them. QUEUE
+  defaults to `NAME.moderation`, and must be a live group other than NAME
+  that is not itself moderated, and NAME must not be another moderated
+  group's queue (`:moderation-queue`), so a forwarded article never lands
+  in a moderated group. `account list` prints `moderation NAME QUEUE
+  [ADDRESS]` and `moderator LOGIN NAME`. Keystone
+  `fn-cfg-set-group-moderation-sets-the-moderation`
+  (`books/config-invariants.lisp`) over `fn-cfg-apply-delta`.
+- **One list.** The owner installs one entry `(:moderated G QUEUE LOGINS)`
+  per live moderated group in the posting configuration's status list
+  beside the read-only groups (`books/owner-agent.lisp`
+  `fn-oag-moderation-entries`). A connection authenticated as one of G's
+  moderators sees that entry as `(:approver G QUEUE)`
+  (`books/nntp-auth.lisp` `fn-auth-moderation-config`, applied in
+  `fn-auth-delegate-pinned`); the owner never installs an approver entry
+  (`fn-mod-session-entries-approver-iff-moderator`). LIST and LIST ACTIVE
+  render `m` for G from that list on every connection (`n` wins when the
+  group is also read-only).
+- **POST** (`books/moderation.lisp` `fn-mod-gate`, run by
+  `fn-post-gated-decision` after the read-only gate on an article the
+  injection accepts). An ordinary article naming no moderated group is
+  unchanged. One carrying an Approved field is committed as posted when
+  every moderated group it names is an approver entry on this connection,
+  else refused `441 posting failed; Approved is accepted only from a
+  moderator of each moderated group named (LIST ACTIVE status m)`. One
+  without Approved is forwarded, RFC 5537 section 3.5.1 method 1, to the
+  queue of its leftmost moderated group: the node injects an envelope
+  article (`From: moderation@PATH-IDENTITY`, `Subject: held for moderation
+  in G`, `Newsgroups: QUEUE`, `Message-ID: <fn-moderate.LEFT@RIGHT>` for the
+  proto-article's `<LEFT@RIGHT>`, `Content-Type:
+  application/news-transmission; usage=moderate`) whose body is the
+  proto-article with the Message-ID and Date lines the node added, before
+  any Path, Injection-Info or Injection-Date (section 3.5 item 7). The
+  poster's 240 is the envelope's durable acceptance, exactly as for any
+  POST; the proto-article's own Message-ID is never stored, so the
+  moderator approves by posting the envelope's body with an Approved field
+  from their own login (section 3.9's "moderator ... injecting it"). When
+  the envelope is not injected (the queue is no longer carried, the
+  envelope exceeds the article bound) the POST is refused `441 posting
+  failed; a moderated group is named and the article could not be
+  forwarded to its moderation queue`. A control message (a cancel) is not a
+  posting to the group and is not gated (section 5.3); Supersedes is.
+- **The claims.** Over `fn-post-gated-decision`:
+  `fn-post-unapproved-article-is-never-in-a-moderated-group` (what is
+  committed of an ordinary unapproved article names no moderated group:
+  the committed memberships are the decision's groups),
+  `fn-post-moderator-approved-article-is-committed` and
+  `fn-post-forged-approval-is-refused-by-name`. The envelope never takes a
+  direct submission's identity (`fn-mod-envelope-msgid-is-not-a-generated-id`).
+- **Relay.** `fn-peer-decide-transfer` refuses an article that would be
+  stored in a group moderated here and carries no Approved field,
+  `:unapproved-moderated` ("no Approved header field for a moderated
+  newsgroup", 437/439): IHAVE, TAKETHIS and BP transit alike. An Approved
+  field from a peer is taken as the peer's assertion (RFC 5537 has no
+  standard approval authentication; section 7). Over the owner's transit
+  port: `fn-peer-transfer-never-stages-an-unapproved-moderated-article`.
+- **The queue is private (PKT-658), a stronger fn guarantee.** A
+  submission naming a queue group of the owner's posting configuration is
+  offered to no peer, whatever the feed patterns
+  (`fn-own-submission-targets-of-a-queue-by-definition`,
+  `fn-own-feed-durable-never-enqueues-a-queue`). A reader connection whose
+  login moderates none of the groups a queue serves, and every connection
+  before AUTHINFO, is served a view without the queue group and its
+  articles: the queue is added, hidden, to the login's `account access`
+  READ rule (the restricted view of NNT-046), so GROUP answers 411 and
+  ARTICLE 430 as for a group the node does not carry
+  (`fn-auth-view-hides-the-queue-from-a-non-moderator`). Posting to the
+  queue is not restricted by this rule.
+- **The operator's list (PKT-657, in part).** `moderation list GROUP`
+  prints `moderation group=G queue=Q held=N` and one line per envelope in
+  Q: `held`, `approved` (the post's own Message-ID is stored) or `rejected`
+  (a withdrawal record withdraws the envelope), with the envelope's and the
+  post's Message-IDs; live over the owner's control socket (FNLS frame
+  kind 3, report code 10) or offline over the Store, rendered by
+  `fn-cev-moderation-report`.
+- **The operator's verbs (PKT-657).** `moderation approve ID --moderator
+  LOGIN` and `moderation reject ID --moderator LOGIN [--reason TEXT]` reach
+  the running owner as FNCT request kind 21; the owner decides
+  (books/moderation-verbs.lisp `fn-mvb-plan`). Only a moderator of a group
+  the envelope queues for approves or rejects
+  (`fn-mvb-only-a-moderator-approves-or-rejects`; refused `not-a-moderator`
+  by name). Approve submits exactly the held proto-article with
+  `Approved: LOGIN` first, when the served POST's decision under LOGIN's
+  moderation view injects it (`fn-mvb-approve-commits-the-held-article-approved`).
+  Reject is the node's withdrawal of exactly the envelope
+  (`fn-mvb-reject-withdraws-the-held-envelope`; PKT-575 below).
+- **The node's withdrawal (PKT-575, CT3).** `article withdraw ID --reason
+  TEXT` writes the configuration row (CAUSE ID REASON 1) (delta code 26,
+  `fn-cfg-withdraw-article-authorizes-the-cause`), then injects the cancel
+  CAUSE = `<fn-withdraw.`ID-after-`<`; the control machine's :node arm makes
+  the record when the refresh first publishes CAUSE, and it withdraws
+  exactly ID (`fn-ctl-node-withdrawal-withdraws-exactly-its-target`,
+  `fn-mvb-withdraw-makes-the-node-authorize-exactly-its-target`). A stronger
+  fn guarantee; RFC 5537 section 5.3 leaves cancel authority to local
+  policy. No PGPMoose-style signed approval. A poster who omits Date gets
+  a node-added Date in the forwarded body, so a resend is a different
+  envelope (D25 conflict), not a duplicate.
+
+### Injection-Info parameters: posting-account and mail-complaints-to (PKT-597, 2026-09-26)
+
+RFC requirement (RFC 5536 section 3.2.8): Injection-Info is the injecting
+agent's <path-identity> followed by optional parameters, each at most once;
+"posting-account" names the source "in a form that cannot be interpreted by
+other sites", and two posts from one source SHOULD carry the same value;
+"mail-complaints-to" is an <address-list> for complaints about the poster.
+RFC 5537 section 3.5 item 10 asks the injecting agent for the field; relaying
+agents never add or change it (section 3.6).
+
+What the node writes (fn guarantee). For a served POST decided under an
+authenticated login L, with the node secret installed, the one Injection-Info
+line of the stored article is
+
+    Injection-Info: AGENT; posting-account="HEX"[; mail-complaints-to="ADDR"]
+
+where AGENT is the node's path-identity (the agent of the plain line, which
+the injection decision writes), HEX the 64 lowercase hexadecimal digits of
+HMAC-SHA256 of L's octets under the posting-account purpose key, HKDF-SHA256
+of the key ring's current root with the node identity as salt and info
+`fn/posting-account/v1` (books/posting-account.lisp fn-pa-account-value over
+fn-pa-mac = books/node-secret.lisp fn-ns-posting-account-mac), and ADDR the
+`complaints-to` policy of the live configuration when set. Without a login
+(an anonymous POST where the configuration allows one, a control or BP
+submission) there is no posting-account parameter; without a login and
+without an address the line is the plain `Injection-Info: AGENT`. The line
+is rewritten in place in the injected block (books/injection-info-params.lisp
+fn-ipp-injected-octets, called by books/owner-served-invariants.lisp
+fn-own-sub-stored-octets for every local submission the owner stages, before
+the Cancel-Lock insertion, which then follows this line); nothing else in
+the article moves. Keystones (books/injection-info-params-invariants.lisp):
+`fn-ipp-injected-octets-carry-the-parameters` (the stored octets are the
+injected block with its one Injection-Info line carrying the parameters,
+then the source; the proto-article check refuses a source with its own
+Injection-Info, so the line is the article's only one),
+`fn-ipp-params-of-a-login` (under a login the parameters open with that
+login's value), `fn-ipp-params-without-a-login`,
+`fn-ipp-injected-octets-without-parameters`. The login is the one the
+`:submit` effect carries: the AUTHINFO USER name of the session at the event
+that delivered the article body (books/served.lisp fn-served-login, recorded
+by fn-own-finish-read as fn-own-sub-login); an authenticated session refuses
+a further AUTHINFO with 502 (RFC 4643 section 2.3.1), so the login in force
+for a POST never changes before its article arrives, and an AUTHINFO later in
+the same read never claims an earlier anonymous article.
+
+D25 is unchanged. Generated Injection-Info is injecting-node metadata, not
+authored source, like the node's Cancel-Lock lines in front of the block
+(`fn-oii-stored-octets-keep-the-d25-subject`, books/owner-injection-info.lisp:
+the D25 subject of the octets the owner stores is the poster's source,
+whatever account, login, key epoch or complaints address wrote them): the injection inverse reads the line with or without
+parameters (books/injection.lisp fn-inj-strip-info), so a stored article
+with parameters gives back the same poster's source
+(`fn-ipp-with-params-keeps-the-source`), a same-source retry under the same
+Message-ID resolves as already stored whatever the new header says
+(books/poster-bytes.lisp fn-pb-subject; the buffer twin
+fn-pbb-strip-info-at), and the operator's retry test is unchanged. No stored
+record is rewritten and no migration exists: a record written before this
+change has the plain line and reads back as before.
+
+Transit (fn guarantee): an article accepted from a peer keeps the peer's
+Injection-Info octet for octet; the transit arm of fn-own-sub-stored-octets
+is fn-peer-relayed-octets (Path prepended, Xref removed), which never reads
+or writes Injection-Info.
+
+Privacy (local policy, authorized disclosure). The posting-account value is
+a LINKABLE PSEUDONYM, not anonymity. What it discloses to every reader of
+every copy of the article, here and on every peer: that two articles
+carrying one value were posted by one login on this node (RFC 5536 asks for
+exactly that, for rate limiting and abuse handling). What it does not
+disclose: the login, its length, or any octet of it (the value is 64 hex
+digits whatever the login, `fn-pa-account-value-is-hex`, and depends on the
+login only through the MAC, `fn-pa-account-value-depends-only-on-the-mac`);
+testing a guessed login needs the node secret. The operator authorizes this
+by running a node that accepts authenticated posting; docs/operator.md says
+so where logins are issued. Not claimed: that one value means one login
+(HMAC-SHA256 collision resistance, an assumption about the real function:
+for n logins under one secret a shared value has probability at most
+n(n-1)/2^257), and not unlinkability across a key rotation (a new epoch gives every login
+a new value; the value names only the current epoch). A login name reused for another person
+carries the old pseudonym (the value is keyed by the login spelling, not an
+internal account id).
+
+Operator surface. `fn operator CONFIG policy set complaints-to ADDR` sets the
+address: a durable `:set-policy` row like path-identity, applied live, no
+configuration delta code of its own; ADDR must be an <addr-spec> of two
+dot-atoms (books/injection-info-policy.lisp fn-ipp-addr-specp), so it has no
+DQUOTE, backslash, ";", CR or LF and stands in the quoted-string as it is
+(`fn-ipp-addr-spec-has-no-quote-or-line-break`); anything else is refused.
+`fn operator CONFIG account hash LOGIN` prints the value an article posted
+under LOGIN carries (the host reads STORE/keys/node-secret.key with the
+owner's permission checks; ACL2 computes the value,
+fn-ipp-account-hash), which is how an operator answers a complaint that
+quotes a posting-account. Known limit: the parameters are computed from the
+live configuration when the writer stages the article and again when the
+completion is checked, so a `complaints-to` change between the two answers
+that one POST with the uncertain 441 (the article is durable; a same-source
+retry is a duplicate), as a path-identity change already does for transit.
+
 ### Own-post cancel and Cancel-Lock (SEC-006)
 
-SEC-006: an unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2
+SEC-006: an unsigned article's poster, and only its poster, can withdraw it: by the same authenticated account on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315)
 
-Status: **specified, not implemented** (PKT-575; the decision is PKT-576,
-planning/evidence/group-policy-2026-09-26.md).
+Status: implemented (PRF-210; lanes newsreader-cancel, -2 and -3; gpt-6's
+review of 2026-09-26 section 3, binding, is the design below). An unsigned
+cancel or Supersedes whose RFC 8315 Cancel-Key opens a Cancel-Lock of its
+target withdraws it, here and on every peer; the node writes the lock and key
+for the authenticated ACCOUNT, so a client that writes none (Thunderbird)
+cancels its own post, and a client that writes its own (tin) keeps its lines.
+RFC 5537 section 5.3 leaves cancel authentication to local policy; the account
+basis is that local policy; the lock and key are RFC 8315.
 
-Today a cancel or Supersedes from an ordinary newsreader is filed and
-withdraws nothing: only a verified signed canceller acts
-(`fn-ctl-withdrawal-plan` declines `:unsigned`). RFC 5537 section 5.3
-leaves cancel authentication to local policy; the same-login basis is a
-local policy (the coordinator's decision P1), Cancel-Lock is RFC 8315.
+The account. The account id is the principal the connection authenticated as
+(`fn-auth-session-subject`, set by AUTHINFO PASS from the credential): a
+credential file login's configured principal, or a redeemed account's local
+principal, which no later record changes or reassigns. It is recorded on the
+submission when the article is enqueued (`fn-own-sub-account`), so the lock
+does not depend on the connection still being open when the writer takes it,
+and an AUTHINFO later in the same read never claims the article. Not the login
+spelling: a renamed login keeps its principal, and a login name alone owns
+nothing.
 
-The obstruction, measured in the tree: nothing durable names an unsigned
-article's posting login. The Store's kind-4 record does not
-(planning/evidence/path-and-login-2026-09-25.md, "The Store's kind-4 record
-does not; that remains open"), and the injected octets carry only the
-agent (`fn-inj-injection-info-line`). A withdrawal is decided at
-`fn-own-refresh` from durable state (`fn-ctl-journal-withdrawals` over the
-articles and their stored verdicts), so a basis that compares logins has
-nothing to compare against after a restart. D34 excludes adding the login
-to the Store record (a format change).
+The root and the purpose keys. One random root per key epoch (32 octets from
+the OS CSPRNG) in the store directory, the node's persistent private state
+under D34: `STORE/keys/node-secret.key` (the current epoch) and
+`node-secret-E.key` (each older epoch a rotation kept), directory 0700, files
+0600, never served, printed, written into a configuration record or exported.
+A file is versioned: `fn-node-secret v1` LF, the epoch (4 octets, big-endian),
+the node identity's length (2 octets) and octets, the root
+(`fn-ns-file-render`, read back by `fn-ns-file-parse`;
+`fn-ns-file-parse-of-render`). `store ROOT node-secret create [IDENTITY]` (and
+`init`) writes epoch 1 once and refuses by name when a secret exists; `store
+ROOT node-secret rotate [IDENTITY]` keeps the current file as
+`node-secret-E.key` and writes epoch E+1. A start reads the current file and
+every kept older epoch and hands ACL2 the ring (current first, epochs
+strictly decreasing, `fn-ns-ringp`); it refuses by name when a file is
+missing, accessible to group or others, or does not parse, and it never
+creates a secret. Every use is a purpose key derived by HKDF-SHA256 (RFC 5869)
+from one epoch's root, salt the node identity recorded in its file, info a
+versioned label: `fn/cancel-lock/v1` (below) and `fn/posting-account/v1`
+(Injection-Info's posting-account). `fn-ns-expand-input-separates-info`:
+distinct labels never expand the same HMAC input under one root.
 
-The proposed design (the default of PKT-576): the node puts the login's
-material in the article's own octets, as RFC 8315 does:
+What the node writes. The octets the owner stores for a served POST from
+account A are `fn-own-sub-stored-octets` of the submission under the owner's
+ring (books/owner-served-invariants.lisp; the host stages exactly that value
+for the Store in `fn-owner-take`, and the completion gate compares the
+durable record with the same function of the same owner). IN FRONT of the
+injected block it writes
 
-- at injection, the node adds `Cancel-Lock: sha256:BASE64(SHA256(K))` with
-  `K = BASE64(HMAC-SHA256(S, MSGID || LOGIN))` (RFC 8315 section 4's
-  recommended construction), S a 32-octet node secret created at `init`
-  beside the store's configuration and never served;
-- a cancel (Control: cancel, or Supersedes) POSTed by an authenticated
-  login gets `Cancel-Key: sha256:K'` for its target, computed from that
-  login; the withdrawal plan accepts an unsigned cause whose Cancel-Key
-  hashes to a Cancel-Lock of the target (RFC 8315 section 3), with the hash
-  in ACL2 (`books/sha256.lisp`, executable) and HMAC over it;
-- a friend's cancel from another node travels with its Cancel-Key, so every
-  node that holds the target decides the same way (visible(T,C) =
-  visible(C,T) keeps holding: the decision reads the two articles only);
-- the D25 inverse (`fn-inj-source-of`) must strip the injected Cancel-Lock.
+    Cancel-Lock: sha256:Base64(SHA-256(Base64(K)))
+    Cancel-Key: sha256:K1 sha256:K2 ...     (a cancel or Supersedes only)
 
-What it proves and what it cannot: acceptance is exact (the cancel's key
-hashes to the lock), and the same login is always accepted. "A different
-login is refused" holds only up to a SHA-256 second preimage of the lock
-(2^256 generic work; the collision figure, 2^128, does not apply because
-the lock is fixed before the forger chooses), an assumption to be named in
-`books/assumptions.lisp`, never a theorem about the real hash.
+with `K = HMAC-SHA256(sec, uid || mid)` (RFC 8315 section 4): `sec` the
+current epoch's cancel-lock purpose key, `uid` A in lowercase hex (no angle
+brackets), `mid` the Message-ID with its angle brackets; the lock hashes the
+Base64-encoded key, as RFC 8315 section 2.1 and the example of section 5.2
+do (the teeth check that example). A cancel's Cancel-Key carries one key per
+kept epoch for its target, current first, so a post locked before a rotation
+stays cancellable by its poster (`fn-cl-ring-keys-open-every-retained-lock`).
+L above is not the login spelling: A is the principal id the session
+authenticated as (`fn-own-sub-account`), and it and the login
+(`fn-own-sub-login`, which the Injection-Info parameters read) are recorded
+on the submission from the `:submit` effect, i.e. the session at the event
+that delivered the article body (books/served.lisp fn-served-login and
+fn-served-account), so neither depends on the connection still being open
+when the writer takes it, and an AUTHINFO later in the same read never
+claims the article.
+
+D25: the lines are injecting-node metadata, outside the authored source.
+They stand in front of the block, where the poster never writes, and the
+comparison reads an article through `fn-cll-skip`, which sets them aside
+(`fn-cll-skip-of-the-generated-lines`,
+`fn-cl-served-payload-projects-to-the-injected-octets`). So a same-source
+retry under the same Message-ID from another account, or from the same
+account after a rotation, answers "already stored": nothing is stored, the
+held article's lock is not replaced, and the retrying account gets no key
+that opens it. A Cancel-Lock the poster wrote is the poster's input: it stays
+in the source (a changed one is a conflict) and the node adds no lock beside
+it (RFC 8315 section 2: the field occurs once); one that carries Cancel-Key
+gets no node key. A signed article (an FN-Authorship carrier) gets neither:
+its signer is its principal, and its signed bytes are never edited. An
+unauthenticated POST, a control or BP submission and a transit article get
+nothing.
+
+How it is decided. The withdrawal plan decides a cause this node did not
+verify by its Cancel-Key entries (a record naming them), and the effect's
+`:poster` arm withdraws a target one of whose sha256 Cancel-Lock entries is
+Base64(SHA-256(key)) for one of them (RFC 8315 sections 2.1, 2.2, 3). The
+decision reads the two articles only, so it is the same on every node that
+holds both, in either arrival order, and it replays from the Store after a
+restart; relays keep the lines, which are article octets. A cause this node
+verified is decided exactly as before, whatever keys it carries. The reply
+to the cancel's POST stays 240; the target is withdrawn at the refresh that
+publishes the cancel (ARTICLE 430, gone from OVER; HDR :fn-control says
+`executed withdrawal <T> poster`; a key that opens nothing says `declined
+no-lock-match`).
+
+What it proves and what it cannot. Keystone
+`fn-ctl-withdrawal-authority-is-exactly-signer-or-poster`: a cancel's record
+withdraws exactly for a verified signer who authored the target, a verified
+signer whose grants cover every group of the target, or an unverified cause
+whose key opens a lock of the target. By
+`fn-cl-account-key-opens-exactly-its-lock` the key the node derives for an
+account opens A's lock exactly when that account's lock equals A's, so A's
+own key opens it. Not theorems: that the written line parses back as the
+entry the decision reads (the teeth check it on served articles), that
+another account's key opens nothing (SHA-256 of two HMAC outputs under a key
+the forger does not hold would have to collide: 2^128 generic work for a
+collision among chosen accounts; 2^256 for a second preimage against a seen
+lock), and that distinct labels give unrelated keys (HMAC as a PRF). An
+abstract model of the hash would prove nothing about the real one, so there
+is no assumption book entry.
+
+Known gaps against RFC 8315: comments (CFWS) inside a Cancel-Lock or
+Cancel-Key value are not stripped (section 2's MUST accept); only sha256 is
+read (sha512 is skipped, which section 2 permits); a Cancel-Key a poster
+supplies on a cancel of an article the node locked gets no node key beside it
+(section 3.3). Privacy: the lock is per article and reveals nothing linkable;
+the posting-account value is a stable pseudonym of the account (Injection-Info,
+lane usenet-headers-3), a disclosure the operator's profile authorizes.
 
 ### Not yet true of POST
 
 There is no
-freshness window on a supplied `Date` (RFC 5537 §3.5 item 3), no
-trusted-source check (item 1) and no moderated-group handling (item 7).
+freshness window on a supplied `Date` (RFC 5537 §3.5 item 3) and no
+trusted-source check (item 1). Moderated groups (item 7) are NNT-047.
 
 An earlier version of this section said RFC 3977 §3.5 forbids pipelining
 after POST's article. It does not, and the claim is withdrawn: §3.5 requires
@@ -1124,6 +1494,67 @@ gives them.
   release with accounts, releases before it cannot open the store (an older
   image refuses delta kinds 15 and 16 at decode); roll back only from the
   pre-upgrade snapshot. The upgrade rehearsal checks that sentence.
+
+### Group access (NNT-046)
+
+NNT-046: A login's access rule restricts its connections to the groups its read wildmat admits, as if the other groups were absent, and its posts to the groups its post wildmat admits
+
+SEC-007: Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from peers the feed patterns name, or from the node's own consumer; confidentiality beyond that is the posters' own encryption
+
+fn's reference is INN's readers.conf access groups (a `read` and a `post`
+wildmat per authenticated identity); RFC 3977 section 4.2 is the wildmat, and
+RFC 4643 leaves what an authenticated identity may see to local policy, so
+this is a local policy with one stronger fn guarantee: no existence oracle.
+
+- **Configuration.** `operator CONFIG account access LOGIN|--anonymous --read
+  R --post P` stages `(:account-access LOGIN R 0 ((LOGIN R P 3)))`,
+  configuration delta code 22 (`books/config.lisp` `fn-cfg-account-access`):
+  one row per login in the accounts slot, mark 3 beside the account rows'
+  0 and 1 and the binding rows' 2; LOGIN "" is the rule of a connection
+  that has not authenticated. The verb admits only patterns that parse as
+  wildmats (`fn-wildmat-parse`); a stored pattern that does not parse admits
+  nothing (fail closed). No rule, or `*`, restricts nothing: existing
+  accounts keep their view. `account access show` is the `account list`
+  report with `access LOGIN read R post P` lines. No store record, no format
+  change.
+- **The view.** The owner projects the rows into the reader listing each
+  connection pins (`fn-oag-listing`, fourth element). A reader session
+  whose login has a read rule is served, by `fn-auth-delegate-pinned`
+  (`books/nntp-auth.lisp`, and its carried twin `fn-scar-auth-delegate-pinned`),
+  the RESTRICTED VIEW of the view it pinned (`books/group-access.lisp`): the
+  groups R admits and their watermarks; the articles with at least one such
+  group, each cut to those groups and memberships; the Message-ID trie and
+  group buckets built from those articles; the withdrawn list cut the same
+  way. The reader machine is unchanged, so GROUP and LISTGROUP of an excluded
+  group answer 411, an article with no readable group answers 430 by
+  Message-ID (and `430` rather than `430 withdrawn` when withdrawn), LIST
+  ACTIVE, NEWSGROUPS and COUNTS omit excluded groups, NEWNEWS omits their
+  articles, and Xref names readable groups only. LIST ACTIVE.TIMES and
+  NEWGROUPS read the environment's creation facts, which the served step
+  does not supply today (`fn-post-reader-env`: none); a change that supplies
+  them must cut them to the view (PKT-643). A selection the
+  view lacks is dropped before the command. PRF-222 keystones: the view is a
+  projection (`fn-gac-restrict-state-is-a-projection`) with a corresponding
+  index, no excluded group or membership is in it, an article is held
+  exactly when it has a readable group, and the view of a store with any
+  excluded groups removed is the same view (`fn-gac-restrict-absent-groups`):
+  no reply can depend on what an excluded group holds.
+- **Posting.** Groups the session may read but not post to join its closed
+  list (the read-only 441; LIST ACTIVE shows `n` to that session); groups it
+  may neither read nor post to leave its served list, so a POST naming one
+  answers the unknown-group 441 of a group the node does not carry. A group
+  it may post to but not read is a drop box.
+- **Scope.** A peer connection has no rule: peering is unchanged, and what a
+  peer is fed is its feed patterns' decision. The consumer poll is the
+  owner's local socket (one owner principal, mode 0600) and reads
+  everything, as the operator does. Not guarantees: the Newsgroups header
+  of a cross-posted article names every group it was posted to (its own
+  octets); a Message-ID is unique node-wide, so a POST of a hidden article's
+  Message-ID is refused as a duplicate; the operator reads everything, and
+  confidentiality from the operator or from a peer is the agents' own
+  encryption. Cost: a restricted session's command is served over a view
+  rebuilt per command (O(A) in the view's articles; an unrestricted session
+  pays nothing); pinning the view per connection is PKT-643.
 
 ### The posting allowance
 

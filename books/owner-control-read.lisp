@@ -28,7 +28,11 @@
 (include-book "nntp-control")
 (include-book "owner-invariants")
 
-;; The pinned dispatcher's reply to one command line, over connection CONN.
+;; The pinned dispatcher's reply to one command line, over connection CONN,
+;; under the posting configuration the delegate serves it: the connection's
+;; moderation view (books/nntp-auth.lisp `fn-auth-moderation-config', P3,
+;; PRF-228; the connection's own configuration when its login moderates
+;; nothing).
 (defun fn-octl-reply (conn line)
   (declare (xargs :verify-guards nil))
   (let* ((ns (fn-post-session-base
@@ -38,7 +42,9 @@
     (fn-nntp-archive-command-pinned
      ns (fn-served-conn-archive conn) (fn-served-conn-pinned-index conn)
      (fn-served-conn-verdicts conn)
-     (fn-post-reader-env (fn-served-conn-config conn) (fn-served-conn-observation conn))
+     (fn-post-reader-env (fn-auth-moderation-config (fn-served-conn-session conn)
+                                                    (fn-served-conn-config conn))
+                         (fn-served-conn-observation conn))
      (car tokens) (cdr tokens))))
 
 (defthm fn-octl-reply-of-with-wire
@@ -537,6 +543,14 @@
 (defthm fn-octl-dispatch-archive-command
   (let ((tokens (fn-nntp-tokenize line)))
     (implies (and (fn-octl-reader-hyps (fn-served-conn-session conn) tokens line)
+                  ;; PRF-222: a session without a group-access rule.
+                  (not (fn-auth-access-restrictedp (fn-served-conn-session conn)
+                                                   (fn-served-conn-config conn)))
+                  ; a GROUP or LISTGROUP line is dispatched over the
+                  ; re-pinned connection (NNT-042: books/served.lisp
+                  ; fn-served-successful-selection-is-the-repinned-dispatch);
+                  ; this book's subject is the control read, never a selection
+                  (not (fn-served-advance-eventp (list :command line)))
                   (not (fn-post-offeredp
                         (fn-nntp-result-effects (fn-octl-reply conn line)))))
              (and (equal (fn-served-result-effects
@@ -546,7 +560,7 @@
                           (fn-served-result-conn
                            (fn-served-dispatch conn (list :command line))))
                          (fn-served-conn-wire conn)))))
-  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-auth-step-pinned
+  :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core fn-auth-step-pinned
                                    fn-auth-command fn-auth-delegate-pinned
                                    fn-peer-step-pinned fn-peer-delegate-pinned
                                    fn-nntp-post-step-pinned fn-nntp-step-pinned
@@ -554,6 +568,7 @@
                                    fn-auth-tls-eventp fn-nntp-keywordp
                                    fn-nntp-archive-keywordp)
                                   (fn-nntp-archive-command-pinned fn-nntp-upcase-keyword
+                                   fn-served-advance-eventp fn-served-repin
                                    fn-served-conn-pinned-index
                                    fn-nntp-tokenize fn-auth-sessionp
                                    fn-peer-sessionp fn-post-sessionp
@@ -575,6 +590,9 @@
                          (list (list :command line)))
                   (not (equal (fn-wire-state-mode w2) :closed))
                   (fn-octl-reader-hyps (fn-served-conn-session conn) tokens line)
+                  (not (fn-auth-access-restrictedp (fn-served-conn-session conn)
+                                                   (fn-served-conn-config conn)))
+                  (not (fn-served-advance-eventp (list :command line)))
                   (not (fn-post-offeredp
                         (fn-nntp-result-effects (fn-octl-reply conn line)))))
              (equal (fn-served-result-effects
@@ -603,14 +621,12 @@
                             fn-nntp-command-arguments-at-mostp)))))
 
 ;; The served connection fn-own-read builds for connection CONN of O.
+;; (Since NNT-042 the connection carries its pin and the owner's committed
+;; view: books/owner.lisp fn-own-served-conn, the constructor fn-own-read-full
+;; calls.)
 (defun fn-octl-served-conn (o conn)
   (declare (xargs :verify-guards nil))
-  (fn-served-make-conn-group-indexed
-   (fn-own-conn-wire conn) (fn-own-conn-live-session o conn)
-   (fn-own-conn-archive conn) (fn-own-conn-config conn)
-   (fn-own-conn-observation conn) (fn-own-clock o)
-   (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
-   (fn-own-conn-group-index conn) (fn-own-conn-control conn)))
+  (fn-own-served-conn o conn (fn-own-conn-live-session o conn)))
 
 ;; KEYSTONE (the host-called read).  One read of connection ID framing one
 ;; archive command line answers the pinned dispatcher's reply over that
@@ -630,13 +646,17 @@
                          (list (list :command line)))
                   (not (equal (fn-wire-state-mode w2) :closed))
                   (fn-octl-reader-hyps (fn-own-conn-live-session o conn) tokens line)
+                  (not (fn-auth-access-restrictedp (fn-own-conn-live-session o conn)
+                                                   (fn-own-conn-config conn)))
+                  (not (fn-served-advance-eventp (list :command line)))
                   (not (fn-post-offeredp (fn-nntp-result-effects reply))))
              (equal (car (fn-own-read o id (append prefix (list byte))))
                     (fn-nntp-result-effects reply))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-octl-served-step-archive-command
                   (conn (fn-octl-served-conn o (fn-own-find-conn id (fn-own-conns o))))))
-           :in-theory (e/d (fn-own-read fn-own-finish-read)
+           :in-theory (e/d (fn-own-read fn-own-read-full fn-own-finish-read
+                            fn-octl-served-conn fn-own-served-conn)
                            (fn-octl-served-step-archive-command fn-octl-reply
                             fn-served-step fn-own-conn-live-session
                             fn-own-conn-wire fn-own-conn-archive fn-own-conn-config
@@ -663,7 +683,8 @@
                 (equal (fn-gidx-pin-trie
                         (fn-served-conn-pinned-index (fn-octl-served-conn o conn)))
                        (fn-own-conn-index conn))))
-  :hints (("Goal" :in-theory (enable fn-served-conn-pinned-index))))
+  :hints (("Goal" :in-theory (enable fn-served-conn-pinned-index
+                                     fn-own-served-conn))))
 
 ;; What the relation says of a connection's control pin: its W is the
 ;; withdrawn list of the connection's pinned prefix, whose visible list the

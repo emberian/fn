@@ -87,7 +87,14 @@
 (assert-event (equal (symbol-class 'fn-bpi-durably-acceptedp (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-bpi-durably-acceptedp nil (w state)) ''t))
 (assert-event (equal (symbol-class 'fn-bpi-adu-durably-acceptedp (w state)) :common-lisp-compliant))
-(assert-event (equal (guard 'fn-bpi-adu-durably-acceptedp nil (w state)) ''t))
+;; Since the records flip the durable query reads the node's bytes through
+;; the arena stobj: its only guard is the stobj's recognizer.
+(assert-event (equal (guard 'fn-bpi-adu-durably-acceptedp nil (w state)) '(fn-arena-p fn-arena)))
+(assert-event (equal (symbol-class 'fn-bpi-node-wire-committedp (w state)) :common-lisp-compliant))
+(assert-event (equal (guard 'fn-bpi-node-wire-committedp nil (w state)) '(fn-arena-p fn-arena)))
+(assert-event (equal (symbol-class 'fn-bpi-ingress-prepare-interned (w state)) :common-lisp-compliant))
+(assert-event (equal (guard 'fn-bpi-ingress-prepare-interned nil (w state)) '(fn-arena-p fn-arena)))
+(assert-event (equal (symbol-class 'fn-bpi-result-wire (w state)) :common-lisp-compliant))
 (assert-event (equal (symbol-class 'fn-bpi-receipt-eligibility (w state)) :common-lisp-compliant))
 (assert-event (equal (guard 'fn-bpi-receipt-eligibility nil (w state)) ''t))
 
@@ -125,7 +132,7 @@
 (assert-event (equal (fn-bpi-ag-record-content-subject 7) nil))
 (assert-event (equal (fn-bpi-node-record-committedp 7 7) nil))
 (assert-event (equal (fn-bpi-durably-acceptedp 7 7) nil))
-(assert-event (equal (fn-bpi-adu-durably-acceptedp 7 7 7 '(1 2 3)) nil))
+(assert-event (equal (fn-bpi-adu-durably-acceptedp 7 7 7 '(1 2 3) fn-arena) nil))
 (assert-event (equal (fn-bpi-receipt-eligibility 7 7 7 7) nil))
-(assert-event (equal (fn-bpi-ingress-prepare 7 7 7 '(1 2 3))
+(assert-event (equal (fn-bpi-ingress-prepare 7 7 7 '(1 2 3) 0)
                      (list :rejected :policy-or-destination)))

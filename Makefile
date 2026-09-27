@@ -32,6 +32,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/article \
 	books/article-invariants \
 	books/article-properties \
+	books/article-header-census \
+	books/article-header-limits \
+	tests/acl2/article-header-limits-tests \
 	tests/acl2/article-tests \
 	tests/acl2/article-teeth-tests \
 	books/article-work-primitives \
@@ -142,6 +145,10 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-descriptions-read \
 	books/owner-xref-read \
 	books/posting-account \
+	books/injection-info-policy \
+	books/injection-info-params \
+	books/injection-info-params-invariants \
+	books/owner-injection-info \
 	books/owner-signed-post \
 	tests/acl2/hybrid-lifecycle-store-invariants-tests \
 	tests/acl2/native-hybrid-control-tests \
@@ -155,6 +162,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/control-evidence-grammar \
 	books/control-evidence \
 	tests/acl2/control-evidence-tests \
+	books/moderation-verbs \
+	tests/acl2/moderation-verbs-tests \
 	books/log-sink \
 	tests/acl2/log-sink-tests \
 	books/native-health \
@@ -180,6 +189,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-node \
 	books/store-node-existing-invariants \
 	books/poster-bytes \
+	books/store-node-invariants-base \
 	books/store-node-invariants \
 	books/acceptance-stamp-invariants \
 	tests/acl2/acceptance-stamp-tests \
@@ -199,16 +209,24 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-retention-tests \
 	books/store-budget \
 	tests/acl2/store-budget-tests \
+	books/store-budget-stored \
+	tests/acl2/store-budget-stored-tests \
 	books/store-carried-folds \
 	tests/acl2/store-carried-folds-tests \
 	books/store-profile-facts \
 	books/store-export \
 	tests/acl2/store-export-tests \
+	books/store-import-publication \
+	tests/acl2/store-import-publication-tests \
+	books/store-init-publication \
+	tests/acl2/store-init-publication-tests \
 	tests/acl2/store-profile-facts-tests \
 	books/store-profile-open \
 	tests/acl2/store-profile-open-tests \
 	books/store-profile-namespace \
 	tests/acl2/store-profile-namespace-tests \
+	books/store-mount-identity \
+	tests/acl2/store-mount-identity-tests \
 	books/store-checkpoint-open \
 	books/store-checkpoint-codec \
 	tests/acl2/store-checkpoint-open-tests \
@@ -216,7 +234,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-checkpoint-open-tests \
 	tests/acl2/store-checkpoint-tables-tests \
 	books/heap-figure \
+	books/heap-reservation \
+	tests/acl2/heap-reservation-tests \
 	tests/acl2/heap-figure-tests \
+	books/connection-budget \
+	tests/acl2/connection-budget-tests \
 	books/store-open-pre-c1 \
 	tests/acl2/store-open-pre-c1-tests \
 	tests/acl2/history-fold-refinement-tests \
@@ -312,6 +334,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/checkpoint-compaction-preservation-tests \
 	books/checkpoint-pack-chain \
 	tests/acl2/checkpoint-pack-chain-tests \
+	books/checkpoint-pack-chain-once \
+	tests/acl2/checkpoint-pack-chain-once-tests \
+	books/catalog-load-index \
+	tests/acl2/catalog-load-index-tests \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
 	books/store-history-marker \
@@ -338,6 +364,20 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-k0-marker-tests \
 	books/byte-store-marker-candidates \
 	tests/acl2/byte-store-marker-candidates-tests \
+	books/store-log \
+	tests/acl2/store-log-tests \
+	books/store-log-crash \
+	books/store-log-kernel \
+	books/store-log-recover \
+	tests/acl2/store-log-kernel-tests \
+	books/store-log-txid \
+	tests/acl2/store-log-txid-tests \
+	books/owner-batch \
+	tests/acl2/owner-batch-tests \
+	books/store-log-decode \
+	tests/acl2/store-log-decode-tests \
+	books/store-log-programs \
+	tests/acl2/store-log-programs-tests \
 	books/byte-store-k0-step-lemmas \
 	books/byte-store-k0-step-root-fence \
 	books/byte-store-k0-step \
@@ -379,6 +419,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-capacity-config-tests \
 	books/config-carried-candidate \
 	tests/acl2/config-carried-candidate-tests \
+	books/config-carried-open \
+	tests/acl2/config-carried-open-tests \
+	tests/acl2/config-carried-readback-tests \
+	books/config-policy-delta \
+	tests/acl2/config-policy-delta-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-primary-cbor \
@@ -426,6 +471,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-signed-binding-tests \
 	books/post-identity-index \
 	tests/acl2/post-identity-index-tests \
+	books/replay-identity-index \
+	tests/acl2/replay-identity-index-tests \
 	books/owner-store-indexed \
 	tests/acl2/owner-store-indexed-tests \
 	books/bp-fnbs-delivery-codec \
@@ -499,6 +546,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-rotation-buffer-tests \
 	books/bp-held-projection \
 	tests/acl2/bp-held-projection-tests \
+	books/bp-handoff-report \
+	tests/acl2/bp-handoff-report-tests \
+	books/bp-request-ref \
+	books/bp-request-reference \
+	tests/acl2/bp-request-reference-tests \
 	books/bp-held-payload \
 	tests/acl2/bp-held-payload-tests \
 	books/bp-node-rotation-step \
@@ -520,6 +572,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-job-offer \
 	books/bp-node-job-offer-progress \
 	tests/acl2/bp-node-job-offer-tests \
+	books/bp-node-job-cursor \
+	tests/acl2/bp-node-job-cursor-tests \
 	books/bp-node-run-class \
 	tests/acl2/bp-run-class-tests \
 	tests/acl2/outcome-class-tests \
@@ -571,6 +625,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fragment-invariants \
 	books/bp-fragment-fast \
 	books/bp-fragment-sweep \
+	books/bp-fragment-resume \
+	tests/acl2/bp-fragment-resume-tests \
 	books/bp-limits \
 	tests/acl2/bp-fragment-tests \
 	tests/acl2/bp-fragment-fast-tests \
@@ -681,6 +737,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-session \
 	books/nntp-projection \
 	books/nntp-responses \
+	books/nntp-reader-compat \
 	books/nntp \
 	books/nntp-overview \
 	books/nntp-legacy \
@@ -706,7 +763,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-list-counts-tests \
 	tests/acl2/group-descriptions-tests \
 	tests/acl2/nntp-xref-tests \
+	tests/acl2/nntp-reader-compat-tests \
 	tests/acl2/posting-account-tests \
+	tests/acl2/injection-info-params-tests \
+	tests/acl2/owner-injection-info-tests \
 	tests/acl2/nntp-post-tests \
 	tests/acl2/served-line-iterative-tests \
 	books/path \
@@ -718,6 +778,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-inbound-tests \
 	books/peer-transit-forms \
 	tests/acl2/peer-transit-forms-tests \
+	books/relay-checks \
+	books/refused-offers \
+	books/peer-refused-offers \
+	tests/acl2/transit-hygiene-tests \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
 	books/served \
@@ -753,11 +817,14 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-view \
 	books/catalog-entries \
 	books/catalog-refresh \
+	books/catalog-number-index \
+	books/served-catalog \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
 	books/store-checkpoint-tables \
 	books/store-checkpoint-tables-reader \
+	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/payload-arena-tests \
@@ -770,8 +837,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-view-tests \
 	tests/acl2/catalog-entries-tests \
 	tests/acl2/catalog-refresh-tests \
+	tests/acl2/served-catalog-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
+	tests/acl2/catalog-number-index-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
@@ -864,6 +933,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-feed-port-tests \
 	tests/acl2/owner-feed-tests \
 	books/owner \
+	books/transit-header-limits \
+	tests/acl2/transit-header-limits-tests \
 	tests/acl2/owner-feed-form-tests \
 	books/owner-invariants \
 	books/owner-fault \
@@ -874,6 +945,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-retention-preparation \
 	books/owner-agent \
 	books/owner-log \
+	books/owner-results \
 	books/owner-served-bound \
 	books/owner-log-reopen \
 	books/owner-bound-commit \
@@ -887,6 +959,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-owner-local-tests \
 	books/consumer-owner-local-progress \
 	tests/acl2/consumer-owner-local-progress-tests \
+	books/consumer-bound \
+	tests/acl2/consumer-bound-tests \
+	books/consumer-wait-codec \
+	tests/acl2/consumer-wait-codec-tests \
+	books/consumer-wait \
+	tests/acl2/consumer-wait-tests \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
@@ -906,6 +984,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-operator-tests \
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
+	tests/acl2/owner-results-tests \
 	tests/acl2/owner-served-bound-tests \
 	tests/acl2/owner-log-reopen-tests \
 	tests/acl2/owner-bound-commit-tests \
@@ -948,6 +1027,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/tls-reload-tests \
 	books/control-visible \
 	tests/acl2/control-visible-tests \
+	books/node-secret \
+	tests/acl2/node-secret-tests \
+	books/cancel-lock-lines \
+	books/cancel-lock \
+	tests/acl2/cancel-lock-tests \
+	tests/acl2/owner-cancel-lock-tests \
+	books/cancel-lock-d25 \
+	tests/acl2/cancel-lock-d25-tests \
 	books/control-served \
 	tests/acl2/control-served-tests \
 	books/nntp-control \
@@ -968,8 +1055,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/public-exposure-reply-tests \
 	books/served-reply-buffer \
 	tests/acl2/served-reply-buffer-tests \
+	books/served-plan \
+	tests/acl2/served-plan-tests \
+	books/owner-scheduler \
+	tests/acl2/owner-scheduler-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
+	books/reader-open-carried \
+	tests/acl2/reader-open-carried-tests \
 	tests/acl2/group-number-index-tests \
 	books/topic-history-metadata \
 	books/topic-history-metadata-invariants \
@@ -1052,7 +1145,8 @@ ACL2_BOOKS ?= books/defrecord \
 # its books; when the list is every book, `--strict` runs without `--books`.
 THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/store-files books/store-files-invariants books/store-files-traces \
-	books/store-node books/store-node-invariants books/store-node-traces-prepare \
+	books/store-node books/store-node-invariants-base books/store-node-invariants \
+	books/store-node-traces-prepare \
 	books/store-node-traces \
 	books/store-node-resolution books/store-observed books/store-observed-traces \
 	books/store-prepare-correspondence books/config-records books/node-config \
@@ -1312,7 +1406,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check \
 	    tests.test_farm tests.test_merge_registry tests.test_wait_for tests.test_native_program_check \
-	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check
+	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 

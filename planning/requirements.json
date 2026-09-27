@@ -374,7 +374,13 @@
       "proof_targets": [
         "PRF-007",
         "PRF-044",
-        "PRF-050"
+        "PRF-050",
+        "PRF-244",
+        "PRF-245",
+        "PRF-246",
+        "PRF-253",
+        "PRF-254",
+        "PRF-255"
       ],
       "verification": [
         "proof",
@@ -411,7 +417,7 @@
         "fn-sn-new-success-requires-actual-matching-durable-node-completion",
         "fn-snrt-new-success-is-actual-matching-durable-completion"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). A new success in the composed machine requires an actual matching durable node completion, in single steps and across mixed live/refusal/recovery traces. Open: the refinement from these file events to real syscalls remains conditional on the platform assumptions in the trust boundary; no power-loss profile is qualified."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). A new success in the composed machine requires an actual matching durable node completion, in single steps and across mixed live/refusal/recovery traces. Open: the refinement from these file events to real syscalls remains conditional on the platform assumptions in the trust boundary; no power-loss profile is qualified. The storage-log design (2026-09-27, section 3.3) restates the in-flight rule as one BATCH in flight: the batch of PreparedCommit tokens over the record log, its close rule and its barrier are STO-033 (books/owner-batch.lisp; no host line calls it yet, PKT-698)."
     },
     {
       "id": "STO-004",
@@ -422,7 +428,8 @@
       "proof_targets": [
         "PRF-007",
         "PRF-027",
-        "PRF-043"
+        "PRF-043",
+        "PRF-255"
       ],
       "verification": [
         "proof",
@@ -473,7 +480,13 @@
         "PRF-004",
         "PRF-080",
         "PRF-083",
-        "PRF-110"
+        "PRF-110",
+        "PRF-244",
+        "PRF-245",
+        "PRF-246",
+        "PRF-253",
+        "PRF-254",
+        "PRF-255"
       ],
       "verification": [
         "proof",
@@ -1278,7 +1291,8 @@
         "PRF-056",
         "PRF-057",
         "PRF-063",
-        "PRF-091"
+        "PRF-091",
+        "PRF-206"
       ],
       "verification": [
         "proof",
@@ -1459,7 +1473,10 @@
         "PRF-188",
         "PRF-191",
         "PRF-192",
-        "PRF-218"
+        "PRF-227",
+        "PRF-218",
+        "PRF-208",
+        "PRF-242"
       ],
       "verification": [
         "proof",
@@ -1955,7 +1972,8 @@
       "milestone": "M3",
       "status": "specified",
       "proof_targets": [
-        "PRF-084"
+        "PRF-084",
+        "PRF-256"
       ],
       "verification": [
         "proof",
@@ -1985,9 +2003,13 @@
         "tests/acl2/control-served-tests.lisp",
         "tools/fn_verify.py",
         "tests/test_fn_verify.py",
-        "planning/evidence/control-c3d-2026-09-25.md"
+        "planning/evidence/control-c3d-2026-09-25.md",
+        "books/moderation-verbs.lisp",
+        "tests/acl2/moderation-verbs-tests.lisp",
+        "tests/test_native_moderation.py",
+        "planning/evidence/moderation-verbs-2026-09-27.md"
       ],
-      "implementation_note": "D29 (planning/decisions.md, 2026-09-25). RFC 5537 section 5.1 leaves control authentication to local authorization policy; fn's policy (a stronger fn guarantee): a control article acts only when this node verified its signature (verdict :verified; :carried and unsigned never act) and the operator granted the principal the verb over a namespace covering every group involved. C2, implemented: the authorities slot of the configuration value, (:grant-control NS P 0 ((NS P VERB 0))) code 11 and (:revoke-control NS P) code 12 through the assured live path, `control grant|revoke|list`, fn-ctl-authorize. C3, the decision implemented: the withdrawal record bound to cause, target, scope and generation (fn-ctl-cancel-plan), its effect on the target's accepted group bindings (author, or an authority covering every served group; the cancel's declared groups never enter), the visible article list, and the journal-derived records (a later revoke rewrites none). RFC 5537 section 5.3 recommends rejecting a target whose cancel arrived first; fn accepts it under ordinary admission and never serves it (local policy, D29). Lane control-c3 (2026-09-25): a signed control article is filed in control.<verb> (the signed record binding names the filing group, fn-hsig-source-filed-groups), so a cancel can be verified here; the visible list has an incremental form (books/control-visible.lisp) proved equal to the definition. Lane control-c3b (2026-09-25): the committed view serves the visible state (fn-own-refresh decides a cancel's record with fn-ctl-cancel-plan when it first publishes it and extends the visible list incrementally, fn-ctl-refresh-visible-is-visible; K1 restated in books/owner-invariants.lisp), so a withdrawn target answers 430 by Message-ID and leaves the listings of views published after its cancel; the owner closure certifies (persvati certify-20260925T105921Z-39105, hbox default image roots certify-20260925T111031Z-3228276) and the one-node native withdrawal case passes on the developer image (planning/evidence/control-c3b-2026-09-25.md). Open, so the requirement stays specified: 423 withdrawn by number, HDR :fn-control, the recovery binding at each cancel's own txid (fn-ctl-journal-withdrawals), Supersedes, and feed suppression (a later transition). C4 (group control) is deferred by D29. Lane control-c3d (2026-09-25): every withdrawal record is decided under the configuration at its own withdrawing article's Store txid, live and at recovery alike (fn-ctl-refresh-withdrawals-is-the-journal), so a later revoke or grant rewrites no record across a restart; a Supersedes field (RFC 5537 section 5.4) withdraws its target under the cancel's rules; the reader's 423/430 `withdrawn` and HDR :fn-control answers exist as a proved kernel (books/control-served.lisp) not yet wired to the served dispatcher; tools/fn_verify.py --withdrawal reports a withdrawal against the node's HDR :fn-control claim."
+      "implementation_note": "D29 (planning/decisions.md, 2026-09-25). RFC 5537 section 5.1 leaves control authentication to local authorization policy; fn's policy (a stronger fn guarantee): a control article acts only when this node verified its signature (verdict :verified; :carried and unsigned never act) and the operator granted the principal the verb over a namespace covering every group involved. C2, implemented: the authorities slot of the configuration value, (:grant-control NS P 0 ((NS P VERB 0))) code 11 and (:revoke-control NS P) code 12 through the assured live path, `control grant|revoke|list`, fn-ctl-authorize. C3, the decision implemented: the withdrawal record bound to cause, target, scope and generation (fn-ctl-cancel-plan), its effect on the target's accepted group bindings (author, or an authority covering every served group; the cancel's declared groups never enter), the visible article list, and the journal-derived records (a later revoke rewrites none). RFC 5537 section 5.3 recommends rejecting a target whose cancel arrived first; fn accepts it under ordinary admission and never serves it (local policy, D29). Lane control-c3 (2026-09-25): a signed control article is filed in control.<verb> (the signed record binding names the filing group, fn-hsig-source-filed-groups), so a cancel can be verified here; the visible list has an incremental form (books/control-visible.lisp) proved equal to the definition. Lane control-c3b (2026-09-25): the committed view serves the visible state (fn-own-refresh decides a cancel's record with fn-ctl-cancel-plan when it first publishes it and extends the visible list incrementally, fn-ctl-refresh-visible-is-visible; K1 restated in books/owner-invariants.lisp), so a withdrawn target answers 430 by Message-ID and leaves the listings of views published after its cancel; the owner closure certifies (persvati certify-20260925T105921Z-39105, hbox default image roots certify-20260925T111031Z-3228276) and the one-node native withdrawal case passes on the developer image (planning/evidence/control-c3b-2026-09-25.md). Open, so the requirement stays specified: 423 withdrawn by number, HDR :fn-control, the recovery binding at each cancel's own txid (fn-ctl-journal-withdrawals), Supersedes, and feed suppression (a later transition). C4 (group control) is deferred by D29. Lane control-c3d (2026-09-25): every withdrawal record is decided under the configuration at its own withdrawing article's Store txid, live and at recovery alike (fn-ctl-refresh-withdrawals-is-the-journal), so a later revoke or grant rewrites no record across a restart; a Supersedes field (RFC 5537 section 5.4) withdraws its target under the cancel's rules; the reader's 423/430 `withdrawn` and HDR :fn-control answers exist as a proved kernel (books/control-served.lisp) not yet wired to the served dispatcher; tools/fn_verify.py --withdrawal reports a withdrawal against the node's HDR :fn-control claim. PKT-575 (PRF-256): the node operator's withdrawal, `article withdraw ID --reason TEXT` (and `moderation reject`), is a fourth basis beside author, authority and poster: a configuration row (CAUSE TARGET REASON 1) (delta code 26) the operator wrote before the node injected the cancel CAUSE; a stronger fn guarantee, RFC 5537 section 5.3 leaves cancel authority to local policy."
     },
     {
       "id": "REP-007",
@@ -2055,7 +2077,8 @@
       "proof_targets": [
         "PRF-102",
         "PRF-131",
-        "PRF-134"
+        "PRF-134",
+        "PRF-249"
       ],
       "verification": [
         "proof",
@@ -2067,7 +2090,9 @@
         "books/native-admin.lisp",
         "books/native-auth-profile.lisp",
         "books/native-auth-admin.lisp",
-        "planning/evidence/bounds-profile-2026-09-25.md"
+        "planning/evidence/bounds-profile-2026-09-25.md",
+        "books/bp-request-reference.lisp",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
       "implementation_note": "Configuration generations (field 11) and credentials (field 12) are read from the profile the store opened; consumers (9) are read too since community-bounds (PRF-167, STO-021); BP rows (10) and policy members (13) still have constants (4096, 64), recorded as open in the evidence. fn.toml's size bounds are classified as work."
     },
@@ -2420,7 +2445,9 @@
         "PRF-121",
         "PRF-131",
         "PRF-134",
-        "PRF-136"
+        "PRF-136",
+        "PRF-225",
+        "PRF-250"
       ],
       "verification": [
         "proof",
@@ -2437,7 +2464,8 @@
         "books/bp-fragment-sweep.lisp",
         "tests/acl2/bp-fragment-sweep-tests.lisp",
         "tests/test_bp_fragment_node_native.py",
-        "planning/evidence/bp-lifecycle-2026-09-25.md"
+        "planning/evidence/bp-lifecycle-2026-09-25.md",
+        "books/bp-fragment-resume.lisp"
       ],
       "implementation_note": "RFC 9174 section 5.4.1 forbids a transfer longer than the peer's Transfer MRU (an RFC requirement); RFC 9171 section 5.8 permits fragmenting a bundle whose no-fragment flag is clear (fn fragments proactively, a local policy choice) and requires the replicate-flagged extension blocks in every fragment (fn replicates every extension block, a stronger fn choice). ACL2's fn-bpfs-plan decides from the session's negotiated Transfer MTU; host/native/bp-service.lisp fnn-bps-send-effect sends the answer and reads each further fragment's transfer through fn-bpfs-fragment-outcome. Not covered: held transit to a small-MRU hop still waits (fn-bpnp-forward-mru-waitp) rather than fragmenting; the receiver's reassembler has no family-size ceiling since PRF-121 (fn-bpfw-reassemble, linear in the octets received), but a family is still bounded by the held-image cap, the 1 MiB bundle decoder and the 65538-octet ADU record (P5).",
       "keystones": [
@@ -2559,6 +2587,7 @@
         "PRF-132",
         "PRF-144",
         "PRF-139",
+        "PRF-226",
         "PRF-220"
       ],
       "verification": [
@@ -2590,7 +2619,10 @@
         "books/bp-receipt.lisp",
         "host/bp-receipt-journal-host.lisp",
         "host/native/bp-app.lisp",
-        "planning/evidence/mission-signed-2-2026-09-26.md"
+        "planning/evidence/mission-signed-2-2026-09-26.md",
+        "books/bp-node-job-cursor.lisp",
+        "tests/acl2/bp-node-job-cursor-tests.lisp",
+        "planning/evidence/bp-cursors-2026-09-27.md"
       ],
       "implementation_note": "RFC 9171 section 5.4 leaves forwarding order and retry to the node (local policy); RFC 9174 section 5.2.4 XFER_ACK is a transport acknowledgement, never an fn retention receipt or application completion (stronger fn guarantee). fn-bpnj-contact-next offers the first ready base job for the peer; a status report (RFC 9171 section 6.1) is reported :forwarded only after the durable :finished record of its accepted transfer. Native evidence: the four-node mission lab (tests/bp-dtn7/run_mission_four_node.py) on the lane image; nothing here is deployed. Custody (PRF-128, lane mission-signed; D23): a relay takes custody only over an admitted channel; a bundle from a refused channel is refused at reception with the admission's reason (fn-bpaj-admitted-receive-event, called by fnn-bps-receive); a local policy (D23): RFC 9171 leaves the acceptance of a received bundle to the node. A signed article (PRF-132, lane mission-signed-2; D23, D25): the BP receiver binds the article record of the kind-4 composite its Store committed and never submits it a second time; the verdict the delivery is bound to is the receiving Store's own (fn-bpaj-dispatch-fast, called by fn-bprj-request-action)."
     },
@@ -2936,7 +2968,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-085"
+        "PRF-085",
+        "PRF-240"
       ],
       "verification": [
         "proof",
@@ -3167,7 +3200,10 @@
       "milestone": "M5",
       "status": "specified",
       "proof_targets": [
-        "PRF-169"
+        "PRF-169",
+        "PRF-244",
+        "PRF-245",
+        "PRF-246"
       ],
       "verification": [
         "proof",
@@ -3329,6 +3365,7 @@
         "books/native-live-status.lisp",
         "tests/test_native_checkpoint_auto.py",
         "planning/evidence/checkpoint-capture-stream-2026-09-26.md",
+        "books/owner-checkpoint-writer.lisp",
         "books/owner-checkpoint-pipeline.lisp",
         "tests/acl2/store-checkpoint-tables-tests.lisp"
       ],
@@ -3463,7 +3500,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-186",
-        "PRF-209"
+        "PRF-209",
+        "PRF-242"
       ],
       "verification": [
         "proof",
@@ -3474,9 +3512,10 @@
         "books/config-physical-replay.lisp",
         "books/store-checkpoint-open.lisp",
         "planning/evidence/caps-to-profile-2026-09-26.md",
-        "books/config-carried-candidate.lisp"
+        "books/config-carried-candidate.lisp",
+        "books/config-carried-open.lisp"
       ],
-      "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). An offline request authorizes from its open's carried fold (PRF-209, SCN-140): one open and one candidate open per request. Open: a configuration checkpoint so an open reads only the records after it, and the candidate open extended from the open (PKT-510, PKT-601)."
+      "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). An offline request authorizes from its open's carried fold and decides its candidate open from the open's own result, and verifies by reading its published record back instead of reopening (PRF-209, SCN-140; PKT-601 (1), (2)): one open per request. Open: the configuration-only fold still runs over the configuration history once per request."
     },
     {
       "id": "REP-013",
@@ -3489,7 +3528,9 @@
         "PRF-202",
         "PRF-203",
         "PRF-204",
-        "PRF-221"
+        "PRF-221",
+        "PRF-229",
+        "PRF-241"
       ],
       "verification": [
         "proof",
@@ -3499,11 +3540,14 @@
       "evidence": [
         "books/catalog-commit.lisp",
         "books/catalog-delta.lisp",
+        "books/catalog-number-index.lisp",
         "books/catalog-record.lisp",
         "books/catalog.lisp",
         "planning/evidence/catalog-slice-2026-09-26.md",
         "tests/acl2/catalog-commit-tests.lisp",
-        "tests/acl2/catalog-delta-tests.lisp"
+        "tests/acl2/catalog-delta-tests.lisp",
+        "tests/acl2/catalog-number-index-tests.lisp",
+        "books/config-policy-delta.lisp"
       ],
       "implementation_note": "Partial (catalog-slice, 2026-09-26): the held record, the interns and the catalog stobj with its obligations and keystones are certified (PRF-201); the catalog does not yet serve a path (PreparedCommit, the delta, the relation at open, the served reads and the host are PKT-585). Continuation catalog-slice-2 (2026-09-26): PreparedCommit and completion by token (books/catalog-commit.lisp, PRF-203), the shared transition fn-sn-finish-held equal to fn-sn-finish on the article arm under alpha and the context of the bytes, the context theorem in its re-decide form (the generation names the keyring; a stale context is refused by name), the delta grammar and its resumable application (books/catalog-delta.lisp), and the maintained relation R with its entries as the load fold (books/catalog-relation.lisp: written, admitted in the REPL, RED at certification at fn-cat-wire-list-of-redecide, not a root, not claimed; PKT-585). Still not served: the host calls none of it (steps 7 to 9 of PKT-585: the served reads, the host lines, the measurement).",
       "note": "Lane catalog-slice (wave 5 lane 2, D33; the consolidation design of 2026-09-26, section 1)."
@@ -3714,23 +3758,26 @@
         "tests/test_native_group_policy.py",
         "planning/evidence/group-policy-2026-09-26.md"
       ],
-      "implementation_note": "RFC 3977 section 7.6.3 (the status field) and RFC 6048 section 2.1 (n: local postings not permitted; relayed articles still arrive): an RFC meaning, not a stronger fn guarantee. The 441 text naming the reason is a stronger fn guarantee (RFC 3977 section 6.3.1 permits a plain 441). The verb `group policy NAME n|y` is a durable configuration record (:set-group-status, delta code 21), offline or live; no store record, no format change. A control message is not gated; Supersedes is. LIST COUNTS still reports y (PKT-575)."
+      "implementation_note": "RFC 3977 section 7.6.3 (the status field) and RFC 6048 section 2.1 (n: local postings not permitted; relayed articles still arrive): an RFC meaning, not a stronger fn guarantee. The 441 text naming the reason is a stronger fn guarantee (RFC 3977 section 6.3.1 permits a plain 441). The verb `group policy NAME n|y` is a durable configuration record (:set-group-status, delta code 21), offline or live; no store record, no format change. A control message is not gated; Supersedes is. LIST COUNTS still reports y (PKT-575 (1)); CT3, the operator's withdrawal, is PRF-256."
     },
     {
       "id": "SEC-006",
-      "title": "An unsigned article's poster, and only its poster, can withdraw it: by the same authenticated login on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315), decided in ACL2",
+      "title": "An unsigned article's poster, and only its poster, can withdraw it: by the same authenticated account on the node that injected it, and across nodes by a Cancel-Key matching the article's Cancel-Lock (RFC 8315)",
       "specification": "specs/nntp.md#own-post-cancel-and-cancel-lock-sec-006",
       "milestone": "M4",
-      "status": "specified",
-      "proof_targets": [],
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-210"
+      ],
       "verification": [
         "proof",
         "test"
       ],
       "evidence": [
-        "planning/evidence/group-policy-2026-09-26.md"
+        "planning/evidence/group-policy-2026-09-26.md",
+        "planning/evidence/newsreader-cancel-2026-09-26.md"
       ],
-      "implementation_note": "Specified, not implemented (PKT-575; the login provenance decision is PKT-576). RFC 5537 section 5.3 leaves cancel authentication to local policy; RFC 8315 sections 3 and 4 define Cancel-Lock and Cancel-Key (sha256). The same-login basis is a local policy (the coordinator's decision P1); Cancel-Lock verification is RFC 8315's MUST for a server that checks it."
+      "implementation_note": "Built by lanes newsreader-cancel, -2 and -3 (2026-09-26/27, PRF-210). The decision: an unsigned cancel or Supersedes whose RFC 8315 Cancel-Key opens a sha256 Cancel-Lock of its target withdraws it (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster). The node writes the lock for the posting ACCOUNT (the authenticated principal id recorded on the submission, fn-own-sub-account; not the login spelling) as K = HMAC-SHA256(sec, uid+mid) (RFC 8315 section 4), sec an HKDF-SHA256 purpose key (info fn/cancel-lock/v1, salt the recorded node identity) of one protected root per key epoch; the lines stand in front of the injected block, outside the D25 source, so a same-source retry by any account or after a rotation is already stored (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored) and a changed source, a changed user Cancel-Lock included, is a conflict. A cancel carries one key per retained epoch (fn-cl-ring-keys-open-every-retained-lock). Signed articles get no lock. The root is STORE/keys/node-secret.key, created only by `node-secret create` (or init), never regenerated at start; `store export` excludes keys/."
     },
     {
       "id": "NNT-043",
@@ -3809,7 +3856,7 @@
     },
     {
       "id": "NNT-042",
-      "title": "A reader connection's view is a version that advances at GROUP and LISTGROUP between commands and is fixed within a command; a cancel committed after an article leaves it visible to a connection pinned before the cancel until it advances past it",
+      "title": "A reader connection's view is a version (ViewId): a successful GROUP or LISTGROUP acquires a fresh coherent view and performs its normal selection effects; other reads stay on that view until the next refresh boundary; a failed selection leaves the previous view and cursor unchanged; a cancel committed after an article leaves it visible to a connection pinned before the cancel until it acquires a view past it",
       "specification": "specs/nntp.md#sessions-and-framing",
       "milestone": "M5",
       "status": "specified",
@@ -3825,12 +3872,23 @@
       "evidence": [
         "books/catalog-delta.lisp",
         "tests/acl2/catalog-delta-tests.lisp",
-        "planning/evidence/catalog-slice-2026-09-26.md"
+        "planning/evidence/catalog-slice-2026-09-26.md",
+        "books/served.lisp",
+        "books/owner.lisp",
+        "books/owner-invariants.lisp",
+        "books/config-owner-live.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_reader_freshness.py"
       ],
       "keystones": [
-        "fn-view-cancel-after-target"
+        "fn-view-cancel-after-target",
+        "fn-served-step-pin-is-old-or-live",
+        "fn-served-successful-selection-is-the-repinned-dispatch",
+        "fn-served-failed-selection-keeps-the-connection",
+        "fn-own-read-preserves-relation",
+        "fn-ocl-read-preserves-historical-relation"
       ],
-      "implementation_note": "A stronger fn guarantee than RFC 3977 (which fixes no view semantics), from the NNTP inventory's finding that a reader connection today keeps the view it opened with. The ACL2 half is certified (catalog-slice-2, 2026-09-26: fn-view-advance, fn-view-sees, fn-view-apply, fn-view-cancel-after-target over the catalog; SCN-131's two-connection case run on the live catalog in tests/acl2/catalog-delta-tests.lisp). The served path still pins a per-connection archive copy (fn-own-conn-archive); moving GROUP/LISTGROUP to the version and the served reads to the catalog is PKT-585 (steps 7 and 8), with tests.test_native_catalog_view.",
+      "implementation_note": "An explicit specification change (2026-09-26, gpt-6's wave-5 review section 1; before it a connection kept the view it pinned at open until the control channel advanced it). Implemented in the served machine the host calls (catalog-slice-5): the owner hands every read its committed view as the served connection's live pin (books/owner.lisp fn-own-served-conn, fn-own-view-live); fn-served-dispatch dispatches a GROUP/LISTGROUP line over the connection re-pinned at it (fn-served-repin) and keeps the re-pin exactly when the reply is 211 (fn-served-selectedp); fn-own-finish-read takes the pin back and the configured owner moves the connection's configuration pin with it (fn-ocfg-with-read-owner). ACL2: fn-served-step-pin-is-old-or-live, fn-served-successful-selection-is-the-repinned-dispatch, fn-served-failed-selection-keeps-the-connection, fn-served-repin-preserves-connp; the owner relations re-proved with the second case. Witness: tests/acl2/owner-tests.lisp (the reader pinned at version 0 lists the article after LISTGROUP and GROUP, is pinned at the view afterwards, and STAT on it before that still answers 430 with no pin moved). Native: tests.test_native_reader_freshness asserts the long-lived reader sees another connection's POST and a peer's IHAVE after its next GROUP. The catalog form (fn-view-advance = fn-cat-count, fn-view-cancel-after-target) is the same semantics over the catalog; the retrieval arms over the catalog and the crossed-view acceptance tests (HDR/XHDR, OVER/XOVER, XPAT, counts) are 7b (PKT-585).",
       "note": "Lane catalog-slice-2 (wave 5 lane 2 continuation, D33; the id the deputy assigned for PKT-585's REQ line)."
     },
     {
@@ -3853,13 +3911,14 @@
       "evidence": [
         "books/store-checkpoint-tables.lisp",
         "books/store-checkpoint-tables-reader.lisp",
+        "books/owner-checkpoint-writer.lisp",
         "books/owner-checkpoint-pipeline.lisp",
         "tests/acl2/store-checkpoint-tables-tests.lisp",
         "tests/test_native_state_checkpoint.py",
         "tests/test_native_checkpoint_auto.py",
         "planning/evidence/checkpoint-pipeline-2026-09-26.md"
       ],
-      "implementation_note": "Lane checkpoint-pipeline (2026-09-26; D33, D34). The file: runs F (3 S FRONTIER REVISION), P (one row per committed event: its payload bytes or NIL), E (the event with every leaf equal to its P row written as a reference), R (the four fold roots with each stored article's payload as a reference to its P row through the event index's Message-ID trie); no event index in the file (rebuilt at load). Each run is fn-scc-chunks of its rows' programs in segments of at most the profile's record bound, framed and chained by the unchanged FNSC frame with schema byte 3; the reader's admission per segment is unchanged and refuses another schema by name (fn-sccr-admit-segment :schema -> fn-sco-select-named -> open=full-replay reason=checkpoint-schema). Written by fn-ockp-step per batch of 1,024 rows (host/native/io.lisp fnn-checkpoint-write-steps, both entries) through fn-bs-scp-program's staged file between its created and written cuts (no new program, no new cut; the batch-kill native case reopens with the old checkpoint); read by fn-sct-load (host fn-store-sco-decode) into fn-sct-capture-of-tables, the capture the open extends. The schema-2 writer and reader are gone (fn-sco-freeze/-thaw, fn-sco-index-records, fn-sccb-plan, fn-sccr-decode-plan, fn-ockb-file-len, fn-ock-publication, fn-ock-publication-stream, books/owner-checkpoint-stream.lisp, books/store-checkpoint-shape.lisp). Not exercised: a signed composite in the ACL2 witnesses (its carried record's payload in R stays a literal second copy); the loop theorem fn-ockp-run-writes-the-file (PKT-583)."
+      "implementation_note": "Lane checkpoint-pipeline (2026-09-26; D33, D34). The file: runs F (3 S FRONTIER REVISION), P (one row per committed event: its payload bytes or NIL), E (the event with every leaf equal to its P row written as a reference), R (the four fold roots with each stored article's payload as a reference to its P row through the event index's Message-ID trie); no event index in the file (rebuilt at load). Each run is fn-scc-chunks of its rows' programs in segments of at most the profile's record bound, framed and chained by the unchanged FNSC frame with schema byte 3; the reader's admission per segment is unchanged and refuses another schema by name (fn-sccr-admit-segment :schema -> fn-sco-select-named -> open=full-replay reason=checkpoint-schema). Written by fn-ockp-step per batch of 1,024 rows (host/native/io.lisp fnn-checkpoint-write-steps, both entries) through fn-bs-scp-program's staged file between its created and written cuts (no new program, no new cut; the batch-kill native case reopens with the old checkpoint); read by fn-sct-load (host fn-store-sco-decode) into fn-sct-capture-of-tables, the capture the open extends. The schema-2 writer and reader are gone (fn-sco-freeze/-thaw, fn-sco-index-records, fn-sccb-plan, fn-sccr-decode-plan, fn-ockb-file-len, fn-ock-publication, fn-ock-publication-stream, books/owner-checkpoint-stream.lisp, books/store-checkpoint-shape.lisp). Not exercised: a signed composite in the ACL2 witnesses (its carried record's payload in R stays a literal second copy). checkpoint-pipeline-5 (2026-09-26): the step's guard is the O(1) shape fn-ockp-statep (the rows' encodability is the setup's one check, carried as the invariant fn-ockp-step-preserves-encodable and checked per row as the encoder writes: B rows and BYTES octets per step, host/native/io.lisp +fnn-checkpoint-batch-rows+ 1024 and +fnn-checkpoint-batch-octets+ 4 MiB); the automatic publication's due path is fn-ock-publication-next (one in flight, one coalesced request, the decision again at the finish; K the fast-path threshold)."
     },
     {
       "id": "HST-020",
@@ -3887,6 +3946,342 @@
       "implementation_note": "FNCT kind 19 (request reload|status) and kind 20 (reply: status, reason word, served line). The decision is ACL2's over the library's observations; the swap is the host's, under the context lock SSL_new also takes."
     },
     {
+      "id": "NNT-044",
+      "title": "Pipelined articles are each admitted and answered in order: two TAKETHIS or two POST articles in one socket read lose neither, and what is consumed from a stream does not depend on where it was cut",
+      "specification": "specs/nntp.md#pipelined-articles-nnt-044",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-213"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/served-tls-prefix.lisp",
+        "books/served-span.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-pipelining-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
+    },
+    {
+      "id": "NNT-048",
+      "title": "A peer's host may be an RFC 1123 host name as well as an IPv4 literal; the node resolves a name on every connection attempt and never hands a literal to the resolver; a TLS transport verifies the certificate against its configured name under either a pinned anchor file or the system's public roots, the default for a named peer; a name mismatch is refused by name and a resolution failure is a named, retried condition, never a fault",
+      "specification": "specs/peering.md#124-peer-hosts-by-name-and-the-tls-check-pkt-613",
+      "milestone": "M3",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-231"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/peer-host.lisp",
+        "tests/acl2/peer-host-tests.lisp",
+        "tests/test_native_peer_by_name.py",
+        "planning/evidence/peers-by-name-2026-09-27.md"
+      ],
+      "implementation_note": "PKT-613 (public-node gap d, fn half). RFC 1123 section 2.1 host syntax, RFC 6066 section 3 (no literal in SNI) are RFC requirements; resolving on every attempt, the system roots as the named default and the named dial outcomes are fn guarantees; refusing a trailing dot and IPv6 peer literals is local policy."
+    },
+    {
+      "id": "STO-031",
+      "title": "A Store opens only on the filesystem its record names: a missing node volume, a moved or restored store, or a missing or invalid record is refused by name at every open, `store rebind-filesystem` records a deliberate move, and the owner's start is refused by name when the store requires durable storage on a mount that observably disables it",
+      "specification": "specs/storage.md#the-stores-filesystem-sto-031",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-232"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/store-mount-identity.lisp",
+        "tests/acl2/store-mount-identity-tests.lisp",
+        "tests/test_native_store_mount_identity.py",
+        "planning/evidence/store-mount-identity-2026-09-27.md"
+      ],
+      "implementation_note": "Lane store-mount-identity (2026-09-27; PKT-579, PKT-648). The record filesystem-identity.fnmi (FNMI frame: fsid, type, mount point, source, policy) is written by init, store import and the developer probe; fnn-acquire asks fn-smid-open-verdict before any other read; fnn-owner-install asks fn-smid-start-verdict; `store rebind-filesystem [--storage-require-durable on|off]` (operator) and `store ROOT rebind-filesystem [on|off]` (developer). Policy 1 under a mission's configuration, 0 otherwise; every open warns on nobarrier/barrier=0/tmpfs/ramfs."
+    },
+    {
+      "id": "HST-025",
+      "title": "The saved image carries the execution world only, the owner serves on a small collection trigger, and the node's thread stacks are the profile's measured need: a fresh node starts in, serves from and refuses a guard violation within a 256 MB dynamic space, and a reservation the machine cannot hold is refused by name",
+      "specification": "specs/host.md#the-saved-images-memory",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-198"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "measurement"
+      ],
+      "evidence": [
+        "host/native/strip-world.lisp",
+        "host/native/build.lisp",
+        "host/native/build-dtn.lisp",
+        "host/native/owner.lisp",
+        "tools/build_native_host.sh",
+        "tests/test_native_image_floor.py",
+        "tools/runtime_image/node_measure.py",
+        "planning/evidence/image-floor-2026-09-26.md",
+        "host/native/io.lisp",
+        "books/heap-reservation.lisp",
+        "host/native/heap.lisp",
+        "packaging/fn",
+        "tests/acl2/heap-reservation-tests.lisp"
+      ],
+      "implementation_note": "Before save-exec the build keeps, at their current value, the twelve execution properties on every symbol and the other world pairs a node was recorded reading (lane image-anatomy), over a bottom of command 0, event 0 and project-dir-alist; it drops the build residue (channel symbols, documentation, defconst discriminators, the build-sized hons space and memoize array). A re-save of the stripped core was measured worse and is not taken. Core dynamic content 271.4 -> 105.6 MiB (hbox), 265.9 -> 106.2 (OpenBSD). The owner collects every 64 MiB during recovery and a publication (a sixteenth of a reservation under 1 GiB), once fully after recovery, and every 8 MiB while serving. The reservation a profile needs is still heap-from-profile's derivation (HST-013), which the list representation of the retained history dominates: see the record's packets. The thread stacks: books/heap-reservation.lisp fn-heap-reserve-decide (PRF-198's extension) adds the core once more and THREADS x (STACK + 4 MiB) to heap-figure's heap, STACK a constant 1,024 KiB (seven times the 142 KiB the node needs whatever the article since lane served-line-iterative made the served path's per-line recursions loops; before, a per-line term, 1,192 KiB for the 32 KiB-article presets; the image's launcher passed 64 MiB), and refuses a total past the machine by name; the installed launcher passes --control-stack-size."
+    },
+    {
+      "id": "HST-024",
+      "title": "The node serves reader and transit connections from a fixed set of I/O loop threads, and a connection capacity the machine cannot hold beside the store is refused by name at start and at a live change",
+      "specification": "specs/host.md#served-connections",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-223"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/connection-budget.lisp",
+        "tests/acl2/connection-budget-tests.lisp",
+        "host/native/mux.lisp",
+        "host/native/owner.lisp",
+        "host/native/tls.lisp",
+        "host/owner-host.lisp",
+        "host/native/heap.lisp",
+        "tests/test_native_mux.py",
+        "tools/mux_measure.py",
+        "specs/host.md",
+        "planning/evidence/connection-multiplexing-2026-09-26.md"
+      ],
+      "implementation_note": "PKT-605 closed for the stated workload: the capacity row (NNT-043) is checked against the machine by ACL2 at run and at every live reconfiguration; trusted sources count. No wire or delta code, no store format, no fn.toml key. PKT-639 (implicit TLS admitted before the handshake) and PKT-640 (TLS refusals in the service log) are folded in. SCN-153 is the native case on both images."
+    },
+    {
+      "id": "NNT-046",
+      "title": "A login's access rule restricts its connections to the groups its read wildmat admits, as if the other groups were absent, and its posts to the groups its post wildmat admits",
+      "specification": "specs/nntp.md#group-access-nnt-046",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-222"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/accounts.lisp",
+        "books/account-list.lisp",
+        "books/group-access.lisp",
+        "books/nntp-auth.lisp",
+        "books/served-carried.lisp",
+        "books/owner-agent.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/native-admin-host.lisp",
+        "tests/acl2/group-access-tests.lisp",
+        "tests/test_native_group_access.py",
+        "planning/evidence/group-access-2026-09-27.md"
+      ],
+      "implementation_note": "Local policy after INN readers.conf (read and post wildmats per identity; RFC 3977 section 4.2 wildmats; RFC 4643 leaves authorization to local policy). Stronger fn guarantee: no existence oracle (an excluded group answers exactly as an absent one: 411, 430, the unknown-group 441). The verb `account access LOGIN|--anonymous --read R --post P` is a durable configuration record (:account-access, delta code 22), offline or live; no store record, no format change. Peering unchanged; the consumer poll is the owner's and reads everything."
+    },
+    {
+      "id": "SEC-007",
+      "title": "Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from peers the feed patterns name, or from the node's own consumer; confidentiality beyond that is the posters' own encryption",
+      "specification": "specs/nntp.md#group-access-nnt-046",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-222"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "specs/nntp.md",
+        "docs/operator.md",
+        "books/nntp-auth.lisp",
+        "planning/evidence/group-access-2026-09-27.md"
+      ],
+      "implementation_note": "A statement of scope, so that 'private group' is not read as a confidentiality claim: fn-auth-access-text gives a peer connection no rule; the Store, store inspect and the consumer socket are the operator's; the Newsgroups header of a cross-posted article names every group; Message-IDs are unique node-wide (a duplicate POST is refused)."
+    },
+    {
+      "id": "NNT-047",
+      "title": "A moderated group holds an unapproved local post for its moderators (never posting it), commits an article carrying Approved from a moderator's login, refuses an Approved from anyone else by name, lists the group with status m, and a relay refuses an unapproved article in it",
+      "specification": "specs/nntp.md#moderated-groups-nnt-047",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-228"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/accounts.lisp",
+        "books/account-list.lisp",
+        "books/moderation.lisp",
+        "books/nntp-post.lisp",
+        "books/nntp-responses.lisp",
+        "books/nntp-auth.lisp",
+        "books/owner-agent.lisp",
+        "books/peer-inbound.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/moderation-tests.lisp",
+        "tests/test_native_moderation.py",
+        "planning/evidence/moderated-groups-2026-09-27.md",
+        "host/native-admin-host.lisp",
+        "books/moderation-verbs.lisp",
+        "tests/acl2/moderation-verbs-tests.lisp",
+        "planning/evidence/moderation-verbs-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.5 item 7 and 3.5.1 (forward, never post; method 1, application/news-transmission; usage=moderate), section 7 (verify the approver by transport authentication), sections 3.6 item 6 and 3.7 item 5 (relay/serving refusal); RFC 6048 section 2.1.1 (m). fn has no mail path: the forward is an envelope article into the group's queue group (an ordinary Store article: no new persistence domain). The moderator is an account with a role (accounts slot, marks 4 and 5; delta code 23). The 441 texts naming the reason are a stronger fn guarantee. A control message is not gated. The queue group is never offered to a peer and is served only to the moderators of the groups it queues for (PKT-658; group-access's restricted view with the queue hidden). `moderation list GROUP` reports the queue (FNLS kind 3 code 10). `moderation approve ID --moderator LOGIN` and `moderation reject ID --moderator LOGIN [--reason TEXT]` (PKT-657, FNCT request kind 21, books/moderation-verbs.lisp): only a moderator of the envelope's group, approve posts the held article with Approved under LOGIN's served decision, reject is the node's withdrawal (PRF-256). Not done: a PGPMoose-style signed approval."
+    },
+    {
+      "id": "CNS-006",
+      "title": "A local consumer bound to an account is served only while the account's read rule admits its group, only with the account's password, keeps its position when refused, and an unbound consumer is unchanged",
+      "specification": "specs/consumer-progress.md#bound-consumers",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-234"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/config.lisp",
+        "books/accounts.lisp",
+        "books/account-list.lisp",
+        "books/consumer-bound.lisp",
+        "books/consumer-local-control.lisp",
+        "books/native-admin.lisp",
+        "books/native-operator.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/consumer-local.lisp",
+        "tools/fn_consumer.py",
+        "tests/acl2/consumer-bound-tests.lisp",
+        "tests/test_native_consumer_identity.py",
+        "planning/evidence/consumer-identity-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T021857Z-190087.json",
+        "planning/evidence/manifests/certify-20260927T022825Z-256887.json",
+        "planning/evidence/consumer-identity-2026-09-27/native-a3-test_native_consumer_identity.log"
+      ],
+      "implementation_note": "A client contract, not an RFC requirement; the rule is NNT-046's (local policy after INN readers.conf). The binding is a durable configuration record (:consumer-bind, delta code 24), offline or live; no store record, no store format change. The credential is the account's own (AUTHINFO's verifier; no consumer-specific secret). Decided by ember 2026-09-27 (PKT-642).",
+      "note": "The local socket stays the owner's (0600): a process with the owner's uid can still use unbound consumers; carrying bound requests to a non-owner peer is PKT-673."
+    },
+    {
+      "id": "NNT-049",
+      "title": "An article refused for a reason its octets decide is remembered, within the operator's bound, and a later offer of its Message-ID from any peer is refused from the memory without a transfer",
+      "specification": "specs/peering.md#refused-offer-memory-nnt-049",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-235"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/refused-offers.lisp",
+        "books/peer-refused-offers.lisp",
+        "books/owner.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.3 (the relaying agent's history) permits it; remembering rejects is INN's practice; that the memory's answer is the re-parse's, bounded by the operator's refused-offer-capacity with oldest-first eviction and kept in memory only, is the fn guarantee (D27)."
+    },
+    {
+      "id": "NNT-050",
+      "title": "A relayed article dated more than the operator's skew (at most 24 hours) into the future, with an unreadable date, with a malformed Path, or with no Path when the operator requires one, is refused by name",
+      "specification": "specs/peering.md#relay-date-and-path-checks-nnt-050",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-236"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/relay-checks.lisp",
+        "books/peer-inbound.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.6 step 2 (MUST reject beyond 24 hours; MAY use a smaller margin) is an RFC requirement; step 4 (SHOULD reject without the mandatory fields; MAY reject invalid contents) is RFC guidance fn follows for the date and a present Path; requiring Path is local policy, off by default (PKT-674)."
+    },
+    {
+      "id": "NNT-051",
+      "title": "An article whose Distribution names no distribution a peer's feed is configured for is not fed to that peer",
+      "specification": "specs/peering.md#per-peer-distribution-filtering-nnt-051",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-237"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/owner-feed.lisp",
+        "books/owner-feed-subject.lisp",
+        "books/native-admin-peer.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.6 paragraph 2 is RFC guidance (SHOULD NOT relay) fn follows per peer; the three cases the RFC leaves open (no filter configured, no Distribution field, a malformed Distribution) are local policy, stated in the specification."
+    },
+    {
+      "id": "NNT-052",
+      "title": "NEWGROUPS and LIST ACTIVE.TIMES list the groups the configuration created, LIST SUBSCRIPTIONS answers a list, LIST OVERVIEW.FMT uses the compatibility form, and ARTICLE, HEAD and HDR carry this node's Xref",
+      "specification": "specs/nntp.md#reader-compatibility-newgroups-list-subscriptions-overviewfmt-and-xref-nnt-052",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-243"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/nntp-reader-compat.lisp",
+        "tests/acl2/nntp-reader-compat-tests.lisp",
+        "tests/test_native_reader_clients.py",
+        "planning/evidence/reader-compat-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 3977 sections 7.3, 8.4.2 and 8.5, RFC 6048 sections 2.3 and 2.6 and RFC 5536 section 3.2.14 are the RFC requirements; creation times from the creating configuration record and a view-restricted list are stronger fn guarantees; the configured default list with the view's groups as fallback, Bytes:/Lines:, and Xref generated at serve time are local policy (specs/nntp.md). Packets PKT-665 to PKT-668."
+    },
+    {
       "id": "REP-014",
       "title": "The payload arena is an attachable generic whose logical value is the list of sealed payloads; the byte array is an implementation attached in the image; a handle has identity, extent and lifetime; replay over the retained view equals replay over the wire view; a pinned reader's payload survives reclamation",
       "specification": "specs/store-refinement.md#abstraction-relation",
@@ -3912,26 +4307,213 @@
       "implementation_note": "Lane records-freeze (2026-09-26/27, PKT-293): the generic, its byte-array attachment, the intern's coordinates, the replay theorems and the reclamation identity are certified (PRF-221); the image attaches the byte array (host/native/build.lisp includes books/payload-arena-attach before any book naming fn-arena). Not yet served: no host line seals into the arena or loads the catalog (catalog-slice-5 step 8; acceptance-payload-arena PKT-635), so the retained bytes per stored octet are still sixteen on the running node until that join; the measurement belongs to it."
     },
     {
-      "id": "NNT-044",
-      "title": "Pipelined articles are each admitted and answered in order: two TAKETHIS or two POST articles in one socket read lose neither, and what is consumed from a stream does not depend on where it was cut",
-      "specification": "specs/nntp.md#pipelined-articles-nnt-044",
+      "id": "STO-029",
+      "title": "store import and operator init publish their staged store by a no-replace rename and a parent barrier: a crash leaves no store or the complete (init: empty) store, and an interrupted or ambiguous publication is refused by name",
+      "specification": "specs/storage.md#one-format-and-the-archive",
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-213"
+        "PRF-217"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/store-import-publication.lisp",
+        "tests/acl2/store-import-publication-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_import_publication.py",
+        "books/store-init-publication.lisp",
+        "tests/acl2/store-init-publication-tests.lisp",
+        "tests/test_native_init_publication.py"
+      ],
+      "implementation_note": "gpt-6 review 2026-09-26 section 7. The staged ROOT.import-XXXX is completed and fenced, admitted by the ordinary open, published by renameat2(RENAME_NOREPLACE) and the parent fenced; a leftover staged directory is classified by ACL2 (interrupted-import, publication-uncertain) and refused by name. Operator init (PKT-647) runs the same program with init's plan in ROOT.init-XXXX (fnn-command-init-published); a leftover is refused interrupted-init or publication-uncertain, an existing ROOT store-path-exists. OpenBSD: exclusive flock on ROOT.lock, ROOT re-checked before rename(2)."
+    },
+    {
+      "id": "STO-030",
+      "title": "The header limits of one article (fields, physical lines, octets) are store profile fields, and admission refuses exactly past them by name",
+      "specification": "specs/storage.md#authority-and-layout",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-230"
       ],
       "verification": [
         "proof",
         "scenario"
       ],
       "evidence": [
-        "books/served-tls-prefix.lisp",
-        "books/served-span.lisp",
-        "host/native/owner.lisp",
-        "tests/test_native_peering.py",
-        "planning/evidence/transit-pipelining-2026-09-27.md"
+        "books/byte-store-frame.lisp",
+        "books/article-header-limits.lisp",
+        "books/injection.lisp",
+        "planning/evidence/header-limits-profile-2026-09-27.md"
       ],
-      "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
+      "implementation_note": "Fields 15 to 17 (defaults 64, 256, 16,384); the served POST refuses by them (PRF-230, SCN-156). Open: peer and BP ingress (PKT-660)."
+    },
+    {
+      "id": "HST-019",
+      "title": "The native owner's wrappers return typed ACL2 results the host checks once; no global result mailboxes, no LF name grammar, no frame fetched by index",
+      "specification": "specs/host.md#typed-results-across-the-native-boundary",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-208"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "books/owner-results.lisp",
+        "host/native/feed-service.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/adapter-retirement-2026-09-26.md",
+        "tests/acl2/owner-results-tests.lisp",
+        "tests/native_bp_transit_identity_raw.lisp",
+        "tests/native_feed_service_raw.lisp",
+        "tests/native_live_config_cache_raw.lisp",
+        "tests/native_owner_bound_commit_raw.lisp",
+        "tools/run_owner.py"
+      ],
+      "implementation_note": "Lane adapter-retirement: FeedPublication and ConfigResult typed; fnn-owner-name-list and fnn-owner-config-names deleted; the feed flush consumes one sealed frame plan. Lane adapter-retirement-2: the submission path's publication admits the owner's two submission ids (the batch AM fault: the operator post's :control), with keystones for every outcome; the take returns a SubmissionTaken (six fn-owner-submit-* mailboxes retired; the transit decision's memberships are its own fn-owner-transit-groups); Capture takes checkpoint-pipeline-5's field names. ServedStep is fenced to lane owner-scheduler (its render plan replaces the served step's return)."
+    },
+    {
+      "id": "REP-015",
+      "title": "The BP application handoff is reported durable only when the application committed the delivered ADU (the Store holds the article, or the receipt's release is durable); a durable kind 7 recording a refusal is reported refused, naming the disposition, never durable",
+      "specification": "specs/bp-node-machine.md#494-the-handoff-reports-the-applications-disposition-2026-09-27-lane-bp-fragments-10mib-prf-224",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-224"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc9171.txt",
+        "books/bp-handoff-report.lisp",
+        "books/bp-node-foundation.lisp",
+        "books/bp-node-progress.lisp",
+        "tests/acl2/bp-handoff-report-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "tests/test_bp_node_native.py",
+        "tests/test_bp_fragment_node_native.py",
+        "specs/bp-node-machine.md",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 9171 section 5.7 (local bundle delivery) leaves the application's disposition to the node; a durable kind 7 completes delivery at the BP layer whatever the application decided (spec bp-node-machine 3.1). fn's stronger guarantee: the host reports the disposition ACL2 names (fn-bpah-handoff-report), so 'handoff durable' means the application committed. PKT-630 (7).",
+      "note": "SCN-158; SCN-077's 10 MiB case is the positive witness once its Store admits the article."
+    },
+    {
+      "id": "WEB-003",
+      "title": "The friends' web reader signs in only by the node's AUTHINFO answer over verified TLS and decides nothing",
+      "specification": "specs/human-client.md#the-friends-reader",
+      "milestone": "M6",
+      "status": "implemented",
+      "proof_targets": [],
+      "verification": [
+        "test"
+      ],
+      "evidence": [
+        "tools/fn_reader.py",
+        "tests/test_fn_reader.py",
+        "tests/fn_reader_scratch.py",
+        "tests/fn_reader_drive.mjs",
+        "docs/reader.md",
+        "planning/evidence/web-reader-2-2026-09-27.md"
+      ],
+      "implementation_note": "A permitted external client (AGENTS.md: Python is a client and test tool, never a second decision engine). Every accept, refuse, hold, approval, withdrawal and group visibility shown is the node's NNTP answer; the reader's own state is read marks, a display name and submission records (exact lines before the POST).",
+      "note": "Client behaviour over a scratch production-image node (SCN-173); it proves nothing about the node beyond the answers recorded. Rejecting a held post waits on PKT-657 (PKT-704)."
+    },
+    {
+      "id": "CNS-007",
+      "title": "A consumer wait sleeps until an event its consumer can read is committed or its timeout passes, and answers exactly what a poll answers at that moment; waiters are bounded and refused by name past the bound",
+      "specification": "specs/consumer-progress.md#waiting",
+      "milestone": "M4",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-252"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/consumer-wait.lisp",
+        "books/consumer-wait-codec.lisp",
+        "host/owner-host.lisp",
+        "host/native-control-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/control.lisp",
+        "host/native/consumer-local.lisp",
+        "tools/fn_agent.py",
+        "tests/acl2/consumer-wait-tests.lisp",
+        "tests/acl2/consumer-wait-codec-tests.lisp",
+        "tests/test_native_agent_wait.py",
+        "planning/evidence/agent-wait-2026-09-27.md",
+        "tests/test_fn_agent.py",
+        "planning/evidence/manifests/certify-20260927T062924Z-487302.json",
+        "planning/evidence/manifests/certify-20260927T063806Z-601723.json",
+        "planning/evidence/agent-wait-2026-09-27/native-a2-test_native_agent_wait.log",
+        "planning/evidence/manifests/certify-20260927T064948Z-753286.json"
+      ],
+      "implementation_note": "A client contract, not an RFC requirement. No store record, no configuration delta, no store format change; local-control request codes 9 (wait) and 10 (bound-wait), answered on the poll reply kind 6. The waiter capacity is 12, derived from the fixed local-control worker ceiling (16) that the heap reservation already counts; making it an operator profile value is PKT-700.",
+      "note": "Wake is a broadcast: every waiter polls once per commit (at most 12 polls per commit). fn_agent.py is an external client (Python), not part of the node."
+    },
+    {
+      "id": "STO-033",
+      "title": "The commit batch and the close rule",
+      "specification": "specs/storage.md#commit-protocol",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-253",
+        "PRF-254",
+        "PRF-255"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/owner-batch.lisp",
+        "tests/acl2/owner-batch-tests.lisp",
+        "planning/evidence/w6-log-owner-2026-09-27.md"
+      ],
+      "implementation_note": "Lane w6-log-owner (2026-09-27; design planning/design-2026-09-27-storage-log.md section 3.3). One batch in flight; its members are ordered by their prepare; each member's acknowledgement follows the batch's barrier, in order (fn-owb-fence fills WAITING from the fenced batch, fn-owb-finish-member acknowledges its head); the batch closes when the log thread returns from the previous barrier or at the operator's live bounds log-batch-records and log-batch-octets (:set-limit slots, fn-owb-bmax and fn-owb-omax; an unset slot means 64 records and the batch buffer's size), never a timer; a failed barrier makes every member in flight or waiting :uncertain and fences the store (fn-owb-fence-failed). Proved over the batch layer books/owner-batch.lisp: PRF-253 (T1), PRF-254 (T4, the bounds, the sole-pending-writer discharge), PRF-255 (T7); the scenarios are SCN-174 (the batch's crash cuts) and SCN-170 (the fsync error). Open: no host line calls the layer; the store node's article commit still runs the file kernel of books/store-files.lisp (PKT-698, the decision packet), and the batch layer with the log thread and the mutex discipline is PKT-748."
+    },
+    {
+      "id": "HST-023",
+      "title": "The owner mutex is entered through a gate whose next class ACL2 picks: a control request waits at most three quanta of readers, posters and transit; a served reply is an immutable render plan the connection's I/O loop writes off the mutex in windows ACL2 sizes; health prints each class's hold and wait distribution",
+      "specification": "specs/host.md#the-served-reader-path",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-248"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-scheduler.lisp",
+        "books/served-plan.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "host/native/control.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_owner_scheduler.py",
+        "planning/design-2026-09-26-owner-scheduler.md",
+        "planning/evidence/owner-scheduler-2026-09-26.md"
+      ],
+      "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read)."
     }
   ]
 }

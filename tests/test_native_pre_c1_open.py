@@ -65,6 +65,10 @@ class PreC1OpenTest(unittest.TestCase):
         (store / "writer.lock").touch()
         for path in [store, *store.rglob("*")]:
             path.chmod(0o700 if path.is_dir() else 0o600)
+        # The fixture predates the filesystem record (PKT-579): the copy is
+        # a store placed here deliberately, so it is rebound before use.
+        rc, out = self.fn("store", store, "rebind-filesystem")
+        self.assertEqual(rc, 0, out)
         return store
 
     def fn(self, *args):

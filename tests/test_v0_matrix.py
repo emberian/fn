@@ -609,6 +609,25 @@ class ClientWireTests(unittest.TestCase):
         # A client line is never taken for the node's answer.
         self.assertNotIn("Subject: Re: x", json.dumps(seen))
 
+    def test_a_reply_is_read_from_the_connection_that_sent_the_command(self):
+        # pan keeps two connections; the other one's keepalive answer lands
+        # between the ARTICLE and its reply, and between POST's 340 and 240.
+        log = "\n".join([
+            "1.0 0 --- action read",
+            "1.1 7 C: ARTICLE 3", "1.2 6 S: 200 posting allowed",
+            "1.3 7 S: 220 3 <a@b> article follows",
+            "2.0 0 --- action post",
+            "2.1 7 C: POST", "2.2 7 S: 340 send article",
+            "2.3 6 S: 211 3 1 3 local.general", "2.4 7 C: .",
+            "2.5 7 S: 240 article received OK",
+            "3.0 0 --- action create",
+            "3.1 9 C: LIST SUBSCRIPTIONS", "3.2 9 S: 503 data item not stored",
+        ])
+        seen = v0_matrix.client_wire_outcomes(log)
+        self.assertEqual(seen["read"], "220 3 <a@b> article follows")
+        self.assertEqual(seen["post"], "240 article received OK")
+        self.assertEqual(seen["create"], {"LIST SUBSCRIPTIONS": "503 data item not stored"})
+
 
 class TinWireTests(unittest.TestCase):
     """tin_wire_outcomes reads only the node's reply lines (the tin phase)."""

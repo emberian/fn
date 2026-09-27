@@ -25,6 +25,10 @@
 (in-package "ACL2")
 (include-book "owner-tls-prefix")
 (include-book "owner-prepare-correspondence")
+; SEC-006: the served arm of the stored octets carries the login's
+; RFC 8315 Cancel-Lock (books/cancel-lock.lisp fn-cl-served-payload).
+(include-book "cancel-lock")
+(include-book "injection-info-params")
 (include-book "store-intern")
 
 ; -----------------------------------------------------------------------------
@@ -60,37 +64,131 @@
 ; octets (fn-own-sub-octets) whenever a Path identity is configured, so a
 ; completion compared with the received octets names a different article
 ; (transit-436, 2026-09-24).
-(defun fn-own-sub-stored-octets (cfg sub)
+; SEC-006 (PRF-210): a local submission's are its injected octets with the
+; RFC 8315 lines the node generates for the submission's account under the
+; key ring RING (the owner's fn-own-node-secret) IN FRONT: `Cancel-Lock:
+; sha256:lock(E, ACCOUNT, MSGID)' under the current epoch E and, on a
+; cancel or Supersedes, `Cancel-Key:' with one key per retained epoch
+; (books/cancel-lock.lisp fn-cl-served-payload).  Without an account
+; (control, BP, an unauthenticated POST) or a ring they are the injected
+; octets.  The lines are outside the D25 source (books/cancel-lock-lines.lisp
+; fn-cll-skip; fn-own-stored-octets-keep-the-injected-octets below).
+(defun fn-own-sub-stored-octets (cfg sub secret)
   (declare (xargs :guard t))
   (let ((d (fn-own-sub-decision sub)))
     (if (fn-peer-submissionp d)
         (fn-peer-relayed-octets cfg (fn-peer-submission-peer d)
                                 (fn-peer-submission-octets d))
-      (fn-inj-decision-octets d))))
+      (fn-cl-served-payload secret (fn-own-sub-account sub)
+                            (fn-inj-decision-msgid d)
+                            (fn-ipp-injected-octets d secret (fn-own-sub-login sub)
+                                                    cfg)))))
 
 ;; The two arms, named by definition (they are not keystones).  A local or
-;; control submission's staged octets are its own: nothing is prepended, so
-;; for served POST the keystone below compares with the submission's octets
-;; exactly as before.  A transit submission's are fn-peer-relayed-octets of
+;; control submission's staged octets are the generated lines, if any, and
+;; its own injected octets.  A transit submission's are fn-peer-relayed-octets of
 ;; the received octets, whose Path is the received Path with this node's
 ;; identity and diagnostic prepended when a Path identity is set
 ;; (books/peer-inbound-invariants.lisp
 ;; fn-peer-relayed-octets-keep-the-received-path-tail).
 (defthm fn-own-sub-stored-octets-of-a-local-submission-by-definition
   (implies (not (fn-peer-submissionp (fn-own-sub-decision sub)))
-           (equal (fn-own-sub-stored-octets cfg sub)
+           (equal (fn-own-sub-stored-octets cfg sub secret)
+                  (fn-cl-served-payload secret (fn-own-sub-account sub)
+                                        (fn-own-sub-msgid sub)
+                                        (fn-ipp-injected-octets
+                                         (fn-own-sub-decision sub) secret
+                                         (fn-own-sub-login sub) cfg))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets fn-own-sub-octets
+                                   fn-own-sub-msgid)
+                                  (fn-ipp-injected-octets fn-cl-served-payload)))))
+
+(defthm fn-own-sub-stored-octets-without-an-account-by-definition
+  (implies (and (not (fn-peer-submissionp (fn-own-sub-decision sub)))
+                (not (fn-cl-accountp (fn-own-sub-account sub)))
+                (not (fn-ipp-accountp secret (fn-own-sub-login sub)))
+                (not (fn-ipp-complaints cfg)))
+           (equal (fn-own-sub-stored-octets cfg sub secret)
                   (fn-own-sub-octets sub)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets))))
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets fn-own-sub-octets
+                                   fn-ipp-accountp)
+                                  (fn-ipp-injected-octets fn-ipp-complaints))
+           :use ((:instance fn-ipp-injected-octets-without-parameters
+                            (d (fn-own-sub-decision sub))
+                            (login (fn-own-sub-login sub)))))))
 
 (defthm fn-own-sub-stored-octets-of-a-transit-submission-by-definition
   (implies (fn-peer-submissionp (fn-own-sub-decision sub))
-           (equal (fn-own-sub-stored-octets cfg sub)
+           (equal (fn-own-sub-stored-octets cfg sub secret)
                   (fn-peer-relayed-octets
                    cfg (fn-peer-submission-peer (fn-own-sub-decision sub))
                    (fn-own-sub-octets sub))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-own-sub-stored-octets fn-own-sub-octets))))
+
+; KEYSTONE (SEC-006, PRF-210; subject fn-own-sub-stored-octets, which
+; host/owner-host.lisp fn-owner-take stages for the Store and
+; fn-owner-finish-submission's gate compares with the durable record).  For
+; a served submission by account A, with a key ring installed, no
+; Cancel-Lock written by the poster and no signature carrier, the stored
+; octets are exactly one Cancel-Lock line, A's lock for the submission's
+; Message-ID under the current key epoch, then (for a cancel) the Cancel-Key
+; line, then the injected octets unchanged; by
+; fn-cl-account-key-opens-exactly-its-lock, A's key opens that lock and
+; another account's key opens it only through a collision.
+(defthm fn-own-stored-octets-carry-the-account-lock
+  (let* ((d (fn-own-sub-decision sub))
+         (account (fn-own-sub-account sub))
+         (x (fn-ipp-injected-octets d secret (fn-own-sub-login sub) cfg))
+         (fields (fn-ctl-received-fields x)))
+    (implies (and (not (fn-peer-submissionp d))
+                  (fn-cl-lock-wanted-p secret account fields))
+             (equal (fn-own-sub-stored-octets cfg sub secret)
+                    (append (fn-cll-line *fn-cll-lock-head*
+                                         (fn-cl-lock (fn-ns-current secret) account
+                                                     (fn-inj-decision-msgid d)))
+                            (if (consp (fn-cl-key-values secret account fields))
+                                (fn-cll-key-line (fn-cl-key-values secret account fields))
+                              nil)
+                            x))))
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets)
+                                  (fn-cl-served-payload fn-cl-lock fn-cl-key-values
+                                   fn-ipp-injected-octets
+                                   fn-ctl-received-fields fn-cll-line fn-cll-key-line
+                                   fn-cl-lock-wanted-p))
+           :use ((:instance fn-cl-served-payload-writes-one-account-lock
+                            (ring secret)
+                            (account (fn-own-sub-account sub))
+                            (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
+                            (payload (fn-ipp-injected-octets
+                                      (fn-own-sub-decision sub) secret
+                                      (fn-own-sub-login sub) cfg)))))))
+
+; KEYSTONE (D25 restored, gpt-6's wave-5 review section 3; subject
+; fn-own-sub-stored-octets).  Whatever the key ring and the account, the
+; D25 projection (books/cancel-lock-lines.lisp fn-cll-skip, which
+; books/poster-bytes.lisp reads both compared payloads through) of the
+; octets a served submission stores is its injected octets: the generated
+; metadata never enters the source identity, so a same-source retry by
+; another account or after a key rotation compares exactly as the injected
+; articles do (books/cancel-lock-d25.lisp states the verdicts).
+(defthm fn-own-stored-octets-keep-the-injected-octets
+  (let* ((d (fn-own-sub-decision sub))
+         (x (fn-ipp-injected-octets d secret (fn-own-sub-login sub) cfg)))
+    (implies (and (not (fn-peer-submissionp d))
+                  (not (equal (car x) 67)))
+             (equal (fn-cll-skip (fn-own-sub-stored-octets cfg sub secret)) x)))
+  :hints (("Goal" :in-theory (e/d (fn-own-sub-stored-octets)
+                                  (fn-cl-served-payload fn-ipp-injected-octets))
+           :use ((:instance fn-cl-served-payload-projects-to-the-injected-octets
+                            (ring secret)
+                            (account (fn-own-sub-account sub))
+                            (msgid (fn-inj-decision-msgid (fn-own-sub-decision sub)))
+                            (payload (fn-ipp-injected-octets
+                                      (fn-own-sub-decision sub) secret
+                                      (fn-own-sub-login sub) cfg)))))))
 
 ; The store retains ROWS (records-flip, books/store-intern.lisp): the
 ; completion record is a held row whose payload position is a handle into
@@ -108,7 +206,7 @@
          (fn-held-p record)
          (equal (fn-record-msgid w)
                 (fn-record-octets-string (fn-own-sub-msgid sub)))
-         (equal (fn-record-payload w) (fn-own-sub-stored-octets cfg sub))
+         (equal (fn-record-payload w) (fn-own-sub-stored-octets cfg sub (fn-own-node-secret o)))
          t)))
 
 (defun fn-own-finish (o cfg fn-arena)
@@ -174,7 +272,7 @@
                   (equal (fn-record-msgid w)
                          (fn-record-octets-string (fn-own-sub-msgid sub)))
                   (equal (fn-record-payload w)
-                         (fn-own-sub-stored-octets cfg sub))
+                         (fn-own-sub-stored-octets cfg sub (fn-own-node-secret o)))
                   (fn-sf-record-has-pairp
                    pair (fn-sf-records (fn-sn-files (fn-own-store o2)))))))
   :rule-classes nil
@@ -255,14 +353,17 @@
   :hints (("Goal" :in-theory (enable fn-own-outcome fn-own-advance fn-own-advance-result
                                      fn-own-set-conns))))
 
-; A reader connection's served chunk reads its own connection record and the
-; owner's clock, nothing else.  A peer connection also reads the live node
+; A reader connection's served chunk reads its own connection record, the
+; owner's clock and the owner's committed view (NNT-042, specs/nntp.md: a
+; successful GROUP or LISTGROUP in the chunk acquires that view; books/served
+; fn-served-repin), nothing else.  A peer connection also reads the live node
 ; (fn-own-conn-live-session): its offers answer from the store as it is now,
 ; deliberately, so it is outside this statement.
-(defthm fn-own-reader-tls-read-depends-only-on-its-connection-and-clock
+(defthm fn-own-reader-tls-read-depends-only-on-its-connection-clock-and-view
   (implies (and (equal (fn-own-find-conn id (fn-own-conns o2))
                        (fn-own-find-conn id (fn-own-conns o)))
                 (equal (fn-own-clock o2) (fn-own-clock o))
+                (equal (fn-own-view o2) (fn-own-view o))
                 (not (fn-peer-session-cfg
                       (fn-auth-session-base
                        (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o)))))))
@@ -273,47 +374,107 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-own-read-tls-prefix fn-own-finish-read
                                    fn-own-conn-live-session fn-own-tls-served-conn
+                                   fn-own-served-conn
                                    fn-own-tls-make-result fn-own-tls-result-effects
                                    fn-own-tls-result-consumed)
                                   (fn-served-step-counted-fast fn-own-conn-boundedp
                                    fn-own-conn-make-group-indexed fn-own-set-conns
-                                   fn-own-enqueue)))))
+                                   fn-own-enqueue fn-own-view-live)))))
 
-; KEYSTONE (P3, the plan's T6).  Over the host's own calls: any sequence of
-; writer events through fn-ocfg-step, then the outcome for connection
-; `sub-id' installed on the core, leaves every other reader connection's
-; served chunk (fn-ocfg-read-tls-prefix, owner-host.lisp:1240) answering
-; exactly as it answered before: the same effects and the same consumed
-; prefix, for any octets.  With `word' :durable the poster's own connection
-; is re-pinned (fn-own-durable-outcome-repins-the-poster); no other is.
+; One framed event that is not a selection (fn-served-advance-eventp: a GROUP
+; or LISTGROUP line) is answered from the connection's own pin: the committed
+; view is not read (books/served.lisp fn-served-dispatch-without-advance-is-
+; core), so two owners with the same connection record and clock answer it
+; identically whatever their views.  fn-ocfg-read-step is the host's per-event
+; read (host/owner-host.lisp fn-owner-read-step).
+(defthm fn-ocfg-read-step-without-selection-depends-only-on-its-connection-and-clock
+  (implies (and (equal (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))
+                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
+                (equal (fn-own-clock (fn-ocfg-owner oc2))
+                       (fn-own-clock (fn-ocfg-owner oc)))
+                (not (fn-served-advance-eventp event)))
+           (equal (car (fn-ocfg-read-step oc2 id event))
+                  (car (fn-ocfg-read-step oc id event))))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (e/d (fn-ocfg-read-step fn-own-read-step-full fn-own-served-conn
+                            fn-served-dispatch-core)
+                           (fn-served-dispatch fn-own-conn-boundedp
+                            fn-own-conn-make-group-indexed fn-own-set-conns
+                            fn-own-enqueue fn-own-remove-conn fn-own-replace-conn
+                            fn-served-advance-eventp fn-own-view-live
+                            fn-ocfg-with-read-owner
+                            fn-auth-step-pinned fn-post-offeredp
+                            fn-wire-begin-article-with-line-limit
+                            fn-wire-article-line-limit))
+           :use ((:instance fn-served-dispatch-without-advance-is-core
+                            (conn (fn-own-served-conn
+                                   (fn-ocfg-owner oc2)
+                                   (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))
+                                   (fn-own-conn-session
+                                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))))))
+                 (:instance fn-served-dispatch-without-advance-is-core
+                            (conn (fn-own-served-conn
+                                   (fn-ocfg-owner oc)
+                                   (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))
+                                   (fn-own-conn-session
+                                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))))))))
+
+; KEYSTONE (P3, the plan's T6; restated under NNT-042 on 2026-09-27).  Over
+; the host's own calls: any sequence of writer events through fn-ocfg-step,
+; then the outcome for connection `sub-id' installed on the core, leaves every
+; other connection's record -- its pinned version and frontier, its session,
+; its wire -- exactly what it was, and the clock: another connection's post
+; never moves a reader's pin.  Only the reader's own successful GROUP or
+; LISTGROUP (the served re-pin, NNT-042), the poster's own 240
+; (fn-own-durable-outcome-repins-the-poster) or the control channel's advance
+; moves it.  Before NNT-042 this theorem also said the reader's served chunk
+; answered as before; a chunk whose GROUP or LISTGROUP succeeds now answers
+; from the fresh view BY SPECIFICATION, and the read half holds per framed
+; event for every other command (the corollary below); its chunk form (a
+; chunk framing no selection answers as before) is stated in the record and
+; not yet proved.
 (defthm fn-own-pinned-view-survives-other-post
   (implies (and (fn-ocfg-writer-eventsp events)
-                (not (equal id sub-id))
-                (not (fn-peer-session-cfg
-                      (fn-auth-session-base
-                       (fn-own-conn-session
-                        (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))))
+                (not (equal id sub-id)))
            (let* ((oc1 (fn-ocfg-run oc events))
                   (oc2 (fn-ocfg-with-owner
                         oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word)))))
-             (and (equal (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc2 id octets))
-                         (fn-own-tls-result-effects (fn-ocfg-read-tls-prefix oc id octets)))
-                  (equal (fn-own-tls-result-consumed (fn-ocfg-read-tls-prefix oc2 id octets))
-                         (fn-own-tls-result-consumed (fn-ocfg-read-tls-prefix oc id octets))))))
+             (and (equal (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc2)))
+                         (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
+                  (equal (fn-own-clock (fn-ocfg-owner oc2))
+                         (fn-own-clock (fn-ocfg-owner oc))))))
   :rule-classes nil
   :hints (("Goal"
-           :use ((:instance fn-own-reader-tls-read-depends-only-on-its-connection-and-clock
-                            (o (fn-ocfg-owner oc))
-                            (o2 (cdr (fn-own-outcome (fn-ocfg-owner (fn-ocfg-run oc events))
-                                                     sub-id word))))
-                 (:instance fn-own-outcome-touches-only-its-connection
+           :use ((:instance fn-own-outcome-touches-only-its-connection
                             (o (fn-ocfg-owner (fn-ocfg-run oc events)))
                             (id sub-id) (other id)))
-           :in-theory (e/d (fn-ocfg-read-tls-prefix fn-ocfg-with-owner
-                            fn-own-tls-make-result fn-own-tls-result-effects
-                            fn-own-tls-result-consumed)
-                           (fn-own-read-tls-prefix fn-own-outcome fn-ocfg-run
+           :in-theory (e/d (fn-ocfg-with-owner)
+                           (fn-own-outcome fn-ocfg-run
                             fn-own-outcome-touches-only-its-connection)))))
+
+; The read half of P3 under NNT-042: after another connection's post, every
+; framed event of a reader that is not a selection is answered exactly as
+; before (fn-ocfg-read-step, the host's per-event read).
+(defthm fn-own-other-post-keeps-a-non-selecting-read-step
+  (implies (and (fn-ocfg-writer-eventsp events)
+                (not (equal id sub-id))
+                (not (fn-served-advance-eventp event)))
+           (let* ((oc1 (fn-ocfg-run oc events))
+                  (oc2 (fn-ocfg-with-owner
+                        oc1 (cdr (fn-own-outcome (fn-ocfg-owner oc1) sub-id word)))))
+             (equal (car (fn-ocfg-read-step oc2 id event))
+                    (car (fn-ocfg-read-step oc id event)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-own-pinned-view-survives-other-post)
+                 (:instance fn-ocfg-read-step-without-selection-depends-only-on-its-connection-and-clock
+                            (oc2 (fn-ocfg-with-owner
+                                  (fn-ocfg-run oc events)
+                                  (cdr (fn-own-outcome (fn-ocfg-owner (fn-ocfg-run oc events))
+                                                       sub-id word))))))
+           :in-theory (disable fn-ocfg-read-step fn-ocfg-with-owner fn-ocfg-run
+                               fn-own-outcome fn-served-advance-eventp))))
 
 ; -----------------------------------------------------------------------------
 ; P5.  The fault wrapper and the session bound, over the host's calls.

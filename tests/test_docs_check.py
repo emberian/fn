@@ -22,7 +22,7 @@ class DocsCheckTests(unittest.TestCase):
         # invocation changes it (so --check fails until it is regenerated
         # and certified, where ACL2's grammar decides the new row).
         import tempfile
-        text = (docs_check.ROOT / "docs" / "operator.md").read_text(encoding="utf-8")
+        text = (docs_check.ROOT / "docs" / "operator-internals.md").read_text(encoding="utf-8")
         head, _, rest = text.partition("\n## Native component entry\n")
         self.assertTrue(rest)
 

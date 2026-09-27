@@ -18,10 +18,16 @@ After each arrival the long-lived reader sends GROUP, LISTGROUP, STAT
 <message-id> and ARTICLE <message-id>; a fresh connection sends the same
 as the control.  Every reply line is printed as `R1-OBSERVED` JSON on
 stderr (the module log is the evidence; tools/hbox_native.sh records its
-SHA-256).  The assertions are the controls -- the arrival was accepted and
-a fresh connection sees it -- plus one statement of what the long-lived
-connection saw, whichever it was: the test fails only when the harness or
-the control fails, never on the freshness answer, which is the measurement.
+SHA-256).
+
+Until 2026-09-26 this module measured and asserted nothing about the
+freshness answer (R1 was observed STALE in batch AG, log afd76501).  Since
+NNT-042 (specs/nntp.md: a successful GROUP or LISTGROUP acquires a fresh
+coherent view; catalog-slice-5) the answer is specified, and the module
+asserts it: after the arrival the long-lived reader's GROUP reports the
+new count and its STAT/ARTICLE by Message-ID answer 223/220, exactly as a
+fresh connection's do.  The controls (the arrival was accepted, a fresh
+connection sees it) stay.
 """
 import json
 import os
@@ -173,8 +179,12 @@ class ReaderFreshnessProbe(unittest.TestCase):
         row = self.record(arrival, before, after, fresh)
         # The control: the arrival is visible to a connection opened after it.
         self.assertTrue(sees(fresh), fresh)
-        # The measurement is stated, never asserted either way.
-        self.assertIn(row["long_lived_sees_it"], (True, False))
+        # NNT-042: the long-lived reader's GROUP acquired the fresh view, so
+        # it sees what the fresh connection sees, and its 211 moved.
+        self.assertTrue(row["long_lived_sees_it"], after)
+        self.assertTrue(row["long_lived_group_moved"], (before["GROUP"], after["GROUP"]))
+        self.assertEqual(after["GROUP"], fresh["GROUP"], (after["GROUP"], fresh["GROUP"]))
+        self.assertEqual(after["numbers"], fresh["numbers"], (after["numbers"], fresh["numbers"]))
         return row
 
     def test_another_connections_post(self):
