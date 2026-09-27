@@ -2408,6 +2408,14 @@
 ; The surviving connection IS the connection fn-own-finish-read rebuilt from
 ; the served result (the pin from the served connection, the identifier and
 ; the pinned configuration and observation from the found connection).
+; A read on an unknown identifier changes nothing, so a survivor had an original.
+(local
+ (defthm fn-own-read-of-unknown-keeps-owner
+   (implies (not (fn-own-find-conn id (fn-own-conns o)))
+            (equal (cdr (fn-own-read o id octets)) o))
+   :hints (("Goal" :in-theory (e/d (fn-own-read fn-own-read-full)
+                                   (fn-served-step fn-own-finish-read fn-own-served-conn))))))
+
 ; The read's third answer, without opening the read.
 (local
  (defthm fn-own-read-repinned-is-the-served-flag
@@ -2481,8 +2489,10 @@
                  (equal (fn-own-conn-group-index next) (fn-own-conn-group-index old))
                  (equal (fn-own-conn-control next) (fn-own-conn-control old)))))))
   :hints (("Goal"
+           :cases ((fn-own-find-conn id (fn-own-conns o)))
            :use ((:instance fn-own-find-conn-id
                             (conns (fn-own-conns o)))
+                 (:instance fn-own-read-of-unknown-keeps-owner)
                  (:instance fn-served-step-pin-is-old-or-live
                             (conn (fn-own-served-conn
                                    o (fn-own-find-conn id (fn-own-conns o))
@@ -2521,8 +2531,18 @@
                             fn-served-pin-old-or-live-p fn-own-conn-live-session
                             fn-served-conn-pin fn-served-live-pin
                             fn-served-step-pin-is-old-or-live
-                            fn-served-pin-old-or-live-p-cases
-                            fn-own-read-repinned)))))
+                            fn-own-read-repinned fn-own-read-of-unknown-keeps-owner
+                            ; the accessors stay closed so the -of-make
+                            ; projections fire on the rebuilt connection
+                            fn-own-conn-group-index fn-own-conn-control
+                            fn-own-conn-id fn-own-conn-version fn-own-conn-frontier
+                            fn-own-conn-wire fn-own-conn-session fn-own-conn-archive
+                            fn-own-conn-config fn-own-conn-observation
+                            fn-own-conn-verdicts fn-own-conn-index
+                            fn-own-view-group-index fn-own-view-version
+                            fn-own-view-frontier fn-own-view-archive
+                            fn-own-view-verdicts fn-own-view-index
+                            fn-ag-car fn-ag-cdr)))))
 
 ; The survivor's wire framing state is the served step's, and that step
 ; started from the connection's own wire (books/config-owner-read-invariants).
