@@ -377,13 +377,18 @@ reopen predicate, writer-lock observation and observed final namespace."
                ; (fn-store-cfg-native-admin-authorize-carried).
                (state (f-put-global 'fn-store-cfg-open-configs config-records state)))
           (value :recovering))
-      ;; A replay that stopped refuses the open by name
-      ;; (books/store-open-replay-refusal.lisp fn-sorr-refusal: the capacity
-      ;; an article's charge does not fit, or the position and reason of any
-      ;; other stop); an open that failed otherwise stays a fault.
-      (let* ((refusal (fn-sorr-refusal replayed (fn-sco-records e) config-records))
+      ;; A replay that stopped at an article its capacity cannot hold
+      ;; refuses the open by name (books/store-open-replay-refusal.lisp
+      ;; fn-sorr-refusal); any other stop stays a fault, its position and
+      ;; reason kept for the fault's line (fn-sorr-stop-text).
+      (let* ((records (fn-sco-records e))
+             (refusal (fn-sorr-refusal replayed records config-records))
              (state (f-put-global 'fn-store-sco-open nil state))
-             (state (f-put-global 'fn-store-open-refusal refusal state)))
+             (state (f-put-global 'fn-store-open-refusal refusal state))
+             (state (f-put-global 'fn-store-open-stop
+                                  (and (not refusal)
+                                       (fn-sorr-stop-text replayed records config-records))
+                                  state)))
         (value (if refusal :refused :fault)))))))
 
 (defun fn-store-sn-open-extended (e config-records frontier state)
@@ -397,6 +402,13 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (if (boundp-global 'fn-store-open-refusal state)
              (let ((refusal (f-get-global 'fn-store-open-refusal state)))
                (or (fn-sopc-refusal-text refusal) (fn-sorr-refusal-text refusal)))
+           nil)))
+
+; Where the last open's replay stopped, for the fault's line, or nil.
+(defun fn-store-open-stop-text (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (if (boundp-global 'fn-store-open-stop state)
+             (f-get-global 'fn-store-open-stop state)
            nil)))
 
 ; The repair verb's answer while its semantics wait on ember (PKT-444).

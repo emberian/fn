@@ -11067,6 +11067,49 @@
           "name": "fn-rii-sco-cpr-finish-configured-is-finish"
         }
       ]
+    },
+    {
+      "id": "PRF-322",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-step-buf-is-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-entry-places-is-list-places"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-decide-is-decide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-decide-is-flat"
+        }
+      ]
+    },
+    {
+      "id": "PRF-323",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sorr-refusal-only-on-a-stop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sorr-capacity-names-the-retention-state"
+        }
+      ]
+    },
+    {
+      "id": "PRF-324",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ipo-facts-context-is-facts-and-context"
+        }
+      ]
     }
   ]
 }

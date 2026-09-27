@@ -5399,6 +5399,16 @@ placed record faithful at its place)."
         (fnn-fault "ACL2 replay rejected committed transaction history")))
     (setf (second replay) nil (third replay) 0 (fifth replay) nil)))
 
+(defun fnn-replay-fault ()
+  "The replay's fault (a history ACL2 cannot apply: damage, exit 4), with
+where the replay stopped when ACL2 recorded it (fn-store-open-stop-text,
+books/store-open-replay-refusal.lisp fn-sorr-stop-text)."
+  (let ((stop (fnn-core-state 'fn-store-open-stop-text)))
+    (if (stringp stop)
+        (fnn-fault "ACL2 replay rejected committed transaction history or configuration history: ~a"
+                   stop)
+      (fnn-fault "ACL2 replay rejected committed transaction history or configuration history"))))
+
 (defun fnn-recover-log-stream-take (replay record)
   "RECORD (ACL2's octet list) into the open chunk; a full chunk is decoded
 and interned first."
@@ -5420,7 +5430,7 @@ fnn-recover-log-replay ends."
           (fnn-fault "ACL2 refused the open without naming a reason"))
         (error 'fnn-store-open-refusal :message text)))
     (unless (eq action :recovering)
-      (fnn-fault "ACL2 replay rejected committed transaction history or configuration history"))))
+      (fnn-replay-fault))))
 
 (defun fnn-recover-log-replay (store records config-records)
   "The replay the per-file open runs (fnn-recover-full-replay), over the
@@ -5436,7 +5446,7 @@ Store); the history's COUNT (the open keeps no records, PKT-823)."
           (fnn-fault "ACL2 refused the open without naming a reason"))
         (error 'fnn-store-open-refusal :message text)))
     (unless (eq action :recovering)
-      (fnn-fault "ACL2 replay rejected committed transaction history or configuration history")))
+      (fnn-replay-fault)))
   (length records))
 
 (defun fnn-recover-log-from-state-checkpoint (store config-records records)

@@ -249,6 +249,35 @@ def recipe_rep_store(ctx: Context, n: int, octets: int) -> None:
                                          and not p.name.endswith(".sock")))
 
 
+# The synthesized stores' seed: CAPACITY with room for 1M x 2 KiB articles in
+# the profile (T 4,000,000; H 8 GB), its configured capacity raised to
+# 4,000,000 units (capseed.py: a 2 KiB article is charged 2 units).
+CAPACITY_SYNTH = ("--max-transactions", "4000000", "--max-history-octets", "8000000000",
+                  "--max-open-suffix", "65536", "--max-record-octets", "17138486",
+                  "--max-article-octets", "32768", "--max-groups-per-article", "65535")
+
+
+def recipe_synth(ctx: Context, n: int) -> None:
+    """tools/synth_log_store.py: a seed of 1,000 POSTed 2 KiB articles (the
+    n1k-2k recipe under CAPACITY_SYNTH, then capacity 4,000,000), renumbered
+    to N article records written as the log directly (batch-8 entries, no
+    checkpoint): the first open is a full replay of N records
+    (planning/evidence/snapshot-open-2-2026-09-27.md section 5)."""
+    work = ctx.work / "seed"
+    env = dict(ctx.env, FN_FIXTURE_INIT_FLAGS=" ".join(CAPACITY_SYNTH))
+    ctx.run([PY, TREE / EVIDENCE / "post-identity-index-2026-09-26/postmeasure.py", "load",
+             ctx.image, work, 1000], env=env)
+    ctx.run([PY, TREE / EVIDENCE / "snapshot-open-3-2026-09-27/capseed.py", ctx.image,
+             work / "store", 4000000])
+    # The seed's history is its journal: no checkpoint goes into the copy.
+    for path in (work / "store").glob("store-checkpoint*"):
+        path.unlink()
+    ctx.dest.mkdir(parents=True)
+    ctx.run([PY, TREE / "tools/synth_log_store.py", work / "store", ctx.dest / "store", n,
+             "--batch", 8])
+    (ctx.dest / "store" / "writer.lock").unlink(missing_ok=True)
+
+
 def recipe_bp_open(ctx: Context) -> None:
     """planning/evidence/bp-checkpoint-open-2026-09-26/fixture.py: SCN-077's
     first half (1,311 held rows), the journal before and after the rotation
@@ -307,6 +336,15 @@ REGISTRY = [
             readme="SCN-077's first half (1,311 held rows): pre-rotation.tar and post-rotation.tar "
                    "of the BP journal t/, built by fixture.py; measure.py LABEL TREE IMAGE times "
                    "the three opens."),
+    Fixture("syn100k-2k", lambda c: recipe_synth(c, 100000), mem="40G",
+            readme="100,000 x 2 KiB article records synthesized as the log (tools/synth_log_store.py "
+                   "from a 1,000-article seed, capacity 4,000,000, batch-8 entries, no checkpoint): "
+                   "the open is a full replay (OWNER-OPEN open=full-replay). Copy store/ and touch "
+                   "writer.lock (mode 600) before use."),
+    Fixture("syn1m-2k", lambda c: recipe_synth(c, 1000000), mem="40G",
+            readme="1,000,000 x 2 KiB article records, as syn100k-2k (2.56 GB of entries). A full "
+                   "replay: run it in a unit with MemoryMax (the open's peak was 9.2 GB on the "
+                   "list walk)."),
     Fixture("usenet-20news-19997", static=True,
             readme="The 20 Newsgroups corpus (a corpus, not a store): verified, never rebuilt."),
 ]

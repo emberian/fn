@@ -11,9 +11,11 @@
 ;   (2) REACHABLE, the open that fits: with the capacity raised to 20 the
 ;       replay is :ok and there is no refusal (fn-sorr-refusal-only-on-a-stop's
 ;       contrapositive).
-;   (3) REACHABLE, another stop: an event out of sequence stops the replay
-;       with :event-sequence and the refusal is :replay-stopped at that
-;       position, never :capacity.
+;   (3) REACHABLE, another stop: the article before the release, so the
+;       decrease to capacity 1 meets the undertaking's 10 units still held:
+;       the configuration record is refused (:config-refusal at position
+;       2).  No refusal (it stays the host's fault), and the stop's text
+;       names the position and the reason (no event there: txid "-").
 (in-package "ACL2")
 (include-book "../../books/store-open-replay-refusal")
 (include-book "held-rows-tests")
@@ -58,19 +60,21 @@
  (and (equal (fn-replay-result-kind *sorr-t-open*) :ok)
       (null (fn-sorr-refusal *sorr-t-open* *sorr-t-events* *sorr-t-roomy*))))
 
-; (3) Another stop: the release out of sequence.
+; (3) Another stop: the release after the article (the decrease is refused).
 (defconst *sorr-t-swapped*
   (list (car *sorr-t-events*) (caddr *sorr-t-events*) (cadr *sorr-t-events*)))
 (defconst *sorr-t-stopped-2* (fn-cpr-replay *sorr-t-roomy* *sorr-t-swapped*))
-(defconst *sorr-t-refusal-2* (fn-sorr-refusal *sorr-t-stopped-2* *sorr-t-swapped* *sorr-t-roomy*))
 (assert-event
  (and (equal (fn-replay-result-kind *sorr-t-stopped-2*) :fault)
-      (not (equal (fn-replay-result-reason *sorr-t-stopped-2*) :event-refusal))
-      (equal (car *sorr-t-refusal-2*) :refused)
-      (equal (cadr *sorr-t-refusal-2*) :replay-stopped)
-      (equal (caddr *sorr-t-refusal-2*) (fn-replay-result-sequence *sorr-t-stopped-2*))
-      (stringp (fn-sorr-refusal-text *sorr-t-refusal-2*))))
+      (equal (fn-replay-result-reason *sorr-t-stopped-2*) :config-refusal)
+      (null (fn-sorr-refusal *sorr-t-stopped-2* *sorr-t-swapped* *sorr-t-roomy*))
+      (equal (fn-sorr-stop-text *sorr-t-stopped-2* *sorr-t-swapped* *sorr-t-roomy*)
+             "stopped at history position 2 (config-refusal, txid -)")
+      ;; the capacity stop's text names it too, and the open that fits has none
+      (stringp (fn-sorr-stop-text *sorr-t-stopped* *sorr-t-events* *sorr-t-tight*))
+      (null (fn-sorr-stop-text *sorr-t-open* *sorr-t-events* *sorr-t-roomy*))))
 
 (assert-event
  (and (eq (symbol-class 'fn-sorr-refusal (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-sorr-refusal-text (w state)) :common-lisp-compliant)))
+      (eq (symbol-class 'fn-sorr-refusal-text (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-sorr-stop-text (w state)) :common-lisp-compliant)))
