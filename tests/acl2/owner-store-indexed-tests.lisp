@@ -56,13 +56,13 @@
 ; The live Store after the recovery barriers: :ready, indexed, and the
 ; dispatcher binds the signed record (both PRF-132 keystones, antecedent and
 ; conclusion asserted literally).
-(include-book "arena-lift")
+(include-book "arena-hist-lift")
 ;; The payloads the arena holds at handles 0, 1, ...: the signed article's
 ;; stored projection at handle 0, the handle of *bsb-row* (records-flip).
 (defconst *sr-arena* *bsb-payloads*)
 (bpr-lift fn-bpaj-dispatch 4)
-(bpr-lift fn-bpaj-store-record-accepted-fast 2)
-(bpr-lift fn-bpaj-transit-record-lookup-fast 3)
+(bpr-lift-hist fn-bpaj-store-record-accepted-fast 2 (fn-sf-records (fn-sn-files x1)))
+(bpr-lift-hist fn-bpaj-transit-record-lookup-fast 3 (fn-sf-records (fn-sn-files x1)))
 (bpr-lift fn-bpaj-transit-record-lookup 3)
 (bpr-lift fn-bpaj-node-record-committed-carriedp 2)
 (bpr-lift fn-bpi-node-wire-committedp 2)
@@ -356,22 +356,15 @@
 (assert-event (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* *osi-bad-oc-store* *bsb-record*))
 (assert-event (not (in-arena-fn-bpr-store-record-acceptedp *sr-arena* *osi-bad-oc-store* *bsb-record*)))
 
-; Without fn-ceis-indexedp (a STALE index, a state no host transition
-; reaches): the live owner with the empty index.  The relation does not read
-; the derived index, so it still holds; the fast check finds no candidate and
-; refuses, the checked one accepts.
-(defconst *osi-stale-oc*
-  (fn-ocfg-with-owner
-   *osi-live-oc*
-   (update-nth 0 (update-nth 13 nil *osi-live-oc-store*)
-               (fn-ocfg-owner *osi-live-oc*))))
-(defconst *osi-stale-oc-store* (fn-own-store (fn-ocfg-owner *osi-stale-oc*)))
-(assert-event (fn-ocl-relation *osi-stale-oc*))
-
-(assert-event (not (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* *osi-stale-oc-store* *bsb-record*)))
-(assert-event (in-arena-fn-bpr-store-record-acceptedp *sr-arena* *osi-stale-oc-store* *bsb-record*))
+; Without R (lane history-columns-3: the event index is retired): the live
+; owner's Store read through an EMPTY history stobj.  The relation still
+; holds; the fast check finds no candidate and refuses, the checked one
+; accepts.
+(assert-event (fn-ocl-relation *osi-live-oc*))
+(assert-event (not (in-arena-fn-bpaj-store-record-accepted-fast-nohist *sr-arena* *osi-live-oc-store* *bsb-record*)))
+(assert-event (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* *osi-live-oc-store* *bsb-record*))
+(assert-event (in-arena-fn-bpr-store-record-acceptedp *sr-arena* *osi-live-oc-store* *bsb-record*))
 (must-fail-checked
- (thm (let ((store (fn-own-store (fn-ocfg-owner *osi-stale-oc*))))
-        (implies (fn-ocl-relation *osi-stale-oc*)
-                 (equal (in-arena-fn-bpaj-store-record-accepted-fast *sr-arena* store *bsb-record*)
-                        (in-arena-fn-bpr-store-record-acceptedp *sr-arena* store *bsb-record*))))))
+ (thm (implies (fn-ocl-relation *osi-live-oc*)
+               (equal (in-arena-fn-bpaj-store-record-accepted-fast-nohist *sr-arena* *osi-live-oc-store* *bsb-record*)
+                      (in-arena-fn-bpr-store-record-acceptedp *sr-arena* *osi-live-oc-store* *bsb-record*)))))

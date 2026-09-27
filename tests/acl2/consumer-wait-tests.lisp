@@ -309,7 +309,17 @@
 (defun cwt-run-over-in (observations id secret fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (mv-let (r fn-arena)
-    (fn-cwait-run-over observations *cwt-acfg* id secret 30 fn-arena)
+    (with-local-stobj fn-hist
+      (mv-let (rr fn-arena fn-hist)
+        (let ((fn-hist (fn-hist-load
+                        (true-list-fix
+                         (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner
+                                                                    (car (car (last observations))))))))
+                        0 fn-hist)))
+          (mv-let (rr fn-arena)
+            (fn-cwait-run-over observations *cwt-acfg* id secret 30 fn-arena fn-hist)
+            (mv rr fn-arena fn-hist)))
+        (mv rr fn-arena)))
     (mv (list r
               (and r (fn-cwait-poll-over-h (caddr r) *cwt-acfg* id secret fn-arena))
               (cwt-payloads 0 (fn-arena-count fn-arena) fn-arena))
