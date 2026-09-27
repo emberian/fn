@@ -2956,7 +2956,7 @@ or refuses by name, saying what to run."
       ;; once the store is published (outside fn-bs-init-pub-program: a
       ;; death between the two leaves the complete store without
       ;; keys/node-secret.key, which `run' refuses by name until
-      ;; `store ROOT node-secret create').
+      ;; `store ROOT node-secret create'; PKT-694).
       (let ((published (make-fnn-store root-path :writable t)))
         (unwind-protect
              (progn (fnn-acquire published)
