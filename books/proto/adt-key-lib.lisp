@@ -308,6 +308,10 @@
 (defthm adt-kunique-kremove
   (implies (adt-kunique j a) (adt-kunique j (adt-kremove j k a))))
 
+(defthm adt-kmem-kremove-same
+  (implies (adt-kunique j a) (not (adt-kmem j k (adt-kremove j k a))))
+  :hints (("Goal" :in-theory (enable adt-kunique adt-kmem))))
+
 (defthm adt-kunique-insert
   (implies (and (adt-kunique j a) (not (adt-kmem j (nth j r) a)))
            (adt-kunique j (adt-kinsert dir r a))))
