@@ -519,3 +519,84 @@
                                                 *bpre-frontier* nil)))
                (and (fn-sn-open-okp opened)
                     (in-arena-fn-bprv-system-invariantp *bpre-payloads* (fn-sn-open-state opened) *bpre-final-state* *bpre-journal*)))))) ; evaluation witness for bpre-teeth-reopen-without-admissible-image
+
+; -----------------------------------------------------------------------------
+; fn-bprv-evolving-output-is-history-grounded (PRF-012, restated by flip-L4
+; over fn-bpr-rows-stand-for; audit packet G6-3, lane audit-fixes).  Its
+; conclusion, verbatim, as one executable predicate over the arena.
+(defun bpre-hg-conclusion (store st journal request fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((context (fn-bpr-find-context (fn-bpa-request-work-id request)
+                                       (fn-bpr-state-contexts st)))
+         (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
+                                     (fn-bpr-state-receipts st)))
+         (record (fn-bprv-find-grounding-record
+                  (fn-bpr-state-config st) context
+                  (fn-bpr-article-records (fn-bprv-history store)) fn-arena)))
+    (and (consp context)
+         (equal (fn-bpaj-request-ref request)
+                (fn-bpr-context-request-ref context))
+         (fn-record-p record)
+         (fn-bpr-rows-stand-for record (fn-bpr-article-records (fn-bprv-history store))
+                                fn-arena)
+         (equal context (fn-bpr-context-from-request
+                         record (fn-bpr-context-resolve context record)))
+         (equal (fn-bpa-request-article (fn-bpr-context-resolve context record))
+                (fn-record-payload record))
+         (equal (fn-bpa-request-subject (fn-bpr-context-resolve context record))
+                (fn-record-content-subject record))
+         (member-equal entry (fn-bpr-state-receipts st))
+         (fn-bprv-entry-decidedp entry journal)
+         (equal (fn-bpr-receipt-entry-receipt entry)
+                (fn-bpr-receipt-for context (fn-bpr-state-config st)
+                                    (fn-bpa-receipt-id
+                                     (fn-bpr-receipt-entry-receipt entry))))
+         (equal (fn-bpr-receipt-adu st request)
+                (fn-bpa-encode (fn-bpr-receipt-entry-receipt entry))))))
+(bpr-lift bpre-hg-conclusion 4)
+
+; Positive witnesses: the complete antecedent and conclusion on three states
+; the live trace reaches -- the recovered Store after the crash (:ready), the
+; post-crash replaying Store (its node empty, its history intact), and the
+; final state of the uncrashed run.
+(assert-event
+ (and (in-arena-fn-bprv-evolving-invariantp *bpre-payloads* (car *bpre-recovered*)
+                                            (cadr *bpre-recovered*) (caddr *bpre-recovered*))
+      (fn-bpr-receipt-adu (cadr *bpre-recovered*) *bpr-request*)
+      (in-arena-bpre-hg-conclusion *bpre-payloads* (car *bpre-recovered*) (cadr *bpre-recovered*)
+                                   (caddr *bpre-recovered*) *bpr-request*)))
+(assert-event
+ (and (in-arena-fn-bprv-evolving-invariantp *bpre-payloads* (car *bpre-replaying*)
+                                            (cadr *bpre-replaying*) (caddr *bpre-replaying*))
+      (fn-bpr-receipt-adu (cadr *bpre-replaying*) *bpr-request*)
+      (in-arena-bpre-hg-conclusion *bpre-payloads* (car *bpre-replaying*) (cadr *bpre-replaying*)
+                                   (caddr *bpre-replaying*) *bpr-request*)))
+(assert-event
+ (and (in-arena-fn-bprv-evolving-invariantp *bpre-payloads* (car *bpre-final*)
+                                            (cadr *bpre-final*) (caddr *bpre-final*))
+      (fn-bpr-receipt-adu (cadr *bpre-final*) *bpr-request*)
+      (in-arena-bpre-hg-conclusion *bpre-payloads* (car *bpre-final*) (cadr *bpre-final*)
+                                   (caddr *bpre-final*) *bpr-request*)))
+
+; Removal of (fn-bpr-receipt-adu st request): the receiver's opening state
+; (reached: the first state of the live trace) holds the invariant, has no
+; receipt for the request, and the conclusion fails (no context).
+(assert-event
+ (and (in-arena-fn-bprv-evolving-invariantp *bpre-payloads* (car *bpre-live0*)
+                                            (cadr *bpre-live0*) (caddr *bpre-live0*))
+      (not (fn-bpr-receipt-adu (cadr *bpre-live0*) *bpr-request*))
+      (not (in-arena-bpre-hg-conclusion *bpre-payloads* (car *bpre-live0*) (cadr *bpre-live0*)
+                                        (caddr *bpre-live0*) *bpr-request*))))
+
+; Removal of the evolving invariant (CORRUPTED STATE, not reached): the
+; recovered receiver state and journal paired with an initial Store whose
+; history holds no article.  The receipt is still answered; the invariant
+; fails (the context is grounded in no history record), and so does the
+; conclusion (no grounding record).
+(defconst *bpre-hg-orphan-store* (fn-sn-initial *bpr-groups* 20))
+(assert-event
+ (and (not (in-arena-fn-bprv-evolving-invariantp *bpre-payloads* *bpre-hg-orphan-store*
+                                                 (cadr *bpre-recovered*) (caddr *bpre-recovered*)))
+      (fn-bpr-receipt-adu (cadr *bpre-recovered*) *bpr-request*)
+      (not (in-arena-bpre-hg-conclusion *bpre-payloads* *bpre-hg-orphan-store* (cadr *bpre-recovered*)
+                                        (caddr *bpre-recovered*) *bpr-request*))))
