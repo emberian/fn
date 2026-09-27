@@ -67,11 +67,21 @@ def first_line(sock, timeout=30):
     return data
 
 
-def status_value(pid, key):
-    for row in Path("/proc/%d/status" % pid).read_text().splitlines():
-        if row.startswith(key + ":"):
-            return int(row.split()[1])
-    return None
+def rss_kib(pid):
+    out = subprocess.run(["ps", "-o", "rss=", "-p", str(pid)],
+                         stdout=subprocess.PIPE, text=True).stdout.strip()
+    return int(out)
+
+
+def thread_count(pid):
+    """Linux: /proc; OpenBSD: ps -H lists each kernel-visible thread."""
+    status = Path("/proc/%d/status" % pid)
+    if status.exists():
+        for row in status.read_text().splitlines():
+            if row.startswith("Threads:"):
+                return int(row.split()[1])
+    return len(subprocess.run(["ps", "-H", "-o", "pid=", "-p", str(pid)],
+                              stdout=subprocess.PIPE, text=True).stdout.split())
 
 
 def raise_nofile():
@@ -86,8 +96,6 @@ class MuxCase:
     def setUp(self):
         if not self.IMAGE:
             self.skipTest("image variable unset")
-        if not Path("/proc/self/status").exists():
-            self.skipTest("the thread and RSS observations read /proc")
         raise_nofile()
         self.image = Path(self.IMAGE)
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-mux-")
@@ -181,15 +189,15 @@ class MuxCase:
         self.assertTrue(line.startswith(b"20"), line)
         self.held.append(sock)
         time.sleep(1)
-        threads_before = status_value(pid, "Threads")
-        rss_before = status_value(pid, "VmRSS")
+        threads_before = thread_count(pid)
+        rss_before = rss_kib(pid)
         for _ in range(HELD - 1):
             sock, line = self.open_one()
             self.assertTrue(line.startswith(b"20"), (len(self.held), line))
             self.held.append(sock)
         time.sleep(2)
-        threads_after = status_value(pid, "Threads")
-        rss_after = status_value(pid, "VmRSS")
+        threads_after = thread_count(pid)
+        rss_after = rss_kib(pid)
         # The loops serve them: no thread per connection.
         self.assertLessEqual(threads_after, threads_before + 1,
                              (threads_before, threads_after))
