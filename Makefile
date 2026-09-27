@@ -881,6 +881,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-guard-carried-tests \
 	tests/acl2/owner-commit-carried-tests \
 	tests/acl2/owner-prepare-carried-tests \
+	books/store-budget-stored-post \
+	tests/acl2/store-budget-stored-post-tests \
 	tests/acl2/records-concrete-tests \
 	tests/acl2/msgid-index-concrete-tests \
 	tests/acl2/owner-advance-carried-tests \

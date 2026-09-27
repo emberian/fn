@@ -5509,6 +5509,16 @@
         {
           "kind": "theorem",
           "name": "fn-cvec-config-publication-keeps-the-release-generation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-wire-record-is-no-article-row",
+          "note": "Why the article arm was restated: a wire record is never a row of kind :article, so the old fn-record-p arm could not fire."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-article-verdict-keeps-the-vector-for-a-held-row",
+          "note": "The article verdict at a held row's facts octets keeps the vector at the octets the row stores."
         }
       ]
     },
@@ -6437,6 +6447,26 @@
         {
           "kind": "theorem",
           "name": "fn-intern-events-budget-octets-are-the-stored-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-io-keeps-the-stored-octets",
+          "note": "The publication words (the directory barrier appends the candidate to the history) keep the relation; the arena is untouched."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-finish-keeps-the-stored-octets",
+          "note": "The finish keeps the history and drops the candidate; the arena is untouched."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-store-prepare-interned-keeps-the-stored-octets",
+          "note": "The standalone store's POST entry keeps the relation over the arena it leaves."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pcar-sbud-prepare-keeps-the-stored-octets",
+          "note": "The served POST (host/owner-host.lisp fn-owner-prepare -> fn-pcar-sbud-prepare over the row fn-intern-row-at makes at the arena's count, then the seal when the store changed) keeps fn-sbud-store-extents-okp: the budget's octets stay the stored octets."
         }
       ]
     },
