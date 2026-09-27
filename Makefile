@@ -965,6 +965,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-log-ocl-tests \
 	books/owner-prepare-served \
 	books/store-prepare-served \
+	tests/acl2/store-prepare-served-tests \
 	books/owner-prepare-served-ocl \
 	tests/acl2/owner-prepare-served-tests \
 	tests/acl2/owner-prepare-served-events-tests \
