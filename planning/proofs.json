@@ -9504,7 +9504,9 @@
         "books/config-owner-carried.lisp",
         "tests/acl2/config-owner-carried-tests.lisp",
         "host/owner-host.lisp",
-        "planning/evidence/control-quanta-2026-09-27.md"
+        "planning/evidence/control-quanta-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T104208Z-2515026.json",
+        "planning/evidence/manifests/certify-20260927T104257Z-2518354.json"
       ],
       "progress_note": "Lane control-quanta (Opus 5.5, 2026-09-27; F4, PKT-827). Profiled with sb-sprof on hbox (tools/profile/): at 1,000 articles 85 per cent of a live group create's owner samples were fn-ocl-complete's three replays; at 10,000 the replay is quadratic (fn-retain-pin-id-scanp, fn-acceptedp per event) and one control quantum held the owner 40 to 46 s. Teeth: tests/acl2/config-owner-carried-tests.lisp (the native live arm's staged request: carried = full, :durable, generation 3; the wrong generation refused alike; hypothesis removal: an owner claiming the initial configuration, carried :recovery-required vs full :durable, and its owner fails the invariant; both must-fail).",
       "events": [
