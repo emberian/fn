@@ -7880,6 +7880,39 @@
         "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix",
         "fn-ocfg-read-tls-prefix-carries-at-most-one-submission"
       ]
+    },
+    {
+      "id": "PRF-208",
+      "title": "The native owner's feed and configuration results are typed ACL2 values the host checks once, and the feed flush's sealed frame plan is the by-index fetch it replaced",
+      "statement": "fn-ores-sealed-plan-is-indexed-fetch (books/owner-results.lisp; keystone, no hypotheses): for every RECORDS and I, (nth I (fn-ores-sealed-plan records)) is, when (nfix I) < (len records), the pair of (nth I (fn-ores-record-peers records)) -- the peer list host/owner-host.lisp fn-owner-feed-record-peers used to return LF-joined -- and (fn-ores-seal (fn-frame-item (nfix I) (fn-ores-encode-records records))) -- the frame fn-owner-feed-sealed-frame used to return for index I -- and nil past the end; fn-ores-len-of-sealed-plan: one pair per record. By-definition equations (named -by-definition, over the :logic functions the :program wrappers call): fn-ores-feed-port-publication-by-definition (the FeedPublication's peer, plan, command, status and log line are what fn-owner-feed-install-feed wrote into fn-owner-feed-peer, -records/-frames, -command, -command-status and fn-owner-feed-log-line), fn-ores-config-staged-result-by-definition (the ConfigResult's octets and reason are what fn-owner-reconfigure-deltas wrote into fn-owner-config-octets and -reason), The equations fn-ores-submission-taken-by-definition, fn-ores-served-step-by-definition and fn-ores-capture-by-definition are in the book but NOT claimed here: no host line returns those three shapes yet (reach_check), the continuation wires them and adds the events. Host lines: host/owner-host.lisp fn-owner-submission-intent, -submission-resolution, -feed-reconcile-next, -feed-tick, -feed-octets, -feed-reply-chunk, -feed-tls-established, -feed-lost, -feed-restart return a FeedPublication; fn-owner-reconfigure(-deltas) and the stage wrappers of host/native-admin-host.lisp and host/peer-invite-host.lisp return a ConfigResult; host/native/owner.lisp fnn-owner-result checks the recognizer once (fnn-fault, exit 4, on a malformed value) and fnn-owner-feed-flush appends the plan's pairs in order. The recognizers and accessors are guard-verified; the builders are :logic with guards unverified exactly as their callees (fn-feed-encode, fn-frame-protected-prefix, the attached fn-frame-trailer, fn-wire-render-feed-command) are.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-019",
+        "HST-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-results.lisp",
+        "tests/acl2/owner-results-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/feed-service.lisp",
+        "host/native/admin.lisp",
+        "planning/evidence/adapter-retirement-2026-09-26.md"
+      ],
+      "progress_note": "Lane adapter-retirement (wave 5 lane 3, 2026-09-26). Every event admitted in the persvati REPL (toolchain w25) and every form of the test book run there; certification is the deputy's batch. Teeth: tests/acl2/owner-results-tests.lisp (per shape a ground value the recognizer accepts and malformed ones it refuses; the keystone at indices 0, 1 and past the end on a two-peer plan, the two frames distinct and each seal verifying; a refused record sealing to :bad and the publication refused). The keystone has no hypothesis to remove. SubmissionTaken, ServedStep and Capture are defined and witnessed but not yet returned by their wrappers (the continuation's).",
+      "events": [
+        "fn-ores-sealed-plan-is-indexed-fetch",
+        "fn-ores-len-of-sealed-plan",
+        "fn-ores-feed-port-publication-by-definition",
+        "fn-ores-config-staged-result-by-definition",
+        "fn-ores-config-refused-is-a-result",
+        "fn-ores-nth-of-sealed-plan",
+        "fn-ores-nth-of-record-peers",
+        "fn-ores-frame-item-of-encode-records"
+      ]
     }
   ]
 }

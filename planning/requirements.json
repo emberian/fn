@@ -1456,7 +1456,8 @@
         "PRF-094",
         "PRF-188",
         "PRF-191",
-        "PRF-192"
+        "PRF-192",
+        "PRF-208"
       ],
       "verification": [
         "proof",
@@ -3898,6 +3899,32 @@
         "planning/evidence/transit-pipelining-2026-09-27.md"
       ],
       "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
+    },
+    {
+      "id": "HST-019",
+      "title": "The native owner's wrappers return typed ACL2 results the host checks once; no global result mailboxes, no LF name grammar, no frame fetched by index",
+      "specification": "specs/host.md#typed-results-across-the-native-boundary",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-208"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "integration"
+      ],
+      "evidence": [
+        "books/owner-results.lisp",
+        "tests/acl2/owner-results-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/feed-service.lisp",
+        "tests/native_feed_service_raw.lisp",
+        "tests/native_live_config_cache_raw.lisp",
+        "planning/evidence/adapter-retirement-2026-09-26.md"
+      ],
+      "implementation_note": "First half (lane adapter-retirement): the feed results (FeedPublication) and the configuration staging results (ConfigResult) are typed; fnn-owner-name-list and fnn-owner-config-names are deleted and the feed flush consumes one sealed frame plan. The submission-taken, served-step and capture results are defined in books/owner-results.lisp and still travel through their globals until the continuation wires them (and the catalog slice's completion token)."
     }
   ]
 }

@@ -46,10 +46,9 @@
                    plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))))
     (if deltas
         (fn-owner-reconfigure-deltas id deltas state)
-      ;; No delta for this plan over the live owner's tables: the reason
-      ;; slot says so, never a previous request's reason (PKT-453 (a)).
-      (let ((state (f-put-global 'fn-owner-config-reason :no-delta state)))
-        (value :refused)))))
+      ;; No delta for this plan over the live owner's tables: the result
+      ;; says so, never a previous request's reason (PKT-453 (a)).
+      (value (fn-ores-config-refused :no-delta)))))
 (defun fn-native-admin-host-apply (plan monotonic wall state)
   (declare (xargs :stobjs state :mode :program))
   (let ((kind (fn-native-admin-result-kind plan)))
@@ -171,7 +170,9 @@
     (if (equal (car plan) :redeem)
         (fn-owner-reconfigure-deltas pcid (list (fn-acct-plan-delta plan))
                                      state)
-      (value :refused))))
+      ;; The plan's own reason (a previous request's reason used to stand
+      ;; in the retired reason slot here).
+      (value (fn-ores-config-refused (cadr plan))))))
 
 (defun fn-acct-host-owner-redeem-word (published state)
   (declare (xargs :stobjs state :mode :program))

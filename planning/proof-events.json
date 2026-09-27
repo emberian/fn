@@ -7379,6 +7379,43 @@
           "note": "KEYSTONE at the owner: the read host/owner-host.lisp fn-owner-chunk(-span) calls hands fn-own-finish-read at most one submission."
         }
       ]
+    },
+    {
+      "id": "PRF-208",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ores-sealed-plan-is-indexed-fetch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-len-of-sealed-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-feed-port-publication-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-config-staged-result-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-config-refused-is-a-result"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-nth-of-sealed-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-nth-of-record-peers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ores-frame-item-of-encode-records"
+        }
+      ]
     }
   ]
 }
