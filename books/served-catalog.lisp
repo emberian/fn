@@ -1142,6 +1142,10 @@
              (fn-nntp-message-id-tokenp (car args))
              (fn-nntp-msgid-withdrawn-p index (car args)))
         (fn-nntp-withdrawn-reply session t))
+       ;; PRF-243: the served compatibility arms, where the pinned dispatcher
+       ;; has them (books/nntp.lisp fn-nntp-archive-command-pinned).
+       ((fn-rcompat-reply session archive index env keyword args)
+        (fn-rcompat-reply session archive index env keyword args))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
                  (fn-nntp-keywordp keyword "BODY")
@@ -1285,7 +1289,7 @@
                             fn-nntp-hdr-response fn-nntp-xhdr-response
                             fn-nntp-over-response fn-nntp-xover-response
                             fn-nntp-retrieval)
-                           (fn-nntp-xref-reply fn-gidx-list-counts-command
+                           (fn-rcompat-reply fn-nntp-xref-reply fn-gidx-list-counts-command
                             fn-nntp-number-withdrawn-p fn-nntp-msgid-withdrawn-p
                             fn-nntp-withdrawn-reply fn-gidx-listgroup-command
                             fn-nntp-over-range-indexed fn-nntp-verdict-hdr-response
