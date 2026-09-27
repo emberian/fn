@@ -1067,3 +1067,19 @@ remove it by name and import again); a staged directory beside ROOT is
 directory), never "no store was created". `store export` is Store-history
 export, not a node backup (docs/operator.md).
 
+`operator init` publishes the empty store by the same program (P-INIT-PUB,
+books/store-init-publication.lisp `fn-bs-init-pub-program`: init's plan --
+the three subdirectories, `config.json`, the allocation frontier and the
+generation-1 configuration record -- staged in `ROOT.init-XXXX`, init's cut
+names). A crash leaves no store at ROOT or the complete empty store, nothing
+named in `transactions/` (PRF-217,
+`fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store`).
+Before writing, ACL2's admission (`fn-bs-init-pub-admission`) refuses a
+leftover staged directory by name (`interrupted-init`: remove it and init
+again; `publication-uncertain`) and an existing ROOT without the store's
+entries (`store-path-exists`). On OpenBSD, which has no renameat2, import
+and init hold an exclusive flock on `ROOT.lock` for the whole program and
+re-check ROOT's absence under it immediately before rename(2); the residual
+(a process ignoring the lock creates an empty directory at ROOT in that
+window) is an operator constraint (docs/operator.md).
+
