@@ -6,10 +6,13 @@
 (defconst *nv-article*
   '(77 101 115 115 97 103 101 45 73 68 58 32 60 118 101 114 100 105 99
     116 64 102 110 46 105 110 118 97 108 105 100 62 13 10 13 10 120 13 10))
+;; by specification: the flip -- an accepted article's payload is an arena
+;; handle (natp), not its octets; *nv-article* stays the bytes handle 0 stands for.
+(defconst *nv-article-handle* 0)
 (defconst *nv-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state '("fn.letters")) 1 *nv-id*
-                      *nv-article* '("fn.letters") :legacy)
+                      *nv-article-handle* '("fn.letters") :legacy)
    0 1 :durable))
 (defconst *nv-session* (fn-nntp-open-session *nv-archive*))
 (defconst *nv-principal*
