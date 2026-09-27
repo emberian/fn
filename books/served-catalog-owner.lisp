@@ -59,6 +59,13 @@
 (include-book "catalog-refresh")
 (include-book "store-intern")
 
+; The row and view lemmas below never reason about a Message-ID's syntax;
+; these rules fired uselessly through every Message-ID term (815 k prover
+; steps in fn-sca-withdraw-targets-hides alone; catalog-columns, 2026-09-27).
+(local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
+                           fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp
+                           fn-nntp-index-msgid-okp fn-cp-id-length-bound)))
+
 ; -----------------------------------------------------------------------------
 ; E: the catalog of a history, from empty.
 
