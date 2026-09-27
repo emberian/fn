@@ -620,15 +620,34 @@
                   (values (list *fn-bpnpf-format-3* rows octets adu bundle
                                 rotate)))))))
 
-; A file an older node wrote (format 1 or 2), or none, opens with exactly
-; its profile-2 reading and the default threshold.
+; A file an older node wrote (format 1 or format 2), or none, opens with its
+; fields, the format-1 defaults where it has none, and the default threshold.
 (defthm fn-bpnpf-node-profile-read-of-older
-  (implies (fn-bpnpf-profile-read present bytes)
-           (equal (fn-bpnpf-node-profile-read present bytes)
-                  (append (fn-bpnpf-profile-read present bytes)
-                          (list *fn-bpnpf-default-rotate*))))
-  :hints (("Goal" :in-theory (disable fn-bpnpf-profile-read))))
+  (and (implies (fn-bpnpf-profile-validp rows octets adu bundle)
+                (equal (fn-bpnpf-node-profile-read
+                        t (fn-bpnpf-profile-octets rows octets adu bundle))
+                       (list rows octets adu bundle
+                             *fn-bpnpf-default-rotate*)))
+       (implies (fn-bpnpf-validp rows octets)
+                (equal (fn-bpnpf-node-profile-read
+                        t (fn-bpnpf-octets rows octets))
+                       (list rows octets *fn-bpnpf-default-adu*
+                             *fn-bpnpf-default-bundle*
+                             *fn-bpnpf-default-rotate*)))
+       (equal (fn-bpnpf-node-profile-read nil bytes)
+              (list *fn-bpnpf-default-rows* *fn-bpnpf-default-octets*
+                    *fn-bpnpf-default-adu* *fn-bpnpf-default-bundle*
+                    *fn-bpnpf-default-rotate*)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnpf-profile-read-of-octets)
+                 (:instance fn-bpnpf-profile-read-of-format-1))
+           :in-theory (disable fn-bpnpf-profile-read fn-bpnpf-profile-octets
+                               fn-bpnpf-octets fn-bpnpf-profile-validp
+                               fn-bpnpf-validp
+                               fn-bpnpf-profile-read-of-octets
+                               fn-bpnpf-profile-read-of-format-1))))
 
+;; The two arms of the reading, then the base of any profile 3.
 (local
  (defthm fn-bpnpf-append-rotate-of-profile
    (implies (fn-bpnpf-profilep p)
@@ -642,15 +661,26 @@
                      (len p) (len (cdr p)) (len (cddr p)) (len (cdddr p))
                      (len (cddddr p)))))))
 
-;; The two arms of the reading, then the base of any profile 3.
+(local
+ (defthm fn-bpnpf-node-profile-read-older-branch-by-definition
+   (implies (fn-bpnpf-profile-read present bytes)
+            (equal (fn-bpnpf-node-profile-read present bytes)
+                   (append (fn-bpnpf-profile-read present bytes)
+                           (list *fn-bpnpf-default-rotate*))))
+   :hints (("Goal" :in-theory (disable fn-bpnpf-profile-read)))))
+
 (local
  (defthm fn-bpnpf-node-profile-read-older-arm
    (implies (fn-bpnpf-profile-read present bytes)
             (fn-bpnpf-node-profilep (fn-bpnpf-node-profile-read present bytes)))
-   :hints (("Goal" :use ((:instance fn-bpnpf-profile-read-is-valid))
+   :hints (("Goal" :use ((:instance fn-bpnpf-profile-read-is-valid)
+                         (:instance fn-bpnpf-append-rotate-of-profile
+                                    (p (fn-bpnpf-profile-read present bytes))
+                                    (x *fn-bpnpf-default-rotate*)))
             :in-theory (e/d (fn-bpnpf-profilep)
                             (fn-bpnpf-profile-read
                              fn-bpnpf-profile-read-is-valid
+                             fn-bpnpf-append-rotate-of-profile
                              fn-frame-fields-parse))))))
 
 (local

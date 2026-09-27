@@ -302,13 +302,16 @@
              '(2600 16777216 10551296 1048576 4096))
       (equal (fn-bpnpf-node-profile-read nil nil)
              '(64 16777216 65538 1048576 4096))))
-;; Without "the older reading admits the file": a profile-3 file is not the
-;; older reading plus the default (the older reading refuses it).
+;; Without validity (zero rows): neither older frame reads as that profile
+;; with the default threshold.
 (assert-event
- (let ((b (fn-bpnpf-node-profile-octets 64 16777216 65538 1048576 1)))
-   (and (null (fn-bpnpf-profile-read t b))
-        (not (equal (fn-bpnpf-node-profile-read t b)
-                    (append (fn-bpnpf-profile-read t b) (list 4096)))))))
+ (and (not (fn-bpnpf-profile-validp 0 16777216 65538 1048576))
+      (not (equal (fn-bpnpf-node-profile-read
+                   t (fn-bpnpf-profile-octets 0 16777216 65538 1048576))
+                  '(0 16777216 65538 1048576 4096)))
+      (not (fn-bpnpf-validp 0 16777216))
+      (not (equal (fn-bpnpf-node-profile-read t (fn-bpnpf-octets 0 16777216))
+                  '(0 16777216 65538 1048576 4096)))))
 
 ;; fn-bpnpf-node-profile-read-is-valid and -base-is-a-profile: what is read
 ;; is a profile 3 whose base is the profile 2 the admission reads.
