@@ -76,7 +76,7 @@ class SchedulerSourceTests(unittest.TestCase):
         self.assertIn("(fnn-owner-gated (service class)", serialized)
         # books/owner-commit-steps.lisp (PKT-688 (4) slice 2): the gate's pick
         # and fold are fn-ocs-next / fn-ocs-observe (fn-ocm-next's pick outside
-        # a batch, fn-osch-next's for the four classes: PRF-259, PRF-248).
+        # a batch, fn-osch-next's for the four classes: PRF-267, PRF-248).
         self.assertIn("'fn-ocs-next", owner)
         self.assertIn("'fn-ocs-observe", owner)
         # The committer's batch: START and COMPLETE as :commit quanta, the
@@ -327,7 +327,7 @@ class SchedulerNativeTests(unittest.TestCase):
 
     @unittest.skipUnless(executable(DEVELOPER), "no developer image at %s" % DEVELOPER)
     def test_status_is_answered_while_a_batch_barrier_is_in_flight(self):
-        # PKT-688 (4) slice 2 (books/owner-commit-steps.lisp, PRF-259).  The
+        # PKT-688 (4) slice 2 (books/owner-commit-steps.lisp, PRF-267).  The
         # developer selector holds the committer's barrier open for 6 s with
         # the owner RELEASED.  While it is open: `status' (the :inspect class)
         # is answered, each well before the barrier ends; a reader's GROUP

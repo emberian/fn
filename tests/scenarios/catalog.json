@@ -5120,7 +5120,7 @@
       }
     },
     {
-      "id": "SCN-176",
+      "id": "SCN-178",
       "title": "The mixed hour before and after the commit's barrier leaves the owner (PKT-688 (4) slice 2) on the same box: status/health p50 and p99, POST p50 and p99",
       "milestone": "M5",
       "status": "specified",

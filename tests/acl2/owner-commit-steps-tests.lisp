@@ -1,5 +1,5 @@
 ; Witnesses and teeth for books/owner-commit-steps.lisp (lane
-; owner-scheduler-2, 2026-09-27; PKT-688 (4) slice 2; PRF-259).
+; owner-scheduler-2, 2026-09-27; PKT-688 (4) slice 2; PRF-267).
 ;
 ; Every witness state is REACHED from fn-ocs-init through the picks and the
 ; commit events the host makes (fnn-owner-gate-pick, fnn-owner-commit-event),

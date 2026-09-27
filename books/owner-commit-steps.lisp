@@ -2,7 +2,7 @@
 ; the owner (lane owner-scheduler-2, 2026-09-27; PKT-688 (4) slice 2, decided
 ; by the coordinator: "the POST's durable commit becomes its own scheduled
 ; class, so a control request never waits behind a commit's fsyncs, and the
-; commit itself is bounded per scheduling step"; PRF-259).
+; commit itself is bounded per scheduling step"; PRF-267).
 ;
 ; books/owner-commit-class.lisp (lane commit-onto-log) made the batch commit
 ; a class: one :commit quantum drains every queued served submission into the
@@ -366,7 +366,7 @@
    :hints (("Goal" :expand ((fn-ocs-inspect-delay s ws))))))
 
 (defthm fn-ocs-inspect-waits-at-most-one
-  ; KEYSTONE (PRF-259).
+  ; KEYSTONE (PRF-267).
   (implies (fn-ocs-inspect-waitsp ws)
            (<= (fn-ocs-inspect-delay s ws) 1))
   :rule-classes :linear
