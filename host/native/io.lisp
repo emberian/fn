@@ -3298,8 +3298,16 @@ history."
     (let ((unit (fnn-store-log-unit)) (max (fnn-store-log-max store)))
       (dolist (k closed)
         (setq genesis (fnn-log-read-closed-segment store k genesis unit max
-                                                   (lambda (r) (funcall fn (fnn-octets r)))))))
+                                                   (lambda (r) (funcall fn (fnn-octets r))))))
+      (fnn-log-check-history-chain store genesis))
     (fnn-log-read-active-segment store (lambda (r) (funcall fn (fnn-octets r))))))
+
+(defun fnn-log-check-history-chain (store last)
+  "LAST, the last trailer of the closed segments read again, must be the active
+segment's genesis (books/store-log-damage.lisp fn-lgdm-chain-continues-p):
+else a closed segment changed since the open, refused by name."
+  (unless (fnn-core 'fn-lgdm-chain-continues-p last (fnn-log-genesis (fnn-store-log store)))
+    (error 'fnn-store-open-refusal :message (fnn-core 'fn-lgdm-history-break-text))))
 
 (defun fnn-log-history-records (store)
   "A format-9 STORE's history as a list, each record's exact octets in log
@@ -3337,6 +3345,7 @@ vectors, in order)."
       (dolist (k closed)
         (setq genesis (fnn-log-read-closed-segment store k genesis unit max
                                                    (lambda (r) (push (fnn-octets r) parts)))))
+      (fnn-log-check-history-chain store genesis)
       (nreverse parts))))
 
 (defun fnn-history-records (store)
@@ -5120,7 +5129,8 @@ fn-lgc-of).  At the stop, ACL2's probe of the rest of the segment
 (fnn-log-probe-tail) and its verdict (fn-lgdm-verdict; KEYSTONES
 fn-lgdm-open-verdict-is-the-classification, fn-lgdm-no-silent-prefix): an
 entry at the stop validating under another predecessor (a splice or a stale
-segment) or a valid entry anywhere after the stop (DAMAGE, not a torn tail)
+segment: fn-lgw-broken, which is fn-lgs-chain-broken-p by
+fn-lgw-run-is-the-open) or a valid entry anywhere after the stop (DAMAGE, not a torn tail)
 is refused by name (fn-lgdm-refusal-text: log-chain-broken, log-damaged),
 never read as a torn tail -- unless the operator's repair *fnn-log-repair*
 names exactly this damage and ACL2 admits it (fn-lgdm-effective: LABEL the

@@ -125,8 +125,8 @@
                             (fn-lgdm-dec q)
                             " valid-after=2 records=2: an entry of the record log does not validate and"
                             " valid entries follow it (damage, not a torn tail); nothing was written."
-                            "  To keep the history before it and drop the rest: fn store ROOT recover"
-                            " --repair truncate 000001.log:0")))))
+                            "  To keep the history before it and drop the rest (the segment is kept"
+                            " under quarantine/ first): recover --repair truncate 000001.log:0")))))
 
 ; (1) A flip inside the second entry: one record read, :damaged at the
 ; second entry's start, one valid entry after.

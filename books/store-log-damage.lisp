@@ -215,7 +215,8 @@
                       " records=" (fn-lgdm-dec (nth 4 v))
                       ": an entry of the record log does not validate and valid entries follow it"
                       " (damage, not a torn tail); nothing was written.  To keep the history before"
-                      " it and drop the rest: fn store ROOT recover --repair truncate "
+                      " it and drop the rest (the segment is kept under quarantine/ first):"
+                      " recover --repair truncate "
                       (fn-lgdm-at segment (nth 1 v))))
         ((equal (car v) :broken)
          (concatenate 'string
@@ -671,3 +672,21 @@
                        (not (fn-lgdm-refused-p e))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-lgdm-refused-p fn-lgdm-kind))))
+
+; -----------------------------------------------------------------------------
+; The history read again (host/native/io.lisp fnn-log-history-each and
+; fnn-log-closed-records: checkpoint publish, export): the closed segments are
+; streamed again with the chain carried from one to the next, and the last
+; closed segment's last trailer must be the active segment's genesis.  A
+; closed segment that changed since the open (read shorter, or damaged at its
+; last entry, which no probe can tell from a torn tail) breaks it: refused by
+; name, never a shorter history handed to a checkpoint that then drops the
+; covered segments.
+
+(defun fn-lgdm-chain-continues-p (last genesis)
+  (declare (xargs :guard t))
+  (equal last genesis))
+
+(defun fn-lgdm-history-break-text ()
+  (declare (xargs :guard t))
+  "history refused reason=log-damaged: the closed log segments read again do not chain to the active segment's genesis (a closed segment changed since the open); nothing was written")
