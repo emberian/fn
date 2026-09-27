@@ -68,6 +68,54 @@ CHILD = textwrap.dedent('''
 ''')
 
 
+class LoadBudgetTests(unittest.TestCase):
+    """A boot load form's budget is 3x its last measured time, never a fixed
+    20 s (dev-health packet 5)."""
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.path = Path(temp.name) / "times.json"
+        self.form = '(ld "host/checkpoint-host.lisp"' + bridge_image.LD
+
+    def test_only_loads_are_load_forms(self):
+        self.assertTrue(bridge_image.is_load_form(self.form))
+        self.assertTrue(bridge_image.is_load_form('(include-book "books/replay")'))
+        self.assertFalse(bridge_image.is_load_form("(set-check-invariant-risk t)"))
+        self.assertFalse(bridge_image.is_load_form("(fn-store-reset state)"))
+
+    def test_an_unmeasured_load_gets_the_refutation_bound(self):
+        self.assertEqual(bridge_image.load_budget(self.form, self.path),
+                         bridge_image.LOAD_FIRST_SECONDS)
+
+    def test_a_measured_load_gets_three_times_its_time(self):
+        with mock.patch.object(bridge_image, "_load_per_cpu", return_value=0.5):
+            bridge_image.record_load(self.form, 25.4, self.path)
+            self.assertAlmostEqual(bridge_image.load_budget(self.form, self.path), 76.2)
+            bridge_image.record_load(self.form, 2.0, self.path)
+            self.assertEqual(bridge_image.load_budget(self.form, self.path),
+                             bridge_image.LOAD_FLOOR_SECONDS)
+
+    def test_a_busier_machine_scales_the_budget(self):
+        with mock.patch.object(bridge_image, "_load_per_cpu", return_value=0.5):
+            bridge_image.record_load(self.form, 10.0, self.path)
+        with mock.patch.object(bridge_image, "_load_per_cpu", return_value=2.0):
+            self.assertAlmostEqual(bridge_image.load_budget(self.form, self.path), 60.0)
+
+    def test_the_boot_times_each_load_and_records_it(self):
+        store = run_store.Acl2Store.__new__(run_store.Acl2Store)
+        seen = []
+        store.call = lambda form, timeout=None: seen.append((form, timeout)) or b"ok"
+        with mock.patch.object(bridge_image, "LOAD_TIMES", self.path):
+            store.boot_call(self.form)
+            store.boot_call("(set-check-invariant-risk t)")
+            self.assertEqual(seen[0], (self.form, bridge_image.LOAD_FIRST_SECONDS))
+            self.assertEqual(seen[1], ("(set-check-invariant-risk t)", None))
+            self.assertIn(self.form, bridge_image._read_load_times(self.path))
+            store.boot_call(self.form)
+            self.assertEqual(seen[2], (self.form, bridge_image.LOAD_FLOOR_SECONDS))
+
+
 class SlotTests(unittest.TestCase):
     """The bridge takes a pool slot; a child of a holder shares it."""
 
