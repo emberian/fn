@@ -39,7 +39,8 @@
 (in-package "ACL2")
 (include-book "store-intern")
 (include-book "store-checkpoint-tables-reader")
-; replay-identity-index (fn-rii-sco-extend) is red on dev (batch AU flip reds): see section 4.
+; fn-rii-sco-extend, the extension the host calls (section 4's twin).
+(include-book "replay-identity-index")
 (local (include-book "arithmetic/top" :dir :system))
 ;; The reader's two octet-list rules rewrite into each other, and the
 ;; parameter-record identity lemmas fire on every list: off everywhere here.
@@ -420,8 +421,7 @@
 ; passes the loaded capture and the loaded arena.  (mv E fn-arena), E :bad
 ; when the intern refuses a record.  The host's extension is the twin
 ; fn-rii-sco-extend, EQUAL with no hypothesis (fn-rii-sco-extend-is-sco-extend,
-; books/replay-identity-index.lisp, red on dev at this writing: the twin of
-; this function over it is a one-line theorem once that book is green).
+; books/replay-identity-index.lisp): fn-scka-recover-rows-rii below.
 (defun fn-scka-recover-rows (c configs records fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (mv-let (rows fn-arena)
@@ -516,6 +516,26 @@
                             fn-scka-intern-at-of-append-bad
                             fn-intern-events fn-scka-intern-at fn-scka-payloads
                             fn-sco-extend fn-sco-capture)))))
+
+; The composition the host runs (host/native/io.lisp fnn-recover-suffix-rows
+; and fnn-bridge-recover: the guard-verified fn-intern-events, then
+; host/store-node-host.lisp fn-store-sn-recover-from-checkpoint or
+; fn-store-sn-recover-rows over fn-rii-sco-extend) is this function; it is
+; fn-scka-recover-rows, so the open keystone above is about what the host
+; calls.
+(defun fn-scka-recover-rows-rii (c configs records fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-intern-events records nil 0 fn-arena)
+    (if (eq rows :bad)
+        (mv :bad fn-arena)
+      (mv (fn-rii-sco-extend c configs rows) fn-arena))))
+
+(defthm fn-scka-recover-rows-rii-is-recover-rows
+  (equal (fn-scka-recover-rows-rii c configs records fn-arena)
+         (fn-scka-recover-rows c configs records fn-arena))
+  :hints (("Goal" :in-theory (e/d (fn-rii-sco-extend-is-sco-extend)
+                                  (fn-intern-events fn-sco-extend fn-rii-sco-extend)))))
 
 ; -----------------------------------------------------------------------------
 ; 5. The writer's inputs, from the live store (rows and arena), per row.
