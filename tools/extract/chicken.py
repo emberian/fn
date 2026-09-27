@@ -160,6 +160,15 @@ SHIMS = {
     "ACL2::THROW-NONEXEC-ERROR": "a-throw-nonexec-error",
     "ACL2::FN-DURABLE-REALIZE-OCTET": "a-durable-realize-octet",
     "ACL2::FN-DURABLE-REALIZE-OCTETS": "a-durable-realize-octets",
+    "ACL2::FN-DURABLE-REALIZE-LZ": "a-durable-realize-lz",
+}
+# The image's native digest (host/native/digest.lisp, lane digest-native):
+# calls of these go to tools/extract/native.scm's libcrypto SHA-256; the
+# extracted definitions stay as the fallback and the self-check's reference.
+NATIVE = {
+    "ACL2::FN-SHA256-STOBJ": "a-native-sha256-list",
+    "ACL2::FN-SHA256-OF-STRING": "a-native-sha256-string",
+    "ACL2::FN-SHA256-OF-PREFIXED-BUFFER": "a-native-sha256-prefixed-buffer",
 }
 # Common Lisp and ACL2 built-ins that raw Lisp compiles inline (NOT, EQ,
 # ZP ...): the Scheme form for a test position, and for a value position.
@@ -193,6 +202,7 @@ SHIM_CLASS = {
     "ACL2::CHAR-DOWNCASE-NON-STANDARD": "host-Lisp character table (constrained in ACL2)",
     "ACL2::FN-DURABLE-REALIZE-OCTET": "file primitive (A-DURABLE-EXTENT)",
     "ACL2::FN-DURABLE-REALIZE-OCTETS": "file primitive (A-DURABLE-EXTENT)",
+    "ACL2::FN-DURABLE-REALIZE-LZ": "file primitive and ACL2's decoder (A-DURABLE-LZ)",
 }
 # fx forms for arithmetic whose arguments and result are fixnums.
 FX = {
@@ -264,6 +274,9 @@ class Backend:
         self.prim_info = {}   # stobj primitive name -> (stobj, field, op)
         self.array_lengths = set()
         self.pred_cache = {}
+        self.cur_star1 = False
+        self.checked_needed = set()
+        self.native = True
         self._index_stobj_prims()
 
     # --- stobjs ------------------------------------------------------------------------
@@ -699,6 +712,8 @@ class Backend:
         raise ValueError("value count mismatch in %s: %s wants %d, has %d" % (self.cur, fn, want, n))
 
     def emit_call(self, fn, args, env):
+        if self.cur_star1 and (fn in PREDS or fn in INLINE or fn in PRIMS):
+            self.star1_call(fn, fn, self.fns.get(fn))
         if fn in PREDS:
             return self.bool_of(self.emit_pred(fn, args, env))
         if fn in INLINE:
@@ -725,10 +740,16 @@ class Backend:
         while f and f["kind"] == "alias":
             target = f["target"]
             f = self.fns.get(target)
+        if self.cur_star1:
+            self.star1_call(fn, target, f)
         if fn in SHIMS or target in SHIMS:
             head = SHIMS.get(fn) or SHIMS[target]
+        elif self.native and target in NATIVE and self.cur not in NATIVE:
+            head = NATIVE[target]
         elif fn in PRIMS:
             head = None
+        elif self.cur_star1 and fn in self.checked_needed:
+            head = scm_sym("c:" + fn)
         else:
             head = fname(target)
             info = self.prim_info.get(target)
@@ -799,11 +820,132 @@ class Backend:
         self.cur = f["name"]
         self.counter = 0
         self.cur_verified = f.get("class") == "common-lisp-compliant"
+        self.cur_star1 = f.get("class") == "program" and f.get("invariant_risk", False)
         genv = self.guard_env(f)
         env = {v: ("var", genv.get(v)) for v in f["formals"]}
         want = self.nout(f["name"])
         body = self.emit(f["body"], env, want)
         return "(define (%s %s)\n  %s)" % (fname(f["name"]), " ".join(scm_sym(v) for v in f["formals"]), body)
+
+    # --- *1* bodies (invariant risk) ------------------------------------------------------------
+    # A :program function with ACL2's `invariant-risk' property (it may reach a
+    # stobj updater) runs, under the image's check-invariant-risk t, its *1*
+    # body (interface-raw.lisp oneify, **1*-as-raw* t): each call in it to a
+    # function G checks G's guard before G runs raw, except a call to another
+    # invariant-risk :program function, whose own body is a *1* body in turn.
+    # The backend emits exactly those checks, as |c:G| (G's guard, then
+    # |f:G|).  A primitive with a guard (car, <, ...) called from such a body
+    # would need its *1* check as well: none is reached today, and the
+    # backend refuses to build one rather than leave it unchecked.
+    STAR1_UNCHECKED_OK = {"COMMON-LISP::CONS", "COMMON-LISP::CONSP", "COMMON-LISP::EQUAL",
+                          "COMMON-LISP::INTEGERP", "COMMON-LISP::RATIONALP", "ACL2::ACL2-NUMBERP",
+                          "COMMON-LISP::COMPLEX-RATIONALP", "COMMON-LISP::CHARACTERP",
+                          "COMMON-LISP::STRINGP", "COMMON-LISP::SYMBOLP", "COMMON-LISP::NOT",
+                          "COMMON-LISP::NULL", "COMMON-LISP::ATOM", "COMMON-LISP::EQL",
+                          "ACL2::NATP", "ACL2::POSP", "ACL2::BOOLEANP", "ACL2::NFIX", "ACL2::IFIX",
+                          "ACL2::FIX", "COMMON-LISP::IF"}
+
+    def live_guard(self, f):
+        formals = f["formals"]
+        stobjs_in = f["stobjs_in"] or [None] * len(formals)
+        stobj_formals = {v for v, st in zip(formals, stobjs_in) if st}
+        return self.drop_live_recognizers(f["guard"], stobj_formals, self.stobj_recognizers())
+
+    def star1_call(self, fn, target, f):
+        if fn in self.STAR1_UNCHECKED_OK:
+            return
+        if fn in PRIMS or fn in PREDS or fn in INLINE:
+            raise ValueError("%s: a *1* body (invariant risk) calls the guarded primitive %s; "
+                             "its *1* guard check is not implemented" % (self.cur, fn))
+        # The guard checked is the CALLED function's: an abstract stobj's
+        # export has its own guard (its :logic guard, stobj conjuncts aside),
+        # not its :exec function's (which also states the concrete invariant).
+        called = self.fns.get(fn)
+        if target in SHIMS or not f or f["kind"] != "defun" or not called or "guard" not in called:
+            return
+        if f.get("class") == "program" and f.get("invariant_risk", False):
+            return
+        if self.live_guard(called) != ["q", ["y", T]]:
+            self.checked_needed.add(fn)
+
+    def checked_def(self, name):
+        f = self.fns[name]
+        target = name
+        while self.fns[target]["kind"] == "alias":
+            target = self.fns[target]["target"]
+        formals = f["formals"]
+        saved = (self.cur, self.cur_verified, self.cur_star1, self.counter)
+        self.cur, self.cur_verified, self.cur_star1, self.counter = name, False, False, 0
+        env = {v: ("var", None) for v in formals}
+        test = self.emit_test(self.live_guard(f), env)
+        self.cur, self.cur_verified, self.cur_star1, self.counter = saved
+        args = " ".join(scm_sym(v) for v in formals)
+        return ("(define (%s %s)\n  (if %s (%s %s) (a-guard-violation %s (list %s))))"
+                % (scm_sym("c:" + name), args, test, fname(target), args, scm_string(short(name)), args))
+
+    # --- the boundary (e1) ------------------------------------------------------------------
+    # THE RULE.  A boundary function is one the host driver calls (a root of
+    # the extraction; host/native/io.lisp calls it through fnn-call).  Its
+    # procedure |b:F| does what fnn-call and F's *1* counterpart do under
+    # guard-checking t, in their order: (1) the arity and the KIND conjuncts
+    # of F's guard (fnn-entry-guard; the front end computes the checks exactly
+    # as fnn-entry-guard-spec does), refused as a host-entry-guard fault with
+    # fnn-entry-guard's own message; (2) F's WHOLE guard, refused as a guard
+    # violation of F (the fault fnn-call raises when the *1* function throws);
+    # (3) the raw procedure |f:F|.  A stobj recognizer applied to its own
+    # stobj formal is true of the live stobj and is not evaluated (the *1*
+    # code never evaluates it on a live stobj either).  Every call INSIDE
+    # the program is to |f:G|, unchecked: G's guard is a guard obligation of
+    # its caller, discharged by the caller's guard verification.
+    def stobj_recognizers(self):
+        rec = {"ACL2::STATE-P", "ACL2::STATE-P1"}
+        for st in self.ir["stobjs"]:
+            rec.add(st["recognizer"])
+        for f in self.ir["functions"]:
+            if f["kind"] == "alias" and f.get("target") and f["name"].endswith("-P"):
+                rec.add(f["name"])
+        return rec
+
+    def drop_live_recognizers(self, t, stobj_formals, recs):
+        if t[0] == "c":
+            if (t[1] in recs and len(t[2]) == 1 and t[2][0][0] == "v"
+                    and t[2][0][1] in stobj_formals):
+                return ["q", ["y", T]]
+            return ["c", t[1], [self.drop_live_recognizers(a, stobj_formals, recs) for a in t[2]]]
+        if t[0] == "l":
+            return ["l", t[1], self.drop_live_recognizers(t[2], stobj_formals, recs),
+                    [self.drop_live_recognizers(a, stobj_formals, recs) for a in t[3]]]
+        return t
+
+    def boundary_def(self, b, recs):
+        name = b["name"]
+        f = self.fns[name]
+        target = name
+        while self.fns.get(target, {}).get("kind") == "alias":
+            target = self.fns[target]["target"]
+        formals = f["formals"]
+        stobjs_in = f["stobjs_in"] or [None] * len(formals)
+        stobj_formals = {v for v, st in zip(formals, stobjs_in) if st}
+        self.cur, self.cur_verified, self.counter = name, False, 0
+        env = {v: ("var", None) for v in formals}
+        lname = scm_string(short(name).lower())
+        body = []
+        for pos, formal, recog, kind in b["checks"]:
+            test = self.emit_test(["c", recog, [["v", formal]]], env)
+            body.append("(unless %s (a-entry-kind-fault %s %d %s %s %s %s))"
+                        % (test, lname, pos + 1, scm_string(short(formal).lower()), scm_string(kind),
+                           scm_string(short(recog).lower()), scm_sym(formal)))
+        guard = self.drop_live_recognizers(b["guard"], stobj_formals, recs)
+        if guard != ["q", ["y", T]]:
+            body.append("(unless %s (a-guard-violation %s (list %s)))"  # the entry's own guard
+                        % (self.emit_test(guard, env), scm_string(short(name)),
+                           " ".join(scm_sym(v) for v in formals)))
+        call = "(%s %s)" % (fname(target), " ".join(scm_sym(v) for v in formals)) \
+            if target not in SHIMS else "(%s %s)" % (SHIMS[target], " ".join(scm_sym(v) for v in formals))
+        return ("(define (%s . args)\n  (set! a-current-entry %s)\n  (a-entry-arity %s %d args)\n"
+                "  (apply (lambda (%s)\n    %s\n    (a-entry-call %s (lambda () %s))) args))"
+                % (scm_sym("b:" + name), lname, lname, len(formals), " ".join(scm_sym(v) for v in formals),
+                   "\n    ".join(body) if body else "#t", lname, call))
 
     def program(self):
         out = [";;; generated by tools/extract/chicken.py from %s roots: %s"
@@ -837,9 +979,19 @@ class Backend:
                 defs.append("(define (%s . args) (error \"extractor blocker\" '%s %s))"
                             % (fname(n), scm_sym(n), scm_string(f["reason"])))
         # aliases whose target is a creator/recognizer need a name too: callers use the target.
+        recs = self.stobj_recognizers()
+        boundary = [self.boundary_def(b, recs) for b in self.ir.get("boundary", [])]
+        checked = [self.checked_def(n) for n in sorted(self.checked_needed)]
+        inventory["star1_checked"] = sorted(self.checked_needed)
+        inventory["star1_bodies"] = [f["name"] for f in self.ir["functions"]
+                                     if f["kind"] == "defun" and f.get("class") == "program"
+                                     and f.get("invariant_risk", False)]
+        inventory["boundary"] = [b["name"] for b in self.ir.get("boundary", [])]
         out.extend(self.const_defs)
         out.extend(prims_out)
         out.extend(defs)
+        out.extend(checked)
+        out.extend(boundary)
         return "\n".join(out) + "\n", inventory
 
 
@@ -850,9 +1002,12 @@ def main():
     p.add_argument("--erased", required=True)
     p.add_argument("--inventory", required=True)
     p.add_argument("--table", help="also write a name -> procedure table (fcheck-main.scm)")
+    p.add_argument("--no-native", action="store_true",
+                   help="the ACL2 SHA-256 everywhere (no native.scm; fcheck-main.scm's build)")
     a = p.parse_args()
     ir = json.load(open(a.ir))
     b = Backend(ir)
+    b.native = not a.no_native
     text_, inv = b.program()
     with open(a.out, "w") as h:
         h.write(text_)

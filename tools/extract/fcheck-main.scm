@@ -6,6 +6,7 @@
 ;;; arguments, the expected and the observed value.
 (include "runtime.scm")
 (include "served.scm")
+(include "native.scm")
 (include "fntable.scm")
 (import (chicken process signal))
 

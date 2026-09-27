@@ -87,6 +87,92 @@
 (define (a-illegal ctx str alist) (error "ACL2 illegal (guard of a raw call)" ctx str alist))
 (define (a-throw-nonexec-error fn actuals) (error "non-executable function called" fn))
 
+;; --- faults at the boundary (e1; host/native/io.lisp fnn-entry-guard, fnn-call) --
+;; A fault is a condition (fn-fault kind message); the driver reports it as the
+;; image's fnn-main reports an fnn-store-fault and exits with ACL2's :fault code.
+(define (a-fault kind msg)
+  (abort (make-property-condition 'fn-fault 'kind kind 'message msg)))
+(define (fn-fault? c) ((condition-predicate 'fn-fault) c))
+(define (fn-fault-kind c) ((condition-property-accessor 'fn-fault 'kind) c))
+(define (fn-fault-message c) ((condition-property-accessor 'fn-fault 'message) c))
+(define (a-downcase s)
+  (list->string (map (lambda (c) (if (and (char>=? c #\A) (char<=? c #\Z))
+                                     (integer->char (fx+ (char->integer c) 32)) c))
+                     (string->list s))))
+(define (a-plural n) (if (eqv? n 1) "" "s"))
+;; SBCL's ~s of a symbol read in the ACL2 package
+(define (a-symbol-text x)
+  (if (null? x) "NIL"
+      (receive (p n) (a-split-symbol x)
+        (cond ((string=? p "KEYWORD") (string-append ":" n))
+              ((or (string=? p "ACL2") (string=? p "COMMON-LISP")) n)
+              (else (string-append p "::" n))))))
+;; SBCL's type-of, printed with ~a, for the values an ACL2 entry can be handed
+(define (a-type-of-text x)
+  (cond ((eq? x '|COMMON-LISP::T|) "BOOLEAN")
+        ((null? x) "NULL")
+        ((symbol? x) (receive (p n) (a-split-symbol x) (if (string=? p "KEYWORD") "KEYWORD" "SYMBOL")))
+        ((char? x) (let ((k (char->integer x)))
+                     (if (or (fx= k 10) (and (fx>= k 32) (fx<= k 126))) "STANDARD-CHAR" "CHARACTER")))
+        ((string? x) (sprintf "(SIMPLE-ARRAY CHARACTER (~a))" (string-length x)))
+        ((and (number? x) (exact? x) (real? x) (not (integer? x))) "RATIO")
+        ((number? x) "(COMPLEX RATIONAL)")
+        (else "T")))
+;; fnn-entry-guard-describe: a bounded description of a value's kind
+(define (a-describe v)
+  (cond ((and (exact-integer? v) (>= v 0)) (sprintf "the natural ~a" v))
+        ((exact-integer? v) (sprintf "the integer ~a" v))
+        ((null? v) "NIL")
+        ((string? v) (sprintf "a string of ~a characters" (string-length v)))
+        ((symbol? v) (sprintf "the symbol ~a" (a-symbol-text v)))
+        ((pair? v)
+         (let loop ((tail v) (i 0))
+           (if (and (pair? tail) (fx< i 1000000)) (loop (cdr tail) (fx+ i 1))
+               (sprintf "a list of ~a element~a (first ~a)" i (a-plural i)
+                        (let ((head (car v)))
+                          (cond ((exact-integer? head) head)
+                                ((pair? head) "a list")
+                                (else (a-type-of-text head))))))))
+        ((u8vector? v) (let ((n (u8vector-length v))) (sprintf "a vector of ~a element~a" n (a-plural n))))
+        ((vector? v) (let ((n (vector-length v))) (sprintf "a vector of ~a element~a" n (a-plural n))))
+        (else (sprintf "a ~a" (a-downcase (a-type-of-text v))))))
+(define (a-entry-arity name n args)
+  (let ((given (length args)))
+    (unless (fx= given n)
+      (a-fault 'host-entry-guard
+               (sprintf "host-entry-guard: ~a takes ~a argument~a (stobjs and state included); the host passed ~a"
+                        name n (a-plural n) given)))))
+(define (a-entry-kind-fault name position formal kind recognizer value)
+  (a-fault 'host-entry-guard
+           (sprintf "host-entry-guard: ~a argument ~a (~a) must be ~a (~a); the host passed ~a"
+                    name position formal kind recognizer (a-describe value))))
+;; The *1* counterpart's guard check failed.  In the image the *1* function
+;; prints ACL2's guard-violation diagnostic (the untranslated guard and the
+;; arguments, through ACL2's printer) and halts; fnn-call turns the halt into
+;; the store fault "ACL2 error in ENTRY: ACL2 Halted" (exit :fault).  The
+;; fault's message is the refusal and is reproduced byte for byte; the
+;; diagnostic goes to stderr here in one line (the guard is not printed).
+(define a-current-entry "")
+(define (a-guard-violation name args)
+  (let ((port (current-error-port)))
+    (display "ACL2 Error in ACL2-INTERFACE:  The guard for the function call (" port)
+    (display name port)
+    (display " ...) is violated by the arguments in the call." port)
+    (newline port))
+  (a-fault 'fault (sprintf "ACL2 error in ~a: ACL2 Halted" a-current-entry)))
+;; fnn-call around the entry: the entry's name for its faults, and a raw
+;; error inside it (an ACL2 hard error, a realizer's refusal) turned into the
+;; store fault "ACL2 error in ENTRY: ..." (exit :fault), as fnn-call's
+;; handler-case turns a serious-condition into one.  The message after the
+;; colon is the condition's own text, which differs between the two Lisps.
+(define (a-entry-call name thunk)
+  (set! a-current-entry name)
+  (condition-case (thunk)
+    (e (fn-fault) (abort e))
+    (e (exn)
+       (a-fault 'fault (sprintf "ACL2 error in ~a: ~a" name
+                                ((condition-property-accessor 'exn 'message) e))))))
+
 ;; --- the durable-extent realizers (A-DURABLE-EXTENT, books/assumptions.lisp) ------
 ;; host/native/extent.lisp's raw definitions read a registered durable file.
 ;; This runtime registers none: exactly the answer of an image whose store
@@ -95,6 +181,13 @@
   (error (sprintf "arena-extent-read: no durable file ~a is registered" file)))
 (define (a-durable-realize-octets file eoff elen poff plen trailer)
   (error (sprintf "arena-extent-read: no durable file ~a is registered" file)))
+;; A-DURABLE-LZ's realizer (host/native/extent.lisp fn-durable-realize-lz)
+;; calls ACL2's decoder fn-lzr-lz-read through fnn-core; the image does not
+;; include books/payload-lz-record (nothing in host/native/build.lisp's world
+;; does), so the image answers a compressed extent with the fault below, and
+;; so does this program.
+(define (a-durable-realize-lz file eoff elen poff plen trailer n dict)
+  (a-fault 'fault "ACL2 executable counterpart missing: FN-LZR-LZ-READ"))
 
 ;; --- stobj support ----------------------------------------------------------------
 ;; A defstobj is a Scheme vector of its fields; an array field is a vector,

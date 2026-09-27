@@ -405,12 +405,16 @@
                   (:defun
                    (let* ((state (princ$ ",\"class\":\"" channel state))
                           (state (princ$ (string-downcase (symbol-name (cadddr entry))) channel state))
-                          (state (princ$ "\",\"guard\":" channel state))
+                          (state (princ$ "\",\"invariant_risk\":" channel state))
+                          (state (princ$ (if (getpropc fn 'invariant-risk nil w) "true" "false") channel state))
+                          (state (princ$ ",\"guard\":" channel state))
                           (state (xt-json-term (guard fn nil w) channel state))
                           (state (princ$ ",\"body\":" channel state)))
                      (xt-json-term (caddr entry) channel state)))
                   (:alias
-                   (let* ((state (princ$ ",\"target\":" channel state)))
+                   (let* ((state (princ$ ",\"guard\":" channel state))
+                          (state (xt-json-term (xt-resolve (guard fn nil w) t) channel state))
+                          (state (princ$ ",\"target\":" channel state)))
                      (xt-json-sym (caddr entry) channel state)))
                   (:stobj-prim
                    (let* ((state (princ$ ",\"stobj\":" channel state)))
@@ -427,15 +431,149 @@
         (xt-json-entries (cdr entries) nil channel state))
     state))
 
-(defun xt-extract (roots path state)
+;
+; ---------------------------------------------------------------------------
+; The boundary (lane extract-2, e1).  The host calls a root through fnn-call
+; (host/native/io.lisp), which (1) checks the entry's ARITY and the KIND
+; conjuncts of its guard (fnn-entry-guard: a conjunct (R v), v a non-stobj
+; formal, R in *fn-entry-guard-kinds*), then (2) applies the entry's *1*
+; counterpart, which under guard-checking t evaluates the entry's WHOLE
+; guard before the raw body runs.  An extracted program must do both at its
+; boundary and nothing inside it: an interior call's guard is a proved guard
+; obligation of its caller.  The front end computes the kind checks exactly
+; as fnn-entry-guard-spec does (same conjuncts, same order) and walks each
+; boundary function's guard and recognizers into the closure.
+
+(defun xt-guard-conjuncts (term)
+  (if (and (consp term) (eq (car term) 'if) (equal (fourth term) *nil*))
+      (append (xt-guard-conjuncts (second term)) (xt-guard-conjuncts (third term)))
+    (list term)))
+
+(defun xt-position (x l i)
+  (cond ((endp l) nil) ((eq x (car l)) i) (t (xt-position x (cdr l) (1+ i)))))
+
+(defun xt-kind-checks (cs formals stobjs kinds acc)
+  ; fnn-entry-guard-spec's loop: each check (position formal recognizer kind),
+  ; pushed, so ACC is in reverse conjunct order.
+  (if (endp cs) acc
+    (let* ((c (car cs))
+           (pos (and (consp c) (symbolp (car c)) (consp (cdr c)) (null (cddr c))
+                     (symbolp (cadr c)) (xt-position (cadr c) formals 0)))
+           (kind (and pos (null (nth pos stobjs)) (assoc-eq (car c) kinds))))
+      (xt-kind-checks (cdr cs) formals stobjs kinds
+                      (if kind (cons (list pos (cadr c) (car c) (cdr kind)) acc) acc)))))
+
+(defun xt-insert-by-pos (x l)
+  ; stable insertion by position (SBCL's list sort is a stable merge sort)
+  (if (or (endp l) (< (car x) (caar l))) (cons x l)
+    (cons (car l) (xt-insert-by-pos x (cdr l)))))
+
+(defun xt-sort-by-pos (l acc)
+  (if (endp l) acc (xt-sort-by-pos (cdr l) (xt-insert-by-pos (car l) acc))))
+
+(defun xt-entry-kinds (w)
+  (let ((q (getpropc '*fn-entry-guard-kinds* 'const nil w)))
+    (and (consp q) (eq (car q) 'quote) (cadr q))))
+
+(defun xt-boundary-spec (fn w)
+  ; (arity . checks) as fnn-entry-guard-spec; checks sorted by position.
+  (let* ((formals (formals fn w))
+         (stobjs (stobjs-in fn w))
+         (checks (xt-kind-checks (xt-guard-conjuncts (guard fn nil w)) formals stobjs
+                                 (xt-entry-kinds w) nil)))
+    (cons (len formals) (xt-sort-by-pos checks nil))))
+
+(defun xt-strip-nths (n l)
+  (if (endp l) nil (cons (nth n (car l)) (xt-strip-nths n (cdr l)))))
+
+(defun xt-boundary-extra (fns w acc)
+  ; the guard's callees and the kind recognizers of each boundary function
+  (if (endp fns) acc
+    (let* ((fn (car fns))
+           (g (xt-resolve (guard fn nil w) t))
+           (spec (xt-boundary-spec fn w)))
+      (xt-boundary-extra (cdr fns) w
+                         (append (xt-callees g nil) (xt-strip-nths 2 (cdr spec)) acc)))))
+
+(defun xt-json-check (c channel state)
+  (let* ((state (princ$ "[" channel state))
+         (state (princ$ (car c) channel state))
+         (state (princ$ "," channel state))
+         (state (xt-json-sym (cadr c) channel state))
+         (state (princ$ "," channel state))
+         (state (xt-json-sym (caddr c) channel state))
+         (state (princ$ "," channel state))
+         (state (xt-json-string (cadddr c) channel state)))
+    (princ$ "]" channel state)))
+
+(defun xt-json-checks (cs first channel state)
+  (if (consp cs)
+      (let* ((state (if first state (princ$ "," channel state)))
+             (state (xt-json-check (car cs) channel state)))
+        (xt-json-checks (cdr cs) nil channel state))
+    state))
+
+(defun xt-json-boundary (fns first channel state)
+  (if (consp fns)
+      (let* ((w (w state))
+             (fn (car fns))
+             (spec (xt-boundary-spec fn w))
+             (state (if first state (princ$ "," channel state)))
+             (state (princ$ "{\"name\":" channel state))
+             (state (xt-json-sym fn channel state))
+             (state (princ$ ",\"arity\":" channel state))
+             (state (princ$ (car spec) channel state))
+             (state (princ$ ",\"guard\":" channel state))
+             (state (xt-json-term (xt-resolve (guard fn nil w) t) channel state))
+             (state (princ$ ",\"checks\":[" channel state))
+             (state (xt-json-checks (cdr spec) t channel state))
+             (state (princ$ "]}" channel state)))
+        (xt-json-boundary (cdr fns) nil channel state))
+    state))
+
+; ROOTS: the functions the host driver calls; every root is a boundary
+; function (its guard is checked where the host calls it).  EXTRA: more roots
+; the driver does not call (their guards are not checked: interior only).
+; The guards a *1* body checks (tools/extract/chicken.py star1_call): an
+; invariant-risk :program function's callees' guards, whose functions the
+; program must hold too.
+(defun xt-guard-callees (fns w acc)
+  (if (endp fns) acc
+    (xt-guard-callees (cdr fns) w
+                      (if (getpropc (car fns) 'formals nil w)
+                          (xt-callees (xt-resolve (guard (car fns) nil w) t) acc)
+                        acc))))
+
+(defun xt-risk-guard-fns (entries w acc)
+  (if (endp entries) acc
+    (let ((e (car entries)))
+      (xt-risk-guard-fns
+       (cdr entries) w
+       (if (and (eq (cadr e) :defun) (eq (cadddr e) :program)
+                (getpropc (car e) 'invariant-risk nil w))
+           (xt-guard-callees (xt-callees (caddr e) nil) w acc)
+         acc)))))
+
+(defun xt-walk-closed (seeds n w)
+  ; walk, then add the risky bodies' guard functions, to a fixpoint (N rounds)
+  (mv-let (entries stobjs) (xt-walk seeds nil nil nil w)
+    (let* ((more (xt-risk-guard-fns entries w nil))
+           (new (set-difference-eq more (strip-cars entries))))
+      (if (or (endp new) (zp n))
+          (mv entries stobjs)
+        (xt-walk-closed (append seeds new) (1- n) w)))))
+
+(defun xt-extract-with (roots extra path state)
   (let ((w (w state)))
     (mv-let (entries stobjs)
-      (xt-walk roots nil nil nil w)
+      (xt-walk-closed (append roots extra (xt-boundary-extra roots w nil)) 4 w)
       (mv-let (channel state)
         (open-output-channel path :character state)
         (let* ((state (princ$ "{\"roots\":" channel state))
                (state (xt-json-symlist roots channel state))
-               (state (princ$ ",\"functions\":[" channel state))
+               (state (princ$ ",\"boundary\":[" channel state))
+               (state (xt-json-boundary roots t channel state))
+               (state (princ$ "],\"functions\":[" channel state))
                (state (xt-json-entries entries t channel state))
                (state (princ$ "],\"stobjs\":[" channel state))
                (state (xt-json-stobjs (xt-stobj-closure-1 stobjs nil w) t channel state))
@@ -443,3 +581,6 @@
                (state (newline channel state))
                (state (close-output-channel channel state)))
           (value (len entries)))))))
+
+(defun xt-extract (roots path state)
+  (xt-extract-with roots nil path state))
