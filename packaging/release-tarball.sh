@@ -32,7 +32,9 @@
 #      FN_CERT_CACHE and FN_ACL2 name the cache and ACL2; nothing is
 #      certified here),
 #   3. builds the PRODUCTION image (tools/build_native_host.sh, under
-#      swarm-build where it exists) and freezes it,
+#      swarm-build where it exists; FN_IMAGE_ACL2, when set, is the ACL2
+#      launcher the image load runs under, e.g. the toolchain's at
+#      --tls-limit 65536) and freezes it,
 #   4. stages it (packaging/install-native.sh), checks that no Python is on
 #      the deployed path (tools/runpath_check.py --tree) and that
 #      `bin/fn --version' prints `fn VERSION (REV12)', and packs it.
@@ -145,7 +147,12 @@ if [ -z "$frozen" ]; then
   echo "== 3. the production image"
   wrap=
   command -v swarm-build >/dev/null 2>&1 && wrap=swarm-build
-  FN_NATIVE_PROFILE=production FN_NATIVE_BUILD=host/native/build.lisp \
+  # The image load runs under FN_IMAGE_ACL2 when set: the same ACL2 at a
+  # larger --tls-limit (the production world passed SBCL's 16384 on
+  # 2026-09-27, "Thread local storage exhausted"; tools/hbox_native.sh's
+  # --image-acl2).  Certificates stay keyed on FN_ACL2's toolchain.
+  image_acl2=${FN_IMAGE_ACL2:-$FN_ACL2}
+  FN_ACL2=$image_acl2 FN_NATIVE_PROFILE=production FN_NATIVE_BUILD=host/native/build.lisp \
     FN_NATIVE_IMAGE=build/fn-host FN_NATIVE_LOG="$work/native-build.log" \
     $wrap sh tools/build_native_host.sh
   FN_FREEZE_VARIANTS=fn-host FN_FREEZE_RUNTIME=${runtime_from:+$runtime_from/sbcl} \
@@ -159,6 +166,7 @@ if [ -z "$frozen" ]; then
     echo "acquire: $(tail -1 "$work/acquire.txt")"
     echo "validate: $(tail -1 "$work/validate.txt")"
     echo "acl2: $FN_ACL2"
+    [ "$image_acl2" = "$FN_ACL2" ] || echo "image-acl2: $image_acl2"
     [ -z "$runtime_from" ] || echo "runtime-from: $($sums "$runtime_from/sbcl")"
   } > "$work/release-gate.txt"
   gate=$work/release-gate.txt

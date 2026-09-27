@@ -103,6 +103,7 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
 
    ```sh
    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 -subj /CN=news.example.org -addext subjectAltName=DNS:news.example.org,IP:203.0.113.7 -keyout tls/key.pem -out tls/cert.pem
+   chmod 600 tls/key.pem
    ```
 
 4. Create the store, name the node, and add a login that may post. The
@@ -192,10 +193,13 @@ Export with the **old** release, before you remove it:
    sh fn/install.sh
    ```
 
-2. As the service account, write the settings again (or copy `fn.toml` and
-   `tls/` from the old folder). Then import instead of `init`:
+2. As the service account, write the settings again (or copy `fn.toml`,
+   `tls/` and `log/` from the old folder: without `log/` the service stops
+   at start with `No such file or directory: '/var/lib/fn/log/fn.log'`).
+   Then import instead of `init`:
 
    ```sh
+   cp -Rp /var/lib/fn.old/fn.toml /var/lib/fn.old/tls /var/lib/fn.old/log /var/lib/fn/
    fn operator /var/lib/fn/fn.toml store import /var/lib/fn-export
    ```
 
@@ -209,6 +213,10 @@ Export with the **old** release, before you remove it:
    cp -Rp /var/lib/fn.old/store/keys /var/lib/fn.old/store/auth.toml /var/lib/fn/store/
    cp -Rp /var/lib/fn.old/keys /var/lib/fn/                             # only if you ran peer keygen
    ```
+
+   Copy back, too, every file a `peer add` named (its login file and the
+   friend's certificate, such as `friend.fnauth` and `friend-cert.pem`):
+   the peers are in the export, the files they name are not.
 
    The export does not carry them (see
    [the node's secret](operator.md#the-nodes-secret-key)). Do not make a
