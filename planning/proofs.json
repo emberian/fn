@@ -10988,7 +10988,7 @@
       ]
     },
     {
-      "id": "PRF-294",
+      "id": "PRF-308",
       "title": "An operator command that does not act names why: a run whose control path cannot be bound, a verb with no owner to answer, a start whose base exceeds the machine",
       "statement": "books/native-operator.lisp fn-native-operator-control-outcome (host/native/operator.lisp fnn-operator-store-outcome, on every plan before any action): KEYSTONE fn-native-operator-long-control-path-is-refused: a run whose control path (the [control] path, else the store path with /control.sock) is longer than 103 octets, the longest every supported platform's sun_path binds whole, is refused :control-path-too-long with the refusal code and native action :none (it had bound a truncated path and faulted ENOENT, exit 4); fn-native-operator-control-outcome-passes-a-bindable-path: every other plan is unchanged. books/native-control-reason.lisp fn-native-control-transport-word (host/native/control.lisp fnn-control-reasoned-exchange, every live operator verb): fn-native-control-transport-word-names-the-refusal: an exchange whose connect failed is refused and the operator's line names no-owner; one lost after submission is uncertain and names nothing. books/connection-budget.lisp fn-cbud-run-refusal-line (host/owner-host.lisp fn-owner-connection-budget): the run's memory refusal names base-exceeds-machine with the heap figure, the dynamic space and the fixed part when the base does not fit (holds=0), and is the old line otherwise (text; the test book's witnesses).",
       "milestone": "M4",

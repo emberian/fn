@@ -3108,7 +3108,7 @@
       "proof_targets": [
         "PRF-143",
         "PRF-172",
-        "PRF-294"
+        "PRF-308"
       ],
       "verification": [
         "proof",
