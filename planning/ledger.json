@@ -738,6 +738,8 @@
     "books/catalog-delta",
     "books/catalog-relation",
     "books/catalog-view",
+    "books/catalog-entries",
+    "books/catalog-refresh",
     "books/poster-bytes-buffer",
     "books/store-checkpoint-buffer",
     "books/store-checkpoint-reader",
@@ -756,6 +758,8 @@
     "tests/acl2/catalog-delta-tests",
     "tests/acl2/catalog-relation-tests",
     "tests/acl2/catalog-view-tests",
+    "tests/acl2/catalog-entries-tests",
+    "tests/acl2/catalog-refresh-tests",
     "books/sha256-buffer",
     "tests/acl2/sha256-buffer-tests",
     "books/owner-advance-carried",
@@ -1030,26 +1034,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1055,
-    "books_in_root_closure": 1047,
-    "roots": 1026,
-    "theorems": 15017,
-    "functions": 10390,
-    "assert_events": 15485,
+    "books": 1059,
+    "books_in_root_closure": 1051,
+    "roots": 1030,
+    "theorems": 15072,
+    "functions": 10408,
+    "assert_events": 15526,
     "must_fails": 1839,
     "prover_refusals": 0,
     "encapsulates": 77,
     "guards": {
       "verified": 2336,
-      "declared-off": 821,
-      "default-guarded": 5678,
-      "default-unguarded": 1555
+      "declared-off": 822,
+      "default-guarded": 5681,
+      "default-unguarded": 1569
     },
     "suspect_theorems": 145,
     "export_hygiene_warnings": 166,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 166,
-    "include_hygiene_warnings": 1047,
+    "include_hygiene_warnings": 1054,
     "host_names_warnings": 1191,
     "hand_written_record_warnings": 18
   },
@@ -7097,6 +7101,34 @@
       "read_error": null
     },
     {
+      "book": "books/catalog-entries.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 36,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-relation",
+        "owner-checkpoint-open",
+        "owner-commit-ocl"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/catalog-record.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -7124,6 +7156,32 @@
       "suspects": [
         "fn-held-accessors-are-the-wire-accessors"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/catalog-refresh.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 17,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-view"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -22303,6 +22361,36 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/catalog-entries-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 4,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 4
+      },
+      "verify_guards_events": 0,
+      "assert_events": 16,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 13,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/catalog-entries",
+        "../../books/codec-attach",
+        "../../books/crypto-attach"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/catalog-record-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -22323,6 +22411,36 @@
       "encapsulates": 0,
       "includes": [
         "../../books/catalog-record"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/catalog-refresh-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 9
+      },
+      "verify_guards_events": 0,
+      "assert_events": 25,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 23,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/catalog-refresh",
+        "../../books/codec-attach",
+        "../../books/crypto-attach"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -35957,6 +36075,34 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/catalog-entries.lisp",
+        "line": 110,
+        "include": "catalog-relation",
+        "included": "books/catalog-relation.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/catalog-entries.lisp",
+        "line": 111,
+        "include": "owner-checkpoint-open",
+        "included": "books/owner-checkpoint-open.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/catalog-entries.lisp",
+        "line": 112,
+        "include": "owner-commit-ocl",
+        "included": "books/owner-commit-ocl.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/catalog-refresh.lisp",
+        "line": 60,
+        "include": "catalog-view",
+        "included": "books/catalog-view.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/catalog-view.lisp",
         "line": 37,
         "include": "catalog-relation",
@@ -39454,6 +39600,27 @@
         "line": 26,
         "include": "store-node-tests",
         "included": "tests/acl2/store-node-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/catalog-entries-tests.lisp",
+        "line": 34,
+        "include": "../../books/catalog-entries",
+        "included": "books/catalog-entries.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/catalog-entries-tests.lisp",
+        "line": 36,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/catalog-refresh-tests.lisp",
+        "line": 36,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

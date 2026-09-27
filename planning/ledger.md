@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1055 |
-| Certification roots in the Makefile | 1026 |
-| Books inside the root closure | 1047 |
-| `defthm` and `defthmd` events | 15017 |
-| `defun` events | 10390 |
+| Books read | 1059 |
+| Certification roots in the Makefile | 1030 |
+| Books inside the root closure | 1051 |
+| `defthm` and `defthmd` events | 15072 |
+| `defun` events | 10408 |
 | Functions with verified guards | 2336 |
-| Functions declared `:verify-guards nil` and never verified | 821 |
-| Functions left at the default with an explicit guard | 5678 |
-| Functions left at the default with no guard | 1555 |
-| `assert-event` checks | 15485 |
+| Functions declared `:verify-guards nil` and never verified | 822 |
+| Functions left at the default with an explicit guard | 5681 |
+| Functions left at the default with no guard | 1569 |
+| `assert-event` checks | 15526 |
 | `must-fail` checks | 1839 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 77 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 166 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 166 |
-| Include-hygiene warnings | 1047 |
+| Include-hygiene warnings | 1054 |
 | Host-names warnings | 1191 |
 | Hand-written-record warnings | 18 |
 
@@ -306,7 +306,9 @@ that `make certify` requests.
 | `books/byte-store.lisp` | root | 10 | 58 | 5/40/13/0 | 0 | 0 | 0 |
 | `books/catalog-commit.lisp` | root | 60 | 32 | 15/0/17/0 | 0 | 0 | 4 |
 | `books/catalog-delta.lisp` | root | 14 | 10 | 1/1/7/1 | 0 | 0 | 0 |
+| `books/catalog-entries.lisp` | root | 36 | 2 | 0/1/0/1 | 0 | 0 | 0 |
 | `books/catalog-record.lisp` | root | 66 | 46 | 22/0/22/2 | 0 | 0 | 1 |
+| `books/catalog-refresh.lisp` | root | 17 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/catalog-relation.lisp` | root | 39 | 7 | 1/1/3/2 | 0 | 0 | 0 |
 | `books/catalog-view.lisp` | root | 19 | 10 | 2/0/7/1 | 0 | 0 | 0 |
 | `books/catalog.lisp` | root | 151 | 59 | 0/11/38/10 | 0 | 0 | 0 |
@@ -846,7 +848,9 @@ that `make certify` requests.
 | `tests/acl2/byte-store-txn-name-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 3 | 0 |
 | `tests/acl2/catalog-commit-tests.lisp` | root | 10 | 8 | 0/0/0/8 | 4 | 2 | 0 |
 | `tests/acl2/catalog-delta-tests.lisp` | root | 7 | 5 | 0/0/0/5 | 4 | 2 | 0 |
+| `tests/acl2/catalog-entries-tests.lisp` | root | 2 | 4 | 0/0/0/4 | 16 | 0 | 0 |
 | `tests/acl2/catalog-record-tests.lisp` | root | 11 | 2 | 0/0/0/2 | 3 | 6 | 0 |
+| `tests/acl2/catalog-refresh-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 25 | 0 | 0 |
 | `tests/acl2/catalog-relation-tests.lisp` | root | 7 | 3 | 0/0/0/3 | 3 | 2 | 0 |
 | `tests/acl2/catalog-tests.lisp` | root | 6 | 3 | 0/0/0/3 | 4 | 3 | 0 |
 | `tests/acl2/catalog-view-tests.lisp` | root | 6 | 5 | 0/0/0/5 | 3 | 1 | 0 |
