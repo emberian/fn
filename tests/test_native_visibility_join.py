@@ -2,8 +2,11 @@
 
 The mandate's section 5.1 sequence on a developer image: a POST of a stable
 source and Message-ID whose reply is lost (FN_NATIVE_POST_FAULT
-`finish-durable:kill`, the cut after the commit is durable and before the
-reply is written), an authorized cancel that withdraws the target, a
+`log-fenced:kill`: on the record log, the cut after the batch's barrier and
+before any member's reply -- the commit durable, the reply never written;
+the member's finish cuts precede the append in a served commit quantum, so
+at them the record is not yet durable, tests/campaign/native_cuts.py
+POST_LOG_CUTS), an authorized cancel that withdraws the target, a
 reconnect whose lookup answers 430, and the reconciliation: the client
 re-sends the SAME article, the node answers `441 ... already stored here`
 (books/visibility-join.lisp `fn-vj-a-completion-keeps-a-held-message-id-
@@ -53,7 +56,7 @@ from tests import native_log_observation
 IMAGE_TEXT = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
 IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
 READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
-FAULT = "finish-durable:kill"
+FAULT = "log-fenced:kill"
 CLIENT = [sys.executable, str(ROOT / "tools" / "fn_client.py")]
 PRINCIPAL = bytes([85]) * 32
 
