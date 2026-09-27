@@ -2,17 +2,20 @@
 ; the Fable mandate section 5.3).
 ;
 ; The duplicate-versus-conflict verdict the host calls on every route that
-; stores a served or operator-injected article is fn-rcl-existing-action
-; (books/store-reclaim.lisp), reached through fn-rclb-existing-action on
-; the buffer path (fn-rclb-existing-action-is-rcl-existing-action): at
-; host/owner-host.lisp fn-owner-existing-action, fn-owner-existing-action-
-; buffer and fn-owner-prepare, and host/store-node-host.lisp
-; fn-store-sn-existing-action and its prepare site.  Its held payload is
-; either the injected article or, after `store reclaim', that article's
-; tombstone (fn-rcl-tombstone-of).  books/poster-bytes-invariants.lisp
-; proves the retry and conflict keystones over fn-pb-existing-action, the
-; decision without tombstones; this book closes the two joins the corpus
-; table showed without a theorem:
+; stores a served or operator-injected article is, since the records flip,
+; fn-store-existing-action (books/store-intern.lisp): the tombstone-aware
+; verdict of books/store-reclaim.lisp with the held payload read through the
+; payload arena by its handle.  host/owner-host.lisp fn-owner-existing-action
+; and fn-owner-prepare, and host/store-node-host.lisp
+; fn-store-sn-existing-action and its prepare site, call it; the buffer path
+; fn-owner-existing-action-buffer reaches it through fn-pidx-existing-action
+; (fn-pidx-existing-action-is-store-existing-action, books/post-identity-
+; index.lisp).  The bytes under the held handle are either the injected
+; article or, after `store reclaim', that article's tombstone
+; (fn-rcl-tombstone-of).  books/poster-bytes-invariants.lisp proves the retry
+; and conflict keystones over fn-pb-existing-action, the decision without
+; tombstones; this book closes the two joins the corpus table showed without
+; a theorem:
 ;
 ;   * the injected octets are never a tombstone, so the host's
 ;     tombstone-aware verdict is the D25 one on a live article;
@@ -21,11 +24,18 @@
 ;     injecting one, so a retry after reclamation is still "already stored
 ;     here" and a changed authored byte is still a conflict (up to a
 ;     SHA-256 collision between the two sources, the stated limit).
+;
+; The keystones' held-payload hypothesis reads the bytes under the held
+; article's handle through the arena FN-ARENA the verdict reads (a flipped
+; Store never holds the octets themselves, so a hypothesis equating the
+; handle with octets would be vacuous).
 
 (in-package "ACL2")
 (include-book "poster-bytes-invariants")
 (include-book "store-reclaim")
 (include-book "hybrid-store-injected")
+; records-flip: the host's verdict reads the held bytes through the arena.
+(include-book "store-intern")
 
 (local (in-theory (disable fn-hsig-injected-carrier-octets fn-hsig-injected-carrier-plan
                            fn-inj-decide fn-inj-injectedp fn-inj-source-of
@@ -103,7 +113,7 @@
 ; octets are a tombstone: an injected article opens with "Path: " (recipe v2)
 ; or "Injection-" (recipe v3) and a refusal has no octets, while a tombstone
 ; opens with NUL.  So the host's tombstone-aware verdict
-; (fn-rcl-existing-action) is the D25 one on every live injected article.
+; (fn-store-existing-action) is the D25 one on every live injected article.
 (defthm fn-sr-an-injection-is-not-a-tombstone
   (not (fn-rcl-tombstonep
         (fn-inj-decision-octets (fn-inj-decide source config obs))))
@@ -128,6 +138,14 @@
                                       fn-inj-nth fn-inj-date-octets fn-inj-instant-of
                                       fn-inj-path-offset fn-inj-path-insert))))
 
+; The verdict reads the held bytes by handle; an absent article's payload
+; (nil) reads as no bytes.  The keystones here open the verdict itself, not
+; its alpha restatement (books/store-intern.lisp).
+(local (defthm fn-sr-no-handle-reads-no-bytes
+  (equal (fn-handle-bytes nil fn-arena) nil)
+  :hints (("Goal" :in-theory (enable fn-handle-bytes)))))
+(local (in-theory (disable fn-store-existing-action-is-the-verdict-over-alpha)))
+
 ; -----------------------------------------------------------------------------
 ; The host's verdict on a live held article.
 
@@ -141,13 +159,14 @@
                msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
         (da (fn-inj-decide source config a))
         (db (fn-inj-decide source config b)))
-    (implies (and (equal (fn-article-payload held) (fn-inj-decision-octets da))
+    (implies (and (equal (fn-handle-bytes (fn-article-payload held) fn-arena)
+                         (fn-inj-decision-octets da))
                   (fn-inj-injectedp da)
                   (fn-inj-injectedp db)
                   (equal (fn-inj-decision-msgid da) (fn-record-string-octets msgid))
                   (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid))
                   (equal groups (fn-article-groups held)))
-             (equal (fn-rcl-existing-action msgid (fn-inj-decision-octets db) groups s)
+             (equal (fn-store-existing-action msgid (fn-inj-decision-octets db) groups s fn-arena)
                     :duplicate)))
   :hints (("Goal" :cases ((fn-find-article
                             msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
@@ -155,8 +174,9 @@
                         (:instance fn-sr-an-injection-is-not-a-tombstone (obs a))
                         (:instance fn-pb-one-source-at-two-clocks-is-one-article
                                    (msgid (fn-record-string-octets msgid))))
-                  :in-theory (e/d (fn-rcl-existing-action fn-rcl-same-articlep)
-                                  (fn-rcl-tombstonep fn-article-groups))))
+                  :in-theory (e/d (fn-store-existing-action fn-rcl-same-articlep)
+                                  (fn-rcl-tombstonep fn-article-groups fn-handle-bytes
+                                   fn-sr-an-injection-is-a-cons))))
   :rule-classes nil)
 
 ; KEYSTONE (no over-normalization).  A different source under the held
@@ -168,13 +188,14 @@
                msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
         (da (fn-inj-decide source1 config a))
         (db (fn-inj-decide source2 config b)))
-    (implies (and (equal (fn-article-payload held) (fn-inj-decision-octets da))
+    (implies (and (equal (fn-handle-bytes (fn-article-payload held) fn-arena)
+                         (fn-inj-decision-octets da))
                   (fn-inj-injectedp da)
                   (fn-inj-injectedp db)
                   (equal (fn-inj-decision-msgid da) (fn-record-string-octets msgid))
                   (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid))
                   (not (equal source1 source2)))
-             (equal (fn-rcl-existing-action msgid (fn-inj-decision-octets db) groups s)
+             (equal (fn-store-existing-action msgid (fn-inj-decision-octets db) groups s fn-arena)
                     :conflict)))
   :hints (("Goal" :cases ((fn-find-article
                             msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
@@ -183,13 +204,14 @@
                                    (source source1) (obs a))
                         (:instance fn-pb-two-sources-are-two-articles
                                    (msgid (fn-record-string-octets msgid))))
-                  :in-theory (e/d (fn-rcl-existing-action fn-rcl-same-articlep)
-                                  (fn-rcl-tombstonep fn-article-groups))))
+                  :in-theory (e/d (fn-store-existing-action fn-rcl-same-articlep)
+                                  (fn-rcl-tombstonep fn-article-groups fn-handle-bytes
+                                   fn-sr-an-injection-is-a-cons))))
   :rule-classes nil)
 
 ;  KEYSTONE (PKT-166, the signed control route).  host/native/hybrid-control.lisp
 ; fnn-hybrid-control-author stores fn-hsig-injected-carrier-octets and, since
-; PKT-166, asks fn-owner-existing-action (fn-rcl-existing-action) before it
+; PKT-166, asks fn-owner-existing-action (fn-store-existing-action) before it
 ; commits.  A retry of an accepted signed source -- the same source, key and
 ; signatures authored again at any later clock under the same Message-ID and
 ; filed groups -- is :duplicate: never a fresh acceptance, and the client
@@ -202,14 +224,14 @@
         (oa (fn-hsig-injected-carrier-octets source principal keys signatures config a))
         (ob (fn-hsig-injected-carrier-octets source principal keys signatures config b)))
     (implies (and oa ob
-                  (equal (fn-article-payload held) oa)
+                  (equal (fn-handle-bytes (fn-article-payload held) fn-arena) oa)
                   (equal (fn-inj-decision-msgid pa) (fn-record-string-octets msgid))
                   (equal (fn-inj-decision-msgid pb) (fn-record-string-octets msgid))
                   (equal groups (fn-article-groups held)))
-             (equal (fn-rcl-existing-action msgid ob groups s) :duplicate)))
+             (equal (fn-store-existing-action msgid ob groups s fn-arena) :duplicate)))
   :hints (("Goal" :in-theory (e/d (fn-hsig-injected-carrier-octets
                                    fn-hsig-injected-carrier-plan)
-                                  (fn-rcl-existing-action fn-hc-render-at-most
+                                  (fn-store-existing-action fn-hc-render-at-most
                                    fn-inj-supplies-pathp))
            :use ((:instance fn-sr-a-retry-is-already-stored
                   (source (fn-hc-render-at-most *fn-article-max-octets*
@@ -255,7 +277,7 @@
                msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
         (da (fn-inj-decide source config a))
         (db (fn-inj-decide source config b)))
-    (implies (and (equal (fn-article-payload held)
+    (implies (and (equal (fn-handle-bytes (fn-article-payload held) fn-arena)
                          (fn-rcl-tombstone-of (fn-inj-decision-octets da)
                                               (fn-record-string-octets msgid)))
                   (fn-inj-injectedp da)
@@ -263,7 +285,7 @@
                   (equal (fn-inj-decision-msgid da) (fn-record-string-octets msgid))
                   (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid))
                   (equal groups (fn-article-groups held)))
-             (equal (fn-rcl-existing-action msgid (fn-inj-decision-octets db) groups s)
+             (equal (fn-store-existing-action msgid (fn-inj-decision-octets db) groups s fn-arena)
                     :duplicate)))
   :hints (("Goal" :cases ((fn-find-article
                             msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
@@ -271,9 +293,9 @@
                         (:instance fn-pb-path-agent-of-an-injection (obs b))
                         (:instance fn-inj-source-of-inverts-the-injection
                                    (observation b)))
-                  :in-theory (e/d (fn-rcl-existing-action fn-rcl-same-articlep
+                  :in-theory (e/d (fn-store-existing-action fn-rcl-same-articlep
                                    fn-rcl-same-as-tombstonep fn-pb-subject)
-                                  (fn-rcl-tombstonep))))
+                                  (fn-rcl-tombstonep fn-handle-bytes))))
   :rule-classes nil)
 
 ; KEYSTONE (conflict after reclamation).  A different source under the
@@ -284,7 +306,7 @@
                msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
         (da (fn-inj-decide source1 config a))
         (db (fn-inj-decide source2 config b)))
-    (implies (and (equal (fn-article-payload held)
+    (implies (and (equal (fn-handle-bytes (fn-article-payload held) fn-arena)
                          (fn-rcl-tombstone-of (fn-inj-decision-octets da)
                                               (fn-record-string-octets msgid)))
                   (fn-inj-injectedp da)
@@ -292,8 +314,7 @@
                   (equal (fn-inj-decision-msgid da) (fn-record-string-octets msgid))
                   (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid))
                   (not (equal source1 source2)))
-             (or (equal (fn-rcl-existing-action msgid (fn-inj-decision-octets db)
-                                                groups s)
+             (or (equal (fn-store-existing-action msgid (fn-inj-decision-octets db) groups s fn-arena)
                         :conflict)
                  (fn-rcl-collisionp source2 source1))))
   :hints (("Goal" :cases ((fn-find-article
@@ -304,8 +325,8 @@
                                    (source source2) (obs b))
                         (:instance fn-inj-source-of-inverts-the-injection
                                    (source source2) (observation b)))
-                  :in-theory (e/d (fn-rcl-existing-action fn-rcl-same-articlep
+                  :in-theory (e/d (fn-store-existing-action fn-rcl-same-articlep
                                    fn-rcl-same-as-tombstonep fn-pb-subject
                                    fn-rcl-collisionp)
-                                  (fn-rcl-tombstonep))))
+                                  (fn-rcl-tombstonep fn-handle-bytes))))
   :rule-classes nil)
