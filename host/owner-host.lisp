@@ -1801,9 +1801,12 @@
 ;; host runs the named steps (host/native/control.lisp
 ;; fnn-owner-moderation-serialized) through the live administration and
 ;; the operator submission, each deciding again.
-(defun fn-owner-moderation-plan (op login id reason state)
-  (declare (xargs :stobjs state :mode :program))
-  (value (fn-mvb-plan op login id reason (fn-owner-ocfg state))))
+;; The held envelope's octets are read through the payload arena (only READ:
+;; the host seals; flip-L6-2's rule): its payload position is a handle since
+;; the records flip (lane matrix-reds: approve answered envelope-malformed).
+(defun fn-owner-moderation-plan (op login id reason fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (value (fn-mvb-plan op login id reason (fn-owner-ocfg state) fn-arena)))
 
 ; After the records flip the node holds the stored article's HANDLE; the
 ; retry arm reads the octets under it through the arena

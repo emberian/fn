@@ -468,7 +468,7 @@
 (local
  (defthm fn-octl-control-hdr-response-effects-true-listp
    (true-listp (fn-nntp-result-effects
-                (fn-nntp-control-hdr-response session archive index verdicts args)))
+                (fn-nntp-control-hdr-response session archive index verdicts args fn-arena)))
    :hints (("Goal" :do-not-induct t
                    :in-theory (e/d (fn-nntp-control-hdr-response fn-nntp-single
                                     fn-nntp-multi fn-nntp-make-result)

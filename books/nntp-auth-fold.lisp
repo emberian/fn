@@ -177,7 +177,7 @@
 (defthm fn-auth-fold-control-hdr-response-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
-         (fn-nntp-control-hdr-response session archive index verdicts args))))
+         (fn-nntp-control-hdr-response session archive index verdicts args fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response fn-post-offeredp
                                    fn-nntp-reply-effect)
                                   (fn-nntp-single fn-nntp-multi

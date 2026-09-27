@@ -156,9 +156,84 @@
 (assert-event
  (let ((c (fn-ctl-find-held "<c@example.invalid>" *csv-vis* *csv-w*)))
    (and (equal c *csv-c*)
-        (equal (car (fn-ctl-control-status c *csv-vis* *csv-w* *csv-ws* *csv-verdicts*))
+        (equal (car (fn-ctl-control-status c (fn-article-payload c) *csv-vis* *csv-w* *csv-ws* *csv-verdicts*))
                :executed)
         (member-equal (fn-ctl-find-held "<t@example.invalid>" *csv-vis* *csv-w*) *csv-raw*))))
 (must-fail
  (assert-event
   (member-equal (fn-ctl-find-held "<u@example.invalid>" *csv-vis* *csv-w*) *csv-raw*)))
+
+; ---------------------------------------------------------------------------
+; Over a FLIPPED archive (lane matrix-reds): the archive articles C and D
+; carry arena handles 0 and 1, as every stored article has since the records
+; flip; the arena holds their octets.  The witnesses above serve wire-form
+; articles (octet payloads, which fn-nntp-payload-bytes passes through), so
+; they never met a handle: on dev before this lane the served reply parsed
+; the handle, found no target, and answered `none' for C
+; (tests.test_native_control_filing, `0 none').
+(defun nct-flip (a h)
+  (fn-make-article (fn-article-msgid a) h (fn-article-groups a)
+                   (fn-article-memberships a) (fn-article-pin a) (fn-article-stamp a)))
+(defconst *nct-f-c* (nct-flip *csv-c* 0))
+(defconst *nct-f-d* (nct-flip *csv-d* 1))
+(defconst *nct-f-arena* (list (fn-article-payload *csv-c*) (fn-article-payload *csv-d*)))
+(defconst *nct-f-raw* (list *nct-f-d* *nct-f-c* *csv-t* *csv-o*))
+(defconst *nct-f-vis* (fn-ctl-visible-articles *nct-f-raw* *csv-ws* *csv-verdicts*))
+(defconst *nct-f-w* (fn-ctl-withdrawn-articles *nct-f-raw* *csv-ws* *csv-verdicts*))
+(defconst *nct-f-archive*
+  (fn-make-state (list "fn.mod.a" "control.cancel")
+                 (list (cons "fn.mod.a" 3) (cons "control.cancel" 3))
+                 *nct-f-vis* 5 nil nil))
+(defconst *nct-f-index*
+  (fn-gidx-pin-with-control (fn-midx-build *nct-f-vis*) (fn-gidx-build *nct-f-vis*)
+                            (fn-ctl-pin *nct-f-w* *csv-ws*)))
+(defconst *nct-f-session*
+  (fn-nntp-set-cursor (fn-nntp-open-session *nct-f-archive*) "fn.mod.a" nil))
+(defun nct-f-hdr-line (text)
+  (fn-nntp-multi *nct-f-session* (fn-nntp-hdr-initial nil)
+                 (list (fn-nntp-hdr-line (fn-nntp-decimal-field 0)
+                                         (fn-nntp-string-octets text)))))
+; The flipped view withdraws T and serves the handle-carrying C and D.
+(assert-event
+ (and (natp (fn-article-payload (fn-ctl-find-held "<c@example.invalid>" *nct-f-vis* *nct-f-w*)))
+      (equal *nct-f-w* (list *csv-t*))
+      (equal *nct-f-vis* (list *nct-f-d* *nct-f-c* *csv-o*))))
+; fn-nntp-hdr-fn-control-is-the-status over the flipped archive: C's line is
+; its executed author withdrawal of T, D's is owed.
+(assert-event (equal (in-arena-nct-run *nct-f-arena* *nct-f-session* *nct-f-archive* *nct-f-index* "HDR" '(":fn-control" "<c@example.invalid>"))
+                     (nct-f-hdr-line "executed withdrawal <t@example.invalid> author")))
+(assert-event (equal (in-arena-nct-run *nct-f-arena* *nct-f-session* *nct-f-archive* *nct-f-index* "HDR" '(":fn-control" "<d@example.invalid>"))
+                     (nct-f-hdr-line "owed")))
+; The arena is what the reply reads: without C's bytes under its handle (an
+; empty arena), the handle names nothing and the line is `none', the answer
+; dev served before this lane.
+(assert-event (equal (in-arena-nct-run nil *nct-f-session* *nct-f-archive* *nct-f-index* "HDR" '(":fn-control" "<c@example.invalid>"))
+                     (nct-f-hdr-line "none")))
+(must-fail (assert-event (equal (in-arena-nct-run nil *nct-f-session* *nct-f-archive* *nct-f-index* "HDR" '(":fn-control" "<c@example.invalid>"))
+                                (nct-f-hdr-line "executed withdrawal <t@example.invalid> author"))))
+
+; fn-nntp-hdr-fn-control-status-is-the-model-status: the status of the
+; flipped C from the bytes its handle names is the pre-flip kernel's status
+; of C's octet model, which is C itself before the flip.  The theorem has no
+; hypothesis (a former (consp c) was removed after the weakened statement
+; proved).  The mutation: the kernel over the handle itself (the pre-lane
+; read) does not give the model's status.
+(defun nct-f-status (fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (list (fn-ctl-control-status *nct-f-c* (fn-nntp-article-bytes *nct-f-c* fn-arena)
+                               *nct-f-vis* *nct-f-w* *csv-ws* *csv-verdicts*)
+        (fn-nntp-article-alpha *nct-f-c* fn-arena)))
+(bpr-lift nct-f-status 0)
+(assert-event
+ (let* ((r (in-arena-nct-f-status *nct-f-arena*))
+        (model (cadr r)))
+   (and (equal (car r) (list :executed :author))
+        (equal model *csv-c*)
+        (equal (car r)
+               (fn-ctl-control-status model (fn-article-payload model)
+                                      *nct-f-vis* *nct-f-w* *csv-ws* *csv-verdicts*)))))
+(must-fail
+ (assert-event
+  (equal (fn-ctl-control-status *nct-f-c* (fn-article-payload *nct-f-c*)
+                                *nct-f-vis* *nct-f-w* *csv-ws* *csv-verdicts*)
+         (list :executed :author))))
