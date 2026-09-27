@@ -4866,41 +4866,6 @@
       }
     },
     {
-      "id": "SCN-168",
-      "title": "A friend's authenticated post carries Injection-Info with the login's posting-account pseudonym and the node's complaints address; the operator reproduces the value; a relayed article keeps its peer's line",
-      "milestone": "M6",
-      "status": "implemented",
-      "requirements": [
-        "NNT-004"
-      ],
-      "steps": [
-        "Init H (auth required; logins alice, bob) and A (peer-fed, no auth); start both.",
-        "On the running H: policy set complaints-to not-an-address (refused), then policy set complaints-to abuse@example.org.",
-        "alice and bob each POST an unsigned article on H; fetch each with ARTICLE.",
-        "operator account hash alice; operator account hash bob.",
-        "POST an article on A without a login; IHAVE to A an article carrying a peer's Injection-Info with parameters; fetch both."
-      ],
-      "expected": [
-        "The non-address is refused; the address is accepted live.",
-        "Each stored article on H has exactly one Injection-Info: AGENT; posting-account=\"HEX\"; mail-complaints-to=\"abuse@example.org\", HEX 64 lowercase hex digits, no octet of the login in the line.",
-        "account hash prints each login's HEX exactly; alice's and bob's differ.",
-        "A's anonymous post has an Injection-Info without posting-account; the relayed article's Injection-Info is the peer's line octet for octet."
-      ],
-      "evidence": [
-        "tests/test_native_injection_info.py",
-        "tests/acl2/injection-info-params-tests.lisp"
-      ],
-      "implementation": {
-        "test": "tests.test_native_injection_info",
-        "cases": [
-          "test_injection_info_names_the_account_and_the_complaints_address"
-        ],
-        "native": true,
-        "log": "planning/evidence/usenet-headers-3-2026-09-26-native.log",
-        "record": "planning/evidence/usenet-headers-3-2026-09-26.md"
-      }
-    },
-    {
       "id": "SCN-139",
       "title": "An article posted on a node with two configured feed peers, by served POST or by `operator post`, is journaled to both peers' FNFD journals, in the plan's order, before the offer; a malformed typed result stops the owner by fault",
       "milestone": "M5",
@@ -5119,6 +5084,40 @@
         "record": "planning/evidence/w6-log-owner-2026-09-27.md"
       },
       "note": "Lane w6-log-owner (2026-09-27): no native module exercises these cuts yet; the ACL2 witnesses of tests/acl2/owner-batch-tests.lisp are the executable evidence. The served crash campaign at the log cuts and the power-loss rig's run are PKT-748, after the store node's article commit moves onto the log kernel (PKT-698)."
+    },
+    {
+      "id": "SCN-171",
+      "title": "The mixed hour before and after the scheduler gate and the render plans on the same box: control p99, POST p99, the greeting under 40 readers, and the owner's hold-time distribution",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Build the developer image of the base (connection-multiplexing's branch 077f9b583, batch AR's: the tree without this lane) as the before, and of the lane's tree as the after, on hbox; run planning/evidence/owner-scheduler-2026-09-26/mixed.py on each for the same duration, concurrently (the same box state), on a 4 MiB-article profile (the default 16 MiB profile's per-connection figure under PKT-605 does not fit a 24 GB scope): 3 tight-loop readers (GROUP / OVER / ARTICLE / XPAT), 1 unsigned POST every 0.5 s, a hybrid-signed report every 20 s, a consumer wake every 30 s, a live group create and control grant every 120 s, status and health every 30 s.",
+        "Run greeting40.py on each image: a 2,000-article store (1 MiB profile, exposure capacity 64), 40 readers looping GROUP / ARTICLE, 60 fresh connections timed to their 200 line and 60 control-socket status requests timed.",
+        "Read the after image's `health': the sched lines (holds per class in five buckets, hold-max, wait-max, waits over 1 s).",
+        "tests/test_native_owner_scheduler.py on both images: the sched lines count the classes that ran; a multi-megabyte ARTICLE, rendered as a plan window off the mutex, is the posted article; status under three tight-loop readers is answered within 10 s every time."
+      ],
+      "expected": [
+        "Before: control requests queue past the client's 10 s deadline (PKT-321's shape). After: every control request is answered within its deadline; the control p99 and the greeting p99 under 40 readers fall; POST p99 does not rise; correctness holds on both (recover rc 0, every outcome classified).",
+        "After: no held quantum of any class exceeds the longest single step; the control class's wait-max is bounded by three quanta of the other classes."
+      ],
+      "evidence": [
+        "planning/evidence/owner-scheduler-2026-09-26.md",
+        "planning/evidence/owner-scheduler-2026-09-26/mixed.py",
+        "planning/evidence/owner-scheduler-2026-09-26/greeting40.py",
+        "tests/test_native_owner_scheduler.py"
+      ],
+      "implementation": {
+        "test": "tests.test_native_owner_scheduler",
+        "cases": [
+          "SchedulerSourceTests",
+          "SchedulerNativeTests"
+        ],
+        "native": true,
+        "record": "planning/evidence/owner-scheduler-2026-09-26.md"
+      }
     }
   ]
 }

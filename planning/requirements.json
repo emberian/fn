@@ -4479,6 +4479,33 @@
         "planning/evidence/w6-log-owner-2026-09-27.md"
       ],
       "implementation_note": "Lane w6-log-owner (2026-09-27; design planning/design-2026-09-27-storage-log.md section 3.3). One batch in flight; its members are ordered by their prepare; each member's acknowledgement follows the batch's barrier, in order (fn-owb-fence fills WAITING from the fenced batch, fn-owb-finish-member acknowledges its head); the batch closes when the log thread returns from the previous barrier or at the operator's live bounds log-batch-records and log-batch-octets (:set-limit slots, fn-owb-bmax and fn-owb-omax; an unset slot means 64 records and the batch buffer's size), never a timer; a failed barrier makes every member in flight or waiting :uncertain and fences the store (fn-owb-fence-failed). Proved over the batch layer books/owner-batch.lisp: PRF-253 (T1), PRF-254 (T4, the bounds, the sole-pending-writer discharge), PRF-255 (T7); the scenarios are SCN-174 (the batch's crash cuts) and SCN-170 (the fsync error). Open: no host line calls the layer; the store node's article commit still runs the file kernel of books/store-files.lisp (PKT-698, the decision packet), and the batch layer with the log thread and the mutex discipline is PKT-748."
+    },
+    {
+      "id": "HST-023",
+      "title": "The owner mutex is entered through a gate whose next class ACL2 picks: a control request waits at most three quanta of readers, posters and transit; a served reply is an immutable render plan the connection's I/O loop writes off the mutex in windows ACL2 sizes; health prints each class's hold and wait distribution",
+      "specification": "specs/host.md#the-served-reader-path",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-248"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-scheduler.lisp",
+        "books/served-plan.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "host/native/control.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_owner_scheduler.py",
+        "planning/design-2026-09-26-owner-scheduler.md",
+        "planning/evidence/owner-scheduler-2026-09-26.md"
+      ],
+      "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read)."
     }
   ]
 }

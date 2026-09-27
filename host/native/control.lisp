@@ -313,22 +313,26 @@ configuration and the connection pins the owner carries once per request
 answering changes nothing the owner holds; the host keeps the buffers ACL2
 returns.  The mutex keeps a render from observing a half-applied
 transition."
-  (fnn-with-owner (service)
-    (when (fnn-owner-service-stopping service)
-      (fnn-refuse "owner service is stopping"))
-    (let ((answer (fnn-core 'fn-native-live-status-host-answer request
-                            *fnn-live-status-buffers*
-                            (fnn-store-observation
-                             (fnn-owner-service-store service))
-                            *fnn-health-min-percent*
-                            ;; PKT-508: the log sink's counts for `health'.
-                            (fnn-log-sink-snapshot)
-                            *the-live-state*)))
-      (unless (and (consp answer) (consp (cdr answer))
-                   (fnn-octet-list-p (first answer)))
-        (fnn-fault "ACL2 returned a malformed live status page"))
-      (setf *fnn-live-status-buffers* (second answer))
-      (first answer))))
+  (fnn-owner-serialized
+   service nil
+   (lambda ()
+     (let ((answer (fnn-core 'fn-native-live-status-host-answer request
+                             *fnn-live-status-buffers*
+                             (fnn-store-observation
+                              (fnn-owner-service-store service))
+                             *fnn-health-min-percent*
+                             ;; PKT-508: the log sink's counts for `health'.
+                             (fnn-log-sink-snapshot)
+                             ;; HST-023: the scheduler's hold and wait fold
+                             ;; (books/owner-scheduler.lisp fn-osch-health-lines).
+                             (fnn-owner-sched-snapshot service)
+                             *the-live-state*)))
+       (unless (and (consp answer) (consp (cdr answer))
+                    (fnn-octet-list-p (first answer)))
+         (fnn-fault "ACL2 returned a malformed live status page"))
+       (setf *fnn-live-status-buffers* (second answer))
+       (first answer)))
+   :control))
 
 (defun fnn-control-handle-client (control socket)
   (let* ((*fnn-owner-measure-label* :control)

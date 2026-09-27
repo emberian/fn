@@ -4,9 +4,11 @@
 ;;; Raw Common Lisp under the native host trust tag.  It schedules sockets and
 ;;; nothing else: every protocol, exposure and owner decision is the same call
 ;;; host/native/owner.lisp made from its per-connection worker thread before
-;;; this file (fnn-owner-handle-chunk, fn-owner-exposure-open / -charge /
-;;; -idle / -close / -release, fn-owner-tls-established), under the same
-;;; owner mutex (fnn-owner-serialized), in the same order for one connection.
+;;; this file (fnn-owner-handle-chunk, which decides fn-owner-exposure-charge
+;;; in the step's own quantum, fn-owner-exposure-open / -idle / -close /
+;;; -release, fn-owner-tls-established), under the same owner mutex
+;;; (fnn-owner-serialized, admitted by the scheduler gate as the connection's
+;;; class), in the same order for one connection.
 ;;;
 ;;; What changed is who waits.  A connection used to be a thread whose
 ;;; control stack and runtime regions were reserved for its whole life and
@@ -17,10 +19,13 @@
 ;;;
 ;;;   input   the octets the next step is handed: the read in hand, or the
 ;;;           suffix a step left (at most one +fnn-max-read+ read);
-;;;   out     the one reply being written, its offset and deadline; while
-;;;           it is queued the connection is not read and not stepped, so a
-;;;           client that does not read its replies meets TCP backpressure as
-;;;           before and holds one reply, never a queue of them;
+;;;   out     the one window of the reply being written, its offset and
+;;;           deadline, and the render plan's continuation (HST-023: the step
+;;;           answers a plan; fnn-owner-render-next renders the next window,
+;;;           off the owner mutex, when the socket took the last); while a
+;;;           window is queued the connection is not read and not stepped, so
+;;;           a client that does not read its replies meets TCP backpressure
+;;;           as before and holds one window, never a queue of them;
 ;;;   timers  the exposure wait (fn-exp-charge's milliseconds), the idle check
 ;;;           (fn-exp-idle every second without input, RFC 3977 3.1), the send
 ;;;           deadline (10 s, as fnn-send-all's), the handshake deadline and
@@ -74,7 +79,11 @@
   input
   out (out-at 0) out-deadline out-op after close-after-handshake
   want resume-at idle-at hs-deadline drain-deadline
-  greeting done)
+  greeting done
+  ;; The service class this connection's quanta are admitted as (:reader, or
+  ;; :transit when ACL2 named a peer at open) and the render plan whose
+  ;; windows the loop is writing (nil between replies).
+  (class :reader) plan)
 
 (defun fnn-mux-ticks (seconds)
   (+ (fnn-now) (round (* seconds internal-time-units-per-second))))
@@ -182,7 +191,7 @@ direction to wait for."
   "PKT-640: the service log names a TLS refusal (ACL2's line)."
   (let* ((service (fnn-mux-service loop))
          (line (ignore-errors
-                (fnn-with-owner (service)
+                (fnn-with-roster (service)
                   (fnn-core 'fn-cbud-tls-refusal-line reason
                             (or (fnn-mux-conn-opened-cid conn) 0))))))
     (when (stringp line)
@@ -210,19 +219,21 @@ the TLS session, then the socket.  Idempotent."
       (when cid
         (ignore-errors
           (fnn-owner-serialized
-           service cid (lambda () (fnn-owner-action 'fn-owner-close cid)))))
+           service cid (lambda () (fnn-owner-action 'fn-owner-close cid))
+           (fnn-mux-conn-class conn))))
       (when opened-cid
         (ignore-errors
           (fnn-owner-serialized
            service nil
-           (lambda () (fnn-owner-action 'fn-owner-exposure-release opened-cid)))))
+           (lambda () (fnn-owner-action 'fn-owner-exposure-release opened-cid))
+           (fnn-mux-conn-class conn))))
       (when (fnn-mux-conn-channel conn)
         (ignore-errors (fnn-tls-close-channel (fnn-mux-conn-channel conn))))
       (fnn-socket-shut (fnn-mux-conn-socket conn))
       (setf (fnn-mux-loop-conns loop)
             (delete conn (fnn-mux-loop-conns loop) :test #'eq))
       (ignore-errors
-        (fnn-with-owner (service)
+        (fnn-with-roster (service)
           (setf (fnn-owner-service-clients service)
                 (delete (fnn-mux-conn-socket conn)
                         (fnn-owner-service-clients service) :test #'eq))))
@@ -284,8 +295,9 @@ ending the connection with fnn-mux-finish."
   (setf (fnn-mux-conn-idle-at conn) (fnn-mux-ticks +fnn-mux-idle-seconds+)))
 
 (defun fnn-mux-queue (loop conn octets op after)
-  "Queue the one reply OCTETS; AFTER (nil, :close or :starttls) runs when
-the socket has taken all of it."
+  "Queue the one reply OCTETS (a greeting, a rendered window); AFTER (nil,
+:close or :starttls) runs when the socket has taken it and no window of the
+plan remains."
   (let ((service (fnn-mux-service loop)))
     ;; The named non-semantic scope (and its private test injection) of the
     ;; worker's send, fnn-owner-connection-call's.
@@ -298,23 +310,46 @@ the socket has taken all of it."
           (fnn-mux-conn-want conn) nil)
     (fnn-mux-flush loop conn)))
 
+(defun fnn-mux-queue-plan (loop conn plan after)
+  "Write the step's render PLAN a window at a time (HST-023): the first
+window now, each next one when the socket took the last (fnn-mux-flush).
+The connection holds one window and the plan's continuation, never the
+whole reply; a plan with nothing to write runs AFTER at once."
+  (multiple-value-bind (octets rest donep) (fnn-owner-render-next plan)
+    (setf (fnn-mux-conn-plan conn) (if donep nil rest))
+    (if (> (length octets) 0)
+        (fnn-mux-queue loop conn octets :send-reply after)
+      (fnn-mux-after loop conn after))))
+
 (defun fnn-mux-flush (loop conn)
+  "Write the queued window; when the socket took it, render the plan's next
+window (off the owner mutex) and go on; with nothing left, run AFTER."
   (let ((service (fnn-mux-service loop)))
-    (loop while (and (fnn-mux-conn-out conn)
-                     (< (fnn-mux-conn-out-at conn) (length (fnn-mux-conn-out conn))))
-          do (let ((progress (fnn-owner-connection-call
-                              service (fnn-mux-conn-out-op conn)
-                              (lambda () (fnn-mux-write-now conn)))))
-               (if (integerp progress)
-                   (setf (fnn-mux-conn-out-at conn) (+ (fnn-mux-conn-out-at conn) progress)
-                         (fnn-mux-conn-want conn) nil)
-                 (progn (setf (fnn-mux-conn-want conn) progress)
-                        (return-from fnn-mux-flush nil)))))
-    (when (fnn-mux-conn-out conn)
-      (let ((after (fnn-mux-conn-after conn)))
-        (setf (fnn-mux-conn-out conn) nil (fnn-mux-conn-after conn) nil
-              (fnn-mux-conn-out-deadline conn) nil)
-        (fnn-mux-after loop conn after)))))
+    (loop
+      (loop while (and (fnn-mux-conn-out conn)
+                       (< (fnn-mux-conn-out-at conn) (length (fnn-mux-conn-out conn))))
+            do (let ((progress (fnn-owner-connection-call
+                                service (fnn-mux-conn-out-op conn)
+                                (lambda () (fnn-mux-write-now conn)))))
+                 (if (integerp progress)
+                     (setf (fnn-mux-conn-out-at conn) (+ (fnn-mux-conn-out-at conn) progress)
+                           (fnn-mux-conn-want conn) nil)
+                   (progn (setf (fnn-mux-conn-want conn) progress)
+                          (return-from fnn-mux-flush nil)))))
+      (unless (fnn-mux-conn-out conn)
+        (return-from fnn-mux-flush nil))
+      (let ((plan (fnn-mux-conn-plan conn)))
+        (if plan
+            (multiple-value-bind (octets rest donep) (fnn-owner-render-next plan)
+              (setf (fnn-mux-conn-plan conn) (if donep nil rest)
+                    (fnn-mux-conn-out conn) octets
+                    (fnn-mux-conn-out-at conn) 0
+                    (fnn-mux-conn-out-deadline conn) (fnn-mux-ticks +fnn-mux-send-seconds+)))
+          (let ((after (fnn-mux-conn-after conn)))
+            (setf (fnn-mux-conn-out conn) nil (fnn-mux-conn-after conn) nil
+                  (fnn-mux-conn-out-deadline conn) nil)
+            (fnn-mux-after loop conn after)
+            (return-from fnn-mux-flush nil)))))))
 
 (defun fnn-mux-begin-drain (loop conn)
   "The graceful close: close_notify first on a protected channel, then
@@ -343,28 +378,27 @@ contract, without blocking the loop)."
          (fnn-mux-arm-idle conn)
          (fnn-mux-work loop conn)))))
 
-(defun fnn-mux-charge (service cid)
-  "PRF-161's work budget before every served step: :proceed, or the
-milliseconds to wait (books/public-exposure.lisp fn-exp-charge)."
-  (let ((answer (fnn-owner-serialized
-                 service cid
-                 (lambda ()
-                   (fnn-owner-advance-clock)
-                   (fnn-owner-core 'fn-owner-exposure-charge cid)))))
-    (cond ((eq answer :proceed) :proceed)
-          ((and (integerp answer) (> answer 0)) answer)
-          (t (fnn-fault "owner returned a malformed exposure charge")))))
-
 (defun fnn-mux-step (loop conn)
   "One served step over the held input and what follows it: the worker's
-body after fnn-owner-handle-chunk, line for line."
+body after fnn-owner-handle-chunk, line for line.  The step decides the
+exposure charge in its own quantum (PRF-161; one gate pass per read):
+(values :defer MS) keeps the input in hand and arms the resume timer, and
+the same octets are handed to the next step."
   (let* ((service (fnn-mux-service loop))
          (incoming (fnn-mux-conn-input conn))
          (channel (fnn-mux-conn-channel conn))
          (results (multiple-value-list
                    (fnn-owner-handle-chunk service (fnn-mux-conn-cid conn) incoming
-                                           (fnn-mux-conn-socket conn)))))
-    (destructuring-bind (reply closing starttls consumed redeemed &optional submitted)
+                                           (fnn-mux-conn-socket conn)
+                                           (fnn-mux-conn-class conn)))))
+    (when (eq (first results) :defer)
+      (let ((ms (second results)))
+        (unless (and (integerp ms) (> ms 0))
+          (fnn-fault "owner returned a malformed exposure charge"))
+        (setf (fnn-mux-conn-resume-at conn)
+              (+ (fnn-now) (round (* (min ms 1000) internal-time-units-per-second) 1000))))
+      (return-from fnn-mux-step nil))
+    (destructuring-bind (plan closing starttls consumed redeemed &optional submitted)
         results
       ;; Whatever this step does not consume is set again below; nothing
       ;; carried here is ever read from the socket twice.
@@ -399,9 +433,7 @@ body after fnn-owner-handle-chunk, line for line."
           (fnn-fault "owner requested STARTTLS without a TLS context")))
       (setf (fnn-mux-conn-close-after-handshake conn) (and starttls closing))
       (let ((after (cond (starttls :starttls) (closing :close) (t nil))))
-        (if (> (length reply) 0)
-            (fnn-mux-queue loop conn reply :send-reply after)
-          (fnn-mux-after loop conn after))))))
+        (fnn-mux-queue-plan loop conn plan after)))))
 
 (defun fnn-mux-work (loop conn)
   "Step the held input while the connection may: serving, no reply queued,
@@ -413,13 +445,7 @@ no exposure wait pending."
                      (null (fnn-mux-conn-resume-at conn)))
           do (when (or *fnn-sigterm-requested* (fnn-owner-service-stopping service))
                (return))
-             (let ((answer (fnn-mux-charge service (fnn-mux-conn-cid conn))))
-               (if (eq answer :proceed)
-                   (fnn-mux-step loop conn)
-                 (setf (fnn-mux-conn-resume-at conn)
-                       (+ (fnn-now) (round (* (min answer 1000)
-                                              internal-time-units-per-second)
-                                           1000))))))))
+             (fnn-mux-step loop conn))))
 
 (defun fnn-mux-readable (loop conn)
   (let* ((service (fnn-mux-service loop))
@@ -442,7 +468,8 @@ no exposure wait pending."
 (defun fnn-mux-idle (loop conn)
   "RFC 3977 3.1's autologout, decided by ACL2 (fn-exp-idle): the close sends
 nothing."
-  (if (eq (fnn-owner-exposure-idle (fnn-mux-service loop) (fnn-mux-conn-cid conn))
+  (if (eq (fnn-owner-exposure-idle (fnn-mux-service loop) (fnn-mux-conn-cid conn)
+                                   (fnn-mux-conn-class conn))
           :close)
       (progn (setf (fnn-mux-conn-idle-at conn) nil)
              (fnn-mux-begin-drain loop conn))
@@ -512,7 +539,8 @@ handshake."
          service cid
          (lambda ()
            (unless (eq (fnn-owner-action 'fn-owner-tls-established cid) :ok)
-             (fnn-fault "owner rejected established TLS"))))
+             (fnn-fault "owner rejected established TLS")))
+         (fnn-mux-conn-class conn))
         (fnn-mux-start-waiting-handshake loop)
         (let ((greeting (fnn-mux-conn-greeting conn)))
           (setf (fnn-mux-conn-greeting conn) nil)
@@ -557,7 +585,7 @@ call (books/public-exposure.lisp fn-exp-open), as the worker did it."
   (let ((service (fnn-mux-service loop))
         (socket (fnn-mux-conn-socket conn)))
     (multiple-value-bind (family address) (fnn-owner-socket-address service socket)
-      (multiple-value-bind (opened greeting)
+      (multiple-value-bind (opened greeting peerp)
           (fnn-owner-serialized
            service nil
            (lambda ()
@@ -571,7 +599,12 @@ call (books/public-exposure.lisp fn-exp-open), as the worker did it."
                (let ((opened (fnn-owner-core 'fn-owner-exposure-open
                                              family address peer)))
                  (when opened (fnn-owner-log))
-                 (values opened (fnn-owner-octets-global 'fn-owner-output))))))
+                 (values opened (fnn-owner-octets-global 'fn-owner-output)
+                         (and peer t)))))
+           ;; The open arrived on the served socket: a reader quantum.  The
+           ;; connection's later quanta carry its class (ACL2 named a peer:
+           ;; :transit).
+           :reader)
         (cond
           ((not (and opened (integerp opened)))
            (cond ((fnn-mux-conn-implicit-tls conn)
@@ -586,7 +619,8 @@ call (books/public-exposure.lisp fn-exp-open), as the worker did it."
                  (t (fnn-mux-finish loop conn))))
           (t
            (setf (fnn-mux-conn-cid conn) opened
-                 (fnn-mux-conn-opened-cid conn) opened)
+                 (fnn-mux-conn-opened-cid conn) opened
+                 (fnn-mux-conn-class conn) (if peerp :transit :reader))
            (if (fnn-mux-conn-implicit-tls conn)
                ;; PRF-162: the greeting is sent once the session is protected.
                (progn (setf (fnn-mux-conn-greeting conn) greeting)
@@ -763,14 +797,14 @@ stop spared, fnn-owner-stop-service-locked), then end every connection."
              ;; holds: the whole service stops (exit 4).
              (fnn-owner-fault-service service nil e)))
       (fnn-mux-stop-loop loop)
-      (fnn-with-owner (service)
+      (fnn-with-roster (service)
         (setf (fnn-owner-service-workers service)
               (delete sb-thread:*current-thread*
                       (fnn-owner-service-workers service) :test #'eq))))))
 
 (defun fnn-mux-start (service)
   "Start the loops; each is a worker, so the stop joins it."
-  (fnn-with-owner (service)
+  (fnn-with-roster (service)
     (unless (fnn-owner-service-mux service)
       (let ((loops
               (loop repeat +fnn-mux-loops+
@@ -790,7 +824,7 @@ stop spared, fnn-owner-stop-service-locked), then end every connection."
   "Hand SOCKET to a loop (round-robin).  Registered as a client first, so a
 stop shuts it down whichever thread holds it."
   (let ((loop nil))
-    (fnn-with-owner (service)
+    (fnn-with-roster (service)
       (if (or (fnn-owner-service-stopping service)
               (null (fnn-owner-service-mux service)))
           (progn (ignore-errors (fnn-socket-shut socket))
