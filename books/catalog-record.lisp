@@ -44,6 +44,7 @@
 (include-book "payload-arena")
 (include-book "stx-lace")
 (include-book "nntp-session")
+(include-book "control-authority")   ; fn-ctl-control-of: the control fact
 
 ; -----------------------------------------------------------------------------
 ; The byte facts.
@@ -105,11 +106,20 @@
 
 (defun fn-held-facts-of (bytes)
   (declare (xargs :guard (true-listp bytes)))
-  (fn-hf-make (len bytes) (fn-hf-split-index bytes 0) (fn-hf-body-lines-of bytes)))
+  (fn-hf-make (len bytes) (fn-hf-split-index bytes 0) (fn-hf-body-lines-of bytes)
+              (fn-ctl-control-of bytes)))
 
 (defthm fn-hf-p-of-held-facts-of
   (fn-hf-p (fn-held-facts-of bytes))
   :hints (("Goal" :in-theory (enable fn-hf-p fn-hf-internals fn-hf-startp))))
+
+; The control fact of a row's bytes is what the control vocabulary reads
+; from them (books/control-authority.lisp fn-ctl-control-of-fields): the
+; refresh that reads it from the row reads what it read from the octets.
+(defthm fn-hf-control-of-held-facts-of
+  (equal (fn-hf-control (fn-held-facts-of bytes))
+         (fn-ctl-control-of bytes))
+  :hints (("Goal" :in-theory (enable fn-hf-internals))))
 
 ; -----------------------------------------------------------------------------
 ; The equations with the served machine's definitions (books/nntp-session).

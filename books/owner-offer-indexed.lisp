@@ -189,7 +189,7 @@
 
 (defthm fn-oix-operator-submit-keeps-view-indexed
   (implies (fn-scar-view-indexedp o)
-           (fn-scar-view-indexedp (fn-own-operator-submit o a b c)))
+           (fn-scar-view-indexedp (fn-own-operator-submit o a b c d)))
   :hints (("Goal" :in-theory (e/d (fn-scar-view-indexedp fn-own-operator-submit )
                                   (fn-midx-correspondencep fn-own-refresh )))))
 

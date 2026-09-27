@@ -334,7 +334,7 @@
             (fn-cat-p (fn-cat-commit h fn-cat)))
    :hints (("Goal" :use ((:instance fn-cat-commit{preserved}))
             :in-theory (e/d (fn-cat-p fn-cat-commit)
-                            (fn-cat-p-is-held-listp fn-cat-commit-is-append))))))
+                            (fn-cat-p-is-rowsp fn-cat-commit-is-append))))))
 
 (local (defthm fn-rfz-load-row-keeps-contexts
    (implies (and (fn-cat-p fn-cat)
@@ -351,7 +351,7 @@
                                     fn-rfz-handles-inp-survives-seals
                                     fn-rfz-contexts-okp-survives-seals
                                     fn-rfz-intern-context fn-rfz-cat-p-of-commit
-                                    fn-cat-p-is-held-listp))
+                                    fn-cat-p-is-rowsp))
             :use ((:instance fn-rfz-intern-context)
                   (:instance fn-held-p-of-intern-list)
                   (:instance fn-intern-list-arena)
@@ -392,7 +392,7 @@
            :expand ((fn-cat-load records keyring generation fn-arena fn-cat))
            :in-theory (e/d (fn-cat-load)
                            (fn-cat-load-row fn-rfz-handles-inp fn-rfz-contexts-okp
-                            fn-held-context-of fn-cat-p-is-held-listp)))
+                            fn-held-context-of fn-cat-p-is-rowsp)))
           ("Subgoal *1/1" :use ((:instance fn-rfz-load-row-keeps-contexts (w (car records)))))))
 
 (defthm fn-rfz-load-from-empty-establishes-contexts

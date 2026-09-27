@@ -694,9 +694,9 @@
 (defun fn-cat-handles-inp (n fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (and (natp n) (<= n (fn-cat-count fn-cat)))
-                  :guard-hints (("Goal" :in-theory (e/d (fn-cat-p-is-held-listp) (fn-held-p))
-                                 :use ((:instance fn-held-p-fields (h (nth (- n 1) fn-cat)))
-                                       (:instance fn-held-p-of-nth-of-held-listp
+                  :guard-hints (("Goal" :in-theory (e/d (fn-cat-p-is-rowsp) (fn-held-p))
+                                 :use ((:instance fn-cat-rowp-fields (h (nth (- n 1) fn-cat)))
+                                       (:instance fn-cat-rowp-of-nth-of-rowsp
                                                   (xs fn-cat) (i (- n 1))))))))
   (if (zp n)
       t
@@ -716,9 +716,9 @@
   (implies (and (fn-cat-p fn-cat) (natp seq) (< seq (fn-cat-count fn-cat)))
            (natp (fn-record-payload (fn-cat-at seq fn-cat))))
   :rule-classes (:rewrite :type-prescription)
-  :hints (("Goal" :in-theory (e/d (fn-cat-p-is-held-listp) (fn-held-p))
-           :use ((:instance fn-held-p-fields (h (nth seq fn-cat)))
-                 (:instance fn-held-p-of-nth-of-held-listp (xs fn-cat) (i seq))))))
+  :hints (("Goal" :in-theory (e/d (fn-cat-p-is-rowsp) (fn-held-p))
+           :use ((:instance fn-cat-rowp-fields (h (nth seq fn-cat)))
+                 (:instance fn-cat-rowp-of-nth-of-rowsp (xs fn-cat) (i seq))))))
 
 ; The count is a natural (the exports are kept opaque in the books above).
 (defthm fn-cat-count-natp

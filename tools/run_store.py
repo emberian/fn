@@ -429,12 +429,15 @@ class Acl2Store:
                                          stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                          stderr=subprocess.STDOUT, env=env)
             read_prompt(self.proc, ACL2_START_TIMEOUT_SECONDS)
-            # Invariant-risk mode T (ACL2 :doc set-check-invariant-risk): the
-            # default's guard checks on a :program-mode wrapper that updates
-            # the arena stobj (fn-store-sn-recover, -prepare), without the
-            # warning text, which the bridge would read as ACL2's answer
-            # ("unexpected ACL2 action: ACL2 WARNING [INVARIANT-RISK]").
-            # Never NIL (unsafe).  Set per process: an image or a fresh boot.
+            # Invariant-risk mode T (ACL2 :doc set-check-invariant-risk) in the
+            # Python bridge only: the same guard checks as the default, without
+            # the warning text the bridge would read as ACL2's answer.  The
+            # configuration publication (fn-store-cfg-publication) interns into
+            # a local arena, an admin path, and printed "ACL2 Warning
+            # [Invariant-risk] ... UPDATE-FN-ARENA$C-COUNT" before its form
+            # (batch AV).  The native image keeps ACL2's default, so a hot-path
+            # invariant risk there stays a loud fault (flip-L6-2 removed the
+            # per-POST one).  Never NIL (unsafe).
             self.call("(set-check-invariant-risk t)")
             if not self.preloaded:
                 for form in forms:

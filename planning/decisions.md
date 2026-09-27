@@ -1100,6 +1100,12 @@ on them are named in `planning/now.md`.
   The stored record keeps the injected headers.
 - **D26, the ten-second rule's number is the 2-job scoped measurement.**
   Combined closures at higher job counts are recorded but do not ratchet.
+  Defined 2026-09-27 (coordinator's brief to lane proof-cost-steps, after
+  loaded boxes measured the same bytes at 2 to 3 times their quiet wall):
+  the number is the fastest passed 2-job measurement of the current bytes,
+  a verdict over the line only when quiet (load at most a quarter of the
+  CPUs) or above three times it; the ratchet on baseline books is ACL2's
+  prover steps (docs/proofs.md, the proof_cost paragraphs).
 
 Adopted defaults ember did not overrule, standing until said otherwise:
 P5's sentence, restated with its fault domain (2026-09-24 evening, after

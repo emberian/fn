@@ -87,7 +87,7 @@
            :in-theory (e/d (fn-cat-view-below fn-cat-row-article fn-cat-visible-at-by-row
                             fn-cat-commit-keeps-rows)
                            (fn-cat-at-is-nth fn-cat-count-is-len fn-cat-commit-is-append
-                            fn-cat-p-is-held-listp fn-cat-visible-at-is-visiblep
+                            fn-cat-p-is-rowsp fn-cat-visible-at-is-visiblep
                             fn-cat-visible-at)))))
 
 ; C3: a version at or below the old count sees no change from the commit.
@@ -97,7 +97,7 @@
                   (fn-cat-view-articles v fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-cat-view-articles fn-cat-visible-at-by-row)
                                   (fn-cat-at-is-nth fn-cat-count-is-len fn-cat-commit-is-append
-                                   fn-cat-p-is-held-listp fn-cat-visible-at-is-visiblep
+                                   fn-cat-p-is-rowsp fn-cat-visible-at-is-visiblep
                                    fn-cat-visible-at fn-cat-view-below fn-cat-row-article))
            :expand ((fn-cat-view-below (+ 1 (fn-cat-count fn-cat)) v fn-arena (fn-cat-commit h fn-cat)))
            :use ((:instance fn-cat-view-below-of-commit (i (fn-cat-count fn-cat)))))))
@@ -116,7 +116,7 @@
   :hints (("Goal" :in-theory (e/d (fn-cat-view-articles fn-cat-visible-at-by-row
                                    fn-cat-commit-new-row)
                                   (fn-cat-at-is-nth fn-cat-count-is-len fn-cat-commit-is-append
-                                   fn-cat-p-is-held-listp fn-cat-visible-at-is-visiblep
+                                   fn-cat-p-is-rowsp fn-cat-visible-at-is-visiblep
                                    fn-cat-visible-at fn-cat-view-below fn-cat-row-article))
            :expand ((fn-cat-view-below (+ 1 (fn-cat-count fn-cat)) (+ 1 (fn-cat-count fn-cat))
                                        fn-arena (fn-cat-commit h fn-cat)))
@@ -146,7 +146,7 @@
             (equal (fn-cat-row-article k fn-arena (fn-cat-withdraw target by fn-cat))
                    (fn-cat-row-article k fn-arena fn-cat)))
    :hints (("Goal" :in-theory (e/d (fn-cat-row-article fn-cat-mark-withdrawn)
-                                   (fn-cat-p-is-held-listp))))))
+                                   (fn-cat-p-is-rowsp))))))
 
 (local (defthm fn-crf-count-of-withdraw
    (implies (and (natp target) (< target (fn-cat-count fn-cat)))
@@ -160,7 +160,7 @@
                    (if (and (equal k target) (null (fn-held-withdrawn (fn-cat-at target fn-cat))))
                        (cons (fn-cat-count fn-cat) by)
                      (fn-held-withdrawn (fn-cat-at k fn-cat)))))
-   :hints (("Goal" :in-theory (e/d (fn-cat-mark-withdrawn) (fn-cat-p-is-held-listp))))))
+   :hints (("Goal" :in-theory (e/d (fn-cat-mark-withdrawn) (fn-cat-p-is-rowsp))))))
 
 ; A version at or below the withdrawal's version sees no change.
 (defthm fn-cat-view-below-of-withdraw-pinned
@@ -172,7 +172,7 @@
   :hints (("Goal" :induct (fn-cat-view-below i v fn-arena fn-cat)
            :in-theory (e/d (fn-cat-view-below fn-cat-visible-at-by-row)
                            (fn-cat-at-is-nth fn-cat-count-is-len fn-cat-withdraw-is-mark
-                            fn-cat-p-is-held-listp fn-cat-visible-at-is-visiblep
+                            fn-cat-p-is-rowsp fn-cat-visible-at-is-visiblep
                             fn-cat-visible-at fn-cat-row-article)))))
 
 (defthm fn-cat-view-articles-of-withdraw-pinned
@@ -182,7 +182,7 @@
                   (fn-cat-view-articles v fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-cat-view-articles)
                                   (fn-cat-at-is-nth fn-cat-count-is-len fn-cat-withdraw-is-mark
-                                   fn-cat-p-is-held-listp fn-cat-view-below)))))
+                                   fn-cat-p-is-rowsp fn-cat-view-below)))))
 
 ; The rows below I visible at V, newest first, except TARGET: what a
 ; :withdraw delta's consumer keeps.
@@ -190,7 +190,7 @@
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (and (natp i) (natp v) (<= i (fn-cat-count fn-cat))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
-                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len
                                                             fn-cat-at-is-nth)))))
   (if (zp i)
       nil
@@ -212,7 +212,7 @@
   :hints (("Goal" :induct (fn-cat-view-below i v fn-arena fn-cat)
            :in-theory (e/d (fn-cat-view-below fn-cat-view-below-except fn-cat-visible-at-by-row)
                            (fn-cat-at-is-nth fn-cat-count-is-len fn-cat-withdraw-is-mark
-                            fn-cat-p-is-held-listp fn-cat-visible-at-is-visiblep
+                            fn-cat-p-is-rowsp fn-cat-visible-at-is-visiblep
                             fn-cat-visible-at fn-cat-row-article)))))
 
 ; The cancel's composed transaction, in the order that reproduces the
@@ -233,7 +233,7 @@
                                                          fn-arena fn-cat))))))
   :hints (("Goal" :in-theory (e/d ()
                                   (fn-cat-at-is-nth fn-cat-count-is-len fn-cat-withdraw-is-mark
-                                   fn-cat-commit-is-append fn-cat-p-is-held-listp
+                                   fn-cat-commit-is-append fn-cat-p-is-rowsp
                                    fn-cat-view-below fn-cat-row-article fn-cat-view-articles
                                    fn-cat-view-below-except))
            :use ((:instance fn-cat-view-articles-of-commit-pinned
@@ -271,10 +271,15 @@
          (raw (cons a old-raw))
          (old-verdicts (fn-own-view-verdicts view))
          (verdicts (cons (cons (fn-article-msgid a) verdict) old-verdicts))
+         ;; the records made before A arrived that name it as their target are
+         ;; resolved to A's row's locks, as the refresh's cons arm does
+         ;; (books/control-visible.lisp fn-ctl-resolve-tlocks; flip-L8-2)
          (ws (fn-ctl-prepend (fn-ctl-article-withdrawals a verdicts
                                                          (fn-sf-records (fn-sn-files s))
                                                          (fn-sn-config-history s))
-                             (fn-own-view-withdrawals view)))
+                             (fn-ctl-resolve-tlocks (fn-own-view-withdrawals view)
+                                                    (fn-article-msgid a)
+                                                    (fn-sf-records (fn-sn-files s)))))
          (old-visible (fn-state-articles (fn-own-view-archive view)))
          (visible (fn-ctl-visible-add a old-visible old-raw ws verdicts))
          (archive (fn-ctl-visible-state-of (fn-node-acceptance (fn-sn-node s)) visible))
@@ -335,7 +340,9 @@
                                                 (fn-own-view-verdicts view))
                                         (fn-sf-records (fn-sn-files s))
                                         (fn-sn-config-history s))
-                                       (fn-own-view-withdrawals view))
+                                       (fn-ctl-resolve-tlocks (fn-own-view-withdrawals view)
+                                                              (fn-article-msgid a)
+                                                              (fn-sf-records (fn-sn-files s))))
                                       (fn-article-msgid a)))
                 (not (fn-ctl-withdrawn-by-p a
                                             (fn-ctl-prepend
@@ -344,7 +351,9 @@
                                                       (fn-own-view-verdicts view))
                                               (fn-sf-records (fn-sn-files s))
                                               (fn-sn-config-history s))
-                                             (fn-own-view-withdrawals view))
+                                             (fn-ctl-resolve-tlocks (fn-own-view-withdrawals view)
+                                                                    (fn-article-msgid a)
+                                                                    (fn-sf-records (fn-sn-files s))))
                                             (cons a (fn-own-view-raw view))
                                             (cons (cons (fn-article-msgid a) verdict)
                                                   (fn-own-view-verdicts view))))
@@ -360,7 +369,8 @@
                   (equal (fn-own-view-version view2) (len (fn-sf-records (fn-sn-files s)))))))
   :hints (("Goal" :in-theory (e/d (fn-crf-apply-article fn-ctl-visible-add fn-midx-refresh
                                    fn-gidx-refresh fn-own-view-fields-of-make-visible)
-                                  (fn-ctl-article-withdrawals fn-ctl-prepend fn-ctl-causes-p
+                                  (fn-ctl-article-withdrawals fn-ctl-prepend fn-ctl-causes-p fn-ctl-resolve-tlocks
+                                   fn-ctl-resolve-tlocks-is-set-tlocks
                                    fn-ctl-withdrawn-by-p fn-ctl-drop-via fn-ctl-subseq-diff
                                    fn-midx-build fn-gidx-build fn-midx-extend fn-gidx-put-all
                                    fn-index-article-entries fn-ctl-visible-articles

@@ -77,9 +77,12 @@ class ConsumerIdentitySourceTests(unittest.TestCase):
 
     def test_the_host_calls_the_bound_decisions(self):
         host = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
-        for call in ("(fn-cbind-plain-poll (fn-owner-ocfg state) consumer)",
+        # The polls read the live arena (records flip, flip-L6-2) inside the
+        # withdrawal page (PKT-710, fn-cwd-page).
+        for call in ("(fn-cbind-plain-poll-over (fn-owner-ocfg state) consumer",
                      "(fn-cbind-plain-ack (fn-owner-ocfg state) cursor-octets)",
-                     "(fn-cbind-poll (fn-owner-ocfg state) (fn-owner-auth state)",
+                     "(fn-cbind-poll-over (fn-owner-ocfg state) (fn-owner-auth state)",
+                     "(fn-cwd-page (fn-ocfg-owner (fn-owner-ocfg state)) consumer",
                      "(fn-cbind-ack (fn-owner-ocfg state) (fn-owner-auth state)"):
             self.assertIn(call, host)
 

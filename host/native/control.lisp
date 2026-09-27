@@ -374,10 +374,17 @@ transition."
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-control-host-topic-request-decode
                                        (fnn-octet-list frame))))
+                      ;; PKT-709: the plain request (kind 4) or the reasoned
+                      ;; one (kind 22, the same payload), decided alike.
                       (consumer
                         (and (typep frame 'fnn-octets)
-                             (fnn-core 'fn-native-control-host-consumer-request-decode
-                                       (fnn-octet-list frame))))
+                             (let ((plain
+                                     (fnn-core 'fn-native-control-host-consumer-request-decode
+                                               (fnn-octet-list frame))))
+                               (if (and (consp plain) (eq (car plain) :consumer))
+                                   plain
+                                 (fnn-core 'fn-native-control-host-consumer-reasoned-request-decode
+                                           (fnn-octet-list frame))))))
                       (live
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-live-status-host-requestp
@@ -409,11 +416,14 @@ transition."
                           (fnn-owner-consumer-local-serialized
                            service (second consumer) (third consumer)
                            (fourth consumer)))
-                      (case (second consumer)
-                        ((:poll :bound-poll :wait :bound-wait)
-                         (list :consumer-poll-reply :refused nil nil))
-                        (:status (list :consumer-status-reply :refused nil nil nil))
-                        (otherwise (list :consumer-reply :refused nil)))))
+                      (list
+                       :reason
+                       (case (second consumer)
+                         ((:poll :bound-poll :wait :bound-wait)
+                          (list :consumer-poll-reply :refused nil nil))
+                         (:status (list :consumer-status-reply :refused nil nil nil))
+                         (otherwise (list :consumer-reply :refused nil)))
+                       :not-owner)))
                    ((and (consp request) (eq (car request) :request))
                     (let ((msgid (second request))
                          (groups (third request))
@@ -478,6 +488,14 @@ transition."
            (second status) status)))
       (when (and reasoned (keywordp status))
         (setq status (list :reasoned-reply status reason)))
+      ;; PKT-709: a reasoned consumer request's refusal answers the reasoned
+      ;; reply (its status and ACL2's reason); an acceptance answers the
+      ;; consumer reply it always did.
+      (when (and reasoned (consp status)
+                 (member (first status) '(:consumer-reply :consumer-poll-reply
+                                          :consumer-status-reply))
+                 (not (eq (second status) :accepted)))
+        (setq status (list :reasoned-reply (second status) reason)))
       (fnn-control-send-reply socket status))))
 
 (defun fnn-control-client-done (control socket)
@@ -678,10 +696,12 @@ transition."
 (defun fnn-control-transport-outcome (stage)
   (fnn-core 'fn-native-control-host-transport-outcome stage))
 
-(defun fnn-control-exchange (path request-list)
+(defun fnn-control-exchange (path request-list &optional maximum seconds)
   "One connection: send REQUEST-LIST's octets, read the one reply frame.
 Answers (values FRAME STAGE): FRAME the reply octets or NIL, STAGE the
-transport stage reached (fn-native-control-transport-outcome's input)."
+transport stage reached (fn-native-control-transport-outcome's input).
+MAXIMUM and SECONDS are the reply's bound and deadline (ACL2's command-frame
+bound and the control I/O deadline when omitted)."
   (let ((socket nil) (stage :before-submission))
     (unwind-protect
          (handler-case
@@ -694,7 +714,10 @@ transport stage reached (fn-native-control-transport-outcome's input)."
                                +fnn-control-io-seconds+)
                  (sb-bsd-sockets:socket-shutdown socket :direction :output)
                  (let ((frame (fnn-control-read-frame
-                               socket (fnn-core 'fn-native-control-host-max-frame))))
+                               socket
+                               (or maximum
+                                   (fnn-core 'fn-native-control-host-max-frame))
+                               (or seconds +fnn-control-io-seconds+))))
                    (values (and (typep frame 'fnn-octets) frame) stage))))
            (error () (values nil stage)))
       (when socket (fnn-socket-shut socket)))))
@@ -781,95 +804,132 @@ Answers (values STATUS WORD): WORD is ACL2's reason word (PKT-453 (a))."
            (error () (fnn-control-transport-outcome stage)))
       (when socket (fnn-socket-shut socket)))))
 
-(defun fnn-control-consumer-local (path-octets operation first second)
-  "Exchange one ACL2-framed consumer command with the 0600 owner socket."
+;; The reply kind a consumer OPERATION answers on, as the client reports it.
+(defun fnn-control-consumer-reply-tag (operation)
+  (case operation
+    ((:poll :bound-poll :wait :bound-wait) :consumer-poll-reply)
+    (:status :consumer-status-reply)
+    (otherwise :consumer-reply)))
+
+(defun fnn-control-consumer-bare-reply (operation status)
+  "The reply list for an outcome that carries no cursor, report or counts."
+  (list (fnn-control-consumer-reply-tag operation) status nil nil nil))
+
+(defun fnn-control-consumer-reply-okp (operation reply)
+  "Whether REPLY, ACL2's decoded consumer reply, has the shape OPERATION's
+client prints from (the checks the host made before PKT-709)."
+  (and (consp reply)
+       (eq (first reply) (fnn-control-consumer-reply-tag operation))
+       (member (second reply) '(:accepted :refused :uncertain :fault))
+       (if (eq operation :status)
+           (or (and (eq (second reply) :accepted)
+                    (every (lambda (value)
+                             (and (integerp value) (not (minusp value))))
+                           (cddr reply)))
+               (and (not (eq (second reply) :accepted))
+                    (null (third reply))
+                    (null (fourth reply))
+                    (null (fifth reply))))
+         (and (fnn-octet-list-p (third reply))
+              (or (not (member operation '(:poll :bound-poll :wait :bound-wait)))
+                  (fnn-octet-list-p (fourth reply)))))))
+
+(defun fnn-control-consumer-deadline (operation second)
+  ;; PRF-252: a wait answers after its timeout.
+  (+ +fnn-control-io-seconds+
+     (case operation
+       (:wait second)
+       (:bound-wait (first second))
+       (otherwise 0))))
+
+(defun fnn-control-consumer-maximum (operation)
+  "The reply bound: the operation's consumer reply, or the reasoned reply a
+refusal comes as (PKT-709), whichever is larger (a status reply is 13
+payload octets; a reason word is not)."
+  (max (fnn-core (case operation
+                   ((:poll :bound-poll :wait :bound-wait)
+                    'fn-native-control-host-consumer-poll-max-frame)
+                   (:status 'fn-native-control-host-consumer-status-max-frame)
+                   (otherwise 'fn-native-control-host-max-frame)))
+       (fnn-core 'fn-native-control-host-max-frame)))
+
+(defun fnn-control-consumer-plain (path operation first second)
+  "The kind-4 exchange (an old owner's, after it refused kind 22 unread):
+answers the reply list, as before PKT-709."
   (let ((request-list
           (fnn-core 'fn-native-control-host-consumer-request-encode
-                    operation first second))
-        (socket nil) (stage :before-submission))
+                    operation first second)))
     (unless (fnn-octet-list-p request-list)
       (fnn-fault "ACL2 refused local consumer request"))
-    (unwind-protect
-         (handler-case
-             (progn
-               (setq socket (fnn-control-connect
-                             (fnn-octets-string path-octets)))
-               (let ((fd (fnn-socket-fd socket)))
-                 (setq stage :after-submission)
-                 (fnn-send-all fd (fnn-octets request-list)
-                               +fnn-control-io-seconds+)
-                 (sb-bsd-sockets:socket-shutdown socket :direction :output)
-                 (let* ((frame (fnn-control-read-frame
-                                socket (fnn-core
-                                        (case operation
-                                          ((:poll :bound-poll :wait :bound-wait)
-                                           'fn-native-control-host-consumer-poll-max-frame)
-                                          (:status
-                                           'fn-native-control-host-consumer-status-max-frame)
-                                          (otherwise
-                                           'fn-native-control-host-max-frame)))
-                                ;; PRF-252: a wait answers after its timeout.
-                                (+ +fnn-control-io-seconds+
-                                   (case operation
-                                     (:wait second)
-                                     (:bound-wait (first second))
-                                     (otherwise 0)))))
-                        (reply (and (typep frame 'fnn-octets)
-                                    (fnn-core
-                                     (case operation
-                                       ((:poll :bound-poll :wait :bound-wait)
-                                        'fn-native-control-host-consumer-poll-reply-decode)
-                                       (:status
-                                        'fn-native-control-host-consumer-status-reply-decode)
-                                       (otherwise
-                                        'fn-native-control-host-consumer-reply-decode))
-                                     (fnn-octet-list frame))))
-                        (ordinary-status
-                          (and (typep frame 'fnn-octets)
-                               (fnn-core 'fn-native-control-host-reply-decode
-                                         (fnn-octet-list frame)))))
-                   (if (and (consp reply)
-                            (eq (first reply)
-                                (case operation
-                                  ((:poll :bound-poll :wait :bound-wait) :consumer-poll-reply)
-                                  (:status :consumer-status-reply)
-                                  (otherwise :consumer-reply)))
-                            (member (second reply)
-                                    '(:accepted :refused :uncertain :fault))
-                            (if (eq operation :status)
-                                (or (and (eq (second reply) :accepted)
-                                         (every (lambda (value)
-                                                  (and (integerp value)
-                                                       (not (minusp value))))
-                                                (cddr reply)))
-                                    (and (eq (second reply) :refused)
-                                         (null (third reply))
-                                         (null (fourth reply))
-                                         (null (fifth reply))))
-                              (and (fnn-octet-list-p (third reply))
-                                   (or (not (member operation
-                                                    '(:poll :bound-poll
-                                                      :wait :bound-wait)))
-                                       (fnn-octet-list-p (fourth reply)))))
-                            )
-                       reply
-                     (list (case operation
-                             ((:poll :bound-poll :wait :bound-wait) :consumer-poll-reply)
-                             (:status :consumer-status-reply)
-                             (otherwise :consumer-reply))
-                           (if (member ordinary-status
-                                       '(:refused :uncertain :fault :busy))
-                               (if (eq ordinary-status :busy)
-                                   :refused ordinary-status)
-                             (fnn-control-transport-outcome stage))
-                           nil nil nil)))))
-           (error ()
-             (list (case operation
-                     ((:poll :bound-poll :wait :bound-wait) :consumer-poll-reply)
-                     (:status :consumer-status-reply)
-                     (otherwise :consumer-reply))
-                   (fnn-control-transport-outcome stage) nil nil nil)))
-      (when socket (fnn-socket-shut socket)))))
+    (multiple-value-bind (frame stage)
+        (fnn-control-exchange path request-list
+                              (fnn-control-consumer-maximum operation)
+                              (fnn-control-consumer-deadline operation second))
+      (let* ((octets (and frame (fnn-octet-list frame)))
+             (reply (and octets
+                         (fnn-core (case operation
+                                     ((:poll :bound-poll :wait :bound-wait)
+                                      'fn-native-control-host-consumer-poll-reply-decode)
+                                     (:status
+                                      'fn-native-control-host-consumer-status-reply-decode)
+                                     (otherwise
+                                      'fn-native-control-host-consumer-reply-decode))
+                                   octets)))
+             (ordinary (and octets
+                            (fnn-core 'fn-native-control-host-reply-decode octets))))
+        (cond ((fnn-control-consumer-reply-okp operation reply) reply)
+              ((member ordinary '(:refused :uncertain :fault :busy))
+               (fnn-control-consumer-bare-reply
+                operation (if (eq ordinary :busy) :refused ordinary)))
+              (t (fnn-control-consumer-bare-reply
+                  operation (fnn-control-transport-outcome stage))))))))
+
+(defun fnn-control-consumer-local (path-octets operation first second)
+  "Exchange one ACL2-framed consumer command with the 0600 owner socket.
+Answers (values REPLY WORD): REPLY the consumer reply list the command
+prints from, WORD ACL2's reason word (octets) or NIL.
+
+PKT-709: the request goes as the reasoned consumer request (FNCT kind 22,
+books/consumer-reason.lisp); ACL2 reads the answer
+(fn-native-control-host-consumer-client-read): the consumer reply of an
+acceptance, the owner's status and reason word, a resend of the plain
+request once (an old owner refused kind 22 before acting on anything), or
+the transport outcome of the stage reached."
+  (let ((path (fnn-octets-string path-octets))
+        (reasoned (fnn-core 'fn-native-control-host-consumer-reasoned-request-encode
+                            operation first second)))
+    (unless (fnn-octet-list-p reasoned)
+      (fnn-fault "ACL2 refused local consumer request"))
+    (multiple-value-bind (frame stage)
+        (fnn-control-exchange path reasoned
+                              (fnn-control-consumer-maximum operation)
+                              (fnn-control-consumer-deadline operation second))
+      (let ((step (if frame
+                      (fnn-core 'fn-native-control-host-consumer-client-read
+                                operation (fnn-octet-list frame))
+                    '(:transport))))
+        (case (first step)
+          (:reply
+           (values (if (fnn-control-consumer-reply-okp operation (second step))
+                       (second step)
+                     (fnn-control-consumer-bare-reply
+                      operation (fnn-control-transport-outcome stage)))
+                   nil))
+          (:status
+           (let ((status (second step)))
+             (values (fnn-control-consumer-bare-reply
+                      operation
+                      (cond ((member status '(:refused :uncertain :fault)) status)
+                            ((eq status :busy) :refused)
+                            ;; An acceptance never comes as a reasoned reply.
+                            (t (fnn-control-transport-outcome stage))))
+                     (third step))))
+          (:resend
+           (values (fnn-control-consumer-plain path operation first second) nil))
+          (otherwise
+           (values (fnn-control-consumer-bare-reply
+                    operation (fnn-control-transport-outcome stage))
+                   nil)))))))
 
 (defun fnn-control-submit (path-octets msgid-octets group-octets payload-path-octets)
   "Submit one exact bounded file; answer (values STATUS WORD), ACL2's status

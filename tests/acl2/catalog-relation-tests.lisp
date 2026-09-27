@@ -54,7 +54,7 @@
                            (fn-cat-group-number "fn.test" 2 fn-cat)     ; number 2 is index 1
                            (fn-cat-msgid-seqs "<c@x>" fn-cat)))
              (fn-cat (fn-cat-withdraw 0 5 fn-cat))
-             (fn-cat (fn-cat-redecide 1 (fn-hc-make :verified nil 4) fn-cat))
+             (fn-cat (fn-cat-redecide 1 (fn-hc-make (fn-stx-make-verdict :verified nil 4) nil 4) fn-cat))
              (kept (fn-cat-history-relation *crl-h* fn-arena fn-cat)))
         (mv (list loaded kept) fn-arena fn-cat)))))
 
@@ -125,7 +125,7 @@
 ; materialize to the history's article): loading keeps it out.
 (defconst *crl-c-bad*
   (list (fn-cat-assign (fn-held-make 0 1 1 "<z@x>" 0 '("fn.test") "o" "s" "e" 1 5
-                                     (fn-hf-make 1 nil 0) (fn-hc-make nil nil 0) nil nil)
+                                     (fn-hf-make 1 nil 0 nil) (fn-hc-make (fn-stx-make-verdict :absent nil 0) nil 0) nil nil)
                        nil)
         (nth 1 *crl-c*)))
 (defthm crl-w-load-without-relation
@@ -146,11 +146,11 @@
   (and (fn-cat-history-relation *crl-h* *crl-a* *crl-c*)
        (natp 0) (< 0 (fn-cat-count *crl-c*)) (natp 5)
        (fn-cat-history-relation *crl-h* *crl-a* (fn-cat-withdraw 0 5 *crl-c*))
-       (natp 1) (< 1 (fn-cat-count *crl-c*)) (fn-hc-p (fn-hc-make :verified nil 4))
-       (fn-cat-history-relation *crl-h* *crl-a* (fn-cat-redecide 1 (fn-hc-make :verified nil 4) *crl-c*))
+       (natp 1) (< 1 (fn-cat-count *crl-c*)) (fn-hc-p (fn-hc-make (fn-stx-make-verdict :verified nil 4) nil 4))
+       (fn-cat-history-relation *crl-h* *crl-a* (fn-cat-redecide 1 (fn-hc-make (fn-stx-make-verdict :verified nil 4) nil 4) *crl-c*))
        ; not vacuous: the updates change the rows
        (not (equal (fn-cat-withdraw 0 5 *crl-c*) *crl-c*))
-       (not (equal (fn-cat-redecide 1 (fn-hc-make :verified nil 4) *crl-c*) *crl-c*)))
+       (not (equal (fn-cat-redecide 1 (fn-hc-make (fn-stx-make-verdict :verified nil 4) nil 4) *crl-c*) *crl-c*)))
   :rule-classes nil)
 
 ; Preserved by the completion: a prepared row over a handle the arena
