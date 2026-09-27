@@ -7,6 +7,12 @@
 (include "runtime.scm")
 (include "served.scm")
 (include "fntable.scm")
+(import (chicken process signal))
+
+;; A vector that runs past its budget is reported HANG, not waited on (a
+;; mutant's non-terminating recursion must not stop the run).
+(define vector-escape #f)
+(set-signal-handler! signal/alrm (lambda (s) (when vector-escape (vector-escape 'hang))))
 
 (define (show x) (let ((s (with-output-to-string (lambda () (write x)))))
                    (if (> (string-length s) 300) (string-append (substring s 0 300) "...") s)))
@@ -16,11 +22,19 @@
          (proc (hash-table-ref/default extracted-functions name #f)))
     (if (not proc)
         (print "RAISE\t" name "\tnot extracted")
-        (let ((got (handle-exceptions exn (list 'raised (condition->list exn))
-                     (if (> nout 1)
-                         (call-with-values (lambda () (apply proc args)) list)
-                         (apply proc args)))))
-          (cond ((and (pair? got) (eq? (car got) 'raised))
+        (let ((got (call/cc
+                    (lambda (k)
+                      (set! vector-escape k)
+                      (set-alarm! 5)
+                      (let ((v (handle-exceptions exn (list 'raised (condition->list exn))
+                                 (if (> nout 1)
+                                     (call-with-values (lambda () (apply proc args)) list)
+                                     (apply proc args)))))
+                        (set-alarm! 0)
+                        (set! vector-escape #f)
+                        v)))))
+          (cond ((eq? got 'hang) (print "HANG\t" name "\t" (show args)))
+                ((and (pair? got) (eq? (car got) 'raised))
                  (print "RAISE\t" name "\t" (show args) "\t" (show (cadr got))))
                 ((equal? got expected) (print "AGREE\t" name))
                 (else (print "DIFFER\t" name "\t" (show args) "\t" (show expected) "\t" (show got))))))))

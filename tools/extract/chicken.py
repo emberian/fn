@@ -161,6 +161,28 @@ SHIMS = {
     "ACL2::FN-DURABLE-REALIZE-OCTET": "a-durable-realize-octet",
     "ACL2::FN-DURABLE-REALIZE-OCTETS": "a-durable-realize-octets",
 }
+# Common Lisp and ACL2 built-ins that raw Lisp compiles inline (NOT, EQ,
+# ZP ...): the Scheme form for a test position, and for a value position.
+# Their ACL2 definitions are still extracted and the per-function
+# differential checks each of these against ACL2's own evaluation.
+INLINE = {
+    "COMMON-LISP::NOT": ("(not {t0})", None),
+    "COMMON-LISP::NULL": ("(eq? {0} '())", None),
+    "COMMON-LISP::ATOM": ("(not (pair? {0}))", None),
+    "COMMON-LISP::ENDP": ("(not (pair? {0}))", None),
+    "COMMON-LISP::EQ": ("(eqv? {0} {1})", None),
+    "COMMON-LISP::EQL": ("(eqv? {0} {1})", None),
+    "COMMON-LISP::=": ("(= {0} {1})", None),
+    "ACL2::ZP": ("(a-zp {0})", None),
+    "ACL2::ZIP": ("(a-zip {0})", None),
+    "ACL2::NATP": ("(a-natp {0})", None),
+    "ACL2::POSP": ("(a-posp {0})", None),
+    "ACL2::BOOLEANP": ("(a-booleanp {0})", None),
+    "ACL2::NFIX": (None, "(a-nfix {0})"),
+    "ACL2::IFIX": (None, "(a-ifix {0})"),
+    "ACL2::FIX": (None, "(a-fix {0})"),
+}
+
 # Why each shim exists (the inventory).
 SHIM_CLASS = {
     "ACL2::BOUNDP-GLOBAL": "state", "ACL2::F-BOUNDP-GLOBAL": "state",
@@ -559,12 +581,24 @@ class Backend:
                                           self.emit_test(args[2], self.else_env(args[0], env)))
             if fn in PREDS:
                 return self.emit_pred(fn, args, env)
+            if fn in INLINE and INLINE[fn][0]:
+                return self.emit_inline_test(fn, args, env)
         return "(not (eq? %s '()))" % self.emit(t, env, 1)
+
+    def emit_inline_test(self, fn, args, env):
+        tmpl = INLINE[fn][0]
+        if "{t0}" in tmpl:
+            return tmpl.format(t0=self.emit_test(args[0], env))
+        fact = self.eq_fact(["c", fn, args]) if fn in (
+            "COMMON-LISP::EQ", "COMMON-LISP::EQL") else None
+        if fact is not None and env.get(("neq",) + fact):
+            return "#f"
+        return tmpl.format(*[self.emit(a, env, 1) for a in args])
 
     @staticmethod
     def eq_fact(t):
         """(var, datum-key) when T is (equal var 'atom) or (equal 'atom var)."""
-        if t[0] == "c" and t[1] == "COMMON-LISP::EQUAL":
+        if t[0] == "c" and t[1] in ("COMMON-LISP::EQUAL", "COMMON-LISP::EQ", "COMMON-LISP::EQL"):
             a, b = t[2]
             if a[0] == "q":
                 a, b = b, a
@@ -667,6 +701,11 @@ class Backend:
     def emit_call(self, fn, args, env):
         if fn in PREDS:
             return self.bool_of(self.emit_pred(fn, args, env))
+        if fn in INLINE:
+            test, value = INLINE[fn]
+            if value:
+                return value.format(*[self.emit(a, env, 1) for a in args])
+            return self.bool_of(self.emit_inline_test(fn, args, env))
         if fn in FX and self.cur_verified:
             ivs = [self.interval(a, env) for a in args]
             res = self.interval(["c", fn, args], env)
@@ -775,9 +814,10 @@ class Backend:
         inventory = {"defun": 0, "stobj-prim": 0, "prim": 0, "alias": 0, "shim": [], "blocker": []}
         for f in self.ir["functions"]:
             k, n = f["kind"], f["name"]
-            if n in SHIMS:
-                inventory["shim"].append({"name": n, "why": SHIM_CLASS.get(n, "raw-Lisp built-in (Common Lisp's function)"),
-                                          "was": k})
+            if n in SHIMS or n in INLINE:
+                inventory["shim"].append({"name": n, "why": SHIM_CLASS.get(
+                    n, "raw-Lisp built-in compiled inline" if n in INLINE
+                    else "raw-Lisp built-in (Common Lisp's function)"), "was": k})
                 continue
             if k == "defun":
                 defs.append(self.emit_defun(f))
@@ -820,9 +860,17 @@ def main():
         with open(a.table, "w") as h:
             h.write("(define extracted-functions (make-hash-table string=?))\n")
             for f in ir["functions"]:
-                if f["kind"] == "defun" and f["name"] not in SHIMS:
-                    h.write("(hash-table-set! extracted-functions %s %s)\n"
-                            % (scm_string(f["name"]), fname(f["name"])))
+                if f["kind"] != "defun":
+                    continue
+                if f["name"] in SHIMS or f["name"] in INLINE:
+                    # the shim, as a procedure, so the differential checks it
+                    b.cur, b.cur_verified, b.counter = f["name"], False, 0
+                    env = {v: ("var", None) for v in f["formals"]}
+                    call = b.emit_call(f["name"], [["v", v] for v in f["formals"]], env)
+                    proc = "(lambda (%s) %s)" % (" ".join(scm_sym(v) for v in f["formals"]), call)
+                else:
+                    proc = fname(f["name"])
+                h.write("(hash-table-set! extracted-functions %s %s)\n" % (scm_string(f["name"]), proc))
     with open(a.erased, "w") as h:
         json.dump(b.erased, h, indent=1)
     with open(a.inventory, "w") as h:

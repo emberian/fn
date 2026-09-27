@@ -129,3 +129,13 @@
                           (collect (fx- k 1) (cons (u8vector-ref data k) octets)))))
                   (lp (fx+ i 1) (+ (* count 10) (fx- b 48))))))))))
 (define (write-octets xs) (write-u8vector (list->u8vector xs)) (flush-output))
+
+;; --- built-ins raw Lisp compiles inline (chicken.py INLINE) ---------------------
+(define-inline (a-zp x) (or (not (exact-integer? x)) (<= x 0)))
+(define-inline (a-zip x) (or (not (exact-integer? x)) (= x 0)))
+(define-inline (a-natp x) (and (exact-integer? x) (>= x 0)))
+(define-inline (a-posp x) (and (exact-integer? x) (> x 0)))
+(define-inline (a-booleanp x) (or (eq? x '()) (eq? x '|COMMON-LISP::T|)))
+(define-inline (a-nfix x) (if (and (exact-integer? x) (>= x 0)) x 0))
+(define-inline (a-ifix x) (if (exact-integer? x) x 0))
+(define-inline (a-fix x) (if (number? x) x 0))

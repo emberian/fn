@@ -23,11 +23,14 @@
       (unless (eq? val '|KEYWORD::READY|)
         (error "reader archive is not NNTP-projectable" val)))))
 
+(define (model-octets chunks arena)
+  (call-with-values (lambda () (|f:ACL2::FN-READER-MODEL-OCTETS| chunks arena acl2-state))
+    (lambda (erp val st) val)))
+
 (define (model chunks)
   (let ((arena (|f:ACL2::CREATE-FN-ARENA$X|)))
     (select-seed arena)
-    (call-with-values (lambda () (|f:ACL2::FN-READER-MODEL-OCTETS| chunks arena acl2-state))
-      (lambda (erp val st) val))))
+    (model-octets chunks arena)))
 
 (define (socket chunks)
   (let ((arena (|f:ACL2::CREATE-FN-ARENA$X|)) (out '()))
@@ -51,10 +54,14 @@
     (cond ((string=? verb "model") (write-octets (model chunks)))
           ((string=? verb "socket") (write-octets (socket chunks)))
           ((string=? verb "bench")
-           (let ((n (string->number (caddr args))))
-             (model chunks)
+           ;; the archive is selected once, as the reader selects it once
+           ;; before it accepts clients; each run is one connection's model
+           (let ((n (string->number (caddr args)))
+                 (arena (|f:ACL2::CREATE-FN-ARENA$X|)))
+             (select-seed arena)
+             (model-octets chunks arena)
              (let ((t0 (current-process-milliseconds)))
-               (do ((i 0 (+ i 1))) ((= i n)) (model chunks))
+               (do ((i 0 (+ i 1))) ((= i n)) (model-octets chunks arena))
                (let ((t1 (current-process-milliseconds)))
                  (fprintf (current-error-port) "bench ~a runs ~a ms ~a us/run~%"
                           n (- t1 t0) (/ (* 1000.0 (- t1 t0)) n))))))

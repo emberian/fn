@@ -20,7 +20,7 @@ import random
 import sys
 
 sys.path.insert(0, __import__("os").path.dirname(__file__))
-from chicken import scm_datum, conjuncts, NIL, T, SHIMS  # noqa: E402
+from chicken import scm_datum, conjuncts, NIL, T, SHIMS, INLINE  # noqa: E402
 
 YNIL, YT = ["y", NIL], ["y", T]
 
@@ -173,7 +173,7 @@ def mentions(t, v):
 
 
 def eligible(f):
-    return (f["kind"] == "defun" and f["name"] not in SHIMS
+    return (f["kind"] == "defun"
             and f.get("class") in ("common-lisp-compliant", "ideal")
             and not any(f["stobjs_in"]) and not any(f["stobjs_out"]))
 
@@ -207,8 +207,9 @@ def cmd_gen(a):
     g = Gen(rng, uniq)
     out = []
     n_fns = 0
+    only = set(json.load(open(a.only))["uncovered"]) if a.only else None
     for f in ir["functions"]:
-        if not eligible(f):
+        if not eligible(f) or (only is not None and f["name"] not in only):
             continue
         n_fns += 1
         cs = conjuncts(f["guard"])
@@ -249,24 +250,24 @@ def cmd_scheme(a):
 def cmd_report(a):
     ir = json.load(open(a.ir))
     total = len(ir["functions"])
-    defuns = [f for f in ir["functions"] if f["kind"] == "defun" and f["name"] not in SHIMS]
+    defuns = [f for f in ir["functions"] if f["kind"] == "defun"]
     elig = [f["name"] for f in defuns if eligible(f)]
     res = {}
     for line in open(a.log):
         parts = line.rstrip("\n").split("\t")
-        if parts[0] in ("AGREE", "DIFFER", "RAISE"):
-            r = res.setdefault(parts[1], {"AGREE": 0, "DIFFER": 0, "RAISE": 0, "first": None})
+        if parts[0] in ("AGREE", "DIFFER", "RAISE", "HANG"):
+            r = res.setdefault(parts[1], {"AGREE": 0, "DIFFER": 0, "RAISE": 0, "HANG": 0, "first": None})
             r[parts[0]] += 1
             if parts[0] != "AGREE" and not r["first"]:
                 r["first"] = parts[2:] if len(parts) > 2 else None
     covered = [n for n in elig if res.get(n, {}).get("AGREE")]
-    differ = {n: r for n, r in res.items() if r["DIFFER"] or r["RAISE"]}
+    differ = {n: r for n, r in res.items() if r["DIFFER"] or r["RAISE"] or r["HANG"]}
     out = {
         "extracted_functions": total,
         "defuns": len(defuns),
         "eligible_stobj_and_state_free": len(elig),
         "covered_with_agreeing_vectors": len(covered),
-        "vectors": sum(r["AGREE"] + r["DIFFER"] + r["RAISE"] for r in res.values()),
+        "vectors": sum(r["AGREE"] + r["DIFFER"] + r["RAISE"] + r["HANG"] for r in res.values()),
         "agree": sum(r["AGREE"] for r in res.values()),
         "functions_with_disagreement": differ,
         "uncovered": sorted(set(elig) - set(covered)),
@@ -291,6 +292,7 @@ def main():
     g.add_argument("--per", type=int, default=30)
     g.add_argument("--seed", type=int, default=1)
     g.add_argument("--split", type=int, default=1000)
+    g.add_argument("--only", help="a report JSON: generate only for its uncovered functions")
     s = sp.add_parser("scheme")
     s.add_argument("vectors", nargs="+")
     s.add_argument("--ir", required=True)
