@@ -131,8 +131,11 @@
 (defun fn-scar-auth-delegate-pinned
     (as live trie arts archive index verdicts config observation injection wire-event)
   (declare (xargs :guard t))
+  ;; P3 (PRF-228): the connection's moderation view, as
+  ;; books/nntp-auth.lisp `fn-auth-delegate-pinned'.
   (let ((r (fn-scar-peer-step-pinned
-            (fn-auth-session-base as) live trie arts archive index verdicts config
+            (fn-auth-session-base as) live trie arts archive index verdicts
+            (fn-auth-moderation-config as config)
             observation injection wire-event)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
