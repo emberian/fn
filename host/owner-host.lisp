@@ -252,9 +252,20 @@
   (declare (xargs :stobjs state :mode :program))
   (fn-ocfg-config (fn-owner-ocfg state)))
 
+;; The injection configuration the owner has installed (fn-own-config): the
+;; one served POST and control submission read, whose bound is the store
+;; profile's A with its header limits (`fn-owner-posting-configure',
+;; `fn-owner-served-post-bound').  host/native/hybrid-control.lisp
+;; `fnn-hybrid-control-author' injects the signed carrier under it, so a
+;; carrier past A is the injection's :oversize, answered
+;; ARTICLE-EXCEEDS-PROFILE-BOUND (books/native-hybrid-control.lisp
+;; fn-nhc-author-refusal), as for `operator post'.  Before 2026-09-27 this
+;; was `fn-owner-post-config' at the codec's payload bound, so the carrier
+;; passed injection and the owner's admission refused it with no name
+;; (PKT-codex-003's native case).
 (defun fn-owner-live-post-config (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-owner-post-config (fn-owner-config state))))
+  (value (fn-own-config (fn-owner-core state))))
 
 (defun fn-owner-install-ocfg (oc state)
   (declare (xargs :stobjs state :mode :program))
