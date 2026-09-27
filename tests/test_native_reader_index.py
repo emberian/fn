@@ -221,7 +221,7 @@ class NativeReaderIndexTest(unittest.TestCase):
         self.assertEqual(status, b"215 order of fields in overview database\r\n")
         self.assertEqual(fmt, [b"Subject:\r\n", b"From:\r\n", b"Date:\r\n",
                                b"Message-ID:\r\n", b"References:\r\n",
-                               b":bytes\r\n", b":lines\r\n", b"Xref:full\r\n"])
+                               b"Bytes:\r\n", b"Lines:\r\n", b"Xref:full\r\n"])
 
         def xref(row):
             fields = row.rstrip(b"\r\n").split(b"\t")

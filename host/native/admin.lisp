@@ -26,9 +26,13 @@ or syntactically unsupported requests in `fn-native-admin-plan'."
   "Raw Lisp observes clock values but does not coerce or wrap them.  ACL2
 builds the record stamp and refuses values that its durable schema cannot
 represent."
+  ;; The wall reading is DTN seconds, the unit of the live owner's
+  ;; configuration stamps (books/owner-config.lisp `fn-ocfg-config-stamp').
+  ;; It was get-universal-time (seconds since 1900), so an offline record's
+  ;; stamp was 3155673600 s ahead of a live one's (PKT-665, 2026-09-27).
   (let ((result (fnn-core 'fn-native-admin-host-clock-observation
                           (floor (fnn-now) internal-time-units-per-second)
-                          (get-universal-time))))
+                          (floor (fnn-owner-wall-milliseconds) 1000))))
     (unless (eq (fnn-core 'fn-native-admin-host-clock-status result) :accepted)
       (fnn-refuse "ACL2 refused an unrepresentable clock observation"))
     (fnn-core 'fn-native-admin-host-clock-stamp result)))

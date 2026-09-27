@@ -269,13 +269,26 @@
              (fn-inj-refuse :group-read-only)
            (fn-inj-decide source config injection))))
 
+; The fifth element of the reader listing (PRF-243): the served groups'
+; creation facts (PKT-665), projected by books/owner-agent.lisp
+; `fn-oag-listing'.
+(defun fn-nntp-listing-facts (listing)
+  (declare (xargs :guard t))
+  (if (and (consp listing) (consp (cdr listing)) (consp (cddr listing))
+           (consp (cdddr listing)) (consp (cddddr listing)))
+      (car (cddddr listing))
+    nil))
+
 ; The reader environment of the served step: the connection's pinned clock
-; observation, no creation facts, the posting bit, the reader listing
-; (PRF-195) and the closed groups (O2, PRF-196), all from the connection's
-; pinned configuration.
+; observation, the served groups' creation facts (PKT-665, PRF-243: the
+; listing's fifth element), the posting bit, the reader listing (PRF-195)
+; and the closed groups (O2, PRF-196), all from the connection's pinned
+; configuration.
 (defun fn-post-reader-env (config observation)
   (declare (xargs :guard t))
-  (fn-nntp-env-full observation nil (and (fn-inj-config-allow config) t)
+  (fn-nntp-env-full observation
+                    (fn-nntp-listing-facts (fn-inj-config-listing config))
+                    (and (fn-inj-config-allow config) t)
                     (fn-inj-config-listing config)
                     (fn-inj-config-closed config)))
 
@@ -298,7 +311,8 @@
                                      fn-nntp-env-observation))))
 
 (defthm fn-post-reader-env-facts
-  (equal (fn-nntp-env-facts (fn-post-reader-env config observation)) nil)
+  (equal (fn-nntp-env-facts (fn-post-reader-env config observation))
+         (fn-nntp-listing-facts (fn-inj-config-listing config)))
   :hints (("Goal" :in-theory (enable fn-post-reader-env fn-nntp-env
                                      fn-nntp-env-full
                                      fn-nntp-env-facts))))

@@ -89,11 +89,59 @@
 ; The third element is the node's <path-identity>, the posting agent below:
 ; the server name of the served Xref overview field (R3, PRF-206,
 ; books/nntp-xref.lisp `fn-nntp-listing-server').
+;; PKT-665 (PRF-243): a served group's creation fact.  The group entry
+;; keeps the stamp of the configuration record that created it
+;; (books/config.lisp `fn-cfg-groups-create': `init''s record for the
+;; initial groups, the `group create' record for a later one), already
+;; durable with the record.  A configuration stamp is the seconds projection
+;; of a clock observation (books/owner-config.lisp `fn-ocfg-config-stamp');
+;; the fact carries the millisecond observation it projects back to and the
+;; DTN millisecond time of its wall reading.  A stamp with no wall claim (a
+;; store initialized before 2026-09-27, whose record carries the zero
+;; stamp) yields no fact: its group has no creation time, and NEWGROUPS and
+;; LIST ACTIVE.TIMES omit it rather than invent one (specs/nntp.md).
+(defun fn-oag-stamp-observation (stamp)
+  (declare (xargs :guard t))
+  (fn-clock-observation (* 1000 (nfix (fn-clock-monotonic stamp)))
+                        (* 1000 (nfix (fn-clock-wall stamp)))
+                        (* 1000 (nfix (fn-clock-wall-error stamp)))
+                        (fn-clock-has-wall stamp)))
+
+(defun fn-oag-group-fact-of (e)
+  (declare (xargs :guard t))
+  (let ((stamp (fn-cfg-group-created-stamp e)))
+    (if (and (fn-cfg-stampp stamp)
+             (fn-clock-has-wall stamp)
+             (fn-nntp-safe-group-namep (fn-cfg-group-name e)))
+        (list (fn-nntp-group-fact (fn-cfg-group-name e)
+                                  (* 1000 (nfix (fn-clock-wall stamp)))
+                                  (fn-oag-stamp-observation stamp)))
+      nil)))
+
+; One walk of the group table: the facts of the entries live at GEN.
+(defun fn-oag-group-facts (es gen)
+  (declare (xargs :guard t))
+  (if (consp es)
+      (if (fn-cfg-entry-livep (car es) gen)
+          (append (fn-oag-group-fact-of (car es))
+                  (fn-oag-group-facts (cdr es) gen))
+        (fn-oag-group-facts (cdr es) gen))
+    nil))
+
+;; The listing's elements: 1 the descriptions, 2 the node's message, 3 the
+;; path-identity (below), 4 the access table (lane group-access; nil
+;; here), 5 the creation facts (PKT-665) and 6 the configured default
+;; subscription list (PKT-666, books/config.lisp
+;; `fn-cfg-default-subscriptions').
 (defun fn-oag-listing (cfg)
   (declare (xargs :guard t))
   (list (fn-oag-descs (fn-cnode-served-of cfg) (fn-cfg-value cfg))
         (fn-cfg-motd-lines (fn-cfg-value cfg))
-        (fn-oag-agent cfg)))
+        (fn-oag-agent cfg)
+        nil
+        (fn-oag-group-facts (fn-cfg-groups (fn-cfg-value cfg))
+                            (fn-cfg-generation cfg))
+        (fn-cfg-default-subscriptions (fn-cfg-value cfg))))
 
 (defun fn-oag-post-config (cfg max-octets)
   "The posting configuration the owner installs for configuration CFG.

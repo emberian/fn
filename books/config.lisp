@@ -781,7 +781,7 @@
     :grant-control :revoke-control :issue-invitation :consume-invitation
     :account-invite :account-redeem :login-binding
     :add-peer-rows :remove-peer-rows :set-group-description
-    :set-group-status))
+    :set-group-status :set-default-subscriptions))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -806,6 +806,7 @@
         ((equal kind :remove-peer-rows) 19)
         ((equal kind :set-group-description) 20)
         ((equal kind :set-group-status) 21)
+        ((equal kind :set-default-subscriptions) 25)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -831,6 +832,7 @@
         ((equal code 19) :remove-peer-rows)
         ((equal code 20) :set-group-description)
         ((equal code 21) :set-group-status)
+        ((equal code 25) :set-default-subscriptions)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -1380,6 +1382,60 @@
   (fn-cfg-pieces-lines
    (fn-cfg-row-pieces (fn-cfg-rows-with-key (fn-cfg-descriptions v) ""))))
 
+;; The default subscription list (PRF-243, NNT-052; RFC 6048 section 2.6,
+;; PKT-666): the groups LIST SUBSCRIPTIONS recommends to a new reader, in
+;; order.  They are rows of the eleventh slot keyed on
+;; `*fn-cfg-subscription-key*', which carries a colon and so is neither a
+;; group name (`fn-record-group-namep' admits no colon) nor the node's ""
+;; key: no description or message reads them.  They are written only by
+;;
+;;   (:set-default-subscriptions KEY "" 0 ((KEY GROUP "" 0) ...))   code 25
+;;
+;; which replaces every row keyed on KEY with the delta's rows, in order;
+;; no rows clears the list.  Each GROUP is a live group named once.  Codes
+;; 22 to 24 are claimed by lanes group-access, moderated-groups and
+;; consumer-identity.
+(defconst *fn-cfg-subscription-key* ":subscribe")
+
+(defun fn-cfg-subscription-rows (names)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (cons (fn-cfg-row-make *fn-cfg-subscription-key* (car names) "" 0)
+            (fn-cfg-subscription-rows (cdr names)))
+    nil))
+
+(defun fn-cfg-set-default-subscriptions (names)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :set-default-subscriptions *fn-cfg-subscription-key* ""
+                     0 (fn-cfg-subscription-rows names)))
+
+; The configured default list, in order.
+(defun fn-cfg-default-subscriptions (v)
+  (declare (xargs :guard t))
+  (fn-cfg-row-pieces (fn-cfg-rows-with-key (fn-cfg-descriptions v)
+                                           *fn-cfg-subscription-key*)))
+
+(defun fn-cfg-subscription-rowsp (v gen rows)
+  ; Every row is (KEY GROUP "" 0) with GROUP live.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (and (equal (car rows)
+                  (fn-cfg-row-make *fn-cfg-subscription-key*
+                                   (fn-cfg-row-b (car rows)) "" 0))
+           (fn-cfg-group-livep v gen (fn-cfg-row-b (car rows)))
+           (fn-cfg-subscription-rowsp v gen (cdr rows)))
+    (null rows)))
+
+(defun fn-cfg-set-default-subscriptions-reason (v gen d)
+  (declare (xargs :guard t))
+  (if (and (equal (fn-cfg-delta-a d) *fn-cfg-subscription-key*)
+           (equal (fn-cfg-delta-b d) "")
+           (equal (fn-cfg-delta-n d) 0)
+           (fn-cfg-subscription-rowsp v gen (fn-cfg-delta-rows d))
+           (no-duplicatesp-equal (fn-cfg-row-pieces (fn-cfg-delta-rows d))))
+      nil
+    :subscription-row))
+
 ; -----------------------------------------------------------------------------
 ; Applying a delta.  Total, and never a deletion.
 
@@ -1599,6 +1655,18 @@
                               (append (fn-cfg-rows-without-key
                                        (fn-cfg-descriptions v) a)
                                       rows)))
+     ; The default subscription list replaces every row keyed on the
+     ; subscription key (PRF-243).
+     ((equal kind :set-default-subscriptions)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                              (fn-cfg-quotas v) (fn-cfg-policies v)
+                              (fn-cfg-listeners v) (fn-cfg-peers v)
+                              (fn-cfg-limits v) (fn-cfg-authorities v)
+                              (fn-cfg-invitations v) (fn-cfg-accounts v)
+                              (append (fn-cfg-rows-without-key
+                                       (fn-cfg-descriptions v)
+                                       *fn-cfg-subscription-key*)
+                                      rows)))
      (t v))))
 
 (defun fn-cfg-apply (v gen stamp deltas)
@@ -1756,6 +1824,8 @@
      ((equal kind :login-binding) (fn-cfg-login-binding-reason d))
      ((equal kind :set-group-description)
       (fn-cfg-set-group-description-reason v gen d))
+     ((equal kind :set-default-subscriptions)
+      (fn-cfg-set-default-subscriptions-reason v gen d))
      (t nil))))
 
 (defun fn-cfg-admissible-reason (v gen stamp reserved ceiling deltas)
