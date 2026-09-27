@@ -76,7 +76,7 @@ set, exact record, candidate replay/open result and generated final name."
   "The offline request's authorization from the open's carried fold
 (PKT-510 (1)): ACL2's fn-store-cfg-native-admin-authorize-carried, which is
 fn-store-cfg-native-admin-authorize over the history the open replayed
-(books/config-carried-candidate.lisp
+(books/config-carried-open.lisp
 fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization) without
 replaying it again.  When ACL2 answers NIL (no carried open, or a
 configuration history that is not the open's) the request authorizes over the
@@ -120,22 +120,34 @@ history it read, as before."
                   (fnn-indeterminate "configuration record publication is uncertain"))
       (otherwise (fnn-fault "ACL2 returned invalid configuration publication outcome")))))
 
-(defun fnn-admin-verify-under-lock (store expected-generation)
-  "Reconstruct the just-published configuration while this command still owns
-the writer lock.  A later administrator cannot advance the generation between
-publication and this observation.  The immutable publisher's :DURABLE result
-is already this command's accepted persistence outcome, so an independent
-diagnostic failure is reported without retroactively recasting that durable
-result as a refusal or uncertainty."
+(defun fnn-admin-verify-under-lock (store record authorization)
+  "Read the just-published configuration record back while this command still
+owns the writer lock, and let ACL2 compare it with the authorized octets.
+A later administrator cannot advance the generation between publication and
+this observation.  The reopen this replaces (PKT-601 (2)) is decided already:
+the authorization accepted only a candidate whose open over the observed
+history and RECORD succeeds, and when the file holds RECORD at the named
+generation the open of the history the directory now holds is that candidate
+(books/config-carried-open.lisp fn-cfgc-readback-verified-is-the-reopen).
+The immutable publisher's :DURABLE result is already this command's accepted
+persistence outcome, so an independent diagnostic failure is reported
+without retroactively recasting that durable result as a refusal or
+uncertainty."
   (handler-case
-      (progn
-        (fnn-bridge-reset)
-        (fnn-recover store)
-        (if (= (fnn-store-config-generation store) expected-generation)
-            :verified
-          (progn
-            (setf (fnn-store-fenced store) t)
-            :generation-mismatch)))
+      (let* ((name (fnn-core 'fn-native-admin-host-publication-name authorization))
+             (generation (fnn-core 'fn-native-admin-host-publication-generation
+                                   authorization))
+             (path (fnn-join (fnn-config-dir store) name)))
+        (fnn-check-regular path)
+        (let ((word (fnn-core 'fn-cfgc-readback-verdict
+                              (fnn-octet-list
+                               (fnn-read-regular-bounded path +fnn-config-record-bytes+))
+                              record generation (fnn-store-frontier store))))
+          (if (eq word :verified)
+              :verified
+            (progn
+              (setf (fnn-store-fenced store) t)
+              word))))
     (error ()
       (setf (fnn-store-fenced store) t)
       :unavailable)))
@@ -323,13 +335,13 @@ turning a refusal into a physical mutation."
                             (fnn-admin-authorize store records config-records record names))))
                  (multiple-value-bind (generation name) (fnn-admin-publish store record authorization)
                  ; The durable publisher is the acceptance boundary.  Verify
-                 ; its candidate under the retained exclusive lock: releasing
-                 ; it before an exact-generation reopen would let a later
+                 ; the published file under the retained exclusive lock:
+                 ; releasing it before the readback would let a later
                  ; administrator make this already durable command appear to
                  ; fail merely by advancing the history.
                  (fnn-out "configured generation=~d record=~a verification=~a"
                           generation name
-                          (fnn-admin-verify-under-lock store generation))
+                          (fnn-admin-verify-under-lock store record authorization))
                  +fnn-exit-ok+))))
         (when store (fnn-store-close store)))))
 

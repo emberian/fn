@@ -377,6 +377,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-capacity-config-tests \
 	books/config-carried-candidate \
 	tests/acl2/config-carried-candidate-tests \
+	books/config-carried-open \
+	tests/acl2/config-carried-open-tests \
+	tests/acl2/config-carried-readback-tests \
+	books/config-policy-delta \
+	tests/acl2/config-policy-delta-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-primary-cbor \
