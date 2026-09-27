@@ -284,7 +284,9 @@ Answers :accepted once the record is durable and the owner installed it, or
 
 ;;; PRF-164 (PKT-439): the owner's side of XREDEEM.  The connection CID
 ;;; holds (books/nntp-auth.lisp fn-auth-redeem-waitp) after its read; the
-;;; caller, fnn-owner-handle-chunk, holds the owner mutex.  The NNTP session
+;;; caller, host/native/owner.lisp fnn-owner-redeem-quantum, holds the owner
+;;; mutex in a quantum of its own, of ACL2's publication class (never while a
+;;; batch is in flight; PKT-828 open item 2).  The NNTP session
 ;;; reaches the publication in-process, the way peer accept does
 ;;; (host/native/peer-invite.lisp), not over the control socket: no control
 ;;; request kind is used.

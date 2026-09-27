@@ -49,9 +49,14 @@ def msgid(i: int) -> str:
     return "<col-%06d@example.invalid>" % i
 
 
-def article(i: int) -> bytes:
+def article(i: int, pad: int = 0) -> bytes:
+    # PAD octets of filler lines after the body line: a case that must fill
+    # the log segment sizes its articles, not its POST count, so the fill
+    # does not depend on the record layout (log-2-pad packs a batch's records
+    # into one padded entry; 400 small POSTs no longer outgrow 1 MiB).
+    filler = "".join("%s\r\n" % ("x" * 76) for _ in range(pad // 78))
     return ("From: col@example.invalid\r\nNewsgroups: %s\r\nSubject: col %d\r\n"
-            "Message-ID: %s\r\n\r\nbody of %d\r\n" % (GROUP, i, msgid(i), i)).encode("ascii")
+            "Message-ID: %s\r\n\r\nbody of %d\r\n%s" % (GROUP, i, msgid(i), i, filler)).encode("ascii")
 
 
 class Conn:
@@ -64,11 +69,11 @@ class Conn:
         self.stream.write(text.encode("ascii") + b"\r\n")
         return self.stream.readline()
 
-    def post(self, i: int) -> bytes:
+    def post(self, i: int, pad: int = 0) -> bytes:
         reply = self.line("POST")
         if not reply.startswith(b"340"):
             return reply
-        self.stream.write(article(i) + b".\r\n")
+        self.stream.write(article(i, pad) + b".\r\n")
         return self.stream.readline()
 
     def article(self, i: int):
@@ -108,8 +113,8 @@ class Node:
         return subprocess.run([self.image, "--fn", *argv], env=dict(self.env, **(env or {})),
                               capture_output=True, timeout=timeout)
 
-    def init(self, env=None):
-        result = self.fn("operator", str(self.config), "init", GROUP, env=env)
+    def init(self, env=None, profile=()):
+        result = self.fn("operator", str(self.config), "init", *profile, GROUP, env=env)
         if result.returncode:
             raise AssertionError("init: %r" % result.stderr[-800:])
         secret = self.fn("store", str(self.store), "node-secret", "create", env=env)
@@ -138,7 +143,7 @@ class Node:
         return sorted(p.name for p in d.iterdir()) if d.exists() else []
 
 
-def post_concurrently(port: int, ids, connections: int):
+def post_concurrently(port: int, ids, connections: int, pad: int = 0):
     replies, errors = {}, []
     lock = threading.Lock()
     todo = list(ids)
@@ -151,7 +156,7 @@ def post_concurrently(port: int, ids, connections: int):
                     if not todo:
                         break
                     i = todo.pop(0)
-                reply = c.post(i)
+                reply = c.post(i, pad)
                 with lock:
                     replies[i] = reply
             c.close()
@@ -297,22 +302,45 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
         # and is fenced, at rest, before the append.  A death at each of the
         # extension's cuts (FN_NATIVE_LOG_FAULT) keeps every POST answered
         # 240; the next owner serves them, grows the segment and goes on.
+        #
+        # The fill is sized, not counted: small POSTs never fill a segment
+        # now (log-2-pad packs a batch into one padded entry, and the owner's
+        # checkpoint rotates to a fresh segment every hundred or so), so the
+        # case posts articles of a third of the extent (the store's article
+        # bound raised to 1 MiB for it): one acknowledged alone first, then
+        # four at a time, whose batches cannot fit the remaining segment.
         initial = 1048576
+        pad = initial // 3
+        profile = ("--max-article-octets", str(initial))
         for cut in ("log-extended", "log-extent-fenced"):
             with self.subTest(cut=cut):
                 root = self.root / cut
                 root.mkdir()
                 node = Node(self.image, root)
-                node.init()
+                node.init(profile=profile)
                 segment = node.store / "journal" / "000001.log"
                 self.assertEqual(segment.stat().st_size, initial)
                 node.start({"FN_NATIVE_LOG_FAULT": cut})
-                replies, _errors = post_concurrently(node.port, range(400), 4)
-                node.proc.wait(timeout=300)
-                node.stderr.close()
+                try:
+                    first = Conn(node.port)
+                    self.assertTrue(first.post(0, pad).startswith(b"240"), cut)
+                    first.close()
+                    replies, _errors = post_concurrently(node.port, range(1, 13), 4, pad)
+                    node.proc.wait(timeout=300)
+                finally:
+                    # Never leave an owner running: a death that did not come
+                    # is this case's failure, reported below, not a stray.
+                    if node.proc.poll() is None:
+                        node.proc.kill()
+                        node.proc.wait(timeout=60)
+                    node.stderr.close()
                 self.assertEqual(node.proc.returncode, -9, cut)
-                acked = sorted(i for i, r in replies.items() if r.startswith(b"240"))
-                self.assertGreater(len(acked), 200, cut)
+                acked = [0] + sorted(i for i, r in replies.items() if r.startswith(b"240"))
+                # The death came inside the extension: the segment is past its
+                # initial extent (preallocated; at log-extent-fenced also fenced).
+                grown = segment.stat().st_size
+                self.assertGreater(grown, initial, cut)
+                self.assertEqual(grown % 4096, 0, cut)
                 node.start()
                 try:
                     c = Conn(node.port)
@@ -321,13 +349,18 @@ class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
                         self.assertTrue(head.startswith(b"220"), (cut, i, head))
                         self.assertIn(b"body of %d" % i, body)
                     c.close()
-                    more, errors = post_concurrently(node.port, range(1000, 1300), 4)
+                    more, errors = post_concurrently(node.port, range(1000, 1012), 4, pad)
                     self.assertEqual(errors, [])
+                    self.assertEqual(len(more), 12, cut)
                     self.assertTrue(all(r.startswith(b"240") for r in more.values()), cut)
                 finally:
                     node.stop()
-                self.assertGreater(segment.stat().st_size, initial, cut)
-                self.assertEqual(segment.stat().st_size % 4096, 0, cut)
+                # The next owner went on: every journal segment (a checkpoint
+                # may have rotated past 000001.log and dropped it) is whole units.
+                segments = sorted((node.store / "journal").glob("*.log"))
+                self.assertTrue(segments, cut)
+                for path in segments:
+                    self.assertEqual(path.stat().st_size % 4096, 0, (cut, path.name))
 
     def test_store_post_and_probe_commit_through_the_log(self):
         # The developer entries that commit without an owner (fnn-command-post,

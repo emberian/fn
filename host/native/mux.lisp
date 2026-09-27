@@ -869,14 +869,22 @@ queued); nothing otherwise."
         (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service))))))
 
 (defun fnn-mux-stop-loop (loop)
-  "The service is stopping: deliver what a connection still has queued (the
-connection whose reply reported an uncertain outcome is the one socket the
-stop spared, fnn-owner-stop-service-locked), then end every connection."
+  "The service is stopping: deliver what a connection still has queued,
+including the completions a batch's COMPLETE handed this loop before the stop
+(the connections whose replies report an uncertain outcome are the sockets
+the stop spared, fnn-owner-stop-service-locked), then end every connection."
   (let ((service (fnn-mux-service loop)))
     (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
       (setf (fnn-mux-loop-conns loop)
             (append (fnn-mux-loop-inbox loop) (fnn-mux-loop-conns loop))
             (fnn-mux-loop-inbox loop) nil))
+    ;; A batch's COMPLETE that stops the service (books/owner-commit-steps.lisp
+    ;; fn-ocs-member-releases under :stop: every member answered uncertain)
+    ;; delivers each member's ACL2-rendered reply to this loop's ARRIVED list
+    ;; and only then stops.  The loop may see the stop before it takes them:
+    ;; build and queue them here, so the uncertain reply reaches the wire
+    ;; below instead of a bare close (test_native_owner's two-client case).
+    (fnn-mux-take-arrived loop)
     ;; One deadline for all of them, as the workers' sends ran in parallel
     ;; under one 10 s each: a stop never waits longer on its loops' output.
     (let ((deadline (fnn-mux-ticks +fnn-mux-send-seconds+)))

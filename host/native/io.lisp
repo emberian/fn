@@ -2783,7 +2783,7 @@ frontier is derived from the log, design 2026-09-27 section 3.3)."
   "The one rendering of a canonical identity where a string is forced: a
 store record metadata field, a journal record and an NNTP header all carry
 text, and ACL2 decides what that text is.  A record field holds this, never
-the canonical octets, which are not `fn-store-text-octetsp'."
+the canonical octets, which are not `fn-pfld-textp' (books/post-fields.lisp)."
   (fnn-as-octets (fnn-core 'fn-store-identity-text (fnn-octet-list identity))))
 
 (defun fnn-provenance-post ()
@@ -3246,7 +3246,12 @@ disk from GENESIS (the chain's trailer after the closed segments the open
 scanned): the first fn-lgc-count of the segment's records, the count read
 under the kernel lock."
   (let* ((log (fnn-store-log store))
-         (count (fnn-log-with-kernel (log) (fnn-core 'fn-lgc-count (fnn-log-kernel log)))))
+         ;; The lock by hand: fnn-log-with-kernel is a macro defined with the
+         ;; log's structure further down, and a use before its definition
+         ;; compiled as a call of CL:LOG with no argument (batch AW r14:
+         ;; "invalid number of arguments: 0" at every format-9 open).
+         (count (sb-thread:with-recursive-lock ((fnn-log-lock log))
+                  (fnn-core 'fn-lgc-count (fnn-log-kernel log)))))
     (if (eql count 0)
         nil
       (fnn-core 'fn-lgc-first count
@@ -4711,7 +4716,7 @@ tree root), or stop the build."
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
-    "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN" "FN_NATIVE_OWNER_TEST_BARRIER_MS" "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE"
+    "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN" "FN_NATIVE_OWNER_TEST_BARRIER_MS" "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE" "FN_NATIVE_FAULT_BACKTRACE"
     "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"
     "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER" "FN_BP_TEST_DELIVER_FAULT"
     "FN_BP_TEST_PROFILE"

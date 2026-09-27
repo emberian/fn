@@ -23,11 +23,6 @@
 (defconst *fn-bpi-host-issuer-eid* "dtn://fn.lab/issuer")
 (defconst *fn-bpi-host-dtn-epoch-ms* 946684800000)
 
-(defun fn-bpi-host-textp (octets)
-  ; IDs are a host boundary representation only.  Source EID and local BID
-  ; retain their observed value; none enters an article identity decision.
-  (fn-store-text-octetsp octets))
-
 (defun fn-bpi-host-policy (archive-id subject evidence charge)
   ; The host obtains these per-ADU values only after fn-bpi-host-message-id
   ; invokes the ACL2 article/field grammar.  It must not parse headers itself.
@@ -62,10 +57,11 @@
 
 (defun fn-bpi-host-inputsp (destination source-eid bundle-id lifetime
                                         archive-id subject evidence charge)
-  (and (fn-bpi-host-textp destination) (fn-bpi-host-textp source-eid)
-       (fn-bpi-host-textp bundle-id) (fn-record-uint32p lifetime)
-       (fn-bpi-host-textp archive-id) (fn-bpi-host-textp subject)
-       (fn-bpi-host-textp evidence) (fn-record-uint32p charge) (posp charge)))
+  ; IDs are a host boundary representation only.  Source EID and local BID
+  ; retain their observed value; none enters an article identity decision.
+  ; The check is ACL2's: books/post-fields.lisp fn-pfld-bp-ingress-inputsp.
+  (fn-pfld-bp-ingress-inputsp destination source-eid bundle-id lifetime
+                              archive-id subject evidence charge))
 
 (defun fn-bpi-host-message-id (adu state)
   ; Return only a successful exact Message-ID octet list.  This is the host's

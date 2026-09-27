@@ -139,8 +139,12 @@
 (include-book "../books/served-reply-buffer")
 (include-book "../books/owner-open-carried")
 ; PKT-828: a reader quantum during a batch's barrier runs at the reader view
-; (fn-owner-at-reader-view, fn-ocfg-with-view; fn-ocv-capture).
+; (fn-owner-at-reader-view, fn-ocfg-with-view; fn-ocv-capture); the span read
+; there, the working view put back, is fn-orr-read-span, whose keystone
+; fn-orr-read-span-at-a-captured-view-restores-the-owner restates the relation
+; after it (books/owner-reader-read.lisp).
 (include-book "../books/owner-reader-view")
+(include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
 ;
@@ -908,7 +912,7 @@
   ; record, or :refused with the named ACL2 refusal reason.  No state is
   ; published until fn-owner-reconfigure-complete follows a durable write.
   (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (let ((name (if (fn-store-text-octetsp name-octets)
+  (let ((name (if (fn-pfld-group-name-requestp name-octets)
                   (fn-store-octets->string name-octets) :bad)))
     (if (equal name :bad)
         (value (fn-ores-config-refused :group-name))
@@ -1057,12 +1061,13 @@
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
-    (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (not (fn-octet-listp payload)) (> (len payload) *fn-record-max-payload*)
-            (equal groups :bad) (null groups)
-            (not (fn-store-text-octetsp id-octets))
-            (not (fn-store-text-octetsp subject-octets))
-            (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
+    ; The fields' checks are ACL2's (books/post-fields.lisp
+    ; fn-pfld-article-inputsp): the Message-ID grammar, the codec's payload
+    ; ceiling, the resolved groups, the record's metadata domain, the charge.
+    (if (or (not (fn-octet-listp payload))
+            (not (fn-pfld-article-inputsp msgid-octets (len payload) groups
+                                          id-octets subject-octets
+                                          evidence-octets charge)))
         (mv nil :invalid fn-arena state)
       ; A name in the domain but not served at the live generation (a retired
       ; group) is refused by the prepare itself (fn-psrv-prepare, lane
@@ -1193,12 +1198,10 @@
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
-    (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (> (fn-octets-len fn-octets) *fn-record-max-payload*)
-            (equal groups :bad) (null groups)
-            (not (fn-store-text-octetsp id-octets))
-            (not (fn-store-text-octetsp subject-octets))
-            (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
+    ; books/post-fields.lisp fn-pfld-article-inputsp, over the buffer's fill.
+    (if (not (fn-pfld-article-inputsp msgid-octets (fn-octets-len fn-octets)
+                                      groups id-octets subject-octets
+                                      evidence-octets charge))
         (mv nil :invalid fn-arena state)
       ; A retired group (in the domain, not served at the live generation)
       ; is refused by the prepare below (fn-psrv-prepare, lane
@@ -1285,11 +1288,9 @@
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((s (fn-owner-store state))
          (node (fn-sn-node s)))
-    (if (or (not (member-equal kind '(:undertake :release)))
-            (not (fn-store-text-octetsp id-octets))
-            (not (fn-store-text-octetsp subject-octets))
-            (not (fn-store-text-octetsp evidence-octets))
-            (not (natp charge)))
+    ; books/post-fields.lisp fn-pfld-retention-inputsp.
+    (if (not (fn-pfld-retention-inputsp kind id-octets subject-octets
+                                        evidence-octets charge))
         (value :invalid)
       (let* ((txid (fn-state-next-txid (fn-node-acceptance node)))
              (event (fn-store-retention-event-make
@@ -2727,8 +2728,8 @@
   (let ((groups (fn-store-groups-from-codes
                  group-codes
                  (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
-    (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
+    (if (or (not (fn-pfld-lookup-inputsp msgid-octets groups))
+            (not (fn-octet-listp payload)))
         (value :absent)
       ; fn-store-existing-action-is-the-verdict-over-alpha.
       (let ((action (fn-store-existing-action
@@ -2753,8 +2754,7 @@
   (let ((groups (fn-store-groups-from-codes
                  group-codes
                  (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
-    (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (equal groups :bad) (null groups))
+    (if (not (fn-pfld-lookup-inputsp msgid-octets groups))
         (value :absent)
       ; PRF-191: fn-rclb-existing-action through the view trie
       ; (fn-pidx-existing-action-is-store-existing-action).
@@ -3124,8 +3124,12 @@
       (if (not (and (natp start) (natp end) (<= start end)
                     (<= end (fn-octets-len fn-octets))))
           (value :bad-range)
-        (let* ((result (fn-scr-ocfg-read-span
-                        (fn-owner-ocfg state) id start end fn-octets fn-arena fn-cat))
+        ;; PKT-828: at the reader view while the committer holds a capture,
+        ;; the working view put back after it (books/owner-reader-read.lisp
+        ;; fn-orr-read-span; with no capture it is fn-scr-ocfg-read-span).
+        (let* ((result (fn-orr-read-span
+                        (fn-owner-ocfg state) (fn-owner-reader-views state)
+                        id start end fn-octets fn-arena fn-cat))
                (effects (fn-own-tls-result-effects result))
                (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg
@@ -3145,12 +3149,7 @@
 
 (defun fn-owner-chunk-span (id start end fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
-  (let* ((working (fn-own-view (fn-owner-core state)))
-         (state (fn-owner-at-reader-view state)))
-    (mv-let (erp val state)
-      (fn-owner-chunk-span-at id start end fn-octets fn-arena fn-cat state)
-      (let ((state (fn-owner-at-working-view working state)))
-        (mv erp val state)))))
+  (fn-owner-chunk-span-at id start end fn-octets fn-arena fn-cat state))
 
 (defun fn-owner-close (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
@@ -3208,7 +3207,7 @@
 
 (defun fn-owner-declare-group (name-octets fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (if (not (fn-store-text-octetsp name-octets))
+  (if (not (fn-pfld-group-name-requestp name-octets))
       (value :invalid)
     (let* ((before (fn-owner-core state))
            (state (fn-owner-step
