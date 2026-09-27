@@ -380,7 +380,8 @@
         "PRF-246",
         "PRF-253",
         "PRF-254",
-        "PRF-255"
+        "PRF-255",
+        "PRF-266"
       ],
       "verification": [
         "proof",
@@ -4503,8 +4504,7 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-248",
-        "PRF-259"
+        "PRF-248"
       ],
       "verification": [
         "proof",
