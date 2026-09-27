@@ -54,7 +54,7 @@
 #   15    the friends session from the Linux tarball      hbox
 #   16    the tag: print the command                      local
 #
-# Box paths: everything under /tank/fn/scratch/cut-VERSION/ (S); the native
+# Box paths: everything under /tank/fn/scratch/cut-VERSION-REV12/ (S); the native
 # gate's tree is S/native-REV12/tree (T), whose build/ holds the six
 # images the later gates use (fn-host, fn-host-developer, fn-host-dtn,
 # fn-host-dtn-developer, and tests.test_native_image_differential's pair:
@@ -125,7 +125,7 @@ OUT=${OUT:-$ROOT/build/cut/v$VERSION-$SHORT}
 case $OUT in /*) ;; *) OUT=$ROOT/$OUT ;; esac
 mkdir -p "$OUT"
 V=$OUT/verdict.txt
-S=/tank/fn/scratch/cut-$VERSION
+S=/tank/fn/scratch/cut-$VERSION-$SHORT
 T=$S/native-$SHORT/tree
 CHECKLIST=planning/release-v$VERSION.md
 PY=${PYTHON:-python3}
@@ -299,7 +299,7 @@ gate_envs() {
 g_native() {
   mods=$(modules | tr '\n' ' ')
   # shellcheck disable=SC2046
-  set -- --name "cut-$VERSION" --label "$SHORT" --images developer,production,dtn,dtn-developer,reference,developer-stripped \
+  set -- --name "cut-$VERSION-$SHORT" --label "$SHORT" --images developer,production,dtn,dtn-developer,reference,developer-stripped \
     --deadline 43200 $(gate_envs) "$REV"
   echo "modules ($(echo $mods | wc -w | tr -d ' ')): $mods"
   if [ "$DRY" = yes ]; then
@@ -421,7 +421,7 @@ echo \"fn --version (root's login limits: \$(vm 'ulimit -d')): \$v\"
 [ \"\$v\" = 'fn $VERSION ($SHORT)' ] || { echo \"the installed fn --version is not 'fn $VERSION ($SHORT)'\"; exit 1; }
 cd $R/out && sha256sum $tb && grep -F $tb SHA256SUMS"
   if [ "$DRY" = yes ]; then
-    would "(gate 12's) git archive --format=tar $REV | ssh $HOST 'cat > $S/source.tar'"
+    would "git archive --format=tar $REV | ssh $HOST 'cat > $S/source.tar'"
     echo "$script" | sed 's/^/would (hbox): /'
     printf '%s\n' "$guest" | sed 's/^/would (openbsd guest): /'
     box "test -f $cfg && test -f $B/vm/id_ed25519" \
@@ -431,7 +431,7 @@ cd $R/out && sha256sum $tb && grep -F $tb SHA256SUMS"
     echo "preconditions on $HOST: the build VM $OB_VM provisioned and stopped"
     return 10
   fi
-  box "test -f $S/source.tar" || { git archive --format=tar "$REV" | ssh -o BatchMode=yes "$HOST" "mkdir -p $S && cat > $S/source.tar" || { echo "shipping the archive failed"; return 1; }; }
+  git archive --format=tar "$REV" | ssh -o BatchMode=yes "$HOST" "mkdir -p $S && cat > $S/source.tar" || { echo "shipping the archive failed"; return 1; }
   box_script openbsd-guest "$guest" || { echo "shipping the guest script failed"; return 1; }
   box_script tarball-openbsd "$script" || { echo "shipping the gate script failed"; return 1; }
   box "sh $S/tarball-openbsd.sh" || { echo "the OpenBSD tarball gate failed ($HOST:$R/out)"; return 1; }
