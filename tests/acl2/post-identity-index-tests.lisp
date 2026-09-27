@@ -132,7 +132,7 @@
           (fn-find-article *pit-fresh* *pit-arts*))))
 
 ; -----------------------------------------------------------------------------
-; fn-pidx-existing-action-is-rclb-existing-action, on a live local buffer as
+; fn-pidx-existing-action-is-store-existing-action, on a live local buffer as
 ; the host runs it.
 
 (defun pit-owner-with-view (o v)

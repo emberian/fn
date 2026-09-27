@@ -131,7 +131,7 @@ class Acl2BpIngress(run_store.Acl2Store):
         monotonic_ns, wall_ns, error_ms, has_wall = (
             bundle_bridge.observation() if observation is None else observation)
         form += " " + str(charge) + " '" + self.literal(adu)
-        form += " {} {} {} {} state)".format(
+        form += " {} {} {} {} fn-arena state)".format(
             monotonic_ns, wall_ns, error_ms, "t" if has_wall else "nil")
         value = run_store.acl2_result(self.call(form)).upper()
         if value == b":PREPARED":
@@ -155,7 +155,7 @@ class Acl2BpIngress(run_store.Acl2Store):
         monotonic_ns, wall_ns, error_ms, has_wall = (
             bundle_bridge.observation() if observation is None else observation)
         form += " " + str(charge) + " '" + self.literal(adu)
-        form += " {} {} {} {} state)".format(
+        form += " {} {} {} {} fn-arena state)".format(
             monotonic_ns, wall_ns, error_ms, "t" if has_wall else "nil")
         return run_store.acl2_boolean(self.call(form))
 

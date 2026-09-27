@@ -1,5 +1,6 @@
 ; Teeth for books/consumer-bound.lisp (PRF-234, CNS-006): a local consumer
-; bound to an account.  Every answer below is a host-called decision
+; bound to an account.  The polls are the arena forms (fn-cbind-poll-over,
+; fn-cbind-plain-poll-over; records flip).  Every answer below is a host-called decision
 ; (host/owner-host.lisp fn-owner-consumer-local-bound-poll / -bound-ack call
 ; fn-cbind-poll / fn-cbind-ack; fn-owner-consumer-local-poll / -ack call
 ; fn-cbind-plain-poll / fn-cbind-plain-ack) over a committed Store with two
@@ -64,9 +65,11 @@
   (fn-record-make 6 6 6 "<public@fn.test>" '(80)
                   '("fn.public") "public-pin" "public-content"
                   "public-release" 1 841000001))
+; The Store retains HELD rows (records-flip): each wire record at its arena
+; handle (fn-held-plain; the poll reads the row's groups, never its bytes).
 (defconst *cbt-store*
-  (cbt-article (cbt-article *cbt-registered* *cbt-secret-record*)
-               *cbt-public-record*))
+  (cbt-article (cbt-article *cbt-registered* (fn-held-plain *cbt-secret-record* 0))
+               (fn-held-plain *cbt-public-record* 1)))
 (defconst *cbt-o* (fn-own-start *cbt-store* 2))
 ; Every registration and both articles committed: frontier 7.
 (assert-event (equal (fn-cp-nth 3 (fn-sn-consumer *cbt-store*)) 7))
@@ -149,7 +152,37 @@
 (assert-event (fn-auth-configp *cbt-acfg*))
 
 ; --- what each consumer is served -------------------------------------------
-(defun cbt-poll (oc id secret) (fn-cbind-poll oc *cbt-acfg* id secret))
+; The host's polls read the held rows' payloads through the arena
+; (fn-cbind-poll-over, fn-cbind-plain-poll-over): the arena here holds the
+; two payloads at the handles the rows name (0 secret, 1 public).
+(defun cbt-arena (fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((fn-arena (fn-arena-seal-list (fn-record-payload *cbt-secret-record*) fn-arena))
+         (fn-arena (fn-arena-seal-list (fn-record-payload *cbt-public-record*) fn-arena)))
+    fn-arena))
+(defun cbt-poll-acfg (oc acfg id secret)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (let ((fn-arena (cbt-arena fn-arena)))
+        (mv (fn-cbind-poll-over oc acfg id secret fn-arena) fn-arena))
+      r)))
+(defun cbt-poll (oc id secret) (cbt-poll-acfg oc *cbt-acfg* id secret))
+(defun cbt-plain (oc id)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (let ((fn-arena (cbt-arena fn-arena)))
+        (mv (fn-cbind-plain-poll-over oc id fn-arena) fn-arena))
+      r)))
+; The consumer poll's own report over the same arena.
+(defun cbt-report (o id)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (let ((fn-arena (cbt-arena fn-arena)))
+        (mv (fn-col-poll-report-over o id fn-arena) fn-arena))
+      r)))
 (defun cbt-msgid (poll)
   (fn-record-msgid (fn-col-poll-article (caddr poll))))
 
@@ -162,14 +195,28 @@
 (defun cbt-r2 () (cbt-poll *cbt-oc* *cbt-c2* *cbt-secret*))
 (defconst *cbt-d2* (fn-col-poll *cbt-o* *cbt-c2*))
 (assert-event (equal (car (cbt-r2)) :poll))
-(assert-event (equal (cbt-r2) (fn-col-poll-report *cbt-o* *cbt-c2*)))
+(assert-event (equal (cbt-r2) (cbt-report *cbt-o* *cbt-c2*)))
 (assert-event (equal (cbt-msgid *cbt-d2*) "<public@fn.test>"))
-(assert-event (equal (caddr (cbt-r2)) (fn-col-poll-report-octets (caddr *cbt-d2*))))
+; The page carries the article's exact wire encoding: the held row's
+; positions with the payload its handle names in the arena.
+(assert-event (fn-held-p (caddr *cbt-d2*)))
+(assert-event (equal (caddr (cbt-r2)) (fn-col-poll-report-octets *cbt-public-record*)))
+; The poll that reads no arena refuses a held row (:report): the hypothesis
+; of fn-cbind-poll-over-is-poll-unless-a-held-row fails, and so does its
+; conclusion.
+(assert-event (equal (fn-cbind-poll *cbt-oc* *cbt-acfg* *cbt-c2* *cbt-secret*)
+                     '(:refused :report)))
+(assert-event (not (equal (cbt-r2)
+                          (fn-cbind-poll *cbt-oc* *cbt-acfg* *cbt-c2* *cbt-secret*))))
+; ... and where the selection is no held row (an unregistered consumer's
+; refusal selects nothing) the two polls agree.
+(assert-event (not (fn-held-p (caddr (fn-col-poll *cbt-o* '(57))))))
+(assert-event (equal (cbt-plain *cbt-oc* '(57)) (fn-cbind-plain-poll *cbt-oc* '(57))))
 ; "1" (bob, fn.private.x): refused :access, whatever the store holds.
 (assert-event (equal (cbt-poll *cbt-oc* *cbt-c1* *cbt-secret*) '(:refused :access)))
 ; "4" (alice, fn.private.x): served the private article.
 (defun cbt-r4 () (cbt-poll *cbt-oc* *cbt-c4* *cbt-secret*))
-(assert-event (equal (cbt-r4) (fn-col-poll-report *cbt-o* *cbt-c4*)))
+(assert-event (equal (cbt-r4) (cbt-report *cbt-o* *cbt-c4*)))
 (assert-event (equal (cbt-msgid (fn-col-poll *cbt-o* *cbt-c4*)) "<secret@fn.test>"))
 ; A wrong password, an unbound consumer, an unregistered bound consumer.
 (assert-event (equal (cbt-poll *cbt-oc* *cbt-c2* *cbt-wrong*) '(:refused :credential)))
@@ -201,18 +248,18 @@
                                 (fn-acct-verifier-text *cbt-verifier*)))
         *cbt-v-carol*))
 (defconst *cbt-oc-carol* (fn-ocfg-make *cbt-o* (fn-cfg-make 6 *cbt-v-carol*) nil nil))
-(assert-event (equal (fn-cbind-poll *cbt-oc-carol* (fn-auth-open-config) *cbt-c2* *cbt-secret*)
+(assert-event (equal (cbt-poll-acfg *cbt-oc-carol* (fn-auth-open-config) *cbt-c2* *cbt-secret*)
                      (cbt-r2)))
 
 ; The plain forms.  Unbound "3": today's answer (the private article: the
 ; operator reads everything).  Bound "2": refused :bound.
-(assert-event (equal (fn-cbind-plain-poll *cbt-oc* *cbt-c3*)
-                     (fn-col-poll-report *cbt-o* *cbt-c3*)))
+(assert-event (equal (cbt-plain *cbt-oc* *cbt-c3*)
+                     (cbt-report *cbt-o* *cbt-c3*)))
 (assert-event (equal (cbt-msgid (fn-col-poll *cbt-o* *cbt-c3*)) "<secret@fn.test>"))
-(assert-event (equal (fn-cbind-plain-poll *cbt-oc* *cbt-c2*) '(:refused :bound)))
+(assert-event (equal (cbt-plain *cbt-oc* *cbt-c2*) '(:refused :bound)))
 ; With no binding in the configuration, every plain answer is today's.
-(assert-event (equal (fn-cbind-plain-poll *cbt-oc-none* *cbt-c2*)
-                     (fn-col-poll-report *cbt-o* *cbt-c2*)))
+(assert-event (equal (cbt-plain *cbt-oc-none* *cbt-c2*)
+                     (cbt-report *cbt-o* *cbt-c2*)))
 
 ; --- acks --------------------------------------------------------------------
 (defun cbt-cursor2 () (cadr (cbt-r2)))
@@ -244,18 +291,19 @@
         *cbt-v-wide*))
 (defconst *cbt-oc-wide* (fn-ocfg-make *cbt-o* (fn-cfg-make 5 *cbt-v-wide*) nil nil))
 (assert-event (equal (cbt-poll *cbt-oc-wide* *cbt-c1* *cbt-secret*)
-                     (fn-col-poll-report *cbt-o* *cbt-c1*)))
+                     (cbt-report *cbt-o* *cbt-c1*)))
 (assert-event (equal (car (cbt-poll *cbt-oc-wide* *cbt-c1* *cbt-secret*)) :poll))
 
 ; --- KEYSTONE 1 teeth --------------------------------------------------------
-; The literal conclusion of fn-cbind-poll-delivers-only-readable-events.
+; The literal conclusion of fn-cbind-poll-over-delivers-only-readable-events.
 (defun cbt-k1 (oc acfg consumer secret)
-  (let ((r (fn-cbind-poll oc acfg consumer secret))
+  (declare (xargs :verify-guards nil))
+  (let ((r (cbt-poll-acfg oc acfg consumer secret))
         (d (fn-col-poll (fn-ocfg-owner oc) consumer))
         (login (fn-cbind-config-login oc consumer)))
     (and login
          (fn-cbind-authenticp oc acfg login secret)
-         (equal r (fn-col-poll-report (fn-ocfg-owner oc) consumer))
+         (equal r (cbt-report (fn-ocfg-owner oc) consumer))
          (equal (car d) :poll)
          (implies (caddr d)
                   (fn-cbind-event-readablep
@@ -278,9 +326,9 @@
 ; --- KEYSTONE 2 and 3 witnesses (no hypotheses) ------------------------------
 ; Each disjunct is reached: the consumer's own answer, and a refusal.
 (assert-event (equal (cbt-poll *cbt-oc* *cbt-c2* *cbt-secret*)
-                     (fn-col-poll-report *cbt-o* *cbt-c2*)))
+                     (cbt-report *cbt-o* *cbt-c2*)))
 (assert-event (not (equal (cbt-poll *cbt-oc* *cbt-c1* *cbt-secret*)
-                          (fn-col-poll-report *cbt-o* *cbt-c1*))))
+                          (cbt-report *cbt-o* *cbt-c1*))))
 (assert-event (equal (car (cbt-poll *cbt-oc* *cbt-c1* *cbt-secret*)) :refused))
 (assert-event (not (equal (fn-cbind-ack *cbt-oc* *cbt-acfg* *cbt-cursor1* *cbt-secret*)
                           (fn-col-ack *cbt-o* *cbt-cursor1*))))
@@ -296,10 +344,10 @@
 (assert-event (not (fn-cbind-config-login *cbt-oc* *cbt-c3*)))
 (assert-event (fn-cbind-config-login *cbt-oc* *cbt-c2*))
 ; Without "unbound": bound "2"'s plain poll is not the consumer poll.
-(must-fail (assert-event (equal (fn-cbind-plain-poll *cbt-oc* *cbt-c2*)
-                                (fn-col-poll-report *cbt-o* *cbt-c2*))))
+(must-fail (assert-event (equal (cbt-plain *cbt-oc* *cbt-c2*)
+                                (cbt-report *cbt-o* *cbt-c2*))))
 ; Without "bound": unbound "3"'s plain poll is not refused :bound.
-(must-fail (assert-event (equal (fn-cbind-plain-poll *cbt-oc* *cbt-c3*)
+(must-fail (assert-event (equal (cbt-plain *cbt-oc* *cbt-c3*)
                                 '(:refused :bound))))
 ; The plain ack's "decodable" hypothesis, CORRUPTED state: a binding row
 ; named "" (admission refuses it, :consumer-name) binds the consumer an

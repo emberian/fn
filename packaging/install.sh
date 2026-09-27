@@ -20,8 +20,10 @@
 # It checks every file of the release against SHA256SUMS first.  When the
 # node directory already holds a configuration and a store, it asks the
 # release's own `fn operator NODE/fn.toml status` before copying anything,
-# and refuses a store this release cannot open (another store format): export
-# it with the release that wrote it, install, then import.  It starts nothing.
+# and refuses a store this release cannot open (another store format, or a
+# store made by another release: ACL2's `open refused reason=store-format`,
+# `reason=older-release` or `reason=newer-release`): export it with the
+# release that wrote it, install, then import.  It starts nothing.
 set -eu
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 system=$(uname -s)
@@ -68,7 +70,7 @@ if [ -f "$config" ]; then
   set -e
   printf '%s\n' "$answer" | sed 's/^/   /'
   case $answer in
-    *store-format*)
+    *reason=store-format*|*reason=older-release*|*reason=newer-release*)
       echo "install: this release refuses that store's format: export it with the release that wrote it (fn operator $config store export DIR), move the node directory aside, install, init, then store import DIR" >&2
       exit 4 ;;
   esac

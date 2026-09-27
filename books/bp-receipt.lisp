@@ -338,19 +338,18 @@
 ;;; handed the wire record -- the request journal persists it through the
 ;;; record codec (books/bp-receipt-records.lisp fn-bprr-decode-value), and a
 ;;; handle is no durable identity -- while the Store history retains held
-;;; rows whose payload is an arena handle.  A row stands for RECORD when its
-;;; wire form through the arena (`fn-row-wire-of') is RECORD.  Executed
+;;; rows whose payload is an arena handle.  A row stands for RECORD when it
+;;; is a held row and its wire form through the arena (`fn-row-wire-of') is
+;;; RECORD: the flipped Store retains every article as a held row.  Executed
 ;;; without reading a non-matching row's bytes: the row's other fields are
 ;;; compared with RECORD's first (RECORD's own payload in the payload
 ;;; position), and only a row that matches them has its bytes read.
 (defun fn-bpr-row-stands-for (row record fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (mbe :logic (equal (fn-row-wire-of row fn-arena) record)
-       :exec (cond ((fn-held-p row)
-                    (and (equal (fn-held-wire row (fn-record-payload record)) record)
-                         (equal (fn-row-bytes row fn-arena) (fn-record-payload record))))
-                   ((fn-hstxa-p row) (equal (fn-hstxa-stxa row) record))
-                   (t (equal row record)))))
+  (mbe :logic (and (fn-held-p row) (equal (fn-row-wire-of row fn-arena) record))
+       :exec (and (fn-held-p row)
+                  (equal (fn-held-wire row (fn-record-payload record)) record)
+                  (equal (fn-row-bytes row fn-arena) (fn-record-payload record)))))
 
 (local (defthm fn-bpr-payload-of-held-wire
   (equal (fn-record-payload (fn-held-wire h payload)) payload)
@@ -367,13 +366,14 @@
           (fn-bpr-rows-stand-for record (cdr rows) fn-arena))
     nil))
 
-; Its boundary theorem: membership in ALPHA of the rows.
+; Toward ALPHA of the rows: a record some row stands for is a member of the
+; rows' wire forms (the converse, over a Store's history, is
+; books/bp-receipt-alpha.lisp fn-bpr-store-record-acceptedp-is-acceptance-over-alpha).
 (defthm fn-bpr-rows-stand-for-is-member-of-alpha
-  (iff (fn-bpr-rows-stand-for record rows fn-arena)
-       (member-equal record (fn-rows-wire-of rows fn-arena)))
-  :hints (("Goal" :in-theory (e/d (fn-rows-wire-of) (fn-row-wire-of)))))
-; Cited, not left to rewrite: the receiver books reason with the search.
-(in-theory (disable fn-bpr-rows-stand-for-is-member-of-alpha))
+  (implies (fn-bpr-rows-stand-for record rows fn-arena)
+           (member-equal record (fn-rows-wire-of rows fn-arena)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-rows-wire-of) (fn-row-wire-of fn-held-p)))))
 
 ;; The row standing for RECORD (the first), and the facts the receiver books
 ;; reason with: a member row that stands for RECORD witnesses the search, the
@@ -431,7 +431,7 @@
                                    fn-record-content-subject fn-record-obligation-id)))))
 
 (defthm fn-bpr-row-stands-for-held-accessors
-  (implies (and (fn-held-p row) (fn-bpr-row-stands-for row record fn-arena))
+  (implies (fn-bpr-row-stands-for row record fn-arena)
            (and (equal (fn-record-msgid record) (fn-record-msgid row))
                 (equal (fn-record-groups record) (fn-record-groups row))
                 (equal (fn-record-content-subject record) (fn-record-content-subject row))

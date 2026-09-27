@@ -423,13 +423,127 @@
                     (fn-heap-init-decide request core nursery physical limits
                                          budget-octets
                                          '(108 97 114 103 101 115 116)))
-                   (list :scale (cadr (true-list-fix request)))))
+                   (fn-heap-preset-candidate :scale request)))
    :hints (("Goal" :do-not-induct t
-            :in-theory (disable fn-heap-reserve-acceptsp fn-bs-profile-resolve
+            :in-theory (disable fn-heap-reserve-acceptsp fn-heap-preset-candidate
+                                fn-bs-profile-resolve
                                 fn-heap-init-reservation-octets fn-heap-machine-octets
                                 fn-heap-init-observations fn-heap-init-explicit-budget
                                 fn-heap-profile-word fn-heap-mb-of
                                 fn-heap-machine-sized-requestp)))))
+
+;; -----------------------------------------------------------------------------
+; A request's article bound is held (fix-line-stack, 2026-09-27).  Batch AR's
+; conservative sizing laid the request's A over development's R (which
+; holds a 32 KiB article at 65,535 groups) and the small candidate's 8 MiB
+; H: `init --max-article-octets 8388608' (tests/test_native_served_line_stack)
+; was refused invalid-init-profile under hbox_native's 24 GiB and on hbox
+; itself, and `--max-article-octets 4194304' (tests/test_native_bounds_join)
+; fell to the small candidate, 8 MiB of history and 16 groups, whose 441
+; "no capacity" stopped the 3 MiB POSTs.  The candidates now raise R to the
+; article record and H to at least R.
+(defconst *hrt-a8* '(:default ((5 . 8388608))))
+(defconst *hrt-a4* '(:default ((5 . 4194304))))
+(defconst *hrt-24g* (list (* 24 *hrt-gib*)))
+(defun hrt-sized-at (d request budget-mb)
+  (and (equal (car d) :init)
+       (equal (fn-heap-init-decision-request d) request)
+       (equal (nth 4 d) budget-mb)
+       (equal (nth 5 d) :conservative)
+       (equal (nth 6 d) t)))
+; Since friend-blockers (PKT-707, batch AV) conservative sizing takes the
+; largest friend rung the budget holds: under 24 GiB the top rung (64 MiB of
+; history, 131,072 transactions) with R raised to the 8 MiB (4 MiB) article's
+; record at 16 groups.
+(assert! (hrt-sized-at (hrt-init *hrt-a8* *hrt-hbox* *hrt-24g*)
+                       '(:development ((2 . 131072) (3 . 67108864) (4 . 8393867)
+                                       (6 . 16) (8 . 128) (5 . 8388608)))
+                       24576))
+(assert! (hrt-sized-at (hrt-init *hrt-a4* *hrt-hbox* *hrt-24g*)
+                       '(:development ((2 . 131072) (3 . 67108864) (4 . 4199563)
+                                       (6 . 16) (8 . 128) (5 . 4194304)))
+                       24576))
+; On hbox without a limit: the same top rung.
+(assert! (equal (fn-heap-init-decision-request (hrt-init *hrt-a8* *hrt-hbox* nil))
+                '(:development ((2 . 131072) (3 . 67108864) (4 . 8393867)
+                                (6 . 16) (8 . 128) (5 . 8388608)))))
+; Under 2 GiB: the small candidate, H raised to its record.
+(assert! (equal (fn-heap-init-decision-request (hrt-init *hrt-a8* *hrt-hbox* *hrt-2g*))
+                '(:development ((2 . 16384) (3 . 8393867) (4 . 8393867) (6 . 16)
+                                (8 . 128) (5 . 8388608)))))
+; Each written profile keeps the request's A and resolves valid.
+(assert! (equal (fn-bs-profile-max-article-octets
+                 (fn-bs-profile-resolve
+                  (fn-heap-init-decision-request (hrt-init *hrt-a8* *hrt-hbox* *hrt-24g*)) nil))
+                8388608))
+(assert! (fn-bs-profile-admittedp
+          (fn-bs-profile-resolve
+           (fn-heap-init-decision-request (hrt-init *hrt-a4* *hrt-hbox* *hrt-24g*)) nil)))
+; Mutation: without the raise (the batch AR candidates) the same request
+; failed the article relations by name.
+(assert! (equal (fn-bs-profile-resolve '(:development ((5 . 8388608))) nil)
+                '(:invalid :max-record-octets-below-the-article-record)))
+(assert! (equal (fn-bs-profile-resolve
+                 '(:development ((2 . 16384) (3 . 8388608) (4 . 8393867) (6 . 16)
+                                 (8 . 128) (5 . 8388608))) nil)
+                '(:invalid :max-history-octets-below-max-record-octets)))
+; A candidate that already holds its article is returned unchanged (the
+; bare and mission witnesses above are the same requests as before).
+(assert! (equal (fn-heap-article-held '(:development nil)) '(:development nil)))
+(assert! (equal (fn-heap-article-held '(:development ((5 . 1048576) (6 . 8))))
+                '(:development ((5 . 1048576) (6 . 8)))))
+
+; Teeth for fn-heap-article-held-holds-the-article-record.  Positive: the
+; 8 MiB request, both hypotheses true, every conjunct of the conclusion.
+(defun hrt-held-conclusion (request)
+  (let* ((q (fn-heap-article-held request))
+         (v (fn-bs-profile-set-fields (fn-bs-config-for-profile (car q)) (cadr q)))
+         (v0 (fn-bs-profile-set-fields (fn-bs-config-for-profile (car request))
+                                       (cadr request))))
+    (and (equal (car q) (car request))
+         (not (equal v :bad))
+         (<= (fn-record-encoded-octets-ceiling (fn-bs-pf 5 v) (fn-bs-pf 6 v))
+             (fn-bs-pf 4 v))
+         (<= (fn-bs-pf 4 v) (fn-bs-pf 3 v))
+         (equal (fn-bs-pf 2 v) (fn-bs-pf 2 v0))
+         (equal (fn-bs-pf 5 v) (fn-bs-pf 5 v0))
+         (equal (fn-bs-pf 6 v) (fn-bs-pf 6 v0))
+         (<= (fn-bs-pf 3 v0) (fn-bs-pf 3 v))
+         (<= (fn-bs-pf 4 v0) (fn-bs-pf 4 v)))))
+(defconst *hrt-dev-a8* '(:development ((5 . 8388608))))
+(assert! (fn-bs-profile-requestp *hrt-dev-a8*))
+(assert! (not (equal (fn-bs-profile-set-fields
+                      (fn-bs-config-for-profile :development) '((5 . 8388608)))
+                     :bad)))
+(assert! (not (equal (fn-heap-article-held *hrt-dev-a8*) *hrt-dev-a8*)))
+(assert! (hrt-held-conclusion *hrt-dev-a8*))
+; Without the well-formed fields: a field index below 2 makes the values
+; :bad (the omitted hypothesis false, the request still a request), and
+; the conclusion fails.  The request hypothesis is kept: no counterexample
+; is known without it.
+(defconst *hrt-bad-field* '(:development ((1 . 5))))
+(assert! (fn-bs-profile-requestp *hrt-bad-field*))
+(assert! (equal (fn-bs-profile-set-fields (fn-bs-config-for-profile :development)
+                                          '((1 . 5)))
+                :bad))
+(assert! (not (hrt-held-conclusion *hrt-bad-field*)))
+(must-fail
+ (defthm hrt-held-without-the-fields
+   (implies (and (fn-bs-profile-requestp request)
+                 (equal request *hrt-bad-field*))
+            (hrt-held-conclusion request))
+   :hints (("Goal" :do-not-induct t))))
+; Teeth for fn-heap-article-held-meets-the-article-relations: the 8 MiB
+; request satisfies all three hypotheses and its candidate resolves to an
+; admitted profile (neither relation fails); the unraised request is the
+; mutation witness above.
+(assert! (not (equal (car *hrt-dev-a8*) :current)))
+(assert! (fn-bs-profile-admittedp
+          (fn-bs-profile-resolve (fn-heap-article-held *hrt-dev-a8*) nil)))
+; Its three hypotheses have no known counterexample (a request whose
+; fields are :bad, or that is not a request, resolves to (:invalid
+; :request)); a proof of the unconditional statement was not found, and a
+; failed search is not a counterexample, so they are kept (PKT in the record).
 
 ; A run's connections: the structural owner bound (PRF-211) is held at the
 ; default 32; a smaller bound is kept.

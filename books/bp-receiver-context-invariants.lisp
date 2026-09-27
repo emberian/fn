@@ -264,15 +264,16 @@
      (and (fn-bprv-entry-linkedp config contexts pending)
           (not (fn-bpr-find-receipt
             (fn-bpr-context-work-id (fn-bpr-receipt-entry-context pending)) receipts)))))
-(defun fn-bprv-relationalp (store st)
- (and (fn-bprv-contexts-backedp store (fn-bpr-state-config st) (fn-bpr-state-contexts st))
+(defun fn-bprv-relationalp (store st fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+ (and (fn-bprv-contexts-backedp store (fn-bpr-state-config st) (fn-bpr-state-contexts st) fn-arena)
       (fn-bprv-entries-linkedp (fn-bpr-state-config st) (fn-bpr-state-contexts st)
                               (fn-bpr-state-receipts st))
       (fn-bprv-pending-linkedp (fn-bpr-state-config st) (fn-bpr-state-contexts st)
                               (fn-bpr-state-receipts st) (fn-bpr-state-pending st))))
 
 (defthm fn-bprv-context-backed-implies-consp
- (implies (fn-bprv-context-backedp store config context) (consp context))
+ (implies (fn-bprv-context-backedp store config context fn-arena) (consp context))
  :hints (("Goal" :use ((:instance fn-bprv-found-record-binds
    (records (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))))
    :in-theory (e/d (fn-bprv-context-backedp fn-bprv-record-binds)
@@ -280,13 +281,13 @@
  :rule-classes :forward-chaining)
 (local (in-theory (disable fn-bprv-context-backedp fn-bprv-record-binds fn-bprv-find-record)))
 (defthm fn-bprv-nonnil-found-context-backed
- (implies (and (fn-bprv-contexts-backedp store config contexts)
+ (implies (and (fn-bprv-contexts-backedp store config contexts fn-arena)
                (fn-bpr-find-context id contexts))
-          (fn-bprv-context-backedp store config (fn-bpr-find-context id contexts)))
+          (fn-bprv-context-backedp store config (fn-bpr-find-context id contexts) fn-arena))
  :hints (("Goal" :induct (fn-bpr-find-context id contexts)
     :in-theory (enable fn-bpr-find-context))))
 (defthm fn-bprv-nonnil-found-context-consp
- (implies (and (fn-bprv-contexts-backedp store config contexts)
+ (implies (and (fn-bprv-contexts-backedp store config contexts fn-arena)
                (fn-bpr-find-context id contexts))
           (consp (fn-bpr-find-context id contexts)))
  :hints (("Goal" :use (fn-bprv-nonnil-found-context-backed
@@ -352,17 +353,17 @@
 (local (in-theory (disable fn-bprv-entry-linkedp fn-bprv-entries-linkedp
                            fn-bprv-pending-linkedp fn-bprv-contexts-backedp)))
 (defthm fn-bprv-accept-preserves-relation
- (implies (fn-bprv-relationalp store st)
+ (implies (fn-bprv-relationalp store st fn-arena)
   (fn-bprv-relationalp store
-   (cadr (fn-bpr-accept-request st store record request authorized))))
+   (cadr (fn-bpr-accept-request st store record request authorized fn-arena)) fn-arena))
  :hints (("Goal" :in-theory (enable fn-bpr-accept-request fn-bprv-relationalp
    fn-bprv-pending-linkedp))))
 (defthm fn-bprv-prepare-preserves-relation
- (implies (fn-bprv-relationalp store st)
-  (fn-bprv-relationalp store (fn-bpr-prepare-receipt st work-id receipt-id authorized)))
+ (implies (fn-bprv-relationalp store st fn-arena)
+  (fn-bprv-relationalp store (fn-bpr-prepare-receipt st work-id receipt-id authorized) fn-arena))
  :hints (("Goal" :in-theory (enable fn-bpr-prepare-receipt fn-bprv-relationalp))))
 (defthm fn-bprv-commit-preserves-relation
- (implies (fn-bprv-relationalp store st)
-  (fn-bprv-relationalp store (fn-bpr-commit-receipt st work-id receipt-id outcome)))
+ (implies (fn-bprv-relationalp store st fn-arena)
+  (fn-bprv-relationalp store (fn-bpr-commit-receipt st work-id receipt-id outcome) fn-arena))
  :hints (("Goal" :in-theory (enable fn-bpr-commit-receipt fn-bprv-relationalp
     fn-bprv-pending-linkedp fn-bprv-entries-linkedp))))

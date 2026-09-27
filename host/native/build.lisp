@@ -20,6 +20,12 @@
 ;; (books/records-attach-concrete.lisp): fn-rcon-record-encode-impl, equal to
 ;; fn-record-encode-impl on every input.
 (include-book "books/records-attach-concrete")
+;; The payload arena's byte-array attachment (books/payload-arena-attach.lisp)
+;; must precede the first book that introduces the generic `fn-arena' (ACL2
+;; refuses the attach-stobj once the name is in use).  Since the records flip
+;; the held record reaches the arena, so nearly every book below does: it
+;; comes right after the codec and record attachments, before any of them.
+(include-book "books/payload-arena-attach")
 (include-book "books/store-config")
 (include-book "books/identity")
 (include-book "books/hybrid-store-injected")
@@ -239,7 +245,7 @@
 ;; arena (the held record, the catalog) runs over one byte per payload octet
 ;; from the certificates it was certified with.  It must precede every
 ;; include that names fn-arena.
-(include-book "books/payload-arena-attach")
+;; (included above, before host/store-host.lisp: see the note there)
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the

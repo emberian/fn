@@ -7,6 +7,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-node-retention")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 (include-book "std/testing/must-fail" :dir :system)
 
 (defun snrt-reserve (s)
@@ -23,13 +24,28 @@
 
 ; One accepted article (charge 2) in a capacity-10 store: 8 units of room.
 (defconst *snrt-groups* '("fn.letters" "fn.test"))
-(defun snrt-article (sequence id charge)
+(defun snrt-article-wire (sequence id charge)
   (fn-record-make sequence sequence sequence
                   (if (equal id "snrt-pin-1") "<snrt-first@example.invalid>"
                     "<snrt-second@example.invalid>")
                   '(65 66) '("fn.test") id "snrt-subject" "snrt-release"
                   charge 841000000))
+; by specification: the flip -- the store retains held rows
+; (books/held-record.lisp), so the Store is handed the row the entry interns:
+; the first record on a fresh arena (handle 0); every later record is
+; interned after it (handle 1).  SNRT-ARTICLE-WIRE is the wire record.
+(defun snrt-article (sequence id charge)
+  (declare (xargs :verify-guards nil))
+  (if (equal sequence 0)
+      (car (fn-hrt-rows (list (snrt-article-wire 0 id charge)) nil 0))
+    (fn-hrt-row-after (list (snrt-article-wire 0 "snrt-pin-1" 2))
+                      (snrt-article-wire sequence id charge) nil 0)))
+(defconst *snrt-first-wire* (snrt-article-wire 0 "snrt-pin-1" 2))
 (defconst *snrt-first* (snrt-article 0 "snrt-pin-1" 2))
+(assert-event (and (fn-held-p *snrt-first*)
+                   (equal (fn-record-payload *snrt-first*) 0)
+                   (equal (fn-hrt-wire-of (list *snrt-first-wire*) (list *snrt-first*))
+                          (list *snrt-first-wire*))))
 (defconst *snrt-ready-one*
   (fn-sn-finish (snrt-publish (fn-spc-prepare
                                (snrt-reserve (fn-sn-initial *snrt-groups* 10))
@@ -50,7 +66,15 @@
 ; input, which store-node-host.lisp:475 answers as :refused.
 (defconst *snrt-unaffordable* (snrt-article 1 "snrt-pin-2" 9))
 (defconst *snrt-affordable* (snrt-article 1 "snrt-pin-2" 8))
-(assert-event (fn-record-p *snrt-unaffordable*))
+; by specification: the flip -- the wire record is fn-record-p; the row the
+; Store takes is fn-held-p, its payload the handle 1 over the same bytes.
+(assert-event (fn-record-p (snrt-article-wire 1 "snrt-pin-2" 9)))
+(assert-event (and (fn-held-p *snrt-unaffordable*)
+                   (equal (fn-record-payload *snrt-unaffordable*) 1)
+                   (equal (fn-hrt-bytes (list *snrt-first-wire*
+                                              (snrt-article-wire 1 "snrt-pin-2" 9))
+                                        1)
+                          '(65 66))))
 (assert-event (> (+ 2 (fn-record-charge *snrt-unaffordable*)) 10))
 (assert-event (equal (fn-spc-prepare *snrt-reserved* *snrt-unaffordable*) *snrt-reserved*))
 (assert-event (equal (fn-sn-prepare *snrt-reserved* *snrt-unaffordable*) *snrt-reserved*))
@@ -70,8 +94,10 @@
 ; fn-node-prepare-refuses-unaffordable-obligation, on the node the host's
 ; prepare hands it (fn-sn-prepare-node's advanced node).
 (defconst *snrt-node* (fn-replay-advance-txid (fn-sn-node *snrt-reserved*) 1))
+; by specification: the flip -- the node's payload is the arena handle (1,
+; the second record's) where it was the octets (65 66).
 (defun snrt-node-prepare (charge)
-  (fn-node-prepare *snrt-node* 1 "<snrt-second@example.invalid>" '(65 66)
+  (fn-node-prepare *snrt-node* 1 "<snrt-second@example.invalid>" 1
                    '("fn.test") "snrt-pin-2" "snrt-subject" "snrt-release"
                    charge 841000000))
 (assert-event (fn-node-statep *snrt-node*))
@@ -100,8 +126,9 @@
 (assert-event (equal (fn-retain-admit (fn-node-retention *snrt-node*) "snrt-pin-1"
                                       "snrt-subject" :archive "snrt-release" 1)
                      (fn-node-retention *snrt-node*)))
+; by specification: the flip -- the payload is the handle 1, not (65 66).
 (assert-event (equal (fn-node-prepare *snrt-node* 1 "<snrt-second@example.invalid>"
-                                      '(65 66) '("fn.test") "snrt-pin-1"
+                                      1 '("fn.test") "snrt-pin-1"
                                       "snrt-subject" "snrt-release" 1 841000000)
                      *snrt-node*))
 

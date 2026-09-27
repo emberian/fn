@@ -31,7 +31,9 @@ tar -xzf fn-6.7.N-linux-x86_64.tar.gz
 sh fn/install.sh
 ```
 
-As root, on OpenBSD:
+As root, on OpenBSD, unpack under `/usr/local` (not `/tmp` or `/root`:
+the installer runs the unpacked copy, and there it halts with
+`RWX mmap not supported`):
 
 ```sh
 sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz

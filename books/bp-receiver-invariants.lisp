@@ -254,7 +254,7 @@
  fn-bprv-contexts-backedp fn-bprv-context-backedp fn-bprv-entries-linkedp
  fn-bprv-entry-linkedp fn-bprv-pending-linkedp fn-bprv-entry-decidedp)))
 (defthm fn-bprv-initial-relational
- (fn-bprv-relationalp store (fn-bpr-initial-state config))
+ (fn-bprv-relationalp store (fn-bpr-initial-state config) fn-arena)
  :hints (("Goal" :in-theory (enable fn-bpr-initial-state fn-bprv-relationalp
   fn-bprv-contexts-backedp fn-bprv-entries-linkedp fn-bprv-pending-linkedp
   fn-bpr-state-config fn-bpr-state-contexts fn-bpr-state-receipts fn-bpr-state-pending fn-bpr-make-state fn-bpa-nth))))
@@ -274,12 +274,12 @@
    :use ((:instance fn-bprv-journal-subset-weaken
       (records (cdr records)) (journal (cdr records)) (r (car records)))))))
 (defthm fn-bprv-nil-relational
- (fn-bprv-relationalp store nil)
+ (fn-bprv-relationalp store nil fn-arena)
  :hints (("Goal" :in-theory (enable fn-bprv-relationalp fn-bprv-contexts-backedp
  fn-bprv-entries-linkedp fn-bprv-pending-linkedp fn-bpr-state-config
  fn-bpr-state-contexts fn-bpr-state-receipts fn-bpr-state-pending fn-bpa-nth))))
 (defthm fn-bprv-replay-has-context-and-store-relation
- (fn-bprv-relationalp store (cadr (fn-bprr-replay store records)))
+ (fn-bprv-relationalp store (cadr (fn-bprr-replay store records fn-arena)) fn-arena)
  :hints (("Goal" :in-theory (enable fn-bprr-replay))))
 (defthm fn-bprv-empty-receipts-decided
  (fn-bprv-entries-decidedp nil journal)
@@ -289,7 +289,7 @@
  :hints (("Goal" :in-theory (enable fn-bpr-state-receipts fn-bpa-nth))))
 (defthm fn-bprv-replay-receipts-have-committed-decisions
  (fn-bprv-entries-decidedp
-  (fn-bpr-state-receipts (cadr (fn-bprr-replay store records))) records)
+  (fn-bpr-state-receipts (cadr (fn-bprr-replay store records fn-arena))) records)
  :hints (("Goal"
   :use ((:instance fn-bprv-replay-rest-preserves-decisions
     (st (fn-bpr-initial-state (fn-bprr-config (car records))))
@@ -319,11 +319,11 @@
  :hints (("Goal" :in-theory (enable fn-bpr-receipt-adu fn-bpr-find-receipt))))
 (defthm fn-bprv-replay-no-receipt-before-committed-decision
  (implies (fn-bprv-no-committed-decisionsp records)
-  (equal (fn-bpr-receipt-adu (cadr (fn-bprr-replay store records)) request) nil))
+  (equal (fn-bpr-receipt-adu (cadr (fn-bprr-replay store records fn-arena)) request) nil))
  :hints (("Goal"
   :use (fn-bprv-replay-receipts-have-committed-decisions
         (:instance fn-bprv-no-commit-no-committed-receipts
           (journal records)
-          (entries (fn-bpr-state-receipts (cadr (fn-bprr-replay store records))))))
+          (entries (fn-bpr-state-receipts (cadr (fn-bprr-replay store records fn-arena))))))
   :in-theory (disable fn-bprv-replay-receipts-have-committed-decisions
                        fn-bprv-no-commit-no-committed-receipts))))

@@ -502,7 +502,7 @@
 ; refuse outright.
 (defthm fn-relay-accept-request-receipts
   (equal (fn-bpr-state-receipts
-          (car (cdr (fn-bpr-accept-request st store record request auth))))
+          (car (cdr (fn-bpr-accept-request st store record request auth fn-arena))))
          (fn-bpr-state-receipts st))
   :hints (("Goal" :do-not-induct t :in-theory (e/d (fn-bpr-accept-request)
                                   (fn-bpr-statep fn-bpr-request-acceptablep
@@ -514,7 +514,7 @@
   (implies (null (fn-bpr-state-pending st))
            (null (fn-bpr-state-pending
                   (car (cdr (fn-bpr-accept-request st store record
-                                                   request auth))))))
+                                                   request auth fn-arena))))))
   :hints (("Goal" :do-not-induct t :in-theory (e/d (fn-bpr-accept-request)
                                   (fn-bpr-statep fn-bpr-request-acceptablep
                                                  fn-bpr-context-from-request
@@ -523,7 +523,7 @@
 
 (defthm fn-relay-accept-request-with-pending
   (implies (consp (fn-bpr-state-pending st))
-           (equal (car (cdr (fn-bpr-accept-request st store record request auth)))
+           (equal (car (cdr (fn-bpr-accept-request st store record request auth fn-arena)))
                   st))
   :hints (("Goal" :do-not-induct t :in-theory (e/d (fn-bpr-accept-request)
                                   (fn-bpr-statep fn-bpr-request-acceptablep
@@ -532,12 +532,12 @@
                                                  fn-bpr-find-context-msgid)))))
 
 (defthm fn-relay-accept-state-formula
-  (equal (car (cdr (fn-relay-accept rs record request auth)))
+  (equal (car (cdr (fn-relay-accept rs record request auth fn-arena)))
          (fn-relay-make-state
           (fn-relay-store rs)
           (car (cdr (fn-bpr-accept-request (fn-relay-receiver rs)
                                            (fn-relay-store rs)
-                                           record request auth)))
+                                           record request auth fn-arena)))
           (fn-relay-sender rs) (fn-relay-terms rs) (fn-relay-undertakings rs)))
   :hints (("Goal" :do-not-induct t :in-theory (e/d (fn-relay-accept) (fn-bpr-accept-request)))))
 
@@ -545,7 +545,7 @@
 
 (defthm fn-relay-accept-preserves-invp
   (implies (fn-relay-invp rs)
-           (fn-relay-invp (car (cdr (fn-relay-accept rs record request auth)))))
+           (fn-relay-invp (car (cdr (fn-relay-accept rs record request auth fn-arena)))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-relay-statep-components)
                  (:instance fn-relay-accept-request-receipts

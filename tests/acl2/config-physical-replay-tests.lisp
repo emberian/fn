@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/config-physical-replay")
+(include-book "held-rows-tests")
 
 (defconst *cpr-t-stamp* *fn-cfg-default-stamp*)
 (defconst *cpr-t-undertake*
@@ -17,13 +18,25 @@
   (fn-cfg-record-make 1 7 2 (list (fn-cfg-set-capacity 1)) *cpr-t-stamp*))
 (defconst *cpr-t-increase*
   (fn-cfg-record-make 2 7 3 (list (fn-cfg-set-capacity 20)) *cpr-t-stamp*))
-(defconst *cpr-t-article*
+(defconst *cpr-t-article-wire*
   (fn-record-make 2 7 7 "<cpr@example.invalid>" '(65) '("fn.test")
                   "archive-cpr" "subject" "evidence" 2 841000000))
 (defconst *cpr-t-configs*
   (list *fn-cfg-default-record* *cpr-t-decrease* *cpr-t-increase*))
-(defconst *cpr-t-events*
-  (list *cpr-t-undertake* *cpr-t-release* *cpr-t-article*))
+(defconst *cpr-t-events-wire*
+  (list *cpr-t-undertake* *cpr-t-release* *cpr-t-article-wire*))
+; by specification: the flip -- the store replays retained rows
+; (books/held-record.lisp): the open interns the decoded events in order on
+; a fresh arena (store-intern fn-intern-events, keyring nil at generation 0);
+; the two retention events pass through and the article is the row at handle
+; 0, whose bytes are its octets.
+(defconst *cpr-t-events* (fn-hrt-rows *cpr-t-events-wire* nil 0))
+(defconst *cpr-t-article* (caddr *cpr-t-events*))
+(assert-event (and (equal (car *cpr-t-events*) *cpr-t-undertake*)
+                   (equal (cadr *cpr-t-events*) *cpr-t-release*)
+                   (fn-held-p *cpr-t-article*)
+                   (equal (fn-record-payload *cpr-t-article*) 0)
+                   (equal (fn-hrt-bytes *cpr-t-events-wire* 0) '(65))))
 (defconst *cpr-t-open* (fn-cpr-replay *cpr-t-configs* *cpr-t-events*))
 
 ; The high charge was valid at its historical capacity, then was released.
@@ -146,9 +159,14 @@
 (assert-event (not (equal *cpr-t-step* *cpr-t-configured*)))
 ; The one hypothesis: a refused event (here, an article in a group the
 ; configuration does not serve) leaves NIL, which is not a configured node.
-(defconst *cpr-t-unserved*
+(defconst *cpr-t-unserved-wire*
   (fn-record-make 1 1 1 "<cpr-unserved@example.invalid>" '(65) '("no.such.group")
                   "archive-cpr-2" "subject" "evidence" 2 841000000))
+; by specification: the flip -- the refused article is a retained row (the
+; first record interned, handle 0), so the refusal is the unserved group's and
+; not the wire record's shape.
+(defconst *cpr-t-unserved* (fn-hrt-row-at *cpr-t-unserved-wire* 0))
+(assert-event (fn-store-event-p *cpr-t-unserved*))
 (assert-event (null (fn-cpr-apply-event *cpr-t-step* *cpr-t-unserved*)))
 (must-fail
  (defthm cpr-t-apply-event-statep-without-non-refusal

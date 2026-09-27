@@ -382,12 +382,12 @@
 
 ; -----------------------------------------------------------------------------
 ; T2: the article completion at the host's finish.  The host installs
-; (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg))),
+; (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena))),
 ; and fn-ccar-own-finish is fn-own-finish, whose owner is fn-own-complete.
 
 (local
  (defthm fn-cbo-finish-owner-is-complete
-   (equal (cdr (fn-ccar-own-finish o cfg)) (fn-own-complete o))
+   (equal (cdr (fn-ccar-own-finish o cfg fn-arena)) (fn-own-complete o))
    :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
                                               '(fn-ccar-own-finish-is-own-finish fn-own-finish
                                                 cdr-cons))))))
@@ -434,7 +434,7 @@
                 (equal (fn-held-wire-of (fn-pc-held pending) fn-arena) w)
                 (fn-record-p w))
            (fn-cat-ocl-relation
-            (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg)))
+            (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))
             fn-arena
             (mv-nth 2 (fn-cat-complete token pending fn-cat))))
   :hints (("Goal" :use (fn-ocmt-post-commit-preserves-ocl-relation
@@ -482,7 +482,7 @@
                 (fn-cat-history-relation
                  (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena fn-cat))
            (fn-cat-ocl-relation
-            (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg)))
+            (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))
             fn-arena fn-cat))
   :hints (("Goal" :use (fn-ocmt-post-commit-preserves-ocl-relation
                         (:instance fn-snt-finish-keeps-records (s (fn-own-store (fn-ocfg-owner oc))))

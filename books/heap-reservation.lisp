@@ -318,8 +318,10 @@
 ;; the history binds first), and R raised to the article record the
 ;; candidate's A (the request's, else the development base's 32,768) and G
 ;; (the request's, else 16) need (fn-bs-profile-invalid-reason's
-;; :max-record-octets-below-the-article-record).  The request's fields come
-;; last, so they are the ones set.
+;; :max-record-octets-below-the-article-record), with H at least that R
+;; (:max-history-octets-below-max-record-octets: an 8 MiB article's record is
+;; past the 8 MiB floor; fix-line-stack).  The request's fields come last, so
+;; they are the ones set.
 (defun fn-heap-friend-candidate (request h)
   (declare (xargs :guard t))
   (let* ((fields (cadr (true-list-fix request)))
@@ -327,7 +329,7 @@
          (g (fn-heap-field-or 6 fields 16))
          (r (max 196608 (nfix (fn-record-encoded-octets-ceiling a g)))))
     (list :development
-          (append (list (cons 2 (floor (nfix h) 512)) (cons 3 (nfix h)) (cons 4 r)
+          (append (list (cons 2 (floor (nfix h) 512)) (cons 3 (max (nfix h) r)) (cons 4 r)
                         (cons 6 16) (cons 8 128))
                   (true-list-fix fields)))))
 
@@ -472,13 +474,246 @@
   (cons (fn-heap-available-physical-octets physical)
         (cons (if (posp explicit) explicit nil) limits)))
 
+; A candidate that holds the request's article.  The request's A and G are
+; laid over a preset whose R and H were derived from the preset's own A
+; (fn-bs-profile-preset: R the larger of H / T and the article record); a
+; request whose article record is past R (development's R holds a 32 KiB
+; article at 65,535 groups, so a 4 MiB article bound already exceeds it) left
+; a candidate that failed :max-record-octets-below-the-article-record, and
+; the small candidate's R raised past its 8 MiB H failed
+; :max-history-octets-below-max-record-octets: `init --max-article-octets
+; 8388608' was refused as invalid-init-profile on every machine (batch AR,
+; tests/test_native_served_line_stack.py).  Here R is raised to the article
+; record of the candidate's A and G and H to at least R, as the preset
+; derivation does; nothing is lowered, and a candidate that already holds
+; its article is returned unchanged.  Whether the budget holds the raised
+; reservation is the decision's, as for every candidate.
+;; The two fields that raise R and H, or NIL when VALS already hold the
+;; article record under an H of at least R (or are :bad).
+(defun fn-heap-article-raise (vals)
+  (declare (xargs :guard t))
+  (let* ((r0 (fn-bs-pf 4 vals))
+         (h0 (fn-bs-pf 3 vals))
+         (r (max r0 (nfix (fn-record-encoded-octets-ceiling
+                           (fn-bs-pf 5 vals) (fn-bs-pf 6 vals)))))
+         (h (max h0 r)))
+    (if (or (equal vals :bad) (and (equal r r0) (equal h h0)))
+        nil
+      (list (cons 3 h) (cons 4 r)))))
+
+(defun fn-heap-article-held (request)
+  (declare (xargs :guard t))
+  (let* ((request (true-list-fix request))
+         (preset (car request))
+         (fields (true-list-fix (cadr request)))
+         (raise (fn-heap-article-raise
+                 (fn-bs-profile-set-fields (fn-bs-config-for-profile preset) fields))))
+    (if raise (list preset (append fields raise)) request)))
+
+;; Its proof obligations: what it returns is a request, keeps the preset,
+;; T, A and G, never lowers H or R, and holds the article record under an
+;; H of at least R.
+(local (defthm fn-heap-set-fields-of-append
+  (implies (not (equal (fn-bs-profile-set-fields v a) :bad))
+           (equal (fn-bs-profile-set-fields v (append a b))
+                  (fn-bs-profile-set-fields (fn-bs-profile-set-fields v a) b)))))
+
+(local (defthm fn-heap-meta-nth-of-put
+  (implies (and (natp i) (natp j))
+           (equal (fn-bs-meta-nth i (fn-bs-profile-put j x v))
+                  (if (equal i j) x (fn-bs-meta-nth i v))))))
+
+(local (defthm fn-heap-pf-of-put
+  (implies (and (natp i) (natp j))
+           (equal (fn-bs-pf i (fn-bs-profile-put j x v))
+                  (if (equal i j) (nfix x) (fn-bs-pf i v))))))
+
+(local (defthm fn-heap-record-ceiling-natp
+  (implies (and (natp a) (natp g))
+           (natp (fn-record-encoded-octets-ceiling a g)))
+  :rule-classes :type-prescription))
+
+(local (defthm fn-heap-alistp-of-append
+  (implies (and (alistp a) (alistp b)) (alistp (append a b)))))
+
+(defthm fn-heap-article-raise-alistp
+  (alistp (fn-heap-article-raise vals))
+  :hints (("Goal" :in-theory (disable fn-record-encoded-octets-ceiling fn-bs-pf max))))
+
+; Setting the raise's two fields over VALS.
+(local (defthm fn-heap-set-fields-of-the-raise
+  (let ((raise (fn-heap-article-raise v0)))
+    (implies (and raise (not (equal v :bad)))
+             (equal (fn-bs-profile-set-fields v raise)
+                    (fn-bs-profile-put 4 (cdr (cadr raise))
+                                       (fn-bs-profile-put 3 (cdr (car raise)) v)))))
+  :hints (("Goal" :in-theory (disable fn-record-encoded-octets-ceiling fn-bs-pf)))))
+
+(defthm fn-heap-article-raise-holds-the-article-record
+  (let ((raise (fn-heap-article-raise v0)))
+    (implies (not (equal v0 :bad))
+             (let ((v (if raise
+                          (fn-bs-profile-put 4 (cdr (cadr raise))
+                                             (fn-bs-profile-put 3 (cdr (car raise)) v0))
+                        v0)))
+               (and (<= (fn-record-encoded-octets-ceiling (fn-bs-pf 5 v) (fn-bs-pf 6 v))
+                        (fn-bs-pf 4 v))
+                    (<= (fn-bs-pf 4 v) (fn-bs-pf 3 v))
+                    (equal (fn-bs-pf 2 v) (fn-bs-pf 2 v0))
+                    (equal (fn-bs-pf 5 v) (fn-bs-pf 5 v0))
+                    (equal (fn-bs-pf 6 v) (fn-bs-pf 6 v0))
+                    (<= (fn-bs-pf 3 v0) (fn-bs-pf 3 v))
+                    (<= (fn-bs-pf 4 v0) (fn-bs-pf 4 v))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-record-encoded-octets-ceiling fn-bs-pf
+                                      fn-bs-profile-put))))
+
+(defthm fn-heap-article-held-is-a-request
+  (implies (fn-bs-profile-requestp request)
+           (fn-bs-profile-requestp (fn-heap-article-held request)))
+  :hints (("Goal" :in-theory (disable fn-heap-article-raise fn-bs-profile-set-fields
+                                      fn-bs-config-for-profile
+                                      (:e fn-bs-config-for-profile) member-equal)
+           :expand ((fn-bs-profile-requestp request)))))
+
+(local (defthm fn-heap-article-raise-is-not-of-bad
+  (implies (fn-heap-article-raise v) (not (equal v :bad)))
+  :rule-classes :forward-chaining))
+
+(local (defthm fn-heap-profile-put-is-not-bad
+  (not (equal (fn-bs-profile-put i x v) :bad))
+  :hints (("Goal" :expand ((fn-bs-profile-put i x v))))))
+
+; The values the held request resolves over: the request's, with the
+; raise's two fields set when there is one.
+(defthm fn-heap-article-held-values
+  (implies (fn-bs-profile-requestp request)
+           (let ((v0 (fn-bs-profile-set-fields (fn-bs-config-for-profile (car request))
+                                               (cadr request))))
+             (and (equal (car (fn-heap-article-held request)) (car request))
+                  (equal (fn-bs-profile-set-fields
+                          (fn-bs-config-for-profile (car (fn-heap-article-held request)))
+                          (cadr (fn-heap-article-held request)))
+                         (if (fn-heap-article-raise v0)
+                             (fn-bs-profile-put 4 (cdr (cadr (fn-heap-article-raise v0)))
+                                                (fn-bs-profile-put 3 (cdr (car (fn-heap-article-raise v0))) v0))
+                           v0)))))
+  :hints (("Goal" :in-theory (disable fn-heap-article-raise fn-bs-profile-set-fields
+                                      fn-bs-config-for-profile (:e fn-bs-config-for-profile)
+                                      fn-bs-profile-put member-equal)
+           :expand ((fn-bs-profile-requestp request))
+           :use ((:instance fn-heap-set-fields-of-the-raise
+                            (v0 (fn-bs-profile-set-fields (fn-bs-config-for-profile (car request)) (cadr request)))
+                            (v (fn-bs-profile-set-fields (fn-bs-config-for-profile (car request)) (cadr request)))))))
+  :rule-classes nil)
+
+(defthm fn-heap-article-held-holds-the-article-record
+  (let* ((q (fn-heap-article-held request))
+         (v (fn-bs-profile-set-fields (fn-bs-config-for-profile (car q)) (cadr q)))
+         (v0 (fn-bs-profile-set-fields (fn-bs-config-for-profile (car request))
+                                       (cadr request))))
+    (implies (and (fn-bs-profile-requestp request)
+                  (not (equal v0 :bad)))
+             (and (equal (car q) (car request))
+                  (not (equal v :bad))
+                  (<= (fn-record-encoded-octets-ceiling (fn-bs-pf 5 v) (fn-bs-pf 6 v))
+                      (fn-bs-pf 4 v))
+                  (<= (fn-bs-pf 4 v) (fn-bs-pf 3 v))
+                  (equal (fn-bs-pf 2 v) (fn-bs-pf 2 v0))
+                  (equal (fn-bs-pf 5 v) (fn-bs-pf 5 v0))
+                  (equal (fn-bs-pf 6 v) (fn-bs-pf 6 v0))
+                  (<= (fn-bs-pf 3 v0) (fn-bs-pf 3 v))
+                  (<= (fn-bs-pf 4 v0) (fn-bs-pf 4 v)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-heap-profile-put-is-not-bad)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-heap-article-raise-holds-the-article-record
+                            (v0 (fn-bs-profile-set-fields
+                                 (fn-bs-config-for-profile (car request))
+                                 (cadr request))))
+                 (:instance fn-heap-article-held-values)))))
+
+(local (defthm fn-heap-invalid-history-below-record-means
+  (implies (equal (fn-bs-profile-invalid-reason v)
+                  :max-history-octets-below-max-record-octets)
+           (< (fn-bs-pf 3 v) (fn-bs-pf 4 v)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bs-pf fn-frame-values-okp fn-bs-profile-countp
+                                      fn-record-encoded-octets-ceiling)))))
+
+(local (defthm fn-heap-invalid-record-below-article-means
+  (implies (equal (fn-bs-profile-invalid-reason v)
+                  :max-record-octets-below-the-article-record)
+           (< (fn-bs-pf 4 v)
+              (fn-record-encoded-octets-ceiling (fn-bs-pf 5 v) (fn-bs-pf 6 v))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-bs-pf fn-frame-values-okp fn-bs-profile-countp
+                                      fn-record-encoded-octets-ceiling)))))
+
+; KEYSTONE (fix-line-stack).  A candidate built from a preset request whose
+; fields are well formed never fails either article relation: the store
+; init sizes for a request's article bound is refused, if at all, for its
+; reservation against the budget, never as an invalid profile.
+(defthm fn-heap-article-held-meets-the-article-relations
+  (implies (and (fn-bs-profile-requestp request)
+                (not (equal (car request) :current))
+                (not (equal (fn-bs-profile-set-fields
+                             (fn-bs-config-for-profile (car request))
+                             (cadr request))
+                            :bad)))
+           (let ((p (fn-bs-profile-resolve (fn-heap-article-held request) nil)))
+             (and (not (equal p (list :invalid :max-history-octets-below-max-record-octets)))
+                  (not (equal p (list :invalid :max-record-octets-below-the-article-record))))))
+  :hints (("Goal" :in-theory (e/d (fn-bs-profile-resolve)
+                                  (fn-heap-article-held fn-bs-profile-set-fields
+                                   fn-bs-config-for-profile fn-bs-profile-invalid-reason
+                                   fn-record-encoded-octets-ceiling
+                                   fn-bs-profile-put fn-bs-pf fn-bs-profile-requestp))
+           :use ((:instance fn-heap-article-held-holds-the-article-record)
+                 (:instance fn-heap-article-held-is-a-request)
+                 (:instance fn-heap-invalid-history-below-record-means
+                            (v (fn-bs-profile-set-fields
+                                (fn-bs-config-for-profile (car (fn-heap-article-held request)))
+                                (cadr (fn-heap-article-held request)))))
+                 (:instance fn-heap-invalid-record-below-article-means
+                            (v (fn-bs-profile-set-fields
+                                (fn-bs-config-for-profile (car (fn-heap-article-held request)))
+                                (cadr (fn-heap-article-held request)))))
+                 (:instance fn-heap-invalid-history-below-record-means
+                            (v (fn-bs-profile-put
+                                8 (min (fn-bs-pf 8 (fn-bs-profile-set-fields
+                                                    (fn-bs-config-for-profile (car (fn-heap-article-held request)))
+                                                    (cadr (fn-heap-article-held request))))
+                                       (fn-bs-pf 2 (fn-bs-profile-set-fields
+                                                    (fn-bs-config-for-profile (car (fn-heap-article-held request)))
+                                                    (cadr (fn-heap-article-held request)))))
+                                (fn-bs-profile-set-fields
+                                 (fn-bs-config-for-profile (car (fn-heap-article-held request)))
+                                 (cadr (fn-heap-article-held request))))))
+                 (:instance fn-heap-invalid-record-below-article-means
+                            (v (fn-bs-profile-put
+                                8 (min (fn-bs-pf 8 (fn-bs-profile-set-fields
+                                                    (fn-bs-config-for-profile (car (fn-heap-article-held request)))
+                                                    (cadr (fn-heap-article-held request))))
+                                       (fn-bs-pf 2 (fn-bs-profile-set-fields
+                                                    (fn-bs-config-for-profile (car (fn-heap-article-held request)))
+                                                    (cadr (fn-heap-article-held request)))))
+                                (fn-bs-profile-set-fields
+                                 (fn-bs-config-for-profile (car (fn-heap-article-held request)))
+                                 (cadr (fn-heap-article-held request)))))))))
+  :rule-classes nil)
+
+(defun fn-heap-preset-candidate (preset request)
+  (declare (xargs :guard t))
+  (fn-heap-article-held (list preset (cadr (true-list-fix request)))))
+
 (defun fn-heap-init-candidates (request sizing)
   (declare (xargs :guard t))
-  (let ((fields (cadr (true-list-fix request))))
-    (if (equal sizing :largest)
-        (list (list :scale fields) (list :development fields)
-              (fn-heap-small-candidate request))
-      (fn-heap-friend-ladder request *fn-heap-friend-rungs*))))
+  (if (equal sizing :largest)
+      (list (fn-heap-preset-candidate :scale request)
+            (fn-heap-preset-candidate :development request)
+            (fn-heap-small-candidate request))
+    (fn-heap-friend-ladder request *fn-heap-friend-rungs*)))
 
 ; The request init writes, before the budget is checked: the operator's, or
 ; for a capacity-free request the first candidate the budget holds (else the
@@ -704,6 +939,15 @@
                                   :heap)))))
   :hints (("Goal" :in-theory (e/d (fn-heap-reserve-acceptsp)
                                   (fn-heap-init-decide fn-heap-init-decision-request
+                                   ;; lane fix-line-stack: the figure's and
+                                   ;; the decision's definitions are
+                                   ;; useless here (3.8 s -> 0.1 s)
+                                   fn-heap-figure-octets
+                                   fn-heap-decide fn-bs-profile-field fn-bs-profile-validp
+                                   fn-heap-reserve-decide-keeps-heap-figures-refusals
+                                   fn-heap-reserve-decide-refuses-exactly-past-the-machine
+                                   fn-ock-capture-budget fn-bs-profile-max-history-octets
+                                   fn-bs-profile-max-record-octets
                                    fn-heap-reserve-decide fn-bs-profile-resolve
                                    fn-bs-profile-admittedp fn-heap-init-chosen
                                    fn-heap-init-reservation-octets
@@ -844,12 +1088,22 @@
             (and (equal (fn-heap-request-transactions
                          (fn-heap-friend-candidate request h))
                         (floor (nfix h) 512))
-                 (equal (fn-heap-request-history
-                         (fn-heap-friend-candidate request h))
-                        (nfix h))))))
+                 (<= (nfix h)
+                     (fn-heap-request-history
+                      (fn-heap-friend-candidate request h)))))))
 
 (local (in-theory (disable fn-heap-request-transactions fn-heap-request-history
                            fn-heap-friend-candidate)))
+
+;; A rung's H is at least the rung (the larger of it and R, batch AV).
+(local
+ (defthm fn-heap-friend-candidate-history-is-at-least-the-rung
+   (implies (fn-heap-capacity-free-fieldsp (cadr (true-list-fix request)))
+            (<= (nfix h)
+                (fn-heap-request-history (fn-heap-friend-candidate request h))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-heap-request-history fn-heap-friend-candidate)
+                   :use ((:instance fn-heap-friend-candidate-sets))))))
 
 (local
  (defthm fn-heap-friend-ladder-holds-the-floor
@@ -915,15 +1169,15 @@
   (implies (and (fn-heap-machine-sized-requestp request)
                 (not (equal (fn-heap-init-explicit-budget budget-octets) :bad))
                 (fn-heap-reserve-acceptsp
-                 (list :scale (cadr (true-list-fix request))) core nursery
+                 (fn-heap-preset-candidate :scale request) core nursery
                  (fn-heap-init-observations physical limits
                                             (fn-heap-init-explicit-budget budget-octets))))
            (equal (fn-heap-init-decision-request
                    (fn-heap-init-decide request core nursery physical limits
                                         budget-octets
                                         '(108 97 114 103 101 115 116)))
-                  (list :scale (cadr (true-list-fix request)))))
-  :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp
+                  (fn-heap-preset-candidate :scale request)))
+  :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp fn-heap-preset-candidate
                                       fn-bs-profile-resolve
                                       fn-heap-init-reservation-octets
                                       fn-heap-machine-octets

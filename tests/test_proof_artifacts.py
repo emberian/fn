@@ -51,7 +51,29 @@ class ProfileTests(unittest.TestCase):
                         "default", "host/native/build.lisp", "build/fn-host",
                         ("host/owner-host.lisp",))}):
                 self.assertEqual(proof_artifacts.profile_roots(root, "default"), [
-                    "books/future-owner-root", "books/native", "books/owner-fault"])
+                    "books/native", "books/owner-fault", "books/future-owner-root"])
+
+    def test_roots_keep_the_image_load_order(self):
+        # An attachment must precede the generic it attaches (the payload
+        # arena): the check loads the roots in the build script's order,
+        # following each ld where it occurs, never sorted.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "host/native").mkdir(parents=True)
+            (root / "host/native/build.lisp").write_text(
+                '(include-book "books/zeta")\n'
+                '(include-book "books/payload-arena-attach")\n'
+                '(ld "host/store-host.lisp" :ld-error-action :error)\n'
+                '(include-book "books/alpha")\n', encoding="utf-8")
+            (root / "host/store-host.lisp").write_text(
+                '(include-book "../books/store-intern")\n'
+                '(include-book "../books/zeta")\n', encoding="utf-8")
+            with mock.patch.dict(proof_artifacts.PROFILES, {
+                    "default": proof_artifacts.NativeProfile(
+                        "default", "host/native/build.lisp", "build/fn-host", ())}):
+                self.assertEqual(proof_artifacts.profile_roots(root, "default"), [
+                    "books/zeta", "books/payload-arena-attach",
+                    "books/store-intern", "books/alpha"])
 
 
 class AcquisitionTests(unittest.TestCase):
