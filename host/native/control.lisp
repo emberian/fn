@@ -843,11 +843,15 @@ client prints from (the checks the host made before PKT-709)."
        (otherwise 0))))
 
 (defun fnn-control-consumer-maximum (operation)
-  (fnn-core (case operation
-              ((:poll :bound-poll :wait :bound-wait)
-               'fn-native-control-host-consumer-poll-max-frame)
-              (:status 'fn-native-control-host-consumer-status-max-frame)
-              (otherwise 'fn-native-control-host-max-frame))))
+  "The reply bound: the operation's consumer reply, or the reasoned reply a
+refusal comes as (PKT-709), whichever is larger (a status reply is 13
+payload octets; a reason word is not)."
+  (max (fnn-core (case operation
+                   ((:poll :bound-poll :wait :bound-wait)
+                    'fn-native-control-host-consumer-poll-max-frame)
+                   (:status 'fn-native-control-host-consumer-status-max-frame)
+                   (otherwise 'fn-native-control-host-max-frame)))
+       (fnn-core 'fn-native-control-host-max-frame)))
 
 (defun fnn-control-consumer-plain (path operation first second)
   "The kind-4 exchange (an old owner's, after it refused kind 22 unread):
