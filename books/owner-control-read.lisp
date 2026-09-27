@@ -578,6 +578,8 @@
                          (list (list :command line)))
                   (not (equal (fn-wire-state-mode w2) :closed))
                   (fn-octl-reader-hyps (fn-served-conn-session conn) tokens line)
+                  (not (fn-auth-access-restrictedp (fn-served-conn-session conn)
+                                                   (fn-served-conn-config conn)))
                   (not (fn-post-offeredp
                         (fn-nntp-result-effects (fn-octl-reply conn line)))))
              (equal (fn-served-result-effects
@@ -633,6 +635,8 @@
                          (list (list :command line)))
                   (not (equal (fn-wire-state-mode w2) :closed))
                   (fn-octl-reader-hyps (fn-own-conn-live-session o conn) tokens line)
+                  (not (fn-auth-access-restrictedp (fn-own-conn-live-session o conn)
+                                                   (fn-own-conn-config conn)))
                   (not (fn-post-offeredp (fn-nntp-result-effects reply))))
              (equal (car (fn-own-read o id (append prefix (list byte))))
                     (fn-nntp-result-effects reply))))

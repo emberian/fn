@@ -112,7 +112,9 @@
 ; ---------------------------------------------------------------------------
 ; PRF-168 keystone fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment:
 ; the hypothesis vector in the theorem's order (the fn-octl-reader-hyps
-; conjunction is literal 7) and its right-hand side.
+; conjunction is literal 7; literal 8 is PRF-222's: the session has no access
+; rule, whose teeth are in tests/acl2/group-access-tests.lisp) and its
+; right-hand side.
 (defun fn-oert-hyps (o id prefix byte)
   (let* ((conn (fn-own-find-conn id (fn-own-conns o)))
          (w0 (fn-own-conn-wire conn))
@@ -129,6 +131,7 @@
           (equal events (list (list :command line)))
           (not (equal (fn-wire-state-mode w2) :closed))
           (and (fn-octl-reader-hyps as tokens line) t)
+          (not (fn-auth-access-restrictedp as (fn-own-conn-config conn)))
           (consp (cddr tokens))
           (null (cdddr tokens))
           (fn-nntp-keywordp (car tokens) "HDR")
@@ -162,9 +165,9 @@
 
 ; Reachable witnesses: every premise holds on readers B, C and D, the reply
 ; is the right-hand side, and the three items differ.
-(assert-event (equal (fn-oert-hyps *ov-reader-b* 2 *oer-prefix* *oer-lf*) (fn-oert-all 15)))
-(assert-event (equal (fn-oert-hyps *ov-reader-c* 3 *oer-prefix* *oer-lf*) (fn-oert-all 15)))
-(assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-prefix* *oer-lf*) (fn-oert-all 15)))
+(assert-event (equal (fn-oert-hyps *ov-reader-b* 2 *oer-prefix* *oer-lf*) (fn-oert-all 16)))
+(assert-event (equal (fn-oert-hyps *ov-reader-c* 3 *oer-prefix* *oer-lf*) (fn-oert-all 16)))
+(assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-prefix* *oer-lf*) (fn-oert-all 16)))
 (assert-event (equal (car (fn-own-read *ov-reader-b* 2 *oer-hdr*))
                      (fn-oert-rhs *ov-reader-b* 2 *oer-prefix* *oer-lf*)))
 (assert-event (equal (car (fn-own-read *ov-reader-c* 3 *oer-hdr*))
@@ -178,7 +181,7 @@
 (defconst *oer-nosuch* (fn-oert-line "HDR :fn-enrollment <nosuch@example.invalid>"))
 (defconst *oer-nosuch-prefix* (butlast *oer-nosuch* 1))
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-nosuch-prefix* *oer-lf*)
-                     (fn-oert-only-false 14 15)))
+                     (fn-oert-only-false 15 16)))
 (assert-event (equal (fn-served-reply-octets (car (fn-own-read *oer-reader-d* 4 *oer-nosuch*)))
                      (fn-oert-line "430 no article with that message-id")))
 (must-fail
@@ -199,7 +202,7 @@
 ; answers the historical verdict, not the enrollment.
 (defconst *oer-verified-prefix* (butlast *ov-hdr* 1))
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-verified-prefix* *oer-lf*)
-                     (fn-oert-only-false 10 15)))
+                     (fn-oert-only-false 11 16)))
 (must-fail
  (thm (equal (car (fn-own-read *oer-reader-d* 4 *ov-hdr*))
              (fn-oert-rhs *oer-reader-d* 4 *oer-verified-prefix* *oer-lf*))))
@@ -208,7 +211,7 @@
 (defconst *oer-xhdr* (fn-oert-line "XHDR :fn-enrollment <carried@example.invalid>"))
 (defconst *oer-xhdr-prefix* (butlast *oer-xhdr* 1))
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-xhdr-prefix* *oer-lf*)
-                     (fn-oert-only-false 9 15)))
+                     (fn-oert-only-false 10 16)))
 (must-fail
  (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-xhdr*))
              (fn-oert-rhs *oer-reader-d* 4 *oer-xhdr-prefix* *oer-lf*))))
@@ -219,7 +222,7 @@
 (defconst *oer-range* (fn-oert-line "HDR :fn-enrollment 1-"))
 (defconst *oer-range-prefix* (butlast *oer-range* 1))
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-range-prefix* *oer-lf*)
-                     (update-nth 14 nil (fn-oert-only-false 11 15))))
+                     (update-nth 15 nil (fn-oert-only-false 12 16))))
 (assert-event (equal (fn-served-reply-octets (car (fn-own-read *oer-reader-d* 4 *oer-range*)))
                      (fn-oert-line "501 syntax error")))
 (must-fail
@@ -230,7 +233,7 @@
 (defconst *oer-extra* (fn-oert-line "HDR :fn-enrollment <carried@example.invalid> x"))
 (defconst *oer-extra-prefix* (butlast *oer-extra* 1))
 (assert-event (equal (fn-oert-hyps *oer-reader-d* 4 *oer-extra-prefix* *oer-lf*)
-                     (fn-oert-only-false 8 15)))
+                     (fn-oert-only-false 9 16)))
 (must-fail
  (thm (equal (car (fn-own-read *oer-reader-d* 4 *oer-extra*))
              (fn-oert-rhs *oer-reader-d* 4 *oer-extra-prefix* *oer-lf*))))
