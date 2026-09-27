@@ -5333,7 +5333,8 @@
       "statement": "fn-arena (books/payload-arena.lisp) is an abstract stobj whose logical value is the list of sealed payloads, oldest first (fn-arn-payload-listp), and whose executable is one resizable (unsigned-byte 8) array holding every payload back to back with an offset and a size per handle. The abstraction relation fn-arena$corr (the concrete object well formed, the fill and the count within their arrays, every handle's range below the fill, and the slices in handle order the logical list) is established by the creator and preserved by every export (the {correspondence}, {preserved} and {guard-thm} obligations, stated as defabsstobj-missing-events prints them and proved before the defabsstobj). fn-arena-seal-buffer{correspondence}: copying the octet buffer's cells in place at the fill and recording the range as the next handle corresponds to append of the buffer's value, an export taking a second stobj. KEYSTONES: fn-arena-seal-keeps-sealed and fn-arena-seals-keep-sealed say a handle that is a natural below the count reads the same octets after one seal and after any sequence of seals; fn-arena-seal-new-handle and fn-arena-seal-count say a seal's new handle is the old count, denotes the sealed octets, and the count grows by one (no hypothesis). fn-arn-store-corr (the arena is the history's payloads oldest first, fn-arn-payloads-of over fn-sf-records' commit order) is kept by a commit's seal (fn-arn-store-corr-of-commit) and established by an open's seals from the empty arena (fn-arn-store-corr-of-open, no hypothesis). Every executable function is guard-verified. No host entry calls the arena yet: the record's payload field must become a handle first (planning/evidence/rep-wave-d-2026-09-25.md section 3), so the subject is the base of that program, not a served path.",
       "milestone": "M5",
       "requirements": [
-        "REP-010"
+        "REP-010",
+        "REP-014"
       ],
       "depends_on": [
         "PRF-087"
@@ -5341,7 +5342,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "events": [
         "fn-arena-seal-keeps-sealed",
         "fn-arena-seals-keep-sealed",
@@ -5355,9 +5356,11 @@
         "tests/acl2/payload-arena-tests.lisp",
         "planning/evidence/rep-wave-d-2026-09-25.md",
         "planning/evidence/manifests/certify-20260926T002630Z-3094901.json",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "books/payload-arena-bytes.lisp",
+        "planning/evidence/manifests/certify-20260927T030010Z-2442389.json"
       ],
-      "progress_note": "Lane rep-wave-d (2026-09-25): the arena and its theorems certified on persvati (run-20260926T002605Z-febf, 1.17 s and 0.77 s at two jobs). The host join (the seal at the served POST's finish, the handle in the record) is the model change of the record's payload field, a coordinated freeze the record's section 3 lays out; until it lands the served path holds the list and no representation improvement is claimed."
+      "progress_note": "Lane rep-wave-d (2026-09-25): the arena and its theorems certified on persvati (run-20260926T002605Z-febf, 1.17 s and 0.77 s at two jobs). The host join (the seal at the served POST's finish, the handle in the record) is the model change of the record's payload field, a coordinated freeze the record's section 3 lays out; until it lands the served path holds the list and no representation improvement is claimed. Lane records-freeze (2026-09-27, PRF-221): the byte array is now books/payload-arena-bytes.lisp under the name fn-arena-bytes (fn-arena$c, fn-arena$corr and every obligation unchanged in proof; the correspondence event of this row is fn-arena-bytes-seal-buffer{correspondence}), and fn-arena (books/payload-arena.lisp) is the attachable generic over the same logical side whose keystones this row names; both certified at the current digest by run-20260927T025909Z-155a."
     },
     {
       "id": "PRF-131",
@@ -8023,6 +8026,61 @@
         "fn-bpaj-ocl-relation-carries-sn-statep",
         "fn-osi-ocl-store-record-accepted-fast-is-checked",
         "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
+      ]
+    },
+    {
+      "id": "PRF-221",
+      "title": "The records freeze: the arena is an attachable generic with its byte array attached (the catalog's dependents certified once); the handle's identity, extent and lifetime over the intern; replay over the retained view equals replay over the wire view (the index fn-sn-recover recomputes and the verdicts fn-sn-finish decides, from the rows' contexts); payload identity across reclamation",
+      "statement": "books/payload-arena.lisp: fn-arena is an attachable abstract stobj (defabsstobj ... :attachable t) whose logical value is the list of sealed payloads (fn-arn-payload-listp) and whose own foundation is the list-backed reference fn-arena$l; its obligations (fn-arena-count{correspondence} ... fn-arena-clear{preserved}) are proved over that foundation; the opened view, the immutability keystones (fn-arena-seal-keeps-sealed, fn-arena-seals-keep-sealed, fn-arena-seal-new-handle, fn-arena-seal-count) and the store relation (fn-arn-store-corr-of-commit, -of-open) keep their statements over the generic; the export fn-arena-seal-range (the octet buffer's cells [A, B) sealed as one payload; the byte array copies the cells with no list) with fn-arena-seal-range-is-seal-list (no hypothesis: it is fn-arena-seal-list of the slice), the interface books/catalog-load-index.lisp's fn-obi-seal-range attaches behind. books/payload-arena-bytes.lisp: fn-arena-bytes is the byte-array implementation (the concrete stobj fn-arena$c, fn-arena$corr and every obligation of PRF-118, unchanged in proof, under the names fn-arena-bytes-*{...}) with the SAME logical side (fn-arena$ap, create-fn-arena$a, the seven fn-arena$a-*). books/payload-arena-attach.lisp evaluates (attach-stobj fn-arena fn-arena-bytes) before the generic, so every book that names fn-arena (books/catalog-record.lisp and the catalog above it) executes over the byte array from the certificate it was certified with (fn-paa-smoke: the intern of a ground record into the live attached arena materializes to the record); the image includes it first. books/records-freeze.lisp, over the generic: fn-rfz-served-bytes-by-definition (the octets the served ARTICLE writes from the interned handle are the wire payload), fn-rfz-intern-extent (fn-arena-payload-len of the handle is the fn-hf-octets fact the intern decided; no hypothesis), fn-rfz-projection-bytes-by-definition (under fn-record-shapep, fn-record-encode of the materialized held record is the wire encoding). fn-rfz-contexts-okp (rows keyring generation fn-arena): every row's context is fn-held-context-of its bytes by handle under keyring and generation. KEYSTONE fn-rfz-replay-index-over-both-views: under fn-rfz-contexts-okp alone, (fn-rfz-index-of-rows rows) -- fn-stx-index-add of each row's fn-hc-delta, no bytes -- equals (fn-stx-index-of-store (fn-rfz-articles-of-rows rows fn-arena) keyring), the store's own recomputation from the bytes (the function fn-sn-recover calls over fn-stx-store of the replayed node); fn-rfz-handles-inp is the guard's requirement, not the theorem's (the weakened theorem is what is proved). KEYSTONE fn-rfz-replay-verdicts-over-both-views: under the same invariant the rows' (msgid . fn-hc-verdict) list equals the wire view's (msgid . fn-stx-verdict-of-octets of the payload under keyring and generation), the verdict fn-sn-finish decides per record. The invariant's life: fn-rfz-intern-context (the intern establishes it for the row it builds, no hypothesis), fn-rfz-handles-inp-survives-seals and fn-rfz-contexts-okp-survives-seals (any later seals keep it), KEYSTONE fn-rfz-load-establishes-contexts (fn-cat-load, the host's open from the journal or a checkpoint, establishes it for every row it commits under the keyring and generation it interns with, from a catalog in the invariant) and fn-rfz-load-from-empty-establishes-contexts. Payload identity across reclamation: fn-rfz-pinned-rows-survive-seals (under fn-rfz-handles-inp, a pinned row list materializes the same after any seals: immutable references in the view), fn-rfz-reclaim-old-view-reads-the-original (a row whose handle is below the count materializes the same after the tombstone's seal) and fn-rfz-reclaim-new-row-reads-the-tombstone (the row pointed at the count before the seal materializes to the tombstone; no hypothesis), and the versioned mapping fn-rfz-resolve with fn-rfz-resolve-before-reclaim (a reader at version V <= W, the reclaim's version, resolves the original handle), fn-rfz-resolve-after-reclaim (W < V resolves the tombstone's); both handles keep their bytes under later seals by fn-arena-seals-keep-sealed (PRF-118, cited). NOT in this target: the store state's replay over a history of held rows (fn-sn-recover over held records needs the acceptance state's payload field to be a handle: lane acceptance-payload-arena, PKT-635) and the host's calls (catalog-slice-5's step 8): no host line calls fn-cat-load or the arena yet, so the measurement of retained bytes per octet on the joined owner is that join's.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-014",
+        "REP-011",
+        "REP-013"
+      ],
+      "depends_on": [
+        "PRF-118",
+        "PRF-201"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "certified",
+      "evidence": [
+        "planning/evidence/records-freeze-2026-09-26.md",
+        "books/payload-arena.lisp",
+        "books/payload-arena-bytes.lisp",
+        "books/payload-arena-attach.lisp",
+        "books/records-freeze.lisp",
+        "tests/acl2/records-freeze-tests.lisp",
+        "tests/acl2/payload-arena-tests.lisp",
+        "planning/evidence/manifests/certify-20260927T030010Z-2442389.json"
+      ],
+      "progress_note": "Lane records-freeze (Fable, 2026-09-26/27, PKT-293): every event admitted in the persvati REPL sessions rfz/rfz2 before the farm; farm run 3 run-20260927T025909Z-155a (persvati, ACL2 8.7 w25/acl2-literal, 2 jobs, 300 s) certified the final bytes: 24 passed, 0 failed, 188 from the cache; the one book over 10 s in that run (books/catalog-refresh, 10.8 s, catalog-boundary-owner's, merged from dev) is not this target's. Run 2 run-20260927T025131Z-f707 (27 passed; the retired prototype's red) and run 1 run-20260927T003422Z-ff7b (the generic's missing local append lemma, repaired) precede it.",
+      "pending_subject": "The arena and fn-cat-load are reached by no host line yet (catalog-slice-5's step 8 moves fn-owner-recover* to fn-cat-load and the served reads to the handle; acceptance-payload-arena moves the acceptance state's payload field with the record's, PKT-635). fn-stx-index-of-store IS host-reached (fn-sn-recover, host/store-node-host.lisp fn-store-sn-recover): the keystone's right-hand side is the function the host calls today; its left-hand side is what the joined owner will call.",
+      "events": [
+        "fn-rfz-served-bytes-by-definition",
+        "fn-rfz-intern-extent",
+        "fn-rfz-projection-bytes-by-definition",
+        "fn-rfz-replay-index-over-both-views",
+        "fn-rfz-replay-verdicts-over-both-views",
+        "fn-rfz-intern-context",
+        "fn-rfz-handles-inp-survives-seals",
+        "fn-rfz-contexts-okp-survives-seals",
+        "fn-rfz-load-establishes-contexts",
+        "fn-rfz-load-from-empty-establishes-contexts",
+        "fn-rfz-pinned-rows-survive-seals",
+        "fn-rfz-reclaim-old-view-reads-the-original",
+        "fn-rfz-reclaim-new-row-reads-the-tombstone",
+        "fn-rfz-resolve-before-reclaim",
+        "fn-rfz-resolve-after-reclaim",
+        "fn-arena-seal-list{correspondence}",
+        "fn-arena-bytes-seal-list{correspondence}",
+        "fn-arena-seal-buffer{correspondence}",
+        "fn-arena-bytes-seal-buffer{correspondence}",
+        "fn-arena-seal-range{correspondence}",
+        "fn-arena-bytes-seal-range{correspondence}",
+        "fn-arena-seal-range-is-seal-list"
       ]
     }
   ]

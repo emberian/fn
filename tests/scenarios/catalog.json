@@ -4355,6 +4355,29 @@
         "record": "planning/evidence/served-line-iterative-2026-09-26.md",
         "log": "planning/evidence/served-line-iterative-2026-09-26/test_native_served_line_stack.76a6757b.log"
       }
+    },
+    {
+      "id": "SCN-152",
+      "title": "The arena's generic runs over the attached byte array: a record interned into the live arena materializes to itself, a pinned row list reads the same bytes across later seals and a reclaim, and the catalog loaded from a mixed history answers the store's identity index from its contexts",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-014",
+        "REP-011"
+      ],
+      "steps": [
+        "books/payload-arena-attach.lisp fn-paa-smoke (at certification, the live fn-arena with fn-arena-bytes attached): clear, two seals, the intern of a ground wire record (handle 2), fn-arena-payload-len of the handle = the fn-hf-octets fact = the article's length, fn-held-wire-of the held record = the record, handle 0 still reads (1 2 3).",
+        "tests/acl2/records-freeze-tests.lisp rft-exec (live fn-arena and fn-cat, list foundation): fn-cat-load over (article, retention event, article) with keyring nil and generation 0; the two rows satisfy fn-rfz-handles-inp and fn-rfz-contexts-okp on the live arena; fn-rfz-index-of-rows equals fn-stx-index-of-store over the rows' articles; fn-rfz-wire-rows is the two wire records; after two more seals (a reclaim's tombstone and another) the same rows materialize the same.",
+        "tests/acl2/payload-arena-tests.lisp pat-bytes-exec / pat-exec: the same seals and reads on fn-arena-bytes directly and on the generic answer equal values.",
+        "The ground half: every theorem of books/records-freeze.lisp with its positive witness and, per hypothesis, a witness on which the retained hypotheses hold, the omitted one fails and the conclusion fails (must-fail)."
+      ],
+      "expected": "fn-paa-smoke prints (3 2 L L T (1 2 3) 5) with L the article's length and the assert-event holds; rft-exec's list of checks is all t with the wire rows (w0 w2); the two foundations' runs are equal.",
+      "evidence": [
+        "books/payload-arena-attach.lisp",
+        "tests/acl2/records-freeze-tests.lisp",
+        "tests/acl2/payload-arena-tests.lisp"
+      ],
+      "note": "Lane records-freeze (2026-09-26/27). The native half (the node's arena holding the served payloads) waits on the join with catalog-slice-5 step 8 and acceptance-payload-arena; no native module is owed by this lane."
     }
   ]
 }

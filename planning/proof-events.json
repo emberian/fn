@@ -5102,7 +5102,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-arena-seal-buffer{correspondence}"
+          "name": "fn-arena-bytes-seal-buffer{correspondence}"
         },
         {
           "kind": "theorem",
@@ -7589,6 +7589,99 @@
         {
           "kind": "theorem",
           "name": "fn-bpaj-record-lookup-fast-found-is-an-accepted-match"
+        }
+      ]
+    },
+    {
+      "id": "PRF-221",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-served-bytes-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-intern-extent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-projection-bytes-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-replay-index-over-both-views"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-replay-verdicts-over-both-views"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-intern-context"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-handles-inp-survives-seals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-contexts-okp-survives-seals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-load-establishes-contexts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-load-from-empty-establishes-contexts"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-pinned-rows-survive-seals"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-reclaim-old-view-reads-the-original"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-reclaim-new-row-reads-the-tombstone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-resolve-before-reclaim"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rfz-resolve-after-reclaim"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-list{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-bytes-seal-list{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-bytes-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-range{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-bytes-seal-range{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arena-seal-range-is-seal-list"
         }
       ]
     }
