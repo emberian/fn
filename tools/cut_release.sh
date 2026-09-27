@@ -390,13 +390,14 @@ printf '%s\\n' '#!/bin/sh' 'export SBCL_HOME=/usr/local/lib/sbcl/' 'exec /usr/lo
 chmod 0755 \$L
 export FN_ACL2=\$L ACL2_SYSTEM_BOOKS=/usr/local/fn-work/acl2-8.7/books
 export FN_ACL2_SLOTS=7 FN_ACL2_TIMEOUT_SECONDS=3000 FN_CERT_CACHE=$W/certcache
-rm -rf $W/src $W/certified $W/certcache $W/release $W/fresh; mkdir -p $W/src $W/certcache $W/release $W/fresh
-cd $W/src && tar -xf $W/source.tar
+rm -rf $W/cert $W/certified $W/src $W/certcache $W/release $W/fresh; mkdir -p $W/cert $W/certcache $W/release $W/fresh
+cd $W/cert && tar -xf $W/source.tar
 echo \"== certify \$(date -u +%FT%TZ)\"
 python3 tools/certify_books.py --jobs 7 --closure \$(python3 tools/proof_artifacts.py roots --profile default) > $W/certify.log 2>&1 || { grep -v '^ACL2 did not produce' $W/certify.log | tail -5; grep -o 'Books that failed: [^,]*, [^,]*, [^,]*' $W/certify.log; exit 1; }
-# A live certifying tree is not an origin another target may use
-# (certs.usable_origin): moved aside, the release runs from a fresh extraction.
-cd $W && mv src certified && mkdir src && cd src && tar -xf $W/source.tar
+# A live certifying tree is not an origin another target may use while it
+# exists (certs.usable_origin): moved aside, and the release runs from an
+# extraction at another path.
+cd $W && mv cert certified && mkdir src && cd src && tar -xf $W/source.tar
 echo \"== release \$(date -u +%FT%TZ)\"
 FN_FREEZE_SODIUM=/usr/local/lib/libsodium.so.11.1 FN_FREEZE_DYNAMIC_SPACE_MB=1024 sh packaging/release-tarball.sh openbsd-amd64 $REV $W/release $W/source.tar > $W/release.log 2>&1 || { tail -15 $W/release.log; exit 1; }
 tail -4 $W/release.log
