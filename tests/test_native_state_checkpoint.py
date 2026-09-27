@@ -114,7 +114,9 @@ class StateCheckpointSourceTests(unittest.TestCase):
         node_admit = native_cuts.host_function(node_host, "fn-store-sco-segment-admit")
         self.assertIn("(fn-sccr-admit-segment header total", node_admit)
         node_select = native_cuts.host_function(node_host, "fn-store-sco-select")
-        self.assertIn("(fn-sco-select-named status sequence count", node_select)
+        # (fn-scka-select-named: fn-sco-select-named with the arena
+        # refusal named, books/store-checkpoint-arena-load.lisp)
+        self.assertIn("(fn-scka-select-named status sequence count", node_select)
         command = native_cuts.host_function(io, "fnn-command-state-checkpoint")
         # checkpoint-pipeline: the verb is the SAME pipeline as the owner's
         # thread: ACL2 decides by name before anything is allocated
