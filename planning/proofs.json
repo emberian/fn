@@ -7806,7 +7806,7 @@
         "planning/evidence/config-consumer-catalog-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T221758Z-3334374.json"
       ],
-      "progress_note": "Provisional id (lane config-consumer-catalog; the deputy confirms or renumbers at merge). Not done: the candidate open extended from the open (fn-cpo-open-observed of CONFIGS ++ (R) from the open's state), the configuration root persisted by the checkpoint pipeline, the verify-under-lock reopen (PKT-601).",
+      "progress_note": "Id confirmed at the batch AN merge (lane config-consumer-catalog). Not done: the candidate open extended from the open (fn-cpo-open-observed of CONFIGS ++ (R) from the open's state), the configuration root persisted by the checkpoint pipeline, the verify-under-lock reopen (PKT-601).",
       "events": [
         "fn-cfgc-config-replay-of-one-more",
         "fn-cfgc-cpr-replay-of-one-more",
