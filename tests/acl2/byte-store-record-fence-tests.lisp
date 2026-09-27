@@ -42,7 +42,8 @@
         (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
         (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
                (append (fn-bs-durable-records bs)
-                       (list (fn-sf-record-candidate ks)))))))
+                       (list (fn-bs-row-wire (fn-sf-record-candidate ks)
+                                             *bsk5-arena*)))))))
 
 ; Dropping the issued-link premise is a real failure, not a proof-search
 ; artifact.  The byte state is an actual pre-link program cut; only the
@@ -65,7 +66,7 @@
          (bs (car pair)) (ks (cdr pair)))
     (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
            (append (fn-bs-durable-records bs)
-                   (list (fn-sf-record-candidate ks)))))))
+                   (list (fn-bs-row-wire (fn-sf-record-candidate ks) *bsk5-arena*)))))))
 
 ; Without the byte/kernel relation, two pending final names can cross the
 ; fence, adding a prior record as well as the alleged candidate.
@@ -81,7 +82,7 @@
   (let ((bs (bsk5-two-pending)) (ks (cdr (bsk8-attempted))))
     (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
            (append (fn-bs-durable-records bs)
-                   (list (fn-sf-record-candidate ks)))))))
+                   (list (fn-bs-row-wire (fn-sf-record-candidate ks) *bsk5-arena*)))))))
 
 ; The phase clause excludes the recovery window. There the newly replayed
 ; record is already in the kernel's record list and its candidate is NIL,
@@ -107,7 +108,7 @@
          (bs (car pair)) (ks (cdr pair)))
     (equal (fn-bs-durable-records (fn-bs-fence-dir bs :transactions))
            (append (fn-bs-durable-records bs)
-                   (list (fn-sf-record-candidate ks)))))))
+                   (list (fn-bs-row-wire (fn-sf-record-candidate ks) *bsk5-arena*)))))))
 
 ; The complete K8 conclusion is on the scanner of a modeled post-fence
 ; crash image.  There is still a staging operation to choose independently,
@@ -129,8 +130,8 @@
         (fn-bs-crash-choicesp nil (fn-bs-pending fenced)
                               (fn-bs-unit fenced))
         (equal (fn-bs-scan-records (fn-bs-scan-store image))
-               (append (fn-sf-records ks)
-                       (list (fn-sf-record-candidate ks)))))))
+               (append (fn-bs-rows-wire (fn-sf-records ks) *bsk5-arena*)
+                       (list (fn-bs-row-wire (fn-sf-record-candidate ks) *bsk5-arena*)))))))
 
 ; A pre-fence image does not satisfy the post-fence crash-image premise and
 ; can still omit the candidate even with relation, phase and issued link.
@@ -146,5 +147,5 @@
          (bs (car pair)) (ks (cdr pair))
          (image (fn-bs-crash bs nil)))
     (equal (fn-bs-scan-records (fn-bs-scan-store image))
-           (append (fn-sf-records ks)
-                   (list (fn-sf-record-candidate ks)))))))
+           (append (fn-bs-rows-wire (fn-sf-records ks) *bsk5-arena*)
+                   (list (fn-bs-row-wire (fn-sf-record-candidate ks) *bsk5-arena*)))))))

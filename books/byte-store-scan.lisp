@@ -644,6 +644,16 @@
                 (equal records (fn-sf-but-last
                                 (fn-bs-rows-wire (fn-sf-records s) arena)))))))
 
+(defthm fn-bs-alpha-crash-imagep-implies-state
+  (implies (fn-bs-alpha-crash-imagep s frontier records arena)
+           (fn-sf-statep s))
+  :hints (("Goal" :in-theory (e/d (fn-bs-alpha-crash-imagep) (fn-sf-statep)))))
+
+(defthm fn-bs-alpha-recovery-crash-imagep-implies-state
+  (implies (fn-bs-alpha-recovery-crash-imagep s frontier records arena)
+           (fn-sf-statep s))
+  :hints (("Goal" :in-theory (e/d (fn-bs-alpha-recovery-crash-imagep) (fn-sf-statep)))))
+
 (local (defthm fn-bs-len-of-but-last
   (equal (len (fn-sf-but-last x)) (if (consp x) (1- (len x)) 0))))
 
