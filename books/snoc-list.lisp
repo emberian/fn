@@ -270,28 +270,10 @@
    :hints (("Goal" :induct (fn-sl-rev-take n x acc)
             :in-theory (disable fn-sl-rev-take-acc fn-sl-rev-onto-acc)))))
 
-(local
- (defthm fn-sl-nth-is-nth-at-a-natural
-   (implies (natp i)
-            (equal (fn-sl-nth i h) (nth i (fn-sl-list h))))
-   :hints (("Goal" :in-theory (disable fn-sl-rev-take-acc fn-sl-rev-onto-acc)))))
-
-(local
- (defthm fn-sl-nth-of-nfix
-   (equal (fn-sl-nth (nfix i) h) (fn-sl-nth i h))
-   :hints (("Goal" :in-theory (enable fn-sl-nth)))))
-
-(local (defthm fn-sl-nth-nth-of-nfix (equal (nth (nfix i) x) (nth i x))))
-
-; Unconditional (audit packet G3-7): both sides fix the index -- fn-sl-nth
-; by nfix, nth by zp -- so no index is excluded.
 (defthm fn-sl-nth-is-nth
-  (equal (fn-sl-nth i h) (nth i (fn-sl-list h)))
-  :hints (("Goal" :use ((:instance fn-sl-nth-is-nth-at-a-natural (i (nfix i)))
-                        (:instance fn-sl-nth-of-nfix)
-                        (:instance fn-sl-nth-nth-of-nfix (x (fn-sl-list h))))
-           :in-theory (union-theories '((:type-prescription nfix) natp)
-                                      (theory 'minimal-theory)))))
+  (implies (natp i)
+           (equal (fn-sl-nth i h) (nth i (fn-sl-list h))))
+  :hints (("Goal" :in-theory (disable fn-sl-rev-take-acc fn-sl-rev-onto-acc))))
 
 (in-theory (disable fn-sl-rev-onto fn-sl-rev-take fn-sl-of fn-sl-snoc-formp
                     fn-sl-list fn-sl-append1 fn-sl-snoc fn-sl-canonp
