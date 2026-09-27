@@ -62,7 +62,8 @@
                            walk-msgid
                            (equal by-number (fn-cat-row-article walk-number fn-arena fn-cat))
                            walk-number
-                           (fn-article-payload by-number)          ; the bytes by handle
+                           (fn-article-payload by-number)          ; the row's handle
+                           (fn-nntp-article-bytes by-number fn-arena) ; the bytes a reader serves
                            (fn-cat-view-msgids-okp 2 2 fn-cat)
                            (fn-midx-lookup "<zz@x>" trie)          ; absent
                            (fn-gidx-number-article "fn.test" 3 buckets trie)))
@@ -86,7 +87,7 @@
 
 (assert-event
  (equal (cvt-exec)
-        (list (list 2 "<c@x>" t 1 t 1 *cvt-p2* t nil nil)
+        (list (list 2 "<c@x>" t 1 t 1 1 *cvt-p2* t nil nil)
               (list 2 1 0 nil))))
 
 ; -----------------------------------------------------------------------------
@@ -117,7 +118,9 @@
        (equal (fn-find-article "<c@x>" (fn-cat-view-below 2 2 *cvt-a* *cvt-c*))
               (fn-cat-row-article 1 *cvt-a* *cvt-c*))
        (consp (fn-cat-row-article 1 *cvt-a* *cvt-c*))
-       (equal (fn-article-payload (fn-cat-row-article 1 *cvt-a* *cvt-c*)) *cvt-p2*))
+       ; the article carries row 1's handle; a reader serves its bytes by the arena
+       (equal (fn-article-payload (fn-cat-row-article 1 *cvt-a* *cvt-c*)) 1)
+       (equal (fn-nntp-article-bytes (fn-cat-row-article 1 *cvt-a* *cvt-c*) *cvt-a*) *cvt-p2*))
   :rule-classes nil)
 
 ; KEYSTONE 3, the complete antecedent then the conclusion.

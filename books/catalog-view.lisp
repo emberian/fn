@@ -41,14 +41,19 @@
 ; A row as the acceptance article; the view at a version.
 
 ; The pin is the archive pin of an installed article (fn-article-pin = t).
+; The records flip (lane served-readers): the article carries the row's
+; HANDLE, as the owner's archive does; a served reader reads the bytes through
+; the arena (books/nntp-session.lisp fn-nntp-article-bytes), so no view read
+; materializes a payload and the view's articles can equal the archive's.
 (defun fn-cat-row-article (seq fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
                   :guard (and (natp seq) (< seq (fn-cat-count fn-cat))
                               (fn-cat-handles-inp (fn-cat-count fn-cat) fn-arena fn-cat))
-                  :verify-guards nil))
+                  :verify-guards nil)
+           (ignorable fn-arena))
   (let ((h (fn-cat-at seq fn-cat)))
     (fn-make-article (fn-record-msgid h)
-                     (fn-arena-payload (fn-record-payload h) fn-arena)
+                     (fn-record-payload h)
                      (fn-record-groups h)
                      (fn-held-numbers h)
                      t
@@ -137,7 +142,7 @@
 
 (defthm fn-cat-row-article-payload
   (equal (fn-article-payload (fn-cat-row-article seq fn-arena fn-cat))
-         (fn-arena-payload (fn-record-payload (fn-cat-at seq fn-cat)) fn-arena))
+         (fn-record-payload (fn-cat-at seq fn-cat)))
   :hints (("Goal" :in-theory (enable fn-cat-row-article))))
 
 ; -----------------------------------------------------------------------------
