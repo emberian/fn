@@ -156,9 +156,13 @@
 ; operation writes.  Its recovered kernel reads (1 2 3 4 2).
 (assert-event
  (let* ((a (slt-inflight (list (slt-r 3) (slt-r 4)) t)) (bs (car a)) (ks (cdr a))
-        (content (fn-bs-take 1024 (append (fn-lg-log (list (slt-r 1) (slt-r 2) (slt-r 3)
-                                                             (slt-r 4) (slt-r 2))
-                                                       (slt-genesis) (slt-unit))
+        ; the committed chunk (1 2), the batch's chunk (3 4), then one more
+        ; chained entry (2): the layout the appends write (PKT-749)
+        (t12 (fn-lg-last-trailer (list (slt-r 1) (slt-r 2)) (slt-genesis)))
+        (t34 (fn-lg-last-trailer (list (slt-r 3) (slt-r 4)) t12))
+        (content (fn-bs-take 1024 (append (fn-lg-log (list (slt-r 1) (slt-r 2)) (slt-genesis) (slt-unit))
+                                           (fn-lg-log (list (slt-r 3) (slt-r 4)) t12 (slt-unit))
+                                           (fn-lg-log (list (slt-r 2)) t34 (slt-unit))
                                            (fn-bs-zeros 1024))))
         (image (slt-bs content nil))
         (end (+ (fn-lgk-frontier ks)

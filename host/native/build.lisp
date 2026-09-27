@@ -46,6 +46,8 @@
 ;; PKT-688 (4) slice 2 (PRF-267): the gate calls fn-ocs-next and the committer
 ;; fn-ocs-commit-event (host/native/owner.lisp fnn-owner-commit-batch).
 (include-book "books/owner-commit-steps")
+;; Lane log-2: the pipelined commit (fn-ocp-*), over fn-ocs-*.
+(include-book "books/owner-commit-pipeline")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")

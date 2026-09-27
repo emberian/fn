@@ -649,11 +649,12 @@ class Walk:
         elif (head in ("when", "if") and isinstance(f[1], list) and len(f[1]) == 2
               and f[1][0] == "fnn-store-logp"):
             # Lane commit-onto-log: the record-log route of a format-9 store
-            # is another program (P-BATCH, P-LOG-RECOVER), checked by
-            # tests/campaign/native_cuts.py verify_log_cut_map and
-            # verify_post_log_cut_map; this check reads the per-file route.
+            # is another program (P-BATCH, P-LOG-RECOVER and lane log-2's
+            # books/store-log-route-programs.lisp); main() checks each such
+            # arm against its programs (native_cuts.verify_log_route_arms);
+            # this walk reads the per-file route.
             if mode == "success":
-                self.one_iteration.append("record-log route arm skipped: {}".format(show(f, 60)))
+                self.one_iteration.append("record-log route arm, checked separately: {}".format(show(f, 60)))
             if head == "if":
                 self.walk_body(f[3:], env, mode, stack)
         elif head == "dolist":
@@ -1005,7 +1006,14 @@ def main(argv=None) -> int:
         print(json.dumps(asdict(report), indent=2))
     else:
         print(render(report))
-    return 0 if report.ok else 1
+    # Lane log-2: every format-9 arm skipped above, against its log programs
+    # (every process-death cut of the log route is a model program's cut).
+    from tests.campaign.native_cuts import LOG_ROUTE_ARMS, verify_log_route_arms
+    arms = verify_log_route_arms()
+    for problem in arms:
+        print("log route mismatch: " + problem)
+    print("log route arms: {} ({} arms)".format("FAIL" if arms else "PASS", len(LOG_ROUTE_ARMS)))
+    return 0 if report.ok and not arms else 1
 
 
 if __name__ == "__main__":

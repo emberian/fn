@@ -12,11 +12,25 @@
 (defconst *slrt-r1* (fn-lg-workload-record 1 100))
 (defconst *slrt-r2* (fn-lg-workload-record 2 100))
 
-; The entry octets: what the host adds per record is the entry's length.
+; The entry octets: what the host adds per record is its share of the
+; packed chunk (PKT-749), its length field and its octets.
 (assert-event (equal (fn-olr-entry-octets (len *slrt-r1*) 4096)
-                     (len (fn-lg-entry *fn-lg-genesis* *slrt-r1* 4096))))
-(assert-event (equal (fn-olr-entry-octets (len *slrt-r1*) 4096) 4096))
-(assert-event (equal (fn-olr-entry-octets 5000 4096) 8192))
+                     (fn-lg-pack-len (list *slrt-r1*))))
+(assert-event (equal (fn-olr-entry-octets (len *slrt-r1*) 4096) (+ 4 (len *slrt-r1*))))
+(assert-event (equal (fn-olr-entry-octets 5000 4096) 5004))
+
+; The segment need (fn-olr-log-need-is-the-append-end), reachable: two
+; records in the open batch are one packed entry of one unit; the need is
+; the append's end and the fit agrees with it.
+(assert-event
+ (let* ((ks (fn-lgk-prepare (fn-lgk-prepare *slrt-ks* *slrt-r1*) *slrt-r2*)))
+   (and (fn-frame-digestp (fn-lgk-last ks))
+        (fn-lg-recordsp (fn-lgk-batch ks) 4096)
+        (equal (fn-olr-log-need ks 4096) 4096)
+        (equal (fn-olr-log-need ks 4096)
+               (+ (fn-lgk-frontier ks) (len (fn-lgk-append-octets ks 4096))))
+        (fn-lgk-fitsp ks 4096 4096)
+        (not (fn-lgk-fitsp ks 4096 4095)))))
 
 ; The take: the record at the owner's txid, the kernel's next, joins the
 ; batch (:taken, the kernel's prepare); the next record then joins a batch of
@@ -36,12 +50,12 @@
 ; A record the owner reserved at another txid is refused and the kernel is
 ; unchanged.
 (assert-event (equal (fn-olr-take *slrt-ks* *slrt-r2* 2 0 0 64 16777216 4096)
-                     (list :refused *slrt-ks* 4096)))
+                     (list :refused *slrt-ks* (+ 4 (len *slrt-r2*)))))
 ; The close rule: a batch at BMAX members, or an entry past OMAX, is :full
 ; and the kernel is unchanged.
 (assert-event (equal (car (fn-olr-take *slrt-ks* *slrt-r1* 1 2 8192 2 16777216 4096)) :full))
 (assert-event (equal (cadr (fn-olr-take *slrt-ks* *slrt-r1* 1 2 8192 2 16777216 4096)) *slrt-ks*))
-(assert-event (equal (car (fn-olr-take *slrt-ks* *slrt-r1* 1 1 4096 64 6000 4096)) :full))
+(assert-event (equal (car (fn-olr-take *slrt-ks* *slrt-r1* 1 1 4096 64 4099 4096)) :full))
 ; Tooth for fn-olr-take-keeps-the-bounds' hypothesis (a NON-EMPTY batch): the
 ; first record of a batch is taken whatever OMAX says, so the octet bound's
 ; conclusion fails without it.
