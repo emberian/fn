@@ -25,6 +25,7 @@
 ;      c. the non-article completion fn-scjs-ocfg-complete-keeps-invp at R
 ;         (the retention event completes; the view refreshes to the
 ;         history's length, the catalog is untouched).
+;   Each witness also evaluates fn-scjs-versionsp before and after.
 ;   2. HYPOTHESIS REMOVAL, JOINTLY (the two no-row hypotheses of the
 ;      completion are one fact in a reachable owner: the unseen history IS
 ;      the completing record): T2's article completion through the model's
@@ -101,9 +102,17 @@
 ; fn-scjs-seenp's and fn-scjs-historyp's bodies.
 (defun scjs-seenp (o)
   (declare (xargs :mode :program))
-  (let ((files (fn-sn-files (fn-own-store o))))
-    (or (equal (fn-sf-phase files) :completing)
-        (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o)) (fn-sf-records files))))))
+  (let* ((files (fn-sn-files (fn-own-store o)))
+         (r (if (equal (fn-sf-phase files) :completing)
+                (butlast (fn-sf-records files) 1)
+              (fn-sf-records files)))
+         (v (fn-own-view-version (fn-own-view o))))
+    (and (<= v (len r)) (fn-scj-no-rowsp (nthcdr v r)))))
+
+; fn-scjs-versionsp's body.
+(defun scjs-versionsp (o)
+  (declare (xargs :mode :program))
+  (fn-scj-conns-versions-atmostp (fn-own-conns o) (fn-own-view-version (fn-own-view o))))
 
 (defun scjs-historyp (o)
   (declare (xargs :mode :program))
@@ -139,14 +148,16 @@
                        (if (scjs-seenp o) t nil)
                        (if (fn-scar-view-indexedp o) t nil)
                        (if (scjs-historyp o) t nil)
-                       (if (fn-nntp-projectionp (fn-own-view-archive (fn-own-view o2))) t nil)))
+                       (if (fn-nntp-projectionp (fn-own-view-archive (fn-own-view o2))) t nil)
+                       (if (scjs-versionsp o) t nil)))
          (arm-hyps (if (equal arm :complete)
                        (list (not (fn-ocfg-staged oc))
                              (not (fn-scj-load-h (fn-sn-completion-record s)))
                              (fn-scj-no-rowsp (nthcdr (fn-own-view-version view) records)))
                      (list (not (member-equal (car (cadr arm)) '(:finish :crash :recover)))))))
     (mv (list (append common arm-hyps)
-              (list (scjs-invp o2 fn-arena fn-cat) (if (scjs-seenp o2) t nil))
+              (list (scjs-invp o2 fn-arena fn-cat) (if (scjs-seenp o2) t nil)
+                    (if (scjs-versionsp o2) t nil))
               (list (len (fn-state-articles (fn-own-view-archive view)))
                     (len (fn-state-articles (fn-own-view-archive (fn-own-view o2)))))
               (fn-cat-count fn-cat))
@@ -216,9 +227,9 @@
 (assert-event (equal (list (scjs-nrecords *scjs-r-attempted*) (scjs-nrecords *scjs-r-completing*))
                      '(0 1)))
 
-(defconst *scjs-store-all* (make-list 6 :initial-element t))
-(defconst *scjs-complete-all* (make-list 8 :initial-element t))
-(defconst *scjs-concl* '((t t t t t) t))
+(defconst *scjs-store-all* (make-list 7 :initial-element t))
+(defconst *scjs-complete-all* (make-list 9 :initial-element t))
+(defconst *scjs-concl* '((t t t t t) t t))
 
 ; 1a. The store I/O keystone at the directory's publishing observation: every
 ; hypothesis, both conjuncts; the history grows by the candidate (0 to 1),
@@ -250,5 +261,46 @@
 ; and the pinned connections still hold): the view goes from no article to
 ; one, the catalog stays empty.
 (assert-event (equal (scjs-exec *cet-t2-oc* *cet-t2-payloads* :complete 2)
-                     (list (list t t t t t t nil nil)
-                           '((nil nil t nil t) t) '(0 1) 0)))
+                     (list (list t t t t t t t nil nil)
+                           '((nil nil t nil t) t t) '(0 1) 0)))
+
+; -----------------------------------------------------------------------------
+; 3. REACHABLE WITNESS of fn-scjs-rows-invp-before-in-flight at both
+; :completing owners: the antecedent (invariant, seen fact, history facts,
+; :completing) and the conclusion (the version within the history less the
+; in-flight record; the rows invariant over it), with that history's length
+; and the version.
+
+(defun scjs-inflight-run (oc payloads ncat fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many payloads fn-arena))
+         (o (fn-ocfg-owner oc))
+         (s (fn-own-store o))
+         (view (fn-own-view o))
+         (records (fn-sf-records (fn-sn-files s)))
+         (b (butlast records 1))
+         (v (fn-own-view-version view))
+         (fn-cat (fn-sca-load-held-rows (take ncat records) (fn-own-view-index view) fn-arena fn-cat)))
+    (mv (list (list (equal (scjs-invp o fn-arena fn-cat) '(t t t t t))
+                    (if (scjs-seenp o) t nil)
+                    (if (scjs-historyp o) t nil)
+                    (equal (fn-sf-phase (fn-sn-files s)) :completing))
+              (list (<= v (len b)) (scjs-rows-invp (scjs-rows-of 0 fn-cat) b))
+              (len b) v)
+        fn-arena fn-cat)))
+
+(defun scjs-inflight-exec (oc payloads ncat)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (result fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (result fn-arena fn-cat)
+          (scjs-inflight-run oc payloads ncat fn-arena fn-cat)
+          (mv result fn-arena)))
+      result)))
+
+(assert-event (equal (scjs-inflight-exec *scjs-r-completing* nil 0)
+                     '((t t t t) (t t) 0 0)))
+(assert-event (equal (scjs-inflight-exec *cet-t2-oc* *cet-t2-payloads* 2)
+                     '((t t t t) (t t) 2 2)))

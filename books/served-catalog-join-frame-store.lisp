@@ -19,13 +19,21 @@
 ;   fn-scj-invp-of-refresh.
 ;
 ; The seen fact (fn-scjs-seenp) is the one premise fn-scj-invp does not
-; carry: outside :completing, the records past the view's version load no
-; catalog row.  It holds at every refresh at an idle phase (the view's version
-; becomes the history's length) and every transition here keeps it; only the
-; directory's publishing observation appends (the candidate, entering
-; :completing), and only a finish leaves :completing.  Without it an I/O word
-; that returns the Store to :ready (a reservation refusal, a known abort, a
-; frontier failure) would refresh the view over records it has not seen.
+; carry: the view's version is within the history it is held to have seen
+; (the store's history, less the in-flight last record at :completing) and
+; the records past it load no catalog row.  It holds at every refresh at an
+; idle phase (the view's version becomes the history's length) and every
+; transition here keeps it: the directory's publishing observation appends
+; exactly the staged candidate into :completing, whose seen history is the
+; old one, and only a finish leaves :completing.  Without it an I/O word that
+; returns the Store to :ready (a reservation refusal, a known abort, a
+; frontier failure) would refresh the view over records it has not seen.  At
+; :completing it gives the host's article finish the rows invariant over the
+; history before the in-flight event (fn-scjs-rows-invp-before-in-flight).
+;
+; Every arm also keeps fn-scjs-versionsp (books/served-catalog-join-
+; pinned.lisp fn-scj-conns-versions-atmostp at the view's version): a
+; refresh moves the view's version only up, an advance re-pins at it.
 ;
 ; Named hypotheses and their sources:
 ;   fn-scar-view-indexedp  -- books/owner-offer-indexed.lisp carries it
@@ -54,6 +62,7 @@
 
 (include-book "served-catalog-join-frame")
 (include-book "owner-offer-indexed")
+(include-book "served-catalog-join-pinned")
 
 (defthm fn-scjs-invp-of-same-fields
   (implies (and (equal (fn-own-store o2) (fn-own-store o))
@@ -64,11 +73,23 @@
   :hints (("Goal" :in-theory (e/d (fn-scj-invp fn-scj-vvp)
                                   (fn-scj-joinp fn-scj-rows-invp fn-scj-live-okp fn-scj-conns-pinp)))))
 
+;; The history the view is held to have seen: the store's, less the in-flight
+;; last record at :completing (the directory's publishing observation
+;; appended exactly the staged candidate).
+(defun-nx fn-scjs-seen-records (files)
+  (if (equal (fn-sf-phase files) :completing)
+      (butlast (fn-sf-records files) 1)
+    (fn-sf-records files)))
+
+;; THE SEEN FACT, over a store at a version: the version is within that
+;; history and the records past it load no catalog row.
+(defun-nx fn-scjs-store-seenp (s v)
+  (let ((r (fn-scjs-seen-records (fn-sn-files s))))
+    (and (<= v (len r))
+         (fn-scj-no-rowsp (nthcdr v r)))))
+
 (defun-nx fn-scjs-seenp (o)
-  (let ((files (fn-sn-files (fn-own-store o))))
-    (or (equal (fn-sf-phase files) :completing)
-        (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
-                                 (fn-sf-records files))))))
+  (fn-scjs-store-seenp (fn-own-store o) (fn-own-view-version (fn-own-view o))))
 
 (defun-nx fn-scjs-store-framep (s st v)
   (let ((records (fn-sf-records (fn-sn-files s)))
@@ -76,13 +97,10 @@
     (and (equal (fn-state-articles (fn-node-acceptance (fn-sn-node st)))
                 (fn-state-articles (fn-node-acceptance (fn-sn-node s))))
          (equal (fn-sn-verdicts st) (fn-sn-verdicts s))
-         (or (and (equal records2 records)
-                  (or (equal (fn-sf-phase (fn-sn-files st)) :completing)
-                      (fn-scj-no-rowsp (nthcdr v records))))
-             (and (equal (fn-sf-phase (fn-sn-files st)) :completing)
-                  (equal records2
-                         (append records
-                                 (list (fn-sf-record-candidate (fn-sn-files s))))))))))
+         (or (equal records2 records)
+             (equal records2
+                    (append records (list (fn-sf-record-candidate (fn-sn-files s))))))
+         (fn-scjs-store-seenp st v))))
 
 (local
  (defthm fn-scjs-take-of-append-le
@@ -113,16 +131,23 @@
                   (equal (fn-own-conns o2) (fn-own-conns o)))
              (fn-scj-invp o2 fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-scj-invp fn-scj-vvp fn-scjs-store-framep)
-                                  (fn-scj-joinp fn-scj-rows-invp fn-scj-live-okp fn-scj-conns-pinp)))))
+                                  (fn-scj-joinp fn-scj-rows-invp fn-scj-live-okp fn-scj-conns-pinp
+                                   fn-scjs-store-seenp)))))
 
 (defthm fn-scjs-seenp-and-framep-give-no-rows
   (let ((v (fn-own-view-version (fn-own-view o))))
     (implies (and (fn-scjs-store-framep (fn-own-store o) (fn-own-store o2) v)
-                  (equal (fn-own-view o2) (fn-own-view o))
-                  (not (equal (fn-sf-phase (fn-sn-files (fn-own-store o2))) :completing)))
-             (and (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files (fn-own-store o2)))))
+                  (equal (fn-own-view o2) (fn-own-view o)))
+             (and (implies (not (equal (fn-sf-phase (fn-sn-files (fn-own-store o2))) :completing))
+                           (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files (fn-own-store o2))))))
                   (fn-scjs-seenp o2))))
-  :hints (("Goal" :in-theory (enable fn-scjs-store-framep fn-scjs-seenp))))
+  :hints (("Goal" :in-theory (enable fn-scjs-store-framep fn-scjs-seenp fn-scjs-store-seenp
+                                     fn-scjs-seen-records))))
+
+(defthm fn-scjs-store-seenp-at-length
+  (implies (not (equal (fn-sf-phase (fn-sn-files s)) :completing))
+           (fn-scjs-store-seenp s (len (fn-sf-records (fn-sn-files s)))))
+  :hints (("Goal" :in-theory (enable fn-scjs-store-seenp fn-scjs-seen-records))))
 
 (defthm fn-scjs-view-indexedp-of-same-view
   (implies (equal (fn-own-view o2) (fn-own-view o))
@@ -165,6 +190,7 @@
                  (:instance fn-scj-invp-of-refresh (o o2))
                  (:instance fn-scjs-seenp (o (fn-own-refresh o2)))
                  (:instance fn-scjs-seenp (o o2))
+                 (:instance fn-scjs-store-seenp-at-length (s (fn-own-store o2)))
                  (:instance fn-scjs-store-framep (s (fn-own-store o)) (st (fn-own-store o2))
                             (v (fn-own-view-version (fn-own-view o))))
                  (:instance fn-own-store-idlep (s (fn-own-store o2)))
@@ -182,9 +208,10 @@
 ; :completing; nothing leaves :completing but the finish.
 (defun-nx fn-scjs-files-framep (files files2)
   (or (and (equal (fn-sf-records files2) (fn-sf-records files))
-           (implies (equal (fn-sf-phase files) :completing)
-                    (equal (fn-sf-phase files2) :completing)))
+           (iff (equal (fn-sf-phase files2) :completing)
+                (equal (fn-sf-phase files) :completing)))
       (and (equal (fn-sf-phase files2) :completing)
+           (not (equal (fn-sf-phase files) :completing))
            (equal (fn-sf-records files2)
                   (append (fn-sf-records files)
                           (list (fn-sf-record-candidate files)))))))
@@ -197,19 +224,53 @@
                                    fn-sf-record-dir-result fn-sf-recovery-barrier)
                                   (fn-sf-statep)))))
 
+(defthm fn-scjs-butlast-of-snoc
+  (equal (butlast (append r (list c)) 1) (true-list-fix r)))
+
+(defthm fn-scjs-snoc-is-not-self
+  (and (not (equal (append x (list c)) x))
+       (not (equal x (append x (list c)))))
+  :hints (("Goal" :use ((:instance len (x (append x (list c)))))
+           :in-theory (disable len))))
+
+(local
+ (defthm fn-scjs-no-rowsp-of-list-fix
+   (equal (fn-scj-no-rowsp (true-list-fix x)) (fn-scj-no-rowsp x))
+   :hints (("Goal" :induct (fn-scj-no-rowsp x)
+            :in-theory (e/d (true-list-fix) (fn-scj-load-h))))))
+
+(local
+ (defthm fn-scjs-nthcdr-of-list-fix
+   (equal (nthcdr v (true-list-fix r)) (true-list-fix (nthcdr v r)))
+   :hints (("Goal" :induct (nthcdr v r) :in-theory (enable true-list-fix)))))
+
+(defthm fn-scjs-no-rowsp-nthcdr-of-list-fix
+  (equal (fn-scj-no-rowsp (nthcdr v (true-list-fix r)))
+         (fn-scj-no-rowsp (nthcdr v r)))
+  :hints (("Goal" :in-theory '(fn-scjs-no-rowsp-of-list-fix fn-scjs-nthcdr-of-list-fix))))
+
+; A file step that keeps the history (and whether it is completing) keeps the
+; seen history; the one that appends the candidate into :completing keeps it
+; too: the seen history is the old one.
+(defthm fn-scjs-store-seenp-of-files-framep
+  (implies (fn-scjs-files-framep (fn-sn-files s) (fn-sn-files st))
+           (equal (fn-scjs-store-seenp st v) (fn-scjs-store-seenp s v)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-scjs-files-framep fn-scjs-store-seenp fn-scjs-seen-records)
+                                  (butlast)))))
+
 (defthm fn-scjs-framep-of-files-framep
   (implies (and (fn-scjs-files-framep (fn-sn-files s) (fn-sn-files st))
                 (equal (fn-state-articles (fn-node-acceptance (fn-sn-node st)))
                        (fn-state-articles (fn-node-acceptance (fn-sn-node s))))
                 (equal (fn-sn-verdicts st) (fn-sn-verdicts s))
-                (or (equal (fn-sf-phase (fn-sn-files s)) :completing)
-                    (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files s))))))
+                (fn-scjs-store-seenp s v))
            (fn-scjs-store-framep s st v))
-  :hints (("Goal" :in-theory '(fn-scjs-files-framep fn-scjs-store-framep))))
+  :hints (("Goal" :in-theory '(fn-scjs-files-framep fn-scjs-store-framep)
+           :use fn-scjs-store-seenp-of-files-framep)))
 
 (defthm fn-scjs-sn-io-framep
-  (implies (or (equal (fn-sf-phase (fn-sn-files s)) :completing)
-               (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files s)))))
+  (implies (fn-scjs-store-seenp s v)
            (fn-scjs-store-framep s (fn-sn-io s operation result) v))
   :hints (("Goal" :in-theory (e/d (fn-sn-io) (fn-scjs-store-framep fn-scjs-files-framep fn-sn-update
                                              fn-sn-file-step fn-sn-statep fn-scj-no-rowsp))
@@ -267,27 +328,24 @@
   (implies (and (fn-scjs-files-framep (fn-sn-files s) files)
                 (equal (fn-state-articles (fn-node-acceptance node))
                        (fn-state-articles (fn-node-acceptance (fn-sn-node s))))
-                (or (equal (fn-sf-phase (fn-sn-files s)) :completing)
-                    (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files s))))))
+                (fn-scjs-store-seenp s v))
            (fn-scjs-store-framep s (fn-sn-update s files node) v))
   :hints (("Goal" :in-theory '(fn-scjs-sn-update-fields)
            :use ((:instance fn-scjs-framep-of-files-framep (st (fn-sn-update s files node)))))))
 
 (defthm fn-scjs-store-framep-reflexive
-  (implies (or (equal (fn-sf-phase (fn-sn-files s)) :completing)
-               (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files s)))))
+  (implies (fn-scjs-store-seenp s v)
            (fn-scjs-store-framep s s v))
   :hints (("Goal" :in-theory (enable fn-scjs-store-framep))))
 
 (defthm fn-scjs-snrt-step-framep
   (implies (and (not (member-equal (car event) '(:finish :crash :recover)))
-                (or (equal (fn-sf-phase (fn-sn-files s)) :completing)
-                    (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files s))))))
+                (fn-scjs-store-seenp s v))
            (fn-scjs-store-framep s (fn-snrt-step s event) v))
   :hints (("Goal" :in-theory (e/d (fn-snrt-step fn-snt-step fn-sn-prepare fn-sn-prepare-retention
                                    fn-sn-prepare-identity fn-sn-prepare-consumer fn-sn-prepare-topic
                                    fn-sn-refuse-reservation fn-sn-known-abort)
-                                  (fn-scjs-store-framep fn-scjs-files-framep fn-sn-update fn-sn-io
+                                  (fn-scjs-store-framep fn-scjs-files-framep fn-scjs-store-seenp fn-sn-update fn-sn-io
                                    fn-sn-statep fn-sf-prepare-record fn-sf-refuse-reservation
                                    fn-sn-known-abort-files fn-sn-prepare-node fn-sn-record-bindsp
                                    fn-sn-refuse-reservation-enabledp fn-sn-known-abort-enabledp
@@ -441,17 +499,29 @@
                                     (fn-store-event-txid (fn-sn-completion-record s))))
                             (node (fn-replay-apply-record (fn-sn-node s) (fn-sn-completion-record s))))))))
 
+(defthm fn-scjs-completion-enabled-is-completing
+  (implies (fn-sn-completion-enabledp s)
+           (equal (fn-sf-phase (fn-sn-files s)) :completing))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-sn-completion-enabledp fn-sn-completion-core-enabledp))))
+
+(defthm fn-scjs-len-butlast-le
+  (<= (len (butlast x n)) (len x))
+  :rule-classes :linear)
+
 (defthm fn-scjs-no-row-finish-framep
   (implies (and (fn-sn-completion-enabledp s)
                 (not (fn-scj-load-h (fn-sn-completion-record s)))
-                (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files s)))))
+                (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files s))))
+                (fn-scjs-store-seenp s v))
            (fn-scjs-store-framep s (fn-sn-finish s) v))
-  :hints (("Goal" :in-theory '(fn-scjs-store-framep)
-           :use fn-scjs-no-row-finish-keeps-fields)))
+  :hints (("Goal" :in-theory '(fn-scjs-store-framep fn-scjs-store-seenp fn-scjs-seen-records
+                               fn-scjs-len-butlast-le)
+           :use (fn-scjs-no-row-finish-keeps-fields fn-scjs-completion-enabled-is-completing
+                 (:instance fn-scjs-len-butlast-le (x (fn-sf-records (fn-sn-files s))) (n 1))))))
 
 (defthm fn-scjs-spc-prepare-framep
-  (implies (or (equal (fn-sf-phase (fn-sn-files s)) :completing)
-               (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files s)))))
+  (implies (fn-scjs-store-seenp s v)
            (fn-scjs-store-framep s (fn-spc-prepare s record) v))
   :hints (("Goal" :in-theory (e/d (fn-spc-prepare fn-spc-stage-record fn-scjs-files-framep)
                                   (fn-scjs-store-framep fn-sn-update fn-sn-statep fn-sn-prepare-node
@@ -491,9 +561,7 @@
 
 (defthm fn-scjs-seenp-unfolds
   (equal (fn-scjs-seenp o)
-         (or (equal (fn-sf-phase (fn-sn-files (fn-own-store o))) :completing)
-             (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
-                                      (fn-sf-records (fn-sn-files (fn-own-store o)))))))
+         (fn-scjs-store-seenp (fn-own-store o) (fn-own-view-version (fn-own-view o))))
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn-scjs-seenp))))
 
@@ -553,6 +621,7 @@
   :hints (("Goal" :in-theory '(fn-scjs-historyp fn-own-store-of-fn-own-make
                                fn-own-view-of-fn-own-make fn-own-conns-of-fn-own-make)
            :use (fn-scjs-complete-is-owner-refresh
+                 fn-scjs-seenp-unfolds
                  (:instance fn-scjs-no-row-finish-framep (s (fn-own-store o))
                             (v (fn-own-view-version (fn-own-view o))))
                  (:instance fn-scjs-invp-of-store-frame
@@ -581,7 +650,8 @@
   :hints (("Goal" :cases ((fn-sn-completion-enabledp (fn-own-store o)))
            :in-theory '(fn-scjs-store-step-is-owner-with-store fn-snrt-step fn-snt-step
                         (:e member-equal) (:e equal))
-           :use ((:instance fn-scjs-no-row-finish-framep (s (fn-own-store o))
+           :use (fn-scjs-seenp-unfolds
+                 (:instance fn-scjs-no-row-finish-framep (s (fn-own-store o))
                             (v (fn-own-view-version (fn-own-view o))))
                  (:instance fn-scjs-store-framep-reflexive (s (fn-own-store o))
                             (v (fn-own-view-version (fn-own-view o))))
@@ -1049,8 +1119,7 @@
 ; installs the owner over it: books/owner-prepare-served-ocl.lisp
 ; fn-psrv-ccar-ocfg-prepare-identity-is-owner-with-store).
 (defthm fn-scjs-ccar-sn-prepare-identity-framep
-  (implies (or (equal (fn-sf-phase (fn-sn-files s)) :completing)
-               (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files s)))))
+  (implies (fn-scjs-store-seenp s v)
            (fn-scjs-store-framep s (fn-ccar-sn-prepare-identity s event) v))
   :hints (("Goal" :in-theory '(fn-ccar-sn-prepare-identity fn-pcar-stage-record-is-stage-record
                                fn-scjs-store-framep-reflexive)
@@ -1084,4 +1153,447 @@
                             (o (fn-ocfg-owner oc))
                             (st (fn-ccar-sn-prepare-identity (fn-own-store (fn-ocfg-owner oc)) e)))))))
 
-(in-theory (disable fn-scjs-seenp fn-scjs-store-framep fn-scjs-files-framep fn-scjs-historyp))
+;; -----------------------------------------------------------------------------
+;; The rows before the in-flight event (for the host's article finish): at
+;; :completing the invariant and the seen fact give the rows invariant over
+;; the history less its last record, and the view's version is within it.
+
+(local
+ (defun fn-scjs-take-ind (v k r)
+   (if (and (posp v) (consp r))
+       (fn-scjs-take-ind (1- v) (1- k) (cdr r))
+     (list v k r))))
+
+(local
+ (defthm fn-scjs-take-of-take
+   (implies (and (<= (nfix v) (nfix k)) (<= (nfix k) (len r)))
+            (equal (fn-own-take v (take k r)) (fn-own-take v r)))
+   :hints (("Goal" :induct (fn-scjs-take-ind v k r)
+            :in-theory (enable fn-own-take)))))
+
+(local
+ (defthm fn-scjs-len-of-take
+   (equal (len (take n l)) (nfix n))))
+
+(local
+ (defthm fn-scjs-own-take-of-short
+   (implies (not (posp v)) (equal (fn-own-take v r) nil))
+   :hints (("Goal" :in-theory (enable fn-own-take)))))
+
+(local
+ (defthm fn-scjs-own-take-of-butlast
+   (implies (<= (nfix v) (len (butlast r 1)))
+            (equal (fn-own-take v (butlast r 1)) (fn-own-take v r)))
+   :hints (("Goal" :cases ((<= (len r) 1))
+            :in-theory (e/d (butlast) (take fn-own-take))
+            :use ((:instance fn-scjs-take-of-take (k (- (len r) 1))))))))
+
+(defthm fn-scjs-rows-invp-before-in-flight
+  (let* ((s (fn-own-store o))
+         (records (fn-sf-records (fn-sn-files s)))
+         (v (fn-own-view-version (fn-own-view o))))
+    (implies (and (fn-scj-invp o fn-arena fn-cat)
+                  (fn-scjs-seenp o)
+                  (fn-scjs-historyp o)
+                  (equal (fn-sf-phase (fn-sn-files s)) :completing))
+             (and (<= v (len (butlast records 1)))
+                  (fn-scj-rows-invp fn-cat (butlast records 1)))))
+  :hints (("Goal" :in-theory (e/d (fn-scj-invp fn-scjs-seenp fn-scjs-store-seenp fn-scjs-seen-records
+                                   fn-scjs-historyp)
+                                  (fn-scj-joinp fn-scj-rows-invp fn-scj-live-okp fn-scj-conns-pinp
+                                   fn-scj-vvp butlast fn-scj-no-rowsp fn-scj-take-append-nthcdr))
+           :use ((:instance fn-scj-take-append-nthcdr
+                            (n (fn-own-view-version (fn-own-view o)))
+                            (xs (butlast (fn-sf-records (fn-sn-files (fn-own-store o))) 1)))
+                 (:instance fn-scj-rows-invp-of-no-rows
+                            (c fn-cat)
+                            (events (fn-own-take (fn-own-view-version (fn-own-view o))
+                                                 (butlast (fn-sf-records (fn-sn-files (fn-own-store o))) 1)))
+                            (extra (nthcdr (fn-own-view-version (fn-own-view o))
+                                           (butlast (fn-sf-records (fn-sn-files (fn-own-store o))) 1))))))))
+
+;; -----------------------------------------------------------------------------
+;; The pinned connections' versions (books/served-catalog-join-pinned.lisp
+;; fn-scj-conns-versions-atmostp) stay at most the view's version: a refresh
+;; moves the view's version only up (to the history's length), the other
+;; arms keep the view and the connections, and an advance re-pins at the
+;; view's version.
+
+(defun-nx fn-scjs-versionsp (o)
+  (fn-scj-conns-versions-atmostp (fn-own-conns o) (fn-own-view-version (fn-own-view o))))
+
+(defthm fn-scjs-versions-of-store-frame
+  (let ((v (fn-own-view-version (fn-own-view o)))
+        (records (fn-sf-records (fn-sn-files (fn-own-store o)))))
+    (implies (and (fn-scjs-versionsp o)
+                  (natp v)
+                  (<= v (len records))
+                  (true-listp records)
+                  (fn-scjs-store-framep (fn-own-store o) (fn-own-store o2) v)
+                  (equal (fn-own-view o2) (fn-own-view o))
+                  (equal (fn-own-conns o2) (fn-own-conns o)))
+             (fn-scjs-versionsp (fn-own-refresh o2))))
+  :hints (("Goal" :in-theory '(fn-scjs-versionsp fn-scjs-refresh-version fn-own-refresh-keeps-fields
+                               nfix natp (:e nfix) (:type-prescription len))
+           :use (fn-scjs-frame-records-facts
+                 (:instance fn-scj-conns-versions-atmostp-monotone
+                            (conns (fn-own-conns o))
+                            (m (fn-own-view-version (fn-own-view o)))
+                            (n (len (fn-sf-records (fn-sn-files (fn-own-store o2))))))))))
+
+
+
+
+(defthm fn-scjs-owner-with-store-keeps-versions
+  (let ((o2 (fn-ocl-owner-with-store o st)))
+    (implies (and (fn-scjs-versionsp o)
+                  (fn-scjs-historyp o)
+                  (fn-scjs-store-framep (fn-own-store o) st (fn-own-view-version (fn-own-view o))))
+             (fn-scjs-versionsp o2)))
+  :hints (("Goal" :in-theory '(fn-ocl-owner-with-store fn-scjs-historyp fn-own-store-of-fn-own-make
+                               fn-own-view-of-fn-own-make fn-own-conns-of-fn-own-make)
+           :use ((:instance fn-scjs-versions-of-store-frame
+                            (o2 (fn-own-make st (fn-own-view o) (fn-own-conns o)
+                                             (fn-own-next-id o) (fn-own-max-conns o)
+                                             (fn-own-pending o) (fn-own-ledger-field o)
+                                             (fn-own-clock o) (fn-own-facts o)
+                                             (fn-own-config o) (fn-own-queue o)
+                                             (fn-own-inflight o) (fn-own-feeds o)
+                                             (fn-own-node-secret o) (fn-own-refused o))))))))
+
+(defthm fn-scjs-store-step-keeps-versions
+  (implies (and (fn-scjs-versionsp o)
+                (fn-scjs-seenp o)
+                (fn-scjs-historyp o)
+                (not (member-equal (car event) '(:finish :crash :recover))))
+           (fn-scjs-versionsp (fn-own-store-step o event)))
+  :hints (("Goal" :in-theory '(fn-scjs-store-step-is-owner-with-store)
+           :use (fn-scjs-seenp-unfolds
+                 (:instance fn-scjs-snrt-step-framep (s (fn-own-store o))
+                            (v (fn-own-view-version (fn-own-view o))))
+                 (:instance fn-scjs-owner-with-store-keeps-versions
+                            (st (fn-snrt-step (fn-own-store o) event)))))))
+
+(defthm fn-scjs-complete-keeps-versions
+  (let ((s (fn-own-store o)))
+    (implies (and (fn-scjs-versionsp o)
+                  (fn-scjs-seenp o)
+                  (fn-scjs-historyp o)
+                  (not (fn-scj-load-h (fn-sn-completion-record s)))
+                  (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
+                                           (fn-sf-records (fn-sn-files s)))))
+             (fn-scjs-versionsp (fn-own-complete o))))
+  :hints (("Goal" :in-theory '(fn-scjs-historyp fn-own-store-of-fn-own-make
+                               fn-own-view-of-fn-own-make fn-own-conns-of-fn-own-make)
+           :use (fn-scjs-complete-is-owner-refresh
+                 fn-scjs-seenp-unfolds
+                 (:instance fn-scjs-no-row-finish-framep (s (fn-own-store o))
+                            (v (fn-own-view-version (fn-own-view o))))
+                 (:instance fn-scjs-versions-of-store-frame
+                            (o2 (fn-own-make (fn-sn-finish (fn-own-store o)) (fn-own-view o) (fn-own-conns o)
+                                             (fn-own-next-id o) (fn-own-max-conns o) nil
+                                             (fn-sl-snoc (fn-own-ledger-field o)
+                                                         (fn-sf-completion (fn-sn-files (fn-own-store o))))
+                                             (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
+                                             (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o)
+                                             (fn-own-node-secret o) (fn-own-refused o))))))))
+
+(defthm fn-scjs-store-step-finish-keeps-versions
+  (let ((s (fn-own-store o)))
+    (implies (and (fn-scjs-versionsp o)
+                  (fn-scjs-seenp o)
+                  (fn-scjs-historyp o)
+                  (equal (car event) :finish)
+                  (not (fn-scj-load-h (fn-sn-completion-record s)))
+                  (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
+                                           (fn-sf-records (fn-sn-files s)))))
+             (fn-scjs-versionsp (fn-own-store-step o event))))
+  :hints (("Goal" :cases ((fn-sn-completion-enabledp (fn-own-store o)))
+           :in-theory '(fn-scjs-store-step-is-owner-with-store fn-snrt-step fn-snt-step
+                        (:e member-equal) (:e equal))
+           :use (fn-scjs-seenp-unfolds
+                 (:instance fn-scjs-no-row-finish-framep (s (fn-own-store o))
+                            (v (fn-own-view-version (fn-own-view o))))
+                 (:instance fn-scjs-store-framep-reflexive (s (fn-own-store o))
+                            (v (fn-own-view-version (fn-own-view o))))
+                 (:instance fn-sn-finish (s (fn-own-store o)))
+                 (:instance fn-scjs-owner-with-store-keeps-versions
+                            (st (fn-sn-finish (fn-own-store o))))))))
+
+(defthm fn-scjs-ccar-own-finish-keeps-versions
+  (let ((s (fn-own-store o)))
+    (implies (and (fn-scjs-versionsp o)
+                  (fn-scjs-seenp o)
+                  (fn-scjs-historyp o)
+                  (not (fn-scj-load-h (fn-sn-completion-record s)))
+                  (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
+                                           (fn-sf-records (fn-sn-files s)))))
+             (fn-scjs-versionsp (cdr (fn-ccar-own-finish o cfg fn-arena)))))
+  :hints (("Goal" :in-theory '(fn-ccar-own-finish-is-own-finish fn-own-finish cdr-cons)
+           :use fn-scjs-complete-keeps-versions)))
+
+(defthm fn-scjs-ocfg-complete-keeps-versions
+  (let* ((o (fn-ocfg-owner oc)) (s (fn-own-store o)))
+    (implies (and (fn-scjs-versionsp o)
+                  (fn-scjs-seenp o)
+                  (fn-scjs-historyp o)
+                  (not (fn-scj-load-h (fn-sn-completion-record s)))
+                  (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
+                                           (fn-sf-records (fn-sn-files s)))))
+             (fn-scjs-versionsp (fn-ocfg-owner (fn-ocfg-complete oc)))))
+  :hints (("Goal" :in-theory '(fn-ocfg-complete fn-ocfg-owner-of-fn-ocfg-make)
+           :use ((:instance fn-scjs-complete-keeps-versions (o (fn-ocfg-owner oc)))))))
+
+(defthm fn-scjs-rix-ocfg-complete-keeps-versions
+  (let* ((o (fn-ocfg-owner oc)) (s (fn-own-store o)))
+    (implies (and (fn-hist-of-storep fn-hist s)
+                  (fn-scjs-versionsp o)
+                  (fn-scjs-seenp o)
+                  (fn-scjs-historyp o)
+                  (not (fn-scj-load-h (fn-sn-completion-record s)))
+                  (fn-scj-no-rowsp (nthcdr (fn-own-view-version (fn-own-view o))
+                                           (fn-sf-records (fn-sn-files s)))))
+             (fn-scjs-versionsp (fn-ocfg-owner (fn-rix-ocfg-complete oc fn-hist)))))
+  :hints (("Goal" :in-theory '(fn-rix-ocfg-complete-is-ccar-ocfg-complete fn-ccar-ocfg-complete
+                               fn-ccar-own-complete-is-own-complete fn-ocfg-complete)
+           :use fn-scjs-ocfg-complete-keeps-versions)))
+
+(defthm fn-scjs-ocfg-store-step-keeps-versions
+  (let ((o (fn-ocfg-owner oc)) (o2 (fn-ocfg-owner (fn-ocfg-step oc (list :store ev) fn-arena))))
+    (implies (and (fn-scjs-versionsp o)
+                  (fn-scjs-seenp o)
+                  (fn-scjs-historyp o)
+                  (not (member-equal (car ev) '(:finish :crash :recover))))
+             (fn-scjs-versionsp o2)))
+  :hints (("Goal" :in-theory '(fn-scjs-ocfg-store-step-owner)
+           :use ((:instance fn-scjs-store-step-keeps-versions (o (fn-ocfg-owner oc)) (event ev))))))
+
+(defthm fn-scjs-pcar-sbud-prepare-keeps-versions
+  (let ((o (fn-ocfg-owner oc)) (o2 (fn-ocfg-owner (fn-pcar-sbud-prepare oc record budget))))
+    (implies (and (fn-scjs-versionsp o)
+                  (fn-scjs-seenp o)
+                  (fn-scjs-historyp o))
+             (fn-scjs-versionsp o2)))
+  :hints (("Goal" :in-theory '(fn-pcar-sbud-prepare-is-sbud-prepare fn-sbud-prepare fn-opc-prepare
+                               fn-opc-owner-prepare fn-ocfg-with-owner fn-ocfg-owner-of-fn-ocfg-make)
+           :use ((:instance fn-scjs-seenp-unfolds (o (fn-ocfg-owner oc)))
+                 (:instance fn-scjs-spc-prepare-framep (s (fn-own-store (fn-ocfg-owner oc)))
+                            (v (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))))
+                 (:instance fn-scjs-owner-with-store-keeps-versions
+                            (o (fn-ocfg-owner oc))
+                            (st (fn-spc-prepare (fn-own-store (fn-ocfg-owner oc)) record)))
+                 (:instance fn-ocl-owner-with-store
+                            (o (fn-ocfg-owner oc))
+                            (st (fn-spc-prepare (fn-own-store (fn-ocfg-owner oc)) record)))))))
+
+(defthm fn-scjs-ocl-complete-keeps-versions
+  (let* ((o (fn-ocfg-owner oc)) (s (fn-own-store o))
+         (v (fn-own-view-version (fn-own-view o))))
+    (implies (and (fn-scjs-versionsp o)
+                  (fn-scjs-seenp o)
+                  (fn-scjs-historyp o)
+                  (if (fn-ocfg-staged oc)
+                      (fn-scjs-store-framep s (fn-cpo-configure-durable s (fn-ocfg-staged oc)) v)
+                    (and (not (fn-scj-load-h (fn-sn-completion-record s)))
+                         (fn-scj-no-rowsp (nthcdr v (fn-sf-records (fn-sn-files s)))))))
+             (fn-scjs-versionsp (fn-ocfg-owner (fn-ocl-complete oc)))))
+  :hints (("Goal" :in-theory '(fn-ocl-complete fn-ocfg-owner-of-fn-ocfg-make)
+           :use ((:instance fn-scjs-complete-keeps-versions (o (fn-ocfg-owner oc)))
+                 (:instance fn-scjs-owner-with-store-keeps-versions
+                            (o (fn-ocfg-owner oc))
+                            (st (fn-cpo-configure-durable (fn-own-store (fn-ocfg-owner oc))
+                                                          (fn-ocfg-staged oc))))))))
+
+(defthm fn-scjs-ccar-ocfg-prepare-identity-keeps-versions
+  (let ((o (fn-ocfg-owner oc)) (o2 (fn-ocfg-owner (fn-ccar-ocfg-prepare-identity oc e))))
+    (implies (and (fn-scjs-versionsp o)
+                  (fn-scjs-seenp o)
+                  (fn-scjs-historyp o))
+             (fn-scjs-versionsp o2)))
+  :hints (("Goal" :in-theory '(fn-ccar-ocfg-prepare-identity fn-ocfg-with-owner
+                               fn-ocfg-owner-of-fn-ocfg-make)
+           :use ((:instance fn-scjs-seenp-unfolds (o (fn-ocfg-owner oc)))
+                 (:instance fn-scjs-ccar-sn-prepare-identity-framep
+                            (s (fn-own-store (fn-ocfg-owner oc))) (event e)
+                            (v (fn-own-view-version (fn-own-view (fn-ocfg-owner oc)))))
+                 (:instance fn-scjs-owner-with-store-keeps-versions
+                            (o (fn-ocfg-owner oc))
+                            (st (fn-ccar-sn-prepare-identity (fn-own-store (fn-ocfg-owner oc)) e)))
+                 (:instance fn-ocl-owner-with-store
+                            (o (fn-ocfg-owner oc))
+                            (st (fn-ccar-sn-prepare-identity (fn-own-store (fn-ocfg-owner oc)) e)))))))
+
+(defthm fn-scjs-versionsp-of-same-fields
+  (implies (and (equal (fn-own-view o2) (fn-own-view o))
+                (equal (fn-own-conns o2) (fn-own-conns o)))
+           (equal (fn-scjs-versionsp o2) (fn-scjs-versionsp o)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-scjs-versionsp))))
+
+
+(defthm fn-scjs-begin-keeps-versions
+  (equal (fn-scjs-versionsp (fn-own-begin o id)) (fn-scjs-versionsp o))
+  :hints (("Goal" :in-theory nil
+           :use (fn-scjs-begin-keeps-fields
+                 (:instance fn-scjs-versionsp-of-same-fields (o2 (fn-own-begin o id)))))))
+
+
+(defthm fn-scjs-take-submission-keeps-versions
+  (equal (fn-scjs-versionsp (fn-own-take-submission o)) (fn-scjs-versionsp o))
+  :hints (("Goal" :in-theory nil
+           :use (fn-scjs-take-submission-keeps-fields
+                 (:instance fn-scjs-versionsp-of-same-fields (o2 (fn-own-take-submission o)))))))
+
+
+(defthm fn-scjs-control-submit-keeps-versions
+  (equal (fn-scjs-versionsp (fn-own-control-submit o msgid groups octets)) (fn-scjs-versionsp o))
+  :hints (("Goal" :in-theory nil
+           :use (fn-scjs-control-submit-keeps-fields
+                 (:instance fn-scjs-versionsp-of-same-fields (o2 (fn-own-control-submit o msgid groups octets)))))))
+
+
+(defthm fn-scjs-operator-submit-keeps-versions
+  (equal (fn-scjs-versionsp (fn-own-operator-submit o msgid groups octets stored)) (fn-scjs-versionsp o))
+  :hints (("Goal" :in-theory nil
+           :use (fn-scjs-operator-submit-keeps-fields
+                 (:instance fn-scjs-versionsp-of-same-fields (o2 (fn-own-operator-submit o msgid groups octets stored)))))))
+
+
+(defthm fn-scjs-bp-transit-submit-keeps-versions
+  (equal (fn-scjs-versionsp (fn-own-bp-transit-submit o cfg peer msgid octets id subject)) (fn-scjs-versionsp o))
+  :hints (("Goal" :in-theory nil
+           :use (fn-scjs-bp-transit-submit-keeps-fields
+                 (:instance fn-scjs-versionsp-of-same-fields (o2 (fn-own-bp-transit-submit o cfg peer msgid octets id subject)))))))
+
+
+(defthm fn-scjs-observe-keeps-versions
+  (equal (fn-scjs-versionsp (fn-own-observe o obs)) (fn-scjs-versionsp o))
+  :hints (("Goal" :in-theory nil
+           :use (fn-scjs-observe-keeps-fields
+                 (:instance fn-scjs-versionsp-of-same-fields (o2 (fn-own-observe o obs)))))))
+
+
+(defthm fn-scjs-declare-group-keeps-versions
+  (equal (fn-scjs-versionsp (fn-own-declare-group o name)) (fn-scjs-versionsp o))
+  :hints (("Goal" :in-theory nil
+           :use (fn-scjs-declare-group-keeps-fields
+                 (:instance fn-scjs-versionsp-of-same-fields (o2 (fn-own-declare-group o name)))))))
+
+
+(defthm fn-scjs-configure-keeps-versions
+  (equal (fn-scjs-versionsp (fn-own-configure o config)) (fn-scjs-versionsp o))
+  :hints (("Goal" :in-theory nil
+           :use (fn-scjs-configure-keeps-fields
+                 (:instance fn-scjs-versionsp-of-same-fields (o2 (fn-own-configure o config)))))))
+
+
+(defthm fn-scjs-control-outcome-keeps-versions
+  (equal (fn-scjs-versionsp (fn-own-control-outcome o word)) (fn-scjs-versionsp o))
+  :hints (("Goal" :in-theory nil
+           :use (fn-scjs-control-outcome-keeps-fields
+                 (:instance fn-scjs-versionsp-of-same-fields (o2 (fn-own-control-outcome o word)))))))
+
+
+(defthm fn-scjs-bp-transit-outcome-keeps-versions
+  (equal (fn-scjs-versionsp (fn-own-bp-transit-outcome o word)) (fn-scjs-versionsp o))
+  :hints (("Goal" :in-theory nil
+           :use (fn-scjs-bp-transit-outcome-keeps-fields
+                 (:instance fn-scjs-versionsp-of-same-fields (o2 (fn-own-bp-transit-outcome o word)))))))
+
+
+(defthm fn-scjs-ocfg-observe-keeps-versions
+  (equal (fn-scjs-versionsp (fn-ocfg-owner (fn-ocfg-observe oc obs)))
+         (fn-scjs-versionsp (fn-ocfg-owner oc)))
+  :hints (("Goal" :in-theory '(fn-ocfg-observe fn-ocfg-with-owner fn-ocfg-owner-of-fn-ocfg-make
+                               fn-scjs-observe-keeps-versions))))
+
+(defthm fn-scjs-versions-of-replace
+  (implies (and (fn-scj-conns-versions-atmostp conns n)
+                (<= (nfix (fn-own-conn-version conn)) (nfix n)))
+           (fn-scj-conns-versions-atmostp (fn-own-replace-conn conn conns) n))
+  :hints (("Goal" :induct (fn-own-replace-conn conn conns)
+           :in-theory (enable fn-own-replace-conn fn-scj-conns-versions-atmostp))))
+
+(defthm fn-scjs-advance-keeps-versions
+  (implies (fn-scjs-versionsp o)
+           (fn-scjs-versionsp (fn-own-advance o id)))
+  :hints (("Goal" :in-theory (e/d (fn-own-advance fn-own-advance-result fn-own-set-conns fn-scjs-versionsp
+                                   fn-own-conn-make-group-indexed fn-own-conn-version)
+                                  (fn-scj-conns-versions-atmostp fn-own-conn-boundedp fn-own-replace-conn
+                                   fn-auth-with-base fn-peer-with-base
+                                   fn-post-make-session fn-nntp-set-cursor fn-nntp-open-session
+                                   fn-own-find-conn fn-own-view-group-index
+                                   fn-own-view-version fn-own-view-frontier fn-own-view-archive
+                                   fn-own-view-verdicts fn-own-view-index fn-own-view-control)))))
+
+(defthm fn-scjs-acar-advance-keeps-versions
+  (implies (fn-scjs-versionsp o)
+           (fn-scjs-versionsp (cdr (fn-acar-own-advance-result o id))))
+  :hints (("Goal" :in-theory (e/d (fn-acar-own-advance-result fn-own-set-conns fn-scjs-versionsp
+                                   fn-own-conn-make-group-indexed fn-own-conn-version)
+                                  (fn-scj-conns-versions-atmostp fn-scar-conn-boundedp fn-own-replace-conn
+                                   fn-auth-with-base fn-peer-with-base
+                                   fn-post-make-session fn-nntp-set-cursor fn-acar-open-session
+                                   fn-own-find-conn fn-own-view-group-index
+                                   fn-own-view-version fn-own-view-frontier fn-own-view-archive
+                                   fn-own-view-verdicts fn-own-view-index fn-own-view-control)))))
+
+
+(defthm fn-scjs-outcome-keeps-versions
+  (implies (fn-scjs-versionsp o)
+           (fn-scjs-versionsp (cdr (fn-own-outcome o id word))))
+  :hints (("Goal" :in-theory (e/d (fn-own-outcome)
+                                  (fn-own-advance fn-scjs-versionsp fn-own-outcome-completion
+                                   fn-own-feed-durable fn-served-post-outcome fn-own-post-rendering
+                                   fn-served-result-effects fn-served-make-conn-group-indexed))
+           :use ((:instance fn-scjs-versionsp-of-same-fields
+                            (o2 (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                                 (fn-own-next-id o) (fn-own-max-conns o)
+                                 (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
+                                 (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
+                                 (fn-own-config o) (fn-own-queue o) nil
+                                 (if (equal (fn-own-outcome-completion o word) :durable)
+                                     (fn-own-feed-durable o (fn-own-inflight o))
+                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))))))
+
+(defthm fn-scjs-transit-outcome-keeps-versions
+  (implies (fn-scjs-versionsp o)
+           (fn-scjs-versionsp (cdr (fn-own-transit-outcome o id kind reason word))))
+  :hints (("Goal" :in-theory (e/d (fn-own-transit-outcome)
+                                  (fn-own-advance fn-scjs-versionsp fn-own-outcome-completion
+                                   fn-own-feed-durable fn-served-transit-outcome fn-own-outcome-rendering
+                                   fn-served-result-effects fn-served-make-conn-group-indexed
+                                   fn-peer-decision fn-own-transit-subp))
+           :use ((:instance fn-scjs-versionsp-of-same-fields
+                            (o2 (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                                  (fn-own-next-id o) (fn-own-max-conns o)
+                                  (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
+                                  (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
+                                  (fn-own-config o) (fn-own-queue o) nil
+                                  (if (equal (if (equal kind :want) (fn-own-outcome-completion o word) nil)
+                                             :durable)
+                                      (fn-own-feed-durable o (fn-own-inflight o))
+                                    (fn-own-feeds o)) (fn-own-node-secret o)
+                                  (fn-own-transit-refused o (fn-own-find-conn id (fn-own-conns o))
+                                                          (fn-own-inflight o) kind reason))))))))
+
+(defthm fn-scjs-acar-own-outcome-keeps-versions
+  (implies (fn-scjs-versionsp o)
+           (fn-scjs-versionsp (cdr (fn-acar-own-outcome o id word))))
+  :hints (("Goal" :in-theory (e/d (fn-acar-own-outcome)
+                                  (fn-acar-own-advance-result fn-scjs-versionsp
+                                   fn-own-outcome-completion
+                                   fn-own-feed-durable fn-served-post-outcome fn-own-post-rendering
+                                   fn-served-result-effects fn-served-make-conn-group-indexed))
+           :use ((:instance fn-scjs-versionsp-of-same-fields
+                            (o2 (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                                 (fn-own-next-id o) (fn-own-max-conns o)
+                                 (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
+                                 (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
+                                 (fn-own-config o) (fn-own-queue o) nil
+                                 (if (equal (fn-own-outcome-completion o word) :durable)
+                                     (fn-own-feed-durable o (fn-own-inflight o))
+                                   (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o))))))))
+
+(in-theory (disable fn-scjs-seenp fn-scjs-store-seenp fn-scjs-seen-records fn-scjs-store-framep
+                    fn-scjs-files-framep fn-scjs-historyp fn-scjs-versionsp))
