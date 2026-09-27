@@ -3280,7 +3280,7 @@
       "status": "specified",
       "proof_targets": [
         "PRF-171",
-        "PRF-253"
+        "PRF-257"
       ],
       "verification": [
         "proof",
