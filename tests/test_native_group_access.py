@@ -253,8 +253,8 @@ class NativeGroupAccessTests(unittest.TestCase):
             self.assertTrue(self.line(alice, "GROUP fn.private.x").startswith("211"))
             status, _ = self.multi(alice, "ARTICLE <secret@example.invalid>")
             self.assertTrue(status.startswith("220"), status)
-            self.assertTrue(self.post(alice, "fn.private.x",
-                                      "alice-" + phase).startswith("240"))
+            posted = self.post(alice, "fn.private.x", "alice-" + phase)
+            self.assertTrue(posted.startswith("240"), posted)
             if phase == "live":
                 self.stop(node)
                 self.start(node)
