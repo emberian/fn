@@ -101,6 +101,7 @@
   (synced nil)
   (commit-lock (sb-thread:make-mutex :name "fn owner commit"))
   (commit-ready (sb-thread:make-waitqueue :name "fn owner commit ready"))
+  ;; guarded-by: fnn-owner-service-commit-lock (every access below takes it)
   (awaiting (make-hash-table)) (done (make-hash-table)) (sparing nil))
 
 ;;; Inside a commit quantum (fnn-owner-commit-queued-locked) the effects that
@@ -3477,7 +3478,8 @@ the crash keystone) and serving continues."
   (setf (sb-ext:bytes-consed-between-gcs) (fnn-gc-nursery-octets))
   ;; It reads the live arena outside the owner's mutex: no staged page is
   ;; released while it runs (host/native/io.lisp fnn-log-reseat-fenced).
-  (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
+  ;; Its caller counted it under the mutex, before this thread existed
+  ;; (fnn-owner-maybe-publish); the count is returned below.
   (unwind-protect
   (destructuring-bind (base configs records record-octets count suffix budget frontier free revision
                         base-payloads)
@@ -3620,11 +3622,24 @@ reads run as a :control quantum; the thread's registration is the roster's."
             (unless (or (eq position :failed)
                         (and (true-listp captured) (= (length captured) 11)))
               (fnn-fault "owner returned a malformed checkpoint capture"))
+            ;; The publication reads the live arena outside the mutex, so it
+            ;; is counted as such a reader here, under the mutex, before its
+            ;; thread starts: counted on its own thread, a commit completing
+            ;; between this capture and that count could release a staged
+            ;; page it reads (fnn-log-reseat-fenced runs under the mutex).
+            ;; The thread returns the count when it ends; a thread that was
+            ;; never made returns it here.
             (fnn-with-roster (service)
               (let ((thread (and (not (eq position :failed))
-                                 (sb-thread:make-thread
-                                  (lambda () (fnn-owner-publish-captured service captured position))
-                                  :name "fn owner checkpoint"))))
+                                 (let ((made nil))
+                                   (sb-ext:atomic-incf (car *fnn-arena-off-mutex-readers*))
+                                   (unwind-protect
+                                        (setq made (sb-thread:make-thread
+                                                    (lambda () (fnn-owner-publish-captured
+                                                                service captured position))
+                                                    :name "fn owner checkpoint"))
+                                     (unless made
+                                       (sb-ext:atomic-decf (car *fnn-arena-off-mutex-readers*))))))))
                 (setf (fnn-owner-service-publisher service) thread)
                 (push thread (fnn-owner-service-workers service))))))))))
 

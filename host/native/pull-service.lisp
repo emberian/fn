@@ -46,6 +46,7 @@
   (cu-schedule nil) (cu-cursors nil) (cu-journals nil))
 
 (defparameter *fnn-pull-runtime-lock* (sb-thread:make-mutex :name "fn pull runtimes"))
+;; guarded-by: *fnn-pull-runtime-lock*
 (defparameter *fnn-pull-runtimes* (make-hash-table :test #'eq))
 
 (defun fnn-pull-runtime-get (service)

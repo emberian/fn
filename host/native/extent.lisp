@@ -24,8 +24,8 @@
 (define-condition fnn-extent-fault (fnn-store-fault) ())
 
 (defvar *fnn-extent-lock* (sb-thread:make-mutex :name "fn extent realizer"))
-(defvar *fnn-extent-fds* (make-hash-table))   ; file id -> read-only fd
-(defvar *fnn-extent-paths* (make-hash-table)) ; file id -> path (diagnostics)
+(defvar *fnn-extent-fds* (make-hash-table))   ; guarded-by: *fnn-extent-lock* (file id -> fd)
+(defvar *fnn-extent-paths* (make-hash-table)) ; guarded-by: *fnn-extent-lock* (file id -> path)
 (defvar *fnn-extent-next-id* 1)
 (defvar *fnn-extent-cache* nil)               ; ((file eoff . octets) ...), most recent first
 (defvar *fnn-extent-stats* (list 0 0 0))      ; hits, misses (preads), refusals
@@ -173,11 +173,14 @@ checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
         (let* ((c (fn-durable-realize-octets file eoff elen poff plen trailer))
                (r (fnn-core 'fn-lzr-lz-read dict c n)))
           (unless (and (consp r) (eq (first r) :ok))
-            (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
-              (incf (third *fnn-extent-stats*)))
-            (error 'fnn-extent-fault
-                   :message (format nil "arena-extent-lz-decode: the block at ~a of ~a does not decode to its ~a octets"
-                                    poff (gethash file *fnn-extent-paths*) n)))
+            ;; The path is read under the lock that guards the table: another
+            ;; thread may be registering a file (fnn-extent-register).
+            (let ((path (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
+                          (incf (third *fnn-extent-stats*))
+                          (gethash file *fnn-extent-paths*))))
+              (error 'fnn-extent-fault
+                     :message (format nil "arena-extent-lz-decode: the block at ~a of ~a does not decode to its ~a octets"
+                                      poff path n))))
           (let ((octets (second r)))
             (sb-thread:with-mutex (*fnn-extent-lock* :wait-p t)
               (setq *fnn-extent-lz-last* (list* key dict octets)))
