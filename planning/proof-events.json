@@ -555,11 +555,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-sn-open-observed-not-ready-before-five-barriers"
+          "name": "fn-sn-open-observed-not-ready-before-the-barriers"
         },
         {
           "kind": "theorem",
-          "name": "fn-sn-open-observed-five-barriers-open-ready"
+          "name": "fn-sn-open-observed-barriers-open-ready"
         },
         {
           "kind": "theorem",
@@ -9752,6 +9752,54 @@
         {
           "kind": "theorem",
           "name": "fn-lgob-journal-fence-keeps-the-rotated-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-fence-of-a-fenced-file-is-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-three-barrier-open-is-the-five-at-every-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-three-and-five-barrier-opens-have-the-same-cut-states"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-only-a-write-unfences-a-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-recovered-state-meets-the-segment-hypothesis"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-three-barrier-open-after-recovery-is-the-five"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-two-barriers-without-journal-lose-a-rotated-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-three-barriers-keep-the-rotated-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-two-barriers-without-root-lose-a-checkpointed-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-three-barriers-keep-the-checkpoint"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-two-barriers-without-parent-lose-an-imported-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-three-barriers-keep-the-imported-store"
         }
       ]
     },
