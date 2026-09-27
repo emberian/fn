@@ -361,6 +361,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-kernel-tests \
 	books/store-log-txid \
 	tests/acl2/store-log-txid-tests \
+	books/owner-batch \
+	tests/acl2/owner-batch-tests \
 	books/store-log-decode \
 	tests/acl2/store-log-decode-tests \
 	books/store-log-programs \

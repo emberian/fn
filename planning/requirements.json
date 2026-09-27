@@ -377,7 +377,10 @@
         "PRF-050",
         "PRF-244",
         "PRF-245",
-        "PRF-246"
+        "PRF-246",
+        "PRF-253",
+        "PRF-254",
+        "PRF-255"
       ],
       "verification": [
         "proof",
@@ -414,7 +417,7 @@
         "fn-sn-new-success-requires-actual-matching-durable-node-completion",
         "fn-snrt-new-success-is-actual-matching-durable-completion"
       ],
-      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). A new success in the composed machine requires an actual matching durable node completion, in single steps and across mixed live/refusal/recovery traces. Open: the refinement from these file events to real syscalls remains conditional on the platform assumptions in the trust boundary; no power-loss profile is qualified."
+      "note": "Certified on the farm gate of dev 7a9e89a (persvati, ACL2 8.7 / SBCL 2.6.8, 210 of 213 roots; the three that failed are the owner cluster). A new success in the composed machine requires an actual matching durable node completion, in single steps and across mixed live/refusal/recovery traces. Open: the refinement from these file events to real syscalls remains conditional on the platform assumptions in the trust boundary; no power-loss profile is qualified. The storage-log design (2026-09-27, section 3.3) restates the in-flight rule as one BATCH in flight: the batch of PreparedCommit tokens over the record log, its close rule and its barrier are STO-033 (books/owner-batch.lisp; no host line calls it yet, PKT-698)."
     },
     {
       "id": "STO-004",
@@ -425,7 +428,8 @@
       "proof_targets": [
         "PRF-007",
         "PRF-027",
-        "PRF-043"
+        "PRF-043",
+        "PRF-255"
       ],
       "verification": [
         "proof",
@@ -479,7 +483,10 @@
         "PRF-110",
         "PRF-244",
         "PRF-245",
-        "PRF-246"
+        "PRF-246",
+        "PRF-253",
+        "PRF-254",
+        "PRF-255"
       ],
       "verification": [
         "proof",
@@ -4450,6 +4457,28 @@
       ],
       "implementation_note": "A client contract, not an RFC requirement. No store record, no configuration delta, no store format change; local-control request codes 9 (wait) and 10 (bound-wait), answered on the poll reply kind 6. The waiter capacity is 12, derived from the fixed local-control worker ceiling (16) that the heap reservation already counts; making it an operator profile value is PKT-700.",
       "note": "Wake is a broadcast: every waiter polls once per commit (at most 12 polls per commit). fn_agent.py is an external client (Python), not part of the node."
+    },
+    {
+      "id": "STO-033",
+      "title": "The commit batch and the close rule",
+      "specification": "specs/storage.md#commit-protocol",
+      "milestone": "M5",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-253",
+        "PRF-254",
+        "PRF-255"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/owner-batch.lisp",
+        "tests/acl2/owner-batch-tests.lisp",
+        "planning/evidence/w6-log-owner-2026-09-27.md"
+      ],
+      "implementation_note": "Lane w6-log-owner (2026-09-27; design planning/design-2026-09-27-storage-log.md section 3.3). One batch in flight; its members are ordered by their prepare; each member's acknowledgement follows the batch's barrier, in order (fn-owb-fence fills WAITING from the fenced batch, fn-owb-finish-member acknowledges its head); the batch closes when the log thread returns from the previous barrier or at the operator's live bounds log-batch-records and log-batch-octets (:set-limit slots, fn-owb-bmax and fn-owb-omax; an unset slot means 64 records and the batch buffer's size), never a timer; a failed barrier makes every member in flight or waiting :uncertain and fences the store (fn-owb-fence-failed). Proved over the batch layer books/owner-batch.lisp: PRF-253 (T1), PRF-254 (T4, the bounds, the sole-pending-writer discharge), PRF-255 (T7); the scenarios are SCN-174 (the batch's crash cuts) and SCN-170 (the fsync error). Open: no host line calls the layer; the store node's article commit still runs the file kernel of books/store-files.lisp (PKT-698, the decision packet), and the batch layer with the log thread and the mutex discipline is PKT-748."
     }
   ]
 }
