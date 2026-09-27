@@ -1125,27 +1125,27 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1156,
-    "books_in_root_closure": 1145,
+    "books": 1158,
+    "books_in_root_closure": 1147,
     "roots": 1121,
-    "theorems": 16934,
-    "functions": 11763,
-    "assert_events": 16926,
+    "theorems": 17051,
+    "functions": 11820,
+    "assert_events": 16930,
     "must_fails": 2054,
     "prover_refusals": 0,
     "encapsulates": 87,
     "guards": {
-      "verified": 2397,
-      "declared-off": 1103,
-      "default-guarded": 6528,
-      "default-unguarded": 1735
+      "verified": 2405,
+      "declared-off": 1115,
+      "default-guarded": 6563,
+      "default-unguarded": 1737
     },
-    "suspect_theorems": 175,
-    "export_hygiene_warnings": 191,
+    "suspect_theorems": 180,
+    "export_hygiene_warnings": 196,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 206,
-    "include_hygiene_warnings": 1125,
-    "host_names_warnings": 1309,
+    "include_hygiene_warnings": 1127,
+    "host_names_warnings": 1308,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -7579,15 +7579,15 @@
       "book": "books/catalog-record.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 66,
-      "functions": 46,
+      "theorems": 19,
+      "functions": 10,
       "guards": {
-        "verified": 22,
+        "verified": 0,
         "declared-off": 0,
-        "default-guarded": 22,
+        "default-guarded": 8,
         "default-unguarded": 2
       },
-      "verify_guards_events": 22,
+      "verify_guards_events": 0,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -7595,14 +7595,13 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "held-record",
         "nntp-session",
         "payload-arena",
         "stx-lace"
       ],
       "system_includes": [],
-      "suspects": [
-        "fn-held-accessors-are-the-wire-accessors"
-      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -7689,12 +7688,12 @@
       "book": "books/catalog.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 151,
-      "functions": 59,
+      "theorems": 155,
+      "functions": 56,
       "guards": {
         "verified": 0,
         "declared-off": 11,
-        "default-guarded": 38,
+        "default-guarded": 35,
         "default-unguarded": 10
       },
       "verify_guards_events": 0,
@@ -10134,6 +10133,36 @@
         "arithmetic-5/top"
       ],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/held-record.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 56,
+      "functions": 45,
+      "guards": {
+        "verified": 22,
+        "declared-off": 0,
+        "default-guarded": 23,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 22,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "defrecord",
+        "records-shape",
+        "stx-accept-records"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-held-accessors-are-the-wire-accessors"
+      ],
       "read_error": null
     },
     {
@@ -15231,12 +15260,12 @@
       "book": "books/records-concrete.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 13,
-      "functions": 13,
+      "theorems": 17,
+      "functions": 17,
       "guards": {
         "verified": 4,
         "declared-off": 0,
-        "default-guarded": 9,
+        "default-guarded": 13,
         "default-unguarded": 0
       },
       "verify_guards_events": 6,
@@ -15256,7 +15285,13 @@
       "system_includes": [
         "arithmetic/top"
       ],
-      "suspects": [],
+      "suspects": [
+        "fn-rcon-sn-record-bindsp-is-sn-record-bindsp",
+        "fn-rcon-store-event-generation-is-store-event-generation",
+        "fn-rcon-store-event-p-is-store-event-p",
+        "fn-rcon-store-event-sequence-is-store-event-sequence",
+        "fn-rcon-store-event-txid-is-store-event-txid"
+      ],
       "read_error": null
     },
     {
@@ -15693,11 +15728,11 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 37,
-      "functions": 27,
+      "functions": 29,
       "guards": {
         "verified": 18,
         "declared-off": 0,
-        "default-guarded": 9,
+        "default-guarded": 11,
         "default-unguarded": 0
       },
       "verify_guards_events": 18,
@@ -16827,7 +16862,7 @@
       "book": "books/store-events-carried.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 21,
+      "theorems": 24,
       "functions": 13,
       "guards": {
         "verified": 0,
@@ -16856,14 +16891,14 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 2,
-      "functions": 21,
+      "functions": 26,
       "guards": {
-        "verified": 10,
+        "verified": 15,
         "declared-off": 9,
         "default-guarded": 2,
         "default-unguarded": 0
       },
-      "verify_guards_events": 10,
+      "verify_guards_events": 15,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -16872,6 +16907,7 @@
       "encapsulates": 0,
       "includes": [
         "consumer-store-events",
+        "held-record",
         "records-seam",
         "stx-accept-records",
         "topic-history-store-events"
@@ -17126,6 +17162,34 @@
       "suspects": [
         "fn-bs-init-pub-ops-for-dir-of-crash-select-of-ops-for-dir"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/store-intern.lisp",
+      "in_root_closure": true,
+      "is_root": false,
+      "theorems": 58,
+      "functions": 21,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 18,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-record",
+        "store-node",
+        "store-reclaim"
+      ],
+      "system_includes": [],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -17420,13 +17484,13 @@
       "book": "books/store-node-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 159,
-      "functions": 2,
+      "theorems": 187,
+      "functions": 3,
       "guards": {
         "verified": 0,
         "declared-off": 1,
         "default-guarded": 0,
-        "default-unguarded": 1
+        "default-unguarded": 2
       },
       "verify_guards_events": 0,
       "assert_events": 0,
@@ -17453,7 +17517,7 @@
       "book": "books/store-node-resolution.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 37,
+      "theorems": 39,
       "functions": 8,
       "guards": {
         "verified": 6,
@@ -17513,7 +17577,7 @@
       "book": "books/store-node-traces-prepare.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 43,
+      "theorems": 44,
       "functions": 6,
       "guards": {
         "verified": 5,
@@ -17546,7 +17610,7 @@
       "book": "books/store-node-traces.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 56,
+      "theorems": 58,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -17580,15 +17644,15 @@
       "book": "books/store-node.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 119,
-      "functions": 65,
+      "theorems": 125,
+      "functions": 73,
       "guards": {
-        "verified": 36,
+        "verified": 39,
         "declared-off": 2,
-        "default-guarded": 27,
+        "default-guarded": 32,
         "default-unguarded": 0
       },
-      "verify_guards_events": 36,
+      "verify_guards_events": 39,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -27729,10 +27793,10 @@
         "default-unguarded": 27
       },
       "verify_guards_events": 0,
-      "assert_events": 336,
+      "assert_events": 337,
       "must_fails": 84,
       "prover_refusals": 0,
-      "defconsts": 120,
+      "defconsts": 121,
       "defmacros": 27,
       "encapsulates": 0,
       "includes": [
@@ -31569,7 +31633,7 @@
       "assert_events": 8,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 9,
+      "defconsts": 10,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -31978,15 +32042,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 5,
+      "functions": 14,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 9,
         "default-guarded": 3,
         "default-unguarded": 2
       },
       "verify_guards_events": 0,
-      "assert_events": 80,
+      "assert_events": 82,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 4,
@@ -31994,6 +32058,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
+        "../../books/store-intern",
         "../../books/store-node-invariants",
         "crypto-seam-tests"
       ],
@@ -32124,10 +32189,10 @@
         "default-unguarded": 4
       },
       "verify_guards_events": 0,
-      "assert_events": 37,
+      "assert_events": 38,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 12,
+      "defconsts": 13,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -33256,12 +33321,12 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 4,
+      "functions": 5,
       "guards": {
         "verified": 0,
         "declared-off": 0,
         "default-guarded": 0,
-        "default-unguarded": 4
+        "default-unguarded": 5
       },
       "verify_guards_events": 0,
       "assert_events": 27,
@@ -34151,7 +34216,7 @@
     {
       "theorem": "fn-evc-event-nth-of-atom",
       "book": "books/store-events-carried.lisp",
-      "line": 138,
+      "line": 185,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-store-event-nth and the conclusion is that branch's value"
       ]
@@ -34199,7 +34264,7 @@
     {
       "theorem": "fn-fr-disjointp-of-all-memberships-left",
       "book": "books/acceptance.lisp",
-      "line": 251,
+      "line": 259,
       "reasons": [
         "instance-corollary: the statement is fn-fr-disjointp-commutes instantiated, discharging nothing"
       ]
@@ -34214,8 +34279,8 @@
     },
     {
       "theorem": "fn-held-accessors-are-the-wire-accessors",
-      "book": "books/catalog-record.lisp",
-      "line": 308,
+      "book": "books/held-record.lisp",
+      "line": 121,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
@@ -34699,6 +34764,51 @@
       ]
     },
     {
+      "theorem": "fn-rcon-sn-record-bindsp-is-sn-record-bindsp",
+      "book": "books/records-concrete.lisp",
+      "line": 192,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-rcon-sn-record-bindsp",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-rcon-store-event-generation-is-store-event-generation",
+      "book": "books/records-concrete.lisp",
+      "line": 163,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-rcon-store-event-generation",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-rcon-store-event-p-is-store-event-p",
+      "book": "books/records-concrete.lisp",
+      "line": 142,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-rcon-store-event-p",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-rcon-store-event-sequence-is-store-event-sequence",
+      "book": "books/records-concrete.lisp",
+      "line": 149,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-rcon-store-event-sequence",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
+      "theorem": "fn-rcon-store-event-txid-is-store-event-txid",
+      "book": "books/records-concrete.lisp",
+      "line": 156,
+      "reasons": [
+        "definition-restated: the conclusion is the body of fn-rcon-store-event-txid",
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
       "theorem": "fn-rdc-store-selection-unfolds",
       "book": "books/reader-open-carried.lisp",
       "line": 153,
@@ -34893,7 +35003,7 @@
     {
       "theorem": "fn-sn-composite-delta-of-typed-article",
       "book": "books/store-node-invariants.lisp",
-      "line": 1458,
+      "line": 1690,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-composite-delta and the conclusion is that branch's value"
       ]
@@ -34917,7 +35027,7 @@
     {
       "theorem": "fn-sn-open-observed-invalid-history-refuses",
       "book": "books/store-observed.lisp",
-      "line": 497,
+      "line": 500,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-sn-open-observed and the conclusion is that branch's value"
       ]
@@ -34933,7 +35043,7 @@
     {
       "theorem": "fn-snt-apply-record-of-a-retention-event",
       "book": "books/store-node-traces-prepare.lisp",
-      "line": 749,
+      "line": 761,
       "reasons": [
         "branch-of-definition: the hypothesis is a branch test of fn-replay-apply-record and the conclusion is that branch's value"
       ]
@@ -35073,7 +35183,7 @@
       {
         "theorem": "fn-articles-freshp-is-one-pass",
         "book": "books/acceptance.lisp",
-        "line": 269,
+        "line": 277,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -35331,7 +35441,7 @@
       {
         "theorem": "fn-intern-list-handle",
         "book": "books/catalog-record.lisp",
-        "line": 433,
+        "line": 302,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -35349,7 +35459,7 @@
       {
         "theorem": "fn-cat-total-octets-is-octets-of",
         "book": "books/catalog.lisp",
-        "line": 1638,
+        "line": 1659,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -35421,25 +35531,25 @@
       {
         "theorem": "fn-jrec-article-sequence-agrees",
         "book": "books/config-records.lisp",
-        "line": 100,
+        "line": 103,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-jrec-article-store-event-sequence-agrees",
         "book": "books/config-records.lisp",
-        "line": 105,
+        "line": 108,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-jrec-config-sequence-agrees",
         "book": "books/config-records.lisp",
-        "line": 113,
+        "line": 116,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-cei-count-of-put",
         "book": "books/consumer-event-index.lisp",
-        "line": 273,
+        "line": 274,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -35797,45 +35907,69 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-rcon-wire-event-p-is-wire-event-p",
+        "book": "books/records-concrete.lisp",
+        "line": 73,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-wire-event-sequence-is-wire-event-sequence",
+        "book": "books/records-concrete.lisp",
+        "line": 91,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-wire-event-txid-is-wire-event-txid",
+        "book": "books/records-concrete.lisp",
+        "line": 109,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rcon-wire-event-generation-is-wire-event-generation",
+        "book": "books/records-concrete.lisp",
+        "line": 127,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-rcon-store-event-p-is-store-event-p",
         "book": "books/records-concrete.lisp",
-        "line": 70,
+        "line": 142,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-store-event-sequence-is-store-event-sequence",
         "book": "books/records-concrete.lisp",
-        "line": 88,
+        "line": 149,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-store-event-txid-is-store-event-txid",
         "book": "books/records-concrete.lisp",
-        "line": 106,
+        "line": 156,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-store-event-generation-is-store-event-generation",
         "book": "books/records-concrete.lisp",
-        "line": 124,
+        "line": 163,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-sf-record-pair-is-sf-record-pair",
         "book": "books/records-concrete.lisp",
-        "line": 138,
+        "line": 175,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-store-event-encode-is-store-event-encode",
         "book": "books/records-concrete.lisp",
-        "line": 306,
+        "line": 337,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
         "theorem": "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
         "book": "books/records-concrete.lisp",
-        "line": 318,
+        "line": 349,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -35949,7 +36083,7 @@
       {
         "theorem": "fn-store-event-article-encoding-is-legacy-record-encoding",
         "book": "books/store-events.lisp",
-        "line": 194,
+        "line": 263,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -35965,6 +36099,12 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-intern-events-keep-coordinates",
+        "book": "books/store-intern.lisp",
+        "line": 599,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-lg-apply-to-len-within",
         "book": "books/store-log-crash.lisp",
         "line": 311,
@@ -35973,7 +36113,7 @@
       {
         "theorem": "fn-snt-typed-frontier-phase",
         "book": "books/store-node-traces-prepare.lisp",
-        "line": 461,
+        "line": 469,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -37469,19 +37609,19 @@
       {
         "check": "aut-peer-open-pins-the-open-config",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1094,
+        "line": 1101,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-not-posting",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1198,
+        "line": 1205,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "aut-k1-without-the-post-command-event",
         "book": "tests/acl2/nntp-auth-teeth-tests.lisp",
-        "line": 1239,
+        "line": 1246,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -40983,6 +41123,13 @@
         "line": 30,
         "include": "byte-store-frame",
         "included": "books/byte-store-frame.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-intern.lisp",
+        "line": 43,
+        "include": "store-reclaim",
+        "included": "books/store-reclaim.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -45288,6 +45435,13 @@
         "line": 27,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-node-index-tests.lisp",
+        "line": 28,
+        "include": "../../books/store-intern",
+        "included": "books/store-intern.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -54982,22 +55136,15 @@
       },
       {
         "host": "host/store-host.lisp",
-        "line": 105,
-        "name": "fn-rcon-store-event-p",
+        "line": 109,
+        "name": "fn-rcon-wire-event-p",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-host.lisp",
-        "line": 116,
-        "name": "fn-rcon-store-event-sequence",
-        "source": "books/records-concrete.lisp",
-        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/store-host.lisp",
-        "line": 124,
-        "name": "fn-rcon-store-event-txid",
+        "line": 131,
+        "name": "fn-rcon-wire-event-txid",
         "source": "books/records-concrete.lisp",
         "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
@@ -55157,7 +55304,7 @@
       },
       {
         "book": "books/replay.lisp",
-        "line": 126,
+        "line": 127,
         "shape": "fn-replay-fault-shapep",
         "shapes": 2,
         "accessors": 4,
