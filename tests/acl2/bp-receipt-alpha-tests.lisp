@@ -68,7 +68,7 @@
   (list *bsb-enrollment* (fn-hstxa-make *bsb-composite* *bpra-forged-held*)))
 (defconst *bpra-forged-store*
   (fn-sn-update *bsb-store*
-                (update-nth 4 *bpra-forged-records* (fn-sn-files *bsb-store*))
+                (update-nth 4 (fn-sl-of *bpra-forged-records*) (fn-sn-files *bsb-store*))
                 (fn-sn-node *bsb-store*)))
 (defconst *bpra-forged-record* (in-arena-fn-row-wire-of *bsb-payloads* *bpra-forged-held*))
 (assert-event (equal (fn-sf-records (fn-sn-files *bpra-forged-store*)) *bpra-forged-records*))

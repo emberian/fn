@@ -9887,6 +9887,309 @@
       "events": [
         "fn-lgr-decide-checkpoints-the-rewrite"
       ]
+    },
+    {
+      "id": "PRF-267",
+      "title": "The owner's commit runs in three scheduled steps with its log barrier off the owner: a status or health request waits at most one quantum and never a barrier, and a batch's members are told acceptance or refusal only after its barrier, each as its own outcome",
+      "statement": "fn-ocs-inspect-waits-at-most-one (books/owner-commit-steps.lisp; keystone, no hypothesis on the state or the commit's events): for every scheduler value S and every sequence WS of pick observations, each (W EVENT) with W the six waiting counts (control reader poster transit commit inspect) and EVENT what a :commit quantum picked there reports, if the :inspect class has a waiter at every pick (fn-ocs-inspect-waitsp) then the quanta of other classes picked before the first :inspect pick, fn-ocs-inspect-delay, is at most 1. The barrier is not a quantum: it is the :barrier ACTION fn-ocs-commit-step names after a START, which the committer runs with the owner released. So the wall time an :inspect request waits at the gate is at most the longest single quantum of another class; its bound's hypotheses: the store commits through the record log (format 9; on a format-8 store there is no committer and a served POST's commit is still inside its reader quantum), and no quantum of another class contains a barrier (true of the START and the COMPLETE when no feed peer is configured: a configured peer's intent flush fsyncs per member inside the START, PKT-825). fn-ocs-in-flight-admits-only-inspect-and-commit: while a batch is in flight (phase :staged, :fenced or :failed) the pick is :inspect, :commit or nil -- no reader, poster, transit or mutating control quantum runs between a batch's START and its COMPLETE, so no reply, read, feed resolution or log line reveals an unfenced record. fn-ocs-next-otherwise-is-ocm-next: outside a batch every non-:inspect pick is books/owner-commit-class.lisp fn-ocm-next's pick and state, so PRF-248's control bound (via fn-ocm-next-otherwise-is-osch-next) and fn-ocm-commit-waits-at-most-the-bound hold over the non-:inspect quanta; fn-ocs-inspect-pick-keeps-the-ocm. fn-ocs-complete-only-after-the-barrier: the step machine names :complete (the step that releases the members' replies) only for phase :staged and event :fenced; fn-ocs-barrier-only-from-a-start, fn-ocs-staged-only-by-a-start, fn-ocs-in-flight-until-completed. The keystone's per-pick subjects, each about fn-ocs-next itself: fn-ocs-inspect-first-when-not-last (an :inspect waits and the last pick was not an :inspect: the pick is :inspect), fn-ocs-inspect-waiting-picks-someone (an :inspect waits: the pick is not nil), fn-ocs-other-pick-clears-lasti (a pick that is neither nil nor :inspect clears LASTI). The members' replies (lane scheduler-2-rebase, onto commit-onto-log's per-member uncertain replies): fn-ocs-members-told-only-after-the-barrier (keystone; subjects the host's two calls per batch, fn-ocs-commit-step -- through fn-ocs-commit-event for the committer, directly for the inline commit fnn-owner-commit-queued-locked -- and fn-ocs-member-releases, which host/native/owner.lisp fnn-owner-commit-complete-locked calls over each member's (WORD RENDERABLE)): if the releases for the step's action name any member :rendered (its own rendered completion: the acceptance or refusal its word decided), then the phase was :staged and the event :fenced. fn-ocs-failed-barrier-stops-telling-no-member: a staged batch whose barrier failed gets the :stop (the recovery event: the store fenced, exit 3) and no member :rendered. fn-ocs-member-rendered-only-in-a-complete (iff: :rendered exactly when the action is :complete and the word is not :uncertain), fn-ocs-member-otherwise-uncertain (every other release is :own-uncertain, :uncertain-reply or :close), fn-ocs-member-uncertain-word-told-uncertain. Scope: accepted and refused are the member's own ACL2 word and rendered reply, unchanged by the COMPLETE; after a stop a refused member is answered uncertain too (its refusal can rest on an earlier member whose record the log may not hold). A service stopped by the operator during a barrier answers every member with the close (host, uncertain), outside this theorem.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-248"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-commit-steps.lisp",
+        "tests/acl2/owner-commit-steps-tests.lisp",
+        "host/native/owner.lisp",
+        "host/native/control.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_owner_scheduler.py"
+      ],
+      "progress_note": "Lane owner-scheduler-2 (Opus 5.5, 2026-09-27; PKT-688 (4) slice 2, on lane commit-onto-log's :commit class). Host lines: host/native/owner.lisp fnn-owner-gate-pick calls fn-ocs-next at every release of the owner and every arrival at an idle one; fnn-owner-gate-leave calls fn-ocs-observe; fnn-owner-commit-event calls fn-ocs-commit-event inside the committer's :commit quanta (fnn-owner-commit-batch: START = fnn-owner-commit-start-locked, then fnn-owner-commit-barrier with the owner released, then COMPLETE = fnn-owner-commit-complete-locked under a second :commit quantum whose unwind-protect applies :completed); host/native/control.lisp fnn-control-live-status-answer enters as :inspect after ACL2's fn-native-live-status-host-requestp chose that path. Teeth: tests/acl2/owner-commit-steps-tests.lisp (states reached from fn-ocs-init; the keystone tight at 1 in and out of a batch; must-fail with the inspect absent for three picks: delay 3; in flight only readers waiting: nobody admitted, and the same readers admitted after :fenced/:completed (must-fail); the step machine's whole cycle and its faults). Native: tests.test_native_owner_scheduler test_status_is_answered_while_a_batch_barrier_is_in_flight (a developer selector holds the barrier 6 s: status answered inside it, GROUP and the 240 after it).",
+      "events": [
+        "fn-ocs-inspect-waits-at-most-one",
+        "fn-ocs-in-flight-admits-only-inspect-and-commit",
+        "fn-ocs-next-otherwise-is-ocm-next",
+        "fn-ocs-inspect-pick-keeps-the-ocm",
+        "fn-ocs-complete-only-after-the-barrier",
+        "fn-ocs-barrier-only-from-a-start",
+        "fn-ocs-staged-only-by-a-start",
+        "fn-ocs-in-flight-until-completed",
+        "fn-ocs-inspect-first-when-not-last",
+        "fn-ocs-inspect-waiting-picks-someone",
+        "fn-ocs-other-pick-clears-lasti",
+        "fn-ocs-members-told-only-after-the-barrier",
+        "fn-ocs-failed-barrier-stops-telling-no-member",
+        "fn-ocs-member-rendered-only-in-a-complete",
+        "fn-ocs-member-otherwise-uncertain",
+        "fn-ocs-member-uncertain-word-told-uncertain"
+      ]
+    },
+    {
+      "id": "PRF-268",
+      "title": "A format-9 store is initialized and its log segment extended by modelled programs whose every cut is a model crash point",
+      "statement": "Extension: books/store-log-extend.lisp, host/native/io.lisp fnn-log-ensure-extent (called by fnn-log-seal-open-batch and fnn-log-commit-open-batch): KEYSTONE fn-lg-extend-program-keeps-the-relation (the log relation R holds after the segment grows by zeros to fn-olr-next-extent, over the same kernel), KEYSTONE fn-lg-extension-written-crash-reads-the-committed-records (a process death at the new cut log-extended, under any tear, scans to exactly the committed records and chain head, whole units, the old octets kept), fn-olr-extension-target-is-an-extent; the host keeps one spare unit past every append (fn-olr-extension-needed-p; a tooth shows a garbled extension of a full segment forging a record without it). fnn-log-preallocate grows from the old extent (the non-Linux fallback zeroed [0, EXTENT) and erased the log). Init: books/store-init-log-publication.lisp (host fnn-command-init-published): fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log, fn-bs-init-log-classify-by-what-is-known, fn-bs-init-log-segment-is-the-empty-log; books/byte-store-log-initializer.lisp (host fnn-initialize): fn-bsi-log-init-program-establishes-the-empty-log. A format-9 init writes no allocation-frontier.json and no transactions/. Teeth: tests/acl2/store-log-extend-tests.lisp, store-init-log-publication-tests.lisp, byte-store-log-initializer-tests. Lane log-2 (fork log-2-init), PKT-COL-2 and PKT-COL-4.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [
+        "PRF-273"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-extend.lisp",
+        "books/store-init-log-publication.lisp",
+        "books/byte-store-log-initializer.lisp",
+        "planning/evidence/manifests/certify-20260927T111520Z-2734710.json",
+        "planning/evidence/manifests/certify-20260927T113845Z-2889974.json"
+      ],
+      "events": [
+        "fn-lg-extend-program-keeps-the-relation",
+        "fn-lg-extension-written-crash-reads-the-committed-records",
+        "fn-olr-extension-target-is-an-extent",
+        "fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log",
+        "fn-bs-init-log-classify-by-what-is-known",
+        "fn-bs-init-log-segment-is-the-empty-log",
+        "fn-bsi-log-init-program-establishes-the-empty-log"
+      ]
+    },
+    {
+      "id": "PRF-269",
+      "title": "A txid reused after a crash is a fresh feed intent: the open decides a dead intent without its txid",
+      "statement": "books/owner-feed-txid-reuse.lisp, host host/native/owner.lisp fnn-owner-feed-reconcile (every intent resolved before the owner serves): fn-own-feed-intent-reconcile-kind-reads-no-txid (the open decides a dead FNFD intent from its Message-ID, identity and evidence, never its txid) and KEYSTONE fn-own-feed-intent-reuse-is-a-fresh-intent (with no pending intent of that key, a new intent naming a reused txid and its resolution restore the pending set exactly). So the log's derived next txid (the PostgreSQL rule: a txid handed out and never logged is reused after a crash) needs no floor at the feed journals' intents (PKT-COL-8, option ii). Teeth: tests/acl2/owner-feed-txid-reuse-tests.lisp. Lane log-2 (fork log-2-init).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-feed-txid-reuse.lisp",
+        "tests/acl2/owner-feed-txid-reuse-tests.lisp",
+        "planning/evidence/manifests/certify-20260927T111520Z-2734710.json"
+      ],
+      "events": [
+        "fn-own-feed-intent-reconcile-kind-reads-no-txid",
+        "fn-own-feed-intent-reuse-is-a-fresh-intent"
+      ]
+    },
+    {
+      "id": "PRF-273",
+      "title": "Every process-death cut of the record-log route is a cut of a model program, at a related state",
+      "statement": "books/store-log-route-programs.lisp: the format-9 arms of host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-mark-committed and fnn-recover call fnn-log-reserve, fnn-log-publish, nothing, and fnn-recover-log, whose durable steps and process-death cuts in source order are exactly fn-lg-reserve-program (frontier-reserved), fn-lg-append-program ++ fn-lg-fence-program ++ fn-lg-order-program (log-written, log-fenced, record-completing; a batch of one), and fn-lg-open-program (P-LOG-RECOVER's log-truncated and log-recovered, then recover-replayed and the five recovery barriers each followed by recover-barrier): tools/native_program_check.py checks each arm (tests/campaign/native_cuts.py verify_log_route_arms, in make check; teeth in tests/test_native_program_check.py LogRouteArmTests). fn-lg-reserve-program-keeps-the-relation: from R, the state at frontier-reserved (the kernel caught up by fn-olr-consume-to) is R-related; fn-lg-order-program-keeps-the-relation: from R and a record, the state at record-completing (the record taken into the open batch, fn-olr-take) is related; fn-lg-open-suffix-keeps-the-relation: from R with nothing in flight (as fn-lg-recover-program-establishes-the-relation leaves it), every state after log-recovered is related. So a process death at any cut is a crash of an R-related state (fn-lgk-crash-of-related-state-is-a-prefix). Teeth: tests/acl2/store-log-route-programs-tests.lisp (reached states of store-log-kernel-tests; R removed; a batch in flight at the open's barrier).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-route-programs.lisp",
+        "tests/acl2/store-log-route-programs-tests.lisp",
+        "tests/campaign/native_cuts.py",
+        "tools/native_program_check.py",
+        "tests/test_native_program_check.py"
+      ],
+      "events": [
+        "fn-lg-reserve-program-keeps-the-relation",
+        "fn-lg-order-program-keeps-the-relation",
+        "fn-lg-open-suffix-keeps-the-relation",
+        "fn-lg-open-program-is-recover-then-the-suffix-by-definition"
+      ]
+    },
+    {
+      "id": "PRF-272",
+      "title": "The pipelined group commit: the next batch prepares behind the barrier, and no record is revealed or acknowledged before its own barrier",
+      "statement": "Subjects fn-ocp-commit-event and fn-ocp-committer-wake (books/owner-commit-pipeline.lisp), which host/native/owner.lisp fnn-owner-commit-event and fnn-owner-commit-wake call from the committer (fnn-owner-commit-pipeline), and fn-ocp-next / fn-ocp-observe, which fnn-owner-gate-pick / fnn-owner-gate-leave call at every release of the owner. KEYSTONE fn-ocp-next-open-only-in-flight: after any commit event, a next batch is open only while the commit's ocs phase is in flight, so (fn-ocp-next-is-ocs-next, fn-ocs-in-flight-admits-only-inspect-and-commit, restated over the host's pick as fn-ocp-in-flight-admits-only-inspect-and-commit) no reader, poster, transit or mutating control quantum runs while a prepared record of the batch in flight or of the one behind it is not durable. fn-ocp-commit-event-completes-only-after-the-barrier: COMPLETE (the acknowledgements and the replies of the batch in flight) is named only for a staged batch whose syncer returned :fenced; the next batch's members become the staged batch only through COMPLETE's :sync (fn-ocp-sync-only-when-none-in-flight: a batch is handed to the syncer only from an idle owner after a START or by COMPLETE after the batch in flight was fenced), so appends are in the batches' order and at most one is in flight, as the kernel requires (fn-lgk-append refuses a second). fn-ocp-start-next-only-behind-a-sync: START-NEXT runs only while a batch is staged, its barrier not returned, no next batch open, a member queued. The crash half is PRF (commit-onto-log) fn-olr-crash-reads-a-prefix-of-the-history, whose link (committed ++ in flight ++ open batch) covers the batch prepared behind the barrier; the host's kernel updates are serialized by the log's lock (host/native/io.lisp fnn-log-with-kernel) and the syncer touches only the log struct. Teeth: tests/acl2/owner-commit-pipeline-tests.lisp (the pipeline reached step by step from fn-ocp-init; hypothesis removal for the keystone and the completion rule); native: tests/test_native_commit_log.py test_the_next_batch_prepares_behind_the_barrier (the operator's batch bound 2, the barrier held 700 ms, 16 POSTs from 8 posters: START-NEXT ran, every POST 240 and served after a restart).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-commit-pipeline.lisp",
+        "tests/acl2/owner-commit-pipeline-tests.lisp",
+        "host/native/owner.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_commit_log.py"
+      ],
+      "events": [
+        "fn-ocp-next-open-only-in-flight",
+        "fn-ocp-commit-event-completes-only-after-the-barrier",
+        "fn-ocp-complete-only-after-the-barrier",
+        "fn-ocp-sync-only-when-none-in-flight",
+        "fn-ocp-next-opens-only-behind-a-sync",
+        "fn-ocp-start-next-only-behind-a-sync",
+        "fn-ocp-next-is-ocs-next",
+        "fn-ocp-in-flight-admits-only-inspect-and-commit"
+      ]
+    },
+    {
+      "id": "PRF-274",
+      "title": "The live configuration completion applies its one record to the owner's carried node and configuration: under the owner invariant it is fn-ocl-publish, and it carries the invariant, so no control quantum replays the Store history",
+      "statement": "fn-oclc-publish-is-publish (books/config-owner-carried.lisp; keystone, hypothesis fn-ocl-relation OC, the owner invariant books/config-owner-live.lisp defines): (fn-oclc-publish OC GENERATION MAX-OCTETS) equals (fn-ocl-publish OC GENERATION MAX-OCTETS), verdict and owner, for every record, generation and phase. fn-oclc-publish is the host-called completion (host/owner-host.lisp fn-owner-reconfigure-complete, reached from host/native/admin.lisp fnn-owner-live-reconfigure-locked for every live group create, control grant and the other live configuration verbs); it replaces fn-ocl-complete's fn-cpo-configure-durable (fn-cpo-history-relation's full fn-cpr-replay and fn-sn-statep of the store, a second full replay over the extended configuration history, fn-sn-statep of the candidate) and fn-ocl-store-config (a third replay) by one configuration step from the store's node and the owner's configuration: fn-oclc-configure, whose install is fn-cpo-configure-durable (fn-oclc-configure-is-configure-durable, hypotheses fn-cpo-history-relation ST and CONFIG the replayed configuration) and whose configuration is fn-ocl-store-config of the installed store on success (fn-oclc-configure-config-is-store-config); fn-oclc-complete-is-complete (the staged completion, from fn-cst-relation and fn-ocl-config-historyp); fn-oclc-ready-cst-relation-is-history-relation (fn-cst-relation at the :ready phase is fn-cpo-history-relation). fn-oclc-publish-carries-ocl-relation (keystone, hypothesis fn-ocl-relation OC): the owner fn-oclc-publish answers satisfies fn-ocl-relation again, whatever the verdict (:durable through config-owner-live's fn-ocl-complete-preserves-full-historical-relation; :refused and :recovery-required keep OC). The invariant is established by fn-owner-recover (books/owner-recover-ocl.lisp fn-orec-started-owner-ocl-relation) and preserved by the owner's other transitions (the fn-ocl-*-preserves-historical-relation family of books/config-owner-live.lisp, config-owner-advance-invariants, owner-commit-ocl); fn-oclc-publish tests none of it at run time (guard t), which is the point: its hold no longer grows with the store.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-209",
+        "PRF-259"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-owner-carried.lisp",
+        "tests/acl2/config-owner-carried-tests.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/control-quanta-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T104208Z-2515026.json",
+        "planning/evidence/manifests/certify-20260927T104257Z-2518354.json"
+      ],
+      "progress_note": "Lane control-quanta (Opus 5.5, 2026-09-27; F4, PKT-827). Profiled with sb-sprof on hbox (tools/profile/): at 1,000 articles 85 per cent of a live group create's owner samples were fn-ocl-complete's three replays; at 10,000 the replay is quadratic (fn-retain-pin-id-scanp, fn-acceptedp per event) and one control quantum held the owner 40 to 46 s. Teeth: tests/acl2/config-owner-carried-tests.lisp (the native live arm's staged request: carried = full, :durable, generation 3; the wrong generation refused alike; hypothesis removal: an owner claiming the initial configuration, carried :recovery-required vs full :durable, and its owner fails the invariant; both must-fail).",
+      "events": [
+        "fn-oclc-publish-is-publish",
+        "fn-oclc-publish-carries-ocl-relation",
+        "fn-oclc-configure-is-configure-durable",
+        "fn-oclc-configure-config-is-store-config",
+        "fn-oclc-complete-is-complete",
+        "fn-oclc-ready-cst-relation-is-history-relation"
+      ]
+    },
+    {
+      "id": "PRF-275",
+      "title": "The Store kernel holds its history and its success history as snoc-lists: a commit and a success append in O(1), and the prepare, the finish and the refresh read the length, the last and the newest records in O(1)",
+      "statement": "books/snoc-list.lisp and books/store-files.lisp (post-alloc-2). The kernel state's RECORDS and SUCCESSES fields hold (:snoc N . REV) (the length-N list whose reverse is the first N of REV); fn-sf-records / fn-sf-successes read the lists back and every accessor lemma of fn-sf-make is unchanged; fn-sf-shapep requires each field to be the representation of its list. KEYSTONES: fn-sl-list-of-fn-sl-of (every value round-trips), fn-sl-list-of-fn-sl-snoc and fn-sl-snoc-of-fn-sl-of (the O(1) snoc is the append, for every value / list), fn-sl-count-is-len, fn-sl-last-is-last, fn-sl-nth-is-nth (no hypothesis); fn-sf-make-fields-is-make, fn-sf-make-fields-snoc-records-is-make, fn-sf-make-fields-snoc-successes-is-make (under fn-sf-shapep: what every transition's mbe executes). The logic of every store-files transition is unchanged (the mbe :logic is the former body). Host subjects: the commit host/owner-host.lisp fn-owner-io -> books/records-concrete.lisp fn-rcon-sf-record-dir-result (O(1) append); the prepare fn-owner-prepare-buffer -> books/owner-prepare-carried.lisp fn-pcar-stage-record over fn-pcar-files-candidatep (fn-pcar-files-candidatep-is-candidatep, no hypothesis) and fn-pcar-sbud-prepare over fn-sf-records-count (fn-pcar-records-count-is-sbud-used); the finish fn-owner-finish-submission -> books/owner-commit-carried.lisp fn-ccar-completion-record over fn-ccar-seek-at (fn-ccar-seek-at-is-seek, no hypothesis); books/owner.lisp fn-own-refresh reads the count in O(1) and keeps its withdrawals without reading the history when the acceptance is unchanged (mbe; logic unchanged). Local policy (D27: bound work, not data); no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020",
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-180",
+        "PRF-193"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/snoc-list.lisp",
+        "books/store-files.lisp",
+        "books/records-concrete.lisp",
+        "books/owner-prepare-carried.lisp",
+        "books/owner-commit-carried.lisp",
+        "tests/acl2/snoc-list-tests.lisp"
+      ],
+      "progress_note": "post-alloc-2 2026-09-27: owner POST bytes/POST flat in N (hbox, see planning/evidence post-alloc-2 measurements in the lane record). Farm persvati run-20260927T114842Z-7d85 (manifest certify-20260927T115018Z-460522).",
+      "events": [
+        "fn-sl-list-of-fn-sl-of",
+        "fn-sl-list-of-fn-sl-snoc",
+        "fn-sl-snoc-of-fn-sl-of",
+        "fn-sl-count-is-len",
+        "fn-sl-last-is-last",
+        "fn-sl-nth-is-nth",
+        "fn-sf-make-fields-is-make",
+        "fn-sf-make-fields-snoc-records-is-make",
+        "fn-sf-make-fields-snoc-successes-is-make",
+        "fn-pcar-files-candidatep-is-candidatep",
+        "fn-pcar-records-count-is-sbud-used",
+        "fn-ccar-seek-at-is-seek"
+      ]
+    },
+    {
+      "id": "PRF-276",
+      "title": "An owner POST's article is parsed once, at take, and every owner-side reader is its reference over the carried parse",
+      "statement": "books/owner-parse-carried.lisp (post-alloc-2). The carry (fn-apc-p: each entry's parse is fn-article-parse of its octets; it mentions no owner state) is written only by host/owner-host.lisp fn-owner-take (fn-apc-take, fn-apc-p-of-take). KEYSTONE fn-apc-parse-is-article-parse; each host call is its reference under fn-apc-p: fn-apc-take-is-take-result (fn-owner-take), fn-apc-submission-intent-is-reference and fn-apc-submission-resolution-publication-is-reference (fn-owner-submission-intent / -resolution, with fn-icar-carryp), fn-apc-filing-plan-is-reference (fn-owner-control-filing), fn-apc-carrier-form-is-reference, fn-apc-current-plan-is-reference (fn-owner-peer-carrier-form / -plan), fn-apc-transit-verdict and refusal detail (fn-owner-transit-verdict), fn-apc-intern-row-at-is-reference with fn-apc-held-facts-of-is-reference (fn-owner-prepare-buffer, fn-owner-prepare), fn-apc-own-finish-is-own-finish (fn-owner-finish-submission, with fn-ceis-indexedp of the owner Store, fn-osi-live-owner-store-is-indexed), fn-apc-own-outcome-is-acar-own-outcome (fn-owner-outcome, with fn-icar-carryp). A stale carry costs a parse, never a wrong value. Local policy; no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-191"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-parse-carried.lisp",
+        "tests/acl2/owner-parse-carried-tests.lisp"
+      ],
+      "progress_note": "post-alloc-2 (helper post-alloc-2-parse) 2026-09-27: 13 owner-side parses of the stored octets per POST -> 1 (the two served-phase parses in books/nntp-post.lisp are served-readers': request in the lane record).",
+      "events": [
+        "fn-apc-parse-is-article-parse",
+        "fn-apc-take-is-take-result",
+        "fn-apc-intern-row-at-is-reference",
+        "fn-apc-held-facts-of-is-reference",
+        "fn-apc-own-finish-is-ccar-own-finish",
+        "fn-apc-own-outcome-is-acar-own-outcome",
+        "fn-apc-submission-intent-is-reference",
+        "fn-apc-carrier-form-is-reference",
+        "fn-apc-current-plan-is-reference",
+        "fn-apc-filing-plan-is-reference"
+      ]
+    },
+    {
+      "id": "PRF-277",
+      "title": "A POST's retention admission reads a carried obligation-id trie",
+      "statement": "books/post-retain-carried.lisp (post-alloc-2). The carry pairs a retention ledger with its id trie; fn-prc-carryp: the trie is fn-rii-kbuild of the ledger it names (no owner state, so no owner step falsifies it). KEYSTONES fn-prc-sbud-prepare-is-pidx-sbud-prepare (under fn-prc-carryp, the prepare host/owner-host.lisp fn-owner-prepare-buffer installs is PRF-191's fn-pidx-sbud-prepare), fn-prc-carryp-of-refresh (the host's one writer, fn-prc-refresh, keeps the recognizer), fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare (the composition). Local policy; no RFC requirement.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-191"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/post-retain-carried.lisp",
+        "tests/acl2/post-retain-carried-tests.lisp"
+      ],
+      "progress_note": "post-alloc-2 (helper post-alloc-2-retain) 2026-09-27: the per-POST pin walk (fn-retain-pin-id-scanp, ~12% of POST CPU at N=10,000) replaced by one trie lookup; cost: the trie (~2 KB per pin) and a rebuild after a release (open item).",
+      "events": [
+        "fn-prc-sbud-prepare-is-pidx-sbud-prepare",
+        "fn-prc-carryp-of-refresh",
+        "fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare"
+      ]
+    },
+    {
+      "id": "PRF-278",
+      "title": "The cancel refresh's row lookup and the view's record count read the Store's event index",
+      "statement": "books/control-visible-indexed.lisp and books/owner-refresh-indexed.lisp (post-alloc-2). KEYSTONES fn-ctl-row-event-ix-is-row-event and fn-ctl-refresh-withdrawals-ix-is-refresh-withdrawals (under fn-cei-correspondencep of the index and fn-ctl-rows-okp, which every Store history satisfies: fn-ctl-rows-okp-of-sf-state); fn-own-refresh-ix-is-own-refresh (under fn-sn-statep and fn-ceis-indexedp); the completions the host calls: fn-rix-own-finish-is-ccar-own-finish (through fn-apc-own-finish, host/owner-host.lisp fn-owner-finish-submission) and fn-rix-ocfg-complete-is-ccar-ocfg-complete (fn-owner-finish), under fn-ceis-indexedp of the owner Store (fn-osi-live-owner-store-is-indexed). The oldest event carrying the Message-ID is kept (flip-L8-2's semantics). books/control-visible.lisp fn-ctl-event-row: a standalone kind-2 verdict event is no longer read as a row (the held shape is required). Local policy; RFC 5537 s5.3 cancel semantics unchanged.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-004"
+      ],
+      "depends_on": [
+        "PRF-180",
+        "PRF-210"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/control-visible-indexed.lisp",
+        "books/owner-refresh-indexed.lisp",
+        "tests/acl2/control-visible-indexed-tests.lisp",
+        "tests/acl2/owner-refresh-indexed-tests.lisp"
+      ],
+      "progress_note": "post-alloc-2 (helper post-alloc-2-refresh) 2026-09-27: the per-POST head-first walk of the history for the new article's row -> one Message-ID trie walk and one sequence read.",
+      "events": [
+        "fn-ctl-row-event-ix-is-row-event",
+        "fn-ctl-refresh-withdrawals-ix-is-refresh-withdrawals",
+        "fn-own-refresh-ix-is-own-refresh",
+        "fn-rix-own-finish-is-ccar-own-finish",
+        "fn-rix-ocfg-complete-is-ccar-ocfg-complete"
+      ]
     }
   ]
 }
