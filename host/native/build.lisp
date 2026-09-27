@@ -334,7 +334,7 @@
         ; restarted process cannot expose diagnostics by changing its
         ; environment.
         (fnn-select-image-profile)
-        ; The release version (VERSION at the tree root, 6.7.N), serialized
+        ; The release version (VERSION at the tree root, D37), serialized
         ; into the image for `fn --version'; a missing or malformed file
         ; stops the build.
         (fnn-select-release-version)
