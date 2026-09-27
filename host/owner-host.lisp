@@ -1169,7 +1169,16 @@
                               nil
                             (mv-let (word next)
                               (fn-pout-prepare-article before row budget carry)
-                              (cons word next))))
+                              ; Lane membership-budget: an :unaffordable
+                              ; that the membership charge alone caused is
+                              ; :memberships (books/store-capacity-vector.lisp
+                              ; KEYSTONE fn-cvec-article-refusal-word-names-
+                              ; the-memberships), over the same count, octets,
+                              ; record and debt the budget was decided from.
+                              (cons (fn-cvec-article-refusal-word
+                                     word (fn-owner-store-profile state)
+                                     (fn-sbud-count s) bytes record debt)
+                                    next))))
                  (state (if (equal record :clock-unusable)
                             state
                           (let ((state (f-put-global 'fn-owner-retain-carry
@@ -1310,7 +1319,16 @@
                               nil
                             (mv-let (word next)
                               (fn-pout-prepare-article before row budget carry)
-                              (cons word next))))
+                              ; Lane membership-budget: an :unaffordable
+                              ; that the membership charge alone caused is
+                              ; :memberships (books/store-capacity-vector.lisp
+                              ; KEYSTONE fn-cvec-article-refusal-word-names-
+                              ; the-memberships), over the same count, octets,
+                              ; record and debt the budget was decided from.
+                              (cons (fn-cvec-article-refusal-word
+                                     word (fn-owner-store-profile state)
+                                     (fn-sbud-count s) bytes record debt)
+                                    next))))
                  (state (if (equal record :clock-unusable)
                             state
                           (let ((state (f-put-global 'fn-owner-retain-carry

@@ -267,6 +267,47 @@ vector holds after it at its worst case, its own promise included."
                           (len (fn-record-payload record))
                           (len (fn-record-groups record)) debt))
 
+; THE MEMBERSHIP REFUSAL (lane membership-budget, 2026-09-27).  An article
+; the budget refused is refused FOR ITS MEMBERSHIPS when, with the same
+; count, octets and debt, its figure without the membership charge
+; (`fn-sbud-article-record-figure') would have been admitted: the count gate
+; admits one more record, the history gate and the capacity vector hold at
+; that figure.  Then the crosspost, not the article, is what the store
+; cannot pay for, and the owner names it (:memberships, rendered by
+; books/nntp-post.lisp `fn-post-store-refusal-text'), distinct from the
+; store being full (:unaffordable).
+(defun fn-cvec-article-memberships-refusedp (profile used bytes-used
+                                                     payload-length group-count
+                                                     debt)
+  (declare (xargs :guard t))
+  (and (posp group-count)
+       (equal (fn-cvec-article-budget profile used bytes-used payload-length
+                                      group-count debt)
+              0)
+       (fn-sbud-admitp (fn-sbud-budget profile :article) used)
+       (fn-bs-history-admissiblep
+        profile bytes-used
+        (fn-sbud-article-record-figure payload-length group-count))
+       (fn-cvec-roomp profile (+ 1 (nfix used))
+                      (+ (nfix bytes-used)
+                         (fn-sbud-article-record-figure payload-length group-count))
+                      debt)))
+
+; The word the host reports for the served POST's prepare: the prepare's
+; word, except an :unaffordable refusal that the membership charge alone
+; caused, which is :memberships.  The host line: host/owner-host.lisp
+; `fn-owner-prepare' and `fn-owner-prepare-buffer', over the word
+; `fn-pout-prepare-article' answered and the same count, octets, record and
+; debt the budget was decided from.
+(defun fn-cvec-article-refusal-word (word profile used bytes-used record debt)
+  (declare (xargs :guard t))
+  (if (and (equal word :unaffordable)
+           (fn-cvec-article-memberships-refusedp
+            profile used bytes-used (len (fn-record-payload record))
+            (len (fn-record-groups record)) debt))
+      :memberships
+    word))
+
 ; What `status' prints: the octets and transactions the vector reserves at
 ; DEBT, and whether the committed state has them.
 (defun fn-cvec-report (profile used bytes-used debt)
@@ -553,12 +594,19 @@ vector holds after it at its worst case, its own promise included."
  (defthm fn-cvec-held-row-octets
    (implies (fn-held-p record)
             (equal (fn-sbud-row-octets record)
-                   (fn-cvec-row-payload-length record)))
+                   (+ (fn-cvec-row-payload-length record)
+                      (* *fn-sbud-membership-octets*
+                         (len (fn-record-groups record))))))
    :hints (("Goal" :in-theory (enable fn-sbud-row-octets)))))
 
+; A held row's charge, its payload and its memberships (lane
+; membership-budget), is within the figure its article was charged at.
 (defthm fn-cvec-held-row-within-its-figure
-  (<= (fn-cvec-row-payload-length record)
-      (fn-sbud-article-figure (fn-cvec-row-payload-length record) group-count))
+  (implies (natp group-count)
+           (<= (+ (fn-cvec-row-payload-length record)
+                  (* *fn-sbud-membership-octets* group-count))
+               (fn-sbud-article-figure (fn-cvec-row-payload-length record)
+                                       group-count)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sbud-article-figure
                                      fn-record-encoded-octets-ceiling))))
@@ -566,12 +614,14 @@ vector holds after it at its worst case, its own promise included."
 ; The article verdict at a held row's payload length keeps the vector at the
 ; octets the row stores.
 (defthm fn-cvec-article-verdict-keeps-the-vector-for-a-held-row
-  (implies (equal (fn-cvec-article-verdict-at profile used bytes-used
-                                              (fn-cvec-row-payload-length record)
-                                              group-count debt)
-                  :admissible)
+  (implies (and (natp group-count)
+                (equal (fn-cvec-article-verdict-at profile used bytes-used
+                                                   (fn-cvec-row-payload-length record)
+                                                   group-count debt)
+                       :admissible))
            (fn-cvec-roomp profile (+ 1 used)
-                          (+ bytes-used (fn-cvec-row-payload-length record))
+                          (+ bytes-used (fn-cvec-row-payload-length record)
+                             (* *fn-sbud-membership-octets* group-count))
                           debt))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-cvec-roomp-antitone-in-octets
@@ -579,7 +629,8 @@ vector holds after it at its worst case, its own promise included."
                                    (b (+ bytes-used (fn-sbud-article-figure
                                                      (fn-cvec-row-payload-length record)
                                                      group-count)))
-                                   (b2 (+ bytes-used (fn-cvec-row-payload-length record))))
+                                   (b2 (+ bytes-used (fn-cvec-row-payload-length record)
+                                          (* *fn-sbud-membership-octets* group-count))))
                         (:instance fn-cvec-held-row-within-its-figure))
            :in-theory (e/d (fn-cvec-article-verdict-at fn-sbud-article-verdict-at
                             fn-sbud-admitp fn-bs-history-admissiblep)
@@ -747,3 +798,39 @@ vector holds after it at its worst case, its own promise included."
                     fn-cvec-history-admittedp
                     fn-cvec-record-admittedp fn-cvec-record-figure
                     fn-cvec-row-payload-length))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE (a crosspost the budget cannot pay for is refused by name).  The
+; word the host reports is :memberships exactly when the prepare answered
+; :unaffordable, the article is in at least one group, the budget handed to
+; the prepare was 0 (its figure with the membership charge does not fit),
+; and without that charge the count gate, the history gate and the capacity
+; vector would all have admitted it.  Any other word is passed through.
+(defthm fn-cvec-article-refusal-word-names-the-memberships
+  (let ((p (len (fn-record-payload record)))
+        (k (len (fn-record-groups record))))
+    (and (equal (equal (fn-cvec-article-refusal-word word profile used
+                                                     bytes-used record debt)
+                       :memberships)
+                (or (equal word :memberships)
+                    (and (equal word :unaffordable)
+                         (< 0 k)
+                         (equal (fn-cvec-article-budget-for profile used bytes-used
+                                                            record debt)
+                                0)
+                         (fn-sbud-admitp (fn-sbud-budget profile :article) used)
+                         (fn-bs-history-admissiblep
+                          profile bytes-used (fn-sbud-article-record-figure p k))
+                         (fn-cvec-roomp profile (+ 1 (nfix used))
+                                        (+ (nfix bytes-used)
+                                           (fn-sbud-article-record-figure p k))
+                                        debt))))
+         (implies (not (equal word :unaffordable))
+                  (equal (fn-cvec-article-refusal-word word profile used
+                                                       bytes-used record debt)
+                         word))))
+  :hints (("Goal" :in-theory (e/d (fn-cvec-article-budget-for)
+                                  (fn-cvec-article-budget fn-cvec-roomp
+                                   fn-sbud-article-record-figure
+                                   fn-bs-history-admissiblep fn-sbud-admitp
+                                   fn-sbud-budget)))))

@@ -116,8 +116,12 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
    ```
 
    `init` also makes the node's secret key file, and sizes the store for
-   this machine. It prints how much memory it will use. The node's name
-   (`path-identity`) should be its public host name.
+   this machine. It prints how much memory it will use when the store is
+   full, so the node always starts again on this machine. If you named
+   limits this machine cannot hold, `init` refuses, prints both numbers
+   (`reservation=` what the store needs, `budget=` what the machine has)
+   and makes nothing; exit code 1. The node's name (`path-identity`) should
+   be its public host name.
 
 5. Leave the account's shell. As root, start the service:
 

@@ -93,7 +93,10 @@ def now():
 
 
 def image_env():
-    env = dict(os.environ, ACL2_CUSTOMIZATION="NONE")
+    # Lane membership-budget: the envelope's stores are made for hbox (the
+    # H = 4 GiB profile's full store reserves about 74 GB, past the 40 GB
+    # unit): name that target, or `init' refuses the profile by name.
+    env = dict(os.environ, ACL2_CUSTOMIZATION="NONE", FN_INIT_BUDGET_MB="98304")
     env.pop("ACL2_SYSTEM_BOOKS", None)
     env["LD_LIBRARY_PATH"] = OPENSSL + "/lib" + (":" + env["LD_LIBRARY_PATH"] if env.get("LD_LIBRARY_PATH") else "")
     return env

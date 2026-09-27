@@ -146,8 +146,13 @@ class Context:
     def __init__(self, image: Path, rev: str, work: Path, dest: Path, mem: str):
         self.image, self.rev, self.work, self.dest, self.mem = image, rev, work, dest, mem
         self.commands: list[list[str]] = []
+        # Lane membership-budget (ember, 2026-09-27): `init' refuses a profile
+        # whose full store the budget (the recipe's unit) cannot hold, unless
+        # a target budget is named; the fixtures are stores made for hbox and
+        # their recipes run the image directly: hbox's 96 GiB is the target.
         self.env = dict(os.environ, ACL2_CUSTOMIZATION="NONE",
-                        FN_NATIVE_DEVELOPER_HOST=str(image), FN_FIXTURE_REV=rev)
+                        FN_NATIVE_DEVELOPER_HOST=str(image), FN_FIXTURE_REV=rev,
+                        FN_INIT_BUDGET_MB="98304")
         self.env.pop("ACL2_SYSTEM_BOOKS", None)
         # The ACL2 bridge the BP recipe's harness starts (as hbox_native.sh
         # exports it).

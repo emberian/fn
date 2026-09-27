@@ -193,8 +193,12 @@ def config2_for(work, store, port):
 
 
 def native(image, *argv, timeout=1800):
+    # Lane membership-budget: the scale stores here are made for hbox; name
+    # that target budget, or `init' refuses a profile its unit cannot hold.
+    env = dict(os.environ)
+    env.setdefault("FN_INIT_BUDGET_MB", "98304")
     r = subprocess.run([str(image), "--fn"] + [str(a) for a in argv], stdout=subprocess.PIPE,
-                       stderr=subprocess.PIPE, timeout=timeout)
+                       stderr=subprocess.PIPE, timeout=timeout, env=env)
     return r.returncode, r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace")
 
 

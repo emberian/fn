@@ -629,6 +629,114 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(full["transactions-used"], 127)
         self.assertEqual(full["transactions-budget"], 128)
 
+    @staticmethod
+    def body_of(n, fill=b"x"):
+        """A body of exactly N octets in lines of at most 78 (CRLF included)."""
+        line = fill * 76 + b"\r\n"
+        whole, rest = divmod(n, len(line))
+        return line * whole + fill * rest
+
+    def post_article(self, message_id, groups, body):
+        """POST one article to GROUPS; the reply line and the bytes sent."""
+        article = (b"From: author@example.invalid\r\n"
+                   b"Newsgroups: " + ",".join(groups).encode("ascii") + b"\r\n"
+                   b"Subject: crosspost\r\n"
+                   b"Message-ID: " + message_id.encode("ascii") +
+                   b"\r\n\r\n" + body + b"\r\n")
+        with socket.create_connection(("127.0.0.1", self.port), timeout=120) as conn:
+            stream = conn.makefile("rwb")
+            self.assertTrue(stream.readline().startswith(b"200"))
+            stream.write(b"POST\r\n")
+            stream.flush()
+            self.assertTrue(stream.readline().startswith(b"340"))
+            stream.write(article + b".\r\n")
+            stream.flush()
+            reply = stream.readline().rstrip(b"\r\n").decode("ascii")
+            stream.write(b"QUIT\r\n")
+            stream.flush()
+        return reply, len(article)
+
+    def test_a_crosspost_is_charged_per_group_and_refused_by_name_past_the_budget(self):
+        """Lane membership-budget (ember, 2026-09-27): each group an article is
+        filed in is charged 320 octets of the history budget
+        (books/store-budget.lisp `*fn-sbud-membership-octets*'), so a
+        crosspost is allowed but paid for; when the article alone would fit
+        and its memberships do not, the POST is refused by name,
+        `441 ... (memberships)', distinct from the full store's
+        (unaffordable) (books/store-capacity-vector.lisp
+        `fn-cvec-article-refusal-word-names-the-memberships')."""
+        groups = ["fn.g{}".format(n) for n in range(12)]
+        created = self.operator(
+            "init", "--profile", "development", "--max-history-octets", "262144",
+            "--max-record-octets", "196608", "--max-article-octets", "32768",
+            "--max-groups-per-article", "16", *groups)
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        owner = self.start_owner(IMAGE)
+        # One group, then three: the stored charge is the payload as stored
+        # (the owner injects the same Path and Injection-Info into both: the
+        # Message-IDs have one length) plus 320 per group.
+        reply, one = self.post_article("<xp-a01@example.invalid>", groups[:1], b"body")
+        self.assertEqual(reply, "240 article received OK")
+        self.stop(owner)
+        after_one = self.headroom()["bytes-used"]
+        owner = self.start_owner(IMAGE)
+        reply, three = self.post_article("<xp-a03@example.invalid>", groups[:3], b"body")
+        self.assertEqual(reply, "240 article received OK")
+        self.stop(owner)
+        after_three = self.headroom()["bytes-used"]
+        self.assertEqual(after_three - 2 * after_one, (three - one) + 640)
+        injected = after_one - 320 - one
+        # Fill with one-group articles to leave ROOM octets of history: a
+        # 10-group article of payload P then needs P + 1083 + 261 x 10 without
+        # its memberships and 3,200 more with them, beside the 4,096-octet
+        # maintenance reservation.  Aim the room at the middle of that window.
+        room = self.headroom()
+        target_payload = 600
+        record = target_payload + 1083 + 261 * 10
+        want_left = record + 4096 + 1600
+        filler_total = room["history-bound"] - room["bytes-used"] - want_left
+        owner = self.start_owner(IMAGE)
+        fill, count = 0, 0
+        while filler_total - fill > 0:
+            size = min(30000, filler_total - fill - 320 - injected - 200)
+            if size < 200:
+                break
+            body = self.body_of(size)
+            reply, sent = self.post_article("<xp-f{:03d}@example.invalid>".format(count),
+                                            groups[:1], body)
+            self.assertEqual(reply, "240 article received OK")
+            fill += sent + injected + 320
+            count += 1
+        self.stop(owner)
+        left = self.headroom()
+        # The crosspost's stored payload P: its bytes plus the injected
+        # headers.  Choose P so the room is 1,600 octets past its record
+        # figure and the reservation: it fits without its memberships (3,200).
+        room_left = left["history-bound"] - left["bytes-used"]
+        bare = len(b"From: author@example.invalid\r\nNewsgroups: " +
+                   ",".join(groups[:10]).encode("ascii") +
+                   b"\r\nSubject: crosspost\r\nMessage-ID: <xp-x10@example.invalid>"
+                   b"\r\n\r\n\r\n")
+        pad = room_left - (1083 + 261 * 10 + 4096 + 1600) - injected - bare
+        self.assertGreater(pad, 0, left)
+        owner = self.start_owner(IMAGE)
+        crosspost, _ = self.post_article("<xp-x10@example.invalid>", groups[:10],
+                                         self.body_of(pad, b"y"))
+        self.assertEqual(
+            crosspost,
+            "441 posting failed; the store cannot pay for this article's groups: each "
+            "group it is posted to is charged to the history budget, and the article "
+            "alone would fit; post it to fewer groups (memberships)",
+            left)
+        # The same article in one group fits: the refusal was the memberships.
+        single, _ = self.post_article("<xp-x01@example.invalid>", groups[:1],
+                                      self.body_of(pad, b"y"))
+        self.assertEqual(single, "240 article received OK", left)
+        self.stop(owner)
+        # Nothing of the refused crosspost was written.
+        final = self.headroom()
+        self.assertEqual(final["transactions-used"], left["transactions-used"] + 1)
+
     def test_the_scale_profile_is_reachable_from_init(self):
         created = self.operator("init", "--profile", "scale", "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
@@ -650,9 +758,21 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
     def test_init_writes_the_operators_fields_and_status_prints_them(self):
         # D27: no flag is the default profile; flags set fields; a relation
         # the fields break is refused by its name and writes nothing.
-        created = self.operator("init", "--max-transactions", "1000",
+        # The default H is 1 TiB, whose full store no machine holds (the
+        # arena and the memberships H / 320 bounds): since lane
+        # membership-budget `init' refuses it by name unless a target budget
+        # is named (FN_INIT_BUDGET_MB, a store for another machine).
+        refused = self.operator("init", "--max-transactions", "1000",
                                 "--max-article-octets", "20000", "fn.test")
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+        self.assertIn(b"refused init-budget-cannot-hold-profile profile=custom "
+                      b"sizing=requested reservation=", refused.stderr)
+        self.assertFalse(self.store.exists() and any(self.store.iterdir()))
+        created = self.operator("init", "--max-transactions", "1000",
+                                "--max-article-octets", "20000", "fn.test",
+                                env=dict(environment(), FN_INIT_BUDGET_MB="99999999"))
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.assertIn(b"within-budget=no target-budget=99999999 MB", created.stdout)
         fields = self.profile_line()
         self.assertEqual(fields["format"], 9)   # the record log (fn-store-9)
         self.assertEqual(fields["max-transactions"], 1000)

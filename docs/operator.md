@@ -633,7 +633,10 @@ fn operator /etc/fn/fn.toml keys redecide <a1@example.invalid>
 ### When the store is full
 
 `init` sizes the store for the machine: the more memory, the more room.
-On a small machine that is still about ten thousand short posts. `status`
+On a small machine that is still about seven thousand short posts.
+A store `init` made always starts again on the same machine, however
+full it gets: `init` counts the memory of the store at its limits, not
+of the empty store. `status`
 has a line `capacity articles-left=N`: about how many more posts fit.
 `health` shows `space-pressure` when it gets low.
 
@@ -642,6 +645,13 @@ When the store is full, posts are refused with
 Nothing is lost. A friend's node that feeds you is told "try later"
 (`436`). It keeps the articles and tries again, and its `health` shows
 `unavailable-peer`.
+
+Each group a post goes to costs room too: about 320 bytes of the
+store's history per group, as well as the post itself. Posting to many
+groups at once is allowed, but paid for. When the post would fit but its
+groups would not, it is refused with
+`441 posting failed; the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)`.
+A feeding node is told "try later" (`436`) for this too.
 
 The store's size limits are fixed when it is made. To raise them, move to a
 new store with bigger limits: `store export`, a fresh install, then
@@ -712,7 +722,7 @@ A store's size limits are set by `init` and never change. Under a `mission`,
 choose them yourself, or to raise them later through an export:
 
 ```text
-fn operator /path/to/fn.toml init --max-transactions 100000 --max-article-octets 20000 fn.letters
+fn operator /path/to/fn.toml init --max-transactions 100000 --max-history-octets 268435456 --max-article-octets 20000 fn.letters
 fn operator /path/to/fn.toml store export /srv/fn-archive
 fn operator /path/to/fn.toml store import /srv/fn-archive --max-transactions 1000000
 ```
@@ -721,15 +731,21 @@ Limits: `--max-transactions`, `--max-history-octets`,
 `--max-record-octets`, `--max-article-octets`, `--max-groups-per-article`,
 `--max-open-suffix`, `--max-consumers`, `--max-config-generations`,
 `--max-credentials`. `--profile scale|development|default` names a starting
-set. `init` writes limits you name even when this machine's memory cannot
-hold them, and says so (`within-budget=no`); fn then refuses to run that
+set. When this machine's memory cannot hold the limits you name, `init`
+refuses and makes nothing:
+`fn: refused init-budget-cannot-hold-profile profile=scale sizing=requested reservation=10866 MB budget=2048 MB`
+(exit code 1). The first number is what the store would need at its
+limits, the second what this machine can give. Choose smaller limits, or,
+to make a store for a bigger machine, name that machine's memory with
+`FN_INIT_BUDGET_MB=16384`: `init` then writes it and says
+`within-budget=no target-budget=16384 MB`, and fn refuses to run that
 store here, with `fn: refused machine-cannot-hold-profile`.
 
 `init` with no `--profile` and no limit (and every `init` under a
 `mission`) picks the largest of four sizes this machine's memory holds:
-64, 32 or 16 MiB of articles, else 8 MiB. A short post takes about 860
-bytes, so that is about 78,000 posts at the top and about 9,700 at the
-bottom. A friend's feed uses the same room. For more, remove the `mission`
+64, 32 or 16 MiB of articles, else 8 MiB. A short post to one group
+takes about 1,180 bytes (860 for the post, 320 for its group), so that is
+about 56,000 posts at the top and about 7,000 at the bottom. A friend's feed uses the same room. For more, remove the `mission`
 line from `fn.toml` and `init` with the limits above, or raise them later
 with `store export` and `store import --max-... N`.
 `status` then shows the limits on its `profile` line and about how many

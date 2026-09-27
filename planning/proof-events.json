@@ -7192,6 +7192,10 @@
         {
           "kind": "theorem",
           "name": "fn-heap-status-decide-is-the-launchers-run-reservation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-full-store-accepted-is-within-the-machine"
         }
       ]
     },
@@ -10950,6 +10954,78 @@
         {
           "kind": "theorem",
           "name": "fn-peer-transfer-unreceived-effects-well-formed"
+        }
+      ]
+    },
+    {
+      "id": "PRF-314",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-record-octets-pays-the-memberships",
+          "note": "KEYSTONE (the budget pays for every membership). Host: host/owner-host.lisp fn-owner-publication-verdict / fn-owner-prepare read fn-sbud-bytes-carried, which is fn-sbud-bytes-used (fn-sbud-bytes-carried-is-the-fold), the sum of fn-sbud-row-octets."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-row-octets-pays-its-memberships"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-record-octets-is-the-stored-octets",
+          "note": "KEYSTONE restated: the budget is the sum of the stored charges (payload extent + 320 per membership)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-intern-events-budget-octets-are-the-stored-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-article-refusal-word-names-the-memberships",
+          "note": "KEYSTONE (the crosspost refusal by name). Host: host/owner-host.lisp fn-owner-prepare and fn-owner-prepare-buffer over fn-pout-prepare-article's word."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-record-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-membership-bound-holds-the-charged-memberships",
+          "note": "KEYSTONE (the heap's membership term is a function of H). Host: host/native/heap.lisp via fn-heap-operation-decide / fn-heap-status-decide."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-membership-term-is-at-most-twice-h"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-store-figure-holds-every-store"
+        }
+      ]
+    },
+    {
+      "id": "PRF-315",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-refuses-the-operators-request-past-the-budget",
+          "note": "KEYSTONE (ember 2026-09-27 decision 2). Host: host/native/operator.lisp init via host/native/heap.lisp fnn-heap-init-decision."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-honors-the-operators-request"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-accepted-store-always-reopens",
+          "note": "KEYSTONE (friend-path packet A). Host: host/native/heap.lisp fnn-heap-init-decision (init) and the launcher's run probe (fn-heap-reserve-operation-decide :run)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-full-store-accepted-is-within-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-decide-fits-the-budget-and-the-machine"
         }
       ]
     }

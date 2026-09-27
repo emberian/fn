@@ -20,17 +20,20 @@
 (include-book "store-budget")
 (include-book "store-intern")
 
-; One row's stored octets, read from the arena: a held row's handle extent
+; One row's stored charge, read from the arena: a held row's handle extent
 ; (0 for a handle outside the arena), a composite row's wire composite, any
-; other row its wire encoding.
+; other row its wire encoding; and an article row (held or composite) its
+; memberships at `*fn-sbud-membership-octets*' each (lane membership-budget:
+; the groups it is filed in, read from the row, not the arena).
 (defun fn-sbud-row-stored-octets (row fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
-  (cond ((fn-held-p row)
-         (if (fn-row-handle-inp row fn-arena)
-             (fn-arena-payload-len (fn-record-payload row) fn-arena)
-           0))
-        ((fn-hstxa-p row) (len (fn-store-event-encode (fn-hstxa-stxa row))))
-        (t (len (fn-store-event-encode row)))))
+  (+ (cond ((fn-held-p row)
+            (if (fn-row-handle-inp row fn-arena)
+                (fn-arena-payload-len (fn-record-payload row) fn-arena)
+              0))
+           ((fn-hstxa-p row) (len (fn-store-event-encode (fn-hstxa-stxa row))))
+           (t (len (fn-store-event-encode row))))
+     (* *fn-sbud-membership-octets* (fn-sbud-row-memberships row))))
 
 (defun fn-sbud-stored-octets (rows fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
@@ -55,9 +58,10 @@
         (t (fn-sbud-rows-extents-okp (cdr rows) fn-arena))))
 
 ; -----------------------------------------------------------------------------
-; KEYSTONE (the budget's octets are the stored octets).  Under the relation,
-; the sum `fn-sbud-record-octets' is the sum of the rows' stored octets: each
-; held row counts its payload's extent in the arena.
+; KEYSTONE (the budget's octets are the stored charges).  Under the relation,
+; the sum `fn-sbud-record-octets' is the sum of the rows' stored charges:
+; each held row counts its payload's extent in the arena and its
+; memberships (restated by lane membership-budget, 2026-09-27).
 (defthm fn-sbud-record-octets-is-the-stored-octets
   (implies (fn-sbud-rows-extents-okp rows fn-arena)
            (equal (fn-sbud-record-octets rows)
@@ -65,7 +69,7 @@
   :hints (("Goal" :induct (fn-sbud-rows-extents-okp rows fn-arena)
            :expand ((fn-sbud-record-octets rows)
                     (fn-sbud-stored-octets rows fn-arena))
-           :in-theory (e/d (fn-sbud-row-octets)
+           :in-theory (e/d (fn-sbud-row-octets fn-sbud-row-memberships)
                            (fn-store-event-encode fn-row-handle-inp
                             fn-arena-payload-len)))))
 

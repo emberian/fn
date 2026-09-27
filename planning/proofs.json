@@ -7579,9 +7579,10 @@
         "planning/evidence/reservation-after-flip-2026-09-27.md",
         "planning/evidence/compact-arena-2026-09-27.md",
         "planning/evidence/reservation-figure-2026-09-27.md",
-        "planning/evidence/manifests/certify-20260927T165617Z-3480090.json"
+        "planning/evidence/manifests/certify-20260927T165617Z-3480090.json",
+        "planning/evidence/membership-budget-2026-09-27.md"
       ],
-      "progress_note": "Lane heap-from-profile (2026-09-26): every event and the test book admitted in the persvati REPL (proof_repl, the farm toolchain w25); certification is the batch's (Validation by batch). The native case ran on hbox under MemoryMax=2G (planning/evidence/heap-from-profile-2026-09-26.md). Lane openbsd-release-fixes (2026-09-27): certified by persvati farm runs run-20260927T081126Z-3648 (certify-20260927T081222Z-2154140: checkpoint-pack-chain-once, heap-figure, heap-reservation and their test books) and run-20260927T081705Z-af7b (certify-20260927T081801Z-2227997: heap-reservation and its test book after the keystone was re-proved by instances; the book was 13.7 s before the lane and is 14.4 s, over D26's 10 s, pre-existing). A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them."
+      "progress_note": "Lane heap-from-profile (2026-09-26): every event and the test book admitted in the persvati REPL (proof_repl, the farm toolchain w25); certification is the batch's (Validation by batch). The native case ran on hbox under MemoryMax=2G (planning/evidence/heap-from-profile-2026-09-26.md). Lane openbsd-release-fixes (2026-09-27): certified by persvati farm runs run-20260927T081126Z-3648 (certify-20260927T081222Z-2154140: checkpoint-pack-chain-once, heap-figure, heap-reservation and their test books) and run-20260927T081705Z-af7b (certify-20260927T081801Z-2227997: heap-reservation and its test book after the keystone was re-proved by instances; the book was 13.7 s before the lane and is 14.4 s, over D26's 10 s, pre-existing). A-HOST dropped from this row's assumptions (lane audit-fixes, keystone-audit G3-9, 2026-09-27): no theorem of the row takes fn-assume-host-report or fn-assume-host-events (books/assumptions.lisp) as a hypothesis, so the citation was decorative (AGENTS.md: the theorems that use a named assumption mention it). The host's honest I/O remains the trust boundary these theorems sit inside, not a hypothesis of them. Lane membership-budget (2026-09-27): the membership product 2 x T x 320 x G is gone: every membership is charged 320 octets of the history budget (PRF-314), so the state's membership term is 2 x 320 x floor(H / 320) <= 2 H and the figure no longer reads G (the G hypothesis of fn-heap-store-base-octets-grows-with-the-profile and fn-heap-figure-octets-grows-with-history-and-record was removed after proving the weakened theorems); init judges the FULL store's run (fn-heap-reserve-full-store-decide, was the empty store's first run: PRF-315)."
     },
     {
       "id": "PRF-196",
@@ -11177,6 +11178,85 @@
         "fn-tb-served-step-keeps-the-body-limit",
         "fn-tb-open-peer-wire-is-the-peer-body-limit",
         "fn-peer-transfer-unreceived-effects-well-formed"
+      ]
+    },
+    {
+      "id": "PRF-314",
+      "title": "Every group membership is charged to the history budget: the budget is the sum of the stored charges, a crosspost the budget cannot pay for is refused by name, and the heap figure's membership term is bounded by H",
+      "statement": "ember's decision 2026-09-27 17:30Z (D27: no new crosspost cap). books/store-budget.lisp *fn-sbud-membership-octets* = 320 (the heap model's *fn-heap-membership-octets*: measured 137 octets of live heap a membership plus 45 for the group's name, 182, with the per-group index's doubling slack): fn-sbud-row-octets charges a held row its payload extent plus 320 per group (fn-sbud-row-memberships: a held row's groups, or the held article's inside an accepted-statement composite), so KEYSTONE fn-sbud-record-octets-pays-the-memberships: 320 x (fn-sbud-record-memberships records) <= (fn-sbud-record-octets records). books/store-budget-stored.lisp KEYSTONE fn-sbud-record-octets-is-the-stored-octets (restated): under fn-sbud-rows-extents-okp the budget is the sum of fn-sbud-row-stored-octets (extent + 320 per membership). books/store-budget-article.lisp: fn-sbud-article-figure p k = the record ceiling + 320 k, so every gate (article verdict, capacity vector, carried verdict) charges the memberships and the stored charge is within the figure (fn-cvec-held-row-within-its-figure). books/store-capacity-vector.lisp fn-cvec-article-refusal-word (host: host/owner-host.lisp fn-owner-prepare and fn-owner-prepare-buffer, over fn-pout-prepare-article's word): KEYSTONE fn-cvec-article-refusal-word-names-the-memberships: the word is :memberships exactly when the prepare answered :unaffordable, k >= 1, the article budget was 0, and without the membership charge the count gate, the history gate and the vector would have admitted it; 441 posting failed; ... (memberships) (books/nntp-post.lisp), 436 to a feeding peer (books/peer-inbound.lisp). books/heap-store-figure.lisp: the state is arena(USED) + 48 N + 2 x 12,288 N + 2 x 320 M with M the memberships; the figure takes M = fn-heap-membership-bound = floor(H / 320) (KEYSTONE fn-heap-membership-bound-holds-the-charged-memberships; fn-heap-membership-term-is-at-most-twice-h), and fn-heap-store-figure-holds-every-store gains the hypothesis 320 M <= H. Figures (core 200 MB, 64 MiB nursery; full-store heap before -> after): small 1,052 -> 891 MB, development 7,326 -> 2,254, scale 172,841 -> 10,539, default 10,856,110,718 -> 120,789,633 (its T = 2^32 - 1 records at 12 KiB each), gate (scale, T 2^20, A 4096) 41,977,971 -> 37,107.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013",
+        "STO-020"
+      ],
+      "depends_on": [
+        "PRF-198",
+        "PRF-138",
+        "PRF-180"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-budget.lisp",
+        "books/store-budget-stored.lisp",
+        "books/store-budget-article.lisp",
+        "books/store-capacity-vector.lisp",
+        "books/heap-store-figure.lisp",
+        "books/nntp-post.lisp",
+        "books/peer-inbound.lisp",
+        "host/owner-host.lisp",
+        "tests/acl2/store-budget-tests.lisp",
+        "tests/acl2/store-capacity-vector-tests.lisp",
+        "tests/acl2/heap-figure-tests.lisp",
+        "tests/test_native_operator_verbs.py",
+        "planning/evidence/membership-budget-2026-09-27.md"
+      ],
+      "progress_note": "Lane membership-budget (Opus 5.5, 2026-09-27).",
+      "events": [
+        "fn-sbud-record-octets-pays-the-memberships",
+        "fn-sbud-row-octets-pays-its-memberships",
+        "fn-sbud-record-octets-is-the-stored-octets",
+        "fn-intern-events-budget-octets-are-the-stored-octets",
+        "fn-cvec-article-refusal-word-names-the-memberships",
+        "fn-cvec-record-keeps-the-vector",
+        "fn-heap-membership-bound-holds-the-charged-memberships",
+        "fn-heap-membership-term-is-at-most-twice-h",
+        "fn-heap-store-figure-holds-every-store"
+      ]
+    },
+    {
+      "id": "PRF-315",
+      "title": "init refuses by name a profile the machine's budget cannot hold, unless a target budget is named; a store init admitted always reopens on the same machine",
+      "statement": "ember's decision 2026-09-27 17:30Z and the coordinator's release blocker (friend-path packet A: a 2 GiB node init said within-budget=yes, reservation 1,234 MB, and after 960 posts every start refused machine-cannot-hold-profile heap=2104 MB machine=2031 MB). books/heap-reservation.lisp: fn-heap-reserve-full-store-decide (was fn-heap-reserve-first-run-decide over the empty store) judges the run of the FULL store the profile admits (heap-figure's :run figure unobserved), and fn-heap-reserve-acceptsp and fn-heap-init-reservation-octets use it. KEYSTONE fn-heap-init-accepted-store-always-reopens: a profile (the admittedness hypothesis was removed after proving the weakened theorem) the full-store decision accepts within OBS is accepted by the launcher's :run decision (fn-heap-reserve-operation-decide) on the same OBS for every OBSERVED store and every owner bound. fn-heap-init-decide, for an operator's request (sizing :requested) this budget does not hold: written only when FN_INIT_BUDGET_MB names a target budget that holds its whole reservation (fn-heap-init-target-holdsp; the decision (:init REQUEST WORD MB BUDGET-MB :requested NIL TARGET-MB), the line `within-budget=no target-budget=N MB'), else refused :init-budget-cannot-hold-profile with the reservation and the budget (KEYSTONE fn-heap-init-decide-refuses-the-operators-request-past-the-budget; exit 1, fn-heap-init-refusal-exits-1), nothing written; unobserved machine memory is :machine-memory-unobserved. fn-heap-init-decide-honors-the-operators-request now holds when the budget or the named target holds the request. Host: host/native/operator.lisp init (fnn-heap-init-decision, host/native/heap.lisp), unchanged: it prints the line and exits with the decision's code.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-013",
+        "HST-025"
+      ],
+      "depends_on": [
+        "PRF-198"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/heap-reservation.lisp",
+        "tests/acl2/heap-reservation-tests.lisp",
+        "host/native/heap.lisp",
+        "host/native/operator.lisp",
+        "tests/test_native_heap_from_profile.py",
+        "docs/operator.md",
+        "docs/install.md",
+        "planning/evidence/membership-budget-2026-09-27.md"
+      ],
+      "progress_note": "Lane membership-budget (Opus 5.5, 2026-09-27).",
+      "events": [
+        "fn-heap-init-decide-refuses-the-operators-request-past-the-budget",
+        "fn-heap-init-decide-honors-the-operators-request",
+        "fn-heap-init-accepted-store-always-reopens",
+        "fn-heap-reserve-full-store-accepted-is-within-the-machine",
+        "fn-heap-init-decide-fits-the-budget-and-the-machine"
       ]
     }
   ]
