@@ -7306,11 +7306,19 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-cbud-limit-holds-its-connections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cbud-limit-is-the-most"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-cbud-run-decide-holds-the-capacity"
         },
         {
           "kind": "theorem",
-          "name": "fn-cbud-run-decide-refuses-exactly-past-the-bound"
+          "name": "fn-cbud-run-decide-refuses-exactly-past-the-limit"
         },
         {
           "kind": "theorem",
