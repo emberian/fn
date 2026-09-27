@@ -5513,7 +5513,12 @@
       "evidence": [
         "books/owner-checkpoint-pipeline.lisp",
         "tests/acl2/store-checkpoint-tables-tests.lisp",
-        "planning/evidence/checkpoint-pipeline-2026-09-26.md"
+        "planning/evidence/checkpoint-pipeline-2026-09-26.md",
+        "books/store-checkpoint-buffer.lisp",
+        "tests/acl2/store-checkpoint-buffer-tests.lisp",
+        "planning/evidence/rep-wave-d-2-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T035409Z-754998.json",
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
       ],
       "progress_note": "Lane checkpoint-pipeline (2026-09-26): re-targeted from fn-sccb-plan (the whole-file encode, removed by the deletion map) to the batched writer's step facts; certified on persvati in the lane's REPL tree and the farm run named in the record."
     },
@@ -5608,7 +5613,10 @@
         "books/store-checkpoint-tables-reader.lisp",
         "books/store-checkpoint-reader.lisp",
         "tests/acl2/store-checkpoint-tables-tests.lisp",
-        "planning/evidence/checkpoint-pipeline-2026-09-26.md"
+        "planning/evidence/checkpoint-pipeline-2026-09-26.md",
+        "tests/acl2/store-checkpoint-reader-tests.lisp",
+        "planning/evidence/rep-wave-d-3-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T051745Z-1490116.json"
       ],
       "progress_note": "Lane checkpoint-pipeline (2026-09-26): re-targeted from fn-sccr-decode-plan (the schema-2 whole-file decode, removed) to fn-sct-load; every form admitted in the persvati REPL, certified in the lane's tree (3.8 s)."
     },
@@ -6900,7 +6908,13 @@
         "books/owner-checkpoint-pipeline.lisp",
         "tests/acl2/store-checkpoint-tables-tests.lisp",
         "tests/test_native_checkpoint_auto.py",
-        "planning/evidence/checkpoint-pipeline-2026-09-26.md"
+        "planning/evidence/checkpoint-pipeline-2026-09-26.md",
+        "books/owner-checkpoint-stream.lisp",
+        "tests/acl2/owner-checkpoint-stream-tests.lisp",
+        "books/octets-stobj.lisp",
+        "books/store-checkpoint-buffer.lisp",
+        "planning/evidence/checkpoint-capture-stream-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T143919Z-2974417.json"
       ],
       "progress_note": "Lane checkpoint-pipeline (2026-09-26): re-targeted from fn-ock-publication-stream (removed with books/owner-checkpoint-stream.lisp) to fn-ockp-setup/fn-ockp-decide; the estimate no longer walks payload octets (the whole-tree walk fn-ockb-file-len is gone)."
     },
@@ -6974,7 +6988,9 @@
         "books/owner-store-indexed.lisp",
         "planning/evidence/served-path-scale-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T145454Z-3119631.json",
-        "planning/evidence/manifests/certify-20260926T150419Z-3212490.json"
+        "planning/evidence/manifests/certify-20260926T150419Z-3212490.json",
+        "books/store-checkpoint-shape.lisp",
+        "tests/acl2/store-checkpoint-shape-tests.lisp"
       ],
       "progress_note": "Lane served-path-scale-2 (2026-09-26). Teeth: tests/acl2/owner-open-carried-tests.lisp (a reachable configured owner with a committed article, *acar-t-committed*: the carried and reference opens agree and open connection 2 with the projection recorded and the store node and configuration pinned; the relation-free counterexample *acar-t-bad-view-oc* on which the carried open records a projection the reference denies, with must-fail for both keystones; each step lemma's hypotheses one at a time); tests/acl2/store-checkpoint-shape-tests.lisp (this image's frozen capture thaws :ok; the pair-shaped index of a249a699..d0df09ed thaws the right records with count 0 and is refused :index-shape, as is the single-trie shape of the 20,000 fixture; must-fail of the keystone without true-listp and of the selection lemma without its hypothesis). Lane checkpoint-pipeline (2026-09-26): the schema-2 freeze/thaw and the list publication went with schema 3 (D34); their theorems are removed from this target's events (fn-sco-thaw-of-freeze, fn-sco-freeze-of-capture-carries-the-count, fn-ock-published-segments-decode-to-the-checkpoint, fn-ock-publication-is-the-capture-at-the-capture-point, fn-sco-thaw-checked-accepts-own-publication); the schema-3 file's round trip is PRF-199.",
       "events": [
