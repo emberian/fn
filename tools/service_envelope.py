@@ -613,6 +613,8 @@ def main(argv=None):
     lo.add_argument("--signed-every", type=int, default=256)
     lo.add_argument("--budget", type=int, default=1500, help="seconds of loading before a clean stop")
     lo.add_argument("--open-timeout", type=int, default=1200)
+    lo.add_argument("--settle", type=int, default=0,
+                    help="seconds the owner runs on after the load's last POST before the stop")
     cl = sub.add_parser("clone")
     cl.add_argument("--dir", required=True)
     cl.add_argument("--to-dir", required=True)

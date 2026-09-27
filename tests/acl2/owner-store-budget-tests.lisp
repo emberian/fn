@@ -82,7 +82,7 @@
 (assert-event (equal (fn-sbud-refusal-kind *osbt-reserved* 2) :refused))
 ; The refusal line the owner renders for that word.
 (assert-event (equal (fn-post-store-refusal-line :unaffordable)
-                     "441 posting failed; the store has no capacity for this article"))
+                     "441 posting failed; the store is full: no capacity for this article (unaffordable); the node's operator can raise it"))
 ; After the first record the development profile's budget still admits.
 (assert-event (equal (fn-sbud-prepare *osbt-reserved* *osbt-second*
                                       (fn-sbud-budget

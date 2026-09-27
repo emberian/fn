@@ -37,6 +37,7 @@
 
 (in-package "ACL2")
 (include-book "checkpoint-pack-chain")
+(include-book "store-event-fields")
 
 (local
  (defthm fn-ccco-nth-0-of-cons
@@ -97,35 +98,16 @@
 ; (planning/evidence/open-by-index-2026-09-26.md).  The twin reads the three
 ; fields in one dispatch.
 
-(defun fn-ccco-event-fields (x)
-  (declare (xargs :guard t :verify-guards nil))
-  (cond ((fn-record-p x)
-         (list t (fn-record-sequence x) (fn-record-txid x) (fn-record-generation x)))
-        ((fn-store-retention-event-p x)
-         (list t (fn-store-event-nth 2 x) (fn-store-event-nth 3 x) (fn-store-event-nth 4 x)))
-        ((fn-stxe-p x) (list t (fn-stxe-sequence x) (fn-stxe-txid x) (fn-stxe-generation x)))
-        ((fn-stxk-p x) (list t (fn-stxk-sequence x) (fn-stxk-txid x) (fn-stxk-generation x)))
-        ((fn-stxa-p x) (list t (fn-stxa-sequence x) (fn-stxa-txid x) (fn-stxa-generation x)))
-        ((fn-cpe-eventp x) (list t (fn-cpe-sequence x) (fn-cpe-txid x) (fn-cpe-generation x)))
-        ((fn-th-topic-eventp x) (list t (fn-th-at 1 x) (fn-th-at 2 x) (fn-th-at 3 x)))
-        (t (list nil nil nil nil))))
-
-(defthm fn-ccco-event-fields-are-the-dispatchers
-  (equal (fn-ccco-event-fields x)
-         (list (if (fn-store-event-p x) t nil) (fn-store-event-sequence x)
-               (fn-store-event-txid x) (fn-store-event-generation x)))
-  :hints (("Goal" :in-theory (e/d (fn-store-event-p fn-store-event-sequence
-                                   fn-store-event-txid fn-store-event-generation)
-                                  (fn-record-p fn-store-retention-event-p fn-stxe-p
-                                   fn-stxk-p fn-stxa-p fn-cpe-eventp fn-th-topic-eventp)))))
-
-(in-theory (disable fn-ccco-event-fields))
+; The fields come from books/store-event-fields.lisp fn-event-fields with
+; WIREP t (fn-event-fields-of-wire-is-the-dispatchers): a link packs WIRE
+; events, the codec's domain (the replay's history recognizer reads the
+; retained rows through the same function, PKT-721).
 
 (defun fn-ccco-octet-event-listp (octet-events sequence lower-frontier upper-frontier)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp octet-events)
       (let* ((decoded (fn-store-event-decode-exact (car octet-events)))
-             (f (fn-ccco-event-fields (fn-cc-nth 1 decoded)))
+             (f (fn-event-fields (fn-cc-nth 1 decoded) t))
              (txid (fn-cc-nth 2 f)))
         (and (fn-cbor-octet-listp (car octet-events))
              (equal (car decoded) :ok)

@@ -110,7 +110,7 @@
                        'fn-owner-workflow-install-replay
                      'fn-workflow-install-replay)
                    records)
-                (fnn-core-state 'fn-bprj-install records))
+                (fnn-core-arena-state 'fn-bprj-install records))
             (if (eq (fnn-app-journal-domain journal) :workflow)
                 (fnn-core-state
                  (if (fnn-app-journal-owner-mode journal)
@@ -161,26 +161,27 @@
         (if (eq domain :workflow)
             (and (fnn-core 'fn-workflow-valid-config record) t)
           (eq (fnn-core-state 'fn-bprj-valid-config record) t))
-      (eq (fnn-core-state
-           (if (eq domain :workflow)
+      ;; The BP receiver reads the Store's rows through the arena (flip-L4).
+      (eq (if (eq domain :workflow)
+              (fnn-core-state
                (if (fnn-app-journal-owner-mode journal)
                    'fn-owner-workflow-preflight-record
                  'fn-workflow-preflight-record)
-             'fn-bprj-preflight)
-           record)
+               record)
+            (fnn-core-arena-state 'fn-bprj-preflight record))
           :ready))))
 
 (defun fnn-app-apply (journal record)
   (if (eq (first record) :config)
       (fnn-app-install journal (list record))
     (let ((answer
-            (fnn-core-state
-             (if (eq (fnn-app-journal-domain journal) :workflow)
+            (if (eq (fnn-app-journal-domain journal) :workflow)
+                (fnn-core-state
                  (if (fnn-app-journal-owner-mode journal)
                      'fn-owner-workflow-apply-record
                    'fn-workflow-apply-record)
-               'fn-bprj-apply)
-             record)))
+                 record)
+              (fnn-core-arena-state 'fn-bprj-apply record))))
       (unless (eq answer :ready)
         (fnn-fault "ACL2 rejected durable application journal record"))
       :ready)))

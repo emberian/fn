@@ -503,8 +503,8 @@ class Acl2Store:
     # The served statement query (decision D21).  ACL2 holds the index in the
     # store state; this sends the id and prints what the index answers.  No
     # part of the query is computed here: fn-sn-statement-lookup reads the
-    # carried index, and fn-sn-statement-lookup-is-the-lace-lookup
-    # (books/store-node-invariants) is what says that is the same answer as
+    # carried index, and fn-store-statement-lookup-is-the-lace-lookup
+    # (books/store-intern) is what says that is the same answer as
     # the linear lace projection.
     def set_keyring(self, pairs):
         entries = " ".join(

@@ -303,3 +303,86 @@
             (fn-record-string-octets " outcome=")
             (fn-record-string-octets (if (stringp word) word "connect"))
             (fn-record-string-octets " retry=yes"))))
+
+; -----------------------------------------------------------------------------
+; `fn redeem HOST[:PORT] CODE LOGIN' (the stranger rehearsal's stop 10,
+; 2026-09-27): a friend redeems an invitation code without hand-typing
+; XREDEEM through `openssl s_client'.  The host (host/native/io.lisp
+; fnn-command-redeem) dials, runs TLS (STARTTLS on the reader port or
+; implicit TLS with --tls), sends each command this answers and reads each
+; reply line; ACL2 decides from the reply's code what comes next and every
+; word the friend reads.  The exchange is the server's (books/nntp-auth.lisp
+; fn-auth-xredeem; specs/nntp.md "Invitation-code accounts"):
+;
+;   greeting   200/201            -> STARTTLS (or, under --tls, the code)
+;   STARTTLS   382                -> the TLS handshake, then the code
+;   XREDEEM CODE LOGIN   381      -> XREDEEM PASS PASSWORD
+;   XREDEEM PASS PASSWORD 281     -> done
+;
+; Any other reply ends it, refused by name with the server's own line.
+
+(defun fn-redeem-reply-code (line)
+  "The three-digit code a reply LINE (octets) begins with, or NIL."
+  (declare (xargs :guard t))
+  (if (and (true-listp line) (<= 3 (len line))
+           (natp (nth 0 line)) (<= 48 (nth 0 line)) (<= (nth 0 line) 57)
+           (natp (nth 1 line)) (<= 48 (nth 1 line)) (<= (nth 1 line) 57)
+           (natp (nth 2 line)) (<= 48 (nth 2 line)) (<= (nth 2 line) 57)
+           (or (equal (len line) 3) (equal (nth 3 line) 32)))
+      (+ (* 100 (- (nth 0 line) 48)) (* 10 (- (nth 1 line) 48)) (- (nth 2 line) 48))
+    nil))
+
+(defun fn-redeem-step (stage line)
+  "What `fn redeem' does after reading reply LINE at STAGE.
+STAGE is :greeting-starttls, :greeting-tls, :starttls, :code or :password.
+Answers (:starttls), (:handshake), (:send-code), (:send-password),
+(:done) or (:refused WORD)."
+  (declare (xargs :guard t))
+  (let ((code (fn-redeem-reply-code line)))
+    (cond ((member-equal stage '(:greeting-starttls :greeting-tls))
+           (if (member-equal code '(200 201))
+               (if (equal stage :greeting-tls) (list :send-code) (list :starttls))
+             (list :refused :greeting)))
+          ((equal stage :starttls)
+           (if (equal code 382) (list :handshake) (list :refused :starttls)))
+          ((equal stage :code)
+           (if (equal code 381) (list :send-password) (list :refused :code)))
+          ; The server keeps the code and the login until the password
+          ; (fn-auth-xredeem): a used or expired code is its 482 here.
+          ((equal stage :password)
+           (cond ((equal code 281) (list :done))
+                 ((equal code 482) (list :refused :code))
+                 (t (list :refused :password))))
+          (t (list :refused :stage)))))
+
+; KEYSTONE.  `fn redeem' reports an account ready only on the server's 281
+; to the password, and sends the password only after the server's 381 to
+; the code: never on another reply, never out of order.
+(defthm fn-redeem-done-only-on-281-after-the-password
+  (and (iff (equal (fn-redeem-step stage line) (list :done))
+            (and (equal stage :password)
+                 (equal (fn-redeem-reply-code line) 281)))
+       (iff (equal (fn-redeem-step stage line) (list :send-password))
+            (and (equal stage :code)
+                 (equal (fn-redeem-reply-code line) 381)))))
+
+(defun fn-redeem-text (outcome login server-line)
+  "The line the friend reads for OUTCOME ((:done) or (:refused WORD)); LOGIN
+and SERVER-LINE (the server's last reply, octets) are named in it."
+  (declare (xargs :guard t))
+  (let ((login-octets (if (stringp login) (fn-record-string-octets login) nil))
+        (said (if (true-listp server-line) server-line nil)))
+    (if (equal outcome (list :done))
+        (append (fn-record-string-octets "redeemed: the account ")
+                login-octets
+                (fn-record-string-octets " is ready; put it and its password in your newsreader (it logs in with AUTHINFO on a new connection)"))
+      (append (fn-record-string-octets "refused redeem ")
+              (fn-record-string-octets
+               (let ((word (and (consp outcome) (consp (cdr outcome)) (cadr outcome))))
+                 (cond ((equal word :greeting) "greeting: the server did not greet as a news server")
+                       ((equal word :starttls) "starttls: this port does not offer STARTTLS; try --tls with the node's TLS port (563)")
+                       ((equal word :code) "code: the invitation code or the login was refused (an expired or used code, or a login already taken)")
+                       ((equal word :password) "password: the password was refused")
+                       (t "stage"))))
+              (fn-record-string-octets "; the server said: ")
+              said))))

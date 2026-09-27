@@ -14,9 +14,12 @@
           (fn-nntp-string-octets "Subject: probe root") '(13 10)
           '(13 10)
           (fn-nntp-string-octets "Hi") '(13 10)))
+;; by specification: the flip -- an accepted article's payload is an arena
+;; handle (natp), not its octets; *xp-payload* stays the bytes handle 0 stands for.
+(defconst *xp-payload-handle* 0)
 (defconst *xp-archive*
   (fn-accept-complete
-   (fn-accept-prepare (fn-initial-state *xp-groups*) 1 *xp-id* *xp-payload*
+   (fn-accept-prepare (fn-initial-state *xp-groups*) 1 *xp-id* *xp-payload-handle*
                       '("fn.letters") 841000000)
    0 1 :durable))
 (assert-event (fn-nntp-projectionp *xp-archive*))

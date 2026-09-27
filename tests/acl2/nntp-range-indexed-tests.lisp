@@ -10,20 +10,24 @@
           (fn-nntp-string-octets subject) '(13 10 13 10 88 13 10)))
 
 (defconst *xri-groups* '("fn.one" "fn.two" "fn.three"))
+; by specification: the flip -- the acceptance payload is a handle into the
+; arena (records-flip, books/held-record.lisp): the bytes fn-xri-payload
+; builds are interned in order, A at handle 0, B at 1, C at 2, and the
+; malformed duplicate's DUP bytes at 3.
 (defconst *xri-a*
   (fn-make-article "<xri-a@example.invalid>"
-                   (fn-xri-payload "<xri-a@example.invalid>" "A")
+                   0
                    '("fn.one" "fn.two")
                    (list (cons "fn.one" 2) (cons "fn.two" 70))
                    t 841000000))
 (defconst *xri-b*
   (fn-make-article "<xri-b@example.invalid>"
-                   (fn-xri-payload "<xri-b@example.invalid>" "B")
+                   1
                    '("fn.three") (list (cons "fn.three" 9))
                    t 841000000))
 (defconst *xri-c*
   (fn-make-article "<xri-c@example.invalid>"
-                   (fn-xri-payload "<xri-c@example.invalid>" "C")
+                   2
                    '("fn.one") (list (cons "fn.one" 100))
                    t 841000000))
 (defconst *xri-old-articles* (list *xri-a* *xri-b*))
@@ -156,7 +160,7 @@
 (defconst *xri-duplicate-articles*
   (list *xri-a*
         (fn-make-article "<xri-a@example.invalid>"
-                         (fn-xri-payload "<xri-a@example.invalid>" "DUP")
+                         3
                          '("fn.one") (list (cons "fn.one" 100))
                          t 841000000)))
 (assert-event (not (fn-article-listp *xri-groups* *xri-duplicate-articles*)))

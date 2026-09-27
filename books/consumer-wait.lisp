@@ -193,3 +193,67 @@
 
 (verify-guards fn-cwait-poll)
 (verify-guards fn-cwait-step)
+
+; -----------------------------------------------------------------------------
+; The step over the payload arena (records flip)
+;
+; The Store retains held rows, and a held article row's report is its wire
+; form read through the arena (books/consumer-bound.lisp fn-cbind-poll-over,
+; fn-cbind-plain-poll-over); the arena-free poll refuses it (:refused
+; :report).  The host's step switches to fn-cwait-step-over with the live
+; arena (flip-bridge REQUEST to the host lane).  KEYSTONE 2's run is a model
+; over owner states whose poll is the arena-free one: restating it over the
+; arena needs the arena each observation saw (an open item).
+
+(defun fn-cwait-poll-over (oc acfg consumer secret fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (if secret
+      (fn-cbind-poll-over oc acfg consumer secret fn-arena)
+    (fn-cbind-plain-poll-over oc consumer fn-arena)))
+
+(defun fn-cwait-step-over (oc acfg consumer secret elapsed seconds fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-cwait-decide (fn-cwait-poll-over oc acfg consumer secret fn-arena)
+                   elapsed seconds))
+
+(verify-guards fn-cwait-poll-over)
+(verify-guards fn-cwait-step-over)
+
+; The bridge: on a selection that is no held row the step over the arena is
+; the step above.
+(defthm fn-cwait-step-over-is-step-unless-a-held-row
+  (implies (not (fn-held-p (caddr (fn-col-poll (fn-ocfg-owner oc) consumer))))
+           (equal (fn-cwait-step-over oc acfg consumer secret elapsed seconds fn-arena)
+                  (fn-cwait-step oc acfg consumer secret elapsed seconds)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-cbind-poll-over-is-poll-unless-a-held-row))
+           :in-theory (e/d (fn-cwait-step-over fn-cwait-step
+                            fn-cwait-poll-over fn-cwait-poll)
+                           (fn-cbind-poll-over fn-cbind-poll fn-cbind-plain-poll-over
+                            fn-cbind-plain-poll fn-cwait-decide fn-col-poll)))))
+
+; KEYSTONE 1 over the arena: the host's step answers exactly the consumer's
+; poll over the arena at that moment, or sleeps only on an accepted empty
+; page before the deadline, for a positive time that does not pass it.
+(defthm fn-cwait-step-over-is-the-poll-or-a-sleep-on-an-empty-page
+  (let ((r (fn-cwait-step-over oc acfg consumer secret elapsed seconds fn-arena))
+        (p (fn-cwait-poll-over oc acfg consumer secret fn-arena)))
+    (and (or (equal r (list :answer p))
+             (and (equal (car r) :sleep)
+                  (fn-cwait-empty-pagep p)
+                  (natp elapsed)
+                  (< elapsed (fn-cwait-deadline-ms seconds))
+                  (posp (cadr r))
+                  (equal (+ elapsed (cadr r))
+                         (fn-cwait-deadline-ms seconds))))
+         (implies (and (natp elapsed)
+                       (fn-cwait-empty-pagep (cadr r)))
+                  (<= (fn-cwait-deadline-ms seconds) elapsed))
+         (implies (<= (fn-cwait-deadline-ms seconds) elapsed)
+                  (equal r (list :answer p)))
+         (implies (not (fn-cwait-empty-pagep p))
+                  (equal r (list :answer p)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cwait-step-over fn-cwait-decide
+                                   fn-cwait-empty-pagep-is-a-list)
+                                  (fn-cwait-poll-over fn-cwait-empty-pagep)))))

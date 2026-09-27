@@ -19,6 +19,42 @@
   (implies (fn-record-p r) (stringp (fn-record-msgid r)))
   :hints (("Goal" :in-theory (enable fn-record-p fn-record-msgidp fn-record-shapep)))))
 
+; A Store history holds retained events only (fn-sn-statep): of its article
+; records, the held rows are the only ones whose wire form is a WIRE record
+; -- a composite row's article is its held row, and no other retained event
+; is an article record.
+(local (defthm fn-bpra-hstxa-held-is-held
+  (implies (fn-hstxa-p x) (fn-held-p (fn-hstxa-held x)))
+  :hints (("Goal" :in-theory (enable fn-hstxa-p fn-hstxa-held)))))
+(local (defthm fn-bpra-store-event-other-is-no-record
+  (implies (and (fn-store-event-p x) (not (fn-held-p x)) (not (fn-hstxa-p x)))
+           (not (fn-record-p x)))
+  :hints (("Goal" :in-theory (enable fn-store-event-p)))))
+(local (defthm fn-bpra-store-event-is-no-stxa
+  (implies (fn-store-event-p x) (not (fn-stxa-p x)))
+  :hints (("Goal" :in-theory (e/d (fn-store-event-p) (fn-stxa-p fn-held-p fn-hstxa-p))
+           :use ((:instance fn-stxa-is-no-other-wire-event)
+                 (:instance fn-held-is-no-wire-event)
+                 (:instance fn-hstxa-is-no-wire-event))))))
+(local (defthm fn-bpra-member-of-alpha-stands
+  (implies (and (fn-sf-record-valuesp rows)
+                (fn-record-p record)
+                (member-equal record (fn-rows-wire-of (fn-bpr-article-records rows) fn-arena)))
+           (fn-bpr-rows-stand-for record (fn-bpr-article-records rows) fn-arena))
+  :hints (("Goal" :induct (len rows)
+           :in-theory (e/d (fn-bpr-article-records fn-bpr-event-article fn-rows-wire-of
+                            fn-sf-record-valuesp fn-bpr-rows-stand-for fn-bpr-row-stands-for)
+                           (fn-stxa-p fn-held-p fn-hstxa-p fn-record-p fn-store-event-p
+                            fn-row-wire-of fn-hstxa-held fn-replay-composite-record))
+           :expand ((:free (x) (fn-row-wire-of x fn-arena)))))))
+(local (defthm fn-bpra-record-listp-values
+  (implies (fn-sf-record-listp records sequence lower frontier)
+           (fn-sf-record-valuesp records))
+  :hints (("Goal" :in-theory (e/d (fn-sf-record-listp fn-sf-record-valuesp) (fn-store-event-p))))))
+(local (defthm fn-bpra-statep-history-values
+  (implies (fn-sn-statep s) (fn-sf-record-valuesp (fn-sf-records (fn-sn-files s))))
+  :hints (("Goal" :in-theory (enable fn-sn-statep fn-sf-statep)))))
+
 ; KEYSTONE (the receipt's Store gate over the arena).
 (defthm fn-bpr-store-record-acceptedp-is-acceptance-over-alpha
   (implies (fn-rows-composites-okp (fn-sf-records (fn-sn-files store)) fn-arena)
@@ -48,10 +84,14 @@
                                   (fn-bpi-node-wire-committedp fn-bpr-rows-stand-for
                                    fn-rows-wire-of fn-bpr-article-records
                                    fn-articles-wire-of fn-find-article fn-record-p
-                                   fn-bpi-node-wire-committedp-is-committed-over-alpha))
+                                   fn-bpi-node-wire-committedp-is-committed-over-alpha
+                                   fn-bpra-member-of-alpha-stands fn-sn-statep))
            :use ((:instance fn-bpra-record-msgid-is-a-string (r record))
                  (:instance fn-bpr-rows-stand-for-is-member-of-alpha
                   (rows (fn-bpr-article-records (fn-sf-records (fn-sn-files store)))))
+                 (:instance fn-bpra-member-of-alpha-stands
+                  (rows (fn-sf-records (fn-sn-files store))))
+                 (:instance fn-bpra-statep-history-values (s store))
                  (:instance fn-bpr-article-records-over-alpha
                   (rows (fn-sf-records (fn-sn-files store))))
                  (:instance fn-bpi-node-wire-committedp-is-committed-over-alpha

@@ -23,13 +23,23 @@
   (if (consp xs)
       (if (equal (car xs) x) i (rbt-index-of x (cdr xs) (1+ i)))
     nil))
-(defconst *rbt-node* (fn-sn-node *ost-s*))
+; by specification: the flip: the live store's articles hold handles and
+; its reclaim redirects a handle to the sealed tombstone
+; (fn-rcl-reclaim-state takes a natp).  These twins are the specification
+; over the WIRE view (octets-stobj-tests' *ost-s-wire*, every handle
+; replaced by its bytes), reclaimed there with the tombstone's bytes
+; (test-only surgery on the article list); the host's entry over the arena
+; is books/store-existing-alpha's subject.
+(defconst *rbt-node* (fn-sn-node *ost-s-wire*))
 (defconst *rbt-acc* (fn-node-acceptance *rbt-node*))
 (defconst *rbt-k* (rbt-index-of *rbt-acc* *rbt-node* 0))
 (assert-event (natp *rbt-k*))
-(defconst *rbt-acc2* (fn-rcl-reclaim-state *rbt-acc* *ost-msgid* *rbt-tomb*))
+(defconst *rbt-j* (rbt-index-of (fn-state-articles *rbt-acc*) *rbt-acc* 0))
+(defconst *rbt-acc2*
+  (update-nth *rbt-j* (fn-rcl-reclaim-articles (fn-state-articles *rbt-acc*) *ost-msgid* *rbt-tomb*)
+              *rbt-acc*))
 (defconst *rbt-s*
-  (update-nth 3 (update-nth *rbt-k* *rbt-acc2* *rbt-node*) *ost-s*))
+  (update-nth 3 (update-nth *rbt-k* *rbt-acc2* *rbt-node*) *ost-s-wire*))
 (assert-event
  (and (equal (fn-node-acceptance (fn-sn-node *rbt-s*)) *rbt-acc2*)
       (equal (fn-article-payload
@@ -71,8 +81,8 @@
  (equal (ost-existing-action *ost-msgid* *ost-held* *ost-groups* *rbt-s*) :conflict))
 ; And on the live store the new call is the old one.
 (assert-event
- (and (equal (rbt-existing-action *ost-msgid* *ost-held* *ost-groups* *ost-s*) :duplicate)
-      (equal (rbt-existing-action *ost-msgid* *ost-changed* *ost-groups* *ost-s*) :conflict)))
+ (and (equal (rbt-existing-action *ost-msgid* *ost-held* *ost-groups* *ost-s-wire*) :duplicate)
+      (equal (rbt-existing-action *ost-msgid* *ost-changed* *ost-groups* *ost-s-wire*) :conflict)))
 
 ; The keystone's one hypothesis, (fn-octets-p fn-octets): the held octets
 ; with an improper tail.  The buffer reads to its length and digests the
@@ -89,8 +99,8 @@
 ; it holds.
 (must-fail
  (defthm rbt-t-existing-action-without-octets-p
-   (equal (fn-rclb-existing-action *ost-msgid* *rbt-improper* *ost-groups* *ost-s*)
-          (fn-rcl-existing-action *ost-msgid* *rbt-improper* *ost-groups* *ost-s*))))
+   (equal (fn-rclb-existing-action *ost-msgid* *rbt-improper* *ost-groups* *ost-s-wire*)
+          (fn-rcl-existing-action *ost-msgid* *rbt-improper* *ost-groups* *ost-s-wire*))))
 
 ; -----------------------------------------------------------------------------
 ; D32, recipe v3 (octets-stobj-tests' tin fixture): the held source is the

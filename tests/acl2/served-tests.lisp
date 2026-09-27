@@ -47,10 +47,14 @@
   '(77 101 115 115 97 103 101 45 73 68 58 32 60 114 101 97 100 101 114 64
     101 120 97 109 112 108 101 46 105 110 118 97 108 105 100 62 13 10 13 10
     72 101 108 108 111 13 10))
+;; by specification: the flip -- an accepted article's payload is an arena
+;; handle (natp), not its octets; *fn-t-served-payload* stays the bytes handle
+;; 0 stands for (and is still the octets a transit submission carries below).
+(defconst *fn-t-served-payload-handle* 0)
 (defconst *fn-t-served-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *fn-t-served-groups*) 1
-                      *fn-t-served-id* *fn-t-served-payload*
+                      *fn-t-served-id* *fn-t-served-payload-handle*
                       *fn-t-served-groups* 841000000)
    0 1 :durable))
 

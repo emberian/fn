@@ -54,9 +54,12 @@
    *cwt-c2* *cwt-public*))
 (defconst *cwt-full*
   (cwt-article *cwt-empty*
-               (fn-record-make 3 3 3 "<news@fn.test>" '(78)
-                               '("fn.public") "news-pin" "news-content"
-                               "news-release" 1 841000000)))
+               ; The Store retains the HELD row (records flip): the news at
+               ; arena handle 0 (fn-held-plain), its payload sealed there below.
+               (fn-held-plain (fn-record-make 3 3 3 "<news@fn.test>" '(78)
+                                              '("fn.public") "news-pin" "news-content"
+                                              "news-release" 1 841000000)
+                              0)))
 ; Both registrations and the article committed: frontier 4.
 (assert-event (equal (fn-cp-nth 3 (fn-sn-consumer *cwt-full*)) 4))
 
@@ -99,15 +102,37 @@
                             (make-list 32 :initial-element 8) *cwt-verifier* t))))
 (assert-event (fn-auth-configp *cwt-acfg*))
 
+;; The host's step is over the arena (fn-cwait-step-over): the arena holds the
+;; news payload at the handle its row names.
+(defun cwt-arena (fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-arena-seal-list '(78) fn-arena))
 (defun cwt-step (oc id secret elapsed seconds)
-  (fn-cwait-step oc *cwt-acfg* id secret elapsed seconds))
-(defun cwt-poll (oc id secret) (fn-cwait-poll oc *cwt-acfg* id secret))
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (let ((fn-arena (cwt-arena fn-arena)))
+        (mv (fn-cwait-step-over oc *cwt-acfg* id secret elapsed seconds fn-arena)
+            fn-arena))
+      r)))
+(defun cwt-poll (oc id secret)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (let ((fn-arena (cwt-arena fn-arena)))
+        (mv (fn-cwait-poll-over oc *cwt-acfg* id secret fn-arena) fn-arena))
+      r)))
+;; The arena-free poll, which KEYSTONE 2's run model reads.
+(defun cwt-poll0 (oc id secret) (fn-cwait-poll oc *cwt-acfg* id secret))
 
-; The polls themselves: the wait's poll is the plain / bound poll.
+; The polls themselves: where no held row is selected the poll over the arena
+; is the arena-free poll (fn-cwait-step-over-is-step-unless-a-held-row); the
+; news is a held row, which only the poll over the arena reports.
 (assert-event (equal (cwt-poll *cwt-oc-empty* *cwt-c1* nil)
-                     (fn-cbind-plain-poll *cwt-oc-empty* *cwt-c1*)))
-(assert-event (equal (cwt-poll *cwt-oc-full* *cwt-c2* *cwt-secret*)
-                     (fn-cbind-poll *cwt-oc-full* *cwt-acfg* *cwt-c2* *cwt-secret*)))
+                     (cwt-poll0 *cwt-oc-empty* *cwt-c1* nil)))
+(assert-event (equal (cwt-poll0 *cwt-oc-full* *cwt-c2* *cwt-secret*)
+                     '(:refused :report)))
+(assert-event (fn-held-p (caddr (fn-col-poll (fn-own-start *cwt-full* 2) *cwt-c2*))))
 (assert-event (fn-cwait-empty-pagep (cwt-poll *cwt-oc-empty* *cwt-c1* nil)))
 (assert-event (fn-cwait-empty-pagep (cwt-poll *cwt-oc-empty* *cwt-c2* *cwt-secret*)))
 (assert-event (fn-cwait-empty-pagep (cwt-poll *cwt-oc-full* *cwt-c1* nil)))
@@ -118,9 +143,7 @@
 (assert-event
  (equal (fn-cwait-report-article (caddr (cwt-news)))
         (list :ok "<news@fn.test>"
-              (fn-record-payload
-               (fn-col-poll-article
-                (caddr (fn-col-poll (fn-own-start *cwt-full* 2) *cwt-c2*)))))))
+              '(78))))
 (assert-event (equal (fn-cwait-report-article '(1 2 3)) '(:refused :codec)))
 (assert-event (equal (fn-record-msgid
                       (fn-col-poll-article
@@ -177,9 +200,14 @@
 (defun cwt-run ()
   (fn-cwait-run (list (cons *cwt-oc-empty* 0) (cons *cwt-oc-full* 1200))
                 *cwt-acfg* *cwt-c2* *cwt-secret* 30))
-(assert-event (equal (cwt-run) (list :answer (cwt-news) *cwt-oc-full* 1200)))
+; (The run model's poll is the arena-free one: over the held news it answers
+; the refusal :report at its return point; the model's arena restatement is
+; open, books/consumer-wait.lisp.)
+(assert-event (equal (cwt-run)
+                     (list :answer (cwt-poll0 *cwt-oc-full* *cwt-c2* *cwt-secret*)
+                           *cwt-oc-full* 1200)))
 (assert-event (equal (cadr (cwt-run))
-                     (cwt-poll (caddr (cwt-run)) *cwt-c2* *cwt-secret*)))
+                     (cwt-poll0 (caddr (cwt-run)) *cwt-c2* *cwt-secret*)))
 ; The wait of "1" over the same commits: no news for it; it times out on the
 ; empty page at 30 000 ms.
 (defun cwt-timeout ()

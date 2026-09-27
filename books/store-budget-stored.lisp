@@ -102,10 +102,12 @@
                                      fn-arena-seal-list-is-append
                                      fn-arena-p-is-payload-listp)))))
 
-(local (defthm fn-sbud-rows-extents-okp-survives-seal
+; Exported: the POST's seal keeps every retained row's extent
+; (books/store-budget-stored-post.lisp).
+(defthm fn-sbud-rows-extents-okp-survives-seal
   (implies (and (fn-arena-p fn-arena) (fn-sbud-rows-extents-okp rows fn-arena))
            (fn-sbud-rows-extents-okp rows (fn-arena-seal-list xs fn-arena)))
-  :hints (("Goal" :in-theory (disable fn-sbud-row-extent-okp)))))
+  :hints (("Goal" :in-theory (disable fn-sbud-row-extent-okp))))
 
 (local (defthm fn-sbud-rows-extents-okp-survives-intern-event
   (implies (and (fn-arena-p fn-arena) (fn-sbud-rows-extents-okp rows fn-arena))

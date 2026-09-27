@@ -14,9 +14,13 @@
                          (mapcar #'fnn-ascii-octet-list argv))
              '(:usage :argv)))
          (tag (and (consp plan) (first plan))))
+    (when (eq tag :help)
+      (fnn-out "~a" (fnn-core 'fn-ncl-usage-text))
+      (return-from fnn-command-consumer-local +fnn-exit-ok+))
     (unless (eq tag :run)
       (fnn-err "consumer command refused by ACL2 argv grammar: ~a"
                (and (consp plan) (second plan)))
+      (fnn-err "~a" (fnn-core 'fn-ncl-usage-text))
       (return-from fnn-command-consumer-local +fnn-exit-usage+))
     (destructuring-bind (ignored operation control first second output
                          &optional secret-file seconds) plan
@@ -46,6 +50,19 @@
                       ((eq operation :wait) seconds)
                       ((eq operation :bound-wait) (list seconds secret))
                       (t second))))
+             ;; PKT-709: a refused register bootstraps the node's consumer
+             ;; history and registers once more (fn-ncl-cli-after); the
+             ;; last reply is the command's.
+             (reply
+               (let ((steps (fnn-core 'fn-ncl-cli-after operation
+                                      (and (consp reply) (second reply)))))
+                 (if (null steps)
+                     reply
+                   (progn
+                     (ignore-errors
+                      (fnn-control-consumer-local (fnn-octets control) :bootstrap nil nil))
+                     (fnn-control-consumer-local
+                      (fnn-octets control) operation input second)))))
              (status (and (consp reply) (second reply)))
              (cursor (and (consp reply) (third reply))))
         (unless (and (eq (first reply)

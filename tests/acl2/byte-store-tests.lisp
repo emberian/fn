@@ -12,6 +12,7 @@
 (include-book "../../books/byte-store-invariants")
 (include-book "../../books/byte-store-programs")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 ; A syscall returns (mv result state); ground forms bind the pair.
 (defmacro bst-res (call) `(mv-let (r s) ,call (declare (ignore s)) r))
@@ -105,10 +106,18 @@
 
 (defconst *bst-groups* '("fn.letters" "fn.test"))
 (defconst *bst-capacity* 10)
-(defconst *bst-record*
+(defconst *bst-record-wire*
   (fn-record-make 0 0 0 "<zero@example.invalid>" '(90)
                   '("fn.letters" "fn.test")
                   "archive-zero" "content-zero" "release-zero" 2 841000000))
+; The kernel stages HELD ROWS (records-flip): the wire record interned on a
+; fresh arena takes handle 0.
+(defconst *bst-record* (car (fn-hrt-rows (list *bst-record-wire*) nil 0)))
+(assert-event (fn-held-p *bst-record*))
+; by specification: the flip -- the payload is handle 0, whose bytes are the
+; wire record's payload.
+(assert-event (equal (fn-record-payload *bst-record*) 0))
+(assert-event (equal (fn-hrt-bytes (list *bst-record-wire*) 0) '(90)))
 
 (defconst *bst-run-frontier*
   (fn-bs-run *bst-store* (fn-sf-initial-state) *fn-bs-p-frontier* nil

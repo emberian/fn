@@ -275,8 +275,9 @@
       "packet": "PKT-448 (h)"
     },
     "fn-cei-build-aux recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (d)"
+      "class": "cold",
+      "packet": "PKT-448 (d)",
+      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
     },
     "fn-cev-find-article recursion N": {
       "class": "unexpected",
@@ -295,8 +296,9 @@
       "packet": "PKT-041"
     },
     "fn-cpe-projection-replay recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (d)"
+      "class": "cold",
+      "packet": "PKT-448 (d)",
+      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
     },
     "fn-cpo-configure-durable append N": {
       "class": "unexpected",
@@ -552,8 +554,9 @@
       "packet": "PKT-324 (2)"
     },
     "fn-replay-identity-loop recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-223"
+      "class": "cold",
+      "packet": "PKT-223",
+      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
     },
     "fn-replay-loop recursion N": {
       "class": "unexpected",
@@ -709,28 +712,14 @@
       "confirmed": "section 4 row n-sweep reopen at 56f94181: reopen 1.18 s to 30.31 s (x25.7) and 1.57 GB to 23.9 GB consed from N 1,000 to 10,000, superlinear; aggregate over the open entries' finds, the row cannot apportion it",
       "packet": "PKT-448 (d)"
     },
-    "fn-sn-index-fold recursion N": {
-      "class": "unexpected",
-      "note": "records flip (flip-L6 host wiring): the open's statement index is the fold of the interned rows' context deltas (fn-sn-recover -> fn-sn-index-of-rows), once per open in place of fn-stx-index-of-store over acceptance payloads; O(N) at reopen, not on a served path",
-      "packet": "PKT-448 (d)"
-    },
-    "fn-contexts-of-rows recursion N": {
-      "class": "unexpected",
-      "note": "records flip (flip-L6 host wiring): fn-store-set-keyring computes every row's context under the new keyring from its bytes in the arena; the same reconfiguration event as fn-sn-recontext-rows",
-      "packet": "PKT-448 (d)"
-    },
-    "fn-sn-recontext-rows recursion N": {
-      "class": "unexpected",
-      "note": "records flip (flip-L6 host wiring): installing a keyring recontexts every row through the arena (fn-store-set-keyring -> fn-sn-set-keyring), the one reconfiguration that re-reads bytes, as the whole-store index recompute it replaces; a reconfiguration event, not a served path",
-      "packet": "PKT-448 (d)"
-    },
     "fn-stx-reader-lookup recursion N": {
       "class": "uncalled",
       "packet": "PKT-448 (h)"
     },
     "fn-th-prefix-loop recursion N": {
-      "class": "unexpected",
-      "packet": "PKT-448 (d)"
+      "class": "cold",
+      "packet": "PKT-448 (d)",
+      "note": "cold since the fn-sn-recover cut (tools/hot_path_dimensions.json, flip-bridge 2026-09-27): its only served path was fn-owner-step's (:reopen) / (:store (:recover)) arm, which no host line selects; it runs at the open and recovery entries"
     },
     "fn9p-servable-articles recursion N": {
       "class": "unexpected",

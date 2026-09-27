@@ -164,7 +164,7 @@
 (defthm fn-bpr-acceptable-contextp
   (implies
    (fn-bpr-request-acceptablep
-    store config record request policy-authorizedp)
+    store config record request policy-authorizedp fn-arena)
    (fn-bpr-contextp
     config (fn-bpr-context-from-request record request)))
   :hints (("Goal"
@@ -194,7 +194,7 @@
    (fn-bpr-statep
     (fn-bpa-nth
      1 (fn-bpr-accept-request
-        st store record request policy-authorizedp))))
+        st store record request policy-authorizedp fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-bpr-statep-components)
                  (:instance fn-bpr-acceptable-contextp
@@ -229,7 +229,7 @@
 (defthm fn-bpr-projected-acceptable-contextp
   (implies
    (fn-bpr-projected-ref-acceptablep
-    store config record ref stored-length stored-digest policy-authorizedp)
+    store config record ref stored-length stored-digest policy-authorizedp fn-arena)
    (fn-bpr-contextp config (fn-bpr-context-from-ref record ref)))
   :hints (("Goal"
            :use ((:instance fn-bpr-context-from-ref-contextp))
@@ -246,7 +246,7 @@
    (fn-bpr-statep
     (fn-bpa-nth
      1 (fn-bpr-accept-projected-ref
-        st store record ref stored-length stored-digest policy-authorizedp))))
+        st store record ref stored-length stored-digest policy-authorizedp fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-bpr-statep-components)
                  (:instance fn-bpr-projected-acceptable-contextp
@@ -327,7 +327,7 @@
    (fn-bpr-statep
     (fn-bprr-nth
      1 (fn-bpr-accept-request
-        st store record request policy-authorizedp))))
+        st store record request policy-authorizedp fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-bpr-accept-request-preserves-statep))
            :in-theory
@@ -338,7 +338,7 @@
 (defthm fn-bprr-apply-record-preserves-statep
   (implies (fn-bpr-statep st)
            (fn-bpr-statep
-            (fn-bprr-nth 1 (fn-bprr-apply-record st store record))))
+            (fn-bprr-nth 1 (fn-bprr-apply-record st store record fn-arena))))
   :hints (("Goal"
            :use ((:instance
                   fn-bpr-accept-request-preserves-statep-for-bprr-nth
@@ -367,9 +367,9 @@
 (defthm fn-bprr-replay-rest-preserves-statep
   (implies (fn-bpr-statep st)
            (fn-bpr-statep
-            (fn-bprr-nth 1 (fn-bprr-replay-rest st store records))))
+            (fn-bprr-nth 1 (fn-bprr-replay-rest st store records fn-arena))))
   :hints (("Goal"
-           :induct (fn-bprr-replay-rest st store records)
+           :induct (fn-bprr-replay-rest st store records fn-arena)
            :in-theory
            (union-theories
             '(fn-bprr-replay-rest fn-bprr-result-state
@@ -377,9 +377,9 @@
             (theory 'minimal-theory)))))
 
 (defthm fn-bprr-successful-replay-has-statep
-  (implies (car (fn-bprr-replay store records))
+  (implies (car (fn-bprr-replay store records fn-arena))
            (fn-bpr-statep
-            (fn-bprr-nth 1 (fn-bprr-replay store records))))
+            (fn-bprr-nth 1 (fn-bprr-replay store records fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-bprr-replay-rest-preserves-statep
                             (st (fn-bpr-initial-state

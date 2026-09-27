@@ -552,7 +552,7 @@
    ((equal kind :malformed)
     "the store refused the article as malformed")
    ((equal kind :unaffordable)
-    "the store has no capacity for this article")
+    "the store is full: no capacity for this article (unaffordable); the node's operator can raise it")
    ((equal kind :storage-failed)
     "the store could not write the article, nothing was stored")
    ((equal kind :article)

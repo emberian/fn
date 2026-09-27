@@ -12,7 +12,11 @@
 (defun rpt-encode-all (rs)
   (declare (xargs :mode :program))
   (if (consp rs) (cons (fn-store-event-encode (car rs)) (rpt-encode-all (cdr rs))) nil))
-(defmacro rpt-events () '(rpt-encode-all (fn-sf-records (fn-sn-files *rpt-s*))))
+; by specification: the flip: the history retains rows; the committed
+; history's octets are the WIRE events they stand for (alpha through the
+; arena that interned the journal), encoded.
+(defconst *rpt-wire* (fn-hrt-wire-of *osi-completing-prior* (fn-sf-records (fn-sn-files *rpt-s*))))
+(defmacro rpt-events () '(rpt-encode-all *rpt-wire*))
 (defconst *rpt-art* (car (fn-state-articles (fn-node-acceptance (fn-sn-node *rpt-s*)))))
 (defconst *rpt-msgid* (fn-article-msgid *rpt-art*))
 (defconst *rpt-rule* '(:released-by-all-holders))
