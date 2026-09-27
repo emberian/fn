@@ -7650,6 +7650,34 @@
         {
           "kind": "theorem",
           "name": "fn-lgt-prepare-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-decode-is-the-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgd-loop-is-the-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-append-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-append-program-appends"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-fence-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-recover-program-establishes-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-open-kernel-is-the-recovered-kernel"
         }
       ]
     },

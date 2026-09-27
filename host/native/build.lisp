@@ -37,6 +37,9 @@
 (include-book "books/consumer-poll-projection")
 (include-book "books/article-fields")
 (include-book "books/frame")
+;; The record log's kernel, decode and programs (lane w6-log-core): the host
+;; functions fnn-log-* in host/native/io.lisp call them (the `log' verb).
+(include-book "books/store-log-programs")
 (include-book "books/store-observed")
 (include-book "books/store-node-resolution")
 (include-book "books/store-observed-traces")
