@@ -355,11 +355,9 @@
         (fn-store-intern-records records fn-arena)
         (if (equal rows :bad)
             (mv nil :fault fn-arena state)
-          (mv-let (erp val state)
-            (fn-owner-recover-extended-arena
-             (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
-             config-records frontier max-conns state)
-            (mv erp val fn-arena state))))))))
+          (fn-owner-recover-extended-arena
+           (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
+           config-records frontier max-conns fn-arena state)))))))
 
 ; The open from the checkpoint the Store open decoded and verified
 ; (`fn-store-sco-checkpoint', host/store-node-host.lisp) and the octets of
@@ -378,11 +376,9 @@
         (fn-store-intern-records records fn-arena)
         (if (equal rows :bad)
             (mv nil :fault fn-arena state)
-          (mv-let (erp val state)
-            (fn-owner-recover-extended-arena
-             (fn-rii-sco-extend checkpoint config-records rows)
-             config-records frontier max-conns state)
-            (mv erp val fn-arena state))))))))
+          (fn-owner-recover-extended-arena
+           (fn-rii-sco-extend checkpoint config-records rows)
+           config-records frontier max-conns fn-arena state)))))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
