@@ -82,8 +82,16 @@ class NativeCommandTests(unittest.TestCase):
         # run replaced it as planning/v0-matrix.json.
         legacy = json.loads((ROOT / "planning/evidence/"
                              "v0-matrix-3f68944-2026-09-21.json").read_text())
+        # It is validated against the plan as it stood at its own
+        # generated_at: rows planned later (the tin, Thunderbird and pan
+        # client rows, V0-INN-SUPPLIED-PATH) are not its to hold.  Against
+        # today's plan it names exactly those rows as missing, nothing else.
         self.assertEqual(legacy["schema_version"], 1)
-        self.assertEqual(v0_matrix.validate(legacy), [])
+        self.assertEqual(v0_matrix.validate(legacy, historical=True), [])
+        later = sorted(set(v0_matrix.PLANNED_IDS)
+                       - set(v0_matrix.planned_ids_as_of(legacy["generated_at"])))
+        self.assertEqual(v0_matrix.validate(legacy),
+                         ["planned rows missing from the file: {}".format(later)])
 
 
 class HarnessOnlyNativeGate(v0_matrix.V0Matrix):
