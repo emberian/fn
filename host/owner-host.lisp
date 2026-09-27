@@ -134,6 +134,9 @@
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
 (include-book "../books/key-statements")
+; Lane ack-before-barrier: a statement's commit is fenced before its cut and
+; its executor (fn-oab-fence-before-change).
+(include-book "../books/owner-ack-after-barrier")
 (include-book "../books/login-binding")
 (include-book "../books/login-binding-live")
 ; PRF-161: the limits of a public reader port (fn-exp-).
@@ -2649,6 +2652,15 @@
 (defun fn-owner-key-statement-request (event state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-ks-pop-request event)))
+
+;; Lane ack-before-barrier (books/owner-ack-after-barrier.lisp): whether the
+;; committed kind-4 composite EVENT carries a key statement, whose commit the
+;; owner fences before its crash cut and its executor run
+;; (host/native/owner.lisp fnn-owner-statement-committed).  KEYSTONE
+;; fn-oab-plan-only-after-the-fence: the executor decides only such events.
+(defun fn-owner-statement-fence (event state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-oab-fence-before-change event)))
 
 ;; The grants a statement is decided under (books/key-statements.lisp
 ;; fn-ks-statement-rows): at acceptance the live configuration's; at open
