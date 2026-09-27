@@ -135,7 +135,7 @@
 
 ; -----------------------------------------------------------------------------
 ; The lines.  The run's refusal (stderr and the service log, exit 1), and
-; the connection tier's log lines (PKT-632: a TLS handshake a peer failed or
+; the connection tier's log lines (PKT-640: a TLS handshake a peer failed or
 ; abandoned is named in the service log, not only on stderr).
 
 (defun fn-cbud-kib (octets)

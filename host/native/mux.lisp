@@ -29,11 +29,11 @@
 ;;; TLS runs in the loop without waiting inside OpenSSL (host/native/tls.lisp
 ;;; fnn-tls-accept-step, -read-now, -write-now): at most
 ;;; +fnn-mux-handshakes-per-loop+ handshakes are in progress per loop and
-;;; the rest wait their turn, already admitted.  PKT-631: an implicit-TLS
+;;; the rest wait their turn, already admitted.  PKT-639: an implicit-TLS
 ;;; connection meets fn-exp-open BEFORE any handshake work, so the capacity,
 ;;; the per-address limit and the trusted range bound handshakes too, and a
 ;;; refused one is closed without SSL_accept (the 400 cannot be sent in
-;;; clear on a TLS port).  PKT-632: a TLS failure is named in the service
+;;; clear on a TLS port).  PKT-640: a TLS failure is named in the service
 ;;; log (books/connection-budget.lisp fn-cbud-tls-refusal-line).
 ;;;
 ;;; The memory a connection costs, the fixed threads, and the refusal of a
@@ -176,7 +176,7 @@ direction to wait for."
 (defun fnn-mux-service (loop) (fnn-mux-loop-service loop))
 
 (defun fnn-mux-tls-log (loop conn reason)
-  "PKT-632: the service log names a TLS refusal (ACL2's line)."
+  "PKT-640: the service log names a TLS refusal (ACL2's line)."
   (let* ((service (fnn-mux-service loop))
          (line (ignore-errors
                 (fnn-with-owner (service)
@@ -529,7 +529,7 @@ call (books/public-exposure.lisp fn-exp-open), as the worker did it."
         (cond
           ((not (and opened (integerp opened)))
            (cond ((fnn-mux-conn-implicit-tls conn)
-                  ;; PKT-631: no handshake work for a refused connection.
+                  ;; PKT-639: no handshake work for a refused connection.
                   (fnn-mux-tls-log loop conn :refused)
                   (fnn-mux-finish loop conn))
                  ((> (length greeting) 0)

@@ -841,8 +841,8 @@ and SSL_write are single attempts answering which readiness to wait for,
 with partial writes, moving write buffers and released idle buffers; at
 most 8 handshakes per loop are in progress, the rest wait admitted. An
 implicit-TLS connection meets `fn-exp-open` before any handshake work
-(PKT-631), and a refused one is closed without SSL_accept; a TLS failure is
-named in the service log (`tls refused reason=... connection=N`, PKT-632).
+(PKT-639), and a refused one is closed without SSL_accept; a TLS failure is
+named in the service log (`tls refused reason=... connection=N`, PKT-640).
 
 The memory (books/connection-budget.lisp): a connection costs a heap part
 (the record, its input, the one reply of the stated workload -- the

@@ -3903,7 +3903,7 @@
         "specs/host.md",
         "planning/evidence/connection-multiplexing-2026-09-26.md"
       ],
-      "implementation_note": "PKT-605 closed for the stated workload: the capacity row (NNT-043) is checked against the machine by ACL2 at run and at every live reconfiguration; trusted sources count. No wire or delta code, no store format, no fn.toml key. PKT-631 (implicit TLS admitted before the handshake) and PKT-632 (TLS refusals in the service log) are folded in. SCN-153 is the native case on both images."
+      "implementation_note": "PKT-605 closed for the stated workload: the capacity row (NNT-043) is checked against the machine by ACL2 at run and at every live reconfiguration; trusted sources count. No wire or delta code, no store format, no fn.toml key. PKT-639 (implicit TLS admitted before the handshake) and PKT-640 (TLS refusals in the service log) are folded in. SCN-153 is the native case on both images."
     },
     {
       "id": "NNT-044",

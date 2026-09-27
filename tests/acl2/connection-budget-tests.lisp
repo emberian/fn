@@ -219,6 +219,6 @@
                                             *cbt-stack* (list *cbt-machine*))
                      '(:refused :machine-cannot-hold-profile 3000 2048)))
 
-; PKT-632's line.
+; PKT-640's line.
 (assert-event (equal (fn-cbud-tls-refusal-line :timeout 7)
                      "tls refused reason=timeout connection=7"))
