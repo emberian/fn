@@ -1553,6 +1553,36 @@
   (declare (xargs :guard t))
   (and (fn-auth-session-handshakingp (fn-served-conn-session conn)) t))
 
+; The third stopping condition: the reader session QUIT closed.  RFC 3977
+; section 5.4: the server acknowledges QUIT (205) and closes the connection,
+; so no octet after the QUIT line is a command.  books/nntp.lisp's QUIT
+; leaves the NNTP session not open and emits (:close), but that closes the
+; SESSION, not the fold: before this condition fn-served-feed went on
+; framing the read, and the commands books/nntp-auth.lisp answers itself
+; (AUTHINFO with its password check, STARTTLS with its 382, CAPABILITIES,
+; XREDEEM) were answered after the 205.  The host stops reading after the
+; read that carried the close, so the model and the node disagreed exactly
+; on where the network cut the stream (fuzz-nntp F1).  Carried in the
+; session, like the handshake, it costs the append law nothing: feeding a
+; quit connection is a no-op whatever the octets.
+(defun fn-served-quitp (conn)
+  (declare (xargs :guard t))
+  (not (equal (fn-nntp-session-openp
+               (fn-auth-reader-session (fn-served-conn-session conn)))
+              t)))
+
+; The fold's stop on the session: the handshake owed after 382, or QUIT.
+(defun fn-served-haltedp (conn)
+  (declare (xargs :guard t))
+  (or (fn-served-tls-handshakingp conn)
+      (fn-served-quitp conn)))
+
+(defthm fn-served-haltedp-of-conn-with-wire
+  (equal (fn-served-haltedp (fn-served-conn-with-wire conn w))
+         (fn-served-haltedp conn))
+  :hints (("Goal" :in-theory (enable fn-served-haltedp fn-served-quitp
+                                     fn-served-tls-handshakingp))))
+
 ; The one physical byte transition shared by the ordinary fold and adapters
 ; that must return additional traversal metadata.  Keeping framing and
 ; dispatch here prevents a counted transport fold from becoming a sibling
@@ -1610,7 +1640,7 @@
                   :measure (len octets)))
   (if (or (not (consp octets))
           (fn-served-closed-wirep (fn-served-conn-wire conn))
-          (fn-served-tls-handshakingp conn))
+          (fn-served-haltedp conn))
       (fn-served-make-result conn nil)
     (let* ((here (fn-served-feed-byte conn (car octets) fn-arena))
            (tail (fn-served-feed (fn-served-result-conn here) (cdr octets) fn-arena)))
@@ -2648,6 +2678,69 @@
            :use ((:instance fn-served-run-is-the-concatenated-step (chunks one))
                  (:instance fn-served-run-is-the-concatenated-step (chunks two))))))
 
+;; -----------------------------------------------------------------------------
+;; QUIT ends the fold (RFC 3977 section 5.4; fuzz-nntp F1)
+;;
+;; Once the reader session is closed (QUIT's 205 is out), a served read
+;; consumes nothing and answers nothing, and so everything after the read
+;; that carried QUIT is invisible to the reply stream however the network
+;; cut it.  The host stops reading at the read that carried the close
+;; (host/native/mux.lisp: `closing'); these are the model's side of that.
+
+;; A fold's effects are a true list whatever it is fed.
+(local
+ (defthm fn-served-feed-effects-are-a-true-list
+   (true-listp (fn-served-result-effects (fn-served-feed conn octets fn-arena)))
+   :hints (("Goal" :induct (fn-served-feed conn octets fn-arena)
+            :in-theory (disable fn-served-dispatch-events fn-wire-feed-byte
+                                fn-served-feed-byte fn-wire-statep)))))
+
+(defthm fn-served-feed-of-quit-connection
+  (implies (fn-served-quitp conn)
+           (equal (fn-served-feed conn octets fn-arena)
+                  (fn-served-make-result conn nil)))
+  :hints (("Goal" :expand ((fn-served-feed conn octets fn-arena)))))
+
+(defthm fn-served-step-of-quit-connection-is-a-no-op
+  (implies (fn-served-quitp conn)
+           (and (equal (fn-served-result-effects
+                        (fn-served-step conn octets fn-arena))
+                       nil)
+                (equal (fn-served-result-conn (fn-served-step conn octets fn-arena))
+                       conn)))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (disable fn-served-feed fn-wire-statep fn-served-quitp
+                               fn-served-feed-of-quit-connection)
+           :use ((:instance fn-served-feed-of-quit-connection)))))
+
+; KEYSTONE.  The subject is fn-served-step, which books/owner.lisp
+; fn-own-read calls once per socket read (host/native/owner.lisp through
+; fn-owner-chunk).  A read whose prefix LEFT leaves the session quit serves
+; exactly what LEFT alone serves: no octet after QUIT is framed, answered,
+; submitted, or moves the connection.  No other hypothesis: it holds of any
+; connection and any octets.  With fn-served-run-is-the-concatenated-step
+; the same holds of every cut of LEFT ++ RIGHT into reads, which is what
+; makes the host's stop after the closing read the model's stop.
+(defthm fn-served-step-stops-at-quit
+  (implies (fn-served-quitp
+            (fn-served-result-conn (fn-served-step conn left fn-arena)))
+           (and (equal (fn-served-result-effects
+                        (fn-served-step conn (append left right) fn-arena))
+                       (fn-served-result-effects (fn-served-step conn left fn-arena)))
+                (equal (fn-served-result-conn
+                        (fn-served-step conn (append left right) fn-arena))
+                       (fn-served-result-conn (fn-served-step conn left fn-arena)))))
+  :hints (("Goal"
+           :do-not-induct t
+           :in-theory (disable fn-served-feed fn-wire-statep fn-served-quitp
+                               fn-served-closed-wirep
+                               fn-served-feed-of-quit-connection)
+           :use ((:instance fn-served-feed-of-quit-connection
+                            (conn (fn-served-result-conn
+                                   (fn-served-feed conn left fn-arena)))
+                            (octets right))))))
+
 ; -----------------------------------------------------------------------------
 ; Keystone 3b: pipelining across the POST body (RFC 3977 section 3.5)
 ;
@@ -2884,7 +2977,8 @@
 ; and never inherits their unfolding.
 
 (deftheory fn-served-vocabulary
-  '(fn-served-closed-wirep fn-served-tls-handshakingp fn-served-starttlsp
+  '(fn-served-closed-wirep fn-served-tls-handshakingp fn-served-quitp
+    fn-served-haltedp fn-served-starttlsp
     fn-served-submit-effectp fn-served-effectp
     fn-served-dispatch fn-served-feed fn-served-step fn-served-run
     fn-served-greeting fn-served-open fn-served-open-peer

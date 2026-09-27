@@ -1363,6 +1363,34 @@
 ; parser (specs/peering.md 1.3).  An unconfigured name opens a connection
 ; whose every offer is refused `:not-a-peer', which is the same refusal the
 ; decision function gives, not a second policy here.
+; The body limit of a transit connection: the operator's profile bound
+; (fn-own-body-limit, the same A a reader's POST meets), tightened by the
+; peer record's inbound-max-octets when that is smaller.  Never the record's
+; alone: `peer add' writes the record codec's payload ceiling
+; (*fn-record-max-payload*, 4 GiB) there, and a connection opened with it
+; retained whatever a peer streamed after TAKETHIS or IHAVE's 335 with no
+; bound the operator chose (fuzz-nntp F2: 3.94 GiB of owner heap after 256
+; MiB sent, neither a refusal nor a close).  AGENTS.md: bound the work and
+; allocation one request may cause before consuming it; the wire closes the
+; article at this limit (:body-overlimit) and books/peer-inbound.lisp
+; fn-peer-transfer-unreceived-effects refuses it by name.
+(defun fn-own-peer-body-limit (o record)
+  (declare (xargs :guard t))
+  (let ((profile (fn-own-body-limit o)))
+    (if (and record (fn-cfg-peer-inbound record)
+             (posp (fn-cfg-peer-inbound-max-octets record)))
+        (min (fn-cfg-peer-inbound-max-octets record) profile)
+      profile)))
+
+(defthm fn-own-peer-body-limit-is-within-the-profile-bound
+  (and (posp (fn-own-peer-body-limit o record))
+       (<= (fn-own-peer-body-limit o record) (fn-own-body-limit o)))
+  :rule-classes ((:rewrite)
+                 (:type-prescription :corollary
+                  (posp (fn-own-peer-body-limit o record))))
+  :hints (("Goal" :in-theory (disable (:d fn-cfg-peer-inbound)
+                                      (:d fn-cfg-peer-inbound-max-octets)))))
+
 (defun fn-own-open-peer (o peer cfg acfg)
   (declare (xargs :guard t))
   (if (< (len (fn-own-conns o)) (nfix (fn-own-max-conns o)))
@@ -1370,10 +1398,7 @@
              (archive (fn-own-view-archive view))
              (id (fn-own-next-id o))
              (record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg))))
-             (limit (if (and record (fn-cfg-peer-inbound record)
-                             (posp (fn-cfg-peer-inbound-max-octets record)))
-                        (fn-cfg-peer-inbound-max-octets record)
-                      (fn-own-body-limit o)))
+             (limit (fn-own-peer-body-limit o record))
              ; The reader pin and the injection reading, in that order, as
              ; fn-own-open passes them: `fn-served-open-peer' gained the
              ; injection argument with the per-submission injection clock
@@ -2963,6 +2988,7 @@
 (deftheory fn-own-vocabulary
   '(fn-own-group-factp fn-own-prefix-archive fn-own-store-idlep fn-own-refresh
     fn-own-start fn-own-conn-boundedp fn-own-set-conns fn-own-reader-context fn-own-body-limit
+    fn-own-peer-body-limit
     fn-own-open fn-own-enqueue
     fn-own-conn-live-session
     fn-own-read fn-own-read-step fn-own-advance fn-own-close fn-own-begin
