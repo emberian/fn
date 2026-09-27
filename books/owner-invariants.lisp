@@ -80,6 +80,30 @@
                            fn-nntp-article-idp-is-consp
                            fn-nntp-response-text-true-listp fn-cp-idp-true-listp
                            fn-cp-id-length-bound)))
+; Rules whose conclusion is a consp or car test on a variable, with a
+; free-variable hypothesis, from the resolution, wire, control and feed
+; clusters: each is tried on every such test here and none applies.
+(local (in-theory (disable fn-snrt-new-success-is-actual-matching-durable-completion
+                           fn-wire-next-loop-event-needs-input
+                           fn-wire-next-event-needs-input
+                           fn-ctl-authorize-execute-is-nonempty
+                           fn-own-feed-never-offers-a-loop)))
+; Vocabulary of the article parser, the control projection, the replay
+; identity and the group indexes that the owner theorems reach only through
+; the served step and the store: opened here, none of it ever applied
+; (accumulated persistence over the book, 2026-09-27).
+(local (in-theory (disable fn-article-parse fn-ctl-visible-articles
+                           fn-ctl-withdrawal-effect fn-ctl-locks-octets
+                           fn-ctl-received-fields fn-ctl-covers-every-p
+                           fn-sn-observed-identity-okp fn-replay-identity
+                           fn-snt-idle-phasep fn-gidx-put fn-gidx-put-all
+                           fn-gnix-add fn-own-feed-inflight-msgid
+                           fn-feed-state-inflightp
+                           fn-ctl-refresh-visible-is-visible
+                           fn-prov-structured-is-not-a-string
+                           fn-digest-octetsp-implies-octet-listp
+                           fn-inj-generated-identity-is-the-clock-identity
+                           fn-inj-supplied-message-id-is-retained-exactly)))
 
 ; -----------------------------------------------------------------------------
 ; Prefixes of the durable history
@@ -1199,12 +1223,10 @@
                              (wire wire) (session session2)
                              (config (fn-own-conn-config conn))
                              (obs (fn-own-conn-observation conn))))
-            :in-theory (disable fn-own-conn-okp fn-own-conn-make-group-indexed
-                                fn-own-conn-boundedp fn-own-view-okp
-                                fn-own-conn-okp-of-view-pin
-                                fn-own-finish-read-conn-okp-old-pin
-                                fn-served-pin-old-or-live-p fn-own-served-conn
-                                fn-served-pinned-make)))))
+            ; the two pin cases and the two okp lemmas close it by
+            ; propositional reasoning and the pin's field selectors alone
+            :in-theory (union-theories '(fn-served-pinned-fields)
+                                       (theory 'minimal-theory))))))
 
 (defthm fn-own-read-preserves-relation
   (implies (fn-own-relation o)
@@ -1955,7 +1977,7 @@
                             (capacity (fn-sn-capacity (fn-own-store o)))
                             (records (fn-sf-records (fn-sn-files (fn-own-store o))))))
            :in-theory (e/d ()
-                           (fn-own-relation fn-own-conns-okp
+                           (fn-own-relation fn-own-conns-okp fn-own-find-conn
                             fn-own-conn-boundedp fn-own-find-conn-okp)))))
 
 (defthm fn-own-read-is-served-step-on-pinned-prefix-after-any-trace
@@ -2119,6 +2141,29 @@
 ; The connection and POST events never touch the store, the bound or the
 ; ledger; the trace lemmas below read this instead of opening the served
 ; step, the dispatcher and the outcome renderer inside each event.
+; A read finishes, and an outcome advances, through these two; each keeps
+; the three fields, so the event theorem below keeps both closed.
+(local
+ (defthm fn-own-finish-read-keeps-store-bound-and-ledger
+   (let ((next (cdr (fn-own-finish-read o conn result))))
+     (and (equal (fn-own-store next) (fn-own-store o))
+          (equal (fn-own-max-conns next) (fn-own-max-conns o))
+          (equal (fn-own-ledger next) (fn-own-ledger o))))
+   :hints (("Goal" :in-theory (e/d (fn-own-finish-read fn-own-set-conns
+                                    fn-own-enqueue)
+                                   (fn-own-make fn-own-conn-boundedp
+                                    fn-own-replace-conn fn-own-remove-conn))))))
+
+(local
+ (defthm fn-own-advance-keeps-store-bound-and-ledger
+   (and (equal (fn-own-store (fn-own-advance o id)) (fn-own-store o))
+        (equal (fn-own-max-conns (fn-own-advance o id)) (fn-own-max-conns o))
+        (equal (fn-own-ledger (fn-own-advance o id)) (fn-own-ledger o)))
+   :hints (("Goal" :in-theory (disable fn-served-step fn-served-dispatch
+                                       fn-own-conn-boundedp fn-own-find-conn
+                                       fn-own-replace-conn fn-own-feed-enqueue-all
+                                       fn-own-feed-targets)))))
+
 (defthm fn-own-connection-events-keep-store-bound-and-ledger
   (and (equal (fn-own-store (cdr (fn-own-open o acfg))) (fn-own-store o))
        (equal (fn-own-max-conns (cdr (fn-own-open o acfg))) (fn-own-max-conns o))
@@ -2153,10 +2198,14 @@
        (equal (fn-own-store (cdr (fn-own-outcome o id word))) (fn-own-store o))
        (equal (fn-own-max-conns (cdr (fn-own-outcome o id word))) (fn-own-max-conns o))
        (equal (fn-own-ledger (cdr (fn-own-outcome o id word))) (fn-own-ledger o)))
+  ; which connection a read finds, and the feed queues an advance fills,
+  ; never reach the store, the capacity or the ledger
   :hints (("Goal" :in-theory (disable fn-served-step fn-served-dispatch
                                       fn-served-post-outcome fn-served-open
                                       fn-own-conn-boundedp fn-own-outcome-completion
-                                      fn-own-find-conn-id))))
+                                      fn-own-find-conn-id fn-own-find-conn
+                                      fn-own-replace-conn fn-own-feed-enqueue-all
+                                      fn-own-finish-read fn-own-advance))))
 
 ; Only the :store, :complete and :reopen events move the store; every other
 ; event leaves it as it was, so the prefix is reflexive there and the
@@ -2169,7 +2218,17 @@
                                    (fn-served-step fn-served-dispatch
                                     fn-served-post-outcome fn-served-open
                                     fn-own-conn-boundedp fn-own-outcome-completion
-                                    fn-own-find-conn-id))))))
+                                    fn-own-find-conn-id fn-own-find-conn
+                                    ; the connection events: their own theorem above
+                                    fn-own-open fn-own-read fn-own-read-step
+                                    fn-own-advance fn-own-close fn-own-begin
+                                    fn-own-observe fn-own-declare-group
+                                    fn-own-configure fn-own-take-submission
+                                    fn-own-outcome
+                                    fn-own-feed-enqueue-all fn-article-parse
+                                    fn-own-feed-inflight-msgid fn-feed-state-inflightp
+                                    fn-inj-generated-identity-is-the-clock-identity
+                                    fn-inj-supplied-message-id-is-retained-exactly))))))
 
 (local
  (defthm fn-own-step-of-store-changing-events
@@ -2981,6 +3040,22 @@
 ; (fn-own-read-is-served-step-on-pinned-prefix) is over the prefix that
 ; contains its own article.  Every other connection is found exactly as it
 ; was: fn-own-outcome-touches-only-its-connection above.
+; fn-own-relation reads none of the pending, config, queue, inflight, feeds,
+; node-secret and refused slots; an owner rebuilt with any of them keeps it.
+(local
+ (defthm fn-own-relation-of-make-with-same-core
+   (implies (fn-own-relation o)
+            (fn-own-relation
+             (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
+                          (fn-own-next-id o) (fn-own-max-conns o) pending
+                          (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                          config queue inflight feeds node-secret refused)))
+   :hints (("Goal" :in-theory (e/d (fn-own-relation)
+                                   (fn-own-view-okp fn-own-conns-okp
+                                    fn-snt-relation fn-own-ids-below-next-p
+                                    fn-own-ledger-durablep fn-own-facts-okp
+                                    fn-clock-observationp fn-own-make))))))
+
 (defthm fn-own-durable-outcome-repins-the-poster
   (implies (and (fn-own-relation o)
                 (fn-own-find-conn id (fn-own-conns o))
@@ -2995,7 +3070,15 @@
                        (fn-own-view-archive (fn-own-view o)))))
   :rule-classes nil
   :hints (("Goal"
-           :use ((:instance fn-own-advance-repins-the-connection
+           :use ((:instance fn-own-relation-of-make-with-same-core
+                            (pending (if (equal (fn-own-pending o) id)
+                                         nil (fn-own-pending o)))
+                            (config (fn-own-config o)) (queue (fn-own-queue o))
+                            (inflight nil)
+                            (feeds (fn-own-feed-durable o (fn-own-inflight o)))
+                            (node-secret (fn-own-node-secret o))
+                            (refused (fn-own-refused o)))
+                 (:instance fn-own-advance-repins-the-connection
                             (o (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                                             (fn-own-next-id o) (fn-own-max-conns o)
                                             (if (equal (fn-own-pending o) id)
@@ -3009,10 +3092,12 @@
                                                 (fn-own-feed-durable
                                                  o (fn-own-inflight o))
                                                 (fn-own-feeds o)) (fn-own-node-secret o) (fn-own-refused o)))))
-           :in-theory (e/d (fn-own-relation fn-own-outcome)
-                           (fn-own-advance fn-own-conn-boundedp
+           :in-theory (e/d (fn-own-outcome)
+                           (fn-own-relation fn-own-advance fn-own-conn-boundedp
                             fn-served-post-outcome fn-own-outcome-completion
-                            fn-own-advance-repins-the-connection)))))
+                            fn-own-advance-repins-the-connection
+                            fn-own-feed-durable fn-own-find-conn
+                            fn-own-make)))))
 
 (local
  (defthm fn-own-post-outcome-answers
