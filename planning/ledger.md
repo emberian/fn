@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1138 |
-| Certification roots in the Makefile | 1103 |
-| Books inside the root closure | 1127 |
-| `defthm` and `defthmd` events | 16530 |
-| `defun` events | 11468 |
-| Functions with verified guards | 2382 |
+| Books read | 1140 |
+| Certification roots in the Makefile | 1105 |
+| Books inside the root closure | 1129 |
+| `defthm` and `defthmd` events | 16591 |
+| `defun` events | 11503 |
+| Functions with verified guards | 2397 |
 | Functions declared `:verify-guards nil` and never verified | 984 |
-| Functions left at the default with an explicit guard | 6380 |
-| Functions left at the default with no guard | 1722 |
-| `assert-event` checks | 16803 |
-| `must-fail` checks | 2038 |
+| Functions left at the default with an explicit guard | 6396 |
+| Functions left at the default with no guard | 1726 |
+| `assert-event` checks | 16817 |
+| `must-fail` checks | 2045 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 82 |
 | Theorems flagged SUSPECT by shape | 170 |
-| Export-hygiene warnings | 187 |
+| Export-hygiene warnings | 189 |
 | Enabled-projection warnings | 44 |
 | Teeth-form warnings | 206 |
-| Include-hygiene warnings | 1111 |
+| Include-hygiene warnings | 1112 |
 | Host-names warnings | 1300 |
 | Hand-written-record warnings | 18 |
 
@@ -605,6 +605,7 @@ that `make certify` requests.
 | `books/relay-source-routes.lisp` | closure | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/relay-source.lisp` | root | 33 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/relay.lisp` | root | 0 | 32 | 0/15/17/0 | 0 | 0 | 0 |
+| `books/replay-identity-index.lisp` | root | 54 | 31 | 15/0/16/0 | 0 | 0 | 0 |
 | `books/replay-invariants.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/replay.lisp` | root | 37 | 27 | 18/0/9/0 | 0 | 0 | 0 |
 | `books/retention-figures.lisp` | root | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
@@ -1096,7 +1097,7 @@ that `make certify` requests.
 | `tests/acl2/peer-pull-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 84 | 20 | 0 |
 | `tests/acl2/peer-transit-forms-tests.lisp` | root | 0 | 9 | 0/0/0/9 | 34 | 5 | 0 |
 | `tests/acl2/policy-tests.lisp` | root | 0 | 27 | 0/0/0/27 | 66 | 0 | 0 |
-| `tests/acl2/post-identity-index-tests.lisp` | root | 0 | 7 | 0/2/0/5 | 15 | 6 | 0 |
+| `tests/acl2/post-identity-index-tests.lisp` | root | 0 | 8 | 0/2/0/6 | 17 | 7 | 0 |
 | `tests/acl2/poster-bytes-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 62 | 12 | 0 |
 | `tests/acl2/posting-account-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 5 | 2 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
@@ -1116,6 +1117,7 @@ that `make certify` requests.
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 0 | 0 |
 | `tests/acl2/relay-source-routes-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 15 | 5 | 0 |
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 62 | 4 | 0 |
+| `tests/acl2/replay-identity-index-tests.lisp` | root | 7 | 3 | 0/0/0/3 | 12 | 6 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 55 | 1 | 0 |
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |

@@ -445,6 +445,8 @@
     "tests/acl2/bp-signed-binding-tests",
     "books/post-identity-index",
     "tests/acl2/post-identity-index-tests",
+    "books/replay-identity-index",
+    "tests/acl2/replay-identity-index-tests",
     "books/owner-store-indexed",
     "tests/acl2/owner-store-indexed-tests",
     "books/bp-fnbs-delivery-codec",
@@ -1107,26 +1109,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1138,
-    "books_in_root_closure": 1127,
-    "roots": 1103,
-    "theorems": 16530,
-    "functions": 11468,
-    "assert_events": 16803,
-    "must_fails": 2038,
+    "books": 1140,
+    "books_in_root_closure": 1129,
+    "roots": 1105,
+    "theorems": 16591,
+    "functions": 11503,
+    "assert_events": 16817,
+    "must_fails": 2045,
     "prover_refusals": 0,
     "encapsulates": 82,
     "guards": {
-      "verified": 2382,
+      "verified": 2397,
       "declared-off": 984,
-      "default-guarded": 6380,
-      "default-unguarded": 1722
+      "default-guarded": 6396,
+      "default-unguarded": 1726
     },
     "suspect_theorems": 170,
-    "export_hygiene_warnings": 187,
+    "export_hygiene_warnings": 189,
     "enabled_projection_warnings": 44,
     "teeth_form_warnings": 206,
-    "include_hygiene_warnings": 1111,
+    "include_hygiene_warnings": 1112,
     "host_names_warnings": 1300,
     "hand_written_record_warnings": 18
   },
@@ -15560,6 +15562,35 @@
       "read_error": null
     },
     {
+      "book": "books/replay-identity-index.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 54,
+      "functions": 31,
+      "guards": {
+        "verified": 15,
+        "declared-off": 0,
+        "default-guarded": 16,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 15,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "msgid-index-concrete",
+        "store-open-pre-c1"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/replay-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -29500,18 +29531,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 7,
+      "functions": 8,
       "guards": {
         "verified": 0,
         "declared-off": 2,
         "default-guarded": 0,
-        "default-unguarded": 5
+        "default-unguarded": 6
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
-      "must_fails": 6,
+      "assert_events": 17,
+      "must_fails": 7,
       "prover_refusals": 0,
-      "defconsts": 23,
+      "defconsts": 25,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -30059,6 +30090,34 @@
         "../../books/codec-attach",
         "../../books/crypto-attach",
         "../../books/relay-crash-invariants"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/replay-identity-index-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 7,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 3
+      },
+      "verify_guards_events": 0,
+      "assert_events": 12,
+      "must_fails": 6,
+      "prover_refusals": 0,
+      "defconsts": 29,
+      "defmacros": 1,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/replay-identity-index"
       ],
       "system_includes": [
         "std/testing/must-fail"
@@ -35285,6 +35344,18 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-rii-sf-statep-is-sf-statep",
+        "book": "books/replay-identity-index.lisp",
+        "line": 1039,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-rii-sn-statep-is-sn-statep",
+        "book": "books/replay-identity-index.lisp",
+        "line": 1067,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-scat-article-idp-is-msgid-idp",
         "book": "books/served-catalog.lisp",
         "line": 512,
@@ -40156,6 +40227,13 @@
         "line": 29,
         "include": "bp-workflow-binding-invariants",
         "included": "books/bp-workflow-binding-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/replay-identity-index.lisp",
+        "line": 65,
+        "include": "store-open-pre-c1",
+        "included": "books/store-open-pre-c1.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -54092,42 +54170,42 @@
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 591,
+        "line": 593,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 870,
+        "line": 872,
         "name": "fn-octets-len",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 870,
+        "line": 872,
         "name": "fn-octets-list",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 1592,
+        "line": 1597,
         "name": "assoc-eq",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2526,
+        "line": 2531,
         "name": "fn-scar-ocfg-read-span",
         "source": "books/served-span.lisp",
         "reason": "defined in books/served-span.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/owner-host.lisp",
-        "line": 2670,
+        "line": 2675,
         "name": "cadddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
@@ -54197,35 +54275,35 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 121,
+        "line": 124,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 216,
+        "line": 219,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 364,
+        "line": 372,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 420,
+        "line": 428,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 683,
+        "line": 692,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
