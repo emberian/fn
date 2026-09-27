@@ -10781,6 +10781,71 @@
       ]
     },
     {
+      "id": "PRF-295",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-hist-load-is-the-history",
+          "note": "KEYSTONE. The open's load answers the history for every salt. Teeth: tests/acl2/history-columns-tests.lisp (positive; improper-list removal; must-fail)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-count-serves-cei-count",
+          "note": "Teeth: positive and a corrupted index (removal of the correspondence)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-at-serves-cei-get",
+          "note": "Teeth: positive at four sequences; removal of the correspondence and of natp; the 2^32 bound symbolic (hct-at-past-the-bound-is-nil-in-the-index)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-msgid-records-serve-cei",
+          "note": "Teeth: positive at five Message-IDs incl. a composite's article; removal of the correspondence."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-append{correspondence}",
+          "note": "defabsstobj obligation; the exec columns run on a live stobj against the list under two salts, growth past 16 rows and a real 32-bit collision; a labelled corrupted-state witness."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-msgid-records{correspondence}",
+          "note": "defabsstobj obligation (as above)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-sync-after-run-is-the-history",
+          "note": "KEYSTONE (stage 2a). Teeth: tests/acl2/history-columns-store-tests.lisp (positive on owner-operator-tests' related owner and a run; removal of R; removal of fn-own-relation NOT constructed)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-sync-of-prefix-is-the-history",
+          "note": "Teeth: live stobj sync at prefix lengths 0, 2, 4; removal of the prefix hypothesis; must-fail."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-bytes-carried-is-bytes-extend",
+          "note": "Teeth: live stobj, valid/absent/over-count caches; removal of R; must-fail."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-debt-carried-is-debt-extend",
+          "note": "Teeth: as bytes."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-usage-carried-is-usage-extend",
+          "note": "Teeth: as bytes."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-hist-count-is-used",
+          "note": "Teeth: as bytes (the count column)."
+        }
+      ]
+    },
+    {
       "id": "PRF-282",
       "events": [
         {

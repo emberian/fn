@@ -10677,6 +10677,43 @@
       ]
     },
     {
+      "id": "PRF-295",
+      "title": "The store's history is an abstract stobj of columns whose logical value is the history list, and the store node's event index answers what it answers",
+      "statement": "books/history-columns.lisp (lane history-columns, stage 1 of 3; the coordinator's decision on PKT-PRS-1's event-index half, PKT-PRS-3, PKT-PRS-4). defabsstobj fn-hist: logical value the true list of retained events (fn-sf-records, oldest first, sequence = position); executable fn-hist$c: a resizable rows column by sequence, the count, and a Message-ID table from a salted 32-bit FNV-1a hash of the Message-ID of an event's article (taken by digest-free shape, fn-hist-key-article) to the sequences carrying it, newest first; a lookup compares every candidate exactly (fn-cei-event-article, fn-held-p, equal), so no answer assumes Message-ID uniqueness or hash separation (PKT-774 worst case: an adversary who learns the salt puts all N articles in one bucket; a lookup is then N exact comparisons, an append stays O(1)). Correspondence fn-hist$corr: the object IS the fold of the history's appends from the empty object with its salt (supporters digest-free; :corr-fn-exists t). Exports refined by defabsstobj: fn-hist-count (len), fn-hist-at (nth), fn-hist-msgid-records (fn-cei-article-records-for), fn-hist-append (append one) and fn-hist-clear, all exec functions guard-verified. KEYSTONE fn-hist-load-is-the-history: the open's load (clear with a salt, one append per event) is the history. Bridges over the store node's index under its correspondence fn-cei-correspondencep (PRF-144): fn-hist-count-serves-cei-count, fn-hist-at-serves-cei-get (every natural sequence, the history within 2^32 events), fn-hist-msgid-records-serve-cei (every Message-ID). Stage 2a (books/history-columns-store.lisp): R(o, fn-hist) := fn-hist = (fn-sf-records (fn-sn-files (fn-own-store o))); fn-hist-sync appends the rows past the stobj's count (fn-sf-records-nth); KEYSTONE fn-hist-sync-after-run-is-the-history: under fn-own-relation, R before any fn-own-run implies the synced stobj is the history after it (by fn-own-run-records-prefix); fn-hist-sync-of-prefix-is-the-history. The store's carried folds from the stobj under R alone, for every cache: fn-hist-count-is-used (fn-sbud-used), fn-hist-bytes-carried-is-bytes-extend, fn-hist-debt-carried-is-debt-extend, fn-hist-usage-carried-is-usage-extend (the EXTEND specifications fn-sbud-bytes-carried, fn-scf-debt-carried, fn-scf-usage-carried meet under the index). Host call: none yet (stage 2 threads fn-hist where the index is read: store-budget, carried folds, checkpoint tables, poll index, control-visible, owner refresh, BP receiver, acceptance payload ref). Local policy; no RFC requirement.",
+      "milestone": "M4",
+      "requirements": [
+        "STO-001",
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-180"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/history-columns.lisp",
+        "tests/acl2/history-columns-tests.lisp",
+        "books/history-columns-store.lisp",
+        "tests/acl2/history-columns-store-tests.lisp"
+      ],
+      "progress_note": "history-columns stage 1 2026-09-27: measured in an hbox ACL2 session over the same held rows, the structure's own live bytes per record: fn-hist 58.6 B (10k, 27-char Message-IDs), 56.8 B (10k, 47-char), 76.4 B (1k); the store node's index fn-cei-build 692 B, 1,429 B, 681 B. Stage 2 (switch the store node's index) and stage 3 (held-row strings into a byte pool) open.",
+      "events": [
+        "fn-hist-load-is-the-history",
+        "fn-hist-count-serves-cei-count",
+        "fn-hist-at-serves-cei-get",
+        "fn-hist-msgid-records-serve-cei",
+        "fn-hist-append{correspondence}",
+        "fn-hist-msgid-records{correspondence}",
+        "fn-hist-sync-after-run-is-the-history",
+        "fn-hist-sync-of-prefix-is-the-history",
+        "fn-hist-bytes-carried-is-bytes-extend",
+        "fn-hist-debt-carried-is-debt-extend",
+        "fn-hist-usage-carried-is-usage-extend",
+        "fn-hist-count-is-used"
+      ]
+    },
+    {
       "id": "PRF-282",
       "title": "The log kernel the host holds keeps the committed records' count, frames by guard-verified code, and every host transition over it, the pipelined commit's included, is the logical kernel's transition under the abstraction",
       "statement": "Subjects: the concrete kernel transitions host/native/io.lisp calls (fnn-log-open-kernel -> fn-lgc-open, fnn-log-prepare -> fn-lgc-t-prepare, fnn-log-take -> fn-lgc-phase / fn-lgc-take, fnn-log-ensure-extent -> fn-lgc-extension-needed-p / fn-lgc-extension-target, fnn-log-append -> fn-lgc-append-admitsp / fn-lgc-frontier / fn-lgc-append-octets / fn-lgc-append, fnn-log-fence (the syncer's fnn-log-sync-sealed-batch) -> fn-lgc-fence / fn-lgc-fence-failed, fnn-log-finish -> fn-lgc-finish-one, fnn-log-rotate -> fn-lgc-rotate-admitsp / -rotate-needed-p / -rotate, the open's catch-up, fnn-log-reserve and fnn-log-write-history -> fn-lgc-consume-to). The concrete kernel is (:lgc COUNT LAST FRONTIER NEXT-TXID BATCH INFLIGHT ACKED PHASE); fn-lgc-of replaces the logical kernel's COMMITTED by its length. KEYSTONE fn-lgc-run-refines-the-kernel (books/store-log-kernel-concrete.lisp): for every host operation sequence OPS -- prepare, take, consume-to, append, SEAL (the extension to fn-lgc-sealed-extent then the append: lane log-2's pipelined commit), fence, fence-failed, finish-one, rotate -- the concrete kernel reached from fn-lgc-open of the segment string is fn-lgc-of the logical kernel reached by the same OPS from fn-lgt-recover of its octets (the kernel fn-lg-recover-program-establishes-the-relation names), with no hypothesis. The pipelined commit's owner and syncer steps are each one operation under the log's kernel lock (fnn-log-with-kernel), so every interleaving is one OPS (a take behind the batch in flight is a :take between its :seal and :fence). So PRF-264's relation, crash and link theorems over fn-lgk-* are theorems about the kernel the host holds. Per transition: fn-lgc-prepare-refines, -t-prepare-, -append-, -fence-, -fence-failed-, -finish-one-, -consume-to-, -take-, -rotate-refines, fn-lgc-open-refines, and the observers (fn-lgc-observers-of-abstraction, -append-octets-, -append-len-, -fitsp-, -append-admitsp-, -extension-needed-p-, -extension-target-, -sealed-extent-of-abstraction). The extension: fn-lgc-extend-program-keeps-the-relation (fn-lg-extend-program run over the concrete kernel ends on the same kernel, R-related to the logical one, the segment NEXT long; fn-lg-extend-run-keeps-the-kernel), fn-lgc-sealed-extent-fits-the-batch (after the extension the seal's append fits, whole units, never shrinking; hypotheses: a positive unit, an extent of whole units). Execution (input-loop-2 section 6: *1* fn-lg-log recursed per octet and a 3 MiB POST exhausted the owner's stack): the fit and the fence's frontier use fn-lgc-log-len, guard-verified arithmetic over record lengths, equal to (len (fn-lg-log records prev unit)) with no hypothesis (fn-lgc-log-len-is-the-log-length); the append's octets and the fence's chain head use guard-verified twins fn-lgx-* (each equal to its logical function with no hypothesis) through fn-lgc-log-octets / fn-lgc-last-trailer (fn-lgc-log-octets-is-log, fn-lgc-last-trailer-is-last-trailer). Measured (hbox, 1,000 POSTs x 2 KiB, format 9): the kernel's retained COMMITTED was 38.8 KB per record (18 B per history octet) of live heap, and each fence copied it; after, 0 (planning/evidence/per-record-state-2026-09-27.md; lane kernel-concrete-2's re-measure there).",
