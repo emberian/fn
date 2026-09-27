@@ -204,7 +204,14 @@ class NativeInitializerFidelityTests(unittest.TestCase):
             if config_dir.exists():
                 os.chmod(config_dir, 0o700)
         self.assertTrue((config_dir / "00000001.cfg").is_file())
-        self.assert_incomplete_then_completed_by_init(store)
+        # Format 9: the segment (the store's last durable step) was made
+        # before this enumeration, so the store the failed init leaves is
+        # complete: a new process recovers it empty, and init again succeeds.
+        self.assertTrue((store / "journal" / "000001.log").is_file())
+        recovered = self.invoke(store, "recover")
+        self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
+        self.assertIn(b"recovered transactions=0 articles=0", recovered.stdout)
+        self.assertEqual(self.invoke(store, "init").returncode, run_store.EXIT_OK)
 
     def test_sigkill_at_history_fence_is_process_death_then_faulted_restart(self):
         store = self.base / "killed-history"

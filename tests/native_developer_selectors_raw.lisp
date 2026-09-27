@@ -54,6 +54,9 @@
 (defvar *log* nil)
 (define-condition fnn-os-error (error) ())
 (defun note (&rest event) (push event *log*))
+;; fnn-main sets ACL2's invariant-risk mode first (served-readers, 057f9b08a).
+(defvar *the-live-state* :live-state)
+(defun f-put-global (key value state) (declare (ignore key value)) state)
 (defun fnn-open-streams () nil)
 (defun fnn-global (name) (declare (ignore name)) t)
 (defun fnn-dispatch (argv) (note :dispatch argv) 0)
@@ -82,9 +85,11 @@
 (defparameter *marker-cut-names*
   (book-constant-body "books/store-history-marker.lisp" 'fn-hm-marker-cut-names))
 (defun fnn-core (name &rest args)
-  (declare (ignore args))
   (case name
     (fn-hm-marker-cut-names *marker-cut-names*)
+    ;; fnn-main's GC trigger (reservation-after-flip: ACL2's
+    ;; fn-heap-nursery-trigger); the stub answers the host's default.
+    (fn-heap-nursery-trigger (second args))
     (t (error "unexpected core call ~a" name))))
 ;; host/native/io.lisp's exit-code constants call ACL2's fn-outcome-code
 ;; (books/outcome-class.lisp, PRF-143) at load, so it must exist before io.lisp
