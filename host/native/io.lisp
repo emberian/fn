@@ -4885,7 +4885,7 @@ tree root), or stop the build."
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"
     "FN_NATIVE_AUTH_ADMIN_FAULT" "FN_NATIVE_KEY_STATEMENT_FAULT"
     "FN_NATIVE_OWNER_TEST_SIGTERM" "FN_NATIVE_OWNER_TEST_PAUSE_CLEANUP"
-    "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN" "FN_NATIVE_OWNER_TEST_BARRIER_MS"
+    "FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN" "FN_NATIVE_OWNER_TEST_BARRIER_MS" "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE"
     "FN_NATIVE_FEED_TEST_STOP_AFTER_SENT"
     "FN_BP_TEST_FAIL_ROOT_PARENT_BARRIER" "FN_BP_TEST_DELIVER_FAULT"
     "FN_BP_TEST_PROFILE"
@@ -4988,7 +4988,21 @@ tree root), or stop the build."
   (count 0) (octets 0) (bmax 64) (omax 67108864) (pending 0)
   ;; The txid the owner reserved for the record being published (ACL2's,
   ;; handed to fnn-log-reserve), which fn-olr-take admits at the log's next.
-  (reserved nil))
+  (reserved nil)
+  ;; The pipelined commit (lane log-2; books/owner-commit-pipeline.lisp):
+  ;; the kernel value changes only under LOCK, because the syncer thread's
+  ;; fence (fnn-log-sync-sealed-batch) runs while the owner prepares the
+  ;; next batch behind it.  SEALED the members of the batch in flight;
+  ;; SYNC-STATE :idle, :syncing (a sealed batch awaits its barrier),
+  ;; :fenced or :failed (the syncer's word, until the COMPLETE consumes it);
+  ;; SYNC-CV signalled when the syncer returns.
+  (lock (sb-thread:make-mutex :name "fn log kernel"))
+  (sealed 0) (sync-state :idle)
+  (sync-cv (sb-thread:make-waitqueue :name "fn log sync")))
+
+(defmacro fnn-log-with-kernel ((log) &body body)
+  "BODY under the log's kernel lock (recursive: a kernel step may call another)."
+  `(sb-thread:with-recursive-lock ((fnn-log-lock ,log)) ,@body))
 
 (defun fnn-log-at (point)
   "A developer-image cut: FN_NATIVE_LOG_FAULT=NAME (a +fnn-log-model-cuts+
@@ -5094,36 +5108,45 @@ R-related to the segment at log-recovered
 (defun fnn-log-prepare (log record)
   "The checked prepare: RECORD joins the open batch only at the kernel's
 next txid (fn-lgt-prepare)."
-  (setf (fnn-log-kernel log) (fnn-core 'fn-lgt-prepare (fnn-log-kernel log) record)))
+  (fnn-log-with-kernel (log)
+    (setf (fnn-log-kernel log) (fnn-core 'fn-lgt-prepare (fnn-log-kernel log) record))))
 
 (defun fnn-log-append (log)
   "P-BATCH's append (fn-lg-append-program): the kernel admits the open batch
 and its chained entries are written at the frontier in one positioned write."
-  (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
-    (unless (fnn-core 'fn-lg-append-admitsp ks unit extent)
-      (fnn-refuse "the log kernel refuses the append (a batch in flight, fenced, or past the extent)"))
-    (fnn-log-pwrite (fnn-log-fd log) (fnn-core 'fn-lgk-frontier ks)
-                    (fnn-core 'fn-lgk-append-octets ks unit))
-    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-append ks unit extent))
-    (fnn-log-at :log-written)))
+  (fnn-log-with-kernel (log)
+    (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
+      (unless (fnn-core 'fn-lg-append-admitsp ks unit extent)
+        (fnn-refuse "the log kernel refuses the append (a batch in flight, fenced, or past the extent)"))
+      (fnn-log-pwrite (fnn-log-fd log) (fnn-core 'fn-lgk-frontier ks)
+                      (fnn-core 'fn-lgk-append-octets ks unit))
+      (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-append ks unit extent))))
+  (fnn-log-at :log-written))
 
 (defun fnn-log-fence (log)
   "P-BATCH's fence (fn-lg-fence-program): the barrier, then the kernel's
 fence.  A failed barrier fences the kernel (fn-lgk-fence-failed): every
-member of the batch is uncertain until recovery decides."
-  (let ((ks (fnn-log-kernel log)))
-    (handler-case (fnn-log-fdatasync (fnn-log-fd log))
-      (fnn-os-error (e)
-        (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence-failed ks))
-        (fnn-indeterminate "log barrier failed: ~a" e)))
-    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence ks (fnn-log-unit log)))
-    (fnn-log-at :log-fenced)))
+member of the batch is uncertain until recovery decides.  The barrier runs
+outside the kernel lock (the owner may be preparing the next batch behind
+it: fn-lgk-prepare changes only the open batch and the txid, fn-lgk-fence
+only moves the batch in flight to the committed records, so the two
+commute); the kernel's fence reads the kernel as it is when the barrier
+returned."
+  (handler-case (fnn-log-fdatasync (fnn-log-fd log))
+    (fnn-os-error (e)
+      (fnn-log-with-kernel (log)
+        (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence-failed (fnn-log-kernel log))))
+      (fnn-indeterminate "log barrier failed: ~a" e)))
+  (fnn-log-with-kernel (log)
+    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence (fnn-log-kernel log) (fnn-log-unit log))))
+  (fnn-log-at :log-fenced))
 
 (defun fnn-log-finish (log count)
   "Acknowledge COUNT members in order (fn-lgk-finish-one; the kernel never
 acknowledges past the committed records)."
-  (dotimes (i count)
-    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-finish-one (fnn-log-kernel log)))))
+  (fnn-log-with-kernel (log)
+    (dotimes (i count)
+      (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-finish-one (fnn-log-kernel log))))))
 
 (defun fnn-log-rig-line (what log size)
   ;; Not `fnn-log-line': that is the service log's one-argument writer
@@ -5342,9 +5365,10 @@ the observe callback): the frontier is the log's derived one."
         (log (fnn-store-log store)))
     (when (null next)
       (fnn-refuse "finite transaction-ID domain exhausted"))
-    (setf (fnn-log-kernel log)
-          (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) current-txid)
-          (fnn-log-reserved log) current-txid)
+    (fnn-log-with-kernel (log)
+      (setf (fnn-log-kernel log)
+            (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) current-txid)
+            (fnn-log-reserved log) current-txid))
     (unless (eq (fnn-observe store :log-reserve) :reserved)
       (setf (fnn-store-fenced store) t)
       (fnn-fault "ACL2 rejected the log route's reservation"))
@@ -5358,16 +5382,30 @@ first (inside a batch quantum the batch closes at the operator's bounds)."
   (let* ((log (fnn-store-log store))
          (octets (fnn-octet-list record)))
     (loop repeat 2 do
+      (when (eq (fnn-log-with-kernel (log) (fnn-core 'fn-lgk-phase (fnn-log-kernel log))) :fault)
+        ;; The barrier of the batch in flight failed (the syncer fenced the
+        ;; kernel) while this member was prepared behind it.
+        (fnn-indeterminate "the log's barrier failed; the store needs recovery"))
       (destructuring-bind (verdict ks entry)
-          (fnn-core 'fn-olr-take (fnn-log-kernel log) octets (fnn-log-reserved log)
-                    (fnn-log-count log) (fnn-log-octets log)
-                    (fnn-log-bmax log) (fnn-log-omax log) (fnn-log-unit log))
+          (fnn-log-with-kernel (log)
+            (let ((answer (fnn-core 'fn-olr-take (fnn-log-kernel log) octets (fnn-log-reserved log)
+                                    (fnn-log-count log) (fnn-log-octets log)
+                                    (fnn-log-bmax log) (fnn-log-omax log) (fnn-log-unit log))))
+              (when (eq (first answer) :taken)
+                (setf (fnn-log-kernel log) (second answer)))
+              answer))
+        (declare (ignore ks))
         (case verdict
-          (:taken (setf (fnn-log-kernel log) ks)
-                  (incf (fnn-log-count log))
+          (:taken (incf (fnn-log-count log))
                   (incf (fnn-log-octets log) entry)
                   (return-from fnn-log-take :taken))
-          (:full (fnn-log-commit-open-batch store))
+          (:full
+           ;; The open batch is at the operator's bound.  Behind a batch in
+           ;; flight (a pipelined START-NEXT) its append must wait for that
+           ;; batch's barrier: the kernel admits one batch in flight.
+           (unless (eq (fnn-log-await-sync log) :fenced)
+             (fnn-indeterminate "the log's barrier failed; the store needs recovery"))
+           (fnn-log-commit-open-batch store))
           (t (fnn-fault "the log kernel refused the record (the owner's txid is not the log's next)")))))
     (fnn-fault "the log kernel refused an empty batch's take")))
 
@@ -5396,6 +5434,10 @@ fenced (fn-lgk-fence-failed) and the store with it."
   (let ((log (fnn-store-log store))
         (fenced (fnn-store-fenced store)))
     (when (plusp (fnn-log-count log))
+      ;; Never behind a batch in flight: its barrier first (the kernel
+      ;; admits one batch in flight; lane log-2's pipelined commit).
+      (unless (eq (fnn-log-await-sync log) :fenced)
+        (fnn-indeterminate "the log's barrier failed; the store needs recovery"))
       (setf (fnn-store-fenced store) t)
       (handler-case
           (progn
@@ -5412,7 +5454,8 @@ fenced (fn-lgk-fence-failed) and the store with it."
           ;; fnn-log-append's refusal: the kernel does not admit the batch
           ;; (in flight, fenced, or past the extent after the extension).
           (fnn-fault "the log kernel refused the batch's append: ~a" e)))
-      (setf (fnn-log-pending log) (+ (fnn-log-pending log) (fnn-log-count log)))
+      (fnn-log-with-kernel (log)
+        (setf (fnn-log-pending log) (+ (fnn-log-pending log) (fnn-log-count log))))
       (fnn-log-batch-reset log)
       ;; The barrier returned: the writer is as it was before the batch (a
       ;; commit quantum's members are finished; a batch of one's finish is
@@ -5441,13 +5484,90 @@ fenced (fn-lgk-fence-failed) and the store with it."
 (defun fnn-log-ack (log count)
   "The log kernel acknowledges COUNT fenced members in order
 (fn-lgk-finish-one)."
-  (fnn-log-finish log count)
-  (setf (fnn-log-pending log) (max 0 (- (fnn-log-pending log) count))))
+  (fnn-log-with-kernel (log)
+    (fnn-log-finish log count)
+    (setf (fnn-log-pending log) (max 0 (- (fnn-log-pending log) count)))))
 
 (defun fnn-log-batch-finish (store)
   "After the batch's barrier: every fenced member of the batch acknowledged."
   (let ((log (fnn-store-log store)))
-    (fnn-log-ack log (fnn-log-pending log))))
+    (fnn-log-with-kernel (log)
+      (fnn-log-ack log (fnn-log-pending log)))))
+
+;;; The pipelined commit (lane log-2; books/owner-commit-pipeline.lisp).
+;;; SEAL under the owner (the START's end, or the COMPLETE's for the next
+;;; batch): the open batch's append, cut log-written; the batch is in flight.
+;;; SYNC in the syncer thread, the owner released: the barrier and the
+;;; kernel's fence (fnn-log-fence: cut log-fenced), and nothing else -- no
+;;; owner global, no store field but the log struct under its lock.
+;;; COMPLETE under the owner: the acknowledgements (fnn-log-batch-finish).
+;;; A batch of one and the inline quantum keep fnn-log-commit-open-batch.
+
+(defun fnn-log-await-sync (log)
+  "The syncer's word for the batch in flight: :fenced or :failed, waiting
+while it runs; :fenced at once when no batch was sealed."
+  (sb-thread:with-mutex ((fnn-log-lock log))
+    (loop while (eq (fnn-log-sync-state log) :syncing)
+          do (sb-thread:condition-wait (fnn-log-sync-cv log) (fnn-log-lock log)))
+    (if (eq (fnn-log-sync-state log) :failed) :failed :fenced)))
+
+(defun fnn-log-seal-open-batch (store)
+  "SEAL: the open batch's append at the frontier (P-BATCH's append, cut
+log-written); the batch is in flight and its barrier is the syncer's
+(fnn-log-sync-sealed-batch).  Returns the number of members sealed (0: the
+sync returns at once)."
+  (let* ((log (fnn-store-log store))
+         (count (fnn-log-count log)))
+    (unless (eq (fnn-log-await-sync log) :fenced)
+      (fnn-indeterminate "the log's barrier failed; the store needs recovery"))
+    (when (plusp count)
+      (handler-case
+          (progn
+            (fnn-log-ensure-extent log)
+            (fnn-log-append log)
+            (fnn-at store :log-written))
+        ((or fnn-store-indeterminate fnn-store-fault) (e) (error e))
+        (fnn-os-error (e)
+          (fnn-log-with-kernel (log)
+            (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence-failed (fnn-log-kernel log))))
+          (fnn-indeterminate "log batch outcome is indeterminate: ~a" e))
+        (fnn-store-error (e)
+          (fnn-fault "the log kernel refused the batch's append: ~a" e))))
+    (fnn-log-with-kernel (log)
+      (setf (fnn-log-sealed log) count
+            (fnn-log-sync-state log) :syncing))
+    (fnn-log-batch-reset log)
+    count))
+
+(defun fnn-log-sync-sealed-batch (store)
+  "SYNC (the syncer thread, the owner released): the sealed batch's barrier
+and the kernel's fence (fnn-log-fence, cut log-fenced); its members become
+the fenced ones the COMPLETE acknowledges.  Returns (values WORD CONDITION):
+:fenced, or :failed with the condition when it was not an indeterminate
+observation (the COMPLETE re-signals it under the owner)."
+  (let ((log (fnn-store-log store)) (word :fenced) (condition nil))
+    (handler-case
+        (when (plusp (fnn-log-sealed log))
+          (fnn-log-fence log)
+          (fnn-at store :log-fenced))
+      (fnn-store-indeterminate (e)
+        (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
+        (setq word :failed))
+      (serious-condition (e)
+        (setq word :failed condition e)))
+    (sb-thread:with-mutex ((fnn-log-lock log))
+      (when (eq word :fenced)
+        (setf (fnn-log-pending log) (+ (fnn-log-pending log) (fnn-log-sealed log))))
+      (setf (fnn-log-sealed log) 0
+            (fnn-log-sync-state log) word)
+      (sb-thread:condition-broadcast (fnn-log-sync-cv log)))
+    (values word condition)))
+
+(defun fnn-log-sync-collected (log)
+  "The COMPLETE consumed the syncer's word: no batch is in flight."
+  (sb-thread:with-mutex ((fnn-log-lock log))
+    (unless (eq (fnn-log-sync-state log) :failed)
+      (setf (fnn-log-sync-state log) :idle))))
 
 ;; `fn log scan SEGMENT EXTENT UNIT MAX SIZE' (both images: reads only) and,
 ;; on a developer image, `fn log recover ...' and `fn log append SEGMENT

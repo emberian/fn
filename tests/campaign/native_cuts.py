@@ -921,13 +921,36 @@ def verify_post_log_cut_map() -> None:
     for name in declared[:2]:
         if "(fnn-at store :{})".format(name) not in finish:
             raise AssertionError("fnn-finish lacks the {} cut".format(name))
+    # The pipelined commit (lane log-2): SEAL is P-BATCH's append and its
+    # cut, SYNC its barrier and cut, in the log's own functions.
+    for name, (call, cut) in (("fnn-log-seal-open-batch", POST_LOG_HOST[0]),
+                              ("fnn-log-sync-sealed-batch", POST_LOG_HOST[1])):
+        body = host_function(source, name)
+        if not (0 <= body.find(call) < body.find(cut)):
+            raise AssertionError("{}: {} then {} missing or out of order".format(name, call, cut))
     owner = (ROOT / "host/native/owner.lisp").read_text()
+    # START drains its members, then seals; COMPLETE acknowledges, then
+    # delivers; the inline quantum runs START, SYNC, COMPLETE; the committer
+    # collects the syncer's word before COMPLETE, and seals the next batch
+    # only after the replies of the batch in flight.
+    start = host_function(owner, "fnn-owner-commit-start-locked")
+    if not (0 <= start.find("(fnn-owner-drain-one ") < start.find("(fnn-log-seal-open-batch ")):
+        raise AssertionError("START does not drain its members before the seal")
+    complete = host_function(owner, "fnn-owner-commit-complete-locked")
+    if not (0 <= complete.find("(fnn-log-batch-finish ") < complete.rfind("(fnn-owner-deliver ")):
+        raise AssertionError("COMPLETE does not acknowledge before it delivers")
     quantum = host_function(owner, "fnn-owner-commit-queued-locked")
-    drain = quantum.find("(fnn-owner-drain-one ")
-    batch = quantum.find("(fnn-log-commit-open-batch ")
-    ack = quantum.find("(fnn-log-batch-finish ")
-    deliver = quantum.rfind("(fnn-owner-deliver ")
-    if not (0 <= drain < batch < ack < deliver):
-        raise AssertionError("the commit quantum's order is not drain, batch, acknowledge, deliver")
+    order = [quantum.find(x) for x in ("(fnn-owner-commit-start-locked ",
+                                       "(fnn-owner-commit-sync ",
+                                       "(fnn-owner-commit-complete-locked ")]
+    if not (0 <= order[0] < order[1] < order[2]):
+        raise AssertionError("the inline commit quantum's order is not START, SYNC, COMPLETE")
+    pipeline = host_function(owner, "fnn-owner-commit-pipeline")
+    order = [pipeline.find(x) for x in ("(fnn-owner-start-syncer ",
+                                        "(sb-thread:join-thread syncer",
+                                        "(fnn-owner-commit-complete-locked service members nil deferred)",
+                                        "(fnn-log-seal-open-batch store)")]
+    if not (0 <= order[0] < order[1] < order[2] < order[3]):
+        raise AssertionError("the committer's order is not SYNC, collect, COMPLETE, seal the next batch")
     for cut in POST_LOG_CUTS[2:]:
         cut_step_index(cut)

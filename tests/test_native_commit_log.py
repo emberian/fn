@@ -207,6 +207,40 @@ class CommitLogMixin:
 class DeveloperCommitLogTests(CommitLogMixin, unittest.TestCase):
     image = DEVELOPER
 
+    def test_the_next_batch_prepares_behind_the_barrier(self):
+        # Lane log-2 (books/owner-commit-pipeline.lisp): with the operator's
+        # batch bound at 2 (`policy set log-batch-records 2') and each
+        # barrier held 700 ms (the developer selector), eight posters leave a
+        # backlog: while a batch's barrier runs, the next batch is prepared
+        # behind it (START-NEXT, the developer trace line) and sealed by the
+        # COMPLETE.  Every POST is answered 240 and served again after a
+        # restart; the batch bound is the operator's configuration.
+        node = Node(self.image, self.root)
+        node.init()
+        bound = node.fn("operator", str(node.config), "policy", "set", "log-batch-records", "2")
+        self.assertEqual(bound.returncode, 0, bound.stderr[-800:])
+        node.start(env={"FN_NATIVE_OWNER_TEST_BARRIER_MS": "700",
+                        "FN_NATIVE_OWNER_TEST_PIPELINE_TRACE": "1"})
+        try:
+            replies, errors = post_concurrently(node.port, range(16), 8)
+        finally:
+            node.stop()
+        self.assertEqual(errors, [])
+        self.assertEqual(sorted(replies), list(range(16)))
+        self.assertTrue(all(r.startswith(b"240") for r in replies.values()), replies)
+        trace = (self.root / "owner.stderr").read_bytes()
+        self.assertIn(b"prepared behind the barrier", trace, trace[-2000:])
+        node.start()
+        try:
+            c = Conn(node.port)
+            for i in range(16):
+                head, body = c.article(i)
+                self.assertTrue(head.startswith(b"220"), (i, head))
+                self.assertIn(b"body of %d" % i, body)
+            c.close()
+        finally:
+            node.stop()
+
     def test_every_post_log_cut_is_old_or_new_and_the_node_goes_on(self):
         names = tuple(cut.name for cut in native_cuts.POST_LOG_CUTS)
         self.assertEqual(names, ("finish-consumed", "finish-durable", "log-written", "log-fenced"))

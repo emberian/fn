@@ -74,20 +74,31 @@ class SchedulerSourceTests(unittest.TestCase):
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text()
         serialized = owner[owner.index("(defun fnn-owner-serialized "):owner.index("(defun fnn-owner-consume-connection-fault")]
         self.assertIn("(fnn-owner-gated (service class)", serialized)
+        # books/owner-commit-pipeline.lisp (lane log-2) over
         # books/owner-commit-steps.lisp (PKT-688 (4) slice 2): the gate's pick
-        # and fold are fn-ocs-next / fn-ocs-observe (fn-ocm-next's pick outside
-        # a batch, fn-osch-next's for the four classes: PRF-259, PRF-248).
-        self.assertIn("'fn-ocs-next", owner)
-        self.assertIn("'fn-ocs-observe", owner)
-        # The committer's batch: START and COMPLETE as :commit quanta, the
-        # barrier between them with the owner released.
-        batch = owner[owner.index("(defun fnn-owner-commit-batch "):owner.index("(defun fnn-owner-committer-loop")]
-        self.assertIn("'fn-ocs-commit-event", owner)
-        self.assertLess(batch.index("fnn-owner-commit-start-locked"),
-                        batch.index("(fnn-owner-commit-barrier service)"))
-        self.assertLess(batch.index("(fnn-owner-commit-barrier service)"),
-                        batch.index("(fnn-owner-gated (service :commit)"))
-        self.assertEqual(batch.count("(fnn-owner-commit-barrier service)"), 1)
+        # and fold are fn-ocp-next / fn-ocp-observe, which are fn-ocs-next's
+        # (fn-ocp-next-is-ocs-next; fn-ocm-next's pick outside a batch,
+        # fn-osch-next's for the four classes: PRF-259, PRF-248).
+        self.assertIn("'fn-ocp-next", owner)
+        self.assertIn("'fn-ocp-observe", owner)
+        # The committer's pipeline: START (it seals) as a :commit quantum, the
+        # SYNC in the syncer thread with the owner released, at most one
+        # START-NEXT (not sealed) behind it, then COMPLETE as a :commit
+        # quantum, which seals the next batch only after the replies.
+        batch = owner[owner.index("(defun fnn-owner-commit-pipeline "):owner.index("(defun fnn-owner-committer-loop")]
+        self.assertIn("'fn-ocp-commit-event", owner)
+        self.assertIn("'fn-ocp-committer-wake", owner)
+        self.assertLess(batch.index("(fnn-owner-commit-start-locked service)"),
+                        batch.index("(fnn-owner-start-syncer service)"))
+        self.assertLess(batch.index("(fnn-owner-start-syncer service)"),
+                        batch.index("(fnn-owner-commit-start-locked service :seal nil)"))
+        self.assertLess(batch.index("(sb-thread:join-thread syncer"),
+                        batch.index("(fnn-owner-commit-complete-locked service members nil deferred)"))
+        self.assertLess(batch.index("(fnn-owner-commit-complete-locked service members nil deferred)"),
+                        batch.index("(fnn-log-seal-open-batch store)"))
+        self.assertEqual(batch.count("(fnn-owner-start-syncer service)"), 1)
+        syncer = owner[owner.index("(defun fnn-owner-commit-sync "):owner.index("(defun fnn-owner-commit-complete-locked")]
+        self.assertIn("(fnn-log-sync-sealed-batch ", syncer)
         control = (ROOT / "host" / "native" / "control.lisp").read_text()
         live = control[control.index("(defun fnn-control-live-status-answer "):control.index("(defun fnn-control-handle-client")]
         self.assertIn(":inspect))", live)
