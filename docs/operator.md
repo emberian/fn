@@ -219,8 +219,16 @@ memory, the cgroup's `memory.max` (Linux) and the data-size limit (`ulimit
 | scale | 4,096 | 768 MiB | 17,138,486 | 32,768 | 65,535 | 4,096 | 54,751 MB |
 | default | 2^32-1 | 1 TiB | 64 MiB | 16 MiB | 4,096 | 65,536 | about 70 TiB: refused on every machine today (PKT-582) |
 
-`init` with no `--profile` and no field flag writes **small** on a machine
-under 4 GiB, and the D27 default elsewhere. The small preset has no
+`init` with no `--profile` and no field flag (and every `init` under a
+`mission`, which fixes the profile) sizes conservatively: it writes the
+**development** preset (128 transactions: the node refuses every post after
+about 125 articles with `441 posting failed; the store has no capacity for
+this article`) when the machine's budget holds its reservation, else the
+**small** one; `status` prints `profile=custom` for either
+(books/heap-reservation.lisp, `fn-heap-init-decide`). A node for people
+needs its fields named: delete the `mission` line from `fn.toml` and
+`init` with the fields below, or raise them later with `store export` and
+`store import --FIELD N`. The small preset has no
 `--profile` word yet (PKT-581); on a larger machine name its fields:
 `--max-transactions 16384 --max-history-octets 8388608 --max-record-octets
 196608 --max-article-octets 32768 --max-groups-per-article 16
@@ -2017,7 +2025,7 @@ no socket node they refuse `store-held` without opening the store; with both,
 they ask the owner. The next `run` removes a stale node itself.
 
 ```
-fn --config /etc/fn/fn.toml recover
+fn operator /etc/fn/fn.toml recover
 ```
 
 It prints the recovered transaction and article counts, any staging orphans

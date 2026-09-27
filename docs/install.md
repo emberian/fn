@@ -28,12 +28,14 @@ tar -xzf fn-6.7.N-linux-x86_64.tar.gz
 sh fn/install.sh
 ```
 
-OpenBSD (amd64), as root:
+OpenBSD (amd64), as root, unpacking under `/usr/local` (see `wxallowed`
+below; `install.sh` runs the unpacked copy before it installs it, so an
+unpack in `/tmp` or `/root` halts with `RWX mmap not supported`):
 
 ```sh
 sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz
-tar -xzf fn-6.7.N-openbsd-amd64.tar.gz
-sh fn/install.sh
+mkdir -p /usr/local/src && tar -xzf fn-6.7.N-openbsd-amd64.tar.gz -C /usr/local/src
+sh /usr/local/src/fn/install.sh
 ```
 
 `install.sh` checks every file of the release against `fn/SHA256SUMS`,
@@ -51,6 +53,12 @@ instead (for a machine where you run the node yourself).
 
 On OpenBSD the directory must be on a file system mounted `wxallowed` (the
 Lisp runtime maps writable code; `/usr/local` is mounted so by default).
+The OpenBSD service runs as `_fn` without privileges, so it cannot listen on
+a port below 1024: give `mission` a `--port` of 1024 or more (and a
+`tls_port` of 1024 or more), or redirect 119 and 563 to it with `pf`. With
+`--port 119` the start fails with `Socket error in "bind": 13 (Permission
+denied)` in `/var/log/daemon`. `doas` is not enabled on a fresh OpenBSD;
+`su -s /bin/sh _fn -c '...'` runs a command as the service account.
 
 `/opt/fn/bin/fn --version` prints the version and revision at any time; `fn` alone
 prints the operator's usage, and `fn operator CONFIG help VERB` the grammar
@@ -136,13 +144,15 @@ node's principal):
 fn operator /var/lib/fn/fn.toml peer keygen /var/lib/fn/keys
 ```
 
-You invite your friend: the friend's name, the groups you offer, the
-friend's address and port and path identity, your key directory, the file
-to write, and your own address and port (carried in the invitation, signed,
-so the friend's node can configure yours):
+You invite your friend: a name for the friend, the groups you offer, the
+friend's address and port, YOUR OWN path identity (the one you set with
+`policy set path-identity`; the friend's node files you under it), your key
+directory, the file to write, and your own address and port (carried in the
+invitation, signed, so the friend's node can configure yours). An address
+may be a DNS name or an IPv4 literal:
 
 ```sh
-fn operator /var/lib/fn/fn.toml peer invite friend 'local.*' 198.51.100.9 119 friend.example.net /var/lib/fn/keys /var/lib/fn/invitation-for-friend 203.0.113.7 119
+fn operator /var/lib/fn/fn.toml peer invite friend 'local.*' 198.51.100.9 119 news.example.org /var/lib/fn/keys /var/lib/fn/invitation-for-friend 203.0.113.7 119
 ```
 
 Send the invitation file (it holds public keys only). The friend accepts it
@@ -186,12 +196,15 @@ installed:
 
 ```sh
 systemctl stop fn                                                    # OpenBSD: rcctl stop fn
-fn operator /var/lib/fn/fn.toml store export /var/lib/fn-export
+/opt/fn/bin/fn operator /var/lib/fn/fn.toml store export /var/lib/fn-export
+chown -R fn:fn /var/lib/fn-export                                    # OpenBSD: _fn:_fn
 mv /var/lib/fn /var/lib/fn.old
 rm -rf /opt/fn
 sh fn/install.sh
 ```
 
+(The export runs as root here because the service account cannot create a
+directory in `/var/lib`; the `chown` lets the service account read it.)
 Then, as the service account in the new node directory: write the
 configuration again (`mission`, the TLS pair; or copy `fn.toml` and `tls/`
 from the old directory) and import instead of `init`:
@@ -200,8 +213,18 @@ from the old directory) and import instead of `init`:
 fn operator /var/lib/fn/fn.toml store import /var/lib/fn-export
 ```
 
-and start the service. The imported store answers with the same articles,
-numbers and Message-IDs.
+The new store has no key files and no logins yet, and the node refuses to
+start without its key (`node secret .../store/keys/node-secret.key is
+missing`). Copy both from the old store, and the peer key directory if you
+made one, before you start the service:
+
+```sh
+cp -a /var/lib/fn.old/store/keys /var/lib/fn.old/store/auth.toml /var/lib/fn/store/
+cp -a /var/lib/fn.old/keys /var/lib/fn/                              # only if you ran peer keygen
+```
+
+Then start the service. The imported store answers with the same articles,
+numbers and Message-IDs, and the same logins.
 
 The export is the Store's history (the profile, the allocation frontier, the
 configuration records and the Store records), not a backup of the node. It
