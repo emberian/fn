@@ -1465,11 +1465,10 @@
               (nfix (fn-bs-profile-max-transactions profile)))
              (fn-heap-store-inflight-octets profile))
           nursery))
-  :hints (("Goal" :in-theory (e/d (fn-heap-figure-octets fn-heap-store-figure-octets
-                                   fn-heap-store-base-octets)
-                                  (fn-heap-store-state-octets fn-heap-store-open-octets
-                                   fn-heap-store-inflight-octets fn-heap-with-nursery
-                                   fn-heap-open-octets-bound fn-heap-open-records-bound)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-heap-figure-octets fn-heap-store-figure-octets
+                                               fn-heap-store-base-octets
+                                               fn-heap-open-bounds-of-nil)
+                                             (theory 'minimal-theory)))))
 
 (defthm fn-heap-figure-octets-grows-with-history-and-record
   (implies (and (<= (nfix (fn-bs-profile-max-history-octets p1))
