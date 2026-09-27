@@ -26,13 +26,13 @@
   ; A retention or identity-neutral event has no selected group; applying
   ; fn-cnode-apply-record to it would incorrectly refuse every such event.
   (declare (xargs :guard t))
-  (cond ((fn-record-p event)
+  (cond ((fn-held-p event)
          (fn-cnode-selection-servedp (fn-cnode-config cn)
                                      (fn-record-groups event)))
-        ((fn-stxa-p event)
+        ((fn-hstxa-p event)
          (fn-cnode-selection-servedp
           (fn-cnode-config cn)
-          (fn-record-groups (fn-replay-composite-record event))))
+          (fn-record-groups (fn-replay-composite-held event))))
         (t t)))
 
 ; The node invariant is carried, not re-checked (AGENTS.md: no whole-state
@@ -63,7 +63,7 @@
            :use ((:instance fn-replay-apply-record-non-nil-is-node-state
                             (node (fn-cnode-node cn)) (record event)))
            :in-theory (e/d (fn-cnode-statep)
-                           (fn-cpr-event-servedp fn-record-p fn-stxa-p
+                           (fn-cpr-event-servedp fn-record-p fn-stxa-p fn-held-p fn-hstxa-p
                             fn-store-event-p fn-node-statep
                             fn-replay-apply-record
                             fn-replay-apply-record-non-nil-is-node-state)))))
@@ -114,7 +114,7 @@
                             fn-replay-advance-txid
                             fn-record-record-vocabulary
                             fn-record-shape-vocabulary
-                            fn-stxa-p fn-stxe-p fn-stxk-p
+                            fn-stxa-p fn-stxe-p fn-stxk-p fn-held-p fn-hstxa-p
                             fn-store-retention-event-p
                             fn-replay-composite-record))))))
 

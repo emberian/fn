@@ -36,11 +36,12 @@
                                       fn-record-record-vocabulary))))
 (local
  (defthm fn-replay-article-counters-are-natural
-   (implies (fn-record-p record)
+   (implies (fn-held-p record)
             (and (natp (fn-record-sequence record))
                  (natp (fn-record-txid record))
                  (natp (fn-record-generation record))))
-   :hints (("Goal" :in-theory (enable fn-record-record-vocabulary
+   :hints (("Goal" :in-theory (enable fn-held-vocabulary fn-held-internals
+                                      fn-record-record-vocabulary
                                       fn-record-shape-vocabulary)))))
 (local
  (defthm fn-replay-retention-counters-are-natural
@@ -66,11 +67,11 @@
    :hints (("Goal" :in-theory (enable fn-record-uint32p)))))
 (local
  (defthm fn-replay-stxa-counters-are-natural
-   (implies (fn-stxa-p record)
-            (and (natp (fn-stxa-sequence record))
-                 (natp (fn-stxa-txid record))
-                 (natp (fn-stxa-generation record))))
-   :hints (("Goal" :in-theory (enable fn-record-uint32p)))))
+   (implies (fn-hstxa-p record)
+            (and (natp (fn-stxa-sequence (fn-hstxa-stxa record)))
+                 (natp (fn-stxa-txid (fn-hstxa-stxa record)))
+                 (natp (fn-stxa-generation (fn-hstxa-stxa record)))))
+   :hints (("Goal" :in-theory (enable fn-record-uint32p fn-hstxa-p fn-hstxa-stxa)))))
 (local
  (defthm fn-replay-cpe-counters-are-natural
    (implies (fn-cpe-eventp record)
@@ -97,15 +98,15 @@
                   fn-replay-stxk-counters-are-natural
                   fn-replay-stxa-counters-are-natural
                   fn-replay-cpe-counters-are-natural)
-            :cases ((fn-record-p record)
+            :cases ((fn-held-p record)
                     (fn-store-retention-event-p record)
                     (fn-stxe-p record)
                     (fn-stxk-p record)
-                    (fn-stxa-p record))
+                    (fn-hstxa-p record))
             :in-theory
             (e/d (fn-store-event-p fn-store-event-sequence
                                    fn-store-event-txid fn-store-event-generation)
-                 (fn-record-p fn-store-retention-event-p fn-stxe-p fn-stxk-p
+                 (fn-record-p fn-held-p fn-hstxa-p fn-store-retention-event-p fn-stxe-p fn-stxk-p
                               fn-stxa-p fn-cpe-eventp
                               fn-replay-article-counters-are-natural
                               fn-replay-retention-counters-are-natural
@@ -396,12 +397,19 @@
                      (cons e (fn-stxk-context-verdicts ctx))
                      (fn-stxk-context-current-generation ctx) nil))))
 
+; The wire composite an event stands for in the identity fold: a retained
+; row's inner composite, any other event itself.
+(defun fn-replay-identity-wire (event)
+  (declare (xargs :guard t))
+  (if (fn-hstxa-p event) (fn-hstxa-stxa event) event))
+
 (defun fn-replay-identity-step (ctx event)
   (declare (xargs :guard t :verify-guards nil))
   (if (not (equal (fn-stxk-context-kind ctx) :ok)) ctx
     (if (not (equal (fn-store-event-sequence event)
                     (fn-stxk-context-next ctx)))
         (fn-stxk-fault ctx :sequence)
+     (let ((event (fn-replay-identity-wire event)))
       (cond
        ((fn-stxk-p event) (fn-stxk-apply-snapshot ctx event))
        ((fn-stxe-p event)
@@ -436,7 +444,7 @@
             (if (not (fn-stmt-okp decoded))
                 (fn-stxk-fault ctx :composite-verdict)
                 (fn-stxk-apply-verdict ctx (fn-stmt-value decoded)))))))
-       (t (fn-replay-identity-advance ctx))))))
+       (t (fn-replay-identity-advance ctx)))))))
 
 (verify-guards fn-replay-identity-step)
 
@@ -545,6 +553,16 @@
           nil))
     nil))
 
+; The retained composite row (books/held-record.lisp fn-hstxa-p): its wire
+; composite, for the identity fold, and its article already interned (a
+; held record, the handle at the payload position), for the node.  The
+; entry that built the row (books/store-intern.lisp) interned exactly
+; fn-replay-composite-record of the wire composite; that is its theorem.
+(defun fn-replay-composite-held (event)
+  (declare (xargs :guard t))
+  (if (fn-hstxa-p event) (fn-hstxa-held event) nil))
+
+
 (defun fn-replay-apply-record (node record)
   (declare (xargs :guard (and (fn-node-statep node) (true-listp record))
                   :verify-guards nil))
@@ -561,14 +579,14 @@
       ; record with matching coordinates complete that different article.
       (if (not (null (fn-node-stage node)))
           nil
-      (let* ((article (if (fn-stxa-p record)
-                          (fn-replay-composite-record record)
+      (let* ((article (if (fn-hstxa-p record)
+                          (fn-replay-composite-held record)
                         record))
              (advanced (fn-replay-advance-txid node (fn-store-event-txid record))))
       (if (not (equal (fn-state-next-txid (fn-node-acceptance advanced))
                       (fn-store-event-txid record)))
           nil
-        (if (not (fn-record-p article)) nil
+        (if (not (fn-held-p article)) nil
           (let ((prepared
                (fn-node-prepare advanced
                                 (fn-record-generation article)

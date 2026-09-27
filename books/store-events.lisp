@@ -8,6 +8,7 @@
 (in-package "ACL2")
 (include-book "records-seam")
 (include-book "stx-accept-records")
+(include-book "held-record")
 (include-book "consumer-store-events")
 (include-book "topic-history-store-events")
 
@@ -83,7 +84,23 @@
            (posp (fn-store-event-nth 8 x))
          (equal (fn-store-event-nth 8 x) 0))))
 
+; The RETAINED event (records-flip, 2026-09-27): what the history
+; `fn-sf-records' holds and the replay folds.  An article is a HELD record
+; (books/held-record.lisp: the handle at the payload position, the byte
+; facts and the context beside it), an accepted statement is the composite
+; beside its interned article (`fn-hstxa-p').  The wire record and the wire
+; composite are `fn-wire-event-p' below: the codec's domain, what the
+; journal and the checkpoint's E table carry, and what the entry INTERNS
+; (books/store-intern.lisp) before the store machine sees it.
 (defun fn-store-event-p (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (or (fn-held-p x) (fn-store-retention-event-p x)
+      (fn-stxe-p x) (fn-stxk-p x) (fn-hstxa-p x) (fn-cpe-eventp x)
+      (fn-th-topic-eventp x)))
+
+; The WIRE event: the codec's domain (`fn-store-event-encode',
+; `fn-store-event-decode-exact' below).
+(defun fn-wire-event-p (x)
   (declare (xargs :guard t :verify-guards nil))
   (or (fn-record-p x) (fn-store-retention-event-p x)
       (fn-stxe-p x) (fn-stxk-p x) (fn-stxa-p x) (fn-cpe-eventp x)
@@ -105,41 +122,41 @@
 
 (defun fn-store-event-kind (x)
   (declare (xargs :guard t :verify-guards nil))
-  (cond ((fn-record-p x) :article)
+  (cond ((fn-held-p x) :article)
         ((fn-store-retention-event-p x) (fn-store-event-nth 1 x))
         ((fn-stxe-p x) :statement-verdict)
         ((fn-stxk-p x) :keyring-snapshot)
-        ((fn-stxa-p x) :accepted-statement)
+        ((fn-hstxa-p x) :accepted-statement)
         ((fn-cpe-eventp x) :consumer)
         ((fn-th-topic-eventp x) (fn-th-at 0 x))
         (t nil)))
 (defun fn-store-event-sequence (x)
   (declare (xargs :guard t :verify-guards nil))
-  (cond ((fn-record-p x) (fn-record-sequence x))
+  (cond ((fn-held-p x) (fn-record-sequence x))
         ((fn-store-retention-event-p x) (fn-store-event-nth 2 x))
         ((fn-stxe-p x) (fn-stxe-sequence x))
         ((fn-stxk-p x) (fn-stxk-sequence x))
-        ((fn-stxa-p x) (fn-stxa-sequence x))
+        ((fn-hstxa-p x) (fn-stxa-sequence (fn-hstxa-stxa x)))
         ((fn-cpe-eventp x) (fn-cpe-sequence x))
         ((fn-th-topic-eventp x) (fn-th-at 1 x))
         (t nil)))
 (defun fn-store-event-txid (x)
   (declare (xargs :guard t :verify-guards nil))
-  (cond ((fn-record-p x) (fn-record-txid x))
+  (cond ((fn-held-p x) (fn-record-txid x))
         ((fn-store-retention-event-p x) (fn-store-event-nth 3 x))
         ((fn-stxe-p x) (fn-stxe-txid x))
         ((fn-stxk-p x) (fn-stxk-txid x))
-        ((fn-stxa-p x) (fn-stxa-txid x))
+        ((fn-hstxa-p x) (fn-stxa-txid (fn-hstxa-stxa x)))
         ((fn-cpe-eventp x) (fn-cpe-txid x))
         ((fn-th-topic-eventp x) (fn-th-at 2 x))
         (t nil)))
 (defun fn-store-event-generation (x)
   (declare (xargs :guard t :verify-guards nil))
-  (cond ((fn-record-p x) (fn-record-generation x))
+  (cond ((fn-held-p x) (fn-record-generation x))
         ((fn-store-retention-event-p x) (fn-store-event-nth 4 x))
         ((fn-stxe-p x) (fn-stxe-generation x))
         ((fn-stxk-p x) (fn-stxk-generation x))
-        ((fn-stxa-p x) (fn-stxa-generation x))
+        ((fn-hstxa-p x) (fn-stxa-generation (fn-hstxa-stxa x)))
         ((fn-cpe-eventp x) (fn-cpe-generation x))
         ((fn-th-topic-eventp x) (fn-th-at 3 x))
         (t nil)))
@@ -150,6 +167,55 @@
 
 (verify-guards fn-store-retention-event-p)
 (verify-guards fn-store-event-p)
+(verify-guards fn-wire-event-p)
+
+; The WIRE event's readings (the codec's domain; what the host reads off a
+; decoded record before the intern, and what the entry's theorems relate to
+; the row's readings above).
+(defun fn-wire-event-kind (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (cond ((fn-record-p x) :article)
+        ((fn-store-retention-event-p x) (fn-store-event-nth 1 x))
+        ((fn-stxe-p x) :statement-verdict)
+        ((fn-stxk-p x) :keyring-snapshot)
+        ((fn-stxa-p x) :accepted-statement)
+        ((fn-cpe-eventp x) :consumer)
+        ((fn-th-topic-eventp x) (fn-th-at 0 x))
+        (t nil)))
+(defun fn-wire-event-sequence (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (cond ((fn-record-p x) (fn-record-sequence x))
+        ((fn-store-retention-event-p x) (fn-store-event-nth 2 x))
+        ((fn-stxe-p x) (fn-stxe-sequence x))
+        ((fn-stxk-p x) (fn-stxk-sequence x))
+        ((fn-stxa-p x) (fn-stxa-sequence x))
+        ((fn-cpe-eventp x) (fn-cpe-sequence x))
+        ((fn-th-topic-eventp x) (fn-th-at 1 x))
+        (t nil)))
+(defun fn-wire-event-txid (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (cond ((fn-record-p x) (fn-record-txid x))
+        ((fn-store-retention-event-p x) (fn-store-event-nth 3 x))
+        ((fn-stxe-p x) (fn-stxe-txid x))
+        ((fn-stxk-p x) (fn-stxk-txid x))
+        ((fn-stxa-p x) (fn-stxa-txid x))
+        ((fn-cpe-eventp x) (fn-cpe-txid x))
+        ((fn-th-topic-eventp x) (fn-th-at 2 x))
+        (t nil)))
+(defun fn-wire-event-generation (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (cond ((fn-record-p x) (fn-record-generation x))
+        ((fn-store-retention-event-p x) (fn-store-event-nth 4 x))
+        ((fn-stxe-p x) (fn-stxe-generation x))
+        ((fn-stxk-p x) (fn-stxk-generation x))
+        ((fn-stxa-p x) (fn-stxa-generation x))
+        ((fn-cpe-eventp x) (fn-cpe-generation x))
+        ((fn-th-topic-eventp x) (fn-th-at 3 x))
+        (t nil)))
+(verify-guards fn-wire-event-kind)
+(verify-guards fn-wire-event-sequence)
+(verify-guards fn-wire-event-txid)
+(verify-guards fn-wire-event-generation)
 (verify-guards fn-store-event-kind)
 (verify-guards fn-store-event-sequence)
 (verify-guards fn-store-event-txid)
@@ -179,6 +245,9 @@
      (fn-cbor-encode (cons :bytes (fn-record-string-octets (fn-store-event-evidence event))))
      (fn-cbor-encode (cons :uint (fn-store-event-charge event))))))
 
+; The encoder's domain is the WIRE event: a held row or a composite row is
+; encoded through alpha (books/catalog-record.lisp fn-held-wire-of) by the
+; entry that holds the arena, never here.
 (defun fn-store-event-encode (event)
   (declare (xargs :guard t :verify-guards nil))
   (cond ((fn-record-p event) (fn-record-encode event))
@@ -277,7 +346,9 @@
 ; (run-20260922T031236Z-c1fb, certify-20260922T034701Z-2641627).  A book that
 ; needs the definition enables it by name, as books/store-files already does
 ; for its field typing lemmas.
-(in-theory (disable (:d fn-store-event-p) (:d fn-store-retention-event-p)
+(in-theory (disable (:d fn-store-event-p) (:d fn-wire-event-p) (:d fn-store-retention-event-p)
+                    (:d fn-wire-event-kind) (:d fn-wire-event-sequence)
+                    (:d fn-wire-event-txid) (:d fn-wire-event-generation)
                     (:d fn-store-event-kind) (:d fn-store-event-sequence)
                     (:d fn-store-event-txid) (:d fn-store-event-generation)
                     (:d fn-store-event-obligation-id)

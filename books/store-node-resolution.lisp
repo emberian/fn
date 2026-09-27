@@ -86,8 +86,8 @@
 
 (local
  (defthm fn-snr-record-is-a-true-list
-   (implies (fn-record-p record) (true-listp record))
-   :hints (("Goal" :in-theory (enable fn-record-p)))))
+   (implies (fn-held-p record) (true-listp record))
+   :hints (("Goal" :in-theory (enable fn-held-p)))))
 
 ; The retention arm advances the live node over the transaction id the
 ; abort consumes, exactly as `fn-sn-refuse-reservation' above advances it
@@ -119,7 +119,7 @@
 (verify-guards fn-sn-known-abort
   :hints (("Goal" :in-theory
            (e/d (fn-sn-statep fn-sn-known-abort-enabledp fn-sn-record-bindsp)
-                (fn-sf-statep fn-node-statep fn-record-p
+                (fn-sf-statep fn-node-statep fn-record-p fn-held-p fn-hstxa-p
                  fn-node-pending-matchesp fn-sn-pending-record
                  fn-sn-known-abort-files fn-sn-known-abort-file-start)))))
 
@@ -134,7 +134,7 @@
               fn-store-files-traces-vocabulary
               fn-store-node-invariants-vocabulary
               fn-store-node-traces-vocabulary)
-             (fn-sn-statep fn-sf-statep fn-node-statep fn-record-p
+             (fn-sn-statep fn-sf-statep fn-node-statep fn-record-p fn-held-p fn-hstxa-p
               fn-sn-record-bindsp fn-snt-relation fn-snt-pending-linkp
               fn-snt-deferred-linkp fn-snt-completion-linkp
               fn-sf-history-recoverablep fn-sf-replay-node
@@ -220,7 +220,7 @@
                             fn-replay-advance-txid
                             fn-record-shape-vocabulary
                             fn-store-event-p fn-store-retention-event-p
-                            fn-stxe-p fn-stxk-p fn-stxa-p)))))
+                            fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p)))))
 
 ; -----------------------------------------------------------------------------
 ; The carried statement index (D21): the two resolution transitions
@@ -241,28 +241,55 @@
          :hints (("Goal" :in-theory (enable fn-stx-store fn-node-complete
                                             fn-accept-complete fn-clear-pending)))))
 
+; The two resolutions leave the history and the completion untouched and
+; move the phase among the reserved and record phases, so the indexed rows
+; are the same rows (records-flip).
+(local (defthm fn-snr-indexed-rows-of-refuse-reservation
+  (implies (fn-sf-statep files)
+           (and (equal (fn-sn-indexed-rows-of (fn-sf-refuse-reservation files txid))
+                       (fn-sn-indexed-rows-of files))
+                (implies (fn-sn-completion-is-last-p files)
+                         (fn-sn-completion-is-last-p (fn-sf-refuse-reservation files txid)))))
+  :hints (("Goal" :in-theory (e/d (fn-sf-refuse-reservation fn-sn-indexed-rows-of
+                                   fn-sn-completion-is-last-p)
+                                  (fn-sf-statep))))))
+
+(local (defthm fn-snr-indexed-rows-of-known-abort-files
+  (implies (fn-sf-statep files)
+           (and (equal (fn-sn-indexed-rows-of (fn-sn-known-abort-files files))
+                       (fn-sn-indexed-rows-of files))
+                (implies (fn-sn-completion-is-last-p files)
+                         (fn-sn-completion-is-last-p (fn-sn-known-abort-files files)))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-known-abort-files fn-sn-known-abort-file-start
+                                   fn-sf-record-file-result
+                                   fn-sf-prepublish-abort fn-sf-abort-completion
+                                   fn-sn-indexed-rows-of fn-sn-completion-is-last-p)
+                                  (fn-sf-statep))))))
+
 (defthm fn-sn-refuse-reservation-preserves-indexedp
   (implies (fn-sn-indexedp s)
            (fn-sn-indexedp (fn-sn-refuse-reservation s txid)))
   :hints (("Goal"
            :use ((:instance fn-sn-refuse-reservation-preserves-state))
-           :in-theory (e/d (fn-sn-indexedp fn-sn-refuse-reservation
-                            fn-sn-update fn-stx-index-invariantp)
-                           (fn-sn-statep fn-node-statep fn-sf-statep
+           :in-theory (e/d (fn-sn-indexedp fn-sn-refuse-reservation fn-sn-indexed-rows
+                            fn-sn-update fn-sn-make-v6 fn-sn-files fn-sn-index fn-sn-statep)
+                           (fn-node-statep fn-sf-statep
+                            fn-sn-verdict-listp fn-sn-keyring-snapshot-listp
                             fn-sf-refuse-reservation fn-replay-advance-txid
-                            fn-stx-index-of-store fn-stx-store)))))
+                            fn-sn-index-of-rows fn-sn-indexed-rows-of)))))
 
 (defthm fn-sn-known-abort-preserves-indexedp
   (implies (fn-sn-indexedp s)
            (fn-sn-indexedp (fn-sn-known-abort s)))
   :hints (("Goal"
            :use ((:instance fn-sn-known-abort-preserves-state))
-           :in-theory (e/d (fn-sn-indexedp fn-sn-known-abort fn-sn-update
-                            fn-stx-index-invariantp)
-                           (fn-sn-statep fn-node-statep fn-sf-statep
+           :in-theory (e/d (fn-sn-indexedp fn-sn-known-abort fn-sn-indexed-rows fn-sn-update
+                            fn-sn-make-v6 fn-sn-files fn-sn-index fn-sn-statep)
+                           (fn-node-statep fn-sf-statep
+                            fn-sn-verdict-listp fn-sn-keyring-snapshot-listp
                             fn-sn-known-abort-files fn-node-complete
                             fn-sn-record-bindsp
-                            fn-stx-index-of-store fn-stx-store)))))
+                            fn-sn-index-of-rows fn-sn-indexed-rows-of)))))
 
 (defthm fn-sn-refuse-reservation-preserves-configuration
   (and (equal (fn-sn-groups (fn-sn-refuse-reservation s txid))
@@ -313,7 +340,7 @@
                             fn-sf-abort-completion
                             fn-record-shape-vocabulary
                             fn-store-event-p fn-store-retention-event-p
-                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
                             fn-replay-apply-record
                             fn-replay-apply-retention-event
                             fn-node-complete)))))
@@ -335,7 +362,7 @@
                             fn-replay-apply-retention-event
                             fn-record-shape-vocabulary
                             fn-store-event-p fn-store-retention-event-p
-                            fn-stxe-p fn-stxk-p fn-stxa-p)))))
+                            fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p)))))
 
 (defthm fn-sn-prepare-identity-cannot-acknowledge
   (equal (fn-sf-successes (fn-sn-files (fn-sn-prepare-identity s event)))
@@ -351,7 +378,7 @@
                             fn-replay-identity-step fn-sn-identity-context
                             fn-record-shape-vocabulary
                             fn-store-event-p fn-store-retention-event-p
-                            fn-stxe-p fn-stxk-p fn-stxa-p)))))
+                            fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p)))))
 
 (defthm fn-sn-prepare-consumer-cannot-acknowledge
   (equal (fn-sf-successes (fn-sn-files (fn-sn-prepare-consumer s event)))
@@ -425,7 +452,7 @@
                             fn-node-complete
                             fn-record-shape-vocabulary
                             fn-store-event-p fn-store-retention-event-p
-                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
                             fn-replay-apply-record
                             fn-replay-apply-retention-event)))))
 
@@ -491,7 +518,7 @@
                              fn-sn-completion-core-enabledp
                              fn-record-shape-vocabulary
                              fn-store-event-p fn-store-retention-event-p
-                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
                              fn-th-topic-eventp fn-th-prefix-step
                              fn-replay-apply-record
                              fn-replay-apply-retention-event)))))
@@ -632,7 +659,7 @@
            (and (not (fn-store-retention-event-p (fn-sn-completion-record s)))
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
-                (not (fn-stxa-p (fn-sn-completion-record s)))
+                (not (fn-hstxa-p (fn-sn-completion-record s)))
                 (not (fn-cpe-eventp (fn-sn-completion-record s)))
                 (not (fn-th-topic-eventp (fn-sn-completion-record s))))
            (and (fn-sn-record-bindsp (fn-sn-node s) (fn-sn-completion-record s))

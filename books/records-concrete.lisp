@@ -61,20 +61,23 @@
 ; the two projection steps the completion gate runs
 ; (books/consumer-store-projection.lisp, books/topic-history-prefix.lisp).
 
-(defun fn-rcon-store-event-p (x)
+; The WIRE event's twin: what the host tests on a decoded record before the
+; intern (host/store-host.lisp fn-store-decode-records).  The record arm is
+; the concrete recognizer; the other arms are their references.
+(defun fn-rcon-wire-event-p (x)
   (declare (xargs :guard t))
   (or (fn-rcon-record-p x) (fn-store-retention-event-p x)
       (fn-stxe-p x) (fn-stxk-p x) (fn-stxa-p x) (fn-cpe-eventp x)
       (fn-th-topic-eventp x)))
 
-(defthm fn-rcon-store-event-p-is-store-event-p
-  (equal (fn-rcon-store-event-p x) (fn-store-event-p x))
+(defthm fn-rcon-wire-event-p-is-wire-event-p
+  (equal (fn-rcon-wire-event-p x) (fn-wire-event-p x))
   :hints (("Goal" :in-theory (union-theories
-                              '(fn-rcon-store-event-p fn-store-event-p
+                              '(fn-rcon-wire-event-p fn-wire-event-p
                                 fn-rcon-record-p-is-record-p)
                               (theory 'minimal-theory)))))
 
-(defun fn-rcon-store-event-sequence (x)
+(defun fn-rcon-wire-event-sequence (x)
   (declare (xargs :guard t))
   (cond ((fn-rcon-record-p x) (fn-record-sequence x))
         ((fn-store-retention-event-p x) (fn-store-event-nth 2 x))
@@ -85,14 +88,14 @@
         ((fn-th-topic-eventp x) (fn-th-at 1 x))
         (t nil)))
 
-(defthm fn-rcon-store-event-sequence-is-store-event-sequence
-  (equal (fn-rcon-store-event-sequence x) (fn-store-event-sequence x))
+(defthm fn-rcon-wire-event-sequence-is-wire-event-sequence
+  (equal (fn-rcon-wire-event-sequence x) (fn-wire-event-sequence x))
   :hints (("Goal" :in-theory (union-theories
-                              '(fn-rcon-store-event-sequence fn-store-event-sequence
+                              '(fn-rcon-wire-event-sequence fn-wire-event-sequence
                                 fn-rcon-record-p-is-record-p)
                               (theory 'minimal-theory)))))
 
-(defun fn-rcon-store-event-txid (x)
+(defun fn-rcon-wire-event-txid (x)
   (declare (xargs :guard t))
   (cond ((fn-rcon-record-p x) (fn-record-txid x))
         ((fn-store-retention-event-p x) (fn-store-event-nth 3 x))
@@ -103,14 +106,14 @@
         ((fn-th-topic-eventp x) (fn-th-at 2 x))
         (t nil)))
 
-(defthm fn-rcon-store-event-txid-is-store-event-txid
-  (equal (fn-rcon-store-event-txid x) (fn-store-event-txid x))
+(defthm fn-rcon-wire-event-txid-is-wire-event-txid
+  (equal (fn-rcon-wire-event-txid x) (fn-wire-event-txid x))
   :hints (("Goal" :in-theory (union-theories
-                              '(fn-rcon-store-event-txid fn-store-event-txid
+                              '(fn-rcon-wire-event-txid fn-wire-event-txid
                                 fn-rcon-record-p-is-record-p)
                               (theory 'minimal-theory)))))
 
-(defun fn-rcon-store-event-generation (x)
+(defun fn-rcon-wire-event-generation (x)
   (declare (xargs :guard t))
   (cond ((fn-rcon-record-p x) (fn-record-generation x))
         ((fn-store-retention-event-p x) (fn-store-event-nth 4 x))
@@ -121,14 +124,48 @@
         ((fn-th-topic-eventp x) (fn-th-at 3 x))
         (t nil)))
 
-(defthm fn-rcon-store-event-generation-is-store-event-generation
-  (equal (fn-rcon-store-event-generation x) (fn-store-event-generation x))
+(defthm fn-rcon-wire-event-generation-is-wire-event-generation
+  (equal (fn-rcon-wire-event-generation x) (fn-wire-event-generation x))
   :hints (("Goal" :in-theory (union-theories
-                              '(fn-rcon-store-event-generation fn-store-event-generation
+                              '(fn-rcon-wire-event-generation fn-wire-event-generation
                                 fn-rcon-record-p-is-record-p)
                               (theory 'minimal-theory)))))
 
-(in-theory (disable fn-rcon-store-event-p fn-rcon-store-event-sequence
+; The RETAINED event's twins (records-flip): the held record's recognizer
+; reads its text fields as the wire record's does; a concrete twin of it is
+; an open item (the string-domain recognizer of a row), so these are the
+; references by definition.
+(defun fn-rcon-store-event-p (x)
+  (declare (xargs :guard t))
+  (fn-store-event-p x))
+
+(defthm fn-rcon-store-event-p-is-store-event-p
+  (equal (fn-rcon-store-event-p x) (fn-store-event-p x)))
+
+(defun fn-rcon-store-event-sequence (x)
+  (declare (xargs :guard t))
+  (fn-store-event-sequence x))
+
+(defthm fn-rcon-store-event-sequence-is-store-event-sequence
+  (equal (fn-rcon-store-event-sequence x) (fn-store-event-sequence x)))
+
+(defun fn-rcon-store-event-txid (x)
+  (declare (xargs :guard t))
+  (fn-store-event-txid x))
+
+(defthm fn-rcon-store-event-txid-is-store-event-txid
+  (equal (fn-rcon-store-event-txid x) (fn-store-event-txid x)))
+
+(defun fn-rcon-store-event-generation (x)
+  (declare (xargs :guard t))
+  (fn-store-event-generation x))
+
+(defthm fn-rcon-store-event-generation-is-store-event-generation
+  (equal (fn-rcon-store-event-generation x) (fn-store-event-generation x)))
+
+(in-theory (disable fn-rcon-wire-event-p fn-rcon-wire-event-sequence
+                    fn-rcon-wire-event-txid fn-rcon-wire-event-generation
+                    fn-rcon-store-event-p fn-rcon-store-event-sequence
                     fn-rcon-store-event-txid fn-rcon-store-event-generation))
 
 (defun fn-rcon-sf-record-pair (record)
@@ -145,23 +182,17 @@
 
 (in-theory (disable fn-rcon-sf-record-pair))
 
+; The binding test over the held row (records-flip): the row's recognizer
+; is the reference's (a concrete held recognizer is the open item noted
+; above), so this twin is the reference by definition.
 (defun fn-rcon-sn-record-bindsp (node record)
   (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
-  (and (fn-rcon-record-p record)
-       (fn-node-pending-matchesp node (fn-record-txid record)
-                                (fn-record-generation record))
-       (equal record (fn-sn-pending-record node (fn-record-sequence record)))))
+  (fn-sn-record-bindsp node record))
 
 (defthm fn-rcon-sn-record-bindsp-is-sn-record-bindsp
-  (equal (fn-rcon-sn-record-bindsp node record) (fn-sn-record-bindsp node record))
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-rcon-sn-record-bindsp fn-sn-record-bindsp
-                                fn-rcon-record-p-is-record-p)
-                              (theory 'minimal-theory)))))
+  (equal (fn-rcon-sn-record-bindsp node record) (fn-sn-record-bindsp node record)))
 
-(verify-guards fn-rcon-sn-record-bindsp
-  :hints (("Goal" :in-theory (enable fn-rcon-record-p-is-record-p
-                                     fn-record-shape-vocabulary))))
+(verify-guards fn-rcon-sn-record-bindsp)
 
 (in-theory (disable fn-rcon-sn-record-bindsp))
 

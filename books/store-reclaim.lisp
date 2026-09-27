@@ -323,8 +323,13 @@
 ;
 ; `fn-rcl-reclaim-articles' replaces the payload of the article under MSGID
 ; by TOMB and leaves every other field, and every other article, as it was.
-; `fn-rcl-reclaim-state' does so only for an octet tombstone, so the stored
-; payload stays an octet list.
+; After the flip (records-flip, 2026-09-27) a payload is a HANDLE into the
+; arena, so TOMB is the handle of the sealed tombstone bytes (the entry seals
+; them; the arena is append-only in this increment, so the reclaimed bytes
+; are released at the next reopen: a named deferral).  `fn-rcl-reclaim-state'
+; does so only for a handle, so the stored payload stays one.  Whether a
+; stored article is already a tombstone is read from its bytes by the entry
+; that holds the arena, never here.
 
 (defun fn-rcl-reclaim-articles (articles msgid tomb)
   (declare (xargs :guard t :verify-guards nil))
@@ -343,7 +348,7 @@
 
 (defun fn-rcl-reclaim-state (s msgid tomb)
   (declare (xargs :guard t :verify-guards nil))
-  (if (fn-octet-listp tomb)
+  (if (natp tomb)
       (fn-make-state (fn-state-groups s)
                      (fn-state-nexts s)
                      (fn-rcl-reclaim-articles (fn-state-articles s) msgid tomb)
@@ -411,7 +416,7 @@
   :hints (("Goal" :induct (fn-rcl-reclaim-articles xs m tomb)
                   :in-theory (enable fn-articles-below-nextsp)))))
 (local (defthm listp-of-reclaim
-  (implies (and (fn-article-listp g xs) (fn-octet-listp tomb))
+  (implies (and (fn-article-listp g xs) (natp tomb))
            (fn-article-listp g (fn-rcl-reclaim-articles xs m tomb)))
   :hints (("Goal" :induct (fn-rcl-reclaim-articles xs m tomb)
                   :in-theory (enable fn-article-listp fn-articlep)))))
@@ -424,13 +429,13 @@
 ; unchanged record path; these two say what it reaches.
 (encapsulate ()
 (local (defthm reclaim-state-fields
-  (implies (fn-octet-listp tomb)
+  (implies (natp tomb)
            (and (equal (fn-state-articles (fn-rcl-reclaim-state s m tomb))
                        (fn-rcl-reclaim-articles (fn-state-articles s) m tomb))
                 (equal (fn-state-fenced (fn-rcl-reclaim-state s m tomb))
                        (fn-state-fenced s))))))
 (local (defthm reclaim-state-of-make-state
-  (implies (fn-octet-listp tomb)
+  (implies (natp tomb)
            (equal (fn-rcl-reclaim-state (fn-make-state g n a x p f) m tomb)
                   (fn-make-state g n (fn-rcl-reclaim-articles a m tomb) x p f)))))
 ;  KEYSTONE (replay correspondence, every other record).  Acceptance never
@@ -443,7 +448,7 @@
                   (fn-rcl-reclaim-state
                    (fn-accept-prepare s generation msgid payload groups stamp)
                    m tomb)))
-  :hints (("Goal" :cases ((fn-octet-listp tomb))
+  :hints (("Goal" :cases ((natp tomb))
                   :in-theory (e/d (fn-accept-prepare)
                                   (fn-rcl-reclaim-state fn-rcl-reclaim-articles
                                    fn-statep)))

@@ -18,17 +18,24 @@
 (defconst *fn-sir-record*
   (fn-record-make 1 1 1 "<signed@example.invalid>" '(65 13 10) '("g")
                   "archive-signed" "subject-signed" "post-signed" 3 841000000))
-(make-event `(defconst *fn-sir-accept* ',(fn-hsig-authorized-article-event
+(make-event `(defconst *fn-sir-accept-wire* ',(fn-hsig-authorized-article-event
    1 1 1 0 (fn-stxk-snapshot *fn-sir-snapshot*)
    "<signed@example.invalid>" (fn-record-string-octets "subject-signed")
    (fn-record-encode-impl *fn-sir-record*) *fn-sir-principal* *fn-sir-keys*
    '(65 13 10) *fn-sir-signatures* *fn-sir-ml-key* :verified :verified)))
+; The retained row of the composite: the wire composite beside its article
+; interned (records-flip; books/held-record.lisp).  The test has no arena, so
+; the article is the plain held row at handle 0.
+(defconst *fn-sir-accept*
+  (fn-hstxa-make *fn-sir-accept-wire* (fn-held-plain *fn-sir-record* 0)))
 (defconst *fn-sir-retention*
   (fn-store-retention-event-make :undertake 2 2 2
                                  "forward-signed" "subject-signed" "custody" 5))
 (defconst *fn-sir-legacy*
-  (fn-record-make 3 3 3 "<later@example.invalid>" '(66 13 10) '("g")
-                  "archive-later" "subject-later" "post-later" 3 841000000))
+  (fn-held-plain
+   (fn-record-make 3 3 3 "<later@example.invalid>" '(66 13 10) '("g")
+                   "archive-later" "subject-later" "post-later" 3 841000000)
+   1))
 (defconst *fn-sir-history*
   (list *fn-sir-snapshot* *fn-sir-accept* *fn-sir-retention* *fn-sir-legacy*))
 (make-event `(defconst *fn-sir-identity* ',(fn-replay-identity *fn-sir-history*)))

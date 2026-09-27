@@ -19,11 +19,19 @@
 
 ; -----------------------------------------------------------------------------
 ; Article: (message-id payload requested-groups memberships archive-pin)
+;
+; The payload is a HANDLE (a natural) into the payload arena
+; (books/payload-arena.lisp), never an octet list: the retained article's
+; bytes cost one byte each (records-flip, 2026-09-27; PKT-635; the held record
+; books/held-record.lisp holds the same handle at its payload position).  What
+; the handle denotes is read through the arena by the entry that holds it;
+; this machine decides identity, groups, memberships and transactions and
+; never reads a byte.
 
 (fn-defrecord fn-article
   :constructor (fn-make-article msgid payload groups memberships pin stamp)
   :fields ((fn-article-msgid stringp)
-           (fn-article-payload fn-octet-listp)
+           (fn-article-payload natp)
            (fn-article-groups
             (fn-selection-validp (fn-article-groups x) configured))
            (fn-article-memberships
@@ -293,7 +301,7 @@
                       :exec (fn-ag-less (fn-pending-txid x) next-txid))))
            (fn-pending-generation natp)
            (fn-pending-msgid stringp)
-           (fn-pending-payload fn-octet-listp)
+           (fn-pending-payload natp)
            (fn-pending-groups
             (fn-selection-validp (fn-pending-groups x) configured))
            (fn-pending-memberships
@@ -410,7 +418,7 @@
             (consp (fn-state-pending s))
             (not (natp generation))
             (not (stringp msgid))
-            (not (fn-octet-listp payload))
+            (not (natp payload))
             (not (fn-record-stampp stamp))
             (not (fn-selection-validp groups (fn-state-groups s)))
             (fn-acceptedp msgid (fn-state-articles s)))
@@ -607,7 +615,7 @@
                 (null (fn-state-pending s))
                 (natp generation)
                 (stringp msgid)
-                (fn-octet-listp payload)
+                (natp payload)
                 (fn-record-stampp stamp)
                 (fn-selection-validp groups (fn-state-groups s))
                 (not (fn-acceptedp msgid (fn-state-articles s))))

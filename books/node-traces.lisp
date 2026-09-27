@@ -78,7 +78,7 @@
        (equal (car event) :prepare)
        (natp (fn-node-prepare-generation event))
        (stringp (fn-node-prepare-msgid event))
-       (fn-octet-listp (fn-node-prepare-payload event))
+       (natp (fn-node-prepare-payload event))
        (fn-string-listp (fn-node-prepare-groups event))
        (fn-no-duplicatesp (fn-node-prepare-groups event))
        (stringp (fn-node-prepare-obligation-id event))

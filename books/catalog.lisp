@@ -66,32 +66,8 @@
   (let ((pair (fn-cat-assoc group (fn-held-numbers h))))
     (if (consp pair) (cdr pair) nil)))
 
-(defun fn-held-with-numbers (h numbers)
-  (declare (xargs :guard t))
-  (fn-held-make (fn-record-sequence h) (fn-record-txid h) (fn-record-generation h)
-                (fn-record-msgid h) (fn-record-payload h) (fn-record-groups h)
-                (fn-record-obligation-id h) (fn-record-content-subject h)
-                (fn-record-release-evidence h) (fn-record-charge h)
-                (fn-record-stamp h) (fn-held-facts h) (fn-held-context h)
-                numbers (fn-held-withdrawn h)))
-
-(defun fn-held-with-withdrawn (h withdrawn)
-  (declare (xargs :guard t))
-  (fn-held-make (fn-record-sequence h) (fn-record-txid h) (fn-record-generation h)
-                (fn-record-msgid h) (fn-record-payload h) (fn-record-groups h)
-                (fn-record-obligation-id h) (fn-record-content-subject h)
-                (fn-record-release-evidence h) (fn-record-charge h)
-                (fn-record-stamp h) (fn-held-facts h) (fn-held-context h)
-                (fn-held-numbers h) withdrawn))
-
-(defun fn-held-with-context (h context)
-  (declare (xargs :guard t))
-  (fn-held-make (fn-record-sequence h) (fn-record-txid h) (fn-record-generation h)
-                (fn-record-msgid h) (fn-record-payload h) (fn-record-groups h)
-                (fn-record-obligation-id h) (fn-record-content-subject h)
-                (fn-record-release-evidence h) (fn-record-charge h)
-                (fn-record-stamp h) (fn-held-facts h) context
-                (fn-held-numbers h) (fn-held-withdrawn h)))
+; fn-held-with-numbers, fn-held-with-withdrawn and fn-held-with-context are
+; books/held-record.lisp (moved down for the store machine, records-flip).
 
 ; -----------------------------------------------------------------------------
 ; The logical model: the columns as functions of the list.
