@@ -346,6 +346,20 @@ configuration's own peer rows. `peer list` is a read, answered like
 owner, from the store opened without the exclusive writer lock. It can neither
 publish a configuration record nor take the lock away from the owner.
 
+A peer's feed can be limited to distributions (RFC 5537 section 3.6: an
+article whose Distribution header names none of them is not offered to that
+peer):
+
+```
+fn operator /etc/fn/fn.toml peer distributions far fn,local
+```
+
+The argument is a wildmat over the article's distribution names, compared
+without case; a second request replaces the first. A peer without one is fed
+every distribution, an article without a Distribution header is fed to every
+peer, and an article whose Distribution header is malformed is fed to no
+peer that has a filter. `*,!local` feeds everything except `local`.
+
 ### Status while the owner runs
 
 `operator CONFIG status`, `pins`, `obligations` and `peer list` print one

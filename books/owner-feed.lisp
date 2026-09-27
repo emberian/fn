@@ -51,6 +51,8 @@
 (include-book "peer-config")
 (include-book "article-fields")
 (include-book "identity-invariants")
+; PRF-237: the peer's distribution row's slot name (`peer distributions').
+(include-book "peer-carriage-rows")
 
 ; -----------------------------------------------------------------------------
 ; The peer names a configuration value holds
@@ -74,7 +76,16 @@
   (true-listp (fn-own-feed-peer-names rows)))
 
 ; -----------------------------------------------------------------------------
-; The table entry: (name record feed)
+; The table entry: (name record feed) or (name record feed dists)
+;
+; PRF-237 (PKT-675): DISTS is the peer's outbound Distribution filter, a
+; wildmat string read from its `outbound-distributions' configuration row
+; (`peer distributions NAME WILDMAT'), or nil when the peer names none.  An
+; entry without a filter keeps the three-element shape it always had
+; (`fn-own-feed-entry-scoped' with nil IS `fn-own-feed-entry'); every
+; transition that rebuilds an entry keeps its filter, and only
+; `fn-own-feed-reconfigure' sets it, from the configuration, as it does the
+; record.
 
 (defun fn-own-feed-entry (name record f)
   (declare (xargs :guard t))
@@ -96,8 +107,30 @@
 (defthm fn-own-feed-entry-feed-of-entry
   (equal (fn-own-feed-entry-feed (fn-own-feed-entry name record f)) f))
 
+(defun fn-own-feed-entry-dists (e)
+  (declare (xargs :guard t))
+  (fn-frame-item 3 e))
+(defun fn-own-feed-entry-scoped (name record f dists)
+  (declare (xargs :guard t))
+  (if dists (list name record f dists) (fn-own-feed-entry name record f)))
+
+(defthm fn-own-feed-entry-scoped-of-no-dists-by-definition
+  (equal (fn-own-feed-entry-scoped name record f nil)
+         (fn-own-feed-entry name record f)))
+(defthm fn-own-feed-entry-name-of-entry-scoped
+  (equal (fn-own-feed-entry-name (fn-own-feed-entry-scoped name record f d)) name))
+(defthm fn-own-feed-entry-record-of-entry-scoped
+  (equal (fn-own-feed-entry-record (fn-own-feed-entry-scoped name record f d)) record))
+(defthm fn-own-feed-entry-feed-of-entry-scoped
+  (equal (fn-own-feed-entry-feed (fn-own-feed-entry-scoped name record f d)) f))
+(defthm fn-own-feed-entry-dists-of-entry-scoped
+  (equal (fn-own-feed-entry-dists (fn-own-feed-entry-scoped name record f d)) d))
+(defthm fn-own-feed-entry-dists-of-entry
+  (equal (fn-own-feed-entry-dists (fn-own-feed-entry name record f)) nil))
+
 (in-theory (disable (:d fn-own-feed-entry) (:d fn-own-feed-entry-name)
-                    (:d fn-own-feed-entry-record) (:d fn-own-feed-entry-feed)))
+                    (:d fn-own-feed-entry-record) (:d fn-own-feed-entry-feed)
+                    (:d fn-own-feed-entry-dists) (:d fn-own-feed-entry-scoped)))
 
 ; The record half of an entry: the peer record the scope decision reads is
 ; THIS peer's, and it has an outbound half.  (A peer with no outbound half
@@ -131,6 +164,12 @@
        (fn-own-feed-feed-okp (fn-own-feed-entry-name e)
                              (fn-own-feed-entry-feed e))))
 
+; The filter is not part of an entry's well-formedness: any value is a
+; decision input (`fn-own-feed-distribution-admitsp' is total).
+(defthm fn-own-feed-entry-okp-of-entry-scoped
+  (equal (fn-own-feed-entry-okp (fn-own-feed-entry-scoped name record f d))
+         (fn-own-feed-entry-okp (fn-own-feed-entry name record f))))
+
 ; -----------------------------------------------------------------------------
 ; The table
 
@@ -157,11 +196,19 @@
   (declare (xargs :guard t))
   (fn-own-feed-entry-record (fn-own-feed-entry-of peer tbl)))
 
+; The filter of PEER's entry, or nil.
+(defun fn-own-feed-dists-of (peer tbl)
+  (declare (xargs :guard t))
+  (fn-own-feed-entry-dists (fn-own-feed-entry-of peer tbl)))
+
+; A put replaces the record and the feed and keeps the entry's filter.
 (defun fn-own-feed-put (peer record f tbl)
   (declare (xargs :guard t))
   (if (consp tbl)
       (if (equal (fn-own-feed-entry-name (car tbl)) peer)
-          (cons (fn-own-feed-entry peer record f) (cdr tbl))
+          (cons (fn-own-feed-entry-scoped peer record f
+                                          (fn-own-feed-entry-dists (car tbl)))
+                (cdr tbl))
         (cons (car tbl) (fn-own-feed-put peer record f (cdr tbl))))
     (list (fn-own-feed-entry peer record f))))
 
@@ -193,7 +240,13 @@
 
 (defthm fn-own-feed-entry-of-of-put-same
   (equal (fn-own-feed-entry-of peer (fn-own-feed-put peer record f tbl))
-         (fn-own-feed-entry peer record f)))
+         (fn-own-feed-entry-scoped peer record f (fn-own-feed-dists-of peer tbl))))
+
+(defthm fn-own-feed-dists-of-of-put
+  (equal (fn-own-feed-dists-of other (fn-own-feed-put peer record f tbl))
+         (fn-own-feed-dists-of other tbl)))
+
+(in-theory (disable fn-own-feed-dists-of))
 
 (defthm fn-own-feed-entry-of-of-put-other
   (implies (not (equal other peer))
@@ -455,12 +508,70 @@
                           (fn-own-feed-retire-one (car keys) peers tbl))
     tbl))
 
+; PRF-237 (PKT-675): the outbound Distribution filter a peer's rows name:
+; the wildmat of its first `outbound-distributions' row (single-valued,
+; books/peer-carriage-rows.lisp `fn-pcb-budget-slotp'), or nil when it has
+; none or the text is not a wildmat.
+(defun fn-own-feed-dists-of-rows (name peers)
+  (declare (xargs :guard t))
+  (let ((row (fn-cfg-peer-slot (fn-cfg-rows-with-key peers name)
+                               *fn-pcb-distributions-slot*)))
+    (if (and row (fn-cfg-wildmatp (fn-cfg-row-c row)))
+        (fn-cfg-row-c row)
+      nil)))
+
+; Every entry's filter, from the configuration, keeping its name, record and
+; feed.
+(defun fn-own-feed-scope-all (tbl peers)
+  (declare (xargs :guard t))
+  (if (consp tbl)
+      (cons (fn-own-feed-entry-scoped
+             (fn-own-feed-entry-name (car tbl))
+             (fn-own-feed-entry-record (car tbl))
+             (fn-own-feed-entry-feed (car tbl))
+             (fn-own-feed-dists-of-rows (fn-own-feed-entry-name (car tbl)) peers))
+            (fn-own-feed-scope-all (cdr tbl) peers))
+    nil))
+
 ; The table the owner holds for one configuration value.  Called at open and
 ; again after every (:set-peer ...) / (:remove-peer ...) delta.
 (defun fn-own-feed-reconfigure (tbl peers)
   (declare (xargs :guard t))
-  (fn-own-feed-install (fn-own-feed-peer-names peers) peers
-                       (fn-own-feed-retire (fn-own-feed-names tbl) peers tbl)))
+  (fn-own-feed-scope-all
+   (fn-own-feed-install (fn-own-feed-peer-names peers) peers
+                        (fn-own-feed-retire (fn-own-feed-names tbl) peers tbl))
+   peers))
+
+(defthm fn-own-feed-boundp-of-scope-all
+  (equal (fn-own-feed-boundp peer (fn-own-feed-scope-all tbl peers))
+         (fn-own-feed-boundp peer tbl)))
+
+(defthm fn-own-feed-tablep-of-scope-all
+  (implies (fn-own-feed-tablep tbl)
+           (fn-own-feed-tablep (fn-own-feed-scope-all tbl peers)))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-entry-okp)
+                                  (fn-own-feed-record-okp fn-own-feed-feed-okp
+                                   fn-own-feed-dists-of-rows)))))
+
+(defthm fn-own-feed-find-of-scope-all
+  (equal (fn-own-feed-find peer (fn-own-feed-scope-all tbl peers))
+         (fn-own-feed-find peer tbl))
+  :hints (("Goal" :in-theory (enable fn-own-feed-find))))
+
+(defthm fn-own-feed-record-of-of-scope-all
+  (equal (fn-own-feed-record-of peer (fn-own-feed-scope-all tbl peers))
+         (fn-own-feed-record-of peer tbl))
+  :hints (("Goal" :in-theory (enable fn-own-feed-record-of))))
+
+; Every bound peer's filter is the one its rows name.
+(defthm fn-own-feed-dists-of-scope-all
+  (equal (fn-own-feed-dists-of peer (fn-own-feed-scope-all tbl peers))
+         (if (fn-own-feed-boundp peer tbl)
+             (fn-own-feed-dists-of-rows peer peers)
+           nil))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-dists-of)
+                                  (fn-own-feed-dists-of-rows)))))
+
 
 ; Refreshing a bound peer's record keeps the entry well formed: the record
 ; half comes from the configuration and the feed half from the entry that was
@@ -521,7 +632,16 @@
 
 (defthm fn-own-feed-tablep-of-reconfigure
   (implies (fn-own-feed-tablep tbl)
-           (fn-own-feed-tablep (fn-own-feed-reconfigure tbl peers))))
+           (fn-own-feed-tablep (fn-own-feed-reconfigure tbl peers)))
+  :hints (("Goal" :in-theory (disable fn-own-feed-scope-all))))
+
+; A reconfiguration sets the filter of every peer it keeps from the rows.
+(defthm fn-own-feed-dists-of-reconfigure
+  (implies (fn-own-feed-boundp peer (fn-own-feed-reconfigure tbl peers))
+           (equal (fn-own-feed-dists-of peer (fn-own-feed-reconfigure tbl peers))
+                  (fn-own-feed-dists-of-rows peer peers)))
+  :hints (("Goal" :in-theory (disable fn-own-feed-dists-of-rows
+                                      fn-own-feed-install fn-own-feed-retire))))
 
 ; KEYSTONE.  A reconfiguration never loses queued or in-flight work: only an
 ; idle feed is retired, and only when the configuration stopped feeding it.
@@ -582,9 +702,11 @@
 (defun fn-own-feed-restart-all (tbl)
   (declare (xargs :guard t))
   (if (consp tbl)
-      (cons (fn-own-feed-entry (fn-own-feed-entry-name (car tbl))
-                               (fn-own-feed-entry-record (car tbl))
-                               (fn-feed-restart (fn-own-feed-entry-feed (car tbl))))
+      (cons (fn-own-feed-entry-scoped
+             (fn-own-feed-entry-name (car tbl))
+             (fn-own-feed-entry-record (car tbl))
+             (fn-feed-restart (fn-own-feed-entry-feed (car tbl)))
+             (fn-own-feed-entry-dists (car tbl)))
             (fn-own-feed-restart-all (cdr tbl)))
     nil))
 
@@ -613,9 +735,10 @@
 (local (defthm fn-own-feed-restart-keeps-the-entry
   (implies (fn-own-feed-entry-okp e)
            (fn-own-feed-entry-okp
-            (fn-own-feed-entry (fn-own-feed-entry-name e)
-                               (fn-own-feed-entry-record e)
-                               (fn-feed-restart (fn-own-feed-entry-feed e)))))
+            (fn-own-feed-entry-scoped (fn-own-feed-entry-name e)
+                                      (fn-own-feed-entry-record e)
+                                      (fn-feed-restart (fn-own-feed-entry-feed e))
+                                      d)))
   :hints (("Goal" :in-theory (e/d (fn-own-feed-entry-okp)
                                   (fn-own-feed-feed-okp fn-feedp
                                    fn-record-string-octets
@@ -697,12 +820,106 @@
   (let ((a (fn-own-feed-article-of octets)))
     (if (null a) nil (fn-af-path-field-value a))))
 
+;; ---------------------------------------------------------------------------
+;; PRF-237 (PKT-675): the article's Distribution, RFC 5536 section 3.2.4
+;;
+;;   distribution = "Distribution:" SP dist-list CRLF
+;;   dist-list    = *WSP dist-name *( [FWS] "," [FWS] dist-name ) *WSP
+;;   dist-name    = ALPHA / DIGIT *( ALPHA / DIGIT / "+" / "-" / "_" )
+;;
+;; read from the one parse `fn-own-feed-article-of' makes, through the
+;; parser's own field view (the unfolded value, FWS already WSP).
+;; <dist-name>s are case-insensitive, so each is folded to lower case here
+;; and the peer's wildmat is folded the same way where it is matched.  The
+;; answer is :absent (no Distribution field: "world", RFC 5536 section
+;; 3.2.4), :malformed (two fields, or a value outside the grammar), or the
+;; non-empty list of folded names.
+
+(defconst *fn-own-feed-distribution-name*
+  '(100 105 115 116 114 105 98 117 116 105 111 110))       ; "distribution"
+
+(defun fn-own-feed-dist-alnump (b)
+  (declare (xargs :guard t))
+  (and (natp b) (or (and (<= 48 b) (<= b 57))
+                    (and (<= 65 b) (<= b 90))
+                    (and (<= 97 b) (<= b 122)))))
+
+(defun fn-own-feed-dist-charp (b)
+  (declare (xargs :guard t))
+  (or (fn-own-feed-dist-alnump b) (equal b 43) (equal b 45) (equal b 95)))
+
+(defun fn-own-feed-dist-restp (bytes)
+  (declare (xargs :guard t))
+  (if (consp bytes)
+      (and (fn-own-feed-dist-charp (car bytes))
+           (fn-own-feed-dist-restp (cdr bytes)))
+    t))
+
+(defun fn-own-feed-dist-namep (bytes)
+  (declare (xargs :guard t))
+  (and (consp bytes)
+       (fn-own-feed-dist-alnump (car bytes))
+       (fn-own-feed-dist-restp (cdr bytes))))
+
+(defun fn-own-feed-fold (bytes)
+  (declare (xargs :guard t))
+  (if (consp bytes)
+      (cons (let ((b (car bytes)))
+              (if (and (natp b) (<= 65 b) (<= b 90)) (+ b 32) b))
+            (fn-own-feed-fold (cdr bytes)))
+    nil))
+
+;; The comma-separated pieces, each reversed back into order.
+(defun fn-own-feed-dist-split (bytes cur acc)
+  (declare (xargs :guard t))
+  (if (consp bytes)
+      (if (equal (car bytes) 44)
+          (fn-own-feed-dist-split (cdr bytes) nil
+                                  (cons (fn-path-reverse cur) acc))
+        (fn-own-feed-dist-split (cdr bytes) (cons (car bytes) cur) acc))
+    (fn-path-reverse (cons (fn-path-reverse cur) acc))))
+
+(defun fn-own-feed-dist-names-of-pieces (pieces)
+  (declare (xargs :guard t))
+  (if (consp pieces)
+      (let ((name (fn-path-trim (car pieces)))
+            (rest (fn-own-feed-dist-names-of-pieces (cdr pieces))))
+        (if (and (fn-own-feed-dist-namep name) (not (equal rest :malformed)))
+            (cons (fn-own-feed-fold name) rest)
+          :malformed))
+    nil))
+
+(defun fn-own-feed-dist-list (value)
+  (declare (xargs :guard t))
+  (let ((names (fn-own-feed-dist-names-of-pieces
+                (fn-own-feed-dist-split (fn-path-trim value) nil nil))))
+    (if (consp names) names :malformed)))
+
+(defun fn-own-feed-distributions-of (octets)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal"
+                                 :use fn-own-feed-article-of-is-syntax
+                                 :in-theory
+                                 (disable fn-own-feed-article-of-is-syntax
+                                          fn-own-feed-article-of)))))
+  (let ((a (fn-own-feed-article-of octets)))
+    (if (null a)
+        :absent
+      (let ((fields (fn-article-get-headers a *fn-own-feed-distribution-name*)))
+        (if (atom fields)
+            :absent
+          ; books/path.lisp's view: the trimmed unfolded value of the one
+          ; field, nil when the field is repeated.
+          (let ((value (fn-path-single-field-value
+                        a *fn-own-feed-distribution-name*)))
+            (if (consp value) (fn-own-feed-dist-list value) :malformed)))))))
+
 ; The parser stays SHUT below this line.  Opened, one goal about the feed
 ; table pays for `fn-article-parse', `fn-af-relayed-article-check' and the
 ; whole newsgroups grammar: the accept keystone went over two million steps
 ; before this (docs/proof-style.md sec. 9).
 (local (in-theory (disable fn-own-feed-article-of fn-own-feed-groups-of
-                           fn-own-feed-path-of)))
+                           fn-own-feed-path-of fn-own-feed-distributions-of)))
 
 ; -----------------------------------------------------------------------------
 ; The offer decision, RFC 5537 sec. 3.6
@@ -1276,6 +1493,76 @@
                     (nfix (fn-feed-max-queue (fn-feed-limits-of f)))))
              (fn-own-feed-target-capacityp (cdr names) tbl msgid)))
     t))
+
+;; ---------------------------------------------------------------------------
+;; PRF-237 (PKT-675): the per-peer Distribution decision, RFC 5537 section
+;; 3.6 paragraph 2: "An article SHOULD NOT be relayed unless the sending
+;; agent has been configured to supply ... at least one of the <dist-name>s
+;; in its Distribution header field (if present)."  A peer's filter is a
+;; wildmat (RFC 3977 section 4) over folded <dist-name>s.  Local policy, the
+;; three cases the RFC leaves open: a peer with no filter is fed every
+;; distribution; an article with no Distribution is fed to every peer (the
+;; field's absence means "world", RFC 5536 section 3.2.4); an article whose
+;; Distribution is malformed matches no filter.
+
+(defun fn-own-feed-dist-matchp (pattern name)
+  (declare (xargs :guard t))
+  (let ((r (fn-wildmat-match (fn-own-feed-fold (fn-record-string-octets pattern))
+                             name)))
+    (and (fn-wildmat-result-okp r) (fn-wildmat-result-value r) t)))
+
+(defun fn-own-feed-any-dist-matchp (pattern names)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (or (fn-own-feed-dist-matchp pattern (car names))
+          (fn-own-feed-any-dist-matchp pattern (cdr names)))
+    nil))
+
+(defun fn-own-feed-distribution-admitsp (pattern dists)
+  (declare (xargs :guard t))
+  (cond ((null pattern) t)
+        ((equal dists :absent) t)
+        ((consp dists) (fn-own-feed-any-dist-matchp pattern dists))
+        (t nil)))
+
+;; The names of NAMES whose peer's filter admits DISTS, in order.  Host:
+;; fn-own-submission-targets (books/owner.lisp), the intent and the durable
+;; enqueue.
+(defun fn-own-feed-distribution-targets (names tbl dists)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (if (fn-own-feed-distribution-admitsp (fn-own-feed-dists-of (car names) tbl)
+                                            dists)
+          (cons (car names)
+                (fn-own-feed-distribution-targets (cdr names) tbl dists))
+        (fn-own-feed-distribution-targets (cdr names) tbl dists))
+    nil))
+
+;; KEYSTONE.  The filter is exactly the decision: a name survives it iff it
+;; was offered and its peer's filter admits the article's distributions.
+(defthm fn-own-feed-distribution-targets-member
+  (iff (member-equal name (fn-own-feed-distribution-targets names tbl dists))
+       (and (member-equal name names)
+            (fn-own-feed-distribution-admitsp (fn-own-feed-dists-of name tbl)
+                                              dists)))
+  :hints (("Goal" :in-theory (disable fn-own-feed-distribution-admitsp
+                                      fn-own-feed-dists-of))))
+
+(defthm fn-own-feed-distribution-targets-true-listp
+  (true-listp (fn-own-feed-distribution-targets names tbl dists)))
+
+;; The decision's cases, unfolded.
+(defthm fn-own-feed-distribution-admitsp-unfolds
+  (and (fn-own-feed-distribution-admitsp nil dists)
+       (fn-own-feed-distribution-admitsp pattern :absent)
+       (implies pattern
+                (not (fn-own-feed-distribution-admitsp pattern :malformed)))
+       (implies (and pattern (consp dists))
+                (iff (fn-own-feed-distribution-admitsp pattern dists)
+                     (fn-own-feed-any-dist-matchp pattern dists))))
+  :rule-classes nil)
+
+(in-theory (disable fn-own-feed-distribution-admitsp))
 
 (defun fn-own-feed-new-targets (names tbl msgid)
   (declare (xargs :guard t))

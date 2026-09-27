@@ -776,6 +776,30 @@ authored submissions (the hybrid-signed author path and the BP application
 path) store and feed exact octets without Path, and a peer fn node requiring
 one would refuse them (PKT-674).
 
+### Per-peer Distribution filtering (NNT-051)
+
+NNT-051: An article whose Distribution names no distribution a peer's feed is configured for is not fed to that peer
+
+RFC 5537 section 3.6 paragraph 2: an article SHOULD NOT be relayed unless
+the sending agent is configured to supply at least one of the <dist-name>s
+in its Distribution header field (if present). A peer's feed configuration
+names its distributions with `peer distributions NAME WILDMAT` (one
+single-valued `outbound-distributions` row of the peer's group, published
+through the existing `:extend-peer` plan: `:add-peer-rows`, then
+`:remove-peer-rows` of the row it replaces; no new delta kind). The wildmat
+(RFC 3977 section 4) is matched against each <dist-name> of the article
+(RFC 5536 section 3.2.4 grammar, case-folded, as <dist-name>s are
+case-insensitive). The decision is ACL2's: books/owner-feed.lisp
+`fn-own-feed-distribution-admitsp`, applied per peer by
+`fn-own-feed-distribution-targets` inside `fn-own-submission-targets`
+(the intent and the durable enqueue), with the filter carried in the feed
+table entry and set from the rows at every reconfiguration. Local policy
+where the RFC is silent: a peer with no row is fed every distribution; an
+article with no Distribution is fed to every peer (absence means "world");
+an article whose Distribution is malformed (two fields, an empty or
+ill-formed name) matches no filter. `local` has no built-in meaning here:
+`peer distributions far *,!local` keeps it home. PRF-237.
+
 ## 3. The outbound feed machine
 
 ### 3.0.1 Proposed versioned TLS transport profile

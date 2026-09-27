@@ -7566,6 +7566,31 @@
       ]
     },
     {
+      "id": "PRF-237",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-submission-targets-respect-the-distribution",
+          "note": "KEYSTONE over the host-called fn-own-submission-targets. Witnesses in tests/acl2/owner-tests.lisp (PRF-237 section): positive, filter-removal, queue, scope and in-flight literals."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-submission-targets-keep-an-admitted-peer",
+          "note": "KEYSTONE, the other direction. Witnesses in tests/acl2/owner-tests.lisp (PRF-237 section): positive, filter-removal, queue, scope and in-flight literals."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-distribution-targets-member",
+          "note": "KEYSTONE: the per-peer filter is exactly fn-own-feed-distribution-admitsp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-dists-of-reconfigure",
+          "note": "The filter is the one the peer's outbound-distributions row names; the binding hypothesis's removal witness is in tests/acl2/owner-tests.lisp."
+        }
+      ]
+    },
+    {
       "id": "PRF-210",
       "events": [
         {

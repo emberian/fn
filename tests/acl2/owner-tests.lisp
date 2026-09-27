@@ -1949,6 +1949,9 @@
                                (fn-record-string-octets
                                 (fn-cfg-peer-path-identity rec))))
          (not (equal (fn-own-sub-origin sub) name))
+         (fn-own-feed-distribution-admitsp
+          (fn-own-feed-dists-of name tbl)
+          (fn-own-feed-distributions-of octets))
          (not (consp (fn-feed-find (fn-own-sub-msgid sub)
                                    (fn-feed-queue (fn-own-feed-find name tbl)))))
          t)))
@@ -2059,3 +2062,170 @@
 (assert-event (null (fn-own-inflight (fn-own-feeds-reconfigure *own-after-post* *own-out-cfg*))))
 (assert-event (null (fn-own-submission-targets
                      (fn-own-feeds-reconfigure *own-after-post* *own-out-cfg*))))
+
+; -----------------------------------------------------------------------------
+; PRF-237 (PKT-675): per-peer Distribution filtering, RFC 5536 section 3.2.4
+; and RFC 5537 section 3.6 paragraph 2, over the function the host calls
+; (fn-own-submission-targets: the intent at host/owner-host.lisp
+; fn-owner-submission-intent and the durable enqueue).
+
+; The peer "out" of *own-out-cfg* with the row `peer distributions out fn'
+; writes (books/native-admin-peer.lisp), and the same peer without it.
+(defconst *own-dist-row*
+  (fn-cfg-row-make "out" *fn-pcb-distributions-slot* "fn" 0))
+(defconst *own-dist-cfg*
+  (fn-config-replay 0 510
+                    (list (fn-cfg-record-make
+                           0 0 1
+                           (append *fn-cfg-default-change*
+                                   (list (fn-cfg-set-policy
+                                          "path-identity" "own.example")
+                                         (fn-cfg-set-peer
+                                          "out"
+                                          (append (fn-cfg-peer-rows *own-out-peer-record*)
+                                                  (list *own-dist-row*)))))
+                           *fn-cfg-default-stamp*))))
+(assert-event (fn-cfgp *own-dist-cfg*))
+; The typed record is unchanged by the extension row.
+(assert-event (equal (fn-cfg-peer-find "out" (fn-cfg-peers (fn-cfg-value *own-dist-cfg*)))
+                     *own-out-peer-record*))
+(defun own-dist-article (dist)
+  (append (fn-nntp-string-octets "From: cli@example.invalid") '(13 10)
+          (fn-nntp-string-octets "Subject: distribution") '(13 10)
+          (fn-nntp-string-octets "Newsgroups: fn.letters") '(13 10)
+          (fn-nntp-string-octets "Message-ID: <cancel@example.invalid>") '(13 10)
+          (if dist
+              (append (fn-nntp-string-octets (string-append "Distribution:" dist))
+                      '(13 10))
+            nil)
+          '(13 10)
+          (fn-nntp-string-octets "A distributed article.") '(13 10)))
+(defun own-dist-taken (cfg dist)
+  (own-local-taken cfg (list (fn-nntp-string-octets "fn.letters"))
+                   (own-dist-article dist)))
+
+; The article's own Distribution, read once from the parse.
+(assert-event (equal (fn-own-feed-distributions-of (own-dist-article " fn"))
+                     (list (fn-nntp-string-octets "fn"))))
+(assert-event (equal (fn-own-feed-distributions-of (own-dist-article " US , Fn_x+1"))
+                     (list (fn-nntp-string-octets "us") (fn-nntp-string-octets "fn_x+1"))))
+(assert-event (equal (fn-own-feed-distributions-of (own-dist-article nil)) :absent))
+(assert-event (equal (fn-own-feed-distributions-of (own-dist-article " fn,,us")) :malformed))
+(assert-event (equal (fn-own-feed-distributions-of (own-dist-article " -fn")) :malformed))
+(assert-event (equal (fn-own-feed-distributions-of (own-dist-article " fn us")) :malformed))
+; The decision's cases (fn-own-feed-distribution-admitsp-unfolds).
+(assert-event (fn-own-feed-distribution-admitsp nil :malformed))
+(assert-event (fn-own-feed-distribution-admitsp "fn" :absent))
+(assert-event (not (fn-own-feed-distribution-admitsp "fn" :malformed)))
+(assert-event (fn-own-feed-distribution-admitsp "FN" (list (fn-nntp-string-octets "fn"))))
+(assert-event (fn-own-feed-distribution-admitsp "*,!local" (list (fn-nntp-string-octets "world"))))
+(assert-event (not (fn-own-feed-distribution-admitsp "*,!local" (list (fn-nntp-string-octets "local")))))
+
+; The table the owner builds from the configuration carries the filter.
+(defconst *own-dist-fn* (own-dist-taken *own-dist-cfg* " fn"))
+(assert-event (equal (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-fn*)) "fn"))
+(assert-event (fn-own-feed-tablep (fn-own-feeds *own-dist-fn*)))
+
+; KEYSTONE fn-own-submission-targets-respect-the-distribution and
+; fn-own-submission-targets-keep-an-admitted-peer, positive witness: every
+; literal of the antecedent and the conclusion.
+(defun own-dist-antecedent (o name)
+  (let* ((sub (fn-own-inflight o)) (tbl (fn-own-feeds o)))
+    (and sub
+         (member-equal name (fn-own-feed-targets
+                             tbl (fn-own-sub-origin sub) (fn-own-sub-feed-groups sub)
+                             (fn-own-feed-path-of (fn-own-sub-octets sub))))
+         (fn-own-feed-distribution-admitsp
+          (fn-own-feed-dists-of name tbl)
+          (fn-own-feed-distributions-of (fn-own-sub-octets sub)))
+         (not (consp (fn-feed-find (fn-own-sub-msgid sub)
+                                   (fn-feed-queue (fn-own-feed-find name tbl)))))
+         t)))
+(assert-event (own-dist-antecedent *own-dist-fn* "out"))
+(assert-event (equal (fn-own-submission-targets *own-dist-fn*) '("out")))
+; Two distributions, one of them fn: still fed.
+(defconst *own-dist-two* (own-dist-taken *own-dist-cfg* " us,fn"))
+(assert-event (own-dist-antecedent *own-dist-two* "out"))
+(assert-event (equal (fn-own-submission-targets *own-dist-two*) '("out")))
+; No Distribution: "world", fed.
+(defconst *own-dist-none* (own-dist-taken *own-dist-cfg* nil))
+(assert-event (equal (fn-own-submission-targets *own-dist-none*) '("out")))
+
+; Hypothesis removal for keep-an-admitted-peer: the filter literal.  An
+; article whose Distribution the peer's filter does not name: every other
+; literal holds, the filter literal fails, and the conclusion fails; this is
+; also the reachable witness that the filter removes a peer the scope
+; decision names.
+(defconst *own-dist-world* (own-dist-taken *own-dist-cfg* " world"))
+(assert-event (member-equal "out" (fn-own-feed-targets
+                                   (fn-own-feeds *own-dist-world*) nil
+                                   (fn-own-sub-feed-groups (fn-own-inflight *own-dist-world*))
+                                   (fn-own-feed-path-of (own-sub-octets-of *own-dist-world*)))))
+(assert-event (not (consp (fn-feed-find (fn-own-sub-msgid (fn-own-inflight *own-dist-world*))
+                                        (fn-feed-queue (fn-own-feed-find "out" (fn-own-feeds *own-dist-world*)))))))
+(must-fail (assert-event (fn-own-feed-distribution-admitsp
+                          (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-world*))
+                          (fn-own-feed-distributions-of (own-sub-octets-of *own-dist-world*)))))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-world*))))
+; A malformed Distribution matches no filter.
+(defconst *own-dist-bad* (own-dist-taken *own-dist-cfg* " fn,,us"))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-bad*))))
+; The same article without the row: no filter, fed (the filter is the row's).
+(defconst *own-dist-world-unfiltered* (own-dist-taken *own-out-cfg* " world"))
+(assert-event (null (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-world-unfiltered*))))
+(assert-event (equal (fn-own-submission-targets *own-dist-world-unfiltered*) '("out")))
+; The queue literal: once "out" holds the Message-ID the conclusion fails
+; though the filter admits it.
+(defconst *own-dist-held*
+  (fn-own-with-feeds *own-dist-fn* (fn-own-feed-durable *own-dist-fn*
+                                                       (fn-own-inflight *own-dist-fn*))))
+(assert-event (fn-own-feed-distribution-admitsp
+               (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-held*))
+               (fn-own-feed-distributions-of (own-sub-octets-of *own-dist-held*))))
+(must-fail (assert-event (own-dist-antecedent *own-dist-held* "out")))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-held*))))
+; The scope literal: "q" is no peer of the table.
+(must-fail (assert-event (own-dist-antecedent *own-dist-fn* "q")))
+(assert-event (not (member-equal "q" (fn-own-submission-targets *own-dist-fn*))))
+; The in-flight literal: nothing in flight, no target.
+(assert-event (null (fn-own-submission-targets
+                     (fn-own-feeds-reconfigure *own-after-post* *own-dist-cfg*))))
+
+; The PKT-400 keystone's distribution literal: a control article whose
+; Distribution the filter does not name.  Every other literal is the one
+; witness A checks; the omitted one fails and so does the conclusion.
+(defconst *own-dist-cancel*
+  (own-local-taken *own-dist-cfg* *own-cancel-filed*
+                   (append (fn-nntp-string-octets "Distribution: world") '(13 10)
+                           (own-article-octets nil "fn.letters" t))))
+(assert-event (equal (car (fn-own-feed-control-of (own-sub-octets-of *own-dist-cancel*)))
+                     :control))
+(assert-event (fn-own-feed-any-matchp "fn.*" (fn-own-feed-groups-of
+                                             (own-sub-octets-of *own-dist-cancel*))))
+(must-fail (assert-event (own-pkt400-antecedent *own-dist-cancel* "out")))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-dist-cancel*))))
+
+; fn-own-feed-dists-of-reconfigure: a peer the reconfiguration binds carries
+; its rows' filter; without the binding hypothesis the conclusion fails (a
+; peer whose rows name a filter but that has no outbound half has no entry).
+(defconst *own-dist-peers* (fn-cfg-peers (fn-cfg-value *own-dist-cfg*)))
+(assert-event (fn-own-feed-boundp "out" (fn-own-feed-reconfigure nil *own-dist-peers*)))
+(assert-event (equal (fn-own-feed-dists-of "out" (fn-own-feed-reconfigure nil *own-dist-peers*))
+                     (fn-own-feed-dists-of-rows "out" *own-dist-peers*)))
+(defconst *own-dist-inbound-peers*
+  (list (fn-cfg-row-make "in" "path-identity" "in.example" 0)
+        (fn-cfg-row-make "in" *fn-pcb-distributions-slot* "fn" 0)))
+(assert-event (equal (fn-own-feed-dists-of-rows "in" *own-dist-inbound-peers*) "fn"))
+(must-fail (assert-event (fn-own-feed-boundp "in" (fn-own-feed-reconfigure nil *own-dist-inbound-peers*))))
+(must-fail (assert-event (equal (fn-own-feed-dists-of "in" (fn-own-feed-reconfigure nil *own-dist-inbound-peers*))
+                                (fn-own-feed-dists-of-rows "in" *own-dist-inbound-peers*))))
+; A second `peer distributions' request replaces the first (single-valued).
+(defconst *own-dist-row-2* (fn-cfg-row-make "out" *fn-pcb-distributions-slot* "us" 0))
+(assert-event (equal (fn-own-feed-dists-of-rows
+                      "out" (fn-pcb-extend-rows (fn-cfg-rows-with-key *own-dist-peers* "out")
+                                                (list *own-dist-row-2*)))
+                     "us"))
+; A put and a restart keep the filter.
+(assert-event (equal (fn-own-feed-dists-of "out" (fn-own-feed-restart-all (fn-own-feeds *own-dist-fn*)))
+                     "fn"))
+(assert-event (equal (fn-own-feed-dists-of "out" (fn-own-feeds *own-dist-held*)) "fn"))

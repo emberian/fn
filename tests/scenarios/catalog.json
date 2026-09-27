@@ -4383,6 +4383,35 @@
       ]
     },
     {
+      "id": "SCN-163",
+      "title": "Per-peer Distribution filtering: an article whose Distribution the peer's filter does not name is not fed to that peer",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_feed_distribution_filter"
+        ],
+        "native": true,
+        "record": "planning/evidence/transit-hygiene-2026-09-27.md"
+      },
+      "requirements": [
+        "NNT-051"
+      ],
+      "steps": [
+        "Operator: peer distributions NAME fn on an outbound peer.",
+        "A local POST with Distribution: world, one with Distribution: fn, and one with none."
+      ],
+      "evidence": [
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "the peer receives the fn and the unmarked articles",
+        "the peer never receives the world article"
+      ]
+    },
+    {
       "id": "SCN-141",
       "title": "A friend cancels their own unsigned post with RFC 8315 Cancel-Lock/Cancel-Key (as tin writes them): gone from ARTICLE and OVER on their node and on two peers in either arrival order, kept gone after SIGKILL; another login's cancel with its own key is filed and withdraws nothing",
       "milestone": "M4",

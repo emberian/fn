@@ -248,6 +248,18 @@ decoded as source-address for durable command compatibility."
              :accepted nil :extend-peer
              (fn-record-string-octets (nth 2 words)) 0 nil rows)
           (fn-native-admin-result :refused :pull nil nil 0 nil nil))))
+     ; PRF-237 (PKT-675): `peer distributions NAME WILDMAT', the peer's
+     ; outbound Distribution filter (books/owner-feed.lisp
+     ; `fn-own-feed-distribution-admitsp'); one single-valued row, so a
+     ; second request replaces the first.
+     ((equal (nth 1 words) "distributions")
+      (if (and (equal (len words) 4) (fn-cfg-wildmatp (nth 3 words)))
+          (fn-native-admin-result
+           :accepted nil :extend-peer
+           (fn-record-string-octets (nth 2 words)) 0 nil
+           (list (fn-cfg-row-make (nth 2 words) *fn-pcb-distributions-slot*
+                                  (nth 3 words) 0)))
+        (fn-native-admin-result :refused :distributions nil nil 0 nil nil)))
      ((equal (nth 1 words) "carries")
       (let ((rows (fn-native-admin-carries-rows (nth 2 words)
                                                 (nthcdr 3 words))))

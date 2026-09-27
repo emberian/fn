@@ -2045,6 +2045,10 @@
         (append (true-list-fix base) ctl)
       base)))
 
+; The peers the in-flight submission is offered to: the scope decision
+; (fn-own-feed-targets), then each peer's Distribution filter (PRF-237,
+; fn-own-feed-distribution-targets over the article's own Distribution),
+; then the peers whose queue does not already hold the Message-ID.
 (defun fn-own-submission-targets (o)
   (declare (xargs :guard t))
   (let ((sub (fn-own-inflight o)))
@@ -2053,10 +2057,12 @@
       (let* ((tbl (fn-own-feeds o))
              (msgid (fn-own-sub-msgid sub))
              (octets (fn-own-sub-octets sub))
-             (targets (fn-own-feed-targets
-                       tbl (fn-own-sub-origin sub)
-                       (fn-own-sub-feed-groups sub)
-                       (fn-own-feed-path-of octets))))
+             (targets (fn-own-feed-distribution-targets
+                       (fn-own-feed-targets
+                        tbl (fn-own-sub-origin sub)
+                        (fn-own-sub-feed-groups sub)
+                        (fn-own-feed-path-of octets))
+                       tbl (fn-own-feed-distributions-of octets))))
         (fn-own-feed-new-targets targets tbl msgid)))))
 
 (defun fn-own-submission-intent-result (o evidence generation txid)

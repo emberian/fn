@@ -3948,6 +3948,29 @@
         "planning/evidence/transit-hygiene-2026-09-27.md"
       ],
       "implementation_note": "RFC 5537 section 3.6 step 2 (MUST reject beyond 24 hours; MAY use a smaller margin) is an RFC requirement; step 4 (SHOULD reject without the mandatory fields; MAY reject invalid contents) is RFC guidance fn follows for the date and a present Path; requiring Path is local policy, off by default (PKT-674)."
+    },
+    {
+      "id": "NNT-051",
+      "title": "An article whose Distribution names no distribution a peer's feed is configured for is not fed to that peer",
+      "specification": "specs/peering.md#per-peer-distribution-filtering-nnt-051",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-237"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/owner-feed.lisp",
+        "books/owner-feed-subject.lisp",
+        "books/native-admin-peer.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.6 paragraph 2 is RFC guidance (SHOULD NOT relay) fn follows per peer; the three cases the RFC leaves open (no filter configured, no Distribution field, a malformed Distribution) are local policy, stated in the specification."
     }
   ]
 }

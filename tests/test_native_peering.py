@@ -926,3 +926,53 @@ class NativePeeringTests(unittest.TestCase):
             "identical": article == served,
             "identity": self.verify_process_identity(source),
         }, sort_keys=True))
+
+    def test_feed_distribution_filter(self):
+        """PRF-237 / SCN-163 (RFC 5537 section 3.6 paragraph 2): with `peer
+        distributions NAME fn`, an article whose Distribution is world is not
+        fed to that peer; one whose Distribution is fn, and one with no
+        Distribution, are."""
+        peer = ScriptedTransitPeer("203 streaming permitted")
+        self.addCleanup(peer.close)
+        source = self.initialize("dist-source", free_port())
+        target = {"name": "dist-peer", "port": peer.port}
+        self.configure_peer(source, target)
+        self.command([IMAGE, "--fn", "operator", source["config"], "peer",
+                      "distributions", target["name"], "fn"])
+        self.start(source)
+        cases = [("world", "Distribution: world\r\n"),
+                 ("fn", "Distribution: FN\r\n"),
+                 ("none", "")]
+        ids = {}
+        for marker, header in cases:
+            message_id = "<dist-{}@example.invalid>".format(marker)
+            ids[marker] = message_id
+            payload = source["root"] / ("dist-" + marker + ".article")
+            payload.write_bytes((
+                "From: sender@example.invalid\r\n"
+                "Newsgroups: fn.test\r\n"
+                "Subject: distribution {}\r\n"
+                "Date: Mon, 21 Sep 2026 12:00:00 +0000\r\n"
+                "{}"
+                "Message-ID: {}\r\n\r\n{}\r\n").format(
+                    marker, header, message_id, marker).encode("ascii"))
+            self.command([IMAGE, "--fn", "operator", source["config"], "post",
+                          "--message-id", message_id, "--payload", payload,
+                          "--group", "fn.test"])
+        for marker in ("world", "fn", "none"):
+            self.assertIsNotNone(self.await_article(source, ids[marker]), marker)
+        for marker in ("fn", "none"):
+            got = peer.await_article(ids[marker])
+            self.assertIsNotNone(got, "{} never reached the peer; commands={}".format(
+                marker, peer.commands))
+        with peer.lock:
+            commands = list(peer.commands)
+            received = sorted(peer.articles)
+        self.assertNotIn(ids["world"], received, commands)
+        self.assertFalse([c for _, c in commands if ids["world"] in c], commands)
+        self.assertIsNone(source["process"].poll())
+        print("NATIVE-PEERING-WITNESS " + json.dumps({
+            "kind": "feed-distribution-filter-prf-237",
+            "commands": commands, "received": received,
+            "identity": self.verify_process_identity(source),
+        }, sort_keys=True))

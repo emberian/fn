@@ -8012,6 +8012,37 @@
       ]
     },
     {
+      "id": "PRF-237",
+      "title": "The outbound feed offers an article only to peers whose Distribution filter admits the article's Distribution",
+      "statement": "books/owner-feed-subject.lisp over fn-own-submission-targets (books/owner.lisp; host/owner-host.lisp fn-owner-submission-intent calls fn-own-submission-intent-records, which names it, and the durable enqueue fn-own-feed-durable folds it): KEYSTONE fn-own-submission-targets-respect-the-distribution, every target's filter (fn-own-feed-dists-of, the wildmat of its outbound-distributions row, set at fn-own-feed-reconfigure, fn-own-feed-dists-of-reconfigure) admits the in-flight article's Distribution (fn-own-feed-distributions-of, RFC 5536 section 3.2.4, case-folded) under fn-own-feed-distribution-admitsp; KEYSTONE fn-own-submission-targets-keep-an-admitted-peer, the filter removes nothing else (a peer the scope decision names, whose filter admits the article and whose queue lacks the Message-ID, is a target); books/owner-feed.lisp KEYSTONE fn-own-feed-distribution-targets-member (the filter is exactly the decision). The PKT-400 keystone fn-own-submission-offers-a-control-article-under-its-newsgroups-and-filing-group gains the distribution literal. RFC 5537 section 3.6 paragraph 2; local policy: no filter feeds everything, no Distribution is world, a malformed Distribution matches no filter.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-051"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-feed.lisp",
+        "books/owner-feed-subject.lisp",
+        "books/owner.lisp",
+        "books/owner-intent-carried.lisp",
+        "books/peer-carriage-rows.lisp",
+        "books/native-admin-peer.lisp",
+        "tests/acl2/owner-tests.lisp",
+        "tests/acl2/native-admin-tests.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "progress_note": "Lane transit-hygiene-2 2026-09-27.",
+      "events": [
+        "fn-own-submission-targets-respect-the-distribution",
+        "fn-own-submission-targets-keep-an-admitted-peer",
+        "fn-own-feed-distribution-targets-member",
+        "fn-own-feed-dists-of-reconfigure"
+      ]
+    },
+    {
       "id": "PRF-210",
       "title": "A cancel's authority is exactly a granted signed canceller or the poster: an unsigned cancel or Supersedes withdraws its target exactly when one of its RFC 8315 Cancel-Key entries opens one of the target's sha256 Cancel-Locks; the octets the owner stores for an account's POST carry exactly one Cancel-Lock keyed by that account under an HKDF purpose key, outside the D25 source",
       "statement": "Withdrawal (unchanged): over fn-ctl-refresh-withdrawals / fn-ctl-journal-withdrawals, the record of a cause withdraws a target exactly when the cause names another target and either a verified principal P signed it or P's grants cover its groups, or no principal is verified and a Cancel-Key K of the cause has Base64(SHA-256(K)) among the target's sha256 Cancel-Locks (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster; fn-ctl-verified-cause-ignores-its-keys). Stored octets: books/owner-served-invariants.lisp fn-own-sub-stored-octets CFG SUB RING (host/owner-host.lisp fn-owner-take; the completion gate compares the same function): for a served submission by account A (fn-own-sub-account, recorded by fn-own-finish-read from the session subject) with a key ring installed (fn-ns-ringp), unsigned and with no poster Cancel-Lock, the stored octets are `Cancel-Lock: sha256:Base64(SHA-256(K))` CRLF, then on a cancel `Cancel-Key:` with one key per retained epoch, then the injected octets unchanged, K = Base64(HMAC-SHA256(key, hex(A) || MSGID)) with key the HKDF-SHA256 purpose key of the current epoch (info fn/cancel-lock/v1, salt the node identity) (fn-own-stored-octets-carry-the-account-lock, fn-cl-served-payload-writes-one-account-lock). D25: the projection fn-cll-skip that books/poster-bytes.lisp reads both compared payloads through gives the injected octets for every ring and account (fn-own-stored-octets-keep-the-injected-octets, fn-cl-served-payload-projects-to-the-injected-octets, fn-cll-skip-of-the-generated-lines), so a same-source retry by any account or key epoch is :duplicate and a different source :conflict at fn-rcl-existing-action (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored, fn-cld-a-changed-source-is-a-conflict-whatever-the-account). Rotation: a cancel's keys open a lock made under any retained epoch (fn-cl-ring-keys-open-every-retained-lock). Exactly the account's key opens its lock up to the stated collision (fn-cl-account-key-opens-exactly-its-lock). Derivation: distinct info labels never expand the same HKDF input (fn-ns-expand-input-separates-info); the key file round-trips (fn-ns-file-parse-of-render). Not theorems: that the written line parses back as the entry (teeth on parsed stored octets); that another account's key opens nothing (a SHA-256 collision of two HMAC outputs under a key the forger does not hold, about 2^128 generic work); HMAC/HKDF pseudorandomness.",
