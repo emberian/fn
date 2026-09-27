@@ -123,7 +123,7 @@ STORE_NODE_HOST_FINDINGS = []
 # The store-node host's duplicate verdict (fn-store-existing-action) is no
 # finding: host/store-node-host.lisp includes books/store-reclaim and
 # books/acceptance-payload-ref itself (the Python bridge loads that host file
-# alone).  fn-rcl-existing-action was retired (PKT-EG-4).
+# alone).  fn-rcl-existing-action was retired (PKT-860).
 # host/owner-host.lisp no longer names fn-shb-subject-id: the served POST calls
 # the guard-verified fn-shb-subject-id-bounded from host/native/io.lisp
 # (qual-e747dbcc A4), outside the `ld` closure this check reads.

@@ -547,7 +547,7 @@
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE fn-stx-index-of-store-without-a-keyring (books/stx-index.lisp,
-; PKT-EG-3): with no keyring the index of ANY article list is empty, so the
+; PKT-859): with no keyring the index of ANY article list is empty, so the
 ; keyring-less opens build (fn-stx-index-empty) and never walk the retained
 ; articles.  Witness: the signed article (its octets verify under
 ; *rft-keyring*) and a retained article whose payload is a HANDLE.

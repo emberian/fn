@@ -168,7 +168,7 @@
 ; over ALPHA of the Store's articles.  MSGID is the Store's string key; the
 ; injection inverse reads the Message-ID line's octets, which are its codes.
 ; The store-shaped twin fn-pb-existing-action compared the offered octets
-; with a handle and was retired (PKT-EG-4, lane entry-guards-2).
+; with a handle and was retired (PKT-860, lane entry-guards-2).
 (fn-payload-kind fn-pb-action-over :wire "the verdict over an octet-model article list (alpha)")
 (defun fn-pb-action-over (msgid payload groups articles)
   (declare (xargs :guard t))

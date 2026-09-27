@@ -9,7 +9,7 @@
 ; logical value whenever the value is an octet list (the verdict over an
 ; article list below, `ost-pbb-action-over', is D25's `fn-pb-action-over'
 ; with that test: the store-shaped twin fn-pbb-existing-action was retired,
-; PKT-EG-4).  Each theorem gets a
+; PKT-860).  Each theorem gets a
 ; ground positive witness asserting its complete antecedent and conclusion,
 ; and for each hypothesis a witness on which every retained hypothesis
 ; holds, the omitted one fails, and the conclusion fails.  The exec path is

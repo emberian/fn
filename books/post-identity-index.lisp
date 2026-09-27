@@ -5,7 +5,7 @@
 ; tests walked a list of N entries with EQUAL:
 ;
 ;   1. the buffer verdict (then fn-rclb-existing-action, retired since,
-;      PKT-EG-4) found the held article with fn-find-article over the store
+;      PKT-860) found the held article with fn-find-article over the store
 ;      node's article list.  host/owner-host.lisp
 ;      fn-owner-existing-action-buffer and fn-owner-prepare-buffer called it,
 ;      both from host/native/owner.lisp fnn-owner-attempt: twice per POST.

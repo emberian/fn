@@ -1058,7 +1058,7 @@
                     fn-pbb-path-agent-is-pb-path-agent))
 
 ; The buffer verdict over a whole store (fn-pbb-existing-action) was a
-; pre-flip twin comparing with the held handle and was retired (PKT-EG-4):
+; pre-flip twin comparing with the held handle and was retired (PKT-860):
 ; the host's buffer verdict is books/post-identity-index.lisp
 ; fn-pidx-existing-action, equal to the Store's entry fn-store-existing-action
 ; (KEYSTONE fn-pidx-existing-action-is-store-existing-action) through the

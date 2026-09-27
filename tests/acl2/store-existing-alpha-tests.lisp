@@ -43,7 +43,7 @@
 ; The flip regression the book repairs: applied to the live store's own
 ; articles (handles) the list decisions compare with the handle, so a
 ; byte-identical resend is a conflict (the store-shaped twins that did this
-; were retired, PKT-EG-4).
+; were retired, PKT-860).
 (defconst *sea-live-articles*
   (fn-state-articles (fn-node-acceptance (fn-sn-node *pbt-store*))))
 (assert-event (equal (fn-sn-action-over *pbt-msgid* *sea-held* *pbt-groups* *sea-live-articles*)

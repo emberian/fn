@@ -55,7 +55,7 @@
       r)))
 ; Over the live Store's own articles (handles) a byte-identical resend is no
 ; duplicate, which is why the outcomes below are over alpha (and why the
-; store-shaped twin fn-sn-existing-action was retired, PKT-EG-4).
+; store-shaped twin fn-sn-existing-action was retired, PKT-860).
 (assert-event
  (equal (fn-sn-action-over "<held@example>" '(65 66) *snex-groups*
                            (fn-state-articles (fn-node-acceptance

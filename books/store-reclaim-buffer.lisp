@@ -111,7 +111,7 @@
 ; fn-pidx-existing-action-is-store-existing-action equates it with the
 ; Store's entry fn-store-existing-action.  (The whole-store buffer verdict
 ; fn-rclb-existing-action compared with the held handle and was retired,
-; PKT-EG-4.)
+; PKT-860.)
 (defthm fn-rclb-same-articlep-is-rcl-same-articlep
   (implies (fn-octets-p fn-octets)
            (equal (fn-rclb-same-articlep msgid fn-octets held-payload)

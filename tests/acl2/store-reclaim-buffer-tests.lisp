@@ -50,7 +50,7 @@
 ; D25's tombstone-aware verdict over an article list with the submitted
 ; payload in the buffer: fn-rcl-action-over with the buffer's comparison
 ; fn-rclb-same-articlep (the keystone's subject; the store-shaped twin
-; fn-rclb-existing-action was retired, PKT-EG-4, and the host's buffer
+; fn-rclb-existing-action was retired, PKT-860, and the host's buffer
 ; verdict is books/post-identity-index.lisp fn-pidx-existing-action).
 (defun rbt-rclb-action-over (msgid fn-octets groups articles)
   (declare (xargs :stobjs fn-octets :verify-guards nil))

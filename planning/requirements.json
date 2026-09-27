@@ -2187,7 +2187,7 @@
         "books/native-live-status.lisp",
         "planning/evidence/reclaim-host-2026-09-25.md"
       ],
-      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-store-existing-action for D25 at every list site and fn-pidx-existing-action at the buffer sites (their pre-flip twins fn-rcl-existing-action and fn-rclb-existing-action were retired, PKT-EG-4) and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. OVER, XOVER and NEWNEWS drop a reclaimed article; `status` prints the rule and the reclaimable, held and reclaimed counts (books/native-live-status.lisp). Not yet implemented: the host `store reclaim` verb and `--dry-run`, its byte program and cuts, the native N=5,000 scenario; the consumer projection is read conservatively and feed state and FNBS rows are not read; the retention ledger keeps the reclaimed article's charge."
+      "implementation_note": "The rule is two :set-limit configuration rows (retention, retention-days) set by `admin retention set keep-forever | released-by-all-holders | release-after DAYS` through the ordinary reconfiguration record; no row is keep-forever (D03's default). fn-rcl-verdict decides one article: tombstone, rule, age, authorship verdict, reader pin, consumer cursor, undelivered feed to a live peer, BP obligation. The tombstone replaces only the payload octets of the article record (NUL \"FN-RCL1\", the payload's SHA-256, its D25 source SHA-256 under its own agent, its length, that agent). The host calls fn-store-existing-action for D25 at every list site and fn-pidx-existing-action at the buffer sites (their pre-flip twins fn-rcl-existing-action and fn-rclb-existing-action were retired, PKT-860) and serves 423/430 \"article reclaimed\" from fn-nntp-article-response. OVER, XOVER and NEWNEWS drop a reclaimed article; `status` prints the rule and the reclaimable, held and reclaimed counts (books/native-live-status.lisp). Not yet implemented: the host `store reclaim` verb and `--dry-run`, its byte program and cuts, the native N=5,000 scenario; the consumer projection is read conservatively and feed state and FNBS rows are not read; the retention ledger keeps the reclaimed article's charge."
     },
     {
       "id": "NNT-012",
@@ -4714,7 +4714,7 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-314"
+        "PRF-319"
       ],
       "verification": [
         "proof",

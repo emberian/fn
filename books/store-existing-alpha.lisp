@@ -11,7 +11,7 @@
 ; fn-owner-existing-action, fn-owner-prepare, and fn-owner-existing-action-
 ; buffer through fn-pidx-existing-action).  The store-shaped twins
 ; fn-sn-existing-action and fn-pb-existing-action, which applied the
-; decisions to the live store's handles, were retired (PKT-EG-4).
+; decisions to the live store's handles, were retired (PKT-860).
 ;
 ; KEYSTONES (subject fn-store-existing-action):
 ;   fn-store-existing-action-is-pb-over-alpha
@@ -29,7 +29,7 @@
 ; The two decisions over an article list are books/store-node.lisp
 ; fn-sn-action-over and books/poster-bytes.lisp fn-pb-action-over (their
 ; store-shaped twins fn-sn-existing-action and fn-pb-existing-action compared
-; the offered octets with a handle and were retired, PKT-EG-4).
+; the offered octets with a handle and were retired, PKT-860).
 
 ; ALPHA of the store's acceptance articles.
 (defun fn-sn-alpha-articles (s fn-arena)

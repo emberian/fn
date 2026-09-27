@@ -65,7 +65,7 @@
 ; books/store-intern.lisp fn-store-existing-action over ALPHA of the Store's
 ; articles (fn-store-existing-action-refines-byte-identity-over-alpha).  The
 ; store-shaped twin fn-sn-existing-action compared the offered octets with a
-; handle and was retired (PKT-EG-4, lane entry-guards-2).
+; handle and was retired (PKT-860, lane entry-guards-2).
 (fn-payload-kind fn-sn-action-over :wire "the verdict over an octet-model article list (alpha)")
 (defun fn-sn-action-over (msgid payload groups articles)
   (declare (xargs :guard t))

@@ -363,7 +363,7 @@
                                       keyring))
     (fn-stx-index-empty)))
 
-;; KEYSTONE (PKT-EG-3).  Without a keyring no statement verifies, so the
+;; KEYSTONE (PKT-859).  Without a keyring no statement verifies, so the
 ;; index of ANY article list -- handles, octets, anything -- is the empty
 ;; index.  The opens that have no keyring yet (books/config-observed.lisp,
 ;; books/store-checkpoint-open.lisp, books/replay-identity-index.lisp) build

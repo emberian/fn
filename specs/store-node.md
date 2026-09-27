@@ -47,7 +47,7 @@ which reads the held bytes through the arena and refines it over alpha
 (`fn-store-existing-action-refines-byte-identity-over-alpha`); since D25 its
 verdict is source-keyed (`fn-pb-action-over`). The store-shaped
 twin that compared the offer with the held handle was retired
-(PKT-EG-4). For a submitted exact Message-ID, payload octets and ordered
+(PKT-860). For a submitted exact Message-ID, payload octets and ordered
 selected groups, `fn-sn-action-over` looks up the article in the list. It returns
 `:duplicate` exactly when a held article has both equal payload and groups,
 `:conflict` exactly when the ID is held and either differs, and `nil` when

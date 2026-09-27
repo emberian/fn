@@ -103,7 +103,7 @@
 (rt-both '(:release-after 1) (+ 100 86399) *rt-none* nil *rt-a1* nil)
 (rt-both *rt-rall* 0 *rt-none* '(("<a1@x>" . :valid)) *rt-a1* nil)
 (assert-event (equal (fn-rcl-verdict *rt-rall* 0 *rt-feed* nil *rt-a1*) :held-feed))
-; fn-rcl-verdict-reclaimable-by-definition (PKT-EG-2): the octet model's
+; fn-rcl-verdict-reclaimable-by-definition (PKT-858): the octet model's
 ; verdict tests the tombstone on the payload's OCTETS; fn-rcl-reclaimable
 ; (the standing verdict) reads no payload -- its caller tests the octets it
 ; holds.  An octet article whose payload is a tombstone: :already-reclaimed,

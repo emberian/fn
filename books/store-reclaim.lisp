@@ -590,7 +590,7 @@
 ; Before any reclamation the verdict is D25's list verdict: where the held
 ; payload is no tombstone, fn-rcl-action-over is fn-pb-action-over.  (The
 ; store-shaped twin fn-rcl-existing-action, which applied this to the live
-; store's handles, was retired, PKT-EG-4; the host's entry is
+; store's handles, was retired, PKT-860; the host's entry is
 ; books/store-intern.lisp fn-store-existing-action, KEYSTONE
 ; fn-store-existing-action-is-the-verdict-over-alpha.)
 (defthm fn-rcl-action-over-is-pb-without-a-tombstone
