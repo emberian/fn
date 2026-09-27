@@ -48,6 +48,8 @@
 ; fn-store-sn-prepare stages the interned row through the carried prepare
 ; (fn-store-prepare-interned-carried-is-prepare-interned under fn-snt-relation).
 (include-book "../books/store-prepare-carried")
+;; fn-store-sn-prepare calls fn-psrv-store-prepare-next (lane prepare-served).
+(include-book "../books/store-prepare-served")
 (include-book "../books/store-checkpoint-codec")
 ; fn-bs-scp-program: the checkpoint file name is its rename target.
 (include-book "../books/byte-store-state-checkpoint-program")
@@ -1117,10 +1119,8 @@ reopen predicate, writer-lock observation and observed final namespace."
             (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
         (mv nil :invalid fn-arena state)
       ; A name in the domain but not served at the live generation (a retired
-      ; group) is a refusal, decided by the same predicate fn-cnode-prepare
-      ; applies (books/node-config).
-      (if (not (fn-cnode-selection-servedp (f-get-global 'fn-store-cfg state) groups))
-          (mv nil :refused fn-arena state)
+      ; group) is refused by the prepare itself (fn-psrv-store-prepare-next,
+      ; lane prepare-served): the host makes no served test of its own.
       (let* ((msgid (fn-store-octets->string msgid-octets))
              (existing (fn-store-existing-action msgid payload groups s fn-arena)))
         (if existing
@@ -1144,13 +1144,14 @@ reopen predicate, writer-lock observation and observed final namespace."
             ; fn-snt-relation, books/store-intern.lisp's entry).
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena state)
-              (let ((next (fn-store-prepare-carried-next
+              (let ((next (fn-psrv-store-prepare-next
+                           (f-get-global 'fn-store-cfg state)
                            s record (fn-arena-count fn-arena))))
                 (if (equal next s)
                     (mv nil :refused fn-arena state)
                   (let ((state (f-put-global 'fn-store-sn next state)))
                     (mv nil (list :seal (fn-record-payload record))
-                        fn-arena state))))))))))))
+                        fn-arena state)))))))))))
 
 ; A semantic refusal consumes the already durable allocator reservation using
 ; the proved composition transition, which advances the same live node to the
