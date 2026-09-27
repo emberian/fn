@@ -1043,6 +1043,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/proto/pagestore-keystones \
 	books/proto/pagestore-reclaim \
 	books/proto/pagestore-exec \
+	books/proto/pagestore-gc \
 	tests/acl2/proto-pagestore-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
