@@ -29,6 +29,7 @@
 (include-book "owner")
 (include-book "consumer-event-index-store-invariants")
 (include-book "control-visible-indexed")
+(include-book "store-node-invariants-base")
 
 (defun fn-own-refresh-ix (o)
   (declare (xargs :guard t))
@@ -102,5 +103,36 @@
                             fn-ctl-refresh-visible fn-ctl-visible-state-of
                             fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
                             fn-own-make fn-own-view-make-visible)))))
+
+;; For the completions (books/owner-commit-carried.lisp
+;; fn-ccar-own-complete-enabled refreshes the owner over the finished Store):
+;; the finish keeps both premises (fn-sn-finish-preserves-state,
+;; fn-ceis-finish-preserves-indexed), so over a Store that has them the
+;; completion's refresh may read the index.  Under a completion gate
+;; fn-sn-statep is already forward (fn-ccar-completion-enabled-implies-statep);
+;; fn-ceis-indexedp is what the owner's relation adds
+;; (books/owner-store-indexed.lisp fn-osi-live-owner-store-is-indexed).
+(defthm fn-own-refresh-ix-of-finished-store-is-own-refresh
+  (implies (and (fn-sn-statep s) (fn-ceis-indexedp s))
+           (equal (fn-own-refresh-ix
+                   (fn-own-make (fn-sn-finish s) view conns next-id max-conns pending
+                                ledger clock facts config queue inflight feeds
+                                node-secret refused))
+                  (fn-own-refresh
+                   (fn-own-make (fn-sn-finish s) view conns next-id max-conns pending
+                                ledger clock facts config queue inflight feeds
+                                node-secret refused))))
+  :hints (("Goal" :use ((:instance fn-own-refresh-ix-is-own-refresh
+                                   (o (fn-own-make (fn-sn-finish s) view conns next-id
+                                                   max-conns pending ledger clock facts
+                                                   config queue inflight feeds
+                                                   node-secret refused)))
+                        fn-sn-finish-preserves-state
+                        fn-ceis-finish-preserves-indexed)
+           :in-theory (e/d (fn-own-store-of-fn-own-make)
+                           (fn-own-refresh-ix-is-own-refresh fn-sn-finish-preserves-state
+                            fn-ceis-finish-preserves-indexed fn-own-refresh-ix
+                            fn-own-refresh fn-sn-finish fn-sn-statep fn-ceis-indexedp
+                            fn-own-make)))))
 
 (in-theory (disable fn-own-refresh-ix))
