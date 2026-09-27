@@ -1,5 +1,5 @@
 ; fn: each pack-chain link decoded once per open (lane open-by-index,
-; 2026-09-26; PKT-168 (3); PRF-219).
+; 2026-09-26; PKT-168 (3); PRF-240).
 ;
 ; An open walked and decoded every link of the selected chain several times:
 ; `fnn-pack-lower-bound' (host/native/checkpoint.lisp) walks the chain with

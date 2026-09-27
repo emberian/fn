@@ -911,6 +911,25 @@ acceptance, refusal and recovery decision below is a call into it.
 4. Create an unprivileged account that owns the store, for example `fn` on
    Linux or `_fn` on macOS.
 
+## Storage requirements
+
+A `240` is exactly as durable as the store's file system makes fsync. fn
+counts an article accepted only once its records are fsynced
+(`fn-assume-physical-crash` in `books/assumptions.lisp` is that obligation on
+the platform), so the store's file system must honour fsync with write
+barriers on:
+
+- ext4 with its default barriers; never `barrier=0` or `nobarrier`.
+- ZFS with `sync=standard`; never `sync=disabled`.
+- No volatile write cache that ignores flushes, unless the drive has
+  power-loss protection; no tmpfs for a store whose acceptance matters.
+
+The power-loss campaign (`planning/evidence/power-loss-2026-09-26.md`) found
+no acknowledged POST lost at any of 1,281 cuts on ext4 with barriers on; with
+`barrier=0` acknowledged POSTs were lost at 36 of 40 cuts, and the file
+system was unmountable or unreadable at the other 4. fn does not yet refuse a
+detectable bad mount at start (PKT-648).
+
 ## Initialize
 
 ```
@@ -1572,6 +1591,41 @@ lost reply answers `281` again and binds nothing new. `account list` shows
 `redeemed LOGIN PRINCIPAL-HEX` and `pending expires EXPIRY` lines, never a code,
 digest or verifier. Redeemed accounts and auth.toml's credentials together are
 bounded by the profile's `max-credentials`.
+
+## Private groups: which login sees which group
+
+Every login sees every group the node carries unless you give it an access
+rule (specs/nntp.md, "Group access"). A rule is two wildmats, the groups the
+login reads and the groups it may post to; with the node running or not:
+
+```
+fn operator CONFIG account access bob --read 'fn.*,!fn.private.*' --post 'fn.*,!fn.private.*'
+fn operator CONFIG account access alice --read '*' --post '*'
+fn operator CONFIG account access --anonymous --read 'fn.public.*' --post '*,!*'
+fn operator CONFIG account access show
+```
+
+A group outside a login's read pattern is absent to its connections: LIST in
+every variant omits it, GROUP and LISTGROUP answer `411` exactly as for a group
+the node does not carry, an article all of whose groups are outside the pattern
+answers `430` by Message-ID, and a cross-posted article shows only the readable
+groups in its overview. A POST naming a group the login may read but not post to
+answers the read-only `441` (LIST ACTIVE shows `n` to that login); one naming a
+group it may neither read nor post to answers the `441` of an unknown group. A
+login without a rule, and a rule of `*`, sees everything, so existing accounts
+are unchanged. `--anonymous` is the rule of a connection that has not logged in (`*,!*` admits
+no group; RFC 3977's wildmat cannot start with `!`);
+under `[auth] required` there is none. `account access show` is the `account
+list` report, whose `access LOGIN read R post P` lines are the rules. A rule
+reaches a connection when the connection opens or re-pins, like every other
+configuration change. What it does not do: it is this node's reader view, not
+the peers'. An article in a private group is fed to a peer exactly when the
+peer's feed patterns say so (`peer add`), and the peer's own readers see what
+that peer allows; keep a private group out of every peer's pattern to keep it
+on this node. You, the operator, read everything (`store inspect`, the Store
+itself), and nothing is encrypted at rest: agents that need secrecy from the
+operator encrypt their own article bodies. A Message-ID is unique across the
+node, so a POST reusing a hidden article's Message-ID is refused as a duplicate.
 
 ## Deploy a new release (D34: fresh deploys, no migrations)
 

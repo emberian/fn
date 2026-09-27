@@ -373,6 +373,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-capacity-vector-tests \
 	books/store-capacity-config \
 	tests/acl2/store-capacity-config-tests \
+	books/config-carried-candidate \
+	tests/acl2/config-carried-candidate-tests \
 	books/bp-adu \
 	tests/acl2/bp-adu-tests \
 	books/bp-primary-cbor \
@@ -488,6 +490,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-fnbs-replay-append \
 	books/bp-node-rotation-codec \
 	books/bp-node-rotation \
+	books/bp-node-rotation-slice \
+	books/bp-node-rotation-buffer \
+	tests/acl2/bp-node-rotation-buffer-tests \
 	books/bp-held-projection \
 	tests/acl2/bp-held-projection-tests \
 	books/bp-held-payload \
@@ -699,6 +704,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-xref-tests \
 	tests/acl2/posting-account-tests \
 	tests/acl2/nntp-post-tests \
+	tests/acl2/served-line-iterative-tests \
 	books/path \
 	books/path-update \
 	books/path-update-tail \
@@ -738,6 +744,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-delta \
 	books/catalog-relation \
 	books/catalog-view \
+	books/catalog-entries \
+	books/catalog-refresh \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -756,6 +764,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-delta-tests \
 	tests/acl2/catalog-relation-tests \
 	tests/acl2/catalog-view-tests \
+	tests/acl2/catalog-entries-tests \
+	tests/acl2/catalog-refresh-tests \
+	books/acceptance-payload-ref \
+	tests/acl2/acceptance-payload-ref-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
 	books/owner-advance-carried \
@@ -764,6 +776,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-recover-ocl \
 	tests/acl2/owner-tls-pin-tests \
 	tests/acl2/served-tls-prefix-tests \
+	tests/acl2/served-pipelining-tests \
 	books/nntp-auth-invariants \
 	books/nntp-help \
 	tests/acl2/nntp-help-tests \

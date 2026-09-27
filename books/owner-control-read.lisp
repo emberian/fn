@@ -3,8 +3,9 @@
 ;;
 ;; Host path (reader), as for HDR :fn-verified (books/owner-verdict-read):
 ;; host/native/owner.lisp calls fn-owner-chunk (host/owner-host.lisp), which
-;; runs fn-ocfg-read-tls-prefix, equal to fn-ocfg-read by
-;; fn-ocfg-read-tls-prefix-is-full-read (books/owner-tls-prefix), which is
+;; runs fn-ocfg-read-tls-prefix, equal to fn-ocfg-read over the octets it
+;; consumed (all of them unless a submission made it yield) by
+;; fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix (books/owner-tls-prefix), which is
 ;; fn-own-read on the connection.  fn-own-read builds the served connection
 ;; from the owner connection -- its archive, its index, its buckets and its
 ;; control pin (`fn-own-conn-control', set from `fn-own-view-control' at
@@ -536,6 +537,9 @@
 (defthm fn-octl-dispatch-archive-command
   (let ((tokens (fn-nntp-tokenize line)))
     (implies (and (fn-octl-reader-hyps (fn-served-conn-session conn) tokens line)
+                  ;; PRF-222: a session without a group-access rule.
+                  (not (fn-auth-access-restrictedp (fn-served-conn-session conn)
+                                                   (fn-served-conn-config conn)))
                   (not (fn-post-offeredp
                         (fn-nntp-result-effects (fn-octl-reply conn line)))))
              (and (equal (fn-served-result-effects

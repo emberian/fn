@@ -321,7 +321,7 @@
   (fn-ccc-walk-bound profile))
 
 ;; Each link is decoded once per open (books/checkpoint-pack-chain-once.lisp,
-;; PRF-219): inside the host's `fnn-with-pack-memo' scope (an open, a
+;; PRF-240): inside the host's `fnn-with-pack-memo' scope (an open, a
 ;; compaction, a status) the decodes are remembered by content in the global
 ;; `fn-store-pack-memo', and every answer is the reference's
 ;; (`fn-ccco-entry-step-is-entry-step', `-coverage-chain-is-coverage-chain',

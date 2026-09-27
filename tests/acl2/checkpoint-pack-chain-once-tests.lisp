@@ -1,4 +1,4 @@
-; Witnesses and teeth for books/checkpoint-pack-chain-once (PRF-219): each
+; Witnesses and teeth for books/checkpoint-pack-chain-once (PRF-240): each
 ; link decoded once per open, every answer the reference's under a sound memo.
 (in-package "ACL2")
 (include-book "../../books/checkpoint-pack-chain-once")

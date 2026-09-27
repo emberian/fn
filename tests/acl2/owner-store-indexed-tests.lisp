@@ -266,3 +266,87 @@
       (equal (fn-pidx-find-article *bsb-msgid* *osi-open-arts*
                                    (fn-own-view *osi-open-owner*))
              (fn-find-article *bsb-msgid* *osi-open-arts*))))
+
+; -----------------------------------------------------------------------------
+; PRF-220: the Store check the BP application and receipt-journal hosts run
+; carries the node recognizer instead of evaluating it per request.
+;
+; fn-bpaj-node-record-committed-carriedp-is-committedp (books/bp-native-app-fast.lisp).
+; Positive witness: the live Store's node after the recovery barriers, the
+; signed record it committed.  Antecedent and conclusion, literally.
+(defconst *osi-live-node* (fn-sn-node *osi-store*))
+(assert-event (fn-node-statep *osi-live-node*))
+(assert-event (fn-bpaj-node-record-committed-carriedp *osi-live-node* *bsb-record*))
+(assert-event (fn-bpi-node-record-committedp *osi-live-node* *bsb-record*))
+(assert-event
+ (equal (fn-bpaj-node-record-committed-carriedp *osi-live-node* *bsb-record*)
+        (fn-bpi-node-record-committedp *osi-live-node* *bsb-record*)))
+; Hypothesis removal (a CORRUPTED node, no host transition builds it): the
+; live node with a junk binding after its real ones.  The lookups still find
+; the real article and binding, so the carried check answers t; the node
+; recognizer fails (the binding list is not a binding list), so the checked
+; one answers nil.  Without (fn-node-statep node) the equality is false.
+(defconst *osi-bad-node*
+  (fn-node-make-state (fn-node-acceptance *osi-live-node*)
+                      (fn-node-retention *osi-live-node*)
+                      (fn-node-stage *osi-live-node*)
+                      (append (fn-node-bindings *osi-live-node*) (list 'junk))))
+(assert-event (not (fn-node-statep *osi-bad-node*)))
+(assert-event (fn-bpaj-node-record-committed-carriedp *osi-bad-node* *bsb-record*))
+(assert-event (not (fn-bpi-node-record-committedp *osi-bad-node* *bsb-record*)))
+(must-fail
+ (thm (equal (fn-bpaj-node-record-committed-carriedp *osi-bad-node* *bsb-record*)
+             (fn-bpi-node-record-committedp *osi-bad-node* *bsb-record*))))
+
+; fn-osi-ocl-store-record-accepted-fast-is-checked (books/owner-store-indexed.lisp).
+; Positive witness: the configured owner the host holds after the recovery
+; barriers; its relation and index hold and the signed record is accepted by
+; both checks.
+(make-event
+ `(defconst *osi-live-oc*
+    ',(fn-osi-live-owner *osi-configs* nil *osi-events* *osi-frontier* 4
+                         *osi-barriers*)))
+(defconst *osi-live-oc-store* (fn-own-store (fn-ocfg-owner *osi-live-oc*)))
+(assert-event (equal *osi-live-oc-store* *osi-store*))
+(assert-event (fn-ocl-relation *osi-live-oc*))
+(assert-event (fn-ceis-indexedp *osi-live-oc-store*))
+(assert-event (fn-bpaj-store-record-accepted-fast *osi-live-oc-store* *bsb-record*))
+(assert-event (fn-bpr-store-record-acceptedp *osi-live-oc-store* *bsb-record*))
+; Without fn-ocl-relation (CORRUPTED state): the owner whose Store's node is
+; the corrupted node above.  The index is untouched (it is derived from the
+; history alone), so fn-ceis-indexedp still holds; the relation fails; the
+; carried check accepts and the checked one refuses.
+(defconst *osi-bad-oc*
+  (fn-ocfg-with-owner
+   *osi-live-oc*
+   (update-nth 0 (update-nth 3 *osi-bad-node* *osi-live-oc-store*)
+               (fn-ocfg-owner *osi-live-oc*))))
+(defconst *osi-bad-oc-store* (fn-own-store (fn-ocfg-owner *osi-bad-oc*)))
+(assert-event (fn-ceis-indexedp *osi-bad-oc-store*))
+(assert-event (not (fn-ocl-relation *osi-bad-oc*)))
+(assert-event (fn-bpaj-store-record-accepted-fast *osi-bad-oc-store* *bsb-record*))
+(assert-event (not (fn-bpr-store-record-acceptedp *osi-bad-oc-store* *bsb-record*)))
+(must-fail
+ (thm (let ((store (fn-own-store (fn-ocfg-owner *osi-bad-oc*))))
+        (implies (fn-ceis-indexedp store)
+                 (equal (fn-bpaj-store-record-accepted-fast store *bsb-record*)
+                        (fn-bpr-store-record-acceptedp store *bsb-record*))))))
+; Without fn-ceis-indexedp (a STALE index, a state no host transition
+; reaches): the live owner with the empty index.  The relation does not read
+; the derived index, so it still holds; the fast check finds no candidate and
+; refuses, the checked one accepts.
+(defconst *osi-stale-oc*
+  (fn-ocfg-with-owner
+   *osi-live-oc*
+   (update-nth 0 (update-nth 13 nil *osi-live-oc-store*)
+               (fn-ocfg-owner *osi-live-oc*))))
+(defconst *osi-stale-oc-store* (fn-own-store (fn-ocfg-owner *osi-stale-oc*)))
+(assert-event (fn-ocl-relation *osi-stale-oc*))
+(assert-event (not (fn-ceis-indexedp *osi-stale-oc-store*)))
+(assert-event (not (fn-bpaj-store-record-accepted-fast *osi-stale-oc-store* *bsb-record*)))
+(assert-event (fn-bpr-store-record-acceptedp *osi-stale-oc-store* *bsb-record*))
+(must-fail
+ (thm (let ((store (fn-own-store (fn-ocfg-owner *osi-stale-oc*))))
+        (implies (fn-ocl-relation *osi-stale-oc*)
+                 (equal (fn-bpaj-store-record-accepted-fast store *bsb-record*)
+                        (fn-bpr-store-record-acceptedp store *bsb-record*))))))

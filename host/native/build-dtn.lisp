@@ -101,6 +101,9 @@
 ;; N16: the generation selection, recovery from a checkpoint and the
 ;; publication driver fnn-bps-open and `bp-node checkpoint' call.
 (include-book "books/bp-node-rotation")
+;; fnn-bps-selection-plan reads the selected checkpoint from fn-octets-bp by
+;; index (fn-bpnrb-selection-plan).
+(include-book "books/bp-node-rotation-buffer")
 ;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
 (include-book "books/bp-held-projection")
 (include-book "books/bp-node-retire")
@@ -172,7 +175,7 @@
 ; the DTN images could not `store init' (native-subsets-6c0626c5, failure 2).
 ; Every host file build.lisp loads and this one omits is listed, with its
 ; reason, in tools/build_lists_check.py, which `make check' runs.
-; The pack chain's walk, coverage and observation (PRF-219).
+; The pack chain's walk, coverage and observation (PRF-240).
 (include-book "books/checkpoint-pack-chain-once")
 (ld "host/checkpoint-host.lisp" :ld-error-action :error)
 ; The configuration record the core builds for a fresh store; it uses the

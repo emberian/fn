@@ -49,7 +49,7 @@
 (include-book "books/checkpoint-compaction-preservation")
 ; The pack chain the open walks and compaction extends (P5).
 (include-book "books/checkpoint-pack-chain")
-; Each link decoded once per open (PRF-219): host/checkpoint-host.lisp's
+; Each link decoded once per open (PRF-240): host/checkpoint-host.lisp's
 ; chain step, coverage and observation call fn-ccco-*.
 (include-book "books/checkpoint-pack-chain-once")
 (include-book "books/node-config")
@@ -171,6 +171,9 @@
 ;; N16: the generation selection, recovery from a checkpoint and the
 ;; publication driver fnn-bps-open and `bp-node checkpoint' call.
 (include-book "books/bp-node-rotation")
+;; fnn-bps-selection-plan reads the selected checkpoint from fn-octets-bp by
+;; index (fn-bpnrb-selection-plan).
+(include-book "books/bp-node-rotation-buffer")
 ;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
 (include-book "books/bp-held-projection")
 (include-book "books/bp-node-retire")

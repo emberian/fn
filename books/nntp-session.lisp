@@ -73,17 +73,62 @@
   (mbe :logic (append line '(13 10))
        :exec (fn-ag-append line '(13 10))))
 
+;; The multi-line block of a reply (ARTICLE, HEAD, BODY, OVER, HDR, LIST):
+;; each line dot-stuffed and CRLF-terminated, RFC 3977 section 3.1.1.
+;; The executable is a loop (PKT-481's class, D27): the reverse of the block
+;; is built line by line onto an accumulator and turned round once, so the
+;; control stack a served reply uses is the same for one line and for eight
+;; million.  The recursion it replaced took one frame per line, and an
+;; article of about two million lines exhausted a 64 MiB stack and stopped
+;; the owner (planning/evidence/served-line-iterative-2026-09-26.md).
+(defun fn-nntp-stuff-lines-onto (lines acc)
+  (declare (xargs :guard t))
+  (if (consp lines)
+      (fn-nntp-stuff-lines-onto
+       (cdr lines)
+       (cons 10 (cons 13 (fn-ag-rev-onto (fn-wire-stuff-line (car lines)) acc))))
+    acc))
+
+(defun fn-nntp-stuff-lines-iter (lines)
+  (declare (xargs :guard t))
+  (fn-ag-rev-onto (fn-nntp-stuff-lines-onto lines nil) nil))
+
 (defun fn-nntp-stuff-lines (lines)
+  (declare (xargs :verify-guards nil))
   (mbe :logic
        (if (consp lines)
            (append (fn-nntp-crlf (fn-wire-stuff-line (car lines)))
                    (fn-nntp-stuff-lines (cdr lines)))
          nil)
-       :exec
-       (if (consp lines)
-           (fn-ag-append (fn-nntp-crlf (fn-wire-stuff-line (fn-ag-car lines)))
-                         (fn-nntp-stuff-lines (fn-ag-cdr lines)))
-         nil)))
+       :exec (fn-nntp-stuff-lines-iter lines)))
+
+(local (defthm fn-nntp-rev-onto-is-revappend
+         (equal (fn-ag-rev-onto x acc) (revappend x acc))))
+
+(local (defthm fn-nntp-revappend-of-append
+         (equal (revappend (append a b) acc)
+                (revappend b (revappend a acc)))))
+
+(local (defthm fn-nntp-revappend-revappend
+         (implies (true-listp x)
+                  (equal (revappend (revappend x acc) nil)
+                         (revappend acc x)))))
+
+(local (defthm fn-nntp-stuff-lines-onto-is-revappend
+         (equal (fn-nntp-stuff-lines-onto lines acc)
+                (revappend (fn-nntp-stuff-lines lines) acc))))
+
+;  KEYSTONE (D27, constant stack on the served reply).  The loop the host
+; runs is the block the specification defines, on every argument; with it
+; the guard proof of fn-nntp-stuff-lines is what makes the loop the
+; executable.
+(defthm fn-nntp-stuff-lines-iter-is-stuff-lines
+  (equal (fn-nntp-stuff-lines-iter lines)
+         (fn-nntp-stuff-lines lines)))
+
+(local (in-theory (disable fn-nntp-rev-onto-is-revappend fn-nntp-revappend-of-append
+                           fn-nntp-revappend-revappend
+                           fn-nntp-stuff-lines-onto-is-revappend)))
 
 (defun fn-nntp-single (session text)
   (fn-nntp-make-result session
@@ -364,7 +409,8 @@
     fn-nntp-session-projected fn-nntp-make-session fn-nntp-sessionp 
     fn-nntp-set-cursor fn-nntp-result-session fn-nntp-result-effects 
     fn-nntp-make-result fn-nntp-reply-effect fn-nntp-close-effect 
-    fn-nntp-crlf fn-nntp-stuff-lines fn-nntp-single fn-nntp-multi 
+    fn-nntp-crlf fn-nntp-stuff-lines-onto fn-nntp-stuff-lines-iter
+    fn-nntp-stuff-lines fn-nntp-single fn-nntp-multi 
     fn-nntp-multi-octets fn-nntp-append-pieces fn-nntp-crlf-lines-aux 
     fn-nntp-crlf-lines fn-nntp-split-article-aux fn-nntp-split-article 
     fn-nntp-split-okp fn-nntp-split-head fn-nntp-split-body 

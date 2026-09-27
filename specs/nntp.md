@@ -357,6 +357,18 @@ not move either; successful numeric retrieval updates the current article number
 Use the specified 412/420/423/430 cases and error precedence. Later expiry can
 invalidate a once-valid cursor; do not bake eternal existence into the invariant.
 
+Local article numbers follow the committed history. RFC 3977 §6 requires one
+article per number within a group, one number per article within a group, and
+numbers issued in arrival order; it constrains the numbers a server issues to
+clients. A local article number held by a submission that was never
+acknowledged and never became durable may be assigned to the next committed
+article after recovery; numbers are assigned by the committed history, and a
+client observes a number only after a 240 or a served view, both after
+durability. This is the reading the power-loss campaign measured
+(`planning/evidence/power-loss-2026-09-26.md`, "a lost POST's number is used
+again": at 258 cuts the fresh POST after recovery took the lost in-flight
+POST's number, and no acknowledged or served number moved or was issued twice).
+
 NNT-042: a reader connection's view of the store is a VERSION, the committed
 count when the view was taken: the connection sees the articles committed below
 it, and a cancel committed after one of them leaves that article visible to the
@@ -993,9 +1005,11 @@ ClientHello behind the STARTTLS line in one kernel observation. This is a
 robustness property and does not relax RFC 4642's client prohibition. The
 sole connection worker observes with `MSG_PEEK`; `fn-ocfg-read-tls-prefix`
 returns the one ACL2 transition, its effects and the exact consumed count.
-`fn-ocfg-read-tls-prefix-is-full-read`, under the configured-owner state
-invariant, proves that the actual host-call result equals the checked full
-observation. The host-called path uses `fn-served-step-counted-fast`: its entry
+`fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix`, under the
+configured-owner state invariant, proves that the actual host-call result
+equals the checked read of the prefix it consumed (the whole observation's,
+since a handshaking connection frames nothing more; a read also yields after
+a submission, NNT-044). The host-called path uses `fn-served-step-counted-fast`: its entry
 predicate examines the fixed eight-cell wire record and scalar counters, never
 the retained current line or article body. `fn-served-step-counted-fast-is-reference`
 equates it to the total checked transition under the full wire invariant, and
@@ -1110,6 +1124,67 @@ gives them.
   release with accounts, releases before it cannot open the store (an older
   image refuses delta kinds 15 and 16 at decode); roll back only from the
   pre-upgrade snapshot. The upgrade rehearsal checks that sentence.
+
+### Group access (NNT-046)
+
+NNT-046: A login's access rule restricts its connections to the groups its read wildmat admits, as if the other groups were absent, and its posts to the groups its post wildmat admits
+
+SEC-007: Group access is this node's reader view: it hides groups from a login's NNTP connections, never from the operator, from peers the feed patterns name, or from the node's own consumer; confidentiality beyond that is the posters' own encryption
+
+fn's reference is INN's readers.conf access groups (a `read` and a `post`
+wildmat per authenticated identity); RFC 3977 section 4.2 is the wildmat, and
+RFC 4643 leaves what an authenticated identity may see to local policy, so
+this is a local policy with one stronger fn guarantee: no existence oracle.
+
+- **Configuration.** `operator CONFIG account access LOGIN|--anonymous --read
+  R --post P` stages `(:account-access LOGIN R 0 ((LOGIN R P 3)))`,
+  configuration delta code 22 (`books/config.lisp` `fn-cfg-account-access`):
+  one row per login in the accounts slot, mark 3 beside the account rows'
+  0 and 1 and the binding rows' 2; LOGIN "" is the rule of a connection
+  that has not authenticated. The verb admits only patterns that parse as
+  wildmats (`fn-wildmat-parse`); a stored pattern that does not parse admits
+  nothing (fail closed). No rule, or `*`, restricts nothing: existing
+  accounts keep their view. `account access show` is the `account list`
+  report with `access LOGIN read R post P` lines. No store record, no format
+  change.
+- **The view.** The owner projects the rows into the reader listing each
+  connection pins (`fn-oag-listing`, fourth element). A reader session
+  whose login has a read rule is served, by `fn-auth-delegate-pinned`
+  (`books/nntp-auth.lisp`, and its carried twin `fn-scar-auth-delegate-pinned`),
+  the RESTRICTED VIEW of the view it pinned (`books/group-access.lisp`): the
+  groups R admits and their watermarks; the articles with at least one such
+  group, each cut to those groups and memberships; the Message-ID trie and
+  group buckets built from those articles; the withdrawn list cut the same
+  way. The reader machine is unchanged, so GROUP and LISTGROUP of an excluded
+  group answer 411, an article with no readable group answers 430 by
+  Message-ID (and `430` rather than `430 withdrawn` when withdrawn), LIST
+  ACTIVE, NEWSGROUPS and COUNTS omit excluded groups, NEWNEWS omits their
+  articles, and Xref names readable groups only. LIST ACTIVE.TIMES and
+  NEWGROUPS read the environment's creation facts, which the served step
+  does not supply today (`fn-post-reader-env`: none); a change that supplies
+  them must cut them to the view (PKT-643). A selection the
+  view lacks is dropped before the command. PRF-222 keystones: the view is a
+  projection (`fn-gac-restrict-state-is-a-projection`) with a corresponding
+  index, no excluded group or membership is in it, an article is held
+  exactly when it has a readable group, and the view of a store with any
+  excluded groups removed is the same view (`fn-gac-restrict-absent-groups`):
+  no reply can depend on what an excluded group holds.
+- **Posting.** Groups the session may read but not post to join its closed
+  list (the read-only 441; LIST ACTIVE shows `n` to that session); groups it
+  may neither read nor post to leave its served list, so a POST naming one
+  answers the unknown-group 441 of a group the node does not carry. A group
+  it may post to but not read is a drop box.
+- **Scope.** A peer connection has no rule: peering is unchanged, and what a
+  peer is fed is its feed patterns' decision. The consumer poll is the
+  owner's local socket (one owner principal, mode 0600) and reads
+  everything, as the operator does. Not guarantees: the Newsgroups header
+  of a cross-posted article names every group it was posted to (its own
+  octets); a Message-ID is unique node-wide, so a POST of a hidden article's
+  Message-ID is refused as a duplicate; the operator reads everything, and
+  confidentiality from the operator or from a peer is the agents' own
+  encryption. Cost: a restricted session's command is served over a view
+  rebuilt per command (O(A) in the view's articles; an unrestricted session
+  pays nothing); pinning the view per connection is PKT-643.
 
 ### The posting allowance
 
@@ -1329,6 +1404,33 @@ again. Any other answer is a refusal and stops the dial for the owner
 process (PRF-130). The form is per connection: `fn-own-feed-connect` sets
 it at every connect. RFC 4644 §2.3 prefers CAPABILITIES for discovery; fn
 asks MODE STREAM, which every legacy server answers (PKT-599).
+
+## Pipelined articles (NNT-044)
+
+NNT-044: Pipelined articles are each admitted and answered in order: two TAKETHIS or two POST articles in one socket read lose neither, and what is consumed from a stream does not depend on where it was cut
+
+A client may send a command before the previous reply arrives and the
+server must neither discard data nor lose synchronisation (RFC 3977 §3.5);
+a streaming peer pipelines TAKETHIS with its article (RFC 4644 §2.5), and
+innfeed does. One socket read can therefore carry several complete
+articles. The served read yields after the octet that completed an
+article's submission (books/served-tls-prefix.lisp `fn-served-feed-counted`,
+the span fold books/served-span.lisp `fn-scar-feed-span`): the host commits
+the article and sends the replies of the read and the article's outcome,
+then feeds the unconsumed rest of the read as the next read
+(host/native/owner.lisp, the serve loop's retained suffix). Every step's
+work is bounded by the read (D27); no octet is dropped or read twice.
+
+RFC requirement: pipelined data is neither lost nor reordered. fn guarantee
+(PRF-213): the loop driven to exhaustion is one read of the whole input
+(`fn-served-drain-is-step`), so the commands and articles consumed and their
+answers are the same wherever the network or a yield cut the stream
+(`fn-served-drain-run-is-boundary-independent`); a yield carries at most one
+submission and the ones taken are all of them
+(`fn-served-drain-takes-every-submission`); the outcome of an article is on
+the wire before the reply to any command after it. Before PKT-600 was
+repaired the second article of a read was never admitted and never
+answered.
 
 ## Scope
 

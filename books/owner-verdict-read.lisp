@@ -3,8 +3,8 @@
 ;;
 ;; Host path (reader): host/native/owner.lisp calls fn-owner-chunk
 ;; (host/owner-host.lisp), which runs fn-ocfg-read-tls-prefix; the theorem
-;; fn-ocfg-read-tls-prefix-is-full-read (books/owner-tls-prefix) equates that
-;; with fn-ocfg-read, which is fn-own-read on the connection.  fn-own-read runs
+;; fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix (books/owner-tls-prefix) equates that
+;; with fn-ocfg-read over the octets it consumed, which is fn-own-read on the connection.  fn-own-read runs
 ;; the byte fold fn-served-step (books/served) over the connection's pinned
 ;; archive and verdict list; the fold hands each framed event to
 ;; fn-served-dispatch.  The keystone below is over fn-own-read.
@@ -48,6 +48,9 @@
          (ns (fn-post-session-base pst))
          (tokens (fn-nntp-tokenize line)))
     (implies (and (fn-auth-sessionp as)
+                  ;; PRF-222: a session without a group-access rule (a
+                  ;; restricted one is served the view: books/group-access.lisp).
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
@@ -419,8 +422,9 @@
 
 ;; PRF-026 keystone over the host-called reader port.  host/native/owner.lisp
 ;; (fnn-owner-action 'fn-owner-chunk ...) runs host/owner-host.lisp
-;; fn-owner-chunk, that is fn-ocfg-read-tls-prefix, equal to fn-ocfg-read by
-;; fn-ocfg-read-tls-prefix-is-full-read, whose reply is (car (fn-own-read ...)).
+;; fn-owner-chunk, that is fn-ocfg-read-tls-prefix, equal to fn-ocfg-read over
+;; the octets it consumed (all of them unless a submission made it yield) by
+;; fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix, whose reply is (car (fn-own-read ...)).
 ;; The reply's verdict field is the connection's pinned verdict for the
 ;; retrieved article's Message-ID; no keyring or current Store is consulted.
 ;; Uses fn-nntp-verdict-hdr-msgid-is-recorded (books/nntp-verdict) as a lemma.
