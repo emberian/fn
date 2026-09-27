@@ -3,6 +3,7 @@
 ; release ceiling R = 4 096): room for several open undertakings.
 (in-package "ACL2")
 (include-book "../../books/store-capacity-vector")
+(include-book "../../books/store-intern")
 (include-book "std/testing/must-fail" :dir :system)
 
 (defconst *cvt-p*
@@ -291,3 +292,59 @@
 ; Tooth, a profile that is not admitted starts nowhere.
 (assert-event
  (not (fn-cvec-history-admittedp '(1 2 3) 0 0 0 *cvt-history*)))
+
+; -----------------------------------------------------------------------------
+; A history with a retained ARTICLE (records-flip).  The row is the one the
+; POST stages for *cvt-record* (books/store-intern.lisp fn-intern-row-at, at
+; handle 0 under the empty keyring and generation 0): a held row of kind
+; :article whose payload length, the facts' octets, is the wire record's
+; 1 000, the length the host's gate fn-cvec-article-budget-for was asked of.
+(defconst *cvt-row* (fn-intern-row-at *cvt-record* nil 0 0))
+(assert-event
+ (and (fn-held-p *cvt-row*)
+      (equal (fn-store-event-kind *cvt-row*) :article)
+      (equal (fn-record-payload *cvt-row*) 0)
+      (equal (fn-cvec-row-payload-length *cvt-row*)
+             (len (fn-record-payload *cvt-record*)))
+      (equal (fn-cvec-row-payload-length *cvt-row*) 1000)
+      (equal (fn-sbud-row-octets *cvt-row*) 1000)
+      (equal (fn-cvec-record-figure *cvt-row*) *cvt-fig*)))
+(defconst *cvt-article-history* (list *cvt-undertake* *cvt-row* *cvt-release*))
+(defconst *cvt-article-octets*
+  (+ (len (fn-store-event-encode *cvt-undertake*)) 1000
+     (len (fn-store-event-encode *cvt-release*))))
+; fn-cvec-admitted-history-keeps-the-vector and -from-init, with an article
+; in the history: every hypothesis holds and so does each conclusion, at the
+; article's 1 000 stored octets.
+(assert-event
+ (and (fn-bs-profile-admittedp *cvt-p*)
+      (fn-cvec-roomp *cvt-p* 0 0 0)
+      (fn-cvec-history-admittedp *cvt-p* 0 0 0 *cvt-article-history*)
+      (equal (fn-sbud-record-octets *cvt-article-history*) *cvt-article-octets*)
+      (fn-cvec-roomp *cvt-p* 3 *cvt-article-octets*
+                     (fn-cvec-debt-from 0 *cvt-article-history*))
+      (equal (fn-cvec-record-debt *cvt-article-history*) 0)
+      (fn-profile-replay-within-boundp *cvt-p* *cvt-article-octets*)))
+; fn-cvec-record-keeps-the-vector at the article, at the state its prefix
+; leaves (one undertaking open).
+(assert-event
+ (let ((b (len (fn-store-event-encode *cvt-undertake*))))
+   (and (fn-cvec-roomp *cvt-p* 1 b 1)
+        (fn-cvec-record-admittedp *cvt-p* 1 b 1 *cvt-row*)
+        (fn-cvec-roomp *cvt-p* 2 (+ b (fn-sbud-row-octets *cvt-row*))
+                       (fn-cvec-debt-step :article 1)))))
+; Tooth, the article arm's verdict: from H - R - 1 000 committed the vector
+; holds, but the article's figure (2 344) does not fit beside the
+; maintenance release, so the row is not admitted.
+(assert-event
+ (let ((b (- *cvt-h* (+ *cvt-r* 1000))))
+   (and (fn-cvec-roomp *cvt-p* 0 b 0)
+        (not (fn-cvec-record-admittedp *cvt-p* 0 b 0 *cvt-row*))
+        (not (fn-cvec-history-admittedp *cvt-p* 0 b 0 (list *cvt-row*))))))
+; The arm the restatement replaced asked fn-record-p of the row: the wire
+; record is not an article row (fn-cvec-wire-record-is-no-article-row) and
+; the row is not a wire record, so under that arm this history was refused.
+(assert-event
+ (and (fn-record-p *cvt-record*)
+      (not (equal (fn-store-event-kind *cvt-record*) :article))
+      (not (fn-record-p *cvt-row*))))
