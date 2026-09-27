@@ -389,6 +389,87 @@ policy the interpreted bridge evaluates under. A `:program` wrapper therefore
 runs raw beneath its counterpart in both hosts; the complete call-graph guard
 requirement of packet C3-05 is unchanged by the packaging.
 
+### The saved image's memory
+
+HST-025: The saved image carries the execution world only, and the owner
+serves on a small collection trigger. `host/native/build.lisp` (and
+`build-dtn.lisp`) loads `host/native/strip-world.lisp` after the last event and
+immediately before `save-exec`. Every symbol keeps, at its current value, only
+the twelve execution properties (`symbol-class`, which the `*1*` dispatch
+reads, the signatures and guard the guard-failure forms read, the stobj and
+attachment properties), and the world keeps the other pairs a node was
+recorded reading (lane image-anatomy: LP's translate of the return form, two
+tables, five world globals) plus the landmarks and indices of the start path
+with `ACL2_SYSTEM_BOOKS` set, over a bottom of command 0, event 0 and
+`project-dir-alist` so that LP's `lookup-world-index` and
+`replace-project-dir-alist` still find what they walk to. The build residue
+goes too: the closed input-channel symbols of every file the build read,
+ACL2's documentation text, defconst's redundancy discriminators, the
+build-sized hons space (replaced by a small one) and memoize call array.
+`tools/build_native_host.sh` refuses an image whose log lacks the strip
+marker. (A second save of the stripped core, from a process that never ran
+ACL2, was measured and is not taken: it raised the resident set at start
+from about 36 to 63 MiB on hbox and from 39 to 47 MiB on OpenBSD.) No
+compiled definition changes: they live in function cells, not in the world.
+A guard violation inside `fnn-call` is the same fault line and exit code as
+before (the developer verb `guard-probe`), because the guard term in the
+failure is compiled into the executable counterpart. The owner collects every
+64 MiB during recovery and a checkpoint publication (PKT-316), less when the
+process reserved under 1 GiB (a sixteenth of the reservation, at least 8 MiB:
+a copying collection of the nursery needs as much again free); after recovery
+one full collection returns the recovery's garbage pages to the system; from
+`LISTENING` it collects every 8 MiB. The figures and the ACL2 8.7 source that
+reads each kept property are in `planning/evidence/image-floor-2026-09-26.md`;
+the native case is `tests/test_native_image_floor.py`. The heap a profile
+needs is still heap-from-profile's derivation (HST-013), which the list
+representation of the retained history dominates.
+
+The thread stacks are the reservation's second part
+(`books/heap-reservation.lisp` `fn-heap-reserve-decide`, called by
+`host/native/heap.lisp` `fnn-heap-reservation` from the `heap -- ARGV` probe).
+SBCL reserves for every thread its control stack and 2.5 to 3 MiB of runtime
+areas; the image's own launcher gave every thread 64 MiB, so a node with 32
+connections reserved about 4 GB beside its heap, and on OpenBSD, where a
+reservation counts against the login class's datasize, the fourteenth thread
+was refused at 1,536 MiB. The figure is the heap-figure heap, plus the
+image's own mappings outside the dynamic space (at most the core file), plus
+THREADS x (STACK + 4 MiB; measured 2.5 MiB on Linux, at most 3 on OpenBSD):
+THREADS the run's `max-connections`, the 16 control clients
+and 12 fixed threads; STACK a constant 1,024 KiB, seven times the 142 KiB
+the node needs whatever the article since the served path's per-line
+recursions became loops (lane served-line-iterative, PRF-218; before, the
+need grew by 32 octets per line and this figure carried a per-line term). A total the machine cannot hold is refused by name
+before anything runs (`refused machine-cannot-hold-threads reservation=MB MB
+machine=M MB`, exit 1), and the launcher passes `--control-stack-size KBKB`
+with the heap figure. The probe prints `heap=MB MB profile=WORD machine=M MB
+stack=KB KB threads=N`.
+`init` sizes within an explicit process budget and prints its decision
+(`fn-heap-init-decide`, PKT-582; gpt-6's wave-5 review s.8): the budget is
+the least of the physical memory less the OS's share (a quarter, at least 512
+MiB: detected memory is not all the service's), each limit the process runs
+under (RLIMIT_DATA, RLIMIT_AS, every cgroup memory.max: systemd's MemoryMax,
+OpenBSD's login class) and the operator's `FN_INIT_BUDGET_MB`. A request that
+names no capacity field (a bare `init`, and every mission: they set only the
+article bound and groups per article) takes a conservative preset: development
+when the budget holds its whole reservation at the configuration's default
+max-connections, else the small preset (R raised to the article record the
+request needs); never scale. `FN_INIT_SIZING=largest` takes the first of
+scale, development and small the budget holds. The request's own fields are
+laid over the preset and never lowered; when no preset holds them, init
+refuses by name and creates nothing: `refused init-budget-cannot-hold-profile
+profile=WORD sizing=MODE reservation=MB MB budget=MB MB`, exit 1. A request
+that names a capacity field or a preset (`--profile development|scale`) is
+the operator's: written as named, never resized
+(`fn-heap-init-decide-honors-the-operators-request`). init prints `init:
+profile=WORD sizing=conservative|largest|requested reservation=MB MB
+budget=MB MB within-budget=yes|no`; for a capacity-free request it is always
+`yes` (`-sized-init-is-held`) and the reservation is within the budget and so
+within the machine the run judges
+(`fn-heap-init-decide-fits-the-budget-and-the-machine`); `no` names an
+operator's request the launcher's probe will refuse on this machine.
+Under 2 GiB the default mission (1 MiB articles) inits on the small preset's
+capacity with its own fields (1,326 MB with 60 stacks of 1 MiB).
+
 ### The served reader path
 
 One socket read is one `fn-served-step` (books/served.lisp): a fold of
@@ -568,6 +649,34 @@ Selecting an executable counterpart does not discharge all caller preconditions
 or prove that every inner guard runs. The adapter's maintained-state and boundary
 correspondence remains explicit; no new validation/proof claim follows from its
 startup check of `guard-checking-on`.
+
+### Typed results across the native boundary
+
+HST-019: The native owner's wrappers return typed ACL2 results the host checks once; no global result mailboxes, no LF name grammar, no frame fetched by index
+
+A host/owner-host.lisp wrapper returns its whole result as one ACL2 value
+with a guard-verified recognizer (books/owner-results.lisp): a feed step
+returns a FeedPublication (its word, the peer its effect names, the sealed
+frame plan as (peer . frame) pairs in append order, the completion token,
+the rendered command and its status, the log line), a configuration staging
+step a ConfigResult (:staged with one encoded record, or :refused with the
+reason). The native host checks the recognizer once
+(host/native/owner.lisp `fnn-owner-result`; a malformed value is a core
+fault, exit 4), reads fields through ACL2's accessors, appends each pair's
+frame to that peer's journal before it writes the command, and splits no
+name list: a list of names is a list of strings. PRF-208's keystone equates
+the plan with the by-index fetch it replaced. Nothing on the wire or on disk
+changes. The take returns a SubmissionTaken (word, id, message-id, stored
+octets, groups; the host reads those five) in place of six globals; the
+submission path's FeedPublication carries the in-flight id as its token,
+and that id is one of the owner's two submission ids, a connection number or
+the control id `*fn-own-control-id*` (an `operator post`, a BP application
+or transit submission): PRF-208's keystones say the host's check holds of
+the intent's and the resolution's value for every outcome word, given that
+and a codec that accepts each journal record. A recognizer checks only the
+fields the host reads. The capture result carries the checkpoint
+pipeline's ten fields in its order; the served step's result is the owner
+scheduler's render plan (not this section's).
 
 ### Differential evidence and measurements
 
@@ -815,3 +924,61 @@ the image launcher's own figure; the installed launcher ignores both
 `FN_TEST_HEAP_MB` and the caller's `SBCL_USER_ARGS`. The D27 default profile
 (H = 1 TiB) needs about 70 TiB and is refused on every machine (PKT-582).
 PRF-198; the native case is SCN-127.
+
+
+## Served connections
+
+HST-024: The node serves every reader and transit connection from a fixed set
+of I/O loop threads, and a connection capacity the machine cannot hold beside
+the store is refused by name, at start and at a live change. Lane
+connection-multiplexing (2026-09-26, PKT-605; PRF-223).
+
+The owner thread structure is unchanged: every protocol, exposure and owner
+decision is a call through `fnn-owner-serialized`, one at a time. What
+changed is who waits. host/native/mux.lisp runs `+fnn-mux-loops+` (2)
+threads, each polling (poll(2), Linux and OpenBSD alike) the connections it
+owns and a wake pipe; the accept threads hand each accepted socket to a loop
+instead of starting a thread for it. A connection is a record: the input the
+next step is handed (one `+fnn-max-read+` read, or the suffix a step left),
+the one reply being written (the connection is neither read nor stepped
+while it is queued, so a client that does not read meets TCP backpressure
+and holds one reply), and its timers: the exposure wait (`fn-exp-charge`'s
+milliseconds), the idle check (`fn-exp-idle` each second without input), the
+send deadline (10 s), the handshake deadline (10 s) and the drain after a
+graceful close (1 s). TLS never waits inside OpenSSL: SSL_accept, SSL_read
+and SSL_write are single attempts answering which readiness to wait for,
+with partial writes, moving write buffers and released idle buffers; at
+most 8 handshakes per loop are in progress. An implicit-TLS connection meets
+`fn-exp-open` before any handshake work (PKT-639), when a handshake slot is
+free; until then it waits unadmitted (no handshake work, no share of the
+capacity) in a queue of at most 256 per loop for at most 10 s, and past that
+it is closed (`busy`, `timeout`). A refused one is closed without SSL_accept; a TLS failure is
+named in the service log (`tls refused reason=... connection=N`, PKT-640).
+
+The memory (books/connection-budget.lisp): a connection costs a heap part
+(the record, its input, the one reply of the stated workload -- the
+profile's largest article rendered, 2A + 1,024 octets -- and a parser in the
+middle of an article, 32 octets of heap per octet of the line and body
+bounds) and a native part (the kernel's socket buffers; the TLS session when
+a context is loaded). The base is heap-figure's figure for the store, the
+core outside the dynamic space and the fixed threads (12 + the loops + the
+control clients) with their stacks and 4 MiB of runtime each. The bound is
+the machine less the base, divided by the per-connection figure. At `run`,
+after recovery and before listen, ACL2 decides the live capacity against it
+(`fn-cbud-run-decide`, host `fn-owner-connection-budget`): `connections
+holds=B per-connection=K KiB` to the service log, or `refused
+connections-exceed-memory capacity=C holds=B per-connection=K KiB machine=M
+MB` and exit 1. A live reconfiguration whose capacity passes the bound the
+run held is refused `:connections-exceed-memory` before anything is staged
+(`fn-owner-reconfigure-deltas`). Trusted sources count in the capacity like
+every other (the trusted range exempts a source from the per-address rule
+only, PRF-211). The launcher's heap probe adds room in the dynamic space for
+the heap parts of the connections the machine holds, at most 1,024
+(`fn-cbud-launch-decide`): it runs before the configuration journal is
+read, so it cannot see the capacity row (PKT-644).
+
+Not claimed: a reply larger than the stated workload's (an OVER or LISTGROUP
+over a large range) is outside the figure until replies are rendered in
+windows (lane owner-scheduler's plans; PKT-644); the measured constants
+(record, kernel, TLS) are measurements pinned by tests/test_native_mux.py,
+not theorems.

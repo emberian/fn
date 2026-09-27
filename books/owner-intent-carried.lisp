@@ -103,10 +103,15 @@
         nil
       (let* ((tbl (fn-own-feeds o))
              (msgid (fn-own-sub-msgid sub))
-             (targets (fn-own-feed-targets
-                       tbl (fn-own-sub-origin sub)
-                       (fn-own-sub-feed-groups sub)
-                       (fn-icar-path sub carry))))
+             (groups (fn-own-sub-feed-groups sub))
+             (targets (if (fn-mod-names-a-queuep
+                           groups (fn-inj-config-closed (fn-own-config o)))
+                          nil
+                        (fn-own-feed-distribution-targets
+                         (fn-own-feed-targets
+                          tbl (fn-own-sub-origin sub) groups
+                          (fn-icar-path sub carry))
+                         tbl (fn-own-feed-distributions-of (fn-own-sub-octets sub))))))
         (fn-own-feed-new-targets targets tbl msgid)))))
 
 (defthm fn-icar-submission-targets-is-submission-targets
@@ -117,7 +122,9 @@
                                   (fn-icar-path fn-icar-carryp
                                    fn-own-feed-targets
                                    fn-own-feed-new-targets
-                                   fn-own-feed-path-of)))))
+                                   fn-own-feed-distribution-targets
+                                   fn-own-feed-distributions-of
+                                   fn-own-feed-path-of fn-mod-names-a-queuep)))))
 
 (in-theory (disable fn-icar-carry-of fn-icar-carryp fn-icar-carries-p fn-icar-intent-id
                     fn-icar-path fn-icar-submission-targets))

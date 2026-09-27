@@ -240,6 +240,24 @@
                                    fn-nntp-over-msgid-served
                                    fn-nntp-list-overview-fmt-served)))))
 
+(defthm fn-auth-fold-rcompat-reply-has-no-offer
+  (not (fn-post-offeredp
+        (fn-nntp-result-effects
+         (fn-rcompat-reply session archive index env keyword args))))
+  :hints (("Goal" :in-theory (e/d (fn-rcompat-reply fn-rcompat-newgroups
+                                   fn-rcompat-active-times
+                                   fn-rcompat-subscriptions
+                                   fn-rcompat-retrieval
+                                   fn-rcompat-article-reply fn-rcompat-hdr
+                                   fn-nntp-newgroups-response
+                                   fn-nntp-list-active-times
+                                   fn-nntp-article-response fn-post-offeredp
+                                   fn-nntp-reply-effect)
+                                  (fn-nntp-single fn-nntp-multi
+                                   fn-nntp-multi-octets fn-nntp-keywordp
+                                   fn-nntp-xref-server fn-nntp-stuff-lines
+                                   fn-nntp-crlf fn-rcompat-served-article)))))
+
 (defthm fn-auth-fold-archive-command-pinned-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
@@ -474,6 +492,8 @@
                             (keyword (car (fn-nntp-tokenize (cadr wire-event))))
                             (args (cdr (fn-nntp-tokenize (cadr wire-event)))))))))
 
+; The delegated step serves the session's group-access view (PRF-222):
+; its session keeps the POST state (fn-auth-view-session-keeps-awaiting).
 (defthm fn-auth-fold-auth-delegate-starts-post-awaiting-only-on-post
   (implies
    (and (fn-auth-sessionp as)
@@ -489,11 +509,18 @@
    (fn-served-post-command-eventp wire-event))
   :hints (("Goal"
            :in-theory (e/d (fn-auth-delegate-pinned fn-auth-with-base
-                            fn-served-post-command-eventp fn-auth-sessionp)
+                            fn-served-post-command-eventp)
                            (fn-peer-step-pinned fn-nntp-tokenize
-                            fn-nntp-keywordp))
-           :use ((:instance fn-auth-fold-peer-step-starts-post-awaiting-only-on-post
-                            (ps (fn-auth-session-base as)))))))
+                            fn-nntp-keywordp fn-auth-sessionp
+                            fn-auth-view-session-is-a-session))
+           :use ((:instance fn-auth-view-session-is-a-session)
+                 (:instance fn-auth-fold-peer-step-starts-post-awaiting-only-on-post
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config
+                                     as (fn-auth-moderation-config as config)
+                                     archive)))))))
 
 (defun fn-auth-fold-post-awaiting (as)
   (declare (xargs :guard t))
@@ -688,7 +715,12 @@
                 (fn-peer-step-pinned fn-auth-command
                  fn-nntp-tokenize fn-nntp-keywordp))
            :use ((:instance fn-auth-fold-peer-step-no-local-submission
-                            (ps (fn-auth-session-base as)))))))
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config
+                                     as (fn-auth-moderation-config as config)
+                                     archive)))))))
 
 (defun fn-auth-fold-safe-connp (conn)
   (declare (xargs :guard t :verify-guards nil))

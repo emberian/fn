@@ -557,7 +557,11 @@ def run(a):
                "--work %s --json %s/result.json --wait-quiet %d%s > %s/box.log 2>&1; echo $? > %s/status"
                % (remote, shlex.quote(a.image), rev, label, work, remote, a.wait_quiet,
                   " --under-load" if a.under_load else "", remote, remote))
-    ssh("systemd-run --user --quiet --collect --unit=%s --slice=swarm.slice -p MemoryMax=24G "
+    # MemoryMax: the served store's scale profile reserves about 55 GB
+    # (books/heap-reservation.lisp) and the connection budget
+    # (books/connection-budget.lisp) refuses a run whose machine leaves no
+    # room for connections, so 24G refused every start after batch AR.
+    ssh("systemd-run --user --quiet --collect --unit=%s --slice=swarm.slice -p MemoryMax=64G "
         "-p MemorySwapMax=0 sh -c %s" % (unit, shlex.quote(box_cmd)), check=True)
     print("started %s on %s; %s" % (unit, HOST, remote), flush=True)
     waited = subprocess.run([str(ROOT / "tools" / "wait_for.sh"), "--host", HOST, "--deadline",

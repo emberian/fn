@@ -89,11 +89,128 @@
 ; The third element is the node's <path-identity>, the posting agent below:
 ; the server name of the served Xref overview field (R3, PRF-206,
 ; books/nntp-xref.lisp `fn-nntp-listing-server').
+;; PKT-665 (PRF-243): a served group's creation fact.  The group entry
+;; keeps the stamp of the configuration record that created it
+;; (books/config.lisp `fn-cfg-groups-create': `init''s record for the
+;; initial groups, the `group create' record for a later one), already
+;; durable with the record.  A configuration stamp is the seconds projection
+;; of a clock observation (books/owner-config.lisp `fn-ocfg-config-stamp');
+;; the fact carries the millisecond observation it projects back to and the
+;; DTN millisecond time of its wall reading.  A stamp with no wall claim (a
+;; store initialized before 2026-09-27, whose record carries the zero
+;; stamp) yields no fact: its group has no creation time, and NEWGROUPS and
+;; LIST ACTIVE.TIMES omit it rather than invent one (specs/nntp.md).
+(defun fn-oag-stamp-observation (stamp)
+  (declare (xargs :guard t))
+  (fn-clock-observation (* 1000 (nfix (fn-clock-monotonic stamp)))
+                        (* 1000 (nfix (fn-clock-wall stamp)))
+                        (* 1000 (nfix (fn-clock-wall-error stamp)))
+                        (fn-clock-has-wall stamp)))
+
+(defun fn-oag-group-fact-of (e)
+  (declare (xargs :guard t))
+  (let ((stamp (fn-cfg-group-created-stamp e)))
+    (if (and (fn-cfg-stampp stamp)
+             (fn-clock-has-wall stamp)
+             (fn-nntp-safe-group-namep (fn-cfg-group-name e)))
+        (list (fn-nntp-group-fact (fn-cfg-group-name e)
+                                  (* 1000 (nfix (fn-clock-wall stamp)))
+                                  (fn-oag-stamp-observation stamp)))
+      nil)))
+
+; One walk of the group table: the facts of the entries live at GEN.
+(defun fn-oag-group-facts (es gen)
+  (declare (xargs :guard t))
+  (if (consp es)
+      (if (fn-cfg-entry-livep (car es) gen)
+          (append (fn-oag-group-fact-of (car es))
+                  (fn-oag-group-facts (cdr es) gen))
+        (fn-oag-group-facts (cdr es) gen))
+    nil))
+
+; KEYSTONE (PKT-665).  Every entry live at GEN whose creating record's
+; stamp carries a wall reading has its fact, dated by that reading.
+(defthm fn-oag-group-facts-has-the-created-stamp
+  (implies (and (member-equal e es)
+                (fn-cfg-entry-livep e gen)
+                (fn-cfg-stampp (fn-cfg-group-created-stamp e))
+                (fn-clock-has-wall (fn-cfg-group-created-stamp e))
+                (fn-nntp-safe-group-namep (fn-cfg-group-name e)))
+           (member-equal (fn-nntp-group-fact
+                          (fn-cfg-group-name e)
+                          (* 1000 (nfix (fn-clock-wall
+                                         (fn-cfg-group-created-stamp e))))
+                          (fn-oag-stamp-observation
+                           (fn-cfg-group-created-stamp e)))
+                         (fn-oag-group-facts es gen)))
+  :hints (("Goal" :in-theory (disable fn-cfg-entry-livep fn-cfg-stampp
+                                      fn-nntp-safe-group-namep
+                                      fn-oag-stamp-observation
+                                      fn-nntp-group-fact))))
+
+; Every projected fact is a well-formed creation fact (the shape
+; books/nntp-responses.lisp `fn-nntp-envp' requires of the served
+; environment's facts).
+(local
+ (defthm fn-oag-group-fact-of-is-a-fact
+   (implies (member-equal f (fn-oag-group-fact-of e))
+            (fn-nntp-group-factp f))
+   :hints (("Goal" :in-theory (enable fn-nntp-group-factp fn-nntp-group-fact
+                                      fn-nntp-fact-name fn-nntp-fact-created
+                                      fn-nntp-fact-observation
+                                      fn-oag-stamp-observation fn-cfg-stampp
+                                      fn-clock-observationp fn-record-uint32p)))))
+
+(defthm fn-oag-group-facts-are-group-facts
+  (implies (member-equal f (fn-oag-group-facts es gen))
+           (fn-nntp-group-factp f))
+  :hints (("Goal" :induct (fn-oag-group-facts es gen)
+           :in-theory (disable fn-oag-group-fact-of fn-nntp-group-factp
+                               fn-cfg-entry-livep))))
+
+;; The listing's elements: 1 the descriptions, 2 the node's message, 3 the
+;; path-identity (below), 4 the access table (PRF-222, books/group-access.lisp
+;; `fn-gac-listing-table'), 5 the creation facts (PKT-665) and 6 the configured default
+;; subscription list (PKT-666, books/config.lisp
+;; `fn-cfg-default-subscriptions').
 (defun fn-oag-listing (cfg)
   (declare (xargs :guard t))
   (list (fn-oag-descs (fn-cnode-served-of cfg) (fn-cfg-value cfg))
         (fn-cfg-motd-lines (fn-cfg-value cfg))
-        (fn-oag-agent cfg)))
+        (fn-oag-agent cfg)
+        ;; PRF-222: the access rules (books/group-access.lisp
+        ;; `fn-gac-listing-table'), the accounts slot's mark-3 rows.
+        (fn-cfg-access-table (fn-cfg-accounts (fn-cfg-value cfg)))
+        (fn-oag-group-facts (fn-cfg-groups (fn-cfg-value cfg))
+                            (fn-cfg-generation cfg))
+        (fn-cfg-default-subscriptions (fn-cfg-value cfg))))
+
+;; P3 (moderated groups, PRF-228): one status entry per live moderated
+;; group, (:moderated G-OCTETS QUEUE-OCTETS (LOGIN-OCTETS ...)), from the
+;; configuration's moderation rows (books/config.lisp
+;; `fn-cfg-group-moderation').  They ride in the closed list beside the
+;; read-only groups, so LIST ACTIVE's "m", the POST gate
+;; (books/moderation.lisp) and a connection's approver view
+;; (books/nntp-auth.lisp `fn-auth-moderation-config') read one list.
+(defun fn-oag-login-octets (logins)
+  (declare (xargs :guard t))
+  (if (consp logins)
+      (cons (fn-nntp-string-octets (car logins))
+            (fn-oag-login-octets (cdr logins)))
+    nil))
+
+(defun fn-oag-moderation-entries (names v gen)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (let ((m (fn-cfg-group-moderation v gen (car names))))
+        (if (consp m)
+            (cons (list :moderated (fn-nntp-string-octets (car names))
+                        (fn-nntp-string-octets (fn-cfg-ag-car m))
+                        (fn-oag-login-octets
+                         (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr m)))))
+                  (fn-oag-moderation-entries (cdr names) v gen))
+          (fn-oag-moderation-entries (cdr names) v gen)))
+    nil))
 
 (defun fn-oag-post-config (cfg max-octets)
   "The posting configuration the owner installs for configuration CFG.
@@ -111,8 +228,11 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
    ;; O2: the served groups whose configured status is "n"
    ;; (books/config.lisp `fn-cfg-closed-names'), read by the served POST
    ;; gate and LIST ACTIVE's status field (books/group-status.lisp).
-   (fn-oag-group-octets (fn-cfg-closed-names (fn-cfg-value cfg)
-                                             (fn-cfg-generation cfg)))))
+   (append (fn-oag-group-octets (fn-cfg-closed-names (fn-cfg-value cfg)
+                                                     (fn-cfg-generation cfg)))
+           (fn-oag-moderation-entries (fn-cnode-served-of cfg)
+                                      (fn-cfg-value cfg)
+                                      (fn-cfg-generation cfg)))))
 
 (defthm fn-oag-post-config-agent-is-the-path-identity
   (implies (fn-oag-identity-setp cfg)
@@ -168,6 +288,26 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
 ; -----------------------------------------------------------------------------
 ; Up the served stack: fn-nntp-post-step, fn-peer-step, fn-auth-step
 
+(defthm fn-oag-injection-names-the-configured-agent
+  (fn-oag-names-agentp (fn-inj-decide source config observation)
+                       (fn-inj-config-agent config))
+  :hints (("Goal" :in-theory (disable fn-inj-decide fn-inj-infixp
+                                      fn-inj-injection-info-line))))
+
+; P3: the moderated-group gate returns the decision it was given, a
+; refusal, or the injection of the envelope under the same configuration, so
+; what it returns names the agent the decision did (books/moderation.lisp).
+(defthm fn-oag-mod-gate-names-the-configured-agent
+  (implies (fn-oag-names-agentp decision (fn-inj-config-agent config))
+           (fn-oag-names-agentp (fn-mod-gate source config observation decision)
+                                (fn-inj-config-agent config)))
+  :hints (("Goal" :in-theory (e/d (fn-mod-gate fn-mod-forward)
+                                  (fn-inj-decide fn-mod-facts
+                                   fn-mod-named-entries fn-mod-envelope-source
+                                   fn-mod-forwarded-source fn-mod-some-gatedp
+                                   fn-mod-envelope-msgid fn-inj-infixp
+                                   fn-inj-injection-info-line)))))
+
 (defthm fn-oag-post-step-submission-names-the-configured-agent
   (fn-oag-names-agentp
    (fn-post-result-submission
@@ -178,7 +318,14 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                                    fn-inj-injection-info-line
                                    fn-inj-infixp fn-nntp-step
                                    fn-post-offeredp
-                                   fn-post-refusal-line)))))
+                                   fn-post-refusal-line fn-mod-gate
+                                   fn-oag-names-agentp))
+           :use ((:instance fn-oag-mod-gate-names-the-configured-agent
+                            (source (fn-post-body-octets (cadr wire-event)))
+                            (observation injection)
+                            (decision (fn-inj-decide
+                                       (fn-post-body-octets (cadr wire-event))
+                                       config injection)))))))
 
 (defthm fn-oag-peer-step-submission-names-the-configured-agent
   (fn-oag-names-agentp
@@ -217,7 +364,8 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                     (fn-auth-step as archive config observation injection wire-event)))
            :use ((:instance fn-auth-submission-is-the-delegated-submission)
                  (:instance fn-oag-peer-step-submission-names-the-configured-agent
-                            (ps (fn-auth-session-base as)))))))
+                            (ps (fn-auth-session-base as))
+                            (config (fn-auth-moderation-config as config)))))))
 
 ; -----------------------------------------------------------------------------
 ; The dispatcher and the byte fold.  fn-served-connp is the carried served
@@ -281,8 +429,13 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                     (fn-auth-step-pinned as archive index verdicts config
                                          observation injection wire-event)))
            :use ((:instance fn-auth-pinned-submission-is-the-delegated-submission)
+                 ;; PRF-222: the delegate serves the session's view, whose
+                 ;; posting configuration keeps the agent (fn-auth-view-config-keeps).
                  (:instance fn-oag-peer-step-pinned-submission-names-the-configured-agent
-                            (ps (fn-auth-session-base as)))))))
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config as (fn-auth-moderation-config as config) archive)))))))
 
 (local
  (defthm fn-oag-auth-effects-carry-no-submission

@@ -128,6 +128,19 @@
                                     fn-nntp-result-effects)
                                    (fn-nntp-motd-lines))))))
 
+; The moderation view (books/nntp-auth.lisp `fn-auth-moderation-config',
+; which the delegate composes under the access view) keeps the listing and
+; the posting flag whatever the configuration's shape.
+(defthm fn-odr-listing-of-moderation-config
+  (equal (fn-inj-config-listing (fn-auth-moderation-config as config))
+         (fn-inj-config-listing config))
+  :hints (("Goal" :in-theory (enable fn-auth-moderation-config))))
+
+(defthm fn-odr-allow-of-moderation-config
+  (equal (fn-inj-config-allow (fn-auth-moderation-config as config))
+         (fn-inj-config-allow config))
+  :hints (("Goal" :in-theory (enable fn-auth-moderation-config))))
+
 ;; One framed LIST NEWSGROUPS or LIST MOTD line, through the pinned
 ;; dispatcher chain.
 
@@ -138,6 +151,9 @@
          (ns (fn-post-session-base pst))
          (tokens (fn-nntp-tokenize line)))
     (implies (and (fn-auth-sessionp as)
+                  ;; PRF-222: a session without a group-access rule (a
+                  ;; restricted one is served the view: books/group-access.lisp).
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
@@ -203,6 +219,9 @@
          (ns (fn-post-session-base pst))
          (tokens (fn-nntp-tokenize line)))
     (implies (and (fn-auth-sessionp as)
+                  ;; PRF-222: a session without a group-access rule (a
+                  ;; restricted one is served the view: books/group-access.lisp).
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (not (fn-auth-session-handshakingp as))
                   (not (fn-auth-gatedp as (car tokens)))
                   (fn-peer-sessionp ps)
@@ -291,6 +310,7 @@
                   (fn-nntp-sessionp ns)
                   (equal (fn-nntp-session-openp ns) t)
                   (fn-nntp-session-projected ns)
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (fn-nntp-command-inputp line)
                   (fn-nntp-command-arguments-at-mostp tokens)
                   (consp (cdr tokens))
@@ -359,6 +379,7 @@
                   (fn-nntp-sessionp ns)
                   (equal (fn-nntp-session-openp ns) t)
                   (fn-nntp-session-projected ns)
+                  (not (fn-auth-access-restrictedp as (fn-served-conn-config conn)))
                   (fn-nntp-command-inputp line)
                   (fn-nntp-command-arguments-at-mostp tokens)
                   (consp (cdr tokens))

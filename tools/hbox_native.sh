@@ -113,10 +113,10 @@ DTN_PRODUCTION=0
 DTN_DEVELOPER=0
 for image in $(echo "$IMAGES" | tr ',' ' '); do
     case $image in
-        developer|production) ;;
+        developer|production|reference|developer-stripped) ;;
         dtn) DTN=1; DTN_PRODUCTION=1 ;;
         dtn-developer) DTN=1; DTN_DEVELOPER=1 ;;
-        *) echo "hbox_native: --images takes developer,production,dtn,dtn-developer" >&2; exit 2 ;;
+        *) echo "hbox_native: --images takes developer,production,dtn,dtn-developer,reference,developer-stripped" >&2; exit 2 ;;
     esac
 done
 if [ $DTN_DEVELOPER -eq 1 ] && [ $DTN_PRODUCTION -eq 0 ]; then
@@ -229,13 +229,15 @@ BOX
             # The (profile, session script, image) triple per image, as
             # tools/runbooks/hbox-image-build.sh's four build lines.
             case $image in
-                production) profile=production build=host/native/build.lisp out=build/fn-host ;;
-                developer) profile=developer build=host/native/build.lisp out=build/fn-host-developer ;;
-                dtn) profile=production build=host/native/build-dtn.lisp out=build/fn-host-dtn ;;
-                dtn-developer) profile=developer build=host/native/build-dtn.lisp out=build/fn-host-dtn-developer ;;
+                production) profile=production build=host/native/build.lisp out=build/fn-host world=stripped ;;
+                developer) profile=developer build=host/native/build.lisp out=build/fn-host-developer world=full ;;
+                reference) profile=production build=host/native/build.lisp out=build/fn-host-reference world=full ;;
+                developer-stripped) profile=developer build=host/native/build.lisp out=build/fn-host-developer-stripped world=stripped ;;
+                dtn) profile=production build=host/native/build-dtn.lisp out=build/fn-host-dtn world=stripped ;;
+                dtn-developer) profile=developer build=host/native/build-dtn.lisp out=build/fn-host-dtn-developer world=full ;;
             esac
             cat <<BOX
-step image-$image env FN_NATIVE_PROFILE=$profile FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log swarm-build sh tools/build_native_host.sh
+step image-$image env FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log swarm-build sh tools/build_native_host.sh
 BOX
         done
     fi
