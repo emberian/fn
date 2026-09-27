@@ -36,7 +36,11 @@ import re
 import shutil
 import unittest
 
-from tests.test_native_checkpoint import IMAGE, NativeCheckpointTests
+# The module, not its TestCase: a TestCase imported by name is collected and
+# run again as this module's own (the checkpoint suite ran twice here).
+from tests import test_native_checkpoint as checkpoint
+
+IMAGE = checkpoint.IMAGE
 
 N = int(os.environ.get("FN_P5_N", "20000"))
 CUT_N = int(os.environ.get("FN_P5_CUT_N", "4500"))
@@ -72,15 +76,15 @@ class NativePackChainTests(unittest.TestCase):
     # A scale store's probe and its compaction take minutes, not seconds.
     native_timeout = int(os.environ.get("FN_P5_TIMEOUT", "1800"))
     served_timeout = native_timeout
-    setUp = NativeCheckpointTests.setUp
-    tearDown = NativeCheckpointTests.tearDown
-    native = NativeCheckpointTests.native
-    owner_config = NativeCheckpointTests.owner_config
-    run_owner = NativeCheckpointTests.run_owner
-    stop_owner = NativeCheckpointTests.stop_owner
-    operator_post = NativeCheckpointTests.operator_post
-    served_view = NativeCheckpointTests.served_view
-    assert_view_kept_and_next_number = NativeCheckpointTests.assert_view_kept_and_next_number
+    setUp = checkpoint.NativeCheckpointTests.setUp
+    tearDown = checkpoint.NativeCheckpointTests.tearDown
+    native = checkpoint.NativeCheckpointTests.native
+    owner_config = checkpoint.NativeCheckpointTests.owner_config
+    run_owner = checkpoint.NativeCheckpointTests.run_owner
+    stop_owner = checkpoint.NativeCheckpointTests.stop_owner
+    operator_post = checkpoint.NativeCheckpointTests.operator_post
+    served_view = checkpoint.NativeCheckpointTests.served_view
+    assert_view_kept_and_next_number = checkpoint.NativeCheckpointTests.assert_view_kept_and_next_number
 
     def scale_store(self, name, n):
         store = self.base / name

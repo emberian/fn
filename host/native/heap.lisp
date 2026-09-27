@@ -207,13 +207,32 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
 (defun fnn-heap-history-observation (root profile)
   (let ((octets (fnn-heap-history-octets root profile))
         (records (handler-case
-                     (fnn-heap-directory-count
-                      (fnn-transactions (make-fnn-store root))
-                      (fnn-core 'fn-heap-history-listing-bound profile))
+                     (let ((store (make-fnn-store root)))
+                       (if (fnn-lstat (fnn-journal-dir store))
+                           (fnn-heap-log-records store profile)
+                         (fnn-heap-directory-count
+                          (fnn-transactions store)
+                          (fnn-heap-listing-bound profile))))
                    (error () nil))))
     (if (and (integerp octets) (integerp records))
         (cons octets records)
       octets)))
+
+(defun fnn-heap-listing-bound (profile)
+  (fnn-core 'fn-heap-history-listing-bound profile))
+
+;; Format 9 (the record log; lane log-recovery): the records a full replay
+;; reads are the log's entries, each at least one write unit on disk
+;; (books/store-log-route.lisp fn-olr-entry-octets pads every entry to the
+;; unit), so the segments' octets over the unit bound them.  A state
+;; checkpoint's prefix is not counted there: with one present the count is
+;; not observed (NIL: the profile's T).
+(defun fnn-heap-log-records (store profile)
+  (let ((octets (fnn-heap-directory-octets (fnn-journal-dir store)
+                                           (fnn-heap-listing-bound profile))))
+    (and (integerp octets)
+         (null (fnn-lstat (fnn-state-checkpoint-path store)))
+         (floor octets (fnn-store-log-unit)))))
 
 (defun fnn-heap-history-octets (root profile)
   (handler-case
@@ -221,6 +240,8 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
              (limit (fnn-core 'fn-heap-history-listing-bound profile))
              (state (fnn-lstat (fnn-state-checkpoint-path store)))
              (parts (list (fnn-heap-directory-octets (fnn-transactions store) limit)
+                          ;; Format 9: the record log's segments.
+                          (fnn-heap-directory-octets (fnn-journal-dir store) limit)
                           (fnn-heap-directory-octets (fnn-join root "packs") limit)
                           (fnn-heap-directory-octets (fnn-join root "checkpoints") limit)
                           (cond ((null state) 0)

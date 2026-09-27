@@ -9995,6 +9995,10 @@
         {
           "kind": "theorem",
           "name": "fn-arx-entry-ok-of-durable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-arx-steps-are-one-step-of-the-concatenation"
         }
       ]
     },
@@ -10727,6 +10731,35 @@
           "kind": "theorem",
           "name": "fn-psrv-unstage-preserves-invariant",
           "note": "host/owner-host.lisp fn-owner-reconfigure-unstage (host/native/admin.lisp fnn-owner-live-reconfigure-locked, the pre-publication refusal arms): fn-psrv-unstage keeps the invariant, the owner and its Store, and releases the configuration lock. Teeth: tests/acl2/owner-prepare-served-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-292",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-block-rev-is-the-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-crlf-validp-is-crlf-lines-ok"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-blank-linep-is-split-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-article-response-is-of-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-response-of-bytes-session"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcompat-article-reply-exec-is-the-reply"
         }
       ]
     }

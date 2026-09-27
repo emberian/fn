@@ -229,13 +229,17 @@
 ; Each record's octets are the durable octets of its file at its entry's
 ; record position (the scan read the file: A-HOST; the file holds what it
 ; durably wrote: A-DURABLE-EXTENT).
+; A record with no place (the scan could not place its segment's entries:
+; the host's fnn-extent-positions answers NIL for each) is interned resident
+; and needs nothing.
 (defun-nx fn-arx-faithful-p (rs ps)
   (if (atom rs)
       t
-    (and (equal (fn-durable-octets (nfix (car (car ps)))
-                                   (+ (nfix (nth 0 (cdr (car ps)))) *fn-arx-record-at*)
-                                   (len (car rs)))
-                (car rs))
+    (and (or (atom (car ps))
+             (equal (fn-durable-octets (nfix (car (car ps)))
+                                       (+ (nfix (nth 0 (cdr (car ps)))) *fn-arx-record-at*)
+                                       (len (car rs)))
+                    (car rs)))
          (fn-arx-faithful-p (cdr rs) (cdr ps)))))
 
 (local
@@ -317,6 +321,13 @@
            :use ((:instance fn-arx-extent-of-denotes-payload)
                  (:instance fn-arx-record-payload-octets)))))
 
+; With no place the event is the resident one, with no hypothesis: the
+; place's frame length is 0, never a frame's (fn-arx-extent-of).
+(defthm fn-arx-intern-event-without-place
+  (equal (fn-arx-intern-event w r nil file keyring generation fn-arena)
+         (fn-intern-event w keyring generation fn-arena))
+  :hints (("Goal" :in-theory (e/d (fn-arx-extent-of) (fn-arx-cat-intern-extent fn-intern-event)))))
+
 (defthm fn-arx-durable-octets-empty
   (implies (zp len) (equal (fn-durable-octets file off len) nil))
   :hints (("Goal" :in-theory (enable fn-durable-octets-unfold))))
@@ -354,6 +365,71 @@
            (equal (fn-arx-intern-step acc ws rs ps fn-arena)
                   (fn-srs-intern-step acc ws fn-arena)))
   :hints (("Goal" :in-theory (disable fn-arx-intern-events fn-intern-events))))
+
+; The chunk stream (host/native/io.lisp fnn-recover-record-chunks with the
+; scan's positions, folded by fnn-bridge-recover): per chunk the host makes
+; the decode and the extent step; PLACESS is each chunk's places.
+(defun fn-arx-step (acc chunk places fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (fn-arx-intern-step acc (fn-srs-decode chunk) chunk places fn-arena))
+
+(defun fn-arx-steps (chunks placess acc fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (if (atom chunks)
+      (mv acc fn-arena)
+    (mv-let (acc fn-arena)
+      (fn-arx-step acc (car chunks) (and (consp placess) (car placess)) fn-arena)
+      (fn-arx-steps (cdr chunks) (and (consp placess) (cdr placess)) acc fn-arena))))
+
+; Every chunk's records faithful at their places.
+(defun-nx fn-arx-faithful-chunks-p (chunks placess)
+  (if (atom chunks)
+      t
+    (and (fn-arx-faithful-p (car chunks) (and (consp placess) (car placess)))
+         (fn-arx-faithful-chunks-p (cdr chunks) (and (consp placess) (cdr placess))))))
+
+(local
+ (defthm fn-arx-arena-p-of-intern-events
+   (implies (fn-arena-p fn-arena)
+            (fn-arena-p (mv-nth 1 (fn-intern-events ws keyring generation fn-arena))))
+   :hints (("Goal" :induct (fn-intern-events ws keyring generation fn-arena)
+            :in-theory (e/d (fn-intern-events)
+                            (fn-intern-event fn-intern-event-arena fn-wire-event-p
+                             fn-record-p fn-stxa-p fn-arena-p))))))
+
+(local
+ (defthm fn-arx-arena-p-of-srs-intern-step
+   (implies (fn-arena-p fn-arena)
+            (fn-arena-p (mv-nth 1 (fn-srs-intern-step acc ws fn-arena))))
+   :hints (("Goal" :in-theory (disable fn-intern-events fn-arena-p)))))
+
+(defthm fn-arx-steps-are-the-resident-steps
+  (implies (and (fn-arena-p fn-arena)
+                (fn-arx-faithful-chunks-p chunks placess))
+           (equal (fn-arx-steps chunks placess acc fn-arena)
+                  (fn-srs-steps chunks acc fn-arena)))
+  :hints (("Goal" :induct (fn-arx-steps chunks placess acc fn-arena)
+           :in-theory (disable fn-arx-intern-step fn-srs-intern-step fn-srs-decode))))
+
+; KEYSTONE (PRF-294).  The chunk stream with extents: folding the host's
+; extent step over ANY split of the history into chunks, each record faithful
+; at its place, answers what one resident step over the whole history
+; answers (fn-srs-steps-are-one-step-of-the-concatenation): :bad exactly when
+; it is :bad, and otherwise the same rows and the same arena.
+(defthm fn-arx-steps-are-one-step-of-the-concatenation
+  (implies (and (fn-arena-p fn-arena)
+                (fn-srs-chunksp chunks)
+                (fn-arx-faithful-chunks-p chunks placess))
+           (let ((steps (fn-arx-steps chunks placess acc fn-arena))
+                 (one (fn-srs-step acc (fn-srs-concat chunks) fn-arena)))
+             (and (iff (eq (mv-nth 0 steps) :bad) (eq (mv-nth 0 one) :bad))
+                  (implies (not (eq (mv-nth 0 one) :bad))
+                           (equal steps one)))))
+  :hints (("Goal" :use (fn-arx-steps-are-the-resident-steps
+                        (:instance fn-srs-steps-are-one-step-of-the-concatenation))
+           :in-theory (disable fn-arx-steps fn-srs-steps fn-srs-step fn-arx-faithful-chunks-p
+                               fn-srs-steps-are-one-step-of-the-concatenation
+                               fn-arx-steps-are-the-resident-steps))))
 
 ; -----------------------------------------------------------------------------
 ; 6. The served read's check and the read cache's bound.
