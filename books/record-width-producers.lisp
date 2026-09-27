@@ -28,6 +28,7 @@
 ; `fn-sn-article-record' builds.
 (in-package "ACL2")
 (include-book "store-node")
+(include-book "store-intern")
 (include-book "store-budget-naming")
 (include-book "bp-ingress")
 (include-book "store-budget-article")
@@ -69,7 +70,7 @@
 (local
 (defthm fn-rwp-sn-prepare-gate
   (implies (not (equal (fn-sn-prepare s record) s))
-           (and (fn-record-p record)
+           (and (fn-held-p record)
                 (fn-sf-statep (fn-sn-files s))
                 (not (equal (fn-sf-prepare-record (fn-sn-files s) record
                                                   (fn-sn-groups s)
@@ -82,13 +83,13 @@
                             fn-node-statep fn-sn-verdict-listp
                             fn-sn-keyring-snapshot-listp fn-prin-keyringp
                             fn-sn-prepare-node fn-sn-record-bindsp
-                            fn-record-p))))))
+                            fn-held-p))))))
 
-; The same at the composed prepare: a record `fn-sn-prepare' stages is a
-; record whose sequence, txid and generation are within u32.
+; The same at the composed prepare: a row `fn-sn-prepare' stages is a held
+; row whose sequence, txid and generation are within u32.
 (defthm fn-sn-prepare-stages-u32-coordinates
   (implies (not (equal (fn-sn-prepare s record) s))
-           (and (fn-record-p record)
+           (and (fn-held-p record)
                 (fn-record-uint32p (fn-record-sequence record))
                 (fn-record-uint32p (fn-record-txid record))
                 (fn-record-uint32p (fn-record-generation record))))
@@ -101,10 +102,30 @@
            :in-theory (e/d (fn-store-event-sequence fn-store-event-txid
                             fn-store-event-generation)
                            (fn-sf-prepare-record fn-sf-statep fn-sn-prepare
-                            fn-record-p fn-record-uint32p)))))
+                            fn-held-p fn-record-uint32p)))))
 
 ; The article producer: its stamp is below 2^32 (`fn-record-stamp-of-observation'
 ; answers :clock-unusable past it) and its charge is the one it was given.
+; THE ENTRY.  After the records flip the host prepares a POST through
+; `fn-store-prepare-interned' (books/store-intern.lisp): the wire record W is
+; interned to the row at the arena's count and the store prepares that row.
+; When the entry moves the store, W is a wire record and its coordinates
+; (the row's, which the prepare bounded) are within u32.
+(defthm fn-store-prepare-interned-stages-u32-coordinates
+  (implies (not (equal (mv-nth 0 (fn-store-prepare-interned s w fn-arena)) s))
+           (and (fn-record-p w)
+                (fn-record-uint32p (fn-record-sequence w))
+                (fn-record-uint32p (fn-record-txid w))
+                (fn-record-uint32p (fn-record-generation w))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-sn-prepare-stages-u32-coordinates
+                                   (record (fn-intern-row-at w (fn-sn-keyring s)
+                                                             (fn-sn-keyring-generation s)
+                                                             (fn-arena-count fn-arena)))))
+           :in-theory (e/d (fn-store-prepare-interned fn-intern-row-at)
+                           (fn-sn-prepare fn-held-p fn-record-p fn-record-uint32p
+                            fn-held-facts-of fn-held-context-of)))))
+
 (defthm fn-sn-article-record-stamp-and-charge
   (implies (fn-record-p (fn-sn-article-record s obs msgid payload groups
                                               obligation-id subject evidence
@@ -141,23 +162,23 @@
 ; bounds the stamp.
 (defthm fn-sn-prepare-stages-a-narrow-article-record
   (implies (and (fn-record-uint32p charge)
-                (not (equal (fn-sn-prepare
+                (not (equal (mv-nth 0 (fn-store-prepare-interned
                              s (fn-sn-article-record s obs msgid payload groups
                                                      obligation-id subject
-                                                     evidence charge))
+                                                     evidence charge) fn-arena))
                             s)))
            (not (fn-record-widep
                  (fn-sn-article-record s obs msgid payload groups obligation-id
                                        subject evidence charge))))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-sn-prepare-stages-u32-coordinates
-                                   (record (fn-sn-article-record
+  :hints (("Goal" :use ((:instance fn-store-prepare-interned-stages-u32-coordinates
+                                   (w (fn-sn-article-record
                                             s obs msgid payload groups
                                             obligation-id subject evidence
                                             charge)))
                         (:instance fn-sn-article-record-stamp-and-charge))
            :in-theory (e/d (fn-record-widep)
-                           (fn-sn-article-record fn-sn-prepare fn-record-p
+                           (fn-sn-article-record fn-sn-prepare fn-store-prepare-interned fn-record-p
                             fn-record-uint32p)))))
 
 ; A value that is not an admitted profile reads G as 0, so no group count is
@@ -182,10 +203,10 @@
   (implies (and (equal (fn-sbud-post-boundary profile msgid-octets
                                               (len payload) (len groups) charge)
                        :ok)
-                (not (equal (fn-sn-prepare
+                (not (equal (mv-nth 0 (fn-store-prepare-interned
                              s (fn-sn-article-record s obs msgid payload groups
                                                      obligation-id subject
-                                                     evidence charge))
+                                                     evidence charge) fn-arena))
                             s)))
            (<= (len (fn-record-encode
                      (fn-sn-article-record s obs msgid payload groups
@@ -205,7 +226,7 @@
                                             charge))))
            :in-theory (e/d (fn-sbud-post-boundary fn-sbud-payload-bound
                             fn-sbud-group-bound fn-sn-article-record)
-                           (fn-sn-prepare fn-record-widep
+                           (fn-sn-prepare fn-store-prepare-interned fn-record-widep
                             fn-bs-profile-admittedp fn-af-message-idp
                             fn-bs-profile-max-record-octets
                             fn-bs-profile-max-article-octets
@@ -216,10 +237,10 @@
 ; bounds by u32, so the record it stages is narrow with no further premise.
 (defthm fn-bpi-staged-record-is-narrow
   (implies (and (fn-bpi-policy-p policy)
-                (not (equal (fn-sn-prepare
+                (not (equal (mv-nth 0 (fn-store-prepare-interned
                              store (fn-bpi-record-for store policy context
                                                       msgid-octets group-octets
-                                                      adu))
+                                                      adu) fn-arena))
                             store)))
            (not (fn-record-widep
                  (fn-bpi-record-for store policy context msgid-octets
@@ -239,7 +260,7 @@
                                    (evidence (fn-bpi-policy-evidence policy))
                                    (charge (fn-bpi-policy-charge policy))))
            :in-theory (e/d (fn-bpi-record-for fn-bpi-policy-p)
-                           (fn-sn-article-record fn-sn-prepare fn-record-widep
+                           (fn-sn-article-record fn-sn-prepare fn-store-prepare-interned fn-record-widep
                             fn-record-uint32p)))))
 
 ; The store-post sequence: the POST boundary admits the article, the article
@@ -253,10 +274,10 @@
                 (equal (fn-sbud-article-verdict-at profile used bytes-used
                                                    (len payload) (len groups))
                        :admissible)
-                (not (equal (fn-sn-prepare
+                (not (equal (mv-nth 0 (fn-store-prepare-interned
                              s (fn-sn-article-record s obs msgid payload groups
                                                      obligation-id subject
-                                                     evidence charge))
+                                                     evidence charge) fn-arena))
                             s)))
            (fn-profile-replay-within-boundp
             profile
@@ -278,7 +299,7 @@
                                             obligation-id subject evidence
                                             charge))))
            :in-theory (e/d (fn-sn-article-record)
-                           (fn-sbud-article-verdict-at fn-sn-prepare
+                           (fn-sbud-article-verdict-at fn-sn-prepare fn-store-prepare-interned
                             fn-record-widep fn-sbud-post-boundary
                             fn-profile-replay-within-boundp
                             fn-record-stamp-of-observation)))))
@@ -359,10 +380,10 @@
 ; group count.
 (defthm fn-sn-prepare-stages-an-article-record-within-its-ceiling
   (implies (and (fn-record-uint32p charge)
-                (not (equal (fn-sn-prepare
+                (not (equal (mv-nth 0 (fn-store-prepare-interned
                              s (fn-sn-article-record s obs msgid payload groups
                                                      obligation-id subject
-                                                     evidence charge))
+                                                     evidence charge) fn-arena))
                             s)))
            (<= (len (fn-record-encode
                      (fn-sn-article-record s obs msgid payload groups
@@ -370,8 +391,8 @@
                                            charge)))
                (fn-record-encoded-octets-ceiling (len payload) (len groups))))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-rwp-sn-prepare-gate
-                                   (record (fn-sn-article-record
+  :hints (("Goal" :use ((:instance fn-store-prepare-interned-stages-u32-coordinates
+                                   (w (fn-sn-article-record
                                             s obs msgid payload groups
                                             obligation-id subject evidence
                                             charge)))
@@ -382,7 +403,7 @@
                                             obligation-id subject evidence
                                             charge))))
            :in-theory (e/d ()
-                           (fn-sn-article-record fn-sn-prepare fn-record-p
+                           (fn-sn-article-record fn-sn-prepare fn-store-prepare-interned fn-record-p
                             fn-record-uint32p fn-sf-prepare-record
                             fn-sf-statep
                             fn-record-encoded-octets-ceiling)))))
@@ -393,10 +414,10 @@
 ; its own payload and groups at any width.
 (defthm fn-bpi-staged-record-fits-the-producer-ceiling
   (implies (and (fn-bpi-policy-p policy)
-                (not (equal (fn-sn-prepare
+                (not (equal (mv-nth 0 (fn-store-prepare-interned
                              store (fn-bpi-record-for store policy context
                                                       msgid-octets group-octets
-                                                      adu))
+                                                      adu) fn-arena))
                             store)))
            (<= (len (fn-record-encode
                      (fn-bpi-record-for store policy context msgid-octets
@@ -409,9 +430,9 @@
                       (fn-bpi-record-for store policy context msgid-octets
                                          group-octets adu))))))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-rwp-sn-prepare-gate
+  :hints (("Goal" :use ((:instance fn-store-prepare-interned-stages-u32-coordinates
                                    (s store)
-                                   (record (fn-bpi-record-for
+                                   (w (fn-bpi-record-for
                                             store policy context msgid-octets
                                             group-octets adu)))
                         (:instance fn-sn-article-record-charge-and-groups
@@ -432,6 +453,6 @@
                                             store policy context msgid-octets
                                             group-octets adu))))
            :in-theory (e/d (fn-bpi-record-for fn-bpi-policy-p)
-                           (fn-sn-article-record fn-sn-prepare fn-record-widep
+                           (fn-sn-article-record fn-sn-prepare fn-store-prepare-interned fn-record-widep
                             fn-record-uint32p fn-sf-prepare-record
                             fn-sf-statep fn-record-p)))))

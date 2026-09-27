@@ -484,7 +484,10 @@
   (if (consp records)
       (let ((rest (fn-bpaj-record-for-msgid msgid (cdr records)))
             (record (fn-bpr-event-article (car records))))
-        (if (and (fn-record-p record)
+        ; A history's articles are held rows after the records flip
+        ; (books/held-record.lisp): the walk is the index's fold
+        ; (fn-cei-article-records-for, books/consumer-event-index.lisp).
+        (if (and (fn-held-p record)
                  (equal msgid (fn-record-msgid record)))
             (cons record rest)
           rest))
