@@ -1177,14 +1177,17 @@
   (let ((oc (fn-owner-ocfg state)))
     (if (fn-ocfg-staged oc)
         (mv nil :fault fn-cat state)
-      ; Step 8 (catalog slice): the completing record's token, read before the
-      ; finish (fn-sf-record-candidate: the record the store is completing).
-      (let* ((candidate (fn-sf-record-candidate
-                         (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
+      ; Step 8 (catalog slice): the completion the store is consuming, read
+      ; before the finish: its (sequence . txid) pair (fn-sf-completion; the
+      ; record itself is found by fn-ccar-completion-record inside the
+      ; finish).  The pending row's token is (txid . expected) of the record
+      ; it prepared, so a completion of any other record is a stale token.
+      (let* ((completion (fn-sf-completion
+                          (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
              (result (fn-ccar-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc)))
              (state (fn-owner-replace-core (cdr result) state))
              (pending (f-get-global 'fn-owner-cat-pending state)))
-        (if (not (and (equal (car result) :durable) pending (fn-record-p candidate)))
+        (if (not (and (equal (car result) :durable) pending (consp completion)))
             (mv nil (car result) fn-cat state)
           ; T4 then T2 (books/served-catalog-owner.lisp fn-sca-finish): the
           ; article's withdrawal targets the refreshed view no longer shows,
@@ -1195,9 +1198,9 @@
           ; (fn-sca-finish-hides-the-targets-from-fresh-views).
           (let ((view (fn-own-view (cdr result))))
             (mv-let (word pending2 fn-cat)
-              (fn-sca-finish (cons (nfix (fn-record-txid candidate)) (fn-pc-expected pending))
+              (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
                              pending (fn-own-view-index view)
-                             (fn-sca-targets-of (fn-record-msgid candidate)
+                             (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view))
                              fn-cat)
               (let ((state (f-put-global 'fn-owner-cat-pending pending2 state)))
