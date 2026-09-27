@@ -25,6 +25,10 @@
   (when (fnn-store-fenced store)
     (fnn-indeterminate "store is fenced pending recovery")))
 
+;; The four stops are reached only from fnn-checkpoint-command-clone and
+;; fnn-clone-activate, which the `checkpoint' verb calls; the owner that
+;; fnn-clone-activate installs never calls them.
+;; thread-confined: the `checkpoint' verb's command thread
 (defvar *fnn-checkpoint-test-stop-counts* (make-hash-table :test #'equal))
 
 (defun fnn-checkpoint-test-stop-after ()
