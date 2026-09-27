@@ -130,6 +130,9 @@
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).
 (include-book "books/replay-identity-index")
+;; lane proto-determinism: `store ROOT digest' (host/store-node-host.lisp
+;; fn-store-sn-replay-digest-report) calls books/state-digest (fn-sdg-).
+(include-book "books/state-digest")
 ;; The subject digest over the buffer (D27 wave C): host/native/io.lisp
 ;; fnn-subject-id-buffer calls fn-shb-subject-id-bounded.
 (include-book "books/sha256-buffer")

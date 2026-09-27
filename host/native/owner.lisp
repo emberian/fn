@@ -614,12 +614,18 @@ directories because one encoded label can be a prefix of a longer label.
     (nreverse peers))))
 
 (defun fnn-owner-feed-open-all (service configured)
+  ;; The order is the configured peers, then the historical journals by name:
+  ;; never the directory's listing order, which differs between filesystems
+  ;; and copies of one store (lane proto-determinism: the owner's feeds were
+  ;; in readdir order, a configured peer included, because remove-duplicates
+  ;; keeps the LAST occurrence).
   (let* ((store (fnn-owner-service-store service))
-         (peers (append configured (fnn-owner-feed-existing-peers store)))
+         (peers (append configured
+                        (sort (copy-list (fnn-owner-feed-existing-peers store)) #'string<)))
          (opened nil))
     (handler-case
         (progn
-          (dolist (peer (remove-duplicates peers :test #'string=))
+          (dolist (peer (remove-duplicates peers :test #'string= :from-end t))
             (push (cons peer (fnn-owner-feed-open store peer)) opened))
           (nreverse opened))
       (error (e)

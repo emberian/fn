@@ -439,7 +439,16 @@ PRF-271, equated with the streamed decision the host calls by
 freed-octets=F ...` and one `reclaimed MSGID` line each; `--dry-run` prints
 `dry-run would-reclaim=N ...` and changes nothing; nothing to do is
 `reclaimed=0`. `store checkpoint` publishes the checkpoint alone (the same
-rotate and drop). The per-file layout's `pack`, `pack-reclaim` and
+rotate and drop). `store ROOT digest` opens the store read-only (refused while an
+owner runs) and prints ACL2's SHA-256 digests of the state the open folded
+(`fn-store-sn-replay-digest-report`, host/store-node-host.lisp, over
+books/state-digest.lisp): `history` (the records as wire events, in log
+order), `pool` (the payload arena's logical value), one `field` line per
+Store-node field, `config`, `canonical` (history and configuration history:
+what anyone holding the log recomputes) and `state` (all of them). Two opens
+of one history print the same lines, by full replay or from a checkpoint, on
+any box (tests/test_native_replay_determinism.py;
+planning/evidence/proto-determinism-2026-09-27.md). The per-file layout's `pack`, `pack-reclaim` and
 `pack-retire` refuse by name on every store an image opens
 (`... refused reason=record-log: a format-9 store has no packs`).
 

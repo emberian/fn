@@ -2719,6 +2719,21 @@ it covers are dropped (fnn-log-drop; T8)."
                    (fnn-open-report store))))
         (t (fnn-fault "ACL2 returned a malformed checkpoint verdict"))))))
 
+(defun fnn-command-store-digest (root)
+  "`store ROOT digest': open the store read-only as `status' does (the shared
+lock, so a running owner refuses this) and print ACL2's digest of the state
+the open folded (host/store-node-host.lisp fn-store-sn-replay-digest-report,
+books/state-digest.lisp), then the open line.  Two opens of the same history
+print the same digests; tests/test_native_replay_determinism.py compares
+them across processes, copies, checkpoint and full replay, and boxes."
+  (multiple-value-bind (store count) (fnn-open-live-store root nil)
+    (declare (ignore count))
+    (unwind-protect
+         (progn (fnn-write-report (fnn-core-state 'fn-store-sn-replay-digest-report))
+                (fnn-out "~a" (fnn-open-report store))
+                +fnn-exit-ok+)
+      (fnn-store-close store))))
+
 (defun fnn-command-state-checkpoint (root)
   "`store checkpoint': open the store as `recover' does (the exclusive writer
 lock, so a running owner refuses this) and publish its exact-state checkpoint
@@ -6116,6 +6131,7 @@ observation (the COMPLETE re-signals it under the owner)."
                  ((string= command "node-secret") (need 4) (fnn-command-node-secret root rest))
                  ((string= command "status") (fnn-command-status root))
                  ((string= command "checkpoint") (fnn-command-state-checkpoint root))
+                 ((string= command "digest") (fnn-command-store-digest root))
                  ((string= command "export") (need 4) (fnn-command-store-export root (first rest)))
                  ((string= command "import") (need 4) (fnn-command-store-import root (first rest) nil))
                  ((string= command "retention") (fnn-command-retention root))
