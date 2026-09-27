@@ -417,9 +417,17 @@ the same octets are handed to the next step."
          (incoming (fnn-mux-conn-input conn))
          (channel (fnn-mux-conn-channel conn))
          (results (multiple-value-list
-                   (fnn-owner-handle-chunk service (fnn-mux-conn-cid conn) incoming
-                                           (fnn-mux-conn-socket conn)
-                                           (fnn-mux-conn-class conn)))))
+                   ;; PKT-858: a peer connection's read enters as ACL2's
+                   ;; class for it (fnn-owner-peer-read-class: :reader while
+                   ;; the disk sheds, so IHAVE/CHECK are answered 436/431
+                   ;; at once instead of waiting for the barrier).
+                   (let ((peerp (eq (fnn-mux-conn-class conn) :transit)))
+                     (fnn-owner-handle-chunk service (fnn-mux-conn-cid conn) incoming
+                                             (fnn-mux-conn-socket conn)
+                                             (if peerp
+                                                 (fnn-owner-peer-read-class service)
+                                               (fnn-mux-conn-class conn))
+                                             peerp)))))
     ;; Format 9 (lane commit-onto-log): the step queued its submission for the
     ;; next commit quantum.  The rest is the submitted step's handling, with
     ;; the plan built when the completion arrives (fnn-mux-await-done).

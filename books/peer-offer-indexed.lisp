@@ -129,6 +129,9 @@
            (fn-peer-decision :refuse :no-inbound))
           ((not (fn-af-message-idp msgid))
            (fn-peer-decision :refuse :message-id-syntax))
+          ; PKT-858: the disk-slow posture, as fn-peer-decide-offer.
+          ((fn-peer-shed-p session)
+           (fn-peer-decision :defer :disk-slow))
           ((fn-pix-history-hasp (fn-record-octets-string msgid) node trie arts)
            (fn-peer-decision :have :history))
           ; PRF-235: the refused-offer memory, as fn-peer-decide-offer.
@@ -156,7 +159,7 @@
                   (fn-peer-decide-offer node cfg peer session msgid clock
                                         inflight)))
   :hints (("Goal" :in-theory (e/d (fn-pix-decide-offer fn-peer-decide-offer)
-                                  (fn-pix-history-hasp fn-peer-history-hasp
+                                  (fn-peer-shed-p fn-pix-history-hasp fn-peer-history-hasp
                                    fn-node-statep fn-midx-correspondencep
                                    fn-peer-stagedp fn-retain-admissiblep
                                    fn-cfg-peer-find fn-af-message-idp

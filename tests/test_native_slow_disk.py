@@ -97,8 +97,17 @@ class SlowDiskSourceTests(unittest.TestCase):
                         event.index("(setq reading (fnn-owner-monotonic-ms))"))
         chunk = owner[owner.index("(defun fnn-owner-handle-chunk-read "):owner.index("(defun fnn-owner-exposure-idle")]
         self.assertLess(chunk.index("(fnn-owner-advance-clock)"),
-                        chunk.index("(setq admit (fnn-owner-disk-admission service))"))
-        self.assertIn("'fn-owner-chunk-span cid 0 (length incoming) admit)", chunk)
+                        chunk.index("(setq sched (fnn-owner-gate-sched-value service)"))
+        self.assertIn("admit (fnn-core 'fn-otm-admit-post sched))", chunk)
+        # Lane log-leftovers: the read gets the gate's value (the disk's
+        # reason lines are ACL2's over it); PKT-858: a peer read admitted as
+        # :reader runs only while the disk sheds.
+        self.assertIn("'fn-owner-chunk-span cid 0 (length incoming) sched)", chunk)
+        self.assertIn("(fnn-core 'fn-otm-peer-read-proceeds-p class sched)", chunk)
+        mux = (ROOT / "host" / "native" / "mux.lisp").read_text()
+        self.assertIn("(fnn-owner-peer-read-class service)", mux)
+        peer_class = owner[owner.index("(defun fnn-owner-peer-read-class "):owner.index("(defun fnn-owner-disk-stalled-p")]
+        self.assertIn("'fn-otm-peer-read-class", peer_class)
         admit = owner[owner.index("(defun fnn-owner-disk-admission "):owner.index("(defun fnn-owner-disk-stalled-p")]
         self.assertIn("'fn-otm-admit-post", admit)
         clock = owner[owner.index("(defun fnn-owner-advance-clock "):owner.index("(defun fnn-owner-finish ")]
@@ -330,13 +339,15 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertLess(max(late), max(early) + 2.0, (early, late))
         # The shed POST: ACL2's try-later 441 with the reason, promptly.
         # The article whose POST got 340 before the disk went slow: 441,
-        # nothing stored (STAT 430 below).  Slice 2 runs the read with the
-        # connection's posting bit off, so the served machine's own 441
-        # answers it; the disk's reason is on health, status and the log
-        # (the reply text with the reason is an open item of the record).
-        self.assertTrue(refused.startswith(b"441 posting failed; "), refused)
+        # nothing stored (STAT 430 below), with the disk's reason (lane
+        # log-leftovers: books/owner-time-admission.lisp fn-otm-disk-effects
+        # puts ACL2's line in place of the served machine's generic one).
+        self.assertTrue(refused.startswith(b"441 posting failed; the disk is slow (a write has waited "),
+                        refused)
+        self.assertIn(b": nothing was stored, try again later", refused)
         self.assertLess(refused_at, 2.0, refused_at)
-        self.assertTrue(refused_command.startswith(b"440 posting not permitted"), refused_command)
+        self.assertTrue(refused_command.startswith(
+            b"440 posting not permitted now; the disk is slow (a write has waited "), refused_command)
         self.assertLess(refused_command_at, 2.0, refused_command_at)
         print("POST command during slow answered in %.3fs: %r" % (refused_command_at, refused_command))
         self.assertGreaterEqual(int(slow_line.group(1)), int(slow_line.group(2)))
@@ -460,7 +471,8 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertLess(at, 6.0 + 1.5, at)
         self.assertLess(max(reads), 2.0, reads)
         self.assertEqual(int(stalled.group(5)), 1)
-        self.assertTrue(refused_command.startswith(b"440 posting not permitted"), refused_command)
+        self.assertTrue(refused_command.startswith(
+            b"440 posting not permitted now; the disk is stalled (a write has waited "), refused_command)
         # Recovery: the told articles are stored, the refused one is not.
         self.assertEqual(stat[b"stalled-a"], b"223", stat)
         self.assertEqual(stat[b"stalled-e"], b"223", stat)
@@ -493,6 +505,93 @@ class SlowDiskNativeTests(unittest.TestCase):
         print("store journal: rc=%d %r" % (replay.returncode, replay.stdout))
         self.assertEqual(replay.returncode, 0, (replay.stdout, replay.stderr))
         self.assertIn(b" replay=agrees", replay.stdout)
+
+    def test_a_peer_is_told_to_retry_while_the_disk_is_slow(self):
+        """PKT-858 (lane log-leftovers): while the disk sheds, a peer's read
+        is a reader-class quantum under the disk-slow posture
+        (books/owner-time-admission.lisp fn-otm-peer-read-class,
+        fn-otm-read-span; books/peer-inbound.lisp fn-peer-shed-p): IHAVE is
+        answered 436 with the reason and CHECK 431 (RFC 3977 section 6.3.2,
+        RFC 4644 section 2.4: the retry class), at once, even for an article
+        the node holds (the live node carries the batch in flight, so no
+        duplicate answer is given under the posture), and nothing is
+        stored.  When the device comes back the same offer is wanted (335)
+        and transferred (235): the transit path is unchanged."""
+        self.policy("barrier-deadline-ms", 2000)
+        self.policy("barrier-stall-ms", 120000)
+        added = self.operator("peer", "add", "slowpeer", "slowpeer.example.invalid", "127.0.0.2",
+                              "9", "fn.*", "-", "127.0.0.2", "true")
+        self.assertEqual(added.returncode, 0, (added.stdout, added.stderr))
+        w_conn, w = self.connect()
+        a_conn, a = self.connect()
+        peer_conn = socket.create_connection(("127.0.0.1", self.port), timeout=60,
+                                             source_address=("127.0.0.2", 0))
+        peer = peer_conn.makefile("rwb")
+        greeting = peer.readline()
+        self.assertTrue(greeting.startswith(b"200"), greeting)
+
+        def ask(line):
+            started = time.monotonic()
+            peer.write(line + b"\r\n")
+            peer.flush()
+            return peer.readline(), time.monotonic() - started
+
+        with w_conn, a_conn, peer_conn:
+            self.send_article(w, b"warm3@example.invalid", b"a healthy barrier")
+            self.assertTrue(w.readline().startswith(b"240"))
+            before_held, _ = ask(b"IHAVE <warm3@example.invalid>")
+            before_new, _ = ask(b"CHECK <peer-new-1@example.invalid>")
+            self.stall.write_bytes(b"")
+            t0 = time.monotonic()
+            self.send_article(a, b"held3@example.invalid", b"its barrier stalls")
+            time.sleep(max(0.0, t0 + 3.5 - time.monotonic()))
+            _, health = self.timed_operator("health")
+            self.assertIsNotNone(DISK_SLOW.search(health.stdout), health.stdout)
+            ihave_new, ihave_new_at = ask(b"IHAVE <peer-new-2@example.invalid>")
+            check_new, check_new_at = ask(b"CHECK <peer-new-3@example.invalid>")
+            ihave_held, ihave_held_at = ask(b"IHAVE <warm3@example.invalid>")
+            self.assertEqual(select.select([a_conn], [], [], 0)[0], [],
+                             "the held POST was answered while its barrier stalled")
+            self.stall.unlink()
+            a_conn.settimeout(60)
+            accepted = a.readline()
+            # The transit path after the recovery: the same offer is wanted
+            # and the article transferred.
+            deadline = time.monotonic() + 30
+            while True:
+                offer, _ = ask(b"IHAVE <peer-new-2@example.invalid>")
+                if not offer.startswith(b"436") or time.monotonic() > deadline:
+                    break
+                time.sleep(0.5)
+            transferred = None
+            if offer.startswith(b"335"):
+                peer.write(b"Path: slowpeer.example.invalid!not-for-mail\r\n"
+                           b"From: peer@example.invalid\r\nNewsgroups: fn.test\r\n"
+                           b"Subject: after the stall\r\nDate: "
+                           + time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()).encode()
+                           + b"\r\nMessage-ID: <peer-new-2@example.invalid>\r\n\r\nbody\r\n.\r\n")
+                peer.flush()
+                transferred = peer.readline()
+            for stream in (w, a, peer):
+                try:
+                    stream.write(b"QUIT\r\n")
+                    stream.flush()
+                except OSError:
+                    pass
+        print("peer during slow: IHAVE new %r in %.3fs; CHECK new %r in %.3fs; IHAVE held %r in %.3fs; "
+              "before: %r %r; after recovery: POST %r, IHAVE %r, transfer %r"
+              % (ihave_new, ihave_new_at, check_new, check_new_at, ihave_held, ihave_held_at,
+                 before_held, before_new, accepted, offer, transferred))
+        self.assertTrue(before_held.startswith(b"435"), before_held)
+        self.assertEqual(before_new, b"238 <peer-new-1@example.invalid>\r\n")
+        self.assertEqual(ihave_new, b"436 retry later; the disk is slow\r\n")
+        self.assertEqual(check_new, b"431 <peer-new-3@example.invalid>\r\n")
+        self.assertEqual(ihave_held, b"436 retry later; the disk is slow\r\n")
+        for at in (ihave_new_at, check_new_at, ihave_held_at):
+            self.assertLess(at, 2.0, at)
+        self.assertTrue(accepted.startswith(b"240"), accepted)
+        self.assertTrue(offer.startswith(b"335"), offer)
+        self.assertTrue(transferred is not None and transferred.startswith(b"235"), transferred)
 
 
 if __name__ == "__main__":
