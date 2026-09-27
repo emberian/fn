@@ -3787,6 +3787,36 @@ serialized profile when the saved image later starts."
 (defun fnn-developer-image-p ()
   (eq *fnn-image-profile* :developer))
 
+;;; The release version (VERSION at the tree root: 6.7.N, one line).  Read
+;;; once while constructing the saved image, as the profile above is, and
+;;; serialized into it; the packaging reads the same file for the tarball's
+;;; name (packaging/release-tarball.sh).  `fn --version' prints it with the
+;;; source revision recorded beside the core.
+(defvar *fnn-release-version* nil)
+
+(defun fnn-release-version-word-p (text)
+  "TEXT is 6.7.N with N a decimal numeral without a leading zero."
+  (and (stringp text)
+       (> (length text) 4)
+       (string= "6.7." text :end2 4)
+       (let ((n (subseq text 4)))
+         (and (every (lambda (c) (find c "0123456789")) n)
+              (or (string= n "0") (char/= (char n 0) #\0))))))
+
+(defun fnn-select-release-version (&optional (path "VERSION"))
+  "Build-time: take the release version from PATH (the build runs at the
+tree root), or stop the build."
+  (let ((line (with-open-file (in path :direction :input :if-does-not-exist nil
+                                       :external-format :latin-1)
+                (and in (read-line in nil nil)))))
+    (unless (fnn-release-version-word-p line)
+      (error "~a does not hold a release version 6.7.N (read ~s)" path line))
+    (setq *fnn-release-version* line)))
+
+(defun fnn-release-version ()
+  (or *fnn-release-version*
+      (fnn-refuse "this image records no release version (built without VERSION)")))
+
 (defun fnn-dash-nil (text) (if (string= text "-") nil text))
 
 ;;; Developer selectors: one table, one gate.
@@ -3882,9 +3912,9 @@ serialized profile when the saved image later starts."
   (cdr (assoc verb *fnn-verbs* :test #'string=)))
 
 
-;;; PKT-403: `fn --version' prints the source revision this image was built
-;;; from, as the installer recorded it beside the core
-;;; (packaging/install-native.sh writes libexec/fn/source-revision; the
+;;; PKT-403: `fn --version' prints the release version and the source
+;;; revision this image was built from, as the installer recorded it beside
+;;; the core (packaging/install-native.sh writes libexec/fn/source-revision; the
 ;;; frozen image directory carries the same file, tools/runbooks/
 ;;; hbox-image-build.sh).  The word is printed only when it is a 40-digit
 ;;; lowercase hex commit; anything else is an image without provenance.
@@ -3911,7 +3941,10 @@ serialized profile when the saved image later starts."
       (return-from fnn-dispatch (fnn-dispatch (list "operator" "-" "help"))))
     (when (and (null (rest args))
                (member (first args) '("--version" "version") :test #'string=))
-      (fnn-out "fn ~a" (fnn-source-revision))
+      ;; `fn 6.7.N (REV12)': the release version built into the image and
+      ;; the first twelve digits of the recorded source revision.
+      (let ((revision (fnn-source-revision)))
+        (fnn-out "fn ~a (~a)" (fnn-release-version) (subseq revision 0 12)))
       (return-from fnn-dispatch +fnn-exit-ok+))
     (need 1)
     (let ((verb (first args)))

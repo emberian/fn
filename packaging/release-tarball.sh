@@ -7,7 +7,15 @@
 # PLATFORM is linux-x86_64 or openbsd-amd64 and must be the system this runs
 # on (the image is built here, and the installer executes it).  REV is the
 # full 40-digit commit.  OUT_DIR (absolute) receives
-#   fn-REV12-PLATFORM.tar.gz   one top directory fn/ (below)
+#   fn-VERSION-PLATFORM.tar.gz one top directory fn/ (below); VERSION is the
+#                              release version 6.7.N, read from the file
+#                              VERSION at the root of REV's tree (the one
+#                              place it is written; the image build reads
+#                              the same file, host/native/io.lisp
+#                              fnn-select-release-version).  The --frozen
+#                              form names its tarball
+#                              fn-VERSION+REV12-PLATFORM.tar.gz (VERSION from
+#                              the current tree): it is not the release.
 #   SHA256SUMS                 the tarballs in OUT_DIR (sha256sum lines on
 #                              Linux, sha256's BSD lines on OpenBSD)
 # and the work directory build-REV12-PLATFORM/ with every step's log.
@@ -27,7 +35,7 @@
 #      swarm-build where it exists) and freezes it,
 #   4. stages it (packaging/install-native.sh), checks that no Python is on
 #      the deployed path (tools/runpath_check.py --tree) and that
-#      `bin/fn --version' prints REV, and packs it.
+#      `bin/fn --version' prints `fn VERSION (REV12)', and packs it.
 # --runtime-from DIR bundles DIR/sbcl as the SBCL runtime (the freeze's
 # FN_FREEZE_RUNTIME): on Linux, DIR is packaging/floor-runtime.sh's output,
 # the build's SBCL rebuilt in Debian 12 so the release runs on glibc 2.36
@@ -80,9 +88,24 @@ case $rev in *[!0-9a-f]*|'') echo 'release-tarball: REV must be a lowercase hex 
 [ "${#rev}" -eq 40 ] || { echo 'release-tarball: REV must be the full 40-digit commit' >&2; exit 2; }
 case $out in /*) ;; *) echo 'release-tarball: OUT_DIR must be absolute' >&2; exit 2;; esac
 short=$(printf '%s' "$rev" | cut -c1-12)
-tarball=$out/fn-$short-$platform.tar.gz
-[ ! -e "$tarball" ] || { echo "release-tarball: exists: $tarball" >&2; exit 4; }
+# The release version: 6.7.N, N a numeral without a leading zero.
+release_version() {
+  [ -r "$1" ] || { echo "release-tarball: no $1" >&2; exit 4; }
+  v=$(sed -n 1p "$1")
+  case $v in
+    6.7.0) ;;
+    6.7.[1-9]*) case ${v#6.7.} in *[!0-9]*) v= ;; esac ;;
+    *) v= ;;
+  esac
+  [ -n "$v" ] || { echo "release-tarball: $1 does not hold a release version 6.7.N" >&2; exit 4; }
+  printf '%s\n' "$v"
+}
 if [ "$system" = Linux ]; then sums=sha256sum; else sums=sha256; fi
+if [ -n "$frozen" ]; then
+  version=$(release_version VERSION)
+  tarball=$out/fn-$version+$short-$platform.tar.gz
+  [ ! -e "$tarball" ] || { echo "release-tarball: exists: $tarball" >&2; exit 4; }
+fi
 mkdir -p "$out"
 
 if [ -z "$frozen" ]; then
@@ -102,6 +125,9 @@ if [ -z "$frozen" ]; then
     echo "release-tarball: $archive is not a git archive of $rev (it names ${named:-no commit})" >&2; exit 4; }
   tar -xf "$archive" -C "$work/src"
   cd "$work/src"
+  version=$(release_version VERSION)
+  tarball=$out/fn-$version-$platform.tar.gz
+  [ ! -e "$tarball" ] || { echo "release-tarball: exists: $tarball" >&2; exit 4; }
   python=${PYTHON:-python3}
   echo "== 1. release gate: the default profile's closure green at REV's digests"
   "$python" tools/green_check.py --profile default --strict > "$work/green-check.txt" 2>&1 || {
@@ -127,6 +153,7 @@ if [ -z "$frozen" ]; then
   frozen=$work/frozen
   stage=$work/stage
   {
+    echo "version=$version"
     echo "source=$rev (git archive, $(wc -c < "$archive" | tr -d ' ') octets)"
     cat "$work/green-check.txt"
     echo "acquire: $(tail -1 "$work/acquire.txt")"
@@ -154,9 +181,9 @@ mkdir -p "$top/share/fn/docs"
 install -m 0644 packaging/fn.toml.example "$top/share/fn/fn.toml.example"
 install -m 0644 docs/install.md "$top/share/fn/docs/install.md"
 install -m 0644 "$gate" "$top/share/fn/release-gate.txt"
-version=$(env -i PATH=/usr/bin:/bin "$top/bin/fn" --version)
-[ "$version" = "fn $rev" ] || {
-  echo "release-tarball: bin/fn --version printed '$version', not 'fn $rev'" >&2; exit 4; }
+printed=$(env -i PATH=/usr/bin:/bin "$top/bin/fn" --version)
+[ "$printed" = "fn $version ($short)" ] || {
+  echo "release-tarball: bin/fn --version printed '$printed', not 'fn $version ($short)'" >&2; exit 4; }
 "${PYTHON:-python3}" tools/runpath_check.py --tree "$top" > "$stage/runpath-check.txt" 2>&1 || {
   cat "$stage/runpath-check.txt" >&2
   echo 'release-tarball: the runpath check failed (Python on the deployed path, or a bundled object above the glibc floor: --runtime-from)' >&2; exit 4; }
@@ -171,5 +198,5 @@ else
 fi
 (cd "$out" && ls fn-*.tar.gz | LC_ALL=C sort | xargs $sums > SHA256SUMS)
 echo "release $tarball"
-echo "version $version"
-grep -F "fn-$short-$platform.tar.gz" "$out/SHA256SUMS"
+echo "version $printed"
+grep -F "$(basename -- "$tarball")" "$out/SHA256SUMS"

@@ -7,8 +7,8 @@ makes no availability or flight-readiness claim; see
 [architecture](architecture.md) for the boundaries and
 [failures](../specs/failures.md) for what durability here assumes.
 
-**Installing from a release** (`fn-REV-linux-x86_64.tar.gz` or
-`fn-REV-openbsd-amd64.tar.gz`): read [Installing fn](install.md) first. It
+**Installing from a release** (`fn-6.7.N-linux-x86_64.tar.gz` or
+`fn-6.7.N-openbsd-amd64.tar.gz`): read [Installing fn](install.md) first. It
 is the whole path from the download to a node others reach over TLS, and it
 names nothing outside the release. This page is the reference for the
 operator's verbs beyond it: status and health in depth, recovery, peering
@@ -541,8 +541,14 @@ default image profile's include closure is green at its digest
 load-checks the certificates from the cache, builds and freezes the
 production image, stages it with `packaging/install-native.sh`, checks that
 no Python is on the deployed path (`tools/runpath_check.py --tree`) and that
-`bin/fn --version` prints REV, and packs `fn-REV12-PLATFORM.tar.gz` with a
-`SHA256SUMS` beside it. The tarball holds one directory `fn/`: `install.sh`,
+`bin/fn --version` prints `fn 6.7.N (REV12)`, and packs
+`fn-6.7.N-PLATFORM.tar.gz` with a `SHA256SUMS` beside it. The version 6.7.N
+is the one line of the file `VERSION` at the root of the tree: the image
+build reads it into the image and the packaging names the tarball by it, and
+the cut tags REV `v6.7.N` (planning/release-v6.7.0.md is the cut's
+checklist; `tools/cut_release.sh` runs its mechanical gates). The `--frozen`
+form packages an already built image as `fn-6.7.N+REV12-PLATFORM.tar.gz`,
+which is not a release. The tarball holds one directory `fn/`: `install.sh`,
 `bin/fn`, `libexec/fn/` (the frozen launcher, the production core,
 `source-revision`, the SBCL runtime, libsodium and libfn-mldsa65; the TLS
 library is the system's), `share/fn/` (the service template,
@@ -564,12 +570,13 @@ image's core.
 
 `fn operator CONFIG help VERB` prints each verb's grammar. `fn` with no
 words prints the operator's usage (it is `fn operator - help`), and `fn
---version` prints the 40-digit source revision recorded beside the image's
+--version` prints `fn 6.7.N (REV12)`: the release version built into the
+image and the first twelve digits of the source revision recorded beside its
 core (`libexec/fn/source-revision`; exit 1 when the image records none).
 
 ### On OpenBSD (amd64, 7.9)
 
-The OpenBSD tarball, fn-REV12-openbsd-amd64.tar.gz, is the same layout built on OpenBSD 7.9
+The OpenBSD tarball, fn-6.7.N-openbsd-amd64.tar.gz, is the same layout built on OpenBSD 7.9
 (`packaging/release-tarball.sh openbsd-amd64 FROZEN_DIR REVISION OUT_DIR`,
 run in the build VM). It carries the SBCL runtime with its one non-base
 library (`libzstd`), libsodium and the ML-DSA-65 library (vendored PQClean,
@@ -597,10 +604,10 @@ Three OpenBSD rules decide where it lives and how it starts:
 As root, with the tarball and its sum in `/tmp`:
 
 ```sh
-cd /tmp && sha256 -C fn-REV12-openbsd-amd64.tar.gz.sha256 fn-REV12-openbsd-amd64.tar.gz
-cd /usr/local && tar xzf /tmp/fn-REV12-openbsd-amd64.tar.gz
-cd fn-REV12 && sha256 -q -c SHA256SUMS               # every file in it
-F=/usr/local/fn-REV12/bin/fn
+cd /tmp && sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz
+cd /usr/local && tar xzf /tmp/fn-6.7.N-openbsd-amd64.tar.gz
+cd fn && sha256 -q -c SHA256SUMS                     # every file in it
+F=/usr/local/fn/bin/fn
 C=/var/fn/fn.toml
 useradd -d /var/fn -s /sbin/nologin -c fn-node _fn
 install -d -o _fn -g _fn -m 0700 /var/fn /var/fn/tls /var/fn/log
@@ -613,7 +620,8 @@ chown _fn:_fn /var/fn/tls/*.pem && chmod 600 /var/fn/tls/key.pem
 su -s /bin/sh _fn -c "$F operator $C init"
 su -s /bin/sh _fn -c "$F operator $C policy set path-identity fnbsd.friends.fn.invalid"
 su -s /bin/sh _fn -c "$F operator $C principal set-password ember --posting"
-install -m 0555 /usr/local/fn-REV12/share/fn/rc.d/fn /etc/rc.d/fn
+sed -e 's|@PREFIX@|/usr/local/fn|g' -e 's|@NODE@|/var/fn|g' -e 's|@USER@|_fn|g' \
+  /usr/local/fn/share/fn/rc.d/fn.rc.in > /etc/rc.d/fn && chmod 0555 /etc/rc.d/fn
 rcctl enable fn && rcctl start fn
 ```
 

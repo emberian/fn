@@ -24,12 +24,14 @@ cd "$tree"
 FN_FREEZE_VARIANTS='fn-host fn-host-developer' \
   sh packaging/freeze-native-image.sh "$tree/build" "$scratch/frozen"
 sh packaging/release-tarball.sh --frozen "$scratch/frozen" linux-x86_64 "$rev" "$scratch/release"
+# The --frozen form's name: fn-VERSION+REV12-PLATFORM.tar.gz (VERSION from this tree).
+name=fn-$(sed -n 1p VERSION)+$short-linux-x86_64.tar.gz
 # The friend's side: no checkout, only the tarball and SHA256SUMS
 # (docs/install.md section 1; --no-service: the harness runs the node).
 mkdir -p "$scratch/friend"
-cp "$scratch/release/fn-$short-linux-x86_64.tar.gz" "$scratch/release/SHA256SUMS" "$scratch/friend/"
+cp "$scratch/release/$name" "$scratch/release/SHA256SUMS" "$scratch/friend/"
 (cd "$scratch/friend" && sha256sum -c --ignore-missing SHA256SUMS \
-   && tar xzf "fn-$short-linux-x86_64.tar.gz" \
+   && tar xzf "$name" \
    && sh fn/install.sh --prefix "$scratch/friend/opt/fn" --node "$scratch/friend/node" --no-service)
 echo "friends_tarball: installed $scratch/friend/opt/fn"
 FN_NATIVE_HOST="$scratch/frozen/fn-host-developer" \

@@ -273,6 +273,10 @@
         ; restarted process cannot expose diagnostics by changing its
         ; environment.
         (fnn-select-image-profile)
+        ; The release version (VERSION at the tree root, 6.7.N), serialized
+        ; into the image for `fn --version'; a missing or malformed file
+        ; stops the build.
+        (fnn-select-release-version)
         ; The system libssl is the explicit native STARTTLS trust boundary.  It loads
         ; after io.lisp because its deadline/descriptor helpers are physical
         ; transport primitives, not protocol decisions.

@@ -7,9 +7,10 @@ by executable ACL2 code that ships inside the program. A node is one
 directory of files, one configuration file and one service. This page takes
 you from the download to a node that others reach over TLS.
 
-A release is one file per platform, `fn-REV-linux-x86_64.tar.gz` or
-`fn-REV-openbsd-amd64.tar.gz` (REV is the first twelve digits of the source
-revision it was built from), with a `SHA256SUMS` file beside it. The tarball
+A release is one file per platform, `fn-6.7.N-linux-x86_64.tar.gz` or
+`fn-6.7.N-openbsd-amd64.tar.gz`, with a `SHA256SUMS` file beside it. Every
+release of fn is numbered 6.7.N, N rising by one per release; the source
+revision it was built from is tagged `v6.7.N`. The tarball
 carries its own Lisp runtime, libsodium and the ML-DSA-65 library; it uses
 your system's TLS library (OpenSSL 3.0 or later on Linux, LibreSSL on
 OpenBSD). It needs no Python, no compiler and nothing else from the build.
@@ -23,20 +24,21 @@ Linux (x86-64, systemd), as root:
 
 ```sh
 sha256sum -c --ignore-missing SHA256SUMS
-tar -xzf fn-REV-linux-x86_64.tar.gz
+tar -xzf fn-6.7.N-linux-x86_64.tar.gz
 sh fn/install.sh
 ```
 
 OpenBSD (amd64), as root:
 
 ```sh
-sha256 -C SHA256SUMS fn-REV-openbsd-amd64.tar.gz
-tar -xzf fn-REV-openbsd-amd64.tar.gz
+sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz
+tar -xzf fn-6.7.N-openbsd-amd64.tar.gz
 sh fn/install.sh
 ```
 
 `install.sh` checks every file of the release against `fn/SHA256SUMS`,
-prints the revision (`fn REV...`, the full 40 digits), copies the release to
+prints the version (`fn 6.7.N (REV)`, REV the first twelve digits of the
+source revision), copies the release to
 `/opt/fn` (OpenBSD: `/usr/local/fn`), creates the service account `fn`
 (OpenBSD: `_fn`) and the node directory `/var/lib/fn` (OpenBSD: `/var/fn`),
 and installs the service: `/etc/systemd/system/fn.service` or
@@ -50,7 +52,7 @@ instead (for a machine where you run the node yourself).
 On OpenBSD the directory must be on a file system mounted `wxallowed` (the
 Lisp runtime maps writable code; `/usr/local` is mounted so by default).
 
-`/opt/fn/bin/fn --version` prints the revision at any time; `fn` alone
+`/opt/fn/bin/fn --version` prints the version and revision at any time; `fn` alone
 prints the operator's usage, and `fn operator CONFIG help VERB` the grammar
 of one verb.
 

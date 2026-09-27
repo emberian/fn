@@ -62,6 +62,7 @@
         (load "host/native/crypto.lisp")
         (fnn-crypto-initialize)
         (load "host/native/io.lisp")
+        (fnn-select-release-version)
         (defun fn-native-entry (st)
           (declare (ignore st))
           (fnn-crypto-startup)
