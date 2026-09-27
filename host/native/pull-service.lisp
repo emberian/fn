@@ -176,7 +176,7 @@
 
 (defun fnn-pull-local-open (service peer-octets)
   "Open the logical transit connection of PEER; return (values cid greeting)."
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
      (fnn-owner-advance-clock)
@@ -187,16 +187,29 @@
        (values cid (fnn-owner-octets-global 'fn-owner-output))))))
 
 (defun fnn-pull-local-send (service cid octets)
-  "Feed OCTETS to the logical connection; return (values reply closing)."
+  "Feed OCTETS to the logical connection; return (values reply closing).
+The step answers a render plan (HST-023); it is rendered into REPLY here,
+off the owner mutex, window by window as the I/O loop writes one to a
+socket (fnn-owner-render-next).  A deferred step (the exposure charge,
+PRF-161: never for a logical connection, which has no exposure record)
+waits its milliseconds and is fed the same octets."
   (let ((pending (fnn-octets octets)) (reply (fnn-make-octets 0)) (closing nil))
     (loop while (and (> (length pending) 0) (not closing)) do
-      (multiple-value-bind (out close starttls consumed)
-          (fnn-owner-handle-chunk service cid pending)
-        (declare (ignore starttls))
-        (setq reply (concatenate 'fnn-octets reply out) closing close)
-        (when (and (zerop consumed) (not close))
-          (fnn-fault "owner consumed no octets of a pull transit write"))
-        (setq pending (subseq pending consumed))))
+      (let ((results (multiple-value-list
+                      (fnn-owner-handle-chunk service cid pending nil :transit))))
+        (if (eq (first results) :defer)
+            (sleep (/ (min (second results) 1000) 1000))
+          (destructuring-bind (plan close starttls consumed &rest more) results
+            (declare (ignore starttls more))
+            (loop
+              (multiple-value-bind (octets rest donep) (fnn-owner-render-next plan)
+                (setq reply (concatenate 'fnn-octets reply octets))
+                (when donep (return))
+                (setq plan rest)))
+            (setq closing close)
+            (when (and (zerop consumed) (not close))
+              (fnn-fault "owner consumed no octets of a pull transit write"))
+            (setq pending (subseq pending consumed))))))
     (values reply closing)))
 
 ;;; The credential profile ACL2 names for PLAN (`fn-pull-plan-profile-path':
@@ -288,7 +301,7 @@
                     (when cid
                       (let ((old cid))
                         (setq cid nil)
-                        (fnn-owner-serialized service nil
+                        (fnn-owner-transit-serialized service nil
                                               (lambda () (fnn-owner-action 'fn-owner-close old)))))
                     (multiple-value-bind (opened greeting)
                         (fnn-pull-local-open service peer)
@@ -332,7 +345,7 @@
           (setf (fnn-pull-runtime-socket runtime) nil))
         (when cid
           (ignore-errors
-           (fnn-owner-serialized service nil
+           (fnn-owner-transit-serialized service nil
                                  (lambda () (fnn-owner-action 'fn-owner-close cid)))))
         (when channel (ignore-errors (fnn-tls-close-channel channel)))
         (when context (ignore-errors (fnn-tls-close-context context)))
@@ -360,7 +373,7 @@
   (let ((service (fnn-pull-runtime-service runtime)))
     (unwind-protect
          (loop until (fnn-pull-stoppingp runtime) do
-           (let* ((plans (fnn-owner-serialized
+           (let* ((plans (fnn-owner-transit-serialized
                           service nil (lambda () (fnn-owner-core 'fn-owner-pull-plans))))
                   (now (fnn-pull-monotonic)))
              (setf (fnn-pull-runtime-schedule runtime)

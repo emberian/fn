@@ -69,7 +69,9 @@
                                 ;; PRF-234: a consumer's account binding.
                                 :consumer-bind
                                 ;; PRF-243: the default subscription list.
-                                :set-default-subscriptions))
+                                :set-default-subscriptions
+                                ;; PKT-575: the operator's withdrawal row.
+                                :withdraw-article))
            (fn-store-cfg-peer-delta-record
             (fn-native-admin-plan-deltas plan) monotonic wall state))
           ; PRF-099: `peer carries' / `peer budget' over the replayed table.

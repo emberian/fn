@@ -425,54 +425,61 @@
 ; -----------------------------------------------------------------------------
 ; The equation with fn-sn-finish on the article arm.
 
-; An article record is no other kind of Store event (the carried readings
-; by shape, books/store-events-carried.lisp).
+; After the flip the completing article row IS a held record (the history
+; retains rows, books/held-record.lisp): fn-sn-finish's article arm reads its
+; verdict and delta off the row's own context, as the held finish does.  So
+; the equation is over the completing row itself, with no wire record and no
+; bytes: the row's handle is the pending's handle (the payload hypothesis,
+; which the maintained relation carries: fn-sn-record-bindsp compares it).
+
+; A held row is no other kind of Store event (the carried readings by
+; shape, books/store-events-carried.lisp).
 (local
  (defthm fn-snh-record-is-no-other-kind
-   (implies (fn-record-p w)
+   (implies (fn-held-p w)
             (and (not (fn-store-retention-event-p w))
                  (not (fn-stxe-p w))
                  (not (fn-stxk-p w))
-                 (not (fn-stxa-p w))
+                 (not (fn-hstxa-p w))
                  (not (fn-cpe-eventp w))
                  (not (fn-th-topic-eventp w))))
    :hints (("Goal" :in-theory (union-theories '(fn-store-event-p) (theory 'minimal-theory))
-            :use ((:instance fn-evc-class-by-shape-is-fn-record-p (x w))
+            :use ((:instance fn-evc-class-by-shape-is-fn-held-p (x w))
                   (:instance fn-evc-class-by-shape-is-fn-store-retention-event-p (x w))
                   (:instance fn-evc-class-by-shape-is-fn-stxe-p (x w))
                   (:instance fn-evc-class-by-shape-is-fn-stxk-p (x w))
-                  (:instance fn-evc-class-by-shape-is-fn-stxa-p (x w))
+                  (:instance fn-evc-class-by-shape-is-fn-hstxa-p (x w))
                   (:instance fn-evc-class-by-shape-is-fn-cpe-eventp (x w))
                   (:instance fn-evc-class-by-shape-is-fn-th-topic-eventp (x w)))))))
 
 (local
  (defthm fn-snh-store-event-fields-of-record
-   (implies (fn-record-p w)
+   (implies (fn-held-p w)
             (and (fn-store-event-p w)
                  (equal (fn-store-event-sequence w) (fn-record-sequence w))
                  (equal (fn-store-event-txid w) (fn-record-txid w))))
-   :hints (("Goal" :in-theory (enable fn-store-event-p fn-store-event-sequence
-                                      fn-store-event-txid)))))
+   :hints (("Goal" :in-theory (e/d (fn-store-event-p fn-store-event-sequence
+                                    fn-store-event-txid)
+                                   (fn-held-p))))))
 
-; The consumer projection step on an article record.
+; The consumer projection step on an article row.
 (local (defthm fn-snh-projection-step-of-article
-   (implies (fn-record-p w)
+   (implies (fn-held-p w)
             (and (equal (equal (car (fn-cpe-projection-step c w n)) :ok)
                         (fn-snh-projection-okp c (fn-record-sequence w) n))
                  (implies (fn-snh-projection-okp c (fn-record-sequence w) n)
                           (equal (fn-cp-nth 1 (fn-cpe-projection-step c w n))
                                  (fn-snh-projection-next c n)))))
-   :hints (("Goal" :in-theory (enable fn-cpe-projection-step fn-cp-nth)))))
+   :hints (("Goal" :in-theory (e/d (fn-cpe-projection-step fn-cp-nth)
+                                   (fn-held-p fn-cpe-eventp))))))
 
-; The topic prefix step on an article record.
+; The topic prefix step on an article row.
 (local
  (defthm fn-snh-th-at-of-prefix-state
    (and (equal (fn-th-at 0 (fn-th-prefix-state st nx sn ac an in tl)) st)
         (equal (fn-th-at 1 (fn-th-prefix-state st nx sn ac an in tl)) nx))
    :hints (("Goal" :in-theory (enable fn-th-prefix-state fn-th-at)))))
 
-; An article record is not a local administrator event either (that shape
-; is a topic event's disjunct).
 ; A local administrator event satisfies every conjunct of the topic
 ; recognizer (its own shape supplies the three coordinates), so what is not
 ; a topic event is not a local administrator event.
@@ -484,42 +491,42 @@
                                               (theory 'minimal-theory))))))
 
 (local (defthm fn-snh-record-is-not-local-admin
-   (implies (fn-record-p w) (not (fn-th-local-admin-eventp w)))
-   :hints (("Goal" :in-theory (union-theories '(fn-record-p fn-record-shapep) (theory 'minimal-theory))
+   (implies (fn-held-p w) (not (fn-th-local-admin-eventp w)))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
             :use ((:instance fn-snh-not-topic-not-local-admin)
                   (:instance fn-snh-record-is-no-other-kind))))))
 
 (local (defthm fn-snh-prefix-step-of-article
-   (implies (fn-record-p w)
+   (implies (fn-held-p w)
             (and (equal (equal (car (fn-th-prefix-step p w)) :ok)
                         (fn-snh-topic-okp p (fn-record-sequence w)))
                  (implies (fn-snh-topic-okp p (fn-record-sequence w))
                           (and (consp (fn-th-prefix-step p w))
                                (equal (fn-th-prefix-step p w) (fn-snh-topic-next p))))))
-   :hints (("Goal" :in-theory (e/d (fn-th-prefix-step fn-th-at) (fn-th-local-admin-eventp))
+   :hints (("Goal" :in-theory (e/d (fn-th-prefix-step fn-th-at)
+                                   (fn-th-local-admin-eventp fn-held-p))
             :use ((:instance fn-snh-record-is-no-other-kind))))))
 
-; The record's binding to the pending transaction: the metadata reading is
-; the reference's whenever the record's bytes are the pending's bytes.
+; The row's binding to the pending transaction: the metadata reading is the
+; store's whenever the row's handle is the pending's handle.
 (local (defthm fn-snh-bindsp-is-record-bindsp
-   (implies (and (fn-held-p h) (fn-record-p w)
-                 (equal (fn-held-wire h (fn-record-payload w)) w)
-                 (equal (fn-record-payload w)
+   (implies (and (fn-held-p h)
+                 (equal (fn-record-payload h)
                         (fn-pending-payload (fn-state-pending (fn-node-acceptance node)))))
-            (equal (fn-snh-bindsp node h) (fn-sn-record-bindsp node w)))
+            (equal (fn-snh-bindsp node h) (fn-sn-record-bindsp node h)))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-snh-bindsp fn-sn-record-bindsp fn-sn-pending-record
                                     fn-held-wire fn-record-internals)
-                                   (fn-node-pending-matchesp))
+                                   (fn-node-pending-matchesp fn-held-p))
             :use ((:instance fn-record-make-injective
                              (sequence (fn-record-sequence h)) (txid (fn-record-txid h))
                              (generation (fn-record-generation h)) (msgid (fn-record-msgid h))
-                             (payload (fn-record-payload w)) (groups (fn-record-groups h))
+                             (payload (fn-record-payload h)) (groups (fn-record-groups h))
                              (obligation-id (fn-record-obligation-id h))
                              (content-subject (fn-record-content-subject h))
                              (release-evidence (fn-record-release-evidence h))
                              (charge (fn-record-charge h)) (stamp (fn-record-stamp h))
-                             (sequence-2 (fn-record-sequence w))
+                             (sequence-2 (fn-record-sequence h))
                              (txid-2 (fn-pending-txid (fn-state-pending (fn-node-acceptance node))))
                              (generation-2 (fn-pending-generation (fn-state-pending (fn-node-acceptance node))))
                              (msgid-2 (fn-pending-msgid (fn-state-pending (fn-node-acceptance node))))
@@ -531,15 +538,7 @@
                              (charge-2 (fn-node-stage-charge (fn-node-stage node)))
                              (stamp-2 (fn-pending-stamp (fn-state-pending (fn-node-acceptance node))))))))))
 
-; The identity delta the finish adds is the lace of the pending's bytes.
-(local (defthm fn-snh-accepted-delta-is-delta-of-pending
-   (equal (fn-sn-accepted-delta s)
-          (fn-stx-delta (fn-pending-payload (fn-state-pending (fn-node-acceptance (fn-sn-node s))))
-                        (fn-sn-keyring s)))
-   :hints (("Goal" :in-theory (enable fn-sn-accepted-delta fn-article-from-pending)))))
-
-; A store's keyring generation is a natural (fn-sn-statep carries it), which
-; is what makes the context of its bytes a context (fn-hc-p).
+; A store's keyring generation is a natural (fn-sn-statep carries it).
 (local (defthm fn-snh-statep-generation
    (implies (fn-sn-statep s) (natp (fn-sn-keyring-generation s)))
    :rule-classes (:rewrite :forward-chaining)
@@ -551,39 +550,22 @@
         (equal (car (fn-snh-topic-next p)) :ok))
    :hints (("Goal" :in-theory (enable fn-snh-topic-next fn-th-prefix-state)))))
 
-; Alpha, read field by field: the held view's four identity positions are
-; the record's.
-(local (defthm fn-snh-alpha-fields
-   (implies (equal (fn-held-wire h p) w)
-            (and (equal (fn-record-sequence w) (fn-record-sequence h))
-                 (equal (fn-record-txid w) (fn-record-txid h))
-                 (equal (fn-record-generation w) (fn-record-generation h))
-                 (equal (fn-record-msgid w) (fn-record-msgid h))
-                 (equal (fn-record-payload w) p)))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (enable fn-held-wire fn-record-internals)))))
-
-; KEYSTONE.  W is the completing record (`fn-sn-completion-record', kept as
-; the meaning of "the completing record"); H is its held view (alpha:
-; H with W's bytes is W); W's bytes are the pending's; CTX is the context
-; of W's bytes under the store's keyring and generation.  Then the held
-; finish is the finish.
+; KEYSTONE.  H is the completing row (`fn-sn-completion-record'), a held
+; record whose handle is the pending's; CTX is the row's own context.  Then
+; the held finish is the finish.
 (defthm fn-sn-finish-held-is-finish
   (implies (and (fn-sn-statep s)
-                (equal (fn-sn-completion-record s) w)
-                (fn-record-p w)
+                (equal (fn-sn-completion-record s) h)
                 (fn-held-p h)
-                (equal (fn-held-wire h (fn-record-payload w)) w)
-                (equal (fn-record-payload w)
+                (equal (fn-record-payload h)
                        (fn-pending-payload (fn-state-pending (fn-node-acceptance (fn-sn-node s)))))
-                (equal ctx (fn-held-context-of (fn-record-payload w) (fn-sn-keyring s)
-                                               (fn-sn-keyring-generation s))))
+                (equal ctx (fn-held-context h)))
            (equal (fn-sn-finish-held s h ctx) (fn-sn-finish s)))
   :hints (("Goal" :in-theory (e/d (fn-sn-finish fn-sn-finish-held fn-snh-enabledp
                                    fn-sn-completion-enabledp fn-sn-completion-core-enabledp
-                                   fn-held-context-of fn-hc-internals)
+                                   fn-sn-accepted-delta fn-sf-record-pair)
                                   (fn-snh-bindsp fn-sn-record-bindsp fn-sn-completion-record
-                                   fn-node-pending-matchesp fn-sn-pending-record
+                                   fn-node-pending-matchesp fn-sn-pending-record fn-held-p
                                    fn-sf-core-completion fn-sf-emit-success fn-node-complete
                                    fn-sn-update-accepted fn-sn-advance-identity-next
                                    fn-sn-with-consumer fn-sn-with-topic fn-stx-index-add
@@ -594,8 +576,7 @@
                                    fn-replay-apply-retention-event fn-replay-apply-record
                                    fn-replay-identity-step fn-sn-identity-context
                                    fn-sn-finish-identity fn-sn-update-indexed))
-           :use ((:instance fn-snh-bindsp-is-record-bindsp (node (fn-sn-node s)))
-                 (:instance fn-snh-alpha-fields (p (fn-record-payload w))))
+           :use ((:instance fn-snh-bindsp-is-record-bindsp (node (fn-sn-node s))))
            :do-not-induct t)))
 
 (in-theory (disable fn-sn-finish-held fn-snh-enabledp fn-snh-bindsp))
@@ -688,9 +669,9 @@
 
 ; The writer: the generation moves whenever the keyring does.
 (local (defthm fn-snh-ctx-set-keyring
-   (implies (equal (fn-sn-keyring-generation (fn-sn-set-keyring s keyring))
+   (implies (equal (fn-sn-keyring-generation (fn-sn-set-keyring s keyring contexts))
                    (fn-sn-keyring-generation s))
-            (equal (fn-sn-keyring (fn-sn-set-keyring s keyring)) (fn-sn-keyring s)))
+            (equal (fn-sn-keyring (fn-sn-set-keyring s keyring contexts)) (fn-sn-keyring s)))
    :hints (("Goal" :in-theory (e/d (fn-sn-set-keyring)
                                    (fn-sn-statep fn-prin-keyringp fn-stx-index-of-store))))))
 
@@ -710,9 +691,9 @@
               (fn-sn-keyring s))
        (equal (fn-sn-keyring-generation (fn-sn-with-configuration s groups capacity node history))
               (fn-sn-keyring-generation s))
-       (implies (equal (fn-sn-keyring-generation (fn-sn-set-keyring s keyring))
+       (implies (equal (fn-sn-keyring-generation (fn-sn-set-keyring s keyring contexts))
                        (fn-sn-keyring-generation s))
-                (equal (fn-sn-keyring (fn-sn-set-keyring s keyring)) (fn-sn-keyring s))))
+                (equal (fn-sn-keyring (fn-sn-set-keyring s keyring contexts)) (fn-sn-keyring s))))
   :hints (("Goal" :in-theory (union-theories '(fn-snh-ctx-snrt-step fn-snh-ctx-io fn-snh-ctx-finish
                                                 fn-snh-ctx-finish-held fn-snh-keyring-of-with-configuration
                                                 fn-snh-ctx-set-keyring)
@@ -723,8 +704,12 @@
 ; The negative of the phase gate the design offered: the writer changes the
 ; generation, so the O(1) generation compare in fn-snh-enabledp is exact.
 (defthm fn-sn-set-keyring-advances-the-generation
-  (implies (and (fn-sn-statep s) (fn-prin-keyringp keyring))
-           (equal (fn-sn-keyring-generation (fn-sn-set-keyring s keyring))
+  (implies (and (fn-sn-statep s) (fn-prin-keyringp keyring)
+                (equal (fn-sf-phase (fn-sn-files s)) :ready)
+                (not (eq (fn-sn-recontext-rows (fn-sf-records (fn-sn-files s)) contexts
+                                               (1+ (fn-sn-keyring-generation s)))
+                         :mismatch)))
+           (equal (fn-sn-keyring-generation (fn-sn-set-keyring s keyring contexts))
                   (1+ (fn-sn-keyring-generation s))))
   :hints (("Goal" :in-theory (e/d (fn-sn-set-keyring) (fn-sn-statep)))))
 

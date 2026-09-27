@@ -66,7 +66,10 @@
   (and (fn-jrec-shapep j)
        (fn-record-uint32p (fn-jrec-sequence j))
        (cond ((equal (fn-jrec-kind j) :article)
-              (and (fn-record-p (fn-jrec-body j))
+              ; A retained row (books/held-record.lisp): the journal's article
+              ; body reaches fn-replay-apply-record, which after the flip
+              ; installs held records (records-flip, 2026-09-27).
+              (and (fn-held-p (fn-jrec-body j))
                    (equal (fn-record-sequence (fn-jrec-body j))
                           (fn-jrec-sequence j))))
              ((equal (fn-jrec-kind j) :config)
@@ -77,7 +80,7 @@
 
 (defthm fn-jrec-article-body-is-a-true-list
   (implies (and (fn-jrec-p j) (equal (fn-jrec-kind j) :article))
-           (and (fn-record-p (fn-jrec-body j))
+           (and (fn-held-p (fn-jrec-body j))
                 (true-listp (fn-jrec-body j))))
   :hints (("Goal" :in-theory (enable fn-record-record-vocabulary))))
 
@@ -107,7 +110,7 @@
            (equal (fn-store-event-sequence (fn-jrec-body j))
                   (fn-jrec-sequence j)))
   :hints (("Goal" :in-theory (e/d (fn-store-event-sequence)
-                                  (fn-record-p fn-stxe-p fn-stxk-p fn-stxa-p
+                                  (fn-record-p fn-held-p fn-hstxa-p fn-stxe-p fn-stxk-p fn-stxa-p
                                    fn-store-retention-event-p)))))
 
 (defthm fn-jrec-config-sequence-agrees
@@ -205,7 +208,7 @@
            :use ((:instance fn-replay-apply-record-statep-iff-consp
                             (record (fn-jrec-body (car js)))))
            :in-theory (e/d (fn-store-event-p)
-                           (fn-stxe-p fn-stxk-p fn-stxa-p
+                           (fn-stxe-p fn-stxk-p fn-stxa-p fn-held-p fn-hstxa-p
                             fn-node-statep fn-replay-apply-record
                             fn-cfg-record-acceptablep)))))
 

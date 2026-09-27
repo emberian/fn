@@ -160,8 +160,8 @@
                                  (fn-bs-read-records fn-bs-txn-prefix-agreesp fn-bs-apply-ops
                                   fn-bs-read-records-under-agreement fn-bs-fence-dir-touches-only-its-directory))))))
 (defthm fn-bs-k0w-other-fence-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks) (not (member-equal d '(:root :transactions))))
-           (fn-bs-store-relation (fn-bs-fence-dir bs d) ks))
+  (implies (and (fn-bs-store-relation bs ks arena) (not (member-equal d '(:root :transactions))))
+           (fn-bs-store-relation (fn-bs-fence-dir bs d) ks arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-fence-dir-preserves-statep (s bs) (dir d))
@@ -173,11 +173,11 @@
                            (fn-bs-fence-dir fn-bs-statep fn-sf-statep fn-bs-scan-store fn-bs-durable-records fn-bs-durable-content
                             fn-bs-fencedp fn-bs-all-fencedp fn-bs-inode-list-knownp
                             fn-bs-contiguous-namesp fn-bs-ops-for-dir fn-bs-ops-not-for-dir fn-bs-pending-entry-targets
-                            fn-sf-crash-imagep fn-bs-replay-visiblep fn-sf-frontier-rollback-visiblep fn-bs-scan-okp
+                            fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-bs-replay-visiblep fn-sf-frontier-rollback-visiblep fn-bs-scan-okp
                             fn-bs-scan-frontier fn-bs-scan-records fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                             fn-bs-record-of fn-bs-durable fn-bs-fence-dir-preserves-statep fn-bs-k8-other-directory-ops-survive-filter)))))
 (defthm fn-bs-k0w-pending-link-fence-durable-entries
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
            (equal (cdr (assoc-equal :transactions (fn-bs-dirs (fn-bs-fence-dir bs :transactions))))
                   (fn-bs-put-assoc
@@ -197,7 +197,7 @@
                             (a (fn-bs-dirs bs))))
            :in-theory (enable fn-bs-fence-dir fn-bs-pending-shape-okp fn-bs-apply-ops fn-bs-apply-op))))
 (defthm fn-bs-k0w-pending-link-fence-keeps-authority-list
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
            (equal (fn-bs-authority-inode-list (fn-bs-fence-dir bs :transactions))
@@ -219,9 +219,9 @@
                             (n (len (fn-bs-durable-names bs :transactions)))))
            :in-theory (enable fn-bs-authority-inode-list fn-bs-pending-shape-okp fn-bs-durable-names fn-bs-statep))))
 (defthm fn-bs-k0w-transactions-fence-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-replay-visiblep ks)
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-replay-visiblep ks)
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions)))
-           (fn-bs-store-relation (fn-bs-fence-dir bs :transactions) ks))
+           (fn-bs-store-relation (fn-bs-fence-dir bs :transactions) ks arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-unfolds fn-bs-store-relation-window-unfolds
@@ -239,14 +239,14 @@
                             fn-bs-durable-names fn-bs-names fn-bs-read-records fn-bs-durable-entry fn-bs-durable-frontier
                             fn-bs-fencedp fn-bs-all-fencedp fn-bs-inode-list-knownp fn-bs-authority-inode-list
                             fn-bs-ops-for-dir fn-bs-ops-not-for-dir fn-bs-pending-entry-targets fn-bs-lookup fn-bs-content
-                            fn-sf-crash-imagep fn-bs-replay-visiblep fn-sf-frontier-rollback-visiblep fn-bs-scan-okp
+                            fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-bs-replay-visiblep fn-sf-frontier-rollback-visiblep fn-bs-scan-okp
                             fn-bs-scan-frontier fn-bs-scan-records fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                             fn-bs-record-of fn-bs-durable fn-bs-fence-dir-preserves-statep fn-bs-ops-for-dir-of-ops-not-for-dir
                             fn-bs-txn-names)))))
 (defthm fn-bs-k0w-root-fence-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-replay-visiblep ks)
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-replay-visiblep ks)
                 (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root)))
-           (fn-bs-store-relation (fn-bs-fence-dir bs :root) ks))
+           (fn-bs-store-relation (fn-bs-fence-dir bs :root) ks arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-unfolds fn-bs-store-relation-window-unfolds
@@ -264,13 +264,13 @@
                             fn-bs-durable-names fn-bs-names fn-bs-read-records fn-bs-durable-entry fn-bs-durable-frontier
                             fn-bs-fencedp fn-bs-authority-inode-list fn-bs-contiguous-namesp
                             fn-bs-ops-for-dir fn-bs-ops-not-for-dir fn-bs-pending-entry-targets fn-bs-lookup fn-bs-content
-                            fn-sf-crash-imagep fn-bs-replay-visiblep fn-sf-frontier-rollback-visiblep fn-bs-scan-okp
+                            fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-bs-replay-visiblep fn-sf-frontier-rollback-visiblep fn-bs-scan-okp
                             fn-bs-scan-frontier fn-bs-scan-records fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                             fn-bs-record-of fn-bs-durable fn-bs-fence-dir-preserves-statep fn-bs-ops-for-dir-of-ops-not-for-dir
                             fn-bs-k8-other-directory-ops-survive-filter fn-bs-txn-names fn-bs-inop)))))
 (defthm fn-bs-k0w-fence-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-replay-visiblep ks))
-           (fn-bs-store-relation (fn-bs-fence-dir bs d) ks))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-replay-visiblep ks))
+           (fn-bs-store-relation (fn-bs-fence-dir bs d) ks arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :cases ((not (consp (fn-bs-ops-for-dir (fn-bs-pending bs) d))) (equal d :root) (equal d :transactions))
@@ -302,12 +302,12 @@
                            (fn-bs-k0s-make-of-parts fn-bs-op-listp-implies-true-listp fn-bs-k0w-quiet-fence-is-identity
                             fn-bs-fence-dir fn-bs-ops-for-dir fn-bs-ops-not-for-dir)))))
 (defthm fn-bs-k0w-window-kernel-swap
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-replay-visiblep ks)
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-replay-visiblep ks)
                 (fn-sf-statep ks1) (fn-bs-replay-visiblep ks1)
                 (equal (fn-sf-frontier ks1) (fn-sf-frontier ks))
                 (equal (fn-sf-records ks1) (fn-sf-records ks))
                 (equal (fn-sf-successes ks1) (fn-sf-successes ks)))
-           (fn-bs-store-relation bs ks1))
+           (fn-bs-store-relation bs ks1 arena))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-bs-store-relation fn-bs-replay-matches-scan fn-sf-frontier-rollback-visiblep
                                    fn-sf-recovery-visiblep fn-bs-replay-visiblep)
@@ -315,13 +315,13 @@
                                    fn-bs-authority-fencedp fn-bs-authority-knownp fn-bs-durable-frontier fn-sf-record-listp
                                    fn-bs-ops-for-dir fn-bs-durable-content fn-bs-durable-entry fn-bs-contiguous-namesp)))))
 (defthm fn-bs-k0w-quiet-window-exit
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-replay-visiblep ks)
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-replay-visiblep ks)
                 (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
                 (not (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
                 (fn-sf-statep ks1) (not (fn-bs-replay-visiblep ks1))
                 (equal (fn-sf-frontier ks1) (fn-sf-frontier ks))
                 (equal (fn-sf-records ks1) (fn-sf-records ks)))
-           (fn-bs-store-relation bs ks1))
+           (fn-bs-store-relation bs ks1 arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-unfolds fn-bs-store-relation-window-unfolds
@@ -330,7 +330,7 @@
                  fn-bs-store-relation-view-frontier-content
                  fn-bs-store-relation-view-namespace-without-a-pending-link
                  fn-bs-view-reads-the-durable-records)
-           :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase fn-sf-crash-imagep fn-bs-durable-frontier)
+           :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-bs-durable-frontier)
                            (fn-bs-statep fn-sf-statep fn-bs-scan-store fn-bs-pending-shape-okp fn-bs-durable-records
                             fn-bs-authority-fencedp fn-bs-authority-knownp fn-sf-record-listp fn-bs-replay-matches-scan
                             fn-bs-ops-for-dir fn-bs-durable-content fn-bs-durable-entry fn-bs-contiguous-namesp
@@ -376,9 +376,9 @@
            (member-equal event '((:recover) (:recovery-barrier :ok) (:recovery-barrier :uncertain))))
   :rule-classes nil)
 (defthm fn-bs-k0w-observation-preserves-relation
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-replay-visiblep ks)
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-replay-visiblep ks)
                 (fn-bs-k0w-observation-inputp bs ks event))
-           (fn-bs-store-relation bs (fn-sf-dispatch ks event g c)))
+           (fn-bs-store-relation bs (fn-sf-dispatch ks event g c) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :cases ((fn-bs-replay-visiblep (fn-sf-dispatch ks event g c)))
@@ -390,10 +390,10 @@
            :in-theory (e/d (fn-bs-k0w-authority-quietp)
                            (fn-bs-store-relation fn-sf-dispatch fn-bs-replay-visiblep fn-sf-statep fn-bs-statep
                             fn-bs-k0w-observation-inputp fn-bs-ops-for-dir)))))
-(defun fn-bs-k0w-step-inputp (bs ks step outcome)
+(defun fn-bs-k0w-step-inputp (bs ks step outcome arena)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-bs-replay-visiblep ks)
-       (fn-bs-store-relation bs ks)
+       (fn-bs-store-relation bs ks arena)
        (case (car step)
          (:cut t)
          (:observe (fn-bs-k0w-observation-inputp bs ks (nth 1 step)))
@@ -402,10 +402,10 @@
                          (not (fn-bs-ops-for-dir (fn-bs-pending bs) (nth 1 step)))))
          (otherwise nil))))
 (defthm fn-bs-k0w-step-preserves-relation
-  (implies (fn-bs-k0w-step-inputp bs ks step outcome)
+  (implies (fn-bs-k0w-step-inputp bs ks step outcome arena)
            (let ((bs1 (mv-nth 1 (fn-bs-step bs ks step outcome groups capacity)))
                  (ks1 (mv-nth 2 (fn-bs-step bs ks step outcome groups capacity))))
-             (and (fn-bs-store-relation bs1 ks1)
+             (and (fn-bs-store-relation bs1 ks1 arena)
                   (or (equal ks1 ks) (equal (car step) :observe)))))
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-unfolds

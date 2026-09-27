@@ -498,7 +498,7 @@ class Acl2Store:
             "(" + self.literal(ident) + " " + self.literal(key) + ")"
             for ident, key in pairs)
         return acl2_keyword(self.call(
-            "(fn-store-sn-set-keyring '(" + entries + ") state)"))
+            "(fn-store-sn-set-keyring '(" + entries + ") fn-arena state)"))
 
     def keyring_size(self):
         return acl2_nat(self.call("(fn-store-sn-keyring-size state)"))

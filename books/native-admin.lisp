@@ -653,6 +653,17 @@
        ; bindings.
        ((and (consp words) (equal (car words) "consumer"))
         (fn-native-admin-consumer-plan (cdr words) (cdr argv)))
+       ; PKT-575 (CT3): the node operator's withdrawal authorization, the
+       ; :withdraw-article record (code 26): `article withdraw-record CAUSE
+       ; TARGET REASON'.  The owner's `article withdraw' and `moderation
+       ; reject' name this vector (books/moderation-verbs.lisp
+       ; `fn-mvb-withdraw-plan') before injecting CAUSE; the row alone
+       ; withdraws nothing.
+       ((and (equal (len words) 5)
+             (equal (car words) "article")
+             (equal (cadr words) "withdraw-record"))
+        (fn-native-admin-result :accepted nil :withdraw-article (caddr argv) 0
+                                (cadddr argv) (car (cddddr argv))))
        ((and (consp words) (equal (car words) "control"))
         (fn-native-admin-control-plan words argv))
        ((and (<= 3 (len words))
@@ -742,6 +753,11 @@
                       (fn-record-octets-string (car v))
                       (fn-record-octets-string (cadr v))
                       (fn-native-admin-octets-strings (cddr v))))))
+            ((equal kind :withdraw-article)
+             (list (fn-cfg-withdraw-article
+                    name
+                    (fn-record-octets-string (fn-native-admin-result-peer plan))
+                    (fn-record-octets-string (fn-native-admin-result-value plan)))))
             ((equal kind :set-group-status)
              (list (fn-cfg-set-group-status
                     name

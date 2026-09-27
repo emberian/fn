@@ -13,6 +13,7 @@
 
 (in-package "ACL2")
 (include-book "../books/replay")
+(include-book "../books/store-intern")
 (include-book "../books/store-config")
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")
@@ -100,33 +101,39 @@
 ; `fn-profile-txn-observation'; host/native/checkpoint.lisp calls it directly.
 
 ; The record wrappers recognise and dispatch through the concrete twins of
-; books/records-concrete.lisp (fn-rcon-store-event-p-is-store-event-p,
-; -sequence-is-, -txid-is-: each equal to its list reference on every input).
+; books/records-concrete.lisp.  What the codec decodes is a WIRE event
+; (fn-rcon-wire-event-p-is-wire-event-p, -sequence-is-, -txid-is-): the
+; journal's and the checkpoint's bytes.  The store machine never holds one:
+; the entry interns the decoded events into the arena first
+; (fn-store-intern-records below; books/store-intern.lisp fn-intern-events).
 (defun fn-store-decode-records (octet-records)
   (declare (xargs :mode :program))
   (if (consp octet-records)
       (let ((decoded (fn-store-event-decode-exact (car octet-records))))
         (if (and (consp decoded) (equal (car decoded) :ok)
-                 (consp (cdr decoded)) (fn-rcon-store-event-p (car (cdr decoded))))
+                 (consp (cdr decoded)) (fn-rcon-wire-event-p (car (cdr decoded))))
             (let ((rest (fn-store-decode-records (cdr octet-records))))
               (if (equal rest :bad) :bad (cons (car (cdr decoded)) rest)))
           :bad))
     (if (null octet-records) nil :bad)))
 
-(defun fn-store-record-sequence (octets)
-  (declare (xargs :mode :program))
-  (let ((decoded (fn-store-event-decode-exact octets)))
-    (if (and (consp decoded) (equal (car decoded) :ok)
-             (consp (cdr decoded)) (fn-rcon-store-event-p (car (cdr decoded))))
-        (fn-rcon-store-event-sequence (car (cdr decoded)))
-      -1)))
+; THE INTERN AT THE OPEN (records-flip; PKT-635): the decoded wire events
+; become the store's rows, every article's payload sealed once into the
+; arena (fn-intern-events; KEYSTONES fn-intern-events-materializes,
+; -keep-coordinates, -contexts-okp).  The keyring at open is nil and the
+; generation 0 (the host installs the operator's keyring afterwards through
+; fn-store-sn-set-keyring, which recontexts every row through the arena).
+; :bad when any event is refused (a composite whose article does not decode).
+(defun fn-store-intern-records (records fn-arena)
+  (declare (xargs :mode :program :stobjs fn-arena))
+  (fn-intern-events records nil 0 fn-arena))
 
 (defun fn-store-record-txid (octets)
   (declare (xargs :mode :program))
   (let ((decoded (fn-store-event-decode-exact octets)))
     (if (and (consp decoded) (equal (car decoded) :ok)
-             (consp (cdr decoded)) (fn-rcon-store-event-p (car (cdr decoded))))
-        (fn-rcon-store-event-txid (car (cdr decoded)))
+             (consp (cdr decoded)) (fn-rcon-wire-event-p (car (cdr decoded))))
+        (fn-rcon-wire-event-txid (car (cdr decoded)))
       -1)))
 
 ; -----------------------------------------------------------------------------

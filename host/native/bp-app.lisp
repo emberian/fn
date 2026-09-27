@@ -216,7 +216,7 @@ finds the transit principal in that ingress."
               (receipt nil)
               (class nil))
          (multiple-value-setq (app-result receipt class)
-           (fnn-owner-serialized
+           (fnn-owner-transit-serialized
             service nil
             (lambda ()
               (multiple-value-bind (result adu)
@@ -273,7 +273,7 @@ finds the transit principal in that ingress."
        (list :uncertain reason)))))
 
 (defun fnn-bpapp-open-journal (service receipt-root destination policy issuer)
-  (fnn-owner-serialized
+  (fnn-owner-transit-serialized
    service nil
    (lambda ()
      (fnn-bpapp-bind-owner-store)

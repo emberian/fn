@@ -24,7 +24,7 @@
 
 (assert-event
  (let ((bs (fn-bs-initial-image 4 (fn-bs-test-config) (fn-bs-test-frontier))))
-   (and (fn-bs-store-relation bs (fn-sf-initial-state))
+   (and (fn-bs-store-relation bs (fn-sf-initial-state) 'nil)
         (fn-bs-authority-knownp bs)
         (not (member-equal (fn-bs-next-ino bs) (fn-bs-authority-inode-list bs)))
         (equal (fn-bs-ops-for-dir (fn-bs-pending bs) :root) nil)
@@ -45,10 +45,10 @@
         (pair (car (last run)))
         (after (fn-bs-test-observe pair '(:frontier-file :known-fail))))
    (and (equal (len run) 4)
-        (fn-bs-run-relatedp run)
+        (fn-bs-run-relatedp run 'nil)
         (equal (fn-sf-phase (cdr pair)) :frontier-staged)
         (equal (fn-sf-phase (cdr after)) :ready)
-        (fn-bs-store-relation (car after) (cdr after))
+        (fn-bs-store-relation (car after) (cdr after) 'nil)
         (equal (fn-bs-durable-frontier (car after)) 0))))
 
 ; fsync fails after a torn/zero unit. The failed inode is private staging;
@@ -58,10 +58,10 @@
         (pair (car (last run)))
         (after (fn-bs-test-observe pair '(:frontier-file :known-fail))))
    (and (equal (len run) 6)
-        (fn-bs-run-relatedp run)
+        (fn-bs-run-relatedp run 'nil)
         (not (equal (fn-bs-durable-content (car pair) 2) (fn-bs-test-next)))
         (equal (fn-sf-phase (cdr after)) :ready)
-        (fn-bs-store-relation (car after) (cdr after)))))
+        (fn-bs-store-relation (car after) (cdr after) 'nil))))
 
 ; A rename can report EIO after issue. The callback fences the kernel;
 ; it cannot turn the visible replacement into a known refusal.
@@ -70,9 +70,9 @@
         (pair (car (last run)))
         (after (fn-bs-test-observe pair '(:frontier-replace :error))))
    (and (equal (len run) 9)
-        (fn-bs-run-relatedp run)
+        (fn-bs-run-relatedp run 'nil)
         (equal (fn-sf-phase (cdr after)) :fenced-frontier)
-        (fn-bs-store-relation (car after) (cdr after))
+        (fn-bs-store-relation (car after) (cdr after) 'nil)
         (equal (fn-bs-durable-frontier (car after)) 0)
         (equal (fn-bs-scan-frontier (fn-bs-scan-store (car after))) 1))))
 
@@ -85,9 +85,9 @@
         (old (fn-bs-test-observe (car (last old-run)) '(:frontier-dir :error)))
         (new (fn-bs-test-observe (car (last new-run)) '(:frontier-dir :error))))
    (and (equal (len old-run) 13) (equal (len new-run) 13)
-        (fn-bs-run-relatedp old-run) (fn-bs-run-relatedp new-run)
-        (fn-bs-store-relation (car old) (cdr old))
-        (fn-bs-store-relation (car new) (cdr new))
+        (fn-bs-run-relatedp old-run 'nil) (fn-bs-run-relatedp new-run 'nil)
+        (fn-bs-store-relation (car old) (cdr old) 'nil)
+        (fn-bs-store-relation (car new) (cdr new) 'nil)
         (equal (fn-sf-phase (cdr old)) :fenced-frontier)
         (equal (fn-sf-phase (cdr new)) :fenced-frontier)
         (equal (fn-bs-durable-frontier (car old)) 0)
@@ -100,7 +100,7 @@
   (let* ((pair (cons (fn-bs-initial-image 4 nil (fn-bs-test-frontier))
                      (fn-sf-initial-state)))
          (after (fn-bs-test-observe pair '(:start-frontier))))
-    (fn-bs-store-relation (car after) (cdr after)))))
+    (fn-bs-store-relation (car after) (cdr after) 'nil))))
 ; The event-domain premise is necessary: announcing directory success BEFORE
 ; the real fence lets the kernel reserve a frontier that can still disappear.
 (must-fail
@@ -108,7 +108,7 @@
   (let* ((run (fn-bs-test-frontier-run 4 (fn-bs-test-config) (fn-bs-test-frontier)
                                       ".allocation-test" (fn-bs-test-next)))
          (after (fn-bs-test-observe (nth 11 run) '(:frontier-dir :ok))))
-    (fn-bs-store-relation (car after) (cdr after)))))
+    (fn-bs-store-relation (car after) (cdr after) 'nil))))
 
 ; After the actual successful root fence, the commit observation is valid.
 (assert-event
@@ -116,10 +116,10 @@
                                      ".allocation-test" (fn-bs-test-next)))
         (pair (nth 13 run))
         (after (fn-bs-test-observe pair '(:frontier-dir :ok))))
-   (and (fn-bs-store-relation (car pair) (cdr pair))
+   (and (fn-bs-store-relation (car pair) (cdr pair) 'nil)
         (equal (fn-sf-phase (cdr pair)) :frontier-attempted)
         (fn-bs-frontier-directory-committedp (car pair) (cdr pair))
-        (fn-bs-store-relation (car after) (cdr after))
+        (fn-bs-store-relation (car after) (cdr after) 'nil)
         (equal (fn-sf-phase (cdr after)) :reserved))))
 
 ; Fresh allocation needs the relation's allocation invariant. Reusing 0
@@ -160,7 +160,7 @@
          (ks (cdr (nth 13 run)))
          (bs (fn-bs-initial-image 4 nil (fn-bs-test-next)))
          (after (fn-sf-frontier-dir-result ks :ok)))
-    (and (fn-bs-store-relation bs after) (equal (fn-sf-phase after) :reserved)))))
+    (and (fn-bs-store-relation bs after 'nil) (equal (fn-sf-phase after) :reserved)))))
 ; No phase premise: a commit observation cannot skip the replace observation.
 (must-fail
  (assert-event
@@ -169,7 +169,7 @@
          (bs (car (nth 13 run)))
          (ks (cdr (nth 7 run)))
          (after (fn-sf-frontier-dir-result ks :ok)))
-    (and (fn-bs-store-relation bs after) (equal (fn-sf-phase after) :reserved)))))
+    (and (fn-bs-store-relation bs after 'nil) (equal (fn-sf-phase after) :reserved)))))
 ; No byte commit: the real attempted state before the root fence.
 (must-fail
  (assert-event
@@ -177,7 +177,7 @@
                                       ".allocation-test" (fn-bs-test-next)))
          (pair (nth 11 run))
          (after (fn-sf-frontier-dir-result (cdr pair) :ok)))
-    (and (fn-bs-store-relation (car pair) after)
+    (and (fn-bs-store-relation (car pair) after 'nil)
          (equal (fn-sf-phase after) :reserved)))))
 
 (assert-event
@@ -190,9 +190,9 @@
         (pending (car (nth 11 run))))
    (and (equal (fn-sf-phase attempted) :frontier-attempted)
         (fn-bs-frontier-directory-committedp bad-config attempted)
-        (not (fn-bs-store-relation bad-config attempted))
-        (fn-bs-store-relation committed data-durable)
+        (not (fn-bs-store-relation bad-config attempted 'nil))
+        (fn-bs-store-relation committed data-durable 'nil)
         (fn-bs-frontier-directory-committedp committed data-durable)
         (not (equal (fn-sf-phase data-durable) :frontier-attempted))
-        (fn-bs-store-relation pending attempted)
+        (fn-bs-store-relation pending attempted 'nil)
         (not (fn-bs-frontier-directory-committedp pending attempted)))))

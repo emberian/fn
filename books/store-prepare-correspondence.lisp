@@ -63,8 +63,11 @@
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (null (fn-node-stage (fn-sn-node s)))
-           (fn-record-p record)
+           (fn-held-p record)
            (not (equal (fn-record-stamp record) :legacy))
+           ; fn-sn-prepare's gate: the row's context is of the generation in force.
+           (equal (fn-hc-generation (fn-held-context record))
+                  (fn-sn-keyring-generation s))
            (eq (car (fn-cpe-projection-step
                      (fn-sn-consumer s) record (fn-sn-identity-next s))) :ok))
       (let* ((node (fn-sn-prepare-node (fn-sn-node s) record))
@@ -90,7 +93,7 @@
 ; certify-20260922T163635Z-3095374).
 (local
  (defthm fn-spc-store-event-fields-of-an-article-record
-   (implies (fn-record-p record)
+   (implies (fn-held-p record)
             (and (equal (fn-store-event-sequence record)
                         (fn-record-sequence record))
                  (equal (fn-store-event-txid record) (fn-record-txid record))
@@ -99,8 +102,8 @@
    :hints (("Goal" :in-theory (e/d (fn-store-event-sequence
                                     fn-store-event-txid
                                     fn-store-event-generation)
-                                   (fn-record-p fn-store-retention-event-p
-                                    fn-stxe-p fn-stxk-p fn-stxa-p))))))
+                                   (fn-held-p fn-store-retention-event-p
+                                    fn-stxe-p fn-stxk-p fn-hstxa-p))))))
 
 ; `fn-sf-candidatep' pins the COMPOSED transaction id: since `6ab2c783' and
 ; `4bb7bb3d' a staged candidate is not always an article record, and this book
@@ -111,14 +114,14 @@
 (local
  (defthm fn-spc-candidate-txid-is-frontier-predecessor
    (implies (and (fn-sf-candidatep record records frontier)
-                 (fn-record-p record))
+                 (fn-held-p record))
             (equal (fn-record-txid record) (+ -1 frontier)))
    :rule-classes nil
    :hints (("Goal" :in-theory
             (e/d (fn-sf-candidatep fn-store-event-txid)
-                 (fn-sf-next-lower fn-record-p fn-record-txid
+                 (fn-sf-next-lower fn-held-p fn-record-txid
                   fn-store-event-p fn-store-retention-event-p
-                  fn-stxe-p fn-stxk-p fn-stxa-p))))))
+                  fn-stxe-p fn-stxk-p fn-hstxa-p))))))
 
 ; The semantic bridge.  In a related reserved state the node is exact replay
 ; at frontier-1.  If the actual prepared node binds the candidate, the
@@ -155,7 +158,7 @@
                   (history (fn-sf-records (fn-sn-files s)))))
            :in-theory
            (e/d (fn-snt-relation fn-snt-idle-phasep fn-sf-candidatep)
-                (fn-sn-statep fn-sf-statep fn-record-p
+                (fn-sn-statep fn-sf-statep fn-record-p fn-held-p
                  fn-sf-record-listp fn-sf-history-recoverablep
                  fn-sf-replay-node fn-snt-pending-linkp
                  fn-sn-completion-enabledp fn-sn-record-bindsp
@@ -230,7 +233,7 @@
                   (txid (+ -1 (fn-sf-frontier (fn-sn-files s))))))
            :in-theory
            (e/d (fn-snt-relation fn-snt-idle-phasep fn-sf-candidatep)
-                (fn-sn-statep fn-sf-statep fn-node-statep fn-record-p
+                (fn-sn-statep fn-sf-statep fn-node-statep fn-record-p fn-held-p
                  fn-sf-record-listp fn-sf-history-recoverablep
                  fn-sf-replay-node fn-snt-pending-linkp
                  fn-snt-deferred-linkp fn-snt-completion-linkp
@@ -242,161 +245,145 @@
                  fn-sf-state-records-are-true-list
                  fn-replay-apply-record-non-nil-is-node-state)))))
 
-; Reconfiguration changes only the keyring/index pair.  The live-history
-; relation deliberately concerns the storage history and node, so it is
-; preserved while the statement index is recomputed under its own D21 proof.
+; Reconfiguration changes the keyring, its generation and the index, and
+; (after the flip) re-contexts every retained row: the rows' wire positions,
+; facts, numbers and withdrawal stay (fn-held-with-context-fields), and the
+; replay reads none of what changed.  So the live-history relation, which
+; concerns the storage history and the node, is preserved.  It changes the
+; store only at :ready (fn-sn-set-keyring's gate), where the relation's arm is
+; the idle one.
+
+; A held row is a Store event of the article kind and of no other.
 (local
- (defthm fn-spc-set-keyring-preserves-state
-   (implies (fn-sn-statep s)
-            (fn-sn-statep (fn-sn-set-keyring s keyring)))
-   :hints (("Goal"
-            :in-theory (e/d (fn-sn-set-keyring fn-sn-statep fn-sn-shapep
-                             fn-sn-groups fn-sn-capacity fn-sn-files
-                             fn-sn-node fn-sn-keyring
-                             fn-sn-keyring-generation fn-sn-verdicts
-                             fn-sn-keyring-snapshots fn-sn-identity-next)
-                             (fn-sf-statep fn-node-statep
-                              fn-stx-index-of-store))))))
+ (defthm fn-spc-held-kind-facts
+   (implies (fn-held-p x)
+            (and (fn-store-event-p x)
+                 (not (fn-store-retention-event-p x))
+                 (not (fn-stxe-p x)) (not (fn-stxk-p x)) (not (fn-hstxa-p x))
+                 (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
+   :hints (("Goal" :in-theory (enable fn-store-event-p fn-held-p
+                                      fn-held-shapep fn-store-retention-event-p
+                                      fn-stxe-p fn-stxe-shapep fn-stxk-p
+                                      fn-stxk-shapep fn-hstxa-p
+                                      fn-cpe-eventp fn-th-topic-eventp)))))
 
 (local
- (defthm fn-spc-set-keyring-keeps-store-components
-   (and (equal (fn-sn-groups (fn-sn-set-keyring s keyring))
-               (fn-sn-groups s))
-        (equal (fn-sn-capacity (fn-sn-set-keyring s keyring))
-               (fn-sn-capacity s))
-        (equal (fn-sn-files (fn-sn-set-keyring s keyring))
-               (fn-sn-files s))
-        (equal (fn-sn-node (fn-sn-set-keyring s keyring))
-               (fn-sn-node s))
-        (equal (fn-sn-consumer (fn-sn-set-keyring s keyring))
-               (fn-sn-consumer s))
-        (equal (fn-sn-topic (fn-sn-set-keyring s keyring))
-               (fn-sn-topic s))
-        (equal (fn-sn-identity-next (fn-sn-set-keyring s keyring))
-               (fn-sn-identity-next s)))
-   :hints (("Goal" :in-theory
-            (e/d (fn-sn-set-keyring)
-                 (fn-sn-make-v6 fn-sn-groups fn-sn-capacity
-                  fn-sn-files fn-sn-node fn-sn-consumer fn-sn-topic
-                  fn-sn-identity-next))))))
+ (defthm fn-spc-hstxa-kind-facts
+   (implies (fn-hstxa-p x)
+            (and (fn-store-event-p x)
+                 (not (fn-held-p x))
+                 (not (fn-store-retention-event-p x))
+                 (not (fn-stxe-p x)) (not (fn-stxk-p x))
+                 (not (fn-cpe-eventp x)) (not (fn-th-topic-eventp x))))
+   :hints (("Goal" :in-theory (enable fn-store-event-p fn-held-p
+                                      fn-held-shapep fn-store-retention-event-p
+                                      fn-stxe-p fn-stxe-shapep fn-stxk-p
+                                      fn-stxk-shapep fn-hstxa-p
+                                      fn-cpe-eventp fn-th-topic-eventp)))))
 
 (local
- (defthm fn-spc-set-keyring-keeps-completion-record
-   (equal (fn-sn-completion-record (fn-sn-set-keyring s keyring))
-          (fn-sn-completion-record s))
-   :hints (("Goal" :use fn-spc-set-keyring-keeps-store-components
-            :in-theory (e/d (fn-sn-completion-record)
-                            (fn-sn-set-keyring fn-sn-make-v6))))))
-
-; Reconfiguration keeps the snapshot list and the identity cursor, so it
-; keeps the identity replay context `6e992351' and `4bb7bb3d' made
-; `fn-sn-completion-enabledp' consult.
-(local
- (defthm fn-spc-set-keyring-keeps-identity-context
-   (equal (fn-sn-identity-context (fn-sn-set-keyring s keyring))
-          (fn-sn-identity-context s))
-   :hints (("Goal" :in-theory (e/d (fn-sn-set-keyring fn-sn-identity-context
-                                    fn-sn-identity-next
-                                    fn-sn-keyring-snapshots)
-                                   (fn-stx-index-of-store))))))
-
-; The five event recognizers and the three appliers stay closed: since
-; `6ab2c783' and `4bb7bb3d' this equality is a dispatch on the completion
-; record's kind and nothing here looks inside it, while with them open the
-; goal unfolds the record and statement codec on every arm.
-(local
- (defthm fn-spc-set-keyring-keeps-completion-enabledp
-   (implies (fn-sn-statep s)
-            (equal (fn-sn-completion-enabledp (fn-sn-set-keyring s keyring))
-                   (fn-sn-completion-enabledp s)))
-   :hints (("Goal"
-            :use (fn-spc-set-keyring-preserves-state
-                  fn-spc-set-keyring-keeps-store-components
-                  fn-spc-set-keyring-keeps-completion-record)
-            :in-theory (e/d (fn-sn-completion-enabledp)
-                            (fn-sn-set-keyring fn-sn-statep
-                             fn-sn-record-bindsp
-                             fn-record-shape-vocabulary
-                             fn-record-record-vocabulary
-                             fn-store-event-p fn-store-retention-event-p
-                             fn-stxe-p fn-stxk-p fn-stxa-p
-                             fn-th-topic-eventp
-                             fn-replay-apply-record
-                             fn-replay-apply-retention-event
-                             fn-replay-apply-identity-neutral
-                             fn-replay-composite-record
-                             fn-replay-identity-step))))))
-
-; The two links reconfiguration has to carry, each stated once over the
-; accessors `fn-sn-set-keyring' keeps (the store components, the completion
-; record, the identity context) with the replay and the codec closed: the
-; deferred link reads the files, the node and the identity context, the
-; completing link the files, the node and the completion record, and
-; neither reads the keyring or the index.
-(local
- (defthm fn-spc-set-keyring-keeps-deferred-link
-   (equal (fn-snt-deferred-linkp (fn-sn-set-keyring s keyring))
-          (fn-snt-deferred-linkp s))
-   :hints (("Goal" :in-theory (e/d (fn-snt-deferred-linkp)
-                                   (fn-sn-set-keyring
-                                    fn-sf-history-recoverablep fn-sf-replay-node
-                                    fn-sn-identity-context
-                                    fn-record-shape-vocabulary
-                                    fn-record-record-vocabulary
-                                    fn-store-event-p fn-store-retention-event-p
-                                    fn-stxe-p fn-stxk-p fn-stxa-p
-                                    fn-replay-apply-record
-                                    fn-replay-apply-retention-event
-                                    fn-replay-apply-identity-neutral
-                                    fn-replay-composite-record
-                                    fn-replay-identity-step))))))
+ (defthm fn-spc-replay-reads-no-context-held
+   (implies (and (fn-held-p r) (fn-hc-p c))
+            (and (fn-store-event-p (fn-held-with-context r c))
+                 (equal (fn-store-event-sequence (fn-held-with-context r c))
+                        (fn-store-event-sequence r))
+                 (equal (fn-replay-apply-record node (fn-held-with-context r c))
+                        (fn-replay-apply-record node r))))
+   :hints (("Goal" :use ((:instance fn-spc-held-kind-facts (x r))
+                         (:instance fn-spc-held-kind-facts
+                                    (x (fn-held-with-context r c))))
+            :in-theory (e/d (fn-replay-apply-record fn-store-event-sequence
+                             fn-store-event-txid)
+                            (fn-spc-held-kind-facts fn-store-event-p fn-held-p
+                             fn-hstxa-p fn-store-retention-event-p fn-stxe-p
+                             fn-stxk-p fn-cpe-eventp fn-th-topic-eventp
+                             fn-held-with-context fn-node-prepare
+                             fn-node-complete fn-replay-advance-txid))))))
 
 (local
- (defthm fn-spc-set-keyring-keeps-completion-link
-   (equal (fn-snt-completion-linkp (fn-sn-set-keyring s keyring))
-          (fn-snt-completion-linkp s))
-   :hints (("Goal" :in-theory (e/d (fn-snt-completion-linkp)
-                                   (fn-sn-set-keyring fn-sn-completion-record
-                                    fn-sf-replay-node fn-node-complete
-                                    fn-record-shape-vocabulary
-                                    fn-record-record-vocabulary
-                                    fn-store-event-p fn-store-retention-event-p
-                                    fn-stxe-p fn-stxk-p fn-stxa-p
-                                    fn-replay-apply-record
-                                    fn-replay-apply-retention-event
-                                    fn-replay-apply-identity-neutral
-                                    fn-replay-composite-record
-                                    fn-replay-identity-step))))))
+ (defthm fn-spc-replay-reads-no-context-hstxa
+   (implies (and (fn-hstxa-p r) (fn-hc-p c))
+            (let ((y (fn-hstxa-make (fn-hstxa-stxa r)
+                                    (fn-held-with-context (fn-hstxa-held r) c))))
+              (and (fn-store-event-p y)
+                   (equal (fn-store-event-sequence y) (fn-store-event-sequence r))
+                   (equal (fn-replay-apply-record node y)
+                          (fn-replay-apply-record node r)))))
+   :hints (("Goal" :use ((:instance fn-spc-hstxa-kind-facts (x r))
+                         (:instance fn-spc-hstxa-kind-facts
+                                    (x (fn-hstxa-make (fn-hstxa-stxa r)
+                                                      (fn-held-with-context
+                                                       (fn-hstxa-held r) c)))))
+            :in-theory (e/d (fn-replay-apply-record fn-store-event-sequence
+                             fn-store-event-txid fn-replay-composite-held)
+                            (fn-spc-hstxa-kind-facts fn-store-event-p fn-held-p
+                             fn-hstxa-p fn-store-retention-event-p fn-stxe-p
+                             fn-stxk-p fn-cpe-eventp fn-th-topic-eventp
+                             fn-held-with-context fn-hstxa-make fn-node-prepare
+                             fn-node-complete fn-replay-advance-txid))))))
 
-; The relation's arms dispatch on the phase and the candidate's kind; every
-; link stays CLOSED and is carried by the two lemmas above.  With the
-; deferred link open the goal asked for it on the reconfigured state and
-; nothing said the keyring was not among what it reads (hbox
-; certify-20260922T181346Z-3153839, Subgoal 6).
+(local
+ (defun fn-spc-rc-induct (node rows contexts generation seq)
+   (declare (xargs :measure (len rows)))
+   (cond ((atom rows) (list node contexts generation seq))
+         ((or (fn-held-p (car rows)) (fn-hstxa-p (car rows)))
+          (fn-spc-rc-induct (fn-replay-apply-record node (car rows)) (cdr rows)
+                            (cdr contexts) generation (1+ seq)))
+         (t (fn-spc-rc-induct (fn-replay-apply-record node (car rows)) (cdr rows)
+                              contexts generation (1+ seq))))))
+
+(local
+ (defthm fn-spc-replay-loop-of-recontext
+   (implies (and (true-listp rows)
+                 (not (eq (fn-sn-recontext-rows rows contexts generation) :mismatch)))
+            (equal (fn-replay-loop node (fn-sn-recontext-rows rows contexts generation) seq)
+                   (fn-replay-loop node rows seq)))
+   :hints (("Goal" :induct (fn-spc-rc-induct node rows contexts generation seq)
+            :expand ((fn-sn-recontext-rows rows contexts generation)
+                     (fn-replay-loop node rows seq)
+                     (:free (r) (fn-replay-loop node (cons (car rows) r) seq))
+                     (:free (r c) (fn-replay-loop node (cons (fn-held-with-context (car rows) c) r) seq))
+                     (:free (r c) (fn-replay-loop node (cons (fn-hstxa-make
+                                                              (fn-hstxa-stxa (car rows))
+                                                              (fn-held-with-context
+                                                               (fn-hstxa-held (car rows)) c))
+                                                             r) seq)))
+            :in-theory (disable fn-replay-apply-record fn-store-event-p fn-held-p
+                                fn-hstxa-p fn-held-with-context fn-hstxa-make
+                                fn-store-event-sequence fn-node-statep)))))
+
+(local
+ (defthm fn-spc-replay-node-of-recontext
+   (implies (and (true-listp rows)
+                 (not (eq (fn-sn-recontext-rows rows contexts generation) :mismatch)))
+            (and (equal (fn-sf-replay-node groups capacity
+                                           (fn-sn-recontext-rows rows contexts generation)
+                                           frontier)
+                        (fn-sf-replay-node groups capacity rows frontier))
+                 (equal (fn-sf-history-recoverablep groups capacity
+                                                    (fn-sn-recontext-rows rows contexts generation)
+                                                    frontier)
+                        (fn-sf-history-recoverablep groups capacity rows frontier))))
+   :hints (("Goal" :in-theory (e/d (fn-sf-replay-node fn-sf-history-recoverablep fn-replay)
+                                   (fn-replay-loop fn-sn-recontext-rows))))))
+
 (defthm fn-spc-set-keyring-preserves-relation
   (implies (fn-snt-relation s)
-           (fn-snt-relation (fn-sn-set-keyring s keyring)))
+           (fn-snt-relation (fn-sn-set-keyring s keyring contexts)))
   :hints (("Goal"
            :use (fn-snt-relation-implies-structural-state
-                 fn-spc-set-keyring-preserves-state)
-           :in-theory (e/d (fn-snt-relation)
+                 fn-sn-set-keyring-preserves-state
+                 (:instance fn-sf-state-records-are-true-list (s (fn-sn-files s))))
+           :in-theory (e/d (fn-snt-relation fn-sn-set-keyring fn-snt-idle-phasep)
                            (fn-sn-statep fn-sf-statep fn-node-statep
-                            fn-sn-set-keyring
                             fn-sf-history-recoverablep fn-sf-replay-node
+                            fn-sn-recontext-rows fn-sn-index-of-rows fn-cei-build
                             fn-snt-pending-linkp fn-snt-deferred-linkp
                             fn-snt-completion-linkp
-                            fn-sn-completion-enabledp
-                            fn-record-shape-vocabulary
-                            fn-record-record-vocabulary
-                            fn-store-event-p fn-store-retention-event-p
-                            fn-stxe-p fn-stxk-p fn-stxa-p
-                            fn-replay-apply-record
-                            fn-replay-apply-retention-event
-                            fn-replay-apply-identity-neutral
-                            fn-replay-composite-record
-                            fn-replay-identity-step
+                            fn-sn-completion-enabledp fn-sn-completion-core-enabledp
                             fn-snt-relation-implies-structural-state
-                            fn-spc-set-keyring-preserves-state)))))
+                            fn-sn-set-keyring-preserves-state
+                            fn-sf-state-records-are-true-list)))))
 
 ; The actual post-open store mutations, expressed as already-decoded logical
 ; events.  The dispatcher never tests the relation and never rolls a failed
@@ -411,7 +398,7 @@
     (:finish (fn-sn-finish s))
     (:refuse-reservation (fn-sn-refuse-reservation s (cadr event)))
     (:known-abort (fn-sn-known-abort s))
-    (:set-keyring (fn-sn-set-keyring s (cadr event)))
+    (:set-keyring (fn-sn-set-keyring s (cadr event) (caddr event)))
     (:sweep-staging (cdr (fn-sn-sweep-staging s (cadr event) (caddr event))))
     (otherwise s)))
 
@@ -432,7 +419,7 @@
                             (txid (cadr event)))
                  fn-sn-known-abort-preserves-relation
                  (:instance fn-spc-set-keyring-preserves-relation
-                            (keyring (cadr event)))
+                            (keyring (cadr event)) (contexts (caddr event)))
                  (:instance fn-sn-sweep-staging-preserves-relation
                             (observed (cadr event)) (held (caddr event))))
            :in-theory (e/d (fn-spc-step)

@@ -3150,7 +3150,7 @@
       ],
       "expected": [
         "Every row is recorded with the owner's OWNER-OPEN line, owner CPU, VmHWM, disk octets and inodes, the box load and (ZFS) zfs/zpool state; a row past its time budget says `capped`; a case that cannot run (the 40G ceiling, a unit's 30 minutes) is recorded with why, never replaced by a smaller N.",
-        "docs/operator.md publishes the table and the weaker tier where storage misses the targets (250 ms p95, 10 POST/s)."
+        "docs/operator-internals.md publishes the table (docs/operator.md its plain summary) and the weaker tier where storage misses the targets (250 ms p95, 10 POST/s)."
       ],
       "evidence": [
         "tools/service_envelope.py",
@@ -4483,41 +4483,6 @@
       ]
     },
     {
-      "id": "SCN-168",
-      "title": "A friend's authenticated post carries Injection-Info with the login's posting-account pseudonym and the node's complaints address; the operator reproduces the value; a relayed article keeps its peer's line",
-      "milestone": "M6",
-      "status": "implemented",
-      "requirements": [
-        "NNT-004"
-      ],
-      "steps": [
-        "Init H (auth required; logins alice, bob) and A (peer-fed, no auth); start both.",
-        "On the running H: policy set complaints-to not-an-address (refused), then policy set complaints-to abuse@example.org.",
-        "alice and bob each POST an unsigned article on H; fetch each with ARTICLE.",
-        "operator account hash alice; operator account hash bob.",
-        "POST an article on A without a login; IHAVE to A an article carrying a peer's Injection-Info with parameters; fetch both."
-      ],
-      "expected": [
-        "The non-address is refused; the address is accepted live.",
-        "Each stored article on H has exactly one Injection-Info: AGENT; posting-account=\"HEX\"; mail-complaints-to=\"abuse@example.org\", HEX 64 lowercase hex digits, no octet of the login in the line.",
-        "account hash prints each login's HEX exactly; alice's and bob's differ.",
-        "A's anonymous post has an Injection-Info without posting-account; the relayed article's Injection-Info is the peer's line octet for octet."
-      ],
-      "evidence": [
-        "tests/test_native_injection_info.py",
-        "tests/acl2/injection-info-params-tests.lisp"
-      ],
-      "implementation": {
-        "test": "tests.test_native_injection_info",
-        "cases": [
-          "test_injection_info_names_the_account_and_the_complaints_address"
-        ],
-        "native": true,
-        "log": "planning/evidence/usenet-headers-3-2026-09-26-native.log",
-        "record": "planning/evidence/usenet-headers-3-2026-09-26.md"
-      }
-    },
-    {
       "id": "SCN-154",
       "title": "Draining a contact of N ready base jobs examines each job record once and answers the head scan's offers in order",
       "milestone": "M4",
@@ -4950,6 +4915,209 @@
         "books/bp-handoff-report.lisp",
         "tests/acl2/bp-handoff-report-tests.lisp"
       ]
+    },
+    {
+      "id": "SCN-166",
+      "title": "Power is cut (qemu SIGKILL) under an OpenBSD 7.9 node while a client outside the VM posts, compacts, captures checkpoints, reclaims, initializes, imports and recovers; after reboot, fsck, recover and the owner, every acknowledged article answers exactly as first read, a refused one stays refused, local numbers are never reassigned",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "FLR-001",
+        "NNT-005"
+      ],
+      "steps": [
+        "Clone the release-openbsd VM and install the release under test (tools/power_loss_openbsd.py install NAME TARBALL; first run fn-a04213276edf, the continuation fn-c5d7b5b3fd9f); give it a store disk (raw: completed writes survive the cut; qcow2 writeback: unflushed allocations are lost) with FFS1 or FFS2; the node listens on the guest loopback behind a pf redirect.",
+        "Per epoch: `operator init` cut at a random point, then cycles of: boot, `fsck -y`, mount, `operator recover`, the owner, the oracle (ARTICLE of every attempted Message-ID, OVER), `status`, then the phase's work and a SIGKILL of qemu: posting on two connections (every seventh POST names an uncarried group), posting across the automatic checkpoint capture, `store compact` with the owner stopped, an interrupted `recover`, `store export` (owner stopped) then `store import` of that archive into a second store ROOT2, cut, and `retention set released-by-all-holders` then `store reclaim`.",
+        "tools/power_loss_openbsd.py campaign NAME / initcuts NAME; the client's record (oracle.jsonl) and the cut record (cuts.jsonl) stay on hbox."
+      ],
+      "expected": [
+        "recover exits 0, the owner reaches LISTENING, status exits 0 after every cut.",
+        "Every 240 answers 220 with the posted body and headers, byte-identical at every later cut until a reclaim starts; every 441 answers 430; an attempt with no reply answers 220 (then pinned) or 430.",
+        "A local number once observed keeps its Message-ID; a newly listed article takes a number above every number observed before.",
+        "A rerun of an interrupted compact or reclaim succeeds; after a completed reclaim every article answers 430.",
+        "After an init cut the store is absent (at most one ROOT.init-*, which the next init names as interrupted-init, and init succeeds once it is removed) or the complete empty store (status 0, transactions=0); after an import cut ROOT2 is absent (at most one ROOT2.import-*, named by the next import, which then succeeds) or the complete imported store (the exported transaction count, sampled `store inspect` answers equal the source's)."
+      ],
+      "implementation": {
+        "tool": "tools/power_loss_openbsd.py",
+        "native": true,
+        "record": "planning/evidence/power-loss-openbsd-2026-09-26.md"
+      },
+      "evidence": [
+        "tools/power_loss_openbsd.py",
+        "planning/evidence/power-loss-openbsd-2026-09-26.md"
+      ]
+    },
+    {
+      "id": "SCN-173",
+      "title": "Friends sign in on the web, read, reply, post, remove their own post, approve a held post, and do not see a private group",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "WEB-003",
+        "NNT-046",
+        "NNT-047"
+      ],
+      "steps": [
+        "On a scratch production-image node with STARTTLS and protected_only, three invitation accounts redeemed over TLS: alice moderates fn.mod, bob has the access rule read and post fn.*,!fn.private.*, carol has none; tools/fn_reader.py serves HTTPS in front of it.",
+        "In a headless browser: a wrong password, then alice signs in, reads fn.friends, replies, posts and removes her own post, approves carol's held post from the queue, switches to the dark theme and signs out; bob signs in and opens fn.private.club by address; carol posts to the moderated group from a 390-pixel phone viewport."
+      ],
+      "expected": [
+        "The wrong password is refused as not matching and no session is made; alice's groups carry the node's descriptions and unread counts; the reply is threaded under its parent; the removal leaves the target answered 430; the approved post appears in fn.mod; carol is told a moderator will look.",
+        "bob's group list omits fn.private.club and the queue, and its address answers not found; no page carries a password or a script, every page sends default-src 'none', and no page scrolls sideways at 390 pixels."
+      ],
+      "evidence": [
+        "tests/test_fn_reader.py",
+        "tests/fn_reader_scratch.py",
+        "tests/fn_reader_drive.mjs",
+        "planning/evidence/web-reader-2-2026-09-27/drive.json"
+      ],
+      "execution_scope": "One scratch node on hbox (production image of batch AS, 4c5cc6213) and Chromium 1.62.1 on the laptop over an ssh tunnel. Not a public deployment, not a load test, not an external security audit.",
+      "implementation": {
+        "test": "tests.test_fn_reader",
+        "cases": [
+          "test_sign_in_is_the_nodes_answer_and_the_password_stays_out",
+          "test_unreachable_node_is_not_a_wrong_password",
+          "test_a_post_from_another_site_or_without_the_token_does_nothing",
+          "test_post_once_read_unread_and_remove_own",
+          "test_refused_shows_the_nodes_reason_and_offers_an_edit",
+          "test_not_sure_is_settled_by_the_same_article_never_a_new_one",
+          "test_state_is_per_login",
+          "test_plain_http_off_loopback_is_refused"
+        ],
+        "native": false,
+        "log": "planning/evidence/web-reader-2-2026-09-27/drive.log",
+        "record": "planning/evidence/web-reader-2-2026-09-27.md"
+      }
+    },
+    {
+      "id": "SCN-172",
+      "title": "Two agents bound to two accounts wait at once: a post wakes exactly the right one within a bound; a timeout answers the empty page; twelve waiters and the thirteenth refused; a restart keeps both cursors; fn_agent reads, replies and acks without NNTP in the agent; on both images",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "CNS-007"
+      ],
+      "steps": [
+        "`init local.general`; `group create fn.alice`, `group create fn.bob`; start the owner (implicit TLS and STARTTLS, protected_only); invite and redeem alice and bob; `account access LOGIN --read fn.LOGIN --post 'fn.*'` for each; bootstrap; register alice-inbox (fn.alice) and bob-inbox (fn.bob); bind each to its account.",
+        "alice-inbox and bob-inbox each `bound-wait --timeout 60`; after 4 s alice posts to fn.bob; 2 s after bob's wait returns, bob posts to fn.alice; bob acks.",
+        "bob-inbox `bound-wait --timeout 3`; bob-inbox with alice's password.",
+        "Twelve bob-inbox waits; a thirteenth; a post to fn.bob; ack.",
+        "Restart the owner; bob-inbox wait 3 s; alice-inbox wait.",
+        "fn_agent: alice next/ack; alice posts `question` to fn.bob; bob next, reply --group fn.alice, ack; alice next, ack; bob next --timeout 1."
+      ],
+      "expected": [
+        "bob's wait exits 0 with for-bob within 5 s of the 240 while alice's still sleeps; alice's then exits 0 with for-alice within 5 s.",
+        "The 3 s wait exits 0 with an empty report after at least 3 s; the wrong password exits 1 at once.",
+        "The thirteenth exits 1 at once; the post wakes all twelve with for-all.",
+        "After the restart bob's wait times out empty (his ack kept); alice's answers for-alice again (not acked: at-least-once).",
+        "bob's next prints the question as JSON (Message-ID, groups, From, Subject, body); the reply is accepted; alice's next prints it with the question's Message-ID in References; bob's last next prints {\"kind\": \"empty\"}."
+      ],
+      "implementation": {
+        "test": "tests.test_native_agent_wait",
+        "cases": [
+          "NativeAgentWaitTests.test_two_agents_wait_for_their_own_news"
+        ],
+        "native": true,
+        "record": "planning/evidence/agent-wait-2026-09-27.md",
+        "log": "planning/evidence/agent-wait-2026-09-27/native-a2-test_native_agent_wait.log"
+      },
+      "evidence": [
+        "tests/test_native_agent_wait.py",
+        "planning/evidence/agent-wait-2026-09-27.md",
+        "planning/evidence/agent-wait-2026-09-27/native-a2-test_native_agent_wait.log"
+      ]
+    },
+    {
+      "id": "SCN-174",
+      "title": "The batch's crash cuts (log-written, log-fenced, finish per member): an acknowledged member's record is in every admissible image's scan, an unacknowledged one may be absent and is never answered durable",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-033"
+      ],
+      "steps": [
+        "Prepare a batch of three members against one catalog (fn-owb-take within log-batch-records and log-batch-octets), append it (fn-owb-append: the kernel's batch becomes the batch in flight and the store's pending list is the segment's one write) and fence it (fn-owb-fence); acknowledge the first member (fn-owb-finish-member).",
+        "Take the crash image at each cut: after the append (log-written: every admissible selection over the pending write, fn-bs-crash), after the barrier (log-fenced) and after each member's finish; recover each image (fn-owb-recover, fn-lgk-recover) and scan its content.",
+        "Remove each hypothesis of T1 in turn (the alignment, R at the cut, the admissible image, the platform's tear) with a ground witness of the conclusion's failure; label the corrupted-state witnesses separately."
+      ],
+      "expected": [
+        "At log-written the scan reads the committed records then a prefix of the batch (fn-lg-crash-verdictp); at log-fenced and after every finish it reads the committed records and the whole batch; the acknowledged member's record is in every image's scan (fn-owb-acknowledged-record-survives-crash).",
+        "A member not yet acknowledged may be absent after a log-written crash and is answered :durable by no cut before the barrier; a member acknowledged before the cut is absent from no image.",
+        "Every removed hypothesis has a witness whose conclusion fails, with the retained hypotheses checked affirmatively."
+      ],
+      "evidence": [
+        "tests/acl2/owner-batch-tests.lisp",
+        "books/owner-batch.lisp"
+      ],
+      "implementation": {
+        "test": "tests/acl2/owner-batch-tests.lisp",
+        "native": false,
+        "record": "planning/evidence/w6-log-owner-2026-09-27.md"
+      },
+      "note": "Lane w6-log-owner (2026-09-27): no native module exercises these cuts yet; the ACL2 witnesses of tests/acl2/owner-batch-tests.lisp are the executable evidence. The served crash campaign at the log cuts and the power-loss rig's run are PKT-748, after the store node's article commit moves onto the log kernel (PKT-698)."
+    },
+    {
+      "id": "SCN-170",
+      "title": "The fsync error: every member of the batch is uncertain, the store is fenced, and recovery admits the committed records then a prefix of the batch",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-033"
+      ],
+      "steps": [
+        "Prepare and append a batch of three members; answer the barrier :eio under an admissible selection over the pending write (fn-bs-fsync-file bs ino (cons :eio choices)); apply fn-owb-fence-failed to the layer.",
+        "Read the layer's words (fn-owb-fault-words) and attempt fn-owb-finish-member; recover the kernel from the store the failure left (fn-lgk-recover of its durable content) and compare with the committed records and the batch in flight, for each admissible selection.",
+        "Retry the barrier on the same store (fn-bs-refence-after-error-fences-nothing) and read the words again."
+      ],
+      "expected": [
+        "The kernel is :fault; every member in flight or waiting is answered :uncertain and none :durable; the finish acknowledges nothing (fn-owb-fence-failed-answers-uncertain).",
+        "The recovered kernel holds the committed records followed by a prefix of the batch in flight under every admissible selection (fn-owb-uncertain-batch-recovers-to-a-prefix); the store stays fenced until recovery (STO-004).",
+        "The retry fences nothing further and answers no member the failed barrier covered :durable."
+      ],
+      "evidence": [
+        "tests/acl2/owner-batch-tests.lisp",
+        "books/owner-batch.lisp"
+      ],
+      "implementation": {
+        "test": "tests/acl2/owner-batch-tests.lisp",
+        "native": false,
+        "record": "planning/evidence/w6-log-owner-2026-09-27.md"
+      },
+      "note": "Lane w6-log-owner (2026-09-27): no native module exercises these cuts yet; the ACL2 witnesses of tests/acl2/owner-batch-tests.lisp are the executable evidence. The served crash campaign at the log cuts and the power-loss rig's run are PKT-748, after the store node's article commit moves onto the log kernel (PKT-698)."
+    },
+    {
+      "id": "SCN-171",
+      "title": "The mixed hour before and after the scheduler gate and the render plans on the same box: control p99, POST p99, the greeting under 40 readers, and the owner's hold-time distribution",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-023"
+      ],
+      "steps": [
+        "Build the developer image of the base (connection-multiplexing's branch 077f9b583, batch AR's: the tree without this lane) as the before, and of the lane's tree as the after, on hbox; run planning/evidence/owner-scheduler-2026-09-26/mixed.py on each for the same duration, concurrently (the same box state), on a 4 MiB-article profile (the default 16 MiB profile's per-connection figure under PKT-605 does not fit a 24 GB scope): 3 tight-loop readers (GROUP / OVER / ARTICLE / XPAT), 1 unsigned POST every 0.5 s, a hybrid-signed report every 20 s, a consumer wake every 30 s, a live group create and control grant every 120 s, status and health every 30 s.",
+        "Run greeting40.py on each image: a 2,000-article store (1 MiB profile, exposure capacity 64), 40 readers looping GROUP / ARTICLE, 60 fresh connections timed to their 200 line and 60 control-socket status requests timed.",
+        "Read the after image's `health': the sched lines (holds per class in five buckets, hold-max, wait-max, waits over 1 s).",
+        "tests/test_native_owner_scheduler.py on both images: the sched lines count the classes that ran; a multi-megabyte ARTICLE, rendered as a plan window off the mutex, is the posted article; status under three tight-loop readers is answered within 10 s every time."
+      ],
+      "expected": [
+        "Before: control requests queue past the client's 10 s deadline (PKT-321's shape). After: every control request is answered within its deadline; the control p99 and the greeting p99 under 40 readers fall; POST p99 does not rise; correctness holds on both (recover rc 0, every outcome classified).",
+        "After: no held quantum of any class exceeds the longest single step; the control class's wait-max is bounded by three quanta of the other classes."
+      ],
+      "evidence": [
+        "planning/evidence/owner-scheduler-2026-09-26.md",
+        "planning/evidence/owner-scheduler-2026-09-26/mixed.py",
+        "planning/evidence/owner-scheduler-2026-09-26/greeting40.py",
+        "tests/test_native_owner_scheduler.py"
+      ],
+      "implementation": {
+        "test": "tests.test_native_owner_scheduler",
+        "cases": [
+          "SchedulerSourceTests",
+          "SchedulerNativeTests"
+        ],
+        "native": true,
+        "record": "planning/evidence/owner-scheduler-2026-09-26.md"
+      }
     }
   ]
 }

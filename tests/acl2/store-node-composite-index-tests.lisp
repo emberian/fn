@@ -33,7 +33,8 @@
                                *sni-hybrid-enrollment*)))
 (make-event
  `(defconst *sni-composite-keyed*
-    ',(fn-sn-set-keyring *sni-composite-enrolled* *sni-keyring*)))
+    ',(fn-sni-set-keyring *sni-composite-enrolled* *sni-keyring*
+                          (list *sni-hybrid-enrollment*))))
 (assert-event (fn-sn-indexedp *sni-composite-keyed*))
 
 (make-event
@@ -53,11 +54,25 @@
 (assert-event (equal (fn-stx-delta *sni-octets* *sni-keyring*)
                      (list *sni-stmt*)))
 
+; The store retains the composite ROW (records-flip): the entry interns the
+; wire composite after the enrollment under the store's keyring and
+; generation, its article at handle 0 of this run's arena
+; (tests/acl2/store-node-index-tests fn-sni-row, over store-intern's
+; fn-intern-event); the keyring above went in through the entry
+; fn-store-set-keyring over the same arena.
+(defconst *sni-composite-prior* (list *sni-hybrid-enrollment*))
+(make-event
+ `(defconst *sni-composite-row*
+    ',(fn-sni-row *sni-composite-prior* *sni-composite-event*
+                  (fn-sn-keyring *sni-composite-keyed*)
+                  (fn-sn-keyring-generation *sni-composite-keyed*))))
+(assert-event (fn-hstxa-p *sni-composite-row*))
+(assert-event (equal (fn-hstxa-stxa *sni-composite-row*) *sni-composite-event*))
 (make-event
  `(defconst *sni-composite-completing*
     ',(fn-sni-publish
        (fn-sn-prepare-identity (fn-sni-reserve *sni-composite-keyed*)
-                               *sni-composite-event*))))
+                               *sni-composite-row*))))
 (assert-event (fn-sn-completion-enabledp *sni-composite-completing*))
 (assert-event (fn-sn-indexedp *sni-composite-completing*))
 (assert-event
@@ -70,9 +85,17 @@
 (assert-event (fn-sn-indexedp *sni-composite-finished*))
 (assert-event (equal (len (fn-stx-store (fn-sn-node *sni-composite-finished*)))
                      1))
+; by specification: the flip: the accepted article's payload is its handle
+; (0, the run's first sealed payload); the bytes under it are the signed
+; article's octets.
 (assert-event
  (equal (fn-article-payload
          (car (fn-stx-store (fn-sn-node *sni-composite-finished*))))
+        0))
+(assert-event
+ (equal (fn-sni-bytes (list *sni-hybrid-enrollment* *sni-composite-event*)
+                      (fn-article-payload
+                       (car (fn-stx-store (fn-sn-node *sni-composite-finished*)))))
         *sni-octets*))
 (assert-event
  (equal (fn-stx-index-bindings (fn-sn-index *sni-composite-finished*))
@@ -84,11 +107,15 @@
  (equal (fn-sn-statement-lookup *sni-composite-finished*
                                 (fn-stmt-id *sni-stmt*))
         *sni-stmt*))
+; by specification: the flip: the node's articles hold handles, so the lace
+; of the store's bytes is read through the arena (fn-sni-lace), as in
+; store-node-index-tests.
 (assert-event
  (equal (fn-sn-statement-lookup *sni-composite-finished*
                                 (fn-stmt-id *sni-stmt*))
-        (fn-lace-lookup (fn-stx-lace (fn-sn-node *sni-composite-finished*)
-                                    (fn-sn-keyring *sni-composite-finished*))
+        (fn-lace-lookup (fn-sni-lace *sni-composite-finished*
+                                     (fn-sn-keyring *sni-composite-finished*)
+                                     (list *sni-hybrid-enrollment* *sni-composite-event*))
                         (fn-stmt-id *sni-stmt*))))
 
 ; The indexedp premise matters: a completing state with a well-shaped index

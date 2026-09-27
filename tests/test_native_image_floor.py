@@ -111,10 +111,15 @@ class ProductionTests(unittest.TestCase):
         self.assertLess(doc["core_required_kib"], CORE_CEILING_KIB, doc)
 
     def test_fresh_node_serves_in_256_mb(self):
+        # The node as the launcher starts it: 1 MiB control stacks (books/
+        # heap-reservation.lisp fn-heap-stack-octets).  The raw image script's
+        # own 64 MiB stacks count 78 x 68 MiB in connection-multiplexing's
+        # run budget, which a 2 GiB limit refuses (holds=0, batch AR).
+        stack_env = dict(environment(), NM_STACK_MB="1")
         with tempfile.TemporaryDirectory() as work:
             res = subprocess.run([sys.executable, str(MEASURE), "floor", str(IMAGE), work,
                                   "--lo", "248", "--hi", "256"],
-                                 env=environment(), stdout=subprocess.PIPE, check=True,
+                                 env=stack_env, stdout=subprocess.PIPE, check=True,
                                  timeout=600)
         doc = json.loads(res.stdout)
         self.assertEqual(doc["trials"][0][:2], [256, True], doc)

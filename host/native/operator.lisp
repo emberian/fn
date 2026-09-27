@@ -271,6 +271,37 @@ order, and the names it found handed straight back."
          (fnn-operator-status-of-exit-code code) "post" condition)
         code))))
 
+(defun fnn-operator-execute-moderate (result)
+  "PKT-657, PKT-575: `moderation approve|reject' and `article withdraw'.
+ACL2 frames the request (FNCT kind 21) from its normalized plan; the running
+owner decides it and answers the reasoned reply."
+  (let ((command (fnn-core 'fn-native-operator-host-result-command result)))
+    (handler-case
+        (let* ((request (fnn-core 'fn-native-operator-host-result-moderate-request
+                                  result))
+               (path (fnn-core
+                      'fn-native-operator-host-result-moderate-control-path-octets
+                      result))
+               (encoded (fnn-core 'fn-native-control-host-moderation-encode
+                                  (first request) (second request)
+                                  (third request) (fourth request))))
+          (unless (and (fnn-octet-list-p encoded) (fnn-octet-list-p path)
+                       (consp path))
+            (fnn-fault "ACL2 refused the moderation request"))
+          (multiple-value-bind (status word)
+              (fnn-control-reasoned-exchange (fnn-octets-string (fnn-octets path))
+                                             encoded (lambda () encoded))
+            (let ((class (fnn-core 'fn-native-control-host-status-class status))
+                  (code (fnn-core 'fn-native-control-host-status-exit-code status)))
+              (fnn-operator-emit-status class command
+                                        (fnn-operator-status-detail status word))
+              code)))
+      (error (condition)
+        (let ((code (fnn-exit-code-for condition)))
+          (fnn-operator-emit-status
+           (fnn-operator-status-of-exit-code code) command condition)
+          code)))))
+
 (defun fnn-operator-execute-init (result)
   "Initialise the store the configuration names, through the ACL2 plan.
 
@@ -780,7 +811,10 @@ one `init' makes; nothing is opened or locked."
                          (:keys :control)
                          ;; tls reload reaches the owner as control
                          ;; request 19 (host/native/tls-reload.lisp).
-                         (:tls :control))))
+                         (:tls :control)
+                         ;; moderation approve|reject and article withdraw
+                         ;; reach the owner as control request 21.
+                         (:moderate :control))))
           (when (and (member action '(:reclaim :reclaim-dry-run))
                      (null *fnn-reclaim-callback*))
             (fnn-operator-emit-status
@@ -802,6 +836,7 @@ one `init' makes; nothing is opened or locked."
           (:init (fnn-operator-execute-init result))
           (:run (fnn-operator-execute-run result))
           (:post (fnn-operator-execute-post result))
+          (:moderate (fnn-operator-execute-moderate result))
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
           ((:recover :compact :checkpoint :export :import

@@ -120,7 +120,7 @@
                   fn-th-exact-octets-p))))))
 (local
  (defthm fn-snt-store-event-fields-of-an-article-record
-   (implies (fn-record-p record)
+   (implies (fn-held-p record)
             (and (equal (fn-store-event-sequence record)
                         (fn-record-sequence record))
                  (equal (fn-store-event-txid record) (fn-record-txid record))
@@ -154,6 +154,23 @@
                                     fn-store-event-p fn-store-retention-event-p
                                     fn-stxe-p fn-stxk-p fn-stxa-p))))))
 
+;; A held row's head is a natural number (its sequence); a consumer event's
+;; head is :consumer.  So no held row is a consumer event.
+(local
+ (defthm fn-snt-held-row-is-no-consumer-event
+   (implies (fn-held-p event)
+            (not (fn-cpe-eventp event)))
+   :hints (("Goal" :use ((:instance fn-held-p-forward-natural-head (x event)))
+            :in-theory '(fn-cpe-eventp fn-cp-nth (:e zp) natp)))))
+
+;; A retained statement is three fields long; a consumer event is five.
+(local
+ (defthm fn-snt-hstxa-is-no-consumer-event
+   (implies (fn-hstxa-p event)
+            (not (fn-cpe-eventp event)))
+   :hints (("Goal" :use ((:instance fn-hstxa-p-forward-shape (x event)))
+            :in-theory '(fn-cpe-eventp)))))
+
 (defthm fn-snt-prepare-consumer-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-prepare-consumer s event)))
@@ -184,6 +201,7 @@
           ("Subgoal 1"
     :use (fn-sn-prepare-consumer-preserves-state
           fn-snt-topic-event-is-not-consumer-event
+          (:instance fn-snt-held-row-is-no-consumer-event)
           (:instance fn-snt-an-article-record-is-no-other-store-event
             (record event))
           (:instance fn-snt-candidate-is-frontier-predecessor
@@ -390,6 +408,8 @@
                               (fn-sf-record-candidate (fn-sn-files s)))))
                         (:instance fn-snt-an-article-record-is-no-other-store-event
                           (record (fn-sf-record-candidate (fn-sn-files s))))
+                        (:instance fn-snt-hstxa-is-no-consumer-event
+                          (event (fn-sf-record-candidate (fn-sn-files s))))
                         (:instance fn-snt-bound-record-is-an-article-record
                           (node (fn-sn-node s))
                           (record (fn-sf-record-candidate (fn-sn-files s))))
@@ -450,10 +470,10 @@
 ; is the article arm's equation and names its arm, so this is the rest of the
 ; dispatch.  The hypothesis is enough to select them: on the remaining arm
 ; `fn-sn-completion-enabledp' demands `fn-sn-record-bindsp' of the completion
-; record, which is `fn-record-p' of it.
+; record, which is `fn-held-p' of it.
 (defthm fn-snt-finish-is-the-applied-event
   (implies (and (fn-sn-completion-enabledp s)
-                (not (fn-record-p (fn-sn-completion-record s))))
+                (not (fn-held-p (fn-sn-completion-record s))))
            (equal (fn-sn-node (fn-sn-finish s))
                   (fn-replay-apply-record (fn-sn-node s)
                                           (fn-sn-completion-record s))))

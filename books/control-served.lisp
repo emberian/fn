@@ -438,6 +438,8 @@
                         (if (stringp target) target "")
                         (cond ((eq arg :author) " author")
                               ((eq arg :poster) " poster")
+                              ; PKT-575: the node operator's withdrawal.
+                              ((eq arg :node) " node")
                               (t " authority"))))
           ((eq tag :owed) "owed")
           ((eq tag :declined)

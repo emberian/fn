@@ -65,7 +65,7 @@
 (assert-event
  (let* ((run (fn-bsi-test-run nil)) (bs (car (car (last run)))))
    (and (equal (len run) (len (fn-bsi-test-program)))
-        (fn-bs-store-relation bs (fn-sf-initial-state))
+        (fn-bs-store-relation bs (fn-sf-initial-state) 'nil)
         (equal (fn-bs-durable-entry bs :root *fn-bsi-lock-name*) 0)
         (equal (fn-bs-durable-entry bs :root "config") :config)
         (equal (fn-bs-durable-entry bs :config *fn-bsi-config-record-name*) 2)
@@ -133,7 +133,7 @@
                                                            *fn-bsi-test-record-stage*
                                                            *fn-bsi-test-frontier-stage*)
                               nil nil nil))))
-   (fn-sf-initial-state))))
+   (fn-sf-initial-state) 'nil)))
 (must-fail
  (assert-event
   (fn-bs-store-relation
@@ -145,7 +145,7 @@
                                                            *fn-bsi-test-record-stage*
                                                            *fn-bsi-test-frontier-stage*)
                               nil nil nil))))
-   (fn-sf-initial-state))))
+   (fn-sf-initial-state) 'nil)))
 
 ; Equal fresh stage names are a positive witness: the prior pending
 ; create/unlink pair has no name in the running view, so the next O_EXCL
@@ -165,7 +165,7 @@
                                                  (fn-bsi-test-record)
                                                  (fn-bsi-test-frontier)
                                                  stage stage stage))
-        (fn-bs-store-relation bs (fn-sf-initial-state)))))
+        (fn-bs-store-relation bs (fn-sf-initial-state) 'nil))))
 
 ; Removing only the history-directory fence leaves the old relation true,
 ; because it does not observe :config, while the complete-image keystone is
@@ -174,7 +174,7 @@
  (let* ((program (remove-equal '(:fsync-dir :config) (fn-bsi-test-program)))
         (run (fn-bs-run *fn-bs-empty-store* (fn-sf-initial-state) program nil nil nil))
         (bs (car (car (last run)))))
-   (and (fn-bs-store-relation bs (fn-sf-initial-state))
+   (and (fn-bs-store-relation bs (fn-sf-initial-state) 'nil)
         (equal (fn-bs-durable-entry bs :config *fn-bsi-config-record-name*) nil)
         (not (equal bs (fn-bsi-current-initial-image
                         (fn-bsi-test-config) (fn-bsi-test-record)

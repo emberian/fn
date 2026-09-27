@@ -13,7 +13,7 @@
                 (not (fn-store-retention-event-p (fn-sn-completion-record s)))
                 (not (fn-stxe-p (fn-sn-completion-record s)))
                 (not (fn-stxk-p (fn-sn-completion-record s)))
-                (not (fn-stxa-p (fn-sn-completion-record s)))
+                (not (fn-hstxa-p (fn-sn-completion-record s)))
                 (not (fn-cpe-eventp (fn-sn-completion-record s)))
                 (not (fn-th-topic-eventp (fn-sn-completion-record s))))
            (and
@@ -33,7 +33,7 @@
                             fn-sn-finish
                             fn-sn-completion-enabledp
                             fn-sn-completion-record
-                            fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
+                            fn-stxe-p fn-stxk-p fn-hstxa-p fn-cpe-eventp
                             fn-store-retention-event-p
                             fn-th-topic-eventp)))))
 
@@ -49,8 +49,8 @@
 
 (defun fn-replay-article-record (record)
   (declare (xargs :guard t))
-  (if (fn-stxa-p record)
-      (fn-replay-composite-record record)
+  (if (fn-hstxa-p record)
+      (fn-replay-composite-held record)
     record))
 
 (defun fn-replay-article-eventp (record)
@@ -150,9 +150,9 @@
 
 (local
  (defthm fn-stamp-valid-record-stamp-is-present
-   (implies (fn-record-p record)
+   (implies (fn-held-p record)
             (not (equal (fn-record-stamp record) nil)))
-   :hints (("Goal" :in-theory (enable fn-record-p fn-record-stampp)))))
+   :hints (("Goal" :in-theory (enable fn-held-p fn-record-stampp)))))
 
 (local
  (defthm fn-stamp-missing-article-has-no-stamp
@@ -170,7 +170,7 @@
                              fn-replay-advance-txid
                              fn-node-prepare fn-node-pending-matchesp)
                             (fn-record-shape-vocabulary
-                             fn-stxa-p fn-stxe-p fn-stxk-p
+                             fn-hstxa-p fn-stxe-p fn-stxk-p
                              fn-store-retention-event-p))))))
 
 (defthm fn-replay-apply-record-installs-the-stamp
@@ -234,13 +234,13 @@
                  fn-stamp-successful-article-step-needs-valid-node
                  fn-stamp-valid-record-stamp-is-present
                  fn-stamp-missing-article-has-no-stamp
-                 fn-stxe-p fn-stxk-p fn-stxa-p
+                 fn-stxe-p fn-stxk-p fn-hstxa-p
                  fn-store-retention-event-p))))
   :rule-classes nil)
 
 (local
  (defthm fn-stamp-composite-kind-disjoint
-   (implies (fn-stxa-p record)
+   (implies (fn-hstxa-p record)
             (and (not (fn-store-retention-event-p record))
                  (not (fn-stxe-p record))
                  (not (fn-stxk-p record))
@@ -249,7 +249,7 @@
    :hints (("Goal"
             :do-not-induct t
             :in-theory
-            (e/d (fn-stxa-p fn-stxa-shapep fn-stxa-keyring-generation
+            (e/d (fn-hstxa-p fn-stxa-shapep fn-stxa-keyring-generation
                   fn-stxe-p fn-stxe-shapep fn-stxe-msgid
                   fn-stxk-p fn-stxk-shapep
                   fn-cpe-eventp
@@ -261,7 +261,7 @@
 (local
  (defthm fn-stamp-composite-enabled-implies-replay-premises
    (implies (and (fn-sn-completion-enabledp s)
-                 (fn-stxa-p (fn-sn-completion-record s)))
+                 (fn-hstxa-p (fn-sn-completion-record s)))
             (and (fn-node-statep (fn-sn-node s))
                  (fn-store-event-p (fn-sn-completion-record s))
                  (fn-replay-article-eventp (fn-sn-completion-record s))
@@ -271,7 +271,7 @@
             (e/d (fn-sn-completion-enabledp fn-sn-statep fn-store-event-p
                  fn-replay-article-eventp)
                  (fn-record-shape-vocabulary fn-replay-apply-record
-                  fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
+                  fn-stxe-p fn-stxk-p fn-hstxa-p fn-cpe-eventp
                   fn-th-topic-eventp
                   fn-store-retention-event-p))))))
 
@@ -281,7 +281,7 @@
 (local
  (defthm fn-stamp-composite-finish-node-is-replay
    (implies (and (fn-sn-completion-enabledp s)
-                 (fn-stxa-p (fn-sn-completion-record s)))
+                 (fn-hstxa-p (fn-sn-completion-record s)))
             (equal (fn-sn-node (fn-sn-finish s))
                    (fn-replay-apply-record
                     (fn-sn-node s) (fn-sn-completion-record s))))
@@ -289,7 +289,7 @@
             (e/d (fn-sn-finish fn-sn-finish-identity)
                  (fn-sn-completion-enabledp fn-sn-statep
                   fn-sn-completion-record fn-store-retention-event-p
-                  fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp
+                  fn-stxe-p fn-stxk-p fn-hstxa-p fn-cpe-eventp
                   fn-th-topic-eventp fn-replay-apply-record
                   fn-replay-identity-step fn-sn-identity-context
                   fn-sf-core-completion fn-sf-emit-success
@@ -298,21 +298,21 @@
 
 (defthm fn-sn-finish-installs-the-stamp-the-composite-carries
   (implies (and (fn-sn-completion-enabledp s)
-                (fn-stxa-p (fn-sn-completion-record s)))
+                (fn-hstxa-p (fn-sn-completion-record s)))
            (and
             (consp (fn-find-article
                     (fn-record-msgid
-                     (fn-replay-composite-record (fn-sn-completion-record s)))
+                     (fn-replay-composite-held (fn-sn-completion-record s)))
                     (fn-state-articles
                      (fn-node-acceptance (fn-sn-node (fn-sn-finish s))))))
             (equal (fn-article-stamp
                     (fn-find-article
                      (fn-record-msgid
-                      (fn-replay-composite-record (fn-sn-completion-record s)))
+                      (fn-replay-composite-held (fn-sn-completion-record s)))
                      (fn-state-articles
                       (fn-node-acceptance (fn-sn-node (fn-sn-finish s))))))
                    (fn-record-stamp
-                    (fn-replay-composite-record (fn-sn-completion-record s))))))
+                    (fn-replay-composite-held (fn-sn-completion-record s))))))
   :hints (("Goal"
            :use (fn-stamp-composite-enabled-implies-replay-premises
                  fn-stamp-composite-finish-node-is-replay
@@ -321,7 +321,7 @@
                             (record (fn-sn-completion-record s))))
            :in-theory (e/d (fn-replay-article-record)
                            (fn-store-event-p fn-record-shape-vocabulary
-                            fn-stxa-p fn-stxe-p fn-stxk-p
+                            fn-hstxa-p fn-stxe-p fn-stxk-p
                             fn-sn-completion-enabledp
                             fn-sn-finish fn-sn-finish-identity
                             fn-replay-apply-record
@@ -423,7 +423,7 @@
                            (fn-record-shape-vocabulary
                             fn-node-prepare fn-node-complete
                             fn-replay-advance-keeps-idle-stage
-                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-stxe-p fn-stxk-p fn-hstxa-p
                             fn-store-retention-event-p))))
   :rule-classes nil)
 
@@ -447,7 +447,7 @@
                             fn-replay-journal-article-stamps
                             fn-replay-article-eventp)
                            (fn-record-shape-vocabulary
-                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-stxe-p fn-stxk-p fn-hstxa-p
                             fn-store-retention-event-p))))
   :rule-classes :rewrite)
 
@@ -481,8 +481,8 @@
                             fn-replay-okp
                             fn-replay-article-eventp
                             fn-replay-article-record
-                            fn-replay-composite-record
-                            fn-stxa-p fn-stxe-p fn-stxk-p
+                            fn-replay-composite-held
+                            fn-hstxa-p fn-stxe-p fn-stxk-p
                             fn-store-retention-event-p))))
   :rule-classes nil)
 

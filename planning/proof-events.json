@@ -1177,13 +1177,13 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-sn-statement-lookup-is-the-lace-lookup",
-          "note": "The subject-equating theorem AGENTS.md rule 1 asks for, for the QUERY half. Subject: fn-sn-statement-lookup (books/store-node.lisp), which host/store-node-host.lisp fn-store-sn-statement calls on the 'fn-store-sn global, reachable from outside as run_store.py statement --id. Its hypothesis fn-sn-indexedp holds of that global by a reachability chain: fn-sn-initial-is-indexed and the preservation theorems for prepare, io, finish, crash, recover and set-keyring (books/store-node-invariants), refuse-reservation and known-abort (books/store-node-resolution), open-observed (books/store-observed) and the sweep, which returns the store unchanged. The one site not covered is host/bp-ingress-host.lisp, whose fn-bpi-ingress-prepare has no such theorem; it is recorded open. :rule-classes nil so it cannot rewrite the cheap query back into the linear projection."
+          "name": "fn-store-statement-lookup-is-the-lace-lookup",
+          "note": "The served lookup (host/store-node-host.lisp fn-store-sn-statement -> fn-sn-statement-lookup) equals the lace lookup of the indexed rows articles, bytes read through the arena; restated over alpha after the records flip."
         },
         {
           "kind": "theorem",
-          "name": "fn-sn-equivocatorp-is-the-lace-equivocator",
-          "note": "The same bridge for the equivocation query. Subject: fn-sn-equivocatorp, called by host/store-node-host.lisp fn-store-sn-equivocator."
+          "name": "fn-store-equivocatorp-is-the-lace-equivocator",
+          "note": "The served equivocator question (fn-store-sn-equivocator -> fn-sn-equivocatorp) equals the lace equivocator of the indexed rows articles through the arena; restated over alpha after the records flip."
         }
       ]
     },
@@ -3504,7 +3504,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-evc-class-by-shape-is-fn-record-p"
+          "name": "fn-evc-class-by-shape-is-fn-held-p"
         },
         {
           "kind": "theorem",
@@ -3520,7 +3520,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-evc-class-by-shape-is-fn-stxa-p"
+          "name": "fn-evc-class-by-shape-is-fn-hstxa-p"
         },
         {
           "kind": "theorem",
@@ -6425,6 +6425,18 @@
         {
           "kind": "theorem",
           "name": "fn-scf-usage-carried-is-the-projection"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-record-octets-is-the-stored-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-intern-events-extents-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-intern-events-budget-octets-are-the-stored-octets"
         }
       ]
     },
@@ -8536,6 +8548,18 @@
         {
           "kind": "theorem",
           "name": "fn-auth-access-text-of-moderation-config"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-approve-commits-the-held-article-approved"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-only-a-moderator-approves-or-rejects"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-reject-withdraws-the-held-envelope"
         }
       ]
     },
@@ -8905,6 +8929,471 @@
         {
           "kind": "theorem",
           "name": "fn-bpfr-run-finishes"
+        }
+      ]
+    },
+    {
+      "id": "PRF-252",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-run-answers-the-poll-at-its-return-point"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-run-sleeps-only-over-empty-pages"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-admit-leaves-workers-free"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-wait-request-roundtrip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-bound-wait-request-roundtrip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-request-decode-of-another-code-is-the-consumer-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwait-cli-plan-of-another-command-is-the-consumer-plan"
+        }
+      ]
+    },
+    {
+      "id": "PRF-242",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-extend-is-sco-extend"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-classified-open-is-classified-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-cpr-prefix-is-sco-cpr-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-cpr-resume-is-sco-cpr-resume"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-ix-next-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-okp-of-ix-of"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-release-step-keeps-known"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-apply-record-is-apply-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-cpr-apply-event-is-cpr-apply-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-node-prepare-is-node-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-acceptedp-is-acceptedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-admissiblep-is-admissiblep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-event-fields-are-the-dispatchers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sf-record-listp-is-sf-record-listp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-finalize-from-is-sco-finalize-from"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-count-is-used"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-sbud-prepare-is-pcar-sbud-prepare"
+        }
+      ]
+    },
+    {
+      "id": "PRF-244",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-tear-write-is-pieces"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-crash-of-aligned-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-batch-tear-is-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-batch-crash-is-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-no-forgery-under-a-crypto-trailer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer"
+        }
+      ]
+    },
+    {
+      "id": "PRF-245",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-complete-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-last-of-complete-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-append-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-fence-content"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-fence-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-prepare-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-finish-one-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-known-abort-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-crash-of-related-state-is-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-consumed-aligned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-consumed-within"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-take-consumed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-recovered-frontier-is-the-last-complete-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-last-digestp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-recovered-content-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-recover-establishes-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-txids-strictly-increase"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-recovered-okp-of-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-prepare-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-known-abort-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-append-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-fence-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-fence-failed-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-finish-one-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-prepare-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-decode-is-the-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgd-loop-is-the-scan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-append-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-append-program-appends"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-fence-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-recover-program-establishes-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-open-kernel-is-the-recovered-kernel"
+        }
+      ]
+    },
+    {
+      "id": "PRF-253",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owb-scan-of-related-content"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-image-scan-of-related-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-committed-record-survives-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-acknowledged-record-survives-crash"
+        }
+      ]
+    },
+    {
+      "id": "PRF-254",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owb-take-preserves-alignment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-known-abort-preserves-alignment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-append-preserves-alignment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-fence-preserves-alignment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-fence-failed-preserves-alignment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-finish-member-preserves-alignment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-take-preserves-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-append-preserves-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-fence-preserves-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-fence-failed-preserves-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-known-abort-preserves-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-finish-member-preserves-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-batch-within-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-related-state-is-the-sole-pending-writer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-recover-establishes-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-prepare-ahead-is-the-sequential-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-batch-complete-is-the-sequential-complete"
+        }
+      ]
+    },
+    {
+      "id": "PRF-255",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owb-failed-fence-is-the-crash-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-failed-fence-image-is-admissible"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-fence-failed-answers-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-recovered-kernel-after-a-failed-fence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-uncertain-batch-recovers-to-a-prefix"
+        }
+      ]
+    },
+    {
+      "id": "PRF-248",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-osch-control-waits-at-most-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osch-next-is-the-pick"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osch-pick-has-a-waiter"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osch-pick-nil-iff-idle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osch-observe-holds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-osch-row-observe-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-window-is-a-prefix-of-the-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-windows-are-the-reply"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-step-plan-remaining"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-splan-window-size-is-positive-until-done"
+        }
+      ]
+    },
+    {
+      "id": "PRF-256",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-withdraw-article-authorizes-the-cause"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-withdrawal-row-of-row-upsert"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-node-withdrawal-withdraws-exactly-its-target"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-withdraw-names-exactly-its-target"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-withdraw-makes-the-node-authorize-exactly-its-target"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mvb-plan-unfolds"
         }
       ]
     }

@@ -77,14 +77,14 @@
 (defconst *replay-payload-a* '(72 105 13 10))
 (defconst *replay-payload-b* '(66 13 10))
 (defconst *replay-r0*
-  (fn-record-make 0 0 9 "<a@example.invalid>" *replay-payload-a*
-                  *replay-groups* "archive-a" "content-a" "release-a" 5 :legacy))
+  (fn-held-plain (fn-record-make 0 0 9 "<a@example.invalid>" *replay-payload-a*
+                  *replay-groups* "archive-a" "content-a" "release-a" 5 :legacy) 0))
 ; txid 1 represents a known abort; contiguous journal sequence 1 commits txid 2.
 (defconst *replay-r1*
-  (fn-record-make 1 2 9 "<b@example.invalid>" *replay-payload-b*
-                  '("fn.letters") "archive-b" "content-b" "release-b" 3 :legacy))
-(assert-event (fn-record-p *replay-r0*))
-(assert-event (fn-record-p *replay-r1*))
+  (fn-held-plain (fn-record-make 1 2 9 "<b@example.invalid>" *replay-payload-b*
+                  '("fn.letters") "archive-b" "content-b" "release-b" 3 :legacy) 1))
+(assert-event (fn-held-p *replay-r0*))
+(assert-event (fn-held-p *replay-r1*))
 
 (defconst *replay-ok* (fn-replay *replay-groups* 10 (list *replay-r0* *replay-r1*)))
 (assert-event (fn-replay-okp *replay-ok*))
@@ -106,8 +106,8 @@
                             (fn-replay-result-node *replay-duplicate*)))) 1))
 (defconst *replay-gap*
   (fn-replay *replay-groups* 10
-             (list (fn-record-make 1 0 9 "<a@example.invalid>" *replay-payload-a*
-                                   *replay-groups* "archive-a" "content-a" "release-a" 5 :legacy))))
+             (list (fn-held-plain (fn-record-make 1 0 9 "<a@example.invalid>" *replay-payload-a*
+                                   *replay-groups* "archive-a" "content-a" "release-a" 5 :legacy) 2))))
 (assert-event (fn-replay-faultp *replay-gap*))
 (assert-event (equal (fn-replay-result-sequence *replay-gap*) 0))
 (defconst *replay-improper-tail*
@@ -126,14 +126,14 @@
                             (fn-replay-result-node *replay-over-capacity*)))) 0))
 (defconst *replay-bad-subject*
   (fn-replay *replay-groups* 10
-             (list (fn-record-make 0 0 9 "<a@example.invalid>" *replay-payload-a*
-                                   *replay-groups* "archive-a" nil "release-a" 5 :legacy))))
+             (list (fn-held-plain (fn-record-make 0 0 9 "<a@example.invalid>" *replay-payload-a*
+                                   *replay-groups* "archive-a" nil "release-a" 5 :legacy) 3))))
 (assert-event (fn-replay-faultp *replay-bad-subject*))
 (assert-event (equal (fn-replay-result-reason *replay-bad-subject*) :invalid-record))
 (defconst *replay-txid-reuse*
   (fn-replay *replay-groups* 10
              (list *replay-r0*
-                   (fn-record-make 1 0 9 "<b@example.invalid>" *replay-payload-b*
-                                   '("fn.letters") "archive-b" "content-b" "release-b" 3 :legacy))))
+                   (fn-held-plain (fn-record-make 1 0 9 "<b@example.invalid>" *replay-payload-b*
+                                   '("fn.letters") "archive-b" "content-b" "release-b" 3 :legacy) 4))))
 (assert-event (fn-replay-faultp *replay-txid-reuse*))
 (assert-event (equal (fn-replay-result-sequence *replay-txid-reuse*) 1))

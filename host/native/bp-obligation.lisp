@@ -7,7 +7,7 @@
     (unwind-protect
          (progn
            (setq service (fnn-owner-install store-root 1))
-           (fnn-owner-serialized
+           (fnn-owner-transit-serialized
             service nil
             (lambda ()
               (setq journal

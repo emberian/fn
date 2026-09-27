@@ -67,15 +67,16 @@
        (cdr digits) (fn-cei-branch-get (car digits) trie))
     (fn-cei-branch-get *fn-cei-value-key* trie)))
 
-; The article record a Store event commits: a plain article record is its
-; own; a signed acceptance composite (kind 4) commits the record it carries,
-; decoded as replay decodes it (`fn-replay-composite-record').  Every other
-; event maps to itself, which is never `fn-record-p'.  The same body as
-; books/bp-receipt.lisp's `fn-bpr-event-article' (equal by
-; `fn-bpaj-event-article-is-cei', books/bp-native-app.lisp).
+; The article a retained Store event commits: an article row is its own
+; (a held record, books/held-record.lisp); a composite row (fn-hstxa-p)
+; commits the held record it carries, the one replay installs
+; (`fn-replay-composite-held').  Every other event maps to itself, which is
+; never `fn-held-p'.  The same body as books/bp-receipt.lisp's
+; `fn-bpr-event-article' (equal by `fn-bpaj-event-article-is-cei',
+; books/bp-native-app.lisp).
 (defun fn-cei-event-article (event)
   (declare (xargs :guard t))
-  (if (fn-stxa-p event) (fn-replay-composite-record event) event))
+  (if (fn-hstxa-p event) (fn-replay-composite-held event) event))
 
 ; The specification of the Message-ID half: the article records of EVENTS
 ; whose Message-ID is MSGID, in history order.
@@ -84,7 +85,7 @@
   (if (consp events)
       (let ((rest (fn-cei-article-records-for msgid (cdr events)))
             (record (fn-cei-event-article (car events))))
-        (if (and (fn-record-p record)
+        (if (and (fn-held-p record)
                  (equal msgid (fn-record-msgid record)))
             (cons record rest)
           rest))
@@ -125,7 +126,7 @@
 (defun fn-cei-msgid-add (event trie)
   (declare (xargs :guard t))
   (let ((record (fn-cei-event-article event)))
-    (if (and (fn-record-p record) (stringp (fn-record-msgid record)))
+    (if (and (fn-held-p record) (stringp (fn-record-msgid record)))
         (fn-midx-put-chars
          (coerce (fn-record-msgid record) 'list)
          (fn-cei-snoc (fn-cei-trie-records (fn-record-msgid record) trie)
@@ -361,8 +362,8 @@
 ;; The Message-ID half (PRF-144 part 1).  The record codec and the composite
 ;; decoder stay closed: nothing here looks inside an article record.
 
-(local (in-theory (disable fn-record-p fn-cei-event-article
-                           fn-replay-composite-record fn-stxa-p
+(local (in-theory (disable fn-record-p fn-held-p fn-hstxa-p fn-cei-event-article
+                           fn-replay-composite-record fn-replay-composite-held fn-stxa-p
                            fn-record-msgid)))
 
 (defthm fn-cei-snoc-is-append-one
@@ -380,7 +381,7 @@
   (implies (stringp msgid)
            (equal (fn-cei-msgid-records msgid (fn-cei-put sequence event index))
                   (let ((record (fn-cei-event-article event)))
-                    (if (and (fn-record-p record)
+                    (if (and (fn-held-p record)
                              (equal msgid (fn-record-msgid record)))
                         (fn-cei-snoc (fn-cei-msgid-records msgid index) record)
                       (fn-cei-msgid-records msgid index)))))

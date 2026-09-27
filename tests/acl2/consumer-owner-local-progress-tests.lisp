@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/consumer-owner-local-progress")
+(include-book "../../books/history-fold-refinement")
 
 (defun colp-reserve (s)
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
@@ -47,13 +48,13 @@
                            (< position p))))))))
 
 (defconst *colp-other*
-  (fn-record-make 2 2 2 "<other@fn.test>" '(67)
+  (fn-held-plain (fn-record-make 2 2 2 "<other@fn.test>" '(67)
                   '("fn.other") "other-pin" "other-content"
-                  "other-release" 1 841000000))
+                  "other-release" 1 841000000) 0))
 (defconst *colp-article*
-  (fn-record-make 3 3 3 "<poll-two@fn.test>" '(66)
+  (fn-held-plain (fn-record-make 3 3 3 "<poll-two@fn.test>" '(66)
                   '("fn.test") "poll-two-pin" "poll-two-content"
-                  "poll-two-release" 1 841000001))
+                  "poll-two-release" 1 841000001) 1))
 (defun colp-neutral-window (sequence count)
   (if (zp count) nil
     (cons (fn-cpe-make sequence sequence sequence '(:rollover (1)))
@@ -91,10 +92,10 @@
    (fn-sn-io
     (fn-sn-io
      (fn-sn-io (fn-sn-prepare (colp-reserve *colp-s1*)
-                              (fn-record-make 2 2 2 "<poll@fn.test>" '(65 66)
+                              (fn-held-plain (fn-record-make 2 2 2 "<poll@fn.test>" '(65 66)
                                               '("fn.test") "poll-pin"
                                               "poll-content" "poll-release"
-                                              2 841000000))
+                                              2 841000000) 0))
                :record-file :ok)
      :record-link :ok)
     :record-directory :ok)))
@@ -185,27 +186,49 @@
 ; PKT-254 (PRF-177 (c)): fn-col-poll-report-fits-or-refuses-by-name over the
 ; host-called report.  Reachable witness: the page above serves the article
 ; event's exact encoding, which the kind-6 reply carries.
-(defconst *colp-report* (fn-col-poll-report (fn-own-start *colp-after-article* 2) *colp-id*))
+; After the records flip the selected event is a HELD row whose payload is
+; a handle: without the arena its report is refused by name (:report), and
+; the host serves fn-col-poll-report-over (books/history-fold-refinement),
+; which encodes the row's wire form with the bytes the handle names
+; (fn-col-poll-report-over-fits-or-refuses-by-name, reached below).
+(assert-event (equal (fn-col-poll-report (fn-own-start *colp-after-article* 2) *colp-id*)
+                     '(:refused :report)))
+(defun colp-report-over (payload fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((fn-arena (fn-arena-seal-list payload fn-arena)))
+    (mv (fn-col-poll-report-over (fn-own-start *colp-after-article* 2) *colp-id*
+                                 fn-arena)
+        fn-arena)))
+(defun colp-report-run ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena) (colp-report-over '(65 66) fn-arena) r)))
+(make-event `(defconst *colp-report* ',(colp-report-run)))
+(defconst *colp-poll-wire*
+  (fn-record-make 2 2 2 "<poll@fn.test>" '(65 66)
+                  '("fn.test") "poll-pin" "poll-content" "poll-release"
+                  2 841000000))
 (assert-event (eq (car *colp-poll*) :poll))
 (assert-event (caddr *colp-poll*))
-(assert-event (fn-ncl-poll-event-bytesp (fn-col-poll-report-octets (caddr *colp-poll*))))
+(assert-event (fn-held-p (caddr *colp-poll*)))
+(assert-event (fn-ncl-poll-event-bytesp (fn-col-poll-report-octets *colp-poll-wire*)))
 (assert-event (equal *colp-report*
                      (list :poll (cadr *colp-poll*)
-                           (fn-col-poll-report-octets (caddr *colp-poll*)))))
+                           (fn-col-poll-report-octets *colp-poll-wire*))))
 (assert-event (not (eq (fn-ncl-poll-reply-encode :accepted (cadr *colp-report*)
                                                  (caddr *colp-report*))
                        :bad)))
 ; The :oversize conjunct: its antecedent needs a report above
 ; *fn-stxa-max-octets* (4,294,966,940 octets), which no test constructs; its
 ; length hypothesis removed, the conclusion fails on the reachable page.
-(assert-event (<= (len (fn-col-poll-report-octets (caddr *colp-poll*)))
+(assert-event (<= (len (fn-col-poll-report-octets *colp-poll-wire*))
                   *fn-stxa-max-octets*))
 (must-fail (assert-event (equal *colp-report* '(:refused :oversize))))
 ; PKT-467 (PRF-178): fn-col-poll-report-of-an-admitted-payload-fits.
 ; Reachable, the full antecedent: the page's event encoding is a payload the
 ; development profile's publication gate admits, and the report is the page.
 (assert-event
- (let ((octets (fn-col-poll-report-octets (caddr *colp-poll*))))
+ (let ((octets (fn-col-poll-report-octets *colp-poll-wire*)))
    (and (eq (car *colp-poll*) :poll) (caddr *colp-poll*)
         (consp octets) (fn-cbor-octet-listp octets)
         (fn-bs-publication-admissiblep *fn-bs-profile-development* 0 (len octets))
@@ -258,10 +281,10 @@
    (fn-sn-io
     (fn-sn-io
      (fn-sn-io (fn-sn-prepare (colp-reserve *colp-boot*)
-                              (fn-record-make 1 1 1 "<before@fn.test>" '(65)
+                              (fn-held-plain (fn-record-make 1 1 1 "<before@fn.test>" '(65)
                                               '("fn.test") "before-pin"
                                               "before-content" "before-release"
-                                              1 841000000))
+                                              1 841000000) 3))
                :record-file :ok)
      :record-link :ok)
     :record-directory :ok)))

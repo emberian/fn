@@ -963,9 +963,26 @@ to. RFC 6048 section 2.1.1 lists such a group with status `m`.
   post's Message-IDs; live over the owner's control socket (FNLS frame
   kind 3, report code 10) or offline over the Store, rendered by
   `fn-cev-moderation-report`.
-- **Not done.** `moderation approve ID` and `moderation reject ID`
-  (PKT-657): approval is over NNTP today, and rejection needs an operator
-  withdrawal under the node's authority (PKT-575's CT3 verb). No PGPMoose-style signed approval. A poster who omits Date gets
+- **The operator's verbs (PKT-657).** `moderation approve ID --moderator
+  LOGIN` and `moderation reject ID --moderator LOGIN [--reason TEXT]` reach
+  the running owner as FNCT request kind 21; the owner decides
+  (books/moderation-verbs.lisp `fn-mvb-plan`). Only a moderator of a group
+  the envelope queues for approves or rejects
+  (`fn-mvb-only-a-moderator-approves-or-rejects`; refused `not-a-moderator`
+  by name). Approve submits exactly the held proto-article with
+  `Approved: LOGIN` first, when the served POST's decision under LOGIN's
+  moderation view injects it (`fn-mvb-approve-commits-the-held-article-approved`).
+  Reject is the node's withdrawal of exactly the envelope
+  (`fn-mvb-reject-withdraws-the-held-envelope`; PKT-575 below).
+- **The node's withdrawal (PKT-575, CT3).** `article withdraw ID --reason
+  TEXT` writes the configuration row (CAUSE ID REASON 1) (delta code 26,
+  `fn-cfg-withdraw-article-authorizes-the-cause`), then injects the cancel
+  CAUSE = `<fn-withdraw.`ID-after-`<`; the control machine's :node arm makes
+  the record when the refresh first publishes CAUSE, and it withdraws
+  exactly ID (`fn-ctl-node-withdrawal-withdraws-exactly-its-target`,
+  `fn-mvb-withdraw-makes-the-node-authorize-exactly-its-target`). A stronger
+  fn guarantee; RFC 5537 section 5.3 leaves cancel authority to local
+  policy. No PGPMoose-style signed approval. A poster who omits Date gets
   a node-added Date in the forwarded body, so a resend is a different
   envelope (D25 conflict), not a duplicate.
 

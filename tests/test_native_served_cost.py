@@ -34,7 +34,7 @@ class NativeServedCostTests(unittest.TestCase):
         chain = (ROOT / "books/served-catalog-chain.lisp").read_text()
         handoff = definition(native, "fnn-owner-handle-chunk")
         self.assertIn("(fnn-octets-fill incoming)", handoff)
-        self.assertIn("(fnn-owner-buffer-catalog-action 'fn-owner-chunk-span cid", handoff)
+        self.assertIn("(fnn-core-buffer-catalog-state 'fn-owner-chunk-span cid", handoff)
         self.assertNotIn("fnn-octet-list incoming", handoff)
         self.assertNotIn("'fn-owner-chunk cid", handoff)
         self.assertIn("(fn-scr-ocfg-read-span", definition(host, "fn-owner-chunk-span"))

@@ -658,7 +658,7 @@
 (defun fn-cnode-apply-record (cn record)
   ; One article record: served-table admission, then the node machine's own
   ; replay step.  NIL is a refusal, never a partial state.
-  (declare (xargs :guard (and (fn-cnode-statep cn) (fn-record-p record))
+  (declare (xargs :guard (and (fn-cnode-statep cn) (fn-held-p record))
                   :verify-guards nil))
   (if (mbe :logic (not (fn-cnode-statep cn)) :exec nil)
       nil
@@ -683,7 +683,7 @@
            ;; split the goal 743 ways, 3.3 s
            ;; (planning/evidence/misc-books-cost-2026-09-23.md).
            :in-theory (e/d (fn-cnode-statep fn-store-event-p)
-                           (fn-stxe-p fn-stxk-p fn-stxa-p fn-record-p
+                           (fn-stxe-p fn-stxk-p fn-stxa-p fn-record-p fn-held-p fn-hstxa-p
                             fn-store-retention-event-p
                             fn-node-statep fn-replay-apply-record)))))
 
@@ -742,7 +742,7 @@
                             fn-replay-advance-txid
                             fn-record-record-vocabulary
                             fn-record-shape-vocabulary
-                            fn-stxa-p fn-stxe-p fn-stxk-p
+                            fn-stxa-p fn-stxe-p fn-stxk-p fn-held-p fn-hstxa-p
                             fn-store-retention-event-p
                             fn-replay-composite-record))))))
 

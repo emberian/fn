@@ -5,6 +5,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-observed")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 (defconst *fn-so-groups* '("fn.letters"))
 (defconst *fn-so-empty*
@@ -15,9 +16,13 @@
 (assert-event (equal (fn-sf-successes (fn-sn-files (fn-sn-open-state *fn-so-empty*)))
                      nil))
 
-(defconst *fn-so-record0*
+(defconst *fn-so-record0-wire*
   (fn-record-make 0 0 0 "<observed@example>" '(65) *fn-so-groups*
                   "observed-pin" "observed-content" "observed-release" 1 841000000))
+; The durable history the open receives is retained rows (records-flip): the
+; decoded record interned on a fresh arena, its payload the handle 0.
+(defconst *fn-so-record0* (fn-hrt-row-at *fn-so-record0-wire* 0))
+(assert-event (fn-held-p *fn-so-record0*))
 (defconst *fn-so-replayed*
   (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-record0*)))
 (assert-event (fn-sn-open-okp *fn-so-replayed*))
@@ -26,9 +31,10 @@
                                         (list *fn-so-record0*) 1)))
 
 ; A known-aborted allocation gap is replayable: record txid 1 and frontier 2.
-(defconst *fn-so-gap-record*
+(defconst *fn-so-gap-wire*
   (fn-record-make 0 1 1 "<gap@example>" '(66) *fn-so-groups*
                   "gap-pin" "gap-content" "gap-release" 1 841000000))
+(defconst *fn-so-gap-record* (fn-hrt-row-at *fn-so-gap-wire* 0))
 (assert-event
  (fn-sn-open-okp (fn-sn-open-observed *fn-so-groups* 10 2
                                       (list *fn-so-gap-record*))))
@@ -46,9 +52,10 @@
 ; Structurally valid but unreplayable: a record in a group this store does
 ; not configure is refused with the distinct :replay code.  The teeth built on
 ; this witness live in store-observed-traces-tests.
-(defconst *fn-so-alien*
+(defconst *fn-so-alien-wire*
   (fn-record-make 0 0 0 "<alien@example>" '(65) '("fn.other")
                   "alien-pin" "alien-content" "alien-release" 1 841000000))
+(defconst *fn-so-alien* (fn-hrt-row-at *fn-so-alien-wire* 0))
 (assert-event (fn-sn-observed-historyp 1 (list *fn-so-alien*)))
 (assert-event (not (fn-sf-history-recoverablep *fn-so-groups* 10 (list *fn-so-alien*) 1)))
 (assert-event (equal (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-alien*))

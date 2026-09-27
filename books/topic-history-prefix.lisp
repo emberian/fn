@@ -2,6 +2,15 @@
 ; Recovery may scan history; a served path must carry this projection instead.
 (in-package "ACL2")
 (include-book "store-events")
+;
+; A retained accepted statement (fn-hstxa-p, three wide) is never a topic
+; event (eight or nine wide, or a six-wide local install): the prefix step's
+; statement arm and its topic arm are disjoint.
+(defthm fn-th-topic-event-is-no-hstxa
+  (implies (fn-th-topic-eventp event)
+           (not (fn-hstxa-p event)))
+  :hints (("Goal" :in-theory (enable fn-th-topic-eventp fn-th-local-admin-eventp
+                                     fn-hstxa-p))))
 
 ; (:ok next snapshots accepted anchors installed-admin nil), or :fault with
 ; a reason in the last slot. Historical installation comes from a preceding
@@ -35,9 +44,12 @@
      ((fn-stxk-p event)
       (fn-th-prefix-state :ok (1+ (nfix next)) (cons event snapshots)
                           accepted anchors installed nil))
-     ((fn-stxa-p event)
+     ; The retained accepted statement is the composite row (fn-hstxa-p,
+     ; books/held-record.lisp): the statement recorded is its wire composite.
+     ; A bare fn-stxa-p is no retained event (the test above faults it).
+     ((fn-hstxa-p event)
       (fn-th-prefix-state :ok (1+ (nfix next)) snapshots
-                          (cons event accepted) anchors installed nil))
+                          (cons (fn-hstxa-stxa event) accepted) anchors installed nil))
      ((fn-th-local-admin-eventp event)
       (let ((updated (fn-th-local-admin-commit event installed)))
         (if (fn-stmt-okp updated)

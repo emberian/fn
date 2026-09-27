@@ -405,12 +405,15 @@
   (implies (and (fn-sn-observed-configurationp groups capacity)
                 (fn-sn-observed-historyp frontier records))
            (fn-sn-indexedp (fn-sn-observed-seed groups capacity frontier records)))
+  ; The seed's files are in :replaying, where no row is indexed yet and the
+  ; completion is nil, and its index is the empty one (records-flip).
   :hints (("Goal"
            :use ((:instance fn-sn-observed-seed-is-state))
-           :in-theory (e/d (fn-sn-indexedp fn-sn-observed-seed
-                            fn-stx-index-invariantp)
+           :in-theory (e/d (fn-sn-indexedp fn-sn-observed-seed fn-sn-indexed-rows
+                            fn-sn-indexed-rows-of fn-sn-completion-is-last-p
+                            fn-sn-make fn-sn-files fn-sn-index)
                            (fn-sn-statep fn-node-initial-state
-                            fn-stx-index-of-store fn-stx-store
+                            fn-sn-index-of-rows
                             fn-sn-observed-seed-is-state)))))
 
 ; The opened state is the seed recovered, so its index is the recomputation

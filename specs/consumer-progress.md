@@ -344,6 +344,44 @@ process running as the operator; carrying bound requests to a non-owner
 peer is PKT-673.
 ([evidence](../planning/evidence/consumer-identity-2026-09-27.md))
 
+## Waiting
+
+An agent's consumer should sleep until there is news for it, not poll on a
+timer. A WAIT is a poll that may sleep first:
+
+    fn consumer wait CONTROL NAME CURSOR REPORT --timeout S
+    fn consumer bound-wait CONTROL NAME SECRET-FILE CURSOR REPORT --timeout S
+
+(local-control request codes 9 and 10, a timeout of 0 to 3600 seconds; the
+answer is the poll reply, kind 6, and the files are the poll's). The owner
+polls the consumer exactly as `poll` / `bound-poll` would. If the answer is
+an empty page and the deadline has not passed, the waiting thread sleeps on
+the owner's commit signal, raised after every durable Store publication, for
+at most the time left, and polls again; it never polls on a timer. The owner
+answers the first poll that is not an empty page, or the empty page at the
+deadline.
+
+CNS-007: a wait's answer is the answer a poll of the same consumer gives at
+the moment the wait returns: a refusal at once (a bound consumer outside its
+account's rule is refused, not left asleep), an event the consumer can read
+as soon as one is committed, and the empty page only when its timeout
+passes; a wait writes nothing, so every guarantee of the poll (CNS-006, and
+at-least-once delivery with one transition per repeated delivery, which is
+the ack's) holds of it unchanged. At most 12 waits are admitted at once
+(four fewer than the owner's 16 local-control workers, so other requests are
+always served); one more is refused by name (`:waiters`, exit 1), never
+queued.
+
+Every waiter wakes at every commit and polls once (ACL2 decides what each
+answers), so a commit costs at most 12 polls. An owner stop wakes every
+waiter, whose next poll is refused. A wait holds its control connection for
+up to its timeout; the client allows the timeout plus the ordinary ten
+seconds for the reply. `tools/fn_agent.py` is a small agent client over
+this: `next` (a bound wait, printed as one JSON line), `reply` (a follow-up
+over NNTP as the consumer's account, with References) and `ack`
+([docs/agents.md](../docs/agents.md#an-agent-in-five-minutes)).
+([evidence](../planning/evidence/agent-wait-2026-09-27.md))
+
 ## Executable seam and obligations
 
 The selected remote, multi-item E2 poll/fetch interface is not served. The

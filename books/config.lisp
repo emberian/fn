@@ -783,7 +783,7 @@
     :add-peer-rows :remove-peer-rows :set-group-description
     :set-group-status :account-access :set-group-moderation
     :consumer-bind
-    :set-default-subscriptions))
+    :set-default-subscriptions :withdraw-article))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -812,6 +812,8 @@
         ((equal kind :set-group-moderation) 23)
         ((equal kind :consumer-bind) 24)
         ((equal kind :set-default-subscriptions) 25)
+        ; PKT-575 (CT3): the operator's withdrawal authorization.
+        ((equal kind :withdraw-article) 26)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -841,6 +843,7 @@
         ((equal code 23) :set-group-moderation)
         ((equal code 24) :consumer-bind)
         ((equal code 25) :set-default-subscriptions)
+        ((equal code 26) :withdraw-article)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -1036,6 +1039,60 @@
 (defun fn-cfg-revoke-control (namespace principal)
   (declare (xargs :guard t))
   (fn-cfg-delta-make :revoke-control namespace principal 0 nil))
+
+;; The operator's withdrawal (PKT-575, CT3; PRF-196).  One authorities row
+;; (CAUSE TARGET REASON 1): the mark 1 tells it from a grant (mark 0), and
+;; its first two fields are bracketed Message-IDs, never a namespace and a
+;; principal, so no grant lookup (`fn-ctl-grant-scope') ever reads it.  It
+;; says: the article CAUSE, when this node holds it, withdraws TARGET under
+;; the node's own authority (books/control-authority.lisp, the :node arm of
+;; `fn-ctl-withdrawal-plan').  The row is written before the node injects
+;; CAUSE, so the configuration in force at CAUSE's txid holds it.
+;;
+;;   (:withdraw-article CAUSE TARGET 0 ((CAUSE TARGET REASON 1)))       code 26
+(defun fn-cfg-msgid-labelp (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-cfg-labelp text)
+       (let ((o (fn-record-string-octets text)))
+         (and (< 2 (len o)) (equal (car o) 60) (equal (car (last o)) 62)))))
+
+(defun fn-cfg-withdraw-article (cause target reason)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :withdraw-article cause target 0
+                     (list (fn-cfg-row-make cause target reason 1))))
+
+; The operator's withdrawal row for CAUSE among the authorities rows ROWS,
+; or nil; the target it authorizes CAUSE to withdraw, or nil.
+(defun fn-cfg-withdrawal-row (rows cause)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (equal (fn-cfg-row-n (car rows)) 1)
+               (equal (fn-cfg-row-a (car rows)) cause))
+          (car rows)
+        (fn-cfg-withdrawal-row (cdr rows) cause))
+    nil))
+
+(defun fn-cfg-withdrawal-target (rows cause)
+  (declare (xargs :guard t))
+  (fn-cfg-row-b (fn-cfg-withdrawal-row rows cause)))
+
+(defun fn-cfg-withdraw-article-reason (v d)
+  (declare (xargs :guard t))
+  (let ((cause (fn-cfg-delta-a d)) (target (fn-cfg-delta-b d))
+        (rows (fn-cfg-delta-rows d)))
+    (cond ((not (and (fn-cfg-msgid-labelp cause) (fn-cfg-msgid-labelp target)
+                     (not (equal cause target))))
+           :withdrawal-message-id)
+          ((not (and (equal (fn-cfg-delta-n d) 0)
+                     (consp rows) (null (cdr rows))
+                     (equal (car rows)
+                            (fn-cfg-row-make cause target
+                                             (fn-cfg-row-c (car rows)) 1))))
+           :withdrawal-row)
+          ((fn-cfg-withdrawal-row (fn-cfg-authorities v) cause)
+           :withdrawal-duplicate)
+          (t nil))))
 
 ;; Peering invitations (PRF-097; specs/peering.md section 9).  The ninth
 ;; slot's rows are written only by these two kinds, and never removed:
@@ -1881,6 +1938,15 @@
                          (fn-cfg-limits v) (fn-cfg-authorities v)
                          (fn-cfg-invitations v) (fn-cfg-accounts v)
                          (fn-cfg-descriptions v)))
+     ((equal kind :withdraw-article)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v)
+                         (fn-cfg-row-upsert (fn-cfg-authorities v)
+                                            (fn-cfg-ag-car rows))
+                         (fn-cfg-invitations v) (fn-cfg-accounts v)
+                         (fn-cfg-descriptions v)))
      ((equal kind :grant-control)
       (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
                          (fn-cfg-quotas v) (fn-cfg-policies v)
@@ -2151,6 +2217,7 @@
       (fn-cfg-set-group-description-reason v gen d))
      ((equal kind :set-group-moderation)
       (fn-cfg-set-group-moderation-reason v gen d))
+     ((equal kind :withdraw-article) (fn-cfg-withdraw-article-reason v d))
      ((equal kind :set-default-subscriptions)
       (fn-cfg-set-default-subscriptions-reason v gen d))
      (t nil))))

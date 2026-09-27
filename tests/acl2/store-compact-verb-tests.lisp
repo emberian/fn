@@ -3,6 +3,7 @@
 (include-book "../../books/store-compact-verb")
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 ; A reachable five-event history (the one checkpoint-compaction-preservation
 ; tests): a record, an undertaking, its release, an identity event and an
@@ -242,9 +243,15 @@
 ; history gate; the prefix is also exactly what the store holds when
 ; record 4's reservation advanced the frontier to 5 and the process died
 ; before the record was written (books/replay.lisp, a known-aborted gap).
-(defconst *cvt-history* (list *cvt-a0* *cvt-e1* *cvt-e2* *cvt-i3* *cvt-k4*))
+; The open's gate reads the retained rows the entry interns (records-flip,
+; books/held-record.lisp; keyring nil at generation 0, as the open does):
+; the record is a held row at handle 0, the other four events are unchanged.
+(defconst *cvt-history*
+  (fn-hrt-rows (list *cvt-a0* *cvt-e1* *cvt-e2* *cvt-i3* *cvt-k4*) nil 0))
+(defconst *cvt-a0-row* (car *cvt-history*))
+(assert-event (fn-held-p *cvt-a0-row*))
 (assert-event (fn-sn-observed-historyp 5 *cvt-history*))
-(assert-event (fn-sn-observed-historyp 5 (list *cvt-a0* *cvt-e1* *cvt-e2* *cvt-i3*)))
+(assert-event (fn-sn-observed-historyp 5 (butlast *cvt-history* 1)))
 ; The namespace gate the same: the five names and the four without the
 ; newest are both valid observations under the development bound.
 (assert-event (not (equal (fn-profile-txn-observation *cvt-names* 128 0) :invalid)))
@@ -253,9 +260,9 @@
 ; Tooth for fn-cverb-open-history-gate-admits-a-lost-suffix (true-listp):
 ; an improper prefix whose append is the one-event history is not admitted.
 (local (defthm cvt-improper-prefix-appends-to-one-event
-         (equal (append (cons *cvt-a0* 7) nil) (list *cvt-a0*))))
-(assert-event (fn-sn-observed-historyp 5 (list *cvt-a0*)))
+         (equal (append (cons *cvt-a0-row* 7) nil) (list *cvt-a0-row*))))
+(assert-event (fn-sn-observed-historyp 5 (list *cvt-a0-row*)))
 (local
  (must-fail
   (defthm cvt-gate-without-true-list
-    (fn-sn-observed-historyp 5 (cons *cvt-a0* 7)))))
+    (fn-sn-observed-historyp 5 (cons *cvt-a0-row* 7)))))

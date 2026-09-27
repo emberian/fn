@@ -34,7 +34,7 @@
                       "archive:receiver-2" "subject:receiver-2"
                       "unsigned-ingress-v0" 1 "receiver-policy" "terms-1"
                       "dtn://fn.lab/issuer"))
-(make-event `(defconst *bpre-prepared2* ',(fn-bpi-ingress-prepare (bpr-reserve *bpr-store*) *bpre-policy2* *bpre-context2* *bpre-adu2*)))
+(make-event `(defconst *bpre-prepared2* ',(fn-bpi-ingress-prepare (bpr-reserve *bpr-store*) *bpre-policy2* *bpre-context2* *bpre-adu2* 0)))
 (assert-event (equal (fn-bpi-result-kind *bpre-prepared2*) :prepared))
 (defconst *bpre-record2* (fn-bpi-result-record *bpre-prepared2*))
 (assert-event (fn-record-p *bpre-record2*))

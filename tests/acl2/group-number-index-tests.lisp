@@ -15,21 +15,24 @@
           (fn-nntp-string-octets subject) '(13 10 13 10 88 13 10)))
 
 (defconst *tgn-groups* '("fn.one" "fn.two"))
+; The acceptance payload is a handle into the arena (records-flip,
+; books/held-record.lisp): the bytes fn-tgn-payload builds are interned in
+; acceptance order, A at handle 0, B at 1, C at 2.
 (defconst *tgn-a*
   (fn-make-article "<tgn-a@example.invalid>"
-                   (fn-tgn-payload "<tgn-a@example.invalid>" "A")
+                   0
                    '("fn.one" "fn.two")
                    (list (cons "fn.one" 2) (cons "fn.two" 70))
                    t 841000000))
 (defconst *tgn-b*
   (fn-make-article "<tgn-b@example.invalid>"
-                   (fn-tgn-payload "<tgn-b@example.invalid>" "B")
+                   1
                    '("fn.one") (list (cons "fn.one" 3))
                    t 841000000))
 ; The largest RFC 3977 number: 31 trie levels.
 (defconst *tgn-c*
   (fn-make-article "<tgn-c@example.invalid>"
-                   (fn-tgn-payload "<tgn-c@example.invalid>" "C")
+                   2
                    '("fn.one") (list (cons "fn.one" 2147483647))
                    t 841000000))
 (defconst *tgn-old* (list *tgn-b* *tgn-a*))

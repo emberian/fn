@@ -25,6 +25,7 @@
 (include-book "crypto-seam-tests")
 (include-book "../../books/store-node-invariants")
 (include-book "../../books/codec-attach")
+(include-book "../../books/store-intern")
 
 ; -----------------------------------------------------------------------------
 ; One principal, one keyring, one signed article
@@ -84,6 +85,85 @@
 (assert-event (fn-record-p *sni-record*))
 
 ; -----------------------------------------------------------------------------
+; The entries (records-flip, books/store-intern.lisp).  The store retains
+; held rows whose payload is a handle into the arena; the host interns a wire
+; record before it prepares it (fn-intern-event, under the store's keyring and
+; generation) and installs a keyring through fn-store-set-keyring, which
+; recontexts every row from its bytes in the arena.  A run's arena is the
+; payloads of the wire records it interned, in order: PRIOR below is that
+; list, so a record interned after PRIOR takes handle (len PRIOR).
+
+(defun fn-sni-row-after (prior w keyring generation fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-intern-events prior nil 0 fn-arena)
+    (declare (ignore rows))
+    (fn-intern-event w keyring generation fn-arena)))
+
+(defun fn-sni-row (prior w keyring generation)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (row fn-arena)
+      (fn-sni-row-after prior w keyring generation fn-arena)
+      row)))
+
+; The prepare entry: W interned under the store's keyring and generation.
+(defun fn-sni-prepare (s prior w)
+  (declare (xargs :verify-guards nil))
+  (fn-sn-prepare s (fn-sni-row prior w (fn-sn-keyring s) (fn-sn-keyring-generation s))))
+
+(defun fn-sni-set-keyring-in (s keyring prior fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-intern-events prior nil 0 fn-arena)
+    (declare (ignore rows))
+    (mv (fn-store-set-keyring s keyring fn-arena) fn-arena)))
+
+; The keyring entry over the arena holding PRIOR's payloads.
+(defun fn-sni-set-keyring (s keyring prior)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (s2 fn-arena)
+      (fn-sni-set-keyring-in s keyring prior fn-arena)
+      s2)))
+
+(defun fn-sni-bytes-in (prior handle fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-intern-events prior nil 0 fn-arena)
+    (declare (ignore rows))
+    (mv (fn-arena-payload handle fn-arena) fn-arena)))
+
+; The bytes under HANDLE in the arena holding PRIOR's payloads.
+(defun fn-sni-bytes (prior handle)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (bytes fn-arena)
+      (fn-sni-bytes-in prior handle fn-arena)
+      bytes)))
+
+(defun fn-sni-lace-in (s keyring prior fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-intern-events prior nil 0 fn-arena)
+    (declare (ignore rows))
+    (mv (fn-stx-lace-of-store
+         (fn-rows-articles-newest-first (fn-sf-records (fn-sn-files s)) fn-arena)
+         keyring)
+        fn-arena)))
+
+; The lace of the store's BYTES under KEYRING: the retained rows' articles
+; read through the arena holding PRIOR's payloads, newest first
+; (fn-rows-articles-newest-first), folded exactly as fn-stx-lace folds the
+; wire store.  The node's articles hold handles, so the lace is read here.
+(defun fn-sni-lace (s keyring prior)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (lace fn-arena)
+      (fn-sni-lace-in s keyring prior fn-arena)
+      lace)))
+
+; -----------------------------------------------------------------------------
 ; The run.  Every step below is a real transition of books/store-node; the
 ; four io words drive the file kernel exactly as tests/acl2/store-node-tests
 ; drives it.
@@ -109,20 +189,22 @@
 
 ; Reconfiguration installs the verification context.
 (make-event (list 'defconst '*sni-keyed*
-                  (list 'quote (fn-sn-set-keyring *sni-initial* *sni-keyring*))))
+                  (list 'quote (fn-sni-set-keyring *sni-initial* *sni-keyring* nil))))
 (assert-event (fn-sn-indexedp *sni-keyed*))
 (assert-event (equal (fn-sn-keyring *sni-keyed*) *sni-keyring*))
 (assert-event (equal (fn-sn-index *sni-keyed*) (fn-stx-index-empty)))
 (assert-event (equal (fn-sn-keyring-generation *sni-keyed*) 1))
 
-; TOOTH on fn-sn-set-keyring's fn-prin-keyringp test: a malformed keyring is
-; refused, the state is unchanged, and the old context still stands.
-(assert-event (equal (fn-sn-set-keyring *sni-keyed* '(bad)) *sni-keyed*))
+; TOOTH on the entry's fn-prin-keyringp test (fn-store-set-keyring, and
+; fn-sn-set-keyring beneath it): a malformed keyring is refused, the state is
+; unchanged, and the old context still stands.
+(assert-event (not (fn-prin-keyringp '(bad))))
+(assert-event (equal (fn-sni-set-keyring *sni-keyed* '(bad) nil) *sni-keyed*))
 
 (make-event (list 'defconst '*sni-reserved*
                   (list 'quote (fn-sni-reserve *sni-keyed*))))
 (make-event (list 'defconst '*sni-prepared*
-                  (list 'quote (fn-sn-prepare *sni-reserved* *sni-record*))))
+                  (list 'quote (fn-sni-prepare *sni-reserved* nil *sni-record*))))
 (assert-event (not (equal *sni-prepared* *sni-reserved*)))
 (assert-event (fn-sn-indexedp *sni-prepared*))
 
@@ -146,9 +228,13 @@
 
 ; The store grew by exactly the signed article, and the payload it holds is
 ; the signed one -- not the empty delta that made two earlier substrate
-; witnesses vacuous.
+; witnesses vacuous.  The article holds a handle; its bytes are the arena's
+; under that handle.
 (assert-event (equal (len (fn-stx-store (fn-sn-node *sni-finished*))) 1))
-(assert-event (equal (fn-article-payload (car (fn-stx-store (fn-sn-node *sni-finished*))))
+(assert-event (equal (fn-article-payload (car (fn-stx-store (fn-sn-node *sni-finished*)))) 0))
+(assert-event (equal (fn-sni-bytes (list *sni-record*)
+                                   (fn-article-payload
+                                    (car (fn-stx-store (fn-sn-node *sni-finished*)))))
                      *sni-octets*))
 
 ; THE CARRIED INVARIANT, on a reached state: the index fn-sn-finish consed
@@ -176,8 +262,8 @@
                   (+ 1 (len (fn-stx-index-bindings (fn-sn-index *sni-completing*))))))
 
 ; The lace grew with it.
-(assert-event (equal (fn-stx-lace (fn-sn-node *sni-finished*)
-                                  (fn-sn-keyring *sni-finished*))
+(assert-event (equal (fn-sni-lace *sni-finished* (fn-sn-keyring *sni-finished*)
+                                  (list *sni-record*))
                      (list *sni-stmt*)))
 
 ; -----------------------------------------------------------------------------
@@ -193,8 +279,8 @@
 ; this id, evaluated rather than assumed.
 (assert-event (equal (fn-sn-statement-lookup *sni-finished*
                                              (fn-stmt-id *sni-stmt*))
-                     (fn-lace-lookup (fn-stx-lace (fn-sn-node *sni-finished*)
-                                                  (fn-sn-keyring *sni-finished*))
+                     (fn-lace-lookup (fn-sni-lace *sni-finished* (fn-sn-keyring *sni-finished*)
+                                                  (list *sni-record*))
                                      (fn-stmt-id *sni-stmt*))))
 ; The equivocator half of the keystone is instantiated in the FORK section
 ; below, where both of its sides are true.  Asserting it here, where both are
@@ -223,8 +309,8 @@
                      nil))
 (assert-event (not (equal (fn-sn-statement-lookup *sni-stale*
                                                   (fn-stmt-id *sni-stmt*))
-                          (fn-lace-lookup (fn-stx-lace (fn-sn-node *sni-stale*)
-                                                       (fn-sn-keyring *sni-stale*))
+                          (fn-lace-lookup (fn-sni-lace *sni-stale* (fn-sn-keyring *sni-stale*)
+                                                       (list *sni-record*))
                                           (fn-stmt-id *sni-stmt*)))))
 
 ; -----------------------------------------------------------------------------
@@ -236,8 +322,8 @@
 (make-event (list 'defconst '*sni-unkeyed-finished*
                   (list 'quote (fn-sn-finish
                                 (fn-sni-publish
-                                 (fn-sn-prepare (fn-sni-reserve *sni-initial*)
-                                                *sni-record*))))))
+                                 (fn-sni-prepare (fn-sni-reserve *sni-initial*)
+                                                 nil *sni-record*))))))
 
 (assert-event (fn-sn-indexedp *sni-unkeyed-finished*))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sni-unkeyed-finished*)) :ready))
@@ -249,8 +335,9 @@
 ; No authority: an empty index, an empty lace, and a query that answers
 ; absent for the very id the keyed run answers.
 (assert-event (equal (fn-sn-index *sni-unkeyed-finished*) (fn-stx-index-empty)))
-(assert-event (equal (fn-stx-lace (fn-sn-node *sni-unkeyed-finished*)
-                                  (fn-sn-keyring *sni-unkeyed-finished*))
+(assert-event (equal (fn-sni-lace *sni-unkeyed-finished*
+                                  (fn-sn-keyring *sni-unkeyed-finished*)
+                                  (list *sni-record*))
                      nil))
 (assert-event (equal (fn-sn-statement-lookup *sni-unkeyed-finished*
                                              (fn-stmt-id *sni-stmt*))
@@ -284,8 +371,8 @@
 ; a reconfiguration event, never on a served path.
 
 (make-event (list 'defconst '*sni-rekeyed*
-                  (list 'quote (fn-sn-set-keyring *sni-unkeyed-finished*
-                                                  *sni-keyring*))))
+                  (list 'quote (fn-sni-set-keyring *sni-unkeyed-finished*
+                                                   *sni-keyring* (list *sni-record*)))))
 (assert-event (fn-sn-indexedp *sni-rekeyed*))
 (assert-event (equal (fn-sn-index *sni-rekeyed*) (fn-sn-index *sni-finished*)))
 (assert-event (equal (fn-sn-statement-lookup *sni-rekeyed*
@@ -334,8 +421,8 @@
 (make-event (list 'defconst '*sni-forked*
                   (list 'quote (fn-sn-finish
                                 (fn-sni-publish
-                                 (fn-sn-prepare (fn-sni-reserve *sni-finished*)
-                                                *sni-record-2*))))))
+                                 (fn-sni-prepare (fn-sni-reserve *sni-finished*)
+                                                 (list *sni-record*) *sni-record-2*))))))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sni-forked*)) :ready))
 (assert-event (fn-sn-indexedp *sni-forked*))
 
@@ -352,8 +439,8 @@
 ; The keystone instance, with BOTH sides true rather than both nil.
 (assert-event (iff (fn-sn-equivocatorp *sni-forked* *sni-creator* 1)
                    (fn-lace-equivocatorp
-                    (fn-stx-lace (fn-sn-node *sni-forked*)
-                                 (fn-sn-keyring *sni-forked*))
+                    (fn-sni-lace *sni-forked* (fn-sn-keyring *sni-forked*)
+                                 (list *sni-record* *sni-record-2*))
                     *sni-creator* 1)))
 
 ; Neither fork is dropped: each is still reachable by its own content id, and
@@ -372,8 +459,8 @@
 ; And the lookup keystone on the forked run, with both sides NON-nil.
 (assert-event (equal (fn-sn-statement-lookup *sni-forked*
                                              (fn-stmt-id *sni-stmt-2*))
-                     (fn-lace-lookup (fn-stx-lace (fn-sn-node *sni-forked*)
-                                                  (fn-sn-keyring *sni-forked*))
+                     (fn-lace-lookup (fn-sni-lace *sni-forked* (fn-sn-keyring *sni-forked*)
+                                                  (list *sni-record* *sni-record-2*))
                                      (fn-stmt-id *sni-stmt-2*))))
 
 ; A crash resets the store, so it resets the index; recovery replays the

@@ -88,9 +88,11 @@
           (fn-nls-text " principal=")
           ;; A key record (SEC-006) names no principal: its basis is the
           ;; Cancel-Key its cause carries, which the cause's octets hold.
-          (if (fn-ctl-key-principalp (fn-ctl-w-principal w))
-              (fn-nls-text "cancel-key")
-            (fn-cev-string (fn-ctl-w-principal w)))
+          (cond ((fn-ctl-key-principalp (fn-ctl-w-principal w))
+                 (fn-nls-text "cancel-key"))
+                ;; PKT-575: the node operator's withdrawal.
+                ((eq (fn-ctl-w-principal w) :node) (fn-nls-text "node"))
+                (t (fn-cev-string (fn-ctl-w-principal w))))
           (fn-nls-text " scope=") (fn-cev-scope (fn-ctl-w-scope w))
           (fn-nls-field "generation" (fn-ctl-w-generation w))))
 

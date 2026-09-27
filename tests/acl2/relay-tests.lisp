@@ -43,7 +43,7 @@
             :frontier-directory :ok))
 (defconst *ry-prepared*
   (fn-bpi-ingress-prepare (ry-reserve (fn-sn-initial *ry-groups* 20))
-                          *ry-policy* *ry-ingress-context* *ry-adu*))
+                          *ry-policy* *ry-ingress-context* *ry-adu* 0))
 (defconst *ry-record* (fn-bpi-result-record *ry-prepared*))
 (defconst *ry-store* (fn-bpi-finish-prepared (fn-bpi-result-store *ry-prepared*)))
 (assert-event (fn-bpi-durably-acceptedp *ry-store* *ry-record*))

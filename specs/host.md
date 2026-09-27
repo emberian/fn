@@ -337,7 +337,7 @@ The DTN-only build writes `build/fn-host-dtn` by default and
 Changing that environment variable when a saved image restarts does not change
 its serialized profile. The developer image also honours the developer
 selectors (the environment variables of `+fnn-developer-selectors+` and the
-`store ROOT post` entry and its FAULT argument; [the operator guide](../docs/operator.md#developer-selectors)
+`store ROOT post` entry and its FAULT argument; [the operator guide](../docs/operator-internals.md#developer-selectors)
 lists them). A production image refuses to start with any of them: `fnn-main`
 runs `fnn-developer-selector-gate` before dispatch and exits 5 naming the
 selector, before any store or socket is opened. Store diagnostics and the existing BP/TCPCL/application
@@ -483,18 +483,66 @@ A submission is completed as refused while the reader holds only a shared
 lock, and ACL2 -- never the host -- writes the 240 or the 441.
 
 The reply octets are never built as a list on the served read (PRF-192,
-2026-09-26, lane egress-span; PKT-491). `fn-owner-chunk` installs the step's
-effects without rendering them; `fn-owner-reply-buffer` then calls
-`fn-served-reply-to-buffer` (books/served-reply-buffer.lisp), which writes
-each `(:reply octets)` effect into the octet buffer `fn-octets`, and the
-host copies the buffer's range [0, len) out once, under the service mutex,
-and writes that byte vector to the socket after the mutex is released. The
-keystone `fn-served-reply-to-buffer-is-the-reply` says the range is
-`fn-served-reply-octets` of the effects whenever every reply effect is
-octets (the answer `:ok`), and the host faults on `:malformed` as it did on
-a non-octet reply. The buffer is `fn-octets` because only the service
-mutex's holder touches it; the copy is needed because the send runs outside
-the mutex while the next locked step refills the buffer.
+2026-09-26, lane egress-span; PKT-491): `fn-served-reply-to-buffer`
+(books/served-reply-buffer.lisp) writes each `(:reply octets)` effect into
+an octet buffer, and its keystone `fn-served-reply-to-buffer-is-the-reply`
+says the buffer's range [0, len) is `fn-served-reply-octets` of the effects
+whenever every reply effect is octets (the answer `:ok`); the host faults on
+`:malformed` as it did on a non-octet reply. Until HST-023 the buffer was
+the live `fn-octets`, filled under the service mutex and copied out once
+before the mutex was released.
+
+HST-023: The owner mutex is entered through a gate whose next class ACL2
+picks, and a served reply is an immutable render plan the connection's I/O
+loop writes off the mutex in windows ACL2 sizes. The native owner keeps one
+mutation owner (every bounded semantic step runs under the service mutex),
+and the decision the Lisp runtime's mutex used to make -- which waiting
+thread runs the next step -- is ACL2's (books/owner-scheduler.lisp
+`fn-osch-next`): four service classes, control (with maintenance), reader,
+poster and transit, in that cyclic order; the host observes how many threads
+of each class wait (the class of a quantum is the socket it arrived on: the
+control socket's requests and the maintenance steps are control; a reader
+connection's open, steps, idle, close and release are reader; a peer
+connection's, the feeds', the pull's and the BP node's quanta are transit; a
+submission through the control socket is poster) and asks ACL2 which class
+runs the next quantum (the class's slot too is ACL2's, `fn-osch-class-index`);
+within a class the host serves arrival order, so the bound below is on the
+class's turn, and a control request behind N control requests waits N + 1
+turns; a thread that re-enters the gate while it holds the owner is a host
+fault. The keystone
+`fn-osch-control-waits-at-most-the-bound`: while control has a waiter, at
+most three quanta of the other classes run before a control quantum, from
+any cursor. A quantum is one bounded semantic step, unchanged by this
+requirement (a served read with its drain, one control request, one transit
+step); the journal writes stay inside it. The exposure charge (PRF-161) is
+decided in the same critical section as the step it admits. What leaves the
+critical section is the reply's rendering: `fn-owner-chunk-span` returns one
+typed step result (books/served-plan.lisp `fn-splan-step-make`: the effects,
+the close, STARTTLS and submission projections, the consumed prefix, the
+refusal lines and the exposure close) and the connection's I/O loop
+(host/native/mux.lisp) renders the plan into a fresh private buffer, never
+the live `fn-octets`, one window per `fn-splan-window` call, writing each
+window before it renders the next and holding one window and the plan's
+continuation, never the whole reply. ACL2 sizes each window
+(`fn-splan-window-size`: the remaining octets of the effect the window
+starts in, so a materialized reply effect is rendered whole rather than held
+as a list sixteen times its size while the socket drains; zero exactly when
+the plan is done, `fn-splan-window-size-is-positive-until-done`, so the loop
+progresses). The keystones `fn-splan-window-is-a-prefix-of-the-reply` (a window followed by
+the continuation's debt is the plan's debt, and an unfinished plan's window
+writes something) and `fn-splan-windows-are-the-reply` (a plan drained to
+done wrote exactly `fn-served-reply-octets` of the effects) say the bytes on
+the socket are the bytes the served machine decided, whatever the window
+size and however the socket paced the windows; a pull's logical connection
+renders its plan the same way (host/native/pull-service.lisp). `health`
+prints, after the
+log-sink line, one line per class with its holds in five buckets (under 1,
+10, 100 and 1,000 ms and at least a second), the longest hold, the longest
+wait and the waits of a second or more, folded by ACL2
+(`fn-osch-observe`, `fn-osch-health-lines`); the exit code stays the
+verdict's (`fn-nh-report-exit-of-render-and-more`). The live octet buffer
+`fn-octets` is input-only under the mutex. Measured on the mixed hour and
+under 40 readers in planning/evidence/owner-scheduler-2026-09-26.md.
 
 ### The owner submission path
 
@@ -751,7 +799,7 @@ owner runs, in the offline words: the running owner renders the same ACL2
 report (`fn-nls-report`, books/native-live-status.lisp) of the state it
 carries that the offline command renders from the Store, and answering changes
 no state. The operator guide's
-[status section](../docs/operator.md#status-while-the-owner-runs) describes the
+[status section](../docs/operator-internals.md#status-while-the-owner-runs) describes the
 verbs.
 
 ## Operator health
@@ -777,7 +825,7 @@ configured socket, or one the probe could not read, is `store-held`
 (`fn-nh-fence-of-starting-iff`). `starting` is a reason of the fenced state, exit 20, never a ninth code (PKT-454), and it clears on the one observation listening changes: the host takes every observation of one invocation before ACL2 decides (`fn-nh-health-step`), which reports `starting` exactly while no clone fence is present, the lock is held, an owner would listen and nothing answered, and gives the owner's own report, with no fence, for the same lock and fence once the owner answers on its socket (`fn-nh-starting-clears-on-listening`). The running owner renders the same verdict over the state it
 carries (FNLS kind 6); the exit code the host returns is read back from the
 rendered octets (`fn-nh-report-exit-of-render`). The operator guide's
-[health section](../docs/operator.md#health-which-of-eight-things-is-wrong)
+[health section](../docs/operator-internals.md#health-which-of-eight-things-is-wrong)
 describes the verb.
 
 HST-010: The operator's daily verbs distinguish an owner starting, a fenced
@@ -876,8 +924,8 @@ form before the tagged result line. An outbound peer that refuses `MODE
 STREAM` (RFC 4644 section 2.3) is stopped by name for the owner's run, never
 re-dialled with it. There is no store rollback (D34): a deploy is a reinstall with `store export`
 and `store import` (HST-014). The operator guide's
-[native component entry](../docs/operator.md#native-component-entry) and
-[deploy section](../docs/operator.md#deploy-a-new-release-d34-fresh-deploys-no-migrations)
+[native component entry](../docs/operator-internals.md#native-component-entry) and
+[deploy section](../docs/operator-internals.md#deploy-a-new-release-d34-fresh-deploys-no-migrations)
 describe the verbs.
 
 ## HST-014: the deploy is a reinstall

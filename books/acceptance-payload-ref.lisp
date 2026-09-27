@@ -77,7 +77,7 @@
 (local
  (defthm fn-apr-records-for-of-one
    (equal (fn-cei-article-records-for msgid (list e))
-          (if (and (fn-record-p (fn-cei-event-article e))
+          (if (and (fn-held-p (fn-cei-event-article e))
                    (equal msgid (fn-record-msgid (fn-cei-event-article e))))
               (list (fn-cei-event-article e))
             nil))))
@@ -88,7 +88,7 @@
 ; relation as it was.
 (defthm fn-apr-refsp-of-append-foreign
   (implies (and (fn-apr-refsp articles events)
-                (or (not (fn-record-p (fn-cei-event-article e)))
+                (or (not (fn-held-p (fn-cei-event-article e)))
                     (not (fn-acceptedp (fn-record-msgid (fn-cei-event-article e))
                                        articles))))
            (fn-apr-refsp articles (append events (list e)))))
@@ -98,7 +98,7 @@
 (defun fn-apr-recordedp (events articles)
   (declare (xargs :guard t))
   (if (consp events)
-      (and (or (not (fn-record-p (fn-cei-event-article (car events))))
+      (and (or (not (fn-held-p (fn-cei-event-article (car events))))
                (fn-acceptedp (fn-record-msgid (fn-cei-event-article (car events)))
                              articles))
            (fn-apr-recordedp (cdr events) articles))
@@ -137,11 +137,11 @@
 ; The other arms carry no article record.
 (defthm fn-apr-other-arms-carry-no-article
   (implies (not (fn-apr-article-armp e))
-           (not (fn-record-p (fn-cei-event-article e))))
-  :hints (("Goal" :in-theory (enable fn-cei-event-article fn-record-p
-                                     fn-record-shapep fn-store-retention-event-p
+           (not (fn-held-p (fn-cei-event-article e))))
+  :hints (("Goal" :in-theory (enable fn-cei-event-article fn-held-p
+                                     fn-held-shapep fn-store-retention-event-p
                                      fn-stxe-p fn-stxe-shapep fn-stxk-p
-                                     fn-stxk-shapep fn-stxa-p fn-stxa-shapep
+                                     fn-stxk-shapep fn-hstxa-p
                                      fn-cpe-eventp fn-th-topic-eventp))))
 
 (defthm fn-apr-other-arms-keep-articles
@@ -221,7 +221,7 @@
                 (consp (fn-replay-apply-record node e)))
            (let ((art (fn-cei-event-article e))
                  (after (fn-stx-store (fn-replay-apply-record node e))))
-             (and (fn-record-p art)
+             (and (fn-held-p art)
                   (not (fn-acceptedp (fn-record-msgid art) (fn-stx-store node)))
                   (consp after)
                   (equal (fn-article-msgid (car after)) (fn-record-msgid art))

@@ -49,15 +49,17 @@
                                     fn-af-relayed-article-check))))))
 
 ; The node a transit transfer produces is the node the post path produces on
-; the arguments ACL2 computes from the same octets, including clock refusal.
+; the arguments ACL2 computes from the same octets, including clock refusal;
+; the payload it stages is H, the handle the entry gives the stored octets
+; (fn-peer-transfer-interned; its keystone below says H reads them back).
 (defthm fn-peer-transfer-is-the-post-path
   (implies (equal (fn-peer-decision-kind
                    (fn-peer-decide-transfer node cfg peer msgid octets clock
                                             id subject))
                   :want)
-           (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject))
+           (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject h))
                   (let ((a (fn-peer-injection-arguments node cfg peer msgid octets generation id subject clock)))
-                    (fn-node-prepare node (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a)
+                    (fn-node-prepare node (nth 0 a) (nth 1 a) h (nth 3 a)
                                      (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a)))))
   :hints (("Goal" :cases ((natp (fn-record-stamp-of-observation clock)))
            :in-theory (e/d (fn-peer-transfer)
@@ -72,7 +74,7 @@
                         (fn-peer-decide-transfer node cfg peer msgid octets clock
                                                  id subject))
                        :want))
-           (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject))
+           (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject h))
                   node))
   :hints (("Goal" :in-theory (e/d (fn-peer-transfer)
                                   (fn-peer-decide-transfer
@@ -90,12 +92,12 @@
                         (fn-peer-decide-transfer node cfg peer msgid octets clock
                                                  id subject))
                        :want)
-                (not (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject))
+                (not (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject h))
                             node)))
            (equal (fn-pending-groups
                    (fn-state-pending
                     (fn-node-acceptance
-                     (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject)))))
+                     (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject h)))))
                   (nth 3 (fn-peer-injection-arguments node cfg peer msgid octets generation id subject clock))))
   :hints (("Goal" :in-theory (e/d (fn-peer-transfer)
                                   (fn-peer-decide-transfer
@@ -107,8 +109,7 @@
                                                 node cfg peer msgid octets generation id subject clock)))
                             (msgid (nth 1 (fn-peer-injection-arguments
                                            node cfg peer msgid octets generation id subject clock)))
-                            (payload (nth 2 (fn-peer-injection-arguments
-                                             node cfg peer msgid octets generation id subject clock)))
+                            (payload h)
                             (groups (nth 3 (fn-peer-injection-arguments
                                             node cfg peer msgid octets generation id subject clock)))
                             (obligation-id (nth 4 (fn-peer-injection-arguments
@@ -208,7 +209,7 @@
             (fn-af-path-field-value
              (fn-article-result-article (fn-article-parse octets)))
             (fn-peer-local-identity cfg))
-           (and (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject))
+           (and (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject h))
                        node)
                 (member-equal (fn-peer-decision-kind
                                (fn-peer-decide-transfer node cfg peer msgid octets
@@ -264,7 +265,7 @@
 
 (defthm fn-peer-history-is-refused-at-transfer
   (implies (fn-peer-history-hasp (fn-record-octets-string msgid) node)
-           (and (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject))
+           (and (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock generation id subject h))
                        node)
                 (member-equal (fn-peer-decision-kind
                                (fn-peer-decide-transfer node cfg peer msgid octets
@@ -296,7 +297,7 @@
                 (consp (fn-node-find-binding msgid (fn-node-bindings node))))
            (fn-peer-history-hasp
             msgid
-            (mv-nth 0 (fn-peer-transfer node cfg peer m octets clock generation id subject))))
+            (mv-nth 0 (fn-peer-transfer node cfg peer m octets clock generation id subject h))))
   :hints (("Goal" :in-theory (e/d (fn-peer-transfer fn-peer-history-hasp)
                                   (fn-node-prepare fn-peer-decide-transfer
                                    fn-peer-injection-arguments
@@ -464,6 +465,78 @@
          (fn-peer-relayed-octets cfg peer octets))
   :hints (("Goal" :in-theory (e/d (fn-peer-injection-arguments)
                                   (fn-peer-relayed-octets)))))
+
+; -----------------------------------------------------------------------------
+; THE TRANSIT ENTRY over the arena (records-flip).  The acceptance state
+; holds the staged article's payload as a handle; the entry stages the
+; handle the arena hands out next and seals the stored octets only when the
+; node staged.
+
+(local
+ (defthm fn-peer-node-prepare-stages-the-payload
+   (implies (not (equal (fn-node-prepare s generation msgid payload groups
+                                         obligation-id subject evidence charge stamp)
+                        s))
+            (equal (fn-pending-payload
+                    (fn-state-pending
+                     (fn-node-acceptance
+                      (fn-node-prepare s generation msgid payload groups
+                                       obligation-id subject evidence charge stamp))))
+                   payload))
+   :hints (("Goal" :in-theory (enable fn-node-prepare fn-accept-prepare)))))
+
+(local
+ (defthm fn-peer-transfer-changed-stages-h
+   (implies (not (equal (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock
+                                                    generation id subject h))
+                        node))
+            (equal (fn-pending-payload
+                    (fn-state-pending
+                     (fn-node-acceptance
+                      (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock
+                                                  generation id subject h)))))
+                   h))
+   :hints (("Goal" :in-theory (e/d (fn-peer-transfer)
+                                   (fn-peer-decide-transfer fn-node-prepare
+                                    fn-peer-injection-arguments))))))
+
+; KEYSTONE (the transit entry): the entry's node is the transfer's at the
+; arena's next handle; when it staged, the staged article's handle reads
+; back, in the entry's arena, exactly the octets the relaying agent stores
+; (fn-peer-relayed-octets of what the peer sent: RFC 5537 section 3.6), and
+; the arena is the old one with those octets sealed once.
+(defthm fn-peer-transfer-interned-stores-the-relayed-octets
+  (let* ((r (fn-peer-transfer-interned node cfg peer msgid octets clock generation id
+                                       subject fn-arena))
+         (next (mv-nth 0 r))
+         (arena2 (mv-nth 2 r)))
+    (and (equal next (mv-nth 0 (fn-peer-transfer node cfg peer msgid octets clock
+                                                 generation id subject
+                                                 (fn-arena-count fn-arena))))
+         (equal (mv-nth 1 r)
+                (mv-nth 1 (fn-peer-transfer node cfg peer msgid octets clock
+                                            generation id subject
+                                            (fn-arena-count fn-arena))))
+         (implies (not (equal next node))
+                  (and (equal (fn-arena-payload
+                               (fn-pending-payload
+                                (fn-state-pending (fn-node-acceptance next)))
+                               arena2)
+                              (fn-peer-relayed-octets cfg peer octets))
+                       (equal arena2 (fn-arena-seal-list
+                                      (fn-peer-relayed-octets cfg peer octets)
+                                      fn-arena))))
+         (implies (equal next node)
+                  (equal arena2 fn-arena))))
+  ; An enabled rule of the peer vocabulary sends the rewriter into a search
+  ; that never returns on the opened entry, so the proof names its rules.
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-peer-transfer-interned
+                                fn-peer-injection-arguments-payload-unfolds
+                                fn-arena-seal-new-handle)
+                              (theory 'minimal-theory))
+           :use ((:instance fn-peer-transfer-changed-stages-h
+                  (h (fn-arena-count fn-arena)))))))
 
 ; Removing every Path and Xref field from what arrived and from what is
 ; stored leaves the same octets: every other header, in order, the blank

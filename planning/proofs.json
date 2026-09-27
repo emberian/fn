@@ -1154,7 +1154,9 @@
         "books/store-node-invariants.lisp",
         "tests/acl2/store-node-composite-index-tests.lisp",
         "planning/evidence/store-composite-index-t4-2026-09-23.md",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "books/store-intern.lisp",
+        "books/stx-lace-rows.lisp"
       ],
       "planning_note": "Stated in specs/substrate-transport.md section 6 against definitions that do not exist yet; no ACL2 event, and the teeth named there ship with the theorem.",
       "note": "`books/stx-index` CERTIFIES (w10/substrate-2). The three agreements `fn-stx-index-bindings-agree`, `fn-stx-index-slots-agree` and `fn-stx-index-equivocators-agree` are the keystones; `fn-stx-index-agrees-with-lace` is their `:rule-classes nil` corollary and is cited as such, and `fn-stx-recorded-equivocation-agrees-with-lace` is a corollary of that. THE SUBJECT GAP IS CLOSED IN BOTH HALVES (w11/sn-index, decision D21). Preservation: `fn-stx-index-invariant-preserved-by-accept` hypothesises `fn-stx-acceptedp`, which `fn-stx-durable-completion-is-an-acceptance` proves of the durable branch of `fn-node-complete`, and `fn-sn-finish-preserves-indexedp` (books/store-node-invariants) is that keystone applied at `fn-sn-finish`, the only node step of the host's `fn-store-sn-finish`. Query: `fn-sn-state` carries the index and the keyring it was computed under as two new fields; `fn-sn-statement-lookup` and `fn-sn-equivocatorp` read the index and nothing else; `host/store-node-host.lisp` `fn-store-sn-statement` and `fn-store-sn-equivocator` call them on the `'fn-store-sn` global, reachable from outside as `run_store.py statement`; and `fn-sn-statement-lookup-is-the-lace-lookup` and `fn-sn-equivocatorp-is-the-lace-equivocator` equate the called function to the projection. Their hypothesis `fn-sn-indexedp` is discharged by a complete reachability chain over every transition that reaches an `f-put-global` of that global. WHY THIS IS NOT YET `certified`: (a) `fn-stx-index-slots-agree` still has no caller -- no served query walks the slot list; (b) A-CRYPTO stands behind every verification, and the only witnesses are under the toy realiser of `tests/acl2/crypto-seam-tests`; (c) the keyring is supplied per invocation and is not carried in the durable configuration history, so a restart forgets it; and (d) `fn-stx-transit-authority-ok` (books/stx-policy) still walks the whole lace per article on the ADMISSION path and has no caller, so D3 is answered at the query and not at admission. Witnesses: `tests/acl2/store-node-index-tests`, a real run of the store transitions from `fn-sn-initial` to `fn-sn-finish` with a signed `FN-Statement` article, with the same run under the empty keyring as the separating witness and a stale-index tooth. Route: planning/lanes/HANDOFF-w11-sn-index.md. CLOSED 2026-09-23 (T4): `fn-sn-finish-preserves-indexedp` no longer excludes the accepted-statement arm. Local replay lemmas establish that a non-nil composite replay from a valid idle node installs exactly one article, its payload equals the decoded composite payload, and `fn-sn-composite-delta` is that article's statement delta; `fn-sn-completion-enabledp` discharges the replay/idle premises. The host-called finish therefore preserves the carried index through retention, neutral identity, accepted composite identity, and ordinary durable acceptance. A reached composite acceptance with a nonempty statement index and a stale-index must-fail tooth are in tests/acl2/store-node-composite-index-tests. The source-book certificate and the pending test certificate are recorded in planning/evidence/store-composite-index-t4-2026-09-23.md.",
@@ -1167,7 +1169,8 @@
         "fn-sn-finish-preserves-indexedp",
         "fn-sn-statement-lookup-is-the-lace-lookup",
         "fn-sn-equivocatorp-is-the-lace-equivocator"
-      ]
+      ],
+      "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the two served-query keystones are RESTATED over alpha in books/store-intern.lisp: fn-store-statement-lookup-is-the-lace-lookup and fn-store-equivocatorp-is-the-lace-equivocator (hypotheses: fn-sn-indexedp s and fn-rows-contexts-okp of fn-sn-indexed-rows s under the store's keyring): fn-sn-statement-lookup / fn-sn-equivocatorp (the functions host/store-node-host.lisp fn-store-sn-statement / fn-store-sn-equivocator call) answer as the lace of fn-rows-articles-newest-first of the indexed rows, their bytes read through the arena. They replace fn-sn-statement-lookup-is-the-lace-lookup and fn-sn-equivocatorp-is-the-lace-equivocator, stated over the node's article bytes, which carry handles after the flip. The index is the fold of the retained rows' contexts (fn-sn-indexedp over fn-sn-index-of-rows, preserved by every transition in books/store-node-invariants.lisp) and that fold is the wire index of the rows' bytes (fn-rows-index-is-the-wire-index, under fn-rows-contexts-okp, which fn-intern-events-contexts-okp establishes at the intern). OPEN: teeth for the two restated keystones need a reachable composite store over an arena (the fixture of tests/acl2/store-node-composite-index-tests.lisp rebuilt through fn-store-prepare-interned); that the keyring installation keeps fn-rows-contexts-okp (fn-store-set-keyring recontexts through fn-contexts-of-rows) is stated there, not yet as a theorem over fn-sn-indexed-rows."
     },
     {
       "id": "PRF-024",
@@ -3681,7 +3684,7 @@
     {
       "id": "PRF-084",
       "title": "Control authority requires a verified principal and a covering grant; a withdrawal record is decided once and serves no view that holds its cancel",
-      "statement": "fn-ctl-authorize-requires-verified-verdict: an :execute from fn-ctl-authorize VERDICT VERB GROUPS ROWS (books/control-authority.lisp) has verdict token :verified with a 32-octet principal. fn-ctl-authorize-requires-a-covering-grant: under :execute, for every GROUP of GROUPS, fn-ctl-covering-row is a member of ROWS whose principal is the verified one, whose verb is VERB and whose namespace pattern covers GROUP. fn-cfg-grant-control-admissible-iff: fn-cfg-delta-reason admits (fn-cfg-grant-control NS P VERB) iff NS is a namespace pattern, P 64 lowercase hex characters and VERB is cancel. fn-ctl-revoke-changes-decisions-not-records: when every cancel entry's txid is below the first appended configuration record's, fn-ctl-journal-withdrawals ENTRIES (append CONFIGS MORE) equals fn-ctl-journal-withdrawals ENTRIES CONFIGS. fn-ctl-cancel-executes-only-for-author-or-authority: a withdrawing fn-ctl-withdrawal-effect W T-GROUPS T-VERDICT means the target's verdict names W's principal, or W's scope is nonempty and covers every one of the nonempty T-GROUPS. fn-ctl-target-is-never-visible-beside-its-cancel: an article targeted by a record of WS whose cause is among ARTICLES and whose effect withdraws is not in fn-ctl-visible-articles ARTICLES WS VERDICTS. fn-ctl-pinned-view-keeps-its-archive: a record whose cause is absent from ARTICLES leaves the visible articles unchanged. fn-ctl-visible-is-arrival-order-independent: (T C . REST) and (C T . REST) serve the same articles. fn-hsig-signed-control-record-lists-its-filing-group: fn-hsig-carried-record-metadatap SOURCE RECEIVED RECORD (books/hybrid-store.lisp; a conjunct of the schema-1 and carried replay bindings replay's identity step calls, and required by the native constructor fn-hsig-authorized-carried-submission-event-base that host/native/hybrid-control.lisp and host/native/owner.lisp reach) with SOURCE classified (:control VERB ARGS) implies the record lists exactly (fn-ctl-filing-group VERB). fn-hsig-malformed-control-binds-no-record: a source classified :malformed binds no record. fn-ctl-visible-add-is-visible and fn-ctl-visible-extend-is-visible (books/control-visible.lisp): when the carried list equals fn-ctl-visible-articles OLD WS VERDICTS, the incremental list after one new article (resp. a batch DELTA) equals fn-ctl-visible-articles of (A . OLD) (resp. (append DELTA OLD)); an ordinary article costs one pass over WS, an executed cancel one pass over the visible list. fn-ctl-refresh-visible-is-visible (books/control-visible.lisp; called by fn-own-refresh, books/owner.lisp, which every owner step at an idle store runs): when the carried visible list equals fn-ctl-visible-articles OLD WS OLD-VERDICTS and NEW has distinct Message-IDs, fn-ctl-refresh-visible NEW OLD OLD-VISIBLE WS2 OLD-VERDICTS VERDICTS equals fn-ctl-visible-articles NEW WS2 VERDICTS, WS2 being fn-ctl-refresh-withdrawals NEW OLD WS VERDICTS RECORDS CONFIGS (the records fn-ctl-withdrawal-plan decides for each cancel or superseding article the refresh first publishes, under fn-ctl-config-at of that article's own acceptance-record txid in the Store records RECORDS over the configuration journal CONFIGS). fn-ctl-articles-withdrawals-is-the-journal: the rebuild the refresh runs at a discontinuity (start, reopen) equals fn-ctl-journal-withdrawals over the archive's entries (TXID CAUSE VERDICT TARGET). fn-ctl-refresh-withdrawals-is-the-journal (called by fn-own-refresh with the Store's records and fn-sn-config-history): when the carried records are the journal of the old archive under the old Store records R0, verdicts V0 and configuration journal C0, every withdrawing article of the old archive has its acceptance record in R0, the verdicts grew by at most one pair for a Message-ID outside the old archive, and the configuration records appended since carry txids above every old entry, the refresh's records over the grown inputs are the journal of the new archive under them: the live decision is recovery's. fn-ctl-withdrawal-plan-record-is-bound: a record names its cause, its target (a cancel argument or a Supersedes field, fn-ctl-article-target), the verified principal, the principal's cancel grants and the generation. fn-ctl-visible-state-statep: the visible state of an acceptance state is one. Supporting (not registry events; teeth are the owner tests' relation witnesses): fn-own-refresh-preserves-relation and fn-own-conn-serves-a-projection (books/owner-invariants.lisp), the restated K1 holds after every refresh; the committed view's archive is fn-ctl-visible-state of its prefix under the records and verdicts it carries, and a connection's archive is that prefix's state with a subsequence of its articles. Covered scope: the served view and every connection pinned after a withdrawing article's refresh, records decided at each article's own txid live and at recovery alike, Supersedes under the cancel's rules. Served answers (control-c3e; subject fn-nntp-archive-command-pinned, books/nntp.lisp, reached from fn-own-read through fn-served-step and fn-served-dispatch; the control pin is the fourth slot of the group pin, the owner connection's fn-own-conn-control set from fn-own-view-control at open and advance): fn-nntp-423-withdrawn-is-a-withdrawn-holder, when the pin's withdrawn list is fn-ctl-withdrawn-articles RAW WS VERDICTS, a `423 withdrawn' answer names an article of RAW holding the number that the view does not serve and the pinned archive holds nothing at that number; fn-nntp-withdrawn-holder-answers-423-withdrawn, the converse for ARTICLE/HEAD/BODY/STAT with one number argument and a selected group; fn-nntp-430-withdrawn-is-a-withdrawn-article and fn-nntp-withdrawn-article-answers-430-withdrawn, the same by Message-ID under the pinned trie's correspondence with the archive; fn-nntp-hdr-fn-control-is-the-status, `HDR :fn-control <msgid>' answers one line whose item is fn-ctl-control-item of fn-ctl-control-status (the kernel, over the trie by fn-ctl-served-status-is-control-status) of the article with that Message-ID, served or withdrawn, or 430, or 503 when the item would not be a clean field; fn-nntp-hdr-fn-control-executed-means-withdrawn, an executed status names a target RAW holds and the view does not serve, withdrawn by the record the article caused. fn-own-read-archive-command-is-the-pinned-dispatcher (books/owner-control-read.lisp; host line host/owner-host.lisp fn-owner-chunk): one read framing one archive command line answers that dispatcher's reply over the connection's archive, trie, buckets and control pin whenever the reply offers no article; fn-own-related-conn-control: under fn-own-relation a connection's control pin has W = fn-ctl-withdrawn-articles of its pinned prefix under the pinned records and its archive serves that prefix's visible list (fn-own-control-okp in fn-own-conn-okp; the view carries W = fn-ctl-subseq-diff of its raw and visible lists, refreshed by fn-ctl-refresh-withdrawn). Kernel (books/control-served.lisp): fn-ctl-refresh-withdrawn-is-withdrawn (now for any RAW), fn-ctl-number-withdrawn-is-a-withdrawn-holder, fn-ctl-msgid-withdrawn-is-a-withdrawn-article, fn-ctl-executed-status-means-withdrawn, fn-ctl-owed-status-means-not-held. Not covered: the owner-level lift has no teeth book yet (no reachable owner witness nor must-fail per hypothesis for fn-own-read-archive-command-is-the-pinned-dispatcher); the owner relation does not carry the journal equality nor the configuration-txid fact it rests on (records appended later have larger txids); the txid lookup walks the Store records (no Message-ID-to-txid index); a view with an empty group index pins no control, so it answers the plain 423/430 (a view serving no article).",
+      "statement": "fn-ctl-authorize-requires-verified-verdict: an :execute from fn-ctl-authorize VERDICT VERB GROUPS ROWS (books/control-authority.lisp) has verdict token :verified with a 32-octet principal. fn-ctl-authorize-requires-a-covering-grant: under :execute, for every GROUP of GROUPS, fn-ctl-covering-row is a member of ROWS whose principal is the verified one, whose verb is VERB and whose namespace pattern covers GROUP. fn-cfg-grant-control-admissible-iff: fn-cfg-delta-reason admits (fn-cfg-grant-control NS P VERB) iff NS is a namespace pattern, P 64 lowercase hex characters and VERB is cancel. fn-ctl-revoke-changes-decisions-not-records: when every cancel entry's txid is below the first appended configuration record's, fn-ctl-journal-withdrawals ENTRIES (append CONFIGS MORE) equals fn-ctl-journal-withdrawals ENTRIES CONFIGS. fn-ctl-cancel-executes-only-for-author-or-authority: a withdrawing fn-ctl-withdrawal-effect W T-GROUPS T-VERDICT means the target's verdict names W's principal, or W's scope is nonempty and covers every one of the nonempty T-GROUPS. fn-ctl-target-is-never-visible-beside-its-cancel: an article targeted by a record of WS whose cause is among ARTICLES and whose effect withdraws is not in fn-ctl-visible-articles ARTICLES WS VERDICTS. fn-ctl-pinned-view-keeps-its-archive: a record whose cause is absent from ARTICLES leaves the visible articles unchanged. fn-ctl-visible-is-arrival-order-independent: (T C . REST) and (C T . REST) serve the same articles. fn-hsig-signed-control-record-lists-its-filing-group: fn-hsig-carried-record-metadatap SOURCE RECEIVED RECORD (books/hybrid-store.lisp; a conjunct of the schema-1 and carried replay bindings replay's identity step calls, and required by the native constructor fn-hsig-authorized-carried-submission-event-base that host/native/hybrid-control.lisp and host/native/owner.lisp reach) with SOURCE classified (:control VERB ARGS) implies the record lists exactly (fn-ctl-filing-group VERB). fn-hsig-malformed-control-binds-no-record: a source classified :malformed binds no record. fn-ctl-visible-add-is-visible and fn-ctl-visible-extend-is-visible (books/control-visible.lisp): when the carried list equals fn-ctl-visible-articles OLD WS VERDICTS, the incremental list after one new article (resp. a batch DELTA) equals fn-ctl-visible-articles of (A . OLD) (resp. (append DELTA OLD)); an ordinary article costs one pass over WS, an executed cancel one pass over the visible list. fn-ctl-refresh-visible-is-visible (books/control-visible.lisp; called by fn-own-refresh, books/owner.lisp, which every owner step at an idle store runs): when the carried visible list equals fn-ctl-visible-articles OLD WS OLD-VERDICTS and NEW has distinct Message-IDs, fn-ctl-refresh-visible NEW OLD OLD-VISIBLE WS2 OLD-VERDICTS VERDICTS equals fn-ctl-visible-articles NEW WS2 VERDICTS, WS2 being fn-ctl-refresh-withdrawals NEW OLD WS VERDICTS RECORDS CONFIGS (the records fn-ctl-withdrawal-plan decides for each cancel or superseding article the refresh first publishes, under fn-ctl-config-at of that article's own acceptance-record txid in the Store records RECORDS over the configuration journal CONFIGS). fn-ctl-articles-withdrawals-is-the-journal: the rebuild the refresh runs at a discontinuity (start, reopen) equals fn-ctl-journal-withdrawals over the archive's entries (TXID CAUSE VERDICT TARGET). fn-ctl-refresh-withdrawals-is-the-journal (called by fn-own-refresh with the Store's records and fn-sn-config-history): when the carried records are the journal of the old archive under the old Store records R0, verdicts V0 and configuration journal C0, every withdrawing article of the old archive has its acceptance record in R0, the verdicts grew by at most one pair for a Message-ID outside the old archive, and the configuration records appended since carry txids above every old entry, the refresh's records over the grown inputs are the journal of the new archive under them: the live decision is recovery's. fn-ctl-withdrawal-plan-record-is-bound: a record names its cause, its target (a cancel argument or a Supersedes field, fn-ctl-article-target), the verified principal, the principal's cancel grants and the generation. fn-ctl-visible-state-statep: the visible state of an acceptance state is one. Supporting (not registry events; teeth are the owner tests' relation witnesses): fn-own-refresh-preserves-relation and fn-own-conn-serves-a-projection (books/owner-invariants.lisp), the restated K1 holds after every refresh; the committed view's archive is fn-ctl-visible-state of its prefix under the records and verdicts it carries, and a connection's archive is that prefix's state with a subsequence of its articles. Covered scope: the served view and every connection pinned after a withdrawing article's refresh, records decided at each article's own txid live and at recovery alike, Supersedes under the cancel's rules. Served answers (control-c3e; subject fn-nntp-archive-command-pinned, books/nntp.lisp, reached from fn-own-read through fn-served-step and fn-served-dispatch; the control pin is the fourth slot of the group pin, the owner connection's fn-own-conn-control set from fn-own-view-control at open and advance): fn-nntp-423-withdrawn-is-a-withdrawn-holder, when the pin's withdrawn list is fn-ctl-withdrawn-articles RAW WS VERDICTS, a `423 withdrawn' answer names an article of RAW holding the number that the view does not serve and the pinned archive holds nothing at that number; fn-nntp-withdrawn-holder-answers-423-withdrawn, the converse for ARTICLE/HEAD/BODY/STAT with one number argument and a selected group; fn-nntp-430-withdrawn-is-a-withdrawn-article and fn-nntp-withdrawn-article-answers-430-withdrawn, the same by Message-ID under the pinned trie's correspondence with the archive; fn-nntp-hdr-fn-control-is-the-status, `HDR :fn-control <msgid>' answers one line whose item is fn-ctl-control-item of fn-ctl-control-status (the kernel, over the trie by fn-ctl-served-status-is-control-status) of the article with that Message-ID, served or withdrawn, or 430, or 503 when the item would not be a clean field; fn-nntp-hdr-fn-control-executed-means-withdrawn, an executed status names a target RAW holds and the view does not serve, withdrawn by the record the article caused. fn-own-read-archive-command-is-the-pinned-dispatcher (books/owner-control-read.lisp; host line host/owner-host.lisp fn-owner-chunk): one read framing one archive command line answers that dispatcher's reply over the connection's archive, trie, buckets and control pin whenever the reply offers no article; fn-own-related-conn-control: under fn-own-relation a connection's control pin has W = fn-ctl-withdrawn-articles of its pinned prefix under the pinned records and its archive serves that prefix's visible list (fn-own-control-okp in fn-own-conn-okp; the view carries W = fn-ctl-subseq-diff of its raw and visible lists, refreshed by fn-ctl-refresh-withdrawn). Kernel (books/control-served.lisp): fn-ctl-refresh-withdrawn-is-withdrawn (now for any RAW), fn-ctl-number-withdrawn-is-a-withdrawn-holder, fn-ctl-msgid-withdrawn-is-a-withdrawn-article, fn-ctl-executed-status-means-withdrawn, fn-ctl-owed-status-means-not-held. Not covered: the owner-level lift has no teeth book yet (no reachable owner witness nor must-fail per hypothesis for fn-own-read-archive-command-is-the-pinned-dispatcher); the owner relation does not carry the journal equality nor the configuration-txid fact it rests on (records appended later have larger txids); the txid lookup walks the Store records (no Message-ID-to-txid index); a view with an empty group index pins no control, so it answers the plain 423/430 (a view serving no article). PKT-575 (PRF-256): fn-ctl-cancel-executes-only-for-author-or-authority gains the disjunct `the record's principal is :node` (the operator's withdrawal).",
       "milestone": "M3",
       "requirements": [
         "NNT-011"
@@ -3886,7 +3889,7 @@
         "planning/evidence/manifests/certify-20260926T093114Z-1141563.json",
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
       ],
-      "progress_note": "Open: the identity prepare (host fn-owner-prepare-identity) still goes through the unverified fn-ocfg-step and fn-sn-prepare-identity, whose fn-sf-prepare-record replays the whole appended history (fn-sf-history-recoverablep); the article path's correspondence (fn-spc-related-candidate-is-recoverable) has no identity analog yet. fn-replay-apply-record and fn-replay-identity-step still recognize the composite and decode its record on the gate and again on the finish. UPDATED 2026-09-26 (PRF-144, lane signed-history-index): the identity prepare no longer replays the appended history; fn-ccar-sn-prepare-identity stages through fn-spc-stage-record and equals fn-sn-prepare-identity under fn-snt-relation.",
+      "progress_note": "Open: the identity prepare (host fn-owner-prepare-identity) still goes through the unverified fn-ocfg-step and fn-sn-prepare-identity, whose fn-sf-prepare-record replays the whole appended history (fn-sf-history-recoverablep); the article path's correspondence (fn-spc-related-candidate-is-recoverable) has no identity analog yet. fn-replay-apply-record and fn-replay-identity-step still recognize the composite and decode its record on the gate and again on the finish. UPDATED 2026-09-26 (PRF-144, lane signed-history-index): the identity prepare no longer replays the appended history; fn-ccar-sn-prepare-identity stages through fn-spc-stage-record and equals fn-sn-prepare-identity under fn-snt-relation. RECORDS FLIP (2026-09-27, flip-L1): the class-by-shape readings are over the RETAINED vocabulary: an article row is fn-held-p and an accepted statement row fn-hstxa-p (fn-evc-class-by-shape-is-fn-held-p, -is-fn-hstxa-p); the wire kinds fn-record-p and fn-stxa-p are the codec domain (fn-wire-event-p) and never a retained event.",
       "events": [
         "fn-evc-field-by-shape-is-store-event-sequence",
         "fn-evc-field-by-shape-is-store-event-txid",
@@ -5813,7 +5816,7 @@
         "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
       ],
-      "progress_note": "Lane capacity-vector (2026-09-26). The disk component is an environmental assumption (the observed free octets are not owned; a failed write is refused or uncertain, never torn). The history-level equality of the record debt with the ledger's :forward pin count is proved per transition, not over replay. Producers outside PRF-123/126 (the signed composite, peer-carried records) meet their kind's ceiling by their codec, a premise here.",
+      "progress_note": "Lane capacity-vector (2026-09-26). The disk component is an environmental assumption (the observed free octets are not owned; a failed write is refused or uncertain, never torn). The history-level equality of the record debt with the ledger's :forward pin count is proved per transition, not over replay. Producers outside PRF-123/126 (the signed composite, peer-carried records) meet their kind's ceiling by their codec, a premise here. RECORDS FLIP (2026-09-27, flip-L1): the vector's per-record octet measure is fn-sbud-row-octets (what the row stores) in fn-cvec-record-admittedp, fn-cvec-history-admittedp and fn-cvec-record-keeps-the-vector, so it stays the measure fn-sbud-record-octets sums; on a wire event it is the encoding (fn-sbud-row-octets-of-wire-row). OPEN (found here, not changed): the article arm is unreachable after the flip: fn-store-event-kind answers :article only of a fn-held-p row while the arm asks fn-record-p, so no article is admitted by the model; restate the arm over the held row (facts octets, groups) against fn-sbud-article-figure.",
       "events": [
         "fn-cvec-admitted-history-keeps-the-vector",
         "fn-cvec-admitted-history-from-init",
@@ -6808,7 +6811,9 @@
         "host/owner-host.lisp",
         "planning/evidence/hot-path-scans-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T124600Z-1898145.json",
-        "planning/evidence/manifests/certify-20260926T125431Z-1984974.json"
+        "planning/evidence/manifests/certify-20260926T125431Z-1984974.json",
+        "books/store-budget-stored.lisp",
+        "tests/acl2/store-budget-stored-tests.lisp"
       ],
       "events": [
         "fn-cei-count-of-correspondence",
@@ -6822,7 +6827,8 @@
         "fn-scf-debt-carried-is-the-record-debt",
         "fn-scf-tally-advance-is-the-suffix-fold",
         "fn-scf-usage-carried-is-the-projection"
-      ]
+      ],
+      "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the record octets count a retained row by what it STORES (fn-sbud-row-octets, books/store-budget.lisp): a held article row its facts' octets, a composite row its wire composite's encoding, any other row its encoding (fn-sbud-row-octets-of-wire-row). Before this the wire encoder alone counted every held row as 0 octets against the history bound. books/store-budget-stored.lisp: under fn-sbud-rows-extents-okp (each held row's facts octets are its handle's extent in the arena) fn-sbud-record-octets is fn-sbud-stored-octets, the sum of the stored payloads' lengths (fn-sbud-record-octets-is-the-stored-octets); the open's intern establishes the relation (fn-intern-events-extents-okp) and the composed statement is fn-intern-events-budget-octets-are-the-stored-octets. Teeth: tests/acl2/store-budget-stored-tests.lisp (reachable open of two records: 8 octets where the pre-flip count was 0; a corrupted held row whose facts claim 7 for an extent of 3). OPEN: that the POST's prepare (fn-store-prepare-interned) keeps fn-sbud-rows-extents-okp over the growing history is not yet a theorem. The history bound H now bounds stored payload octets for held rows, not their wire record length (the record's metadata is not counted)."
     },
     {
       "id": "PRF-184",
@@ -7033,7 +7039,7 @@
     {
       "id": "PRF-191",
       "title": "A POST's three Message-ID tests do not walk the history: the held-article lookup and the acceptance machine's duplicate test read the owner's view Message-ID trie, and the retention admission is decided once, each equal to the reference under the two carried view relations",
-      "statement": "Subjects, called by host/owner-host.lisp (both from host/native/owner.lisp fnn-owner-attempt): fn-pidx-existing-action (books/post-identity-index.lisp) from fn-owner-existing-action-buffer and fn-owner-prepare-buffer; fn-pidx-sbud-prepare from fn-owner-prepare-buffer. fn-pidx-find-article answers fn-find-article MSGID ARTS from the view's trie (fn-mxc-lookup of fn-own-view-index) when MSGID is a non-empty string, ARTS is EQUAL to the view's raw list (one pointer comparison after fn-own-refresh) and no withdrawal record targets MSGID (fn-pidx-targetedp); otherwise it scans. KEYSTONE fn-pidx-find-article-is-find-article: under fn-ocl-view-visiblep (the visible list is fn-ctl-visible-articles of the raw list) and fn-midx-correspondencep of the trie to the visible list, the lookup equals fn-find-article for every Message-ID and every article list (fn-pidx-find-in-visible-is-find: an untargeted Message-ID is found alike in the visible list and the list it filters). KEYSTONE fn-pidx-existing-action-is-rclb-existing-action: under fn-ocl-view-visiblep of the owner's view and fn-scar-view-indexedp of the owner, the host's call equals fn-rclb-existing-action over (fn-own-store o), hence the tombstone-aware verdict (fn-rclb-existing-action-is-rcl-existing-action). KEYSTONE fn-pidx-sbud-prepare-is-pcar-sbud-prepare: under the same two relations of (fn-ocfg-owner oc), fn-pidx-sbud-prepare equals fn-pcar-sbud-prepare for every record and budget, hence fn-sbud-prepare (fn-pcar-sbud-prepare-is-sbud-prepare); the chain fn-pidx-opc-prepare / -opc-owner-prepare / -spc-prepare / -sn-prepare-node / -node-prepare / -accept-prepare replaces fn-acceptedp by the view lookup and builds the admitted retention ledger in the branch where fn-retain-admissiblep has just held (fn-retain-admit's body there) instead of deciding it again. Both relations are carried: fn-ocl-view-visiblep by fn-ocl-relation (fn-ocl-view-historyp-is-visible), fn-scar-view-indexedp by every owner transition the host installs (books/owner-offer-indexed.lisp; fn-osi-pidx-prepare-keeps-view-indexed for the new prepare); fn-pidx-view-okp-of-live-owner discharges the prepare chain's guard premise from them. books/owner-store-indexed.lisp's host-step model names fn-pidx-sbud-prepare in a :prepare-buffer arm, kept by fn-osi-pidx-prepare-keeps-indexed with no hypothesis, so PRF-144's fn-osi-live-owner-store-is-indexed still describes the host. Every function is guard-verified; the lookup and the buffer decision under guard t, each prepare twin under its reference's guard, the chain the host enters also under fn-pidx-view-okp. Teeth: tests/acl2/post-identity-index-tests.lisp (the reachable owner-prepare-carried-tests owner *pcar-t-o*: a held and a fresh Message-ID through the trie; a constructed targeting record sends the lookup to the scan; :duplicate/:conflict/nil on a live local buffer; the submission's own and a fresh record stage, a record under the held Message-ID with an admissible obligation is refused by the duplicate test; the staged ledger is fn-retain-admit's; per keystone and hypothesis a CORRUPTED view (the fake article on the visible side only, or in the trie only) with each retained hypothesis asserted, the omitted one failing, the conclusion failing, and a must-fail); tests/acl2/owner-store-indexed-tests.lisp (the host's open satisfies fn-pidx-view-okp and the lookup answers the signed composite's article). Not covered: the first retention admissibility scan (fn-retain-known-id-scanp over the pins, keyed by obligation id, which no carried index answers: PKT-549).",
+      "statement": "Subjects, called by host/owner-host.lisp (both from host/native/owner.lisp fnn-owner-attempt): fn-pidx-existing-action (books/post-identity-index.lisp) from fn-owner-existing-action-buffer and fn-owner-prepare-buffer; fn-pidx-sbud-prepare from fn-owner-prepare-buffer. fn-pidx-find-article answers fn-find-article MSGID ARTS from the view's trie (fn-mxc-lookup of fn-own-view-index) when MSGID is a non-empty string, ARTS is EQUAL to the view's raw list (one pointer comparison after fn-own-refresh) and no withdrawal record targets MSGID (fn-pidx-targetedp); otherwise it scans. KEYSTONE fn-pidx-find-article-is-find-article: under fn-ocl-view-visiblep (the visible list is fn-ctl-visible-articles of the raw list) and fn-midx-correspondencep of the trie to the visible list, the lookup equals fn-find-article for every Message-ID and every article list (fn-pidx-find-in-visible-is-find: an untargeted Message-ID is found alike in the visible list and the list it filters). KEYSTONE fn-pidx-existing-action-is-rclb-existing-action: under fn-ocl-view-visiblep of the owner's view and fn-scar-view-indexedp of the owner, the host's call equals fn-rclb-existing-action over (fn-own-store o), hence the tombstone-aware verdict (fn-rclb-existing-action-is-rcl-existing-action). KEYSTONE fn-pidx-sbud-prepare-is-pcar-sbud-prepare: under the same two relations of (fn-ocfg-owner oc) and (PRF-242, the budget test reads the event index's count) fn-ceis-indexedp of its Store, fn-pidx-sbud-prepare equals fn-pcar-sbud-prepare for every record and budget, hence fn-sbud-prepare (fn-pcar-sbud-prepare-is-sbud-prepare); the chain fn-pidx-opc-prepare / -opc-owner-prepare / -spc-prepare / -sn-prepare-node / -node-prepare / -accept-prepare replaces fn-acceptedp by the view lookup and builds the admitted retention ledger in the branch where fn-retain-admissiblep has just held (fn-retain-admit's body there) instead of deciding it again. Both relations are carried: fn-ocl-view-visiblep by fn-ocl-relation (fn-ocl-view-historyp-is-visible), fn-scar-view-indexedp by every owner transition the host installs (books/owner-offer-indexed.lisp; fn-osi-pidx-prepare-keeps-view-indexed for the new prepare); fn-pidx-view-okp-of-live-owner discharges the prepare chain's guard premise from them. books/owner-store-indexed.lisp's host-step model names fn-pidx-sbud-prepare in a :prepare-buffer arm, kept by fn-osi-pidx-prepare-keeps-indexed with no hypothesis, so PRF-144's fn-osi-live-owner-store-is-indexed still describes the host. Every function is guard-verified; the lookup and the buffer decision under guard t, each prepare twin under its reference's guard, the chain the host enters also under fn-pidx-view-okp. Teeth: tests/acl2/post-identity-index-tests.lisp (the reachable owner-prepare-carried-tests owner *pcar-t-o*: a held and a fresh Message-ID through the trie; a constructed targeting record sends the lookup to the scan; :duplicate/:conflict/nil on a live local buffer; the submission's own and a fresh record stage, a record under the held Message-ID with an admissible obligation is refused by the duplicate test; the staged ledger is fn-retain-admit's; per keystone and hypothesis a CORRUPTED view (the fake article on the visible side only, or in the trie only) with each retained hypothesis asserted, the omitted one failing, the conclusion failing, and a must-fail); tests/acl2/owner-store-indexed-tests.lisp (the host's open satisfies fn-pidx-view-okp and the lookup answers the signed composite's article). Not covered: the first retention admissibility scan (fn-retain-known-id-scanp over the pins, keyed by obligation id, which no carried index answers: PKT-549).",
       "milestone": "M5",
       "requirements": [
         "HST-001"
@@ -8273,7 +8279,7 @@
     {
       "id": "PRF-210",
       "title": "A cancel's authority is exactly a granted signed canceller or the poster: an unsigned cancel or Supersedes withdraws its target exactly when one of its RFC 8315 Cancel-Key entries opens one of the target's sha256 Cancel-Locks; the octets the owner stores for an account's POST carry exactly one Cancel-Lock keyed by that account under an HKDF purpose key, outside the D25 source",
-      "statement": "Withdrawal (unchanged): over fn-ctl-refresh-withdrawals / fn-ctl-journal-withdrawals, the record of a cause withdraws a target exactly when the cause names another target and either a verified principal P signed it or P's grants cover its groups, or no principal is verified and a Cancel-Key K of the cause has Base64(SHA-256(K)) among the target's sha256 Cancel-Locks (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster; fn-ctl-verified-cause-ignores-its-keys). Stored octets: books/owner-served-invariants.lisp fn-own-sub-stored-octets CFG SUB RING (host/owner-host.lisp fn-owner-take; the completion gate compares the same function): for a served submission by account A (fn-own-sub-account, recorded by fn-own-finish-read from the session subject) with a key ring installed (fn-ns-ringp), unsigned and with no poster Cancel-Lock, the stored octets are `Cancel-Lock: sha256:Base64(SHA-256(K))` CRLF, then on a cancel `Cancel-Key:` with one key per retained epoch, then the injected octets unchanged, K = Base64(HMAC-SHA256(key, hex(A) || MSGID)) with key the HKDF-SHA256 purpose key of the current epoch (info fn/cancel-lock/v1, salt the node identity) (fn-own-stored-octets-carry-the-account-lock, fn-cl-served-payload-writes-one-account-lock). D25: the projection fn-cll-skip that books/poster-bytes.lisp reads both compared payloads through gives the injected octets for every ring and account (fn-own-stored-octets-keep-the-injected-octets, fn-cl-served-payload-projects-to-the-injected-octets, fn-cll-skip-of-the-generated-lines), so a same-source retry by any account or key epoch is :duplicate and a different source :conflict at fn-rcl-existing-action (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored, fn-cld-a-changed-source-is-a-conflict-whatever-the-account). Rotation: a cancel's keys open a lock made under any retained epoch (fn-cl-ring-keys-open-every-retained-lock). Exactly the account's key opens its lock up to the stated collision (fn-cl-account-key-opens-exactly-its-lock). Derivation: distinct info labels never expand the same HKDF input (fn-ns-expand-input-separates-info); the key file round-trips (fn-ns-file-parse-of-render). Not theorems: that the written line parses back as the entry (teeth on parsed stored octets); that another account's key opens nothing (a SHA-256 collision of two HMAC outputs under a key the forger does not hold, about 2^128 generic work); HMAC/HKDF pseudorandomness.",
+      "statement": "Withdrawal (unchanged): over fn-ctl-refresh-withdrawals / fn-ctl-journal-withdrawals, the record of a cause withdraws a target exactly when the cause names another target and either a verified principal P signed it or P's grants cover its groups, or no principal is verified and a Cancel-Key K of the cause has Base64(SHA-256(K)) among the target's sha256 Cancel-Locks (fn-ctl-withdrawal-authority-is-exactly-signer-or-poster; fn-ctl-verified-cause-ignores-its-keys). Stored octets: books/owner-served-invariants.lisp fn-own-sub-stored-octets CFG SUB RING (host/owner-host.lisp fn-owner-take; the completion gate compares the same function): for a served submission by account A (fn-own-sub-account, recorded by fn-own-finish-read from the session subject) with a key ring installed (fn-ns-ringp), unsigned and with no poster Cancel-Lock, the stored octets are `Cancel-Lock: sha256:Base64(SHA-256(K))` CRLF, then on a cancel `Cancel-Key:` with one key per retained epoch, then the injected octets unchanged, K = Base64(HMAC-SHA256(key, hex(A) || MSGID)) with key the HKDF-SHA256 purpose key of the current epoch (info fn/cancel-lock/v1, salt the node identity) (fn-own-stored-octets-carry-the-account-lock, fn-cl-served-payload-writes-one-account-lock). D25: the projection fn-cll-skip that books/poster-bytes.lisp reads both compared payloads through gives the injected octets for every ring and account (fn-own-stored-octets-keep-the-injected-octets, fn-cl-served-payload-projects-to-the-injected-octets, fn-cll-skip-of-the-generated-lines), so a same-source retry by any account or key epoch is :duplicate and a different source :conflict at fn-rcl-existing-action (fn-cld-a-retry-by-any-account-or-epoch-is-already-stored, fn-cld-a-changed-source-is-a-conflict-whatever-the-account). Rotation: a cancel's keys open a lock made under any retained epoch (fn-cl-ring-keys-open-every-retained-lock). Exactly the account's key opens its lock up to the stated collision (fn-cl-account-key-opens-exactly-its-lock). Derivation: distinct info labels never expand the same HKDF input (fn-ns-expand-input-separates-info); the key file round-trips (fn-ns-file-parse-of-render). Not theorems: that the written line parses back as the entry (teeth on parsed stored octets); that another account's key opens nothing (a SHA-256 collision of two HMAC outputs under a key the forger does not hold, about 2^128 generic work); HMAC/HKDF pseudorandomness. PKT-575 (PRF-256): the plan's first arm is the node's own authority (fn-ctl-node-authorizesp: a configuration row (CAUSE TARGET REASON 1) the operator wrote), and the keystone's right side is `the node authorizes CAUSE for TARGET, or` the signer/poster condition; the effect answers :node for such a record.",
       "milestone": "M4",
       "requirements": [
         "SEC-006"
@@ -8655,13 +8661,14 @@
     {
       "id": "PRF-228",
       "title": "A moderated group: an unapproved article is never visible in it, a moderator's approved article is, and an Approved field from anyone else is refused by name",
-      "statement": "fn-cfg-set-group-moderation-sets-the-moderation (books/config-invariants.lisp, KEYSTONE): an admitted (fn-cfg-set-group-moderation NAME QUEUE ADDRESS LOGINS) (code 23, `group moderate`) applied by fn-cfg-apply-delta makes fn-cfg-group-moderation of NAME (QUEUE ADDRESS LOGINS), or nil for --off, and leaves every other group's unchanged. Over fn-post-gated-decision, the served POST's decision (books/nntp-post.lisp, called by fn-nntp-post-step; host line host/reader-host.lisp fn-reader-chunk through books/served.lisp): fn-post-unapproved-article-is-never-in-a-moderated-group (KEYSTONE): an ordinary article with no Approved field is never committed with a group whose status in the connection's configuration is moderated (it is forwarded as an RFC 5537 section 3.5.1 method-1 envelope into the queue group, or refused :moderation-unavailable); fn-post-moderator-approved-article-is-committed (KEYSTONE): with Approved and every named moderated group :approver on the connection, the decision is the injection's (committed into the moderated groups); fn-post-forged-approval-is-refused-by-name (KEYSTONE): with Approved and some named moderated group not :approver, the decision is the refusal :approval-not-moderator (441 by name). fn-mod-session-entries-approver-iff-moderator (books/moderation.lisp): on the owner-installed status list (no :approver entries), a connection's view marks group G :approver exactly when its login is one of G's moderators (books/nntp-auth.lisp fn-auth-moderation-config, called by fn-auth-delegate and fn-auth-delegate-pinned). fn-post-submission-is-the-decision-or-its-envelope with fn-mod-envelope-msgid-is-not-a-generated-id keep fn-post-distinct-injection-clocks-give-distinct-identities unconditional. Relay: fn-peer-transfer-never-stages-an-unapproved-moderated-article (books/peer-inbound-invariants.lisp, KEYSTONE) over fn-peer-transfer, the owner's transit port: a transfer that changes the node stages the article in a group moderated under the configuration only when the article carries Approved (fn-peer-decide-transfer's :unapproved-moderated refusal; RFC 5537 sections 3.6 item 6, 3.7 item 5). Queue privacy (PKT-658): fn-own-submission-targets-of-a-queue-by-definition and fn-own-feed-durable-never-enqueues-a-queue (books/owner-feed-subject.lisp, KEYSTONES) over fn-own-submission-targets and fn-own-feed-durable (host fn-owner-submission-intent and the outcomes): a submission naming a moderation queue group of the owner's posting configuration has no target and leaves the feed table unchanged; fn-auth-view-hides-the-queue-from-a-non-moderator (books/nntp-auth.lisp, KEYSTONE) over fn-auth-view-archive, the store fn-auth-delegate-pinned serves: for a projected reader connection whose login moderates none of the groups a queue serves (or has not authenticated), the view holds neither the queue group nor an article filed in it (group-access's READ rule with the queue hidden, fn-gac-readablep's :hide form; fn-mod-hidden-queues). The operator's `moderation list GROUP` (PKT-657) renders the queue's envelopes held/approved/rejected (books/control-evidence.lisp fn-cev-moderation-report; FNLS frame kind 3 code 10); approve/reject verbs are not built.",
+      "statement": "fn-cfg-set-group-moderation-sets-the-moderation (books/config-invariants.lisp, KEYSTONE): an admitted (fn-cfg-set-group-moderation NAME QUEUE ADDRESS LOGINS) (code 23, `group moderate`) applied by fn-cfg-apply-delta makes fn-cfg-group-moderation of NAME (QUEUE ADDRESS LOGINS), or nil for --off, and leaves every other group's unchanged. Over fn-post-gated-decision, the served POST's decision (books/nntp-post.lisp, called by fn-nntp-post-step; host line host/reader-host.lisp fn-reader-chunk through books/served.lisp): fn-post-unapproved-article-is-never-in-a-moderated-group (KEYSTONE): an ordinary article with no Approved field is never committed with a group whose status in the connection's configuration is moderated (it is forwarded as an RFC 5537 section 3.5.1 method-1 envelope into the queue group, or refused :moderation-unavailable); fn-post-moderator-approved-article-is-committed (KEYSTONE): with Approved and every named moderated group :approver on the connection, the decision is the injection's (committed into the moderated groups); fn-post-forged-approval-is-refused-by-name (KEYSTONE): with Approved and some named moderated group not :approver, the decision is the refusal :approval-not-moderator (441 by name). fn-mod-session-entries-approver-iff-moderator (books/moderation.lisp): on the owner-installed status list (no :approver entries), a connection's view marks group G :approver exactly when its login is one of G's moderators (books/nntp-auth.lisp fn-auth-moderation-config, called by fn-auth-delegate and fn-auth-delegate-pinned). fn-post-submission-is-the-decision-or-its-envelope with fn-mod-envelope-msgid-is-not-a-generated-id keep fn-post-distinct-injection-clocks-give-distinct-identities unconditional. Relay: fn-peer-transfer-never-stages-an-unapproved-moderated-article (books/peer-inbound-invariants.lisp, KEYSTONE) over fn-peer-transfer, the owner's transit port: a transfer that changes the node stages the article in a group moderated under the configuration only when the article carries Approved (fn-peer-decide-transfer's :unapproved-moderated refusal; RFC 5537 sections 3.6 item 6, 3.7 item 5). Queue privacy (PKT-658): fn-own-submission-targets-of-a-queue-by-definition and fn-own-feed-durable-never-enqueues-a-queue (books/owner-feed-subject.lisp, KEYSTONES) over fn-own-submission-targets and fn-own-feed-durable (host fn-owner-submission-intent and the outcomes): a submission naming a moderation queue group of the owner's posting configuration has no target and leaves the feed table unchanged; fn-auth-view-hides-the-queue-from-a-non-moderator (books/nntp-auth.lisp, KEYSTONE) over fn-auth-view-archive, the store fn-auth-delegate-pinned serves: for a projected reader connection whose login moderates none of the groups a queue serves (or has not authenticated), the view holds neither the queue group nor an article filed in it (group-access's READ rule with the queue hidden, fn-gac-readablep's :hide form; fn-mod-hidden-queues). The operator's `moderation list GROUP` (PKT-657) renders the queue's envelopes held/approved/rejected (books/control-evidence.lisp fn-cev-moderation-report; FNLS frame kind 3 code 10); The operator's verbs (PKT-657, books/moderation-verbs.lisp, host host/owner-host.lisp fn-owner-moderation-plan calling fn-mvb-plan, fn-mvb-plan-unfolds): fn-mvb-approve-commits-the-held-article-approved (KEYSTONE) over fn-mvb-approve: a planned submission has LOGIN a moderator of a group the envelope queues for, the envelope held, the octets the envelope's proto-article with `Approved: LOGIN` first, fn-post-gated-decision under LOGIN's moderation view injecting them under the planned Message-ID and groups, and the operator path (fn-own-operator-decision, the (:operator-submit ...) event the host steps) injecting them too; fn-mvb-only-a-moderator-approves-or-rejects (KEYSTONE): a LOGIN that moderates no group the envelope queues for gets a refusal from approve and reject (:not-a-moderator by name when the envelope exists); fn-mvb-reject-withdraws-the-held-envelope (KEYSTONE): a planned rejection is the node's withdrawal (PRF-256) of exactly the held envelope.",
       "milestone": "M4",
       "requirements": [
         "NNT-047"
       ],
       "depends_on": [
-        "PRF-196"
+        "PRF-196",
+        "PRF-256"
       ],
       "assumptions": [],
       "status": "uncertified-at-current-digest",
@@ -8689,7 +8696,10 @@
         "books/control-evidence-grammar.lisp",
         "books/native-operator.lisp",
         "tests/acl2/peer-inbound-tests.lisp",
-        "tests/acl2/owner-tests.lisp"
+        "tests/acl2/owner-tests.lisp",
+        "books/moderation-verbs.lisp",
+        "tests/acl2/moderation-verbs-tests.lisp",
+        "planning/evidence/moderation-verbs-2026-09-27.md"
       ],
       "events": [
         "fn-cfg-set-group-moderation-sets-the-moderation",
@@ -9045,6 +9055,386 @@
         "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
       "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): REPL-admitted and certified with certify_books.py --incremental on persvati; no host caller yet."
+    },
+    {
+      "id": "PRF-252",
+      "title": "A consumer wait answers exactly the consumer's poll at the moment it returns: a refusal or an event at once, the empty page only at its deadline; it sleeps only on an empty page, and waiters are bounded by name",
+      "statement": "books/consumer-wait.lisp and books/consumer-wait-codec.lisp. Subjects: fn-cwait-step and fn-cwait-admit (host/owner-host.lisp fn-owner-consumer-local-wait-step / -wait-admit, called under the owner mutex by host/native/owner.lisp fnn-owner-consumer-local-wait for local-control codes 9 and 10, which sleeps between steps on the owner's commit signal fnn-owner-signal-commit, raised by fnn-owner-publish-prepared after each durable publication and by a stop); fn-cwait-request-encode / -decode and fn-cwait-cli-plan (host/native-control-host.lisp fn-native-control-host-consumer-request-encode / -decode / -cli-plan). The poll a step runs is fn-cwait-poll: fn-cbind-poll for a bound wait, fn-cbind-plain-poll for a plain one (PRF-234). KEYSTONES: fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page (a step answers exactly the poll, or sleeps only on an accepted empty page before the deadline for a positive time ending at the deadline; an empty answer only at or after the deadline; every step at or after the deadline answers; a non-empty answer is never slept over); fn-cwait-run-answers-the-poll-at-its-return-point and fn-cwait-run-sleeps-only-over-empty-pages (the loop over the observed owner states: the answer is the poll of the state it returned in, an empty answer only at the deadline, and every earlier observation an empty page before the deadline); fn-cwait-admit-leaves-workers-free (an admitted wait leaves at least four of the sixteen control workers free; past the capacity of 12 a wait is refused :waiters); fn-cwait-wait-request-roundtrip and fn-cwait-bound-wait-request-roundtrip (the wire), fn-cwait-request-decode-of-another-code-is-the-consumer-decode and fn-cwait-cli-plan-of-another-command-is-the-consumer-plan (every other request and command is the consumer codec's, unchanged). Local policy; no RFC requirement.",
+      "milestone": "M4",
+      "requirements": [
+        "CNS-007"
+      ],
+      "depends_on": [
+        "PRF-116",
+        "PRF-234"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/consumer-wait.lisp",
+        "books/consumer-wait-codec.lisp",
+        "tests/acl2/consumer-wait-tests.lisp",
+        "tests/acl2/consumer-wait-codec-tests.lisp",
+        "tests/test_native_agent_wait.py",
+        "planning/evidence/agent-wait-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T062924Z-487302.json",
+        "planning/evidence/manifests/certify-20260927T063806Z-601723.json",
+        "planning/evidence/agent-wait-2026-09-27/native-a2-test_native_agent_wait.log"
+      ],
+      "events": [
+        "fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page",
+        "fn-cwait-run-answers-the-poll-at-its-return-point",
+        "fn-cwait-run-sleeps-only-over-empty-pages",
+        "fn-cwait-admit-leaves-workers-free",
+        "fn-cwait-wait-request-roundtrip",
+        "fn-cwait-bound-wait-request-roundtrip",
+        "fn-cwait-request-decode-of-another-code-is-the-consumer-decode",
+        "fn-cwait-cli-plan-of-another-command-is-the-consumer-plan"
+      ]
+    },
+    {
+      "id": "PRF-242",
+      "title": "The open's replay answers its known-id and accepted tests from tries it builds as it advances, and the history recognizer reads each record's kind once, each equal to the reference; a POST's budget test reads the event index's carried count",
+      "statement": "Subjects, called by the host: fn-rii-sco-extend (books/replay-identity-index.lisp) from host/store-node-host.lisp fn-store-sn-recover and fn-store-sn-recover-from-checkpoint and host/owner-host.lisp fn-owner-recover and fn-owner-recover-from-checkpoint; fn-rii-classified-open from host/store-node-host.lisp fn-store-sn-open-extended; fn-pidx-sbud-prepare (books/post-identity-index.lisp) from host/owner-host.lisp fn-owner-prepare-buffer. (1) The open's replay fold carries IX, a pair of tries beside the configured node: a Message-ID trie EQUAL to fn-midx-build of the node's articles and an obligation-id trie that holds exactly the ledger's known ids for every string (fn-rii-known-okp, a guard-verified defun-sk); fn-rii-okp is the pair. fn-rii-acceptedp-is-acceptedp, fn-rii-admissiblep-is-admissiblep, fn-rii-node-prepare-is-node-prepare, fn-rii-apply-retention-event-is-apply-retention-event, fn-rii-apply-record-is-apply-record and fn-rii-cpr-apply-event-is-cpr-apply-event: under fn-rii-okp each twin equals its reference. fn-rii-ix-next-keeps-okp: the tries after a step (Message-ID trie by fn-midx-refresh; id trie kept when the ledger is unchanged or the step was a release, one id added when the step consed one pin, else rebuilt) are related to the new node, given the relation before and, for a release event, that the new node is the replay's step (fn-rii-release-step-keeps-known: a replayed release keeps what the ledger knows). fn-rii-okp-of-ix-of: the tries built from any node are related to it. KEYSTONE fn-rii-sco-cpr-prefix-is-sco-cpr-prefix: under fn-rii-okp of the starting node the carried fold equals fn-sco-cpr-prefix for every configuration and event history; fn-rii-sco-cpr-resume-is-sco-cpr-resume (no hypothesis: the resume builds the tries from the paused node); KEYSTONE fn-rii-sco-extend-is-sco-extend: (fn-rii-sco-extend c configs suffix) = (fn-sco-extend c configs suffix), no hypothesis. (2) fn-rii-event-fields-are-the-dispatchers: one dispatch answers fn-store-event-p, -sequence, -txid and -generation; fn-rii-sf-record-listp-is-sf-record-listp, fn-rii-sf-statep-is-sf-statep, fn-rii-sn-statep-is-sn-statep, fn-rii-observed-historyp-is-observed-historyp, fn-rii-sco-finalize-from-is-sco-finalize-from, fn-rii-sco-store-open-is-sco-store-open, KEYSTONE fn-rii-classified-open-is-classified-open: (fn-rii-classified-open e configs frontier) = (fn-sopc-classified-open e configs frontier), no hypothesis. (3) fn-pidx-sbud-prepare's budget test reads fn-sbud-count (the event index's carried count); fn-pidx-sbud-prepare-is-pcar-sbud-prepare gains the hypothesis fn-ceis-indexedp of the owner's Store (fn-sbud-count-is-used), which every owner the host reaches carries (PRF-144 fn-osi-live-owner-store-is-indexed). Every function is guard-verified. Teeth: tests/acl2/replay-identity-index-tests.lisp (a mixed history: undertaking, release, two configuration records, two articles; both host paths; each identity refusal decided alike; corrupted tries holding a fake Message-ID or a fake id make the twin refuse the article the scan admits, for the step, the configured step and the fold; the release condition removed by a node that is not the release's step; the relation removed with a fake id kept), tests/acl2/post-identity-index-tests.lisp (a Store whose event index claims 100 records refuses at budget 100 where the reference stages).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025",
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-144",
+        "PRF-180",
+        "PRF-191",
+        "PRF-199"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/replay-identity-index.lisp",
+        "tests/acl2/replay-identity-index-tests.lisp",
+        "books/post-identity-index.lisp",
+        "tests/acl2/post-identity-index-tests.lisp",
+        "books/owner-store-indexed.lisp",
+        "host/store-node-host.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/replay-identity-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T025737Z-2413991.json",
+        "planning/evidence/manifests/certify-20260927T045015Z-3559746.json"
+      ],
+      "progress_note": "Lane replay-identity (2026-09-27): REPL-admitted on persvati (every form of both books and both test books); certified by persvati farm run run-20260927T025618Z-b42a (certify-20260927T025737Z-2413991: the two books, owner-store-indexed and their four test books plus store-carried-folds-tests, passed; owner-store-indexed 10.7 s of which 6.7 s is its include of owner-offer-indexed, no event over 0.4 s); hbox certified the two books again for the image. The book's header comment then changed (a citation): persvati run run-20260927T044936Z-d99b certified books/replay-identity-index and its tests at the final bytes (certify-20260927T045015Z-3559746).",
+      "events": [
+        "fn-rii-sco-extend-is-sco-extend",
+        "fn-rii-classified-open-is-classified-open",
+        "fn-rii-sco-cpr-prefix-is-sco-cpr-prefix",
+        "fn-rii-sco-cpr-resume-is-sco-cpr-resume",
+        "fn-rii-ix-next-keeps-okp",
+        "fn-rii-okp-of-ix-of",
+        "fn-rii-release-step-keeps-known",
+        "fn-rii-apply-record-is-apply-record",
+        "fn-rii-cpr-apply-event-is-cpr-apply-event",
+        "fn-rii-node-prepare-is-node-prepare",
+        "fn-rii-acceptedp-is-acceptedp",
+        "fn-rii-admissiblep-is-admissiblep",
+        "fn-rii-event-fields-are-the-dispatchers",
+        "fn-rii-sf-record-listp-is-sf-record-listp",
+        "fn-rii-sco-finalize-from-is-sco-finalize-from",
+        "fn-sbud-count-is-used",
+        "fn-pidx-sbud-prepare-is-pcar-sbud-prepare"
+      ]
+    },
+    {
+      "id": "PRF-244",
+      "title": "A crash of a batch's one aligned append scans to the committed records and a prefix of the batch, or a forgery the crypto-trailer assumption excludes (T2)",
+      "statement": "books/store-log-crash.lisp (design 2026-09-27-storage-log section 5.1 T2). fn-lg-tear-write-is-pieces: fn-bs-tear-write of (:write ino (* k unit) w) at unit index i equals the per-unit piece list fn-lg-pieces at offset k*unit + i*unit over (nthcdr (* i unit) w). fn-bs-crash-of-aligned-append (the shift lemma): for (posp (fn-bs-unit s)), a true-list d with (len d) = k*unit, durable content of ino = (append d z) and the pending list exactly ((:write ino (len d) w)), every crash image's content of ino is (append d (fn-lg-apply-to z (fn-lg-pieces ino 0 w sels unit))) with sels the image's selectors. fn-lg-batch-tear-is-a-prefix: for (fn-frame-digestp prev), (fn-lg-recordsp batch max), a zero region z (fn-lg-zerosp: the preallocated extent) at least as long as (fn-lg-log batch prev unit), the scan of any tear of that log over z is a prefix P of batch with consumed count (len (fn-lg-log P prev unit)) (fn-lg-prefix-verdictp), or fn-lg-forgery-in: the first damaged entry's slice validates as a chained frame that is not the written one. fn-lg-batch-crash-is-a-prefix: over the store, when the durable prefix d scans completely to COMMITTED ending on LAST, every crash image scans to COMMITTED ++ a prefix of the batch with the frontier past exactly that prefix's log (fn-lg-crash-verdictp), or the forgery. fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer: with fn-lg-platform-tears-p (each entry's observed slice is fn-assume-crash-tearp of its frame, A-CRYPTO-TRAILER) the forgery disjunct goes (fn-lg-no-forgery-under-a-crypto-trailer, from fn-assume-crash-tear-never-validates-unless-exact). The pessimistic figure is SHA-256's collision figure, about 2^-128 per chosen pair. Scope: the store's pending list is the log's one write (other inodes' pending operations are not in the hypothesis; PKT-682).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "STO-005",
+        "STO-022"
+      ],
+      "depends_on": [
+        "PRF-246"
+      ],
+      "assumptions": [
+        "A-CRYPTO-TRAILER"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-crash.lisp",
+        "planning/evidence/w6-log-core-2026-09-27.md",
+        "planning/design-2026-09-27-storage-log.md",
+        "tests/acl2/store-log-programs-tests.lisp"
+      ],
+      "progress_note": "Lane w6-log-core (Opus 5.5, 2026-09-27): REPL-admitted on hbox, certified on persvati (the record names the manifest). Teeth are the prototype's ground tears (tests/acl2/store-log-tests.lisp, PRF-216); the batch-level ground witnesses and the must-fail per hypothesis are open (PKT-682). Lane w6-log-core-3: T2's hypothesis-removal witnesses in tests/acl2/store-log-programs-tests.lisp (the reachable all-landed witness; removal of the scan of D, Z zeros, the one-write pending list, the crash image: each refutes the conclusion). The removals of the scan-last, digest, records, extent-length and alignment hypotheses are not refuted by a ground witness (a mis-chained batch scans to COMMITTED, which satisfies the verdict) and are not removed (no weakened theorem proved).",
+      "pending_subject": "Hosted by the developer and production images' fnn-log-* (host/native/io.lisp, the log verb); the owner's commit path does not call the log yet (lane w6-log-owner).",
+      "events": [
+        "fn-lg-tear-write-is-pieces",
+        "fn-bs-crash-of-aligned-append",
+        "fn-lg-batch-tear-is-a-prefix",
+        "fn-lg-batch-crash-is-a-prefix",
+        "fn-lg-no-forgery-under-a-crypto-trailer",
+        "fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer"
+      ]
+    },
+    {
+      "id": "PRF-245",
+      "title": "The log kernel's relation R to the segment is established by P-LOG-RECOVER (T3) and preserved by P-BATCH's steps, and every crash image of a related state scans to the committed records and a prefix of the batch in flight",
+      "statement": "books/store-log-kernel.lisp (design section 4). R = fn-lgk-relp: posp unit; ino in the inode table; fn-lgk-content-okp of the durable content c: c a true list and a whole number of units; the frontier f unit-aligned and within c; (fn-lg-scan (fn-bs-take f c) genesis unit max) = (committed . f) and its fn-lg-scan-last is LAST, a digest; (nthcdr f c) all zeros; the batch and the batch in flight are record lists; f plus the in-flight log's length within c; committed a true list; acked <= (len committed); and the pending list is exactly ((:write ino f (fn-lg-log inflight last unit))) when a batch is in flight, else empty. fn-lgk-append-preserves-relation: from R with nothing in flight, not faulted, the batch fitting the extent, the state after (fn-bs-write bs ino f (fn-lgk-append-octets ks unit) :ok) is related to (fn-lgk-append ks unit extent). fn-lgk-fence-preserves-relation: the state after (fn-bs-fsync-file bs ino :ok) is related to (fn-lgk-fence ks unit) (the batch committed, LAST its last trailer, the frontier past its log). fn-lgk-prepare-/finish-one-/known-abort-preserves-relation: the byte store unchanged. fn-lgk-crash-of-related-state-is-a-prefix: T2 (PRF-244) lifted to R. Establishment by P-LOG-RECOVER (T3) is open (PKT-682). books/store-log-recover.lisp (lane w6-log-core-2): fn-lg-recovered-frontier-is-the-last-complete-record (T3): for (posp unit), a true-list c whose length is a multiple of unit, the scan's consumed count f is within c and unit-aligned, and (fn-bs-take f c) scans to the same (records . f) and ends on the same trailer. fn-lgk-recover-establishes-relation: for (posp (fn-bs-unit bs)), ino in the inode table, its durable content c a true list and a whole number of units, (fn-frame-digestp genesis), no pending write of ino, and the owner obligation fn-assume-log-sole-pending-writer (a constrained function whose constraint is that no pending operation names another inode; lane w6-log-owner discharges it by functional instantiation), the store after (fn-bs-write bs ino f (fn-bs-zeros (- (len c) f)) :ok) then (fn-bs-fsync-file _ ino :ok) is R-related to (fn-lgk-recover c genesis unit max next-txid). fn-lg-scan-last-digestp: the scan ends on a digest. books/store-log-txid.lisp (lane w6-log-core-3, T5 of design section 5.1): fn-lgt-txid reads a record's txid through the codec (fn-record-decode-exact-impl); fn-lgt-okp: along committed ++ inflight ++ batch every record decodes and the txids strictly increase, each below next-txid. fn-lgt-prepare admits a record only when its txid is next-txid (else the state is unchanged); fn-lgt-recover sets next-txid to one past the largest scanned txid or the floor. fn-lgt-*-preserves-okp: prepare (checked), known-abort, append, fence, fence-failed, finish-one preserve fn-lgt-okp with no other hypothesis; fn-lgt-prepare-preserves-relation. fn-lg-txids-strictly-increase (T5): from R, fn-lgt-okp, a batch in flight, a crash image and fn-lg-platform-tears-p over the image past the frontier (A-CRYPTO-TRAILER), the kernel fn-lgt-recover of the image's content satisfies fn-lgt-okp: the durable txids strictly increase along the scan and the recovered next-txid exceeds each. Scope: the batch-in-flight case (the cuts with nothing in flight have no pending write). books/store-log-decode.lisp (lane w6-log-core-3, D27 representation boundary): fn-lg-decode, the executable scan over the segment read as a string (one header read and one range read per entry, tail-recursive, guard-verified with ec-call on the codec helpers of books/store-log.lisp), equals the logical scan with no hypothesis: fn-lg-decode-is-the-scan, (fn-lg-decode s prev unit max) = (mv (car scan) (cdr scan) (fn-lg-scan-last ...)) over (fn-lgd-octets s), the string's character codes. books/store-log-programs.lisp (lane w6-log-core-3): the log-local step language ((:write-at :segment :batch|:tail), (:fence :segment :batch|:tail), (:cut name)) and runner fn-lg-run over fn-bs-write / fn-bs-fsync-file and the kernel; the programs fn-lg-append-program (cut log-written), fn-lg-fence-program (log-fenced), fn-lg-recover-program (log-truncated, log-recovered), hosted by fnn-log-append / fnn-log-fence / fnn-log-recover. fn-lg-append-program-keeps-the-relation and fn-lg-fence-program-keeps-the-relation: from R alone every state of the run (outcomes :ok) is R-related (a refused append keeps the related state); fn-lg-append-program-appends: with nothing in flight, not faulted and the fit, the run reaches log-written at the kernel's append; fn-lg-recover-program-establishes-the-relation: the run from fn-lgt-recover of the durable content has four states and the last (log-recovered) is R-related, under the establishment's hypotheses. fn-lg-open-kernel-is-the-recovered-kernel (no hypothesis): the host's open kernel fn-lg-open-kernel (the decode of the segment string S) equals (fn-lgt-recover (fn-lgd-octets s) genesis unit max floor), the recovered kernel the recovery program's theorem names; fn-lg-append-admitsp is the admission the runner and fnn-log-append share; fn-lg-recover-tail gives the zeroing write's offset and count.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "STO-005",
+        "STO-022"
+      ],
+      "depends_on": [
+        "PRF-244",
+        "PRF-246"
+      ],
+      "assumptions": [
+        "A-CRYPTO-TRAILER"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-kernel.lisp",
+        "planning/evidence/w6-log-core-2026-09-27.md",
+        "books/store-log-recover.lisp",
+        "tests/acl2/store-log-kernel-tests.lisp",
+        "books/store-log-txid.lisp",
+        "tests/acl2/store-log-txid-tests.lisp",
+        "books/store-log-decode.lisp",
+        "tests/acl2/store-log-decode-tests.lisp",
+        "books/store-log-programs.lisp",
+        "tests/acl2/store-log-programs-tests.lisp"
+      ],
+      "progress_note": "Lane w6-log-core (Opus 5.5, 2026-09-27); lane w6-log-core-2 (Opus 5.5): D26 by proof work (kernel 82 s -> 7.6 s), T3 and the establishment, teeth in tests/acl2/store-log-kernel-tests.lisp (R established on a two-record log with a torn unit; one ground witness per removed hypothesis of the establishment and of T3's alignment; the served sequence prepare x3, append, fence, finishes related at each step; the append's fit removed; four crash images of the appended batch as explicit fn-bs-crash choices: all, none, the first entry, a hole in the second). The batch-level must-fail per hypothesis of T2 itself remains (PKT-682). Lane w6-log-core-3 (Opus 5.5): T5, fn-lg-decode, the log programs and runner, the host fnn-log-*, native tests.test_native_log OK on both images, the power-loss rig 250 cuts 0 violations (record section 8; manifests r6, r7).",
+      "pending_subject": "fnn-log-recover calls fn-lg-open-kernel and fn-lg-recover-tail, fnn-log-prepare fn-lgt-prepare, fnn-log-append fn-lg-append-admitsp / fn-lgk-append-octets / fn-lgk-append, fnn-log-fence fn-lgk-fence / fn-lgk-fence-failed, fnn-log-finish fn-lgk-finish-one (host/native/io.lisp, the log verb); the owner's commit path does not call them yet (lane w6-log-owner); fn-lgk-known-abort has no host caller.",
+      "events": [
+        "fn-lg-scan-of-complete-append",
+        "fn-lg-scan-last-of-complete-append",
+        "fn-lgk-append-preserves-relation",
+        "fn-lgk-fence-content",
+        "fn-lgk-fence-preserves-relation",
+        "fn-lgk-prepare-preserves-relation",
+        "fn-lgk-finish-one-preserves-relation",
+        "fn-lgk-known-abort-preserves-relation",
+        "fn-lgk-crash-of-related-state-is-a-prefix",
+        "fn-lg-scan-consumed-aligned",
+        "fn-lg-scan-consumed-within",
+        "fn-lg-scan-of-take-consumed",
+        "fn-lg-recovered-frontier-is-the-last-complete-record",
+        "fn-lg-scan-last-digestp",
+        "fn-lgk-recovered-content-okp",
+        "fn-lgk-recover-establishes-relation",
+        "fn-lg-txids-strictly-increase",
+        "fn-lgt-recovered-okp-of-verdict",
+        "fn-lgt-prepare-preserves-okp",
+        "fn-lgt-known-abort-preserves-okp",
+        "fn-lgt-append-preserves-okp",
+        "fn-lgt-fence-preserves-okp",
+        "fn-lgt-fence-failed-preserves-okp",
+        "fn-lgt-finish-one-preserves-okp",
+        "fn-lgt-prepare-preserves-relation",
+        "fn-lg-decode-is-the-scan",
+        "fn-lgd-loop-is-the-scan",
+        "fn-lg-append-program-keeps-the-relation",
+        "fn-lg-append-program-appends",
+        "fn-lg-fence-program-keeps-the-relation",
+        "fn-lg-recover-program-establishes-the-relation",
+        "fn-lg-open-kernel-is-the-recovered-kernel"
+      ]
+    },
+    {
+      "id": "PRF-253",
+      "title": "T1: an acknowledged member's record is read by the scan of every admissible crash image (owner batch over the record log)",
+      "statement": "books/owner-batch.lisp (design 2026-09-27-storage-log sections 3.3 and 5.1 T1; D33). The batch layer (:owb ks members inflight waiting acked) sits over the log kernel fn-lgk-* (books/store-log-kernel.lisp) and the catalog's token protocol (books/catalog-commit.lisp) and changes neither; fn-owb-alignedp: the open members' records are the kernel's batch, the in-flight members' records its batch in flight, acked ++ waiting's records its committed records and (len acked) its acked count. fn-owb-acknowledged-record-survives-crash: for an aligned layer st, R at the cut (fn-lgk-relp bs (fn-owb-ks st) ino genesis max, PRF-245), a member m of (fn-owb-acked st), an admissible crash image (fn-bs-crash-imagep bs image) and, when a batch is in flight, the tear of its pending write the platform's (fn-lg-platform-tears-p over the image past the frontier, A-CRYPTO-TRAILER), m's record is a member of (car (fn-lg-scan (fn-bs-durable-content image ino) genesis (fn-bs-unit bs) max)). By fn-owb-committed-record-survives-crash (the same for any record of the kernel's committed list), fn-owb-image-scan-of-related-state (with a batch in flight every admissible image's scan satisfies fn-lg-crash-verdictp: the committed records then a prefix of the batch, store-log-crash's corollary under the crypto trailer lifted to R) and fn-owb-scan-of-related-content (with nothing in flight the durable content scans to exactly (committed . frontier), and the related store is fenced on ino). The acknowledgement discipline is the layer's: fn-owb-finish-member acknowledges only the head of WAITING, which fn-owb-fence filled from the fenced batch, so ACKED's records are a prefix of the committed records. Scope: the log's one inode and the pending list the log's one write (R's conjunct, PKT-682 item 7); a member's record is the encoded store event, supplied by the host from fn-owner-pending-octets and computed nowhere else.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "STO-005",
+        "STO-033"
+      ],
+      "depends_on": [
+        "PRF-244",
+        "PRF-245"
+      ],
+      "assumptions": [
+        "A-CRYPTO-TRAILER"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-batch.lisp",
+        "tests/acl2/owner-batch-tests.lisp",
+        "planning/evidence/w6-log-owner-2026-09-27.md",
+        "planning/design-2026-09-27-storage-log.md"
+      ],
+      "progress_note": "Lane w6-log-owner (2026-09-27): admitted in the lane, not certified at this digest; the teeth (tests/acl2/owner-batch-tests.lisp: a ground batch acknowledged then crashed at the log cuts, the must-fail per hypothesis of T1) and the certification are the lane's continuation (PKT-748; SCN-174).",
+      "pending_subject": "No host line calls fn-owb-* yet: none yet (the owner commits through books/store-files.lisp's file kernel; PKT-698 is the decision to move the store node's article commit onto the catalog's PreparedCommit token and the log kernel before any host batching).",
+      "events": [
+        "fn-owb-scan-of-related-content",
+        "fn-owb-image-scan-of-related-state",
+        "fn-owb-committed-record-survives-crash",
+        "fn-owb-acknowledged-record-survives-crash"
+      ]
+    },
+    {
+      "id": "PRF-254",
+      "title": "T4: the batch of PreparedCommit tokens completes as the sequential token protocol; the batch bounds; the sole-pending-writer obligation discharged",
+      "statement": "books/owner-batch.lisp (design section 3.3, 5.1 T4; D33, D27). T4 fn-owb-batch-complete-is-the-sequential-complete: two members prepared as a batch against one catalog (fn-owb-cat-prepare, the second AHEAD of the first: fn-cat-intern of the buffer's bytes, EXPECTED the count the predecessor's complete leaves) and completed in order by token (fn-owb-complete-two: fn-cat-complete each) equal the sequential protocol prepare, complete, prepare, complete (fn-cat-prepare, fn-cat-complete): the same two deltas, the same catalog, the same arena, the count advanced by two. The step fn-owb-prepare-ahead-is-the-sequential-prepare: the token minted AHEAD of n pending completes over a catalog of count c is fn-cat-prepare's token over a catalog of count c + n; the fold over a longer batch is this step repeated, and fn-owb-cat-prepare with nothing ahead is fn-cat-prepare by definition. The content: fn-cat-intern reads no catalog state. The bounds (a work bound per scheduling step, D27): fn-owb-boundedp st unit bmax omax (at most bmax open members; the open batch's log, fn-owb-batch-octets over a fixed genesis digest, at most omax octets); fn-owb-take-, -append-, -fence-, -fence-failed-, -known-abort- and -finish-member-preserves-bounds with no other hypothesis; the keystone fn-owb-batch-within-bounds: a bounded layer's open batch is within both bounds and a take beyond either leaves the layer unchanged. bmax and omax are the operator's live configuration (fn-owb-bmax, fn-owb-omax: the :set-limit slots log-batch-records and log-batch-octets of books/config.lisp; an unset slot means 64 records and the batch buffer's size), not profile fields or kernel constants. Alignment with the kernel is carried by every transition (fn-owb-*-preserves-alignment). The discharge: fn-owb-sole-pending-writer bs ino (no pending operation names another inode) holds of every R-related store (fn-owb-related-state-is-the-sole-pending-writer), and fn-owb-recover-establishes-relation is store-log-recover's fn-lgk-recover-establishes-relation (PRF-245) functionally instantiated with it for the obligation fn-assume-log-sole-pending-writer: the store after zeroing the tail past the recovered frontier and fencing the segment is R-related to fn-lgk-recover of its content. Scope: T4 is stated for two members with the step theorem carrying the fold; the duplicate-within-batch tooth (441 for a repeated Message-ID) waits on the msgid index on the catalog path (PKT-748).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "STO-005",
+        "STO-033"
+      ],
+      "depends_on": [
+        "PRF-203",
+        "PRF-245"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-batch.lisp",
+        "tests/acl2/owner-batch-tests.lisp",
+        "planning/evidence/w6-log-owner-2026-09-27.md",
+        "planning/design-2026-09-27-storage-log.md"
+      ],
+      "progress_note": "Lane w6-log-owner (2026-09-27): admitted in the lane, not certified at this digest; the teeth (a ground batch of two completed both ways and compared; a take refused at each bound with the layer unchanged; the discharge on a two-record segment) and the certification are the lane's continuation (PKT-748).",
+      "pending_subject": "No host line calls fn-owb-* yet: none yet (the owner commits through books/store-files.lisp's file kernel; PKT-698 is the decision to move the store node's article commit onto the catalog's PreparedCommit token and the log kernel before any host batching).",
+      "events": [
+        "fn-owb-take-preserves-alignment",
+        "fn-owb-known-abort-preserves-alignment",
+        "fn-owb-append-preserves-alignment",
+        "fn-owb-fence-preserves-alignment",
+        "fn-owb-fence-failed-preserves-alignment",
+        "fn-owb-finish-member-preserves-alignment",
+        "fn-owb-take-preserves-bounds",
+        "fn-owb-append-preserves-bounds",
+        "fn-owb-fence-preserves-bounds",
+        "fn-owb-fence-failed-preserves-bounds",
+        "fn-owb-known-abort-preserves-bounds",
+        "fn-owb-finish-member-preserves-bounds",
+        "fn-owb-batch-within-bounds",
+        "fn-owb-related-state-is-the-sole-pending-writer",
+        "fn-owb-recover-establishes-relation",
+        "fn-owb-prepare-ahead-is-the-sequential-prepare",
+        "fn-owb-batch-complete-is-the-sequential-complete"
+      ]
+    },
+    {
+      "id": "PRF-255",
+      "title": "T7: a failed barrier leaves every member uncertain and recovery holds the committed records then a prefix of the batch",
+      "statement": "books/owner-batch.lisp (design section 3.3 Barrier and 5.1 T7; fsyncgate). fn-owb-uncertain-batch-recovers-to-a-prefix: for an aligned layer st with kernel ks, R at the cut (fn-lgk-relp bs ks ino genesis max), a batch in flight, the environment's admissible selection over the pending write (fn-bs-crash-choicesp choices (fn-bs-pending bs) (fn-bs-unit bs)) and the tear the platform's (fn-lg-platform-tears-p over the store the failed barrier left, past the frontier; A-CRYPTO-TRAILER): after fn-owb-fence-failed the kernel's phase is :fault, fn-owb-fault-words answers every member waiting or in flight :uncertain, fn-owb-finish-member acknowledges nothing, and the kernel recovered (fn-lgk-recover) from the durable content the failed barrier (fn-bs-fsync-file bs ino (cons :eio choices)) left holds the committed records followed by a prefix (fn-lg-prefixp) of the batch in flight. By fn-owb-fence-failed-answers-uncertain (the layer's half, for any true-list state), fn-owb-failed-fence-is-the-crash-image (when the pending list is the segment's one write, the store a failed fsync leaves is fn-bs-crash of the selection), fn-owb-failed-fence-image-is-admissible (that store is an admissible crash image, fn-bs-crash-imagep) and fn-owb-recovered-kernel-after-a-failed-fence (the kernel's half, from fn-owb-image-scan-of-related-state, PRF-253). Scope: the barrier's error path; the retry half (a member's later visibility join over the log, PRF-115) and the served fence of the store (STO-004's fn-sn machine) are the host's once the commit path moves onto the kernel (PKT-748, PKT-698).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "STO-004",
+        "STO-005",
+        "STO-033"
+      ],
+      "depends_on": [
+        "PRF-244",
+        "PRF-245",
+        "PRF-253"
+      ],
+      "assumptions": [
+        "A-CRYPTO-TRAILER"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-batch.lisp",
+        "tests/acl2/owner-batch-tests.lisp",
+        "planning/evidence/w6-log-owner-2026-09-27.md",
+        "planning/design-2026-09-27-storage-log.md"
+      ],
+      "progress_note": "Lane w6-log-owner (2026-09-27): admitted in the lane, not certified at this digest; the teeth (a batch of three whose barrier answers :eio under each admissible selection: the words, the refused finish, the recovered prefix; the must-fail per hypothesis) and the certification are the lane's continuation (PKT-748; SCN-170).",
+      "pending_subject": "No host line calls fn-owb-* yet: none yet (the owner commits through books/store-files.lisp's file kernel; PKT-698 is the decision to move the store node's article commit onto the catalog's PreparedCommit token and the log kernel before any host batching).",
+      "events": [
+        "fn-owb-failed-fence-is-the-crash-image",
+        "fn-owb-failed-fence-image-is-admissible",
+        "fn-owb-fence-failed-answers-uncertain",
+        "fn-owb-recovered-kernel-after-a-failed-fence",
+        "fn-owb-uncertain-batch-recovers-to-a-prefix"
+      ]
+    },
+    {
+      "id": "PRF-248",
+      "title": "The owner's scheduler bounds a control request's wait at three quanta, and a served reply rendered off the mutex in windows is the reply the served machine decided",
+      "statement": "fn-osch-control-waits-at-most-the-bound (books/owner-scheduler.lisp; keystone): for every cursor C and every sequence WS of waiting-count observations in which the control class has a waiter (fn-osch-control-waitsp), the quanta of other classes picked before the first control pick, fn-osch-control-delay, is at most *fn-osch-bound* = 3; the pick is fn-osch-pick of the cursor and the counts (fn-osch-next-is-the-pick), names a slot with a waiter (fn-osch-pick-has-a-waiter) and is nil exactly when nobody waits (fn-osch-pick-nil-iff-idle); the hold/wait fold adds one hold to exactly its class (fn-osch-observe-holds) and keeps a row's buckets summing to its holds (fn-osch-row-observe-keeps-okp). fn-splan-window-is-a-prefix-of-the-reply (books/served-plan.lisp; keystone, no hypothesis on the plan): one window of W octets into the buffer, read as fn-oct-slice-list [0, len), followed by what the continuation still owes (fn-splan-remaining) is what the plan owed, len is at most W, and under :ok a window of an unfinished plan writes at least one octet. fn-splan-windows-are-the-reply (keystone): once a plan built from EFFECTS is drained to done (fn-splan-donep), the concatenation of its windows, for any W and any number of windows, is (fn-served-reply-octets effects). fn-splan-step-plan-remaining: the step's plan owes the step's reply, then the completion, the redeem reply and the exposure close. fn-splan-window-size-is-positive-until-done: the window size ACL2 hands the host before each window (the remaining octets of the effect the window starts in; a materialized effect is rendered whole) is positive exactly while the plan is not done, so the host's window loop progresses.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-192",
+        "PRF-161"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-scheduler.lisp",
+        "books/served-plan.lisp",
+        "host/native-live-status-host.lisp",
+        "host/native/control.lisp",
+        "host/native/mux.lisp",
+        "host/native/owner.lisp",
+        "host/native/pull-service.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/owner-scheduler-2026-09-26.md",
+        "tests/acl2/owner-scheduler-tests.lisp",
+        "tests/acl2/served-plan-tests.lisp",
+        "tests/native_owner_chunk_loop_raw.lisp",
+        "tests/test_native_owner_scheduler.py"
+      ],
+      "progress_note": "Lane owner-scheduler (Fable 5.1, 2026-09-26/27; ember's priority 2, gpt-6 consolidation review section 7, PKT-321). Host lines: host/native/owner.lisp fnn-owner-gate-pick calls fn-osch-next at every release of the owner mutex and at every arrival at an idle owner; fnn-owner-gate-leave calls fn-osch-observe; host/owner-host.lisp fn-owner-chunk-span returns fn-splan-step-make; fnn-owner-handle-chunk calls fn-splan-step-plan; fnn-owner-render-next calls fn-splan-window off the mutex and fnn-owner-write-plan loops it until fn-splan-donep. Teeth: tests/acl2/owner-scheduler-tests.lisp (the delay from every cursor, the worst case 3; the must-fail with control absent for four picks: delay 4; the pick's facts; the fold's row invariant and its labelled mutation; the health lines as text) and tests/acl2/served-plan-tests.lisp (the ARTICLE-shaped reply drained in windows of 5 and of 100; a must-fail per hypothesis of the progress conjunct; the must-fail for keystone 2's done hypothesis; the :malformed status; the 3 MiB body in 64 KiB windows: 49 windows). A quantum is one bounded semantic step; the bound is in quanta.",
+      "events": [
+        "fn-osch-control-waits-at-most-the-bound",
+        "fn-osch-next-is-the-pick",
+        "fn-osch-pick-has-a-waiter",
+        "fn-osch-pick-nil-iff-idle",
+        "fn-osch-observe-holds",
+        "fn-osch-row-observe-keeps-okp",
+        "fn-splan-window-is-a-prefix-of-the-reply",
+        "fn-splan-windows-are-the-reply",
+        "fn-splan-step-plan-remaining",
+        "fn-splan-window-size-is-positive-until-done"
+      ]
+    },
+    {
+      "id": "PRF-256",
+      "title": "The node operator's withdrawal withdraws exactly its target, under a configuration record the operator wrote, from every view that holds its cause",
+      "statement": "fn-cfg-withdraw-article-authorizes-the-cause (books/config-invariants.lisp, KEYSTONE): an admitted (fn-cfg-withdraw-article CAUSE TARGET REASON) (code 26, `article withdraw-record`) applied by fn-cfg-apply-delta makes fn-cfg-withdrawal-target of CAUSE equal TARGET and leaves every other cause's unchanged. fn-ctl-node-withdrawal-withdraws-exactly-its-target (books/control-authority.lisp, KEYSTONE): when the configuration in force at the cause's txid authorizes CAUSE for TARGET (fn-ctl-node-authorizesp), fn-ctl-withdrawal-plan makes the record (:withdrawal TARGET CAUSE :node nil GEN) whatever the cause's verdict and keys, and an article is withdrawn by it within ARTICLES exactly when it is TARGET and CAUSE is among ARTICLES (the owner refresh fn-ctl-refresh-withdrawals, called by books/owner.lisp fn-own-refresh; a view pinned before the cause keeps TARGET). fn-ctl-withdrawal-authority-is-exactly-signer-or-poster and fn-ctl-cancel-executes-only-for-author-or-authority gain the node basis as a disjunct. fn-mvb-withdraw-names-exactly-its-target and fn-mvb-withdraw-makes-the-node-authorize-exactly-its-target (books/moderation-verbs.lisp, KEYSTONES) over fn-mvb-withdraw (host fn-owner-moderation-plan -> fn-mvb-plan; the host runs the named live-administration vector, then the operator submission of the cancel CAUSE): a planned withdrawal names a stored TARGET, CAUSE = <fn-withdraw. then TARGET after its <, the row's vector when no row exists (else the existing row names TARGET) and the cancel article `Control: cancel TARGET` under Message-ID CAUSE, which the operator decision (fn-own-operator-decision, the path the host submits through) injects; after the row the configuration authorizes CAUSE for exactly TARGET.",
+      "milestone": "M4",
+      "requirements": [
+        "NNT-011"
+      ],
+      "depends_on": [
+        "PRF-084",
+        "PRF-210"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config.lisp",
+        "books/config-invariants.lisp",
+        "books/control-authority.lisp",
+        "books/control-evidence.lisp",
+        "books/control-served.lisp",
+        "books/native-admin.lisp",
+        "books/native-control-reason.lisp",
+        "books/native-operator.lisp",
+        "books/moderation-verbs.lisp",
+        "tests/acl2/moderation-verbs-tests.lisp",
+        "tests/test_native_moderation.py",
+        "planning/evidence/moderation-verbs-2026-09-27.md"
+      ],
+      "events": [
+        "fn-cfg-withdraw-article-authorizes-the-cause",
+        "fn-cfg-withdrawal-row-of-row-upsert",
+        "fn-ctl-node-withdrawal-withdraws-exactly-its-target",
+        "fn-mvb-withdraw-names-exactly-its-target",
+        "fn-mvb-withdraw-makes-the-node-authorize-exactly-its-target",
+        "fn-mvb-plan-unfolds"
+      ]
     }
   ]
 }

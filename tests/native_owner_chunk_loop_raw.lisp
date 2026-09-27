@@ -3,10 +3,11 @@
 ;;; The served connection's life (host/native/mux.lisp: fnn-mux-begin,
 ;;; fnn-mux-readable, fnn-mux-work, fnn-mux-step, fnn-mux-queue, fnn-mux-flush,
 ;;; fnn-mux-after, fnn-mux-finish and the handlers of fnn-mux-guarded; lane
-;;; connection-multiplexing, 2026-09-26) and `fnn-owner-handle-chunk' and
-;;; `fnn-owner-advance-clock' (host/native/owner.lisp) are read out of the
-;;; files that ship them; the shared wall-clock helper out of
-;;; host/native/io.lisp.  This exercises the shipped functions and not copies
+;;; connection-multiplexing, 2026-09-26; fnn-mux-queue-plan and the windowed
+;;; fnn-mux-flush, lane owner-scheduler, 2026-09-27) and
+;;; `fnn-owner-handle-chunk' and `fnn-owner-advance-clock'
+;;; (host/native/owner.lisp) are read out of the files that ship them; the
+;;; shared wall-clock helper out of host/native/io.lisp.  This exercises the shipped functions and not copies
 ;;; of them; the driver below plays the loop's poll, handing the connection
 ;;; each readiness it waits for.  Everything they
 ;;; call that touches a socket, the owner mutex or ACL2 is stubbed, and the
@@ -95,14 +96,16 @@
 ;; The graceful close's shutdown(2) of the output side.
 (defun fnn-%shutdown (fd how) (declare (ignore fd how)) (incf *graceful*) 0)
 (defstruct fnn-owner-service (lock (sb-thread:make-mutex)) clients)
-(defmacro fnn-with-owner ((service) &body body)
+;; The roster mutex (host/native/owner.lisp fnn-with-roster): the host lists.
+(defmacro fnn-with-roster ((service) &body body)
   `(sb-thread:with-mutex ((fnn-owner-service-lock ,service)) ,@body))
 (defun fnn-owner-service-stopping (service) (declare (ignore service)) nil)
 (defun fnn-owner-service-tls-context (service) (declare (ignore service)) nil)
 (defun fnn-owner-stop-service-locked (service code &optional answering)
   (declare (ignore service code answering)) nil)
-(defun fnn-owner-serialized (service cid thunk)
-  (declare (ignore service cid)) (funcall thunk))
+(defun fnn-owner-serialized (service cid thunk &optional class)
+  (declare (ignore service cid class)) (funcall thunk))
+(defun fnn-log-line (line) (declare (ignore line)) nil)
 (defun fnn-owner-connection-call (service operation thunk)
   (declare (ignore service operation)) (funcall thunk))
 (defun fnn-owner-socket-address (service socket)
@@ -158,15 +161,18 @@
   (setq *output* (fnn-ascii (fourth *step*)))
   :ok)
 
-(defun fnn-owner-buffer-action (name &rest args)
+(defun fnn-core-buffer-catalog-state (name &rest args)
   (ecase name
     (fn-owner-chunk-span
      (destructuring-bind (cid start end) args
        (declare (ignore cid))
        (fnn-owner-take-step (subseq *buffer* start end))))))
 
-;; The four ACL2 globals one served read publishes.  The plan supplies them,
-;; so the loop reads them exactly where host/owner-host.lisp puts them.
+;; The step's typed result (books/served-plan.lisp fn-splan-step-*): the
+;; scenario's plan supplies it, so the loop reads it exactly where
+;; host/native/owner.lisp reads it (fnn-core over the step).  The render
+;; (fnn-owner-render-next: ACL2's fn-splan-window into a private buffer) is
+;; a stub over a plan that is the list of the reply's remaining windows.
 (defun fnn-owner-action (name &rest args)
   (ecase name
     (fn-owner-observe (push args *observations*) :observed)
@@ -177,23 +183,26 @@
 
 (defun fnn-owner-octets-global (name)
   (ecase name (fn-owner-output *output*)))
-;; PRF-192: the served read's reply comes out of the octet buffer
-;; (host/native/owner.lisp fnn-owner-reply-from-buffer); the plan supplies it.
-(defun fnn-owner-reply-from-buffer () *output*)
-(defun fnn-owner-bool-global (name)
+(defun fnn-core (name &rest args)
+  (declare (ignore args))
   (ecase name
-    (fn-owner-closep (second *step*))
-    (fn-owner-starttlsp (third *step*))
-    (fn-owner-submittedp nil)))
-(defun fnn-global (name)
-  (ecase name
+    (fn-splan-step-p t)
+    (fn-splan-step-closep (second *step*))
+    (fn-splan-step-starttlsp (third *step*))
+    (fn-splan-step-submittedp nil)
+    (fn-splan-step-consumed
+     (if (eq (first *step*) :all) (length (first *chunks*)) (first *step*)))
     ;; No read in these scenarios sends a 441 (books/owner-log.lisp
     ;; fn-olog-served-refusal-lines), so the refusal log lines are empty.
-    (fn-owner-refusal-lines nil)
+    (fn-splan-step-refusal-lines nil)
     ;; No step here reaches the failed-login limit (fn-exp-observe).
-    (fn-owner-exposure-close nil)
-    (fn-owner-consumed
-     (if (eq (first *step*) :all) (length (first *chunks*)) (first *step*)))))
+    (fn-splan-step-exposure-close nil)
+    ;; The plan: the reply as its one window, or nothing to write.
+    (fn-splan-step-plan (if (> (length *output*) 0) (list *output*) nil))))
+(defun fnn-owner-render-next (plan)
+  (if plan
+      (values (first plan) (rest plan) (null (rest plan)))
+    (values (fnn-make-octets 0) nil t)))
 
 ;;; ---------------------------------------------------------------------------
 ;;; The functions under test, read out of the file that ships them.
@@ -209,7 +218,7 @@
             +fnn-mux-handshakes-per-loop+ +fnn-mux-handshake-seconds+ +fnn-mux-queued-per-loop+
             fnn-mux-loop fnn-mux-conn fnn-mux-ticks fnn-mux-service fnn-mux-guarded
             fnn-mux-tls-log fnn-mux-finish fnn-mux-arm-idle fnn-mux-queue
-            fnn-mux-flush fnn-mux-begin-drain fnn-mux-after fnn-mux-charge
+            fnn-mux-queue-plan fnn-mux-flush fnn-mux-begin-drain fnn-mux-after
             fnn-mux-step fnn-mux-work fnn-mux-readable fnn-mux-idle
             fnn-mux-slot-free-p fnn-mux-start-waiting-handshake fnn-mux-begin
             fnn-mux-admit)))
@@ -294,14 +303,14 @@
 (check (search "consumed no octets" (first *faults*))
        "the no-progress fault says something else: ~s" (first *faults*))
 
-;;; 4. One reading at open and two before every chunk (the exposure charge's
-;;;    and the chunk's own, PRF-161: a waiting connection must see the clock
-;;;    move), each a fresh reading of this host's clocks in the units
-;;;    fn-clock-observation takes.
+;;; 4. One reading at open and one before every chunk (the exposure charge is
+;;;    decided in the chunk's own quantum since HST-023, under that reading;
+;;;    a deferred connection is stepped again and reads again), each a fresh
+;;;    reading of this host's clocks in the units fn-clock-observation takes.
 (run-scenario '("ONE" "TWO")
               (list (list :all nil nil "") (list :all nil nil "")))
 (check (null *faults*) "an ordinary exchange faulted: ~s" *faults*)
-(check (= (length *observations*) 5)
+(check (= (length *observations*) 3)
        "the owner was handed ~d clock readings for an open and two chunks"
        (length *observations*))
 (let ((now (fnn-owner-wall-milliseconds)))

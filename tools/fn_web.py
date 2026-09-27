@@ -1369,8 +1369,8 @@ def article_window(values: dict) -> Optional[Tuple[int, int]]:
 
 def group_summary(row: dict) -> str:
     first, last = row["first"], row["last"]
-    address = ("No local articles yet" if first is None or last is None or last < first else
-               "Local article numbers %s–%s" % (first, last))
+    address = ("No articles yet" if first is None or last is None or last < first else
+               "Numbers %s–%s" % (first, last))
     if row.get("count") is not None:
         address += " · %d article%s" % (row["count"], "" if row["count"] == 1 else "s")
     policy = {"y": "posting allowed", "n": "read only", "m": "moderated"}.get(
@@ -1646,23 +1646,23 @@ class Handler(BaseHTTPRequestHandler):
         provenance = (
             "<p><span class='badge " + e(kind) + "'>node verdict: " + e(kind) +
             "</span></p><dl class='facts'>"
-            "<dt>Claimed author</dt><dd>" + e(first("from") or "(no From)") +
-            " <span class='muted'>— the From line is what the poster wrote; nobody "
-            "has checked it</span></dd>"
-            "<dt>Authorship evidence carried</dt><dd>" +
+            "<dt>From (not checked)</dt><dd>" + e(first("from") or "(no From)") +
+            " <span class='muted'>— written by the poster; nobody has checked "
+            "it</span></dd>"
+            "<dt>Signature data in the article</dt><dd>" +
             (e(" and ".join(carried)) + " present in the article" if carried else
              "none: the article carries no FN-Statement or FN-Authorship") + "</dd>"
-            "<dt>The node's historical verdict</dt><dd>" + recorded + "</dd>"
-            "<dt>Current enrollment or authorization</dt><dd>" + current + "</dd>"
-            "<dt>Independent verification here</dt><dd>" + checked + "</dd></dl>"
-            "<details><summary>Recorded handling details</summary>"
+            "<dt>Signature, as the node found it</dt><dd>" + recorded + "</dd>"
+            "<dt>The signer's key today</dt><dd>" + current + "</dd>"
+            "<dt>Signature, checked by this reader</dt><dd>" + checked + "</dd></dl>"
+            "<details><summary>Delivery details</summary>"
             "<p class='meta'>From (claimed): " + e(first("from")) +
             "<br>Path: " + e(first("path") or "not supplied") +
             "<br>Injection-Info: " + e(first("injection-info") or "not supplied") +
             "<br>Injection-Date: " + e(first("injection-date") or "not supplied") +
             "<br>References: " + e(first("references") or "none") +
-            "</p></details><p class='muted'>Viewing does not acknowledge application "
-            "processing.</p>")
+            "</p></details><p class='muted'>Opening an article only marks it read "
+            "on this computer.</p>")
         msgid = one["message_id"] or ""
         resume = ""
         if number and msgid:
@@ -1996,20 +1996,19 @@ class Handler(BaseHTTPRequestHandler):
                           start=end + 1, end=min(MAX_ARTICLE_NUMBER, end + MAX_RECENT))) +
                          "'>Newer</a>" if has_group_numbers and end < high and
                          end < MAX_ARTICLE_NUMBER else "")
-                page_window = ("Local article numbers %s–%s" % (start, end)
-                               if end >= start else "No local article numbers")
-                frontier = (" · group currently spans %s–%s" % (low, high)
-                            if high >= low else " · group currently has no articles")
+                page_window = ("Showing numbers %s–%s" % (start, end)
+                               if end >= start else "No numbers to show")
+                frontier = (" · the group holds %s–%s" % (low, high)
+                            if high >= low else " · the group has no articles yet")
                 if high >= low and end > high:
-                    frontier += (" · numbers after %s are not assigned yet; follow Newer "
-                                 "later for articles that arrive" % high)
+                    frontier += (" · nothing after %s yet; try Newer later" % high)
                 self.page(group, "<nav><a href='/'>Groups</a><a href='" +
                           e(href("/compose", group=group)) + "'>Write a post</a></nav>"
                           "<h2>" + e(group) + "</h2><p class='muted'>" +
-                          e(page_window + frontier) + " · viewing does not acknowledge processing</p>" +
+                          e(page_window + frontier) + "</p>" +
                           self.search_form(group) +
-                          "<p class='muted'>Threaded by References within this window. "
-                          "Unread marks are this client's, not the node's.</p>" +
+                          "<p class='muted'>Replies sit under the article they answer. "
+                          "Unread marks are kept on this computer only.</p>" +
                           self.marks_note() +
                           "<nav aria-label='Article number windows'>" + older + " " + newer +
                           " " + mark_all + "</nav>" +

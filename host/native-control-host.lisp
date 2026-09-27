@@ -3,6 +3,7 @@
 (include-book "../books/native-control")
 (include-book "../books/native-control-reason")
 (include-book "../books/consumer-local-control")
+(include-book "../books/consumer-wait-codec")
 (include-book "../books/topic-history-local-control")
 
 (defun fn-native-control-host-topic-request-encode (operation sequence quota)
@@ -88,6 +89,16 @@
   (declare (xargs :mode :program))
   (fn-native-control-request-decode octets))
 
+;; PKT-657, PKT-575: the moderation request, FNCT kind 21
+;; (books/native-control-reason.lisp).
+(defun fn-native-control-host-moderation-encode (op login id reason)
+  (declare (xargs :mode :program))
+  (fn-native-control-moderation-encode op login id reason))
+
+(defun fn-native-control-host-moderation-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-native-control-moderation-decode octets))
+
 (defun fn-native-control-host-admin-encode (argv)
   (declare (xargs :mode :program))
   (fn-native-control-admin-encode argv))
@@ -116,13 +127,16 @@
   (declare (xargs :mode :program))
   (fn-native-control-transport-outcome stage))
 
+;; PRF-252: the wait kinds (codes 9, 10) wrap the consumer codec; every
+;; other kind is fn-ncl-request-encode / -decode's, unchanged
+;; (books/consumer-wait-codec.lisp).
 (defun fn-native-control-host-consumer-request-encode (kind first second)
   (declare (xargs :mode :program))
-  (fn-ncl-request-encode kind first second))
+  (fn-cwait-request-encode kind first second))
 
 (defun fn-native-control-host-consumer-request-decode (octets)
   (declare (xargs :mode :program))
-  (fn-ncl-request-decode octets))
+  (fn-cwait-request-decode octets))
 
 (defun fn-native-control-host-consumer-reply-encode (status cursor)
   (declare (xargs :mode :program))
@@ -160,7 +174,12 @@
 
 (defun fn-native-control-host-consumer-cli-plan (command argv)
   (declare (xargs :mode :program))
-  (fn-ncl-cli-plan command argv))
+  (fn-cwait-cli-plan command argv))
+
+;; PRF-252: the article a poll report carries (fn_agent's reader).
+(defun fn-native-control-host-consumer-report-article (octets)
+  (declare (xargs :mode :program))
+  (fn-cwait-report-article octets))
 
 ;; PRF-234: the password a bound consumer's secret file holds.
 (defun fn-native-control-host-consumer-secret-of-file (octets)

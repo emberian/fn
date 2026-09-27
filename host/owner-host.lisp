@@ -73,6 +73,8 @@
 ; service log lines (fn-olog-*): both ACL2's, read here and nowhere computed.
 (include-book "../books/owner-agent")
 (include-book "../books/owner-log")
+; PKT-657, PKT-575: the moderation and withdrawal verbs' decision.
+(include-book "../books/moderation-verbs")
 (include-book "../books/owner-results")
 ; The served article bound installed with the profile (PKT-103).
 (include-book "../books/owner-served-bound")
@@ -85,6 +87,8 @@
 (include-book "../books/records-concrete-owner")
 (include-book "../books/octets-stobj")
 (include-book "../books/store-reclaim-buffer")
+; HST-023 (PRF-248): the served step's typed result and render plan.
+(include-book "../books/served-plan")
 ; The FNFD feed trailer.  `tools/run_owner.py' used to run its own
 ; `hashlib.sha256' over the protected prefix of every feed frame; the owner's
 ; ACL2 session does not load `host/store-host.lisp', so the one owner has to
@@ -94,6 +98,7 @@
 (include-book "../books/peer-pull-session")
 (include-book "../books/consumer-owner-local")
 (include-book "../books/consumer-bound")
+(include-book "../books/consumer-wait")
 (include-book "../books/acceptance-payload-ref")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
@@ -107,7 +112,8 @@
 ; PKT-605 (PRF-223): the connection budget the run installs and every live
 ; reconfiguration keeps (fn-owner-connection-budget, fn-owner-reconfigure-deltas).
 (include-book "../books/connection-budget")
-; PRF-192: the served reply as a range of the octet buffer (fn-owner-reply-buffer).
+; PRF-192: the served reply as a range of the octet buffer (fn-served-reply-to-buffer;
+; since HST-023 the host renders the step's plan off the mutex instead).
 (include-book "../books/served-reply-buffer")
 (include-book "../books/owner-open-carried")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
@@ -189,11 +195,6 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-owner-core state)))
 
-; The served read's install (fn-owner-chunk): every projection
-; `fn-owner-install-effects' makes EXCEPT the reply octets, which are never
-; built as a list here: `fn-owner-output' is NIL, and the host writes the
-; reply from the octet buffer that `fn-owner-reply-buffer' fills from
-; `fn-owner-effects' (PRF-192, books/served-reply-buffer.lisp).
 ;; SEC-006 (PRF-210): the node's key ring the native host read from
 ;; STORE/keys/ (host/native/owner.lisp fnn-owner-load-node-secret: the
 ;; current entry, then each retained older epoch), installed into the
@@ -213,6 +214,12 @@
   (declare (xargs :stobjs state :mode :program))
   (value *fn-ns-secret-octets*))
 
+; The served read's install (fn-owner-chunk, the bridge's list read): every
+; projection `fn-owner-install-effects' makes EXCEPT the reply octets, which
+; are never built as a list here: `fn-owner-output' is NIL and the reply is
+; the effects' (the native host renders the step's plan off the mutex,
+; fn-owner-chunk-span and books/served-plan.lisp, HST-023; before it the
+; octet buffer of PRF-192, books/served-reply-buffer.lisp).
 (defun fn-owner-install-served-effects (effects state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-owner-effects effects state))
@@ -318,30 +325,47 @@
          (fn-ock-install (cadr opened) (caddr opened) max-conns)
          (car opened) fn-arena fn-cat state)))))
 
-(defun fn-owner-recover (octet-records frontier config-octet-records max-conns fn-arena fn-cat state)
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
+; The two recoveries below are the Python bridge's (tools/run_owner.py), whose
+; served path is fn-owner-chunk over the view's lists and reads no catalog:
+; the catalog the install loads is a local one, dropped (the native owner
+; recovers through fn-owner-recover-from-store-open over the live stobjs).
+(defun fn-owner-recover-extended-local (extended config-records frontier max-conns state)
+  (declare (xargs :stobjs state :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (erp val fn-arena state)
+      (with-local-stobj fn-cat
+        (mv-let (erp val fn-arena fn-cat state)
+          (fn-owner-recover-extended extended config-records frontier max-conns
+                                     fn-arena fn-cat state)
+          (mv erp val fn-arena state)))
+      (mv erp val state))))
+
+(defun fn-owner-recover (octet-records frontier config-octet-records max-conns state)
+  (declare (xargs :stobjs state :mode :program))
   (let ((records (fn-store-decode-records octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (equal records :bad) (equal config-records :bad))
-        (mv nil :fault fn-arena fn-cat state)
-      (fn-owner-recover-extended
-       (fn-sco-extend (fn-sco-capture config-records nil) config-records records)
-       config-records frontier max-conns fn-arena fn-cat state))))
+        (value :fault)
+      (fn-owner-recover-extended-local
+       ; fn-rii-sco-extend-is-sco-extend (PRF-242): the replay's identity tries.
+       (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records records)
+       config-records frontier max-conns state))))
 
 ; The open from the checkpoint the Store open decoded and verified
 ; (`fn-store-sco-checkpoint', host/store-node-host.lisp) and the octets of
 ; the records after it.
 (defun fn-owner-recover-from-checkpoint (suffix-octet-records frontier config-octet-records
-                                                              max-conns fn-arena fn-cat state)
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
+                                                              max-conns state)
+  (declare (xargs :stobjs state :mode :program))
   (let ((checkpoint (fn-store-sco-current state))
         (records (fn-store-decode-records suffix-octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (null checkpoint) (equal records :bad) (equal config-records :bad))
-        (mv nil :fault fn-arena fn-cat state)
-      (fn-owner-recover-extended
-       (fn-sco-extend checkpoint config-records records)
-       config-records frontier max-conns fn-arena fn-cat state))))
+        (value :fault)
+      (fn-owner-recover-extended-local
+       ; fn-rii-sco-extend-is-sco-extend (PRF-242).
+       (fn-rii-sco-extend checkpoint config-records records)
+       config-records frontier max-conns state))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
@@ -931,7 +955,10 @@
                            ; fn-pcar-sbud-prepare over the owner's carried
                            ; view (fn-pidx-sbud-prepare-is-pcar-sbud-prepare):
                            ; the duplicate test reads the view trie and the
-                           ; retention admission is decided once.
+                           ; retention admission is decided once; the budget
+                           ; test reads the event index's count (PRF-242,
+                           ; under fn-ceis-indexedp, which the live owner
+                           ; carries: fn-osi-live-owner-store-is-indexed).
                            (fn-pidx-sbud-prepare before record budget)
                            state))))
             (if (equal record :clock-unusable)
@@ -1320,6 +1347,17 @@
 ; already injected (fn-own-operator-retry-resubmits-the-stored-injection).
 ; The injected octets are what fn-owner-take then leaves in
 ; fn-owner-submit-octets; the host stores those, never the payload it read.
+;; PKT-657, PKT-575: the owner's decision on a moderation or withdrawal
+;; request (books/moderation-verbs.lisp `fn-mvb-plan'): (:refused REASON),
+;; (:submit MSGID GROUPS OCTETS) or (:withdraw ARGV MSGID GROUPS OCTETS).  It
+;; reads the owner and the configuration it carries and changes nothing; the
+;; host runs the named steps (host/native/control.lisp
+;; fnn-owner-moderation-serialized) through the live administration and
+;; the operator submission, each deciding again.
+(defun fn-owner-moderation-plan (op login id reason state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-mvb-plan op login id reason (fn-owner-ocfg state))))
+
 (defun fn-owner-operator-submit (msgid-octets group-octets payload state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))
@@ -1407,6 +1445,21 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cbind-poll (fn-owner-ocfg state) (fn-owner-auth state)
                         consumer secret)))
+
+;; PRF-252: one step of a consumer wait (books/consumer-wait.lisp
+;; fn-cwait-step-is-the-poll-or-a-sleep-on-an-empty-page): the poll a
+;; `poll' (SECRET nil) or `bound-poll' request answers now, or (:sleep MS)
+;; when that is an empty page before the deadline.  The admission of one
+;; more waiter.  host/native/owner.lisp fnn-owner-consumer-local-wait calls
+;; both under the owner mutex.
+(defun fn-owner-consumer-local-wait-step (consumer secret elapsed seconds state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cwait-step (fn-owner-ocfg state) (fn-owner-auth state)
+                        consumer secret elapsed seconds)))
+
+(defun fn-owner-consumer-local-wait-admit (waiters state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-cwait-admit waiters)))
 
 (defun fn-owner-consumer-local-bound-ack (cursor-octets secret state)
   (declare (xargs :stobjs state :mode :program))
@@ -2543,20 +2596,6 @@
                                   state)))
         (value :ok)))))
 
-; The served read's reply, into the octet buffer (PRF-192; PKT-491): the
-; host calls this right after `fn-owner-chunk' (host/native/owner.lisp
-; fnn-owner-handle-chunk) and writes the buffer's range [0, len) to the
-; socket.  `fn-served-reply-to-buffer-is-the-reply': under :ok that range
-; is `fn-served-reply-octets' of the step's effects, the reply
-; `fn-owner-install-effects' would have put in `fn-owner-output'.
-; :malformed (a reply effect that is not octets) is a host fault, as a
-; non-octet `fn-owner-output' was.
-(defun fn-owner-reply-buffer (fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
-  (mv-let (okp fn-octets)
-    (fn-served-reply-to-buffer (f-get-global 'fn-owner-effects state) fn-octets)
-    (mv nil (if okp :ok :malformed) fn-octets state)))
-
 ; Step 8 (catalog slice): the read runs books/served-catalog-chain.lisp
 ; fn-scr-ocfg-read-span, the same chain with the catalog carried to the
 ; retrieval arms (fn-scr-ocfg-read-span-is-reference-under-ocl-relation);
@@ -2566,8 +2605,17 @@
 ; buffer from the socket's byte vector and calls this with [start, end), so
 ; no octet of a read is ever a cons cell.  fn-scar-ocfg-read-span is
 ; fn-scar-ocfg-read-tls-prefix over (fn-oct-slice-list start end fn-octets)
-; (fn-scar-ocfg-read-span-is-reference-under-ocl-relation); everything
-; installed below is installed as fn-owner-chunk installs it.
+; (fn-scar-ocfg-read-span-is-reference-under-ocl-relation).
+;
+; HST-023 (PRF-248; adapter-retirement-2's ServedStep, PKT-616 (b)): the
+; result is ONE typed value, `fn-splan-step-make' of the step's effects, its
+; close, STARTTLS and submission projections (fn-served-closingp,
+; fn-served-starttlsp, fn-served-submission: what fn-owner-install-effects
+; put in six globals), the consumed prefix, the refusal log lines and the
+; exposure close.  No reply octets are built or rendered here: the effects
+; are the render plan (books/served-plan.lisp), which the host renders into
+; the connection's own buffer after the mutex is released.  The owner and
+; exposure states are installed exactly as fn-owner-chunk installs them.
 (defun fn-owner-chunk-span (id start end fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (let ((owner (fn-owner-core state)))
@@ -2578,24 +2626,22 @@
           (value :bad-range)
         (let* ((result (fn-scr-ocfg-read-span
                         (fn-owner-ocfg state) id start end fn-octets fn-arena fn-cat))
+               (effects (fn-own-tls-result-effects result))
+               (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg
                        (fn-own-tls-result-owner result) state))
-               (state (fn-owner-install-effects
-                       (fn-own-tls-result-effects result) state))
-               (state (f-put-global 'fn-owner-consumed
-                                    (fn-own-tls-result-consumed result) state))
                ; PRF-161: progress, failed logins and submissions of this step.
-               (state (fn-owner-exposure-observe
-                       id (fn-own-tls-result-effects result)
-                       (fn-own-tls-result-consumed result) state))
-               ; One line per 441 the effects send (books/owner-log.lisp
-               ; fn-olog-served-refusal-lines-one-per-441).
-               (state (f-put-global 'fn-owner-refusal-lines
-                                    (fn-olog-served-refusal-lines
-                                     (fn-owner-core state) id
-                                     (fn-own-tls-result-effects result))
-                                    state)))
-          (value :ok))))))
+               (state (fn-owner-exposure-observe id effects consumed state)))
+          (value (fn-splan-step-make
+                  effects
+                  (fn-served-closingp effects)
+                  (fn-served-starttlsp effects)
+                  (fn-served-submission effects)
+                  consumed
+                  ; One line per 441 the effects send (books/owner-log.lisp
+                  ; fn-olog-served-refusal-lines-one-per-441).
+                  (fn-olog-served-refusal-lines (fn-owner-core state) id effects)
+                  (f-get-global 'fn-owner-exposure-close state))))))))
 
 (defun fn-owner-close (id state)
   (declare (xargs :stobjs state :mode :program))

@@ -162,6 +162,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/control-evidence-grammar \
 	books/control-evidence \
 	tests/acl2/control-evidence-tests \
+	books/moderation-verbs \
+	tests/acl2/moderation-verbs-tests \
 	books/log-sink \
 	tests/acl2/log-sink-tests \
 	books/native-health \
@@ -187,12 +189,17 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-node \
 	books/store-node-existing-invariants \
 	books/poster-bytes \
+	books/store-node-invariants-base \
 	books/store-node-invariants \
 	books/acceptance-stamp-invariants \
 	tests/acl2/acceptance-stamp-tests \
+	tests/acl2/held-rows-tests \
+	tests/acl2/held-rows-intern-tests \
 	tests/acl2/store-node-tests \
 	tests/acl2/consumer-store-node-tests \
 	tests/acl2/store-node-existing-tests \
+	books/store-intern \
+	tests/acl2/store-intern-tests \
 	books/store-node-traces-prepare \
 	books/store-node-traces \
 	tests/acl2/store-node-traces-tests \
@@ -202,6 +209,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-node-retention-tests \
 	books/store-budget \
 	tests/acl2/store-budget-tests \
+	books/store-budget-stored \
+	tests/acl2/store-budget-stored-tests \
 	books/store-carried-folds \
 	tests/acl2/store-carried-folds-tests \
 	books/store-profile-facts \
@@ -232,6 +241,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/connection-budget-tests \
 	books/store-open-pre-c1 \
 	tests/acl2/store-open-pre-c1-tests \
+	tests/acl2/history-fold-refinement-tests \
 	tests/acl2/linear-recognizers-tests \
 	tests/acl2/open-one-pass-tests \
 	books/byte-store-state-checkpoint-program \
@@ -259,6 +269,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/byte-store-record-fence \
 	tests/acl2/byte-store-record-fence-tests \
 	books/byte-store-record-provenance-bytes \
+	books/byte-store-arena \
 	books/byte-store-record-provenance-node \
 	books/byte-store-record-provenance-owner \
 	books/byte-store-record-provenance \
@@ -355,6 +366,18 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/byte-store-marker-candidates-tests \
 	books/store-log \
 	tests/acl2/store-log-tests \
+	books/store-log-crash \
+	books/store-log-kernel \
+	books/store-log-recover \
+	tests/acl2/store-log-kernel-tests \
+	books/store-log-txid \
+	tests/acl2/store-log-txid-tests \
+	books/owner-batch \
+	tests/acl2/owner-batch-tests \
+	books/store-log-decode \
+	tests/acl2/store-log-decode-tests \
+	books/store-log-programs \
+	tests/acl2/store-log-programs-tests \
 	books/byte-store-k0-step-lemmas \
 	books/byte-store-k0-step-root-fence \
 	books/byte-store-k0-step \
@@ -448,6 +471,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-signed-binding-tests \
 	books/post-identity-index \
 	tests/acl2/post-identity-index-tests \
+	books/replay-identity-index \
+	tests/acl2/replay-identity-index-tests \
 	books/owner-store-indexed \
 	tests/acl2/owner-store-indexed-tests \
 	books/bp-fnbs-delivery-codec \
@@ -940,6 +965,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-owner-local-progress-tests \
 	books/consumer-bound \
 	tests/acl2/consumer-bound-tests \
+	books/consumer-wait-codec \
+	tests/acl2/consumer-wait-codec-tests \
+	books/consumer-wait \
+	tests/acl2/consumer-wait-tests \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
@@ -1030,6 +1059,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/public-exposure-reply-tests \
 	books/served-reply-buffer \
 	tests/acl2/served-reply-buffer-tests \
+	books/served-plan \
+	tests/acl2/served-plan-tests \
+	books/owner-scheduler \
+	tests/acl2/owner-scheduler-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \
@@ -1116,7 +1149,8 @@ ACL2_BOOKS ?= books/defrecord \
 # its books; when the list is every book, `--strict` runs without `--books`.
 THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/store-files books/store-files-invariants books/store-files-traces \
-	books/store-node books/store-node-invariants books/store-node-traces-prepare \
+	books/store-node books/store-node-invariants-base books/store-node-invariants \
+	books/store-node-traces-prepare \
 	books/store-node-traces \
 	books/store-node-resolution books/store-observed books/store-observed-traces \
 	books/store-prepare-correspondence books/config-records books/node-config \

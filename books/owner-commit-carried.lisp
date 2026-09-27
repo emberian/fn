@@ -648,11 +648,11 @@
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
-           (or (fn-stxe-p event) (fn-stxk-p event) (fn-stxa-p event))
+           (or (fn-stxe-p event) (fn-stxk-p event) (fn-hstxa-p event))
            (eq (car (fn-ccar-cpe-projection-step
                      (fn-sn-consumer s) event (fn-sn-identity-next s))) :ok)
-           (or (not (fn-evc-stxap event))
-               (not (equal (fn-record-stamp (fn-replay-composite-record event))
+           (or (not (fn-hstxa-p event))
+               (not (equal (fn-record-stamp (fn-replay-composite-held event))
                            :legacy)))
            (consp (fn-replay-apply-record (fn-sn-node s) event))
            (equal (fn-stxk-context-kind
@@ -665,10 +665,10 @@
     s))
 (local
  (defthm fn-ccar-identity-event-is-a-store-event
-   (implies (or (fn-stxe-p event) (fn-stxk-p event) (fn-stxa-p event))
+   (implies (or (fn-stxe-p event) (fn-stxk-p event) (fn-hstxa-p event))
             (and (fn-store-event-p event) (true-listp event)))
    :hints (("Goal" :in-theory '(fn-store-event-p fn-stxe-p-forward-shape
-                                fn-stxk-p-forward-shape fn-stxa-p-forward-shape)))))
+                                fn-stxk-p-forward-shape fn-hstxa-p-forward-shape)))))
 ; KEYSTONE (PRF-144 part 2): the prepare the host calls is the
 ; specification's on every store the maintained relation admits.  The two
 ; gates are the same term (the carried recognizers are the reference ones);
