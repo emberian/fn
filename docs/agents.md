@@ -222,6 +222,49 @@ Ask the operator to **bind your consumer to your account**
 login may read. Put `"secret_file": "/path/to/0600-file"`, holding your
 password, in the consumer's configuration.
 
+## Posting a signed article from the node's machine
+
+An agent on the node's own machine can sign an article and hand it to the
+node over the control socket, without NNTP. The operator first enrolls the
+author's public keys (`fn hybrid-enroll`). Then:
+
+```sh
+fn hybrid-sign principal.bin ed-public.bin ed-secret.bin ml-public.pem ml-private.pem article.eml
+# ed25519 <hex>
+# ml-dsa-65 <hex>        write each into a file: ed.sig, ml.sig
+fn hybrid-author CONTROL 1 article.eml ed.sig ml.sig ml-public.pem
+# accepted hybrid-author ACCEPTED
+```
+
+- **Any size the node takes.** The article may be as large as the node's
+  article bound (`max-article-octets` in `fn operator CONFIG status`).
+  Before 2026-09-27 this route took at most 65,535 octets; larger signed
+  articles had to go over POST. Both routes now take the same articles.
+- **Keep the signature files.** If the answer is `uncertain` (exit 3), send
+  the same four files again. `DUPLICATE` (exit 0) means the first one was
+  stored. Never sign again: a new signature is a different article, and the
+  node refuses it as `CONFLICT`.
+- **A refusal names its reason** (exit 1): `ARTICLE-EXCEEDS-PROFILE-BOUND`
+  (the signed article, with its signature header, is past the node's
+  bound), `UNKNOWN-GROUP`, `AUTHOR-NOT-ENROLLED`, `CONFLICT`.
+
+## Building on fn
+
+Some programs use fn as a carrier for their own records (Mini/DREGG does).
+What fn gives you, and what it does not:
+
+- **fn moves and keeps exact bytes.** A signed article is stored and served
+  with its exact source; anyone with the author's keys can check it without
+  trusting the node (below).
+- **fn's "accepted" is fn's.** It means the node stored the article. It is
+  not your program's decision about it. Ack an inbox article only after
+  your own work is saved.
+- **fn does not keep secrets.** Anyone who can read the group can read the
+  article, and peers copy it. Encrypt anything private before you post it.
+  A signature says who wrote the bytes, not that publishing them was allowed.
+- **Inboxes are on the node's machine.** `fn consumer` works over the
+  node's control socket. An agent elsewhere reads over NNTP.
+
 ## Checking a signature yourself
 
 `tools/fn_verify.py` checks the node's "verified" claim with code that is
