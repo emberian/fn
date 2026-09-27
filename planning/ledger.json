@@ -387,6 +387,8 @@
     "tests/acl2/store-log-programs-tests",
     "books/store-log-route",
     "tests/acl2/store-log-route-tests",
+    "books/store-log-kernel-concrete",
+    "tests/acl2/store-log-kernel-concrete-tests",
     "books/store-log-segments",
     "tests/acl2/store-log-segments-tests",
     "books/store-log-reclaim",
@@ -1204,27 +1206,27 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1247,
-    "books_in_root_closure": 1236,
-    "roots": 1200,
-    "theorems": 18303,
-    "functions": 12654,
-    "assert_events": 18145,
+    "books": 1249,
+    "books_in_root_closure": 1238,
+    "roots": 1202,
+    "theorems": 18358,
+    "functions": 12712,
+    "assert_events": 18158,
     "must_fails": 2169,
     "prover_refusals": 0,
     "encapsulates": 98,
     "guards": {
-      "verified": 2447,
-      "declared-off": 1485,
-      "default-guarded": 6986,
-      "default-unguarded": 1736
+      "verified": 2450,
+      "declared-off": 1496,
+      "default-guarded": 7029,
+      "default-unguarded": 1737
     },
-    "suspect_theorems": 199,
-    "export_hygiene_warnings": 212,
+    "suspect_theorems": 200,
+    "export_hygiene_warnings": 220,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 213,
-    "include_hygiene_warnings": 1335,
-    "host_names_warnings": 1375,
+    "include_hygiene_warnings": 1338,
+    "host_names_warnings": 1376,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -18486,6 +18488,36 @@
       "read_error": null
     },
     {
+      "book": "books/store-log-kernel-concrete.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 55,
+      "functions": 48,
+      "guards": {
+        "verified": 3,
+        "declared-off": 6,
+        "default-guarded": 39,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 3,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-log-extend",
+        "store-log-route",
+        "store-log-segments"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-lgx-trailer-is-trailer"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/store-log-kernel.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -34349,6 +34381,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-log-kernel-concrete-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 5,
+        "default-guarded": 4,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 13,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-log-kernel-concrete"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-log-kernel-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -37183,6 +37241,14 @@
       ]
     },
     {
+      "theorem": "fn-lgx-trailer-is-trailer",
+      "book": "books/store-log-kernel-concrete.lisp",
+      "line": 185,
+      "reasons": [
+        "reflexive-conclusion: a conjunct is (equal X X)"
+      ]
+    },
+    {
       "theorem": "fn-mod-inj-append-of-a-cons",
       "book": "books/moderation.lisp",
       "line": 358,
@@ -39091,6 +39157,54 @@
         "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
       },
       {
+        "theorem": "fn-lgx-pack-is-pack",
+        "book": "books/store-log-kernel-concrete.lisp",
+        "line": 146,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lgx-frame-body-is-frame-body",
+        "book": "books/store-log-kernel-concrete.lisp",
+        "line": 154,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lgx-trailer-is-trailer",
+        "book": "books/store-log-kernel-concrete.lisp",
+        "line": 185,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lgc-fence-failed-refines",
+        "book": "books/store-log-kernel-concrete.lisp",
+        "line": 553,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lgc-finish-one-refines",
+        "book": "books/store-log-kernel-concrete.lisp",
+        "line": 556,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lgc-rotate-admitsp-of-abstraction",
+        "book": "books/store-log-kernel-concrete.lisp",
+        "line": 570,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lgc-rotate-needed-p-of-abstraction",
+        "book": "books/store-log-kernel-concrete.lisp",
+        "line": 577,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lgc-rotate-refines",
+        "book": "books/store-log-kernel-concrete.lisp",
+        "line": 580,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-snt-apply-event-from-idle-is-at-the-successor",
         "book": "books/store-node-invariants-base.lisp",
         "line": 1715,
@@ -39731,12 +39845,13 @@
           "books/owner-batch.lisp",
           "books/store-init-log-publication.lisp",
           "books/store-log-extend.lisp",
+          "books/store-log-kernel-concrete.lisp",
           "books/store-log-recover.lisp",
           "books/store-log-route.lisp",
           "books/store-log-segments.lisp",
           "books/store-log-txid.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-last",
@@ -39746,12 +39861,13 @@
           "books/owner-batch.lisp",
           "books/store-init-log-publication.lisp",
           "books/store-log-extend.lisp",
+          "books/store-log-kernel-concrete.lisp",
           "books/store-log-recover.lisp",
           "books/store-log-route.lisp",
           "books/store-log-segments.lisp",
           "books/store-log-txid.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-batch",
@@ -39759,10 +39875,11 @@
         "line": 51,
         "stated_in": [
           "books/owner-batch.lisp",
+          "books/store-log-kernel-concrete.lisp",
           "books/store-log-recover.lisp",
           "books/store-log-route.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 3 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-inflight",
@@ -39771,13 +39888,14 @@
         "stated_in": [
           "books/owner-batch.lisp",
           "books/store-log-extend.lisp",
+          "books/store-log-kernel-concrete.lisp",
           "books/store-log-programs.lisp",
           "books/store-log-recover.lisp",
           "books/store-log-route-programs.lisp",
           "books/store-log-route.lisp",
           "books/store-log-txid.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 7 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 8 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-lgk-phase",
@@ -39785,11 +39903,12 @@
         "line": 54,
         "stated_in": [
           "books/owner-batch.lisp",
+          "books/store-log-kernel-concrete.lisp",
           "books/store-log-programs.lisp",
           "books/store-log-recover.lisp",
           "books/store-log-route.lisp"
         ],
-        "reason": "enabled-projection: the definition rune ships enabled and 4 books state theorems over it, so one downstream unfold stops those theorems matching"
+        "reason": "enabled-projection: the definition rune ships enabled and 5 books state theorems over it, so one downstream unfold stops those theorems matching"
       },
       {
         "function": "fn-stxk-context-kind",
@@ -44396,6 +44515,27 @@
         "line": 38,
         "include": "store-log-kernel",
         "included": "books/store-log-kernel.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-log-kernel-concrete.lisp",
+        "line": 41,
+        "include": "store-log-route",
+        "included": "books/store-log-route.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-log-kernel-concrete.lisp",
+        "line": 42,
+        "include": "store-log-segments",
+        "included": "books/store-log-segments.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-log-kernel-concrete.lisp",
+        "line": 43,
+        "include": "store-log-extend",
+        "included": "books/store-log-extend.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -56344,84 +56484,91 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5681,
+        "line": 5710,
         "name": "*fn-lg-genesis*",
         "source": "books/store-log.lisp",
         "reason": "defined in books/store-log.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6095,
+        "line": 6073,
+        "name": "nth-value",
+        "source": null,
+        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
+      },
+      {
+        "host": "host/native/io.lisp",
+        "line": 6124,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6257,
+        "line": 6286,
         "name": "open",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6257,
+        "line": 6286,
         "name": "*standard-input*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6257,
+        "line": 6286,
         "name": "*error-output*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6257,
+        "line": 6286,
         "name": "logandc2",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6291,
+        "line": 6320,
         "name": "fnn-tls-send-all",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6291,
+        "line": 6320,
         "name": "fnn-tls-read",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6291,
+        "line": 6320,
         "name": "fnn-tls-open-client-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6291,
+        "line": 6320,
         "name": "fnn-tls-connect",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6291,
+        "line": 6320,
         "name": "fnn-tls-close-channel",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6291,
+        "line": 6320,
         "name": "fnn-tls-close-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -60110,7 +60257,7 @@
       },
       {
         "host": "host/store-host.lisp",
-        "line": 135,
+        "line": 138,
         "name": "with-local-stobj",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

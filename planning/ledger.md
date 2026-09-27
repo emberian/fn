@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1247 |
-| Certification roots in the Makefile | 1200 |
-| Books inside the root closure | 1236 |
-| `defthm` and `defthmd` events | 18303 |
-| `defun` events | 12654 |
-| Functions with verified guards | 2447 |
-| Functions declared `:verify-guards nil` and never verified | 1485 |
-| Functions left at the default with an explicit guard | 6986 |
-| Functions left at the default with no guard | 1736 |
-| `assert-event` checks | 18145 |
+| Books read | 1249 |
+| Certification roots in the Makefile | 1202 |
+| Books inside the root closure | 1238 |
+| `defthm` and `defthmd` events | 18358 |
+| `defun` events | 12712 |
+| Functions with verified guards | 2450 |
+| Functions declared `:verify-guards nil` and never verified | 1496 |
+| Functions left at the default with an explicit guard | 7029 |
+| Functions left at the default with no guard | 1737 |
+| `assert-event` checks | 18158 |
 | `must-fail` checks | 2169 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 98 |
-| Theorems flagged SUSPECT by shape | 199 |
-| Export-hygiene warnings | 212 |
+| Theorems flagged SUSPECT by shape | 200 |
+| Export-hygiene warnings | 220 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 213 |
-| Include-hygiene warnings | 1335 |
-| Host-names warnings | 1375 |
+| Include-hygiene warnings | 1338 |
+| Host-names warnings | 1376 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -704,6 +704,7 @@ that `make certify` requests.
 | `books/store-log-crash.lisp` | root | 93 | 17 | 0/14/2/1 | 0 | 0 | 0 |
 | `books/store-log-decode.lisp` | root | 22 | 8 | 0/0/7/1 | 0 | 0 | 1 |
 | `books/store-log-extend.lisp` | root | 62 | 10 | 0/7/3/0 | 0 | 0 | 0 |
+| `books/store-log-kernel-concrete.lisp` | root | 55 | 48 | 3/6/39/0 | 0 | 0 | 1 |
 | `books/store-log-kernel.lisp` | root | 51 | 20 | 0/7/13/0 | 0 | 0 | 1 |
 | `books/store-log-programs.lisp` | root | 6 | 13 | 0/8/5/0 | 0 | 0 | 0 |
 | `books/store-log-reclaim.lisp` | root | 1 | 1 | 0/1/0/0 | 0 | 0 | 0 |
@@ -1259,6 +1260,7 @@ that `make certify` requests.
 | `tests/acl2/store-intern-tests.lisp` | root | 1 | 10 | 0/7/0/3 | 28 | 0 | 0 |
 | `tests/acl2/store-log-decode-tests.lisp` | root | 0 | 4 | 0/1/3/0 | 4 | 0 | 0 |
 | `tests/acl2/store-log-extend-tests.lisp` | root | 0 | 23 | 0/18/5/0 | 17 | 0 | 0 |
+| `tests/acl2/store-log-kernel-concrete-tests.lisp` | root | 0 | 10 | 0/5/4/1 | 13 | 0 | 0 |
 | `tests/acl2/store-log-kernel-tests.lisp` | root | 0 | 20 | 0/15/5/0 | 11 | 0 | 0 |
 | `tests/acl2/store-log-programs-tests.lisp` | root | 0 | 23 | 0/19/4/0 | 19 | 0 | 0 |
 | `tests/acl2/store-log-reclaim-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 7 | 2 | 0 |
@@ -1433,6 +1435,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-lg-log-unfolds` | `books/store-log.lisp` | 856 | branch-of-definition: the hypothesis is a branch test of fn-lg-log and the conclusion is that branch's value |
 | `fn-lgd-slice-when-short` | `books/store-log-decode.lisp` | 207 | branch-of-definition: the hypothesis negates a branch test of fn-lg-slice and the conclusion is that branch's value |
 | `fn-lgkc-log-of-atom` | `books/store-log-kernel.lisp` | 362 | branch-of-definition: the hypothesis negates a branch test of fn-lg-log and the conclusion is that branch's value |
+| `fn-lgx-trailer-is-trailer` | `books/store-log-kernel-concrete.lisp` | 185 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-mod-inj-append-of-a-cons` | `books/moderation.lisp` | 358 | branch-of-definition: the hypothesis is a branch test of fn-inj-append and the conclusion is that branch's value |
 | `fn-mod-named-entries-of-no-groups` | `books/moderation.lisp` | 101 | branch-of-definition: the hypothesis negates a branch test of fn-mod-named-entries and the conclusion is that branch's value |
 | `fn-ncr-cli-plan-without-the-flag-by-definition` | `books/consumer-reason.lisp` | 178 | branch-of-definition: the hypothesis negates a branch test of fn-ncr-cli-plan and the conclusion is that branch's value |

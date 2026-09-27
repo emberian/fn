@@ -10178,7 +10178,22 @@
         {
           "kind": "theorem",
           "name": "fn-lgc-run-refines-the-kernel",
-          "note": "Subject: the concrete kernel transitions host/native/io.lisp fnn-log-* call (fn-lgc-open, -t-prepare, -take, -consume-to, -append, -fence, -fence-failed, -finish-one); equal under fn-lgc-of to the fn-lgk-* run PRF-264 speaks of."
+          "note": "Subject: the concrete kernel transitions host/native/io.lisp fnn-log-* call (fn-lgc-open, -t-prepare, -take, -consume-to, -append, the seal's -sealed-extent, -fence, -fence-failed, -finish-one, -rotate); equal under fn-lgc-of to the fn-lgk-* run PRF-264 speaks of, over the pipelined commit's operations."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgc-log-len-is-the-log-length",
+          "note": "Subject: fn-lgc-log-len, the length fnn-log-ensure-extent / fnn-log-append / fnn-log-fence use through fn-lgc-append-len, fn-lgc-fitsp and fn-lgc-fence; guard-verified, no octet built."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgc-extend-program-keeps-the-relation",
+          "note": "Host: fnn-log-ensure-extent runs fn-lg-extend-program over the concrete kernel."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgc-sealed-extent-fits-the-batch",
+          "note": "Host: fnn-log-ensure-extent then fnn-log-append (the seal)."
         }
       ]
     },
