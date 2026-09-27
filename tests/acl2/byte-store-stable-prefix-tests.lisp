@@ -14,6 +14,16 @@
   (fn-record-make 0 0 0 "<k5@example.invalid>" '(65)
                   '("fn.letters") "archive" "subject" "evidence" 1 841000000))
 
+;; The records flip: the kernel stages RETAINED rows (a held row whose payload
+;; is an arena handle); the frame on disk is the WIRE record, alpha of the
+;; row through the arena.  *bsk5-arena* is the arena's logical value (the
+;; sealed payloads, handle 0 and handle 1); the rows are what the intern
+;; makes for the two wire records (fn-held-plain: the context the intern
+;; computes under no keyring, verdict :absent at generation 0).
+(defconst *bsk5-arena*
+  (list (fn-record-payload *bsk5-record*) '(66)))
+(defconst *bsk5-row* (fn-held-plain *bsk5-record* 0))
+
 (defun bsk5-frame ()
   (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
                  *fn-frame-store-kind* (fn-store-event-encode *bsk5-record*)))
@@ -26,7 +36,7 @@
              nil *bsk5-groups* *bsk5-capacity*))
 (defun bsk5-record-run ()
   (let* ((pair (car (last (bsk5-frontier-run))))
-         (prepared (fn-sf-prepare-record (cdr pair) *bsk5-record*
+         (prepared (fn-sf-prepare-record (cdr pair) *bsk5-row*
                                          *bsk5-groups* *bsk5-capacity*)))
     (fn-bs-run (car pair) prepared
                (fn-bs-record-program ".stage-k5" (fn-bs-txn-name 0)
@@ -36,6 +46,18 @@
 (defconst *bsk5-record-2*
   (fn-record-make 1 1 1 "<k5-second@example.invalid>" '(66)
                   '("fn.letters") "archive-2" "subject-2" "evidence-2" 1 841000001))
+(defconst *bsk5-row-2* (fn-held-plain *bsk5-record-2* 1))
+
+; Alpha of each row through the arena is its wire record (non-vacuity of the
+; relation's record arms: the kernel's rows and the decoded frames meet).
+(assert-event
+ (and (fn-held-p *bsk5-row*) (fn-held-p *bsk5-row-2*)
+      (fn-store-event-p *bsk5-row*) (not (fn-record-p *bsk5-row*))
+      (equal (fn-bs-row-wire *bsk5-row* *bsk5-arena*) *bsk5-record*)
+      (equal (fn-bs-row-wire *bsk5-row-2* *bsk5-arena*) *bsk5-record-2*)
+      (fn-record-p (fn-bs-row-wire *bsk5-row-2* *bsk5-arena*))
+      (equal (fn-bs-rows-wire (list *bsk5-row* *bsk5-row-2*) *bsk5-arena*)
+             (list *bsk5-record* *bsk5-record-2*))))
 (defun bsk5-frame-2 ()
   (fn-frame-seal *fn-frame-magic-store* *fn-frame-version*
                  *fn-frame-store-kind* (fn-store-event-encode *bsk5-record-2*)))
@@ -52,7 +74,7 @@
                            nil *bsk5-groups* *bsk5-capacity*)))))
 (defun bsk5-record-2-run ()
   (let* ((pair (bsk5-frontier-2))
-         (prepared (fn-sf-prepare-record (cdr pair) *bsk5-record-2*
+         (prepared (fn-sf-prepare-record (cdr pair) *bsk5-row-2*
                                          *bsk5-groups* *bsk5-capacity*)))
     (fn-bs-run (car pair) prepared
                (fn-bs-record-program ".stage-k5-2" (fn-bs-txn-name 1)
@@ -71,7 +93,7 @@
  (let* ((pair (bsk5-linked)) (bs (car pair)) (ks (cdr pair))
         (lost (fn-bs-crash bs '(:drop)))
         (kept (fn-bs-crash bs '(:drop :drop :drop :drop :drop :drop :drop :apply))))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (fn-bs-crash-choicesp '(:drop) (fn-bs-pending bs) (fn-bs-unit bs))
         (fn-bs-crash-choicesp '(:drop :drop :drop :drop :drop :drop :drop :apply)
                               (fn-bs-pending bs) (fn-bs-unit bs))
@@ -88,7 +110,7 @@
         (old (fn-bs-crash bs nil))
         (new (fn-bs-crash bs '(:drop :drop :drop :apply)))
         (durable (fn-bs-durable-records bs)))
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks *bsk5-arena*)
         (equal durable (list *bsk5-record*))
         (fn-bs-crash-choicesp nil (fn-bs-pending bs) (fn-bs-unit bs))
         (fn-bs-crash-choicesp '(:drop :drop :drop :apply)
@@ -122,7 +144,7 @@
         (equal (fn-bs-durable-records bs) nil)
         (equal (fn-bs-scan-records (fn-bs-scan-store image))
                (list *bsk5-record* *bsk5-record-2*))
-        (not (fn-bs-store-relation bs (cdr (bsk5-linked-2)))))))
+        (not (fn-bs-store-relation bs (cdr (bsk5-linked-2)) *bsk5-arena*)))))
 (must-fail
  (assert-event
   (let* ((bs (bsk5-two-pending))
@@ -134,7 +156,7 @@
 ; crash image of its first publication.  Removing crash-imagep admits a
 ; concrete counterexample even with the byte/kernel relation preserved.
 (assert-event (fn-bs-store-relation (car (bsk5-linked))
-                                    (cdr (bsk5-linked))))
+                                    (cdr (bsk5-linked)) *bsk5-arena*))
 (must-fail
  (assert-event
   (let* ((bs (car (bsk5-linked)))

@@ -10,7 +10,7 @@
    (equal (len (append a b)) (+ (len a) (len b)))))
 
 (defthm fn-bs-related-durable-records-true-list
-  (implies (fn-bs-store-relation bs ks)
+  (implies (fn-bs-store-relation bs ks arena)
            (true-listp (fn-bs-durable-records bs)))
   :rule-classes nil
   :hints (("Goal"
@@ -21,7 +21,7 @@
            :in-theory (enable fn-bs-durable-records))))
 
 (defthm fn-bs-stable-prefix-retained-by-byte-crash
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-crash-imagep bs image))
            (and (fn-sf-prefixp
                  (fn-bs-durable-records bs)

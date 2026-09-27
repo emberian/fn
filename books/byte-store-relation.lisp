@@ -34,13 +34,13 @@
                 (fn-bs-config-okp config)
                 (equal (fn-bs-frontier-decode frontier) 0))
            (fn-bs-store-relation (fn-bs-initial-image unit config frontier)
-                                (fn-sf-initial-state)))
+                                (fn-sf-initial-state) arena))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-bs-store-relation fn-bs-statep
                                     fn-bs-durable-entry fn-bs-durable-content
                                     fn-bs-fencedp fn-bs-dir-quietp
                                     fn-bs-view fn-bs-content fn-bs-lookup
-                                    fn-sf-statep fn-sf-crash-imagep
+                                    fn-sf-statep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                                     fn-bs-durable fn-bs-durable-names
                                     fn-bs-durable-frontier fn-bs-durable-records
                                     fn-bs-replay-visiblep fn-bs-pending-shape-okp
@@ -122,12 +122,13 @@
        (fn-cbor-octet-listp octets)
        (equal (fn-bs-frontier-decode octets) (1+ (fn-sf-frontier ks)))))
 
-(defun fn-bs-record-inputp (ks stage name frame)
+(defun fn-bs-record-inputp (ks stage name frame arena)
   (declare (xargs :guard t :verify-guards nil))
   (and (equal (fn-sf-phase ks) :record-staged)
        (fn-bs-namep stage)
        (fn-cbor-octet-listp frame)
-       (equal (fn-bs-record-of-octets frame) (fn-sf-record-candidate ks))
+       (equal (fn-bs-record-of-octets frame)
+              (fn-bs-row-wire (fn-sf-record-candidate ks) arena))
        (equal name (fn-bs-txn-name
                     (fn-store-event-sequence (fn-sf-record-candidate ks))))))
 
@@ -138,7 +139,7 @@
             (car (car (last
              (fn-bs-run *fn-bs-empty-store* (fn-sf-initial-state)
                         (fn-bs-init-program config frontier) nil nil nil))))
-            (fn-sf-initial-state)))
+            (fn-sf-initial-state) arena))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-bs-init-program-establishes-initial-image
@@ -146,11 +147,11 @@
            :in-theory (union-theories (theory 'minimal-theory)
                                       '(fn-bs-initial-inputp (:executable-counterpart posp))))))
 
-(defun fn-bs-run-relatedp (pairs)
+(defun fn-bs-run-relatedp (pairs arena)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp pairs)
-      (and (fn-bs-store-relation (car (car pairs)) (cdr (car pairs)))
-           (fn-bs-run-relatedp (cdr pairs)))
+      (and (fn-bs-store-relation (car (car pairs)) (cdr (car pairs)) arena)
+           (fn-bs-run-relatedp (cdr pairs) arena))
     (null pairs)))
 
 ; A complete first allocation, with an arbitrary staging name and arbitrary
@@ -167,7 +168,7 @@
                  fn-bs-store-relation fn-bs-statep
                  fn-bs-durable-entry fn-bs-durable-content
                  fn-bs-fencedp fn-bs-dir-quietp
-                 fn-sf-statep fn-sf-crash-imagep fn-sf-dispatch
+                 fn-sf-statep fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-sf-dispatch
                  fn-bs-durable fn-bs-durable-names
                  fn-bs-durable-frontier fn-bs-durable-records
                  fn-bs-replay-visiblep fn-bs-pending-shape-okp
@@ -204,7 +205,7 @@
            (fn-bs-run-relatedp
             (fn-bs-run (fn-bs-initial-image unit config frontier)
                        (fn-sf-initial-state)
-                       (fn-bs-frontier-program stage next) nil nil nil)))
+                       (fn-bs-frontier-program stage next) nil nil nil) arena))
   :rule-classes nil
   :hints (("Goal" :do-not '(preprocess)
            :in-theory
@@ -238,7 +239,7 @@
            (not (fn-bs-run-relatedp
                  (fn-bs-run (fn-bs-initial-image unit config frontier)
                             (fn-sf-initial-state)
-                            (fn-bs-frontier-program stage frontier) nil nil nil))))
+                            (fn-bs-frontier-program stage frontier) nil nil nil) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not '(preprocess)
            :in-theory (theory 'fn-bs-k0-unroll-theory))

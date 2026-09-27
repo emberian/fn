@@ -44,7 +44,7 @@
   (implies
    (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
         (fn-bs-store-relation bs
-                              (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                              (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) arena)
         (fn-bs-frontier-inputp
          (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) stage octets)
         (not (fn-bs-lookup bs :staging stage)))
@@ -65,7 +65,7 @@
                  (cdr return-pair))
           (fn-bs-store-relation
            (car return-pair)
-           (fn-sn-files (fn-own-store (fn-ocfg-owner oc4))))
+           (fn-sn-files (fn-own-store (fn-ocfg-owner oc4))) arena)
           (equal (fn-sf-phase
                   (fn-sn-files (fn-own-store (fn-ocfg-owner oc4))))
                  :reserved))))
@@ -125,7 +125,7 @@
 
 (local
  (defthm fn-bs-k0-frontier-root-eio-apply-reaches-durable-cut
-   (implies (and (fn-bs-store-relation bs ks)
+   (implies (and (fn-bs-store-relation bs ks arena)
                  (fn-bs-frontier-inputp ks stage octets)
                  (not (fn-bs-lookup bs :staging stage)))
             (let* ((run (fn-bs-run bs ks (fn-bs-frontier-program stage octets)
@@ -157,7 +157,7 @@
 (defthm fn-bs-k0-frontier-node-root-eio-applied-fences-related-state
   (implies
    (and (fn-sn-statep s)
-        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-store-relation bs (fn-sn-files s) arena)
         (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
         (not (fn-bs-lookup bs :staging stage)))
    (let* ((ks (fn-sn-files s))
@@ -173,7 +173,7 @@
                         :frontier-replace :ok))
           (s4 (fn-sn-io s3 :frontier-directory :error)))
      (and (equal failed (car (nth 12 run)))
-          (fn-bs-store-relation failed (fn-sn-files s4))
+          (fn-bs-store-relation failed (fn-sn-files s4) arena)
           (equal (fn-sf-phase (fn-sn-files s4)) :fenced-frontier)
           (equal (fn-bs-durable-frontier failed)
                  (fn-sf-frontier-candidate (fn-sn-files s3))))))
@@ -215,7 +215,7 @@
                             fn-bs-store-relation fn-bs-durable-frontier)))))
 
 (defthm fn-bs-k0-frontier-eio-applied-run-has-actual-failed-cut
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal
@@ -245,7 +245,7 @@
    (implies
     (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
          (fn-bs-store-relation bs
-                               (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                               (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) arena)
          (fn-bs-frontier-inputp
           (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) stage octets)
          (not (fn-bs-lookup bs :staging stage)))
@@ -266,7 +266,7 @@
            (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
       (and (equal result :eio)
            (equal failed (car (nth 12 run)))
-           (fn-bs-store-relation failed k4)
+           (fn-bs-store-relation failed k4 arena)
            (equal (fn-sf-phase k4) :fenced-frontier)
            (equal (fn-bs-durable-frontier failed)
                   (fn-sf-frontier-candidate k3)))))
@@ -284,7 +284,7 @@
   (implies
    (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
         (fn-bs-store-relation bs
-                              (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                              (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) arena)
         (fn-bs-frontier-inputp
          (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) stage octets)
         (not (fn-bs-lookup bs :staging stage)))
@@ -300,7 +300,7 @@
           (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error))))
           (k3 (fn-sn-files (fn-own-store (fn-ocfg-owner oc3))))
           (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
-     (and (fn-bs-store-relation failed k4)
+     (and (fn-bs-store-relation failed k4 arena)
           (equal (fn-sf-phase k4) :fenced-frontier)
           (equal (fn-bs-durable-frontier failed)
                  (fn-sf-frontier-candidate k3)))))
@@ -395,14 +395,14 @@
 
 (local
  (defthm fn-bs-k0-related-authority-known
-   (implies (fn-bs-store-relation file k)
+   (implies (fn-bs-store-relation file k arena)
             (fn-bs-authority-knownp file))
    :rule-classes nil
    :hints (("Goal" :in-theory (enable fn-bs-store-relation)))))
 
 (local
  (defthm fn-bs-k0-staging-delete-transports-relation
-   (implies (and (fn-bs-store-relation file k)
+   (implies (and (fn-bs-store-relation file k arena)
                  (not (fn-bs-replay-visiblep k))
                  (fn-bs-namep stage)
                  (equal (fn-bs-ops-for-dir (fn-bs-pending file) :root) nil)
@@ -419,7 +419,7 @@
                          (append (fn-bs-pending file)
                                  (list (list :del-entry :staging stage)))
                          (fn-bs-next-ino file))
-             k))
+             k arena))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
             :use ((:instance fn-bs-store-relation-unfolds (bs file) (ks k))
@@ -480,7 +480,7 @@
 
 (local
  (defthm fn-bs-k0-frontier-file-related-to-attempted-kernel
-   (implies (and (fn-bs-store-relation bs ks)
+   (implies (and (fn-bs-store-relation bs ks arena)
                  (fn-bs-frontier-inputp ks stage octets)
                  (not (fn-bs-lookup bs :staging stage)))
             (fn-bs-store-relation
@@ -489,7 +489,7 @@
                              nil groups capacity)))
              (cdr (nth 12 (fn-bs-run bs ks
                               (fn-bs-frontier-program stage octets)
-                              nil groups capacity)))))
+                              nil groups capacity))) arena))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
             :use (fn-bs-store-relation-unfolds
@@ -509,7 +509,7 @@
                                 fn-sf-frontier-replace-result)))))
 (local
  (defthm fn-bs-k0-frontier-root-eio-drop-is-staging-delete
-   (implies (and (fn-bs-store-relation bs ks)
+   (implies (and (fn-bs-store-relation bs ks arena)
                  (fn-bs-frontier-inputp ks stage octets)
                  (not (fn-bs-lookup bs :staging stage)))
             (let* ((run (fn-bs-run bs ks
@@ -543,7 +543,7 @@
                              fn-bs-fsync-dir fn-bs-rename fn-bs-lookup))))))
 (local
  (defthm fn-bs-k0-frontier-root-eio-drop-preserves-relation
-   (implies (and (fn-bs-store-relation bs ks)
+   (implies (and (fn-bs-store-relation bs ks arena)
                  (fn-bs-frontier-inputp ks stage octets)
                  (not (fn-bs-lookup bs :staging stage)))
             (let* ((run (fn-bs-run bs ks
@@ -555,7 +555,7 @@
                               (mv-nth 1 (fn-bs-rename file :staging stage
                                                       :root *fn-bs-frontier-name* :ok))
                               :root '(:eio :drop)))))
-              (fn-bs-store-relation failed k3)))
+              (fn-bs-store-relation failed k3 arena)))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
             :use (fn-bs-store-relation-unfolds
@@ -584,7 +584,7 @@
                              fn-bs-lookup))))))
 (local
  (defthm fn-bs-k0-frontier-root-eio-drop-keeps-old-frontier
-   (implies (and (fn-bs-store-relation bs ks)
+   (implies (and (fn-bs-store-relation bs ks arena)
                  (fn-bs-frontier-inputp ks stage octets)
                  (not (fn-bs-lookup bs :staging stage)))
             (let* ((run (fn-bs-run bs ks
@@ -614,7 +614,7 @@
    :hints (("Goal" :in-theory (enable fn-bs-fsync-dir)))))
 
 (defthm fn-bs-k0-frontier-eio-dropped-run-has-actual-failed-cut
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (let* ((ok-run (fn-bs-run bs ks
@@ -652,7 +652,7 @@
 (defthm fn-bs-k0-frontier-node-root-eio-dropped-fences-related-state
   (implies
    (and (fn-sn-statep s)
-        (fn-bs-store-relation bs (fn-sn-files s))
+        (fn-bs-store-relation bs (fn-sn-files s) arena)
         (fn-bs-frontier-inputp (fn-sn-files s) stage octets)
         (not (fn-bs-lookup bs :staging stage)))
    (let* ((ks (fn-sn-files s))
@@ -667,7 +667,7 @@
                                       :frontier-file :ok)
                         :frontier-replace :ok))
           (s4 (fn-sn-io s3 :frontier-directory :error)))
-     (and (fn-bs-store-relation failed (fn-sn-files s4))
+     (and (fn-bs-store-relation failed (fn-sn-files s4) arena)
           (equal (fn-sf-phase (fn-sn-files s4)) :fenced-frontier)
           (equal (fn-bs-durable-frontier failed)
                  (fn-bs-durable-frontier bs)))))
@@ -714,7 +714,7 @@
   (implies
    (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
         (fn-bs-store-relation bs
-                              (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                              (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) arena)
         (fn-bs-frontier-inputp
          (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) stage octets)
         (not (fn-bs-lookup bs :staging stage)))
@@ -730,7 +730,7 @@
           (oc4 (fn-ocfg-step oc3 '(:store (:io :frontier-directory :error))))
           (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
      (and (equal (len run) 13)
-          (fn-bs-store-relation failed k4)
+          (fn-bs-store-relation failed k4 arena)
           (equal (fn-sf-phase k4) :fenced-frontier)
           (equal (fn-bs-durable-frontier failed)
                  (fn-bs-durable-frontier bs)))))
@@ -764,7 +764,7 @@
                               fn-bs-crash-select fn-bs-apply-ops)
                             (fn-bs-lookup))))) )
 (defthm fn-bs-k0-frontier-eio-choice-run-has-actual-failed-cut
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (let* ((ok-run (fn-bs-run bs ks
@@ -800,7 +800,7 @@
                             fn-bs-store-relation)))))
 (local
  (defthm fn-bs-k0-frontier-eio-nonapply-run-is-drop-cut
-   (implies (and (fn-bs-store-relation bs ks)
+   (implies (and (fn-bs-store-relation bs ks arena)
                  (fn-bs-frontier-inputp ks stage octets)
                  (not (fn-bs-lookup bs :staging stage))
                  (not (equal choice :apply)))
@@ -838,7 +838,7 @@
   (implies
    (and (fn-sn-statep (fn-own-store (fn-ocfg-owner oc)))
         (fn-bs-store-relation bs
-                              (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                              (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) arena)
         (fn-bs-frontier-inputp
          (fn-sn-files (fn-own-store (fn-ocfg-owner oc))) stage octets)
         (not (fn-bs-lookup bs :staging stage)))
@@ -855,7 +855,7 @@
           (k3 (fn-sn-files (fn-own-store (fn-ocfg-owner oc3))))
           (k4 (fn-sn-files (fn-own-store (fn-ocfg-owner oc4)))))
      (and (equal (len run) 13)
-          (fn-bs-store-relation failed k4)
+          (fn-bs-store-relation failed k4 arena)
           (equal (fn-sf-phase k4) :fenced-frontier)
           (equal (fn-bs-durable-frontier failed)
                  (if (equal choice :apply)

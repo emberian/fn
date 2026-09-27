@@ -44,7 +44,7 @@
 (assert-event (natp (bss-cut-index (fn-bs-frontier-program (bss-stage) (fn-bs-frontier-encode-impl 1))
                                    "frontier-staged-durable" 0)))
 (assert-event (fn-bs-inop (fn-bs-lookup (car (bss-at-cut)) :staging (bss-stage))))
-(assert-event (fn-bs-store-relation (car (bss-at-cut)) (cdr (bss-at-cut))))
+(assert-event (fn-bs-store-relation (car (bss-at-cut)) (cdr (bss-at-cut)) 'nil))
 (assert-event (fn-bs-scan-okp (fn-bs-scan-store (car (bss-at-cut)))))
 
 ; fn-bs-staging-unlink-keeps-relation-and-scan, the witness: the sweep's
@@ -55,7 +55,7 @@
         (bs1 (bss-unlinked bs :staging (bss-stage))))
    (and (not (equal bs1 bs))
         (null (fn-bs-lookup bs1 :staging (bss-stage)))
-        (fn-bs-store-relation bs1 ks)
+        (fn-bs-store-relation bs1 ks 'nil)
         (equal (fn-bs-scan-store bs1) (fn-bs-scan-store bs))
         (equal (fn-bs-scan-frontier (fn-bs-scan-store bs1)) 0))))
 
@@ -66,7 +66,7 @@
  (let ((bs (car (bss-at-cut))) (ks (cdr (bss-at-cut))))
    (fn-bs-sweep-run-okp
     (fn-bs-run bs ks (fn-bs-recover-sweep-program (list (bss-stage))) nil nil nil)
-    ks (fn-bs-scan-store bs))))
+    ks (fn-bs-scan-store bs) 'nil)))
 
 ; Teeth.  The theorem is about :staging.  The same unlink in the root
 ; directory, at the frontier's name, is the separating case: the scan faults
@@ -76,7 +76,7 @@
         (bs1 (bss-unlinked bs :root *fn-bs-frontier-name*)))
    (and (not (fn-bs-scan-okp (fn-bs-scan-store bs1)))
         (not (equal (fn-bs-scan-store bs1) (fn-bs-scan-store bs)))
-        (not (fn-bs-store-relation bs1 ks)))))
+        (not (fn-bs-store-relation bs1 ks 'nil)))))
 
 ; The relation hypothesis: from an unrelated state (a zero write unit) the
 ; unlink cannot produce a related one.
@@ -84,5 +84,5 @@
  (let* ((bs (fn-bs-initial-image 0 (fn-bs-initial-config-octets)
                                  (fn-bs-initial-frontier-octets)))
         (bs1 (bss-unlinked bs :staging (bss-stage))))
-   (and (not (fn-bs-store-relation bs (fn-sf-initial-state)))
-        (not (fn-bs-store-relation bs1 (fn-sf-initial-state))))))
+   (and (not (fn-bs-store-relation bs (fn-sf-initial-state) 'nil))
+        (not (fn-bs-store-relation bs1 (fn-sf-initial-state) 'nil)))))

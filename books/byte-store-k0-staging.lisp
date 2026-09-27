@@ -108,7 +108,7 @@
    :hints (("Goal" :induct (fn-bs-ops-not-for-ino ops ino)
             :in-theory (enable fn-bs-ops-not-for-ino fn-bs-ops-for-dir)))))
 (defthm fn-bs-k0-frontier-file-cut-authority-quiet-restated
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((file (car (nth 5 (fn-bs-run bs ks (fn-bs-frontier-program stage octets)
@@ -144,7 +144,7 @@
                             fn-sf-frontier-file-result fn-sf-frontier-replace-result
                             fn-sf-frontier-dir-result)))))
 (defthm fn-bs-k0-frontier-observation-pair-facts
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (let* ((run (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))
@@ -154,7 +154,7 @@
                   (equal (fn-sf-frontier-candidate k6) (1+ (fn-sf-frontier ks)))
                   (equal (fn-sf-records k6) (fn-sf-records ks))
                   (equal (fn-bs-durable-frontier b6) (fn-sf-frontier ks))
-                  (equal (fn-bs-durable-records b6) (fn-sf-records ks))
+                  (equal (fn-bs-durable-records b6) (fn-bs-rows-wire (fn-sf-records ks) arena))
                   (equal (fn-bs-frontier-decode (fn-bs-durable-content b6 (fn-bs-next-ino bs)))
                          (1+ (fn-sf-frontier ks)))
                   (equal (fn-bs-lookup b6 :staging stage) (fn-bs-next-ino bs))
@@ -174,7 +174,7 @@
                  fn-bs-k0-frontier-file-cut-source-is-new-inode
                  (:instance fn-sf-start-frontier-preserves-state (s ks)))
            :in-theory (e/d (fn-bs-frontier-inputp fn-sf-start-frontier fn-sf-frontier-file-result
-                            fn-bs-replay-visiblep fn-sf-crash-imagep fn-sf-frontier-new-visiblep
+                            fn-bs-replay-visiblep fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-sf-frontier-new-visiblep
                             fn-sf-record-present-visiblep fn-bs-statep fn-bs-inop)
                            (fn-bs-run fn-bs-frontier-program fn-bs-store-relation
                             fn-bs-durable-frontier fn-bs-durable-records fn-bs-durable-content
@@ -193,11 +193,11 @@
            :in-theory (e/d (fn-sf-frontier-replace-result)
                            (fn-sf-statep fn-sf-frontier-replace-result-preserves-state)))))
 (defthm fn-bs-k0-frontier-replaced-cut-relation
-     (implies (and (fn-bs-store-relation bs ks)
+     (implies (and (fn-bs-store-relation bs ks arena)
                    (fn-bs-frontier-inputp ks stage octets)
                    (not (fn-bs-lookup bs :staging stage)))
               (let ((p (nth 9 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
-                (fn-bs-store-relation (car p) (cdr p))))
+                (fn-bs-store-relation (car p) (cdr p) arena)))
      :rule-classes nil
      :hints (("Goal" :do-not-induct t
               :use (fn-bs-k0-frontier-observation-pair-facts
@@ -228,11 +228,11 @@
                                fn-bs-durable-content fn-bs-lookup fn-bs-fencedp fn-bs-inop
                                fn-bs-make fn-bs-namep fn-sf-frontier-replace-result fn-sf-frontier-replace-result-preserves-state)))))
 (defthm fn-bs-k0-frontier-attempted-cut-relation
-     (implies (and (fn-bs-store-relation bs ks)
+     (implies (and (fn-bs-store-relation bs ks arena)
                    (fn-bs-frontier-inputp ks stage octets)
                    (not (fn-bs-lookup bs :staging stage)))
               (let ((p (nth 11 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
-                (fn-bs-store-relation (car p) (cdr p))))
+                (fn-bs-store-relation (car p) (cdr p) arena)))
      :rule-classes nil
      :hints (("Goal" :do-not-induct t
               :use (fn-bs-k0-frontier-observation-pair-facts
@@ -350,14 +350,14 @@
                            (fn-bs-durable-entry fn-bs-statep fn-bs-inode-list-knownp)))))
 (defthm fn-bs-k0-staging-extension-keeps-pending-match
   (implies (and (fn-bs-statep b)
-                (fn-bs-pending-matches-phase b k)
+                (fn-bs-pending-matches-phase b k arena)
                 (not (fn-bs-ops-for-dir ops :root))
                 (not (fn-bs-ops-for-dir ops :transactions))
                 (fn-bs-k0-writes-avoid ops (fn-bs-authority-inode-list b)))
            (fn-bs-pending-matches-phase
             (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
                         (append (fn-bs-pending b) ops) (fn-bs-next-ino b))
-            k))
+            k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0t-writes-avoid-authority-targets
@@ -375,7 +375,7 @@
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                             fn-bs-k0t-writes-avoid-member)))))
 (defthm fn-bs-k0-pending-staging-extension-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (fn-bs-statep (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
                                           (append (fn-bs-pending b) ops) (fn-bs-next-ino b)))
@@ -385,7 +385,7 @@
            (fn-bs-store-relation
             (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
                         (append (fn-bs-pending b) ops) (fn-bs-next-ino b))
-            k))
+            k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-unfolds (bs b) (ks k))
@@ -396,7 +396,7 @@
                            (fn-bs-durable fn-bs-durable-entry fn-bs-durable-names fn-bs-statep
                             fn-bs-durable-records fn-bs-durable-frontier fn-bs-durable-content
                             fn-bs-authority-fencedp fn-bs-authority-knownp fn-bs-pending-matches-phase
-                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-sf-statep
+                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-sf-statep
                             fn-bs-contiguous-namesp fn-bs-replay-visiblep)))))
 (local (defthm fn-bs-k0t-assoc-value-in-strip-cdrs
   (implies (cdr (assoc-equal name al))
@@ -468,7 +468,7 @@
                 (not (member-equal (fn-bs-next-ino b) (fn-bs-authority-inode-list b)))
                 (fn-bs-authority-fencedp b)
                 (fn-bs-authority-knownp b)
-                (fn-bs-pending-matches-phase b k))
+                (fn-bs-pending-matches-phase b k arena))
            (let ((b1 (fn-bs-make (fn-bs-unit b) (cons (cons (fn-bs-next-ino b) nil) (fn-bs-inodes b))
                                  (fn-bs-dirs b)
                                  (append (fn-bs-pending b)
@@ -476,7 +476,7 @@
                                  (1+ (fn-bs-next-ino b)))))
              (and (fn-bs-authority-fencedp b1)
                   (fn-bs-authority-knownp b1)
-                  (fn-bs-pending-matches-phase b1 k))))
+                  (fn-bs-pending-matches-phase b1 k arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0t-first-dir-op-is-entry-target (p (fn-bs-pending b)) (dir :root))
@@ -489,11 +489,11 @@
                             fn-bs-durable-records fn-bs-durable fn-bs-durable-names fn-bs-record-of
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
 (defthm fn-bs-k0-staging-create-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (fn-bs-namep stage)
                 (not (fn-bs-lookup b :staging stage)))
-           (fn-bs-store-relation (mv-nth 1 (fn-bs-create b :staging stage :ok)) k))
+           (fn-bs-store-relation (mv-nth 1 (fn-bs-create b :staging stage :ok)) k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0-staging-create-shape
@@ -509,7 +509,7 @@
                            (fn-bs-durable fn-bs-durable-names fn-bs-statep fn-bs-create
                             fn-bs-durable-records fn-bs-lookup
                             fn-bs-authority-fencedp fn-bs-authority-knownp fn-bs-pending-matches-phase
-                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-sf-statep
+                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-sf-statep
                             fn-bs-contiguous-namesp fn-bs-replay-visiblep fn-bs-create-preserves-statep
                             fn-bs-k0-fresh-inode-durable-records)))))
 (local (defthm fn-bs-k0t-apply-writes-of-dir-ops
@@ -578,9 +578,9 @@
                            (fn-bs-read-records fn-bs-txn-prefix-agreesp fn-bs-durable-names
                             fn-bs-read-records-under-agreement fn-bs-fence-dir)))))
 (defthm fn-bs-k0-staging-fence-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k)))
-           (fn-bs-store-relation (fn-bs-fence-dir b :staging) k))
+           (fn-bs-store-relation (fn-bs-fence-dir b :staging) k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0-staging-fence-projections (name *fn-bs-scan-config-name*))
@@ -595,16 +595,16 @@
                            (fn-bs-durable fn-bs-durable-names fn-bs-statep fn-bs-fence-dir
                             fn-bs-durable-records fn-bs-durable-frontier fn-bs-durable-entry
                             fn-bs-durable-content fn-bs-authority-inode-list fn-bs-record-of
-                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-sf-statep
+                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-sf-statep
                             fn-bs-contiguous-namesp fn-bs-replay-visiblep fn-bs-fence-dir-preserves-statep
                             fn-bs-all-fencedp fn-bs-inode-list-knownp fn-bs-fencedp
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
 (defthm fn-bs-k0-staging-write-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (fn-cbor-octet-listp octets)
                 (not (member-equal ino (fn-bs-authority-inode-list b))))
-           (fn-bs-store-relation (mv-nth 1 (fn-bs-write b ino 0 octets :ok)) k))
+           (fn-bs-store-relation (mv-nth 1 (fn-bs-write b ino 0 octets :ok)) k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-unfolds (bs b) (ks k))
@@ -615,11 +615,11 @@
                            (fn-bs-store-relation fn-bs-statep fn-bs-write-preserves-statep
                             fn-bs-authority-inode-list fn-bs-take fn-bs-replay-visiblep)))))
 (defthm fn-bs-k0-staging-unlink-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (not (equal dir :root))
                 (not (equal dir :transactions)))
-           (fn-bs-store-relation (mv-nth 1 (fn-bs-unlink b dir name :ok)) k))
+           (fn-bs-store-relation (mv-nth 1 (fn-bs-unlink b dir name :ok)) k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-unfolds (bs b) (ks k))
@@ -686,7 +686,7 @@
    :hints (("Goal" :in-theory (e/d (fn-bs-create)
                                    (fn-bs-statep fn-bs-lookup)))))
 (defthm fn-bs-k0-staging-create-fresh-facts
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (fn-bs-namep stage)
                 (not (fn-bs-lookup b :staging stage)))
            (let ((b1 (mv-nth 1 (fn-bs-create b :staging stage :ok))))
@@ -705,12 +705,12 @@
                            (fn-bs-store-relation fn-bs-statep fn-bs-create fn-bs-durable-entry
                             fn-bs-k0-fresh-inode-projections fn-bs-lookup)))))
 (defthm fn-bs-k0-frontier-created-and-written-cut-relation
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((run (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity)))
-             (and (fn-bs-store-relation (car (nth 2 run)) (cdr (nth 2 run)))
-                  (fn-bs-store-relation (car (nth 4 run)) (cdr (nth 4 run))))))
+             (and (fn-bs-store-relation (car (nth 2 run)) (cdr (nth 2 run)) arena)
+                  (fn-bs-store-relation (car (nth 4 run)) (cdr (nth 4 run)) arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0-frontier-run-prefix-shape
@@ -745,12 +745,12 @@
                             fn-sf-record-file-result fn-sf-record-link-result
                             fn-sf-record-dir-result)))))
 (defthm fn-bs-k0-record-created-and-written-cut-relation
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((run (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))
-             (and (fn-bs-store-relation (car (nth 1 run)) (cdr (nth 1 run)))
-                  (fn-bs-store-relation (car (nth 3 run)) (cdr (nth 3 run))))))
+             (and (fn-bs-store-relation (car (nth 1 run)) (cdr (nth 1 run)) arena)
+                  (fn-bs-store-relation (car (nth 3 run)) (cdr (nth 3 run)) arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0-record-run-prefix-shape
@@ -813,8 +813,8 @@
                             fn-sf-record-file-result fn-sf-record-link-result
                             fn-sf-record-dir-result)))))
 (defthm fn-bs-k0-record-completing-stage-lookup
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-lookup (car (nth 14 (fn-bs-run bs ks (fn-bs-record-program stage name frame)
                                                         nil groups capacity)))
@@ -854,12 +854,12 @@
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (enable fn-bs-statep)))))
 (defthm fn-bs-k0-record-cleanup-cut-relation
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((run (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))
-             (and (fn-bs-store-relation (car (nth 16 run)) (cdr (nth 16 run)))
-                  (fn-bs-store-relation (car (nth 18 run)) (cdr (nth 18 run))))))
+             (and (fn-bs-store-relation (car (nth 16 run)) (cdr (nth 16 run)) arena)
+                  (fn-bs-store-relation (car (nth 18 run)) (cdr (nth 18 run)) arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0-record-completing-cut-relation
@@ -881,26 +881,26 @@
 
 ;; ---- lane p10-k0-b: error arms (the host observation after an EIO, applied to the cut pair).
 (defthm fn-bs-record-link-error-preserves-relation
-  (implies (fn-bs-store-relation bs ks)
-           (fn-bs-store-relation bs (fn-sf-record-link-result ks :error)))
+  (implies (fn-bs-store-relation bs ks arena)
+           (fn-bs-store-relation bs (fn-sf-record-link-result ks :error) arena))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-sf-record-link-result-preserves-state (s ks) (result :error)))
            :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase
-                             fn-bs-replay-visiblep fn-sf-crash-imagep
+                             fn-bs-replay-visiblep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                              fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                              fn-sf-record-link-result)
                             (fn-bs-statep fn-sf-statep fn-bs-pending-shape-okp
                              fn-bs-authority-fencedp fn-bs-authority-knownp
                              fn-bs-ops-for-dir)))))
 (defthm fn-bs-record-dir-error-preserves-relation
-  (implies (fn-bs-store-relation bs ks)
-           (fn-bs-store-relation bs (fn-sf-record-dir-result ks :error)))
+  (implies (fn-bs-store-relation bs ks arena)
+           (fn-bs-store-relation bs (fn-sf-record-dir-result ks :error) arena))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-sf-record-dir-result-preserves-state (s ks) (result :error)))
            :in-theory (e/d (fn-bs-store-relation fn-bs-pending-matches-phase
-                             fn-bs-replay-visiblep fn-sf-crash-imagep
+                             fn-bs-replay-visiblep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                              fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                              fn-sf-record-dir-result)
                             (fn-bs-statep fn-sf-statep fn-bs-pending-shape-okp
@@ -919,11 +919,11 @@
            :in-theory (e/d (fn-sf-frontier-replace-result)
                            (fn-sf-statep fn-sf-frontier-replace-result-preserves-state)))))
 (defthm fn-bs-k0-frontier-issued-rename-error-arm-relation
-     (implies (and (fn-bs-store-relation bs ks)
+     (implies (and (fn-bs-store-relation bs ks arena)
                    (fn-bs-frontier-inputp ks stage octets)
                    (not (fn-bs-lookup bs :staging stage)))
               (let ((p (nth 9 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
-                (fn-bs-store-relation (car p) (fn-sf-frontier-replace-result (cdr (nth 6 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))) :error))))
+                (fn-bs-store-relation (car p) (fn-sf-frontier-replace-result (cdr (nth 6 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))) :error) arena)))
      :rule-classes nil
      :hints (("Goal" :do-not-induct t
               :use (fn-bs-k0-frontier-observation-pair-facts
@@ -954,14 +954,14 @@
                                fn-bs-durable-content fn-bs-lookup fn-bs-fencedp fn-bs-inop
                                fn-bs-make fn-bs-namep fn-sf-frontier-replace-result fn-sf-frontier-replace-result-preserves-state)))))
 (defthm fn-bs-k0-frontier-error-arms-relation
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((run (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity)))
              (and (fn-bs-store-relation (car (nth 6 run))
-                                        (fn-sf-frontier-replace-result (cdr (nth 6 run)) :error))
+                                        (fn-sf-frontier-replace-result (cdr (nth 6 run)) :error) arena)
                   (fn-bs-store-relation (car (nth 11 run))
-                                        (fn-sf-frontier-dir-result (cdr (nth 11 run)) :error)))))
+                                        (fn-sf-frontier-dir-result (cdr (nth 11 run)) :error) arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0-frontier-file-observation-establishes-relation
@@ -975,14 +975,14 @@
                   (ks (cdr (nth 11 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))))
            :in-theory (theory 'minimal-theory))))
 (defthm fn-bs-k0-record-error-arms-relation
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((run (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))
              (and (fn-bs-store-relation (car (nth 6 run))
-                                        (fn-sf-record-link-result (cdr (nth 6 run)) :error))
+                                        (fn-sf-record-link-result (cdr (nth 6 run)) :error) arena)
                   (fn-bs-store-relation (car (nth 10 run))
-                                        (fn-sf-record-dir-result (cdr (nth 10 run)) :error)))))
+                                        (fn-sf-record-dir-result (cdr (nth 10 run)) :error) arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0-record-staged-durable-cut-relation
