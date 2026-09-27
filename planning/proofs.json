@@ -9449,6 +9449,35 @@
         "fn-mvb-withdraw-makes-the-node-authorize-exactly-its-target",
         "fn-mvb-plan-unfolds"
       ]
+    },
+    {
+      "id": "PRF-261",
+      "title": "The full replay takes the history in chunks, and any chunking opens the Store one step over the whole history opens",
+      "statement": "Subject, called by the host: fn-srs-step (books/store-recover-stream.lisp) from host/store-node-host.lisp fn-store-sn-recover-step, called once per chunk by host/native/io.lisp fnn-bridge-recover (fnn-recover-full-replay, fnn-recover: every full-replay open, the store verbs and the owner start); fn-store-sn-recover-begin empties the arena and decodes the configuration history, fn-store-sn-recover-finish opens over the accumulated rows (fn-store-sn-open-extended, unchanged); fn-store-sn-recover is begin, one step, finish. The host closes a chunk where fn-srs-chunk-fullp says (1 MiB of record octets, a work quantum: a record above it is a chunk by itself, nothing is refused or split for its size), converting only that chunk to octet lists. fn-srs-decode is the host's record decode (host/store-host.lisp fn-store-decode-records now calls it). fn-srs-decode-of-append and fn-srs-intern-events-of-append: the decode and the intern (fn-intern-events, the arena threaded) of a concatenation are those of its parts. KEYSTONE fn-srs-steps-are-one-step-of-the-concatenation: for every list of chunks each a true list (fn-srs-chunksp) and any accumulator, the fold of fn-srs-step over the chunks is :bad exactly when one step over their concatenation is, and otherwise equal to it (rows and arena). fn-srs-one-step-is-the-intern-of-the-decode: one step from no rows, when not :bad, is the intern of the decoded history (rows reversed, same arena): the open fn-store-sn-recover computed before the chunking. Scope: the full-replay path only; the checkpoint path's suffix (fn-store-sn-recover-from-checkpoint) and the owner's twin still take their suffix at once.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025",
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-242"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-recover-stream.lisp",
+        "tests/acl2/store-recover-stream-tests.lisp",
+        "host/store-node-host.lisp",
+        "host/native/io.lisp",
+        "planning/evidence/recover-memory-2026-09-27.md"
+      ],
+      "progress_note": "Lane recover-memory (2026-09-27, PKT-823): REPL-admitted on hbox (the book and its test book, 29 forms); certified on hbox (see the record).",
+      "events": [
+        "fn-srs-steps-are-one-step-of-the-concatenation",
+        "fn-srs-one-step-is-the-intern-of-the-decode",
+        "fn-srs-decode-of-append",
+        "fn-srs-intern-events-of-append"
+      ]
     }
   ]
 }
