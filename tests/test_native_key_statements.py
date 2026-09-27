@@ -571,7 +571,12 @@ class NativeKeyStatementTests(unittest.TestCase):
             '[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
             '[control]\npath = "{}"\n[log]\npath = "{}"\n'.format(
                 store, node["port"], node["control"], node["log"]), encoding="ascii")
-        flags = [] if max_transactions is None else ["--max-transactions", str(max_transactions)]
+        # A named T with the default history bound (1 TiB) reserves ~11.5 TB,
+        # which init now refuses by name (membership-budget, PRF-315); name a
+        # history bound that holds these few records (16 MiB).
+        flags = [] if max_transactions is None else [
+            "--max-transactions", str(max_transactions),
+            "--max-history-octets", str(16 << 20)]
         self.fn("operator", node["config"], "init", *flags, *groups)
         return node
 
