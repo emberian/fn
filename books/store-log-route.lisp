@@ -220,12 +220,50 @@
                 (fn-lgk-recover c genesis unit max next-txid))
   :hints (("Goal" :in-theory (enable fn-lgk-recover))))
 
+; The checked prepare either leaves the kernel or is the kernel's prepare,
+; which appends to the open batch and touches nothing else the link reads.
+(local
+ (defthm fn-olr-lgt-prepare-cases
+   (or (equal (fn-lgt-prepare ks r) ks)
+       (equal (fn-lgt-prepare ks r) (fn-lgk-prepare ks r)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-lgt-prepare)))))
+
+(local
+ (defthm fn-olr-lgk-prepare-link-fields
+   (implies (not (equal (fn-lgk-prepare ks r) ks))
+            (and (equal (fn-lgk-committed (fn-lgk-prepare ks r)) (fn-lgk-committed ks))
+                 (equal (fn-lgk-inflight (fn-lgk-prepare ks r)) (fn-lgk-inflight ks))
+                 (equal (fn-lgk-batch (fn-lgk-prepare ks r))
+                        (append (true-list-fix (fn-lgk-batch ks)) (list r)))))
+   :hints (("Goal" :in-theory (enable fn-lgk-prepare)))))
+
+(local
+ (defthm fn-olr-append-true-list-fix-left
+   (equal (append (true-list-fix a) b) (append a b))))
+
+(local
+ (defthm fn-olr-taken-changes-the-kernel
+   (implies (equal (car (fn-olr-take ks record count octets bmax omax unit)) :taken)
+            (not (equal (cadr (fn-olr-take ks record count octets bmax omax unit)) ks)))
+   :hints (("Goal" :in-theory (e/d (fn-olr-take) (fn-lgt-prepare fn-olr-entry-octets))))))
+
 (defthm fn-olr-linkp-of-take
   (implies (and (fn-olr-linkp history ks)
                 (equal (car (fn-olr-take ks record count octets bmax omax unit)) :taken))
            (fn-olr-linkp (append history (list record))
                          (cadr (fn-olr-take ks record count octets bmax omax unit))))
-  :hints (("Goal" :in-theory (enable fn-lgt-prepare fn-lgk-prepare))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-olr-take-is-the-checked-prepare)
+                 (:instance fn-olr-lgt-prepare-cases (r record))
+                 (:instance fn-olr-taken-changes-the-kernel)
+                 (:instance fn-olr-lgk-prepare-link-fields (r record)))
+           :in-theory (e/d (fn-olr-linkp)
+                           (fn-olr-take fn-lgt-prepare fn-lgk-prepare
+                            fn-lgk-committed fn-lgk-inflight fn-lgk-batch
+                            fn-olr-take-is-the-checked-prepare fn-olr-entry-octets
+                            fn-olr-taken-changes-the-kernel
+                            fn-olr-lgk-prepare-link-fields)))))
 
 (defthm fn-olr-linkp-of-append
   (implies (and (fn-olr-linkp history ks) (not (consp (fn-lgk-inflight ks))))
@@ -261,6 +299,19 @@
  (defthm fn-olr-prefixp-true-list-fix
    (equal (fn-lg-prefixp p (true-list-fix b)) (fn-lg-prefixp p b))))
 
+; The verdict's shape under the link: the scan is committed ++ a prefix of
+; the batch in flight, and the history is committed ++ in flight ++ batch.
+(local
+ (defthm fn-olr-verdict-under-the-link
+   (implies (and (fn-lg-crash-verdictp scan committed frontier inflight last unit)
+                 (equal (append (true-list-fix committed) (true-list-fix inflight)
+                                (true-list-fix batch))
+                        history))
+            (and (fn-lg-prefixp (car scan) history)
+                 (fn-lg-prefixp committed (car scan))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-lg-crash-verdictp) (fn-lg-log))))))
+
 ; KEYSTONE.  The subjects are the log kernel's transitions the host calls
 ; (host/native/io.lisp fnn-log-take -> fn-olr-take, fnn-log-append ->
 ; fn-lgk-append, fnn-log-fence -> fn-lgk-fence) over the state the link
@@ -283,7 +334,12 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-lgk-crash-of-related-state-is-a-prefix)
-                 (:instance fn-lgk-relp-forward))
-           :in-theory (e/d (fn-lg-crash-verdictp)
-                           (fn-lgk-relp fn-lg-scan fn-lg-forgery-in
-                            fn-bs-durable-content fn-lg-log)))))
+                 (:instance fn-olr-verdict-under-the-link
+                            (scan (fn-lg-scan (fn-bs-durable-content image ino) genesis
+                                              (fn-bs-unit bs) max))
+                            (committed (fn-lgk-committed ks))
+                            (frontier (fn-lgk-frontier ks))
+                            (inflight (fn-lgk-inflight ks))
+                            (last (fn-lgk-last ks)) (unit (fn-bs-unit bs))
+                            (batch (fn-lgk-batch ks))))
+           :in-theory (union-theories '(fn-olr-linkp) (theory 'minimal-theory)))))
