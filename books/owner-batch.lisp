@@ -258,29 +258,172 @@
       (mv nil st))))
 
 ; -----------------------------------------------------------------------------
+; The kernel's transitions, field by field (D26: the preservation lemmas
+; below rewrite through these instead of opening the kernel's constructor).
+
+(defthm fn-owb-lgk-make-true-listp
+  (true-listp (fn-lgk-make committed last frontier next-txid batch inflight acked phase)))
+
+(defthm fn-owb-make-true-listp
+  (true-listp (fn-owb-make ks m i w a)))
+
+(local
+ (defthm fn-owb-true-list-fix-of-true-listp
+   (implies (true-listp x) (equal (true-list-fix x) x))))
+
+(defthm fn-owb-member-record-of-member
+  (equal (fn-owb-member-record (fn-owb-member id token record)) record))
+
+(defthm fn-owb-fields-of-lgk-prepare
+  (implies (not (equal (fn-lgk-phase ks) :fault))
+           (let ((k2 (fn-lgk-prepare ks record)))
+             (and (true-listp k2)
+                  (equal (fn-lgk-committed k2) (fn-lgk-committed ks))
+                  (equal (fn-lgk-last k2) (fn-lgk-last ks))
+                  (equal (fn-lgk-frontier k2) (fn-lgk-frontier ks))
+                  (equal (fn-lgk-batch k2) (append (true-list-fix (fn-lgk-batch ks)) (list record)))
+                  (equal (fn-lgk-inflight k2) (fn-lgk-inflight ks))
+                  (equal (fn-lgk-acked k2) (fn-lgk-acked ks))
+                  (equal (fn-lgk-phase k2) (fn-lgk-phase ks)))))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-prepare) (fn-lgk-make fn-lgk-committed fn-lgk-last
+                                                     fn-lgk-frontier fn-lgk-next-txid fn-lgk-batch
+                                                     fn-lgk-inflight fn-lgk-acked fn-lgk-phase)))))
+
+(defthm fn-owb-lgk-prepare-when-faulted
+  (implies (equal (fn-lgk-phase ks) :fault)
+           (equal (fn-lgk-prepare ks record) ks))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-prepare) (fn-lgk-make fn-lgk-phase)))))
+
+(defthm fn-owb-fields-of-lgk-known-abort
+  (let ((k2 (fn-lgk-known-abort ks)))
+    (and (true-listp k2)
+         (equal (fn-lgk-committed k2) (fn-lgk-committed ks))
+         (equal (fn-lgk-last k2) (fn-lgk-last ks))
+         (equal (fn-lgk-frontier k2) (fn-lgk-frontier ks))
+         (equal (fn-lgk-batch k2) (fn-lgk-batch ks))
+         (equal (fn-lgk-inflight k2) (fn-lgk-inflight ks))
+         (equal (fn-lgk-acked k2) (fn-lgk-acked ks))
+         (equal (fn-lgk-phase k2) (fn-lgk-phase ks))))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-known-abort) (fn-lgk-make fn-lgk-committed fn-lgk-last
+                                                         fn-lgk-frontier fn-lgk-next-txid fn-lgk-batch
+                                                         fn-lgk-inflight fn-lgk-acked fn-lgk-phase)))))
+
+(defthm fn-owb-fields-of-lgk-append
+  (implies (and (not (consp (fn-lgk-inflight ks))) (not (equal (fn-lgk-phase ks) :fault))
+                (fn-lgk-fitsp ks unit extent))
+           (let ((k2 (fn-lgk-append ks unit extent)))
+             (and (true-listp k2)
+                  (equal (fn-lgk-committed k2) (fn-lgk-committed ks))
+                  (equal (fn-lgk-last k2) (fn-lgk-last ks))
+                  (equal (fn-lgk-frontier k2) (fn-lgk-frontier ks))
+                  (equal (fn-lgk-batch k2) nil)
+                  (equal (fn-lgk-inflight k2) (true-list-fix (fn-lgk-batch ks)))
+                  (equal (fn-lgk-acked k2) (fn-lgk-acked ks))
+                  (equal (fn-lgk-phase k2) :appended))))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-append) (fn-lgk-make fn-lgk-committed fn-lgk-last
+                                                    fn-lgk-frontier fn-lgk-next-txid fn-lgk-batch
+                                                    fn-lgk-inflight fn-lgk-acked fn-lgk-phase
+                                                    fn-lgk-fitsp)))))
+
+(defthm fn-owb-lgk-append-when-refused
+  (implies (or (consp (fn-lgk-inflight ks)) (equal (fn-lgk-phase ks) :fault)
+               (not (fn-lgk-fitsp ks unit extent)))
+           (equal (fn-lgk-append ks unit extent) ks))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-append) (fn-lgk-make fn-lgk-phase fn-lgk-inflight fn-lgk-fitsp)))))
+
+(defthm fn-owb-fields-of-lgk-fence
+  (let ((k2 (fn-lgk-fence ks unit)))
+    (and (true-listp k2)
+         (equal (fn-lgk-committed k2) (append (true-list-fix (fn-lgk-committed ks))
+                                              (true-list-fix (fn-lgk-inflight ks))))
+         (equal (fn-lgk-batch k2) (fn-lgk-batch ks))
+         (equal (fn-lgk-inflight k2) nil)
+         (equal (fn-lgk-acked k2) (fn-lgk-acked ks))
+         (equal (fn-lgk-phase k2) :fenced)))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-fence) (fn-lgk-make fn-lgk-committed fn-lgk-last
+                                                   fn-lgk-frontier fn-lgk-next-txid fn-lgk-batch
+                                                   fn-lgk-inflight fn-lgk-acked fn-lgk-phase
+                                                   fn-lg-log fn-lg-last-trailer)))))
+
+(defthm fn-owb-fields-of-lgk-fence-failed
+  (let ((k2 (fn-lgk-fence-failed ks)))
+    (and (true-listp k2)
+         (equal (fn-lgk-committed k2) (fn-lgk-committed ks))
+         (equal (fn-lgk-last k2) (fn-lgk-last ks))
+         (equal (fn-lgk-frontier k2) (fn-lgk-frontier ks))
+         (equal (fn-lgk-batch k2) (fn-lgk-batch ks))
+         (equal (fn-lgk-inflight k2) (fn-lgk-inflight ks))
+         (equal (fn-lgk-acked k2) (fn-lgk-acked ks))
+         (equal (fn-lgk-phase k2) :fault)))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-fence-failed) (fn-lgk-make fn-lgk-committed fn-lgk-last
+                                                          fn-lgk-frontier fn-lgk-next-txid fn-lgk-batch
+                                                          fn-lgk-inflight fn-lgk-acked fn-lgk-phase)))))
+
+(defthm fn-owb-fields-of-lgk-finish-one
+  (implies (< (fn-lgk-acked ks) (len (fn-lgk-committed ks)))
+           (let ((k2 (fn-lgk-finish-one ks)))
+             (and (true-listp k2)
+                  (equal (fn-lgk-committed k2) (fn-lgk-committed ks))
+                  (equal (fn-lgk-last k2) (fn-lgk-last ks))
+                  (equal (fn-lgk-frontier k2) (fn-lgk-frontier ks))
+                  (equal (fn-lgk-batch k2) (fn-lgk-batch ks))
+                  (equal (fn-lgk-inflight k2) (fn-lgk-inflight ks))
+                  (equal (fn-lgk-acked k2) (1+ (fn-lgk-acked ks)))
+                  (equal (fn-lgk-phase k2) (fn-lgk-phase ks)))))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-finish-one) (fn-lgk-make fn-lgk-committed fn-lgk-last
+                                                        fn-lgk-frontier fn-lgk-next-txid fn-lgk-batch
+                                                        fn-lgk-inflight fn-lgk-acked fn-lgk-phase)))))
+
+(defthm fn-owb-lgk-finish-one-when-nothing-waits
+  (implies (not (< (fn-lgk-acked ks) (len (fn-lgk-committed ks))))
+           (equal (fn-lgk-finish-one ks) ks))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-finish-one) (fn-lgk-make fn-lgk-acked fn-lgk-committed)))))
+
+(deftheory fn-owb-kernel-closed
+  '(fn-lgk-make fn-lgk-committed fn-lgk-last fn-lgk-frontier fn-lgk-next-txid
+    fn-lgk-batch fn-lgk-inflight fn-lgk-acked fn-lgk-phase
+    fn-lgk-prepare fn-lgk-known-abort fn-lgk-append fn-lgk-fence fn-lgk-fence-failed
+    fn-lgk-finish-one fn-lgk-fitsp fn-lg-log fn-lg-last-trailer fn-owb-batch-octets
+    fn-owb-make fn-owb-ks fn-owb-members fn-owb-inflight fn-owb-waiting fn-owb-acked))
+
+; -----------------------------------------------------------------------------
 ; Alignment is carried by every transition.
 
 (defthm fn-owb-take-preserves-alignment
   (implies (fn-owb-alignedp st)
            (fn-owb-alignedp (fn-owb-take st id token record unit bmax omax)))
-  :hints (("Goal" :in-theory (disable fn-lg-log fn-owb-batch-octets fn-lgk-fitsp))))
+  :hints (("Goal" :in-theory (e/d (fn-owb-alignedp fn-owb-take fn-owb-take-enabledp) (fn-owb-kernel-closed)))))
 
 (defthm fn-owb-known-abort-preserves-alignment
-  (implies (fn-owb-alignedp st) (fn-owb-alignedp (fn-owb-known-abort st))))
+  (implies (fn-owb-alignedp st) (fn-owb-alignedp (fn-owb-known-abort st)))
+  :hints (("Goal" :in-theory (e/d (fn-owb-alignedp fn-owb-known-abort) (fn-owb-kernel-closed)))))
 
 (defthm fn-owb-append-preserves-alignment
   (implies (fn-owb-alignedp st) (fn-owb-alignedp (fn-owb-append st unit extent)))
-  :hints (("Goal" :in-theory (disable fn-lgk-fitsp fn-lg-log))))
+  :hints (("Goal" :in-theory (e/d (fn-owb-alignedp fn-owb-append fn-owb-append-enabledp) (fn-owb-kernel-closed)))))
 
 (defthm fn-owb-fence-preserves-alignment
   (implies (fn-owb-alignedp st) (fn-owb-alignedp (fn-owb-fence st unit)))
-  :hints (("Goal" :in-theory (disable fn-lg-log fn-lg-last-trailer))))
+  :hints (("Goal" :in-theory (e/d (fn-owb-alignedp fn-owb-fence) (fn-owb-kernel-closed)))))
 
 (defthm fn-owb-fence-failed-preserves-alignment
-  (implies (fn-owb-alignedp st) (fn-owb-alignedp (fn-owb-fence-failed st))))
+  (implies (fn-owb-alignedp st) (fn-owb-alignedp (fn-owb-fence-failed st)))
+  :hints (("Goal" :in-theory (e/d (fn-owb-alignedp fn-owb-fence-failed) (fn-owb-kernel-closed)))))
+
+(local
+ (defthm fn-owb-len-of-equal-append-with-a-consp-tail
+   (implies (and (equal (append a b) c) (consp b)) (< (len a) (len c)))
+   :rule-classes nil))
 
 (defthm fn-owb-finish-member-preserves-alignment
-  (implies (fn-owb-alignedp st) (fn-owb-alignedp (mv-nth 1 (fn-owb-finish-member st)))))
+  (implies (fn-owb-alignedp st) (fn-owb-alignedp (mv-nth 1 (fn-owb-finish-member st))))
+  :hints (("Goal" :in-theory (e/d (fn-owb-alignedp fn-owb-finish-member)
+                                  (fn-owb-kernel-closed fn-owb-member-record fn-owb-member-id
+                                   fn-owb-member-token))
+           :use ((:instance fn-owb-len-of-equal-append-with-a-consp-tail
+                            (a (fn-owb-records (fn-owb-acked st)))
+                            (b (fn-owb-records (fn-owb-waiting st)))
+                            (c (fn-lgk-committed (fn-owb-ks st))))))))
 
 (defthm fn-owb-recover-is-aligned
   (fn-owb-alignedp (fn-owb-recover c genesis unit max next-txid))
@@ -298,7 +441,7 @@
 (defthm fn-owb-take-preserves-bounds
   (implies (fn-owb-boundedp st unit bmax omax)
            (fn-owb-boundedp (fn-owb-take st id token record unit bmax omax) unit bmax omax))
-  :hints (("Goal" :in-theory (disable fn-owb-batch-octets fn-lg-log))))
+  :hints (("Goal" :in-theory (e/d (fn-owb-boundedp fn-owb-take fn-owb-take-enabledp) (fn-owb-kernel-closed)))))
 
 (defthm fn-owb-batch-octets-of-nil
   (equal (fn-owb-batch-octets nil unit) 0))
@@ -306,27 +449,34 @@
 (defthm fn-owb-append-preserves-bounds
   (implies (fn-owb-boundedp st unit bmax omax)
            (fn-owb-boundedp (fn-owb-append st unit extent) unit bmax omax))
-  :hints (("Goal" :in-theory (disable fn-owb-batch-octets fn-lg-log fn-lgk-fitsp))))
+  :hints (("Goal" :in-theory (e/d (fn-owb-boundedp fn-owb-append fn-owb-append-enabledp fn-owb-batch-octets-of-nil) (fn-owb-kernel-closed)))))
 
 (defthm fn-owb-fence-preserves-bounds
   (implies (fn-owb-boundedp st unit bmax omax)
            (fn-owb-boundedp (fn-owb-fence st unit) unit bmax omax))
-  :hints (("Goal" :in-theory (disable fn-owb-batch-octets fn-lg-log fn-lg-last-trailer))))
+  :hints (("Goal" :in-theory (e/d (fn-owb-boundedp fn-owb-fence) (fn-owb-kernel-closed)))))
 
 (defthm fn-owb-fence-failed-preserves-bounds
   (implies (fn-owb-boundedp st unit bmax omax)
            (fn-owb-boundedp (fn-owb-fence-failed st) unit bmax omax))
-  :hints (("Goal" :in-theory (disable fn-owb-batch-octets fn-lg-log))))
+  :hints (("Goal" :in-theory (e/d (fn-owb-boundedp fn-owb-fence-failed) (fn-owb-kernel-closed)))))
 
 (defthm fn-owb-known-abort-preserves-bounds
   (implies (fn-owb-boundedp st unit bmax omax)
            (fn-owb-boundedp (fn-owb-known-abort st) unit bmax omax))
-  :hints (("Goal" :in-theory (disable fn-owb-batch-octets fn-lg-log))))
+  :hints (("Goal" :in-theory (e/d (fn-owb-boundedp fn-owb-known-abort) (fn-owb-kernel-closed)))))
+
+; In both branches of the finish the open batch is untouched.
+(defthm fn-owb-lgk-finish-one-keeps-the-batch
+  (equal (fn-lgk-batch (fn-lgk-finish-one ks)) (fn-lgk-batch ks))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-finish-one) (fn-lgk-make fn-lgk-committed fn-lgk-last
+                                                        fn-lgk-frontier fn-lgk-next-txid fn-lgk-batch
+                                                        fn-lgk-inflight fn-lgk-acked fn-lgk-phase)))))
 
 (defthm fn-owb-finish-member-preserves-bounds
   (implies (fn-owb-boundedp st unit bmax omax)
            (fn-owb-boundedp (mv-nth 1 (fn-owb-finish-member st)) unit bmax omax))
-  :hints (("Goal" :in-theory (disable fn-owb-batch-octets fn-lg-log))))
+  :hints (("Goal" :in-theory (e/d (fn-owb-boundedp fn-owb-finish-member) (fn-owb-kernel-closed)))))
 
 (defthm fn-owb-recover-is-bounded
   (fn-owb-boundedp (fn-owb-recover c genesis unit max next-txid) unit bmax omax)

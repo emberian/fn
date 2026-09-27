@@ -7654,6 +7654,125 @@
       ]
     },
     {
+      "id": "PRF-249",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owb-scan-of-related-content"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-image-scan-of-related-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-committed-record-survives-crash"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-acknowledged-record-survives-crash"
+        }
+      ]
+    },
+    {
+      "id": "PRF-250",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owb-take-preserves-alignment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-known-abort-preserves-alignment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-append-preserves-alignment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-fence-preserves-alignment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-fence-failed-preserves-alignment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-finish-member-preserves-alignment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-take-preserves-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-append-preserves-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-fence-preserves-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-fence-failed-preserves-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-known-abort-preserves-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-finish-member-preserves-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-batch-within-bounds"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-related-state-is-the-sole-pending-writer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-recover-establishes-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-prepare-ahead-is-the-sequential-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-batch-complete-is-the-sequential-complete"
+        }
+      ]
+    },
+    {
+      "id": "PRF-251",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-owb-failed-fence-is-the-crash-image"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-failed-fence-image-is-admissible"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-fence-failed-answers-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-recovered-kernel-after-a-failed-fence"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-owb-uncertain-batch-recovers-to-a-prefix"
+        }
+      ]
+    },
+    {
       "id": "PRF-209",
       "events": [
         {

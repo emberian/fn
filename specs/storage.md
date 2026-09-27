@@ -328,6 +328,22 @@ Only one shared-state commit is in flight initially. Network input may continue
 within quotas. A disconnected requester does not cancel an already durable
 transaction. If it retries, history prevents repeated allocation/effects.
 
+STO-033: The commit batch and the close rule. One batch of prepared commits is
+in flight at a time (the storage-log design of 2026-09-27, section 3.3: the
+batch of PreparedCommit tokens over the record log), and its members are
+ordered by their prepare. A member is acknowledged only after the batch's
+barrier, and in order. The batch closes when the log thread returns from the
+previous barrier or at the operator's live bounds `log-batch-records` and
+`log-batch-octets` (`:set-limit` slots of the running configuration: a work
+bound per scheduling step, never a profile field), and never on a timer: at one
+poster the batch is one entry and its latency one barrier. A failed barrier
+makes every member in flight or waiting uncertain and fences the store; recovery
+holds the committed records followed by a prefix of the batch, so an
+acknowledged member is never lost and an unacknowledged one may appear
+(STO-004, STO-005). The batch layer is `books/owner-batch.lisp`; no host line
+calls it until the store node's article commit moves onto the token and the log
+kernel.
+
 STO-004: a known abort and an indeterminate I/O result are distinct. After an
 indeterminate result, fence shared-state mutations and recover before continuing.
 Do not assume an error means nothing reached disk. It is valid for an unacknowledged

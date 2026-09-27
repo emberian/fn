@@ -4588,6 +4588,64 @@
         "tests/test_native_store_mount_identity.py"
       ],
       "expected": "Opens on the filesystem it was made on; on another filesystem, on an empty directory, or with a missing or corrupted record every open exits 1 with ACL2's named line and writes nothing; rebind-filesystem records the move and the store opens; a policy-1 store on tmpfs or nobarrier is refused at start by name and a policy-0 one warns and starts."
+    },
+    {
+      "id": "SCN-169",
+      "title": "The batch's crash cuts (log-written, log-fenced, finish per member): an acknowledged member's record is in every admissible image's scan, an unacknowledged one may be absent and is never answered durable",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-033"
+      ],
+      "steps": [
+        "Prepare a batch of three members against one catalog (fn-owb-take within log-batch-records and log-batch-octets), append it (fn-owb-append: the kernel's batch becomes the batch in flight and the store's pending list is the segment's one write) and fence it (fn-owb-fence); acknowledge the first member (fn-owb-finish-member).",
+        "Take the crash image at each cut: after the append (log-written: every admissible selection over the pending write, fn-bs-crash), after the barrier (log-fenced) and after each member's finish; recover each image (fn-owb-recover, fn-lgk-recover) and scan its content.",
+        "Remove each hypothesis of T1 in turn (the alignment, R at the cut, the admissible image, the platform's tear) with a ground witness of the conclusion's failure; label the corrupted-state witnesses separately."
+      ],
+      "expected": [
+        "At log-written the scan reads the committed records then a prefix of the batch (fn-lg-crash-verdictp); at log-fenced and after every finish it reads the committed records and the whole batch; the acknowledged member's record is in every image's scan (fn-owb-acknowledged-record-survives-crash).",
+        "A member not yet acknowledged may be absent after a log-written crash and is answered :durable by no cut before the barrier; a member acknowledged before the cut is absent from no image.",
+        "Every removed hypothesis has a witness whose conclusion fails, with the retained hypotheses checked affirmatively."
+      ],
+      "evidence": [
+        "tests/acl2/owner-batch-tests.lisp",
+        "books/owner-batch.lisp"
+      ],
+      "implementation": {
+        "test": "tests/acl2/owner-batch-tests.lisp",
+        "native": false,
+        "record": "planning/evidence/w6-log-owner-2026-09-27.md"
+      },
+      "note": "Lane w6-log-owner (2026-09-27): no native module exercises these cuts yet; the ACL2 witnesses of tests/acl2/owner-batch-tests.lisp are the executable evidence. The served crash campaign at the log cuts and the power-loss rig's run are PKT-697, after the store node's article commit moves onto the log kernel (PKT-698)."
+    },
+    {
+      "id": "SCN-170",
+      "title": "The fsync error: every member of the batch is uncertain, the store is fenced, and recovery admits the committed records then a prefix of the batch",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-033"
+      ],
+      "steps": [
+        "Prepare and append a batch of three members; answer the barrier :eio under an admissible selection over the pending write (fn-bs-fsync-file bs ino (cons :eio choices)); apply fn-owb-fence-failed to the layer.",
+        "Read the layer's words (fn-owb-fault-words) and attempt fn-owb-finish-member; recover the kernel from the store the failure left (fn-lgk-recover of its durable content) and compare with the committed records and the batch in flight, for each admissible selection.",
+        "Retry the barrier on the same store (fn-bs-refence-after-error-fences-nothing) and read the words again."
+      ],
+      "expected": [
+        "The kernel is :fault; every member in flight or waiting is answered :uncertain and none :durable; the finish acknowledges nothing (fn-owb-fence-failed-answers-uncertain).",
+        "The recovered kernel holds the committed records followed by a prefix of the batch in flight under every admissible selection (fn-owb-uncertain-batch-recovers-to-a-prefix); the store stays fenced until recovery (STO-004).",
+        "The retry fences nothing further and answers no member the failed barrier covered :durable."
+      ],
+      "evidence": [
+        "tests/acl2/owner-batch-tests.lisp",
+        "books/owner-batch.lisp"
+      ],
+      "implementation": {
+        "test": "tests/acl2/owner-batch-tests.lisp",
+        "native": false,
+        "record": "planning/evidence/w6-log-owner-2026-09-27.md"
+      },
+      "note": "Lane w6-log-owner (2026-09-27): no native module exercises these cuts yet; the ACL2 witnesses of tests/acl2/owner-batch-tests.lisp are the executable evidence. The served crash campaign at the log cuts and the power-loss rig's run are PKT-697, after the store node's article commit moves onto the log kernel (PKT-698)."
     }
   ]
 }
