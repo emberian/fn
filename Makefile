@@ -1229,7 +1229,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/scheduler-peers \
 	tests/acl2/scheduler-peers-tests
 
-.PHONY: check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
+.PHONY: site check check-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
@@ -1243,6 +1243,12 @@ THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
 	books/store-prepare-correspondence books/config-records books/node-config \
 	books/checkpoint books/checkpoint-compaction books/checkpoint-publish \
 	books/records-shape books/statement books/statement-invariants
+
+# fn's static website, rendered from README.md, docs/, CONTRIBUTING.md and
+# swarmguide/ into build/site/ (open build/site/index.html); GitHub Pages
+# builds the same thing (.github/workflows/pages.yml).
+site:
+	$(PYTHON) site/build_site.py --out build/site
 
 # `make check` for a lane worktree: planning/ledger.json, ledger.md and
 # current.md are regenerated into one temporary directory and compared there
@@ -1268,6 +1274,10 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
+# The website renders from the docs (site/build_site.py, stdlib only) and every
+# internal link on every page resolves, anchors included; a doc link to a
+# repository file that does not exist fails by name.
+	@$(CHECK_STEP) $(PYTHON) site/build_site.py --check --out build/site
 # Every byte of a tracked file under books/ and host/ is ASCII (PKT-379): ACL2,
 # SBCL's compile-file and the Python tests read them with different default
 # encodings; the files that still carry a section sign are listed debt
