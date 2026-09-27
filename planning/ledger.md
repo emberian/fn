@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1059 |
-| Certification roots in the Makefile | 1030 |
-| Books inside the root closure | 1051 |
-| `defthm` and `defthmd` events | 15072 |
-| `defun` events | 10408 |
+| Books read | 1061 |
+| Certification roots in the Makefile | 1032 |
+| Books inside the root closure | 1053 |
+| `defthm` and `defthmd` events | 15107 |
+| `defun` events | 10419 |
 | Functions with verified guards | 2336 |
-| Functions declared `:verify-guards nil` and never verified | 822 |
-| Functions left at the default with an explicit guard | 5681 |
-| Functions left at the default with no guard | 1569 |
-| `assert-event` checks | 15526 |
+| Functions declared `:verify-guards nil` and never verified | 823 |
+| Functions left at the default with an explicit guard | 5690 |
+| Functions left at the default with no guard | 1570 |
+| `assert-event` checks | 15545 |
 | `must-fail` checks | 1839 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 77 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 166 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 166 |
-| Include-hygiene warnings | 1054 |
+| Include-hygiene warnings | 1056 |
 | Host-names warnings | 1191 |
 | Hand-written-record warnings | 18 |
 
@@ -88,6 +88,7 @@ that `make certify` requests.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `books/acceptance-alloc.lisp` | root | 14 | 32 | 16/2/14/0 | 0 | 0 | 1 |
 | `books/acceptance-invariants.lisp` | root | 36 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/acceptance-payload-ref.lisp` | root | 35 | 11 | 0/1/9/1 | 0 | 0 | 0 |
 | `books/acceptance-stamp-invariants.lisp` | root | 24 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/acceptance.lisp` | root | 64 | 52 | 39/1/12/0 | 0 | 0 | 1 |
 | `books/account-list.lisp` | closure | 1 | 7 | 0/0/7/0 | 0 | 0 | 0 |
@@ -694,6 +695,7 @@ that `make certify` requests.
 | `books/wire-outbound-invariants.lisp` | root | 66 | 6 | 0/2/4/0 | 0 | 0 | 0 |
 | `books/wire-span.lisp` | root | 18 | 6 | 1/0/5/0 | 0 | 0 | 1 |
 | `books/wire.lisp` | root | 50 | 69 | 49/0/20/0 | 0 | 0 | 1 |
+| `tests/acl2/acceptance-payload-ref-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 19 | 0 | 0 |
 | `tests/acl2/acceptance-stamp-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 61 | 15 | 0 |
 | `tests/acl2/acceptance-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 246 | 0 | 0 |
 | `tests/acl2/account-list-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 0 | 0 |
