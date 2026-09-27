@@ -1088,6 +1088,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-carriage \
 	books/owner-parse-carried \
 	tests/acl2/owner-parse-carried-tests \
+	books/owner-identity-intern \
+	tests/acl2/owner-identity-intern-tests \
+	books/owner-identity-served \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \
