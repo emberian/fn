@@ -92,6 +92,30 @@ class ReleaseTarballTests(unittest.TestCase):
         self.assertTrue((self.top / service).is_file(), service)
         self.assertFalse((self.top / "libexec/fn/fn-host-developer").exists())
 
+    def test_the_clients_ship_beside_the_node_and_apart_from_it(self):
+        # The friends' web reader and the other clients (packaging/
+        # install-clients.sh): Python in clients/ only, a launcher each, the
+        # reader's service, its settings and a Caddy snippet.
+        for name in ("fn-reader", "fn-web", "fn-client", "fn-agent", "fn-consumer",
+                     "fn-verify"):
+            self.assertTrue(os.access(self.top / "clients/bin" / name, os.X_OK), name)
+        for rel in ("clients/lib/fn_reader.py", "clients/lib/nntp_session.py",
+                    "clients/README.txt", "clients/share/fn-reader.conf.example",
+                    "clients/share/caddy/fn-reader.caddy", "share/fn/docs/web.md",
+                    ("clients/share/rc.d/fn_reader.rc.in" if platform.system() == "OpenBSD"
+                     else "clients/share/systemd/fn-reader.service.in")):
+            self.assertTrue((self.top / rel).is_file(), rel)
+        python = {p.relative_to(self.top).as_posix() for p in self.top.rglob("*.py")}
+        self.assertTrue(python and all(rel.startswith("clients/lib/") for rel in python),
+                        python)
+        record = (self.top / "share/fn/runpath-check.txt").read_text()
+        self.assertIn("clients/: 7 Python programs", record)
+        if shutil.which("python3"):
+            shown = subprocess.run([str(self.top / "clients/bin/fn-reader"), "--help"],
+                                   env=CLEAN_ENV, capture_output=True, text=True, timeout=60)
+            self.assertEqual(shown.returncode, 0, shown.stderr)
+            self.assertIn("--settings", shown.stdout)
+
     def test_inner_sums_cover_every_file(self):
         listed = sums(self.top / "SHA256SUMS")
         files = {p.relative_to(self.top).as_posix() for p in self.top.rglob("*") if p.is_file()}

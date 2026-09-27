@@ -39,6 +39,14 @@ object name the saved core may dlopen (the lib*.so strings in the core) must
 be carried by the release, the C library, or the system TLS library D35
 chose (SYSTEM_TLS); each service file (template) must start `PREFIX/bin/fn`.
 
+The release's `clients/` (packaging/install-clients.sh: the friends' web
+reader and the other client programs, which are Python) is checked under
+its own rule, `clients_check': Python source there and nowhere else, no
+object code, launchers that run only python3 on clients/lib/, its one service
+template starting `PREFIX/clients/bin/fn-reader`; and the separation: no
+script, launcher or service of the node's names `clients/`, so nothing the
+node runs can start a client.  The node's own walk skips clients/.
+
 It cannot decide what an operator-supplied program is (the ION helper path
 is an argument), what a shell variable holds at run time (it lists
 `$var` commands as such), or what the dynamic loader of the target system
@@ -80,6 +88,13 @@ LIB_SOURCES = ("host/native/crypto.lisp", "host/native/tls.lisp")
 SHIPPED_SCRIPTS = ("packaging/fn", "packaging/install.sh")
 SHIPPED_SERVICES = ("packaging/fn-native.service.in", "packaging/net.fn.native.plist.in",
                     "packaging/fn.rc.in")
+# The clients (packaging/install-clients.sh): the launcher every clients/bin/
+# program is, the commands it may run, and the reader's service templates.
+CLIENTS = "clients"
+CLIENT_LAUNCHER = "packaging/fn-client-launcher"
+CLIENT_LAUNCHER_COMMANDS = {"readlink", "dirname", "basename", "tr", "python3"}
+CLIENT_SERVICES = ("packaging/fn-reader.service.in", "packaging/fn_reader.rc.in")
+CLIENT_SERVICE_PROGRAM = "/clients/bin/fn-reader"
 FREEZE_SCRIPT = "packaging/freeze-native-image.sh"
 
 SH_BUILTINS = {
@@ -339,7 +354,8 @@ def freeze_launcher_template(root: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-def check_service(label: str, text: str, findings: Findings, prefix: str | None) -> None:
+def check_service(label: str, text: str, findings: Findings, prefix: str | None,
+                  program_suffix: str = "/bin/fn") -> None:
     starts = re.findall(r"^ExecStart=(\S+)", text, re.MULTILINE)
     starts += re.findall(r"<key>ProgramArguments</key>\s*<array>\s*<string>([^<]+)</string>", text)
     starts += re.findall(r"^daemon=\"?([^\"\s]+)", text, re.MULTILINE)
@@ -348,8 +364,8 @@ def check_service(label: str, text: str, findings: Findings, prefix: str | None)
     for program in starts:
         if PYTHON_RE.search(program):
             findings.fail(f"{label}: starts {program}")
-        if not program.endswith("/bin/fn"):
-            findings.fail(f"{label}: starts {program}, not PREFIX/bin/fn")
+        if not program.endswith(program_suffix):
+            findings.fail(f"{label}: starts {program}, not PREFIX{program_suffix}")
         if prefix is not None and not program.startswith(prefix):
             findings.fail(f"{label}: starts {program}, outside the release prefix {prefix}")
         findings.note(f"{label}: starts {program}")
@@ -370,10 +386,81 @@ def static_check(root: Path) -> Findings:
     for rel in SHIPPED_SERVICES:
         path = root / rel
         if path.exists():
-            check_service(rel, path.read_text(encoding="utf-8"), findings, None)
+            text = path.read_text(encoding="utf-8")
+            check_service(rel, text, findings, None)
+            if CLIENTS + "/" in text:
+                findings.fail(f"{rel}: the node's service names {CLIENTS}/")
         else:
             findings.fail(f"shipped service file missing: {rel}")
+    for rel in SHIPPED_SCRIPTS:
+        if (root / rel).exists() and runs_a_client(
+                check_shell_script(rel, (root / rel).read_text(encoding="utf-8"), Findings())):
+            findings.fail(f"{rel}: runs a program under {CLIENTS}/")
+    check_client_launcher(CLIENT_LAUNCHER, (root / CLIENT_LAUNCHER).read_text(encoding="utf-8"),
+                          findings)
+    for rel in CLIENT_SERVICES:
+        check_service(rel, (root / rel).read_text(encoding="utf-8"), findings, None,
+                      CLIENT_SERVICE_PROGRAM)
     return findings
+
+
+def runs_a_client(commands: list[str]) -> bool:
+    return any(CLIENTS + "/" in word for word in commands)
+
+
+def check_client_launcher(label: str, text: str, findings: Findings) -> None:
+    """A clients/bin/ launcher: /bin/sh, running python3 and a few file-name
+    tools, nothing else (the node's scripts may run none of them)."""
+    first = text.split("\n", 1)[0]
+    if first.strip() != "#!/bin/sh":
+        findings.fail(f"{label}: interpreter is {first.strip()!r}, not /bin/sh")
+    commands = []
+    for line in re.sub(r"\\\n", " ", text).splitlines()[1:]:
+        stripped = re.sub(r"\s#.*$", "", line.strip())
+        if not stripped or stripped.startswith("#"):
+            continue
+        commands += [w for w in split_commands(stripped) if w and w not in SH_BUILTINS]
+    for word in dict.fromkeys(commands):
+        if word not in CLIENT_LAUNCHER_COMMANDS:
+            findings.fail(f"{label}: runs {word}, not one of "
+                          f"{' '.join(sorted(CLIENT_LAUNCHER_COMMANDS))}")
+    findings.note(f"{label}: client launcher; commands: {' '.join(dict.fromkeys(commands))}")
+
+
+def clients_check(top: Path, findings: Findings) -> None:
+    """The release's clients/ under its own rule (the module's docstring)."""
+    root = top / CLIENTS
+    if not root.is_dir():
+        findings.note(f"no {CLIENTS}/ in this release")
+        return
+    python = services = 0
+    for path in sorted(p for p in root.rglob("*") if p.is_file() or p.is_symlink()):
+        rel = path.relative_to(top).as_posix()
+        if path.is_symlink():
+            findings.fail(f"{rel}: a symbolic link in {CLIENTS}/")
+            continue
+        with open(path, "rb") as handle:
+            head = handle.read(4096)
+        executable = os.access(path, os.X_OK)
+        if head[:4] == b"\x7fELF":
+            findings.fail(f"{rel}: object code in {CLIENTS}/")
+        elif path.suffix in (".pyc", ".pyo") or "__pycache__" in rel:
+            findings.fail(f"{rel}: Python bytecode in {CLIENTS}/ (the source is shipped)")
+        elif rel.startswith(CLIENTS + "/lib/"):
+            if path.suffix != ".py" or executable:
+                findings.fail(f"{rel}: {CLIENTS}/lib/ holds Python source, mode 0644")
+            python += 1
+        elif rel.startswith(CLIENTS + "/bin/"):
+            check_client_launcher(rel, path.read_text(encoding="utf-8", errors="replace"),
+                                  findings)
+        elif executable:
+            findings.fail(f"{rel}: executable outside {CLIENTS}/bin/")
+        elif path.name.endswith(".service.in") or path.parent.name == "rc.d":
+            check_service(rel, path.read_text(encoding="utf-8"), findings, None,
+                          CLIENT_SERVICE_PROGRAM)
+            services += 1
+    findings.note(f"{CLIENTS}/: {python} Python programs (Python 3.9+, {CLIENTS}/README.txt), "
+                  f"{services} service template(s); none on the node's path")
 
 
 def elf_needed(data: bytes) -> list[str] | None:
@@ -541,6 +628,8 @@ def tree_check(top: Path, platform: str | None = None) -> Findings:
     carried = {p.name for p in top.rglob("*") if p.is_file()}
     for path in sorted(p for p in top.rglob("*") if p.is_file() or p.is_symlink()):
         rel = path.relative_to(top).as_posix()
+        if rel.startswith(CLIENTS + "/"):
+            continue        # clients_check, below
         if path.is_symlink():
             target = os.readlink(path)
             if PYTHON_RE.search(target):
@@ -564,11 +653,14 @@ def tree_check(top: Path, platform: str | None = None) -> Findings:
             if rel.startswith("share/doc/"):
                 continue
             if re.fullmatch(r"/bin/k?sh", interp):
-                for word in check_shell_script(rel, path.read_text(encoding="utf-8",
-                                                                    errors="replace"), findings):
+                words = check_shell_script(rel, path.read_text(encoding="utf-8",
+                                                               errors="replace"), findings)
+                for word in words:
                     if word.startswith("/") and word not in SYSTEM_SCRIPTS \
                             and not word.startswith("@PREFIX@/"):
                         findings.fail(f"{rel}: runs {word}, outside the release")
+                if runs_a_client(words):
+                    findings.fail(f"{rel}: runs a program under {CLIENTS}/")
             elif path.suffix == ".fasl" and re.search(r"/sbcl --script$", interp):
                 fasls += 1  # SBCL's fasl header line: loaded by the runtime
             else:
@@ -619,12 +711,20 @@ def tree_check(top: Path, platform: str | None = None) -> Findings:
         findings.note(f"{fasls} SBCL contrib fasls (#!.../sbcl --script headers, loaded by the runtime)")
     services = [p for p in top.rglob("*") if p.is_file() and (
         p.suffix in (".service", ".plist") or p.name.endswith(".service.in")
-        or p.parent.name == "rc.d")]
+        or p.parent.name == "rc.d")
+        and not p.relative_to(top).as_posix().startswith(CLIENTS + "/")]
     if not services:
         findings.fail("the release carries no service file")
     for path in services:
         text = path.read_text(encoding="utf-8")
         check_service(path.relative_to(top).as_posix(), text, findings, None)
+        if CLIENTS + "/" in text:
+            findings.fail(f"{path.relative_to(top).as_posix()}: the node's service names "
+                          f"{CLIENTS}/")
+    for launcher in (top / "bin" / "fn", top / "libexec" / "fn" / "fn-host"):
+        if launcher.is_file() and (CLIENTS + "/").encode() in launcher.read_bytes()[:65536]:
+            findings.fail(f"{launcher.relative_to(top).as_posix()}: names {CLIENTS}/")
+    clients_check(top, findings)
     return findings
 
 

@@ -1,5 +1,11 @@
 """The loopback web client against a scratch native writable fn owner.
 
+NativeReaderImplicitTlsTests: the friends' web reader (tools/fn_reader.py, a
+release's clients/bin/fn-reader) against a node's implicit-TLS port (its
+`tls_port', 563 on a friend's node): an invitation redeemed through the
+node's own `fn redeem', sign-in, post, read, remove; and fn_web's login on
+the same port.
+
 Set FN_NATIVE_DEVELOPER_HOST to a frozen developer image and FN_NATIVE_TEST_ROOT
 to its source snapshot. This test creates and removes only its own Store.
 The web client is a separate Python process; the second fixture exercises its
@@ -27,6 +33,7 @@ from tests.native_process import wait_for_announcement, stop_and_diagnostics
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import fn_web  # noqa: E402
 import fn_verify  # noqa: E402
+import fn_reader  # noqa: E402
 
 IMAGE = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", "/nonexistent/fn-host-developer"))
 ROOT = Path(os.environ.get("FN_NATIVE_TEST_ROOT", Path(__file__).resolve().parents[1]))
@@ -809,3 +816,178 @@ def html_unescape(text):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(os.access(IMAGE, os.X_OK), "frozen native developer image required")
+class NativeReaderImplicitTlsTests(unittest.TestCase):
+    """A friend's first visit, on the node's TLS port: the invitation code
+    makes the account (the node's `fn redeem'), the node checks the
+    password, takes the post, and withdraws it on the same login's cancel.
+    Every outcome shown is the node's; the reader holds no account table."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temporary = tempfile.TemporaryDirectory(prefix="fn-reader-tls-")
+        root = cls.root = Path(cls.temporary.name)
+        cls.store, cls.config = root / "store", root / "fn.toml"
+        cls.port, cls.tls_port = free_loopback_port(), free_loopback_port()
+        env = native_environment()
+        cls.cert, key = root / "cert.pem", root / "key.pem"
+        for pem, secret, name in ((cls.cert, key, "localhost"),
+                                  (root / "other.pem", root / "other-key.pem", "other")):
+            subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout",
+                            str(secret), "-out", str(pem), "-sha256", "-days", "1", "-nodes",
+                            "-subj", "/CN=" + name, "-addext", "subjectAltName=IP:127.0.0.1"],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                           timeout=60, check=True)
+        cls.other_cert = root / "other.pem"
+        cls.config.write_text(
+            '[store]\npath = "{}"\n\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
+            'tls_port = {}\ntls_cert = "{}"\ntls_key = "{}"\n\n[control]\npath = "{}"\n\n'
+            '[auth]\nrequired = true\nprotected_only = true\n'.format(
+                cls.store, cls.port, cls.tls_port, cls.cert, key, root / "control.sock"),
+            encoding="ascii")
+        done = subprocess.run([str(IMAGE), "--fn", "operator", str(cls.config), "init",
+                               "local.general"], cwd=ROOT, env=env, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, timeout=240, check=False)
+        assert done.returncode == 0, done.stderr.decode(errors="replace")
+        # The release's bin/fn: the reader runs `fn redeem' through it.
+        cls.fn = root / "fn"
+        cls.fn.write_text('#!/bin/sh\nexec "%s" --fn "$@"\n' % IMAGE)
+        cls.fn.chmod(0o755)
+        cls.owner = subprocess.Popen([str(IMAGE), "--fn", "operator", str(cls.config), "run"],
+                                     cwd=ROOT, env=env, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
+        wait_for_announcement(cls.owner, b"LISTENING-TLS ")
+
+    @classmethod
+    def tearDownClass(cls):
+        stop_and_diagnostics(cls.owner, timeout=30)
+        cls.owner.stdout.close()
+        cls.owner.stderr.close()
+        cls.temporary.cleanup()
+
+    def invite(self):
+        result = subprocess.run([str(IMAGE), "--fn", "operator", str(self.config), "account",
+                                 "invite", "--expires", "3600"], cwd=ROOT,
+                                env=native_environment(), stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, timeout=240, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        codes = re.findall(rb"^[0-9a-f]{32}$", result.stdout, re.M)
+        self.assertEqual(len(codes), 1, result.stdout)
+        return codes[0].decode("ascii")
+
+    def reader(self):
+        args = SimpleNamespace(host="127.0.0.1", port=self.tls_port, timeout=30.0,
+                               plain_node=False, tls_cert=str(self.cert), tls=True,
+                               fn=str(self.fn))
+        state = tempfile.TemporaryDirectory(prefix="fn-reader-state-")
+        self.addCleanup(state.cleanup)
+        server = fn_reader.Reader(("127.0.0.1", 0), fn_reader.Node(args), Path(state.name),
+                                  site="Friends", mail_domain="friends.invalid", secure=False)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        self.cookies = {}
+        return server
+
+    def http(self, server, method, path, fields=None):
+        host = "127.0.0.1:%d" % server.server_address[1]
+        headers = {"Host": host}
+        if self.cookies:
+            headers["Cookie"] = "; ".join("%s=%s" % kv for kv in self.cookies.items())
+        body = None
+        if fields is not None:
+            body = urlencode(fields)
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+            headers["Origin"] = "http://" + host
+        conn = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=180)
+        conn.request(method, path, body=body, headers=headers)
+        reply = conn.getresponse()
+        page = reply.read().decode("utf-8")
+        for name, value in reply.getheaders():
+            if name.lower() == "set-cookie":
+                key, _, rest = value.partition("=")
+                if "Max-Age=0" in value:
+                    self.cookies.pop(key, None)
+                else:
+                    self.cookies[key] = rest.split(";")[0]
+        conn.close()
+        self.assertNotIn("wren-secret-9", page)
+        return reply.status, reply.getheader("Location"), page
+
+    def test_a_friend_redeems_signs_in_posts_reads_and_removes_on_the_tls_port(self):
+        server = self.reader()
+        code = self.invite()
+        _, _, page = self.http(server, "GET", "/redeem")
+        pre = re.search(r"name='pre' value='([^']+)'", page).group(1)
+        status, where, page = self.http(server, "POST", "/redeem", {
+            "pre": pre, "code": code, "user": "wren", "password": "wren-secret-9",
+            "again": "wren-secret-9"})
+        self.assertEqual((status, where), (303, "/"), page)
+        self.assertIn("fnr_session", self.cookies)
+        # The code works once: the node refuses it again, by name.
+        self.cookies = {}
+        _, _, page = self.http(server, "GET", "/redeem")
+        pre = re.search(r"name='pre' value='([^']+)'", page).group(1)
+        status, _, page = self.http(server, "POST", "/redeem", {
+            "pre": pre, "code": code, "user": "wren2", "password": "x-secret",
+            "again": "x-secret"})
+        self.assertEqual(status, 403, page)
+        self.assertIn("refused redeem code", page)
+        # Sign in as the redeemed login: the node's AUTHINFO over implicit TLS.
+        _, _, page = self.http(server, "GET", "/signin")
+        pre = re.search(r"name='pre' value='([^']+)'", page).group(1)
+        status, where, page = self.http(server, "POST", "/signin", {
+            "pre": pre, "next": "/", "user": "wren", "password": "wren-wrong"})
+        self.assertEqual(status, 401, page)
+        status, where, page = self.http(server, "POST", "/signin", {
+            "pre": pre, "next": "/", "user": "wren", "password": "wren-secret-9"})
+        self.assertEqual((status, where), (303, "/"), page)
+        self.assertIn("local.general", self.http(server, "GET", "/")[2])
+        # Post, and see it.
+        _, _, page = self.http(server, "GET", "/new?g=local.general")
+        fields = {name: html.unescape(value) for name, value in re.findall(
+            r"<input type='hidden' name='([a-z]+)' value='([^']*)'>", page)}
+        fields.update(subject="hello from the reader", body="first post over TLS")
+        status, where, _ = self.http(server, "POST", "/post", fields)
+        self.assertEqual(status, 303)
+        self.assertIn("Posted!", self.http(server, "GET", where)[2])
+        _, _, page = self.http(server, "GET", "/g?name=local.general")
+        thread = html.unescape(re.search(r"href='(/t\?[^']+)'", page).group(1))
+        _, _, page = self.http(server, "GET", thread)
+        self.assertIn("first post over TLS", page)
+        # Remove it: the same login's cancel; the node answers 430 after.
+        remove = html.unescape(re.search(r"href='(/remove\?[^']+)'", page).group(1))
+        _, _, page = self.http(server, "GET", remove)
+        form = {name: html.unescape(value) for name, value in re.findall(
+            r"<input type='hidden' name='([a-z]+)' value='([^']*)'>", page)}
+        status, where, _ = self.http(server, "POST", "/remove", form)
+        self.assertEqual(status, 303)
+        self.assertIn("Your post has been removed", self.http(server, "GET", where)[2])
+
+    def test_web_client_login_on_the_tls_port_is_the_nodes_answer(self):
+        # A login made by an invitation, then fn_web's check on the TLS port.
+        code = self.invite()
+        server = self.reader()
+        _, _, page = self.http(server, "GET", "/redeem")
+        pre = re.search(r"name='pre' value='([^']+)'", page).group(1)
+        self.assertEqual(self.http(server, "POST", "/redeem", {
+            "pre": pre, "code": code, "user": "robin", "password": "robin-secret",
+            "again": "robin-secret"})[0], 303)
+
+        def backend(secret, cert):
+            args = SimpleNamespace(host="127.0.0.1", port=self.tls_port, timeout=30.0,
+                                   plain=False, cafile=str(cert), tls=True)
+            return fn_web.Backend(args, "robin", secret)
+        checked = backend("robin-secret", self.cert).login_check()
+        self.assertEqual(checked.word, "done", checked.detail)
+        self.assertTrue(checked.data["tls"]["version"].startswith("TLSv1."))
+        wrong = backend("robin-wrong", self.cert).login_check()
+        self.assertEqual(wrong.word, "refused")
+        self.assertTrue(wrong.detail.startswith("481"), wrong.detail)
+        pinned = backend("robin-secret", self.other_cert).login_check()
+        self.assertEqual(pinned.word, "refused")
+        self.assertIn("did not verify", pinned.detail)

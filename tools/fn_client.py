@@ -67,6 +67,7 @@ UNRESOLVED = "unresolved"
 EXIT = {DONE: 0, ACCEPTED: 0, REFUSED: 1, UNCERTAIN: 3, UNRESOLVED: 4}
 DEFAULT_NODE = "192.168.50.39:1119"
 DEFAULT_PORT = 1119
+NNTPS_PORT = 563        # RFC 8143 section 3: NNTP over implicit TLS
 # books/nntp-post.lisp fn-nntp-post-outcome: :refused and :uncertain are two
 # distinct 441 lines, and a client must not repost on the second one.
 UNCERTAIN_POST = "uncertain"
@@ -130,6 +131,9 @@ class Client:
         return status, body
 
     def open(self) -> None:
+        if implicit_tls(self.args):
+            self.open_implicit_tls()
+            return
         try:
             self.session = self.session_factory(self.args.host, self.args.port,
                                                 self.args.timeout)
@@ -147,6 +151,29 @@ class Client:
         if "STARTTLS" not in labels:
             self.no_protected_channel()
         self.start_tls()
+        self.capabilities()
+        self.log_in()
+
+    def open_implicit_tls(self) -> None:
+        """RFC 8143: TLS from the first octet (the node's `tls_port', 563).
+
+        The same three answers as STARTTLS: a certificate that does not
+        verify is refused by this client before any NNTP octet; a handshake
+        or connection that fails otherwise is uncertain; then the node's
+        AUTHINFO answer.  STARTTLS is never sent on this connection (RFC 4642
+        section 2.2.1 forbids a second layer).
+        """
+        context = ssl.create_default_context(cafile=self.args.cafile)
+        try:
+            self.session = self.session_factory(self.args.host, self.args.port,
+                                                self.args.timeout, implicit_tls=context)
+        except ssl.SSLCertVerificationError as exc:
+            raise Stop(REFUSED, "the certificate %s presented did not verify against --cafile "
+                                "%s (%s); nothing was sent"
+                       % (self.node, self.args.cafile, exc.verify_message or exc))
+        except (ssl.SSLError, OSError, Disconnected) as exc:
+            raise Stop(UNCERTAIN, "could not open TLS to %s: %s" % (self.node, exc))
+        self.record(self.session.greeting)
         self.capabilities()
         self.log_in()
 
@@ -195,7 +222,8 @@ class Client:
 
     def log_in(self) -> None:
         # unreachable-in-composition: `open` reaches here only after
-        # `start_tls`, which raises unless a layer came up, so no test can
+        # `start_tls` or `open_implicit_tls`, each of which raises unless a
+        # layer came up, so no test can
         # witness this branch and it is not evidence of anything.  It stays
         # because a later caller of `log_in` alone would otherwise inherit
         # the one mistake this whole file exists to avoid.
@@ -633,6 +661,9 @@ def connection_options(parser, suppress: bool) -> None:
     parser.add_argument("--cafile", default=hide, help="the node's certificate, or its CA")
     parser.add_argument("--plain", action="store_true", default=hide,
                         help="no TLS and no login; for a loopback development node")
+    parser.add_argument("--tls", action="store_true", default=hide,
+                        help="TLS from the first octet (the node's tls_port); "
+                             "the default on port 563, STARTTLS otherwise")
     parser.add_argument("--timeout", type=float, default=hide if suppress else 30.0)
     parser.add_argument("--credentials", default=hide,
                         help="a mode-0600 file holding `user password`")
@@ -682,6 +713,17 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def implicit_tls(args) -> bool:
+    """TLS from the first octet: --tls, or port 563 (RFC 8143's nntps port).
+
+    Any other port is STARTTLS (RFC 4642) unless --tls says otherwise; a
+    node's `tls_port' other than 563 (an unprivileged 11563, say) needs --tls.
+    """
+    if getattr(args, "plain", False):
+        return False
+    return bool(getattr(args, "tls", False)) or getattr(args, "port", None) == NNTPS_PORT
+
+
 def resolve(args, parser) -> None:
     host, port = split_node(str(args.node))
     if host is None or not host.strip() or number(port) is None or not 0 < int(port) < 65536:
@@ -694,6 +736,8 @@ def resolve(args, parser) -> None:
         parser.error("--since %d: an article number is never negative" % args.since)
     if args.plain and args.cafile:
         parser.error("--plain and --cafile are two different nodes; give one")
+    if args.plain and getattr(args, "tls", False):
+        parser.error("--plain and --tls are two different nodes; give one")
     if not args.plain and not args.cafile:
         parser.error("--cafile is required unless --plain; it is the node's own certificate")
     if args.plain and args.credentials:
