@@ -272,7 +272,7 @@ class Outbound:
 
     def request_adu(self, work_id: str) -> bytes:
         form = ("(fn-bpo-host-request-adu (fn-store-octets->string '"
-                + self.acl2.literal(work_id.encode("utf-8")) + ") state)")
+                + self.acl2.literal(work_id.encode("utf-8")) + ") fn-arena state)")
         adu = run_store.acl2_octets(self.acl2.call(form))
         if not adu:
             raise RuntimeError(f"ACL2 refused the durable work projection: {work_id}")

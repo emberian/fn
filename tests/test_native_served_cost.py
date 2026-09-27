@@ -32,7 +32,12 @@ class NativeServedCostTests(unittest.TestCase):
         native = (ROOT / "host/native/owner.lisp").read_text()
         host = (ROOT / "host/owner-host.lisp").read_text()
         chain = (ROOT / "books/served-catalog-chain.lisp").read_text()
-        handoff = definition(native, "fnn-owner-handle-chunk")
+        # Since scheduler-3 (1b3160bce) fnn-owner-handle-chunk runs the read
+        # through fnn-owner-handle-chunk-read and the XREDEEM publication in
+        # its own quantum; the fill and the span call are the read's.
+        self.assertIn("(fnn-owner-handle-chunk-read service cid incoming socket class)",
+                      definition(native, "fnn-owner-handle-chunk"))
+        handoff = definition(native, "fnn-owner-handle-chunk-read")
         self.assertIn("(fnn-octets-fill incoming)", handoff)
         self.assertIn("(fnn-core-buffer-state 'fn-owner-chunk-span cid", handoff)
         self.assertNotIn("fnn-octet-list incoming", handoff)
@@ -40,7 +45,13 @@ class NativeServedCostTests(unittest.TestCase):
         # fn-owner-chunk-span reads at the reader view (fn-owner-at-reader-view)
         # through fn-owner-chunk-span-at, which calls the catalog chain.
         self.assertIn("(fn-owner-chunk-span-at", definition(host, "fn-owner-chunk-span"))
-        self.assertIn("(fn-scr-ocfg-read-span", definition(host, "fn-owner-chunk-span-at"))
+        # Since scheduler-3 (PKT-828) through fn-orr-read-span
+        # (books/owner-reader-read.lisp), which calls fn-scr-ocfg-read-span
+        # on both arms: at the captured reader view and, with none, directly.
+        self.assertIn("(fn-orr-read-span", definition(host, "fn-owner-chunk-span-at"))
+        reader = definition((ROOT / "books/owner-reader-read.lisp").read_text(),
+                            "fn-orr-read-span")
+        self.assertEqual(reader.count("(fn-scr-ocfg-read-span"), 2)
         self.assertIn("(fn-scr-step-span-fast", definition(chain, "fn-scr-own-read-span"))
         fast = definition(chain, "fn-scr-step-span-fast")
         self.assertIn("fn-wire-fast-statep", fast)

@@ -5351,6 +5351,34 @@
         "tools/profile/control_quanta.py",
         "tools/profile/prof_control.py"
       ]
+    },
+    {
+      "id": "SCN-182",
+      "title": "A stalled disk: while a batch barrier is held 30 s, status, health and a reader's GROUP/ARTICLE stay flat; past the deadline health says disk slow and a new POST is refused try-later with the reason; the held POST's 240 follows the device's return; health recovers with the latency",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-026"
+      ],
+      "steps": [
+        "tests/test_native_slow_disk.py on the developer image: FN_NATIVE_TEST_DISK_STALL_FILE names a file; a healthy POST first; then the file is created (every barrier waits before its fdatasync while it exists) and POST A is sent; for 30 s: GROUP and ARTICLE on a reader connection, `operator status' every 0.5 s, and after 7 s `operator health' and a new POST B; then the file is removed."
+      ],
+      "expected": [
+        "Every read under 2 s and every status under 5 s while the barrier is pending, no growth between the first and last third; health and status print `disk slow: barrier N ms pending'; B answered `441 posting failed; the disk is slow ...' within 2 s and not stored; A unanswered during the stall and answered 240 after the device returns; health then `disk ok' with last-barrier-ms at least the stall and slow-episodes=1; the next POST 240; the service log names the episode entered and left."
+      ],
+      "evidence": [
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/time-model-2026-09-27.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_slow_disk",
+        "cases": [
+          "SlowDiskSourceTests",
+          "SlowDiskNativeTests"
+        ],
+        "native": true,
+        "record": "planning/evidence/time-model-2026-09-27.md"
+      }
     }
   ]
 }

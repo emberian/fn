@@ -134,6 +134,9 @@
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
 (include-book "../books/key-statements")
+; Lane ack-before-barrier: a statement's commit is fenced before its cut and
+; its executor (fn-oab-fence-before-change).
+(include-book "../books/owner-ack-after-barrier")
 (include-book "../books/login-binding")
 (include-book "../books/login-binding-live")
 ; PRF-161: the limits of a public reader port (fn-exp-).
@@ -153,6 +156,8 @@
 ; fn-orr-read-span-at-a-captured-view-restores-the-owner restates the relation
 ; after it (books/owner-reader-read.lisp).
 (include-book "../books/owner-reader-view")
+; Lane time-model (PRF-311): the barrier's deadline and the shed POST.
+(include-book "../books/owner-time-model")
 (include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
@@ -1044,6 +1049,25 @@
 (defun fn-owner-log-bounds (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-olr-bounds (fn-owner-config state))))
+
+;; Lane time-model (PRF-311): the barrier's deadline from the live
+;; configuration, the `barrier-deadline-ms' limit row read like the batch
+;; bounds (books/owner-log-route.lisp fn-olr-bmax), ACL2's default when the
+;; row is absent (books/owner-time-model.lisp fn-otm-deadline-of-limit).
+(defun fn-owner-barrier-deadline (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-otm-deadline-of-limit
+          (fn-cfg-limit (fn-cfg-value (fn-owner-config state)) "barrier-deadline-ms"))))
+
+;; Whether the oldest queued submission is a served POST's (not a control
+;; submission, not a peer transit): the only kind a slow disk sheds.
+(defun fn-owner-queue-head-served-p (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((q (fn-own-queue (fn-owner-core state))))
+    (value (and (consp q)
+                (not (fn-own-transit-subp (car q)))
+                (not (fn-own-control-submissionp (car q)))
+                t))))
 
 ;; The carried obligation-id trie (books/post-retain-carried.lisp): the
 ;; global's writers are fn-owner-install-extended (every recovery: the
@@ -2352,6 +2376,22 @@
          (state (f-put-global 'fn-owner-shared-resolution-id nil state)))
     (value :fed)))
 
+;; A served POST shed while the disk is slow (books/owner-time-model.lisp
+;; fn-otm-admit-post answered :shed): the submission in flight gets
+;; fn-own-outcome's :refused outcome -- nothing durable, no pin moved, the
+;; feeds unchanged, the owner's own refusal log line -- and its reply is
+;; ACL2's try-later line for the disk (fn-otm-shed-reply over the gate's
+;; value S, at its recorded time): RFC 3977 section 6.3.1's 441,
+;; with the reason in place of the generic refusal text.
+(defun fn-owner-shed-outcome (id s state)
+  (declare (xargs :stobjs state :mode :program))
+  (mv-let (erp val state) (fn-owner-outcome id :refused state)
+    (declare (ignore val))
+    (if erp
+        (mv erp nil state)
+      (let ((state (f-put-global 'fn-owner-output (fn-otm-shed-reply s) state)))
+        (value :shed)))))
+
 ; The control result is projected before the event consumes the in-flight
 ; submission.  The state transition uses fn-own-outcome-completion and
 ; fn-own-feed-durable exactly as the served outcome; only wire rendering and
@@ -2649,6 +2689,15 @@
 (defun fn-owner-key-statement-request (event state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-ks-pop-request event)))
+
+;; Lane ack-before-barrier (books/owner-ack-after-barrier.lisp): whether the
+;; committed kind-4 composite EVENT carries a key statement, whose commit the
+;; owner fences before its crash cut and its executor run
+;; (host/native/owner.lisp fnn-owner-statement-committed).  KEYSTONE
+;; fn-oab-plan-only-after-the-fence: the executor decides only such events.
+(defun fn-owner-statement-fence (event state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-oab-fence-before-change event)))
 
 ;; The grants a statement is decided under (books/key-statements.lisp
 ;; fn-ks-statement-rows): at acceptance the live configuration's; at open

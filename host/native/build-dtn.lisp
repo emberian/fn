@@ -173,7 +173,7 @@
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer), and the store's recover
-;; entries their fusion fn-rii-sco-extend-open (PRF-312).
+;; entries their fusion fn-rii-sco-extend-open (PRF-321).
 (include-book "books/replay-identity-index")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):

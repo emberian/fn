@@ -32,7 +32,7 @@ Every decision is an image's; Python observes replies, logs and bytes:
     from the primary block (RFC 9171 section 4.3.1) of the bundle B retained
     in its kind-5 frame; an observation, compared with nothing ACL2 decides;
   * the stored representation: the record each node's owner serves by
-    Message-ID (ARTICLE, equal to `store inspect`, NNT-020).  B's record
+    Message-ID (ARTICLE less its leading server-local Xref).  B's record
     must be A's with `receiver.bp.gate.invalid!!` spliced after `Path: `
     (RFC 5537 section 3.2.1: an empty diagnostic marks the verified hop) and
     nothing else changed.
@@ -98,6 +98,19 @@ def header(article, name):
         if line.lower().startswith(name.lower() + b":"):
             return line.split(b":", 1)[1].strip().decode("ascii", "replace")
     return None
+
+
+def stored_record(octets, identity):
+    """The served ARTICLE less the Xref line the serving node leads it with.
+
+    Xref is the serving server's own (RFC 5536 section 3.2.14; fn serves it
+    first since batch AR, reader-compat PRF-243), so A's and B's differ by
+    construction.  None unless that line names IDENTITY, the serving node.
+    """
+    line = b"Xref: " + identity.encode() + b" "
+    if not octets or not octets.startswith(line):
+        return None
+    return octets[octets.index(b"\r\n") + 2:]
 
 
 def spliced(octets, identity):
@@ -584,8 +597,10 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
                 "b_stored_sha256": sha(b_octets) if b_octets else None,
                 "a_path": header(a_octets, b"Path") if a_octets else None,
                 "b_path": header(b_octets, b"Path") if b_octets else None,
-                "b_is_a_with_b_splice": (b_octets == spliced(a_octets, B_ID)
-                                         if a_octets and b_octets else None),
+                "b_is_a_with_b_splice": (
+                    stored_record(b_octets, B_ID)
+                    == spliced(stored_record(a_octets, A_ID) or b"", B_ID)
+                    if a_octets and b_octets else None),
                 "b_after_sigkill_reopen_same": (f["b_reopened"] == b_octets
                                                 if b_octets else None),
                 "b_sigkill_mid_receive": f.get("b_sigkill"),
@@ -602,7 +617,13 @@ class NativeSourceCorpusBpTests(unittest.TestCase):
             self.assertEqual(f["b_verdict"], "BP node delivery request-accepted", name)
             self.assertIsNotNone(f["a"], (name, "A serves no record"))
             self.assertIsNotNone(f["b"], (name, "B serves no record"))
-            self.assertEqual(f["b"], spliced(f["a"], B_ID), name)
+            # Each node serves its own Xref; the stored records are A's with
+            # B's Path splice and nothing else changed.
+            a_record = stored_record(f["a"], A_ID)
+            b_record = stored_record(f["b"], B_ID)
+            self.assertIsNotNone(a_record, (name, "A's Xref does not name A"))
+            self.assertIsNotNone(b_record, (name, "B's Xref does not name B"))
+            self.assertEqual(b_record, spliced(a_record, B_ID), name)
             self.assertEqual(f["b_reopened"], f["b"], name)
             self.assertIsNotNone(f["bundle"], (name, "no bundle in B's kind-5 frame"))
             self.assertEqual(f["bundle"]["source"], "dtn://sender/", name)

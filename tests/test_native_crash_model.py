@@ -138,7 +138,7 @@ if IMAGE_AVAILABLE:
     class NativeCrashModelTests(NativeCampaignMixin, unittest.TestCase):
         def test_all_native_post_log_process_death_cuts(self):
             names = tuple(cut.name for cut in native_cuts.POST_LOG_CUTS)
-            self.assertEqual(names, ("finish-consumed", "finish-durable",
+            self.assertEqual(names, ("record-completing", "finish-consumed", "finish-durable",
                                      "log-written", "log-fenced"))
             for cut in native_cuts.POST_LOG_CUTS:
                 selected = os.environ.get("FN_NATIVE_LOWLEVEL_CUT")

@@ -53,7 +53,7 @@ class StateCheckpointSourceTests(unittest.TestCase):
         # records-flip (checkpoint-arena-2): the entry opens over the ROWS the
         # host interned on top of the loaded arena (fnn-recover-suffix-rows);
         # fn-rii-sco-extend is fn-sco-extend (fn-rii-sco-extend-is-sco-extend).
-        # snapshot-open-2 (PRF-312): the extension and its open are one call,
+        # snapshot-open-2 (PRF-321): the extension and its open are one call,
         # fn-rii-sco-extend-open (KEYSTONE
         # fn-rii-sco-extend-open-is-extend-then-open: the extension and
         # fn-rii-classified-open of it), opened by fn-store-sn-open-classified

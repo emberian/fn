@@ -4,9 +4,13 @@
 (include-book "../books/bp-release")
 (include-book "../books/bp-ion-workflow")
 
-(defun fn-owner-workflow-install-replay (records state)
- (declare (xargs :stobjs state :mode :program))
- (let* ((answer (fn-bpiw-replay-journal (fn-sn-node (fn-owner-store state)) records)))
+; The entries that replay or apply workflow records read the attempt's
+; request through the live payload arena (books/bp-outbound.lisp); they take
+; fn-arena before state and only read it (host/native/io.lisp fnn-core-state).
+(defun fn-owner-workflow-install-replay (records fn-arena state)
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
+ (let* ((answer (fn-bpiw-replay-journal (fn-sn-node (fn-owner-store state)) records
+                                        fn-arena)))
   (if (not (car answer))
       (value :fault)
     (let* ((workflow (fn-bp-journal-nth 1 answer))
@@ -23,9 +27,9 @@
  (declare (xargs :stobjs state :mode :program))
  (fn-workflow-reset state))
 
-(defun fn-owner-workflow-preflight-record (record state)
- (declare (xargs :stobjs state :mode :program))
- (fn-workflow-preflight-record record state))
+(defun fn-owner-workflow-preflight-record (record fn-arena state)
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
+ (fn-workflow-preflight-record record fn-arena state))
 
 (defun fn-owner-workflow-forward-pinnedp (work-id state)
  (declare (xargs :stobjs state :mode :program))
@@ -61,11 +65,11 @@
                   (fn-bprl-record-evidence release-record))
                  0)))))
 
-(defun fn-owner-workflow-apply-record (record state)
- (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-workflow-apply-record (record fn-arena state)
+ (declare (xargs :stobjs (fn-arena state) :mode :program))
  (let* ((answer (fn-bpiw-apply
                  (f-get-global 'fn-workflow-state state)
-                 (f-get-global 'fn-workflow-ion-state state) record)))
+                 (f-get-global 'fn-workflow-ion-state state) record fn-arena)))
   (if (not (car answer))
       (value :fault)
     (let* ((workflow (fn-bp-journal-nth 1 answer))

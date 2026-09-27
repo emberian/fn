@@ -1009,7 +1009,19 @@ def main(argv=None) -> int:
     for problem in arms:
         print("log route mismatch: " + problem)
     print("log route arms: {} ({} arms)".format("FAIL" if arms else "PASS", len(LOG_ROUTE_ARMS)))
-    return 0 if report.ok and not arms else 1
+    # Lane ack-before-barrier: the key-statement route's cut follows the
+    # statement's barrier, and every line naming a record its COMPLETE.
+    from tests.campaign.native_cuts import STATEMENT_CUTS, verify_statement_cut_map
+    statement = []
+    try:
+        verify_statement_cut_map()
+    except AssertionError as error:
+        statement.append(str(error))
+    for problem in statement:
+        print("statement route mismatch: " + problem)
+    print("statement route: {} ({} cut)".format("FAIL" if statement else "PASS",
+                                                  len(STATEMENT_CUTS)))
+    return 0 if report.ok and not arms and not statement else 1
 
 
 if __name__ == "__main__":
