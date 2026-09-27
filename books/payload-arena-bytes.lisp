@@ -23,6 +23,7 @@
 ;   fn-arena-bytes-seal-list xs      (append a (list xs))            / xs written at the fill point
 ;   fn-arena-bytes-seal-buffer st    (append a (list st))            / the octet buffer's cells copied
 ;   fn-arena-bytes-clear             nil                             / count := 0, fill := 0
+;   fn-arena-bytes-seal-range a b st (append a (list st[a..b)))     / the cells [A, B) copied, no list
 ;
 ; The abstraction relation `fn-arena$corr': the concrete object is well
 ; formed, the count and the fill are within their arrays, every handle's
@@ -394,6 +395,16 @@
          (fn-arena$c (fn-arn-write-buffer 0 (fn-octets-len fn-octets) fn-octets fn-arena$c)))
     (fn-arn-seal-entry start fn-arena$c)))
 
+(defun fn-arena$c-seal-range (a b fn-octets fn-arena$c)
+  ; The cells [A, B) copied at the fill point, read in place; no list.
+  (declare (xargs :stobjs (fn-octets fn-arena$c)
+                  :guard (and (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets))
+                              (fn-arena$c-wfp fn-arena$c))
+                  :verify-guards nil))
+  (let* ((start (fn-arena$c-fill fn-arena$c))
+         (fn-arena$c (fn-arn-write-buffer a b fn-octets fn-arena$c)))
+    (fn-arn-seal-entry start fn-arena$c)))
+
 ; -----------------------------------------------------------------------------
 ; The logical side: the list of payloads.
 
@@ -435,6 +446,14 @@
 (defun fn-arena$a-clear (fn-arena$a)
   (declare (xargs :guard t) (ignore fn-arena$a))
   nil)
+
+; The octet buffer's cells [A, B) sealed as one payload (the intern from a
+; buffer range: books/catalog-load-index.lisp fn-obi-seal-range, lane
+; open-by-index, is this export's caller).
+(defun fn-arena$a-seal-range (a b fn-octets fn-arena$a)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))))
+  (fn-oct-snoc fn-arena$a (fn-oct-slice-list a b fn-octets)))
 
 ; -----------------------------------------------------------------------------
 ; The abstraction relation.
@@ -624,6 +643,34 @@
 
 (verify-guards fn-arena$c-seal-buffer
   :hints (("Goal" :in-theory (enable fn-oct-octets-p-is-octet-listp))))
+
+; A slice of an octet buffer is an octet list: each cell read is an octet.
+(local
+ (defthm fn-arn-octetp-of-nth
+   (implies (and (fn-cbor-octet-listp l) (natp i) (< i (len l)))
+            (fn-cbor-octetp (nth i l)))
+   :hints (("Goal" :in-theory (enable nth)))))
+
+(defthm fn-arn-slice-list-octets
+  (implies (and (fn-cbor-octet-listp fn-octets) (natp a) (natp b) (<= a b)
+                (<= b (len fn-octets)))
+           (fn-cbor-octet-listp (fn-oct-slice-list a b fn-octets)))
+  :hints (("Goal" :induct (fn-oct-slice-list a b fn-octets)
+           :in-theory (e/d (fn-oct-slice-list fn-oct-get-is-nth)
+                           (fn-oct-slice-list-is-take-nthcdr)))))
+
+; The slice stays a slice (its take/nthcdr form would hide the octet fact).
+(verify-guards fn-arena$c-seal-range
+  :hints (("Goal" :in-theory (e/d (fn-oct-octets-p-is-octet-listp)
+                                  (fn-oct-slice-list-is-take-nthcdr)))))
+
+; The range seal is the list seal of the slice (the buffer copy is the
+; write of the slice: fn-arn-write-buffer-is-write).
+(defthm fn-arn-seal-range-is-seal-list
+  (equal (fn-arena$c-seal-range a b fn-octets fn-arena$c)
+         (fn-arena$c-seal-list (fn-oct-slice-list a b fn-octets) fn-arena$c))
+  :hints (("Goal" :in-theory (e/d (fn-arena$c-seal-list fn-arena$c-seal-range)
+                                  (fn-oct-slice-list-is-take-nthcdr)))))
 
 ; The seal entry: the new handle is the old count, its range is
 ; [start, fill), every older slice and range is kept.
@@ -856,6 +903,34 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-oct-octets-p-is-octet-listp))))
 
+(defthm fn-arena-bytes-seal-range{correspondence}
+  (implies (and (fn-arena$corr fn-arena$c fn-arena-bytes)
+                (fn-octets-p fn-octets)
+                (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))
+           (fn-arena$corr (fn-arena$c-seal-range a b fn-octets fn-arena$c)
+                          (fn-arena$a-seal-range a b fn-octets fn-arena-bytes)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-arena$c-seal-list fn-oct-octets-p-is-octet-listp)
+                                  (fn-arn-seal-list-step fn-oct-slice-list-is-take-nthcdr))
+           :use ((:instance fn-arn-seal-list-step (xs (fn-oct-slice-list a b fn-octets)))))))
+
+(defthm fn-arena-bytes-seal-range{guard-thm}
+  (implies (and (fn-arena$corr fn-arena$c fn-arena-bytes)
+                (fn-octets-p fn-octets)
+                (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))
+           (and (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets))
+                (fn-arena$c-wfp fn-arena$c)))
+  :rule-classes nil)
+
+(defthm fn-arena-bytes-seal-range{preserved}
+  (implies (and (fn-arena$ap fn-arena-bytes)
+                (fn-octets-p fn-octets)
+                (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))
+           (fn-arena$ap (fn-arena$a-seal-range a b fn-octets fn-arena-bytes)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-oct-octets-p-is-octet-listp)
+                                  (fn-oct-slice-list-is-take-nthcdr)))))
+
 (defthm fn-arena-bytes-clear{correspondence}
   (implies (fn-arena$corr fn-arena$c fn-arena-bytes)
            (fn-arena$corr (fn-arena$c-clear fn-arena$c) (fn-arena$a-clear fn-arena-bytes)))
@@ -880,4 +955,6 @@
                                       :protect t)
             (fn-arena-bytes-seal-buffer :logic fn-arena$a-seal-buffer :exec fn-arena$c-seal-buffer
                                         :protect t)
-            (fn-arena-bytes-clear :logic fn-arena$a-clear :exec fn-arena$c-clear :protect t)))
+            (fn-arena-bytes-clear :logic fn-arena$a-clear :exec fn-arena$c-clear :protect t)
+            (fn-arena-bytes-seal-range :logic fn-arena$a-seal-range :exec fn-arena$c-seal-range
+                                       :protect t)))

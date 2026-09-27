@@ -174,6 +174,50 @@
 
 (assert-event (equal (pat-bytes-big) (pat-exec-big)))
 
+; The range seal: cells [1, 4) of a five-octet buffer sealed as one payload,
+; on both foundations; and the export is the list seal of the slice.
+(defun pat-range-run (fn-arena)
+  (declare (xargs :stobjs fn-arena))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (with-local-stobj fn-octets
+                     (mv-let (fn-arena fn-octets)
+                       (let* ((fn-octets (fn-octets-from-list '(10 11 12 13 14) fn-octets))
+                              (fn-arena (fn-arena-seal-range 1 4 fn-octets fn-arena))
+                              (fn-arena (fn-arena-seal-range 4 4 fn-octets fn-arena)))
+                         (mv fn-arena fn-octets))
+                       fn-arena))))
+    (mv (list (fn-arena-count fn-arena) (fn-arena-payload 0 fn-arena)
+              (fn-arena-payload-len 1 fn-arena) (fn-arena-payload 1 fn-arena))
+        fn-arena)))
+
+(defun pat-range-bytes-run (fn-arena-bytes)
+  (declare (xargs :stobjs fn-arena-bytes))
+  (let* ((fn-arena-bytes (fn-arena-bytes-clear fn-arena-bytes))
+         (fn-arena-bytes (with-local-stobj fn-octets
+                           (mv-let (fn-arena-bytes fn-octets)
+                             (let* ((fn-octets (fn-octets-from-list '(10 11 12 13 14) fn-octets))
+                                    (fn-arena-bytes (fn-arena-bytes-seal-range 1 4 fn-octets fn-arena-bytes))
+                                    (fn-arena-bytes (fn-arena-bytes-seal-range 4 4 fn-octets fn-arena-bytes)))
+                               (mv fn-arena-bytes fn-octets))
+                             fn-arena-bytes))))
+    (mv (list (fn-arena-bytes-count fn-arena-bytes) (fn-arena-bytes-payload 0 fn-arena-bytes)
+              (fn-arena-bytes-payload-len 1 fn-arena-bytes) (fn-arena-bytes-payload 1 fn-arena-bytes))
+        fn-arena-bytes)))
+
+(assert-event
+ (and (equal (with-local-stobj fn-arena
+               (mv-let (result fn-arena) (pat-range-run fn-arena) result))
+             '(2 (11 12 13) 0 nil))
+      (equal (with-local-stobj fn-arena-bytes
+               (mv-let (result fn-arena-bytes) (pat-range-bytes-run fn-arena-bytes) result))
+             '(2 (11 12 13) 0 nil))))
+
+(defthm pat-w-seal-range-is-seal-list
+  (and (equal (fn-arena-seal-range 1 4 '(10 11 12 13 14) *pat-a*)
+              (fn-arena-seal-list (fn-oct-slice-list 1 4 '(10 11 12 13 14)) *pat-a*))
+       (equal (fn-arena-seal-range 1 4 '(10 11 12 13 14) *pat-a*) '((1 2 3) (4 5) (11 12 13))))
+  :rule-classes nil)
+
 ; -----------------------------------------------------------------------------
 ; The obligations on ground values.  *pat-c* is a concrete arena holding
 ; (1 2 3) then (4 5) in an 8-cell array with two spare cells; *pat-a* is its

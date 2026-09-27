@@ -324,7 +324,7 @@
         "fn-wire-feed-proper-of-rendered-block-lines",
         "fn-wire-drive-of-successful-render-block-preserves-source",
         "fn-wire-drive-of-host-rendered-article-preserves-source",
-        "fn-ocfg-read-tls-prefix-is-full-read"
+        "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix"
       ],
       "evidence": [
         "tests/evidence/2026-09-18-integrated.md",
@@ -7239,7 +7239,23 @@
         "fn-cat-load-from-empty",
         "fn-cat-relation-of-withdraw",
         "fn-cat-relation-of-redecide",
-        "fn-cat-relation-of-complete"
+        "fn-cat-relation-of-complete",
+        "fn-cat-load-of-nil",
+        "fn-cat-load-of-append",
+        "fn-cat-relation-of-non-article-append",
+        "fn-cat-relation-is-prefix-relation",
+        "fn-cat-prefix-relation-of-growth",
+        "fn-cat-wire-list-of-withdraw",
+        "fn-cat-wire-list-of-redecide",
+        "fn-cat-prefix-relation-of-withdraw",
+        "fn-cat-prefix-relation-of-redecide",
+        "fn-cat-ocl-relation-at-recover",
+        "fn-cat-ocl-relation-at-init",
+        "fn-cat-ocl-relation-of-article-finish",
+        "fn-cat-ocl-relation-before-article-finish",
+        "fn-cat-ocl-relation-of-other-finish",
+        "fn-cat-ocl-relation-of-withdraw",
+        "fn-cat-ocl-relation-of-redecide"
       ],
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md",
@@ -7280,7 +7296,18 @@
         "planning/evidence/catalog-slice-2026-09-26.md",
         "planning/evidence/manifests/certify-20260927T001344Z-408497.json"
       ],
-      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); proved by lane catalog-boundary-owner (Fable, gpt-6's wave-5 review section 5) on 2026-09-26 in books/catalog-refresh.lisp over the owner's own view vocabulary, so the statement's subject is the refresh the host reaches today; the catalog-side twins are the same book's. catalog-slice-2 and -4's groundwork (the delta grammar, fn-view-cancel-after-target, fn-cat-view-articles) is what the catalog side is stated over."
+      "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); proved by lane catalog-boundary-owner (Fable, gpt-6's wave-5 review section 5) on 2026-09-26 in books/catalog-refresh.lisp over the owner's own view vocabulary, so the statement's subject is the refresh the host reaches today; the catalog-side twins are the same book's. catalog-slice-2 and -4's groundwork (the delta grammar, fn-view-cancel-after-target, fn-cat-view-articles) is what the catalog side is stated over.",
+      "events": [
+        "fn-view-apply-is-refresh",
+        "fn-crf-apply-article-plain",
+        "fn-cat-view-below-of-commit",
+        "fn-cat-view-articles-of-commit-pinned",
+        "fn-cat-view-articles-of-commit-advanced",
+        "fn-cat-view-below-of-withdraw-pinned",
+        "fn-cat-view-articles-of-withdraw-pinned",
+        "fn-cat-view-below-of-withdraw-advanced",
+        "fn-cat-withdraw-then-commit-view"
+      ]
     },
     {
       "id": "PRF-203",

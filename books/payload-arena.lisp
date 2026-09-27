@@ -33,6 +33,8 @@
 ;   fn-arena-seal-list xs      (append a (list xs))      a new handle (the old count)
 ;   fn-arena-seal-buffer st    (append a (list st))      the octet buffer's value sealed
 ;   fn-arena-clear             nil
+;   fn-arena-seal-range a b st (append a (list st[a..b)))   the buffer's cells [A, B) sealed as one
+;                                                            payload: the intern from a buffer range
 ;
 ; What the arena guarantees, as theorems over the logical view (so of every
 ; implementation):
@@ -107,6 +109,14 @@
 (defun fn-arena$l-clear (fn-arena$l)
   (declare (xargs :stobjs fn-arena$l))
   (update-fn-arena$l-items nil fn-arena$l))
+
+(defun fn-arena$l-seal-range (a b fn-octets fn-arena$l)
+  (declare (xargs :stobjs (fn-octets fn-arena$l)
+                  :guard (and (fn-arena$l-wfp fn-arena$l)
+                              (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))))
+  (update-fn-arena$l-items (fn-oct-snoc (fn-arena$l-items fn-arena$l)
+                                        (fn-oct-slice-list a b fn-octets))
+                           fn-arena$l))
 
 ; The abstraction relation of the reference: the field is the logical value.
 (defun fn-arena$lcorr (fn-arena$l fn-arena$a)
@@ -228,6 +238,33 @@
            (fn-arena$ap (fn-arena$a-clear fn-arena)))
   :rule-classes nil)
 
+(defthm fn-arena-seal-range{correspondence}
+  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
+                (fn-octets-p fn-octets)
+                (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))
+           (fn-arena$lcorr (fn-arena$l-seal-range a b fn-octets fn-arena$l)
+                           (fn-arena$a-seal-range a b fn-octets fn-arena)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-oct-octets-p-is-octet-listp)
+                                  (fn-oct-slice-list-is-take-nthcdr)))))
+
+(defthm fn-arena-seal-range{guard-thm}
+  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
+                (fn-octets-p fn-octets)
+                (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))
+           (and (fn-arena$l-wfp fn-arena$l)
+                (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets))))
+  :rule-classes nil)
+
+(defthm fn-arena-seal-range{preserved}
+  (implies (and (fn-arena$ap fn-arena)
+                (fn-octets-p fn-octets)
+                (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))
+           (fn-arena$ap (fn-arena$a-seal-range a b fn-octets fn-arena)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-oct-octets-p-is-octet-listp)
+                                  (fn-oct-slice-list-is-take-nthcdr)))))
+
 ; -----------------------------------------------------------------------------
 ; The generic.  `:attachable t' is what lets (attach-stobj fn-arena IMPL),
 ; evaluated before this book is included, replace the foundation and the
@@ -246,7 +283,9 @@
                                 :protect t)
             (fn-arena-seal-buffer :logic fn-arena$a-seal-buffer :exec fn-arena$l-seal-buffer
                                   :protect t)
-            (fn-arena-clear :logic fn-arena$a-clear :exec fn-arena$l-clear :protect t))
+            (fn-arena-clear :logic fn-arena$a-clear :exec fn-arena$l-clear :protect t)
+            (fn-arena-seal-range :logic fn-arena$a-seal-range :exec fn-arena$l-seal-range
+                                 :protect t))
   :attachable t)
 
 ; -----------------------------------------------------------------------------
@@ -279,6 +318,19 @@
 (defthm fn-arena-clear-is-nil
   (equal (fn-arena-clear fn-arena) nil))
 
+; The range seal is the list seal of the slice (no hypothesis: both are
+; fn-oct-snoc), and an append under the recognizer.  The intern from a
+; buffer range (books/catalog-load-index.lisp fn-obi-seal-range) is this
+; export: its theorem fn-obi-seal-range-is-seal-of-slice is the first.
+(defthm fn-arena-seal-range-is-seal-list
+  (equal (fn-arena-seal-range a b fn-octets fn-arena)
+         (fn-arena-seal-list (fn-oct-slice-list a b fn-octets) fn-arena)))
+
+(defthm fn-arena-seal-range-is-append
+  (implies (fn-arena-p fn-arena)
+           (equal (fn-arena-seal-range a b fn-octets fn-arena)
+                  (append fn-arena (list (fn-oct-slice-list a b fn-octets))))))
+
 (defthm fn-arena-p-forward
   (implies (fn-arena-p x)
            (and (fn-arn-payload-listp x) (true-listp x)))
@@ -286,7 +338,7 @@
 
 (in-theory (disable fn-arena-p fn-arena-count fn-arena-payload-len fn-arena-get
                     fn-arena-payload fn-arena-seal-list fn-arena-seal-buffer fn-arena-clear
-                    fn-arena-p-is-payload-listp))
+                    fn-arena-seal-range fn-arena-p-is-payload-listp))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONES.  What a reader holding a handle may rely on.
@@ -359,6 +411,10 @@
 
 ; The seal is `append' on any true list, whatever its elements: the
 ; recognizer is not needed here and is not what the fold preserves.
+(local
+ (defthm fn-arn-append-assoc
+   (equal (append (append a b) c) (append a (append b c)))))
+
 (defthm fn-arn-seal-many-is-append
   (implies (and (true-listp fn-arena) (true-listp payloads))
            (equal (fn-arn-seal-many payloads fn-arena)
