@@ -12,6 +12,8 @@
 (in-package "ACL2")
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/consumer-wait")
+; The record and statement decoders execute through their attachments.
+(include-book "../../books/codec-attach")
 
 ; --- the Store ---------------------------------------------------------------
 (defun cwt-reserve (s)
@@ -112,6 +114,14 @@
 (defun cwt-news () (cwt-poll *cwt-oc-full* *cwt-c2* *cwt-secret*))
 (assert-event (equal (car (cwt-news)) :poll))
 (assert-event (consp (caddr (cwt-news))))
+; The article the news report carries, for an agent's reader.
+(assert-event
+ (equal (fn-cwait-report-article (caddr (cwt-news)))
+        (list :ok "<news@fn.test>"
+              (fn-record-payload
+               (fn-col-poll-article
+                (caddr (fn-col-poll (fn-own-start *cwt-full* 2) *cwt-c2*)))))))
+(assert-event (equal (fn-cwait-report-article '(1 2 3)) '(:refused :codec)))
 (assert-event (equal (fn-record-msgid
                       (fn-col-poll-article
                        (caddr (fn-col-poll (fn-own-start *cwt-full* 2) *cwt-c2*))))

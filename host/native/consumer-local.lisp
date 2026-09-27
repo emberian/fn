@@ -108,3 +108,32 @@
         (fnn-core 'fn-native-control-host-status-exit-code status)))))
 
 (fnn-register-verb "consumer" #'fnn-command-consumer-local)
+
+(defun fnn-command-consumer-article (args)
+  "Print the article a poll report carries (PRF-252): its Message-ID and its
+octets as stored, hex, as ACL2 decodes them.  No Store authority."
+  (unless (= (length args) 1)
+    (error 'fnn-usage-error :message "usage: fn consumer-article REPORT"))
+  (let* ((octets (handler-case
+                     (fnn-octet-list
+                      (fnn-read-regular-bounded
+                       (first args) (fnn-core 'fn-cpj-max-event-octets)))
+                   (fnn-input-overbound ()
+                     (fnn-out "fn-consumer-article-refused-v1 limit")
+                     (return-from fnn-command-consumer-article 1))))
+         (article (fnn-core 'fn-native-control-host-consumer-report-article
+                            octets)))
+    (unless (and (consp article) (eq (first article) :ok)
+                 (stringp (second article))
+                 (fnn-octet-list-p (third article)))
+      (fnn-out "fn-consumer-article-refused-v1 ~(~a~)"
+               (if (consp article) (second article) "codec"))
+      (return-from fnn-command-consumer-article 1))
+    (fnn-out "fn-consumer-article-v1 ~a ~a"
+             (fnn-hex (fnn-ascii-octet-list (second article)))
+             (fnn-hex (third article)))
+    0))
+
+(fnn-register-verb "consumer-article"
+                   (lambda (first rest)
+                     (fnn-command-consumer-article (cons first rest))))

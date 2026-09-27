@@ -9,8 +9,8 @@ already exist.
   next    `fn consumer bound-wait` (or `wait` for an unbound consumer) over
           the owner's 0600 control socket: it sleeps until an event the
           consumer can read is committed, or the timeout passes, and answers
-          exactly what a poll would then (PRF-252).  The event is projected
-          by the native image (`fn consumer-project`, ACL2's projection) and
+          exactly what a poll would then (PRF-252).  The article is decoded
+          by the native image (`fn consumer-article`, ACL2's decoder) and
           printed as ONE JSON line: Message-ID, groups, From, Subject,
           References, body.  The cursor is kept in the state directory for
           `ack`.  A timeout prints {"kind": "empty"}.
@@ -123,18 +123,18 @@ class Agent:
                     path.unlink()
 
     def project(self, cursor, report):
-        """ACL2's projection of the event, then the article's fields."""
-        result = self.native("consumer-project", cursor, report)
+        """The article the report carries, as the native image decodes it
+        (`fn consumer-article`, ACL2's fn-cwait-report-article), then its
+        fields.  CURSOR is unused: the report alone names the article."""
+        result = self.native("consumer-article", report)
         words = result.stdout.decode("ascii", "replace").split()
-        if result.returncode != 0 or len(words) != 18 or words[0] != "fn-consumer-project-v1":
-            # Not an article the projection names (or no projection): the
-            # event is still delivered, and still acked by `ack`.
-            return {"kind": "event", "projected": False,
-                    "detail": " ".join(words)}
-        received = bytes.fromhex(words[15])
-        fields = article_fields(received)
-        fields.update({"kind": "article", "sequence": int(words[10]),
-                       "node_verdict": hex_text(words[17])})
+        if result.returncode != 0 or len(words) != 3 or words[0] != "fn-consumer-article-v1":
+            # Not an article (or not decodable): the event is still
+            # delivered, and still acked by `ack`.
+            return {"kind": "event", "projected": False, "detail": " ".join(words)}
+        fields = article_fields(bytes.fromhex(words[2]))
+        fields["kind"] = "article"
+        fields["message_id"] = bytes.fromhex(words[1]).decode("ascii", "replace")
         return fields
 
     # -- ack --------------------------------------------------------------------
@@ -191,13 +191,6 @@ class Agent:
         return result.returncode
 
 
-def hex_text(word):
-    try:
-        return bytes.fromhex(word).decode("ascii", "replace")
-    except ValueError:
-        return word
-
-
 def article_fields(octets):
     """The header fields an agent reads, and the body, of one article.
 
@@ -241,10 +234,10 @@ def main(argv=None):
     replying.add_argument("--body-file", default="", help="the body; standard input when absent")
     verbs.add_parser("ack", help="acknowledge the pending event")
     args = parser.parse_args(argv)
+    if args.verb == "next" and not 0 <= args.timeout <= 3600:
+        parser.error("--timeout %d: 0 to 3600 seconds" % args.timeout)
     agent = Agent(args.config)
     if args.verb == "next":
-        if not 0 <= args.timeout <= 3600:
-            parser.error("--timeout %d: 0 to 3600 seconds" % args.timeout)
         return agent.next(args.timeout)
     if args.verb == "ack":
         return agent.ack()

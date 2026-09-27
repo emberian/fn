@@ -145,6 +145,32 @@
           (list :usage :bound-wait))))
      (t (fn-ncl-cli-plan command argv)))))
 
+;; The article a poll report carries, for an agent's reader
+;; (tools/fn_agent.py, through `fn consumer-article REPORT'): a carried
+;; event's record (the signed form, books/stx-accept-records.lisp) or the
+;; plain record an unsigned article's report is (fn-col-poll-report-octets).
+;; (:ok MSGID RECEIVED) with the Message-ID text and the article octets as
+;; stored, or (:refused :codec).  `consumer-project' remains the projection
+;; of a signed report with its authorship; this one decides nothing about
+;; authorship.
+(defun fn-cwait-record-article (record-result)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (fn-record-result-okp record-result)
+      (let ((record (fn-record-result-record record-result)))
+        (list :ok (fn-record-msgid record) (fn-record-payload record)))
+    (list :refused :codec)))
+
+(defun fn-cwait-report-article (octets)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (true-listp octets))
+      (list :refused :codec)
+    (let ((carried (fn-stxa-decode-exact octets)))
+      (if (fn-stmt-okp carried)
+          (fn-cwait-record-article
+           (fn-record-decode-exact
+            (fn-stxa-article-record (fn-stmt-value carried))))
+        (fn-cwait-record-article (fn-record-decode-exact octets))))))
+
 ; The old kinds are the consumer codec's, unchanged.
 (defthm fn-cwait-request-encode-of-another-kind-is-the-consumer-encode
   (implies (not (member kind '(:wait :bound-wait)))

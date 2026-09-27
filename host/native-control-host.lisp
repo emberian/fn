@@ -166,6 +166,11 @@
   (declare (xargs :mode :program))
   (fn-cwait-cli-plan command argv))
 
+;; PRF-252: the article a poll report carries (fn_agent's reader).
+(defun fn-native-control-host-consumer-report-article (octets)
+  (declare (xargs :mode :program))
+  (fn-cwait-report-article octets))
+
 ;; PRF-234: the password a bound consumer's secret file holds.
 (defun fn-native-control-host-consumer-secret-of-file (octets)
   (declare (xargs :mode :program))

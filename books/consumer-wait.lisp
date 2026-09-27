@@ -39,6 +39,7 @@
 ; host/native/owner.lisp `fnn-owner-consumer-local-wait'.
 (in-package "ACL2")
 (include-book "consumer-bound")
+(include-book "consumer-wait-codec")
 
 (defconst *fn-cwait-reserved-workers* 4)
 
