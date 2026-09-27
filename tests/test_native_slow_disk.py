@@ -40,10 +40,12 @@ ROOT = Path(__file__).resolve().parents[1]
 # The developer image: the only one that honours a developer selector.
 DEVELOPER = Path(os.environ.get("FN_NATIVE_DEVELOPER_HOST", ROOT / "build" / "fn-host-developer"))
 STALL_SECONDS = float(os.environ.get("FN_SLOW_DISK_STALL_SECONDS", "30"))
-DISK_SLOW = re.compile(rb"^disk slow: barrier (\d+) ms pending deadline-ms=(\d+) "
-                       rb"slow-episodes=(\d+) posts=try-later$", re.M)
+DISK_SLOW = re.compile(rb"^disk slow: barrier (\d+) ms pending deadline-ms=(\d+) stall-ms=(\d+) "
+                       rb"slow-episodes=(\d+) stalls=(\d+) posts=try-later$", re.M)
+DISK_STALLED = re.compile(rb"^disk stalled: barrier (\d+) ms pending deadline-ms=(\d+) stall-ms=(\d+) "
+                          rb"slow-episodes=(\d+) stalls=(\d+) posts=try-later members=uncertain$", re.M)
 DISK_OK = re.compile(rb"^disk ok: pending-ms=(\d+) last-barrier-ms=(\d+) max-barrier-ms=(\d+) "
-                     rb"deadline-ms=(\d+) slow-episodes=(\d+)$", re.M)
+                     rb"deadline-ms=(\d+) stall-ms=(\d+) slow-episodes=(\d+) stalls=(\d+)$", re.M)
 
 
 def environment():
@@ -73,25 +75,40 @@ class SlowDiskSourceTests(unittest.TestCase):
                          owner.index("(defun fnn-owner-loops-snapshot")]
         # The barrier's issue and completion are disk events; the wait for
         # the syncer is timed by ACL2 and its expiry appends a clock event.
-        self.assertIn("(fnn-owner-disk-event service :issue deadline)", pipeline)
+        self.assertIn("(fnn-owner-disk-event service :issue limits)", pipeline)
         self.assertIn("(fnn-owner-disk-event service :return)", pipeline)
         self.assertIn("(fnn-owner-disk-event service :clock)", pipeline)
         self.assertIn("(fnn-owner-disk-wait-ms service)", pipeline)
         self.assertIn(":timeout (/ ms 1000)", pipeline)
         self.assertLess(pipeline.index("(fnn-owner-start-syncer service)"),
-                        pipeline.index("(fnn-owner-disk-event service :issue deadline)"))
-        event = owner[owner.index("(defun fnn-owner-disk-event "):owner.index("(defun fnn-owner-disk-wait-ms")]
-        self.assertIn("'fn-otm-disk-event", event)
+                        pipeline.index("(fnn-owner-disk-event service :issue limits)"))
+        # Slice 2: past H every member is told uncertain, once per barrier,
+        # and the queued POSTs are shed; the told members are not answered
+        # again at the COMPLETE.
+        self.assertIn("(fnn-owner-disk-stalled-p service)", pipeline)
+        self.assertIn("(fnn-owner-stall-release", pipeline)
+        self.assertIn("(fnn-owner-journal-note service (length told) shed)", pipeline)
+        self.assertIn("(fnn-owner-unreleased members released)", pipeline)
+        event = owner[owner.index("(defun fnn-owner-disk-event "):owner.index("(defun fnn-owner-journal-note")]
+        self.assertIn("'fn-otm-disk-step", event)
+        self.assertIn("(fnn-journal-line entry)", event)
         # the reading is taken inside the gate mutex, never passed in
-        self.assertIn("(fnn-owner-monotonic-ms) deadline)", event)
+        self.assertLess(event.index("(sb-thread:with-mutex ((fnn-owner-gate-mutex gate))"),
+                        event.index("(setq reading (fnn-owner-monotonic-ms))"))
         chunk = owner[owner.index("(defun fnn-owner-handle-chunk-read "):owner.index("(defun fnn-owner-exposure-idle")]
-        self.assertLess(chunk.index("(fnn-owner-disk-admit service)"),
-                        chunk.index("(fnn-owner-note-queued service)"))
-        admit = owner[owner.index("(defun fnn-owner-disk-admit "):owner.index("(defun fnn-owner-shed-queued-locked")]
+        self.assertLess(chunk.index("(fnn-owner-advance-clock)"),
+                        chunk.index("(setq admit (fnn-owner-disk-admission service))"))
+        self.assertIn("'fn-owner-chunk-span cid 0 (length incoming) admit)", chunk)
+        admit = owner[owner.index("(defun fnn-owner-disk-admission "):owner.index("(defun fnn-owner-disk-stalled-p")]
         self.assertIn("'fn-otm-admit-post", admit)
+        clock = owner[owner.index("(defun fnn-owner-advance-clock "):owner.index("(defun fnn-owner-finish ")]
+        self.assertIn(":served", clock)
+        control = (ROOT / "host" / "native" / "control.lisp").read_text()
+        self.assertIn("(eq (fnn-owner-disk-admit service) :shed))\n                    :busy)", control)
         shed = owner[owner.index("(defun fnn-owner-shed-queued-locked "):]
         self.assertIn("'fn-owner-shed-outcome", shed[:2000])
         wrapper = (ROOT / "host" / "owner-host.lisp").read_text()
+        self.assertIn("(fn-otm-read-span\n", wrapper)
         self.assertIn("(fn-otm-shed-reply s)", wrapper)
         self.assertIn("(fn-owner-outcome id :refused state)", wrapper)
         live = (ROOT / "host" / "native-live-status-host.lisp").read_text()
@@ -168,10 +185,18 @@ class SlowDiskNativeTests(unittest.TestCase):
         stream.flush()
         line = stream.readline()
         self.assertTrue(line.startswith(b"340"), line)
+        self.send_body(stream, msgid, body)
+
+    def send_body(self, stream, msgid, body):
         stream.write(b"From: author@example.invalid\r\nNewsgroups: fn.test\r\n"
                      b"Subject: slow disk\r\nMessage-ID: <" + msgid + b">\r\n\r\n"
                      + body + b"\r\n.\r\n")
         stream.flush()
+
+    def policy(self, slot, value):
+        result = self.operator("policy", "set", slot, str(value))
+        self.assertEqual(result.returncode, 0, (slot, result.stdout, result.stderr))
+        return result
 
     def multiline(self, stream):
         while True:
@@ -196,11 +221,15 @@ class SlowDiskNativeTests(unittest.TestCase):
         return time.monotonic() - started, result
 
     def test_reads_and_control_stay_flat_while_the_disk_stalls_and_posts_are_refused_try_later(self):
+        # Slice 2: H far past this test's stall (the posters of a batch
+        # stalled past H are told uncertain; that is the next test's).
+        self.policy("barrier-stall-ms", 120000)
         reader_conn, reader = self.connect()
         a_conn, a = self.connect()
         b_conn, b = self.connect()
         c_conn, c = self.connect()
-        with reader_conn, a_conn, b_conn, c_conn:
+        d_conn, d = self.connect()
+        with reader_conn, a_conn, b_conn, c_conn, d_conn:
             # A healthy barrier first: W is stored, `health' says ok.
             self.send_article(c, b"warm@example.invalid", b"a healthy barrier")
             line = c.readline()
@@ -209,6 +238,12 @@ class SlowDiskNativeTests(unittest.TestCase):
             self.assertIsNotNone(DISK_OK.search(health.stdout), health.stdout)
             baseline = [self.timed_read(reader, b"GROUP fn.test\r\n", b"211") for _ in range(5)]
 
+            # B's POST command is answered 340 while the disk is healthy;
+            # its article is sent while the disk is slow (441 below).
+            b.write(b"POST\r\n")
+            b.flush()
+            line = b.readline()
+            self.assertTrue(line.startswith(b"340"), line)
             # The device stalls.  A's batch goes in flight and stays there.
             self.stall.write_bytes(b"")
             self.send_article(a, b"held@example.invalid", b"its barrier stalls")
@@ -216,6 +251,7 @@ class SlowDiskNativeTests(unittest.TestCase):
             reads, controls, healths = [], [], []
             slow_line = None
             refused = None
+            refused_command, refused_command_at = None, None
             refused_at = None
             while time.monotonic() - t0 < STALL_SECONDS:
                 reads.append(self.timed_read(reader, b"GROUP fn.test\r\n", b"211"))
@@ -230,12 +266,20 @@ class SlowDiskNativeTests(unittest.TestCase):
                     slow_line = DISK_SLOW.search(health.stdout)
                     self.assertIsNotNone(slow_line, health.stdout)
                     self.assertIsNotNone(DISK_SLOW.search(status.stdout), status.stdout)
-                    # A new POST while the disk is slow: refused at once,
-                    # with the reason; nothing stored.
+                    # An article whose POST was answered 340 before the
+                    # disk went slow: refused at once, with the reason;
+                    # nothing stored (slice 1's 441).
                     sent = time.monotonic()
-                    self.send_article(b, b"shed@example.invalid", b"refused try-later")
+                    self.send_body(b, b"shed@example.invalid", b"refused try-later")
                     refused = b.readline()
                     refused_at = time.monotonic() - sent
+                    # A POST command while the disk is slow: 440 with the
+                    # reason, before any article is sent (slice 2).
+                    sent = time.monotonic()
+                    d.write(b"POST\r\n")
+                    d.flush()
+                    refused_command = d.readline()
+                    refused_command_at = time.monotonic() - sent
                 # A has no answer while the device is stalled.
                 self.assertEqual(select.select([a_conn], [], [], 0)[0], [],
                                  "the held POST was answered while its barrier stalled")
@@ -254,7 +298,7 @@ class SlowDiskNativeTests(unittest.TestCase):
             _, health = self.timed_operator("health")
             ok = DISK_OK.search(health.stdout)
             self.assertIsNotNone(ok, health.stdout)
-            last_barrier_ms, episodes = int(ok.group(2)), int(ok.group(5))
+            last_barrier_ms, episodes = int(ok.group(2)), int(ok.group(6))
             # The next POST is accepted.
             self.send_article(c, b"after@example.invalid", b"after the stall")
             after = c.readline()
@@ -264,7 +308,7 @@ class SlowDiskNativeTests(unittest.TestCase):
             stat_shed = self.timed_read(reader, b"STAT <shed@example.invalid>\r\n", b"430")
             stat_after = self.timed_read(reader, b"STAT <after@example.invalid>\r\n", b"223")
             stat_a = self.timed_read(reader, b"STAT <held@example.invalid>\r\n", b"223")
-            for s in (reader, a, b, c):
+            for s in (reader, a, b, c, d):
                 s.write(b"QUIT\r\n")
                 s.flush()
 
@@ -288,6 +332,11 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertTrue(refused.startswith(b"441 posting failed; the disk is slow"), refused)
         self.assertIn(b"nothing was stored, try again later", refused)
         self.assertLess(refused_at, 2.0, refused_at)
+        self.assertTrue(refused_command.startswith(b"440 posting not permitted now; the disk is slow"),
+                        refused_command)
+        self.assertIn(b"try again later", refused_command)
+        self.assertLess(refused_command_at, 2.0, refused_command_at)
+        print("POST command during slow answered in %.3fs: %r" % (refused_command_at, refused_command))
         self.assertGreaterEqual(int(slow_line.group(1)), int(slow_line.group(2)))
         # The held POST: accepted once the device came back; the barrier's
         # latency recorded as at least the stall; one slow episode.
@@ -301,6 +350,137 @@ class SlowDiskNativeTests(unittest.TestCase):
         log = (self.root / "owner.stderr").read_bytes()
         self.assertIn(b"disk slow: a barrier has waited ", log)
         self.assertIn(b"disk recovered: the barrier completed after ", log)
+
+    def test_a_stall_past_h_tells_the_posters_uncertain_and_the_articles_land(self):
+        """Slice 2 (lane time-model-2; PRF-311, PRF-314, PRF-315): the three
+        profile fields set by `policy set' (D 2 s, H 6 s, cadence 250 ms);
+        a barrier stalled past H: its posters -- the batch in flight and the
+        one prepared behind it -- are told the outcome is uncertain, never
+        accepted or refused, within H plus a second; the POST queued behind
+        them is refused try-later; a POST command is answered 440; a
+        mutating control request is answered BUSY; reads stay flat.  When
+        the device comes back the told articles are STORED (the documented
+        ambiguity: RFC 3977 section 6.3.1, the client checks before it
+        reposts), the refused one is not, health says ok with one stall,
+        and the decision journal holds the run's events in sequence."""
+        self.policy("barrier-deadline-ms", 2000)
+        self.policy("barrier-stall-ms", 6000)
+        self.policy("clock-event-ms", 250)
+        reader_conn, reader = self.connect()
+        conns = [self.connect() for _ in range(5)]
+        (a_conn, a), (e_conn, e), (f_conn, f), (g_conn, g), (w_conn, w) = conns
+        with reader_conn, a_conn, e_conn, f_conn, g_conn, w_conn:
+            self.send_article(w, b"warm2@example.invalid", b"a healthy barrier")
+            self.assertTrue(w.readline().startswith(b"240"))
+            self.stall.write_bytes(b"")
+            t0 = time.monotonic()
+            self.send_article(a, b"stalled-a@example.invalid", b"in flight")
+            time.sleep(0.3)
+            self.send_article(e, b"stalled-e@example.invalid", b"prepared behind it")
+            time.sleep(0.3)
+            self.send_article(f, b"queued-f@example.invalid", b"queued behind both")
+            # D passes: slow.  A mutating control request is BUSY at once.
+            time.sleep(max(0.0, t0 + 3.0 - time.monotonic()))
+            elapsed, health = self.timed_operator("health")
+            self.assertIsNotNone(DISK_SLOW.search(health.stdout), health.stdout)
+            started = time.monotonic()
+            busy = self.operator("policy", "set", "clock-event-ms", "500")
+            busy_at = time.monotonic() - started
+            reads = []
+            answers = {}
+            for name, conn, stream in (("a", a_conn, a), ("e", e_conn, e), ("f", f_conn, f)):
+                conn.settimeout(30)
+            # H passes: A and E are told uncertain, F refused try-later.
+            deadline = t0 + 20
+            pending = {"a": (a_conn, a), "e": (e_conn, e), "f": (f_conn, f)}
+            while pending and time.monotonic() < deadline:
+                reads.append(self.timed_read(reader, b"GROUP fn.test\r\n", b"211"))
+                ready, _, _ = select.select([c for c, _ in pending.values()], [], [], 0.25)
+                for name in list(pending):
+                    conn, stream = pending[name]
+                    if conn in ready:
+                        answers[name] = (time.monotonic() - t0, stream.readline(), stream.readline())
+                        del pending[name]
+            self.assertEqual(pending, {}, "not every poster was answered within 20 s")
+            _, health = self.timed_operator("health")
+            stalled = DISK_STALLED.search(health.stdout)
+            self.assertIsNotNone(stalled, health.stdout)
+            g.write(b"POST\r\n")
+            g.flush()
+            refused_command = g.readline()
+            # The device comes back.
+            self.stall.unlink()
+            time.sleep(1.0)
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline:
+                _, health = self.timed_operator("health")
+                ok = DISK_OK.search(health.stdout)
+                if ok:
+                    break
+                time.sleep(0.5)
+            self.assertIsNotNone(ok, health.stdout)
+            self.send_article(w, b"after2@example.invalid", b"after the stall")
+            after = w.readline()
+            time.sleep(0.5)
+            self.timed_read(reader, b"GROUP fn.test\r\n", b"211")
+            stat = {}
+            for msgid in (b"stalled-a", b"stalled-e", b"queued-f", b"after2"):
+                reader.write(b"STAT <" + msgid + b"@example.invalid>\r\n")
+                reader.flush()
+                stat[msgid] = reader.readline()[:3]
+            for stream in (reader, g, w):
+                stream.write(b"QUIT\r\n")
+                stream.flush()
+        print("stall past H (D=2000 H=6000 cadence=250): answers %r; busy control %.3fs rc=%d %r; "
+              "reads n=%d max=%.3fs; health %s; POST command %r; after recovery %s; STAT %r; next POST %r"
+              % ({k: (round(v[0], 3), v[1], v[2]) for k, v in answers.items()}, busy_at,
+                 busy.returncode, (busy.stdout + busy.stderr)[-200:], len(reads), max(reads),
+                 stalled.group(0).decode(), refused_command, ok.group(0).decode(), stat, after))
+        # BUSY: refused (try later), at once, nothing staged.
+        self.assertNotEqual(busy.returncode, 0)
+        self.assertIn(b"busy", (busy.stdout + busy.stderr).lower())
+        self.assertLess(busy_at, 5.0)
+        # The posters: A and E uncertain (ACL2's uncertain reply, then the
+        # close) within H + 1.5 s of the stall's start; F refused try-later.
+        for name in ("a", "e"):
+            at, line, rest = answers[name]
+            self.assertTrue(line.startswith(b"441"), (name, line))
+            self.assertNotIn(b"try again later", line, (name, line))
+            self.assertEqual(rest, b"", (name, rest))
+            self.assertLess(at, 6.0 + 1.5, (name, at))
+            self.assertGreater(at, 6.0 - 0.5, (name, at))
+        at, line, _ = answers["f"]
+        self.assertTrue(line.startswith(b"441 posting failed; the disk is stalled"), line)
+        self.assertLess(at, 6.0 + 1.5, at)
+        self.assertLess(max(reads), 2.0, reads)
+        self.assertEqual(int(stalled.group(5)), 1)
+        self.assertTrue(refused_command.startswith(b"440 posting not permitted now; the disk is stalled"),
+                        refused_command)
+        # Recovery: the told articles are stored, the refused one is not.
+        self.assertEqual(stat[b"stalled-a"], b"223", stat)
+        self.assertEqual(stat[b"stalled-e"], b"223", stat)
+        self.assertEqual(stat[b"queued-f"], b"430", stat)
+        self.assertEqual(stat[b"after2"], b"223", stat)
+        self.assertEqual(int(ok.group(7)), 1)
+        self.assertTrue(after.startswith(b"240"), after)
+        log = (self.root / "owner.stderr").read_bytes()
+        self.assertIn(b"disk stalled: a barrier has waited ", log)
+        self.assertIn(b"disk recovered after a stall: the barrier completed after ", log)
+        # The decision journal: this run's segment, entries in sequence
+        # (books/owner-time-journal.lisp: (SEQ OP READING A B C WORD)).
+        journal = (self.store / "journal" / "decisions.fnj").read_bytes()
+        entries = [[int(x) for x in line.split(b" ")] for line in journal.split(b"\n") if line]
+        start = max(i for i, entry in enumerate(entries) if entry[1] == 0)
+        segment = entries[start + 1:]
+        self.assertTrue(all(len(entry) == 7 for entry in entries))
+        self.assertEqual([entry[0] for entry in segment], list(range(1, len(segment) + 1)))
+        readings = [entry[2] for entry in segment if entry[1] in (1, 2, 3, 4)]
+        self.assertEqual(readings, sorted(readings), "the recorded time went backwards")
+        self.assertIn([3, 2000, 6000, 250], [[e[1], e[3], e[4], e[5]] for e in segment])
+        self.assertTrue(any(e[1] in (1, 2) and e[6] == 6 for e in segment), "no :became-stalled")
+        self.assertIn([5, 2, 1], [[e[1], e[3], e[4]] for e in segment])
+        self.assertTrue(any(e[1] == 4 and e[6] == 4 for e in segment), "no :recovered-from-stall")
+        print("journal: %d entries in this run's segment, %d bytes in the file" % (len(segment), len(journal)))
 
 
 if __name__ == "__main__":
