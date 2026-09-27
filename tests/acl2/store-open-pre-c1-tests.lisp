@@ -847,9 +847,18 @@
         (cadr decoded)
       :bad)))
 
+;; After the records flip the history holds RETAINED rows: a composite is
+;; the row `fn-hstxa-p' beside its interned article (books/held-record.lisp;
+;; the intern is books/store-intern.lisp fn-intern-event; the article's
+;; context is the plain one here, which the identity fold does not read).
+(defun sopc-row (w)
+  (declare (xargs :mode :program))
+  (if (fn-stxa-p w)
+      (fn-hstxa-make w (fn-held-plain (fn-replay-composite-record w) 0))
+    w))
 (defun sopc-r0 () (declare (xargs :mode :program)) (sopc-rec *sopc-txn0*))
-(defun sopc-r1 () (declare (xargs :mode :program)) (sopc-rec *sopc-txn1*))
-(defun sopc-r2 () (declare (xargs :mode :program)) (sopc-rec *sopc-txn2*))
+(defun sopc-r1 () (declare (xargs :mode :program)) (sopc-row (sopc-rec *sopc-txn1*)))
+(defun sopc-r2 () (declare (xargs :mode :program)) (sopc-row (sopc-rec *sopc-txn2*)))
 (defun sopc-configs ()
   (declare (xargs :mode :program))
   (list (cadr (fn-cfg-decode-exact *sopc-cfg1*))))
@@ -869,17 +878,19 @@
 
 ; The cancel's composite with its article record's groups replaced
 ; (a mutation of the witness, labelled where used).
-(defun sopc-regroup (event groups)
+(defun sopc-regroup (row groups)
   (declare (xargs :mode :program))
-  (let ((record (fn-sopc-article event)))
-    (fn-stxa-make-full (fn-stxa-sequence event) (fn-stxa-txid event)
+  (let* ((event (fn-hw-composite row))
+         (record (fn-sopc-article event)))
+    (sopc-row
+     (fn-stxa-make-full (fn-stxa-sequence event) (fn-stxa-txid event)
                        (fn-stxa-generation event)
                        (fn-stxa-keyring-generation event) (fn-stxa-profile event)
                        (fn-stxa-content-subject event)
                        (fn-record-encode (update-nth 5 groups record))
                        (fn-stxa-verdict-event event)
                        (fn-stxa-authored-source event)
-                       (fn-stxa-authored-id event))))
+                       (fn-stxa-authored-id event)))))
 
 (defconst *sopc-refusal*
   '(:refused :pre-c1-control-record 2 "<prec1-cancel@example.invalid>"))
@@ -887,12 +898,12 @@
 ; The witness decodes: three Store events, the cancel a pre-C1 control
 ; record (schema 1, groups ("fn.test"), filing group ("control.cancel")),
 ; the target not one.
-(assert-event (and (fn-stxk-p (sopc-r0)) (fn-stxa-p (sopc-r1)) (fn-stxa-p (sopc-r2))))
+(assert-event (and (fn-stxk-p (sopc-r0)) (fn-hstxa-p (sopc-r1)) (fn-hstxa-p (sopc-r2))))
 (assert-event (fn-sopc-pre-c1-control-record-p (sopc-r2)))
 (assert-event (not (fn-sopc-pre-c1-control-record-p (sopc-r1))))
 (assert-event (equal (fn-record-groups (fn-sopc-article (sopc-r2))) '("fn.test")))
 (assert-event
- (let* ((source (fn-stxa-authored-source (sopc-r2)))
+ (let* ((source (fn-stxa-authored-source (fn-hw-composite (sopc-r2))))
         (fields (fn-hsig-authored-source-fields source)))
    (equal (fn-hsig-source-filed-groups source fields) '("control.cancel"))))
 

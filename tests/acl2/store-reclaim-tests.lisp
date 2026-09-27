@@ -4,15 +4,38 @@
 (include-book "../../books/store-reclaim")
 (include-book "../../books/nntp-reclaimed")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "held-rows-tests")
 
 ; Two stored articles in group "g", numbers 1 and 2, stamped at second 100.
 (defconst *rt-p1* '(72 58 32 120 13 10 13 10 98 111 100 121))   ; "H: x" CRLF CRLF "body"
 (defconst *rt-p2* '(72 58 32 121 13 10 13 10 99))
-(defconst *rt-a1* (fn-make-article "<a1@x>" *rt-p1* '("g") '(("g" . 1)) t 100))
-(defconst *rt-a2* (fn-make-article "<a2@x>" *rt-p2* '("g") '(("g" . 2)) t 100))
+; After the flip (records-flip) an acceptance article's payload is a HANDLE
+; into the arena, and reclamation writes the sealed tombstone under a new
+; handle (books/store-reclaim.lisp).  The arena here holds, in order, the
+; bytes of a1 (handle 0), a2 (handle 1), a1's tombstone (handle 2) and the
+; payload of a later article a3 (handle 3); it is built by interning wire
+; records that carry them.  The -wire articles are the pre-flip octet
+; articles, which alpha of the handle articles must reproduce.
+(defconst *rt-tomb-octets* (fn-rcl-tombstone-of *rt-p1* (fn-record-string-octets "<a1@x>")))
+(defun rt-carrier (i msgid payload)
+  (fn-record-make i i i msgid payload '("g") "rt-pin" "rt-subject" "rt-release" 1 841000000))
+(defconst *rt-prior*
+  (list (rt-carrier 0 "<a1@x>" *rt-p1*) (rt-carrier 1 "<a2@x>" *rt-p2*)
+        (rt-carrier 2 "<a1-tomb@x>" *rt-tomb-octets*) (rt-carrier 3 "<a3@x>" *rt-p2*)))
+(assert-event (equal (fn-hrt-bytes *rt-prior* 0) *rt-p1*))
+(assert-event (equal (fn-hrt-bytes *rt-prior* 1) *rt-p2*))
+(assert-event (equal (fn-hrt-bytes *rt-prior* 2) *rt-tomb-octets*))
+(defconst *rt-a1-wire* (fn-make-article "<a1@x>" *rt-p1* '("g") '(("g" . 1)) t 100))
+(defconst *rt-a2-wire* (fn-make-article "<a2@x>" *rt-p2* '("g") '(("g" . 2)) t 100))
+(defconst *rt-arts-wire* (list *rt-a2-wire* *rt-a1-wire*))
+(defconst *rt-a1* (fn-make-article "<a1@x>" 0 '("g") '(("g" . 1)) t 100))
+(defconst *rt-a2* (fn-make-article "<a2@x>" 1 '("g") '(("g" . 2)) t 100))
 (defconst *rt-arts* (list *rt-a2* *rt-a1*))
+(assert-event (equal (fn-hrt-articles-wire-of *rt-prior* *rt-arts*) *rt-arts-wire*))
 (defconst *rt-s* (fn-make-state '("g") '(("g" . 3)) *rt-arts* 2 nil nil))
-(defconst *rt-tomb* (fn-rcl-tombstone-of *rt-p1* (fn-record-string-octets "<a1@x>")))
+(defconst *rt-tomb* 2)
+; The handle of the payload a later article offers (bytes *rt-p2*).
+(defconst *rt-h3* 3)
 (defconst *rt-rall* '(:released-by-all-holders))
 (defconst *rt-none* (list nil nil nil nil))
 (defconst *rt-pin* (list '(("g" . 1)) nil nil nil))
@@ -23,7 +46,8 @@
 (defconst *rt-bp* (list nil nil nil '("<a1@x>")))
 
 (assert-event (fn-statep *rt-s*))
-(assert-event (fn-rcl-tombstonep *rt-tomb*))
+(assert-event (fn-rcl-tombstonep *rt-tomb-octets*))
+(assert-event (fn-rcl-tombstonep (fn-hrt-bytes *rt-prior* *rt-tomb*)))
 (assert-event (not (fn-rcl-tombstonep *rt-p1*)))
 
 ; --- The rule (fn-rcl-config-rule-after-retention-set).
@@ -85,7 +109,10 @@
 
 ; --- What reclamation keeps.
 (defconst *rt-s1* (fn-rcl-reclaim-state *rt-s* "<a1@x>" *rt-tomb*))
-(assert-event (fn-octet-listp *rt-tomb*))
+; by specification: the flip makes the tombstone a handle (fn-rcl-reclaim-state
+; acts only on a natp); the bytes under it are the octet tombstone.
+(assert-event (natp *rt-tomb*))
+(assert-event (fn-octet-listp (fn-hrt-bytes *rt-prior* *rt-tomb*)))
 (assert-event (fn-statep *rt-s1*))                      ; preserves-statep
 (assert-event (fn-acceptedp "<a1@x>" (fn-state-articles *rt-s1*)))   ; history
 (assert-event (equal (fn-state-nexts *rt-s1*) (fn-state-nexts *rt-s*)))
@@ -93,16 +120,24 @@
                      '(("g" . 1))))
 (assert-event (equal (fn-article-payload (fn-find-article "<a1@x>" (fn-state-articles *rt-s1*)))
                      *rt-tomb*))
+(assert-event (equal (fn-hrt-bytes *rt-prior*
+                                   (fn-article-payload
+                                    (fn-find-article "<a1@x>" (fn-state-articles *rt-s1*))))
+                     *rt-tomb-octets*))
 (assert-event (equal (fn-find-article "<a2@x>" (fn-state-articles *rt-s1*)) *rt-a2*))
 ; The reclaimed Message-ID cannot be staged again: prepare refuses it.
-(assert-event (equal (fn-accept-prepare *rt-s1* 0 "<a1@x>" *rt-p1* '("g") 200) *rt-s1*))
+; by specification: the flip makes the offered payload a handle (a1's bytes
+; are under handle 0); a new Message-ID with a handle does stage, so the
+; refusal is the Message-ID's.
+(assert-event (equal (fn-accept-prepare *rt-s1* 0 "<a1@x>" 0 '("g") 200) *rt-s1*))
+(assert-event (not (equal (fn-accept-prepare *rt-s1* 0 "<a3@x>" 0 '("g") 200) *rt-s1*)))
 ; Tooth for fn-rcl-reclaim-preserves-statep: a non-state stays a non-state.
 (must-fail (assert-event (fn-statep (fn-rcl-reclaim-state 7 "<a1@x>" *rt-tomb*))))
 
 ; fn-rcl-prepare-commutes-with-reclaim: a new article staged either way.
-(assert-event (equal (fn-accept-prepare *rt-s1* 0 "<a3@x>" *rt-p2* '("g") 200)
+(assert-event (equal (fn-accept-prepare *rt-s1* 0 "<a3@x>" *rt-h3* '("g") 200)
                      (fn-rcl-reclaim-state
-                      (fn-accept-prepare *rt-s* 0 "<a3@x>" *rt-p2* '("g") 200)
+                      (fn-accept-prepare *rt-s* 0 "<a3@x>" *rt-h3* '("g") 200)
                       "<a1@x>" *rt-tomb*)))
 ; Tooth: without (fn-statep s).  An article whose payload is not octets
 ; makes a non-state; reclaiming it repairs the payload, and the two orders
@@ -112,9 +147,9 @@
                                   2 nil nil))
 (assert-event (not (fn-statep *rt-bad*)))
 (must-fail (assert-event (equal (fn-accept-prepare (fn-rcl-reclaim-state *rt-bad* "<a1@x>" *rt-tomb*)
-                                                   0 "<a3@x>" *rt-p2* '("g") 200)
+                                                   0 "<a3@x>" *rt-h3* '("g") 200)
                                 (fn-rcl-reclaim-state
-                                 (fn-accept-prepare *rt-bad* 0 "<a3@x>" *rt-p2* '("g") 200)
+                                 (fn-accept-prepare *rt-bad* 0 "<a3@x>" *rt-h3* '("g") 200)
                                  "<a1@x>" *rt-tomb*))))
 
 ; fn-rcl-reclaim-never-touches-a-held-article: a pinned article, unchanged.
@@ -128,38 +163,58 @@
                                 *rt-s*)))
 
 ; --- D25 after reclamation (fn-rcl-existing-action-after-reclaim).
-(defconst *rt-arts1* (fn-rcl-reclaim-articles *rt-arts* "<a1@x>" *rt-tomb*))
-(assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p1* '("g") *rt-arts*) :duplicate))
+; The decision compares octets, so it runs over alpha of the articles (the
+; host's entry fn-store-existing-action is fn-rcl-action-over over alpha).
+; *rt-arts-wire* is alpha of the handle articles, and *rt-arts1* alpha of
+; their reclamation under the tombstone handle, which is the octet
+; reclamation of the pre-flip articles.
+(defconst *rt-arts-handles* *rt-arts*)
+(defconst *rt-arts1*
+  (fn-hrt-articles-wire-of *rt-prior*
+                           (fn-rcl-reclaim-articles *rt-arts-handles* "<a1@x>" *rt-tomb*)))
+(assert-event (equal *rt-arts1*
+                     (fn-rcl-reclaim-articles *rt-arts-wire* "<a1@x>" *rt-tomb-octets*)))
+(assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p1* '("g") *rt-arts-wire*) :duplicate))
 (assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p1* '("g") *rt-arts1*) :duplicate))
-(assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p2* '("g") *rt-arts*) :conflict))
+(assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p2* '("g") *rt-arts-wire*) :conflict))
 (assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p2* '("g") *rt-arts1*) :conflict))
 (assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p1* '("h") *rt-arts1*) :conflict))
 (assert-event (equal (fn-rcl-action-over "<a9@x>" *rt-p1* '("g") *rt-arts1*) nil))
 ; Tooth: without (not (fn-rcl-tombstonep held)) -- reclaiming a tombstone
 ; again digests the tombstone, and the resend of the original becomes a
 ; conflict with no collision in sight.
-(defconst *rt-t2* (fn-rcl-tombstone-of *rt-tomb* (fn-record-string-octets "<a1@x>")))
+(defconst *rt-t2* (fn-rcl-tombstone-of *rt-tomb-octets* (fn-record-string-octets "<a1@x>")))
 (assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p1* '("g") *rt-arts1*) :duplicate))
 (assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p1* '("g")
                                          (fn-rcl-reclaim-articles *rt-arts1* "<a1@x>" *rt-t2*))
                      :conflict))
-(assert-event (not (fn-rcl-collisionp *rt-p1* *rt-tomb*)))
+(assert-event (not (fn-rcl-collisionp *rt-p1* *rt-tomb-octets*)))
 (must-fail (assert-event (equal (fn-rcl-action-over "<a1@x>" *rt-p1* '("g")
                                                     (fn-rcl-reclaim-articles *rt-arts1* "<a1@x>" *rt-t2*))
                                 (fn-rcl-action-over "<a1@x>" *rt-p1* '("g") *rt-arts1*))))
 
 ; --- The served projection (fn-nntp-reclaimed-article-answers-reclaimed).
 (defconst *rt-session* (fn-nntp-make-session t "g" nil t))
-(defconst *rt-r1* (fn-find-article "<a1@x>" (fn-state-articles *rt-s1*)))
+; The NNTP projection reads article bytes (the tombstone, the overview): it
+; is driven here over the served view, alpha of the reclaimed state (the
+; handle articles read through the arena); the ring above the store is not
+; flipped yet.
+(defconst *rt-s1-handles* *rt-s1*)
+(defconst *rt-s1-served*
+  (fn-make-state (fn-state-groups *rt-s1-handles*) (fn-state-nexts *rt-s1-handles*)
+                 (fn-hrt-articles-wire-of *rt-prior* (fn-state-articles *rt-s1-handles*))
+                 (fn-state-next-txid *rt-s1-handles*) (fn-state-pending *rt-s1-handles*)
+                 (fn-state-fenced *rt-s1-handles*)))
+(defconst *rt-r1* (fn-find-article "<a1@x>" (fn-state-articles *rt-s1-served*)))
 (assert-event (fn-nntp-article-idp *rt-r1*))
 (assert-event (equal (fn-nntp-article-response *rt-session* *rt-r1* 0 :article nil nil)
                      (fn-nntp-single *rt-session* "430 article reclaimed")))
 (assert-event (equal (fn-nntp-article-response *rt-session* *rt-r1* 1 :body t "g")
                      (fn-nntp-single *rt-session* "423 article reclaimed")))
 ; Teeth: a live article is served; an article with no usable identifier is 503.
-(must-fail (assert-event (equal (fn-nntp-article-response *rt-session* *rt-a1* 1 :article t "g")
+(must-fail (assert-event (equal (fn-nntp-article-response *rt-session* *rt-a1-wire* 1 :article t "g")
                                 (fn-nntp-single *rt-session* "423 article reclaimed"))))
-(defconst *rt-noid* (fn-make-article "no-angle" *rt-tomb* '("g") '(("g" . 1)) t 100))
+(defconst *rt-noid* (fn-make-article "no-angle" *rt-tomb-octets* '("g") '(("g" . 1)) t 100))
 (assert-event (not (fn-nntp-article-idp *rt-noid*)))
 (must-fail (assert-event (equal (fn-nntp-article-response *rt-session* *rt-noid* 1 :article t "g")
                                 (fn-nntp-single *rt-session* "423 article reclaimed"))))
@@ -169,21 +224,21 @@
 (assert-event (and (fn-nntp-number-tokenp *rt-tok1*)
                    (fn-nntp-session-group *rt-session*)
                    (consp *rt-r1*)
-                   (equal (fn-nntp-find-group-number "g" 1 (fn-state-articles *rt-s1*)) *rt-r1*)))
-(assert-event (equal (fn-nntp-number-retrieval *rt-session* *rt-s1* :article *rt-tok1*)
+                   (equal (fn-nntp-find-group-number "g" 1 (fn-state-articles *rt-s1-served*)) *rt-r1*)))
+(assert-event (equal (fn-nntp-number-retrieval *rt-session* *rt-s1-served* :article *rt-tok1*)
                      (fn-nntp-single *rt-session* "423 article reclaimed")))
 ; Tooth (tombstone hypothesis): article 2 is live and is not answered so.
-(must-fail (assert-event (equal (fn-nntp-number-retrieval *rt-session* *rt-s1* :article '(50))
+(must-fail (assert-event (equal (fn-nntp-number-retrieval *rt-session* *rt-s1-served* :article '(50))
                                 (fn-nntp-single *rt-session* "423 article reclaimed"))))
 ; Tooth (a selected group): with none, 412.
 (must-fail (assert-event (equal (fn-nntp-number-retrieval (fn-nntp-make-session t nil nil t)
-                                                          *rt-s1* :article *rt-tok1*)
+                                                          *rt-s1-served* :article *rt-tok1*)
                                 (fn-nntp-single *rt-session* "423 article reclaimed"))))
 ; By Message-ID over the scan the indexed lookup refines: 430.
-(assert-event (equal (fn-nntp-msgid-retrieval *rt-session* *rt-s1* :article
+(assert-event (equal (fn-nntp-msgid-retrieval *rt-session* *rt-s1-served* :article
                                               (fn-record-string-octets "<a1@x>"))
                      (fn-nntp-single *rt-session* "430 article reclaimed")))
-(must-fail (assert-event (equal (fn-nntp-msgid-retrieval *rt-session* *rt-s1* :article
+(must-fail (assert-event (equal (fn-nntp-msgid-retrieval *rt-session* *rt-s1-served* :article
                                                          (fn-record-string-octets "<a2@x>"))
                                 (fn-nntp-single *rt-session* "430 article reclaimed"))))
 

@@ -18,6 +18,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-observed")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness: the composed store driven from its
@@ -26,9 +27,16 @@
 ; evidence are four different strings across two groups.
 
 (defconst *snt-groups* '("fn.letters" "fn.test"))
-(defconst *snt-record*
+(defconst *snt-record-wire*
   (fn-record-make 0 0 0 "<sn@example>" '(65 66) *snt-groups*
                   "sn-pin" "sn-content" "sn-release" 2 841000000))
+; The store retains held rows (records-flip, books/held-record.lisp): the
+; wire record interned on a fresh arena, its payload the handle 0.
+(defconst *snt-record* (car (fn-hrt-rows (list *snt-record-wire*) nil 0)))
+(assert-event (and (fn-held-p *snt-record*)
+                   (equal (fn-record-payload *snt-record*) 0)
+                   (equal (fn-hrt-wire-of (list *snt-record-wire*) (list *snt-record*))
+                          (list *snt-record-wire*))))
 
 (defconst *snt-reserved*
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-initial *snt-groups* 10)
@@ -77,9 +85,20 @@
 ; single field -- the payload -- shares its sequence, transaction and
 ; generation, so the completion it names still fires; what it does not do is
 ; commit the record it claims.
-(defconst *snt-other-record*
-  (fn-record-make 0 0 0 "<sn@example>" '(99) *snt-groups*
-                  "sn-pin" "sn-content" "sn-release" 2 841000000))
+; After the flip the payload position holds the handle: the other row is the
+; same record's row at handle 1, every other field (facts and context
+; included) identical.
+(defconst *snt-other-record* (fn-hrt-row-at *snt-record-wire* 1))
+(assert-event (not (equal (fn-record-payload *snt-other-record*)
+                          (fn-record-payload *snt-record*))))
+(defun fn-snt-with-handle (h handle)
+  (fn-held-make (fn-record-sequence h) (fn-record-txid h) (fn-record-generation h)
+                (fn-record-msgid h) handle (fn-record-groups h)
+                (fn-record-obligation-id h) (fn-record-content-subject h)
+                (fn-record-release-evidence h) (fn-record-charge h)
+                (fn-record-stamp h) (fn-held-facts h) (fn-held-context h)
+                (fn-held-numbers h) (fn-held-withdrawn h)))
+(assert-event (equal (fn-snt-with-handle *snt-other-record* 0) *snt-record*))
 (assert-event
  (equal (fn-record-txid *snt-other-record*) (fn-record-txid *snt-record*)))
 (assert-event

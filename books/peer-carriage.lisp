@@ -26,13 +26,19 @@
 (in-package "ACL2")
 (include-book "peer-authored-accept")
 (include-book "peer-carriage-rows")
+(include-book "history-wire")
 
 ; =============================================================================
 ; 1a. What one committed Store event contributes
 
 ; (EVIDENCE . CHARGE) for a carried kind-4 composite, nil for any other event.
+; E is a wire composite (a new carried event, below) or a history event: the
+; retained row of a composite is charged as the composite it carries
+; (`fn-hw-composite', books/history-wire.lisp), so the usage over the history
+; counts every carried article the Store retains.
 (defun fn-pcb-event-carriage (e)
   (declare (xargs :guard t))
+  (let ((e (fn-hw-composite e)))
   (if (and (fn-stxa-p e)
            (equal (fn-stxa-schema e) *fn-stxa-carried-version*)
            (equal (fn-stxa-keyring-generation e) 0))
@@ -45,7 +51,7 @@
                    (fn-record-result-record article))
                   (nfix (fn-record-charge (fn-record-result-record article))))
           nil))
-    nil))
+    nil)))
 
 (defthm fn-pcb-event-carriage-charge-is-natural
   (implies (consp (fn-pcb-event-carriage e))
@@ -54,14 +60,15 @@
                   ((fn-pcb-event-carriage e)))))
 
 (defthm fn-pcb-event-carriage-needs-a-composite
-  (implies (not (fn-stxa-p e))
+  (implies (not (fn-stxa-p (fn-hw-composite e)))
            (equal (fn-pcb-event-carriage e) nil)))
 
 (local
 (defthm fn-pcb-refusal-is-not-a-composite
-  (implies (equal (car e) :refused) (not (fn-stxa-p e)))
+  (implies (equal (car e) :refused) (not (fn-stxa-p (fn-hw-composite e))))
   :hints (("Goal" :in-theory (enable fn-stxa-p fn-stxa-sequence
-                                     fn-record-uint32p)))))
+                                     fn-record-uint32p fn-hw-composite
+                                     fn-hstxa-p)))))
 
 (in-theory (disable fn-pcb-event-carriage))
 

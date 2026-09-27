@@ -2,14 +2,23 @@
 (in-package "ACL2")
 (include-book "../../books/store-node-traces")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 (defconst *snt-groups* '("fn.letters" "fn.test"))
-(defconst *snt-first*
+(defconst *snt-first-wire*
   (fn-record-make 0 1 1 "<trace-one@example>" '(65) *snt-groups*
                   "trace-pin-one" "trace-content-one" "trace-release-one" 2 841000000))
-(defconst *snt-second*
+(defconst *snt-second-wire*
   (fn-record-make 1 2 2 "<trace-two@example>" '(66) '("fn.test")
                   "trace-pin-two" "trace-content-two" "trace-release-two" 1 841000000))
+; The store retains held rows (records-flip): the two records interned in
+; publication order on a fresh arena (handles 0 and 1).
+(defconst *snt-rows* (fn-hrt-rows (list *snt-first-wire* *snt-second-wire*) nil 0))
+(defconst *snt-first* (car *snt-rows*))
+(defconst *snt-second* (cadr *snt-rows*))
+(assert-event (and (fn-held-p *snt-first*) (fn-held-p *snt-second*)
+                   (equal (fn-record-payload *snt-first*) 0)
+                   (equal (fn-record-payload *snt-second*) 1)))
 (defconst *snt-barriers*
   '((:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
     (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)

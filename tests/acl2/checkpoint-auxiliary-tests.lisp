@@ -3,6 +3,7 @@
 (include-book "../../books/store-observed")
 (include-book "../../books/hybrid-store")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 ; The clone caller bounds both raw CLI paths and canonical/derived paths by
 ; the same ACL2-owned native Store path width before filesystem traversal.
@@ -15,6 +16,10 @@
 (assert-event (not (fn-cpa-clone-input-pathp '(97 98 99))))
 (assert-event (not (fn-cpa-clone-input-pathp '(47 97 0 98))))
 
+; The raw pack bytes are the wire events the codec encodes; the store opens
+; over the rows the entry interns from them (records-flip,
+; books/held-record.lisp; keyring nil at generation 0, as the open does).
+;
 ; The selected pack keeps exact bootstrap, article, keyring-snapshot and
 ; unbound standalone-verdict bytes.  The latter is not an accepted composite
 ; verdict and must not be promoted to historical authority on reopen.
@@ -66,9 +71,11 @@
 
 (make-event `(defconst *cpa-open*
                ',(fn-sn-open-observed '("fn.letters") 32 5
-                                      (list *cpa-bootstrap* *cpa-article*
-                                            *cpa-snapshot* *cpa-verdict*
-                                            *cpa-rollover*))))
+                                      (fn-hrt-rows
+                                       (list *cpa-bootstrap* *cpa-article*
+                                             *cpa-snapshot* *cpa-verdict*
+                                             *cpa-rollover*)
+                                       nil 0))))
 (assert-event (fn-sn-open-okp *cpa-open*))
 (defconst *cpa-reopened* (fn-sn-open-state *cpa-open*))
 (assert-event (equal (fn-cpa-store-auxiliary-agrees *cpa-reopened*)
@@ -117,8 +124,9 @@
  `(defconst *cpa-progress-before-rollover*
     ',(fn-sn-open-observed
        '("g") 32 3
-       (list *cpa-progress-boot* *cpa-progress-register*
-             *cpa-progress-ack*))))
+       (fn-hrt-rows (list *cpa-progress-boot* *cpa-progress-register*
+                          *cpa-progress-ack*)
+                    nil 0))))
 (assert-event (fn-sn-open-okp *cpa-progress-before-rollover*))
 (assert-event
  (equal (nth 7
@@ -131,8 +139,9 @@
  `(defconst *cpa-progress-after-rollover*
     ',(fn-sn-open-observed
        '("g") 32 4
-       (list *cpa-progress-boot* *cpa-progress-register*
-             *cpa-progress-ack* *cpa-progress-rollover*))))
+       (fn-hrt-rows (list *cpa-progress-boot* *cpa-progress-register*
+                          *cpa-progress-ack* *cpa-progress-rollover*)
+                    nil 0))))
 (assert-event (fn-sn-open-okp *cpa-progress-after-rollover*))
 (assert-event
  (equal (fn-cpa-clone-phase
@@ -150,8 +159,9 @@
 (make-event
  `(defconst *cpa-before-rollover*
     ',(fn-sn-open-observed '("fn.letters") 32 4
-                           (list *cpa-bootstrap* *cpa-article*
-                                 *cpa-snapshot* *cpa-verdict*))))
+                           (fn-hrt-rows (list *cpa-bootstrap* *cpa-article*
+                                              *cpa-snapshot* *cpa-verdict*)
+                                        nil 0))))
 (assert-event (fn-sn-open-okp *cpa-before-rollover*))
 (assert-event
  (equal (fn-cpa-clone-phase
@@ -250,7 +260,8 @@
 (make-event
  `(defconst *cpa-h-open*
     ',(fn-sn-open-observed '("fn.letters") 32 2
-                           (list *cpa-h-keyring* *cpa-h-event*))))
+                           (fn-hrt-rows (list *cpa-h-keyring* *cpa-h-event*)
+                                        nil 0))))
 (assert-event (fn-sn-open-okp *cpa-h-open*))
 (defconst *cpa-h-store* (fn-sn-open-state *cpa-h-open*))
 (assert-event (equal (fn-cpa-store-auxiliary-agrees *cpa-h-store*) '(:ok 2)))

@@ -8,6 +8,7 @@
 (include-book "../../books/codec-attach")
 (include-book "../../books/crypto-attach")
 (include-book "../../books/hybrid-store")
+(include-book "held-rows-tests")
 
 (defconst *sit-groups* '("example"))
 (defconst *sit-principal* (make-list 32 :initial-element 7))
@@ -63,17 +64,32 @@
 ; two :verified observations below stand for the native primitive results.
 (make-event `(defconst *sit-signed-record* ',(fn-record-make 1 1 1 "<signed@example.invalid>" *sit-source* *sit-groups*
                   "signed-obligation" "signed-subject" "signed-release" 3 841000000)))
-(make-event `(defconst *sit-composite* ',(fn-hsig-authorized-article-event
+(make-event `(defconst *sit-composite-wire* ',(fn-hsig-authorized-article-event
    1 1 1 1 *sit-snapshot* "<signed@example.invalid>"
    (fn-record-string-octets "signed-subject")
    (fn-record-encode-impl *sit-signed-record*)
    *sit-principal* *sit-keys* *sit-source* *sit-signatures* *sit-ml-key*
    :verified :verified)))
+; The store retains the composite ROW (records-flip): the wire composite
+; beside its article interned.  The enrollment interns nothing, so the
+; article takes handle 0 in the arena of this history.
+(make-event `(defconst *sit-composite* ',(fn-hrt-row-after (list *sit-enrollment*) *sit-composite-wire* nil 0)))
+(assert-event (fn-hstxa-p *sit-composite*))
+(assert-event (equal (fn-hstxa-stxa *sit-composite*) *sit-composite-wire*))
+; The wire events of this history in order: alpha reads the rows' bytes
+; through the arena that interned them.
+(defconst *sit-wire-prefix* (list *sit-enrollment* *sit-composite-wire*))
 (make-event `(defconst *sit-after-composite* ',(fn-sit-commit-identity *sit-after-enrollment* *sit-composite*)))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-after-composite*))
                      '((0 . 0) (1 . 1))))
+; by specification: the flip stores the payload as a handle into the arena
+; (0, the composite's article); the bytes under it are still *sit-source*.
 (assert-event (equal (fn-article-payload
                       (car (fn-stx-store (fn-sn-node *sit-after-composite*))))
+                     0))
+(assert-event (equal (fn-hrt-bytes *sit-wire-prefix*
+                                   (fn-article-payload
+                                    (car (fn-stx-store (fn-sn-node *sit-after-composite*)))))
                      *sit-source*))
 (assert-event
  (equal (fn-stx-verdict-token
@@ -91,8 +107,13 @@
 (assert-event
  (equal (fn-sn-verdict-lookup *sit-reopened* "<signed@example.invalid>")
         (fn-sn-verdict-lookup *sit-after-composite* "<signed@example.invalid>")))
+; by specification: the flip (as above): handle 0, whose bytes are *sit-source*.
 (assert-event (equal (fn-article-payload
                       (car (fn-stx-store (fn-sn-node *sit-reopened*))))
+                     0))
+(assert-event (equal (fn-hrt-bytes *sit-wire-prefix*
+                                   (fn-article-payload
+                                    (car (fn-stx-store (fn-sn-node *sit-reopened*)))))
                      *sit-source*))
 (make-event `(defconst *sit-reopened-ready* ',(fn-sit-barriers *sit-reopened* 5)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sit-reopened-ready*)) :ready))
@@ -104,8 +125,11 @@
 (assert-event (equal (fn-sf-frontier (fn-sn-files *sit-refused*)) 3))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-refused*)) nil))
 
-(make-event `(defconst *sit-legacy* ',(fn-record-make 2 3 3 "<legacy@example.invalid>" '(76 13 10) *sit-groups*
+(make-event `(defconst *sit-legacy-wire* ',(fn-record-make 2 3 3 "<legacy@example.invalid>" '(76 13 10) *sit-groups*
                   "legacy-obligation" "legacy-subject" "legacy-release" 2 841000000)))
+; The held row of the legacy record, interned after the composite (handle 1).
+(make-event `(defconst *sit-legacy* ',(fn-hrt-row-after *sit-wire-prefix* *sit-legacy-wire* nil 0)))
+(assert-event (and (fn-held-p *sit-legacy*) (equal (fn-record-payload *sit-legacy*) 1)))
 (make-event `(defconst *sit-after-legacy* ',(fn-sit-commit-legacy *sit-refused* *sit-legacy*)))
 (assert-event (equal (fn-sf-successes (fn-sn-files *sit-after-legacy*))
                      '((2 . 3))))
@@ -148,8 +172,13 @@
 ; A legacy fn-r has no durable verdict bytes.  Its live :unverified result
 ; above is intentionally absent after reopen; recovery neither invents
 ; historical authority nor re-evaluates it under the current keyring.
+; by specification: the flip (as above): handle 0, whose bytes are *sit-source*.
 (assert-event (equal (fn-article-payload
                       (car (last (fn-stx-store (fn-sn-node *sit-recovered*)))))
+                     0))
+(assert-event (equal (fn-hrt-bytes (append *sit-wire-prefix* (list *sit-legacy-wire*))
+                                   (fn-article-payload
+                                    (car (last (fn-stx-store (fn-sn-node *sit-recovered*))))))
                      *sit-source*))
 (assert-event
 (consp (fn-retain-find-id
@@ -162,14 +191,17 @@
 ; recovery must report a fault, never open an empty node successfully.
 (make-event `(defconst *sit-orphan-record* ',(fn-record-make 0 0 0 "<orphan@example.invalid>" *sit-source* *sit-groups*
                   "orphan-obligation" "orphan-subject" "orphan-release" 3 841000000)))
-(make-event `(defconst *sit-orphan-composite* ',(fn-hsig-authorized-article-event
+(make-event `(defconst *sit-orphan-composite-wire* ',(fn-hsig-authorized-article-event
    0 0 0 1 *sit-snapshot* "<orphan@example.invalid>"
    (fn-record-string-octets "orphan-subject")
    (fn-record-encode-impl *sit-orphan-record*)
    *sit-principal* *sit-keys* *sit-source* *sit-signatures* *sit-ml-key*
    :verified :verified)))
+; The retained composite row (article at handle 0 of a fresh arena).
+(make-event `(defconst *sit-orphan-composite* ',(car (fn-hrt-rows (list *sit-orphan-composite-wire*) nil 0))))
+(assert-event (fn-hstxa-p *sit-orphan-composite*))
 (make-event `(defconst *sit-orphan-history* ',(list *sit-orphan-composite*)))
-(assert-event (fn-stxa-bindsp *sit-orphan-composite*))
+(assert-event (fn-stxa-bindsp *sit-orphan-composite-wire*))
 (assert-event (fn-sn-observed-historyp 1 *sit-orphan-history*))
 (assert-event (fn-sf-history-recoverablep *sit-groups* 32 *sit-orphan-history* 1))
 (assert-event (equal (fn-stxk-context-kind
@@ -211,7 +243,7 @@
                    (fn-id-obligation-of
                     (fn-record-string-octets "<carried@example.invalid>")
                     *sit-carried-subject-id*)))))
-(make-event `(defconst *sit-carried-composite*
+(make-event `(defconst *sit-carried-composite-wire*
                ',(fn-hsig-authorized-carried-submission-event
                   1 1 1 1 *sit-snapshot* "<carried@example.invalid>"
                   *sit-carried-source* *sit-carried-received* *sit-groups*
@@ -221,15 +253,28 @@
                   *sit-principal* *sit-keys* *sit-signatures* *sit-ml-key*
                   :verified :verified
                   (fn-clock-observation 1 841000000000 0 t))))
-(assert-event (fn-stxa-p *sit-carried-composite*))
-(assert-event (equal (fn-stxa-schema *sit-carried-composite*) 1))
+(assert-event (fn-stxa-p *sit-carried-composite-wire*))
+(assert-event (equal (fn-stxa-schema *sit-carried-composite-wire*) 1))
+; The retained composite row: its article interned after the enrollment
+; (handle 0 of this history's arena).
+(make-event `(defconst *sit-carried-composite*
+               ',(fn-hrt-row-after (list *sit-enrollment*) *sit-carried-composite-wire* nil 0)))
+(assert-event (fn-hstxa-p *sit-carried-composite*))
+(defconst *sit-carried-prefix* (list *sit-enrollment* *sit-carried-composite-wire*))
 (make-event `(defconst *sit-after-carried*
                ',(fn-sit-commit-identity *sit-after-enrollment*
                                          *sit-carried-composite*)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sit-after-carried*)) :ready))
+; by specification: the flip stores the payload as handle 0; the bytes under
+; it are still the received carrier.
 (assert-event
  (equal (fn-article-payload
          (car (fn-stx-store (fn-sn-node *sit-after-carried*))))
+        0))
+(assert-event
+ (equal (fn-hrt-bytes *sit-carried-prefix*
+                      (fn-article-payload
+                       (car (fn-stx-store (fn-sn-node *sit-after-carried*)))))
         *sit-carried-received*))
 (assert-event
  (equal (fn-stx-verdict-detail
@@ -244,17 +289,25 @@
 (assert-event (fn-sn-open-okp *sit-carried-open*))
 (make-event `(defconst *sit-carried-reopened*
                ',(fn-sn-open-state *sit-carried-open*)))
+; by specification: the flip (as above).
 (assert-event
  (equal (fn-article-payload
          (car (fn-stx-store (fn-sn-node *sit-carried-reopened*))))
+        0))
+(assert-event
+ (equal (fn-hrt-bytes *sit-carried-prefix*
+                      (fn-article-payload
+                       (car (fn-stx-store (fn-sn-node *sit-carried-reopened*)))))
         *sit-carried-received*))
 (assert-event
  (equal (fn-sn-verdict-lookup *sit-carried-reopened*
                               "<carried@example.invalid>")
         (fn-sn-verdict-lookup *sit-after-carried*
                               "<carried@example.invalid>")))
+; The history retains the composite row; its wire composite carries the
+; authored source.
 (assert-event
- (equal (fn-stxa-authored-source (cadr *sit-carried-history*))
+ (equal (fn-stxa-authored-source (fn-hstxa-stxa (cadr *sit-carried-history*)))
         *sit-carried-source*))
 
 ; ---------------------------------------------------------------------------
@@ -269,8 +322,11 @@
 (make-event `(defconst *sit-staged-retention* ',(fn-sn-prepare-retention (fn-sit-reserve *sit-after-legacy*) *sit-retention*)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sit-staged-retention*))
                      :record-staged))
+; by specification: the flip made the relation's article arm test fn-held-p
+; (the retained article row) in place of fn-record-p; the candidate is still
+; not an article.
 (assert-event
- (not (fn-record-p (fn-sf-record-candidate (fn-sn-files *sit-staged-retention*)))))
+ (not (fn-held-p (fn-sf-record-candidate (fn-sn-files *sit-staged-retention*)))))
 (assert-event (fn-snt-relation *sit-staged-retention*))
 (assert-event (fn-snt-relation (fn-sit-publish *sit-staged-retention*)))
 (assert-event
@@ -282,19 +338,23 @@
                           *sit-enrollment*)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sit-staged-identity*))
                      :record-staged))
+; by specification: the flip made the relation's article arm test fn-held-p
+; (the retained article row) in place of fn-record-p; the candidate is still
+; not an article.
 (assert-event
- (not (fn-record-p (fn-sf-record-candidate (fn-sn-files *sit-staged-identity*)))))
+ (not (fn-held-p (fn-sf-record-candidate (fn-sn-files *sit-staged-identity*)))))
 (assert-event (fn-snt-relation *sit-staged-identity*))
 (assert-event (fn-snt-relation (fn-sit-publish *sit-staged-identity*)))
 (assert-event (fn-snt-relation (fn-sn-finish (fn-sit-publish *sit-staged-identity*))))
 
 ; The article arm is still exercised, and by a state of the same machine: a
-; staged legacy record IS a `fn-record-p', so the relation takes the pending
+; staged legacy record IS a `fn-held-p' row, so the relation takes the pending
 ; link there.  Without this pair the deferred assertions above would not
 ; separate the two arms.
 (make-event `(defconst *sit-staged-legacy* ',(fn-sn-prepare (fn-sit-reserve *sit-refused*) *sit-legacy*)))
+; by specification: the flip (as above): the staged legacy article is a held row.
 (assert-event
- (fn-record-p (fn-sf-record-candidate (fn-sn-files *sit-staged-legacy*))))
+ (fn-held-p (fn-sf-record-candidate (fn-sn-files *sit-staged-legacy*))))
 (assert-event (fn-snt-relation *sit-staged-legacy*))
 
 ; A known abort of a staged retention candidate returns to `:ready' with the
