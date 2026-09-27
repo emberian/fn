@@ -4,6 +4,7 @@
 ; fn-frame-digest executes through its attachment: a context holds its
 ; request by reference (PKT-646).
 (include-book "../../books/crypto-attach")
+(include-book "arena-lift")
 ; codecs withdrew the record and cbor proof vocabularies at export (2026-09-19);
 ; this book reasons under them, so open them here, locally.
 (local (in-theory (enable fn-record-record-vocabulary fn-record-codec-vocabulary fn-record-guard-vocabulary
@@ -29,9 +30,22 @@
             :frontier-directory :ok))
 (make-event `(defconst *bpr-prepared* ',(fn-bpi-ingress-prepare (bpr-reserve (fn-sn-initial *bpr-groups* 20))
                           *bpr-policy* *bpr-context* *bpr-adu* 0)))
-(make-event `(defconst *bpr-record* ',(fn-bpi-result-record *bpr-prepared*)))
+;; The Store retains the held ROW (its payload the handle 0); the receiver
+;; is handed the WIRE record (the journal persists it), and reads the row's
+;; bytes through an arena holding the ADU at handle 0 (records-flip).
+(make-event `(defconst *bpr-row* ',(fn-bpi-result-record *bpr-prepared*)))
+(make-event `(defconst *bpr-record* ',(fn-bpi-result-wire *bpr-prepared*)))
 (make-event `(defconst *bpr-store* ',(fn-bpi-finish-prepared (fn-bpi-result-store *bpr-prepared*))))
-(assert-event (fn-bpi-durably-acceptedp *bpr-store* *bpr-record*))
+(assert-event (fn-bpi-durably-acceptedp *bpr-store* *bpr-row*))
+(assert-event (fn-held-p *bpr-row*))
+(assert-event (fn-record-p *bpr-record*))
+(assert-event (equal (fn-record-payload *bpr-record*) *bpr-adu*))
+(defconst *bpr-payloads* (list *bpr-adu*))
+(bpr-lift fn-bpi-node-wire-committedp 2)
+(bpr-lift fn-bpr-accept-request 5)
+(bpr-lift fn-bpr-rows-stand-for 2)
+(bpr-lift fn-bpr-store-record-acceptedp 2)
+
 
 (make-event `(defconst *bpr-request* ',(fn-bpa-make-request "work-1" "subject:receiver-1" "dtn://sender.lab"
                        "dtn://fn.lab/inbox" "receiver-policy" "sender-inc-7"
@@ -42,15 +56,13 @@
 (make-event `(defconst *bpr-config* ',(fn-bpr-make-config "dtn://fn.lab/inbox" "receiver-policy"
                       "dtn://fn.lab/issuer")))
 (make-event `(defconst *bpr-initial* ',(fn-bpr-initial-state *bpr-config*)))
-(make-event `(defconst *bpr-accepted* ',(fn-bpr-accept-request *bpr-initial* *bpr-store* *bpr-record*
-                         *bpr-request* t)))
+(make-event `(defconst *bpr-accepted* ',(in-arena-fn-bpr-accept-request *bpr-payloads* *bpr-initial* *bpr-store* *bpr-record* *bpr-request* t)))
 (assert-event (equal (car *bpr-accepted*) :accepted))
 (make-event `(defconst *bpr-context-state* ',(car (cdr *bpr-accepted*))))
 (assert-event (fn-bpr-statep *bpr-context-state*))
 ; A wire authorization-context alone never substitutes the explicit lab
 ; A-POLICY input, even after the article is durably accepted.
-(assert-event (equal (fn-bpr-accept-request *bpr-initial* *bpr-store* *bpr-record*
-                                             *bpr-request* nil)
+(assert-event (equal (in-arena-fn-bpr-accept-request *bpr-payloads* *bpr-initial* *bpr-store* *bpr-record* *bpr-request* nil)
                      (list :refused *bpr-initial*)))
 (assert-event (equal (fn-bpr-prepare-receipt *bpr-context-state* "work-1"
                                              "receipt-1" nil)
@@ -73,19 +85,16 @@
 ; context and regenerates the same receipt ADU without changing Store state.
 (assert-event (equal (fn-bpr-receipt-adu *bpr-committed* *bpr-request*)
                      *bpr-receipt-adu*))
-(assert-event (fn-bpi-durably-acceptedp *bpr-store* *bpr-record*))
+(assert-event (fn-bpi-durably-acceptedp *bpr-store* *bpr-row*))
 (make-event `(defconst *bpr-conflicting-request* ',(fn-bpa-make-request "work-1" "subject:receiver-1" "dtn://sender.lab"
                        "dtn://fn.lab/inbox" "receiver-policy" "sender-inc-evil"
                        "wire-auth-context" "terms-1" *bpr-adu*)))
-(assert-event (equal (car (fn-bpr-accept-request *bpr-context-state* *bpr-store*
-                                                  *bpr-record*
-                                                  *bpr-conflicting-request* t))
+(assert-event (equal (car (in-arena-fn-bpr-accept-request *bpr-payloads* *bpr-context-state* *bpr-store* *bpr-record* *bpr-conflicting-request* t))
                      :conflict))
 (assert-event (equal (fn-bpr-commit-receipt *bpr-receipt-pending*
                                              "work-stale" "receipt-stale" :committed)
                      *bpr-receipt-pending*))
-(assert-event (equal (car (fn-bpr-accept-request *bpr-receipt-pending* *bpr-store*
-                                                  *bpr-record* *bpr-request* t))
+(assert-event (equal (car (in-arena-fn-bpr-accept-request *bpr-payloads* *bpr-receipt-pending* *bpr-store* *bpr-record* *bpr-request* t))
                      :refused))
 
 ; A recovered article/binding alone is not enough while recovery barriers are
@@ -97,14 +106,30 @@
 (make-event `(defconst *bpr-recovering-store* ',(fn-sn-recover (fn-sn-crash *bpr-store* :old :present))))
 (assert-event (equal (fn-sf-phase (fn-sn-files *bpr-recovering-store*))
                      :recovering))
-(assert-event (not (fn-bpr-store-record-acceptedp *bpr-recovering-store*
-                                                   *bpr-record*)))
+(assert-event (not (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpr-recovering-store* *bpr-record*)))
 (make-event `(defconst *bpr-recovered-ready-store* ',(bpr-ready-after-barriers *bpr-recovering-store* 5)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *bpr-recovered-ready-store*))
                      :ready))
-(assert-event (fn-bpr-store-record-acceptedp *bpr-recovered-ready-store*
-                                              *bpr-record*))
+(assert-event (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpr-recovered-ready-store* *bpr-record*))
 (assert-event (equal
- (car (fn-bpr-accept-request *bpr-initial* *bpr-recovered-ready-store*
-                             *bpr-record* *bpr-request* t))
+ (car (in-arena-fn-bpr-accept-request *bpr-payloads* *bpr-initial* *bpr-recovered-ready-store* *bpr-record* *bpr-request* t))
  :accepted))
+
+; The receiver reads the retained row's bytes through the arena
+; (fn-bpr-store-record-acceptedp over fn-bpr-rows-stand-for and
+; fn-bpi-node-wire-committedp): the same Store and wire record are accepted
+; over the arena that holds the ADU at the row's handle, and refused over an
+; arena that holds other bytes there, or none.
+(defconst *bpr-other-adu* (append *bpr-adu* (list 13 10)))
+(assert-event (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpr-store* *bpr-record*))
+(assert-event (in-arena-fn-bpr-rows-stand-for *bpr-payloads* *bpr-record* (fn-bpr-article-records (fn-sf-records (fn-sn-files *bpr-store*)))))
+(assert-event (in-arena-fn-bpi-node-wire-committedp *bpr-payloads* (fn-sn-node *bpr-store*) *bpr-record*))
+(assert-event (not (in-arena-fn-bpr-store-record-acceptedp (list *bpr-other-adu*)
+                                                            *bpr-store* *bpr-record*)))
+(assert-event (not (in-arena-fn-bpr-store-record-acceptedp nil *bpr-store* *bpr-record*)))
+(assert-event (equal (in-arena-fn-bpr-accept-request (list *bpr-other-adu*)
+                                                     *bpr-initial* *bpr-store* *bpr-record*
+                                                     *bpr-request* t)
+                     (list :refused *bpr-initial*)))
+; The row itself is no wire record: handed the row, the receiver refuses.
+(assert-event (not (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpr-store* *bpr-row*)))
