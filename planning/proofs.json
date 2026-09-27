@@ -7919,7 +7919,7 @@
         "tests/acl2/store-log-programs-tests.lisp"
       ],
       "progress_note": "Lane w6-log-core (Opus 5.5, 2026-09-27): REPL-admitted on hbox, certified on persvati (the record names the manifest). Teeth are the prototype's ground tears (tests/acl2/store-log-tests.lisp, PRF-216); the batch-level ground witnesses and the must-fail per hypothesis are open (PKT-682). Lane w6-log-core-3: T2's hypothesis-removal witnesses in tests/acl2/store-log-programs-tests.lisp (the reachable all-landed witness; removal of the scan of D, Z zeros, the one-write pending list, the crash image: each refutes the conclusion). The removals of the scan-last, digest, records, extent-length and alignment hypotheses are not refuted by a ground witness (a mis-chained batch scans to COMMITTED, which satisfies the verdict) and are not removed (no weakened theorem proved).",
-      "pending_subject": "No host line calls fn-lg-* or fn-lgk-* yet: fnn-log-append/-fence/-recover are PKT-682's.",
+      "pending_subject": "Hosted by the developer and production images' fnn-log-* (host/native/io.lisp, the log verb); the owner's commit path does not call the log yet (lane w6-log-owner).",
       "events": [
         "fn-lg-tear-write-is-pieces",
         "fn-bs-crash-of-aligned-append",
@@ -7959,8 +7959,8 @@
         "books/store-log-programs.lisp",
         "tests/acl2/store-log-programs-tests.lisp"
       ],
-      "progress_note": "Lane w6-log-core (Opus 5.5, 2026-09-27); lane w6-log-core-2 (Opus 5.5): D26 by proof work (kernel 82 s -> 7.6 s), T3 and the establishment, teeth in tests/acl2/store-log-kernel-tests.lisp (R established on a two-record log with a torn unit; one ground witness per removed hypothesis of the establishment and of T3's alignment; the served sequence prepare x3, append, fence, finishes related at each step; the append's fit removed; four crash images of the appended batch as explicit fn-bs-crash choices: all, none, the first entry, a hole in the second). The batch-level must-fail per hypothesis of T2 itself remains (PKT-682).",
-      "pending_subject": "No host line calls fn-lgk-* yet (lane w6-log-owner).",
+      "progress_note": "Lane w6-log-core (Opus 5.5, 2026-09-27); lane w6-log-core-2 (Opus 5.5): D26 by proof work (kernel 82 s -> 7.6 s), T3 and the establishment, teeth in tests/acl2/store-log-kernel-tests.lisp (R established on a two-record log with a torn unit; one ground witness per removed hypothesis of the establishment and of T3's alignment; the served sequence prepare x3, append, fence, finishes related at each step; the append's fit removed; four crash images of the appended batch as explicit fn-bs-crash choices: all, none, the first entry, a hole in the second). The batch-level must-fail per hypothesis of T2 itself remains (PKT-682). Lane w6-log-core-3 (Opus 5.5): T5, fn-lg-decode, the log programs and runner, the host fnn-log-*, native tests.test_native_log OK on both images, the power-loss rig 250 cuts 0 violations (record section 8; manifests r6, r7).",
+      "pending_subject": "fnn-log-recover calls fn-lg-open-kernel and fn-lg-recover-tail, fnn-log-prepare fn-lgt-prepare, fnn-log-append fn-lg-append-admitsp / fn-lgk-append-octets / fn-lgk-append, fnn-log-fence fn-lgk-fence / fn-lgk-fence-failed, fnn-log-finish fn-lgk-finish-one (host/native/io.lisp, the log verb); the owner's commit path does not call them yet (lane w6-log-owner); fn-lgk-known-abort has no host caller.",
       "events": [
         "fn-lg-scan-of-complete-append",
         "fn-lg-scan-last-of-complete-append",
