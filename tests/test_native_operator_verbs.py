@@ -79,7 +79,7 @@ class NativeOperatorVerbCompositionTests(unittest.TestCase):
         self.assertIn("(:init (fnn-operator-execute-init result))", self.host)
         # The observation opens nothing: no lock call inside it.
         observe = self.host.index("(defun fnn-operator-init-observed")
-        execute = self.host.index("(defun fnn-operator-execute-run", observe)
+        execute = self.host.index("\n(defun ", observe + 1)
         body = self.host[observe:execute]
         self.assertIn("(fnn-lstat", body)
         for forbidden in ("fnn-open-lock", "fnn-flock", "fnn-open-live-store", "fnn-acquire"):

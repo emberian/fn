@@ -405,6 +405,10 @@
         (load "host/native/login-bindings.lisp")
         ; `tls reload' (PRF-212): request 19, wrapping login-bindings.
         (load "host/native/tls-reload.lisp")
+        ; The operator's live surfaces (`run', `post', `principal', the
+        ; control-socket arms), installed into operator.lisp; after every
+        ; file above whose functions it names.
+        (load "host/native/operator-live.lisp")
         (load "host/native/checkpoint.lisp")
         ; The attach-stobj prototype's smoke verb (developer image only).
         (load "host/native/workflow.lisp")

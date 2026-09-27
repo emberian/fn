@@ -44,6 +44,29 @@ class ClassifyTests(unittest.TestCase):
                                     "ld host file defines it"])
         self.assertEqual(counts, {"files": 1, "world": 2, "world_calls": 1, "warnings": 1})
 
+    def test_a_raw_function_a_comment_mentions_is_not_the_worlds(self):
+        # Batch AX: fnn-control-live-status, defined only in the raw
+        # host/native/control.lisp, was counted as the world's because an ld
+        # host file's comment spells it; the DTN image does not load it.
+        world = self.WORLD + "; the owner answers (fnn-control-live-status)\n"
+        definers = {"fnn-control-live-status": "host/native/control.lisp",
+                    "fn-outcome-code": "host/native/io.lisp"}
+        findings, counts, _ = host_check.classify_load(
+            "FNLC-FILE host/native/operator.lisp\n"
+            "FNLC-CALLED host/native/operator.lisp #4 ACL2 FNN-CONTROL-LIVE-STATUS\n"
+            "FNLC-UNDEFINED function ACL2 FNN-CONTROL-LIVE-STATUS\n"
+            "FNLC-UNDEFINED function ACL2 FN-OUTCOME-CODE\n"
+            "FNLC-DONE\n",
+            host_check.world_names(world), world, definers)
+        self.assertEqual(findings, [
+            "load-time call of undefined fnn-control-live-status (host/native/operator.lisp "
+            "#4), defined in host/native/control.lisp, which this build does not load",
+            "undefined function fnn-control-live-status: defined in host/native/control.lisp, "
+            "which this build does not load (a call reaching it faults at run time)"])
+        # A raw file may also define a name a book defines (a raw
+        # replacement): that one stays the world's.
+        self.assertEqual(counts["world"], 1)
+
     def test_arity_macro_order_and_errors_fail(self):
         findings, _, done = self.classify(
             "FNLC-FILE host/native/a.lisp\n"
@@ -109,6 +132,14 @@ class RealLoadTests(unittest.TestCase):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             code = host_check.main(["--load"])
+        self.assertEqual(code, 0, out.getvalue())
+
+    def test_the_dtn_tree_loads_clean(self):
+        # Batch AX: the DTN image loaded operator.lisp, which called 21
+        # functions only files the DTN build does not load define.
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = host_check.main(["--load", "--build", "host/native/build-dtn.lisp"])
         self.assertEqual(code, 0, out.getvalue())
 
 

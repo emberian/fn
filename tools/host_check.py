@@ -334,7 +334,20 @@ def nowhere(kind: str, name: str, definers: dict[str, str] | None) -> str:
 def classify_load(output: str, world_defined: set[str], world_source: str,
                   definers: dict[str, str] | None = None
                   ) -> tuple[list[str], dict[str, int], bool]:
-    """(findings, counts, completed) from a --load transcript."""
+    """(findings, counts, completed) from a --load transcript.
+
+    A name a raw host/native file defines is the world's only when a book or
+    `ld` host file defines it too: `in_world`'s fallback, the name spelled
+    anywhere in those files, also matches a comment that mentions a raw
+    function, and it hid four of the DTN image's undefined control-socket
+    calls (fnn-control-live-status among them) until batch AX.
+    """
+    def worlds(name: str) -> bool:
+        lowered = name.lower()
+        if definers and lowered in definers and lowered not in world_defined:
+            return False
+        return in_world(name, world_defined, world_source)
+
     findings: list[str] = []
     counts = {"files": 0, "world": 0, "world_calls": 0, "warnings": 0}
     completed = False
@@ -363,15 +376,18 @@ def classify_load(output: str, world_defined: set[str], world_source: str,
         elif word == "CALLED":
             parts = rest.split()
             name = parts[-1] if parts else "?"
-            if in_world(name, world_defined, world_source):
+            if worlds(name):
                 counts["world_calls"] += 1
             else:
+                where = (definers or {}).get(name.lower())
                 findings.append(f"load-time call of undefined {name.lower()} "
-                                f"({' '.join(parts[:2])}), defined nowhere in the tree")
+                                f"({' '.join(parts[:2])}), "
+                                + (f"defined in {where}, which this build does not load"
+                                   if where else "defined nowhere in the tree"))
         elif word == "UNDEFINED":
             kind, _, qualified = rest.strip().partition(" ")
             name = qualified.split()[-1] if qualified.split() else "?"
-            if name.lower() in world_shadowed or in_world(name, world_defined, world_source):
+            if name.lower() in world_shadowed or worlds(name):
                 counts["world"] += 1
             else:
                 findings.append(nowhere(kind, name, definers))
