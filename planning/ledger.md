@@ -13,22 +13,22 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1182 |
 | Certification roots in the Makefile | 1142 |
 | Books inside the root closure | 1171 |
-| `defthm` and `defthmd` events | 17484 |
-| `defun` events | 12113 |
+| `defthm` and `defthmd` events | 17500 |
+| `defun` events | 12128 |
 | Functions with verified guards | 2421 |
-| Functions declared `:verify-guards nil` and never verified | 1254 |
-| Functions left at the default with an explicit guard | 6672 |
-| Functions left at the default with no guard | 1766 |
-| `assert-event` checks | 17460 |
-| `must-fail` checks | 2132 |
+| Functions declared `:verify-guards nil` and never verified | 1258 |
+| Functions left at the default with an explicit guard | 6679 |
+| Functions left at the default with no guard | 1770 |
+| `assert-event` checks | 17472 |
+| `must-fail` checks | 2133 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 91 |
-| Theorems flagged SUSPECT by shape | 186 |
+| Theorems flagged SUSPECT by shape | 187 |
 | Export-hygiene warnings | 201 |
 | Enabled-projection warnings | 49 |
-| Teeth-form warnings | 205 |
+| Teeth-form warnings | 206 |
 | Include-hygiene warnings | 1206 |
-| Host-names warnings | 1341 |
+| Host-names warnings | 1342 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -333,7 +333,7 @@ that `make certify` requests.
 | `books/checkpoint-codec.lisp` | root | 110 | 36 | 13/1/21/1 | 0 | 0 | 1 |
 | `books/checkpoint-compaction-preservation.lisp` | root | 34 | 13 | 0/5/7/1 | 0 | 0 | 0 |
 | `books/checkpoint-compaction.lisp` | root | 12 | 19 | 0/15/4/0 | 0 | 0 | 0 |
-| `books/checkpoint-pack-chain-once.lisp` | root | 20 | 15 | 0/14/1/0 | 0 | 0 | 0 |
+| `books/checkpoint-pack-chain-once.lisp` | root | 29 | 20 | 0/18/2/0 | 0 | 0 | 0 |
 | `books/checkpoint-pack-chain.lisp` | root | 73 | 54 | 0/25/27/2 | 0 | 0 | 1 |
 | `books/checkpoint-pack-retire.lisp` | root | 12 | 12 | 0/0/12/0 | 0 | 0 | 0 |
 | `books/checkpoint-publish.lisp` | root | 67 | 65 | 13/1/51/0 | 0 | 0 | 0 |
@@ -413,8 +413,8 @@ that `make certify` requests.
 | `books/group-bucket-invariants.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/group-number-index.lisp` | root | 2 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/group-status.lisp` | closure | 4 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/heap-figure.lisp` | root | 13 | 15 | 0/0/15/0 | 0 | 0 | 0 |
-| `books/heap-reservation.lisp` | root | 57 | 41 | 0/0/41/0 | 0 | 0 | 0 |
+| `books/heap-figure.lisp` | root | 15 | 19 | 0/0/19/0 | 0 | 0 | 0 |
+| `books/heap-reservation.lisp` | root | 62 | 43 | 0/0/43/0 | 0 | 0 | 1 |
 | `books/held-record.lisp` | closure | 56 | 45 | 22/0/23/0 | 0 | 0 | 1 |
 | `books/history-fold-refinement.lisp` | closure | 29 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/history-wire.lisp` | closure | 3 | 1 | 0/0/1/0 | 0 | 0 | 2 |
@@ -938,7 +938,7 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-codec-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 81 | 1 | 0 |
 | `tests/acl2/checkpoint-compaction-preservation-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 22 | 13 | 0 |
 | `tests/acl2/checkpoint-compaction-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 4 | 0 |
-| `tests/acl2/checkpoint-pack-chain-once-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 38 | 4 | 0 |
+| `tests/acl2/checkpoint-pack-chain-once-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 50 | 5 | 0 |
 | `tests/acl2/checkpoint-pack-chain-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 48 | 19 | 0 |
 | `tests/acl2/checkpoint-pack-retire-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 32 | 9 | 0 |
 | `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 93 | 2 | 0 |
@@ -1006,8 +1006,8 @@ that `make certify` requests.
 | `tests/acl2/group-descriptions-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 60 | 1 | 0 |
 | `tests/acl2/group-number-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 7 | 0 |
 | `tests/acl2/group-status-tests.lisp` | - | 0 | 7 | 0/0/2/5 | 42 | 2 | 0 |
-| `tests/acl2/heap-figure-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 0 | 6 | 0 |
-| `tests/acl2/heap-reservation-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 0 | 14 | 0 |
+| `tests/acl2/heap-figure-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 0 | 6 | 0 |
+| `tests/acl2/heap-reservation-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 0 | 14 | 0 |
 | `tests/acl2/held-rows-intern-tests.lisp` | root | 6 | 0 | 0/0/0/0 | 0 | 0 | 2 |
 | `tests/acl2/held-rows-tests.lisp` | root | 0 | 17 | 0/17/0/0 | 9 | 0 | 0 |
 | `tests/acl2/history-fold-refinement-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 30 | 1 | 0 |
@@ -1349,6 +1349,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-fc-wire-next-unconsumed-is-bounded-linear` | `books/feed-connection-invariants.lisp` | 26 | instance-corollary: the statement is fn-wire-next-unconsumed-is-bounded instantiated, discharging nothing |
 | `fn-fr-disjointp-of-all-memberships-left` | `books/acceptance.lisp` | 259 | instance-corollary: the statement is fn-fr-disjointp-commutes instantiated, discharging nothing |
 | `fn-frame-decode-refuses-oversize-before-validation` | `books/frame-invariants.lisp` | 697 | branch-of-definition: the hypothesis is a branch test of fn-frame-decode and the conclusion is that branch's value |
+| `fn-heap-reserve-operation-decide-of-a-serve-action-by-definition` | `books/heap-reservation.lisp` | 279 | branch-of-definition: the hypothesis negates a branch test of fn-heap-reserve-operation-decide and the conclusion is that branch's value |
 | `fn-held-accessors-are-the-wire-accessors` | `books/held-record.lisp` | 121 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-hrt-event-is-intern-event-by-definition` | `tests/acl2/held-rows-intern-tests.lisp` | 9 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-hrt-row-at-is-intern-row-at-by-definition` | `tests/acl2/held-rows-intern-tests.lisp` | 30 | reflexive-conclusion: a conjunct is (equal X X) |
