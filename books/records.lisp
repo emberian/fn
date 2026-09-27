@@ -701,6 +701,13 @@
                                fn-cbor-octet-listp
                                true-listp))))
 
+;; PRF-333: the two equations served the guard proofs above; withdrawn on
+;; export so no proof above the codec changes (a store-checkpoint-arena-writer
+;; proof stalled with the payload equation enabled, persvati
+;; run-20260927T223317Z-f677).
+(in-theory (disable fn-record-payloadp-of-octets-by-definition
+                    fn-record-p-of-make-is-without-payload))
+
 ; A certified end-to-end schema-0 vector.  The broader all-record round-trip
 ; property remains proof work because it includes the exact ACL2 string/octet
 ; conversion and bounded variable group sequence.
