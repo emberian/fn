@@ -437,10 +437,14 @@ v=\$(vm '$W/fresh/usr/local/fn/bin/fn --version' 2>&1)
 echo \"fn --version (root's login limits: \$(vm 'ulimit -d')): \$v\"
 [ \"\$v\" = 'fn $VERSION ($SHORT)' ] || { echo \"the installed fn --version is not 'fn $VERSION ($SHORT)'\"; exit 1; }
 # A node keeps OpenBSD's stock daemon class (datasize 4096M), which the
-# build VM lifted: the same smoke under it.
-v=\$(vm 'ulimit -d 4194304; $W/fresh/usr/local/fn/bin/fn --version' 2>&1)
-echo \"fn --version (the stock daemon class, datasize 4194304 KiB): \$v\"
-[ \"\$v\" = 'fn $VERSION ($SHORT)' ] || { echo \"under the stock 4 GiB datasize fn --version is not 'fn $VERSION ($SHORT)'\"; exit 1; }
+# build VM lifted, and a login of the default class has 1536M: the same
+# smoke under each (a limit below the image is the launcher's named fault,
+# tests.test_native_heap_from_profile.DatasizeTests; lane openbsd-datasize).
+for ds in 4194304 1572864; do
+  v=\$(vm \"ulimit -d \$ds; $W/fresh/usr/local/fn/bin/fn --version\" 2>&1)
+  echo \"fn --version (a stock login class, datasize \$ds KiB): \$v\"
+  [ \"\$v\" = 'fn $VERSION ($SHORT)' ] || { echo \"under the stock datasize \$ds KiB fn --version is not 'fn $VERSION ($SHORT)'\"; exit 1; }
+done
 cd $R/out && sha256sum $tb && grep -F $tb SHA256SUMS"
   if [ "$DRY" = yes ]; then
     would "git archive --format=tar $REV | ssh $HOST 'cat > $S/source.tar'"
