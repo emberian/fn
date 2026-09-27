@@ -847,6 +847,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join \
 	books/served-catalog-join-number \
 	books/served-catalog-join-open \
+	books/served-catalog-join-entry \
+	books/served-catalog-join-finish \
 	books/poster-bytes-buffer \
 	books/store-checkpoint-buffer \
 	books/store-checkpoint-reader \
@@ -881,6 +883,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-owner-tests \
 	tests/acl2/served-catalog-join-tests \
 	tests/acl2/served-catalog-join-open-tests \
+	tests/acl2/served-catalog-join-entry-tests \
+	tests/acl2/served-catalog-join-finish-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
 	books/payload-kinds \
