@@ -255,7 +255,7 @@
 ; Hypothesis removed: (not (equal n 16)).  This release's layout, the scale
 ; preset: every other hypothesis holds; the open opens it, not the refusal.
 (assert-event (fn-frame-values-okp (fn-spo-layout-spec 16) *fn-bs-profile-scale*))
-(assert-event (equal (car *fn-bs-profile-scale*) *fn-bs-meta-format-8*))
+(assert-event (fn-bs-meta-formatp (car *fn-bs-profile-scale*)))
 (assert-event (<= (len (fn-frame-fields-octets (fn-spo-layout-spec 16) *fn-bs-profile-scale*))
                   *fn-bs-meta-max-config-payload*))
 (assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 16 *fn-bs-profile-scale*))
@@ -305,11 +305,12 @@
                (equal (fn-spo-config-open (fn-spo-layout-frame n values))
                       (list :refused :profile-layout n)))))
 
-; Hypothesis removed: the format word is fn-store-8.  The pre-AS values under
-; the format-7 word: another format, refused by that name instead.
+; Hypothesis removed: the format word is a store format (fn-store-8 or, since
+; lane commit-onto-log, fn-store-9).  The pre-AS values under the format-7
+; word: another format, refused by that name instead.
 (defconst *spot-other-word* (cons *spot-fmt7-word* (cdr *spot-pre-as*)))
 (assert-event (fn-frame-values-okp (fn-spo-layout-spec 13) *spot-other-word*))
-(assert-event (not (equal (car *spot-other-word*) *fn-bs-meta-format-8*)))
+(assert-event (not (fn-bs-meta-formatp (car *spot-other-word*))))
 (assert-event (equal (fn-spo-config-open (fn-spo-layout-frame 13 *spot-other-word*))
                      '(:refused :store-format)))
 (must-fail
