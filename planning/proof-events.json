@@ -9795,7 +9795,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ocs-in-flight-admits-only-inspect-and-commit"
+          "name": "fn-ocs-in-flight-admits-only-inspect-commit-and-reader"
         },
         {
           "kind": "theorem",
@@ -9852,6 +9852,10 @@
         {
           "kind": "theorem",
           "name": "fn-ocs-member-uncertain-word-told-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-in-flight-commit-before-reader"
         }
       ]
     },
@@ -9888,7 +9892,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ocp-in-flight-admits-only-inspect-and-commit"
+          "name": "fn-ocp-in-flight-admits-only-inspect-commit-and-reader"
         }
       ]
     },
@@ -9956,6 +9960,39 @@
         {
           "kind": "theorem",
           "name": "fn-own-feed-intent-reuse-is-a-fresh-intent"
+        }
+      ]
+    },
+    {
+      "id": "PRF-280",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocvm-reader-view-is-the-completed-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-relation-of-a-view-captured-before-appends"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olr-take-never-joins-the-batch-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-view-historyp-of-a-view-captured-before-appends"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocl-view-configp-of-a-view-captured-before-appends"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-at-reader-view-reads-the-reader-view"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocfg-with-view-keeps-the-rest"
         }
       ]
     }
