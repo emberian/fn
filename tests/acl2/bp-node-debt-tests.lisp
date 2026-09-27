@@ -87,7 +87,7 @@
  (and (equal (car *bpnd-delivery-effect*) :deliver)
       (equal (car *bpnd-kind7*) :persist-delivery)
       (equal (fn-bpnf-answer-effects *bpnd-durable*)
-             '((:delivery-answer :durable)))
+             '((:delivery-answer :durable :request-accepted)))
       (equal (fn-bpnd-handoffs-debt (fn-bpnf-handoffs *bpnd-after-state*)) 3)
       (equal (fn-bpnd-debt *bpnd-after-state* *bpnd-local*) 6)
       (equal (fn-bpnd-held-handoff-delta

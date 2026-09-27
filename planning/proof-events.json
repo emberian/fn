@@ -8792,6 +8792,121 @@
           "name": "fn-ores-take-idle-is-a-result"
         }
       ]
+    },
+    {
+      "id": "PRF-224",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-handoff-report-is-application-disposition",
+          "note": "KEYSTONE. Subject fn-bpah-deliver-result-step then fn-bpah-persist-delivery-step (host: fnn-bpnode-dispatch-one -> fnn-bps-foundation-step -> fn-bpnj-step ... fn-bpnf-step, fn-bpnf-step-*-is-step); report printed by fnn-bps-drive-effects. Teeth: tests/acl2/bp-handoff-report-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-persist-delivery-reports-the-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-persist-delivery-reports-exactly"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpah-disposition-report-durable-is-accepting"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-step-deliver-result-is-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnf-step-persist-delivery-is-step"
+        }
+      ]
+    },
+    {
+      "id": "PRF-225",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpp-crc16-scan-table-is-scan",
+          "note": "KEYSTONE. Subject fn-bpp-crc16-scan (its mbe :exec); host: every fn-bpp-crc16 call (fn-bpb-encode). Teeth: tests/acl2/bp-primary-tests.lisp (PRF-225 block)."
+        }
+      ]
+    },
+    {
+      "id": "PRF-249",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-ref-request-resolves-exactly",
+          "note": "KEYSTONE. Subject fn-bpaj-ref-request (books/bp-request-ref.lisp), the resolution the receiver invariants apply (fn-bpr-context-resolve). Teeth: tests/acl2/bp-request-reference-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-ref-request-resolves-to-the-bytes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-transit-context-binds-the-live-request",
+          "note": "KEYSTONE at every read: fn-bpaj-apply-record(-fast) via fn-bprj-install / fn-bprj-preflight / fn-bprj-apply (host/bp-receipt-journal-host.lisp); builder fn-bpaj-transit-context-record via fn-bprj-request-transit-context-record. Teeth: tests/acl2/bp-request-reference-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-transit-intent-pins-its-request-and-projection",
+          "note": "KEYSTONE. Subject fn-bpaj-transit-intent-from-plan, called by host/bp-native-app-host.lisp fn-owner-app-plan-install. Teeth: tests/acl2/bp-request-reference-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-one-reference-is-one-request-or-a-digest-collision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-transit-context-receiver-is-existing-transition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpaj-context-record-fast-is-checked"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpr-context-from-ref-of-request-ref"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpr-context-resolve-of-derived-context"
+        }
+      ]
+    },
+    {
+      "id": "PRF-250",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfr-step-resumes",
+          "note": "KEYSTONE. Subject fn-bpfr-step. Host: none yet (integration boundary). Teeth: tests/acl2/bp-fragment-resume-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfr-run-is-reassemble",
+          "note": "KEYSTONE: bounded steps reach fn-bpfw-reassemble = fn-bpfw-spec."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfr-step-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfr-finished-state-is-the-sweep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfr-run-resumes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfr-run-finishes"
+        }
+      ]
     }
   ]
 }

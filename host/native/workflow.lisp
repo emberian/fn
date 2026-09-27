@@ -66,7 +66,9 @@
                     'fn-store-frame-receipt-logical-protected))
          (prefix (fnn-core wrapper (first record) (rest record))))
     (when (or (keywordp prefix) (not (fnn-octet-list-p prefix)))
-      (fnn-refuse "ACL2 refused application journal record"))
+      ;; Name the journal and the record kind ACL2 refused (PKT-646).
+      (fnn-refuse "ACL2 refused application journal record domain=~(~a~) kind=~(~a~)"
+                  (fnn-app-journal-domain journal) (first record)))
     (fnn-seal (fnn-octets prefix))))
 
 (defun fnn-app-unframe (journal raw)

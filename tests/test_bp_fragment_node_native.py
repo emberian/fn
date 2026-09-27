@@ -25,6 +25,16 @@ IMAGE = Path(os.environ.get(
 
 
 class NativeBpFragmentNodeTests(unittest.TestCase):
+    STORE_PROFILES = {
+        "test_ten_mebibyte_article_through_four_kib_fragments": [
+            "--max-article-octets", "11534336",
+            "--max-record-octets", "33554432",
+            "--max-history-octets", "268435456"],
+    }
+    BOUNDARY_MAX_OCTETS = {
+        "test_ten_mebibyte_article_through_four_kib_fragments": 11534336,
+    }
+
     @classmethod
     def setUpClass(cls):
         if not os.access(IMAGE, os.X_OK):
@@ -41,7 +51,16 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.journal = self.tmp / "fnbs"
         self.receipts = self.tmp / "fnrj"
         self.workflow = self.tmp / "fnwf"
-        initialized = self.invoke("store", self.store, "init", "fn.test")
+        # SCN-077 step 1's Store half: the development base admits 32,768-
+        # octet articles, and the neighbour's inbound bound (bp-boundary
+        # MAX-OCTETS, the peer record's inbound max) was 32,768 too, so the
+        # 10 MiB case raises both to 11 MiB (and the Store's record and
+        # history bounds that admit one).  Without them the article is
+        # refused :oversize and the handoff is reported refused (PRF-224,
+        # PKT-630 (7)).
+        profile = self.STORE_PROFILES.get(self._testMethodName, [])
+        initialized = self.invoke("store", self.store, "init", *profile,
+                                  "fn.test")
         self.assertEqual(initialized.returncode, 0, initialized.stderr)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
             reservation.bind(("127.0.0.1", 0))
@@ -55,7 +74,8 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         trusted = self.invoke(
             "operator", self.config, "bp-boundary", "add", "sender-boundary",
             "sender.bp.gate.invalid", "dtn://sender/", self.port,
-            "fn.test", 32768, 16)
+            "fn.test", self.BOUNDARY_MAX_OCTETS.get(self._testMethodName, 32768),
+            16)
         self.assertEqual(trusted.returncode, 0, trusted.stderr)
         self.fragments = self.author_fragments()
 
@@ -438,7 +458,12 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         self.assertEqual(out.count(b"BP fragment family durable"), 1, (out, err))
         self.assertEqual(out.count(b"BP application handoff durable"), 1,
                          (out, err))
-        self.assertEqual(self.article_count(), 1)
+        self.assertIn(b"BP application handoff durable "
+                      b"disposition=request-accepted", out)
+        self.assertEqual(self.article_count(), 1,
+                         [line for line in out.splitlines()
+                          if b"delivery" in line or b"refused" in line
+                          or b"application" in line])
 
     def test_adu_past_the_profile_is_refused_before_custody(self):
         # PRF-134: under the default profile (ADU 65,538 octets) a fragment

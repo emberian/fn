@@ -151,73 +151,14 @@
   (let ((state (f-put-global 'fn-owner-app-refusal-reason reason state)))
     (value :busy)))
 
-(defun fn-owner-app-plan-install-legacy
-  (inbound-id request-octets node-id bundle-identity state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((request (fn-bpaj-request request-octets))
-         (fields (and request (fn-bpaj-article-fields request)))
-         ;; C1/C3: the filing step every ingress takes, as the NNTP and
-         ;; signed-author paths do (fn-owner-control-filing,
-         ;; host/owner-host.lisp; books/peer-authored-accept.lisp
-         ;; fn-pa-filing-plan): a control article is filed in its filing
-         ;; group or refused, never stored under its Newsgroups; an ordinary
-         ;; article keeps its groups.
-         (filing (and request (equal (car fields) :ok)
-                      (fn-pa-filing-plan
-                       (fn-bpa-request-article request) (caddr fields)
-                       (fn-state-groups
-                        (fn-node-acceptance (fn-owner-node state))))))
-         (evidence (and request
-                        (fn-bpaj-bp-provenance-octets
-                         node-id bundle-identity request)))
-         (lookup (and request
-                      (fn-bpaj-record-lookup-fast
-                       (fn-owner-store state) request)))
-         (planned-result (case (car lookup)
-                           (:absent :accepted)
-                           (:found :duplicate)
-                           (otherwise nil)))
-         (generation (fn-cfg-generation (fn-owner-config state)))
-         (txid (fn-state-next-txid
-                (fn-node-acceptance (fn-owner-node state))))
-         (state (f-put-global 'fn-owner-app-request request-octets state))
-         (state (f-put-global 'fn-owner-app-inbound-id inbound-id state))
-         (state (f-put-global 'fn-owner-app-generation generation state))
-         (state (f-put-global 'fn-owner-app-txid txid state))
-         (state (f-put-global 'fn-owner-app-evidence evidence state))
-         (state (f-put-global 'fn-owner-app-planned-result
-                              planned-result state))
-         (state (f-put-global 'fn-owner-app-msgid
-                              (and (equal (car fields) :ok) (cadr fields)) state))
-         (state (f-put-global 'fn-owner-app-groups
-                              (and (equal (car filing) :file) (cadr filing))
-                              state))
-         (state (f-put-global 'fn-owner-app-article
-                              (and request (fn-bpa-request-article request)) state)))
-    (fn-owner-app-plan-answer
-     (cond ((not request) :request)
-           ((not (equal (car fields) :ok)) :article-fields)
-           ((not (equal (car filing) :file))
-            (or (cadr filing) :control-not-filed))
-           ((not (fn-bpaj-request-subjectp request)) :request-subject)
-           ((not (equal (fn-bpa-request-source-eid request)
-                        (f-get-global 'fn-owner-app-bundle-source state)))
-            :bundle-source)
-           ((not (equal (fn-bpa-request-destination-eid request)
-                        (f-get-global 'fn-owner-app-bundle-destination state)))
-            :bundle-destination)
-           ((not evidence) :provenance)
-           ((not planned-result) :store-lookup)
-           (t nil))
-     state)))
-
 (defun fn-owner-app-plan-install
   (inbound-id request-octets node-id bundle-identity ingress source-eid state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program)
+           ; The provenance is the transit plan's (its evidence, element 6).
+           (ignorable node-id bundle-identity))
   (let* ((joined (f-get-global 'fn-bpaj-state state))
          (status (fn-bpaj-request-status-fast joined request-octets))
-         (existing (fn-bpaj-request-intent joined request-octets))
-         (oldp (equal (fn-bpaj-nth 0 existing) :request-intent)))
+         (existing (fn-bpaj-request-intent joined request-octets)))
     (cond
      ((member-equal status '(:committed :context :pending-receipt))
       ; A bound request never plans again: fn-bpaj-dispatch-fast answers
@@ -240,9 +181,6 @@
                                   joined request-octets)
                                  state)))
         (value :ready)))
-     (oldp
-      (fn-owner-app-plan-install-legacy
-       inbound-id request-octets node-id bundle-identity state))
      ((not (member-equal status '(:new :intent)))
       (fn-owner-app-plan-answer :request-status state))
      (t
@@ -274,11 +212,7 @@
                           (fn-bpaj-transit-intentp existing)
                           (or bindingp
                               (and (equal generation (fn-bpaj-nth 3 existing))
-                                   (equal (car plan) :submit)
-                                   (equal (fn-bpaj-nth 1 plan)
-                                          (fn-bpaj-nth 6 existing))
-                                   (equal (fn-bpaj-nth 4 plan)
-                                          (fn-bpaj-nth 9 existing))
+                                   (fn-bpaj-plan-matches-intentp plan existing)
                                    (equal (car lookup) :absent)))))
              (evidence (and plan (fn-record-string-octets
                                   (fn-bpaj-nth 6 plan))))
@@ -302,8 +236,13 @@
              (state (f-put-global 'fn-owner-app-article
                                   (and request (fn-bpa-request-article request))
                                   state))
+             ; The projection the Store is given is the live plan's; the
+             ; intent pins its length and digest (a retry requires
+             ; `fn-bpaj-plan-matches-intentp'), never its bytes (PKT-646).
              (state (f-put-global 'fn-owner-app-stored
-                                  (and intent (fn-bpaj-nth 9 intent)) state))
+                                  (and intent
+                                       (fn-bpaj-transit-stored-octets plan))
+                                  state))
              (state (f-put-global 'fn-owner-app-groups
                                   (and plan (fn-oag-group-octets
                                              (fn-bpaj-nth 5 plan))) state))
@@ -436,12 +375,8 @@
          (request (fn-bpaj-request request-octets))
          (intent (fn-bpaj-request-intent
                   (f-get-global 'fn-bpaj-state state) request-octets))
-         (answer (if (equal (fn-bpaj-nth 0 intent)
-                            :request-transit-intent)
-                     (fn-bpaj-transit-record-lookup-fast
-                      (fn-owner-store state) request intent)
-                   (fn-bpaj-record-lookup-fast
-                    (fn-owner-store state) request)))
+         (answer (fn-bpaj-transit-record-lookup-fast
+                  (fn-owner-store state) request intent))
          (record (and (equal (car answer) :found) (cadr answer)))
          (state (f-put-global 'fn-owner-app-record
                               (and record (fn-record-encode record)) state))

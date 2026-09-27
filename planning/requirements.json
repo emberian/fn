@@ -2060,7 +2060,8 @@
       "proof_targets": [
         "PRF-102",
         "PRF-131",
-        "PRF-134"
+        "PRF-134",
+        "PRF-249"
       ],
       "verification": [
         "proof",
@@ -2072,7 +2073,9 @@
         "books/native-admin.lisp",
         "books/native-auth-profile.lisp",
         "books/native-auth-admin.lisp",
-        "planning/evidence/bounds-profile-2026-09-25.md"
+        "planning/evidence/bounds-profile-2026-09-25.md",
+        "books/bp-request-reference.lisp",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
       "implementation_note": "Configuration generations (field 11) and credentials (field 12) are read from the profile the store opened; consumers (9) are read too since community-bounds (PRF-167, STO-021); BP rows (10) and policy members (13) still have constants (4096, 64), recorded as open in the evidence. fn.toml's size bounds are classified as work."
     },
@@ -2425,7 +2428,9 @@
         "PRF-121",
         "PRF-131",
         "PRF-134",
-        "PRF-136"
+        "PRF-136",
+        "PRF-225",
+        "PRF-250"
       ],
       "verification": [
         "proof",
@@ -2442,7 +2447,8 @@
         "books/bp-fragment-sweep.lisp",
         "tests/acl2/bp-fragment-sweep-tests.lisp",
         "tests/test_bp_fragment_node_native.py",
-        "planning/evidence/bp-lifecycle-2026-09-25.md"
+        "planning/evidence/bp-lifecycle-2026-09-25.md",
+        "books/bp-fragment-resume.lisp"
       ],
       "implementation_note": "RFC 9174 section 5.4.1 forbids a transfer longer than the peer's Transfer MRU (an RFC requirement); RFC 9171 section 5.8 permits fragmenting a bundle whose no-fragment flag is clear (fn fragments proactively, a local policy choice) and requires the replicate-flagged extension blocks in every fragment (fn replicates every extension block, a stronger fn choice). ACL2's fn-bpfs-plan decides from the session's negotiated Transfer MTU; host/native/bp-service.lisp fnn-bps-send-effect sends the answer and reads each further fragment's transfer through fn-bpfs-fragment-outcome. Not covered: held transit to a small-MRU hop still waits (fn-bpnp-forward-mru-waitp) rather than fragmenting; the receiver's reassembler has no family-size ceiling since PRF-121 (fn-bpfw-reassemble, linear in the octets received), but a family is still bounded by the held-image cap, the 1 MiB bundle decoder and the 65538-octet ADU record (P5).",
       "keystones": [
@@ -4350,6 +4356,35 @@
         "tools/run_owner.py"
       ],
       "implementation_note": "Lane adapter-retirement: FeedPublication and ConfigResult typed; fnn-owner-name-list and fnn-owner-config-names deleted; the feed flush consumes one sealed frame plan. Lane adapter-retirement-2: the submission path's publication admits the owner's two submission ids (the batch AM fault: the operator post's :control), with keystones for every outcome; the take returns a SubmissionTaken (six fn-owner-submit-* mailboxes retired; the transit decision's memberships are its own fn-owner-transit-groups); Capture takes checkpoint-pipeline-5's field names. ServedStep is fenced to lane owner-scheduler (its render plan replaces the served step's return)."
+    },
+    {
+      "id": "REP-015",
+      "title": "The BP application handoff is reported durable only when the application committed the delivered ADU (the Store holds the article, or the receipt's release is durable); a durable kind 7 recording a refusal is reported refused, naming the disposition, never durable",
+      "specification": "specs/bp-node-machine.md#493-the-handoff-reports-the-applications-disposition-2026-09-27-lane-bp-fragments-10mib-prf-224",
+      "milestone": "M4",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-224"
+      ],
+      "verification": [
+        "proof",
+        "test"
+      ],
+      "evidence": [
+        "rfc9171.txt",
+        "books/bp-handoff-report.lisp",
+        "books/bp-node-foundation.lisp",
+        "books/bp-node-progress.lisp",
+        "tests/acl2/bp-handoff-report-tests.lisp",
+        "host/native/bp-service.lisp",
+        "host/native/bp-node.lisp",
+        "tests/test_bp_node_native.py",
+        "tests/test_bp_fragment_node_native.py",
+        "specs/bp-node-machine.md",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 9171 section 5.7 (local bundle delivery) leaves the application's disposition to the node; a durable kind 7 completes delivery at the BP layer whatever the application decided (spec bp-node-machine 3.1). fn's stronger guarantee: the host reports the disposition ACL2 names (fn-bpah-handoff-report), so 'handoff durable' means the application committed. PKT-630 (7).",
+      "note": "SCN-158; SCN-077's 10 MiB case is the positive witness once its Store admits the article."
     }
   ]
 }
