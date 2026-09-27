@@ -29,7 +29,7 @@ name, outside a limit of at most 2 GiB.
   refuses its `run' and `status' by name.
 * FreshInitTests (also without a small limit): conservative sizing,
   FN_INIT_SIZING=largest, FN_INIT_BUDGET_MB, and the default mission
-  honored (runs) or refused by name (under 2 GiB).
+  (inits and runs, under 2 GiB too; refused by name under a 1,000 MB budget).
 """
 import os
 import re
@@ -289,25 +289,28 @@ class FreshInitTests(Harness, unittest.TestCase):
         self.assertIn("refused invalid-init-budget", text(refused))
         self.assertFalse((self.tmp / "badbudget").exists())
 
-    def test_the_default_mission_is_honored_or_refused_by_name(self):
+    def test_the_default_mission_inits_and_runs(self):
         """`[ops] mission = "small-community"' (1 MiB articles, 8 groups per
-        article) keeps its fields: without a small limit it inits (development
-        capacity) and runs; under 2 GiB its thread stacks (60 x 21 MB for 1
-        MiB articles of empty lines, the served path's per-line recursion)
-        do not fit, and init is refused by name, exit 1, with no store made."""
+        article) keeps its fields: without a small limit on development's
+        capacity, under 2 GiB (the friend's machine) on the small preset's
+        (1,326 MB: the thread stacks are a constant since
+        served-line-iterative); it runs and takes POSTs either way.  A
+        budget that cannot hold it (FN_INIT_BUDGET_MB=1000) is refused by
+        name with no store made."""
         config, port = self.config("mission")
         with open(config, "a", encoding="ascii") as f:
             f.write('[ops]\nmission = "small-community"\n')
+        refused = self.run_fn("operator", config, "init",
+                              env={"FN_INIT_BUDGET_MB": "1000"})
+        self.assertEqual(refused.returncode, EXIT_REFUSED, text(refused))
+        found = INIT_REFUSED.search(text(refused))
+        self.assertIsNotNone(found, text(refused))
+        self.assertGreater(int(found.group(3)), int(found.group(4)))
+        self.assertFalse((self.tmp / "mission").exists())
         made = self.run_fn("operator", config, "init")
-        if SMALL:
-            self.assertEqual(made.returncode, EXIT_REFUSED, text(made))
-            found = INIT_REFUSED.search(text(made))
-            self.assertIsNotNone(found, text(made))
-            self.assertGreater(int(found.group(3)), int(found.group(4)))
-            self.assertFalse((self.tmp / "mission").exists())
-            return
         self.assertEqual(made.returncode, EXIT_OK, text(made))
-        self.init_line(made)
+        word, _, _, _ = self.init_line(made)
+        self.assertEqual(word, "custom")
         status = self.run_fn("operator", config, "status")
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         self.assertIn("max-article-octets=1048576", status.stdout.decode())

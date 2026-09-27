@@ -12,18 +12,17 @@
 ; thread was refused ("mmap: Cannot allocate memory", the VM, 2026-09-26), so
 ; a node with max-connections 32 failed its fifteenth client, not its start.
 ;
-; THE STACK a thread needs is measured, not guessed: a served article of L
-; lines needs about 144 KiB + 32 octets per line of control stack (hbox,
-; node_measure.py stack-floor, lines of 3 octets: 10,922 lines 447 KiB,
-; 87,381 lines 2,878 KiB, 349,525 lines 11,066 KiB; 32.0 octets per line
-; between the last two).  The per-line frames are the served path's
-; non-tail recursions over the article's lines (books/nntp-session.lisp
-; fn-nntp-stuff-lines is one); below that stack the owner faults and stops
-; (`owner core/store fault; process stopped: ... Control stack exhausted').
-; An article of A octets has at most A/2 lines (each ends in CRLF); the
-; stored article adds the node's own header lines, bounded here by 1,024.
-; The figure takes 512 KiB + 40 octets per line: 3.5 times the measured base
-; and a quarter over the measured slope.
+; THE STACK a thread needs is measured, not guessed, and since lane
+; served-line-iterative (2026-09-26, PRF-218) it no longer grows with the
+; article: the served path's per-line and per-octet recursions
+; (fn-post-body-octets, fn-nntp-stuff-lines, fn-wire-list-length) are loops,
+; and the least control stack is 142 KiB for an article of 16 lines, of
+; 2,000,000 lines and of one 4 MiB line alike (its record, section 5; at 126
+; KiB it is `init' that faults).  Before it the need was 144 KiB + 32 octets
+; per line (planning/evidence/image-floor-2026-09-26.md section 4) and this
+; figure carried a per-line term.  The figure is a constant 1,024 KiB: the
+; value served-line-iterative's native witness serves 2,000,000 lines at on
+; both images, 7 times the measured floor.
 ;
 ; THE THREADS: the owner's client workers (one per accepted connection up to
 ; the configuration's max-connections), the local control clients
@@ -54,25 +53,19 @@
 (include-book "heap-figure")
 (include-book "native-control")
 
-(defconst *fn-heap-stack-base-octets* (* 512 1024))
-(defconst *fn-heap-stack-octets-per-line* 40)
-(defconst *fn-heap-stack-header-lines* 1024)
+(defconst *fn-heap-stack-octets* (* 1024 1024))
 (defconst *fn-heap-thread-runtime-octets* (* 4 *fn-heap-mib*))
 (defconst *fn-heap-fixed-threads* 12)
 ; The stack when no store profile is named (help, --version): SBCL's own
 ; default, 2 MiB.
 (defconst *fn-heap-default-stack-kib* 2048)
 
-; The most lines an article the profile admits can have in the store.
-(defun fn-heap-article-lines-bound (profile)
-  (declare (xargs :guard t))
-  (+ (floor (nfix (fn-bs-profile-max-article-octets profile)) 2)
-     *fn-heap-stack-header-lines*))
-
+; The control stack of every thread: the constant above, whatever the
+; profile (PROFILE stays an argument: the figure is the profile's, and a
+; future served path that needs more for some profile says so here).
 (defun fn-heap-stack-octets (profile)
-  (declare (xargs :guard t))
-  (+ *fn-heap-stack-base-octets*
-     (* *fn-heap-stack-octets-per-line* (fn-heap-article-lines-bound profile))))
+  (declare (xargs :guard t) (ignore profile))
+  *fn-heap-stack-octets*)
 
 ; Octets rounded up to SBCL's kilobytes (KiB: `--control-stack-size NKB').
 (defun fn-heap-kib-of (octets)
@@ -190,8 +183,8 @@
 ; heap (so everything heap-figure's keystone holds in it), and beside it
 ; THREADS threads, at least the connections the configuration admits plus
 ; the control clients and the fixed threads, each with a control stack of at
-; least the measured need of the largest article the profile admits; and the
-; whole fits the machine.
+; least the constant (seven times the served path's measured floor, whatever
+; the article); and the whole fits the machine.
 (defthm fn-heap-reserve-decide-holds-every-thread-the-node-runs
   (let ((r (fn-heap-reserve-decide profile core nursery observations connections)))
     (implies (and (fn-bs-profile-admittedp profile)
@@ -203,9 +196,7 @@
                   (<= (+ connections (fn-native-control-max-active-clients)
                          *fn-heap-fixed-threads*)
                       (fn-heap-reserve-threads r))
-                  (<= (+ *fn-heap-stack-base-octets*
-                         (* *fn-heap-stack-octets-per-line*
-                            (fn-heap-article-lines-bound profile)))
+                  (<= *fn-heap-stack-octets*
                       (* 1024 (fn-heap-reserve-stack-kib r)))
                   (<= (+ (* *fn-heap-mib* (fn-heap-decision-mb r))
                          (nfix core)
@@ -221,7 +212,6 @@
                             fn-bs-profile-admittedp fn-heap-machine-octets
                             fn-heap-decide-refuses-exactly-past-the-machine
                             fn-native-control-max-active-clients
-                            fn-heap-article-lines-bound
                             fn-heap-mb-of))
            :use ((:instance fn-heap-kib-of-covers
                             (octets (fn-heap-stack-octets profile)))

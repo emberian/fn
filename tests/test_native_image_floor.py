@@ -19,14 +19,15 @@ stays at its current value.  These witnesses run the saved images:
   the residue drop), and
   a fresh node started with a 256 MB dynamic space takes a POST and serves
   it back;
-* the control stack books/heap-reservation.lisp decides for the small,
-  development and scale profiles (1,192 KiB: 512 KiB + 40 octets for each
-  of the 16,384 + 1,024 lines a 32,768-octet article can have) posts, serves,
-  reopens and serves again the worst such article the small preset accepts
-  (32,000 octets offered, every body line empty: under 4 GiB `init' makes
-  the small preset, which refuses 32,768 once the node adds its headers); and
-  a third of it (384 KiB) does not (the owner faults on control-stack
-  exhaustion), so the witness measures the stack and not the harness.
+* the control stack books/heap-reservation.lisp decides (a constant 1,024
+  KiB since lane served-line-iterative made the served path's per-line
+  recursions loops) posts, serves, reopens and serves again the worst
+  article the small preset accepts (32,000 octets offered, every body line
+  empty); 96 KiB, under the 142 KiB floor, does not, so the witness
+  measures the stack and not the harness;
+* DeepInputStackTests: a 1 MiB article of empty lines, a 2,000-article
+  history reopened and fully replayed, and refused POSTs of 16,000 and
+  20,000 lines, each at the stack the launcher's probe prints.
 
 Each witness skips, naming the image, when that image is absent.
 """
@@ -53,7 +54,7 @@ EXIT_FAULT, EXIT_USAGE = 4, 5
 GUARD_LINE = (b"store: ACL2 error in fn-sha256-of-string: "
               b"(EV-FNCALL-GUARD-ER FN-SHA256-OF-STRING (42) (STRINGP S) (NIL) NIL)\n")
 CORE_CEILING_KIB = 128 * 1024
-SMALL_STACK_KIB = 1192          # fn-heap-stack-kib of the 32,768-octet presets
+SMALL_STACK_KIB = 1024          # fn-heap-stack-kib: the constant (served-line-iterative)
 
 
 def environment(**extra):
@@ -131,9 +132,12 @@ class ProductionTests(unittest.TestCase):
         doc = self.stack_trial(SMALL_STACK_KIB)
         self.assertEqual(doc["trials"][0][:2], [SMALL_STACK_KIB, True], doc)
 
-    def test_a_third_of_the_stack_does_not(self):
-        doc = self.stack_trial(384)
-        self.assertEqual(doc["trials"][0][:2], [384, False], doc)
+    def test_below_the_measured_floor_it_does_not(self):
+        """96 KiB, under the 142 KiB the node needs whatever the article
+        (served-line-iterative's record, section 5): the trial fails, so the
+        witness above measures the stack and not the harness."""
+        doc = self.stack_trial(96)
+        self.assertEqual(doc["trials"][0][:2], [96, False], doc)
         self.assertIsNone(doc["stack_floor_kib"], doc)
 
 
@@ -242,9 +246,10 @@ class DeepInputStackTests(unittest.TestCase):
         self.assertEqual(owner.returncode, 0, diagnostics)
 
     def test_a_1_mib_article_of_empty_lines_at_its_decided_stack(self):
-        """A = 1 MiB (the default mission's article bound): 524,288 lines
-        admitted; posted, served, reopened and served at the probe's stack
-        (21,032 KiB), and a third of it does not serve it."""
+        """A = 1 MiB (the default mission's article bound): 524,088 lines
+        admitted; posted, served, reopened and served at the probe's stack,
+        the constant 1,024 KiB.  Needs lane served-line-iterative's loops
+        (merged in the same batch): before them this article needed 16 MiB."""
         limit = cgroup_limit()
         if limit is not None and limit < 8 * 1024 ** 3:
             self.skipTest("A = 1 MiB reserves 60 stacks of 21 MB: run without a memory "
@@ -253,7 +258,7 @@ class DeepInputStackTests(unittest.TestCase):
                                               "--max-article-octets", "1048576",
                                               "--max-groups-per-article", "8"])
         print("NATIVE-DEEP big-article stack={} KB".format(stack))
-        self.assertGreaterEqual(stack, 21032)
+        self.assertEqual(stack, SMALL_STACK_KIB)
         lines = (1048576 - 400) // 2
         for phase in ("post", "reopen"):
             owner = self.start(cfg, stack)
@@ -268,17 +273,6 @@ class DeepInputStackTests(unittest.TestCase):
                 c.close()
             finally:
                 self.stop(owner)
-        owner = self.start(cfg, stack // 3)
-        try:
-            c = Nntp(port)
-            reply = c.command("ARTICLE <deep-1@example.invalid>")
-            served = reply.startswith(b"220") and c.body()[1] == b".\r\n"
-        except OSError:
-            served = False
-        diagnostics = stop_and_diagnostics(owner, timeout=300)
-        print("NATIVE-DEEP big-article at {} KB served={} tail={!r}".format(
-            stack // 3, served, diagnostics[-160:]))
-        self.assertFalse(served and owner.returncode == 0)
 
     def test_a_long_history_reopens_and_replays_at_the_decided_stack(self):
         """2,000 articles; reopened from the checkpoint and by full replay

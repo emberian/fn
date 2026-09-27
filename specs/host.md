@@ -393,10 +393,10 @@ was refused at 1,536 MiB. The figure is the heap-figure heap, plus the
 image's own mappings outside the dynamic space (at most the core file), plus
 THREADS x (STACK + 4 MiB; measured 2.5 MiB on Linux, at most 3 on OpenBSD):
 THREADS the run's `max-connections`, the 16 control clients
-and 12 fixed threads; STACK 512 KiB plus 40 octets for each line the
-profile's largest article can have (half its octets, plus 1,024 header lines),
-from the measured 144 KiB plus 32 octets per line of the served path's
-per-line recursion. A total the machine cannot hold is refused by name
+and 12 fixed threads; STACK a constant 1,024 KiB, seven times the 142 KiB
+the node needs whatever the article since the served path's per-line
+recursions became loops (lane served-line-iterative, PRF-218; before, the
+need grew by 32 octets per line and this figure carried a per-line term). A total the machine cannot hold is refused by name
 before anything runs (`refused machine-cannot-hold-threads reservation=MB MB
 machine=M MB`, exit 1), and the launcher passes `--control-stack-size KBKB`
 with the heap figure. The probe prints `heap=MB MB profile=WORD machine=M MB
@@ -425,8 +425,8 @@ budget=MB MB within-budget=yes|no`; for a capacity-free request it is always
 within the machine the run judges
 (`fn-heap-init-decide-fits-the-budget-and-the-machine`); `no` names an
 operator's request the launcher's probe will refuse on this machine.
-Under 2 GiB the default mission (1 MiB articles) is refused by its thread
-stacks (60 x 21 MB) until the served path stops recursing per line.
+Under 2 GiB the default mission (1 MiB articles) inits on the small preset's
+capacity with its own fields (1,326 MB with 60 stacks of 1 MiB).
 
 ### The served reader path
 
