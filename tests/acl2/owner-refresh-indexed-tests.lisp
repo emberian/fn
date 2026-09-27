@@ -25,9 +25,13 @@
   (if (and (consp xs) (consp (cdr xs))) (cons (car xs) (ori-butlast (cdr xs))) nil))
 
 ; The owner after T, then C's events up to (not including) its :complete.
+(defun ori-run (o events fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-own-run (fn-own-step o '(:begin 1) fn-arena) events fn-arena))
+(bpr-lift ori-run 2)
 (defconst *ori-pre*
-  (fn-own-run (fn-own-step *ocr-t-first* '(:begin 1))
-              (ori-butlast (own-post-events *ocr-rc1*))))
+  (in-arena-ori-run *sr-arena* *ocr-t-first*
+                    (ori-butlast (own-post-events *ocr-rc1*))))
 (defconst *ori-s* (fn-sn-finish (fn-own-store *ori-pre*)))
 (defconst *ori-mid* (ori-with-store *ori-pre* *ori-s*))
 
