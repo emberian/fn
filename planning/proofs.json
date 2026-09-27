@@ -747,8 +747,7 @@
         "fn-rcon-store-event-encode-is-store-event-encode",
         "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
         "fn-rcon-sn-io-is-sn-io",
-        "fn-rcon-ocfg-io-is-ocfg-step",
-        "fn-store-prepare-interned-carried-is-prepare-interned"
+        "fn-rcon-ocfg-io-is-ocfg-step"
       ],
       "evidence": [
         "books/cbor.lisp",
@@ -846,7 +845,7 @@
         "books/store-prepare-carried.lisp",
         "tests/acl2/store-prepare-carried-tests.lisp"
       ],
-      "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open. OCL at open (2026-09-24): fn-orec-recover-installs-ocl-relation (books/owner-recover-ocl) proves, over the composition fn-owner-recover calls (host/owner-host.lisp:186 fn-cpr-replay, :191 fn-cpo-open-observed, :195-201 fn-ocfg-make of fn-own-configure of fn-own-start with fn-oag-post-config), that the installed owner satisfies fn-ocl-relation and fn-scar-view-indexedp under (natp max-conns) and the open's kind :ok, both checked by the host before it installs; the remaining host checks are implied. It is the first link of the carried served keystones stated under fn-ocl-relation (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation, fn-acar-own-outcome-is-reference-under-ocl-relation). Certified on persvati run-20260924T221249Z-f2d3, manifest certify-20260924T221303Z-1169743 (owner-recover-ocl 4.3 s, its tests 4.1 s). Representation, first boundary (2026-09-25): fn-rcon-record-p-is-record-p (books/records-concrete) equates the record recognizer that reads its strings in place (no octet list built: the octet-domain test is stringp, the bounds are length, the ASCII walk is by index) with fn-record-p, on every input with no hypothesis, both guard-verified at guard t; the eight twins of the dispatchers, the record pair, the binding test and the two projection steps are each equal to their reference with no hypothesis, and books/owner-commit-carried (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) and books/owner-prepare-carried (fn-owner-prepare installs fn-pcar-sbud-prepare) execute them. The logical model over octet lists is unchanged; the payload walk and the group-name grammar still convert (design-2026-09-25-representation.md ranks them next). Representation, second boundary (2026-09-25): fn-icar-intent-id-is-intent-id (books/owner-intent-carried) proves that the intent identity carried from take equals fn-own-feed-intent-id of the Message-ID and octets of the submission it is used for, under fn-icar-carryp (the carry's identity is the digest of the carry's own submission), which mentions no owner and holds for every carry fn-icar-carry-of builds and for nil; host/owner-host.lisp fn-owner-take writes that carry (the global's only writer, an A-HOST discipline), and fn-icar-submission-intent (fn-owner-submission-intent) and fn-icar-submission-resolution-records (fn-owner-submission-resolution) equal their owner.lisp references under it (fn-icar-submission-intent-is-reference, fn-icar-submission-resolution-records-is-reference). Four payload digests per POST become one; owner.lisp and the submission record are unchanged. Constant stack (large-article, 2026-09-25): fn-frame-split (books/frame-octets.lisp) executes as fn-frame-split-acc and fn-ag-append (books/acceptance-alloc.lisp) as fn-ag-append-exec, each a tail-recursive twin equal to the list definition on every argument (fn-frame-split-acc-is-split, fn-ag-append-exec-is-append, no hypothesis), both guard-verified; the host reaches them through fn-store-frame-store-decode (host/native/io.lisp:910 fnn-unframe, on store inspect and owner recovery) and fn-owner-chunk (the ARTICLE reply), which ran one control-stack frame per octet and exhausted the image's 64 MB stack on a 3 MiB article. The octet list stays the representation at these boundaries (boundaries 6 and 8 of the representation plan). Owner open from the checkpoint (2026-09-25, lane owner-checkpoint-open): fn-owner-recover now installs through fn-ock-recover-extended (host/owner-host.lisp fn-owner-recover-extended), and fn-ock-recover-installs-ocl-relation transfers the OCL premise through fn-owner-recover-from-checkpoint-equals-full-recover to both open paths. The replay fold fn-cpr-loop and its step fn-cpr-apply-event carry fn-cnode-statep in their guards; the executable path tests a one-event refusal by NIL (fn-cpr-apply-event-statep-iff-consp) instead of running the whole-node recognizer three times per event. Standalone POST prepare over the held row (2026-09-27, flip-L6-2): host/store-node-host.lisp fn-store-sn-prepare calls fn-store-prepare-interned-carried (books/store-prepare-carried.lisp), the intern followed by fn-pcar-spc-prepare, with no replay of the durable history; KEYSTONE fn-store-prepare-interned-carried-is-prepare-interned: under fn-snt-relation it equals books/store-intern.lisp fn-store-prepare-interned (both the store and the arena), by fn-pcar-spc-prepare-is-spc-prepare and fn-spc-prepare-equals-specification-under-relation. Teeth tests/acl2/store-prepare-carried-tests.lisp: a related reserved store (one article committed) stages and seals alike in both; a CORRUPTED stale-node store (fn-sn-statep, not fn-snt-relation) stages the duplicate in the carried entry while the entry refuses it. The remaining per-POST cost is fn-pcar-next-lower's walk to the last cons of the history (no record decoded)."
+      "progress_note": "The standalone native store wrapper calls fn-spc-prepare, and the shared native owner now calls fn-opc-prepare from fn-owner-prepare. The two registered equality keystones connect those exact host-called subjects to fn-sn-prepare and to the former configured-owner prepare event under the maintained store and owner relations. Observed recovery establishes the owner premise through fn-own-start and fn-own-configure; configured-owner steps and direct socket entries preserve it. The executable path retains candidate and pending binding checks while omitting appended-history replay and all relation/whole-state recognizers. Exact owner/configuration context and pending bytes are preserved. Full physical byte/effect correspondence, a saved-image native-owner gate for this revision, and platform qualification remain open. OCL at open (2026-09-24): fn-orec-recover-installs-ocl-relation (books/owner-recover-ocl) proves, over the composition fn-owner-recover calls (host/owner-host.lisp:186 fn-cpr-replay, :191 fn-cpo-open-observed, :195-201 fn-ocfg-make of fn-own-configure of fn-own-start with fn-oag-post-config), that the installed owner satisfies fn-ocl-relation and fn-scar-view-indexedp under (natp max-conns) and the open's kind :ok, both checked by the host before it installs; the remaining host checks are implied. It is the first link of the carried served keystones stated under fn-ocl-relation (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation, fn-acar-own-outcome-is-reference-under-ocl-relation). Certified on persvati run-20260924T221249Z-f2d3, manifest certify-20260924T221303Z-1169743 (owner-recover-ocl 4.3 s, its tests 4.1 s). Representation, first boundary (2026-09-25): fn-rcon-record-p-is-record-p (books/records-concrete) equates the record recognizer that reads its strings in place (no octet list built: the octet-domain test is stringp, the bounds are length, the ASCII walk is by index) with fn-record-p, on every input with no hypothesis, both guard-verified at guard t; the eight twins of the dispatchers, the record pair, the binding test and the two projection steps are each equal to their reference with no hypothesis, and books/owner-commit-carried (host/owner-host.lisp fn-owner-finish-submission calls fn-ccar-own-finish) and books/owner-prepare-carried (fn-owner-prepare installs fn-pcar-sbud-prepare) execute them. The logical model over octet lists is unchanged; the payload walk and the group-name grammar still convert (design-2026-09-25-representation.md ranks them next). Representation, second boundary (2026-09-25): fn-icar-intent-id-is-intent-id (books/owner-intent-carried) proves that the intent identity carried from take equals fn-own-feed-intent-id of the Message-ID and octets of the submission it is used for, under fn-icar-carryp (the carry's identity is the digest of the carry's own submission), which mentions no owner and holds for every carry fn-icar-carry-of builds and for nil; host/owner-host.lisp fn-owner-take writes that carry (the global's only writer, an A-HOST discipline), and fn-icar-submission-intent (fn-owner-submission-intent) and fn-icar-submission-resolution-records (fn-owner-submission-resolution) equal their owner.lisp references under it (fn-icar-submission-intent-is-reference, fn-icar-submission-resolution-records-is-reference). Four payload digests per POST become one; owner.lisp and the submission record are unchanged. Constant stack (large-article, 2026-09-25): fn-frame-split (books/frame-octets.lisp) executes as fn-frame-split-acc and fn-ag-append (books/acceptance-alloc.lisp) as fn-ag-append-exec, each a tail-recursive twin equal to the list definition on every argument (fn-frame-split-acc-is-split, fn-ag-append-exec-is-append, no hypothesis), both guard-verified; the host reaches them through fn-store-frame-store-decode (host/native/io.lisp:910 fnn-unframe, on store inspect and owner recovery) and fn-owner-chunk (the ARTICLE reply), which ran one control-stack frame per octet and exhausted the image's 64 MB stack on a 3 MiB article. The octet list stays the representation at these boundaries (boundaries 6 and 8 of the representation plan). Owner open from the checkpoint (2026-09-25, lane owner-checkpoint-open): fn-owner-recover now installs through fn-ock-recover-extended (host/owner-host.lisp fn-owner-recover-extended), and fn-ock-recover-installs-ocl-relation transfers the OCL premise through fn-owner-recover-from-checkpoint-equals-full-recover to both open paths. The replay fold fn-cpr-loop and its step fn-cpr-apply-event carry fn-cnode-statep in their guards; the executable path tests a one-event refusal by NIL (fn-cpr-apply-event-statep-iff-consp) instead of running the whole-node recognizer three times per event. Standalone POST prepare over the held row (2026-09-27, flip-L6-2): host/store-node-host.lisp fn-store-sn-prepare calls fn-store-prepare-interned-carried (books/store-prepare-carried.lisp), the intern followed by fn-pcar-spc-prepare, with no replay of the durable history; KEYSTONE fn-store-prepare-interned-carried-is-prepare-interned: under fn-snt-relation it equals books/store-intern.lisp fn-store-prepare-interned (both the store and the arena), by fn-pcar-spc-prepare-is-spc-prepare and fn-spc-prepare-equals-specification-under-relation. Teeth tests/acl2/store-prepare-carried-tests.lisp: a related reserved store (one article committed) stages and seals alike in both; a CORRUPTED stale-node store (fn-sn-statep, not fn-snt-relation) stages the duplicate in the carried entry while the entry refuses it. The host calls it as two steps (8665b74a8): fn-store-sn-prepare decides with fn-store-prepare-carried-next over the arena's count and answers (:seal OCTETS), and the host seals those octets with fn-arena-seal-list; KEYSTONE fn-store-prepare-interned-carried-is-next-then-seal: the two steps are the carried entry, both results. The split is what keeps the :program host entry free of ACL2's invariant-risk (an entry that updated the arena ran through its *1* body, and the guard check of fn-sn-statep cost 0.79 s and 1.21 GB per POST at N = 10,000 on hbox); measured after it: the prepare 2 ms and 262 KB at N = 10,000. The remaining per-POST walk is fn-pcar-next-lower's to the last cons of the history (no record decoded)."
     },
     {
       "id": "PRF-015",
@@ -1982,7 +1981,8 @@
         "fn-peer-ihave-of-a-held-message-id-is-435-and-no-article",
         "fn-peer-check-of-a-held-message-id-is-438-and-no-offer-outstanding",
         "fn-own-read-offers-against-the-live-node",
-        "fn-own-live-session-boundedp"
+        "fn-own-live-session-boundedp",
+        "fn-peer-full-store-is-a-retry-code"
       ]
     },
     {
@@ -3064,7 +3064,8 @@
       "progress_note": "The ACL2 local status codec, owner scope decision and native-control host test passed the scoped status/index run. The general accepted and nonaccepted kind-9 codec roundtrips and their isolating teeth certified in the selected hbox book/test roots at the exact new source bytes; these are proof-only changes to the executable codec. The earlier e160442f image passed unknown-consumer refusal, read-only status, advancing ACK and recovered status checks. The joined topic/index source has scoped certification but has not yet run on a matching saved image. The diagnostic does not assert application processing or discharge.",
       "events": [
         "fn-ncl-status-accepted-reply-roundtrip",
-        "fn-ncl-status-nonaccepted-reply-roundtrip"
+        "fn-ncl-status-nonaccepted-reply-roundtrip",
+        "fn-ncl-cli-after-retries-only-a-refused-register"
       ]
     },
     {
@@ -5162,7 +5163,8 @@
         "fn-nh-first-held-monotone",
         "fn-nh-pressedp-monotone",
         "fn-nh-live-report-is-the-store-report",
-        "fn-nh-fence-of-route"
+        "fn-nh-fence-of-route",
+        "fn-nh-deferring-peer-is-held"
       ]
     },
     {
@@ -5839,7 +5841,9 @@
         "fn-cvec-admit-forward-adds-one-debt",
         "fn-cvec-release-forward-removes-one-debt",
         "fn-cvec-release-never-raises-the-charge",
-        "fn-cvec-config-publication-keeps-the-release-generation"
+        "fn-cvec-config-publication-keeps-the-release-generation",
+        "fn-cvec-wire-record-is-no-article-row",
+        "fn-cvec-article-verdict-keeps-the-vector-for-a-held-row"
       ]
     },
     {
@@ -6747,7 +6751,8 @@
         "fn-cprt-next-generation-refuses-exactly-at-the-profile-capacity",
         "fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound",
         "fn-cvec-accepted-group-names-are-within-the-profile",
-        "fn-nop-init-plain-groups-are-within-the-profile"
+        "fn-nop-init-plain-groups-are-within-the-profile",
+        "fn-nop-mission-init-serves-control-cancel"
       ]
     },
     {
@@ -6787,7 +6792,9 @@
         "fn-cev-journal-holds-each-articles-record",
         "fn-cev-journal-records-are-withdrawals",
         "fn-cevg-parse-kind-is-a-kind",
-        "fn-nls-obligations-figures-are-the-retention-figures"
+        "fn-nls-obligations-figures-are-the-retention-figures",
+        "fn-nls-articles-left-is-zero-when-full",
+        "fn-nls-articles-left-is-at-most-the-transactions-left"
       ]
     },
     {
@@ -6834,7 +6841,11 @@
         "fn-scf-usage-carried-is-the-projection",
         "fn-sbud-record-octets-is-the-stored-octets",
         "fn-intern-events-extents-okp",
-        "fn-intern-events-budget-octets-are-the-stored-octets"
+        "fn-intern-events-budget-octets-are-the-stored-octets",
+        "fn-sn-io-keeps-the-stored-octets",
+        "fn-sn-finish-keeps-the-stored-octets",
+        "fn-store-prepare-interned-keeps-the-stored-octets",
+        "fn-sbud-prepare-keeps-the-stored-octets"
       ],
       "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the record octets count a retained row by what it STORES (fn-sbud-row-octets, books/store-budget.lisp): a held article row its facts' octets, a composite row its wire composite's encoding, any other row its encoding (fn-sbud-row-octets-of-wire-row). Before this the wire encoder alone counted every held row as 0 octets against the history bound. books/store-budget-stored.lisp: under fn-sbud-rows-extents-okp (each held row's facts octets are its handle's extent in the arena) fn-sbud-record-octets is fn-sbud-stored-octets, the sum of the stored payloads' lengths (fn-sbud-record-octets-is-the-stored-octets); the open's intern establishes the relation (fn-intern-events-extents-okp) and the composed statement is fn-intern-events-budget-octets-are-the-stored-octets. Teeth: tests/acl2/store-budget-stored-tests.lisp (reachable open of two records: 8 octets where the pre-flip count was 0; a corrupted held row whose facts claim 7 for an extent of 3). PRESERVATION (flip-L1-3): books/store-budget-stored-post.lisp carries the relation IN the store, over the retained rows and the staged candidate (fn-sbud-store-extents-okp), and every transition of the served POST keeps it: the owner's stage (host/owner-host.lisp fn-owner-prepare calls fn-pcar-sbud-prepare, current view P9, over the row fn-intern-row-at makes at the arena's count, sealing the payload when the store changed; the call is fn-sbud-prepare by fn-pcar-sbud-prepare-is-sbud-prepare, no hypothesis, so the keystone is fn-sbud-prepare-keeps-the-stored-octets, hypotheses fn-arena-p and the relation; no wire-record hypothesis, proved redundant), the standalone entry (fn-store-prepare-interned-keeps-the-stored-octets), the publication words (fn-sn-io-keeps-the-stored-octets: the directory barrier appends the candidate) and the finish (fn-sn-finish-keeps-the-stored-octets). No transition re-reads the arena; a reopen re-establishes the relation by the intern (fn-intern-events-extents-okp). Teeth: tests/acl2/store-budget-stored-post-tests.lisp (two POSTs from fn-sn-initial over a local arena, the relation at every step, the budget counting 2 then 7 stored octets; removals over a mis-paired arena). The owner witness stages the row (handle 1) through fn-sbud-prepare. The bridge fn-pcar-sbud-prepare-is-sbud-prepare lives in books/owner-prepare-carried.lisp, red on dev until flip-L6's carried prepare over held rows lands (fn-pcar-spc-prepare-is-spc-prepare, hbox certify-20260927T081243Z-1711233). The history bound H now bounds stored payload octets for held rows, not their wire record length (the record's metadata is not counted)."
     },
@@ -7572,9 +7583,13 @@
         "fn-heap-init-decide-fits-the-budget-and-the-machine",
         "fn-heap-init-decide-honors-the-operators-request",
         "fn-heap-init-decide-sized-init-is-held",
-        "fn-heap-init-decide-conservative-is-development-or-small",
         "fn-heap-init-decide-largest-takes-scale-when-it-fits",
-        "fn-heap-figure-octets-grows-with-history-and-record"
+        "fn-heap-figure-octets-grows-with-history-and-record",
+        "fn-heap-article-held-holds-the-article-record",
+        "fn-heap-article-held-meets-the-article-relations",
+        "fn-heap-init-decide-conservative-is-a-friend-rung",
+        "fn-heap-init-decide-conservative-holds-the-floor",
+        "fn-heap-init-decide-conservative-takes-the-top-rung-when-it-fits"
       ],
       "evidence": [
         "books/heap-figure.lisp",
@@ -8269,7 +8284,7 @@
         "fn-ccco-remember-all-keeps-sound",
         "fn-ccco-framed-link-fast-is-framed-link",
         "fn-ccco-octet-event-listp-is-octet-event-listp",
-        "fn-ccco-event-fields-are-the-dispatchers",
+        "fn-event-fields-of-wire-is-the-dispatchers",
         "fn-ccco-linkp-is-linkp",
         "fn-ccco-decode-link-is-decode-link",
         "fn-obi-load-is-cat-load",
@@ -8340,7 +8355,8 @@
         "fn-peer-tls-verification-sni-is-never-a-literal",
         "fn-peer-tls-select-named-default",
         "fn-peer-tls-select-is-a-check",
-        "fn-peer-host-name-is-not-an-ipv4-literal"
+        "fn-peer-host-name-is-not-an-ipv4-literal",
+        "fn-redeem-done-only-on-281-after-the-password"
       ]
     },
     {
@@ -8361,7 +8377,6 @@
         "fn-smid-payload-decode-of-payload",
         "fn-smid-mountinfo-step-preserves-best-okp",
         "fn-smid-recorded-store-opens-iff-same-filesystem",
-        "fn-smid-moved-mount-point-is-refused-by-name",
         "fn-smid-absent-record-is-refused",
         "fn-smid-open-verdict-opens-only-on-a-match",
         "fn-smid-start-refused-iff-required-and-unsafe",
@@ -8371,7 +8386,12 @@
         "fn-smid-open-decision-is-the-verdict",
         "fn-smid-empty-root-is-refused",
         "fn-smid-unrecorded-store-never-starts",
-        "fn-smid-refusal-text-is-nil-exactly-for-an-open-decision"
+        "fn-smid-refusal-text-is-nil-exactly-for-an-open-decision",
+        "fn-smid-same-fsid-view-opens",
+        "fn-smid-other-filesystem-is-refused-by-name",
+        "fn-smid-other-fsid-is-refused-by-name",
+        "fn-smid-unreported-fsid-moved-mount-is-refused-by-name",
+        "fn-smid-rebind-outside-opens-inside"
       ],
       "evidence": [
         "books/store-mount-identity.lisp",
@@ -8556,7 +8576,11 @@
         "fn-cbind-poll-is-the-consumer-poll-or-a-refusal",
         "fn-cbind-ack-is-the-consumer-ack-or-a-refusal",
         "fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll",
-        "fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack"
+        "fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack",
+        "fn-cbind-poll-over-delivers-only-readable-events",
+        "fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal",
+        "fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll",
+        "fn-cbind-poll-over-is-poll-unless-a-held-row"
       ]
     },
     {
@@ -9108,7 +9132,9 @@
         "fn-cwait-wait-request-roundtrip",
         "fn-cwait-bound-wait-request-roundtrip",
         "fn-cwait-request-decode-of-another-code-is-the-consumer-decode",
-        "fn-cwait-cli-plan-of-another-command-is-the-consumer-plan"
+        "fn-cwait-cli-plan-of-another-command-is-the-consumer-plan",
+        "fn-cwait-step-over-is-the-poll-or-a-sleep-on-an-empty-page",
+        "fn-cwait-step-over-is-step-unless-a-held-row"
       ]
     },
     {
@@ -9154,7 +9180,7 @@
         "fn-rii-node-prepare-is-node-prepare",
         "fn-rii-acceptedp-is-acceptedp",
         "fn-rii-admissiblep-is-admissiblep",
-        "fn-rii-event-fields-are-the-dispatchers",
+        "fn-event-fields-of-rows-is-the-dispatchers",
         "fn-rii-sf-record-listp-is-sf-record-listp",
         "fn-rii-sco-finalize-from-is-sco-finalize-from",
         "fn-sbud-count-is-used",
