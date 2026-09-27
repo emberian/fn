@@ -29,12 +29,14 @@ tar -xzf fn-6.7.N-linux-x86_64.tar.gz
 sh fn/install.sh
 ```
 
-As root, on OpenBSD:
+As root, on OpenBSD, unpack under `/usr/local` (not `/tmp` or `/root`:
+the installer runs the unpacked copy, and there it halts with
+`RWX mmap not supported`):
 
 ```sh
 sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz
-tar -xzf fn-6.7.N-openbsd-amd64.tar.gz
-sh fn/install.sh
+mkdir -p /usr/local/src && tar -xzf fn-6.7.N-openbsd-amd64.tar.gz -C /usr/local/src
+sh /usr/local/src/fn/install.sh
 ```
 
 You will see the version, like `fn 6.7.N (REV)`. The installer:
@@ -54,6 +56,11 @@ If it goes wrong:
   running fn under your own account).
 - **OpenBSD says `Cannot allocate memory` at start.** fn must live on a file
   system mounted `wxallowed`. `/usr/local` is, by default.
+- **OpenBSD: the start fails with `Socket error in "bind": 13 (Permission
+  denied)` in `/var/log/daemon`.** The service runs as `_fn`, without
+  privileges, so it cannot listen below port 1024. Give `mission` a `--port`
+  of 1024 or more (and a `tls_port` of 1024 or more), or send 119 and 563 to
+  it with `pf`.
 
 `/opt/fn/bin/fn --version` prints the version at any time. `fn` alone lists
 the commands, and `fn operator CONFIG help VERB` explains one command.
@@ -63,7 +70,7 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
 1. Open a shell as the service account, in the node folder:
 
    ```sh
-   sudo -u fn sh -c 'cd /var/lib/fn && PATH=/opt/fn/bin:$PATH exec sh'   # OpenBSD: doas -u _fn ...
+   sudo -u fn sh -c 'cd /var/lib/fn && PATH=/opt/fn/bin:$PATH exec sh'   # OpenBSD: su -s /bin/sh _fn (doas is off by default)
    ```
 
 2. Write the settings file. Put your server's own address after `--host`
@@ -148,11 +155,13 @@ store folder stays where it is. See
 the old store do you move the data through an export:
 
 1. Stop the service and export the store, with the old release still
-   installed:
+   installed. The export runs as root, because the service account cannot
+   make a folder in `/var/lib`; the `chown` lets the service account read it:
 
    ```sh
    systemctl stop fn                                                    # OpenBSD: rcctl stop fn
-   fn operator /var/lib/fn/fn.toml store export /var/lib/fn-export
+   /opt/fn/bin/fn operator /var/lib/fn/fn.toml store export /var/lib/fn-export
+   chown -R fn:fn /var/lib/fn-export                                    # OpenBSD: _fn:_fn
    mv /var/lib/fn /var/lib/fn.old
    rm -rf /opt/fn
    sh fn/install.sh
@@ -165,11 +174,15 @@ the old store do you move the data through an export:
    fn operator /var/lib/fn/fn.toml store import /var/lib/fn-export
    ```
 
-3. Copy the node's secret keys back, then start the service. The node
-   serves the same articles, numbers and Message-IDs:
+3. Copy the node's secret keys and the logins back, then start the
+   service. Without the keys the node refuses to start
+   (`node secret .../store/keys/node-secret.key is missing`); without
+   `auth.toml` every login is gone. The node then serves the same articles,
+   numbers, Message-IDs and logins:
 
    ```sh
-   cp -Rp /var/lib/fn.old/store/keys /var/lib/fn/store/keys
+   cp -Rp /var/lib/fn.old/store/keys /var/lib/fn.old/store/auth.toml /var/lib/fn/store/
+   cp -Rp /var/lib/fn.old/keys /var/lib/fn/                             # only if you ran peer keygen
    ```
 
    The export does not carry them (see

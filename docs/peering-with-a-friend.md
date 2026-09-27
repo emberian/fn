@@ -30,11 +30,13 @@ so it never overwrites keys.
 ## 2. Invite, accept, confirm
 
 1. **You** write an invitation. The words are: your friend's peer name, the
-   groups you offer, your friend's address, port and node name, your keys
-   folder, the file to write, and your own address and port:
+   groups you offer, your friend's address and port, YOUR OWN node name (the
+   one you set with `policy set path-identity`: your friend's node files you
+   under it), your keys folder, the file to write, and your own address and
+   port. An address may be a host name or an IPv4 address:
 
    ```sh
-   fn operator /var/lib/fn/fn.toml peer invite friend 'local.*' 198.51.100.9 119 friend.example.net /var/lib/fn/keys /var/lib/fn/invitation-for-friend 203.0.113.7 119
+   fn operator /var/lib/fn/fn.toml peer invite friend 'local.*' 198.51.100.9 119 news.example.org /var/lib/fn/keys /var/lib/fn/invitation-for-friend 203.0.113.7 119
    ```
 
 2. Send the invitation file to your friend. It holds no secrets.

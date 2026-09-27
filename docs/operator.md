@@ -626,6 +626,14 @@ Limits: `--max-transactions`, `--max-history-octets`,
 set. fn refuses limits the machine's memory cannot hold, with
 `fn: refused machine-cannot-hold-profile`.
 
+`init` with no `--profile` and no limit (and every `init` under a
+`mission`) sizes small: the **development** set when the machine holds it,
+else **small**. Development holds 128 transactions: after about 125
+articles every post is refused with `441 posting failed; the store has no
+capacity for this article`. A node for people needs its limits named:
+remove the `mission` line from `fn.toml` and `init` with the limits above,
+or raise them later with `store export` and `store import --max-... N`.
+
 ### Other commands
 
 - `fn operator CONFIG help VERB`: explains any command.
