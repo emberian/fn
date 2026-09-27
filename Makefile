@@ -1446,6 +1446,11 @@ check:
 # function call (batch AW: every format-9 restart faulted; lane ops-fixes).
 	@$(CHECK_STEP) $(PYTHON) tools/host_macro_order_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_macro_order_check
+# The raw files loaded in build.lisp's order into one bare ACL2 with SBCL's
+# warnings on (seconds, no image build): errors, arity, macro order and names
+# nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --load
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_load.ClassifyTests
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
