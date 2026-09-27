@@ -5576,15 +5576,15 @@ record in order, and the active segment's log."
                 (values (apply #'append (nreverse records)) log)))))))
     (fnn-fault "the log's open plan named no segment")))
 
-(defun fnn-recover-log-from-log-checkpoint (store config-records suffix)
+(defun fnn-recover-log-from-log-checkpoint (store config-records suffix s)
   "The open from a checkpoint whose F row names the log's first suffix
 segment: SUFFIX is the scan from there (T8: with the checkpoint's records it
 is the whole history), replayed over the checkpoint
 (fn-store-sn-recover-from-checkpoint).  The covered segments may be gone, so
 there is no full replay to fall back to: a checkpoint the open cannot use is
 refused by name."
-  (multiple-value-bind (status s) (fnn-state-checkpoint-load store)
-    (declare (ignore status))
+  (progn
+    ;; S: the loaded checkpoint's (fnn-recover-log loaded it once, first).
     (unless (eq (fnn-recover-suffix-rows store suffix config-records) :recovering)
       (fnn-core-state 'fn-store-sco-clear)
       (fnn-bridge-reset)
@@ -5614,7 +5614,6 @@ an interrupted drop."
   (let ((records nil) (drop nil))
     (handler-case
         (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
-          (declare (ignore sequence))
           (let* ((position (and (eq status :ok) (fnn-core-state 'fn-store-sco-log-position)))
                  (log-position (first position))
                  (floor (if log-position (fnn-nat (second position)) 0))
@@ -5645,7 +5644,8 @@ an interrupted drop."
               (let ((config-records (fnn-config-records store)))
                 (setq records
                       (if log-position
-                          (fnn-recover-log-from-log-checkpoint store config-records scanned)
+                          (fnn-recover-log-from-log-checkpoint store config-records scanned
+                                                               sequence)
                         (or (fnn-recover-log-from-state-checkpoint store config-records scanned)
                             (fnn-recover-log-replay store scanned config-records)))))))
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
