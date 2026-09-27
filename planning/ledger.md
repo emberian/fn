@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1266 |
-| Certification roots in the Makefile | 1219 |
-| Books inside the root closure | 1255 |
-| `defthm` and `defthmd` events | 18765 |
-| `defun` events | 12959 |
+| Books read | 1270 |
+| Certification roots in the Makefile | 1223 |
+| Books inside the root closure | 1259 |
+| `defthm` and `defthmd` events | 18846 |
+| `defun` events | 12969 |
 | Functions with verified guards | 2480 |
-| Functions declared `:verify-guards nil` and never verified | 1519 |
+| Functions declared `:verify-guards nil` and never verified | 1524 |
 | Functions left at the default with an explicit guard | 7223 |
-| Functions left at the default with no guard | 1737 |
-| `assert-event` checks | 18555 |
+| Functions left at the default with no guard | 1742 |
+| `assert-event` checks | 18577 |
 | `must-fail` checks | 2135 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 94 |
-| Theorems flagged SUSPECT by shape | 219 |
+| Theorems flagged SUSPECT by shape | 220 |
 | Export-hygiene warnings | 227 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 229 |
-| Include-hygiene warnings | 1357 |
+| Include-hygiene warnings | 1360 |
 | Host-names warnings | 1384 |
 | Hand-written-record warnings | 18 |
 
@@ -551,7 +551,7 @@ that `make certify` requests.
 | `books/owner-prepare-carried.lisp` | root | 18 | 8 | 5/0/3/0 | 0 | 0 | 0 |
 | `books/owner-prepare-correspondence.lisp` | root | 19 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/owner-prepare-served-ocl.lisp` | root | 50 | 1 | 0/0/1/0 | 0 | 0 | 0 |
-| `books/owner-prepare-served.lisp` | root | 4 | 7 | 0/1/6/0 | 0 | 0 | 0 |
+| `books/owner-prepare-served.lisp` | root | 3 | 6 | 0/0/6/0 | 0 | 0 | 0 |
 | `books/owner-reader-read.lisp` | root | 24 | 13 | 0/0/13/0 | 0 | 0 | 1 |
 | `books/owner-reader-view.lisp` | root | 18 | 18 | 0/0/18/0 | 0 | 0 | 0 |
 | `books/owner-recover-ocl.lisp` | root | 13 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -645,6 +645,9 @@ that `make certify` requests.
 | `books/scheduler.lisp` | root | 64 | 104 | 27/0/77/0 | 0 | 0 | 0 |
 | `books/served-carried.lisp` | root | 18 | 13 | 1/0/12/0 | 0 | 0 | 0 |
 | `books/served-catalog-chain.lisp` | root | 49 | 27 | 14/1/6/6 | 0 | 0 | 3 |
+| `books/served-catalog-join-refresh.lisp` | root | 20 | 1 | 0/1/0/0 | 0 | 0 | 0 |
+| `books/served-catalog-join-step.lisp` | root | 32 | 2 | 0/1/0/1 | 0 | 0 | 0 |
+| `books/served-catalog-join.lisp` | root | 23 | 2 | 0/1/0/1 | 0 | 0 | 0 |
 | `books/served-catalog-owner.lisp` | root | 79 | 16 | 0/2/11/3 | 0 | 0 | 1 |
 | `books/served-catalog.lisp` | root | 69 | 29 | 9/0/19/1 | 0 | 0 | 3 |
 | `books/served-implicit-tls.lisp` | root | 5 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -1221,6 +1224,7 @@ that `make certify` requests.
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-catalog-chain-tests.lisp` | root | 5 | 5 | 0/2/0/3 | 4 | 5 | 0 |
+| `tests/acl2/served-catalog-join-tests.lisp` | root | 7 | 6 | 0/3/0/3 | 22 | 0 | 1 |
 | `tests/acl2/served-catalog-owner-tests.lisp` | root | 0 | 21 | 0/5/0/16 | 42 | 2 | 0 |
 | `tests/acl2/served-catalog-scan-tests.lisp` | root | 0 | 10 | 0/6/0/4 | 9 | 0 | 0 |
 | `tests/acl2/served-catalog-tests.lisp` | root | 17 | 2 | 0/0/0/2 | 0 | 8 | 0 |
@@ -1526,7 +1530,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-record-result-okp-is-parse-okp` | `books/records-canonicality.lisp` | 750 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-retain-admission-refusal-is-no-op` | `books/retention.lisp` | 345 | branch-of-definition: the hypothesis negates a branch test of fn-retain-admit and the conclusion is that branch's value |
 | `fn-retain-wrong-evidence-does-not-release` | `books/retention.lisp` | 385 | branch-of-definition: the hypothesis negates a branch test of fn-retain-release and the conclusion is that branch's value |
-| `fn-sca-composite-is-not-held` | `books/served-catalog-owner.lisp` | 582 | instance-corollary: the statement is fn-hstxa-is-not-held instantiated, discharging nothing |
+| `fn-sca-composite-is-not-held` | `books/served-catalog-owner.lisp` | 591 | instance-corollary: the statement is fn-hstxa-is-not-held instantiated, discharging nothing |
 | `fn-scat-built-listgroup-is-fold` | `books/served-catalog.lisp` | 1264 | instance-corollary: the statement is fn-gidx-listgroup-command-of-build instantiated, discharging nothing |
 | `fn-scat-built-trie-corresponds` | `books/served-catalog.lisp` | 1253 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-scat-pin-trie-is-built` | `books/served-catalog.lisp` | 1246 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-midx-correspondencep |
@@ -1579,5 +1583,6 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-wscan-feed-byte-ordinary` | `books/wire-scan.lisp` | 340 | branch-of-definition: the hypothesis is a branch test of fn-wire-feed-byte and the conclusion is that branch's value |
 | `least-of-atom` | `books/bp-route.lisp` | 265 | branch-of-definition: the hypothesis is a branch test of fn-bprt-least and the conclusion is that branch's value |
 | `list-octets-of-atom` | `books/native-admin-peer-budget.lisp` | 241 | branch-of-definition: the hypothesis negates a branch test of fn-native-admin-peer-list-octets and the conclusion is that branch's value |
+| `scjt-sca-join-is-sca-join` | `tests/acl2/served-catalog-join-tests.lisp` | 92 | reflexive-conclusion: a conjunct is (equal X X) |
 | `srst-unframe-refuses-a-wrong-trailer` | `tests/acl2/store-recover-stream-tests.lisp` | 233 | branch-of-definition: the hypothesis is a branch test of fn-srs-unframe and the conclusion is that branch's value |
 | `store-event-decode-of-a-record-octets` | `books/store-reclaim-pack.lisp` | 176 | branch-of-definition: the hypothesis is a branch test of fn-store-event-decode-exact and the conclusion is that branch's value |
