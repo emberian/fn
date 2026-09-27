@@ -139,13 +139,13 @@
   :hints (("Goal" :induct (len xs)
            :in-theory (e/d (fn-bs-inode-list-knownp) (fn-bs-fsync-dir))))))
 (defthm fn-bs-k0-staging-fsync-error-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (not (equal outcome :ok))
                 (fn-bs-crash-choicesp (cdr outcome)
                                       (fn-bs-ops-for-dir (fn-bs-pending b) :staging)
                                       (fn-bs-unit b)))
-           (fn-bs-store-relation (mv-nth 1 (fn-bs-fsync-dir b :staging outcome)) k))
+           (fn-bs-store-relation (mv-nth 1 (fn-bs-fsync-dir b :staging outcome)) k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0e-staging-error-projections (name *fn-bs-scan-config-name*))
@@ -160,7 +160,7 @@
                            (fn-bs-durable fn-bs-durable-names fn-bs-statep fn-bs-fsync-dir
                             fn-bs-durable-records fn-bs-durable-frontier fn-bs-durable-entry
                             fn-bs-durable-content fn-bs-authority-inode-list fn-bs-record-of
-                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-sf-statep
+                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-sf-statep
                             fn-bs-contiguous-namesp fn-bs-replay-visiblep fn-bs-fsync-dir-preserves-statep
                             fn-bs-all-fencedp fn-bs-inode-list-knownp fn-bs-fencedp
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))

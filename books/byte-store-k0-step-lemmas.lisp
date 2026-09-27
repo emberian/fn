@@ -28,11 +28,11 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :in-theory (e/d (fn-bs-write) (fn-bs-take fn-cbor-octet-listp)))))
 (defthm fn-bs-k0s-write-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (fn-cbor-octet-listp octets)
                 (not (member-equal ino (fn-bs-authority-inode-list b))))
-           (fn-bs-store-relation (mv-nth 1 (fn-bs-write b ino 0 octets outcome)) k))
+           (fn-bs-store-relation (mv-nth 1 (fn-bs-write b ino 0 octets outcome)) k arena))
   :hints (("Goal" :use (fn-bs-k0s-write-outcome-is-an-ok-write
                         (:instance fn-bs-k0-staging-write-preserves-relation
                          (octets (if (equal outcome :ok) octets (fn-bs-take (nfix (cdr outcome)) octets)))))
@@ -126,17 +126,17 @@
            :in-theory (e/d (fn-bs-k0s-drop-writes) (fn-bs-statep fn-bs-durable-records fn-bs-durable-frontier
                                                     fn-bs-durable-content fn-bs-durable-entry)))))
 (defthm fn-bs-k0s-relation-facts
-  (implies (fn-bs-store-relation b k)
+  (implies (fn-bs-store-relation b k arena)
            (and (fn-bs-statep b) (fn-sf-statep k)
                 (fn-bs-authority-knownp b) (fn-bs-authority-fencedp b)))
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn-bs-store-relation))))
 (defthm fn-bs-k0s-drop-writes-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (not (fn-bs-ops-for-dir (fn-bs-pending b) :root))
                 (not (fn-bs-ops-for-dir (fn-bs-pending b) :transactions)))
-           (fn-bs-store-relation (fn-bs-k0s-drop-writes b x) k))
+           (fn-bs-store-relation (fn-bs-k0s-drop-writes b x) k arena))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0-quiet-projection-transports-relation
                   (bs b) (file (fn-bs-k0s-drop-writes b x)))
@@ -174,7 +174,7 @@
                            (fn-bs-apply-ops fn-bs-apply-writes fn-bs-crash-select fn-bs-ops-for-ino)))
           (and stable-under-simplificationp '(:expand ((:free (i) (fn-bs-apply-writes i nil)) (:free (d) (fn-bs-apply-entries d nil)))))))
 (defthm fn-bs-k0s-fsync-file-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (natp x)
                 (not (member-equal x (fn-bs-authority-inode-list b)))
@@ -182,7 +182,7 @@
                 (not (fn-bs-ops-for-dir (fn-bs-pending b) :transactions))
                 (or (equal outcome :ok)
                     (fn-bs-crash-choicesp (cdr outcome) (fn-bs-ops-for-ino (fn-bs-pending b) x) (fn-bs-unit b))))
-           (fn-bs-store-relation (mv-nth 1 (fn-bs-fsync-file b x outcome)) k))
+           (fn-bs-store-relation (mv-nth 1 (fn-bs-fsync-file b x outcome)) k arena))
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0s-fsync-file-shape
                  fn-bs-k0s-relation-facts
@@ -198,19 +198,19 @@
 
 ; Create, unlink and rename, every outcome.
 (defthm fn-bs-k0s-create-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (fn-bs-namep stage))
-           (fn-bs-store-relation (mv-nth 1 (fn-bs-create b :staging stage outcome)) k))
+           (fn-bs-store-relation (mv-nth 1 (fn-bs-create b :staging stage outcome)) k arena))
   :hints (("Goal" :cases ((fn-bs-lookup b :staging stage) (equal outcome :ok))
            :use (fn-bs-k0-staging-create-preserves-relation)
            :in-theory (e/d (fn-bs-create) (fn-bs-store-relation fn-bs-lookup)))))
 (defthm fn-bs-k0s-unlink-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (not (equal dir :root))
                 (not (equal dir :transactions)))
-           (fn-bs-store-relation (mv-nth 1 (fn-bs-unlink b dir name outcome)) k))
+           (fn-bs-store-relation (mv-nth 1 (fn-bs-unlink b dir name outcome)) k arena))
   :hints (("Goal" :use (fn-bs-k0-staging-unlink-preserves-relation)
            :in-theory (e/d (fn-bs-unlink) (fn-bs-store-relation fn-bs-lookup)))))
 ; A pending root rename onto a name other than the allocation frontier (the
@@ -227,22 +227,22 @@
   (declare (xargs :guard t :verify-guards nil))
   (fn-bs-k0m-with-root-entry (fn-bs-root-rename-dropped bs) (fn-bs-k0s-root-name bs)
                              (fn-bs-k0s-root-target bs)))
-(defun fn-bs-k0s-root-rename-pendingp (bs ks)
+(defun fn-bs-k0s-root-rename-pendingp (bs ks arena)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-bs-k0m-has-root-rename (fn-bs-pending bs))
        (fn-bs-k0m-root-rename-onlyp (fn-bs-pending bs) (fn-bs-k0s-root-name bs) (fn-bs-k0s-root-target bs))
        (consp (assoc-equal :root (fn-bs-dirs bs)))
-       (fn-bs-store-relation (fn-bs-root-rename-dropped bs) ks)
-       (fn-bs-store-relation (fn-bs-k0s-root-rename-landed bs) ks)))
-(defun fn-bs-k0-coveredp (bs ks)
+       (fn-bs-store-relation (fn-bs-root-rename-dropped bs) ks arena)
+       (fn-bs-store-relation (fn-bs-k0s-root-rename-landed bs) ks arena)))
+(defun fn-bs-k0-coveredp (bs ks arena)
   (declare (xargs :guard t :verify-guards nil))
-  (or (fn-bs-store-relation bs ks) (fn-bs-k0s-root-rename-pendingp bs ks)))
+  (or (fn-bs-store-relation bs ks arena) (fn-bs-k0s-root-rename-pendingp bs ks arena)))
 (defthm fn-bs-k0-covered-crash-image-is-a-related-image
-  (implies (and (fn-bs-k0-coveredp bs ks) (fn-bs-crash-imagep bs image))
-           (or (fn-bs-store-relation bs ks)
-               (and (fn-bs-store-relation (fn-bs-root-rename-dropped bs) ks)
+  (implies (and (fn-bs-k0-coveredp bs ks arena) (fn-bs-crash-imagep bs image))
+           (or (fn-bs-store-relation bs ks arena)
+               (and (fn-bs-store-relation (fn-bs-root-rename-dropped bs) ks arena)
                     (fn-bs-crash-imagep (fn-bs-root-rename-dropped bs) image))
-               (and (fn-bs-store-relation (fn-bs-k0s-root-rename-landed bs) ks)
+               (and (fn-bs-store-relation (fn-bs-k0s-root-rename-landed bs) ks arena)
                     (fn-bs-crash-imagep (fn-bs-k0s-root-rename-landed bs) image))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-bs-k0m-root-rename-crash-is-a-resolution-crash
@@ -286,14 +286,14 @@
   (implies (fn-bs-inode-list-knownp b l) (fn-bs-inode-list-knownp b (cdr l)))
   :hints (("Goal" :in-theory (enable fn-bs-inode-list-knownp))))
 (defthm fn-bs-k0s-with-config-entry-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (fn-bs-inop ino)
                 (fn-bs-fencedp b ino)
                 (consp (assoc-equal ino (fn-bs-inodes b)))
                 (fn-bs-config-okp (fn-bs-durable-content b ino))
                 (fn-bs-statep (fn-bs-k0m-with-root-entry b *fn-bs-scan-config-name* ino)))
-           (fn-bs-store-relation (fn-bs-k0m-with-root-entry b *fn-bs-scan-config-name* ino) k))
+           (fn-bs-store-relation (fn-bs-k0m-with-root-entry b *fn-bs-scan-config-name* ino) k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :expand ((fn-bs-all-fencedp b (cons ino (cdr (fn-bs-authority-inode-list b))))
@@ -308,7 +308,7 @@
                             fn-bs-k0s-all-fencedp-cdr fn-bs-k0s-knownp-cdr fn-bs-k0s-with-config-entry-facts)
                            (fn-bs-durable fn-bs-durable-names fn-bs-statep fn-bs-k0m-with-root-entry
                             fn-bs-durable-records fn-bs-durable-content fn-bs-record-of fn-bs-durable-entry
-                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-sf-statep fn-bs-authority-inode-list
+                            fn-bs-replay-matches-scan fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-sf-statep fn-bs-authority-inode-list
                             fn-bs-contiguous-namesp fn-bs-replay-visiblep fn-bs-fencedp
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
 ; The rename's precondition on its target name: not the frontier (that rename
@@ -325,11 +325,11 @@
                 (consp (assoc-equal ino (fn-bs-inodes bs)))
                 (fn-bs-config-okp (fn-bs-durable-content bs ino))))))
 (defthm fn-bs-k0s-root-rename-landed-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (fn-bs-k0s-root-rename-targetp b name ino)
                 (fn-bs-statep (fn-bs-k0m-with-root-entry b name ino)))
-           (fn-bs-store-relation (fn-bs-k0m-with-root-entry b name ino) k))
+           (fn-bs-store-relation (fn-bs-k0m-with-root-entry b name ino) k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t :cases ((equal name *fn-bs-scan-config-name*))
            :use (fn-bs-k0m-with-root-entry-preserves-relation
@@ -365,11 +365,11 @@
                                   fn-bs-k0m-root-rename-onlyp-of-append fn-bs-k0m-root-quiet-is-rename-only)
                                  (fn-bs-lookup))))))
 (defthm fn-bs-k0s-root-rename-ok-pending
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (not (fn-bs-ops-for-dir (fn-bs-pending b) :root))
                 (fn-bs-k0s-root-rename-targetp b name (fn-bs-lookup b :staging stage)))
-           (fn-bs-k0s-root-rename-pendingp (mv-nth 1 (fn-bs-rename b :staging stage :root name :ok)) k))
+           (fn-bs-k0s-root-rename-pendingp (mv-nth 1 (fn-bs-rename b :staging stage :root name :ok)) k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0s-root-rename-dropped-is-unlink)
@@ -389,11 +389,11 @@
            :in-theory '(fn-bs-k0s-root-rename-pendingp fn-bs-k0s-root-rename-landed fn-bs-k0s-root-rename-targetp
                         fn-bs-namep fn-bs-inop natp))))
 (defthm fn-bs-k0s-root-rename-covered
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (not (fn-bs-ops-for-dir (fn-bs-pending b) :root))
                 (fn-bs-k0s-root-rename-targetp b name (fn-bs-lookup b :staging stage)))
-           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-rename b :staging stage :root name outcome)) k))
+           (fn-bs-k0-coveredp (mv-nth 1 (fn-bs-rename b :staging stage :root name outcome)) k arena))
   :hints (("Goal" :do-not-induct t
            :cases ((or (equal outcome :ok) (and (consp outcome) (equal (cdr outcome) :issued))))
            :use (fn-bs-k0s-root-rename-ok-pending
@@ -402,7 +402,7 @@
            :in-theory '(fn-bs-k0-coveredp))))
 (defthm fn-bs-k0s-frontier-rename-preserves-relation
   (let ((ino (fn-bs-lookup b :staging stage)))
-    (implies (and (fn-bs-store-relation b k)
+    (implies (and (fn-bs-store-relation b k arena)
                   (not (fn-bs-replay-visiblep k))
                   (not (fn-bs-ops-for-dir (fn-bs-pending b) :root))
                   (not (fn-bs-ops-for-dir (fn-bs-pending b) :transactions))
@@ -415,7 +415,7 @@
                   (equal (fn-bs-frontier-decode (fn-bs-durable-content b ino)) (fn-sf-frontier-candidate k))
                   (equal (fn-bs-durable-frontier b) (fn-sf-frontier k))
                   (equal (fn-bs-durable-records b) (fn-sf-records k)))
-             (fn-bs-store-relation (mv-nth 1 (fn-bs-rename b :staging stage :root *fn-bs-frontier-name* outcome)) k)))
+             (fn-bs-store-relation (mv-nth 1 (fn-bs-rename b :staging stage :root *fn-bs-frontier-name* outcome)) k arena)))
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0s-relation-facts
                  (:instance fn-bs-k0-add-pending-frontier-rename-transports-relation
@@ -553,7 +553,7 @@
          (if (member-equal dir '(:root :transactions)) (list ino) nil))
   :hints (("Goal" :in-theory (enable fn-bs-pending-entry-targets))))
 (defthm fn-bs-k0s-add-pending-transaction-link-preserves-relation
-  (implies (and (fn-bs-store-relation b k)
+  (implies (and (fn-bs-store-relation b k arena)
                 (not (fn-bs-replay-visiblep k))
                 (not (fn-bs-ops-for-dir (fn-bs-pending b) :transactions))
                 (fn-bs-inop ino)
@@ -567,7 +567,7 @@
             (fn-bs-make (fn-bs-unit b) (fn-bs-inodes b) (fn-bs-dirs b)
                         (append (fn-bs-pending b) (list (list :set-entry :transactions name ino)))
                         (fn-bs-next-ino b))
-            k))
+            k arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-unfolds (bs b) (ks k))
@@ -579,14 +579,14 @@
                             fn-bs-k0s-entry-targets-of-append fn-bs-k0s-durable-ignores-appended-pending fn-bs-k0s-all-fencedp-nil fn-bs-k0s-knownp-nil fn-bs-k0s-all-fencedp-cons fn-bs-k0s-knownp-cons fn-bs-k0s-knownp-appended-pending fn-bs-k0s-fencedp-appended-entry fn-bs-k0s-make-of-parts fn-bs-k0s-entry-targets-of-one-set fn-bs-statep fn-bs-shapep
                             fn-bs-op-listp-of-append fn-bs-writes-knownp fn-bs-writes-nonemptyp fn-bs-opp
                             fn-bs-op-listp fn-bs-entry-valuep fn-bs-namep)
-                           (fn-bs-k0s-knownp-ignores-pending fn-bs-read-records fn-bs-record-of fn-sf-statep fn-bs-replay-visiblep fn-sf-crash-imagep
+                           (fn-bs-k0s-knownp-ignores-pending fn-bs-read-records fn-bs-record-of fn-sf-statep fn-bs-replay-visiblep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                             fn-bs-contiguous-namesp fn-bs-inode-list-knownp fn-bs-all-fencedp
                             fn-bs-durable fn-bs-durable-entry fn-bs-durable-names fn-bs-durable-records
                             fn-bs-durable-frontier fn-bs-durable-content
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
 (defthm fn-bs-k0s-link-preserves-relation
   (let ((ino (fn-bs-lookup b :staging stage)))
-    (implies (and (fn-bs-store-relation b k)
+    (implies (and (fn-bs-store-relation b k arena)
                   (not (fn-bs-replay-visiblep k))
                   (not (fn-bs-ops-for-dir (fn-bs-pending b) :transactions))
                   (fn-bs-fencedp b ino)
@@ -595,7 +595,7 @@
                   (fn-sf-record-present-visiblep k)
                   (equal (fn-bs-durable-records b) (fn-sf-records k))
                   (equal (fn-bs-record-of (fn-bs-durable b) ino) (fn-sf-record-candidate k)))
-             (fn-bs-store-relation (mv-nth 1 (fn-bs-link b :staging stage :transactions name outcome)) k)))
+             (fn-bs-store-relation (mv-nth 1 (fn-bs-link b :staging stage :transactions name outcome)) k arena)))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0s-add-pending-transaction-link-preserves-relation
                   (ino (fn-bs-lookup b :staging stage))))

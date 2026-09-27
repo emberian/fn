@@ -409,7 +409,7 @@
 
 (defthm fn-bs-crash-image-reopens-of-host-open
   (implies (and (fn-csi-full-relationp s)
-                (fn-bs-store-relation bs (fn-sn-files s))
+                (fn-bs-store-relation bs (fn-sn-files s) arena)
                 (fn-bs-crash-imagep bs image)
                 (fn-sn-observed-identity-okp
                  (fn-bs-scan-records (fn-bs-scan-store image)))
@@ -432,7 +432,7 @@
 
 (defthm fn-bs-acknowledged-record-survives-byte-crash-of-host-open
   (implies (and (fn-csi-full-relationp s)
-                (fn-bs-store-relation bs (fn-sn-files s))
+                (fn-bs-store-relation bs (fn-sn-files s) arena)
                 (fn-bs-crash-imagep bs image)
                 (fn-sn-observed-identity-okp
                  (fn-bs-scan-records (fn-bs-scan-store image)))
@@ -459,7 +459,7 @@
 
 (defthm fn-bs-sweep-round-keeps-every-cut-reopenable-of-host-open
   (implies (and (fn-csi-full-relationp s)
-                (fn-bs-store-relation bs (fn-sn-files s))
+                (fn-bs-store-relation bs (fn-sn-files s) arena)
                 (member-equal pair
                               (fn-bs-run bs (fn-sn-files s)
                                          (fn-bs-recover-sweep-program

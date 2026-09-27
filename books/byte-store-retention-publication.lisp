@@ -50,7 +50,7 @@
             (append
              (fn-frame-store-protected (fn-store-event-encode event))
              (fn-frame-trailer
-              (fn-frame-store-protected (fn-store-event-encode event))))))
+              (fn-frame-store-protected (fn-store-event-encode event)))) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bsrp-retention-payload-fits-frame
@@ -67,7 +67,7 @@
 
 (defthm fn-bsrp-retention-host-arguments-reach-related-attempted-cut
   (implies
-   (and (fn-bs-store-relation bs ks)
+   (and (fn-bs-store-relation bs ks arena)
         (fn-store-retention-event-p event)
         (equal (fn-sf-phase ks) :record-staged)
         (equal (fn-sf-record-candidate ks) event)
@@ -84,7 +84,7 @@
                                 nil groups capacity)))
         (cdr (nth 10 (fn-bs-run bs ks
                                 (fn-bs-record-program stage name frame)
-                                nil groups capacity)))))))
+                                nil groups capacity))) arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bsrp-retention-host-arguments-are-typed-record-input
@@ -162,8 +162,8 @@
             :in-theory (enable fn-bs-fsync-dir fn-bs-dir-quietp)))))
 
 (defthm fn-bsrp-record-dir-eio-run-has-actual-failed-cut
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let* ((ok-run (fn-bs-run bs ks
                                       (fn-bs-record-program stage name frame)
@@ -200,8 +200,8 @@
 
 (local
  (defthm fn-bsrp-attempted-cut-is-record-attempted
-   (implies (and (fn-bs-store-relation bs ks)
-                 (fn-bs-record-inputp ks stage name frame)
+   (implies (and (fn-bs-store-relation bs ks arena)
+                 (fn-bs-record-inputp ks stage name frame arena)
                  (not (fn-bs-lookup bs :staging stage)))
             (equal (fn-sf-phase
                     (cdr (nth 10 (fn-bs-run bs ks
@@ -223,8 +223,8 @@
                              fn-bs-store-relation fn-sf-statep))))))
 
 (defthm fn-bsrp-record-directory-eio-applied-cut-fences-related-attempt
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let* ((ok-run (fn-bs-run bs ks
                                       (fn-bs-record-program stage name frame)
@@ -236,7 +236,7 @@
                                   groups capacity))
                   (failed (nth 11 run)))
              (and (equal (len run) 12)
-                  (fn-bs-store-relation (car failed) (cdr attempt))
+                  (fn-bs-store-relation (car failed) (cdr attempt) arena)
                   (equal (fn-bs-durable-records (car failed))
                          (append (fn-bs-durable-records (car attempt))
                                  (list (fn-sf-record-candidate (cdr attempt)))))
@@ -288,8 +288,8 @@
                             fn-bs-lookup fn-sf-statep fn-bs-dir-quietp)))))
 
 (defthm fn-bsrp-record-directory-eio-dropped-cut-keeps-old-prefix-and-fences
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let* ((ok-run (fn-bs-run bs ks
                                       (fn-bs-record-program stage name frame)

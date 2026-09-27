@@ -16,11 +16,11 @@
          (consp (nthcdr 13 prog))))
   :hints (("Goal" :in-theory (enable fn-bs-frontier-program))))
 (defthm fn-bs-k0-frontier-durable-cut-relation-by-step
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((p (nth 13 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
-             (fn-bs-store-relation (car p) (cdr p))))
+             (fn-bs-store-relation (car p) (cdr p) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0-frontier-attempted-cut-relation-by-step
@@ -53,11 +53,11 @@
                             fn-bs-lookup fn-sf-statep fn-bs-statep fn-bs-k0-coveredp fn-bs-fence-dir
                             fn-bs-k0m-has-root-rename fn-bs-k0s-root-rename-pendingp))))))
 (defthm fn-bs-k0-frontier-reserved-cut-relation-by-step
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((p (nth 15 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
-             (fn-bs-store-relation (car p) (cdr p))))
+             (fn-bs-store-relation (car p) (cdr p) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0-frontier-durable-cut-relation-by-step fn-bs-k0-frontier-dir-cut-kernel-candidate-and-phase

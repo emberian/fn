@@ -139,17 +139,17 @@
 (defthm fn-bs-k0r-step-inputs
   (implies (fn-bs-k0r-hyps)
            (and (fn-bs-k0-step-inputp bs ks (list :create :staging stage) outcome)
-                (implies (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks)
+                (implies (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s1 bs stage) ks
                                                (list :write-all :staging stage octets) outcome))
-                (implies (and (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks)
+                (implies (and (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks arena)
                               (fn-bs-k0r-fsync-outcomep bs stage octets outcome))
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s2 bs stage octets) ks
                                                (list :fsync-file :staging stage) outcome))
-                (implies (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks)
+                (implies (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s3 bs stage octets) ks
                                                (list :rename :staging stage :root name) outcome))
-                (implies (fn-bs-k0s-root-rename-pendingp (fn-bs-k0r-s4 bs stage octets name) ks)
+                (implies (fn-bs-k0s-root-rename-pendingp (fn-bs-k0r-s4 bs stage octets name) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0r-s4 bs stage octets name) ks
                                                (list :fsync-dir :root) outcome))))
   :rule-classes nil
@@ -164,11 +164,11 @@
                             fn-bs-crash-choicesp fn-bs-ops-for-ino fn-bs-k0-observation-inputp)))))
 (defthm fn-bs-k0r-pairs-by-step
   (implies (fn-bs-k0r-hyps)
-           (and (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks)
-                (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks)
-                (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks)
-                (fn-bs-k0s-root-rename-pendingp (fn-bs-k0r-s4 bs stage octets name) ks)
-                (fn-bs-store-relation (fn-bs-k0r-s5 bs stage octets name) ks)))
+           (and (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks arena)
+                (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks arena)
+                (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks arena)
+                (fn-bs-k0s-root-rename-pendingp (fn-bs-k0r-s4 bs stage octets name) ks arena)
+                (fn-bs-store-relation (fn-bs-k0r-s5 bs stage octets name) ks arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0p-stage-pairs-by-step
@@ -192,11 +192,11 @@
 ; kernel throughout.
 (defmacro fn-bs-k0r-cuts-body (program)
   `(let ((run (fn-bs-run bs ks (,program stage octets) nil groups capacity)))
-     (and (fn-bs-store-relation (car (nth 1 run)) ks)
-          (fn-bs-store-relation (car (nth 3 run)) ks)
-          (fn-bs-store-relation (car (nth 5 run)) ks)
-          (fn-bs-k0s-root-rename-pendingp (car (nth 7 run)) ks)
-          (fn-bs-store-relation (car (nth 9 run)) ks)
+     (and (fn-bs-store-relation (car (nth 1 run)) ks arena)
+          (fn-bs-store-relation (car (nth 3 run)) ks arena)
+          (fn-bs-store-relation (car (nth 5 run)) ks arena)
+          (fn-bs-k0s-root-rename-pendingp (car (nth 7 run)) ks arena)
+          (fn-bs-store-relation (car (nth 9 run)) ks arena)
           (equal (cdr (nth 1 run)) ks) (equal (cdr (nth 3 run)) ks) (equal (cdr (nth 5 run)) ks)
           (equal (cdr (nth 7 run)) ks) (equal (cdr (nth 9 run)) ks))))
 (defthm fn-bs-k0-state-checkpoint-cuts-relation-by-step
@@ -217,7 +217,7 @@
   (declare (xargs :guard t :verify-guards nil))
   (mv-let (r bs1 ks1) (fn-bs-step (car pre) (cdr pre) step outcome groups capacity)
     (declare (ignore r))
-    (and (fn-bs-k0-coveredp bs1 ks1) (equal ks1 ks))))
+    (and (fn-bs-k0-coveredp bs1 ks1 arena) (equal ks1 ks))))
 (defmacro fn-bs-k0r-any-outcome-body (program)
   `(let ((run (fn-bs-run bs ks (,program stage octets) nil groups capacity))
          (prog (,program stage octets)))

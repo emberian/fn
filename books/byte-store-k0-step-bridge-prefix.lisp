@@ -85,8 +85,8 @@
                  (:instance fn-bs-k0c-cut-pair-is-previous-pair (k (1+ k)) (outs nil)))
            :in-theory (e/d () (fn-bs-run fn-bs-step nth nthcdr)))))
 (defthm fn-bs-k0b-covered-of-pair
-  (implies (and (equal p (cons a b)) (fn-bs-k0-coveredp a b))
-           (fn-bs-k0-coveredp (car p) (cdr p)))
+  (implies (and (equal p (cons a b)) (fn-bs-k0-coveredp a b arena))
+           (fn-bs-k0-coveredp (car p) (cdr p) arena))
   :rule-classes nil)
 (defthm fn-bs-k0b-cut-after-step
   (implies (and (and (natp k)
@@ -102,7 +102,7 @@
                                       (cdr (nth k (fn-bs-run bs ks steps nil g c)))
                                       (nth (1+ k) steps) :ok))
            (let ((p (nth (+ 2 k) (fn-bs-run bs ks steps nil g c))))
-             (fn-bs-k0-coveredp (car p) (cdr p))))
+             (fn-bs-k0-coveredp (car p) (cdr p) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0b-cut-after-step-pair
@@ -172,13 +172,13 @@
   (let ((s2 (fn-bs-k0p-s2 bs stage octets)))
     (mv-let (r s3) (fn-bs-fsync-file s2 (fn-bs-lookup s2 :staging stage) :ok) (declare (ignore r)) s3)))
 (defthm fn-bs-k0p-related-quiet-outside-visible-phases
-  (implies (and (fn-bs-store-relation bs ks) (not (fn-bs-replay-visiblep ks))
+  (implies (and (fn-bs-store-relation bs ks arena) (not (fn-bs-replay-visiblep ks))
                 (not (fn-sf-frontier-new-visiblep ks)) (not (fn-sf-record-present-visiblep ks)))
            (and (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
                 (not (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))))
   :rule-classes nil
   :hints (("Goal" :use (fn-bs-store-relation-window-unfolds fn-bs-pending-matches-phase-unfolds)
-           :in-theory (e/d () (fn-bs-store-relation fn-bs-pending-matches-phase fn-sf-crash-imagep
+           :in-theory (e/d () (fn-bs-store-relation fn-bs-pending-matches-phase fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                                fn-bs-pending-shape-okp fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
                                fn-bs-durable-records fn-bs-durable-content)))))
 (defthm fn-bs-k0p-stage-lookups
@@ -225,7 +225,7 @@
                            (fn-bs-lookup fn-bs-write fn-bs-fsync-file fn-bs-k0p-s1)))
           (and stable-under-simplificationp '(:in-theory (e/d (fn-bs-step fn-bs-k0p-s1 fn-bs-create fn-bs-write) (fn-bs-lookup fn-bs-fsync-file))))))
 (defmacro fn-bs-k0p-stage-hyps ()
-  '(and (fn-bs-store-relation bs ks)
+  '(and (fn-bs-store-relation bs ks arena)
         (not (fn-bs-replay-visiblep ks))
         (not (fn-bs-ops-for-dir (fn-bs-pending bs) :root))
         (not (fn-bs-ops-for-dir (fn-bs-pending bs) :transactions))
@@ -233,7 +233,7 @@
         (not (fn-bs-lookup bs :staging stage))
         (fn-cbor-octet-listp octets)))
 (defthm fn-bs-k0p-s1-fresh
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-namep stage) (not (fn-bs-lookup bs :staging stage)))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-namep stage) (not (fn-bs-lookup bs :staging stage)))
            (not (member-equal (fn-bs-next-ino bs) (fn-bs-authority-inode-list (fn-bs-k0p-s1 bs stage)))))
   :hints (("Goal" :use ((:instance fn-bs-k0-staging-create-fresh-facts (b bs) (k ks)))
            :in-theory (e/d (fn-bs-k0p-s1) (fn-bs-store-relation fn-bs-lookup fn-bs-authority-inode-list fn-bs-create)))))
@@ -244,10 +244,10 @@
 (defthm fn-bs-k0p-stage-step-inputs
   (implies (fn-bs-k0p-stage-hyps)
            (and (fn-bs-k0-step-inputp bs ks (list :create :staging stage) :ok)
-                (implies (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks)
+                (implies (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s1 bs stage) ks
                                                (list :write-all :staging stage octets) :ok))
-                (implies (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks)
+                (implies (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks arena)
                          (fn-bs-k0-step-inputp (fn-bs-k0p-s2 bs stage octets) ks
                                                (list :fsync-file :staging stage) :ok))))
   :rule-classes nil
@@ -259,9 +259,9 @@
                             fn-bs-crash-choicesp fn-bs-ops-for-ino fn-bs-k0-observation-inputp)))))
 (defthm fn-bs-k0p-stage-pairs-by-step
   (implies (fn-bs-k0p-stage-hyps)
-           (and (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks)
-                (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks)
-                (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks)))
+           (and (fn-bs-store-relation (fn-bs-k0p-s1 bs stage) ks arena)
+                (fn-bs-store-relation (fn-bs-k0p-s2 bs stage octets) ks arena)
+                (fn-bs-store-relation (fn-bs-k0p-s3 bs stage octets) ks arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0p-stage-step-inputs
@@ -311,9 +311,9 @@
            :in-theory (e/d (fn-bs-record-program fn-bs-k0s-observe-step fn-bs-k0c-cut-step-is-identity)
                            (fn-bs-step fn-bs-run fn-bs-lookup fn-sf-dispatch fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3)))))
 (defthm fn-bs-k0p-frontier-entry-facts
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-frontier-inputp ks stage octets))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-frontier-inputp ks stage octets))
            (let ((k0 (fn-sf-dispatch ks '(:start-frontier) g c)))
-             (and (fn-bs-store-relation bs k0)
+             (and (fn-bs-store-relation bs k0 arena)
                   (not (fn-bs-replay-visiblep k0))
                   (not (fn-sf-frontier-new-visiblep k0))
                   (not (fn-sf-record-present-visiblep k0)))))
@@ -329,12 +329,12 @@
                            (fn-bs-store-relation fn-bs-k0-coveredp fn-bs-k0m-has-root-rename fn-sf-statep
                             fn-bs-k0b-relation-has-no-root-rename)))))
 (defthm fn-bs-k0-frontier-created-and-written-cut-relation-by-step
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((run (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity)))
-             (and (fn-bs-store-relation (car (nth 2 run)) (cdr (nth 2 run)))
-                  (fn-bs-store-relation (car (nth 4 run)) (cdr (nth 4 run))))))
+             (and (fn-bs-store-relation (car (nth 2 run)) (cdr (nth 2 run)) arena)
+                  (fn-bs-store-relation (car (nth 4 run)) (cdr (nth 4 run)) arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0p-frontier-run-prefix (g groups) (c capacity))
@@ -346,11 +346,11 @@
                             fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3 fn-bs-replay-visiblep
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
 (defthm fn-bs-k0-frontier-staged-durable-cut-relation-by-step
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-frontier-inputp ks stage octets)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((p (nth 7 (fn-bs-run bs ks (fn-bs-frontier-program stage octets) nil groups capacity))))
-             (fn-bs-store-relation (car p) (cdr p))))
+             (fn-bs-store-relation (car p) (cdr p) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0p-frontier-run-prefix (g groups) (c capacity))
@@ -371,7 +371,7 @@
                             fn-bs-k0m-has-root-rename fn-bs-k0b-root-quiet-has-no-root-rename
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
 (defthm fn-bs-k0p-record-entry-phase
-  (implies (fn-bs-record-inputp ks stage name frame)
+  (implies (fn-bs-record-inputp ks stage name frame arena)
            (and (not (fn-bs-replay-visiblep ks))
                 (not (fn-sf-frontier-new-visiblep ks))
                 (not (fn-sf-record-present-visiblep ks))))
@@ -379,12 +379,12 @@
   :hints (("Goal" :in-theory (enable fn-bs-record-inputp fn-bs-replay-visiblep fn-sf-frontier-new-visiblep
                                      fn-sf-record-present-visiblep))))
 (defthm fn-bs-k0-record-created-and-written-cut-relation-by-step
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((run (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity)))
-             (and (fn-bs-store-relation (car (nth 1 run)) (cdr (nth 1 run)))
-                  (fn-bs-store-relation (car (nth 3 run)) (cdr (nth 3 run))))))
+             (and (fn-bs-store-relation (car (nth 1 run)) (cdr (nth 1 run)) arena)
+                  (fn-bs-store-relation (car (nth 3 run)) (cdr (nth 3 run)) arena))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0p-record-run-prefix (g groups) (c capacity))
@@ -396,10 +396,10 @@
                             fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3 fn-bs-replay-visiblep
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
 (defthm fn-bs-k0p-record-staged-durable-pair
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
-           (fn-bs-store-relation (fn-bs-k0p-s3 bs stage frame) (fn-sf-dispatch ks '(:record-file :ok) g c)))
+           (fn-bs-store-relation (fn-bs-k0p-s3 bs stage frame) (fn-sf-dispatch ks '(:record-file :ok) g c) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-k0p-record-entry-phase
@@ -418,11 +418,11 @@
                             fn-bs-frontier-noncommit-observationp
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
 (defthm fn-bs-k0-record-staged-durable-cut-relation-by-step
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((p (nth 6 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))
-             (fn-bs-store-relation (car p) (cdr p))))
+             (fn-bs-store-relation (car p) (cdr p) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0p-record-run-prefix (g groups) (c capacity))
@@ -451,8 +451,8 @@
                  fn-sf-record-listp fn-sf-success-listp
                  fn-sf-shapep)))))
 (defthm fn-bs-k0p-record-s3-facts
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((s3 (fn-bs-k0p-s3 bs stage frame)) (n (fn-bs-next-ino bs)))
              (and (equal (fn-bs-lookup s3 :staging stage) n)
@@ -480,8 +480,8 @@
            (equal (mv-nth 0 (fn-bs-step b k (list :link sdir sname ddir dname) :ok g c)) :ok))
   :hints (("Goal" :in-theory (e/d (fn-bs-step fn-bs-link) (fn-bs-lookup fn-bs-inop)))))
 (defthm fn-bs-k0p-record-staged-durable-records
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-durable-records (fn-bs-k0p-s3 bs stage frame)) (fn-sf-records ks)))
   :rule-classes nil
@@ -494,13 +494,13 @@
                  (:instance fn-bs-durable-records-length (bs (fn-bs-k0p-s3 bs stage frame))
                   (ks (fn-sf-dispatch ks '(:record-file :ok) nil nil)))
                  fn-bs-k6-related-staged-durable-name-count-is-record-count)
-           :in-theory (e/d (fn-bs-record-inputp fn-sf-crash-imagep fn-bs-replay-visiblep fn-bs-durable-names)
+           :in-theory (e/d (fn-bs-record-inputp fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-bs-replay-visiblep fn-bs-durable-names)
                            (fn-bs-store-relation fn-sf-dispatch fn-bs-lookup fn-bs-k0p-s1 fn-bs-k0p-s2 fn-bs-k0p-s3
                             fn-bs-durable-records fn-bs-pending-matches-phase fn-sf-statep fn-bs-statep
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep)))))
 (defthm fn-bs-k0p-record-link-inputs
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((s3 (fn-bs-k0p-s3 bs stage frame)) (k5 (fn-sf-dispatch ks '(:record-file :ok) g c)))
              (and (fn-bs-k0-step-inputp s3 k5 (list :link :staging stage :transactions name) :ok)
@@ -529,11 +529,11 @@
          (consp (nthcdr 8 prog))))
   :hints (("Goal" :in-theory (enable fn-bs-record-program))))
 (defthm fn-bs-k0-record-linked-cut-relation-by-step
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((p (nth 8 (fn-bs-run bs ks (fn-bs-record-program stage name frame) nil groups capacity))))
-             (fn-bs-store-relation (car p) (cdr p))))
+             (fn-bs-store-relation (car p) (cdr p) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0p-record-run-prefix (g groups) (c capacity))

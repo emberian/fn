@@ -43,7 +43,7 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-sf-statep fn-sf-phase-shapep fn-bs-recovered-kernel))))
 (defthm fn-bs-k0v-related-root-lookups-are-fenced
-  (implies (fn-bs-store-relation bs ks)
+  (implies (fn-bs-store-relation bs ks arena)
            (and (fn-bs-fencedp bs (fn-bs-lookup bs :root *fn-bs-scan-config-name*))
                 (fn-bs-fencedp bs (fn-bs-lookup bs :root *fn-bs-scan-frontier-name*))))
   :rule-classes nil
@@ -134,9 +134,9 @@
    :hints (("Goal" :in-theory (enable fn-bs-recovered-kernel fn-bs-replay-visiblep)))))
 (local
  (defthm k0v-swap
-   (implies (and (fn-bs-store-relation b (fn-bs-recovered-kernel f r 0))
+   (implies (and (fn-bs-store-relation b (fn-bs-recovered-kernel f r 0) arena)
                  (natp n) (< n *fn-sf-recovery-barrier-count*))
-            (fn-bs-store-relation b (fn-bs-recovered-kernel f r n)))
+            (fn-bs-store-relation b (fn-bs-recovered-kernel f r n) arena))
    :hints (("Goal" :use ((:instance fn-bs-k0w-window-kernel-swap (bs b) (ks (fn-bs-recovered-kernel f r 0))
                                     (ks1 (fn-bs-recovered-kernel f r n)))
                          (:instance fn-bs-store-relation-unfolds (bs b) (ks (fn-bs-recovered-kernel f r 0)))
@@ -146,8 +146,8 @@
                                 fn-sf-record-listp fn-bs-replay-visiblep))))))
 (local
  (defthm k0v-fence-step
-   (implies (and (fn-bs-store-relation b (fn-bs-recovered-kernel f r 0)))
-            (fn-bs-store-relation (fn-bs-fence-dir b d) (fn-bs-recovered-kernel f r 0)))
+   (implies (and (fn-bs-store-relation b (fn-bs-recovered-kernel f r 0) arena))
+            (fn-bs-store-relation (fn-bs-fence-dir b d) (fn-bs-recovered-kernel f r 0) arena))
    :hints (("Goal" :use ((:instance fn-bs-k0w-fence-preserves-relation (bs b) (ks (fn-bs-recovered-kernel f r 0))))
             :in-theory (e/d () (fn-bs-store-relation fn-bs-recovered-kernel fn-bs-fence-dir))))))
 (defthm fn-bs-k0v-drained-is-quiet
@@ -157,8 +157,8 @@
                                   (fn-bs-fence-dir fn-bs-ops-for-dir fn-bs-ops-not-for-dir)))))
 (local
  (defthm k0v-drained-ready
-   (implies (fn-bs-store-relation b (fn-bs-recovered-kernel f r 0))
-            (fn-bs-store-relation (fn-bs-k0v-drained b) (fn-bs-recovered-kernel f r 5)))
+   (implies (fn-bs-store-relation b (fn-bs-recovered-kernel f r 0) arena)
+            (fn-bs-store-relation (fn-bs-k0v-drained b) (fn-bs-recovered-kernel f r 5) arena))
    :hints (("Goal" :use ((:instance fn-bs-k0w-quiet-window-exit (bs (fn-bs-k0v-drained b))
                                     (ks (fn-bs-recovered-kernel f r 0)) (ks1 (fn-bs-recovered-kernel f r 5)))
                          (:instance k0v-fence-step (d :transactions))
@@ -187,7 +187,7 @@
    :hints (("Goal" :in-theory (enable fn-bs-recovered-kernel)))))
 (local
  (defthm k0v-entry-facts
-   (implies (fn-bs-store-relation bs (fn-bs-recovered-kernel f r 0))
+   (implies (fn-bs-store-relation bs (fn-bs-recovered-kernel f r 0) arena)
             (and (fn-bs-statep bs)
                  (fn-record-uint32p f) (fn-sf-record-listp r 0 0 f)
                  (fn-bs-fencedp bs (fn-bs-lookup bs :root *fn-bs-scan-config-name*))
@@ -199,7 +199,7 @@
             :in-theory (theory 'minimal-theory)))))
 (local
  (defthm k0v-explicit-run-facts
-   (implies (fn-bs-store-relation bs (fn-bs-recovered-kernel f r 0))
+   (implies (fn-bs-store-relation bs (fn-bs-recovered-kernel f r 0) arena)
             (and (fn-bs-k0v-steps-coveredp (cons (cons bs (fn-bs-recovered-kernel f r 0)) (list (cons bs (fn-bs-recovered-kernel f r 0))
                           (cons bs (fn-bs-recovered-kernel f r 0))
                           (cons bs (fn-bs-recovered-kernel f r 0))
@@ -234,7 +234,7 @@
                           (cons (fn-bs-fence-dir (fn-bs-fence-dir bs :transactions) :root) (fn-bs-recovered-kernel f r 4))
                           (cons (fn-bs-k0v-drained bs) (fn-bs-recovered-kernel f r 4))
                           (cons (fn-bs-k0v-drained bs) (fn-bs-recovered-kernel f r 5))
-                          (cons (fn-bs-k0v-drained bs) (fn-bs-recovered-kernel f r 5))))))
+                          (cons (fn-bs-k0v-drained bs) (fn-bs-recovered-kernel f r 5))) arena)))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
            :use (k0v-entry-facts
@@ -257,11 +257,11 @@
                             k0v-swap k0v-fence-step k0v-drained-ready fn-bs-k0v-drained-is-quiet fn-bs-k0-coveredp
                             fn-bs-ops-for-dir))))))
 (defthm fn-bs-k0v-recover-program-by-step
-  (implies (fn-bs-store-relation bs (fn-bs-recovered-kernel f r 0))
+  (implies (fn-bs-store-relation bs (fn-bs-recovered-kernel f r 0) arena)
            (let ((run (fn-bs-run bs (fn-bs-recovered-kernel f r 0) (fn-bs-recover-program) nil groups capacity)))
              (and (fn-bs-k0v-steps-coveredp (cons (cons bs (fn-bs-recovered-kernel f r 0)) run)
                                             (fn-bs-recover-program))
-                  (fn-bs-run-relatedp run)
+                  (fn-bs-run-relatedp run arena)
                   (equal (len run) 17)
                   (equal (car (nth 16 run)) (fn-bs-k0v-drained bs))
                   (equal (cdr (nth 16 run)) (fn-bs-recovered-kernel f r *fn-sf-recovery-barrier-count*)))))
@@ -272,7 +272,7 @@
                                         (:executable-counterpart equal) (:executable-counterpart <) (:executable-counterpart natp))
                                       (theory 'minimal-theory)))))
 (defthm fn-bs-k0v-quiet-view-reads-durable
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-k0w-authority-quietp bs))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-k0w-authority-quietp bs))
            (and (equal (fn-bs-lookup bs :root *fn-bs-scan-config-name*)
                        (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*))
                 (equal (fn-bs-lookup bs :root *fn-bs-scan-frontier-name*)
@@ -300,7 +300,7 @@
                             fn-bs-durable-records fn-bs-durable-entry fn-bs-durable-content fn-bs-fencedp fn-bs-ops-for-name
                             fn-bs-ops-for-dir fn-bs-lookup-of-an-untouched-name fn-bs-content-of-a-fenced-inode)))))
 (defthm fn-bs-k0v-quiet-kernel-admits-durable
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-k0w-authority-quietp bs))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-k0w-authority-quietp bs))
            (fn-sf-recovery-crash-imagep ks (fn-bs-durable-frontier bs) (fn-bs-durable-records bs)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
@@ -309,14 +309,14 @@
                  fn-bs-k0v-quiet-view-reads-durable
                  (:instance fn-bs-replay-matches-scan-unfolds)
                  (:instance fn-bs-scan-okp-unfolds (s bs)))
-           :in-theory (e/d (fn-sf-recovery-crash-imagep fn-sf-crash-imagep fn-bs-durable-frontier)
+           :in-theory (e/d (fn-sf-recovery-crash-imagep fn-bs-alpha-recovery-crash-imagep fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-bs-durable-frontier)
                            (fn-bs-store-relation fn-bs-lookup fn-bs-content fn-bs-names fn-bs-read-records fn-bs-durable-names
                             fn-bs-durable-records fn-bs-durable-entry fn-bs-durable-content fn-bs-scan-store fn-bs-scan-okp
                             fn-bs-scan-frontier fn-bs-scan-records fn-sf-statep fn-bs-replay-matches-scan fn-bs-replay-visiblep
                             fn-bs-pending-matches-phase fn-sf-frontier-rollback-visiblep fn-sf-record-rollback-visiblep
                             fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep fn-bs-k0w-authority-quietp)))))
 (defthm fn-bs-k0v-quiet-scan-is-durable
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-k0w-authority-quietp bs))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-k0w-authority-quietp bs))
            (equal (fn-bs-scan-store bs)
                   (list :ok (fn-bs-durable-frontier bs) (fn-bs-durable-records bs))))
   :rule-classes nil
@@ -327,12 +327,12 @@
            :in-theory (e/d (fn-bs-scan-store fn-bs-durable-frontier fn-bs-contiguous-namesp)
                            (fn-bs-store-relation fn-bs-lookup fn-bs-content fn-bs-names fn-bs-read-records fn-bs-durable-names
                             fn-bs-durable-records fn-bs-durable-entry fn-bs-durable-content fn-sf-statep
-                            fn-sf-recovery-crash-imagep fn-sf-record-listp fn-bs-k0w-authority-quietp
+                            fn-sf-recovery-crash-imagep fn-bs-alpha-recovery-crash-imagep fn-sf-record-listp fn-bs-k0w-authority-quietp
                             fn-bs-txn-names fn-sf-recovery-admissible-image-facts)))))
 (defthm fn-bs-k0v-quiet-pair-relates-to-rerecovered-kernel
-  (implies (and (fn-bs-store-relation bs ks) (fn-bs-k0w-authority-quietp bs))
+  (implies (and (fn-bs-store-relation bs ks arena) (fn-bs-k0w-authority-quietp bs))
            (fn-bs-store-relation bs (fn-bs-recovered-kernel (fn-bs-scan-frontier (fn-bs-scan-store bs))
-                                                            (fn-bs-scan-records (fn-bs-scan-store bs)) 0)))
+                                                            (fn-bs-scan-records (fn-bs-scan-store bs)) 0) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use (fn-bs-store-relation-unfolds fn-bs-k0v-quiet-scan-is-durable fn-bs-k0v-quiet-kernel-admits-durable
@@ -344,11 +344,11 @@
                             fn-bs-k0w-authority-quietp)
                            (fn-bs-scan-store fn-bs-durable-frontier fn-bs-durable-records fn-bs-statep fn-sf-statep
                             fn-bs-pending-shape-okp fn-bs-authority-fencedp fn-bs-authority-knownp fn-bs-recovered-kernel
-                            fn-sf-recovery-crash-imagep fn-sf-record-listp fn-sf-recovery-admissible-image-facts
+                            fn-sf-recovery-crash-imagep fn-bs-alpha-recovery-crash-imagep fn-sf-record-listp fn-sf-recovery-admissible-image-facts
                             k0v-recovered-kernel-is-state fn-bs-durable-content fn-bs-durable-entry fn-bs-durable-names
-                            fn-bs-contiguous-namesp fn-bs-ops-for-dir fn-sf-crash-imagep)))))
+                            fn-bs-contiguous-namesp fn-bs-ops-for-dir fn-sf-crash-imagep fn-bs-alpha-crash-imagep)))))
 (defthm fn-bs-k0v-host-rerecovery-keeps-relation-at-every-cut
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (fn-bs-k0w-authority-quietp bs)
                 (fn-sn-open-okp (fn-cpo-open-observed configs
                                                       (fn-bs-scan-frontier (fn-bs-scan-store bs))
@@ -358,9 +358,9 @@
                                                             (fn-bs-scan-frontier (fn-bs-scan-store bs))
                                                             (fn-bs-scan-records (fn-bs-scan-store bs))))))
                   (run (fn-bs-run bs host (fn-bs-recover-program) nil groups capacity)))
-             (and (fn-bs-store-relation bs host)
+             (and (fn-bs-store-relation bs host arena)
                   (fn-bs-k0v-steps-coveredp (cons (cons bs host) run) (fn-bs-recover-program))
-                  (fn-bs-run-relatedp run)
+                  (fn-bs-run-relatedp run arena)
                   (equal (len run) 17)
                   (equal (fn-sf-phase (cdr (nth 16 run))) :ready))))
   :rule-classes nil

@@ -638,7 +638,7 @@
 (defthm fn-bs-k6-actual-record-linked-input-has-exact-frame
   (implies
    (and (fn-bs-statep bs)
-        (fn-bs-record-inputp ks stage name frame)
+        (fn-bs-record-inputp ks stage name frame arena)
         (not (fn-bs-lookup bs :staging stage))
         (not (fn-bs-lookup
               (car (nth 5
@@ -748,7 +748,7 @@
 (defthm fn-bs-k6-actual-link-cut-has-sole-pending-name
   (implies
    (and (fn-bs-statep bs)
-        (fn-bs-record-inputp ks stage name frame)
+        (fn-bs-record-inputp ks stage name frame arena)
         (not (fn-bs-lookup bs :staging stage))
         (let ((file (car (nth 5
                               (fn-bs-run
@@ -799,7 +799,7 @@
 (defthm fn-bs-k6-actual-linked-crash-surviving-name-has-exact-frame
   (implies
    (and (fn-bs-statep bs)
-        (fn-bs-record-inputp ks stage name frame)
+        (fn-bs-record-inputp ks stage name frame arena)
         (not (fn-bs-lookup bs :staging stage))
         (let ((file (car (nth 5
                               (fn-bs-run
@@ -844,7 +844,7 @@
 (defthm fn-bs-k6-actual-linked-crash-decoder-reads-candidate
   (implies
    (and (fn-bs-statep bs)
-        (fn-bs-record-inputp ks stage name frame)
+        (fn-bs-record-inputp ks stage name frame arena)
         (not (fn-bs-lookup bs :staging stage))
         (let ((file (car (nth 5
                               (fn-bs-run
@@ -862,7 +862,7 @@
         (fn-bs-lookup image :transactions name))
    (equal (fn-bs-record-of image
                            (fn-bs-lookup image :transactions name))
-          (fn-sf-record-candidate ks)))
+          (fn-bs-row-wire (fn-sf-record-candidate ks) arena)))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance
@@ -887,7 +887,7 @@
 (defthm fn-bs-k6-actual-attempted-cut-keeps-linked-byte-state
   (implies
    (and (fn-bs-statep bs)
-        (fn-bs-record-inputp ks stage name frame)
+        (fn-bs-record-inputp ks stage name frame arena)
         (not (fn-bs-lookup bs :staging stage))
         (not (fn-bs-lookup
               (car (nth 5
@@ -929,7 +929,7 @@
 (defthm fn-bs-k6-attempted-crash-decoder-reads-exact-frame
   (implies
    (and (fn-bs-statep bs)
-        (fn-bs-record-inputp ks stage name frame)
+        (fn-bs-record-inputp ks stage name frame arena)
         (not (fn-bs-lookup bs :staging stage))
         (let ((file (car (nth 5
                               (fn-bs-run
@@ -949,7 +949,7 @@
                 image (fn-bs-lookup image :transactions name)) frame)
         (equal (fn-bs-record-of
                 image (fn-bs-lookup image :transactions name))
-               (fn-sf-record-candidate ks))))
+               (fn-bs-row-wire (fn-sf-record-candidate ks) arena))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance
@@ -977,7 +977,7 @@
 ; not transactions.  This discharges the earlier-operation premise of the
 ; surviving-name crash theorem for this related-input slice of K0.
 (defthm fn-bs-k6-related-record-staged-has-no-transaction-pending
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-staged))
            (not (consp (fn-bs-ops-for-dir
                         (fn-bs-pending bs) :transactions))))
@@ -994,8 +994,8 @@
             :in-theory (enable fn-bs-ops-not-for-ino fn-bs-ops-for-dir))))
 
 (defthm fn-bs-k6-related-input-file-cut-has-no-transaction-pending
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (not (consp
                  (fn-bs-ops-for-dir
@@ -1017,8 +1017,8 @@
                             fn-bs-ops-not-for-ino)))))
 
 (defthm fn-bs-k6-related-input-file-cut-has-no-prior-final-op
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-ops-for-name
                    (fn-bs-pending
@@ -1039,8 +1039,8 @@
 
 (defthm fn-bs-k6-related-attempted-crash-reads-exact-frame
   (implies
-   (and (fn-bs-store-relation bs ks)
-        (fn-bs-record-inputp ks stage name frame)
+   (and (fn-bs-store-relation bs ks arena)
+        (fn-bs-record-inputp ks stage name frame arena)
         (not (fn-bs-lookup bs :staging stage))
         (not (fn-bs-lookup
               (car (nth 5 (fn-bs-run bs ks
@@ -1056,7 +1056,7 @@
                 image (fn-bs-lookup image :transactions name)) frame)
         (equal (fn-bs-record-of
                 image (fn-bs-lookup image :transactions name))
-               (fn-sf-record-candidate ks))))
+               (fn-bs-row-wire (fn-sf-record-candidate ks) arena))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-bs-k6-related-input-file-cut-has-no-prior-final-op)
@@ -1073,7 +1073,7 @@
 ; the length of the durable record prefix, hence the next name is absent in
 ; the contiguous durable namespace.  This works for all Store event kinds.
 (defthm fn-bs-k6-related-staged-durable-name-count-is-record-count
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-staged))
            (equal (len (fn-bs-durable-names bs :transactions))
                   (len (fn-sf-records ks))))
@@ -1081,7 +1081,7 @@
   :hints (("Goal" :use (fn-bs-store-relation-window-unfolds
                          fn-bs-durable-records-length)
            :in-theory (enable fn-bs-replay-visiblep
-                              fn-sf-crash-imagep
+                              fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                               fn-sf-record-present-visiblep))))
 
 (local
@@ -1109,8 +1109,8 @@
                   fn-sf-shapep))))))
 
 (defthm fn-bs-k6-related-staged-durable-final-name-absent
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame))
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena))
            (not (fn-bs-durable-entry bs :transactions name)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
@@ -1161,8 +1161,8 @@
                             (fn-bs-lookup fn-bs-ops-for-dir))))))
 
 (defthm fn-bs-k6-related-input-file-cut-final-name-absent
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (not (fn-bs-lookup
                  (car (nth 5 (fn-bs-run bs ks
@@ -1193,8 +1193,8 @@
 ; remaining premises identify a model crash image and the surviving link.
 (defthm fn-bs-k6-related-attempted-surviving-scan-source-is-exact-frame
   (implies
-   (and (fn-bs-store-relation bs ks)
-        (fn-bs-record-inputp ks stage name frame)
+   (and (fn-bs-store-relation bs ks arena)
+        (fn-bs-record-inputp ks stage name frame arena)
         (not (fn-bs-lookup bs :staging stage))
         (fn-bs-crash-imagep
          (car (nth 10 (fn-bs-run bs ks
@@ -1205,7 +1205,7 @@
                 image (fn-bs-lookup image :transactions name)) frame)
         (equal (fn-bs-record-of
                 image (fn-bs-lookup image :transactions name))
-               (fn-sf-record-candidate ks))))
+               (fn-bs-row-wire (fn-sf-record-candidate ks) arena))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-bs-k6-related-input-file-cut-final-name-absent)
@@ -1218,8 +1218,8 @@
 ; The actual link and callback do not fence a directory.  Therefore the
 ; scanner's durable index at pair 10 is still the input's next index.
 (defthm fn-bs-k6-related-attempt-durable-namespace-is-input-namespace
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (fn-bs-dirs
                    (car (nth 10 (fn-bs-run bs ks
@@ -1239,8 +1239,8 @@
                             fn-bs-k6-lookup-is-entry-after)))))
 
 (defthm fn-bs-k6-related-attempt-name-is-next-scanner-name
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal name
                   (fn-bs-txn-name
@@ -1266,7 +1266,7 @@
   :hints (("Goal" :in-theory (enable fn-bs-lookup fn-bs-names))))
 
 (defthm fn-bs-k6-surviving-next-name-extends-scanner-namespace
-  (implies (and (fn-bs-store-relation at ak)
+  (implies (and (fn-bs-store-relation at ak arena)
                 (fn-bs-crash-imagep at image)
                 (fn-bs-lookup image :transactions
                               (fn-bs-txn-name
@@ -1297,8 +1297,8 @@
  (defthm fn-bs-k6-one-scanner-record-is-candidate
    (implies (and (natp n)
                  (fn-bs-inop (fn-bs-lookup image :transactions (fn-bs-txn-name n)))
-                 (fn-store-event-p candidate)
-                 (equal (fn-store-event-sequence candidate) n)
+                 (fn-wire-event-p candidate)
+                 (equal (fn-wire-event-sequence candidate) n)
                  (equal (fn-bs-record-of
                          image (fn-bs-lookup image :transactions
                                              (fn-bs-txn-name n))) candidate))
@@ -1311,7 +1311,7 @@
 
 (local
  (defthm fn-bs-k6-related-durable-prefix-is-not-fault
-   (implies (fn-bs-store-relation at ak)
+   (implies (fn-bs-store-relation at ak arena)
             (not (equal (fn-bs-durable-records at) :fault)))
    :rule-classes nil
    :hints (("Goal" :use ((:instance fn-bs-store-relation-unfolds
@@ -1321,13 +1321,13 @@
 ; publisher.  It needs neither a scan-list equality nor a candidate-membership
 ; premise: it reads the old prefix and the one exact event at the next name.
 (defthm fn-bs-k6-related-surviving-next-record-is-scanner-tail
-  (implies (and (fn-bs-store-relation at ak)
+  (implies (and (fn-bs-store-relation at ak arena)
                 (fn-bs-crash-imagep at image)
                 (let ((n (len (fn-bs-durable-names at :transactions))))
                   (and (fn-bs-inop
                         (fn-bs-lookup image :transactions (fn-bs-txn-name n)))
-                       (fn-store-event-p candidate)
-                       (equal (fn-store-event-sequence candidate) n)
+                       (fn-wire-event-p candidate)
+                       (equal (fn-wire-event-sequence candidate) n)
                        (equal (fn-bs-record-of
                                image (fn-bs-lookup image :transactions
                                                    (fn-bs-txn-name n)))
@@ -1357,8 +1357,8 @@
                             fn-bs-txn-names)))))
 
 (defthm fn-bs-k6-related-attempt-surviving-name-is-fresh-inode
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage))
                 (fn-bs-crash-imagep
                  (car (nth 10 (fn-bs-run bs ks
@@ -1380,24 +1380,38 @@
                                fn-bs-ops-for-name))))
 
 (defthm fn-bs-k6-related-input-candidate-is-next-typed-event
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((at (car (nth 10 (fn-bs-run bs ks
                                               (fn-bs-record-program stage name frame)
                                               nil groups capacity)))))
              (and (fn-store-event-p (fn-sf-record-candidate ks))
                   (equal (fn-store-event-sequence (fn-sf-record-candidate ks))
+                         (len (fn-bs-durable-names at :transactions)))
+                  (fn-wire-event-p (fn-bs-row-wire (fn-sf-record-candidate ks) arena))
+                  (equal (fn-wire-event-sequence
+                          (fn-bs-row-wire (fn-sf-record-candidate ks) arena))
                          (len (fn-bs-durable-names at :transactions))))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-bs-k6-related-attempt-durable-namespace-is-input-namespace)
                          (:instance fn-bs-k6-related-staged-durable-name-count-is-record-count)
-                         (:instance fn-bs-store-relation-unfolds))
+                         (:instance fn-bs-store-relation-unfolds)
+                         (:instance fn-bs-row-wire-of-a-store-event-is-a-cons
+                                    (row (fn-sf-record-candidate ks)))
+                         (:instance fn-bs-row-wire-keeps-the-sequence
+                                    (row (fn-sf-record-candidate ks)))
+                         (:instance fn-bs-record-of-octets-is-a-wire-event-or-nil
+                                    (octets frame)))
            :in-theory (e/d (fn-bs-record-inputp fn-sf-statep
                             fn-sf-phase-shapep fn-sf-candidatep
                             fn-bs-durable-names)
                            (fn-bs-run fn-bs-record-program
-                            fn-bs-store-relation fn-bs-dirs)))))
+                            fn-bs-store-relation fn-bs-dirs
+                            fn-bs-row-wire-of-a-store-event-is-a-cons
+                            fn-bs-row-wire-keeps-the-sequence fn-wire-event-p
+                            fn-bs-record-of-octets
+                            fn-bs-record-of-octets-is-a-wire-event-or-nil)))))
 
 (defthm fn-bs-k6-state-next-ino-is-inop
    (implies (fn-bs-statep bs)
@@ -1407,8 +1421,8 @@
 
 (local
  (defthm fn-bs-k6-related-attempt-surviving-lookup-is-inop
-   (implies (and (fn-bs-store-relation bs ks)
-                 (fn-bs-record-inputp ks stage name frame)
+   (implies (and (fn-bs-store-relation bs ks arena)
+                 (fn-bs-record-inputp ks stage name frame arena)
                  (not (fn-bs-lookup bs :staging stage))
                  (fn-bs-crash-imagep
                   (car (nth 10 (fn-bs-run bs ks
@@ -1429,13 +1443,13 @@
 ; served calls is the remaining K0 program-preservation obligation.
 (defthm fn-bs-k6-related-attempt-surviving-crash-scans-exact-frame-event
   (implies
-   (and (fn-bs-store-relation bs ks)
-        (fn-bs-record-inputp ks stage name frame)
+   (and (fn-bs-store-relation bs ks arena)
+        (fn-bs-record-inputp ks stage name frame arena)
         (not (fn-bs-lookup bs :staging stage))
         (let ((pair (nth 10 (fn-bs-run bs ks
                                         (fn-bs-record-program stage name frame)
                                         nil groups capacity))))
-          (fn-bs-store-relation (car pair) (cdr pair)))
+          (fn-bs-store-relation (car pair) (cdr pair) arena))
         (fn-bs-crash-imagep
          (car (nth 10 (fn-bs-run bs ks
                                     (fn-bs-record-program stage name frame)
@@ -1448,7 +1462,8 @@
                   image (fn-bs-lookup image :transactions name)) frame)
           (equal (fn-bs-scan-records (fn-bs-scan-store image))
                  (append (fn-bs-durable-records at)
-                         (list (fn-sf-record-candidate ks)))))))
+                         (list (fn-bs-row-wire (fn-sf-record-candidate ks)
+                                               arena)))))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k6-related-attempted-surviving-scan-source-is-exact-frame)
@@ -1463,7 +1478,8 @@
                             (ak (cdr (nth 10 (fn-bs-run bs ks
                                                            (fn-bs-record-program stage name frame)
                                                            nil groups capacity))))
-                            (candidate (fn-sf-record-candidate ks))))
+                            (candidate (fn-bs-row-wire (fn-sf-record-candidate ks)
+                                                       arena))))
            :in-theory (disable fn-bs-run fn-bs-record-program
                                fn-bs-store-relation fn-bs-record-inputp
                                fn-bs-crash-imagep fn-bs-scan-store
@@ -1496,7 +1512,7 @@
 (local
  (defthm fn-bs-k0-record-suffix-starts-at-file-cut
    (implies (and (fn-bs-statep bs)
-                 (fn-bs-record-inputp ks stage name frame)
+                 (fn-bs-record-inputp ks stage name frame arena)
                  (not (fn-bs-lookup bs :staging stage)))
             (equal (nth 10 (fn-bs-run bs ks
                                          (fn-bs-record-program stage name frame)
@@ -1536,8 +1552,8 @@
                             (fn-bs-link fn-bs-lookup fn-sf-record-link-result))))))
 
 (defthm fn-bs-k0-record-attempted-cut-kernel-is-link-observation
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal (cdr (nth 10 (fn-bs-run bs ks
                                             (fn-bs-record-program stage name frame)
@@ -1571,8 +1587,8 @@
 ; staging create/write/fence cannot add one, and the successful link adds
 ; precisely the fresh inode at the typed candidate's next name.
 (defthm fn-bs-k0-attempted-cut-has-one-issued-transaction-link
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal
             (fn-bs-ops-for-dir
@@ -1603,7 +1619,7 @@
 ; transactions through the attempted cut.
 (local
  (defthm fn-bs-k0-record-staged-input-has-no-root-pending
-   (implies (and (fn-bs-store-relation bs ks)
+   (implies (and (fn-bs-store-relation bs ks arena)
                  (equal (fn-sf-phase ks) :record-staged))
             (not (consp (fn-bs-ops-for-dir (fn-bs-pending bs) :root))))
    :rule-classes nil
@@ -1614,8 +1630,8 @@
 
 (local
  (defthm fn-bs-k0-related-input-file-cut-has-no-root-pending
-   (implies (and (fn-bs-store-relation bs ks)
-                 (fn-bs-record-inputp ks stage name frame)
+   (implies (and (fn-bs-store-relation bs ks arena)
+                 (fn-bs-record-inputp ks stage name frame arena)
                  (not (fn-bs-lookup bs :staging stage)))
             (not (consp
                   (fn-bs-ops-for-dir
@@ -1638,8 +1654,8 @@
 
 (local
  (defthm fn-bs-k0-attempted-cut-has-no-root-pending
-   (implies (and (fn-bs-store-relation bs ks)
-                 (fn-bs-record-inputp ks stage name frame)
+   (implies (and (fn-bs-store-relation bs ks arena)
+                 (fn-bs-record-inputp ks stage name frame arena)
                  (not (fn-bs-lookup bs :staging stage)))
             (not (consp
                   (fn-bs-ops-for-dir
@@ -1665,8 +1681,8 @@
 
 (local
  (defthm fn-bs-k0-attempted-cut-has-pending-shape
-   (implies (and (fn-bs-store-relation bs ks)
-                 (fn-bs-record-inputp ks stage name frame)
+   (implies (and (fn-bs-store-relation bs ks arena)
+                 (fn-bs-record-inputp ks stage name frame arena)
                  (not (fn-bs-lookup bs :staging stage)))
             (fn-bs-pending-shape-okp
              (car (nth 10 (fn-bs-run bs ks
@@ -1699,8 +1715,8 @@
 
 (local
  (defthm fn-bs-k0-attempted-cut-pending-target-decodes-candidate
-   (implies (and (fn-bs-store-relation bs ks)
-                 (fn-bs-record-inputp ks stage name frame)
+   (implies (and (fn-bs-store-relation bs ks arena)
+                 (fn-bs-record-inputp ks stage name frame arena)
                  (not (fn-bs-lookup bs :staging stage)))
             (equal
              (fn-bs-record-of
@@ -1709,7 +1725,7 @@
                                             (fn-bs-record-program stage name frame)
                                             nil groups capacity))))
               (fn-bs-next-ino bs))
-             (fn-sf-record-candidate ks)))
+             (fn-bs-row-wire (fn-sf-record-candidate ks) arena)))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
             :use ((:instance fn-bs-k6-related-input-file-cut-final-name-absent)
@@ -1770,8 +1786,8 @@
 
 (local
  (defthm fn-bs-k0-attempted-cut-keeps-other-durable-content
-   (implies (and (fn-bs-store-relation bs ks)
-                 (fn-bs-record-inputp ks stage name frame)
+   (implies (and (fn-bs-store-relation bs ks arena)
+                 (fn-bs-record-inputp ks stage name frame arena)
                  (not (fn-bs-lookup bs :staging stage))
                  (not (equal other (fn-bs-next-ino bs))))
             (equal (fn-bs-durable-content
@@ -1802,8 +1818,8 @@
 
 (local
  (defthm fn-bs-k0-attempted-durable-transaction-lookup-is-input
-   (implies (and (fn-bs-store-relation bs ks)
-                 (fn-bs-record-inputp ks stage final frame)
+   (implies (and (fn-bs-store-relation bs ks arena)
+                 (fn-bs-record-inputp ks stage final frame arena)
                  (not (fn-bs-lookup bs :staging stage)))
             (equal
              (fn-bs-lookup
@@ -1831,8 +1847,8 @@
 
 (local
  (defthm fn-bs-k0-attempted-durable-transaction-content-is-input
-   (implies (and (fn-bs-store-relation bs ks)
-                 (fn-bs-record-inputp ks stage final frame)
+   (implies (and (fn-bs-store-relation bs ks arena)
+                 (fn-bs-record-inputp ks stage final frame arena)
                  (not (fn-bs-lookup bs :staging stage)))
             (equal
              (fn-bs-content
@@ -1874,8 +1890,8 @@
 
 (local
  (defthm fn-bs-k0-attempted-durable-prefix-agrees
-   (implies (and (fn-bs-store-relation bs ks)
-                 (fn-bs-record-inputp ks stage final frame)
+   (implies (and (fn-bs-store-relation bs ks arena)
+                 (fn-bs-record-inputp ks stage final frame arena)
                  (not (fn-bs-lookup bs :staging stage)))
             (fn-bs-txn-prefix-agreesp
              (fn-bs-durable
@@ -1901,8 +1917,8 @@
                              (name (fn-bs-txn-name n))))))))
 
 (defthm fn-bs-k0-attempted-cut-keeps-old-durable-record-prefix
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal
             (fn-bs-durable-records
@@ -1957,8 +1973,8 @@
                             fn-bs-fence-file fn-bs-lookup)))))
 
 (defthm fn-bs-k0-attempted-cut-statep
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-statep
             (car (nth 10 (fn-bs-run bs ks
@@ -1987,7 +2003,7 @@
                             fn-bs-k6-lookup-is-entry-after)))))
 
 (defthm fn-bs-k0-related-allocation-is-not-frontier-target
-  (implies (fn-bs-store-relation bs ks)
+  (implies (fn-bs-store-relation bs ks arena)
            (not (equal (fn-bs-next-ino bs)
                        (fn-bs-durable-entry bs :root *fn-bs-scan-frontier-name*))))
   :rule-classes nil
@@ -1997,8 +2013,8 @@
                            (fn-bs-store-relation fn-bs-authority-knownp)))))
 
 (defthm fn-bs-k0-attempted-cut-keeps-durable-frontier
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal
             (fn-bs-durable-frontier
@@ -2017,10 +2033,10 @@
                             fn-bs-record-inputp fn-bs-durable-content)))))
 
 (defthm fn-bs-k0-attempted-cut-kernel-admits-durable-image
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
-           (fn-sf-crash-imagep
+           (fn-bs-alpha-crash-imagep
             (cdr (nth 10 (fn-bs-run bs ks
                                          (fn-bs-record-program stage name frame)
                                          nil groups capacity)))
@@ -2031,7 +2047,7 @@
             (fn-bs-durable-records
              (car (nth 10 (fn-bs-run bs ks
                                           (fn-bs-record-program stage name frame)
-                                          nil groups capacity))))))
+                                          nil groups capacity)))) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0-record-attempted-cut-kernel-is-link-observation)
@@ -2045,7 +2061,7 @@
                             (s (fn-sf-record-file-result ks :ok))
                             (result :ok)))
            :in-theory (e/d (fn-bs-record-inputp fn-bs-replay-visiblep
-                            fn-sf-crash-imagep fn-sf-frontier-new-visiblep
+                            fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-sf-frontier-new-visiblep
                             fn-sf-record-present-visiblep
                             fn-sf-record-file-result fn-sf-record-link-result)
                            (fn-bs-run fn-bs-record-program fn-bs-store-relation
@@ -2053,7 +2069,7 @@
                             fn-sf-statep)))))
 
 (defthm fn-bs-k0-related-allocation-is-not-config-target
-  (implies (fn-bs-store-relation bs ks)
+  (implies (fn-bs-store-relation bs ks arena)
            (not (equal (fn-bs-next-ino bs)
                        (fn-bs-durable-entry bs :root *fn-bs-scan-config-name*))))
   :rule-classes nil
@@ -2063,8 +2079,8 @@
                            (fn-bs-store-relation fn-bs-authority-knownp)))))
 
 (defthm fn-bs-k0-attempted-cut-keeps-durable-config
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (let ((at (car (nth 10 (fn-bs-run bs ks
                                               (fn-bs-record-program stage name frame)
@@ -2171,8 +2187,8 @@
 
 (local
  (defthm fn-bs-k0-related-input-enables-link-cut
-   (implies (and (fn-bs-store-relation bs ks)
-                 (fn-bs-record-inputp ks stage name frame)
+   (implies (and (fn-bs-store-relation bs ks arena)
+                 (fn-bs-record-inputp ks stage name frame arena)
                  (not (fn-bs-lookup bs :staging stage)))
             (and (fn-bs-statep bs)
                  (fn-bs-namep stage)
@@ -2196,8 +2212,8 @@
                                        (theory 'minimal-theory))))))
 
 (defthm fn-bs-k0-attempted-cut-has-new-inode
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (consp (assoc-equal
                    (fn-bs-next-ino bs)
@@ -2253,8 +2269,8 @@
 
 
 (defthm fn-bs-k0-attempted-cut-authority-targets-are-old-plus-new
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (equal
             (fn-bs-authority-inode-list
@@ -2329,8 +2345,8 @@
 
 
 (defthm fn-bs-k0-attempted-cut-keeps-other-inode-entry
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage))
                 (not (equal other (fn-bs-next-ino bs))))
            (equal (assoc-equal other
@@ -2361,8 +2377,8 @@
 
 ; K0 attempted-cut authority existence and file-fence preservation.
 (local (defthm fn-bs-k0-attempted-cut-keeps-known-list
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage))
                 (fn-bs-inode-list-knownp bs xs)
                 (not (member-equal (fn-bs-next-ino bs) xs)))
@@ -2388,8 +2404,8 @@
            :in-theory (enable fn-bs-inode-list-knownp))))
 
 (defthm fn-bs-k0-attempted-cut-authority-known
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-authority-knownp
             (car (nth 10 (fn-bs-run bs ks
@@ -2409,7 +2425,7 @@
                             fn-bs-record-inputp fn-bs-lookup
                             fn-bs-authority-fencedp fn-bs-durable-records
                             fn-bs-replay-matches-scan
-                            fn-bs-pending-matches-phase fn-sf-crash-imagep)))))
+                            fn-bs-pending-matches-phase fn-sf-crash-imagep fn-bs-alpha-crash-imagep)))))
 
 (local (defthm fn-bs-k0-other-inode-filter-preserves-selected-ops
   (implies (not (equal other ino))
@@ -2438,8 +2454,8 @@
                             fn-bs-lookup fn-bs-k6-lookup-is-entry-after)))))
 
 (defthm fn-bs-k0-attempted-cut-keeps-other-fenced
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage))
                 (not (equal other (fn-bs-next-ino bs)))
                 (fn-bs-fencedp bs other))
@@ -2465,8 +2481,8 @@
                             fn-bs-k6-lookup-is-entry-after)))))
 
 (local (defthm fn-bs-k0-attempted-cut-new-target-fenced
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-fencedp
             (car (nth 10 (fn-bs-run bs ks
@@ -2485,8 +2501,8 @@
                             fn-bs-k6-lookup-is-entry-after))))))
 
 (local (defthm fn-bs-k0-attempted-cut-keeps-fenced-list
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage))
                 (fn-bs-all-fencedp bs xs)
                 (not (member-equal (fn-bs-next-ino bs) xs)))
@@ -2512,8 +2528,8 @@
            :in-theory (enable fn-bs-all-fencedp))))
 
 (defthm fn-bs-k0-attempted-cut-authority-fenced
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-authority-fencedp
             (car (nth 10 (fn-bs-run bs ks
@@ -2532,25 +2548,26 @@
                             fn-bs-record-inputp fn-bs-lookup
                             fn-bs-authority-knownp fn-bs-durable-records
                             fn-bs-replay-matches-scan
-                            fn-bs-pending-matches-phase fn-sf-crash-imagep)))))
+                            fn-bs-pending-matches-phase fn-sf-crash-imagep fn-bs-alpha-crash-imagep)))))
 
 ; K0: the actual attempted Store record cut re-establishes the full relation.
 (local (defthm fn-bs-k0-staged-input-durable-records-match
-  (implies (and (fn-bs-store-relation bs ks)
+  (implies (and (fn-bs-store-relation bs ks arena)
                 (equal (fn-sf-phase ks) :record-staged))
-           (equal (fn-bs-durable-records bs) (fn-sf-records ks)))
+           (equal (fn-bs-durable-records bs)
+                  (fn-bs-rows-wire (fn-sf-records ks) arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-window-unfolds))
-           :in-theory (e/d (fn-bs-replay-visiblep fn-sf-crash-imagep
+           :in-theory (e/d (fn-bs-replay-visiblep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                             fn-sf-record-present-visiblep)
                            (fn-bs-store-relation fn-bs-durable-records
                             fn-bs-durable-frontier fn-bs-pending-matches-phase
                             fn-sf-statep))))))
 
 (defthm fn-bs-k0-record-attempted-cut-establishes-relation
-  (implies (and (fn-bs-store-relation bs ks)
-                (fn-bs-record-inputp ks stage name frame)
+  (implies (and (fn-bs-store-relation bs ks arena)
+                (fn-bs-record-inputp ks stage name frame arena)
                 (not (fn-bs-lookup bs :staging stage)))
            (fn-bs-store-relation
             (car (nth 10 (fn-bs-run bs ks
@@ -2558,7 +2575,7 @@
                                     nil groups capacity)))
             (cdr (nth 10 (fn-bs-run bs ks
                                     (fn-bs-record-program stage name frame)
-                                    nil groups capacity)))))
+                                    nil groups capacity))) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-unfolds)
@@ -2590,7 +2607,7 @@
                            (fn-bs-run fn-bs-record-program fn-bs-statep
                             fn-bs-lookup fn-bs-durable-records
                             fn-bs-authority-knownp fn-bs-authority-fencedp
-                            fn-sf-statep fn-sf-crash-imagep
+                            fn-sf-statep fn-sf-crash-imagep fn-bs-alpha-crash-imagep
                             fn-bs-fencedp fn-bs-pending-shape-okp)))))
 
 ; K0 served article call arguments: ACL2 codec, frame, and filename.
@@ -2599,7 +2616,7 @@
                 (fn-cbor-at-mostp payload *fn-frame-max-store-payload*)
                 (equal (fn-store-event-decode-exact payload)
                        (list :ok event))
-                (fn-store-event-p event))
+                (fn-wire-event-p event))
            (equal
             (fn-bs-record-of-octets
              (append (fn-frame-store-protected payload)
@@ -2633,7 +2650,7 @@
                             fn-frame-result-kind
                             fn-frame-ok fn-frame-inputp)
                            (fn-frame-seal fn-frame-protected-prefix
-                            fn-store-event-decode-exact fn-store-event-p)))))
+                            fn-store-event-decode-exact fn-wire-event-p)))))
 
 (local (defthm fn-bs-k0-article-event-round-trip
   (implies (fn-record-p record)
@@ -2678,77 +2695,105 @@
                             fn-frame-protected fn-frame-header)
                            (fn-frame-store-protected fn-frame-trailer)))))
 
+;; The host's article arguments after the records flip: the staged candidate
+;; is a RETAINED row (a held row whose payload is an arena handle), and the
+;; frame the host writes is the codec's encoding of the row's WIRE event,
+;; alpha through the arena (fn-bs-row-wire; books/byte-store-arena proves it
+;; is store-intern's fn-row-wire-of, what the entry encodes).  The hypothesis
+;; that alpha of the row is a wire record is what the intern establishes
+;; (books/store-intern fn-intern-events-materializes: a row interned from a
+;; wire record reads back as that record).
+(local (defthm fn-bs-k0-a-record-is-a-wire-event
+  (implies (fn-record-p x) (fn-wire-event-p x))
+  :hints (("Goal" :in-theory (enable fn-wire-event-p)))))
+
 (defthm fn-bs-k0-article-host-arguments-are-typed-record-input
-  (implies (and (fn-record-p record)
+  (implies (and (fn-record-p (fn-bs-row-wire row arena))
                 (equal (fn-sf-phase ks) :record-staged)
-                (equal (fn-sf-record-candidate ks) record)
+                (equal (fn-sf-record-candidate ks) row)
                 (fn-bs-namep stage))
            (fn-bs-record-inputp
             ks stage
-            (fn-bs-txn-name (fn-store-event-sequence record))
+            (fn-bs-txn-name (fn-store-event-sequence row))
             (append
-             (fn-frame-store-protected (fn-store-event-encode record))
+             (fn-frame-store-protected
+              (fn-store-event-encode (fn-bs-row-wire row arena)))
              (fn-frame-trailer
-              (fn-frame-store-protected (fn-store-event-encode record))))))
+              (fn-frame-store-protected
+               (fn-store-event-encode (fn-bs-row-wire row arena)))))
+            arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bs-k0-article-encoding-fits-frame)
-                 (:instance fn-bs-k0-article-event-round-trip)
+           :use ((:instance fn-bs-k0-article-encoding-fits-frame
+                            (record (fn-bs-row-wire row arena)))
+                 (:instance fn-bs-k0-article-event-round-trip
+                            (record (fn-bs-row-wire row arena)))
+                 (:instance fn-bs-k0-a-record-is-a-wire-event
+                            (x (fn-bs-row-wire row arena)))
                  (:instance fn-bs-k0-host-frame-is-octets
-                            (payload (fn-store-event-encode record)))
+                            (payload (fn-store-event-encode
+                                      (fn-bs-row-wire row arena))))
                  (:instance fn-bs-k0-host-frame-decodes-event
-                            (payload (fn-store-event-encode record))
-                            (event record)))
+                            (payload (fn-store-event-encode
+                                      (fn-bs-row-wire row arena)))
+                            (event (fn-bs-row-wire row arena))))
            :in-theory (e/d (fn-bs-record-inputp)
                            (fn-bs-record-of-octets fn-store-event-encode
                             fn-store-event-decode-exact fn-record-p
+                            fn-wire-event-p fn-bs-row-wire
+                            fn-bs-k0-a-record-is-a-wire-event
                             fn-frame-store-protected fn-frame-trailer)))))
 
 (defthm fn-bs-k0-article-host-arguments-reach-related-attempted-cut
   (implies
-   (and (fn-bs-store-relation bs ks)
-        (fn-record-p record)
+   (and (fn-bs-store-relation bs ks arena)
+        (fn-record-p (fn-bs-row-wire row arena))
         (equal (fn-sf-phase ks) :record-staged)
-        (equal (fn-sf-record-candidate ks) record)
+        (equal (fn-sf-record-candidate ks) row)
         (fn-bs-namep stage)
         (not (fn-bs-lookup bs :staging stage)))
    (let ((frame (append
-                 (fn-frame-store-protected (fn-store-event-encode record))
+                 (fn-frame-store-protected
+                  (fn-store-event-encode (fn-bs-row-wire row arena)))
                  (fn-frame-trailer
-                  (fn-frame-store-protected (fn-store-event-encode record)))))
-         (name (fn-bs-txn-name (fn-store-event-sequence record))))
+                  (fn-frame-store-protected
+                   (fn-store-event-encode (fn-bs-row-wire row arena))))))
+         (name (fn-bs-txn-name (fn-store-event-sequence row))))
      (fn-bs-store-relation
       (car (nth 10 (fn-bs-run bs ks
                               (fn-bs-record-program stage name frame)
                               nil groups capacity)))
       (cdr (nth 10 (fn-bs-run bs ks
                               (fn-bs-record-program stage name frame)
-                              nil groups capacity))))))
+                              nil groups capacity)))
+      arena)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-k0-article-host-arguments-are-typed-record-input)
                  (:instance fn-bs-k0-record-attempted-cut-establishes-relation
-                            (name (fn-bs-txn-name (fn-store-event-sequence record)))
+                            (name (fn-bs-txn-name (fn-store-event-sequence row)))
                             (frame (append
                                     (fn-frame-store-protected
-                                     (fn-store-event-encode record))
+                                     (fn-store-event-encode
+                                      (fn-bs-row-wire row arena)))
                                     (fn-frame-trailer
                                      (fn-frame-store-protected
-                                      (fn-store-event-encode record)))))))
+                                      (fn-store-event-encode
+                                       (fn-bs-row-wire row arena))))))))
            :in-theory (theory 'minimal-theory))))
 
 ; K0 call-entry handoff: ACL2 preparation writes no byte state.
 (defthm fn-bs-k0-record-prepare-preserves-relation
-  (implies (fn-bs-store-relation bs ks)
+  (implies (fn-bs-store-relation bs ks arena)
            (fn-bs-store-relation
-            bs (fn-sf-prepare-record ks record groups capacity)))
+            bs (fn-sf-prepare-record ks record groups capacity) arena))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-bs-store-relation-unfolds)
                  (:instance fn-sf-prepare-record-preserves-state (s ks))
                  (:instance fn-bs-store-relation-window-unfolds))
            :in-theory (e/d (fn-bs-store-relation fn-sf-prepare-record
-                            fn-sf-crash-imagep fn-bs-replay-visiblep
+                            fn-sf-crash-imagep fn-bs-alpha-crash-imagep fn-bs-replay-visiblep
                             fn-bs-pending-matches-phase
                             fn-sf-frontier-new-visiblep
                             fn-sf-record-present-visiblep)
