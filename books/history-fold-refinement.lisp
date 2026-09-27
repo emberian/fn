@@ -42,6 +42,9 @@
 (include-book "store-open-pre-c1")
 (include-book "control-visible")
 
+; The recognizers stay closed: the lemmas below dispatch on the row's kind.
+(local (in-theory (disable fn-stxa-p fn-held-p fn-hstxa-p fn-record-p)))
+
 ; -----------------------------------------------------------------------------
 ; 1. Alpha of one row, by kind.
 
@@ -84,7 +87,8 @@
          (fn-hfr-stxa-of row))
   :hints (("Goal" :cases ((fn-hstxa-p row) (fn-held-p row))
            :in-theory (e/d (fn-hw-composite) (fn-row-wire-of fn-held-wire))
-           :use ((:instance fn-held-is-no-wire-event (x row))))))
+           :use ((:instance fn-held-is-no-wire-event (x row))
+                 (:instance fn-hstxa-is-not-held (x row))))))
 
 ; Each reader reads only that composite.
 (defthm fn-ks-evidence-reads-the-composite
@@ -106,8 +110,13 @@
   (equal (fn-sopc-pre-c1-control-record-p e)
          (fn-sopc-pre-c1-control-record-p (fn-hfr-stxa-of e)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-sopc-pre-c1-control-record-p
-                                     fn-sopc-article fn-hw-composite))))
+  :hints (("Goal" :in-theory (e/d (fn-sopc-pre-c1-control-record-p fn-hfr-stxa-of
+                                   fn-sopc-hw-composite-idempotent)
+                                  (fn-sopc-pre-c1-composite-p fn-hw-composite))
+           :use ((:instance fn-sopc-pre-c1-composite-needs-a-composite
+                            (x (fn-hw-composite e)))
+                 (:instance fn-sopc-pre-c1-composite-needs-a-composite
+                            (x (fn-hw-composite nil)))))))
 
 ; So each reader gives the same answer on a row and on its wire form.
 (defthm fn-ks-evidence-over-alpha
@@ -145,6 +154,12 @@
   (equal (fn-row-wire-of nil fn-arena) nil)
   :hints (("Goal" :in-theory (enable fn-row-wire-of fn-held-p fn-hstxa-p))))
 
+(defthm fn-hfr-wire-of-a-value-is-a-value
+  (implies row (fn-row-wire-of row fn-arena))
+  :hints (("Goal" :cases ((fn-hstxa-p row) (fn-held-p row))
+           :in-theory (e/d (fn-held-wire fn-record-make) (fn-row-wire-of))
+           :use ((:instance fn-hstxa-p-fields (x row))))))
+
 ; -----------------------------------------------------------------------------
 ; 3. The scalar folds.  KEYSTONES: each fold over the rows is the fold over
 ; their wire forms (no hypothesis).
@@ -174,8 +189,9 @@
 
 ; -----------------------------------------------------------------------------
 ; 4. What the intern establishes for a row: a held row stands for a wire
-; record (its handle names bytes in the arena), and a composite row's
-; interned article stands for the article record its wire composite carries.
+; record (its handle names bytes in the arena), a composite row's interned
+; article stands for the article record its wire composite carries, and no
+; other row is a bare wire composite (the intern never retains one).
 
 (defun fn-row-composite-okp (row fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
@@ -184,7 +200,7 @@
               (equal (fn-row-wire-of (fn-hstxa-held row) fn-arena)
                      (fn-replay-composite-record (fn-hstxa-stxa row)))))
         ((fn-held-p row) (fn-record-p (fn-row-wire-of row fn-arena)))
-        (t t)))
+        (t (not (fn-stxa-p row)))))
 
 (defun fn-rows-composites-okp (rows fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
@@ -201,26 +217,22 @@
             (mv-nth 0 (fn-intern-event w keyring generation fn-arena))
             (mv-nth 1 (fn-intern-event w keyring generation fn-arena))))
   :hints (("Goal" :cases ((fn-record-p w) (fn-stxa-p w))
-           :in-theory (e/d (fn-intern-event)
+           :in-theory (e/d (fn-intern-event fn-row-composite-okp)
                            (fn-cat-intern-list fn-row-wire-of fn-wire-event-p
-                            fn-replay-composite-record))
+                            fn-replay-composite-record fn-held-p-of-intern-list
+                            fn-intern-event-materializes
+                            fn-cat-intern-list-is-row-at-count fn-intern-row-at))
            :use ((:instance fn-intern-event-materializes
                             (w (fn-replay-composite-record w)))
-                 (:instance fn-intern-event-materializes)))))
+                 (:instance fn-intern-event-materializes)
+                 (:instance fn-held-p-of-intern-list)
+                 (:instance fn-held-p-of-intern-list (w (fn-replay-composite-record w)))
+                 (:instance fn-hstxa-is-not-held
+                            (x (mv-nth 0 (fn-cat-intern-list w keyring generation fn-arena))))))))
 
 ; -----------------------------------------------------------------------------
 ; 5. The article folds.  KEYSTONES: alpha of the fold over the rows is the
 ; fold over their wire forms, for rows the intern made.
-
-(local
- (defthm fn-hfr-composite-record-is-no-row
-   (and (not (fn-held-p (fn-replay-composite-record x)))
-        (not (fn-hstxa-p (fn-replay-composite-record x))))
-   :hints (("Goal" :in-theory (enable fn-replay-composite-record)
-            :use ((:instance fn-held-is-no-wire-event
-                             (x (fn-replay-composite-record x)))
-                  (:instance fn-hstxa-is-no-wire-event
-                             (x (fn-replay-composite-record x))))))))
 
 (defthm fn-bpr-event-article-over-alpha
   (implies (fn-row-composite-okp row fn-arena)
@@ -247,13 +259,22 @@
            :in-theory (e/d (fn-col-poll-article)
                            (fn-row-wire-of fn-held-wire fn-replay-composite-record)))))
 
+(defthm fn-hfr-held-wire-msgid
+  (equal (fn-record-msgid (fn-held-wire h payload)) (fn-record-msgid h))
+  :hints (("Goal" :in-theory (enable fn-held-wire))))
+
 (defthm fn-ctl-event-msgid-over-alpha
   (implies (fn-row-composite-okp row fn-arena)
            (equal (fn-ctl-event-msgid (fn-row-wire-of row fn-arena))
                   (fn-ctl-event-msgid row)))
   :hints (("Goal" :cases ((fn-hstxa-p row) (fn-held-p row))
-           :in-theory (e/d (fn-ctl-event-msgid)
-                           (fn-row-wire-of fn-held-wire fn-replay-composite-record)))))
+           :in-theory (e/d (fn-ctl-event-msgid fn-row-composite-okp)
+                           (fn-row-wire-of fn-held-wire fn-replay-composite-record
+                            fn-row-bytes))
+           :use ((:instance fn-hfr-held-wire-msgid
+                            (h (fn-hstxa-held row))
+                            (payload (fn-row-bytes (fn-hstxa-held row) fn-arena)))
+                 (:instance fn-hfr-wire-of-a-held-row (row (fn-hstxa-held row)))))))
 
 ; -----------------------------------------------------------------------------
 ; 6. The consumer poll's report over the arena.
@@ -283,15 +304,25 @@
 ; the page `fn-col-poll-report' computes, whatever the arena holds: a
 ; retained composite row reports the wire composite it carries, exactly as
 ; the wire composite reported before the flip.
+(defthm fn-hfr-report-octets-of-alpha-unless-held
+  (implies (not (fn-held-p e))
+           (equal (fn-col-poll-report-octets (fn-row-wire-of e fn-arena))
+                  (fn-col-poll-report-octets e)))
+  :hints (("Goal" :cases ((fn-hstxa-p e))
+           :in-theory (e/d (fn-col-poll-report-octets)
+                           (fn-row-wire-of fn-stxa-encode fn-rcon-record-encode-impl
+                            fn-rcon-record-encode-impl-is-record-encode-impl))
+           :use ((:instance fn-hstxa-p-fields (x e))
+                 (:instance fn-hstxa-is-no-wire-event (x (fn-hstxa-stxa e)))))))
+
 (defthm fn-col-poll-report-over-is-the-report-unless-a-held-row
   (implies (not (fn-held-p (caddr (fn-col-poll o consumer))))
            (equal (fn-col-poll-report-over o consumer fn-arena)
                   (fn-col-poll-report o consumer)))
-  :hints (("Goal" :in-theory (e/d (fn-col-poll-report-over fn-col-poll-report
-                                   fn-row-wire-of fn-col-poll-report-octets)
-                                  (fn-col-poll fn-stxa-encode
-                                   fn-rcon-record-encode-impl
-                                   fn-ncl-poll-event-bytesp)))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-col-poll-report-over fn-col-poll-report
+                                fn-hfr-report-octets-of-alpha-unless-held)
+                              (theory 'minimal-theory)))))
 
 ; A held article row's report encodes its wire form: the row's positions
 ; with the payload its handle names in the arena.
@@ -342,9 +373,10 @@
                                 (fn-row-wire-of (caddr d) fn-arena)))))
                   (equal r '(:refused :oversize)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-col-poll-report-over fn-ncl-poll-event-bytesp)
-                                  (fn-col-poll fn-col-poll-report-octets
-                                   fn-row-wire-of fn-cbor-octet-listp)))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-col-poll-report-over fn-ncl-poll-event-bytesp
+                                (:executable-counterpart fn-cbor-octet-listp))
+                              (theory 'minimal-theory)))))
 
 ; KEYSTONE (PKT-467 over the arena; the twin of
 ; fn-col-poll-report-of-an-admitted-payload-fits, books/consumer-owner-local-
@@ -370,7 +402,5 @@
                                                  (fn-row-wire-of
                                                   (caddr (fn-col-poll o consumer))
                                                   fn-arena))))))
-           :in-theory (e/d (fn-ncl-poll-event-bytesp)
-                           (fn-col-poll fn-col-poll-report-over fn-col-poll-report-octets
-                            fn-row-wire-of fn-bs-publication-admissiblep
-                            fn-cbor-octet-listp)))))
+           :in-theory (union-theories '(fn-ncl-poll-event-bytesp)
+                                      (theory 'minimal-theory)))))

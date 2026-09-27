@@ -54,14 +54,24 @@
         (fn-record-result-record article)
       nil)))
 
-(defun fn-sopc-pre-c1-control-record-p (row)
+; Unwrapping twice is unwrapping once (a row's composite is no row).
+(defthm fn-sopc-composite-is-no-row
+  (implies (fn-stxa-p x) (not (fn-hstxa-p x)))
+  :hints (("Goal" :in-theory (enable fn-hstxa-p fn-stxa-p fn-stxa-shapep))))
+
+(defthm fn-sopc-hw-composite-idempotent
+  (equal (fn-hw-composite (fn-hw-composite e)) (fn-hw-composite e))
+  :hints (("Goal" :cases ((fn-hstxa-p e))
+           :in-theory (e/d (fn-hw-composite) (fn-hstxa-p fn-stxa-p)))))
+
+; The wire composite's test (the pre-flip predicate).
+(defun fn-sopc-pre-c1-composite-p (event)
   (declare (xargs :guard t))
-  (let ((event (fn-hw-composite row)))
   (and (fn-stxa-p event)
        (equal (fn-stxa-schema event) *fn-stxa-carried-version*)
        (fn-record-result-okp
         (fn-record-decode-exact (fn-stxa-article-record event)))
-       (let* ((record (fn-sopc-article row))
+       (let* ((record (fn-sopc-article event))
               (source (fn-stxa-authored-source event))
               (fields (fn-hsig-authored-source-fields source))
               (classified (fn-ctl-classify-octets source)))
@@ -71,7 +81,16 @@
               (eq (car classified) :control)
               (equal (fn-record-groups record) (fn-hsig-second fields))
               (not (equal (fn-record-groups record)
-                          (fn-hsig-source-filed-groups source fields))))))))
+                          (fn-hsig-source-filed-groups source fields)))))))
+
+(defthm fn-sopc-pre-c1-composite-needs-a-composite
+  (implies (not (fn-stxa-p x)) (not (fn-sopc-pre-c1-composite-p x))))
+
+; A history event: the composite it carries (a retained row's, or a wire
+; composite itself).
+(defun fn-sopc-pre-c1-control-record-p (row)
+  (declare (xargs :guard t))
+  (fn-sopc-pre-c1-composite-p (fn-hw-composite row)))
 
 ; No record of the history is one.
 (defun fn-sopc-free-p (records)
@@ -163,7 +182,7 @@
                        *fn-stxa-carried-version*)))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
-                                             '(fn-sopc-pre-c1-control-record-p)))))
+                                             '(fn-sopc-pre-c1-control-record-p fn-sopc-pre-c1-composite-p)))))
 
 (defthm fn-sopc-pre-c1-record-has-no-carried-metadata
   (implies (fn-sopc-pre-c1-control-record-p event)
@@ -173,7 +192,8 @@
                   (fn-record-decode-exact
                    (fn-stxa-article-record (fn-hw-composite event)))))))
   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
-                                             '(fn-sopc-pre-c1-control-record-p
+                                             '(fn-sopc-pre-c1-control-record-p fn-sopc-pre-c1-composite-p
+                                               fn-sopc-hw-composite-idempotent
                                                fn-sopc-article
                                                fn-hsig-carried-record-metadatap)))))
 
