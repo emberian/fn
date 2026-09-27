@@ -197,6 +197,10 @@
     "books/store-profile-facts",
     "books/store-export",
     "tests/acl2/store-export-tests",
+    "books/store-import-publication",
+    "tests/acl2/store-import-publication-tests",
+    "books/store-init-publication",
+    "tests/acl2/store-init-publication-tests",
     "tests/acl2/store-profile-facts-tests",
     "books/store-profile-open",
     "tests/acl2/store-profile-open-tests",
@@ -1038,27 +1042,27 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1063,
-    "books_in_root_closure": 1055,
-    "roots": 1034,
-    "theorems": 15202,
-    "functions": 10460,
-    "assert_events": 15602,
-    "must_fails": 1864,
+    "books": 1067,
+    "books_in_root_closure": 1059,
+    "roots": 1038,
+    "theorems": 15341,
+    "functions": 10529,
+    "assert_events": 15648,
+    "must_fails": 1872,
     "prover_refusals": 0,
     "encapsulates": 77,
     "guards": {
       "verified": 2337,
-      "declared-off": 830,
-      "default-guarded": 5713,
-      "default-unguarded": 1580
+      "declared-off": 889,
+      "default-guarded": 5720,
+      "default-unguarded": 1583
     },
-    "suspect_theorems": 145,
+    "suspect_theorems": 146,
     "export_hygiene_warnings": 168,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 164,
     "include_hygiene_warnings": 1060,
-    "host_names_warnings": 1189,
+    "host_names_warnings": 1188,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -15868,6 +15872,61 @@
       "read_error": null
     },
     {
+      "book": "books/store-import-publication.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 123,
+      "functions": 56,
+      "guards": {
+        "verified": 0,
+        "declared-off": 52,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "byte-store-invariants",
+        "byte-store-programs"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-init-publication.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 10,
+      "guards": {
+        "verified": 0,
+        "declared-off": 7,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 2,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-import-publication"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-bs-init-pub-ops-for-dir-of-crash-select-of-ops-for-dir"
+      ],
+      "read_error": null
+    },
+    {
       "book": "books/store-maintenance-reserve.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -29170,6 +29229,62 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-import-publication-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 24,
+      "must_fails": 6,
+      "prover_refusals": 0,
+      "defconsts": 19,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-import-publication"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-init-publication-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 22,
+      "must_fails": 2,
+      "prover_refusals": 0,
+      "defconsts": 9,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-init-publication"
+      ],
+      "system_includes": [
+        "std/testing/must-fail"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-maintenance-reserve-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -31178,6 +31293,14 @@
       "line": 121,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-bpsr-adu-octets and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-bs-init-pub-ops-for-dir-of-crash-select-of-ops-for-dir",
+      "book": "books/store-init-publication.lisp",
+      "line": 133,
+      "reasons": [
+        "closed-theory-corollary: proved only by fn-bs-crash-select-keeps-quiet-dir, fn-bs-ops-for-dir-of-ops-for-dir-other"
       ]
     },
     {
@@ -47426,35 +47549,28 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2800,
+        "line": 2846,
         "name": "search",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2845,
-        "name": "directory-namestring",
-        "source": null,
-        "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
-      },
-      {
-        "host": "host/native/io.lisp",
-        "line": 3813,
+        "line": 4088,
         "name": "char/=",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3822,
+        "line": 4097,
         "name": "read-line",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3937,
+        "line": 4212,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
@@ -47875,7 +47991,7 @@
       {
         "host": "host/native/operator.lisp",
         "line": 274,
-        "name": "fnn-command-init",
+        "name": "fnn-command-init-published",
         "source": "host/native/io.lisp",
         "reason": "defined in host/native/io.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
