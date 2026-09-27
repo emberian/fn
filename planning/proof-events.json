@@ -7509,6 +7509,23 @@
           "name": "fn-apr-foundp-is-article-found"
         }
       ]
+    },
+    {
+      "id": "PRF-218",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-stuff-lines-iter-is-stuff-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-body-octets-iter-is-body-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-list-length-onto-is-list-length"
+        }
+      ]
     }
   ]
 }

@@ -702,6 +702,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/nntp-xref-tests \
 	tests/acl2/posting-account-tests \
 	tests/acl2/nntp-post-tests \
+	tests/acl2/served-line-iterative-tests \
 	books/path \
 	books/path-update \
 	books/path-update-tail \
