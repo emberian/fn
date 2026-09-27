@@ -2555,7 +2555,8 @@
         "fn-own-operator-decision-is-an-injection-of-the-payload",
         "fn-own-operator-submit-without-a-clock-refuses-and-changes-nothing",
         "fn-own-operator-retry-resubmits-the-stored-injection",
-        "fn-inj-injected-article-is-a-reinjection-of-its-source"
+        "fn-inj-injected-article-is-a-reinjection-of-its-source",
+        "fn-own-operator-retry-at-the-entry-is-the-stored-injection"
       ]
     },
     {
@@ -3077,8 +3078,7 @@
       "progress_note": "The ACL2 local status codec, owner scope decision and native-control host test passed the scoped status/index run. The general accepted and nonaccepted kind-9 codec roundtrips and their isolating teeth certified in the selected hbox book/test roots at the exact new source bytes; these are proof-only changes to the executable codec. The earlier e160442f image passed unknown-consumer refusal, read-only status, advancing ACK and recovered status checks. The joined topic/index source has scoped certification but has not yet run on a matching saved image. The diagnostic does not assert application processing or discharge.",
       "events": [
         "fn-ncl-status-accepted-reply-roundtrip",
-        "fn-ncl-status-nonaccepted-reply-roundtrip",
-        "fn-ncl-cli-after-retries-only-a-refused-register"
+        "fn-ncl-status-nonaccepted-reply-roundtrip"
       ]
     },
     {
@@ -8755,7 +8755,6 @@
       "events": [
         "fn-ctl-withdrawal-authority-is-exactly-signer-or-poster",
         "fn-ctl-verified-cause-ignores-its-keys",
-        "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets",
         "fn-ctl-withdrawal-plan-record-is-bound",
         "fn-ctl-cancel-executes-only-for-author-or-authority",
         "fn-own-stored-octets-carry-the-account-lock",
@@ -8769,7 +8768,8 @@
         "fn-ns-cancel-lock-and-posting-account-inputs-differ",
         "fn-ns-file-parse-of-render",
         "fn-cld-a-retry-by-any-account-or-epoch-is-already-stored",
-        "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
+        "fn-cld-a-changed-source-is-a-conflict-whatever-the-account",
+        "fn-ctl-control-of-fields"
       ]
     },
     {
