@@ -29,7 +29,7 @@
             :frontier-directory :ok))
 (defconst *bpr-prepared*
   (fn-bpi-ingress-prepare (bpr-reserve (fn-sn-initial *bpr-groups* 20))
-                          *bpr-policy* *bpr-context* *bpr-adu*))
+                          *bpr-policy* *bpr-context* *bpr-adu* 0))
 (defconst *bpr-record* (fn-bpi-result-record *bpr-prepared*))
 (defconst *bpr-store* (fn-bpi-finish-prepared (fn-bpi-result-store *bpr-prepared*)))
 (assert-event (fn-bpi-durably-acceptedp *bpr-store* *bpr-record*))

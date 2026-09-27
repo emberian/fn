@@ -8,6 +8,9 @@
 (in-package "ACL2")
 (include-book "article-fields")
 (include-book "store-node")
+; The intern (records-flip): the store retains a held row whose payload is an
+; arena handle; fn-intern-row-at, fn-row-wire-of, fn-handle-bytes.
+(include-book "store-intern")
 ; article-properties is included locally: this book cites one of its
 ; theorems (fn-article-successful-parse-syntax-p) in two guard proofs and
 ; nothing else.  Included non-locally, its fn-article-successful-parse-*
@@ -446,11 +449,26 @@
    (fn-bpi-policy-charge policy)))
 (verify-guards fn-bpi-record-for)
 
-; Result: (:rejected reason) or (:prepared store record).  The caller must
+; The policy applies only to a Store state, whose keyring and generation are
+; the intern's (fn-sn-statep): the guard of fn-intern-row-at below.
+(defthm fn-bpi-statep-gives-the-intern-keyring
+  (implies (fn-sn-statep store)
+           (and (fn-prin-keyringp (fn-sn-keyring store))
+                (natp (fn-sn-keyring-generation store))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep)))))
+
+; Result: (:rejected reason) or (:prepared store row record).  The caller must
 ; already have completed the Store's durable allocator reservation sequence;
 ; this function neither treats BP inbox staging nor a transport ACK as durable
 ; fn acceptance.
-(defun fn-bpi-ingress-prepare (store policy context adu)
+;
+; RECORD is the wire record the ADU composes to (its payload the ADU itself);
+; ROW is what the store retains (records-flip): the held row of RECORD whose
+; payload is H (a natural: the core is total, so a non-natural reads as 0),
+; the arena handle the ADU takes at the entry
+; (fn-bpi-ingress-prepare-interned below), with its byte facts and its
+; context under the store's keyring and generation (fn-intern-row-at).
+(defun fn-bpi-ingress-prepare (store policy context adu h)
   (declare (xargs :guard t :verify-guards nil
                   :guard-hints
                   (("Goal"
@@ -467,7 +485,16 @@
                                         fn-article-parse
                                         fn-article-syntax-p
                                         fn-article-result-okp
-                                        fn-article-result-article)))))
+                                        fn-article-result-article
+                                        ; the staged row and the record are
+                                        ; only passed along: keeping their
+                                        ; builders and the field checks
+                                        ; closed is 0.6 s against 150 s.
+                                        fn-sn-article-record
+                                        fn-intern-row-at fn-sn-prepare
+                                        fn-af-proto-article-check
+                                        fn-bpi-map-groups
+                                        fn-record-stamp-of-observation)))))
   (mbe :logic
 (if (not (fn-bpi-policy-appliesp store policy context))
       (list :rejected :policy-or-destination)
@@ -496,10 +523,13 @@
                         (if (and (fn-record-p record)
                                  (fn-selection-validp (fn-record-groups record)
                                                       (fn-sn-groups store)))
-                            (let ((next (fn-sn-prepare store record)))
+                            (let* ((row (fn-intern-row-at
+                                         record (fn-sn-keyring store)
+                                         (fn-sn-keyring-generation store) (nfix h)))
+                                   (next (fn-sn-prepare store row)))
                               (if (equal next store)
                                   (list :rejected :store-refused)
-                                (list :prepared next record)))
+                                (list :prepared next row record)))
                           (list :rejected :groups-or-record))))))))))))))
        :exec
 (if (not (fn-bpi-policy-appliesp store policy context))
@@ -529,12 +559,21 @@
                         (if (and (fn-record-p record)
                                  (fn-selection-validp (fn-bpi-ag-record-groups record)
                                                       (fn-sn-groups store)))
-                            (let ((next (fn-sn-prepare store record)))
+                            (let* ((row (fn-intern-row-at
+                                         record (fn-sn-keyring store)
+                                         (fn-sn-keyring-generation store) (nfix h)))
+                                   (next (fn-sn-prepare store row)))
                               (if (equal next store)
                                   (list :rejected :store-refused)
-                                (list :prepared next record)))
+                                (list :prepared next row record)))
                           (list :rejected :groups-or-record))))))))))))))))
-(verify-guards fn-bpi-ingress-prepare)
+(verify-guards fn-bpi-ingress-prepare
+  :hints (("Goal" :use ((:instance fn-article-successful-parse-syntax-p (octets adu)))
+           :in-theory (disable fn-article-successful-parse-syntax-p fn-article-parse
+                               fn-article-syntax-p fn-article-result-okp
+                               fn-article-result-article fn-sn-article-record
+                               fn-intern-row-at fn-sn-prepare fn-af-proto-article-check
+                               fn-bpi-map-groups fn-record-stamp-of-observation))))
 
 (defun fn-bpi-result-kind (result)
   (declare (xargs :guard t :verify-guards nil))
@@ -552,6 +591,13 @@
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr result)))))
 (verify-guards fn-bpi-result-record)
 
+; The prepared result's wire record: what the entry received, composed.
+(defun fn-bpi-result-wire (result)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (car (cdr (cdr (cdr result))))
+       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr result))))))
+(verify-guards fn-bpi-result-wire)
+
 ; Testable application of the existing record publication phases.  Each :ok is
 ; a file-kernel observation, not a BP acknowledgement.  The only final step is
 ; the actual fn-sn-finish durable-node completion.
@@ -564,6 +610,132 @@
      :record-link :ok)
     :record-directory :ok)))
 (verify-guards fn-bpi-finish-prepared)
+
+; -----------------------------------------------------------------------------
+; THE BP INGRESS ENTRY over the arena (records-flip).  The prepare at the
+; handle the arena hands out next; the ADU sealed exactly when the store
+; staged, so a rejected or refused ADU retains no bytes.  (mv result fn-arena).
+
+(defthm fn-bpi-prepared-adu-is-octets
+  (implies (equal (car (fn-bpi-ingress-prepare store policy context adu h)) :prepared)
+           (fn-cbor-octet-listp adu))
+  :hints (("Goal" :in-theory (e/d (fn-bpi-ingress-prepare)
+                                  (fn-article-parse fn-article-syntax-p
+                                   fn-article-result-okp fn-article-result-article
+                                   fn-af-proto-article-check fn-bpi-map-groups
+                                   fn-bpi-record-for fn-sn-prepare fn-intern-row-at
+                                   fn-bpi-policy-appliesp)))))
+
+(defun fn-bpi-ingress-prepare-interned (store policy context adu fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (let ((result (fn-bpi-ingress-prepare store policy context adu
+                                        (fn-arena-count fn-arena))))
+    (if (equal (fn-bpi-result-kind result) :prepared)
+        (let ((fn-arena (fn-arena-seal-list adu fn-arena)))
+          (mv result fn-arena))
+      (mv result fn-arena))))
+(verify-guards fn-bpi-ingress-prepare-interned
+  :hints (("Goal" :in-theory (disable fn-bpi-ingress-prepare)
+           :use ((:instance fn-bpi-prepared-adu-is-octets
+                  (h (fn-arena-count fn-arena)))))))
+
+; The prepared result, opened: the row is the intern of the wire record at H,
+; the wire record's payload is the ADU, and the store is the prepare of the row.
+(local (defthm fn-bpi-prepared-shape
+  (implies (equal (car (fn-bpi-ingress-prepare store policy context adu h)) :prepared)
+           (let ((r (fn-bpi-ingress-prepare store policy context adu h)))
+             (and (fn-record-p (fn-bpi-result-wire r))
+                  (equal (fn-record-payload (fn-bpi-result-wire r)) adu)
+                  (equal (fn-bpi-result-record r)
+                         (fn-intern-row-at (fn-bpi-result-wire r) (fn-sn-keyring store)
+                                           (fn-sn-keyring-generation store) (nfix h)))
+                  (equal (fn-bpi-result-store r)
+                         (fn-sn-prepare store (fn-bpi-result-record r)))
+                  (fn-prin-keyringp (fn-sn-keyring store))
+                  (natp (fn-sn-keyring-generation store)))))
+  :hints (("Goal" :in-theory (e/d (fn-bpi-ingress-prepare fn-bpi-result-wire
+                                   fn-bpi-result-record fn-bpi-result-store
+                                   fn-bpi-record-for fn-sn-article-record
+                                   fn-bpi-policy-appliesp fn-sn-statep)
+                                  (fn-article-parse fn-article-syntax-p
+                                   fn-article-result-okp fn-article-result-article
+                                   fn-af-proto-article-check fn-bpi-map-groups
+                                   fn-sn-prepare fn-intern-row-at
+                                   fn-sf-statep fn-node-statep))))))
+
+; A wire record interned at the arena's count and read back after its
+; payload is sealed is itself (store-intern's KEYSTONE 1 at one event).
+(local (defthm fn-bpi-row-at-count-materializes
+  (implies (and (fn-record-p w) (fn-arena-p fn-arena) (natp g))
+           (and (equal (fn-row-wire-of (fn-intern-row-at w k g (fn-arena-count fn-arena))
+                                       (fn-arena-seal-list (fn-record-payload w) fn-arena))
+                       w)
+                (fn-held-p (fn-intern-row-at w k g (fn-arena-count fn-arena)))))
+  :hints (("Goal" :in-theory (e/d (fn-intern-event)
+                                  (fn-intern-event-materializes fn-cat-intern-list
+                                   fn-intern-row-at fn-row-wire-of
+                                   fn-cat-intern-list-is-row-at-count
+                                   fn-intern-event-is-store-event
+                                   fn-record-p fn-stxa-p fn-replay-composite-record
+                                   fn-wire-event-p fn-store-event-p fn-held-p
+                                   fn-held-p-of-intern-list))
+           :use ((:instance fn-intern-event-materializes (keyring k) (generation g))
+                 (:instance fn-intern-event-is-store-event (keyring k) (generation g))
+                 (:instance fn-cat-intern-list-is-row-at-count (keyring k) (generation g))
+                 (:instance fn-held-p-of-intern-list (keyring k) (generation g)))))))
+
+; The row interned at the arena's count reads, after the seal, the sealed bytes.
+(local (defthm fn-bpi-row-bytes-of-row-at-count
+  (equal (fn-row-bytes (fn-intern-row-at w k g (fn-arena-count fn-arena))
+                       (fn-arena-seal-list xs fn-arena))
+         xs)
+  :hints (("Goal" :in-theory (e/d (fn-row-bytes fn-intern-row-at)
+                                  (fn-arena-seal-list-is-append fn-arena-count-is-len
+                                   fn-arena-payload-is-nth))))))
+
+; A held row's wire form carries the row's bytes as its payload.
+(local (defthm fn-bpi-payload-of-row-wire-of
+  (implies (fn-held-p row)
+           (equal (fn-record-payload (fn-row-wire-of row fn-arena))
+                  (fn-row-bytes row fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-row-wire-of fn-held-wire) (fn-row-bytes))))))
+
+; KEYSTONE (the BP ingress entry): when the ADU is prepared, the row the
+; store staged is a held row whose wire form, read through the entry's
+; arena, is the wire record the ADU composed to -- the ADU as its payload,
+; octet for octet -- the arena is the old one with the ADU sealed once, and
+; the store is the store's prepare of that row.  Otherwise the arena is
+; unchanged.
+(defthm fn-bpi-ingress-prepare-interned-row-is-the-received-adu
+  (implies (fn-arena-p fn-arena)
+           (let* ((e (fn-bpi-ingress-prepare-interned store policy context adu fn-arena))
+                  (r (mv-nth 0 e))
+                  (arena2 (mv-nth 1 e)))
+             (and (equal r (fn-bpi-ingress-prepare store policy context adu
+                                                   (fn-arena-count fn-arena)))
+                  (implies (equal (fn-bpi-result-kind r) :prepared)
+                           (and (fn-held-p (fn-bpi-result-record r))
+                                (equal (fn-row-wire-of (fn-bpi-result-record r) arena2)
+                                       (fn-bpi-result-wire r))
+                                (equal (fn-record-payload (fn-bpi-result-wire r)) adu)
+                                (equal (fn-row-bytes (fn-bpi-result-record r) arena2) adu)
+                                (equal arena2 (fn-arena-seal-list adu fn-arena))
+                                (equal (fn-bpi-result-store r)
+                                       (fn-sn-prepare store (fn-bpi-result-record r)))))
+                  (implies (not (equal (fn-bpi-result-kind r) :prepared))
+                           (equal arena2 fn-arena)))))
+  :hints (("Goal" :in-theory (e/d (fn-bpi-ingress-prepare-interned fn-bpi-result-kind)
+                                  (fn-bpi-ingress-prepare fn-intern-row-at fn-row-wire-of
+                                   fn-row-bytes fn-sn-prepare fn-bpi-result-wire
+                                   fn-bpi-result-record fn-bpi-result-store
+                                   fn-arena-seal-list-is-append fn-arena-count-is-len
+                                   fn-arena-payload-is-nth fn-arena-p-is-payload-listp))
+           :use ((:instance fn-bpi-prepared-shape (h (fn-arena-count fn-arena)))
+                 (:instance fn-bpi-row-at-count-materializes
+                  (w (fn-bpi-result-wire (fn-bpi-ingress-prepare store policy context adu
+                                                                 (fn-arena-count fn-arena))))
+                  (k (fn-sn-keyring store)) (g (fn-sn-keyring-generation store)))))
+          ))
 
 (defun fn-bpi-node-record-committedp (node record)
   (declare (xargs :guard t :verify-guards nil))
@@ -597,19 +769,107 @@
                 (fn-bpi-ag-record-obligation-id record))))))
 (verify-guards fn-bpi-node-record-committedp)
 
+; RECORD is the ROW the prepare staged (fn-bpi-result-record): the node's
+; article payload is its handle, so the comparison is of handles.
 (defun fn-bpi-durably-acceptedp (store record)
   (declare (xargs :guard t :verify-guards nil))
   (mbe :logic
-(and (fn-sn-statep store) (fn-record-p record)
+(and (fn-sn-statep store) (fn-held-p record)
        (fn-bpi-node-record-committedp (fn-sn-node store) record)
        (member-equal (fn-sf-record-pair record)
                      (fn-sf-successes (fn-sn-files store))))
        :exec
-(and (fn-sn-statep store) (fn-record-p record)
+(and (fn-sn-statep store) (fn-held-p record)
        (fn-bpi-node-record-committedp (fn-sn-node store) record)
        (fn-ag-member (fn-sf-record-pair record)
                      (fn-sf-successes (fn-sn-files store))))))
 (verify-guards fn-bpi-durably-acceptedp)
+
+; The node's article for a WIRE record's Message-ID, its bytes read through
+; the arena (records-flip: the article's payload is a handle): the durable
+; check the host asks of a received ADU before it reserves again.  Its
+; boundary theorem, fn-bpi-node-wire-committedp-is-committed-over-alpha
+; below, says it is fn-bpi-node-record-committedp's comparison over ALPHA of
+; the node's articles, each handle replaced by its bytes.
+(defun fn-bpi-node-wire-committedp (node record fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (mbe :logic
+(let ((article (fn-find-article
+                  (fn-record-msgid record)
+                  (fn-state-articles (fn-node-acceptance node))))
+        (binding (fn-node-find-binding
+                  (fn-record-msgid record) (fn-node-bindings node))))
+    (and (fn-node-statep node) (consp article) (consp binding)
+         (equal (fn-handle-bytes (fn-article-payload article) fn-arena)
+                (fn-record-payload record))
+         (equal (fn-article-groups article) (fn-record-groups record))
+         (equal (fn-node-binding-subject binding)
+                (fn-record-content-subject record))
+         (equal (fn-node-binding-id binding)
+                (fn-record-obligation-id record))))
+       :exec
+(let ((article (fn-find-article
+                  (fn-bpi-ag-record-msgid record)
+                  (fn-state-articles (fn-node-acceptance node))))
+        (binding (fn-node-find-binding
+                  (fn-bpi-ag-record-msgid record) (fn-node-bindings node))))
+    (and (fn-node-statep node) (consp article) (consp binding)
+         (equal (fn-handle-bytes (fn-article-payload article) fn-arena)
+                (fn-bpi-ag-record-payload record))
+         (equal (fn-article-groups article) (fn-bpi-ag-record-groups record))
+         (equal (fn-node-binding-subject binding)
+                (fn-bpi-ag-record-content-subject record))
+         (equal (fn-node-binding-id binding)
+                (fn-bpi-ag-record-obligation-id record))))))
+(verify-guards fn-bpi-node-wire-committedp)
+
+; A Message-ID is a string, so no nil entry (whose ALPHA is an article) matches.
+(local (defthm fn-bpi-find-article-of-articles-wire-of
+  (implies (stringp msgid)
+  (equal (fn-find-article msgid (fn-articles-wire-of articles fn-arena))
+         (let ((a (fn-find-article msgid articles)))
+           (and a
+                (fn-make-article (fn-article-msgid a)
+                                 (fn-handle-bytes (fn-article-payload a) fn-arena)
+                                 (fn-article-groups a) (fn-article-memberships a)
+                                 (fn-article-pin a) (fn-article-stamp a))))))
+  :hints (("Goal" :in-theory (e/d (fn-find-article fn-articles-wire-of) (fn-handle-bytes))))))
+
+; A node's article, when found, is an article (a cons), so ALPHA's article is
+; found exactly when the node's is.
+(local (defthm fn-bpi-find-article-of-article-list-is-consp
+  (implies (and (fn-article-listp groups xs) (fn-find-article msgid xs))
+           (consp (fn-find-article msgid xs)))
+  :hints (("Goal" :in-theory (enable fn-find-article fn-article-listp fn-articlep)))))
+
+(local (defthm fn-bpi-node-find-article-consp
+  (implies (and (fn-node-statep node)
+                (fn-find-article msgid (fn-state-articles (fn-node-acceptance node))))
+           (consp (fn-find-article msgid (fn-state-articles (fn-node-acceptance node)))))
+  :hints (("Goal" :in-theory (e/d (fn-node-statep fn-statep) (fn-find-article))
+           :use ((:instance fn-bpi-find-article-of-article-list-is-consp
+                  (groups (fn-state-groups (fn-node-acceptance node)))
+                  (xs (fn-state-articles (fn-node-acceptance node)))))))))
+
+; KEYSTONE (the durable query's boundary): the arena check is the handle-free
+; comparison over ALPHA of the node's articles.
+(defthm fn-bpi-node-wire-committedp-is-committed-over-alpha
+  (implies (stringp (fn-record-msgid record))
+  (equal (fn-bpi-node-wire-committedp node record fn-arena)
+         (let ((article (fn-find-article
+                         (fn-record-msgid record)
+                         (fn-articles-wire-of (fn-state-articles (fn-node-acceptance node))
+                                              fn-arena)))
+               (binding (fn-node-find-binding
+                         (fn-record-msgid record) (fn-node-bindings node))))
+           (and (fn-node-statep node) (consp article) (consp binding)
+                (equal (fn-article-payload article) (fn-record-payload record))
+                (equal (fn-article-groups article) (fn-record-groups record))
+                (equal (fn-node-binding-subject binding)
+                       (fn-record-content-subject record))
+                (equal (fn-node-binding-id binding)
+                       (fn-record-obligation-id record))))))
+  :hints (("Goal" :in-theory (e/d (fn-bpi-node-wire-committedp) (fn-handle-bytes)))))
 
 ; This bounded replay query uses the same parser, field policy, group map, and
 ; node binding as preparation.  It is suitable for a host to recognize an
@@ -617,8 +877,8 @@
 ; It never equates BPA identifiers or transport provenance with article
 ; identity; the node predicate compares the parsed Message-ID, exact payload,
 ; groups, archive obligation, and immutable subject.
-(defun fn-bpi-adu-durably-acceptedp (store policy context adu)
-  (declare (xargs :guard t :verify-guards nil
+(defun fn-bpi-adu-durably-acceptedp (store policy context adu fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil
                   :guard-hints
                   (("Goal"
                     ; The article-syntax obligation is exactly an instance of
@@ -654,9 +914,10 @@
                 (let ((mapped (fn-bpi-map-groups
                                groups (fn-bpi-policy-group-map policy))))
                   (and (equal (car mapped) :ok)
-                       (fn-bpi-node-record-committedp
+                       (fn-bpi-node-wire-committedp
                         (fn-sn-node store)
-                        (fn-bpi-record-for store policy context msgid groups adu)))))))))))
+                        (fn-bpi-record-for store policy context msgid groups adu)
+                        fn-arena))))))))))
        :exec
 (if (not (and (fn-bpi-policy-appliesp store policy context)
                 (fn-cbor-octet-listp adu)
@@ -676,9 +937,10 @@
                 (let ((mapped (fn-bpi-map-groups
                                groups (fn-bpi-policy-group-map policy))))
                   (and (equal (fn-ag-car mapped) :ok)
-                       (fn-bpi-node-record-committedp
+                       (fn-bpi-node-wire-committedp
                         (fn-sn-node store)
-                        (fn-bpi-record-for store policy context msgid groups adu)))))))))))))
+                        (fn-bpi-record-for store policy context msgid groups adu)
+                        fn-arena))))))))))))
 (verify-guards fn-bpi-adu-durably-acceptedp)
 
 ; This is only an unsigned receipt-eligibility context.  Current records do
@@ -725,4 +987,5 @@
                     fn-bpi-result-store fn-bpi-result-record
                     fn-bpi-finish-prepared fn-bpi-node-record-committedp
                     fn-bpi-durably-acceptedp fn-bpi-adu-durably-acceptedp
-                    fn-bpi-receipt-eligibility))
+                    fn-bpi-receipt-eligibility fn-bpi-result-wire
+                    fn-bpi-ingress-prepare-interned fn-bpi-node-wire-committedp))
