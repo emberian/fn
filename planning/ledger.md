@@ -13,7 +13,7 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1304 |
 | Certification roots in the Makefile | 1265 |
 | Books inside the root closure | 1302 |
-| `defthm` and `defthmd` events | 19349 |
+| `defthm` and `defthmd` events | 19350 |
 | `defun` events | 13335 |
 | Functions with verified guards | 2488 |
 | Functions declared `:verify-guards nil` and never verified | 1598 |
@@ -1203,7 +1203,7 @@ that `make certify` requests.
 | `tests/acl2/owner-store-budget-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 11 | 4 | 0 |
 | `tests/acl2/owner-store-indexed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 69 | 6 | 0 |
 | `tests/acl2/owner-tests.lisp` | root | 0 | 31 | 0/1/1/29 | 436 | 41 | 0 |
-| `tests/acl2/owner-time-model-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 59 | 2 | 0 |
+| `tests/acl2/owner-time-model-tests.lisp` | root | 1 | 8 | 0/0/0/8 | 59 | 2 | 0 |
 | `tests/acl2/owner-tls-pin-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
 | `tests/acl2/owner-verdict-read-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 32 | 6 | 0 |
 | `tests/acl2/owner-verdict-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 0 | 0 |

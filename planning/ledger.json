@@ -1272,7 +1272,7 @@
     "books": 1304,
     "books_in_root_closure": 1302,
     "roots": 1265,
-    "theorems": 19349,
+    "theorems": 19350,
     "functions": 13335,
     "assert_events": 19157,
     "must_fails": 2182,
@@ -33515,7 +33515,7 @@
       "book": "tests/acl2/owner-time-model-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 0,
+      "theorems": 1,
       "functions": 8,
       "guards": {
         "verified": 0,
