@@ -503,11 +503,8 @@
 ;; bound, a renderable Message-ID: fn-nntp-article-number's three tests, the
 ;; last read from the row's Message-ID without materializing its payload).
 
-(defun fn-scat-msgid-idp (text)
-  (declare (xargs :guard t))
-  (and (stringp text)
-       (<= (length text) *fn-nntp-max-message-id-octets*)
-       (fn-nntp-message-id-tokenp (fn-nntp-string-octets text))))
+; fn-scat-msgid-idp is books/catalog.lisp's (moved down for the catalog's
+; live summary, lane sca-join-5).
 
 (defthm fn-scat-article-idp-is-msgid-idp
   (equal (fn-nntp-article-idp article)

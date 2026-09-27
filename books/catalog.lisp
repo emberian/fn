@@ -247,6 +247,79 @@
       (update-nth target (fn-held-with-withdrawn (nth target c) (cons v by)) c)
     c))
 
+;; -----------------------------------------------------------------------------
+;; The live summary of a group (lane sca-join-5, F2): the numbers a served
+;; GROUP/LISTGROUP counts, over the rows no withdrawal has marked.
+;;
+;; A number K of GROUP is LIVE when the row the number table binds it to is
+;; not withdrawn and K is a served number: positive, within RFC 3977's bound,
+;; its row's Message-ID renderable (books/nntp-projection.lisp
+;; fn-nntp-article-number's three tests; fn-scat-msgid-idp reads the third
+;; from the row's Message-ID without its payload).  The summary is the count
+;; of live numbers, the least and the greatest, over 1 .. the group's high:
+;; stated number-wise over the number column, so it needs no uniqueness of
+;; numbers (the column answers the first row binding K).  The catalog keeps
+;; it in a table maintained by commit and withdraw (the exports
+;; fn-cat-group-live-count/-low/-high below), so a served summary reads three
+;; cells instead of probing every number.  A reader at version V sees the
+;; same numbers when V is the count and no withdrawal is at or past V: the
+;; HORIZON (one past the latest withdrawal's version, fn-cat-horizon-of) is
+;; that bound, and books/served-catalog.lisp falls back to the probe pass
+;; below it.
+
+(defun fn-scat-msgid-idp (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (<= (length text) *fn-nntp-max-message-id-octets*)
+       (fn-nntp-message-id-tokenp (fn-nntp-string-octets text))))
+
+(defun fn-cat-live-rowp (group k h)
+  (declare (xargs :guard t))
+  (and (null (fn-held-withdrawn h))
+       (posp k) (<= k *fn-nntp-max-article-number*)
+       (equal (fn-held-number-in group h) k)
+       (fn-scat-msgid-idp (fn-record-msgid h))))
+
+(defun fn-cat-live-numberp (group k c)
+  (declare (xargs :guard (fn-cat-rowsp c)))
+  (let ((s (fn-cat-number-seq group k c 0)))
+    (and (natp s) (< s (len c))
+         (fn-cat-live-rowp group k (nth s c)))))
+
+(defun fn-cat-live-count-from (group k top c)
+  (declare (xargs :guard (and (natp k) (natp top) (fn-cat-rowsp c))
+                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
+  (if (and (natp k) (natp top) (<= k top))
+      (+ (if (fn-cat-live-numberp group k c) 1 0)
+         (fn-cat-live-count-from group (+ 1 k) top c))
+    0))
+
+(defun fn-cat-live-first (group k top c)
+  (declare (xargs :guard (and (natp k) (natp top) (fn-cat-rowsp c))
+                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
+  (if (and (natp k) (natp top) (<= k top))
+      (if (fn-cat-live-numberp group k c)
+          k
+        (fn-cat-live-first group (+ 1 k) top c))
+    0))
+
+(defun fn-cat-live-last (group k c)
+  (declare (xargs :guard (and (natp k) (fn-cat-rowsp c))))
+  (if (posp k)
+      (if (fn-cat-live-numberp group k c)
+          k
+        (fn-cat-live-last group (- k 1) c))
+    0))
+
+;; One past the latest withdrawal's version over the rows (0 when none).
+(defun fn-cat-horizon-of (c)
+  (declare (xargs :guard t))
+  (if (consp c)
+      (let ((w (fn-held-withdrawn (car c))))
+        (max (if (consp w) (+ 1 (nfix (car w))) 0)
+             (fn-cat-horizon-of (cdr c))))
+    0))
+
 ; -----------------------------------------------------------------------------
 ; The logical side of the exports.
 
@@ -308,6 +381,22 @@
 (defun fn-cat$a-clear (fn-cat$a)
   (declare (xargs :guard t) (ignore fn-cat$a))
   nil)
+
+(defun fn-cat$a-group-live-count (group fn-cat$a)
+  (declare (xargs :guard (fn-cat$ap fn-cat$a)))
+  (fn-cat-live-count-from group 1 (fn-cat-group-high group fn-cat$a) fn-cat$a))
+
+(defun fn-cat$a-group-live-low (group fn-cat$a)
+  (declare (xargs :guard (fn-cat$ap fn-cat$a)))
+  (fn-cat-live-first group 1 (fn-cat-group-high group fn-cat$a) fn-cat$a))
+
+(defun fn-cat$a-group-live-high (group fn-cat$a)
+  (declare (xargs :guard (fn-cat$ap fn-cat$a)))
+  (fn-cat-live-last group (fn-cat-group-high group fn-cat$a) fn-cat$a))
+
+(defun fn-cat$a-horizon (fn-cat$a)
+  (declare (xargs :guard t))
+  (fn-cat-horizon-of fn-cat$a))
 
 ; -----------------------------------------------------------------------------
 ; The foundation.
