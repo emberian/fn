@@ -396,9 +396,9 @@
 ; -----------------------------------------------------------------------------
 ; The entry is a whole number of units.
 
-(defun fn-lg-entry-units (prev record unit)
+(defun fn-lg-entry-units (prev chunk unit)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((n (len (fn-lg-frame prev record))) (unit (nfix unit)))
+  (let ((n (len (fn-lg-frame prev chunk))) (unit (nfix unit)))
     (if (zp unit) n
       (if (equal (mod n unit) 0) (floor n unit) (1+ (floor n unit))))))
 
@@ -414,9 +414,9 @@
 
 (local
  (defthm fn-lgc-len-of-entry
-   (equal (len (fn-lg-entry prev record unit))
-          (+ (len (fn-lg-frame prev record))
-             (fn-lg-pad-len (len (fn-lg-frame prev record)) unit)))
+   (equal (len (fn-lg-entry prev chunk unit))
+          (+ (len (fn-lg-frame prev chunk))
+             (fn-lg-pad-len (len (fn-lg-frame prev chunk)) unit)))
    :hints (("Goal" :in-theory (disable fn-lg-frame fn-lg-pad-len)))))
 
 (local
@@ -429,19 +429,19 @@
 ; A closed theory: the arithmetic library is not needed once the length is
 ; the frame and its padding.
 (defthm fn-lg-entry-len-is-units
-  (implies (and (fn-frame-digestp prev) (fn-cbor-octet-listp record) (posp unit))
-           (equal (len (fn-lg-entry prev record unit))
-                  (* (fn-lg-entry-units prev record unit) unit)))
+  (implies (and (fn-frame-digestp prev) (fn-cbor-octet-listp (fn-lg-frame-body chunk)) (posp unit))
+           (equal (len (fn-lg-entry prev chunk unit))
+                  (* (fn-lg-entry-units prev chunk unit) unit)))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-lgc-len-of-entry fn-lg-entry-units
                                         (:type-prescription len) natp posp nfix zp)
                                       (theory 'minimal-theory))
-           :use ((:instance fn-lgc-pad-aligned-commuted (n (len (fn-lg-frame prev record))))))))
+           :use ((:instance fn-lgc-pad-aligned-commuted (n (len (fn-lg-frame prev chunk))))))))
 
 (local (in-theory (disable fn-lgc-len-of-entry fn-lgc-pad-aligned-commuted)))
 
 (defthm fn-lg-entry-units-natp
-  (natp (fn-lg-entry-units prev record unit))
+  (natp (fn-lg-entry-units prev chunk unit))
   :rule-classes :type-prescription)
 
 ; -----------------------------------------------------------------------------
@@ -495,7 +495,7 @@
            :expand ((fn-lg-scan (append d x) prev unit max)
                     (fn-lg-scan d prev unit max)
                     (fn-lg-scan-last d prev unit max))
-           :in-theory (disable fn-lg-declared-len fn-lg-entry-okp fn-lg-slice-record
+           :in-theory (disable fn-lg-declared-len fn-lg-entry-okp fn-lg-slice-records
                                fn-lg-trailer fn-lg-pad-len fn-lg-slice)
            :do-not '(generalize))
           ("Subgoal *1/2" :use ((:instance fn-lg-slice-len (octets d))
@@ -515,10 +515,10 @@
   (declare (xargs :guard t :verify-guards nil :measure (len batch)))
   (if (atom batch)
       nil
-    (let ((fr (fn-lg-frame prev (car batch))))
+    (let ((fr (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))))
       (if (equal (fn-lg-slice x) fr)
-          (fn-lg-forgery-in (nthcdr (len (fn-lg-entry prev (car batch) unit)) x)
-                            (cdr batch) (fn-lg-trailer fr) unit max)
+          (fn-lg-forgery-in (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) x)
+                            (nthcdr (fn-lg-chunk-len batch) batch) (fn-lg-trailer fr) unit max)
         (fn-lg-forgeryp x prev max fr)))))
 
 ; The verdict the crash theorems state: the scan read a prefix P of the
@@ -532,19 +532,19 @@
 ; The batch over a zero region.
 
 (defthm fn-lgc-scan-when-slice-is-frame
-   (implies (and (fn-frame-digestp prev) (fn-lg-recordp record max)
-                 (equal (fn-lg-slice x) (fn-lg-frame prev record)))
+   (implies (and (fn-frame-digestp prev) (fn-lg-chunkp chunk max)
+                 (equal (fn-lg-slice x) (fn-lg-frame prev chunk)))
             (equal (fn-lg-scan x prev unit max)
-                   (let ((rest (fn-lg-scan (nthcdr (len (fn-lg-entry prev record unit)) x)
-                                           (fn-lg-trailer (fn-lg-frame prev record))
+                   (let ((rest (fn-lg-scan (nthcdr (len (fn-lg-entry prev chunk unit)) x)
+                                           (fn-lg-trailer (fn-lg-frame prev chunk))
                                            unit max)))
-                     (cons (cons record (car rest))
-                           (+ (len (fn-lg-entry prev record unit)) (cdr rest))))))
+                     (cons (append chunk (car rest))
+                           (+ (len (fn-lg-entry prev chunk unit)) (cdr rest))))))
    :hints (("Goal" :expand ((fn-lg-scan x prev unit max))
             :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-slice fn-lg-entry-okp
-                                fn-lg-slice-record fn-lg-trailer fn-lg-pad-len
-                                fn-lg-recordp)
-            :use (fn-lg-entry-len fn-lg-entry-okp-of-frame fn-lg-slice-record-of-frame))))
+                                fn-lg-slice-records fn-lg-trailer fn-lg-pad-len
+                                fn-lg-chunkp)
+            :use (fn-lg-entry-len fn-lg-entry-okp-of-frame fn-lg-slice-records-of-frame))))
 
 (defthm fn-lgc-scan-when-slice-is-not-frame
    (implies (and (not (equal (fn-lg-slice x) fr))
@@ -557,23 +557,89 @@
   (declare (xargs :guard t :verify-guards nil :measure (len batch)))
   (if (atom batch) (list z prev sels unit)
     (fn-lgc-batch-ind
-     (nthcdr (len (fn-lg-entry prev (car batch) unit)) z)
-     (cdr batch)
-     (fn-lg-trailer (fn-lg-frame prev (car batch)))
-     (nthcdr (fn-lg-entry-units prev (car batch) unit) sels)
+     (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) z)
+     (nthcdr (fn-lg-chunk-len batch) batch)
+     (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch)))
+     (nthcdr (fn-lg-entry-units prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit) sels)
      unit)))
 
-(defthm fn-lgc-log-len-of-cons
-   (equal (len (fn-lg-log (cons r rs) prev unit))
-          (+ (len (fn-lg-entry prev r unit))
-             (len (fn-lg-log rs (fn-lg-trailer (fn-lg-frame prev r)) unit))))
-   :hints (("Goal" :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer))))
+(defthm fn-lgc-log-len-of-consp
+   (implies (consp batch)
+            (equal (len (fn-lg-log batch prev unit))
+                   (+ (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit))
+                      (len (fn-lg-log (nthcdr (fn-lg-chunk-len batch) batch) (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit)))))
+   :hints (("Goal" :in-theory (e/d (fn-lg-log-unfolds)
+                                   (fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-log)))))
 
 (defthm fn-lg-log-true-listp
   (implies (and (fn-frame-digestp prev) (fn-lg-recordsp records max))
            (true-listp (fn-lg-log records prev unit)))
   :hints (("Goal" :induct (fn-lg-log records prev unit)
-           :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer))))
+           :in-theory (e/d (fn-lg-log-unfolds)
+                           (fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-recordsp
+                            fn-lg-chunkp (:definition fn-lg-log)
+                            fn-lg-trailer-of-frame-digestp)))
+          ("Subgoal *1/2" :expand ((fn-lg-log records prev unit) (fn-lg-log nil prev unit)))
+          ("Subgoal *1/1"
+           :use ((:instance fn-lg-chunkp-of-first-chunk)
+                 (:instance fn-lg-recordsp-of-nthcdr (k (fn-lg-chunk-len records)))
+                 (:instance fn-lg-trailer-of-frame-digestp
+                            (chunk (fn-bs-take (fn-lg-chunk-len records) records)))
+                 (:instance fn-lg-entry-true-listp
+                            (chunk (fn-bs-take (fn-lg-chunk-len records) records)))
+                 (:instance fn-lg-chunk-body-octets
+                            (chunk (fn-bs-take (fn-lg-chunk-len records) records)))))))
+
+; A prefix of a batch that ends on a chunk boundary chunks as the batch
+; does: its first chunk is the batch's first chunk.
+(defthm fn-lgc-fit-count-of-prefix
+   (implies (fn-lg-prefixp p (nthcdr (fn-lg-fit-count x used) x))
+            (equal (fn-lg-fit-count (append (fn-bs-take (fn-lg-fit-count x used) x) p) used)
+                   (fn-lg-fit-count x used)))
+   :hints (("Goal" :induct (fn-lg-fit-count x used)
+            :expand ((fn-lg-fit-count p used)
+                     (:free (a b) (fn-lg-fit-count (cons a b) used))))))
+
+(defthm fn-lgc-take-true-listp
+   (true-listp (fn-bs-take n x)))
+
+(defthm fn-lgc-consp-take
+   (implies (posp k) (consp (fn-bs-take k x))))
+
+(defthm fn-lgc-chunk-len-of-prefix
+   (implies (and (consp batch)
+                 (fn-lg-prefixp p (nthcdr (fn-lg-chunk-len batch) batch)))
+            (equal (fn-lg-chunk-len (append (fn-bs-take (fn-lg-chunk-len batch) batch) p))
+                   (fn-lg-chunk-len batch)))
+   :hints (("Goal" :in-theory (enable fn-lg-chunk-len)
+            :cases ((equal (fn-lg-fit-count batch *fn-frame-trailer-octets*) 0))
+            :use ((:instance fn-lgc-fit-count-of-prefix (x batch) (used *fn-frame-trailer-octets*))))
+           ("Subgoal 1" :expand ((fn-lg-fit-count batch 32)
+                                 (:free (a b) (fn-lg-fit-count (cons a b) 32))
+                                 (fn-bs-take 1 batch) (fn-bs-take 0 (cdr batch))))))
+
+(defthm fn-lgc-log-of-prefix
+   (implies (and (consp batch) (true-listp batch)
+                 (fn-lg-prefixp p (nthcdr (fn-lg-chunk-len batch) batch)))
+            (equal (fn-lg-log (append (fn-bs-take (fn-lg-chunk-len batch) batch) p) prev unit)
+                   (append (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)
+                           (fn-lg-log p (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-lg-log-unfolds)
+                            (fn-lg-entry fn-lg-frame fn-lg-trailer (:definition fn-lg-log)
+                             fn-lgc-chunk-len-of-prefix))
+            :use (fn-lgc-chunk-len-of-prefix
+                  (:instance fn-lg-chunk-len-bounds (records batch))))))
+
+(defthm fn-lg-take-then-nthcdr-append-2
+   (implies (and (true-listp x) (<= (nfix k) (len x)))
+            (equal (append (fn-bs-take k x) (nthcdr k x)) x)))
+
+(defthm fn-lgc-prefixp-of-append-chunk
+   (implies (and (true-listp c) (true-listp batch)
+                 (equal (append c r) batch))
+            (equal (fn-lg-prefixp (append c p) batch) (fn-lg-prefixp p r)))
+   :hints (("Goal" :induct (fn-lg-prefixp c batch))))
 
 (defthm fn-lgc-apply-to-of-append
    (equal (fn-lg-apply-to c (append p q))
@@ -610,6 +676,54 @@
    (equal (fn-lg-apply-to c nil) c))
 
 ; The tear of the batch's log W over a zero region Z at least as long.
+; One chunk of the batch, read exactly: the verdict for the rest extends to
+; the batch.
+(defthm fn-lgc-verdict-step-frame
+  (implies (and (fn-frame-digestp prev) (fn-lg-recordsp batch max) (consp batch)
+                (equal (fn-lg-slice x) (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch)))
+                (or (fn-lg-prefix-verdictp
+                     (fn-lg-scan (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) x)
+                                 (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit max)
+                     (nthcdr (fn-lg-chunk-len batch) batch) (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit)
+                    (fn-lg-forgery-in (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) x)
+                                      (nthcdr (fn-lg-chunk-len batch) batch) (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit max)))
+           (or (fn-lg-prefix-verdictp (fn-lg-scan x prev unit max) batch prev unit)
+               (fn-lg-forgery-in x batch prev unit max)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :expand ((:free (unit) (fn-lg-forgery-in x batch prev unit max)))
+           :in-theory (e/d (fn-lg-prefix-verdictp)
+                           (fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-slice fn-lg-scan
+                            fn-lg-forgery-in fn-lg-chunkp fn-lg-recordsp fn-lgc-log-of-prefix
+                            fn-lgc-scan-when-slice-is-frame fn-lg-take-then-nthcdr-append-2
+                            fn-lgc-prefixp-of-append-chunk (:definition fn-lg-log)
+                            fn-lg-chunk-len fn-lg-entry-len fn-lg-frame-len))
+           :use ((:instance fn-lg-chunkp-of-first-chunk (records batch))
+                 (:instance fn-lgc-scan-when-slice-is-frame (chunk (fn-bs-take (fn-lg-chunk-len batch) batch)))
+                 (:instance fn-lg-take-then-nthcdr-append-2 (k (fn-lg-chunk-len batch)) (x batch))
+                 (:instance fn-lgc-prefixp-of-append-chunk
+                            (c (fn-bs-take (fn-lg-chunk-len batch) batch)) (r (nthcdr (fn-lg-chunk-len batch) batch))
+                            (p (car (fn-lg-scan (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) x)
+                                                (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit max))))
+                 (:instance fn-lgc-log-of-prefix
+                            (p (car (fn-lg-scan (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) x)
+                                                (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit max))))))))
+
+; The first chunk not read exactly: nothing read, or a forgery there.
+(defthm fn-lgc-verdict-step-not-frame
+  (implies (and (consp batch)
+                (not (equal (fn-lg-slice x) (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch)))))
+           (or (fn-lg-prefix-verdictp (fn-lg-scan x prev unit max) batch prev unit)
+               (fn-lg-forgery-in x batch prev unit max)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-lg-forgery-in x batch prev unit max) (fn-lg-log nil prev unit))
+           :in-theory (e/d (fn-lg-prefix-verdictp)
+                           (fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-slice fn-lg-scan
+                            fn-lg-forgeryp))
+           :use ((:instance fn-lgc-scan-when-slice-is-not-frame (fr (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))))))))
+
+; The tear of the batch's log W over a zero region Z at least as long.
 (defthm fn-lg-batch-tear-is-a-prefix
   (implies (and (fn-frame-digestp prev) (fn-lg-recordsp batch max) (posp unit)
                 (fn-lg-zerosp z)
@@ -620,27 +734,36 @@
                  (fn-lg-forgery-in x batch prev unit max))))
   :rule-classes nil
   :hints (("Goal" :induct (fn-lgc-batch-ind z batch prev sels unit)
-           :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-slice
-                               fn-lg-forgeryp fn-lg-recordp fn-lg-entry-units
-                               fn-lg-scan fn-lg-apply-to fn-lg-pieces
-                               fn-lg-entry-len-is-units fn-lg-entry-len
-                               fn-lg-nthcdr-of-tear-of-append))
+           :in-theory (e/d (fn-lg-log-unfolds)
+                           (fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-slice
+                            fn-lg-forgeryp fn-lg-recordp fn-lg-entry-units
+                            fn-lg-scan fn-lg-apply-to fn-lg-pieces (:definition fn-lg-log)
+                            fn-lg-entry-len-is-units fn-lg-entry-len fn-lg-recordsp
+                            fn-lg-chunkp fn-lgc-log-of-prefix fn-lg-forgery-in
+                            fn-lg-prefix-verdictp fn-lg-nthcdr-of-tear-of-append)))
           ("Subgoal *1/2"
            :use ((:instance fn-lg-nthcdr-of-tear-of-append
-                            (a (fn-lg-entry prev (car batch) unit))
-                            (b (fn-lg-log (cdr batch) (fn-lg-trailer (fn-lg-frame prev (car batch)))
-                                          unit))
-                            (m (fn-lg-entry-units prev (car batch) unit)))
-                 (:instance fn-lg-entry-len-is-units (record (car batch)))
-                 (:instance fn-lg-entry-true-listp (record (car batch))))
-           :expand ((fn-lg-log batch prev unit)
-                    (fn-lg-forgery-in
-                     (fn-lg-apply-to z (fn-lg-pieces ino 0 (fn-lg-log batch prev unit) sels unit))
-                     batch prev unit max))
-           :cases ((equal (fn-lg-slice
-                           (fn-lg-apply-to z (fn-lg-pieces ino 0 (fn-lg-log batch prev unit)
-                                                           sels unit)))
-                          (fn-lg-frame prev (car batch)))))))
+                            (a (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit))
+                            (b (fn-lg-log (nthcdr (fn-lg-chunk-len batch) batch) (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit))
+                            (m (fn-lg-entry-units prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)))
+                 (:instance fn-lg-entry-len-is-units (chunk (fn-bs-take (fn-lg-chunk-len batch) batch)))
+                 (:instance fn-lg-entry-true-listp (chunk (fn-bs-take (fn-lg-chunk-len batch) batch)))
+                 (:instance fn-lg-chunk-body-octets (chunk (fn-bs-take (fn-lg-chunk-len batch) batch)))
+                 (:instance fn-lg-chunkp-of-first-chunk (records batch))
+                 (:instance fn-lg-recordsp-of-nthcdr (records batch) (k (fn-lg-chunk-len batch)))
+                 (:instance fn-lg-trailer-of-frame-digestp (chunk (fn-bs-take (fn-lg-chunk-len batch) batch)))
+                 (:instance fn-lgc-verdict-step-frame
+                            (x (fn-lg-apply-to z (fn-lg-pieces ino 0 (fn-lg-log batch prev unit)
+                                                               sels unit))))
+                 (:instance fn-lgc-verdict-step-not-frame
+                            (x (fn-lg-apply-to z (fn-lg-pieces ino 0 (fn-lg-log batch prev unit)
+                                                               sels unit))))))
+          ("Subgoal *1/1" :expand ((fn-lg-log nil prev unit)
+                                   (fn-lg-log batch prev unit)
+                                   (fn-lg-pieces ino 0 nil sels unit)
+                                   (fn-lg-apply-to z nil))
+           :in-theory (e/d (fn-lg-prefix-verdictp)
+                           (fn-lg-scan fn-lg-recordsp)))))
 
 ; -----------------------------------------------------------------------------
 ; The shift lemma over the byte model's crash.
@@ -679,7 +802,7 @@
 (defthm fn-lgc-scan-records-true-listp
    (true-listp (car (fn-lg-scan octets prev unit max)))
    :hints (("Goal" :induct (fn-lg-scan octets prev unit max)
-            :in-theory (disable fn-lg-slice fn-lg-entry-okp fn-lg-slice-record
+            :in-theory (disable fn-lg-slice fn-lg-entry-okp fn-lg-slice-records
                                 fn-lg-declared-len fn-lg-trailer fn-lg-pad-len))))
 
 ; The verdict of a crash image's scan: the committed records followed by a
@@ -758,23 +881,31 @@
   (declare (xargs :guard t :verify-guards nil :measure (len batch)))
   (if (atom batch)
       t
-    (let ((fr (fn-lg-frame prev (car batch))))
+    (let ((fr (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))))
       (if (equal (fn-lg-slice x) fr)
-          (fn-lg-platform-tears-p (nthcdr (len (fn-lg-entry prev (car batch) unit)) x)
-                                  (cdr batch) (fn-lg-trailer fr) unit)
+          (fn-lg-platform-tears-p (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) x)
+                                  (nthcdr (fn-lg-chunk-len batch) batch) (fn-lg-trailer fr) unit)
         (fn-assume-crash-tearp unit (fn-lg-slice x) fr)))))
+
+(defthm fn-lgc-no-forgeryp-of-a-platform-tear
+  (implies (and (fn-assume-crash-tearp unit (fn-lg-slice x) fr)
+                (not (equal (fn-lg-slice x) fr)))
+           (not (fn-lg-forgeryp x prev max fr)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lg-forgeryp fn-lg-entry-okp)
+                           (fn-lg-slice fn-frame-open fn-lg-open-bound
+                            fn-assume-crash-tear-never-validates-unless-exact))
+           :use ((:instance fn-assume-crash-tear-never-validates-unless-exact
+                            (observed (fn-lg-slice x)) (written fr)
+                            (max-payload (fn-lg-open-bound (fn-lg-slice x) max)))))))
 
 (defthm fn-lg-no-forgery-under-a-crypto-trailer
   (implies (fn-lg-platform-tears-p x batch prev unit)
            (not (fn-lg-forgery-in x batch prev unit max)))
   :hints (("Goal" :induct (fn-lg-forgery-in x batch prev unit max)
-           :in-theory (disable fn-lg-frame fn-lg-entry fn-lg-slice fn-lg-trailer))
-          ("Subgoal *1/2" :in-theory (e/d (fn-lg-forgeryp fn-lg-entry-okp)
-                                          (fn-lg-frame fn-lg-entry fn-lg-slice fn-lg-trailer))
-           :use ((:instance fn-assume-crash-tear-never-validates-unless-exact
-                            (observed (fn-lg-slice x))
-                            (written (fn-lg-frame prev (car batch)))
-                            (max-payload max))))))
+           :in-theory (disable fn-lg-frame fn-lg-entry fn-lg-slice fn-lg-trailer
+                               fn-lg-forgeryp fn-lg-entry-okp fn-lg-chunk-len fn-bs-take
+                               fn-lg-entry-len fn-lg-frame-len))))
 
 (defthm fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer
   (implies (and (posp (fn-bs-unit s)) (natp k) ino (true-listp d)
@@ -801,3 +932,9 @@
                  (:instance fn-lg-no-forgery-under-a-crypto-trailer
                             (x (nthcdr (len d) (fn-bs-durable-content image ino)))
                             (prev last) (unit (fn-bs-unit s)))))))
+
+; The chunk-stepping rules are named where a proof steps a batch; they stay
+; out of the default theory of the books above.
+(in-theory (disable fn-lgc-log-len-of-consp fn-lgc-log-of-prefix
+                    fn-lgc-chunk-len-of-prefix fn-lgc-fit-count-of-prefix
+                    fn-bs-crash-of-aligned-append fn-lgc-unit-le-multiple))

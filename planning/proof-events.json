@@ -9871,6 +9871,179 @@
           "note": "KEYSTONE. Host: host/checkpoint-host.lisp fn-store-log-reclaim-decide, called by host/native/checkpoint.lisp fnn-log-reclaim-steps. Teeth: tests/acl2/store-log-reclaim-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-267",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-waits-at-most-one"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-in-flight-admits-only-inspect-and-commit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-next-otherwise-is-ocm-next"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-pick-keeps-the-ocm"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-complete-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-barrier-only-from-a-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-staged-only-by-a-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-in-flight-until-completed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-first-when-not-last"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-inspect-waiting-picks-someone"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-other-pick-clears-lasti"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-members-told-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-failed-barrier-stops-telling-no-member"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-member-rendered-only-in-a-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-member-otherwise-uncertain"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocs-member-uncertain-word-told-uncertain"
+        }
+      ]
+    },
+    {
+      "id": "PRF-272",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-next-open-only-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-commit-event-completes-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-complete-only-after-the-barrier"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-sync-only-when-none-in-flight"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-next-opens-only-behind-a-sync"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-start-next-only-behind-a-sync"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-next-is-ocs-next"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ocp-in-flight-admits-only-inspect-and-commit"
+        }
+      ]
+    },
+    {
+      "id": "PRF-273",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-reserve-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-order-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-open-suffix-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-open-program-is-recover-then-the-suffix-by-definition"
+        }
+      ]
+    },
+    {
+      "id": "PRF-268",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-extend-program-keeps-the-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-extension-written-crash-reads-the-committed-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-olr-extension-target-is-an-extent"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-classify-by-what-is-known"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-init-log-segment-is-the-empty-log"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bsi-log-init-program-establishes-the-empty-log"
+        }
+      ]
+    },
+    {
+      "id": "PRF-269",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-intent-reconcile-kind-reads-no-txid"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-intent-reuse-is-a-fresh-intent"
+        }
+      ]
     }
   ]
 }
