@@ -643,9 +643,6 @@
    "fn-store-post-boundary": [
     "specs/reconfiguration.md"
    ],
-   "fn-store-sn": [
-    "specs/checkpoint.md"
-   ],
    "fn-stx-authored-source-is-octet-list": [
     "specs/substrate-transport.md"
    ],
