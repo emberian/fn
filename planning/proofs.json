@@ -8827,6 +8827,50 @@
         "fn-own-control-decision-injects-only-within-the-limits",
         "fn-own-control-decision-refuses-past-the-limits-by-name"
       ]
+    },
+    {
+      "id": "PRF-208",
+      "title": "The native owner's feed, submission and configuration results are typed ACL2 values the host checks once; the submission path's result is well-formed for every outcome, and the feed flush's sealed frame plan is the by-index fetch it replaced",
+      "statement": "KEYSTONES (books/owner-results.lisp). fn-ores-submission-intent-publication-is-well-formed: for every owner O, carry, evidence, generation and txid, if fn-ores-inflight-idp O (the in-flight submission's id, when there is one, is a connection number or *fn-own-control-id* -- the ids every fn-own-sub-make in books/ uses) and fn-ores-records-sealp of the intent's records (the codec accepts each), then fn-ores-feed-publication-p holds of fn-ores-submission-intent-publication, the value host/owner-host.lisp fn-owner-submission-intent returns and host/native/owner.lisp fnn-owner-feed-step checks (callers fnn-owner-drain-one, fnn-owner-complete-bound-submission, fnn-owner-complete-bp-transit-submission); fn-ores-submission-resolution-publication-is-well-formed: the same for fn-owner-submission-resolution's value, every outcome word. These close the batch AM fault (dev 54d23d01): the operator post's in-flight id :control failed the token recognizer. fn-ores-sealed-plan-is-indexed-fetch (no hypotheses): (nth I (fn-ores-sealed-plan records)) is, when (nfix I) < (len records), the pair of (nth I (fn-ores-record-peers records)) and (fn-ores-seal (fn-frame-item (nfix I) (fn-ores-encode-records records))), nil past the end; fn-ores-len-of-sealed-plan: one pair per record. By-definition equations over the :logic functions the :program wrappers call: fn-ores-feed-port-publication-by-definition (FeedPublication fields = the retired fn-owner-feed-* globals), fn-ores-take-result-by-definition (host/owner-host.lisp fn-owner-take's SubmissionTaken fields = the retired fn-owner-submit-id, -msgid, -octets, -groups, -transitp, -peer; host/native/owner.lisp fnn-owner-take checks it), fn-ores-config-staged-result-by-definition (ConfigResult = fn-owner-config-octets/-reason). fn-ores-served-step-by-definition and fn-ores-capture-by-definition are in the book but NOT claimed: no host line returns those shapes (ServedStep is fenced to lane owner-scheduler's render plan; Capture takes checkpoint-pipeline-5's field names, its wrapper is that lane's). The recognizers and accessors are guard-verified; the builders are :logic with guards unverified as their callees are.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-019",
+        "HST-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-results.lisp",
+        "host/native/admin.lisp",
+        "host/native/feed-service.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/adapter-retirement-2026-09-26.md",
+        "tests/acl2/owner-results-tests.lisp",
+        "tests/native_bp_transit_identity_raw.lisp",
+        "tests/native_owner_bound_commit_raw.lisp",
+        "tools/run_owner.py"
+      ],
+      "progress_note": "Lanes adapter-retirement and adapter-retirement-2 (2026-09-26/27). Every event admitted fresh in the persvati REPL (toolchain w25, 97 forms) and every form of the test book run there; certification: the farm manifest cited in planning/evidence/adapter-retirement-2026-09-26.md section 'Continuation'. Teeth: per keystone a reachable witness (the operator post's owner with in-flight id :control; a served id 3; no submission), per hypothesis a witness with the others holding, the omitted one failing and the conclusion failing, and a must-fail; the take's SubmissionTaken witnessed for a control and a served submission and refused for a malformed id or octets.",
+      "events": [
+        "fn-ores-sealed-plan-is-indexed-fetch",
+        "fn-ores-len-of-sealed-plan",
+        "fn-ores-feed-port-publication-by-definition",
+        "fn-ores-config-staged-result-by-definition",
+        "fn-ores-config-refused-is-a-result",
+        "fn-ores-nth-of-sealed-plan",
+        "fn-ores-nth-of-record-peers",
+        "fn-ores-frame-item-of-encode-records",
+        "fn-ores-submission-intent-publication-is-well-formed",
+        "fn-ores-submission-resolution-publication-is-well-formed",
+        "fn-ores-feed-port-publication-p-without-effects",
+        "fn-ores-symbolp-of-submission-intent-word",
+        "fn-ores-symbolp-of-resolution-word",
+        "fn-ores-car-car-of-feed-resolution-records",
+        "fn-ores-take-result-by-definition",
+        "fn-ores-take-idle-is-a-result"
+      ]
     }
   ]
 }

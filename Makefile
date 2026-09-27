@@ -911,6 +911,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-retention-preparation \
 	books/owner-agent \
 	books/owner-log \
+	books/owner-results \
 	books/owner-served-bound \
 	books/owner-log-reopen \
 	books/owner-bound-commit \
@@ -945,6 +946,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-operator-tests \
 	tests/acl2/owner-agent-tests \
 	tests/acl2/owner-log-tests \
+	tests/acl2/owner-results-tests \
 	tests/acl2/owner-served-bound-tests \
 	tests/acl2/owner-log-reopen-tests \
 	tests/acl2/owner-bound-commit-tests \

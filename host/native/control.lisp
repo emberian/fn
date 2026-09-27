@@ -330,7 +330,8 @@ transition."
       (first answer))))
 
 (defun fnn-control-handle-client (control socket)
-  (let* ((service (fnn-control-state-service control))
+  (let* ((*fnn-owner-measure-label* :control)
+         (service (fnn-control-state-service control))
          (maximum (fnn-control-state-read-maximum control))
          ;; PKT-453 (a): a frame of the reasoned kinds (13, 17) is answered
          ;; with the reasoned reply however its handling ends; ACL2 says
