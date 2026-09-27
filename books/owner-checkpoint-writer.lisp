@@ -870,11 +870,11 @@
 ; (list VERDICT TABLES COUNTS MTRIE INDEX N ESTIMATE): VERDICT :unencodable
 ; (the codec refuses a row), (:deferred REASON ESTIMATE BOUND) or
 ; (:plan ESTIMATE).
-(defun fn-ockp-setup (next frontier revision seg budget free)
+(defun fn-ockp-setup (next frontier revision log seg budget free)
   (declare (xargs :guard (and (natp seg) (natp budget))
                   :guard-hints (("Goal" :in-theory (disable fn-ockp-estimate fn-ockp-counts
                                                             fn-ockp-decide)))))
-  (let ((tables (fn-sct-tables-of-capture next frontier revision)))
+  (let ((tables (fn-sct-tables-of-capture next frontier revision log)))
     (if (not (fn-ockp-tables-encodablep tables))
         (list :unencodable nil nil nil nil 0 0)
       (let* ((index (fn-sco-event-index next))

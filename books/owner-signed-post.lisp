@@ -278,7 +278,7 @@
 
 (defthm fn-osp-complete-store-is-finish
   (implies (fn-sn-completion-enabledp (fn-own-store o))
-           (equal (fn-own-store (fn-own-step o '(:complete)))
+           (equal (fn-own-store (fn-own-step o '(:complete) fn-arena))
                   (fn-sn-finish (fn-own-store o))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-own-step fn-own-complete fn-own-refresh)
@@ -308,7 +308,7 @@
                   (fn-hstxa-p (fn-sn-completion-record (fn-own-store o)))
                   (equal (fn-hstxa-stxa (fn-sn-completion-record (fn-own-store o))) e))
              (equal (fn-sn-verdict-lookup
-                     (fn-own-store (fn-own-step o '(:complete))) msgid)
+                     (fn-own-store (fn-own-step o '(:complete) fn-arena)) msgid)
                     (fn-stx-make-verdict (fn-stxe-token v) (fn-stxe-detail v)
                                          (nth 6 plan)))))
   :hints (("Goal" :do-not-induct t
@@ -331,7 +331,7 @@
              observed-ml-key ed-observation ml-observation clock-observation))
          (plan (fn-pa-current-plan received snapshots nil nil))
          (v (fn-hls-kind4-verdict-event e))
-         (o2 (cdr (fn-own-open (fn-own-step o '(:complete)) acfg)))
+         (o2 (cdr (fn-own-open (fn-own-step o '(:complete) fn-arena) acfg)))
          (conn (fn-own-find-conn (fn-own-next-id o) (fn-own-conns o2))))
     (implies (and e
                   (fn-sn-completion-enabledp (fn-own-store o))
@@ -361,7 +361,7 @@
                 (natp (fn-own-sub-mark (fn-own-inflight o)))
                 (<= (fn-own-sub-mark (fn-own-inflight o))
                     (len (fn-own-ledger o))))
-           (equal (fn-own-outcome-completion (fn-own-step o '(:complete)) :durable)
+           (equal (fn-own-outcome-completion (fn-own-step o '(:complete) fn-arena) :durable)
                   :durable))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-own-step fn-own-complete fn-own-refresh

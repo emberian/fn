@@ -2,8 +2,11 @@
 
 The mandate's section 5.1 sequence on a developer image: a POST of a stable
 source and Message-ID whose reply is lost (FN_NATIVE_POST_FAULT
-`finish-durable:kill`, the cut after the commit is durable and before the
-reply is written), an authorized cancel that withdraws the target, a
+`log-fenced:kill`: on the record log, the cut after the batch's barrier and
+before any member's reply -- the commit durable, the reply never written;
+the member's finish cuts precede the append in a served commit quantum, so
+at them the record is not yet durable, tests/campaign/native_cuts.py
+POST_LOG_CUTS), an authorized cancel that withdraws the target, a
 reconnect whose lookup answers 430, and the reconciliation: the client
 re-sends the SAME article, the node answers `441 ... already stored here`
 (books/visibility-join.lisp `fn-vj-a-completion-keeps-a-held-message-id-
@@ -46,11 +49,15 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 import fn_web  # noqa: E402
 from tools.wire_stream import whole_stream
+from tests import native_log_observation
 
-IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
+# A developer image: the lost reply is FN_NATIVE_POST_FAULT, a developer
+# selector a production image refuses to start with (tools/native_env.py:
+# FN_NATIVE_HOST always names the production image).
+IMAGE_TEXT = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
 IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
 READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
-FAULT = "finish-durable:kill"
+FAULT = "log-fenced:kill"
 CLIENT = [sys.executable, str(ROOT / "tools" / "fn_client.py")]
 PRINCIPAL = bytes([85]) * 32
 
@@ -68,7 +75,7 @@ def cancel_article(message_id, target):
                 m=message_id, t=target).encode("ascii")
 
 
-@unittest.skipUnless(READY, "set FN_NATIVE_HOST to a native developer launcher")
+@unittest.skipUnless(READY, "set FN_NATIVE_DEVELOPER_HOST to a native developer launcher")
 class NativeVisibilityJoinTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-vj-")
@@ -150,7 +157,9 @@ class NativeVisibilityJoinTests(unittest.TestCase):
                 process.communicate(timeout=60)
 
     def transactions(self, node):
-        return sorted(p.name for p in (node["store"] / "transactions").glob("*.txn"))
+        # The committed history (format 9: the record log), read by the image.
+        return native_log_observation.committed_history(IMAGE, node["store"],
+                                                        env=self.env, cwd=ROOT)
 
     def first_line(self, node, command):
         with socket.create_connection(("127.0.0.1", node["port"]), timeout=30) as client:

@@ -523,7 +523,7 @@
 ; fnn-owner-live-reconfigure-locked).
 
 (local (defthm fn-lb-reconfigure-keeps-pins
-  (equal (fn-ocfg-pins (fn-ocfg-step oc (list :reconfigure other deltas)))
+  (equal (fn-ocfg-pins (fn-ocfg-step oc (list :reconfigure other deltas) fn-arena))
          (fn-ocfg-pins oc))
   :hints (("Goal" :in-theory (enable fn-ocfg-step fn-ocfg-reconfigure)))))
 
@@ -533,7 +533,7 @@
 (defthm fn-lb-a-publication-keeps-every-open-connections-table
   (equal (fn-lb-conn-bindings
           (mv-nth 1 (fn-ocl-publish
-                     (fn-ocfg-step oc (list :reconfigure other deltas))
+                     (fn-ocfg-step oc (list :reconfigure other deltas) fn-arena)
                      generation max-octets))
           id)
          (fn-lb-conn-bindings oc id))
@@ -541,7 +541,7 @@
                                   (fn-lb-value-bindings fn-ocfg-step))
            :use ((:instance fn-ocl-publish-leaves-connections-and-pins
                             (oc (fn-ocfg-step oc (list :reconfigure other
-                                                       deltas))))))))
+                                                       deltas) fn-arena)))))))
 
 ; KEYSTONE (the pinned view, over any owner trace).  After any sequence of
 ; owner events that does not re-pin connection ID (fn-ocfg-repins-forp:
@@ -551,11 +551,11 @@
 (defthm fn-lb-an-open-session-is-decided-under-its-pinned-table
   (implies (and (fn-ocfg-pin-find id (fn-ocfg-pins oc))
                 (not (fn-ocfg-repins-forp id events))
-                (equal (fn-lb-inflight-id (fn-ocfg-owner (fn-ocfg-run oc events)))
+                (equal (fn-lb-inflight-id (fn-ocfg-owner (fn-ocfg-run oc events fn-arena)))
                        id))
-           (equal (fn-lb-ocfg-gate (fn-ocfg-run oc events) received)
-                  (fn-lb-owner-gate (fn-ocfg-owner (fn-ocfg-run oc events))
-                                    (fn-ocfg-config (fn-ocfg-run oc events))
+           (equal (fn-lb-ocfg-gate (fn-ocfg-run oc events fn-arena) received)
+                  (fn-lb-owner-gate (fn-ocfg-owner (fn-ocfg-run oc events fn-arena))
+                                    (fn-ocfg-config (fn-ocfg-run oc events fn-arena))
                                     (fn-lb-conn-bindings oc id)
                                     received)))
   :hints (("Goal" :in-theory (e/d (fn-ocfg-conn-config)
@@ -565,12 +565,12 @@
 
 (local (defthm fn-lb-staged-record-of-a-fresh-reconfigure
   (implies (and (not (fn-ocfg-staged oc))
-                (fn-ocfg-staged (fn-ocfg-step oc (list :reconfigure other deltas))))
+                (fn-ocfg-staged (fn-ocfg-step oc (list :reconfigure other deltas) fn-arena)))
            (and (equal (fn-ocfg-staged (fn-ocfg-step oc (list :reconfigure other
-                                                                deltas)))
+                                                                deltas) fn-arena))
                        (fn-ocfg-reconfig-record oc deltas))
                 (equal (fn-ocfg-config (fn-ocfg-step oc (list :reconfigure other
-                                                                deltas)))
+                                                                deltas) fn-arena))
                        (fn-ocfg-config oc))))
   :hints (("Goal" :in-theory (enable fn-ocfg-step fn-ocfg-reconfigure)))))
 
@@ -580,7 +580,7 @@
   :hints (("Goal" :in-theory (enable fn-ocl-publish)))))
 
 (local (defthm fn-lb-published-config-of-a-fresh-reconfigure
-  (let* ((staged (fn-ocfg-step oc (list :reconfigure other deltas)))
+  (let* ((staged (fn-ocfg-step oc (list :reconfigure other deltas) fn-arena))
          (result (fn-ocl-publish staged generation max-octets)))
     (implies (and (not (fn-ocfg-staged oc))
                   (equal (mv-nth 0 result) :durable)
@@ -598,9 +598,9 @@
                             fn-lb-durable-publish-had-a-staged-record
                             fn-lb-staged-record-of-a-fresh-reconfigure))
            :use ((:instance fn-ocl-publish-installs-the-whole-staged-record
-                            (oc (fn-ocfg-step oc (list :reconfigure other deltas))))
+                            (oc (fn-ocfg-step oc (list :reconfigure other deltas) fn-arena)))
                  (:instance fn-lb-durable-publish-had-a-staged-record
-                            (oc (fn-ocfg-step oc (list :reconfigure other deltas))))
+                            (oc (fn-ocfg-step oc (list :reconfigure other deltas) fn-arena)))
                  (:instance fn-lb-staged-record-of-a-fresh-reconfigure))))))
 
 ; A fresh connection pins the live configuration when no pin is left at its
@@ -631,7 +631,7 @@
 ; file's table.
 (defthm fn-lb-a-connection-opened-after-a-publication-is-bound-anew
   (let* ((staged (fn-ocfg-step oc (list :reconfigure other
-                                        (fn-lb-pairs-deltas pairs))))
+                                        (fn-lb-pairs-deltas pairs)) fn-arena))
          (result (fn-ocl-publish staged generation max-octets))
          (published (mv-nth 1 result))
          (opened (cdr (fn-ocfg-open published acfg)))
@@ -654,7 +654,7 @@
            :use ((:instance fn-lb-open-pins-the-live-configuration-at-a-free-identifier
                             (oc (mv-nth 1 (fn-ocl-publish
                                            (fn-ocfg-step oc (list :reconfigure other
-                                                                  (fn-lb-pairs-deltas pairs)))
+                                                                  (fn-lb-pairs-deltas pairs)) fn-arena)
                                            generation max-octets))))
                  (:instance fn-lb-published-config-of-a-fresh-reconfigure
                             (deltas (fn-lb-pairs-deltas pairs)))

@@ -32,12 +32,12 @@
                   "opc-release-2" 1 841000000))
 (defconst *opc-second* (fn-hrt-row-at *opc-second-wire* 1))
 
-(defun opc-run (oc events)
-  (declare (xargs :guard (fn-sn-statep
+(defun opc-run (oc events fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-sn-statep
                           (fn-own-store (fn-ocfg-owner oc)))
                   :verify-guards nil))
   (if (consp events)
-      (opc-run (fn-ocfg-step oc (car events)) (cdr events))
+      (opc-run (fn-ocfg-step oc (car events) fn-arena) (cdr events) fn-arena)
     oc))
 
 (defconst *opc-reserve-events*
@@ -54,22 +54,25 @@
     (fn-own-start (fn-sn-initial *opc-groups* 10) 3)
     *opc-post-config*)
    *opc-config* nil nil))
-(defconst *opc-first-reserved* (opc-run *opc-0* *opc-reserve-events*))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-step 2)
+(bpr-lift opc-run 2)
+(defconst *opc-first-reserved* (in-arena-opc-run *sr-arena* *opc-0* *opc-reserve-events*))
 (defconst *opc-first-staged* (fn-opc-prepare *opc-first-reserved* *opc-first*))
 (defconst *opc-first-completing*
-  (opc-run *opc-first-staged*
-           '((:store (:io :record-file :ok))
+  (in-arena-opc-run *sr-arena* *opc-first-staged* '((:store (:io :record-file :ok))
              (:store (:io :record-link :ok))
              (:store (:io :record-directory :ok)))))
 (defconst *opc-ready-one*
-  (fn-ocfg-step *opc-first-completing* '(:complete)))
+  (in-arena-fn-ocfg-step *sr-arena* *opc-first-completing* '(:complete)))
 (defconst *opc-second-reserved*
-  (opc-run *opc-ready-one* *opc-reserve-events*))
+  (in-arena-opc-run *sr-arena* *opc-ready-one* *opc-reserve-events*))
 (defconst *opc-second-fast*
   (fn-opc-prepare *opc-second-reserved* *opc-second*))
 (defconst *opc-second-spec*
-  (fn-ocfg-step *opc-second-reserved*
-                (list :store (list :prepare *opc-second*))))
+  (in-arena-fn-ocfg-step *sr-arena* *opc-second-reserved* (list :store (list :prepare *opc-second*))))
 
 (assert-event (fn-own-relation (fn-ocfg-owner *opc-second-reserved*)))
 (assert-event
@@ -122,8 +125,7 @@
  (equal (fn-opc-prepare *opc-second-reserved* *opc-wrong-sequence*)
         *opc-second-reserved*))
 (assert-event
- (equal (fn-ocfg-step *opc-second-reserved*
-                      (list :store (list :prepare *opc-wrong-sequence*)))
+ (equal (in-arena-fn-ocfg-step *sr-arena* *opc-second-reserved* (list :store (list :prepare *opc-wrong-sequence*)))
         *opc-second-reserved*))
 
 ; This candidate has correct counters but conflicts with the durable first
@@ -145,8 +147,7 @@
  (equal (fn-opc-prepare *opc-second-reserved* *opc-conflict*)
         *opc-second-reserved*))
 (assert-event
- (equal (fn-ocfg-step *opc-second-reserved*
-                      (list :store (list :prepare *opc-conflict*)))
+ (equal (in-arena-fn-ocfg-step *sr-arena* *opc-second-reserved* (list :store (list :prepare *opc-conflict*)))
         *opc-second-reserved*))
 
 ; Sole equality-premise tooth.  Keep the real nonempty files and all outer
@@ -192,14 +193,12 @@
             (fn-opc-prepare *opc-stale* *opc-conflict*)))))
         :record-staged))
 (assert-event
- (equal (fn-ocfg-step *opc-stale*
-                      (list :store (list :prepare *opc-conflict*)))
+ (equal (in-arena-fn-ocfg-step *sr-arena* *opc-stale* (list :store (list :prepare *opc-conflict*)))
         *opc-stale*))
 (must-fail
  (assert-event
   (equal (fn-opc-prepare *opc-stale* *opc-conflict*)
-         (fn-ocfg-step *opc-stale*
-                       (list :store (list :prepare *opc-conflict*))))))
+         (in-arena-fn-ocfg-step *sr-arena* *opc-stale* (list :store (list :prepare *opc-conflict*))))))
 
 ; Actual recovery root: observed replay, owner start and post-recovery
 ; configuration establish the premise consumed by fn-opc-prepare.

@@ -238,6 +238,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-open \
 	tests/acl2/owner-checkpoint-open-tests \
 	tests/acl2/store-checkpoint-tables-tests \
+	tests/acl2/store-checkpoint-arena-tests \
+	books/heap-store-figure \
 	books/heap-figure \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
@@ -346,6 +348,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-load-index-tests \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
+	books/store-compact-window \
+	tests/acl2/store-compact-window-tests \
 	books/store-history-marker \
 	books/reclaim-tombstone \
 	books/reclaim-rule \
@@ -386,6 +390,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-programs-tests \
 	books/store-log-route \
 	tests/acl2/store-log-route-tests \
+	books/store-log-segments \
+	tests/acl2/store-log-segments-tests \
+	books/store-log-reclaim \
+	tests/acl2/store-log-reclaim-tests \
 	books/store-log-route-phases \
 	books/owner-log-route \
 	tests/acl2/owner-log-route-tests \
@@ -846,6 +854,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-checkpoint-tables-reader \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
+	books/store-checkpoint-arena \
+	books/store-checkpoint-arena-load \
+	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
 	tests/acl2/octets-bulk-tests \
 	tests/acl2/payload-arena-tests \

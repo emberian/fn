@@ -200,61 +200,65 @@
 
 ; The three folds on [i, end): the executable scan, the octet buffer fold and
 ; the carried list fold.
-(defun sct-served (conn i end fn-octets)
-  (declare (xargs :stobjs fn-octets
+(defun sct-served (conn i end fn-octets fn-arena)
+  (declare (xargs :stobjs (fn-octets fn-arena)
                   :verify-guards nil))
-  (list (fn-scar-scan-span conn i end nil nil nil fn-octets)
-        (fn-scar-feed-span conn i end nil nil nil fn-octets)
-        (fn-scar-feed-counted conn (fn-oct-slice-list i end fn-octets) nil nil nil)))
+  (list (fn-scar-scan-span conn i end nil nil nil fn-octets fn-arena)
+        (fn-scar-feed-span conn i end nil nil nil fn-octets fn-arena)
+        (fn-scar-feed-counted conn (fn-oct-slice-list i end fn-octets) nil nil nil fn-arena)))
 
-(defun sct-served-agree (conn i end fn-octets)
-  (declare (xargs :stobjs fn-octets
+(defun sct-served-agree (conn i end fn-octets fn-arena)
+  (declare (xargs :stobjs (fn-octets fn-arena)
                   :verify-guards nil))
-  (let ((v (sct-served conn i end fn-octets)))
+  (let ((v (sct-served conn i end fn-octets fn-arena)))
     (and (equal (first v) (second v)) (equal (first v) (third v)))))
 
-(defun sct-served-cuts (conn cut n fn-octets)
+(defun sct-served-cuts (conn cut n fn-octets fn-arena)
   ; every read start 0..n with the read running to n, and every read end
   ; with the read starting at 0: the two places a socket read cuts.
-  (declare (xargs :stobjs fn-octets
+  (declare (xargs :stobjs (fn-octets fn-arena)
                   :verify-guards nil
                   :measure (nfix (- (1+ n) cut))))
   (if (or (not (natp cut)) (not (natp n)) (> cut n))
       t
-    (and (sct-served-agree conn 0 cut fn-octets)
-         (sct-served-agree conn cut n fn-octets)
-         (sct-served-cuts conn (1+ cut) n fn-octets))))
+    (and (sct-served-agree conn 0 cut fn-octets fn-arena)
+         (sct-served-agree conn cut n fn-octets fn-arena)
+         (sct-served-cuts conn (1+ cut) n fn-octets fn-arena))))
 
-(defun sct-served-all (conn octets fn-octets)
-  (declare (xargs :stobjs fn-octets
+(defun sct-served-all (conn octets fn-octets fn-arena)
+  (declare (xargs :stobjs (fn-octets fn-arena)
                   :verify-guards nil))
   (let ((fn-octets (fn-octets-from-list octets fn-octets)))
-    (mv (sct-served-cuts conn 0 (fn-octets-len fn-octets) fn-octets) fn-octets)))
+    (mv (sct-served-cuts conn 0 (fn-octets-len fn-octets) fn-octets fn-arena) fn-octets)))
 
-(defun sct-served-all-value (conn octets)
-  (declare (xargs :verify-guards nil))
+(defun sct-served-all-value (conn octets fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (with-local-stobj fn-octets
-    (mv-let (v fn-octets) (sct-served-all conn octets fn-octets) v)))
+    (mv-let (v fn-octets) (sct-served-all conn octets fn-octets fn-arena) v)))
 
-(defun sct-served-whole (conn octets fn-octets)
-  (declare (xargs :stobjs fn-octets
+(defun sct-served-whole (conn octets fn-octets fn-arena)
+  (declare (xargs :stobjs (fn-octets fn-arena)
                   :verify-guards nil))
   (let ((fn-octets (fn-octets-from-list octets fn-octets)))
-    (mv (fn-scar-scan-span conn 0 (fn-octets-len fn-octets) nil nil nil fn-octets)
+    (mv (fn-scar-scan-span conn 0 (fn-octets-len fn-octets) nil nil nil fn-octets fn-arena)
         fn-octets)))
 
-(defun sct-served-whole-value (conn octets)
-  (declare (xargs :verify-guards nil))
+(defun sct-served-whole-value (conn octets fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (with-local-stobj fn-octets
-    (mv-let (v fn-octets) (sct-served-whole conn octets fn-octets) v)))
+    (mv-let (v fn-octets) (sct-served-whole conn octets fn-octets fn-arena) v)))
 
-(assert-event (sct-served-all-value *sct-reader* *sct-two-posts*))
+(include-book "arena-lift")
+(bpr-lift fn-served-step 2)
+(bpr-lift sct-served-all-value 2)
+(bpr-lift sct-served-whole-value 2)
+(assert-event (in-arena-sct-served-all-value nil *sct-reader* *sct-two-posts*))
 
 ; Reachable positive witness: the read yields after the first article
 ; (PKT-600): DATE, then POST and its article are consumed, exactly one
 ; submission is carried, and it is the reference fold's.
 (assert-event
- (let ((r (sct-served-whole-value *sct-reader* *sct-two-posts*)))
+ (let ((r (in-arena-sct-served-whole-value nil *sct-reader* *sct-two-posts*)))
    (and (equal (fn-served-counted-consumed r)
                (+ (len (sct-line "DATE")) (len *sct-post-a*)))
         (equal (len (fn-served-submissions
@@ -262,5 +266,4 @@
                1)
         (equal (fn-served-result-effects (fn-served-counted-result r))
                (fn-served-result-effects
-                (fn-served-step *sct-reader*
-                                (append (sct-line "DATE") *sct-post-a*)))))))
+                (in-arena-fn-served-step nil *sct-reader* (append (sct-line "DATE") *sct-post-a*)))))))

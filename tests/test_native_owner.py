@@ -233,7 +233,8 @@ class NativeOwnerTests(unittest.TestCase):
         current_reader.write(b"GROUP fn.test\r\n")
         self.assertTrue(current_reader.readline().startswith(b"211 "))
         current_reader.write(b"ARTICLE " + message_id + b"\r\n")
-        self.assertTrue(current_reader.readline().startswith(b"220 "))
+        answer = current_reader.readline()
+        self.assertTrue(answer.startswith(b"220 "), answer)
         received = bytearray()
         while True:
             line = current_reader.readline()

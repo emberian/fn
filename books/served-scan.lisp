@@ -24,8 +24,8 @@
 (include-book "served-carried")
 (include-book "wire-scan")
 
-(defun fn-scar-scan-span (conn i end live trie arts fn-octets)
-  (declare (xargs :stobjs fn-octets
+(defun fn-scar-scan-span (conn i end live trie arts fn-octets fn-arena)
+  (declare (xargs :stobjs (fn-octets fn-arena)
                   :guard (and (fn-wire-fast-statep (fn-served-conn-wire conn))
                               (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets)))
@@ -41,7 +41,7 @@
            (next (fn-wsp-next w))
            (here (fn-scar-dispatch-events
                   (fn-served-conn-with-wire conn (fn-wsp-state w))
-                  (fn-wsp-events w) live trie arts)))
+                  (fn-wsp-events w) live trie arts fn-arena)))
       ;; PKT-600: yield after the event that completed a submission; the host
       ;; re-enters at i + consumed.
       (if (fn-served-submission (fn-served-result-effects here))
@@ -50,7 +50,7 @@
            (fn-served-make-result (fn-served-result-conn here)
                                   (fn-served-result-effects here)))
         (let* ((tail (fn-scar-scan-span (fn-served-result-conn here) next end
-                                        live trie arts fn-octets))
+                                        live trie arts fn-octets fn-arena))
                (tail-result (fn-served-counted-result tail)))
           (fn-served-counted-make
            (+ (- next i) (fn-served-counted-consumed tail))
@@ -63,9 +63,9 @@
 
 (defthm fn-scar-scan-span-consumed-is-natural
   (natp (fn-served-counted-consumed
-         (fn-scar-scan-span conn i end live trie arts fn-octets)))
+         (fn-scar-scan-span conn i end live trie arts fn-octets fn-arena)))
   :rule-classes (:rewrite :type-prescription)
-  :hints (("Goal" :induct (fn-scar-scan-span conn i end live trie arts fn-octets)
+  :hints (("Goal" :induct (fn-scar-scan-span conn i end live trie arts fn-octets fn-arena)
            :in-theory (e/d (fn-served-counted-make fn-served-counted-consumed)
                            (fn-scar-dispatch-events fn-wire-fast-statep)))))
 
@@ -80,7 +80,7 @@
                  conn
                  (fn-wsp-state (fn-wire-scan (fn-served-conn-wire conn) i end
                                              fn-octets)))
-                events live trie arts)))))
+                events live trie arts fn-arena)))))
    :hints (("Goal" :in-theory (disable fn-scar-dispatch-events fn-wire-fast-statep)))))
 
 (verify-guards fn-scar-scan-span
@@ -132,29 +132,29 @@
 (local
  (defthm fn-sscan-dispatch-no-events
    (implies (not (consp events))
-            (equal (fn-scar-dispatch-events conn events live trie arts)
+            (equal (fn-scar-dispatch-events conn events live trie arts fn-arena)
                    (fn-served-make-result conn nil)))
-   :hints (("Goal" :expand ((fn-scar-dispatch-events conn events live trie arts))))))
+   :hints (("Goal" :expand ((fn-scar-dispatch-events conn events live trie arts fn-arena))))))
 
 (local
  (defthm fn-sscan-feed-counted-nil
-   (equal (fn-scar-feed-counted conn nil live trie arts)
+   (equal (fn-scar-feed-counted conn nil live trie arts fn-arena)
           (fn-served-counted-make 0 (fn-served-make-result conn nil)))
-   :hints (("Goal" :expand ((fn-scar-feed-counted conn nil live trie arts))))))
+   :hints (("Goal" :expand ((fn-scar-feed-counted conn nil live trie arts fn-arena))))))
 
 (local
  (defthm fn-sscan-feed-counted-cons
-   (equal (fn-scar-feed-counted conn (cons b rest) live trie arts)
+   (equal (fn-scar-feed-counted conn (cons b rest) live trie arts fn-arena)
           (if (or (fn-served-closed-wirep (fn-served-conn-wire conn))
                   (fn-served-tls-handshakingp conn))
               (fn-served-counted-make 0 (fn-served-make-result conn nil))
-            (let ((here (fn-scar-feed-byte conn b live trie arts)))
+            (let ((here (fn-scar-feed-byte conn b live trie arts fn-arena)))
               (if (fn-served-submission (fn-served-result-effects here))
                   (fn-served-counted-make
                    1 (fn-served-make-result (fn-served-result-conn here)
                                             (fn-served-result-effects here)))
                 (let* ((tail (fn-scar-feed-counted
-                              (fn-served-result-conn here) rest live trie arts))
+                              (fn-served-result-conn here) rest live trie arts fn-arena))
                        (tail-result (fn-served-counted-result tail)))
                   (fn-served-counted-make
                    (+ 1 (fn-served-counted-consumed tail))
@@ -163,7 +163,7 @@
                     (append (fn-served-result-effects here)
                             (fn-served-result-effects tail-result)))))))))
    :hints (("Goal" :expand ((fn-scar-feed-counted conn (cons b rest)
-                                                  live trie arts))))))
+                                                  live trie arts fn-arena))))))
 
 (local
  (defun fn-sscan-ind (conn i end fn-octets)
@@ -188,13 +188,13 @@
                  (natp i) (natp end) (< i end))
             (equal
              (fn-scar-feed-counted conn (fn-oct-slice-list i end fn-octets)
-                                   live trie arts)
+                                   live trie arts fn-arena)
              (let* ((w (fn-wire-span-fold (fn-served-conn-wire conn) i end
                                           fn-octets))
                     (next (fn-wsp-next w))
                     (here (fn-scar-dispatch-events
                            (fn-served-conn-with-wire conn (fn-wsp-state w))
-                           (fn-wsp-events w) live trie arts)))
+                           (fn-wsp-events w) live trie arts fn-arena)))
                (if (fn-served-submission (fn-served-result-effects here))
                    (fn-served-counted-make
                     (- next i)
@@ -203,7 +203,7 @@
                  (let* ((tail (fn-scar-feed-counted
                                (fn-served-result-conn here)
                                (fn-oct-slice-list next end fn-octets)
-                               live trie arts))
+                               live trie arts fn-arena))
                         (tail-result (fn-served-counted-result tail)))
                    (fn-served-counted-make
                     (+ (- next i) (fn-served-counted-consumed tail))
@@ -225,10 +225,10 @@
 ; read runs is the carried byte fold over the range's octets, on every
 ; connection and every range.
 (defthm fn-scar-scan-span-is-feed-counted
-  (equal (fn-scar-scan-span conn i end live trie arts fn-octets)
+  (equal (fn-scar-scan-span conn i end live trie arts fn-octets fn-arena)
          (fn-scar-feed-counted conn (fn-oct-slice-list i end fn-octets)
-                               live trie arts))
-  :hints (("Goal" :induct (fn-scar-scan-span conn i end live trie arts fn-octets)
+                               live trie arts fn-arena))
+  :hints (("Goal" :induct (fn-scar-scan-span conn i end live trie arts fn-octets fn-arena)
            :in-theory (e/d (fn-scar-scan-span fn-served-counted-make
                             fn-served-counted-consumed fn-served-counted-result)
                            (fn-scar-dispatch-events fn-wire-fast-statep
@@ -239,6 +239,6 @@
           (and stable-under-simplificationp
                '(:expand ((fn-scar-feed-counted conn
                                                 (fn-oct-slice-list i end fn-octets)
-                                                live trie arts))))))
+                                                live trie arts fn-arena))))))
 
 (in-theory (disable fn-scar-scan-span))

@@ -149,8 +149,13 @@
 
 (defconst *cet-0* (fn-own-start (fn-sn-initial *cet-groups* 10) 4))
 (defconst *cet-a* (cdr (fn-own-open *cet-0* nil)))
-(defconst *cet-begun* (fn-own-step (fn-own-step *cet-a* '(:open)) '(:begin 1)))
-(defconst *cet-completing* (fn-own-run *cet-begun* (butlast (cet-post-events *cet-w0*) 1)))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-own-run 2)
+(bpr-lift fn-own-step 2)
+(defconst *cet-begun* (in-arena-fn-own-step *sr-arena* (in-arena-fn-own-step *sr-arena* *cet-a* '(:open)) '(:begin 1)))
+(defconst *cet-completing* (in-arena-fn-own-run *sr-arena* *cet-begun* (butlast (cet-post-events *cet-w0*) 1)))
 (defconst *cet-s* (fn-own-store *cet-completing*))
 (defconst *cet-records* (fn-sf-records (fn-sn-files *cet-s*)))
 

@@ -11,7 +11,8 @@
 ; for 320 MB of payload (PKT-307, PKT-314).  Schema 3 writes four tables:
 ;
 ;   F  one row (3 S FRONTIER REVISION): the schema, the count covered, the
-;      store's frontier txid at the capture, the writer's source revision;
+;      store's frontier txid at the capture, the writer's source revision,
+;      the record log's position at S (fn-sct-log-positionp);
 ;   P  one row per committed event s: `fn-sct-payload-of' the event (an
 ;      article's payload, a composite's article-record bytes, else NIL);
 ;   E  one row per committed event: the event itself, every octets leaf
@@ -478,26 +479,43 @@
            (equal (nth s (fn-sct-payloads records))
                   (fn-sct-payload-of (nth s records)))))
 
-(defun fn-sct-f-row (s frontier revision)
+; LOG (a format-9 store, lane log-recovery): where the history's suffix at S
+; starts in the record log, (K GENESIS): the first segment this checkpoint
+; does not cover and the trailer its first entry chains from
+; (books/store-log-segments.lisp: the capture ROTATED the active segment at
+; S, so every record below S is in the segments below K).  NIL: no log
+; position (the open scans the log from segment 1).
+(defun fn-sct-log-positionp (log)
   (declare (xargs :guard t))
-  (list *fn-sct-schema* s frontier revision))
+  (or (null log)
+      (and (true-listp log) (equal (len log) 2)
+           (posp (car log))
+           (fn-cbor-octet-listp (cadr log))
+           (equal (len (cadr log)) 32))))
+
+(defun fn-sct-f-row (s frontier revision log)
+  (declare (xargs :guard t))
+  (list *fn-sct-schema* s frontier revision log))
 
 (defun fn-sct-f-rowp (row)
   (declare (xargs :guard t))
-  (and (true-listp row) (equal (len row) 4)
+  (and (true-listp row) (equal (len row) 5)
        (equal (car row) *fn-sct-schema*)
-       (natp (cadr row))))
+       (natp (cadr row))
+       (fn-sct-log-positionp (nth 4 row))))
 
-(defun fn-sct-tables-of-capture (c frontier revision)
+(defun fn-sct-tables-of-capture (c frontier revision log)
   (declare (xargs :guard t))
   (let ((e (fn-sco-records c)))
-    (list (fn-sct-f-row (len e) frontier revision)
+    (list (fn-sct-f-row (len e) frontier revision log)
           (fn-sct-payloads e)
           e
           (list (fn-sco-cpr c) (fn-sco-identity c) (fn-sco-consumer c)
                 (fn-sco-topic c)))))
 
 (defun fn-sct-tables-f (tables) (declare (xargs :guard t)) (fn-sco-at 0 tables))
+; The F row's log position (fn-sct-log-positionp).
+(defun fn-sct-tables-log (tables) (declare (xargs :guard t)) (fn-sco-at 4 (fn-sct-tables-f tables)))
 (defun fn-sct-tables-p (tables) (declare (xargs :guard t)) (fn-sco-at 1 tables))
 (defun fn-sct-tables-e (tables) (declare (xargs :guard t)) (fn-sco-at 2 tables))
 (defun fn-sct-tables-r (tables) (declare (xargs :guard t)) (fn-sco-at 3 tables))
@@ -523,7 +541,7 @@
 ; configuration history and record list.
 (defthm fn-sct-capture-of-tables-of-capture
   (equal (fn-sct-capture-of-tables
-          (fn-sct-tables-of-capture (fn-sco-capture configs records) frontier revision))
+          (fn-sct-tables-of-capture (fn-sco-capture configs records) frontier revision log))
          (fn-sco-capture configs records))
   :hints (("Goal" :in-theory (e/d (fn-sco-capture fn-sco-make fn-sco-records fn-sco-cpr
                                    fn-sco-identity fn-sco-consumer fn-sco-topic
@@ -629,8 +647,8 @@
 
 (local
  (defthm fn-sct-tables-of-capture-shape
-   (let ((tables (fn-sct-tables-of-capture (fn-sco-capture configs records) frontier revision)))
-     (and (equal (nth 0 tables) (fn-sct-f-row (len records) frontier revision))
+   (let ((tables (fn-sct-tables-of-capture (fn-sco-capture configs records) frontier revision log)))
+     (and (equal (nth 0 tables) (fn-sct-f-row (len records) frontier revision log))
           (equal (nth 1 tables) (fn-sct-payloads (true-list-fix records)))
           (equal (nth 2 tables) (true-list-fix records))
           (equal (nth 3 tables)
@@ -667,14 +685,15 @@
 ; history and every record list the codec encodes and the u32 index keys.
 (defthm fn-sct-decode-programs-of-table-programs
   (implies (and (fn-sct-tables-treep
-                 (fn-sct-tables-of-capture (fn-sco-capture configs records) frontier revision))
+                 (fn-sct-tables-of-capture (fn-sco-capture configs records) frontier revision log))
+                (fn-sct-log-positionp log)
                 (<= (len records) (1+ *fn-cbor-max-uint*)))
            (equal (fn-sct-decode-programs
                    (fn-sct-table-programs
-                    (fn-sct-tables-of-capture (fn-sco-capture configs records) frontier revision)
+                    (fn-sct-tables-of-capture (fn-sco-capture configs records) frontier revision log)
                     (fn-sco-event-index (fn-sco-capture configs records))))
                   (list :ok (fn-sct-tables-of-capture (fn-sco-capture configs records)
-                                                      frontier revision))))
+                                                      frontier revision log))))
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-sct-agreep-of-build (records (true-list-fix records))))
            :in-theory (e/d (fn-sct-tables-treep fn-sct-table-programs fn-sct-decode-programs
@@ -929,7 +948,7 @@
 (local
  (defthm fn-sct-f-of-tables-of-capture
    (equal (nth 1 (nth 0 (fn-sct-tables-of-capture (fn-sco-capture configs records)
-                                                  frontier revision)))
+                                                  frontier revision log)))
           (len records))
    :hints (("Goal" :in-theory (e/d (fn-sct-tables-of-capture fn-sco-capture fn-sco-make
                                     fn-sco-records fn-sco-at)
@@ -939,9 +958,10 @@
 
 (defthm fn-sct-decode-file-of-file-is-the-capture
   (let* ((c (fn-sco-capture configs records))
-         (tables (fn-sct-tables-of-capture c frontier revision))
+         (tables (fn-sct-tables-of-capture c frontier revision log))
          (progs (fn-sct-table-programs tables (fn-sco-event-index c))))
     (implies (and (fn-sct-tables-treep tables)
+                  (fn-sct-log-positionp log)
                   (<= (len records) (1+ *fn-cbor-max-uint*))
                   (fn-sct-programs-widthp progs))
              (and (equal (fn-sct-decode-file (fn-sct-file-segments progs seg (len records)))

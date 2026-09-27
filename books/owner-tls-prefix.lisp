@@ -42,13 +42,13 @@
               (fn-own-conn-index conn)))
   :hints (("Goal" :in-theory (enable fn-own-tls-served-conn fn-own-served-conn))))
 
-(defun fn-own-read-tls-prefix (o id octets)
-  (declare (xargs :guard t))
+(defun fn-own-read-tls-prefix (o id octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
         (let* ((counted
                  (fn-served-step-counted-fast
-                  (fn-own-tls-served-conn o conn) octets))
+                  (fn-own-tls-served-conn o conn) octets fn-arena))
                (result
                  (fn-own-finish-read
                   o conn (fn-served-counted-result counted))))
@@ -57,9 +57,9 @@
            (fn-own-result-repinned (fn-served-counted-result counted))))
       (fn-own-tls-make-result (len octets) nil o nil))))
 
-(defun fn-ocfg-read-tls-prefix (oc id octets)
-  (declare (xargs :guard (fn-wire-octet-listp octets)))
-  (let ((result (fn-own-read-tls-prefix (fn-ocfg-owner oc) id octets)))
+(defun fn-ocfg-read-tls-prefix (oc id octets fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-wire-octet-listp octets)))
+  (let ((result (fn-own-read-tls-prefix (fn-ocfg-owner oc) id octets fn-arena)))
     (fn-own-tls-make-result
      (fn-own-tls-result-consumed result)
      (fn-own-tls-result-effects result)
@@ -69,7 +69,7 @@
 
 (defthm fn-own-read-tls-prefix-consumed-is-bounded
   (<= (fn-own-tls-result-consumed
-       (fn-own-read-tls-prefix o id octets))
+       (fn-own-read-tls-prefix o id octets fn-arena))
       (len octets))
   :rule-classes :linear
   :hints (("Goal"
@@ -99,10 +99,10 @@
    (fn-wire-statep
     (fn-own-conn-wire
      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-   (let* ((tls-result (fn-ocfg-read-tls-prefix oc id octets))
+   (let* ((tls-result (fn-ocfg-read-tls-prefix oc id octets fn-arena))
           (full-result
            (fn-ocfg-read oc id (take (fn-own-tls-result-consumed tls-result)
-                                     octets))))
+                                     octets) fn-arena)))
      (and (equal (fn-own-tls-result-effects tls-result)
                  (car full-result))
           (equal (fn-own-tls-result-owner tls-result)
@@ -112,7 +112,7 @@
           (equal (fn-own-tls-result-repinned tls-result)
                  (fn-own-read-repinned (fn-ocfg-owner oc) id
                                        (take (fn-own-tls-result-consumed tls-result)
-                                             octets))))))
+                                             octets) fn-arena)))))
   :hints (("Goal"
            ; both sides finish the same served result; nothing past it opens
            :in-theory (e/d (fn-ocfg-read-tls-prefix fn-own-read-repinned
@@ -151,7 +151,7 @@
     (implies (fn-served-connp (fn-own-tls-served-conn (fn-ocfg-owner oc) conn))
              (<= (len (fn-served-submissions
                        (fn-own-tls-result-effects
-                        (fn-ocfg-read-tls-prefix oc id octets))))
+                        (fn-ocfg-read-tls-prefix oc id octets fn-arena))))
                  1)))
   :rule-classes :linear
   :hints (("Goal"

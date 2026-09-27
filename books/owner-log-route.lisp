@@ -59,18 +59,18 @@
          (fn-ocfg-step
           (fn-ocfg-step
            (fn-ocfg-step
-            (fn-ocfg-step oc '(:store (:io :start-frontier nil)))
-            '(:store (:io :frontier-file :ok)))
-           '(:store (:io :frontier-replace :ok)))
-          '(:store (:io :frontier-directory :ok)))))
+            (fn-ocfg-step oc '(:store (:io :start-frontier nil)) fn-arena)
+            '(:store (:io :frontier-file :ok)) fn-arena)
+           '(:store (:io :frontier-replace :ok)) fn-arena)
+          '(:store (:io :frontier-directory :ok)) fn-arena)))
 
 (defthm fn-olr-ocfg-order-is-the-file-route-by-definition
   (equal (fn-olr-ocfg-order oc)
          (fn-ocfg-step
           (fn-ocfg-step
-           (fn-ocfg-step oc '(:store (:io :record-file :ok)))
-           '(:store (:io :record-link :ok)))
-          '(:store (:io :record-directory :ok)))))
+           (fn-ocfg-step oc '(:store (:io :record-file :ok)) fn-arena)
+           '(:store (:io :record-link :ok)) fn-arena)
+          '(:store (:io :record-directory :ok)) fn-arena)))
 
 
 ; -----------------------------------------------------------------------------

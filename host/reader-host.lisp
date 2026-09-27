@@ -12,28 +12,15 @@
 ; Path, Injection-Info and any generated Message-ID from it.
 (defconst *fn-reader-agent*
   '(102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100))
-;; The seeded archive: one article, number 1 in fn.letters.  Its payload is
-;; a reference into the payload arena (PRF-219: fn-accept-prepare takes the
-;; handle of the sealed payload and refuses anything else).  The seed used to
-;; pass *fn-reader-payload* itself; prepare refused it, the archive was EMPTY,
-;; and GROUP fn.letters answered "211 0 1 0" on the model and on the socket
-;; alike (lane input-loop-2).  The host seals the octets
-;; `fn-reader-seed-payload' names, and `fn-reader-use-seed' selects the seed
-;; at the handle the arena holds them at.  *fn-reader-archive* is the seed at
-;; handle 0, the first seal of a fresh arena (tests/test_served_differential.py
-;; opens over it directly).
-(defun fn-reader-seed-payload ()
-  (declare (xargs :guard t))
-  *fn-reader-payload*)
-
-(defun fn-reader-seed-archive (handle)
-  (declare (xargs :mode :program))
+;; The records flip: the seed article's payload is handle 0 of the payload
+;; arena, which fn-reader-use-seed fills with *fn-reader-payload* (the served
+;; readers read an article's bytes through the arena: books/nntp-session.lisp
+;; fn-nntp-article-bytes).
+(defconst *fn-reader-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *fn-reader-groups*) 1 *fn-reader-id*
-                      handle *fn-reader-groups* :legacy)
+                      0 *fn-reader-groups* :legacy)
    0 1 :durable))
-
-(defconst *fn-reader-archive* (fn-reader-seed-archive 0))
 
 (defun fn-reader-group-octets (names)
   (declare (xargs :mode :program))
@@ -102,17 +89,13 @@
     (let ((state (f-put-global 'fn-reader-action :refused state)))
       (value :refused))))
 
-;; The seed is selected only over an arena whose last sealed payload is the
-;; seed's octets (the host sealed them just before); otherwise refused.
 (defun fn-reader-use-seed (fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (let ((count (fn-arena-count fn-arena)))
-    (if (and (posp count)
-             (equal (fn-arena-payload (1- count) fn-arena) (fn-reader-seed-payload)))
-        (fn-reader-install-selection
-         (fn-rdc-selection (fn-reader-seed-archive (1- count)) nil) state)
-      (let ((state (f-put-global 'fn-reader-action :refused state)))
-        (value :refused)))))
+  (let* ((fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arena-seal-list *fn-reader-payload* fn-arena)))
+    (mv-let (erp val state)
+      (fn-reader-install-selection (fn-rdc-selection *fn-reader-archive* nil) state)
+      (mv erp val fn-arena state))))
 
 ; The operator's posting permission and the host's clock reading.  A clock
 ; reading is an observation, not a computed value: books/clock.lisp says what
@@ -178,10 +161,10 @@
 ; fn-wire-feed-byte with fn-nntp-post-step run on each framed event before the
 ; next byte, with the reply concatenation, proved partition independent in
 ; books/served.lisp.  There is no suffix to hand back and no loop in Python.
-(defun fn-reader-chunk (octets state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-reader-chunk (octets fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let ((state (fn-reader-install-result
-                (fn-served-step (f-get-global 'fn-reader-conn state) octets)
+                (fn-served-step (f-get-global 'fn-reader-conn state) octets fn-arena)
                 state)))
     (value :ok)))
 

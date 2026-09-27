@@ -63,9 +63,9 @@
  (defthm fn-ocri-missing-tls-read-is-read
    (implies
     (not (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
-    (let* ((tls (fn-ocfg-read-tls-prefix oc id octets))
+    (let* ((tls (fn-ocfg-read-tls-prefix oc id octets fn-arena))
            (full (fn-ocfg-read oc id (take (fn-own-tls-result-consumed tls)
-                                           octets))))
+                                           octets) fn-arena)))
       (and (equal (fn-own-tls-result-effects tls) (car full))
            (equal (fn-own-tls-result-owner tls) (cdr full)))))
    :hints (("Goal"
@@ -81,9 +81,9 @@
 (defthm fn-ocri-host-tls-read-refines-historical-read
   (implies
    (fn-ocri-relation oc)
-   (let* ((tls (fn-ocfg-read-tls-prefix oc id octets))
+   (let* ((tls (fn-ocfg-read-tls-prefix oc id octets fn-arena))
           (full (fn-ocfg-read oc id (take (fn-own-tls-result-consumed tls)
-                                          octets))))
+                                          octets) fn-arena)))
      (and (equal (fn-own-tls-result-effects tls) (car full))
           (equal (fn-own-tls-result-owner tls) (cdr full)))))
   :hints (("Goal"
@@ -204,7 +204,7 @@
   (implies (fn-wire-statep (fn-served-conn-wire conn))
            (fn-wire-statep
             (fn-served-conn-wire
-             (fn-served-result-conn (fn-served-step conn octets)))))
+             (fn-served-result-conn (fn-served-step conn octets fn-arena)))))
   :hints (("Goal"
            :use ((:instance fn-served-feed-preserves-wire-statep))
            :in-theory (e/d (fn-served-step)
@@ -224,9 +224,9 @@
    (implies (and (fn-ocri-viewp (fn-own-view o))
                  (fn-ocri-conns-p (fn-own-conns o))
                  (fn-own-find-conn id (fn-own-conns o))
-                 (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets)))))
+                 (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets fn-arena)))))
             (fn-ocri-connp
-             (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets))))))
+             (fn-own-find-conn id (fn-own-conns (cdr (fn-own-read o id octets fn-arena))))))
    :hints (("Goal"
             :use ((:instance fn-ocri-found-conn-is-carried (conns (fn-own-conns o)))
                   (:instance fn-own-read-survivor-keeps-historical-fields)
@@ -251,13 +251,13 @@
 (local
  (defthm fn-ocri-missing-read-keeps-owner
    (implies (not (fn-own-find-conn id (fn-own-conns o)))
-            (equal (cdr (fn-own-read o id octets)) o))
+            (equal (cdr (fn-own-read o id octets fn-arena)) o))
    :hints (("Goal" :in-theory (enable fn-own-read fn-own-read-full)))))
 
 (defthm fn-ocri-own-read-preserves-reader-pins
   (implies (and (fn-ocri-viewp (fn-own-view o))
                 (fn-ocri-conns-p (fn-own-conns o)))
-           (fn-ocri-conns-p (fn-own-conns (cdr (fn-own-read o id octets)))))
+           (fn-ocri-conns-p (fn-own-conns (cdr (fn-own-read o id octets fn-arena)))))
   :hints (("Goal"
            :cases ((fn-own-find-conn id (fn-own-conns o)))
            :use ((:instance fn-ocri-read-survivor-is-a-reader-pin)
@@ -267,7 +267,7 @@
                  (:instance fn-ocri-conns-p-of-replace
                             (conns (fn-own-conns o))
                             (conn (fn-own-find-conn
-                                   id (fn-own-conns (cdr (fn-own-read o id octets)))))))
+                                   id (fn-own-conns (cdr (fn-own-read o id octets fn-arena)))))))
            :in-theory (e/d ()
                            (fn-own-read fn-own-read-full fn-own-finish-read
                             fn-served-step fn-ocri-connp fn-ocri-viewp
@@ -278,7 +278,7 @@
                             fn-sn-verdict-listp)))))
 
 (defthm fn-ocri-own-read-keeps-view
-  (equal (fn-own-view (cdr (fn-own-read o id octets)))
+  (equal (fn-own-view (cdr (fn-own-read o id octets fn-arena)))
          (fn-own-view o))
   :hints (("Goal" :in-theory (enable fn-own-read fn-own-finish-read
                                      fn-own-set-conns fn-own-enqueue))))
@@ -286,8 +286,8 @@
 (defthm fn-ocri-read-preserves-added-reader-invariants
   (implies
    (and (fn-ocri-relation oc)
-        (fn-ocl-relation (cdr (fn-ocfg-read oc id octets))))
-   (fn-ocri-relation (cdr (fn-ocfg-read oc id octets))))
+        (fn-ocl-relation (cdr (fn-ocfg-read oc id octets fn-arena))))
+   (fn-ocri-relation (cdr (fn-ocfg-read oc id octets fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-ocri-own-read-preserves-reader-pins
                             (o (fn-ocfg-owner oc)))
@@ -304,7 +304,7 @@
 
 (defthm fn-ocri-read-preserves-historical-reader-relation
   (implies (fn-ocri-relation oc)
-           (fn-ocri-relation (cdr (fn-ocfg-read oc id octets))))
+           (fn-ocri-relation (cdr (fn-ocfg-read oc id octets fn-arena))))
   :hints (("Goal"
            :use (fn-ocl-read-preserves-historical-relation
                  fn-ocri-read-preserves-added-reader-invariants)

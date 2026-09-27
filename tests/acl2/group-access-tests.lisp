@@ -15,14 +15,17 @@
           '(13 10) (fn-nntp-string-octets "Subject: gat") '(13 10 13 10 88 13 10)))
 
 (defconst *gat-groups* '("fn.public" "fn.private.x"))
+; An article's payload is its arena handle (books/acceptance.lisp): p, s and c
+; are handles 0, 1 and 2, and *sr-arena* below seals their payloads in that
+; order.
 (defconst *gat-p*
-  (fn-make-article "<p@example.invalid>" (gat-payload "<p@example.invalid>")
+  (fn-make-article "<p@example.invalid>" 0
                    '("fn.public") (list (cons "fn.public" 1)) t 841000000))
 (defconst *gat-s*
-  (fn-make-article "<s@example.invalid>" (gat-payload "<s@example.invalid>")
+  (fn-make-article "<s@example.invalid>" 1
                    '("fn.private.x") (list (cons "fn.private.x" 1)) t 841000000))
 (defconst *gat-c*
-  (fn-make-article "<c@example.invalid>" (gat-payload "<c@example.invalid>")
+  (fn-make-article "<c@example.invalid>" 2
                    '("fn.public" "fn.private.x")
                    (list (cons "fn.public" 2) (cons "fn.private.x" 2)) t 841000000))
 (defconst *gat-articles* (list *gat-c* *gat-s* *gat-p*))
@@ -71,15 +74,19 @@
 (defconst *gat-config-none* (gat-config nil))
 (defconst *gat-obs* (fn-clock-observation 1000000 843004800000 500 t))
 
-(defun gat-step (as text)
+(defun gat-step (as text fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-auth-step-pinned as *gat-state* *gat-pin* nil *gat-config* *gat-obs* *gat-obs*
-                       (list :command (fn-nntp-string-octets text))))
-(defun gat-after (as text) (fn-post-result-session (gat-step as text)))
-(defun gat-reply (as text) (fn-post-result-effects (gat-step as text)))
-(defun gat-login (name)
+                       (list :command (fn-nntp-string-octets text)) fn-arena))
+(defun gat-after (as text fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil)) (fn-post-result-session (gat-step as text fn-arena)))
+(defun gat-reply (as text fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil)) (fn-post-result-effects (gat-step as text fn-arena)))
+(defun gat-login (name fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (gat-after (gat-after (fn-auth-open-session *gat-state* nil nil nil *gat-acfg* nil)
-                        (concatenate 'string "AUTHINFO USER " name))
-             "AUTHINFO PASS correct-horse"))
+                        (concatenate 'string "AUTHINFO USER " name) fn-arena)
+             "AUTHINFO PASS correct-horse" fn-arena))
 ;; The sessions AUTHINFO USER/PASS leaves (the digest is an attachment, which
 ;; a defconst may not call, so the session is written out and the served
 ;; login is checked to produce exactly it).
@@ -89,8 +96,17 @@
                         (fn-nntp-string-octets name) principal nil nil))
 (defconst *gat-as-bob* (gat-logged-in "bob" (make-list 32 :initial-element 8)))
 (defconst *gat-as-alice* (gat-logged-in "alice" (make-list 32 :initial-element 7)))
-(assert-event (equal (gat-login "bob") *gat-as-bob*))
-(assert-event (equal (gat-login "alice") *gat-as-alice*))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, 2: *gat-p*'s, *gat-s*'s, *gat-c*'s.
+(defconst *sr-arena*
+  (list (gat-payload "<p@example.invalid>") (gat-payload "<s@example.invalid>")
+        (gat-payload "<c@example.invalid>")))
+(bpr-lift fn-auth-step-pinned 8)
+(bpr-lift gat-after 2)
+(bpr-lift gat-login 1)
+(bpr-lift gat-reply 2)
+(assert-event (equal (in-arena-gat-login *sr-arena* "bob") *gat-as-bob*))
+(assert-event (equal (in-arena-gat-login *sr-arena* "alice") *gat-as-alice*))
 (assert-event (fn-auth-session-subject *gat-as-bob*))
 (assert-event (fn-auth-session-subject *gat-as-alice*))
 
@@ -107,7 +123,9 @@
     nil))
 (defun gat-string (x)
   (if (fn-octet-listp x) (fn-record-octets-string x) nil))
-(defun gat-text (as text) (gat-string (gat-lines (gat-reply as text))))
+(defun gat-text (as text fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil)) (gat-string (gat-lines (gat-reply as text fn-arena))))
+(bpr-lift gat-text 2)
 
 (defun gat-prefixp (p s)
   (and (stringp s) (<= (length p) (length s)) (equal (subseq s 0 (length p)) p)))
@@ -119,55 +137,54 @@
 
 ; GROUP: bob selects the public group, and the private group answers exactly
 ; as an absent group does; alice selects both.
-(assert-event (gat-prefixp "211 " (gat-text *gat-as-bob* "GROUP fn.public")))
-(assert-event (equal (gat-reply *gat-as-bob* "GROUP fn.private.x")
-                     (gat-reply *gat-as-bob* "GROUP fn.absent")))
-(assert-event (gat-prefixp "411 " (gat-text *gat-as-bob* "GROUP fn.private.x")))
-(assert-event (gat-prefixp "211 " (gat-text *gat-as-alice* "GROUP fn.private.x")))
-(assert-event (gat-prefixp "411 " (gat-text *gat-as-bob* "LISTGROUP fn.private.x")))
+(assert-event (gat-prefixp "211 " (in-arena-gat-text *sr-arena* *gat-as-bob* "GROUP fn.public")))
+(assert-event (equal (in-arena-gat-reply *sr-arena* *gat-as-bob* "GROUP fn.private.x")
+                     (in-arena-gat-reply *sr-arena* *gat-as-bob* "GROUP fn.absent")))
+(assert-event (gat-prefixp "411 " (in-arena-gat-text *sr-arena* *gat-as-bob* "GROUP fn.private.x")))
+(assert-event (gat-prefixp "211 " (in-arena-gat-text *sr-arena* *gat-as-alice* "GROUP fn.private.x")))
+(assert-event (gat-prefixp "411 " (in-arena-gat-text *sr-arena* *gat-as-bob* "LISTGROUP fn.private.x")))
 
 ; LIST ACTIVE and LIST NEWSGROUPS: the private group is not listed for bob.
-(assert-event (not (gat-searchp "fn.private.x" (gat-text *gat-as-bob* "LIST ACTIVE"))))
-(assert-event (gat-searchp "fn.public" (gat-text *gat-as-bob* "LIST ACTIVE")))
-(assert-event (gat-searchp "fn.private.x" (gat-text *gat-as-alice* "LIST ACTIVE")))
-(assert-event (not (gat-searchp "fn.private.x" (gat-text *gat-as-bob* "LIST NEWSGROUPS"))))
-(assert-event (not (gat-searchp "fn.private.x" (gat-text *gat-as-bob* "LIST COUNTS"))))
+(assert-event (not (gat-searchp "fn.private.x" (in-arena-gat-text *sr-arena* *gat-as-bob* "LIST ACTIVE"))))
+(assert-event (gat-searchp "fn.public" (in-arena-gat-text *sr-arena* *gat-as-bob* "LIST ACTIVE")))
+(assert-event (gat-searchp "fn.private.x" (in-arena-gat-text *sr-arena* *gat-as-alice* "LIST ACTIVE")))
+(assert-event (not (gat-searchp "fn.private.x" (in-arena-gat-text *sr-arena* *gat-as-bob* "LIST NEWSGROUPS"))))
+(assert-event (not (gat-searchp "fn.private.x" (in-arena-gat-text *sr-arena* *gat-as-bob* "LIST COUNTS"))))
 ; bob may not post to fn.public: its status is n to him (RFC 6048 2.1).
-(assert-event (gat-searchp "fn.public 2 1 n" (gat-text *gat-as-bob* "LIST ACTIVE")))
-(assert-event (gat-searchp "fn.public 2 1 y" (gat-text *gat-as-alice* "LIST ACTIVE")))
+(assert-event (gat-searchp "fn.public 2 1 n" (in-arena-gat-text *sr-arena* *gat-as-bob* "LIST ACTIVE")))
+(assert-event (gat-searchp "fn.public 2 1 y" (in-arena-gat-text *sr-arena* *gat-as-alice* "LIST ACTIVE")))
 
 ; By Message-ID: the private-only article answers 430 to bob; the
 ; cross-posted one is held; alice reads both.
-(assert-event (gat-prefixp "430 " (gat-text *gat-as-bob* "STAT <s@example.invalid>")))
-(assert-event (gat-prefixp "430 " (gat-text *gat-as-bob* "ARTICLE <s@example.invalid>")))
-(assert-event (gat-prefixp "430 " (gat-text *gat-as-bob* "OVER <s@example.invalid>")))
-(assert-event (gat-prefixp "430 " (gat-text *gat-as-bob* "HDR Subject <s@example.invalid>")))
-(assert-event (gat-prefixp "223 " (gat-text *gat-as-bob* "STAT <c@example.invalid>")))
-(assert-event (gat-prefixp "223 " (gat-text *gat-as-alice* "STAT <s@example.invalid>")))
+(assert-event (gat-prefixp "430 " (in-arena-gat-text *sr-arena* *gat-as-bob* "STAT <s@example.invalid>")))
+(assert-event (gat-prefixp "430 " (in-arena-gat-text *sr-arena* *gat-as-bob* "ARTICLE <s@example.invalid>")))
+(assert-event (gat-prefixp "430 " (in-arena-gat-text *sr-arena* *gat-as-bob* "OVER <s@example.invalid>")))
+(assert-event (gat-prefixp "430 " (in-arena-gat-text *sr-arena* *gat-as-bob* "HDR Subject <s@example.invalid>")))
+(assert-event (gat-prefixp "223 " (in-arena-gat-text *sr-arena* *gat-as-bob* "STAT <c@example.invalid>")))
+(assert-event (gat-prefixp "223 " (in-arena-gat-text *sr-arena* *gat-as-alice* "STAT <s@example.invalid>")))
 ; the absent-article reply, exactly
-(assert-event (equal (gat-reply *gat-as-bob* "STAT <s@example.invalid>")
-                     (gat-reply *gat-as-bob* "STAT <nothere@example.invalid>")))
+(assert-event (equal (in-arena-gat-reply *sr-arena* *gat-as-bob* "STAT <s@example.invalid>")
+                     (in-arena-gat-reply *sr-arena* *gat-as-bob* "STAT <nothere@example.invalid>")))
 
 ; The cross-posted article's Xref names only the readable group to bob.
-(defconst *gat-bob-in-public* (gat-after *gat-as-bob* "GROUP fn.public"))
-(assert-event (gat-prefixp "224 " (gat-text *gat-bob-in-public* "OVER 2")))
+(defconst *gat-bob-in-public* (in-arena-gat-after *sr-arena* *gat-as-bob* "GROUP fn.public"))
+(assert-event (gat-prefixp "224 " (in-arena-gat-text *sr-arena* *gat-bob-in-public* "OVER 2")))
 (assert-event (not (gat-searchp "fn.private.x"
-                                (gat-text *gat-bob-in-public* "OVER 2"))))
+                                (in-arena-gat-text *sr-arena* *gat-bob-in-public* "OVER 2"))))
 (assert-event (gat-searchp "fn.private.x"
-                           (gat-text (gat-after *gat-as-alice* "GROUP fn.public")
-                                     "OVER 2")))
+                           (in-arena-gat-text *sr-arena* (in-arena-gat-after *sr-arena* *gat-as-alice* "GROUP fn.public") "OVER 2")))
 
 ; A selection bob's view lacks is dropped: a reader session that selected
 ; fn.private.x under alice's (unrestricted) login, carried under bob's rule,
 ; is served as if nothing were selected (the delegate deselects first).
-(defconst *gat-alice-in-private* (gat-after *gat-as-alice* "GROUP fn.private.x"))
+(defconst *gat-alice-in-private* (in-arena-gat-after *sr-arena* *gat-as-alice* "GROUP fn.private.x"))
 (defconst *gat-bob-in-private*
   (fn-auth-make-session (fn-auth-session-base *gat-alice-in-private*) *gat-acfg*
                         (fn-nntp-string-octets "bob")
                         (make-list 32 :initial-element 8) nil nil))
-(assert-event (gat-prefixp "220 " (gat-text *gat-alice-in-private* "ARTICLE")))
-(assert-event (gat-prefixp "412 " (gat-text *gat-bob-in-private* "ARTICLE")))
-(assert-event (gat-prefixp "412 " (gat-text *gat-bob-in-private* "NEXT")))
+(assert-event (gat-prefixp "220 " (in-arena-gat-text *sr-arena* *gat-alice-in-private* "ARTICLE")))
+(assert-event (gat-prefixp "412 " (in-arena-gat-text *sr-arena* *gat-bob-in-private* "ARTICLE")))
+(assert-event (gat-prefixp "412 " (in-arena-gat-text *sr-arena* *gat-bob-in-private* "NEXT")))
 
 ; The step's reply for bob IS the unrestricted reply over the view (the
 ; delegate's construction): alice, over the store with fn.private.x absent,
@@ -180,15 +197,10 @@
 (assert-event (equal (len (fn-state-articles *gat-view*)) 2))
 (assert-event
  (equal (fn-post-result-effects
-         (fn-auth-step-pinned *gat-as-bob* *gat-state* *gat-pin* nil
-                              (gat-config *gat-read-only-table*) *gat-obs* *gat-obs*
-                              (list :command (fn-nntp-string-octets "LIST ACTIVE"))))
+         (in-arena-fn-auth-step-pinned *sr-arena* *gat-as-bob* *gat-state* *gat-pin* nil (gat-config *gat-read-only-table*) *gat-obs* *gat-obs* (list :command (fn-nntp-string-octets "LIST ACTIVE"))))
         (fn-post-result-effects
-         (fn-auth-step-pinned *gat-as-alice* *gat-view*
-                              (fn-gac-restrict-index "fn.*,!fn.private.*" *gat-pin*
-                                                     (fn-state-articles *gat-view*))
-                              nil *gat-config-none* *gat-obs* *gat-obs*
-                              (list :command (fn-nntp-string-octets "LIST ACTIVE"))))))
+         (in-arena-fn-auth-step-pinned *sr-arena* *gat-as-alice* *gat-view* (fn-gac-restrict-index "fn.*,!fn.private.*" *gat-pin*
+                                                     (fn-state-articles *gat-view*)) nil *gat-config-none* *gat-obs* *gat-obs* (list :command (fn-nntp-string-octets "LIST ACTIVE"))))))
 
 ; POST: the view's served groups drop what bob may neither read nor post
 ; to, and close what he may read but not post to.

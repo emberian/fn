@@ -24,16 +24,21 @@
              (fn-own-conn-archive
               (fn-own-find-conn 1
                                 (fn-own-conns (fn-ocfg-owner *ocri-live*)))))))
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-read 3)
+(bpr-lift fn-ocfg-read-tls-prefix 3)
 (defconst *ocri-old-tls*
-  (fn-ocfg-read-tls-prefix *ocri-live* 0 *ocri-new-group*))
+  (in-arena-fn-ocfg-read-tls-prefix *sr-arena* *ocri-live* 0 *ocri-new-group*))
 (defconst *ocri-new-tls*
-  (fn-ocfg-read-tls-prefix *ocri-live* 1 *ocri-new-group*))
+  (in-arena-fn-ocfg-read-tls-prefix *sr-arena* *ocri-live* 1 *ocri-new-group*))
 (assert-event
  (equal (fn-own-tls-result-effects *ocri-old-tls*)
-        (car (fn-ocfg-read *ocri-live* 0 *ocri-new-group*))))
+        (car (in-arena-fn-ocfg-read *sr-arena* *ocri-live* 0 *ocri-new-group*))))
 (assert-event
  (equal (fn-own-tls-result-effects *ocri-new-tls*)
-        (car (fn-ocfg-read *ocri-live* 1 *ocri-new-group*))))
+        (car (in-arena-fn-ocfg-read *sr-arena* *ocri-live* 1 *ocri-new-group*))))
 ; BY SPECIFICATION (NNT-042, 2026-09-27): a successful GROUP acquires the
 ; committed view, so the old connection (pinned before the new group) and the
 ; new one answer GROUP fn.live alike; before NNT-042 the old one answered 411.
@@ -47,23 +52,21 @@
  (not (equal (fn-state-groups
               (fn-own-conn-archive
                (fn-own-find-conn 0
-                (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-read *ocri-live* 0
-                                                                 *ocri-stat-command*)))))))
+                (fn-own-conns (fn-ocfg-owner (cdr (in-arena-fn-ocfg-read *sr-arena* *ocri-live* 0 *ocri-stat-command*)))))))
              (fn-state-groups
               (fn-own-conn-archive
                (fn-own-find-conn 1
-                (fn-own-conns (fn-ocfg-owner (cdr (fn-ocfg-read *ocri-live* 1
-                                                                 *ocri-stat-command*))))))))))
+                (fn-own-conns (fn-ocfg-owner (cdr (in-arena-fn-ocfg-read *sr-arena* *ocri-live* 1 *ocri-stat-command*))))))))))
 (assert-event
  (fn-ocri-conns-p
   (fn-own-conns (fn-ocfg-owner
-                 (cdr (fn-ocfg-read *ocri-live* 0 *ocri-new-group*))))))
+                 (cdr (in-arena-fn-ocfg-read *sr-arena* *ocri-live* 0 *ocri-new-group*))))))
 (assert-event
  (fn-ocri-relation
-  (cdr (fn-ocfg-read *ocri-live* 0 *ocri-new-group*))))
+  (cdr (in-arena-fn-ocfg-read *sr-arena* *ocri-live* 0 *ocri-new-group*))))
 (assert-event
  (fn-ocri-relation
-  (cdr (fn-ocfg-read *ocri-live* 1 *ocri-new-group*))))
+  (cdr (in-arena-fn-ocfg-read *sr-arena* *ocri-live* 1 *ocri-new-group*))))
 ; The full read theorem needs the incoming historical reader relation.  A
 ; forged old pin survives a read as a forged pin; the result is still outside
 ; that relation.
@@ -74,14 +77,14 @@
 ; relation holds again after it.
 (assert-event
  (not (fn-ocri-relation
-       (cdr (fn-ocfg-read *ocl-t-forged-old-pin* 0 *ocl-t-stat-command*)))))
+       (cdr (in-arena-fn-ocfg-read *sr-arena* *ocl-t-forged-old-pin* 0 *ocl-t-stat-command*)))))
 (assert-event
  (fn-ocri-relation
-  (cdr (fn-ocfg-read *ocl-t-forged-old-pin* 0 *ocri-new-group*))))
+  (cdr (in-arena-fn-ocfg-read *sr-arena* *ocl-t-forged-old-pin* 0 *ocri-new-group*))))
 (local
  (must-fail
   (defthm ocri-read-without-relation-is-not-preserved
-    (fn-ocri-relation (cdr (fn-ocfg-read oc id octets)))
+    (fn-ocri-relation (cdr (fn-ocfg-read oc id octets fn-arena)))
     :rule-classes nil)))
 
 ; The selected wire hypothesis has a real separator.  The forged wire has
@@ -115,11 +118,11 @@
 (assert-event
  (not (equal
        (fn-own-tls-result-owner
-        (fn-ocfg-read-tls-prefix *ocri-bad-oc* 0 '(65)))
-       (cdr (fn-ocfg-read *ocri-bad-oc* 0 '(65))))))
+        (in-arena-fn-ocfg-read-tls-prefix *sr-arena* *ocri-bad-oc* 0 '(65)))
+       (cdr (in-arena-fn-ocfg-read *sr-arena* *ocri-bad-oc* 0 '(65))))))
 (must-fail
  (defthm ocri-host-read-without-carried-wire
    (equal
     (fn-own-tls-result-owner
-     (fn-ocfg-read-tls-prefix *ocri-bad-oc* 0 '(65)))
-    (cdr (fn-ocfg-read *ocri-bad-oc* 0 '(65))))))
+     (fn-ocfg-read-tls-prefix *ocri-bad-oc* 0 '(65) fn-arena))
+    (cdr (fn-ocfg-read *ocri-bad-oc* 0 '(65) fn-arena)))))

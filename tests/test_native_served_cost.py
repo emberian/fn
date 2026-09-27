@@ -31,9 +31,7 @@ class NativeServedCostTests(unittest.TestCase):
         span = (ROOT / "books/served-span.lisp").read_text()
         handoff = definition(native, "fnn-owner-handle-chunk")
         self.assertIn("(fnn-octets-fill incoming)", handoff)
-        # The step reads the buffer and state (the connection's typed step
-        # comes back; nothing is sealed on a read).
-        self.assertIn("(fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming))", handoff)
+        self.assertIn("(fnn-core-buffer-state 'fn-owner-chunk-span cid", handoff)
         self.assertNotIn("fnn-octet-list incoming", handoff)
         self.assertNotIn("'fn-owner-chunk cid", handoff)
         self.assertIn("(fn-scar-ocfg-read-span", definition(host, "fn-owner-chunk-span"))

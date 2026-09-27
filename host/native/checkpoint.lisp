@@ -69,6 +69,17 @@
         (fnn-checkpoint-corrupt "pack selection marker does not decode"))
       (second answer))))
 
+(defun fnn-compact-window (records lower)
+  "The octet lists of the records the next link above LOWER takes, as ACL2's
+`fn-store-compact-window-count' names them from the records' lengths: one
+link's window, never the history (PKT-686 item 2)."
+  (let* ((rest (nthcdr lower records))
+         (count (fnn-core 'fn-store-compact-window-count
+                          (mapcar #'length records) lower)))
+    (unless (and (integerp count) (<= 0 count (length rest)))
+      (fnn-fault "ACL2 returned an invalid compaction window: ~s" count))
+    (loop for record in rest repeat count collect (fnn-octet-list record))))
+
 (defun fnn-pack-publish-generation (store records &key chain coverage selected summary)
   "Publish one pack generation, unselected.  The one publication of both pack
 callers:
@@ -88,8 +99,10 @@ covers (the chain's coverage for SUMMARY)."
   (let ((directory (fnn-pack-directory store))
         (captured (if summary
                       (list :ok summary (if coverage (second coverage) 0))
-                      (fnn-core 'fn-store-checkpoint-chain-capture
-                                (mapcar #'fnn-octet-list records)
+                      (fnn-core 'fn-store-checkpoint-chain-capture-window
+                                (length records)
+                                (fnn-compact-window records
+                                                    (if coverage (second coverage) 0))
                                 (if coverage (second coverage) 0)
                                 (if coverage (third coverage) 0)
                                 (or selected 0)
@@ -665,8 +678,8 @@ selection-* process-death cuts (fn-cpp-marker-step)."
 (defun fnn-refuse-on-log-route (store verb)
   (when (fnn-store-logp store)
     (fnn-store-close store)
-    (fnn-refuse "~a refused reason=record-log: a format-9 store's ~a is segment rotation (w6-log-recovery, PKT-750)"
-                verb verb)))
+    (fnn-refuse "~a refused reason=record-log: a format-9 store has no packs (compaction and content reclamation over the log are `store compact' and `store reclaim')"
+                verb)))
 
 (defun fnn-checkpoint-command-publish (root selectp)
   (multiple-value-bind (store records) (fnn-open-live-store root t)
@@ -776,10 +789,11 @@ namespaces, the disk's free octets) and ask ACL2's one compaction decision."
                          (fnn-transactions store) (fnn-config-max-transactions store)
                          "transaction namespace")
                         #'string<))
-           (decision (fnn-core 'fn-store-compact-decide
+           (decision (fnn-core 'fn-store-compact-decide-window
                                (fnn-store-config store)
-                               (mapcar #'fnn-octet-list records)
-                               lower names retirable selected
+                               (length records) lower
+                               (fnn-compact-window records lower)
+                               names retirable selected
                                (fnn-disk-free-octets store))))
       (unless (and (listp decision) (member (first decision) '(:compact :refused)))
         (fnn-fault "ACL2 returned no compaction decision"))
@@ -822,10 +836,18 @@ kept, and a rerun continues from them."
               links (length reclaimed) (length retired)))))
 
 (defun fnn-command-compact (root)
+  "`store compact'.  Format 9 (the record log): compaction is the
+checkpoint's rotation and the drop of the segments it covers (design
+2026-09-27 storage-log section 6; T8 fn-lg-segment-drop-preserves-the-open):
+a state checkpoint is published at the history's end with the log rotated,
+then the covered segments are unlinked.  Format 8: the pack chain."
   (multiple-value-bind (store records) (fnn-open-live-store root t)
-    (fnn-refuse-on-log-route store "compact")
     (unwind-protect
-         (progn (fnn-out "~a" (fnn-compact-steps store records))
+         (progn (fnn-out "~a" (if (fnn-store-logp store)
+                                  (format nil "compacted steps=checkpoint,drop records=~d ~a"
+                                          (length records)
+                                          (fnn-state-checkpoint-publish-steps store records))
+                                (fnn-compact-steps store records)))
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 
@@ -973,11 +995,55 @@ kept, and a rerun continues from them."
                    (length msgids) freed generation (length retired) msgids))))
       (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision")))))
 
+(defun fnn-log-reclaim-steps (store records dry)
+  "`store reclaim' on a format-9 store (books/store-log-reclaim.lisp): ACL2's
+decision over the recovered history (fn-lgr-decide: the reclaiming pack's
+per-article context, STO-014); on :reclaim the rewritten history is replayed
+into the store node (the ordinary replay, fnn-recover-log-replay) and its
+state checkpoint published with the log rotated, then the segments it covers
+are dropped (fnn-state-checkpoint-publish-steps: T8): the released payloads'
+octets leave the disk with them.  Returns the report line."
+  (let ((decision (fnn-core-state 'fn-store-log-reclaim-decide
+                                  (fnn-store-config store)
+                                  (fnn-store-prepare-observation)
+                                  (mapcar #'fnn-octet-list records)
+                                  (if dry t nil))))
+    (unless (and (consp decision) (member (first decision) '(:refused :none :dry-run :reclaim)))
+      (fnn-fault "ACL2 returned no reclaim decision"))
+    (case (first decision)
+      (:refused (fnn-refuse "reclaim refused: ~(~a~)" (second decision)))
+      (:none (format nil "reclaimed=0 ~a" (fnn-reclaim-counts-line (second decision))))
+      (:dry-run
+       (destructuring-bind (msgids freed counts) (rest decision)
+         (format nil "dry-run would-reclaim=~d freed-octets=~d ~a~{~%would-reclaim ~a~}"
+                 (length msgids) freed (fnn-reclaim-counts-line counts)
+                 (mapcar (lambda (m) (if (stringp m) m (fnn-fault "malformed msgid")))
+                         msgids))))
+      (:reclaim
+       (destructuring-bind (msgids freed rewritten counts) (rest decision)
+         (declare (ignore counts))
+         (unless (and (listp rewritten) (every #'fnn-octet-list-p rewritten)
+                      (= (length rewritten) (length records)))
+           (fnn-fault "ACL2 returned a malformed rewritten history"))
+         (fnn-checkpoint-require-mutation-ready store)
+         (let ((history (mapcar #'fnn-octets rewritten)))
+           ;; The store node becomes the rewritten history's (the replay every
+           ;; open runs), and the checkpoint the open will read is its capture.
+           (fnn-core-state 'fn-store-sco-clear)
+           (fnn-bridge-reset)
+           (fnn-recover-log-replay store history (fnn-config-records store))
+           (format nil "reclaimed=~d freed-octets=~d ~a~{~%reclaimed ~a~}"
+                   (length msgids) freed
+                   (fnn-state-checkpoint-publish-steps store history)
+                   msgids))))
+      (otherwise (fnn-fault "ACL2 returned an unknown reclaim decision")))))
+
 (defun fnn-command-reclaim (root dry)
   (multiple-value-bind (store records) (fnn-open-live-store root (not dry))
-    (fnn-refuse-on-log-route store "reclaim")
     (unwind-protect
-         (progn (fnn-out "~a" (fnn-reclaim-steps store records dry))
+         (progn (fnn-out "~a" (if (fnn-store-logp store)
+                                  (fnn-log-reclaim-steps store records dry)
+                                (fnn-reclaim-steps store records dry)))
                 +fnn-exit-ok+)
       (fnn-store-close store))))
 

@@ -23,8 +23,12 @@
 (assert-event (equal (fn-ocfg-pins *oco-t-observed*)
                      (fn-ocfg-pins *ocl-t-created*)))
 ; The equation, evaluated on the witness.
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-ocfg-step 2)
 (assert-event (equal *oco-t-observed*
-                     (fn-ocfg-step *ocl-t-created* (list :observe *oco-t-obs*))))
+                     (in-arena-fn-ocfg-step *sr-arena* *ocl-t-created* (list :observe *oco-t-obs*))))
 
 ; The point of the transition: the host's per-read call runs compiled code
 ; with no guard to evaluate.  fn-ocfg-step is not guard-verified and its
