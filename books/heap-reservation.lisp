@@ -317,11 +317,12 @@
 ; control clients and the fixed threads, each with a control stack of at
 ; least the constant (seven times the served path's measured floor, whatever
 ; the article); and the whole fits the machine.
+; (A hypothesis (natp connections) was removed after proving the weakened
+; theorem: since connection-multiplexing no connection is a thread.)
 (defthm fn-heap-reserve-decide-holds-every-thread-the-node-runs
   (let ((r (fn-heap-reserve-decide profile core nursery observations connections)))
     (implies (and (fn-bs-profile-admittedp profile)
-                  (equal (car r) :heap)
-                  (natp connections))
+                  (equal (car r) :heap))
              (and (equal (fn-heap-decision-mb r)
                          (fn-heap-decision-mb
                           (fn-heap-decide profile core nursery observations)))
