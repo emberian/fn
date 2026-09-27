@@ -2349,7 +2349,16 @@
       "id": "SCN-077",
       "title": "A 10 MiB article carried by BP through 4 KiB fragments, under a node profile that admits it, is reassembled once and handed to the Store once",
       "milestone": "M4",
-      "status": "specified",
+      "status": "validated",
+      "implementation": {
+        "test": "tests.test_bp_fragment_node_native",
+        "cases": [
+          "test_ten_mebibyte_article_through_four_kib_fragments"
+        ],
+        "native": true,
+        "log": "planning/evidence/bp-fragments-10mib-2026-09-27/scn077-developer-be7e5cb17.log",
+        "record": "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      },
       "requirements": [
         "REP-008",
         "REP-015",
@@ -2362,7 +2371,7 @@
       ],
       "expected": [
         "The receiver publishes one kind-18 family, logs `BP application handoff durable disposition=request-accepted` once, and the Store holds one article whose bytes are the ADU. Under the development-base Store (32,768-octet articles) the Store refuses the article as oversize and the handoff is reported refused (PKT-630 (7), PRF-224): the harness raises the Store profile (--max-article-octets 11534336 --max-record-octets 33554432 --max-history-octets 268435456).",
-        "Arrivals no longer block it (PRF-136, bp-lifecycle-5): a bp-node serve session costs about 60 ms at 64 to 256 held rows (3.7 to 15.9 s before) and the first 1,311 fragments arrive in 90 s. Blocked now by the open: a journal of 1,311 held rows opens in 51.9 s (three re-encodings per row, an unverified bundle decode, a quadratic held-octet sum), so the restarted receiver misses the harness's waits in the second half. PKT-308. 2026-09-27 (bp-fragments-10mib): the reopen and the family pass; with the Store and the neighbour's inbound bound raised the delivery is refused by FNRJ, whose request-ADU :blob is 131,072 octets (PKT-646, open), and reported `BP application handoff refused disposition=request-refused (kind 7 durable)`. Reassembly and handoff 280.3 s -> 117.2 s with the table-driven CRC-16 (PRF-225)."
+        "Arrivals no longer block it (PRF-136, bp-lifecycle-5): a bp-node serve session costs about 60 ms at 64 to 256 held rows (3.7 to 15.9 s before) and the first 1,311 fragments arrive in 90 s. Blocked now by the open: a journal of 1,311 held rows opens in 51.9 s (three re-encodings per row, an unverified bundle decode, a quadratic held-octet sum), so the restarted receiver misses the harness's waits in the second half. PKT-308. 2026-09-27 (bp-fragments-10mib): the reopen and the family pass; with the Store and the neighbour's inbound bound raised the delivery is refused by FNRJ, whose request-ADU :blob is 131,072 octets (PKT-646, open), and reported `BP application handoff refused disposition=request-refused (kind 7 durable)`. Reassembly and handoff 280.3 s -> 117.2 s with the table-driven CRC-16 (PRF-225). 2026-09-27 (bp-fragments-10mib-4): PKT-646 closed; accepted, `disposition=request-accepted`, and the Store's own open reads one article byte-equal to the authored one (`store PATH status`, `store PATH inspect`), on the developer and production images at be7e5cb17 (tests.test_bp_fragment_node_native)."
       ],
       "evidence": [
         "planning/evidence/bp-lifecycle-3-2026-09-26.md",
@@ -2370,7 +2379,8 @@
         "planning/evidence/bp-lifecycle-4-2026-09-26.md",
         "books/bp-node-profile-admission.lisp",
         "planning/evidence/bp-lifecycle-5-2026-09-26.md",
-        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md",
+        "tests/test_bp_fragment_node_native.py"
       ]
     },
     {
