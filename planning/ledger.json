@@ -333,6 +333,8 @@
     "tests/acl2/byte-store-k0-marker-tests",
     "books/byte-store-marker-candidates",
     "tests/acl2/byte-store-marker-candidates-tests",
+    "books/store-log",
+    "tests/acl2/store-log-tests",
     "books/byte-store-k0-step-lemmas",
     "books/byte-store-k0-step-root-fence",
     "books/byte-store-k0-step",
@@ -1042,26 +1044,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1067,
-    "books_in_root_closure": 1059,
-    "roots": 1038,
-    "theorems": 15341,
-    "functions": 10529,
-    "assert_events": 15648,
+    "books": 1069,
+    "books_in_root_closure": 1061,
+    "roots": 1040,
+    "theorems": 15400,
+    "functions": 10555,
+    "assert_events": 15660,
     "must_fails": 1872,
     "prover_refusals": 0,
-    "encapsulates": 77,
+    "encapsulates": 78,
     "guards": {
       "verified": 2337,
-      "declared-off": 889,
-      "default-guarded": 5720,
+      "declared-off": 907,
+      "default-guarded": 5728,
       "default-unguarded": 1583
     },
     "suspect_theorems": 146,
     "export_hygiene_warnings": 168,
     "enabled_projection_warnings": 43,
     "teeth_form_warnings": 164,
-    "include_hygiene_warnings": 1060,
+    "include_hygiene_warnings": 1061,
     "host_names_warnings": 1188,
     "hand_written_record_warnings": 18
   },
@@ -15927,6 +15929,36 @@
       "read_error": null
     },
     {
+      "book": "books/store-log.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 59,
+      "functions": 15,
+      "guards": {
+        "verified": 0,
+        "declared-off": 12,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 4,
+      "defmacros": 0,
+      "encapsulates": 1,
+      "includes": [
+        "assumptions",
+        "frame-invariants"
+      ],
+      "system_includes": [
+        "arithmetic-5/top",
+        "arithmetic/top"
+      ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/store-maintenance-reserve.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -29285,6 +29317,33 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-log-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 11,
+      "guards": {
+        "verified": 0,
+        "declared-off": 6,
+        "default-guarded": 5,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 12,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/frame-trailer",
+        "../../books/store-log"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-maintenance-reserve-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -41495,6 +41554,13 @@
         "line": 8,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-log-tests.lisp",
+        "line": 18,
+        "include": "../../books/store-log",
+        "included": "books/store-log.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {

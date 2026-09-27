@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1067 |
-| Certification roots in the Makefile | 1038 |
-| Books inside the root closure | 1059 |
-| `defthm` and `defthmd` events | 15341 |
-| `defun` events | 10529 |
+| Books read | 1069 |
+| Certification roots in the Makefile | 1040 |
+| Books inside the root closure | 1061 |
+| `defthm` and `defthmd` events | 15400 |
+| `defun` events | 10555 |
 | Functions with verified guards | 2337 |
-| Functions declared `:verify-guards nil` and never verified | 889 |
-| Functions left at the default with an explicit guard | 5720 |
+| Functions declared `:verify-guards nil` and never verified | 907 |
+| Functions left at the default with an explicit guard | 5728 |
 | Functions left at the default with no guard | 1583 |
-| `assert-event` checks | 15648 |
+| `assert-event` checks | 15660 |
 | `must-fail` checks | 1872 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
-| `encapsulate` events | 77 |
+| `encapsulate` events | 78 |
 | Theorems flagged SUSPECT by shape | 146 |
 | Export-hygiene warnings | 168 |
 | Enabled-projection warnings | 43 |
 | Teeth-form warnings | 164 |
-| Include-hygiene warnings | 1060 |
+| Include-hygiene warnings | 1061 |
 | Host-names warnings | 1188 |
 | Hand-written-record warnings | 18 |
 
@@ -621,6 +621,7 @@ that `make certify` requests.
 | `books/store-identity-sequence-invariants.lisp` | root | 28 | 1 | 1/0/0/0 | 0 | 0 | 0 |
 | `books/store-import-publication.lisp` | root | 123 | 56 | 0/52/4/0 | 0 | 0 | 0 |
 | `books/store-init-publication.lisp` | root | 16 | 10 | 0/7/3/0 | 0 | 0 | 1 |
+| `books/store-log.lisp` | root | 59 | 15 | 0/12/3/0 | 0 | 0 | 0 |
 | `books/store-maintenance-reserve.lisp` | root | 10 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/store-node-existing-invariants.lisp` | root | 3 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/store-node-invariants.lisp` | root | 159 | 2 | 0/1/0/1 | 0 | 0 | 2 |
@@ -1092,6 +1093,7 @@ that `make certify` requests.
 | `tests/acl2/store-identity-traces-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 61 | 0 | 0 |
 | `tests/acl2/store-import-publication-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 6 | 0 |
 | `tests/acl2/store-init-publication-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 22 | 2 | 0 |
+| `tests/acl2/store-log-tests.lisp` | root | 0 | 11 | 0/6/5/0 | 12 | 0 | 0 |
 | `tests/acl2/store-maintenance-reserve-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 27 | 2 | 0 |
 | `tests/acl2/store-node-composite-index-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 16 | 1 | 0 |
 | `tests/acl2/store-node-existing-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
