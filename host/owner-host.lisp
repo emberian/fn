@@ -138,8 +138,12 @@
 (include-book "../books/served-reply-buffer")
 (include-book "../books/owner-open-carried")
 ; PKT-828: a reader quantum during a batch's barrier runs at the reader view
-; (fn-owner-at-reader-view, fn-ocfg-with-view; fn-ocv-capture).
+; (fn-owner-at-reader-view, fn-ocfg-with-view; fn-ocv-capture); the span read
+; there, the working view put back, is fn-orr-read-span, whose keystone
+; fn-orr-read-span-at-a-captured-view-restores-the-owner restates the relation
+; after it (books/owner-reader-read.lisp).
 (include-book "../books/owner-reader-view")
+(include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
 ;
@@ -3121,8 +3125,12 @@
       (if (not (and (natp start) (natp end) (<= start end)
                     (<= end (fn-octets-len fn-octets))))
           (value :bad-range)
-        (let* ((result (fn-scr-ocfg-read-span
-                        (fn-owner-ocfg state) id start end fn-octets fn-arena fn-cat))
+        ;; PKT-828: at the reader view while the committer holds a capture,
+        ;; the working view put back after it (books/owner-reader-read.lisp
+        ;; fn-orr-read-span; with no capture it is fn-scr-ocfg-read-span).
+        (let* ((result (fn-orr-read-span
+                        (fn-owner-ocfg state) (fn-owner-reader-views state)
+                        id start end fn-octets fn-arena fn-cat))
                (effects (fn-own-tls-result-effects result))
                (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg
@@ -3142,12 +3150,7 @@
 
 (defun fn-owner-chunk-span (id start end fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
-  (let* ((working (fn-own-view (fn-owner-core state)))
-         (state (fn-owner-at-reader-view state)))
-    (mv-let (erp val state)
-      (fn-owner-chunk-span-at id start end fn-octets fn-arena fn-cat state)
-      (let ((state (fn-owner-at-working-view working state)))
-        (mv erp val state)))))
+  (fn-owner-chunk-span-at id start end fn-octets fn-arena fn-cat state))
 
 (defun fn-owner-close (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))

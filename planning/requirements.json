@@ -4550,7 +4550,8 @@
         "PRF-287",
         "PRF-290",
         "PRF-291",
-        "PRF-299"
+        "PRF-299",
+        "PRF-296"
       ],
       "verification": [
         "proof",
@@ -4574,6 +4575,7 @@
         "books/config-store-steps.lisp",
         "books/owner-log-ocl.lisp",
         "planning/evidence/control-quanta-2-2026-09-27.md",
+        "books/owner-reader-read.lisp",
         "books/owner-prepare-served.lisp",
         "books/owner-prepare-served-ocl.lisp",
         "planning/evidence/prepare-served-2026-09-27.md"
