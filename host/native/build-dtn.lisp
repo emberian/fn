@@ -159,6 +159,10 @@
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
 (include-book "books/post-identity-index")
+;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
+;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
+;; tries and the one-dispatch history recognizer).
+(include-book "books/replay-identity-index")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
 ;; host/native/io.lisp fnn-plan-write-all writes fn-sccb-plan-octets per step.

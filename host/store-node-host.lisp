@@ -31,6 +31,9 @@
 (include-book "../books/owner-checkpoint-pipeline")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
 (include-book "../books/store-open-pre-c1")
+; PRF-242: the open's replay answers its identity questions from tries it
+; builds as it advances, and the history recognizer dispatches once per record.
+(include-book "../books/replay-identity-index")
 ; fn-store-sn-prepare and fn-store-sn-finish call the owner's carried twins
 ; (fn-pcar-spc-prepare, fn-ccar-sn-finish): neither walks the history.
 (include-book "../books/owner-commit-carried")
@@ -272,10 +275,13 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; filed under its Newsgroups is refused by name (:refused, the refusal kept
 ; in the global `fn-store-open-refusal' for fn-store-open-refusal-text);
 ; every other history is `fn-sco-store-open' of E, as before
-; (fn-sopc-classified-open-is-the-open-without-a-pre-c1-record).
+; (fn-sopc-classified-open-is-the-open-without-a-pre-c1-record).  The call is
+; its twin `fn-rii-classified-open' (books/replay-identity-index.lisp, PRF-242:
+; the history recognizer reads each record's kind once), EQUAL with no
+; hypothesis (fn-rii-classified-open-is-classified-open).
 (defun fn-store-sn-open-extended (e config-records frontier state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((classified (fn-sopc-classified-open e config-records frontier))
+  (let* ((classified (fn-rii-classified-open e config-records frontier))
          (refused (equal (car classified) :refused))
          (state (f-put-global 'fn-store-open-refusal
                               (if refused classified nil) state))
@@ -329,9 +335,11 @@ reopen predicate, writer-lock observation and observed final namespace."
       ; opened once (fn-store-sn-open-extended below).  It is the full open
       ; fn-cpo-open-observed and the full replay fn-cpr-replay by
       ; fn-sco-store-open-of-extended-capture (books/owner-checkpoint-open.lisp)
-      ; with PREFIX = NIL.
+      ; with PREFIX = NIL.  The extension is fn-rii-sco-extend: the fold
+      ; carries the replay's identity tries (PRF-242), EQUAL to fn-sco-extend
+      ; with no hypothesis (fn-rii-sco-extend-is-sco-extend).
       (fn-store-sn-open-extended
-       (fn-sco-extend (fn-sco-capture config-records nil) config-records records)
+       (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records records)
        config-records frontier state))))
 
 ;; ---------------------------------------------------------------------------
@@ -455,7 +463,8 @@ reopen predicate, writer-lock observation and observed final namespace."
       ; open and the configuration are read off it (fn-sco-open is
       ; fn-sco-finalize of E; fn-sco-replay-result is E's fold finished).
       (fn-store-sn-open-extended
-       (fn-sco-extend checkpoint config-records records)
+       ; fn-rii-sco-extend-is-sco-extend (PRF-242).
+       (fn-rii-sco-extend checkpoint config-records records)
        config-records frontier state))))
 
 (defun fn-store-sco-encode-records (records)

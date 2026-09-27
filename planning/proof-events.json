@@ -8944,6 +8944,79 @@
           "name": "fn-cwait-cli-plan-of-another-command-is-the-consumer-plan"
         }
       ]
+    },
+    {
+      "id": "PRF-242",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-extend-is-sco-extend"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-classified-open-is-classified-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-cpr-prefix-is-sco-cpr-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-cpr-resume-is-sco-cpr-resume"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-ix-next-keeps-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-okp-of-ix-of"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-release-step-keeps-known"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-apply-record-is-apply-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-cpr-apply-event-is-cpr-apply-event"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-node-prepare-is-node-prepare"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-acceptedp-is-acceptedp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-admissiblep-is-admissiblep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-event-fields-are-the-dispatchers"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sf-record-listp-is-sf-record-listp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-finalize-from-is-sco-finalize-from"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-count-is-used"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pidx-sbud-prepare-is-pcar-sbud-prepare"
+        }
+      ]
     }
   ]
 }
