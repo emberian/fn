@@ -898,6 +898,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
 	tests/acl2/served-catalog-chain-tests \
+	tests/acl2/served-catalog-scan-tests \
 	tests/acl2/served-catalog-owner-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
@@ -1091,6 +1092,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-carriage \
 	books/owner-parse-carried \
 	tests/acl2/owner-parse-carried-tests \
+	books/owner-identity-intern \
+	tests/acl2/owner-identity-intern-tests \
+	books/owner-identity-served \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \

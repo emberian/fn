@@ -1588,7 +1588,8 @@
         "PRF-275",
         "PRF-276",
         "PRF-278",
-        "PRF-283"
+        "PRF-283",
+        "PRF-293"
       ],
       "verification": [
         "proof",
@@ -2603,7 +2604,8 @@
         "PRF-139",
         "PRF-226",
         "PRF-220",
-        "PRF-259"
+        "PRF-259",
+        "PRF-293"
       ],
       "verification": [
         "proof",
@@ -3082,7 +3084,7 @@
       "proof_targets": [
         "PRF-167",
         "PRF-178",
-        "PRF-293"
+        "PRF-300"
       ],
       "verification": [
         "proof",
@@ -3095,7 +3097,7 @@
         "planning/evidence/control-reply-fit-2026-09-26.md",
         "books/post-fields.lisp"
       ],
-      "implementation_note": "Consumers (field 9) are read from the carried profile (PRF-167, SCN-097). The classification table is in the evidence. Open: field 7 (group names) has no served reader and the name width stays 256 (PKT-435); config rows per peer through :set-peer (PKT-436); checkpoint generation names (PKT-168). The record bound R is refused past the consumer poll reply's report ceiling (PRF-178, PKT-467): the poll reply's width admits every valid profile. The Store record's three metadata fields are node-generated and bounded by the record codec's metadata domain, checked by ACL2 (books/post-fields.lisp, PRF-293); the host's 512-octet text constant is deleted."
+      "implementation_note": "Consumers (field 9) are read from the carried profile (PRF-167, SCN-097). The classification table is in the evidence. Open: field 7 (group names) has no served reader and the name width stays 256 (PKT-435); config rows per peer through :set-peer (PKT-436); checkpoint generation names (PKT-168). The record bound R is refused past the consumer poll reply's report ceiling (PRF-178, PKT-467): the poll reply's width admits every valid profile. The Store record's three metadata fields are node-generated and bounded by the record codec's metadata domain, checked by ACL2 (books/post-fields.lisp, PRF-300); the host's 512-octet text constant is deleted."
     },
     {
       "id": "HST-009",
