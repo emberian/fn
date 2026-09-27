@@ -18,6 +18,7 @@
 (include-book "../../books/node-config")
 (include-book "../../books/store-config")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 (local (in-theory (enable fn-cfg-vocabulary fn-cfg-invariants-vocabulary
                           fn-cnode-vocabulary)))
@@ -353,11 +354,17 @@
 
 ; Two articles into fn.test at generation 1, through the lifted transitions:
 ; the served check passes at the pinned generation 1 and fails at any other.
-(defconst *cn-t-payload* '(72 105))
+; by specification: the flip -- the acceptance state holds a payload HANDLE (records-flip,
+; books/acceptance.lisp fn-article-payload natp): the POST entry seals each
+; article's octets `*cn-t-octets*' as the next arena extent, so the article
+; completed under transaction TXID holds handle TXID, and a prepare staged
+; after two completions holds handle 2 (`*cn-t-payload*').
+(defconst *cn-t-octets* '(72 105))
+(defconst *cn-t-payload* 2)
 (defun cn-t-post (cn msgid txid)
   (declare (xargs :mode :program))
   (fn-cnode-complete
-   (fn-cnode-prepare cn 1 1 msgid *cn-t-payload* '("fn.test")
+   (fn-cnode-prepare cn 1 1 msgid txid '("fn.test")
                      (concatenate 'string "ob-" msgid) "subject" "ev" 1 841000000)
    txid 1 :durable))
 (defconst *cn-t-cn1b* (cn-t-post (cn-t-post *cn-t-cn1* "<a@t>" 0) "<b@t>" 1))
@@ -434,11 +441,28 @@
                (fn-cnode-line-ceiling)))
 
 ; --- the two-kind replay ------------------------------------------------------
+(defun cn-t-article-wire (seq txid msgid)
+  (declare (xargs :mode :program))
+  (fn-record-make seq txid 1 msgid *cn-t-octets* '("fn.test")
+                  (concatenate 'string "ob-" msgid) "subject" "ev" 1 841000000))
+; by specification: the flip -- the journal's article body is the retained
+; row (books/config-records.lisp fn-jrec-p requires fn-held-p): the wire
+; record interned as the next arena extent, so the article of transaction
+; TXID is the row at handle TXID (tests/acl2/held-rows-tests fn-hrt-row-at).
 (defun cn-t-article (seq txid msgid)
   (declare (xargs :mode :program))
-  (fn-jrec-make :article seq
-                (fn-record-make seq txid 1 msgid *cn-t-payload* '("fn.test")
-                                (concatenate 'string "ob-" msgid) "subject" "ev" 1 841000000)))
+  (fn-jrec-make :article seq (fn-hrt-row-at (cn-t-article-wire seq txid msgid) txid)))
+; The rows are the intern's: the three posts interned in order on a fresh
+; arena are the rows at handles 0, 1 and 2, and the bytes under handle 2 are
+; the article's octets.
+(defconst *cn-t-article-wires*
+  (list (cn-t-article-wire 1 0 "<a@t>") (cn-t-article-wire 2 1 "<b@t>")
+        (cn-t-article-wire 5 2 "<e@t>")))
+(assert-event (equal (fn-hrt-rows *cn-t-article-wires* nil 0)
+                     (list (fn-jrec-body (cn-t-article 1 0 "<a@t>"))
+                           (fn-jrec-body (cn-t-article 2 1 "<b@t>"))
+                           (fn-jrec-body (cn-t-article 5 2 "<e@t>")))))
+(assert-event (equal (fn-hrt-bytes *cn-t-article-wires* 2) *cn-t-octets*))
 (defconst *cn-t-js*
   (list (fn-jrec-make :config 0 *fn-cfg-default-record*)
         (cn-t-article 1 0 "<a@t>")
