@@ -536,8 +536,11 @@ observations back.  Nil when there is nothing to observe."
 ;;; recovered state, the profile (its rotation threshold, profile 3), the
 ;;; selected generation, the root's names and the recovery event the open
 ;;; drove.  Its answer is the event `bp-node checkpoint' drives, or NIL.
-;;; First the host finishes a retirement a death or a failed step left (the
-;;; selection is already durable; fn-bpnr-retirement-cut-keeps-open-view).
+;;; As `bp-node checkpoint' does, a due rotation first finishes a retirement
+;;; a death or a failed step left (the selection is already durable;
+;;; fn-bpnr-retirement-cut-keeps-open-view); an open that does not rotate
+;;; changes nothing on disk, so a kill's leftovers stay until the next
+;;; rotation.
 ;;; Answers T when it drove a rotation: the caller reopens the journal,
 ;;; which recovers from whatever is durable (the new selection, or the old
 ;;; one after a refusal), so the service never writes into a generation it
@@ -551,9 +554,9 @@ observations back.  Nil when there is nothing to observe."
          (event (fnn-core 'fn-bpnrd-due-rotation-event
                           (fnn-bps-state bp) (fnn-bps-node-profile bp)
                           selected names (fnn-bps-recovery-event bp))))
-    (when (plusp selected)
-      (fnn-bps-retire-generations bp selected))
     (when event
+      (when (plusp selected)
+        (fnn-bps-retire-generations bp selected))
       (fnn-out "BP journal rotation generation=~d records=~d threshold=~d"
                (second event)
                (fnn-core 'fn-bpnp-used (fnn-bps-state bp))
