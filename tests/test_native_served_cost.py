@@ -45,10 +45,15 @@ class NativeServedCostTests(unittest.TestCase):
         # fn-owner-chunk-span reads at the reader view (fn-owner-at-reader-view)
         # through fn-owner-chunk-span-at, which calls the catalog chain.
         self.assertIn("(fn-owner-chunk-span-at", definition(host, "fn-owner-chunk-span"))
-        # Since scheduler-3 (PKT-828) through fn-orr-read-span
-        # (books/owner-reader-read.lisp), which calls fn-scr-ocfg-read-span
-        # on both arms: at the captured reader view and, with none, directly.
-        self.assertIn("(fn-orr-read-span", definition(host, "fn-owner-chunk-span-at"))
+        # Since time-model-2 (PRF-323) through fn-otm-read-span
+        # (books/owner-time-admission.lisp: the disk's write admission), whose
+        # both arms call fn-orr-read-span; since scheduler-3 (PKT-828) that
+        # (books/owner-reader-read.lisp) calls fn-scr-ocfg-read-span on both
+        # arms: at the captured reader view and, with none, directly.
+        self.assertIn("(fn-otm-read-span", definition(host, "fn-owner-chunk-span-at"))
+        admission = definition((ROOT / "books/owner-time-admission.lisp").read_text(),
+                               "fn-otm-read-span")
+        self.assertEqual(admission.count("(fn-orr-read-span"), 2)
         reader = definition((ROOT / "books/owner-reader-read.lisp").read_text(),
                             "fn-orr-read-span")
         self.assertEqual(reader.count("(fn-scr-ocfg-read-span"), 2)
