@@ -9565,15 +9565,17 @@
         "PRF-261"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/store-recover-stream.lisp",
         "tests/acl2/store-recover-stream-tests.lisp",
         "host/native/io.lisp",
         "host/store-host.lisp",
-        "planning/evidence/recover-memory-2026-09-27.md"
+        "planning/evidence/recover-memory-2-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T101827Z-2393395.json",
+        "planning/evidence/manifests/certify-20260927T102055Z-2406623.json"
       ],
-      "progress_note": "Lane recover-memory-2 (2026-09-27, PKT-823 items 1-4): every form REPL-admitted on hbox (sections 5 and 6 and their teeth).",
+      "progress_note": "Lane recover-memory-2 (2026-09-27, PKT-823 items 1-4): every form REPL-admitted on hbox; certified on hbox at the lane's book bytes (books/store-recover-stream 6.2 s in certify-20260927T101827Z-2393395; tests/acl2/store-recover-stream-tests 2.6 s at 2 jobs, farm run-20260927T102005Z-f809, certify-20260927T102055Z-2406623). Measured on the 32 KiB fixture, interleaved: peak dynamic 1,811 -> 1,514 MB, live after the open 1,148 -> 831 MB, consed 49.0 -> 16.0 GB; production image recover RSS 1.83 -> 1.25 GB.",
       "events": [
         "fn-srs-checked-decode-is-the-per-file-check",
         "fn-srs-checked-step-is-the-step",

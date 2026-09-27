@@ -580,7 +580,16 @@ the guard-verified `fn-srs-intern-step`, then `fn-store-sn-recover-rows` over
 `fn-srs-rows`; no octet list or decoded event of the whole history exists at
 once, and any chunking opens the same Store
 (`fn-srs-steps-are-one-step-of-the-concatenation`,
-books/store-recover-stream.lisp, PRF-261). A store with no configuration record is refused, and the served
+books/store-recover-stream.lisp, PRF-261). Without a selected pack the
+transaction files are read a chunk at a time as the replay takes them: each
+file goes to `fn-store-unframe-split` as its protected prefix and trailer
+(the payload is the prefix's tail, no copy:
+`fn-srs-unframe-is-the-frame-decode`), and the chunk to
+`fn-srs-checked-decode` with each file's number, which checks every record's
+sequence in the one decode (`fn-srs-checked-decode-is-the-per-file-check`,
+PRF-264). The open answers the history's record count and keeps no records;
+a verb that needs their octets reads them after the open under its lock
+(`fnn-history-records`). A store with no configuration record is refused, and the served
 group names, their codes and the generation come back from the core
 (`fn-store-cfg-served/-domain/-generation`); the image holds no compiled
 group table and `init` asks `fn-cfg-host-initial-octets` for generation 1.
