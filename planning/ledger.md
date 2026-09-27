@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1278 |
-| Certification roots in the Makefile | 1231 |
-| Books inside the root closure | 1267 |
+| Books read | 1279 |
+| Certification roots in the Makefile | 1232 |
+| Books inside the root closure | 1268 |
 | `defthm` and `defthmd` events | 18918 |
-| `defun` events | 12934 |
+| `defun` events | 12936 |
 | Functions with verified guards | 2477 |
-| Functions declared `:verify-guards nil` and never verified | 1533 |
+| Functions declared `:verify-guards nil` and never verified | 1534 |
 | Functions left at the default with an explicit guard | 7126 |
-| Functions left at the default with no guard | 1798 |
-| `assert-event` checks | 18574 |
+| Functions left at the default with no guard | 1799 |
+| `assert-event` checks | 18603 |
 | `must-fail` checks | 2184 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 99 |
@@ -27,7 +27,7 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 217 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 223 |
-| Include-hygiene warnings | 1363 |
+| Include-hygiene warnings | 1365 |
 | Host-names warnings | 1396 |
 | Hand-written-record warnings | 18 |
 
@@ -1161,6 +1161,7 @@ that `make certify` requests.
 | `tests/acl2/owner-feed-tests.lisp` | root | 2 | 3 | 0/0/2/1 | 133 | 6 | 0 |
 | `tests/acl2/owner-feed-txid-reuse-tests.lisp` | root | 0 | 3 | 0/0/3/0 | 6 | 0 | 0 |
 | `tests/acl2/owner-identity-intern-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 15 | 0 | 0 |
+| `tests/acl2/owner-identity-served-tests.lisp` | root | 0 | 2 | 0/1/0/1 | 29 | 0 | 0 |
 | `tests/acl2/owner-injection-info-tests.lisp` | root | 0 | 2 | 0/0/2/0 | 2 | 1 | 0 |
 | `tests/acl2/owner-intent-carried-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 28 | 5 | 0 |
 | `tests/acl2/owner-log-ocl-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 106 | 0 | 0 |
