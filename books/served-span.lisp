@@ -41,23 +41,32 @@
                               (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets)))
                   :measure (nfix (- end i))
-                  :verify-guards nil))
+                  :verify-guards nil
+                  :hints (("Goal" :in-theory (disable fn-scar-feed-byte
+                                                      fn-served-submission)))))
   (if (or (not (natp i)) (not (natp end)) (>= i end)
           (fn-served-closed-wirep (fn-served-conn-wire conn))
           (fn-served-tls-handshakingp conn))
       (fn-served-counted-make 0 (fn-served-make-result conn nil))
-    (let* ((here (fn-scar-feed-byte conn (fn-octets-get i fn-octets) live trie arts))
-           (tail (fn-scar-feed-span (fn-served-result-conn here) (+ 1 i) end
-                                    live trie arts fn-octets))
-           (tail-result (fn-served-counted-result tail)))
-      (fn-served-counted-make
-       (+ 1 (fn-served-counted-consumed tail))
-       (fn-served-make-result
-        (fn-served-result-conn tail-result)
-        (mbe :logic (append (fn-served-result-effects here)
-                            (fn-served-result-effects tail-result))
-             :exec (fn-ag-append (fn-served-result-effects here)
-                                 (fn-served-result-effects tail-result))))))))
+    (let ((here (fn-scar-feed-byte conn (fn-octets-get i fn-octets) live trie arts)))
+      ;; PKT-600: yield after the octet that completed a submission; the host
+      ;; re-enters at i + consumed (host/native/owner.lisp, the serve loop's
+      ;; retained offset).
+      (if (fn-served-submission (fn-served-result-effects here))
+          (fn-served-counted-make
+           1 (fn-served-make-result (fn-served-result-conn here)
+                                    (fn-served-result-effects here)))
+        (let* ((tail (fn-scar-feed-span (fn-served-result-conn here) (+ 1 i) end
+                                        live trie arts fn-octets))
+               (tail-result (fn-served-counted-result tail)))
+          (fn-served-counted-make
+           (+ 1 (fn-served-counted-consumed tail))
+           (fn-served-make-result
+            (fn-served-result-conn tail-result)
+            (mbe :logic (append (fn-served-result-effects here)
+                                (fn-served-result-effects tail-result))
+                 :exec (fn-ag-append (fn-served-result-effects here)
+                                     (fn-served-result-effects tail-result))))))))))
 
 (defthm fn-scar-feed-span-consumed-is-natural
   (natp (fn-served-counted-consumed

@@ -3,8 +3,9 @@
 ;;
 ;; Host path (reader), as for HDR :fn-verified (books/owner-verdict-read):
 ;; host/native/owner.lisp calls fn-owner-chunk (host/owner-host.lisp), which
-;; runs fn-ocfg-read-tls-prefix, equal to fn-ocfg-read by
-;; fn-ocfg-read-tls-prefix-is-full-read (books/owner-tls-prefix), which is
+;; runs fn-ocfg-read-tls-prefix, equal to fn-ocfg-read over the octets it
+;; consumed (all of them unless a submission made it yield) by
+;; fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix (books/owner-tls-prefix), which is
 ;; fn-own-read on the connection.  fn-own-read builds the served connection
 ;; from the owner connection -- its archive, its index, its buckets and its
 ;; control pin (`fn-own-conn-control', set from `fn-own-view-control' at

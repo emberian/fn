@@ -47,8 +47,9 @@
 (defthm fn-ocri-host-tls-read-refines-historical-read
   (implies
    (fn-ocri-relation oc)
-   (let ((tls (fn-ocfg-read-tls-prefix oc id octets))
-         (full (fn-ocfg-read oc id octets)))
+   (let* ((tls (fn-ocfg-read-tls-prefix oc id octets))
+          (full (fn-ocfg-read oc id (take (fn-own-tls-result-consumed tls)
+                                          octets))))
      (and (equal (fn-own-tls-result-effects tls) (car full))
           (equal (fn-own-tls-result-owner tls) (cdr full)))))
   :hints (("Goal"
@@ -56,7 +57,7 @@
                                       (fn-own-conns (fn-ocfg-owner oc))))
            :use ((:instance fn-ocri-found-conn-is-carried
                             (conns (fn-own-conns (fn-ocfg-owner oc))))
-                 (:instance fn-ocfg-read-tls-prefix-is-full-read))
+                 (:instance fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix))
            :in-theory (e/d (fn-ocfg-read-tls-prefix
                             fn-own-read-tls-prefix fn-ocfg-read fn-own-read
                             fn-own-tls-make-result
@@ -64,7 +65,7 @@
                             fn-own-tls-result-effects
                             fn-own-tls-result-owner
                             fn-ocfg-with-read-owner)
-                           (fn-ocfg-read-tls-prefix-is-full-read
+                           (fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix
                                fn-ocri-found-conn-is-carried)))))
 
 (defthm fn-ocri-conns-p-of-remove

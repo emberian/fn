@@ -7811,6 +7811,102 @@
         "fn-bphh-request-article-matches-is-wire",
         "fn-bphh-octets-at-p-is-equal-payload"
       ]
+    },
+    {
+      "id": "PRF-209",
+      "title": "An offline configuration request authorizes its one record from the fold its open computed: the candidate's folds are one step from the open's, never a replay",
+      "statement": "The configuration-only fold over CONFIGS ++ (R) is fn-cfgc-config-extend of the fold over CONFIGS (fn-cfgc-config-replay-of-one-more, from fn-cnode-replay-loop-splits-at-any-prefix); the physical fold fn-cpr-replay over CONFIGS ++ (R) and EVENTS is fn-cfgc-cpr-extend of the fold over CONFIGS and EVENTS, one fn-cpr-loop step, when both lists are true lists and every event's txid is below R's (fn-cfgc-cpr-replay-of-one-more); an observed history is below its frontier, so a record at or past the frontier is filed after every event. Hence the candidate from the open's carried folds is fn-native-admin-candidate-open-result of the appended history (fn-cfgc-candidate-open-result-is-the-replayed-candidate) and the authorization the host calls, fn-cfgc-cvec-native-admin-authorize, is EQUAL to fn-cvec-native-admin-authorize on every arm whenever the carried fold is fn-cpr-replay of the same histories and the configuration history is a true list (fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization), so every keystone of the replaying authorization (the lock, the generation, the occupied name, the group-name bound, the candidate) carries. The carried fold is established by the open: host/store-node-host.lisp fn-store-sn-open-extended keeps (E replayed opened) and the configuration history it folded, and fn-sco-store-open-of-extended-capture is the theorem that replayed is fn-cpr-replay of those configurations and E's records, on the full and the checkpoint open. Host: host/native/admin.lisp fnn-admin-execute -> fnn-admin-authorize-carried -> host/store-node-host.lisp fn-store-cfg-native-admin-authorize-carried (NIL, and the replaying authorization, when the observed configuration history is not the open's). Scope: the candidate open fn-cpo-open-observed is still computed over the whole history, and the open itself replays it: per offline request one open and one candidate open remain (PKT-601).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025"
+      ],
+      "depends_on": [
+        "PRF-186"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-carried-candidate.lisp",
+        "tests/acl2/config-carried-candidate-tests.lisp",
+        "planning/evidence/config-consumer-catalog-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260926T221758Z-3334374.json"
+      ],
+      "progress_note": "Provisional id (lane config-consumer-catalog; the deputy confirms or renumbers at merge). Not done: the candidate open extended from the open (fn-cpo-open-observed of CONFIGS ++ (R) from the open's state), the configuration root persisted by the checkpoint pipeline, the verify-under-lock reopen (PKT-601).",
+      "events": [
+        "fn-cfgc-config-replay-of-one-more",
+        "fn-cfgc-cpr-replay-of-one-more",
+        "fn-cfgc-candidate-open-result-is-the-replayed-candidate",
+        "fn-cfgc-publication-authorize-is-the-replayed-authorization",
+        "fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization"
+      ]
+    },
+    {
+      "id": "PRF-216",
+      "title": "The BP kind-19 checkpoint read from an octet buffer by index is the list decoder: the reopen after a rotation decodes the same checkpoint and refuses the same files, in linear work",
+      "statement": "books/bp-node-rotation-buffer.lisp. fn-bpnrb-selection-plan (the host-called entry: host/native/bp-service.lisp fnn-bps-selection-plan, called by fnn-bps-open, copies the selected generation file's bytes into fn-octets-bp, an abstract stobj congruent to fn-octets, one byte per octet) reads the file by index: fn-bpnrb-decode-range checks the head, reads the u64 payload length from eight cells, checks the frame trailer over the prefix (fn-frame-trailer of fn-bpnr-checkpoint-prefix of the payload cells, built once) and runs the tree decoder fn-bpnrb-dec, which carries an index (a counted run is its cells copied once, fn-bpnrb-slice-acc; a u64 is eight cells). KEYSTONE fn-bpnrb-checkpoint-decode-is-decode, hypothesis-free: (equal (fn-bpnrb-checkpoint-decode budget x) (fn-bpnr-checkpoint-decode x budget)) -- the same checkpoint on every file the list decoder takes, nil on every file it refuses, so fn-bpnr-checkpoint-decode-of-octets (PRF-081's round trip) and PRF-081's recovery keystones are about what the host executes. fn-bpnrb-selection-plan-is-selection-plan, hypothesis-free: the entry equals fn-bpnr-selection-plan over the buffer's value. fn-bpnrb-dec-is-dec: over an octet buffer, the index decoder on the cells [i, end) is fn-bpnr-dec on that slice, with the rest of the slice being the cells from the returned index. The bounded-step foundation (gpt-6's review 2026-09-26 section 2: the checkpoint pipeline's discipline for the BP checkpoint): fn-bpnrb-mstep, the recursion as an explicit machine over (position, goals, value stack); fn-bpnrb-mrun, one quantum of at most Q steps stopping once B octets are consumed, returning the exact continuation; fn-bpnrb-mrun-all-of-dec-goal (the machine run from a decode goal is fn-bpnrb-dec's result followed by the remaining goals) and fn-bpnrb-mrun-all-of-mrun (a quantum keeps the whole run: resuming from its continuation reaches the same answer; a refused quantum is a refused run). These are NOT host-called yet: the host still calls fn-bpnrb-selection-plan in one call (0.55 s at 11.4 MB); the stepped entry and its keystone are the continuation's (LANEDUMP). Every executable function is guard-verified (asserted :common-lisp-compliant in the test book). Why: the list decoder's u64 and counted reads re-established true-listp of the whole remaining input per token (fn-bpnr-read-u64, fn-bpnr-read-counted), so the reopen after a rotation was quadratic in the file (sb-sprof: 99.9 percent of samples in TRUE-LISTP, 722 s for an 11,418,801-octet file of 1,311 held rows). What it does not say: the held rows' wires remain octet lists in the checkpoint value (the replay's representation); the trailer digest is computed over a list of the prefix (the constrained fn-frame-digest has no buffer-range twin); the list decoder remains the specification and the rotation's writer (fn-bpnr-checkpoint-octets) is unchanged.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-005"
+      ],
+      "depends_on": [
+        "PRF-081"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpnrb-checkpoint-decode-is-decode",
+        "fn-bpnrb-selection-plan-is-selection-plan",
+        "fn-bpnrb-dec-is-dec"
+      ],
+      "evidence": [
+        "books/bp-node-rotation-slice.lisp",
+        "books/bp-node-rotation-buffer.lisp",
+        "tests/acl2/bp-node-rotation-buffer-tests.lisp",
+        "host/native/bp-service.lisp",
+        "planning/evidence/bp-checkpoint-open-2026-09-26.md"
+      ],
+      "progress_note": "Lane bp-checkpoint-open (2026-09-26): the three books certified on hbox with certify_books.py (--incremental, 2 jobs); READY FOR BATCH, the deputy's batch certification is the cited manifest."
+    },
+    {
+      "id": "PRF-213",
+      "title": "A pipelined read loses no article: the served read yields after each submission, the host loop is boundary independent, and every submission is taken",
+      "statement": "books/served-tls-prefix.lisp over the served read the host calls (host/native/owner.lisp fnn-owner-handle-chunk -> host/owner-host.lisp fn-owner-chunk-span -> books/served-span.lisp fn-scar-ocfg-read-span, equal to fn-scar-ocfg-read-tls-prefix over the range and by fn-scar-feed-counted-is-served-feed-counted and fn-served-step-counted-fast-is-reference to fn-served-step-counted). The counted folds yield after the octet whose dispatch emitted a submission (PKT-600). fn-served-step-counted-result-is-step-of-consumed-prefix (no hypothesis): the counted read's result is fn-served-step over exactly the octets it consumed. fn-served-drain-is-step (no hypothesis): fn-served-drain, the host loop that re-feeds the unconsumed suffix, driven to exhaustion is fn-served-step over the whole input. fn-served-drain-run-is-the-concatenated-step and fn-served-drain-run-is-boundary-independent: over a stream of reads the loop reaches the connection and effect sequence of one read of the concatenation, so the commands and articles consumed and their answers do not depend on where the network or a yield cut the stream (hypothesis only the equal concatenation). fn-served-step-counted-carries-at-most-one-submission (under fn-served-connp): one yielding read carries at most one submission; fn-served-drain-takes-every-submission (under fn-served-connp): the submissions taken one per yield (the owner's fn-own-finish-read takes fn-served-submission, the first) are every submission of one read of the whole input, in order. Owner level (books/owner-tls-prefix.lisp): fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix (was -is-full-read) and fn-ocfg-read-tls-prefix-carries-at-most-one-submission. Not claimed: that the served invariant fn-served-connp is carried by the owner (the premise PRF-006 records), nor that the connp hypothesis of the two submission theorems is necessary (PKT-615); the reference fold fn-served-step is unchanged.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-044"
+      ],
+      "depends_on": [
+        "PRF-207"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/served-tls-prefix.lisp",
+        "books/served-carried.lisp",
+        "books/served-span.lisp",
+        "books/owner-tls-prefix.lisp",
+        "tests/acl2/served-pipelining-tests.lisp",
+        "host/native/owner.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-pipelining-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260926T231119Z-3936095.json",
+        "planning/evidence/manifests/certify-20260926T233724Z-23643.json"
+      ],
+      "progress_note": "Lane transit-pipelining 2026-09-27: REPL-admitted on hbox (sessions big, agt); certified on persvati run-20260926T231044Z-0b1a (manifest certify-20260926T231119Z-3936095: 67 affected roots passed, none over 10 s, 2 jobs, w25 acl2-literal). The teeth book, extended with cuts inside terminators and byte-at-a-time reads, recertified in run-20260926T233647Z-b92c (manifest certify-20260926T233724Z-23643). Native: tests.test_native_peering 11 ran OK on the tp1 image.",
+      "events": [
+        "fn-served-step-counted-result-is-step-of-consumed-prefix",
+        "fn-served-drain-is-step",
+        "fn-served-drain-run-is-the-concatenated-step",
+        "fn-served-drain-run-is-boundary-independent",
+        "fn-served-step-counted-carries-at-most-one-submission",
+        "fn-served-drain-takes-every-submission",
+        "fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix",
+        "fn-ocfg-read-tls-prefix-carries-at-most-one-submission"
+      ]
     }
   ]
 }
