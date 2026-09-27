@@ -6190,7 +6190,7 @@
         "fn-sopc-checkpoint-open-names-what-the-full-open-names",
         "fn-sopc-classified-open-is-the-open-without-a-pre-c1-record"
       ],
-      "progress_note": "Lane fixtures-refresh 2026-09-27 (PKT-697, D34): the native witness tests/test_native_pre_c1_open.py and its fixture tests/fixtures/pre-c1-control-store are retired: the pre-C1 image wrote a pre-D34 store format, so the current open refuses that store at the profile open (reason=store-format) before any replay reaches the pre-C1 check; the ACL2 half (books/store-open-pre-c1.lisp and its test book) stands, and its reachability in composition is PKT-715."
+      "progress_note": "Lane fixtures-refresh 2026-09-27 (PKT-697, D34): the native witness tests/test_native_pre_c1_open.py and its fixture tests/fixtures/pre-c1-control-store are retired: the pre-C1 image wrote a pre-D34 store format, so the current open refuses that store at the profile open (reason=store-format) before any replay reaches the pre-C1 check; the ACL2 half (books/store-open-pre-c1.lisp and its test book) stands, and its reachability in composition is PKT-822."
     },
     {
       "id": "PRF-144",
@@ -8900,7 +8900,7 @@
       ]
     },
     {
-      "id": "PRF-253",
+      "id": "PRF-258",
       "title": "A store made by another release is refused at open by the name of its profile layout, never the generic fault",
       "statement": "books/store-profile-open.lisp fn-spo-open-of-another-layout-refuses-by-name: for every natural N other than *fn-spo-release-layout-fields* (16) and every VALUES of the layout fn-spo-layout-spec N (two frame texts, the first the format word fn-store-8, then N u64 fields) whose payload fits a profile frame (600 octets), fn-spo-config-open, the open host/native/io.lisp fnn-metadata-config-decode calls through host/store-host.lisp fn-store-metadata-config-open on every open (fnn-load-config from fnn-acquire: owner start, store recover, status, inspect, checkpoint, the offline health), answers (:refused :profile-layout N) on the frame that layout's encoder writes (fn-spo-layout-frame N VALUES; every store made before batch AS has N = 13); fn-spo-refusal-text renders `open refused reason=older-release: store made by an older release (profile layout N fields, this release expects 16): export it with the release that made it, then import it here` (newer-release above 16), which the host prints at exit 1. fn-spo-config-open-layout-refusal-is-never-a-decoded-frame: the refusal is never a frame fn-bs-config-decode decodes (every frame it decodes has this release's layout, so every store the open opened before opens the same). With fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name (this release's layout) and fn-spo-config-open-store-format-is-exactly-a-foreign-frame (another format word), a sealed profile frame of any layout or format opens or is refused by name; the generic fault remains for octets with this release's layout that the relation refuses or with no layout (fn-spo-config-open-rejected-has-this-layout-or-none-by-definition). Nothing is translated (D34).",
       "milestone": "M5",

@@ -1128,7 +1128,7 @@ before batch AS, sixteen now) is refused by name with both counts: `open
 refused reason=older-release: store made by an older release (profile layout
 13 fields, this release expects 16): export it with the release that made
 it, then import it here` (`newer-release` for a wider layout), exit 1, never
-the generic fault (PRF-253, PKT-705); `install.sh` refuses such a node before
+the generic fault (PRF-258, PKT-705); `install.sh` refuses such a node before
 copying anything. `store export DIR` writes the committed history the open
 reads (the profile frame, the allocation frontier, each configuration record
 and each committed record, packs included, in sequence order) with a

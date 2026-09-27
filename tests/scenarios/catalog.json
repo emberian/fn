@@ -2803,7 +2803,7 @@
         "log": "planning/evidence/control-across-peers-2026-09-26/native-m1-across-peers.log",
         "record": "planning/evidence/control-across-peers-2026-09-26.md"
       },
-      "retirement_note": "2026-09-27 lane fixtures-refresh (PKT-697, D34): the pre-C1 open steps and their cases (tests.test_native_pre_c1_open, fixture tests/fixtures/pre-c1-control-store) are retired: the pre-C1 image wrote a pre-D34 store format, refused at the profile open before replay; SCN-174 and SCN-132 cover the named refusal of a store made by another release."
+      "retirement_note": "2026-09-27 lane fixtures-refresh (PKT-697, D34): the pre-C1 open steps and their cases (tests.test_native_pre_c1_open, fixture tests/fixtures/pre-c1-control-store) are retired: the pre-C1 image wrote a pre-D34 store format, refused at the profile open before replay; SCN-175 and SCN-132 cover the named refusal of a store made by another release."
     },
     {
       "id": "SCN-098",
@@ -3807,7 +3807,7 @@
       "id": "SCN-132",
       "title": "A format-7 store is refused at open by name: open refused reason=store-format, exit 1, the store untouched",
       "milestone": "M5",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "STO-028"
       ],
@@ -3823,8 +3823,15 @@
           "OlderReleaseOpenTest.test_a_format_7_store_is_refused_by_name"
         ],
         "native": true,
-        "record": "planning/evidence/fixtures-refresh-2026-09-27.md"
-      }
+        "record": "planning/evidence/fixtures-refresh-2026-09-27.md",
+        "log": "planning/evidence/fixtures-refresh-2026-09-27/native-older-release-open-production.log"
+      },
+      "evidence": [
+        "tests/test_native_older_release_open.py",
+        "tests/older_release_store.py",
+        "planning/evidence/fixtures-refresh-2026-09-27/native-older-release-open-production.log",
+        "planning/evidence/fixtures-refresh-2026-09-27.md"
+      ]
     },
     {
       "id": "SCN-133",
@@ -4918,10 +4925,10 @@
       }
     },
     {
-      "id": "SCN-174",
+      "id": "SCN-175",
       "title": "A store made before batch AS (the thirteen-field profile layout) is refused at open by name: open refused reason=older-release with both field counts, exit 1, the store untouched; the same store with this release's profile opens",
       "milestone": "M5",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "STO-028"
       ],
@@ -4938,8 +4945,15 @@
           "OlderReleaseOpenTest.test_the_same_store_with_its_own_profile_opens"
         ],
         "native": true,
-        "record": "planning/evidence/fixtures-refresh-2026-09-27.md"
-      }
+        "record": "planning/evidence/fixtures-refresh-2026-09-27.md",
+        "log": "planning/evidence/fixtures-refresh-2026-09-27/native-older-release-open-production.log"
+      },
+      "evidence": [
+        "tests/test_native_older_release_open.py",
+        "tests/older_release_store.py",
+        "planning/evidence/fixtures-refresh-2026-09-27/native-older-release-open-production.log",
+        "planning/evidence/fixtures-refresh-2026-09-27.md"
+      ]
     }
   ]
 }
