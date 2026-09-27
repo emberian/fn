@@ -446,6 +446,13 @@
   :hints (("Goal" :induct (fn-scka-intern-at ws h)
            :in-theory (disable fn-scka-intern-one fn-scka-sealsp fn-scka-payload-of))))
 
+; A refused prefix refuses the whole history.
+(defthm fn-scka-intern-at-of-append-bad
+  (implies (equal (fn-scka-intern-at ws h) :bad)
+           (equal (fn-scka-intern-at (append ws vs) h) :bad))
+  :hints (("Goal" :induct (fn-scka-intern-at ws h)
+           :in-theory (disable fn-scka-intern-one fn-scka-sealsp fn-scka-payload-of))))
+
 (local
  (defthm fn-scka-record-valuesp-is-store-eventsp
    (equal (fn-sf-record-valuesp x) (fn-sco-store-eventsp x))
@@ -479,19 +486,20 @@
 ; its canonical rows, and its canonical arena), the recover over the suffix
 ; VS is the full recover of WS ++ VS from the emptied arena: the same
 ; extended capture (so fn-store-sn-open-extended opens the same store) and
-; the same arena.  The hypotheses: the prefix interns (a checkpoint is
-; written only of an interned history) and so does the whole history (a
-; record the intern refuses faults both opens, with different partial
-; arenas that nothing reads).
+; the same arena.  The hypothesis: the whole history interns (a record
+; the intern refuses faults both opens).  That the prefix interns follows
+; (fn-scka-intern-at-of-append-bad); the earlier second hypothesis was
+; removed after this weakened statement was proved.
 (defthm fn-scka-recover-from-checkpoint-is-full-recover
-  (implies (and (not (equal (fn-scka-intern-at ws 0) :bad))
-                (not (equal (fn-scka-intern-at (append ws vs) 0) :bad)))
+  (implies (not (equal (fn-scka-intern-at (append ws vs) 0) :bad))
            (equal (fn-scka-recover-rows (fn-sco-capture configs (fn-scka-intern-at ws 0))
                                         configs vs (fn-scka-payloads ws))
                   (fn-scka-recover-rows (fn-sco-capture configs nil) configs
                                         (append ws vs) nil)))
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-intern-events-is-intern-at (ws vs) (fn-arena (fn-scka-payloads ws)))
+           :cases ((equal (fn-scka-intern-at ws 0) :bad))
+           :use ((:instance fn-scka-intern-at-of-append-bad (h 0))
+                 (:instance fn-intern-events-is-intern-at (ws vs) (fn-arena (fn-scka-payloads ws)))
                  (:instance fn-intern-events-arena-is-payloads (ws vs)
                             (fn-arena (fn-scka-payloads ws)))
                  (:instance fn-intern-events-is-intern-at (ws (append ws vs)) (fn-arena nil))
@@ -505,6 +513,7 @@
            :in-theory (e/d (fn-scka-recover-rows)
                            (fn-intern-events-is-intern-at fn-intern-events-arena-is-payloads
                             fn-scka-intern-at-of-append fn-sco-extend-of-capture
+                            fn-scka-intern-at-of-append-bad
                             fn-intern-events fn-scka-intern-at fn-scka-payloads
                             fn-sco-extend fn-sco-capture)))))
 
