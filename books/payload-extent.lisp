@@ -155,7 +155,11 @@
 (defun fn-arx-text-places (text p count unit ep en q qend acc)
   (declare (xargs :guard (and (stringp text) (natp p) (natp count) (natp ep) (natp en)
                               (natp q) (natp qend) (true-listp acc))
-                  :measure (nfix count)))
+                  :measure (nfix count)
+                  :hints (("Goal" :in-theory (disable fn-lg-pad-len fn-arx-u32-text
+                                                      fn-arx-text-octet)))
+                  :guard-hints (("Goal" :in-theory (disable fn-lg-pad-len fn-arx-u32-text
+                                                            fn-arx-text-octet)))))
   (cond ((zp count) (revappend acc nil))
         ((and (natp q) (natp qend) (< q qend))
          (let* ((rlen (fn-arx-u32-text text q))
