@@ -18,7 +18,7 @@
 ;; re-recovery (fnn-bridge-reset, then fnn-recover in the same process).
 ;; Its host line, the offline request's verification, is retired
 ;; (PKT-601 (2)): host/native/admin.lisp fnn-admin-verify-under-lock now
-;; reads the published record back (books/config-carried-candidate.lisp
+;; reads the published record back (books/config-carried-open.lisp
 ;; fn-cfgc-readback-verified-is-the-reopen), so no host line calls this
 ;; re-recovery and the theorem is model-level.  fnn-recover
 ;; reads the LIVE view (fnn-load-frontier, fnn-durable-records), which is

@@ -3470,7 +3470,8 @@
         "books/config-physical-replay.lisp",
         "books/store-checkpoint-open.lisp",
         "planning/evidence/caps-to-profile-2026-09-26.md",
-        "books/config-carried-candidate.lisp"
+        "books/config-carried-candidate.lisp",
+        "books/config-carried-open.lisp"
       ],
       "implementation_note": "The four replay folds run the carried check (PRF-186, SCN-115). An offline request authorizes from its open's carried fold and decides its candidate open from the open's own result, and verifies by reading its published record back instead of reopening (PRF-209, SCN-140; PKT-601 (1), (2)): one open per request. Open: the configuration-only fold still runs over the configuration history once per request."
     },

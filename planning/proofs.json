@@ -7838,6 +7838,8 @@
       "evidence": [
         "books/config-carried-candidate.lisp",
         "tests/acl2/config-carried-candidate-tests.lisp",
+        "tests/acl2/config-carried-open-tests.lisp",
+        "books/config-carried-open.lisp",
         "planning/evidence/config-consumer-catalog-2026-09-26.md",
         "planning/evidence/manifests/certify-20260926T221758Z-3334374.json",
         "planning/evidence/manifests/certify-20260927T001141Z-384911.json",

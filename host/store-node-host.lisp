@@ -20,7 +20,7 @@
 (include-book "../books/retention-figures")
 (include-book "../books/store-capacity-config")
 ; PKT-510 (1): the offline request authorizes from the open's carried fold.
-(include-book "../books/config-carried-candidate")
+(include-book "../books/config-carried-open")
 (include-book "../books/node-config")
 (include-book "../books/native-admin")
 ; D27, PRF-102: the operator's namespace counts.
@@ -201,7 +201,7 @@ reopen predicate, writer-lock observation and observed final namespace."
        lock-owned names profile))))
 
 ;; PKT-510 (1): the offline request's authorization from the open's carried
-;; fold (books/config-carried-candidate.lisp
+;; fold (books/config-carried-open.lisp
 ;; fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization: EQUAL to
 ;; fn-cvec-native-admin-authorize whenever the carried fold is the replay of
 ;; the same histories).  The records are the extended capture's (the history

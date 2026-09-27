@@ -76,7 +76,7 @@ set, exact record, candidate replay/open result and generated final name."
   "The offline request's authorization from the open's carried fold
 (PKT-510 (1)): ACL2's fn-store-cfg-native-admin-authorize-carried, which is
 fn-store-cfg-native-admin-authorize over the history the open replayed
-(books/config-carried-candidate.lisp
+(books/config-carried-open.lisp
 fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization) without
 replaying it again.  When ACL2 answers NIL (no carried open, or a
 configuration history that is not the open's) the request authorizes over the
@@ -128,7 +128,7 @@ this observation.  The reopen this replaces (PKT-601 (2)) is decided already:
 the authorization accepted only a candidate whose open over the observed
 history and RECORD succeeds, and when the file holds RECORD at the named
 generation the open of the history the directory now holds is that candidate
-(books/config-carried-candidate.lisp fn-cfgc-readback-verified-is-the-reopen).
+(books/config-carried-open.lisp fn-cfgc-readback-verified-is-the-reopen).
 The immutable publisher's :DURABLE result is already this command's accepted
 persistence outcome, so an independent diagnostic failure is reported
 without retroactively recasting that durable result as a refusal or
