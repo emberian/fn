@@ -7564,7 +7564,8 @@
         "fn-heap-operation-decide-holds-the-operation",
         "fn-heap-operation-decide-of-a-serve-action-is-heap-decide",
         "fn-heap-reserve-operation-decide-holds-the-operation",
-        "fn-heap-reserve-decide-is-reserve-of-heap-decide"
+        "fn-heap-reserve-decide-is-reserve-of-heap-decide",
+        "fn-heap-reserve-of-holds-the-decision"
       ],
       "evidence": [
         "books/heap-figure.lisp",

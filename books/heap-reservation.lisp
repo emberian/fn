@@ -283,6 +283,26 @@
                   (fn-heap-reserve-decide profile core nursery observations
                                           connections))))
 
+; An accepted reservation beside a heap decision D is D's heap, and heap,
+; core and the threads' stacks fit the machine.
+(defthm fn-heap-reserve-of-holds-the-decision
+  (let ((r (fn-heap-reserve-of d profile core observations connections)))
+    (implies (and (fn-bs-profile-admittedp profile)
+                  (equal (car r) :heap))
+             (and (equal (car d) :heap)
+                  (equal (fn-heap-decision-mb r) (fn-heap-decision-mb d))
+                  (<= (+ (* *fn-heap-mib* (fn-heap-decision-mb r))
+                         (nfix core)
+                         (* (fn-heap-reserve-threads r)
+                            (+ (* 1024 (fn-heap-reserve-stack-kib r))
+                               *fn-heap-thread-runtime-octets*)))
+                      (fn-heap-machine-octets observations)))))
+  :hints (("Goal" :in-theory (e/d (fn-heap-reservation-octets fn-heap-reserve-threads
+                                   fn-heap-reserve-stack-kib)
+                                  (fn-bs-profile-admittedp fn-heap-machine-octets
+                                   fn-native-control-max-active-clients
+                                   fn-heap-mb-of fn-heap-stack-kib fn-heap-thread-count)))))
+
 ; KEYSTONE (PKT-686).  An accepted reservation for an admitted profile is the
 ; operation's accepted heap figure (so `fn-heap-operation-decide-holds-the-
 ; operation' holds in it: the command's measured working set on every store
@@ -302,16 +322,15 @@
                             (+ (* 1024 (fn-heap-reserve-stack-kib r))
                                *fn-heap-thread-runtime-octets*)))
                       (fn-heap-machine-octets observations)))))
-  :hints (("Goal" :cases ((member-equal action '(:compact :reclaim)))
-           :use ((:instance fn-heap-reserve-decide-is-reserve-of-heap-decide))
-           :in-theory (e/d (fn-heap-reservation-octets fn-heap-reserve-threads
-                            fn-heap-reserve-stack-kib)
-                           (fn-heap-decide fn-heap-operation-decide
-                            fn-heap-reserve-decide
-                            fn-bs-profile-admittedp fn-heap-machine-octets
-                            fn-heap-decide-refuses-exactly-past-the-machine
-                            fn-native-control-max-active-clients
-                            fn-heap-mb-of fn-heap-stack-kib fn-heap-thread-count)))))
+  :hints (("Goal" :use ((:instance fn-heap-reserve-decide-is-reserve-of-heap-decide)
+                        (:instance fn-heap-reserve-of-holds-the-decision
+                                   (d (fn-heap-operation-decide action profile core nursery
+                                                                observations)))
+                        (:instance fn-heap-reserve-of-holds-the-decision
+                                   (d (fn-heap-decide profile core nursery observations)))
+                        (:instance fn-heap-operation-decide-of-a-serve-action-is-heap-decide))
+           :in-theory (union-theories '(fn-heap-reserve-operation-decide)
+                                      (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
 ; The report the probe prints: heap-figure's line, then on acceptance

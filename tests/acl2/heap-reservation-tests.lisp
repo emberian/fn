@@ -511,16 +511,16 @@
                                 (+ (* 1024 (fn-heap-reserve-stack-kib r))
                                    *fn-heap-thread-runtime-octets*)))
                           (fn-heap-machine-octets observations)))))
-      :hints (("Goal" :cases ((member-equal action '(:compact :reclaim)))
-               :use ((:instance fn-heap-reserve-decide-is-reserve-of-heap-decide))
-               :in-theory (e/d (fn-heap-reservation-octets fn-heap-reserve-threads
-                                fn-heap-reserve-stack-kib)
-                               (fn-heap-decide fn-heap-operation-decide
-                                fn-heap-reserve-decide
-                                fn-bs-profile-admittedp fn-heap-machine-octets
-                                fn-heap-decide-refuses-exactly-past-the-machine
-                                fn-native-control-max-active-clients
-                                fn-heap-mb-of fn-heap-stack-kib fn-heap-thread-count)))))))
+      :hints (("Goal" :use ((:instance fn-heap-reserve-decide-is-reserve-of-heap-decide)
+                            (:instance fn-heap-reserve-of-holds-the-decision
+                                       (d (fn-heap-operation-decide action profile core
+                                                                    nursery observations)))
+                            (:instance fn-heap-reserve-of-holds-the-decision
+                                       (d (fn-heap-decide profile core nursery observations)))
+                            (:instance
+                             fn-heap-operation-decide-of-a-serve-action-is-heap-decide))
+               :in-theory (union-theories '(fn-heap-reserve-operation-decide)
+                                          (theory 'minimal-theory)))))))
 
 ; Without the admitted profile: no store, whose figure is the machine, so
 ; the heap, the core and a thread exceed it.
