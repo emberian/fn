@@ -5684,11 +5684,17 @@ there is no full replay to fall back to: a checkpoint the open cannot use is
 refused by name."
   (progn
     ;; S: the loaded checkpoint's (fnn-recover-log loaded it once, first).
-    (unless (eq (fnn-recover-suffix-rows store suffix config-records decoded) :recovering)
-      (fnn-core-state 'fn-store-sco-clear)
-      (fnn-bridge-reset)
-      (error 'fnn-store-open-refusal
-             :message "open refused reason=checkpoint-damaged: the checkpoint that covers the dropped log segments does not open"))
+    (let ((action (fnn-recover-suffix-rows store suffix config-records decoded)))
+      (unless (eq action :recovering)
+        ;; A replay that stopped names itself (fn-store-open-refusal-text:
+        ;; books/store-open-replay-refusal.lisp); else the checkpoint is damaged.
+        (let ((text (and (eq action :refused) (fnn-core-state 'fn-store-open-refusal-text))))
+          (fnn-core-state 'fn-store-sco-clear)
+          (fnn-bridge-reset)
+          (error 'fnn-store-open-refusal
+                 :message (if (stringp text)
+                              text
+                            "open refused reason=checkpoint-damaged: the checkpoint that covers the dropped log segments does not open")))))
     (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
     ;; The history's count (PKT-823); the prefix stays in the arena and the
     ;; checkpoint's rows, encoded only for a verb that reads the history

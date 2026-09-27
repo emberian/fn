@@ -38,6 +38,7 @@
 (include-book "../books/owner-checkpoint-pipeline")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
 (include-book "../books/store-open-pre-c1")
+(include-book "../books/store-open-replay-refusal")
 ; PRF-242: the open's replay answers its identity questions from tries it
 ; builds as it advances, and the history recognizer dispatches once per record.
 (include-book "../books/replay-identity-index")
@@ -376,8 +377,14 @@ reopen predicate, writer-lock observation and observed final namespace."
                ; (fn-store-cfg-native-admin-authorize-carried).
                (state (f-put-global 'fn-store-cfg-open-configs config-records state)))
           (value :recovering))
-      (let ((state (f-put-global 'fn-store-sco-open nil state)))
-        (value :fault))))))
+      ;; A replay that stopped refuses the open by name
+      ;; (books/store-open-replay-refusal.lisp fn-sorr-refusal: the capacity
+      ;; an article's charge does not fit, or the position and reason of any
+      ;; other stop); an open that failed otherwise stays a fault.
+      (let* ((refusal (fn-sorr-refusal replayed (fn-sco-records e) config-records))
+             (state (f-put-global 'fn-store-sco-open nil state))
+             (state (f-put-global 'fn-store-open-refusal refusal state)))
+        (value (if refusal :refused :fault)))))))
 
 (defun fn-store-sn-open-extended (e config-records frontier state)
   (declare (xargs :stobjs state :mode :program))
@@ -388,7 +395,8 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-open-refusal-text (state)
   (declare (xargs :stobjs state :mode :program))
   (value (if (boundp-global 'fn-store-open-refusal state)
-             (fn-sopc-refusal-text (f-get-global 'fn-store-open-refusal state))
+             (let ((refusal (f-get-global 'fn-store-open-refusal state)))
+               (or (fn-sopc-refusal-text refusal) (fn-sorr-refusal-text refusal)))
            nil)))
 
 ; The repair verb's answer while its semantics wait on ember (PKT-444).

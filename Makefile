@@ -252,6 +252,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/connection-budget-tests \
 	books/store-open-pre-c1 \
 	tests/acl2/store-open-pre-c1-tests \
+	books/store-open-replay-refusal \
+	tests/acl2/store-open-replay-refusal-tests \
 	tests/acl2/history-fold-refinement-tests \
 	tests/acl2/linear-recognizers-tests \
 	tests/acl2/open-one-pass-tests \
@@ -837,6 +839,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-arena-paged \
 	books/payload-arena-extent-logic \
 	books/payload-arena-extent \
+	books/store-intern-once \
+	tests/acl2/store-intern-once-tests \
 	books/payload-extent \
 	books/payload-commit-extent \
 	books/frame-digest-buffer \

@@ -35,6 +35,8 @@
 (include-book "store-intern")
 (include-book "store-recover-stream")
 (include-book "sha256-stobj")
+; The held row from one parse of the article (lane snapshot-open-3).
+(include-book "store-intern-once")
 
 ; -----------------------------------------------------------------------------
 ; 1. Octets as a big-endian natural (the trailer, 32 octets: one bignum).
@@ -209,15 +211,19 @@
          (h (fn-arena-count fn-arena))
          (fn-arena (fn-arena-seal-extent (nth 0 x) (nth 1 x) (nth 2 x) (nth 3 x) (nth 4 x) (nth 5 x)
                                          fn-arena)))
-    (mv (fn-held-make (fn-record-sequence w) (fn-record-txid w)
-                      (fn-record-generation w) (fn-record-msgid w) h
-                      (fn-record-groups w) (fn-record-obligation-id w)
-                      (fn-record-content-subject w) (fn-record-release-evidence w)
-                      (fn-record-charge w) (fn-record-stamp w)
-                      (fn-held-facts-of bytes)
-                      (fn-held-context-of bytes keyring generation)
-                      nil nil)
-        fn-arena)))
+    ;; The facts and the context from one parse of the article
+    ;; (books/store-intern-once.lisp, KEYSTONE
+    ;; fn-ipo-facts-context-is-facts-and-context); the logic reads each.
+    (mv-let (facts context)
+      (mbe :logic (mv (fn-held-facts-of bytes) (fn-held-context-of bytes keyring generation))
+           :exec (fn-ipo-facts-context bytes keyring generation))
+      (mv (fn-held-make (fn-record-sequence w) (fn-record-txid w)
+                        (fn-record-generation w) (fn-record-msgid w) h
+                        (fn-record-groups w) (fn-record-obligation-id w)
+                        (fn-record-content-subject w) (fn-record-release-evidence w)
+                        (fn-record-charge w) (fn-record-stamp w)
+                        facts context nil nil)
+          fn-arena))))
 
 (local (in-theory (disable fn-arx-extent-of fn-arx-record-suffix-len)))
 

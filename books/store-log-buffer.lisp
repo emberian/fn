@@ -276,15 +276,46 @@
           t))
     t))
 
+; A window [I, J) as a list, consed from its end: one pass, no stack.
+(defun fn-lgb-slice-acc (i j acc fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp i) (natp j) (<= i j) (<= j (fn-octets-len fn-octets))
+                              (< j (expt 2 59)) (true-listp acc))
+                  :measure (nfix (- j i))))
+  (declare (type (unsigned-byte 59) i j))
+  (if (mbe :logic (and (natp i) (natp j) (< i j)) :exec (< i j))
+      (fn-lgb-slice-acc i (the (unsigned-byte 59) (1- j))
+                        (cons (fn-octets-get (the (unsigned-byte 59) (1- j)) fn-octets) acc)
+                        fn-octets)
+    acc))
+
+(local
+ (defthm fn-lgb-take-snoc
+   (implies (and (natp k) (< k (len x)))
+            (equal (take (+ 1 k) x) (append (take k x) (list (nth k x)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable take nth)))))
+
+(defthm fn-lgb-slice-acc-is-take
+  (implies (and (natp i) (natp j) (<= i j) (<= j (len fn-octets)))
+           (equal (fn-lgb-slice-acc i j acc fn-octets)
+                  (append (take (- j i) (nthcdr i fn-octets)) acc)))
+  :hints (("Goal" :induct (fn-lgb-slice-acc i j acc fn-octets))
+          ("Subgoal *1/1" :use ((:instance fn-lgb-take-snoc (k (- (- j i) 1))
+                                           (x (nthcdr i fn-octets)))))))
+
+(in-theory (disable fn-lgb-slice-acc))
+
 ; The records, each sliced once.
 (defun fn-lgb-unpack (i end fn-octets)
   (declare (xargs :stobjs fn-octets
-                  :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-octets)))
+                  :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-octets))
+                              (< end (expt 2 59)))
                   :measure (nfix (- end i))))
   (if (and (natp i) (natp end) (< i end) (<= (+ i 4) end))
       (let ((n (fn-lgb-u32-at i fn-octets)))
         (if (and (natp n) (<= (+ i 4 n) end))
-            (cons (fn-oct-slice-list (+ i 4) (+ i 4 n) fn-octets)
+            (cons (fn-lgb-slice-acc (+ i 4) (+ i 4 n) nil fn-octets)
                   (fn-lgb-unpack (+ i 4 n) end fn-octets))
           nil))
     nil))
@@ -331,7 +362,8 @@
   (declare (xargs :stobjs fn-octets :guard t
                   :guard-hints (("Goal" :in-theory (enable fn-octets-len)))))
   (let ((n (fn-octets-len fn-octets)))
-    (if (and (<= *fn-lgb-min* n) (natp max) (<= max *fn-frame-max-payload*))
+    (if (and (<= *fn-lgb-min* n) (< n (expt 2 59))
+             (natp max) (<= max *fn-frame-max-payload*))
         (let* ((kind (fn-lgb-cell 5 fn-octets))
                (bound (if (equal kind *fn-lg-batch-kind*) *fn-frame-max-payload* max))
                (declared (fn-lgb-u32-at 6 fn-octets))
@@ -352,7 +384,7 @@
                                          fn-octets))
               (mv t (if (equal kind *fn-lg-batch-kind*)
                         (fn-lgb-unpack 42 end fn-octets)
-                      (list (fn-oct-slice-list 42 end fn-octets))))
+                      (list (fn-lgb-slice-acc 42 end nil fn-octets))))
             (mv nil nil)))
       (fn-lgw-decide (fn-octets-list fn-octets) prev max))))
 
@@ -390,7 +422,9 @@
   (declare (xargs :stobjs fn-octets :guard t
                   :guard-hints (("Goal" :in-theory (enable fn-octets-len)))))
   (let ((n (fn-octets-len fn-octets)))
-    (fn-oct-slice-list (nfix (- n *fn-frame-trailer-octets*)) n fn-octets)))
+    (if (< n (expt 2 59))
+        (fn-lgb-slice-acc (nfix (- n *fn-frame-trailer-octets*)) n nil fn-octets)
+      (fn-oct-slice-list (nfix (- n *fn-frame-trailer-octets*)) n fn-octets))))
 
 (defthm fn-lgb-trailer-fast-is-trailer
   (implies (fn-octets-p fn-octets)
