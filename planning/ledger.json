@@ -1061,8 +1061,8 @@
     "roots": 1052,
     "theorems": 15429,
     "functions": 10663,
-    "assert_events": 15899,
-    "must_fails": 1892,
+    "assert_events": 15900,
+    "must_fails": 1891,
     "prover_refusals": 0,
     "encapsulates": 77,
     "guards": {
@@ -29766,8 +29766,8 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 82,
-      "must_fails": 13,
+      "assert_events": 83,
+      "must_fails": 12,
       "prover_refusals": 0,
       "defconsts": 24,
       "defmacros": 3,
@@ -35235,13 +35235,13 @@
       {
         "check": "smid-t-step-without-best-okp",
         "book": "tests/acl2/store-mount-identity-tests.lisp",
-        "line": 234,
+        "line": 228,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "smid-t-decision-without-hypothesis",
         "book": "tests/acl2/store-mount-identity-tests.lisp",
-        "line": 399,
+        "line": 393,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
