@@ -301,6 +301,16 @@
                         (fn-feed-count-finals *ff-peer* *ff-journal*))))
 (assert-event (equal (len (fn-feed-queue *ff-replayed*)) 2))
 
+;; `fn-feed-drivenp-of-prefix': every cut of the journal is driven, and the
+;; length equation holds there too (the cut after the 239 has retired <a@fn>).
+(assert-event (fn-feed-drivenp *ff0* (take 5 *ff-journal*)))
+(assert-event (equal (len (fn-feed-queue (fn-feed-replay *ff0* (take 5 *ff-journal*))))
+                     (- (+ 0 (fn-feed-count-enqueues *ff-peer* (take 5 *ff-journal*)))
+                        (fn-feed-count-finals *ff-peer* (take 5 *ff-journal*)))))
+;; Without `(<= n (len es))': a cut past the end pads the journal with nil
+;; entries, which are no records.
+(assert-event (not (fn-feed-drivenp *ff0* (take 9 *ff-journal*))))
+
 ;; `fn-feed-final-outcome-retires-for-good': the antecedent holds for
 ;; <a@fn> and the conclusion does; for <b@fn> (sent, no answer) the
 ;; antecedent fails and <b@fn> is present.

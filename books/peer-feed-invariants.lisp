@@ -1413,6 +1413,30 @@
                                fn-feed-presentp fn-feedp fn-feed-drivenp))))
 
 
+; Every process-death cut leaves a PREFIX of the journal the live feed
+; wrote, and a prefix of a driven journal is driven: the keystones above
+; hold at every cut, so the replay at the next open is covered wherever the
+; process died.  Retirement adds no record of its own (the :feed-outcome
+; record that authorizes it was already a cut), so it is idempotent on
+; replay by construction.
+(local
+ (defun fn-feed-drivenp-prefix-induct (f es n)
+   (declare (xargs :measure (acl2-count es)))
+   (if (or (atom es) (zp n))
+       (list f es n)
+     (fn-feed-drivenp-prefix-induct
+      (fn-feed-apply-record f (fn-feed-journal-kind (car es))
+                            (fn-feed-journal-values (car es)))
+      (cdr es) (- n 1)))))
+
+(defthm fn-feed-drivenp-of-prefix
+  (implies (and (fn-feed-drivenp f es) (natp n) (<= n (len es)))
+           (fn-feed-drivenp f (take n es)))
+  :hints (("Goal" :induct (fn-feed-drivenp-prefix-induct f es n)
+           :in-theory (disable (:d fn-feed-apply-record)
+                               (:d fn-feed-record-drivenp) (:d fn-feedp)
+                               fn-feed-journal-entryp))))
+
 ; -----------------------------------------------------------------------------
 ; KEYSTONE: nothing is dropped without a drop record naming the reason
 

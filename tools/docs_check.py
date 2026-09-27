@@ -474,7 +474,9 @@ HEALTH_ADVICE = {
     "stranded-transfer": "a peer kept refusing an article and fn stopped offering it. "
                          "Fix the peer",
     "unavailable-peer": "a peer has articles waiting and is not connected, or keeps "
-                        "saying \"try later\" (its store may be full: `deferred=N`). "
+                        "saying \"try later\" (its store may be full: `deferred=N`), "
+                        "or its queue is full (`saturated=N`: every post is refused "
+                        "`feed-queue-full` until it catches up). "
                         "Check its address and port (`peer list`), that it is "
                         "running, and ask its operator",
     "receipt-debt": "articles were forwarded and wait for the receipts that confirm them",

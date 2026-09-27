@@ -1174,11 +1174,24 @@ class NativePeeringTests(unittest.TestCase):
         self.assertNotEqual(health.returncode, 0, health.stdout)
         self.assertIn(b"unavailable-peer held", health.stdout, health.stdout)
         self.assertIn(b"saturated=1", health.stdout, health.stdout)
+        identity = self.verify_process_identity(node)
+        # The backlog is durable: after a restart the queue is still full
+        # and the refusal still named.  The open time with 1,024 undelivered
+        # entries is printed (a measurement, not a bound: fn-feedp is still
+        # re-checked per replayed record).
+        node["process"].terminate()
+        node["process"].wait(timeout=60)
+        started = time.monotonic()
+        self.start(node)
+        opened = time.monotonic() - started
+        again = self.nntp_post(node, "<sat-local-2@example.invalid>")
+        self.assertIn(b"(feed-queue-full)", again)
         print("NATIVE-PEERING-WITNESS " + json.dumps({
             "kind": "feed-queue-saturated-prf-335",
             "post": reply.decode("ascii", "replace").strip(),
             "health": health.stdout.decode("ascii", "replace").splitlines()[:9],
-            "identity": self.verify_process_identity(node)}, sort_keys=True))
+            "restart_to_listening_s": round(opened, 2),
+            "identity": identity}, sort_keys=True))
 
     def test_obligations_report_of_five_thousand_articles_answers(self):
         """PRF-336 (the openbsd-rehearsal, stop 2): `operator CONFIG

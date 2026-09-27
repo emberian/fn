@@ -258,7 +258,7 @@ tables are made from fn's own code, so they list every word it can print.
 | 23 | `space-pressure` | the store is nearly full. `capacity` says which part; release what is held, or move to larger settings |
 | 24 | `no-route` | articles wait to be forwarded and no BP route is set |
 | 25 | `stranded-transfer` | a peer kept refusing an article and fn stopped offering it. Fix the peer |
-| 26 | `unavailable-peer` | a peer has articles waiting and is not connected, or keeps saying "try later" (its store may be full: `deferred=N`). Check its address and port (`peer list`), that it is running, and ask its operator |
+| 26 | `unavailable-peer` | a peer has articles waiting and is not connected, or keeps saying "try later" (its store may be full: `deferred=N`), or its queue is full (`saturated=N`: every post is refused `feed-queue-full` until it catches up). Check its address and port (`peer list`), that it is running, and ask its operator |
 | 27 | `receipt-debt` | articles were forwarded and wait for the receipts that confirm them |
 
 When fn refuses a post, the reply starts `441` and the log line starts `refused` and names the reason:
