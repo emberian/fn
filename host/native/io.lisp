@@ -5450,8 +5450,41 @@ tree root), or stop the build."
              (string= (third argv) "post")
              "store post"))))
 
+(defun fnn-stack-exhaustion-report (next)
+  "FN_NATIVE_FAULT_BACKTRACE's report of a control-stack exhaustion, printed
+on the exhausted stack before any handler unwinds it, then NEXT (SBCL's own
+signal).  The frames as a run-length list of function names, innermost
+first: a recursion that takes one frame per line or per octet is one row
+with its depth, and the rows under it name the path that called it."
+  (ignore-errors
+   (let ((runs nil))
+     (sb-debug::map-backtrace
+      (lambda (frame)
+        (let ((name (ignore-errors
+                     (sb-di:debug-fun-name (sb-di:frame-debug-fun frame)))))
+          (if (and runs (equal (car (car runs)) name))
+              (incf (cdr (car runs)))
+              (push (cons name 1) runs))))
+      :count most-positive-fixnum)
+     (let ((*print-length* 3) (*print-level* 3))
+       (format *error-output* "~&fault backtrace (thread ~a): control stack exhausted~%"
+               (sb-thread:thread-name sb-thread:*current-thread*))
+       (dolist (run (reverse runs))
+         (format *error-output* "frames ~a x~a~%" (car run) (cdr run))))
+     (finish-output *error-output*)))
+  (funcall next))
+
 (defun fnn-developer-selector-gate (argv)
   "Refuse, before any store is opened, a production start that names a cut."
+  ;; A stack exhaustion is signalled inside fnn-core's handlers, which unwind
+  ;; it before fnn-owner-shared-action-locked's handler-bind sees it: the
+  ;; report is installed at SBCL's signal instead (developer image only).
+  (when (fnn-developer-selector "FN_NATIVE_FAULT_BACKTRACE")
+    (unless (sb-int:encapsulated-p 'sb-kernel::control-stack-exhausted-error
+                                   'fnn-stack-exhaustion-report)
+      (sb-int:encapsulate 'sb-kernel::control-stack-exhausted-error
+                          'fnn-stack-exhaustion-report
+                          #'fnn-stack-exhaustion-report)))
   (let ((found (fnn-developer-selector-refusal argv)))
     (when found
       (error 'fnn-usage-error
