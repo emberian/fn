@@ -4357,7 +4357,7 @@
       }
     },
     {
-      "id": "SCN-152",
+      "id": "SCN-167",
       "title": "The arena's generic runs over the attached byte array: a record interned into the live arena materializes to itself, a pinned row list reads the same bytes across later seals and a reclaim, and the catalog loaded from a mixed history answers the store's identity index from its contexts",
       "milestone": "M5",
       "status": "specified",
