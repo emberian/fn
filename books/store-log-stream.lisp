@@ -117,6 +117,35 @@
          (not (equal claimed last))
          t)))
 
+;; The entry's verdict and records from ONE frame open (fn-lg-entry-okp and
+;; fn-lg-slice-records each open the frame, and each open digests the entry:
+;; fn-lgw-decide-is-okp-and-records says the one open answers both).
+(defun fn-lgw-decide (e prev max)
+  (declare (xargs :guard t))
+  (if (not (consp e))
+      (mv nil nil)
+    (let* ((r (ec-call (fn-frame-open e (ec-call (fn-lg-open-bound e max)))))
+           (body (ec-call (nthcdr *fn-frame-trailer-octets* (fn-frame-result-payload r))))
+           (batchp (equal (fn-frame-result-kind r) *fn-lg-batch-kind*)))
+      (if (and (fn-frame-result-okp r)
+               (equal (fn-frame-result-magic r) *fn-lg-magic*)
+               (equal (fn-frame-result-version r) *fn-lg-version*)
+               (or (equal (fn-frame-result-kind r) *fn-lg-record-kind*)
+                   (and batchp (ec-call (fn-lg-unpack-okp body max))))
+               (equal (ec-call (fn-bs-take *fn-frame-trailer-octets* (fn-frame-result-payload r)))
+                      prev))
+          (mv t (if batchp (ec-call (fn-lg-unpack body)) (list body)))
+        (mv nil nil)))))
+
+(defthm fn-lgw-decide-is-okp-and-records
+  (and (equal (mv-nth 0 (fn-lgw-decide e prev max))
+              (if (fn-lg-entry-okp e prev max) t nil))
+       (implies (fn-lg-entry-okp e prev max)
+                (equal (mv-nth 1 (fn-lgw-decide e prev max))
+                       (fn-lg-slice-records e max))))
+  :hints (("Goal" :in-theory (disable fn-frame-open fn-lg-unpack-okp fn-lg-unpack fn-bs-take
+                                      fn-lg-open-bound))))
+
 ; One entry: E is the octets fn-lgw-entry-len named, read at POS, or NIL.
 ; Answers (mv TOOK RECORDS ST'): an entry holds one record (kind 1) or a
 ; batch of them (kind 2, PKT-749), fn-lg-slice-records.
@@ -125,17 +154,17 @@
   (let ((pos (fn-lgw-pos st)) (prev (fn-lgw-prev st))
         (count (fn-lgw-count st)) (next (fn-lgw-next st)))
     (cond ((fn-lgw-stop st) (mv nil nil st))
-          ((not (ec-call (fn-lg-entry-okp e prev max)))
-           (mv nil nil (fn-lgw-make pos prev count next t
-                                    (fn-lgw-broken-slice-p e prev max))))
-          (t (let* ((n (len e))
-                    (step (+ n (fn-lg-pad-len n unit)))
-                    (records (ec-call (fn-lg-slice-records e max)))
-                    (last (ec-call (fn-lg-trailer e))))
-               (mv t records
-                   (fn-lgw-make (+ pos step) last (+ count (len records))
-                                (fn-lgw-next-fold records next)
-                                (not (< (+ pos step) (nfix extent))) nil)))))))
+          (t (mv-let (ok records) (fn-lgw-decide e prev max)
+               (if (not ok)
+                   (mv nil nil (fn-lgw-make pos prev count next t
+                                            (fn-lgw-broken-slice-p e prev max)))
+                 (let* ((n (len e))
+                        (step (+ n (fn-lg-pad-len n unit)))
+                        (last (ec-call (fn-lg-trailer e))))
+                   (mv t records
+                       (fn-lgw-make (+ pos step) last (+ count (len records))
+                                    (fn-lgw-next-fold records next)
+                                    (not (< (+ pos step) (nfix extent))) nil)))))))))
 
 ; The kernel at the stop (fn-lgc-open's shape).
 (defun fn-lgw-kernel (st)
@@ -165,7 +194,7 @@
   (implies (mv-nth 0 (fn-lgw-step e st unit max extent))
            (< (fn-lgw-pos st) (fn-lgw-pos (mv-nth 2 (fn-lgw-step e st unit max extent)))))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable fn-lg-entry-okp fn-lg-slice-records fn-lg-trailer
+  :hints (("Goal" :in-theory (disable fn-lgw-decide fn-lg-entry-okp fn-lg-slice-records fn-lg-trailer
                                       fn-lg-pad-len fn-lgw-broken-slice-p fn-lgt-txid))))
 
 (defun fn-lgw-run (c st unit max)
@@ -226,7 +255,7 @@
                          (fn-lgw-next-fold (fn-lg-slice-records e max) (fn-lgw-next st)))
                   (equal (fn-lgw-stop (mv-nth 2 r)) (not (< (+ (fn-lgw-pos st) step) (nfix extent))))
                   (equal (fn-lgw-broken (mv-nth 2 r)) nil))))
-  :hints (("Goal" :in-theory (disable fn-lg-entry-okp fn-lg-slice-records fn-lg-trailer
+  :hints (("Goal" :in-theory (disable fn-lgw-decide fn-lg-entry-okp fn-lg-slice-records fn-lg-trailer
                                       fn-lg-pad-len fn-lgw-broken-slice-p fn-lgw-next-fold))))
 
 (defthm fn-lgw-step-when-no-entry
@@ -239,7 +268,7 @@
                   (equal (fn-lgw-next (mv-nth 2 r)) (fn-lgw-next st))
                   (equal (fn-lgw-broken (mv-nth 2 r))
                          (fn-lgw-broken-slice-p e (fn-lgw-prev st) max)))))
-  :hints (("Goal" :in-theory (disable fn-lg-entry-okp fn-lgw-broken-slice-p))))
+  :hints (("Goal" :in-theory (disable fn-lgw-decide fn-lg-entry-okp fn-lgw-broken-slice-p))))
 
 (local
  (defthm fn-lgw-nthcdr-nthcdr
@@ -296,7 +325,7 @@
   (implies (not (fn-lgw-stop st))
            (equal (car (fn-lgw-step e st unit max extent))
                   (if (fn-lg-entry-okp e (fn-lgw-prev st) max) t nil)))
-  :hints (("Goal" :in-theory (disable fn-lg-entry-okp fn-lg-slice-records fn-lg-trailer
+  :hints (("Goal" :in-theory (disable fn-lgw-decide fn-lg-entry-okp fn-lg-slice-records fn-lg-trailer
                                       fn-lg-pad-len fn-lgw-broken-slice-p fn-lgw-next-fold))))
 
 (defthm fn-lgw-broken-slice-p-of-nil
