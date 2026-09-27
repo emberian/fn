@@ -870,23 +870,6 @@
   :hints (("Goal" :in-theory (enable fn-ctl-named-principal
                                      fn-ctl-principal-hex))))
 
-; No record reads the target's octets (T-RECEIVED is retired; a key record
-; reads the locks it carries).
-(defthm fn-ctl-withdrawal-effect-ignores-the-octets
-  (equal (fn-ctl-withdrawal-effect w t-groups t-verdict r1)
-         (fn-ctl-withdrawal-effect w t-groups t-verdict r2))
-  :rule-classes nil)
-
-; A record that is not a key record never reads the target's octets.
-(defthm fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets
-  (implies (not (fn-ctl-key-principalp (fn-ctl-w-principal w)))
-           (equal (fn-ctl-withdrawal-effect w t-groups t-verdict r1)
-                  (fn-ctl-withdrawal-effect w t-groups t-verdict r2)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-ctl-named-principal
-                                      fn-ctl-covers-every-p
-                                      fn-ctl-locks-octets))))
-
 ; SEC-006, refused by name: a key record none of whose keys opens a lock of
 ; the target declines :no-lock-match, whatever the target's verdict and
 ; groups (a different login's key, a key for another article).

@@ -443,7 +443,7 @@
 
 (defthm fn-cev-plan-of-no-article
   (equal (fn-cev-plan nil verdicts records configs) nil)
-  :hints (("Goal" :in-theory (enable fn-cev-plan))))
+  :hints (("Goal" :in-theory (enable fn-cev-plan fn-ctl-article-plan))))
 
 (defthm fn-cev-journal-holds-no-nil
   (not (member-equal nil (fn-ctl-articles-withdrawals arts verdicts records configs)))
