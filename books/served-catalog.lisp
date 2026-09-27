@@ -1142,6 +1142,10 @@
              (fn-nntp-message-id-tokenp (car args))
              (fn-nntp-msgid-withdrawn-p index (car args)))
         (fn-nntp-withdrawn-reply session t))
+       ;; The reader-compatibility replies (books/nntp-reader-compat.lisp),
+       ;; as the pinned dispatcher orders them: before the retrieval arms.
+       ((fn-rcompat-reply session archive index env keyword args)
+        (fn-rcompat-reply session archive index env keyword args))
        ((and (or (fn-nntp-keywordp keyword "ARTICLE")
                  (fn-nntp-keywordp keyword "HEAD")
                  (fn-nntp-keywordp keyword "BODY")
@@ -1285,7 +1289,7 @@
                             fn-nntp-hdr-response fn-nntp-xhdr-response
                             fn-nntp-over-response fn-nntp-xover-response
                             fn-nntp-retrieval)
-                           (fn-nntp-xref-reply fn-gidx-list-counts-command
+                           (fn-nntp-xref-reply fn-rcompat-reply fn-gidx-list-counts-command
                             fn-nntp-number-withdrawn-p fn-nntp-msgid-withdrawn-p
                             fn-nntp-withdrawn-reply fn-gidx-listgroup-command
                             fn-nntp-over-range-indexed fn-nntp-verdict-hdr-response
@@ -1313,3 +1317,9 @@
                             fn-nntp-printable-tokenp fn-nntp-token-string
                             fn-nntp-single fn-gidx-build fn-midx-build fn-statep
                             fn-nntp-over-range-indexed-is-walk)))))
+
+; Guards of the arms the lift executes (books/served-catalog-chain.lisp
+; fn-scc-command calls the dispatcher): the whole -cat path is guard-verified.
+(verify-guards fn-nntp-xpat-lines-for-numbers-cat)
+(verify-guards fn-nntp-xpat-response-cat)
+(verify-guards fn-nntp-archive-command-cat)
