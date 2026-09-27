@@ -4386,7 +4386,7 @@
       "id": "SCN-163",
       "title": "Per-peer Distribution filtering: an article whose Distribution the peer's filter does not name is not fed to that peer",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "implementation": {
         "test": "tests.test_native_peering",
         "cases": [
