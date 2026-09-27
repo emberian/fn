@@ -1025,7 +1025,7 @@ recovery observes it under (`fn-nco-observe')."
                                    fn-record-octets-string fn-cbor-octet-listp
                                    fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-words fn-native-admin-argvp
-                                   fn-native-admin-peer-plan
+                                   fn-native-admin-peer-plan fn-native-admin-peer-extend-plan
                                    fn-native-admin-bp-boundary-plan
                                    fn-record-group-namep fn-path-identityp
                                    fn-native-admin-decimalp
@@ -1053,7 +1053,7 @@ recovery observes it under (`fn-nco-observe')."
                                    fn-record-octets-string fn-cbor-octet-listp
                                    fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-words fn-native-admin-argvp
-                                   fn-native-admin-peer-plan
+                                   fn-native-admin-peer-plan fn-native-admin-peer-extend-plan
                                    fn-native-admin-bp-boundary-plan
                                    fn-record-group-namep fn-path-identityp
                                    fn-native-admin-decimalp
