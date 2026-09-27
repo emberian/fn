@@ -550,6 +550,82 @@
   :hints (("Goal" :in-theory (e/d (fn-nntp-closed-status)
                                   (fn-mod-session-entries)))))
 
+;; -----------------------------------------------------------------------------
+;; The queue groups (PKT-658)
+;;
+;; A queue group holds the held posts of a moderated group: it is never
+;; offered to a peer (books/owner.lisp `fn-own-submission-targets' reads
+;; `fn-mod-names-a-queuep' over the owner's posting configuration), and it
+;; is readable only by the moderators of every moderated group it queues
+;; for (`fn-mod-queue-hiddenp', the reader's rule; see the header of
+;; books/owner.lisp's feed section and the lane's REQUEST to group-access).
+
+; Whether group octets G is the queue of some moderated entry of CLOSED.
+(defun fn-mod-queuep (g closed)
+  (declare (xargs :guard t))
+  (if (consp closed)
+      (or (and (fn-nntp-moderated-entryp (car closed))
+               (equal (fn-mod-entry-queue (car closed)) g))
+          (fn-mod-queuep g (cdr closed)))
+    nil))
+
+(defun fn-mod-names-a-queuep (groups closed)
+  (declare (xargs :guard t))
+  (if (consp groups)
+      (or (fn-mod-queuep (car groups) closed)
+          (fn-mod-names-a-queuep (cdr groups) closed))
+    nil))
+
+; Whether queue G is hidden from LOGIN (octets; nil unauthenticated) under
+; the owner's entries CLOSED: some :moderated entry queues into G and LOGIN
+; is not among its moderators.
+(defun fn-mod-queue-hiddenp (g closed login)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory
+                                 (enable fn-nntp-moderated-entryp)))))
+  (if (consp closed)
+      (or (and (fn-nntp-moderated-entryp (car closed))
+               (equal (car (car closed)) :moderated)
+               (equal (fn-mod-entry-queue (car closed)) g)
+               (not (and login
+                         (member-equal login (true-list-fix
+                                              (fn-mod-entry-moderators
+                                               (car closed))))))
+               t)
+          (fn-mod-queue-hiddenp g (cdr closed) login))
+    nil))
+
+(defthm fn-mod-names-a-queuep-member
+  (implies (and (member-equal g groups) (fn-mod-queuep g closed))
+           (fn-mod-names-a-queuep groups closed)))
+
+; Every queue of an entry is a queue.
+(defthm fn-mod-queuep-of-an-entry
+  (implies (and (member-equal e closed) (fn-nntp-moderated-entryp e))
+           (fn-mod-queuep (fn-mod-entry-queue e) closed)))
+
+; The reader's rule: a queue is hidden from every login that is not a
+; moderator of a group it queues for, and from a connection that has not
+; authenticated.
+(defthm fn-mod-queue-hidden-from-a-non-moderator
+  (implies (and (member-equal e closed)
+                (fn-nntp-moderated-entryp e)
+                (equal (car e) :moderated)
+                (not (member-equal login (true-list-fix
+                                          (fn-mod-entry-moderators e)))))
+           (fn-mod-queue-hiddenp (fn-mod-entry-queue e) closed login)))
+
+(defthm fn-mod-queue-hidden-without-a-login
+  (implies (and (member-equal e closed)
+                (fn-nntp-moderated-entryp e)
+                (equal (car e) :moderated))
+           (fn-mod-queue-hiddenp (fn-mod-entry-queue e) closed nil)))
+
+; A group that queues for no moderated group is hidden from nobody.
+(defthm fn-mod-queue-hiddenp-only-a-queue
+  (implies (not (fn-mod-queuep g closed))
+           (not (fn-mod-queue-hiddenp g closed login))))
+
 (deftheory fn-mod-vocabulary
   '((:d fn-mod-entry-group) (:d fn-mod-entry-queue) (:d fn-mod-entry-moderators)
     (:d fn-mod-entry-approverp) (:d fn-mod-entry-of) (:d fn-mod-named-entries)
@@ -557,5 +633,6 @@
     (:d fn-mod-session-entries) (:d fn-mod-no-approversp) (:d fn-mod-facts)
     (:d fn-mod-facts-approvedp) (:d fn-mod-envelope-msgid)
     (:d fn-mod-forwarded-source) (:d fn-mod-concat) (:d fn-mod-envelope-source)
-    (:d fn-mod-forward) (:d fn-mod-gate)))
+    (:d fn-mod-forward) (:d fn-mod-gate) (:d fn-mod-queuep)
+    (:d fn-mod-names-a-queuep) (:d fn-mod-queue-hiddenp)))
 (in-theory (disable fn-mod-vocabulary))

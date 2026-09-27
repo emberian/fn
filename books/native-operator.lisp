@@ -480,7 +480,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "moderation")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -511,6 +511,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "capacity") "usage: fn operator CONFIG capacity DECIMAL-UINT32")
         ((equal subject "retention")
          "usage: fn operator CONFIG retention set {keep-forever | released-by-all-holders | release-after DAYS} (D13: the content-retention rule; keep-forever is the default)")
+        ((equal subject "moderation")
+         "usage: fn operator CONFIG moderation list GROUP (the posts held for moderated GROUP in its queue: held, approved or rejected; asks the running owner, offline reads the store)")
         ((equal subject "control")
          "usage: fn operator CONFIG control {grant PRINCIPAL-HEX cancel NAMESPACE | revoke PRINCIPAL-HEX cancel NAMESPACE | list | log | evidence MESSAGE-ID} (NAMESPACE is a group name or one ending in .*; spec peering 8; log lists the withdrawal records, evidence shows one article's decision context)")
         ((equal subject "peer")
@@ -732,6 +734,15 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                   (equal (fn-ncfg-first (fn-cevg-parse rest)) :usage))
              (fn-nop-usage (list :control-report (fn-ncfg-second (fn-cevg-parse rest)))
                            "control" config rest))
+            ; PKT-657: `moderation list GROUP' is a status report too.
+            ((and (equal command "moderation")
+                  (equal (fn-ncfg-first (fn-cevg-moderation-parse rest)) :kind))
+             (fn-nop-result :accepted :plan "moderation" config
+                            (list (fn-ncfg-second (fn-cevg-moderation-parse rest)))))
+            ((equal command "moderation")
+             (fn-nop-usage (list :moderation-report
+                                 (fn-ncfg-second (fn-cevg-moderation-parse rest)))
+                           "moderation" config rest))
             ((or (equal command "group") (equal command "capacity")
                  (equal command "peer") (equal command "bp-boundary")
                  (equal command "bp-route") (equal command "policy")
@@ -1305,7 +1316,8 @@ when that store already exists is `fn-native-operator-init-outcome'."
           ((equal (fn-native-operator-result-command result) "pins") :status)
           ((equal (fn-native-operator-result-command result) "health") :health)
           ((equal (fn-native-operator-result-command result) "obligations") :status)
-          ((and (equal (fn-native-operator-result-command result) "control")
+          ((and (member-equal (fn-native-operator-result-command result)
+                              '("control" "moderation"))
                 (fn-cevg-kindp (fn-ncfg-first
                                 (fn-native-operator-result-arguments result))))
            :status)
@@ -1944,7 +1956,8 @@ when that store already exists is `fn-native-operator-init-outcome'."
        (or (member-equal (fn-native-operator-result-command result)
                          '("status" "health" "pins" "obligations"))
            ;; PKT-209: `control log', `control evidence MSGID'.
-           (and (equal (fn-native-operator-result-command result) "control")
+           (and (member-equal (fn-native-operator-result-command result)
+                              '("control" "moderation"))
                 (fn-cevg-kindp (fn-ncfg-first
                                 (fn-native-operator-result-arguments result)))))
        t))

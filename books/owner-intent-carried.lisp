@@ -103,10 +103,13 @@
         nil
       (let* ((tbl (fn-own-feeds o))
              (msgid (fn-own-sub-msgid sub))
-             (targets (fn-own-feed-targets
-                       tbl (fn-own-sub-origin sub)
-                       (fn-own-sub-feed-groups sub)
-                       (fn-icar-path sub carry))))
+             (groups (fn-own-sub-feed-groups sub))
+             (targets (if (fn-mod-names-a-queuep
+                           groups (fn-inj-config-closed (fn-own-config o)))
+                          nil
+                        (fn-own-feed-targets
+                         tbl (fn-own-sub-origin sub) groups
+                         (fn-icar-path sub carry)))))
         (fn-own-feed-new-targets targets tbl msgid)))))
 
 (defthm fn-icar-submission-targets-is-submission-targets
