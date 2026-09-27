@@ -648,7 +648,6 @@
         "fn-bp-trace-preserves-node",
         "fn-bp-transport-step-preserves-receipt",
         "fn-bp-transport-trace-preserves-receipt",
-        "fn-bp-unchecked-receipt-is-no-op",
         "fn-bpo-receipt-success-requires-local-policy",
         "fn-bpo-receipt-success-is-actual-journal-preparation",
         "fn-bp-initial-state-is-binding-state",
@@ -745,7 +744,6 @@
         "fn-rcon-record-p-is-record-p",
         "fn-rcon-record-encode-impl-is-record-encode-impl",
         "fn-rcon-store-event-encode-is-store-event-encode",
-        "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
         "fn-rcon-sn-io-is-sn-io",
         "fn-rcon-ocfg-io-is-ocfg-step",
         "fn-bpi-ingress-prepare-carried-is-prepare"
@@ -1744,7 +1742,6 @@
         "fn-own-fault-clears-the-faulted-submission",
         "fn-own-fault-keeps-another-connections-submission",
         "fn-own-fault-releases-the-faulted-transaction",
-        "fn-own-fault-is-not-a-store-event",
         "fn-own-fault-reply-is-not-a-post-outcome",
         "fn-ocfg-fault-keeps-every-other-connection",
         "fn-ocfg-open-at-the-bound-refuses"
@@ -1988,8 +1985,7 @@
         "fn-peer-ihave-of-a-held-message-id-is-435-and-no-article",
         "fn-peer-check-of-a-held-message-id-is-438-and-no-offer-outstanding",
         "fn-own-read-offers-against-the-live-node",
-        "fn-own-live-session-boundedp",
-        "fn-peer-full-store-is-a-retry-code"
+        "fn-own-live-session-boundedp"
       ]
     },
     {
@@ -3715,7 +3711,6 @@
         "fn-scka-recover-rows-rii-is-recover-rows",
         "fn-scka-write-run-is-run-segments",
         "fn-scka-next-checkpoint-is-capture",
-        "fn-scka-select-named-refuses-the-arena-by-name",
         "fn-sshr-share-is-identity",
         "fn-scka-src-payloads-of-canon-srcs",
         "fn-scka-srcs-n-compose",
@@ -4282,11 +4277,9 @@
         "fn-pcb-no-budget-history-carries-nothing",
         "fn-pcb-admission-names-count-exhaustion",
         "fn-pcb-admission-names-octet-exhaustion",
-        "fn-pcb-admission-without-a-budget-admits-nothing",
         "fn-pcb-peer-budget-after-extend-delta",
         "fn-pcb-budget-after-extension",
         "fn-pcb-present-carrier-not-accepted-has-a-class",
-        "fn-pcb-bound-carrier-with-a-failed-primitive-is-signature-failed",
         "fn-pcb-refused-carrier-is-never-signature-failed",
         "fn-pcb-absent-carrier-has-no-class"
       ]
@@ -4975,8 +4968,7 @@
         "fn-cp-ack-after-its-commit-is-a-no-op",
         "fn-col-poll-is-a-page-or-a-refusal",
         "fn-col-poll-is-the-index-window-scan-unfolds",
-        "fn-col-scope-entry-position-is-natural",
-        "fn-col-ack-is-the-kernel-ack-unfolds"
+        "fn-col-scope-entry-position-is-natural"
       ]
     },
     {
@@ -5017,7 +5009,6 @@
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
       ],
       "events": [
-        "fn-bpnj-step-delegates-every-other-event",
         "fn-bpnj-contact-offers-while-a-ready-job-remains",
         "fn-bpnj-contact-offer-starts-the-ready-job",
         "fn-bpnj-contact-job-step-preserves-the-base-invariants",
@@ -6324,9 +6315,7 @@
       "events": [
         "fn-own-read-hdr-fn-enrollment-is-the-pinned-enrollment",
         "fn-nntp-hdr-fn-enrollment-is-the-pinned-enrollment",
-        "fn-nntp-enrollment-hdr-response-is-the-pinned-enrollment",
-        "fn-own-reader-opened-after-completion-pins-the-finished-keyring",
-        "fn-enr-item-of-an-enrolled-principal"
+        "fn-own-reader-opened-after-completion-pins-the-finished-keyring"
       ]
     },
     {
@@ -6949,8 +6938,6 @@
         "fn-own-consumed-completion-is-240-or-uncertain",
         "fn-osp-served-post-names-a-refused-key-change",
         "fn-osp-key-change-reply-only-for-a-consumed-refused-key-change",
-        "fn-pcb-transit-verdict-names-the-accepted-arm",
-        "fn-olog-detail-fields-print-an-accepted-arms-verdict",
         "fn-pinv-accept-step-current-only-for-a-bound-current-inviter",
         "fn-pinv-accept-of-a-current-inviter-configures-it",
         "fn-pinv-accept-words-are-the-owners-plan",
@@ -7661,7 +7648,6 @@
         "fn-heap-decision-exit-code-of-a-refusal",
         "fn-heap-reserve-decide-holds-every-thread-the-node-runs",
         "fn-heap-reserve-decide-refuses-exactly-past-the-machine",
-        "fn-heap-reserve-decide-keeps-heap-figures-refusals",
         "fn-heap-reserve-thread-refusal-exits-1",
         "fn-heap-init-decide-fits-the-budget-and-the-machine",
         "fn-heap-init-decide-honors-the-operators-request",
@@ -8680,11 +8666,8 @@
         "fn-cbind-poll-delivers-only-readable-events",
         "fn-cbind-poll-is-the-consumer-poll-or-a-refusal",
         "fn-cbind-ack-is-the-consumer-ack-or-a-refusal",
-        "fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll",
-        "fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack",
         "fn-cbind-poll-over-delivers-only-readable-events",
         "fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal",
-        "fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll",
         "fn-cbind-poll-over-is-poll-unless-a-held-row"
       ]
     },
@@ -8878,7 +8861,6 @@
         "fn-nntp-archive-command-pinned-article-head-is-served",
         "fn-oag-group-facts-has-the-created-stamp",
         "fn-oag-group-facts-are-group-facts",
-        "fn-post-reader-env-facts",
         "fn-nov-fmt-xref-lines-are-clean"
       ]
     },
@@ -9584,8 +9566,7 @@
         "fn-cfg-withdrawal-row-of-row-upsert",
         "fn-ctl-node-withdrawal-withdraws-exactly-its-target",
         "fn-mvb-withdraw-names-exactly-its-target",
-        "fn-mvb-withdraw-makes-the-node-authorize-exactly-its-target",
-        "fn-mvb-plan-unfolds"
+        "fn-mvb-withdraw-makes-the-node-authorize-exactly-its-target"
       ]
     },
     {
@@ -9752,8 +9733,6 @@
         "fn-ncr-printed-reason-is-the-decisions",
         "fn-ncr-request-decode-is-the-plain-decode",
         "fn-ncr-framep-of-seal",
-        "fn-ncr-cli-after-retries-only-an-unbootstrapped-register",
-        "fn-col-bind-refusal-refuses-exactly-an-unregistered-bind",
         "fn-ncr-json-object-is-ascii",
         "fn-ncr-withdrawal-roundtrip",
         "fn-ncr-withdrawal-report-fits-the-poll-reply"
@@ -9786,10 +9765,8 @@
         "fn-cwd-page-never-serves-withdrawn-content",
         "fn-cwd-scan-delivers-a-withdrawing-cause",
         "fn-cwd-scan-withdrawal-advances",
-        "fn-cwd-page-of-a-withdrawal",
         "fn-cwd-page-without-withdrawals-is-the-answer",
         "fn-cwd-scan-is-the-poll-scan-unless-a-withdrawal",
-        "fn-cwd-page-of-a-refusal",
         "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
       ]
     },
@@ -9936,7 +9913,6 @@
         "fn-ocs-failed-barrier-stops-telling-no-member",
         "fn-ocs-member-rendered-only-in-a-complete",
         "fn-ocs-member-otherwise-uncertain",
-        "fn-ocs-member-uncertain-word-told-uncertain",
         "fn-ocs-in-flight-commit-before-reader"
       ]
     },
@@ -10120,7 +10096,6 @@
         "fn-sf-make-fields-snoc-records-is-make",
         "fn-sf-make-fields-snoc-successes-is-make",
         "fn-pcar-files-candidatep-is-candidatep",
-        "fn-pcar-records-count-is-sbud-used",
         "fn-ccar-seek-at-is-seek"
       ]
     },
@@ -10431,8 +10406,7 @@
         "fn-olr-take-never-joins-the-batch-in-flight",
         "fn-ocl-view-historyp-of-a-view-captured-before-appends",
         "fn-ocl-view-configp-of-a-view-captured-before-appends",
-        "fn-ocfg-at-reader-view-reads-the-reader-view",
-        "fn-ocfg-with-view-keeps-the-rest"
+        "fn-ocfg-at-reader-view-reads-the-reader-view"
       ]
     },
     {
@@ -10458,7 +10432,6 @@
       ],
       "progress_note": "post-alloc-3 2026-09-27.",
       "events": [
-        "fn-own-ledger-of-fn-own-make",
         "fn-own-refresh-ix-keeps-ledger-field",
         "fn-rix-own-complete-enabled-ledger-field",
         "fn-rix-own-complete-enabled-ledger"
