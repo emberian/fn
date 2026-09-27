@@ -90,7 +90,8 @@ HOST = os.environ.get("FN_HBOX", "hbox")
 BOX_ROOT = "/tank/fn/scratch/throughput-gate"
 OPENSSL = "/tank/fn/toolchains/openssl-3.5.8"
 CLIENT_FILES = ("tools/throughput_gate.py", "tools/msgid_measure.py", "tools/rep_measure.py",
-                "tools/signed_carriers.py", "tests/__init__.py", "tests/native_process.py")
+                "tools/signed_carriers.py", "tools/__init__.py", "tools/wire_stream.py",
+                "tests/__init__.py", "tests/native_process.py")
 # Metrics the gate compares (all: lower is better).  The floor is the
 # absolute slack: a loopback millisecond figure on a shared box moves by
 # more than 25% of itself between repetitions of one image (commit-
