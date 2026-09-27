@@ -7357,6 +7357,14 @@
         {
           "kind": "theorem",
           "name": "fn-heap-reserve-of-holds-the-decision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-storeless-decide-is-small-and-fits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-operation-figure-octets-observed-is-at-most-unobserved"
         }
       ]
     },
@@ -9732,6 +9740,23 @@
         {
           "kind": "theorem",
           "name": "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
+        }
+      ]
+    },
+    {
+      "id": "PRF-264",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scw-window-count-is-fit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cverb-decide-window-is-cverb-decide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-capture-link-window-is-capture-link"
         }
       ]
     }
