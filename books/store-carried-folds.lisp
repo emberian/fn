@@ -13,7 +13,7 @@
 ; lookup) and take the count from it (`fn-sbud-count'), so a query costs one
 ; lookup and one fold step per record committed since the last one.
 ;
-; The maintained relation is `' (the index is the index of
+; The maintained relation is R, `fn-hist-of-storep' (the history stobj is the index of
 ; the committed history), established at every host-called open and
 ; preserved by every owner transition the host installs, with no hypothesis
 ; (books/owner-store-indexed.lisp `fn-osi-live-owner-store-is-indexed');

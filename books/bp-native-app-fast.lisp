@@ -14,9 +14,9 @@
 ; Fast counterparts of the receiver transitions.  These are deliberately
 ; local to the joined application machine: the checked public receiver model
 ; remains the recovery/specification function.
-; The premise of the indexed lookups (PRF-144):  the
-; Store's derived index is the index of its committed history
-; (books/consumer-event-index-store-invariants.lisp).  The lemmas below are
+; The premise of the indexed lookups (PRF-144): R, the history stobj is the
+; Store's committed history (books/history-columns-relation.lisp; the store
+; node's derived index, field 13, is retired).  The lemmas below are
 ; the refinement layer and take it as a hypothesis on any Store; the
 ; theorems about the Store the host dispatches over discharge it:
 ; books/owner-store-indexed.lisp establishes it at the host's open and
@@ -434,7 +434,7 @@
 
 ; The existing semantic search and conflict rule, over the Store's
 ; maintained Message-ID index instead of a walk of the history
-; (`fn-bpaj-record-lookup-fast-is-checked' under `').
+; (`fn-bpaj-record-lookup-fast-is-checked' under R, fn-hist-of-storep).
 (defun fn-bpaj-record-lookup-fast (store request fn-arena fn-hist)
   (declare (xargs :stobjs (fn-arena fn-hist) :guard t))
   (let ((fields (fn-bpaj-article-fields request)))

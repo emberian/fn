@@ -299,7 +299,7 @@ past its count; a full walk when CACHE is not a (K . SUM) pair within RECORDS."
 ; model and stay so.  What the host calls instead reads the Store's derived
 ; event index (books/consumer-event-index.lisp), which every host-called open
 ; builds from the history it read and `fn-sn-io''s record-directory append
-; extends by the appended event -- the maintained relation `',
+; extends by the appended event -- the maintained relation (retired with field 13),
 ; proved of every owner the host reaches with no hypothesis
 ; (books/owner-store-indexed.lisp `fn-osi-live-owner-store-is-indexed'):
 ;
@@ -318,7 +318,7 @@ past its count; a full walk when CACHE is not a (K . SUM) pair within RECORDS."
 ;
 ; Why a named function and not `mbe' inside `fn-sbud-used': an `:exec' that
 ; reads the index is equal to the `len' only under the relation, so the guard
-; would have to carry `', and a guard is evaluated when the
+; would have to carry the relation, and a guard is evaluated when the
 ; :program host calls the function -- a full rebuild of the index per call.
 ; So the host calls `fn-sbud-count' and the theorems below equate it with
 ; `fn-sbud-used' under the relation, the pattern of books/owner-prepare-carried.

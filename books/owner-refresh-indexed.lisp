@@ -12,7 +12,7 @@
 ;
 ; KEYSTONE fn-own-refresh-ix-is-own-refresh: under the two facts the owner's
 ; Store carries, `fn-sn-statep' (every history is Store events: the rows'
-; agreement, fn-ctl-rows-okp-of-sf-state) and `' (the index
+; agreement, fn-ctl-rows-okp-of-sf-state) and R, `fn-hist-of-storep' (the history stobj
 ; is the index of the history; established at the host's open and preserved
 ; by every installed owner transition, books/owner-store-indexed.lisp
 ; fn-osi-live-owner-store-is-indexed), the twin is the reference.

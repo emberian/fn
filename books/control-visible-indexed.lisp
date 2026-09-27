@@ -13,7 +13,7 @@
 ; a pair of tries (sequence -> event, Message-ID -> the article records the
 ; history commits under it, oldest first), maintained as the index of the
 ; committed history (`fn-cei-correspondencep'; PRF-144/PRF-180,
-; books/consumer-event-index-store-invariants.lisp fn-ceis-indexedp).
+; books/history-columns-relation.lisp (the retired index's invariants were deleted) fn-ceis-indexedp).
 ;
 ;   fn-ctl-row-event-ix  the Message-ID trie's first record R for M (the
 ;                        oldest), then the event at R's sequence in the

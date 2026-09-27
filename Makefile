@@ -1035,6 +1035,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-event-index-tests \
 	books/history-columns \
 	books/history-columns-relation \
+	tests/acl2/history-columns-relation-tests \
 	tests/acl2/history-columns-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \

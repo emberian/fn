@@ -28,6 +28,12 @@
 ; fn-hist-sync and fn-hist-sync-of-prefix-is-the-history: books/history-columns-relation.lisp.
 
 (local
+ (defthm fn-hist-nthcdr-unroll
+   (implies (and (natp k) (< k (len xs)))
+            (equal (nthcdr k xs) (cons (nth k xs) (nthcdr (1+ k) xs))))))
+(local (in-theory (disable fn-hist-nthcdr-unroll)))
+
+(local
  (defthm fn-hist-own-relation-records-true-listp
    (implies (fn-own-relation o)
             (true-listp (fn-sf-records (fn-sn-files (fn-own-store o)))))

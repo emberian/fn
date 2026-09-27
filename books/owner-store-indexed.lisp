@@ -3,7 +3,7 @@
 ;; signed-history-index-2, 2026-09-26).
 ;
 ; The maintained relation is fn-ceis-indexedp
-; (books/consumer-event-index-store-invariants.lisp): the Store's derived
+; (books/history-columns-relation.lisp (the retired index's invariants were deleted)): the Store's derived
 ; event index is the index of its committed history, in every phase.  The
 ; BP receiver's Message-ID lookups read that index
 ; (books/bp-native-app-fast.lisp, fn-bpaj-indexed-records-are-the-walk) and

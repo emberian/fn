@@ -100,7 +100,7 @@
 ; fn-lgoc-pidx-sbud-prepare-preserves-invariant: the host's prepare, with its
 ; two carried index premises, on the same witness.
 (assert-event (fn-scar-view-indexedp (fn-ocfg-owner *lgt-reserved*)))
-(assert-event (fn-ceis-indexedp (fn-sbud-oc-store *lgt-reserved*)))
+
 (assert-event (equal (fn-pidx-sbud-prepare *lgt-reserved* *acar-t-record* 1000000)
                      *lgt-prepared*))
 (assert-event (fn-lgoc-invariantp (fn-pidx-sbud-prepare *lgt-reserved* *acar-t-record* 1000000)))

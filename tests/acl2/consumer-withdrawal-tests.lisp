@@ -19,6 +19,40 @@
 (include-book "owner-cancel-refresh-tests") ; the flipped owner's cancel through the POST path
 (include-book "must-fail-checked")
 
+; lane history-columns-3: the readers take the history stobj fn-hist.
+(defun fn-col-poll-h (o consumer)
+  ; fn-col-poll over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-col-poll o consumer fn-hist) fn-hist))
+      ans)))
+(defun fn-cwd-page-h (o consumer answer)
+  ; fn-cwd-page over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-cwd-page o consumer answer fn-hist) fn-hist))
+      ans)))
+(defun fn-cwd-poll-h (o consumer)
+  ; fn-cwd-poll over a history stobj loaded with the history it reads (R holds by construction).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix (fn-sf-records (fn-sn-files (fn-own-store o)))) 0 fn-hist)))
+        (mv (fn-cwd-poll o consumer fn-hist) fn-hist))
+      ans)))
+(defun fn-col-poll-index-window-hx (hist position frontier budget)
+  ; fn-col-poll-index-window over a history stobj loaded with HIST (R holds when HIST is the history it reads).
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-hist
+    (mv-let (ans fn-hist)
+      (let ((fn-hist (fn-hist-load (true-list-fix hist) 0 fn-hist)))
+        (mv (fn-col-poll-index-window fn-hist position frontier budget) fn-hist))
+      ans)))
+
 ; The owner O with its view's withdrawal records WS and withdrawn list N.
 (defun cwdt-with-withdrawals (o ws n)
   (update-nth 1 (update-nth 8 n (update-nth 6 ws (fn-own-view o))) o))
@@ -39,7 +73,7 @@
 ; reads a held row's report through the arena; the REACHED part below uses
 ; it).  Every keystone here holds over ANY answer.
 (defconst *cwdt-report* '(65 66 67))
-(defconst *cwdt-d* (fn-col-poll *cwdt-o* *colt-id*))
+(defconst *cwdt-d* (fn-col-poll-h *cwdt-o* *colt-id*))
 (assert-event (equal (car *cwdt-d*) :poll))
 (assert-event (equal (caddr *cwdt-d*) *colt-article*))
 (defconst *cwdt-answer* (list :poll (cadr *cwdt-d*) *cwdt-report*))
@@ -48,19 +82,19 @@
 ; fn-cwd-page-without-withdrawals-is-the-answer.  Positive: the view has no
 ; withdrawn article, and the page is the answer.
 (assert-event (null (fn-cwd-withdrawn *cwdt-o*)))
-(assert-event (equal (fn-cwd-page *cwdt-o* *colt-id* *cwdt-answer*) *cwdt-answer*))
+(assert-event (equal (fn-cwd-page-h *cwdt-o* *colt-id* *cwdt-answer*) *cwdt-answer*))
 ; Hypothesis (nothing withdrawn): with the article withdrawn the page is
 ; not the answer.
-(assert-event (not (equal (fn-cwd-page *cwdt-ow* *colt-id* *cwdt-answer*)
+(assert-event (not (equal (fn-cwd-page-h *cwdt-ow* *colt-id* *cwdt-answer*)
                           *cwdt-answer*)))
 
 ; ---------------------------------------------------------------------------
 ; fn-cwd-page-never-serves-withdrawn-content.  Positive: the answer carries a
 ; report, the poll selects <poll@fn.test>, the view withdrew it; the page
 ; is the withdrawal report of its Message-ID at the answer's cursor.
-(defconst *cwdt-answer-w* (list :poll (cadr (fn-col-poll *cwdt-ow* *colt-id*)) *cwdt-report*))
-(defconst *cwdt-d-w* (fn-col-poll *cwdt-ow* *colt-id*))
-(defconst *cwdt-page-w* (fn-cwd-page *cwdt-ow* *colt-id* *cwdt-answer-w*))
+(defconst *cwdt-answer-w* (list :poll (cadr (fn-col-poll-h *cwdt-ow* *colt-id*)) *cwdt-report*))
+(defconst *cwdt-d-w* (fn-col-poll-h *cwdt-ow* *colt-id*))
+(defconst *cwdt-page-w* (fn-cwd-page-h *cwdt-ow* *colt-id* *cwdt-answer-w*))
 (assert-event (equal (car *cwdt-answer-w*) :poll))
 (assert-event (caddr *cwdt-answer-w*))
 (assert-event (equal (car *cwdt-d-w*) :poll))
@@ -76,17 +110,17 @@
 ; No octet of the article's payload is in the page's report.
 (assert-event (equal (len (caddr *cwdt-page-w*)) (+ 5 (len *cwdt-msgid*))))
 ; Hypothesis (the view withdrew it): without it the report is the article's.
-(assert-event (equal (fn-cwd-page *cwdt-o* *colt-id* *cwdt-answer*) *cwdt-answer*))
+(assert-event (equal (fn-cwd-page-h *cwdt-o* *colt-id* *cwdt-answer*) *cwdt-answer*))
 (assert-event (not (equal (car (fn-ncr-withdrawal-decode *cwdt-report*)) :withdrawn)))
 ; Hypothesis (the answer carries a report): an empty page stays empty, and
 ; is not a withdrawal.
 (defconst *cwdt-empty* (list :poll (cadr *cwdt-answer-w*) nil))
-(assert-event (equal (fn-cwd-page *cwdt-ow* *colt-id* *cwdt-empty*) *cwdt-empty*))
+(assert-event (equal (fn-cwd-page-h *cwdt-ow* *colt-id* *cwdt-empty*) *cwdt-empty*))
 ; fn-cwd-page-of-a-refusal: the bound gate's refusal is served unchanged.
-(assert-event (equal (fn-cwd-page *cwdt-ow* *colt-id* '(:refused :credential))
+(assert-event (equal (fn-cwd-page-h *cwdt-ow* *colt-id* '(:refused :credential))
                      '(:refused :credential)))
 ; An unknown consumer's refusal is its own.
-(assert-event (equal (fn-cwd-poll *cwdt-ow* '(88)) '(:refused :unknown-consumer)))
+(assert-event (equal (fn-cwd-poll-h *cwdt-ow* '(88)) '(:refused :unknown-consumer)))
 
 ; ---------------------------------------------------------------------------
 ; (b) A cancel after delivery: a history with the article at 2 and a cancel
@@ -185,27 +219,27 @@
   (cwdt-with-withdrawals (fn-own-start *cwdt-s-cancel* 2)
                          (list *cwdt-record*) (list *cwdt-target*)))
 ; The poll (without withdrawals) scans past the cancel: an empty page.
-(defconst *cwdt-d-cancel* (fn-col-poll *cwdt-o-cancel* *colt-id*))
+(defconst *cwdt-d-cancel* (fn-col-poll-h *cwdt-o-cancel* *colt-id*))
 (assert-event (equal (car *cwdt-d-cancel*) :poll))
 (assert-event (null (caddr *cwdt-d-cancel*)))
 ; Positive: the answer is accepted, fn-cwd-poll stops at the withdrawal.
-(defconst *cwdt-w-cancel* (fn-cwd-poll *cwdt-o-cancel* *colt-id*))
+(defconst *cwdt-w-cancel* (fn-cwd-poll-h *cwdt-o-cancel* *colt-id*))
 (assert-event (equal (car *cwdt-w-cancel*) :withdrawal))
 (assert-event (equal (caddr *cwdt-w-cancel*) "<poll@fn.test>"))
 ; Its cursor is the poll's cursor shape, at the cancel's next position (3).
 (assert-event (equal (fn-cp-nth 9 (fn-cp-nth 1 (fn-cp-cursor-decode (cadr *cwdt-w-cancel*))))
                      3))
 (defconst *cwdt-empty-cancel* (list :poll (cadr *cwdt-d-cancel*) nil))
-(assert-event (equal (fn-cwd-page *cwdt-o-cancel* *colt-id* *cwdt-empty-cancel*)
+(assert-event (equal (fn-cwd-page-h *cwdt-o-cancel* *colt-id* *cwdt-empty-cancel*)
                      (fn-cwd-withdrawal-page (cadr *cwdt-w-cancel*) (caddr *cwdt-w-cancel*))))
-(assert-event (equal (fn-cwd-page *cwdt-o-cancel* *colt-id* *cwdt-empty-cancel*)
+(assert-event (equal (fn-cwd-page-h *cwdt-o-cancel* *colt-id* *cwdt-empty-cancel*)
                      (list :poll (cadr *cwdt-w-cancel*)
                            (fn-ncr-withdrawal-report *cwdt-msgid*))))
 ; Hypothesis (the answer is accepted): a refusal is served unchanged.
-(assert-event (equal (fn-cwd-page *cwdt-o-cancel* *colt-id* '(:refused :access))
+(assert-event (equal (fn-cwd-page-h *cwdt-o-cancel* *colt-id* '(:refused :access))
                      '(:refused :access)))
 ; Hypothesis (a withdrawal): with nothing withdrawn, the empty page stays.
-(assert-event (equal (fn-cwd-page (fn-own-start *cwdt-s-cancel* 2) *colt-id*
+(assert-event (equal (fn-cwd-page-h (fn-own-start *cwdt-s-cancel* 2) *colt-id*
                                   *cwdt-empty-cancel*)
                      *cwdt-empty-cancel*))
 
@@ -266,7 +300,8 @@
                     "Control: cancel <lt@example>"
                     (concatenate 'string "Cancel-Key: sha256:" key))))
 (defun cwdr-oc (o) (fn-ocfg-make o (fn-cfg-make 0 (fn-cfg-value (fn-cfg-initial))) nil nil))
-(bpr-lift fn-cbind-plain-poll-over 2)
+(include-book "arena-hist-lift")
+(bpr-lift-hist fn-cbind-plain-poll-over 2 (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner x1)))))
 
 ; The arguments `fn-cwd-poll' hands `fn-cwd-scan' (its let*, verbatim).
 (defun cwdr-scan-args (o consumer)
@@ -276,7 +311,7 @@
          (entry (fn-cp-nth 1 scoped))
          (position (fn-cp-nth 7 entry))
          (frontier (fn-cp-nth 3 s)))
-    (list (fn-col-poll-index-window (fn-sn-event-index store) position frontier
+    (list (fn-col-poll-index-window-hx (fn-sf-records (fn-sn-files store)) position frontier
                                     *fn-col-poll-max-scan*)
           (fn-cp-nth 3 entry) position frontier *fn-col-poll-max-scan*
           (fn-cwd-records o) (fn-cwd-withdrawn o))))
@@ -325,8 +360,8 @@
 ; registered position 2 polls T, which the refresh withdrew.  The host's
 ; answer carries T's own report (its bytes, read through the arena); the
 ; page the host serves is the withdrawal report of T's Message-ID.
-(defconst *cwdr-d-a* (fn-col-poll *cwdr-after* *colt-id*))
-(defconst *cwdr-page-a* (fn-cwd-page *cwdr-after* *colt-id* *cwdr-answer-a*))
+(defconst *cwdr-d-a* (fn-col-poll-h *cwdr-after* *colt-id*))
+(defconst *cwdr-page-a* (fn-cwd-page-h *cwdr-after* *colt-id* *cwdr-answer-a*))
 (assert-event
  (and ;; the complete antecedent
       (equal (car *cwdr-answer-a*) :poll) (caddr *cwdr-answer-a*)
@@ -344,10 +379,10 @@
 ; Without (the view withdrew the selected article), REACHED: the owner
 ; after T only.  The same poll selects T, nothing is withdrawn, and the page
 ; is the answer: T's report, no refusal and no withdrawal.
-(defconst *cwdr-d-t* (fn-col-poll *cwdr-after-t* *colt-id*))
+(defconst *cwdr-d-t* (fn-col-poll-h *cwdr-after-t* *colt-id*))
 (defconst *cwdr-answer-t*
   (in-arena-fn-cbind-plain-poll-over *cwdr-payloads* (cwdr-oc *cwdr-after-t*) *colt-id*))
-(defconst *cwdr-page-t* (fn-cwd-page *cwdr-after-t* *colt-id* *cwdr-answer-t*))
+(defconst *cwdr-page-t* (fn-cwd-page-h *cwdr-after-t* *colt-id* *cwdr-answer-t*))
 (assert-event
  (and (equal (car *cwdr-answer-t*) :poll) (caddr *cwdr-answer-t*)
       (equal (car *cwdr-d-t*) :poll) (caddr *cwdr-d-t*)
@@ -365,7 +400,7 @@
 ; owner: an accepted answer with no report is served as it is.
 (defconst *cwdr-answer-empty* (list :poll (cadr *cwdr-answer-a*) nil))
 (assert-event
- (let ((r (fn-cwd-page *cwdr-after* *colt-id* *cwdr-answer-empty*)))
+ (let ((r (fn-cwd-page-h *cwdr-after* *colt-id* *cwdr-answer-empty*)))
    (and (equal (car *cwdr-answer-empty*) :poll) (not (caddr *cwdr-answer-empty*))
         (equal (car *cwdr-d-a*) :poll) (caddr *cwdr-d-a*)
         (fn-cwd-event-withdrawn-msgid (caddr *cwdr-d-a*) (fn-cwd-withdrawn *cwdr-after*))
@@ -379,7 +414,7 @@
 ; host state).
 (defconst *cwdr-answer-other* (cons :other (cdr *cwdr-answer-a*)))
 (assert-event
- (let ((r (fn-cwd-page *cwdr-after* *colt-id* *cwdr-answer-other*)))
+ (let ((r (fn-cwd-page-h *cwdr-after* *colt-id* *cwdr-answer-other*)))
    (and (not (equal (car *cwdr-answer-other*) :poll)) (caddr *cwdr-answer-other*)
         (equal (car *cwdr-d-a*) :poll) (caddr *cwdr-d-a*)
         (fn-cwd-event-withdrawn-msgid (caddr *cwdr-d-a*) (fn-cwd-withdrawn *cwdr-after*))
@@ -392,7 +427,7 @@
 ; is NIL, and an event the view withdrew is not NIL.  Evaluated here: an
 ; unknown consumer's poll, and a withdrawn test of no event.
 (assert-event
- (let ((d (fn-col-poll *cwdr-after* '(88))))
+ (let ((d (fn-col-poll-h *cwdr-after* '(88))))
    (and (equal d '(:refused :unknown-consumer))
         (null (caddr d))
         (null (fn-cwd-event-withdrawn-msgid nil (fn-cwd-withdrawn *cwdr-after*))))))
@@ -442,20 +477,20 @@
       (natp (nth 2 *cwdr-args-b*)) (equal (car *cwdr-scan-b*) :withdrawal)
       (cwdr-b1-concl *cwdr-args-b*)
       ;; the poll the host reaches delivers it
-      (equal (car (fn-cwd-poll *cwdr-acked* *colt-id*)) :withdrawal)
-      (equal (caddr (fn-cwd-poll *cwdr-acked* *colt-id*)) "<lt@example>")))
+      (equal (car (fn-cwd-poll-h *cwdr-acked* *colt-id*)) :withdrawal)
+      (equal (caddr (fn-cwd-poll-h *cwdr-acked* *colt-id*)) "<lt@example>")))
 
 ; The page over the host's answer at that position is the withdrawal: the
 ; poll itself finds no fn.letters article there (an empty page).
 (defconst *cwdr-answer-b*
   (in-arena-fn-cbind-plain-poll-over *cwdr-payloads* (cwdr-oc *cwdr-acked*) *colt-id*))
 (assert-event
- (let ((w (fn-cwd-poll *cwdr-acked* *colt-id*)))
+ (let ((w (fn-cwd-poll-h *cwdr-acked* *colt-id*)))
    (and (equal (car *cwdr-answer-b*) :poll)
         (null (caddr *cwdr-answer-b*))
-        (equal (fn-cwd-page *cwdr-acked* *colt-id* *cwdr-answer-b*)
+        (equal (fn-cwd-page-h *cwdr-acked* *colt-id* *cwdr-answer-b*)
                (fn-cwd-withdrawal-page (cadr w) (caddr w)))
-        (equal (caddr (fn-cwd-page *cwdr-acked* *colt-id* *cwdr-answer-b*))
+        (equal (caddr (fn-cwd-page-h *cwdr-acked* *colt-id* *cwdr-answer-b*))
                (fn-ncr-withdrawal-report (fn-record-string-octets "<lt@example>"))))))
 
 ; Without (the record withdrew an article of the group), REACHED: the same

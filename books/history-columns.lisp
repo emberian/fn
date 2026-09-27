@@ -809,7 +809,7 @@
 ; event-index half, PKT-PRS-4).  Under the correspondence the store carries
 ; for its index (`fn-cei-correspondencep', books/consumer-event-index.lisp;
 ; established at every open and preserved by every transition,
-; books/consumer-event-index-store-invariants.lisp), each of the index's
+; books/history-columns-relation.lisp (the retired index's invariants were deleted)), each of the index's
 ; three answers is the stobj's answer over the same history: the count, the
 ; event at a sequence (one array read; the radix trie's path of four
 ; octets is not needed), and the article records under a Message-ID (the
