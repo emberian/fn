@@ -4297,7 +4297,7 @@
       "id": "SCN-152",
       "title": "Two accounts, one private group: the restricted login cannot list, select, read by number or Message-ID, or post to it; the other can; after a restart too; on both images",
       "milestone": "M4",
-      "status": "specified",
+      "status": "implemented",
       "requirements": [
         "NNT-046",
         "SEC-007"
@@ -4322,8 +4322,14 @@
           "NativeGroupAccessTests.test_two_accounts_one_private_group"
         ],
         "native": true,
-        "record": "planning/evidence/group-access-2026-09-27.md"
-      }
+        "record": "planning/evidence/group-access-2026-09-27.md",
+        "log": "planning/evidence/group-access-2026-09-27/native-a3-test_native_group_access.log"
+      },
+      "evidence": [
+        "tests/test_native_group_access.py",
+        "planning/evidence/group-access-2026-09-27.md",
+        "planning/evidence/group-access-2026-09-27/native-a3-test_native_group_access.log"
+      ]
     }
   ]
 }
