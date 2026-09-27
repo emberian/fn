@@ -289,6 +289,19 @@
 ; hypothesis.  Each is an `assert-event' on the negated conclusion, never a
 ; general negated `must-fail'.
 
+;; `fn-feed-distinct-fast-is-distinctp' (the executed form of
+;; `fn-feed-distinctp'): a queue with a Message-ID twice is not distinct, a
+;; distinct one is, and a seen set that already holds a Message-ID of the
+;; queue answers nil.
+(defconst *ff-twice-a*
+  (list (fn-feed-entry *ff-a* :queued 0 0) (fn-feed-entry *ff-b* :queued 0 0)
+        (fn-feed-entry *ff-a* :queued 0 0)))
+(assert-event (not (fn-feed-distinct-fast *ff-twice-a* nil)))
+(assert-event (not (fn-feed-distinctp *ff-twice-a*)))
+(assert-event (fn-feed-distinct-fast (cdr *ff-twice-a*) nil))
+(assert-event (fn-feed-distinctp (cdr *ff-twice-a*)))
+(assert-event (not (fn-feed-distinct-fast (cdr *ff-twice-a*) (hons-acons *ff-a* t nil))))
+
 ;; PRF-335 keystones, over the scenario 4 journal (a reachable run: it is
 ;; driven from the opened feed).  `fn-feed-queue-length-is-undelivered':
 ;; three enqueues, one final answer, so two entries -- the delivered <a@fn>

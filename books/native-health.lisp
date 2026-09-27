@@ -717,7 +717,7 @@ and feed table, with the committed octets extended from the carried sum."
 ;; intent answers :capacity, POST answers feed-queue-full), `health' holds
 ;; unavailable-peer.  Before PRF-335 the queue filled with delivered entries
 ;; and health said healthy while every post was refused
-;; (planning/evidence/openbsd-rehearsal-2026-09-27.md, stop 1).  NAMES are
+;; (the openbsd-rehearsal record of 2026-09-27, stop 1).  NAMES are
 ;; the submission's targets; each has an entry in the table
 ;; (books/owner-feed.lisp `fn-own-feed-target-has-an-entry').
 (defun fn-nh-names-have-entriesp (names tbl)

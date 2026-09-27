@@ -1054,11 +1054,11 @@
        (not (member-equal (fn-peer-transit-code kind d :unaffordable)
                           '(437 439)))))
 
-;; KEYSTONE (PRF-335).  A transfer the owner refused because a peer's
+;; PRF-335, by definition.  A transfer the owner refused because a peer's
 ;; outbound feed queue is full (books/owner.lisp fn-own-intent-refusal-word)
 ;; is 436, IHAVE or TAKETHIS: the sender keeps the article and retries when
 ;; the queue has drained; never the drop codes.
-(defthm fn-peer-full-feed-queue-is-a-retry-code
+(defthm fn-peer-full-feed-queue-is-a-retry-code-by-definition
   (and (equal (fn-peer-transit-code kind d :feed-queue-full) 436)
        (not (member-equal (fn-peer-transit-code kind d :feed-queue-full)
                           '(437 439)))))

@@ -752,7 +752,7 @@ record octets extended from the carried (K . SUM) CACHE, not stored."
 ; conses its characters by non-tail recursion, one frame per octet: on the
 ; owner's 1,024 KB control stack a report past about 50,000 octets exhausted
 ; it and stopped the owner (`operator CONFIG obligations' at about 1,029
-; obligations, planning/evidence/openbsd-rehearsal-2026-09-27.md stop 2).
+; obligations, the openbsd-rehearsal record of 2026-09-27, stop 2).
 ; `fn-nls-octets-string' is its twin with constant stack, and
 ; `fn-nls-octets-string-is-record-octets-string' is the equation.
 (defun fn-nls-octets-chars-rev (octets acc)

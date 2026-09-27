@@ -11182,7 +11182,7 @@
     {
       "id": "PRF-335",
       "title": "A peer's feed queue holds undelivered obligations, never history: a final answer retires the entry, a full queue is the named refusal feed-queue-full, and health holds it",
-      "statement": "fn-feed-done (fn-feed-observe on 235/239/435/438/437/439, host: fn-owner-feed-octets -> fn-own-feed-reply; replay at open: fn-own-feed-recover -> fn-feed-replay) removes the entry (fn-feed-queue-retire). fn-feed-queue-length-is-undelivered: for a driven journal (fn-feed-drivenp), the queue after fn-feed-replay has length start + enqueue/commit records - final outcome records. fn-feed-final-outcome-retires-for-good: a final outcome for a Message-ID with no later enqueue leaves it out of the queue after the fold. fn-feed-accepted-outcomes-bounded-by-enqueues: accepted outcomes for (peer, Message-ID) are at most the times it was owed; fn-feed-at-most-one-accepted-outcome: at most one when owed once (fn-feedp is implied by fn-feed-drivenp, fn-feed-drivenp-implies-feedp). fn-own-intent-refusal-word (host: host/native/owner.lisp fnn-owner-drain-one) names a :capacity intent :feed-queue-full: its own 441 line (fn-post-store-refusal-text), and 436 for transit (fn-peer-full-feed-queue-is-a-retry-code). fn-nh-feed-queue-full-intent-is-held: a :capacity intent (fn-own-submission-intent-result, the reference of fn-icar-submission-intent the host calls) holds unavailable-peer in fn-nh-verdict over the same feed table (fn-nh-saturated-peer-is-held, fn-nh-feed-queue-refusal-is-held).",
+      "statement": "fn-feed-done (fn-feed-observe on 235/239/435/438/437/439, host: fn-owner-feed-octets -> fn-own-feed-reply; replay at open: fn-own-feed-recover -> fn-feed-replay) removes the entry (fn-feed-queue-retire). fn-feed-queue-length-is-undelivered: for a driven journal (fn-feed-drivenp), the queue after fn-feed-replay has length start + enqueue/commit records - final outcome records. fn-feed-final-outcome-retires-for-good: a final outcome for a Message-ID with no later enqueue leaves it out of the queue after the fold. fn-feed-accepted-outcomes-bounded-by-enqueues: accepted outcomes for (peer, Message-ID) are at most the times it was owed; fn-feed-at-most-one-accepted-outcome: at most one when owed once (fn-feedp is implied by fn-feed-drivenp, fn-feed-drivenp-implies-feedp). fn-own-intent-refusal-word (host: host/native/owner.lisp fnn-owner-drain-one) names a :capacity intent :feed-queue-full: its own 441 line (fn-post-store-refusal-text), and 436 for transit (fn-peer-transit-code; fn-peer-full-feed-queue-is-a-retry-code-by-definition). fn-nh-feed-queue-full-intent-is-held: a :capacity intent (fn-own-submission-intent-result, the reference of fn-icar-submission-intent the host calls) holds unavailable-peer in fn-nh-verdict over the same feed table (fn-nh-saturated-peer-is-held, fn-nh-feed-queue-refusal-is-held). fn-feed-distinct-fast-is-distinctp: fn-feed-distinctp (the fn-feedp conjunct every transition and replayed record checks) executes one pass with a fast alist (mbe); 0.2 ms at 1,024 entries on hbox against 19 ms quadratic.",
       "milestone": "M5",
       "requirements": [
         "REP-005",
@@ -11220,9 +11220,9 @@
         "fn-nh-saturated-peer-is-held",
         "fn-nh-feed-queue-refusal-is-held",
         "fn-nh-feed-queue-full-intent-is-held",
-        "fn-peer-full-feed-queue-is-a-retry-code",
         "fn-own-intent-refusal-word-is-a-refusal",
-        "fn-feed-drivenp-of-prefix"
+        "fn-feed-drivenp-of-prefix",
+        "fn-feed-distinct-fast-is-distinctp"
       ]
     },
     {

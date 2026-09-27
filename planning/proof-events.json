@@ -10990,15 +10990,15 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-peer-full-feed-queue-is-a-retry-code"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-own-intent-refusal-word-is-a-refusal"
         },
         {
           "kind": "theorem",
           "name": "fn-feed-drivenp-of-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-feed-distinct-fast-is-distinctp"
         }
       ]
     },
