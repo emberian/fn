@@ -75,7 +75,18 @@ showed this:
 - **FFS1** (`newfs -O 1`) on a disk without a write cache lost nothing.
 
 So before `init`, give `/var/fn` its own partition made with `newfs -O 1`.
-`softdep` makes no difference. To see a partition's format, as root:
+`softdep` makes no difference. With a second, empty disk (here `sd1`: check
+with `sysctl hw.disknames`; this **erases** that disk), as root, before
+`install.sh`:
+
+```sh
+fdisk -iy sd1
+printf 'a a\n\n\n4.2BSD\nw\nq\n' | disklabel -E sd1
+newfs -O 1 /dev/rsd1a
+mkdir -p /var/fn
+echo '/dev/sd1a /var/fn ffs rw,nodev,nosuid 1 2' >> /etc/fstab
+mount /var/fn
+``` To see a partition's format, as root:
 `dumpfs /dev/rsd0X | head -1` prints `FFS1` or `FFS2`. To move a store off
 FFS2: `store export`, make the FFS1 partition, then `store import`
 ([moving data](install.md#4-reinstalling)).
@@ -325,8 +336,8 @@ people you give logins to.
 Set the address for complaints, and find the value for one login:
 
 ```
-packaging/fn-native operator /etc/fn/fn.toml policy set complaints-to abuse@example.org
-packaging/fn-native operator /etc/fn/fn.toml account hash alice
+fn operator /etc/fn/fn.toml policy set complaints-to abuse@example.org
+fn operator /etc/fn/fn.toml account hash alice
 ```
 
 ### Signed posts: tie a login to its key
@@ -335,8 +346,8 @@ A signed article is checked against the key that signed it, whatever login
 posted it. To make a login post only articles signed with its own key:
 
 ```
-packaging/fn-native operator /etc/fn/fn.toml principal bind alice PRINCIPAL-HEX  # 64 lowercase hex digits
-packaging/fn-native operator /etc/fn/fn.toml policy set posting-policy bound-logins
+fn operator /etc/fn/fn.toml principal bind alice PRINCIPAL-HEX  # 64 lowercase hex digits
+fn operator /etc/fn/fn.toml policy set posting-policy bound-logins
 ```
 
 `principal unbind alice` removes the tie. `policy set posting-policy open`
@@ -366,7 +377,7 @@ When you renew the TLS certificate, tell the running node to use the new
 files. No restart is needed:
 
 ```
-packaging/fn-native operator /etc/fn/fn.toml tls reload
+fn operator /etc/fn/fn.toml tls reload
 ```
 
 New connections get the new certificate. Open ones keep the old one until
@@ -491,8 +502,8 @@ is missing or readable by others. A store imported without its keys needs a
 new one:
 
 ```text
-fn --fn store STORE node-secret create [IDENTITY]   # once; init does it
-fn --fn store STORE node-secret rotate [IDENTITY]   # a new epoch; the old one is kept
+fn store STORE node-secret create [IDENTITY]   # once; init does it
+fn store STORE node-secret rotate [IDENTITY]   # a new epoch; the old one is kept
 ```
 
 `create` never replaces an existing secret. `rotate` keeps the old one, so
@@ -559,8 +570,8 @@ means it was not. Tell the person which answer you got.
 ### Why was an article withdrawn?
 
 ```
-packaging/fn-native operator /etc/fn/fn.toml control log
-packaging/fn-native operator /etc/fn/fn.toml control evidence <c1@example.invalid>
+fn operator /etc/fn/fn.toml control log
+fn operator /etc/fn/fn.toml control evidence <c1@example.invalid>
 ```
 
 `control log` lists every withdrawal and who made it. `control evidence`
@@ -579,8 +590,8 @@ A key change a friend posted may have been declined because you had not yet
 given them the right. After you grant it, decide it again:
 
 ```
-packaging/fn-native operator /etc/fn/fn.toml control grant PRINCIPAL-HEX keys fn.keys
-packaging/fn-native operator /etc/fn/fn.toml keys redecide <a1@example.invalid>
+fn operator /etc/fn/fn.toml control grant PRINCIPAL-HEX keys fn.keys
+fn operator /etc/fn/fn.toml keys redecide <a1@example.invalid>
 ```
 
 ### When the store is full
@@ -602,8 +613,10 @@ new store with bigger limits: `store export`, a fresh install, then
 [reinstalling](install.md#4-reinstalling) and
 [store settings](#store-settings)).
 
-With the node stopped, `store compact` packs the store's many small files
-into a few big ones. It changes no article. It needs about 4 MiB free.
+With the node stopped, `store compact` writes a checkpoint of the store and
+drops the log segments it covers, so the next start opens from the
+checkpoint (`OWNER-OPEN open=checkpoint:N`) instead of replaying the whole
+log. It changes no article. It needs about 4 MiB free.
 
 ```text
 fn operator /path/to/fn.toml store compact
@@ -672,12 +685,13 @@ set. fn refuses limits the machine's memory cannot hold, with
 `fn: refused machine-cannot-hold-profile`.
 
 `init` with no `--profile` and no limit (and every `init` under a
-`mission`) sizes small: the **development** set when the machine holds it,
-else **small**. Development holds 128 transactions: after about 125
-articles every post is refused with `441 posting failed; the store has no
-capacity for this article`. A node for people needs its limits named:
-remove the `mission` line from `fn.toml` and `init` with the limits above,
-or raise them later with `store export` and `store import --max-... N`.
+`mission`) sizes the store for the machine's memory and prints the figure
+it chose (`init: profile=custom sizing=...`). `status` then shows the
+limits on its `profile` line and about how many posts still fit on its
+`capacity articles-left=N` line. On a Debian 12 machine in September 2026
+that was 131,072 transactions and 64 MiB of history. To choose other
+limits, remove the `mission` line from `fn.toml` and `init` with the limits
+above, or raise them later with `store export` and `store import --max-... N`.
 
 ### Other commands
 
