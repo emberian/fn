@@ -177,3 +177,6 @@
            (fn-scr-owner-catalogp o id fn-arena fn-cat))
   :hints (("Goal" :in-theory (union-theories '(fn-scj-invp fn-scj-owner-catalogp-of-conns-and-live)
                                              (theory 'minimal-theory)))))
+
+(in-theory (disable fn-scj-invp fn-scj-vvp fn-scj-live-okp fn-scj-conn-pinp fn-scj-conns-pinp
+                    fn-scj-conn-pinned-index))
