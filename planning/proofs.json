@@ -7703,7 +7703,9 @@
         "planning/evidence/manifests/certify-20260927T081801Z-2227997.json",
         "books/heap-store-figure.lisp",
         "planning/evidence/reservation-after-flip-2026-09-27.md",
-        "planning/evidence/compact-arena-2026-09-27.md"
+        "planning/evidence/compact-arena-2026-09-27.md",
+        "planning/evidence/reservation-figure-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T162754Z-3216893.json"
       ],
       "progress_note": "Lane heap-from-profile (2026-09-26): every event and the test book admitted in the persvati REPL (proof_repl, the farm toolchain w25); certification is the batch's (Validation by batch). The native case ran on hbox under MemoryMax=2G (planning/evidence/heap-from-profile-2026-09-26.md). Lane openbsd-release-fixes (2026-09-27): certified by persvati farm runs run-20260927T081126Z-3648 (certify-20260927T081222Z-2154140: checkpoint-pack-chain-once, heap-figure, heap-reservation and their test books) and run-20260927T081705Z-af7b (certify-20260927T081801Z-2227997: heap-reservation and its test book after the keystone was re-proved by instances; the book was 13.7 s before the lane and is 14.4 s, over D26's 10 s, pre-existing)."
     },

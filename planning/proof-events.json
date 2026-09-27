@@ -7504,6 +7504,10 @@
         {
           "kind": "theorem",
           "name": "fn-heap-storeless-decide-is-small-and-fits"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-status-decide-is-the-launchers-run-reservation"
         }
       ]
     },
