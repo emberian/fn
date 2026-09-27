@@ -38,6 +38,8 @@
 (include-book "../books/poster-bytes")
 (include-book "../books/config-owner-live")
 (include-book "../books/config-owner-publish")
+; PRF-265: the live completion from the owner's carried node (fn-oclc-publish).
+(include-book "../books/config-owner-carried")
 (include-book "../books/owner-tls-prefix")
 (include-book "../books/owner-config-observe")
 (include-book "../books/owner-served-carried")
@@ -751,15 +753,20 @@
 (defun fn-owner-reconfigure-complete (generation state)
   ; This is called only after Store.write_config_record has named the record
   ; durable. An uncertain write has no call here and forces recovery.  The
-  ; whole completion is ACL2's `fn-ocl-publish' (books/config-owner-publish):
+  ; whole completion is ACL2's `fn-oclc-publish' (books/config-owner-carried):
   ; the refusal, the Store domain/capacity and carried physical history in one
   ; owner transition, the posting configuration of the published generation,
   ; and the verdict.  On :refused and :recovery-required its owner is the one
   ; installed now, so the host installs it unconditionally and decides nothing.
+  ; It applies the one record to the owner's carried node and configuration
+  ; instead of replaying the whole history three times (PKT-827: 2.9 s at
+  ; 1,000 articles, past 10 s at 10,000); under the owner's invariant it is
+  ; `fn-ocl-publish' (fn-oclc-publish-is-publish, PRF-265), which carries the
+  ; invariant to the next completion (fn-oclc-publish-carries-ocl-relation).
   (declare (xargs :stobjs state :mode :program))
   (mv-let (verdict next)
-    (fn-ocl-publish (fn-owner-ocfg state) generation
-                    (fn-owner-served-post-bound state))
+    (fn-oclc-publish (fn-owner-ocfg state) generation
+                     (fn-owner-served-post-bound state))
     (let ((state (fn-owner-install-ocfg next state)))
       (value verdict))))
 

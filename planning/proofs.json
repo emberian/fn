@@ -9485,6 +9485,36 @@
         "fn-ocs-inspect-waiting-picks-someone",
         "fn-ocs-other-pick-clears-lasti"
       ]
+    },
+    {
+      "id": "PRF-265",
+      "title": "The live configuration completion applies its one record to the owner's carried node and configuration: under the owner invariant it is fn-ocl-publish, and it carries the invariant, so no control quantum replays the Store history",
+      "statement": "fn-oclc-publish-is-publish (books/config-owner-carried.lisp; keystone, hypothesis fn-ocl-relation OC, the owner invariant books/config-owner-live.lisp defines): (fn-oclc-publish OC GENERATION MAX-OCTETS) equals (fn-ocl-publish OC GENERATION MAX-OCTETS), verdict and owner, for every record, generation and phase. fn-oclc-publish is the host-called completion (host/owner-host.lisp fn-owner-reconfigure-complete, reached from host/native/admin.lisp fnn-owner-live-reconfigure-locked for every live group create, control grant and the other live configuration verbs); it replaces fn-ocl-complete's fn-cpo-configure-durable (fn-cpo-history-relation's full fn-cpr-replay and fn-sn-statep of the store, a second full replay over the extended configuration history, fn-sn-statep of the candidate) and fn-ocl-store-config (a third replay) by one configuration step from the store's node and the owner's configuration: fn-oclc-configure, whose install is fn-cpo-configure-durable (fn-oclc-configure-is-configure-durable, hypotheses fn-cpo-history-relation ST and CONFIG the replayed configuration) and whose configuration is fn-ocl-store-config of the installed store on success (fn-oclc-configure-config-is-store-config); fn-oclc-complete-is-complete (the staged completion, from fn-cst-relation and fn-ocl-config-historyp); fn-oclc-ready-cst-relation-is-history-relation (fn-cst-relation at the :ready phase is fn-cpo-history-relation). fn-oclc-publish-carries-ocl-relation (keystone, hypothesis fn-ocl-relation OC): the owner fn-oclc-publish answers satisfies fn-ocl-relation again, whatever the verdict (:durable through config-owner-live's fn-ocl-complete-preserves-full-historical-relation; :refused and :recovery-required keep OC). The invariant is established by fn-owner-recover (books/owner-recover-ocl.lisp fn-orec-started-owner-ocl-relation) and preserved by the owner's other transitions (the fn-ocl-*-preserves-historical-relation family of books/config-owner-live.lisp, config-owner-advance-invariants, owner-commit-ocl); fn-oclc-publish tests none of it at run time (guard t), which is the point: its hold no longer grows with the store.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-023"
+      ],
+      "depends_on": [
+        "PRF-209",
+        "PRF-259"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/config-owner-carried.lisp",
+        "tests/acl2/config-owner-carried-tests.lisp",
+        "host/owner-host.lisp",
+        "planning/evidence/control-quanta-2026-09-27.md"
+      ],
+      "progress_note": "Lane control-quanta (Opus 5.5, 2026-09-27; F4, PKT-827). Profiled with sb-sprof on hbox (tools/profile/): at 1,000 articles 85 per cent of a live group create's owner samples were fn-ocl-complete's three replays; at 10,000 the replay is quadratic (fn-retain-pin-id-scanp, fn-acceptedp per event) and one control quantum held the owner 40 to 46 s. Teeth: tests/acl2/config-owner-carried-tests.lisp (the native live arm's staged request: carried = full, :durable, generation 3; the wrong generation refused alike; hypothesis removal: an owner claiming the initial configuration, carried :recovery-required vs full :durable, and its owner fails the invariant; both must-fail).",
+      "events": [
+        "fn-oclc-publish-is-publish",
+        "fn-oclc-publish-carries-ocl-relation",
+        "fn-oclc-configure-is-configure-durable",
+        "fn-oclc-configure-config-is-store-config",
+        "fn-oclc-complete-is-complete",
+        "fn-oclc-ready-cst-relation-is-history-relation"
+      ]
     }
   ]
 }

@@ -9445,6 +9445,35 @@
           "name": "fn-ocs-other-pick-clears-lasti"
         }
       ]
+    },
+    {
+      "id": "PRF-265",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-publish-is-publish"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-publish-carries-ocl-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-configure-is-configure-durable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-configure-config-is-store-config"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-complete-is-complete"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oclc-ready-cst-relation-is-history-relation"
+        }
+      ]
     }
   ]
 }
