@@ -99,6 +99,8 @@
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
 (include-book "books/post-identity-index")
+;; fn-owner-prepare-buffer calls fn-prc-refresh and fn-prc-sbud-prepare.
+(include-book "books/post-retain-carried")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).
