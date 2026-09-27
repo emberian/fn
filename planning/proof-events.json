@@ -7428,6 +7428,10 @@
         {
           "kind": "theorem",
           "name": "fn-heap-reserve-first-run-accepted-is-within-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-storeless-decide-is-small-and-fits"
         }
       ]
     },
@@ -10211,6 +10215,40 @@
         {
           "kind": "theorem",
           "name": "fn-rix-ocfg-complete-is-ccar-ocfg-complete"
+        }
+      ]
+    },
+    {
+      "id": "PRF-279",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scw-window-count-is-fit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cverb-decide-window-is-cverb-decide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ccc-capture-link-window-is-capture-link"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcls-decide-is-rclp-decide"
+        }
+      ]
+    },
+    {
+      "id": "PRF-280",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-srb-admitted-history-is-within-the-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srb-within-h-is-within-the-bound"
         }
       ]
     }

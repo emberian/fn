@@ -219,6 +219,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-carried-folds \
 	tests/acl2/store-carried-folds-tests \
 	books/store-profile-facts \
+	books/store-replay-bound \
+	tests/acl2/store-replay-bound-tests \
 	books/store-export \
 	tests/acl2/store-export-tests \
 	books/store-import-publication \
@@ -364,6 +366,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-reclaim-holders-tests \
 	books/store-reclaim-pack \
 	tests/acl2/store-reclaim-pack-tests \
+	books/store-reclaim-stream \
+	tests/acl2/store-reclaim-stream-tests \
 	books/reclaim-admission \
 	tests/acl2/reclaim-admission-tests \
 	tests/acl2/store-history-marker-tests \

@@ -489,7 +489,8 @@
         "PRF-246",
         "PRF-253",
         "PRF-254",
-        "PRF-255"
+        "PRF-255",
+        "PRF-280"
       ],
       "verification": [
         "proof",
@@ -2671,6 +2672,7 @@
       "status": "specified",
       "proof_targets": [
         "PRF-119",
+        "PRF-279",
         "PRF-271"
       ],
       "verification": [
@@ -2983,7 +2985,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-085",
-        "PRF-240"
+        "PRF-240",
+        "PRF-279"
       ],
       "verification": [
         "proof",
@@ -3319,7 +3322,8 @@
       "status": "specified",
       "proof_targets": [
         "PRF-171",
-        "PRF-257"
+        "PRF-257",
+        "PRF-280"
       ],
       "verification": [
         "proof",
