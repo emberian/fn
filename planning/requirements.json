@@ -4599,31 +4599,6 @@
       "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read). Slice 2 (PKT-688 (4), PRF-267, books/owner-commit-steps.lisp): on a log-route store the committer's batch is three steps, START and COMPLETE as :commit quanta and the log barrier between them with the owner released; while a batch is in flight only :commit and :inspect (the live status and health pages) are admitted, and a waiting :inspect runs within one quantum in either regime."
     },
     {
-      "id": "HST-026",
-      "title": "The host hands an ACL2 entry only the kind of value its guard names: a payload handle where octets are meant, an octet vector where a list is meant, or the wrong argument count is refused by name (host-entry-guard) before the entry runs, never a silent refusal downstream",
-      "specification": "specs/host.md#the-host-entry-guard",
-      "milestone": "M5",
-      "status": "implemented",
-      "proof_targets": [
-        "PRF-311"
-      ],
-      "verification": [
-        "proof",
-        "integration",
-        "inspection"
-      ],
-      "evidence": [
-        "books/payload-kinds.lisp",
-        "tests/acl2/payload-kinds-tests.lisp",
-        "host/native/io.lisp",
-        "tests/test_native_entry_guard.py",
-        "tools/harness_check.py",
-        "tools/payload_kind_check.py",
-        "planning/evidence/entry-guards-2026-09-27.md"
-      ],
-      "implementation_note": "Lane entry-guards (2026-09-27). fnn-call runs fnn-entry-guard; 89 host wrappers name the kind of their byte-carrying formals; harness_check entry-guards and payload_kind_check gate new entries and new payload reads."
-    },
-    {
       "id": "CNS-008",
       "title": "A consumer gets the withdrawal event, never the withdrawn content: an article withdrawn by its author's cancel or a supersession is delivered as a withdrawal report naming its Message-ID, at its own position and at the withdrawing event's",
       "specification": "specs/consumer-progress.md#withdrawals",
@@ -4704,6 +4679,57 @@
         "planning/evidence/log-recovery-2026-09-27.md"
       ],
       "implementation_note": "Lane log-recovery (2026-09-27; design 2026-09-27 storage-log section 6). The checkpoint's F row carries the log position (fn-sct-log-positionp); fnn-log-rotate (P-ROTATE) at the capture of the checkpoint verb, of store compact and of the owner's automatic checkpoint; fnn-log-drop (P-DROP) after the install; fnn-recover-log's plan (fn-lgs-open-plan) and chain-broken check (fn-lgs-chain-broken-string-p). store reclaim over the log: the rewritten history's checkpoint then the drop (PRF-271). Not done: the recovery's five barriers down to one, the streaming open (the segment is still read into one string, PKT-COL-7)."
+    },
+    {
+      "id": "HST-026",
+      "title": "The node's answers are stated relative to a disk with unbounded latency: a batch barrier is a request with a deadline, reads and status never wait on it, and while the disk is slow a new POST is refused try-later with the reason and health and status say so",
+      "specification": "specs/host.md#the-disk-as-an-adversarial-environment",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-311"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-time-model.lisp",
+        "tests/acl2/owner-time-model-tests.lisp",
+        "host/native/owner.lisp",
+        "host/owner-host.lisp",
+        "host/native-live-status-host.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/design-time-model-2026-09-27.md",
+        "planning/evidence/time-model-2026-09-27.md"
+      ],
+      "implementation_note": "Slice 1 of planning/design-time-model-2026-09-27.md. The committer's wait for the syncer is timed by ACL2 and appends clock events; the barrier's deadline is the live configuration's barrier-deadline-ms limit (default 5,000 ms; the admin verb to set it is slice 2). A POST shed while slow gets fn-own-outcome's :refused outcome with ACL2's reason line (441; RFC 3977 section 6.3.1). Not yet: the stall deadline H and the in-flight members' uncertain answer, 440 at the POST command, IHAVE 436 during slow, mutating control try-later, the inline barrier and configuration publication as requests."
+    },
+    {
+      "id": "HST-027",
+      "title": "The host hands an ACL2 entry only the kind of value its guard names: a payload handle where octets are meant, an octet vector where a list is meant, or the wrong argument count is refused by name (host-entry-guard) before the entry runs, never a silent refusal downstream",
+      "specification": "specs/host.md#the-host-entry-guard",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-312"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "inspection"
+      ],
+      "evidence": [
+        "books/payload-kinds.lisp",
+        "tests/acl2/payload-kinds-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_entry_guard.py",
+        "tools/harness_check.py",
+        "tools/payload_kind_check.py",
+        "planning/evidence/entry-guards-2026-09-27.md"
+      ],
+      "implementation_note": "Lane entry-guards (2026-09-27). fnn-call runs fnn-entry-guard; 89 host wrappers name the kind of their byte-carrying formals; harness_check entry-guards and payload_kind_check gate new entries and new payload reads."
     }
   ]
 }

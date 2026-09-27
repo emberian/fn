@@ -80,8 +80,6 @@ WAIVERS: dict[tuple[str, str], str] = {
     ("books/store-reclaim-buffer.lisp", "fn-rclb-existing-action"): "PKT-EG-4: retire (pre-flip twin)",
     ("books/moderation-verbs.lisp", "fn-mvb-held-article"):
         "matrix-reds (the sixth instance, 2026-09-27)",
-    ("books/bp-outbound.lisp", "fn-bpo-request-message"):
-        "bp-sender READY (PKT-843)",
 }
 
 

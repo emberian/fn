@@ -546,6 +546,41 @@ verdict's (`fn-nh-report-exit-of-render-and-more`). The live octet buffer
 `fn-octets` is input-only under the mutex. Measured on the mixed hour and
 under 40 readers in planning/evidence/owner-scheduler-2026-09-26.md.
 
+### The disk as an adversarial environment
+
+HST-026: The node's answers are stated relative to a disk (and a clock)
+with unbounded latency: a batch barrier is a request with a deadline, the
+disk's mode is ACL2's, reads and status never wait on a barrier, and a POST
+that arrives while the disk is slow is refused try-later with the reason.
+Design: planning/design-time-model-2026-09-27.md; slice 1 of it is this
+requirement (PRF-311, books/owner-time-model.lisp). The gate's value
+carries the disk's state and a recorded time: every disk event (the
+barrier's issue, its completion, a clock event) carries one monotonic
+reading the host takes under the gate mutex, recorded monotone (a lower
+reading is counted, `:clock-regressed`, and moves nothing back); every
+decision reads the recorded time. The barrier's deadline D is the live
+configuration's `barrier-deadline-ms` limit (default 5,000 ms). The
+committer's wait for the syncer is timed by ACL2 (`fn-otm-wait-ms`: to the
+deadline, then each second) and each expiry appends a clock event. A
+barrier pending past D makes the disk `slow`: a timeout is not a failure
+(the batch stays in flight and its members wait for their replies, which
+follow the completion: `fn-otm-disk-event-keeps-the-pipeline`); a served
+POST arriving then is answered RFC 3977 section 6.3.1's 441 with the reason
+(`441 posting failed; the disk is slow (a write has waited N ms, deadline D
+ms): nothing was stored, try again later`) through fn-own-outcome's
+`:refused` outcome, nothing stored (436 is IHAVE's code, section 6.3.2);
+`health` and `status` print `disk slow: barrier N ms pending` (a shed
+happens exactly when they do: `fn-otm-shed-iff-slow`); the service log
+names the episode entered and left. The completion is the recovery
+(`fn-otm-return-recovers`). Keystone `fn-otm-barrier-reader-bound`: while a
+barrier is pending and a reader waits, only `:inspect` and `:commit` quanta
+run before it, at most one START-NEXT that took members, and at most one
+more `:inspect` than `:commit`; the device's latency is not a quantity of
+the bound. Not yet: the stall deadline and the in-flight members' uncertain
+answer, 440 at the POST command, IHAVE's 436 and mutating control's
+try-later during `slow`, the inline barrier and configuration publication
+as requests (the design's slices 2 and 3).
+
 ### The owner submission path
 
 Served POST, inbound transit and a running owner's control `POST` all enter
@@ -755,7 +790,7 @@ scheduler's render plan (not this section's).
 
 ### The host entry guard
 
-HST-026: The host hands an ACL2 entry only the kind of value its guard names; a payload handle where octets are meant, an octet vector where a list is meant, or the wrong argument count is refused by name before the entry runs
+HST-027: The host hands an ACL2 entry only the kind of value its guard names; a payload handle where octets are meant, an octet vector where a list is meant, or the wrong argument count is refused by name before the entry runs
 
 Typed results (HST-019) check what comes back across the boundary; this
 checks what goes in. The image runs with `guard-checking-on` = `t`, but a
@@ -763,7 +798,7 @@ checks what goes in. The image runs with `guard-checking-on` = `t`, but a
 any value: a natural is a good argument to `consp` and `len`. Since the
 records flip the retained article's payload is an arena HANDLE
 (books/payload-kinds.lisp `fn-payload-handle-p`, disjoint from
-`fn-cbor-octet-listp` octets by PRF-311's keystones), and on 2026-09-27 six
+`fn-cbor-octet-listp` octets by PRF-312's keystones), and on 2026-09-27 six
 defects handed a handle, or the wrong argument count, to code that meant
 octets; each surfaced as a silent refusal downstream (441 on signed POSTs,
 ARTICLE 503, BP sends refused, a feed's empty command, moderation's

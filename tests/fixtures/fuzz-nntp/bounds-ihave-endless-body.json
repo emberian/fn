@@ -1,0 +1,12 @@
+{
+ "campaign": "bounds",
+ "class": "unbounded",
+ "filler_hex": "626f6479206c696e650d0a",
+ "max_growth_kib": 65536,
+ "note": "IHAVE's article, after the 335, with no end: the same growth as TAKETHIS (226 MiB to 2.12 GiB over 128 MiB sent). An IHAVE article without the mandatory headers is refused 436 early, so the size is not the bound that ends it.",
+ "packet": "F2 (TAKETHIS unbounded)",
+ "prefix_hex": "4948415645203c656e646c6573732d69684066757a7a2e696e76616c69643e0d0a506174683a20780d0a46726f6d3a206140622e696e76616c69640d0a4e65777367726f7570733a20666e2e746573740d0a5375626a6563743a20730d0a4d6573736167652d49443a203c656e646c6573732d69684066757a7a2e696e76616c69643e0d0a446174653a204d6f6e2c2032312053657020323032362031323a30303a3030202b303030300d0a0d0a",
+ "source": "127.0.0.1",
+ "status": "open",
+ "total": 67108864
+}

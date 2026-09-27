@@ -51,6 +51,9 @@
 ;; PKT-828: readers during a barrier at the reader view (host/owner-host.lisp
 ;; fn-owner-at-reader-view, fn-owner-reader-views-capture).
 (include-book "books/owner-reader-view")
+;; Lane time-model (PRF-311): the gate's value with the disk's deadline
+;; (fn-otm-*), over fn-ocp-*.
+(include-book "books/owner-time-model")
 (include-book "books/owner-open-carried")
 ;; host/reader-host.lisp fn-reader-reset calls fn-rdc-reset (PRF-227).
 (include-book "books/reader-open-carried")
@@ -130,6 +133,9 @@
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
 ;; tries and the one-dispatch history recognizer).
 (include-book "books/replay-identity-index")
+;; lane proto-determinism: `store ROOT digest' (host/store-node-host.lisp
+;; fn-store-sn-replay-digest-report) calls books/state-digest (fn-sdg-).
+(include-book "books/state-digest")
 ;; The subject digest over the buffer (D27 wave C): host/native/io.lisp
 ;; fnn-subject-id-buffer calls fn-shb-subject-id-bounded.
 (include-book "books/sha256-buffer")

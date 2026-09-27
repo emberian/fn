@@ -13,7 +13,7 @@
 (local
  (defthm fn-bprq-bpiw-apply-of-recovery-outcome
    (implies (fn-bpiw-recovery-outcomep r)
-            (equal (fn-bpiw-apply bp ion r)
+            (equal (fn-bpiw-apply bp ion r fn-arena)
                    (let ((a (fn-bp-apply-journal-record bp r)))
                      (list (car a) (nth 1 a) (nth 2 a) ion))))
    :hints (("Goal" :in-theory (e/d (fn-bpiw-apply fn-bprl-apply-journal-record
@@ -25,11 +25,11 @@
 (local
  (defthm fn-bprq-bpiw-apply-parts-of-recovery-outcome
    (implies (fn-bpiw-recovery-outcomep r)
-            (and (equal (car (fn-bpiw-apply bp ion r))
+            (and (equal (car (fn-bpiw-apply bp ion r fn-arena))
                         (car (fn-bp-apply-journal-record bp r)))
-                 (equal (nth 1 (fn-bpiw-apply bp ion r))
+                 (equal (nth 1 (fn-bpiw-apply bp ion r fn-arena))
                         (nth 1 (fn-bp-apply-journal-record bp r)))
-                 (equal (nth 3 (fn-bpiw-apply bp ion r)) ion)))
+                 (equal (nth 3 (fn-bpiw-apply bp ion r fn-arena)) ion)))
    :hints (("Goal" :in-theory (disable fn-bpiw-apply
                                        fn-bp-apply-journal-record)))))
 
@@ -141,11 +141,11 @@
 ; gate admits what the live gate admitted); and the next open installs
 ; exactly the live image after its one restart, ION state unchanged.
 (defthm fn-bprq-recovery-plan-unfences-and-reopens-as-live
-  (let* ((open (fn-bpiw-replay-journal node records))
+  (let* ((open (fn-bpiw-replay-journal node records fn-arena))
          (plan (fn-bprq-recovery-plan (nth 1 open) work-id attempt-id outcome))
          (r (nth 1 plan))
-         (live (fn-bpiw-apply (nth 1 open) (nth 3 open) r))
-         (reopen (fn-bpiw-replay-journal node (append records (list r)))))
+         (live (fn-bpiw-apply (nth 1 open) (nth 3 open) r fn-arena))
+         (reopen (fn-bpiw-replay-journal node (append records (list r)) fn-arena)))
     (implies (and (car open)
                   (equal (car plan) :recover))
              (and (car live)
@@ -156,17 +156,17 @@
                   (equal (nth 3 reopen) (nth 3 live)))))
   :hints (("Goal"
            :use ((:instance fn-bprq-recovery-plan-record-is-accepted
-                            (s (nth 1 (fn-bpiw-replay-journal node records))))
+                            (s (nth 1 (fn-bpiw-replay-journal node records fn-arena))))
                  (:instance fn-bprq-accepted-recovery-unfences
-                            (s (nth 1 (fn-bpiw-replay-journal node records)))
+                            (s (nth 1 (fn-bpiw-replay-journal node records fn-arena)))
                             (r (nth 1 (fn-bprq-recovery-plan
                                        (nth 1 (fn-bpiw-replay-journal
-                                               node records))
+                                               node records fn-arena))
                                        work-id attempt-id outcome))))
                  (:instance fn-bpiw-reopen-after-live-recovery-is-the-live-image-restarted
                             (r (nth 1 (fn-bprq-recovery-plan
                                        (nth 1 (fn-bpiw-replay-journal
-                                               node records))
+                                               node records fn-arena))
                                        work-id attempt-id outcome)))))
            :in-theory (union-theories
                        '(fn-bprq-bpiw-apply-parts-of-recovery-outcome)

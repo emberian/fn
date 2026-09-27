@@ -6,8 +6,10 @@
 ; octets and prints them; it renders no field.
 (in-package "ACL2")
 (include-book "../books/native-health")
-; HST-023: the owner's scheduler lines on `health' (books/owner-scheduler.lisp).
-(include-book "../books/owner-commit-steps")
+; HST-023: the owner's scheduler lines on `health' (books/owner-scheduler.lisp);
+; HST-026 (lane time-model): the disk line on `health' and `status'
+; (books/owner-time-model.lisp fn-otm-health-lines, fn-otm-disk-lines).
+(include-book "../books/owner-time-model")
 ; PKT-209: `control log' and `control evidence MSGID' (books/control-evidence.lisp).
 (include-book "../books/control-evidence")
 
@@ -85,11 +87,16 @@
                            ;; the verdict's whatever follows the eight states.
                            (append (fn-owner-exposure-health state)
                                    (if log-sink (fn-nh-log-sink-line log-sink) nil)
-                                   (fn-ocs-health-lines sched)))
+                                   ;; HST-026: SCHED is the snapshot
+                                   ;; (S NOW) of books/owner-time-model.lisp:
+                                   ;; the scheduler's lines, then the disk's.
+                                   (fn-otm-health-lines sched)))
                           ;; PRF-211: `status' ends with the capacity line
-                          ;; (books/public-exposure.lisp fn-exp-capacity-line).
+                          ;; (books/public-exposure.lisp fn-exp-capacity-line);
+                          ;; HST-026: then the disk line.
                           ((equal kind :status)
-                           (fn-owner-exposure-capacity state))
+                           (append (fn-owner-exposure-capacity state)
+                                   (fn-otm-disk-lines sched)))
                           (t nil))))))))
         (list (fn-nls-page buffer offset)
               (if stored cached (fn-nls-cache-put kind buffer cached)))))))
