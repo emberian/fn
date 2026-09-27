@@ -114,6 +114,28 @@ class NativeBpObligationTests(unittest.TestCase):
 
     # `bp-obligation recover': a fenced attempt resolved through ACL2.
 
+    def route_peer(self):
+        # Routing is in force on every store (docs/operator-internals.md,
+        # specs/bp-node-machine.md): with no route the carrier is refused
+        # (`decision=no-route`) and nothing is queued.  Route the work's peer
+        # the way an operator does: a boundary for dtn://fn-b/ whose contact is
+        # a loopback port nothing listens on (the carrier meets a dead
+        # contact), and a route from the peer's pattern to it.
+        config = self.tmp / "fn.toml"
+        config.write_text(f'[store]\npath = "{self.store}"\n', encoding="ascii")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            listen_port = reservation.getsockname()[1]
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            dead_port = reservation.getsockname()[1]
+        boundary = self.invoke("operator", config, "bp-boundary", "add", "fn-b",
+                               "fn-b.bp.gate.invalid", "dtn://fn-b/", listen_port,
+                               "contact", dead_port)
+        self.assertEqual(boundary.returncode, 0, boundary.stdout + boundary.stderr)
+        route = self.invoke("operator", config, "bp-route", "add", "dtn://fn-b/*", "fn-b")
+        self.assertEqual(route.returncode, 0, route.stdout + route.stderr)
+
     def request(self, attempt, env=None):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
             reservation.bind(("127.0.0.1", 0))
@@ -123,6 +145,7 @@ class NativeBpObligationTests(unittest.TestCase):
                 "dtn://fn-a/", "127.0.0.1", str(dead_port)]
 
     def test_kill_between_attempt_and_outcome_then_recover_committed(self):
+        self.route_peer()
         undertaken = self.invoke("bp-obligation", "undertake", self.store,
                                  self.journal, "work-a", "3")
         self.assertEqual(undertaken.returncode, 0, undertaken.stderr)
