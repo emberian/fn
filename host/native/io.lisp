@@ -5819,6 +5819,16 @@ observation (the COMPLETE re-signals it under the owner)."
       (fnn-store-indeterminate (e)
         (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
         (setq word :failed))
+      ;; An OS error at the barrier's cut, after fnn-log-fence returned (a
+      ;; developer image's FN_NATIVE_POST_FAULT=log-fenced:eio): uncertain
+      ;; for every member, as fnn-log-commit-open-batch classifies the same
+      ;; error on the inline commit -- never the fault boundary's exit 4
+      ;; (lane ack-before-barrier; the wire probe's log-fenced eio row).
+      (fnn-os-error (e)
+        (fnn-log-with-kernel (log)
+          (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))))
+        (fnn-err "Store outcome uncertain; the store needs recovery: ~a" e)
+        (setq word :failed))
       (serious-condition (e)
         (setq word :failed condition e)))
     (sb-thread:with-mutex ((fnn-log-lock log))

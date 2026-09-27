@@ -392,6 +392,11 @@ def workload(a):
     init.append(GROUP)
     stmts = []
     if a.statements:
+        # A succession carrier (hybrid signatures, ML-DSA-65 key and PoP in
+        # hex) is about 24 KiB.
+        init[init.index("--max-article-octets") + 1] = "65536"
+        if "--max-record-octets" not in init:
+            init[-1:-1] = ["--max-groups-per-article", "16", "--max-record-octets", "262144"]
         init.append(KEYS_GROUP)
         slots = [i for i in range(a.posts) if i % max(1, a.posters) == 0 and i > 0]
         step = max(1, len(slots) // (a.statements + 1))
