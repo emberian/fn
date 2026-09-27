@@ -449,13 +449,13 @@
 
 (local
  (defthm fn-bprv-article-record-is-not-consumer-event
-   (implies (fn-record-p record)
+   (implies (fn-held-p record)
             (not (fn-cpe-eventp record)))
-   :hints (("Goal" :in-theory
-            (enable fn-record-p fn-record-shapep fn-cpe-eventp)))))
+   :hints (("Goal" :use fn-held-p-forward-natural-head
+            :in-theory (e/d (fn-cpe-eventp) (fn-held-p))))))
 
 (defthm fn-bprv-apply-record-installs-record
-  (implies (and (fn-node-statep node) (fn-bprv-node-idlep node) (fn-record-p record)
+  (implies (and (fn-node-statep node) (fn-bprv-node-idlep node) (fn-held-p record)
                 (consp (fn-replay-apply-record node record)))
            (and (fn-bpi-node-record-committedp (fn-replay-apply-record node record) record)
                 (fn-bprv-node-idlep (fn-replay-apply-record node record))))
@@ -519,7 +519,7 @@
                               (theory 'minimal-theory)))))
 (defthm fn-bprv-apply-record-keeps-committed
   (implies (and (fn-bpi-node-record-committedp node record)
-                (fn-record-p record2)
+                (fn-held-p record2)
                 (consp (fn-replay-apply-record node record2)))
            (fn-bpi-node-record-committedp (fn-replay-apply-record node record2) record))
   :hints (("Goal"
@@ -705,39 +705,41 @@
                          fn-bprv-apply-store-event-keeps-committed fn-bprv-node-statep-consp
                          fn-bprv-committed-implies-node-statep)
                        (theory 'minimal-theory)))))
-; A signed article is committed as a kind-4 composite (`fn-stxa-p'); replay's
-; article arm installs the article record it carries
-; (`fn-replay-composite-record').  Its dispatch passes every other arm.
+; A signed article is retained as the composite ROW (`fn-hstxa-p',
+; books/held-record.lisp); replay's article arm installs the held row it
+; carries (`fn-replay-composite-held').  Its dispatch passes every other arm.
 (local
 (defthm fn-bprv-composite-is-no-other-store-event
-  (implies (fn-stxa-p e)
-           (and (not (fn-record-p e))
+  (implies (fn-hstxa-p e)
+           (and (not (fn-held-p e))
                 (not (fn-store-retention-event-p e))
                 (not (fn-stxe-p e))
                 (not (fn-stxk-p e))
                 (not (fn-cpe-eventp e))
                 (not (fn-th-topic-eventp e))))
-  :hints (("Goal" :in-theory (e/d ((:d fn-record-p) (:d fn-record-shapep)
-                                   (:d fn-store-retention-event-p)
-                                   (:d fn-stxe-p) (:d fn-stxe-shapep)
-                                   (:d fn-stxk-p) (:d fn-stxk-shapep)
-                                   (:d fn-stxa-p) (:d fn-stxa-shapep)
-                                   (:d fn-cpe-eventp) (:d fn-th-topic-eventp))
-                                  ())))))
+  :hints (("Goal" :use (fn-hstxa-p-forward-shape
+                        (:instance fn-held-p-forward-natural-head (x e)))
+           :in-theory (e/d ((:d fn-store-retention-event-p)
+                            (:d fn-stxe-p) (:d fn-stxe-shapep)
+                            (:d fn-stxk-p) (:d fn-stxk-shapep)
+                            (:d fn-cpe-eventp) (:d fn-th-topic-eventp)
+                            (:d fn-th-local-admin-eventp))
+                           (fn-hstxa-p fn-held-p))))))
 (defthm fn-bprv-apply-composite-installs-record
-  (implies (and (fn-node-statep node) (fn-bprv-node-idlep node) (fn-stxa-p e)
-                (fn-record-p (fn-replay-composite-record e))
+  (implies (and (fn-node-statep node) (fn-bprv-node-idlep node) (fn-hstxa-p e)
                 (consp (fn-replay-apply-record node e)))
            (and (fn-bpi-node-record-committedp (fn-replay-apply-record node e)
-                                               (fn-replay-composite-record e))
+                                               (fn-hstxa-held e))
                 (fn-bprv-node-idlep (fn-replay-apply-record node e))))
   :hints (("Goal"
            :use ((:instance fn-replay-advance-preserves-node-statep
                             (recorded-txid (fn-store-event-txid e)))
                  (:instance fn-replay-apply-record-non-nil-is-node-state (record e))
-                 fn-bprv-composite-is-no-other-store-event)
+                 fn-bprv-composite-is-no-other-store-event
+                 (:instance fn-hstxa-p-fields (x e)))
            :in-theory (union-theories
-                       '(car-cons cdr-cons fn-replay-apply-record fn-node-pending-matchesp
+                       '(car-cons cdr-cons fn-replay-apply-record fn-replay-composite-held
+                         fn-node-pending-matchesp
                          fn-store-event-p
                          fn-bpi-node-record-committedp
                          fn-bprv-node-make-state-fields fn-bprv-make-pending-fields
@@ -750,23 +752,39 @@
                          fn-bprv-find-binding-of-new fn-prepare-preserves-state)
                        (theory 'minimal-theory)))))
 
-; The article record an event commits (`fn-bpr-event-article', books/bp-receipt):
-; the plain record's own, or the composite's.
+; A wire record is no held row (its payload is octets, a row's a handle).
+(local (defthm fn-bprv-record-is-not-held
+  (implies (fn-record-p x) (not (fn-held-p x)))
+  :hints (("Goal" :in-theory (enable fn-record-p fn-record-shapep fn-held-p fn-held-shapep
+                                     fn-record-payloadp)))))
+
+(local (defthm fn-bprv-composite-record-is-not-held
+  (not (fn-held-p (fn-replay-composite-record e)))
+  :hints (("Goal" :in-theory (e/d (fn-replay-composite-record) (fn-held-p fn-record-p))
+           :use ((:instance fn-bprv-record-is-not-held
+                            (x (fn-replay-composite-record e)))
+                 (:instance fn-record-decode-exact-yields-a-record
+                            (octets (fn-stxa-article-record e))))))))
+
+; The article row an event commits (`fn-bpr-event-article', books/bp-receipt):
+; the plain row's own, or the composite row's held article.
 (defthm fn-bprv-apply-event-installs-article
   (implies (and (fn-node-statep node) (fn-bprv-node-idlep node)
-                (fn-record-p (fn-bpr-event-article e))
+                (fn-held-p (fn-bpr-event-article e))
                 (consp (fn-replay-apply-record node e)))
            (and (fn-bpi-node-record-committedp (fn-replay-apply-record node e)
                                                (fn-bpr-event-article e))
                 (fn-bprv-node-idlep (fn-replay-apply-record node e))))
   :hints (("Goal"
+           :cases ((fn-hstxa-p e) (fn-stxa-p e))
            :use ((:instance fn-bprv-apply-record-installs-record (record e))
-                 fn-bprv-apply-composite-installs-record)
+                 fn-bprv-apply-composite-installs-record
+                 fn-bprv-composite-record-is-not-held)
            :in-theory (union-theories '(fn-bpr-event-article)
                                       (theory 'minimal-theory)))))
 
-; `record' is an article record (`fn-record-p') of the history: a plain
-; record, or the article record of a signed kind-4 composite
+; `record' is an article row (`fn-held-p') of the history: a plain
+; row, or the held article of a signed kind-4 composite row
 ; (`fn-bpr-article-records').  Retention and statement events install no
 ; article under their own name, so the conclusion is false of them: the
 ; hypothesis restates what the theorem always meant, and it is registered
@@ -774,7 +792,7 @@
 (defthm fn-bprv-replay-loop-installs-every-record
   (implies (and (fn-bprv-node-idlep node)
                 (fn-replay-okp (fn-replay-loop node records sequence))
-                (fn-record-p record)
+                (fn-held-p record)
                 (member-equal record (fn-bpr-article-records records)))
            (fn-bpi-node-record-committedp
             (fn-replay-result-node (fn-replay-loop node records sequence)) record))
@@ -803,7 +821,7 @@
                               (theory 'minimal-theory)))))
 (defthm fn-bprv-replay-node-commits-history-record
   (implies (and (consp (fn-sf-replay-node groups capacity history frontier))
-                (fn-record-p record)
+                (fn-held-p record)
                 (member-equal record (fn-bpr-article-records history)))
            (fn-bpi-node-record-committedp
             (fn-sf-replay-node groups capacity history frontier) record))
@@ -822,7 +840,7 @@
 (defthm fn-bprv-history-record-is-node-committed-when-idle
   (implies (and (fn-snt-relation store)
                 (member-equal (fn-bprv-phase store) '(:ready :recovering :fenced-recovery))
-                (fn-record-p record)
+                (fn-held-p record)
                 (member-equal record (fn-bpr-article-records (fn-bprv-history store))))
            (fn-bpi-node-record-committedp (fn-sn-node store) record))
   :hints (("Goal"
