@@ -1722,6 +1722,33 @@ when that store already exists is `fn-native-operator-init-outcome'."
    :hints (("Goal" :in-theory (e/d (fn-nop-parse-store fn-nop-usage fn-nop-refused)
                                    (fn-nop-result fn-native-operator-result-command fn-nop-parse-profile-flags fn-nop-profile-preset-word))))))
 
+; An accepted `store' plan is the store parser's plan over the words after
+; "store" (one expansion of fn-nop-parse-command, shared by the five
+; store-verb lemmas below: each alone cost 659,470 prover steps).
+(local
+ (defthm fn-nop-parse-command-store-is-parse-store
+   (implies (and (equal (fn-native-operator-result-status
+                         (fn-nop-parse-command words config argv))
+                        :accepted)
+                 (equal (fn-native-operator-result-command
+                         (fn-nop-parse-command words config argv))
+                        "store"))
+            (and (consp words) (equal (car words) "store")
+                 (equal (fn-nop-parse-command words config argv)
+                        (fn-nop-parse-store (cdr words) config))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
+                                   (fn-nop-result
+                                    fn-native-operator-result-status
+                                    fn-native-operator-result-command
+                                    fn-native-operator-result-arguments
+                                    fn-nop-parse-init fn-nop-parse-post
+                                    fn-nop-parse-principal
+                                    fn-nop-parse-administration
+                                    fn-nop-parse-store fn-nop-parse-run
+                                    fn-nop-help-text fn-nop-help-subjectp
+                                    fn-nop-profile-decimal))))))
+
 (local
  (defthm fn-nop-parse-store-compact-words
    (implies (and (equal (fn-native-operator-result-status (fn-nop-parse-store w c))
@@ -1749,19 +1776,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :compact))
             (equal words '("store" "compact")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
-                                   (fn-nop-result
-                                    fn-native-operator-result-status
-                                    fn-native-operator-result-command
-                                    fn-native-operator-result-arguments
-                                    fn-nop-parse-init fn-nop-parse-post
-                                    fn-nop-parse-principal
-                                    fn-nop-parse-administration
-                                    fn-nop-parse-store fn-nop-parse-run
-                                    fn-nop-help-text fn-nop-help-subjectp
-                                    fn-nop-profile-decimal))
-            :use ((:instance fn-nop-parse-store-compact-words
-                             (w (cdr words)) (c config)))))))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+            :use (fn-nop-parse-command-store-is-parse-store
+                  (:instance fn-nop-parse-store-compact-words (w (cdr words)) (c config)))))))
 
 (local
  (defthm fn-nop-compact-action-shape
@@ -1878,19 +1895,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :checkpoint))
             (equal words '("store" "checkpoint")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
-                                   (fn-nop-result
-                                    fn-native-operator-result-status
-                                    fn-native-operator-result-command
-                                    fn-native-operator-result-arguments
-                                    fn-nop-parse-init fn-nop-parse-post
-                                    fn-nop-parse-principal
-                                    fn-nop-parse-administration
-                                    fn-nop-parse-store fn-nop-parse-run
-                                    fn-nop-help-text fn-nop-help-subjectp
-                                    fn-nop-profile-decimal))
-            :use ((:instance fn-nop-parse-store-checkpoint-words
-                             (w (cdr words)) (c config)))))))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+            :use (fn-nop-parse-command-store-is-parse-store
+                  (:instance fn-nop-parse-store-checkpoint-words (w (cdr words)) (c config)))))))
 
 (local
  (defthm fn-nop-checkpoint-action-shape
@@ -2001,19 +2008,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :reclaim))
             (equal words '("store" "reclaim")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
-                                   (fn-nop-result
-                                    fn-native-operator-result-status
-                                    fn-native-operator-result-command
-                                    fn-native-operator-result-arguments
-                                    fn-nop-parse-init fn-nop-parse-post
-                                    fn-nop-parse-principal
-                                    fn-nop-parse-administration
-                                    fn-nop-parse-store fn-nop-parse-run
-                                    fn-nop-help-text fn-nop-help-subjectp
-                                    fn-nop-profile-decimal))
-            :use ((:instance fn-nop-parse-store-reclaim-words
-                             (w (cdr words)) (c config)))))))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+            :use (fn-nop-parse-command-store-is-parse-store
+                  (:instance fn-nop-parse-store-reclaim-words (w (cdr words)) (c config)))))))
 
 (local
  (defthm fn-nop-reclaim-action-shape
@@ -2124,19 +2121,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :reclaim-dry-run))
             (equal words '("store" "reclaim" "--dry-run")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
-                                   (fn-nop-result
-                                    fn-native-operator-result-status
-                                    fn-native-operator-result-command
-                                    fn-native-operator-result-arguments
-                                    fn-nop-parse-init fn-nop-parse-post
-                                    fn-nop-parse-principal
-                                    fn-nop-parse-administration
-                                    fn-nop-parse-store fn-nop-parse-run
-                                    fn-nop-help-text fn-nop-help-subjectp
-                                    fn-nop-profile-decimal))
-            :use ((:instance fn-nop-parse-store-reclaim-dry-run-words
-                             (w (cdr words)) (c config)))))))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+            :use (fn-nop-parse-command-store-is-parse-store
+                  (:instance fn-nop-parse-store-reclaim-dry-run-words (w (cdr words)) (c config)))))))
 
 (local
  (defthm fn-nop-reclaim-dry-run-action-shape
@@ -2247,19 +2234,9 @@ when that store already exists is `fn-native-operator-init-outcome'."
                         :reclaim-recorded))
             (equal words '("store" "reclaim" "--recorded")))
    :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
-                                   (fn-nop-result
-                                    fn-native-operator-result-status
-                                    fn-native-operator-result-command
-                                    fn-native-operator-result-arguments
-                                    fn-nop-parse-init fn-nop-parse-post
-                                    fn-nop-parse-principal
-                                    fn-nop-parse-administration
-                                    fn-nop-parse-store fn-nop-parse-run
-                                    fn-nop-help-text fn-nop-help-subjectp
-                                    fn-nop-profile-decimal))
-            :use ((:instance fn-nop-parse-store-reclaim-recorded-words
-                             (w (cdr words)) (c config)))))))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+            :use (fn-nop-parse-command-store-is-parse-store
+                  (:instance fn-nop-parse-store-reclaim-recorded-words (w (cdr words)) (c config)))))))
 
 (local
  (defthm fn-nop-reclaim-recorded-action-shape
