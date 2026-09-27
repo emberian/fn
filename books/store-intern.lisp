@@ -40,6 +40,7 @@
 (in-package "ACL2")
 (include-book "catalog-record")
 (include-book "store-node")
+(include-book "store-reclaim")
 
 ; -----------------------------------------------------------------------------
 ; 1. One wire event to its row.
@@ -806,3 +807,61 @@
                            (mv-nth 1 (fn-cat-intern-list w k g fn-arena)))))))
   :hints (("Goal" :in-theory (e/d (fn-store-prepare-interned)
                                   (fn-sn-prepare fn-intern-row-at)))))
+
+; -----------------------------------------------------------------------------
+; 6. THE DUPLICATE/CONFLICT ENTRY (a POST of a Message-ID the store holds).
+; The acceptance state's article carries a handle; the verdict compares the
+; offered payload with the bytes the handle denotes, read through the arena.
+; ALPHA of the acceptance articles: each article's handle replaced by its
+; bytes (a handle outside the arena reads as no bytes, as fn-row-bytes).
+
+(defun fn-handle-bytes (h fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (and (natp h) (< h (fn-arena-count fn-arena)))
+      (fn-arena-payload h fn-arena)
+    nil))
+
+(defun fn-articles-wire-of (articles fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (if (atom articles)
+      nil
+    (let ((a (car articles)))
+      (cons (fn-make-article (fn-article-msgid a)
+                             (fn-handle-bytes (fn-article-payload a) fn-arena)
+                             (fn-article-groups a) (fn-article-memberships a)
+                             (fn-article-pin a) (fn-article-stamp a))
+            (fn-articles-wire-of (cdr articles) fn-arena)))))
+
+(defun fn-store-existing-action (msgid payload groups s fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (let ((article (fn-find-article
+                  msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s))))))
+    (if article
+        (if (and (fn-rcl-same-articlep (fn-record-string-octets msgid) payload
+                                       (fn-handle-bytes (fn-article-payload article) fn-arena))
+                 (equal groups (fn-article-groups article)))
+            :duplicate
+          :conflict)
+      nil)))
+
+(local (defthm fn-find-article-of-articles-wire-of
+  (equal (fn-find-article msgid (fn-articles-wire-of articles fn-arena))
+         (let ((a (fn-find-article msgid articles)))
+           (and a
+                (fn-make-article (fn-article-msgid a)
+                                 (fn-handle-bytes (fn-article-payload a) fn-arena)
+                                 (fn-article-groups a) (fn-article-memberships a)
+                                 (fn-article-pin a) (fn-article-stamp a)))))
+  :hints (("Goal" :in-theory (e/d (fn-find-article fn-articles-wire-of) (fn-handle-bytes))))))
+
+; KEYSTONE: the entry's verdict is D25's verdict (fn-rcl-action-over, the
+; verdict over the article list) over ALPHA of the acceptance articles: the
+; same answer the store gave when it retained the bytes themselves.
+(defthm fn-store-existing-action-is-the-verdict-over-alpha
+  (equal (fn-store-existing-action msgid payload groups s fn-arena)
+         (fn-rcl-action-over msgid payload groups
+                             (fn-articles-wire-of
+                              (fn-state-articles (fn-node-acceptance (fn-sn-node s)))
+                              fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-store-existing-action fn-rcl-action-over)
+                                  (fn-handle-bytes fn-rcl-same-articlep)))))
