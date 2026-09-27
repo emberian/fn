@@ -127,6 +127,8 @@
             (equal (fn-bs-splice c (len c) z) (append c (true-list-fix z))))
    :hints (("Goal" :in-theory (enable fn-bs-splice)))))
 (local (defthm fn-lgx-zeros-true-listp (true-listp (fn-bs-zeros n))))
+(local (defthm fn-lgx-true-list-fix-id
+   (implies (true-listp x) (equal (true-list-fix x) x))))
 (local (defthm fn-lgx-zeros-len (equal (len (fn-bs-zeros n)) (nfix n))))
 (local (defthm fn-lgx-take-zeros
    (equal (fn-bs-take n (fn-bs-zeros n)) (fn-bs-zeros n))))
