@@ -7314,8 +7314,8 @@
         "planning/evidence/manifests/certify-20260927T044349Z-763688.json"
       ],
       "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); proved by lane catalog-boundary-owner (Fable, gpt-6's wave-5 review section 5) on 2026-09-26 in books/catalog-refresh.lisp over the owner's own view vocabulary, so the statement's subject is the refresh the host reaches today; the catalog-side twins are the same book's. catalog-slice-2 and -4's groundwork (the delta grammar, fn-view-cancel-after-target, fn-cat-view-articles) is what the catalog side is stated over.",
-      "progress_note": "catalog-slice-5 (2026-09-26): step 7a, the pinned-view semantics in the served machine the host calls today (the served connection carries the owner's committed view as its live pin; GROUP/LISTGROUP re-pin before the arm and keep the re-pin exactly on 211); the retrieval arms over the catalog are 7b (PKT-585). catalog-slice-6 (2026-09-27): 7a certified over its closure (the farm runs in the record); 7b first increment in books/served-catalog.lisp: the Message-ID and article-number finders over the catalog (fn-scat-msgid-article through the Message-ID column, fn-scat-number-article through index-stobjs fn-cnx-view-seq), the two retrieval arms over them, and the boundary theorem fn-nntp-archive-command-cat-is-pinned: the pinned case split with those arms reading the catalog equals fn-nntp-archive-command-pinned under archive = the view's articles, trie = its Message-ID index, a fresh number column. OVER/XOVER, LISTGROUP, LIST COUNTS, HDR/XHDR/XPAT, the lift to fn-served-dispatch-core and the host switch remain (7b rest, 8).",
-      "pending_subject": "fn-view-apply-is-refresh as registered is deferred to 7b/8 (the delta equation needs the arms over the catalog); the proved events are the version semantics over the host-called served path and, since catalog-slice-6, the Message-ID and number retrieval arms over the catalog equal to the pinned arms (not yet host-called: the lift and the host switch are 7b rest and 8).",
+      "progress_note": "catalog-slice-5 (2026-09-26): step 7a, the pinned-view semantics in the served machine the host calls today (the served connection carries the owner's committed view as its live pin; GROUP/LISTGROUP re-pin before the arm and keep the re-pin exactly on 211); the retrieval arms over the catalog are 7b (PKT-585). catalog-slice-6 (2026-09-27): 7a certified over its closure (the farm runs in the record); 7b first increment in books/served-catalog.lisp: the Message-ID and article-number finders over the catalog (fn-scat-msgid-article through the Message-ID column, fn-scat-number-article through index-stobjs fn-cnx-view-seq), the two retrieval arms over them, and the boundary theorem fn-nntp-archive-command-cat-is-pinned: the pinned case split with those arms reading the catalog equals fn-nntp-archive-command-pinned under archive = the view's articles, trie = its Message-ID index, a fresh number column. OVER/XOVER, LISTGROUP, LIST COUNTS, HDR/XHDR/XPAT, the lift to fn-served-dispatch-core and the host switch remain (7b rest, 8). catalog-slice-7 (2026-09-27): 7b rest -- OVER/XOVER of a range, LISTGROUP, GROUP, LIST COUNTS, HDR/XHDR and XPAT over the catalog (index-stobjs' fn-cnx-view-range and the number table, never a walk of the view's articles), KEYSTONE N fn-scat-range-numbers-is-group-range-numbers and KEYSTONE P fn-scat-available-article-is-available, one -is-archive theorem per arm, and fn-nntp-archive-command-cat-is-pinned over the whole pinned case split (hypotheses added: fn-nntp-projectionp and fn-gidx-pin-correspondencep of the archive); crossing witnesses in tests/acl2/served-catalog-tests.lisp (append, cancel after and before its target, redecision, reclamation).",
+      "pending_subject": "fn-view-apply-is-refresh as registered is deferred to 7b/8 (the delta equation needs the arms over the catalog); the proved events are the version semantics over the host-called served path and, since catalog-slice-6, the Message-ID and number retrieval arms and (catalog-slice-7) the range arms over the catalog equal to the pinned arms (not yet host-called: the lift and the host switch are 7b rest and 8).",
       "events": [
         "fn-served-repin-preserves-connp",
         "fn-served-dispatch-preserves-connp",
@@ -7346,7 +7346,16 @@
         "fn-scat-number-article-is-find-group-number",
         "fn-nntp-msgid-retrieval-cat-is-scan",
         "fn-nntp-number-retrieval-cat-is-walk",
-        "fn-nntp-archive-command-cat-is-pinned"
+        "fn-nntp-archive-command-cat-is-pinned",
+        "fn-scat-available-article-is-available",
+        "fn-scat-range-numbers-is-group-range-numbers",
+        "fn-nntp-over-range-cat-is-archive",
+        "fn-scat-group-summary-is-archive",
+        "fn-nntp-group-result-cat-is-archive",
+        "fn-nntp-listgroup-command-cat-is-archive",
+        "fn-nntp-list-counts-command-cat-is-archive",
+        "fn-nntp-hdr-command-cat-is-archive",
+        "fn-nntp-xpat-response-cat-is-archive"
       ]
     },
     {
