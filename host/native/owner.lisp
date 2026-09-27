@@ -1328,10 +1328,13 @@ client, which can issue POSITION after reconnecting."
          (:refused
           (case operation
             (:status (list :consumer-status-reply :refused nil nil nil))
-            ;; PRF-234: a refused bound poll answers on the poll reply kind
+            ;; A refused poll answers on the poll reply kind
             ;; (fn-ncl-poll-reply-encode :refused), as the non-owner refusal
-            ;; does; the plain poll's refusal is unchanged.
-            (:bound-poll (list :consumer-poll-reply :refused nil nil))
+            ;; does.  PRF-234: before, a refused plain poll answered a kind-5
+            ;; frame that the poll client cannot decode, so every refused
+            ;; poll (an unknown consumer included) printed `uncertain' (exit
+            ;; 3); a refusal is now `refused' (exit 1).
+            ((:poll :bound-poll) (list :consumer-poll-reply :refused nil nil))
             (otherwise (list :consumer-reply :refused nil))))
          (:position
           (let ((token (second proposal)))
