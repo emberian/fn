@@ -215,13 +215,13 @@ class DeepInputStackTests(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="fn-deep-"))
         self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(self.tmp)]))
 
-    def store(self, name, flags):
+    def store(self, name, flags, **init_env):
         port = free_port()
         cfg = self.tmp / (name + ".toml")
         cfg.write_text('[store]\npath = "{}"\n[listener]\nhost = "127.0.0.1"\nport = {}\n'
                        .format(self.tmp / name, port), encoding="ascii")
         made = run(IMAGE, ["operator", str(cfg), "init"] + flags + ["local.test"],
-                   environment())
+                   environment(**init_env))
         self.assertEqual(made.returncode, 0, made.stderr)
         probe = run(IMAGE, ["heap", "--", "operator", str(cfg), "run"], environment())
         self.assertEqual(probe.returncode, 0, probe.stderr)
@@ -283,7 +283,9 @@ class DeepInputStackTests(unittest.TestCase):
     def test_a_long_history_reopens_and_replays_at_the_decided_stack(self):
         """2,000 articles; reopened from the checkpoint and by full replay
         (no checkpoint) at the probe's stack."""
-        cfg, port, stack = self.store("long", ["--profile", "default"])
+        # The small preset (T = 16,384) on any machine: a 1,500 MB budget.
+        cfg, port, stack = self.store("long", ["--profile", "default"],
+                                      FN_INIT_BUDGET_MB="1500")
         print("NATIVE-DEEP long-history stack={} KB".format(stack))
         owner = self.start(cfg, stack)
         try:
@@ -314,15 +316,22 @@ class DeepInputStackTests(unittest.TestCase):
         """At the small presets' stack: a POST without Newsgroups of 16,000
         lines, and one of 20,000 lines over the 32,768-octet bound, are
         refused (441) and the node serves on."""
-        cfg, port, stack = self.store("errors", ["--profile", "default"])
+        cfg, port, stack = self.store("errors", ["--profile", "default"],
+                                      FN_INIT_BUDGET_MB="1500")
         print("NATIVE-DEEP errors stack={} KB".format(stack))
         owner = self.start(cfg, stack)
         try:
-            c = Nntp(port)
+            # Each refusal on its own connection: an over-size POST may be
+            # answered before its terminator arrives.
             no_groups = ("From: deep@example.invalid\r\nSubject: none\r\n"
                          "Message-ID: <deep-none@example.invalid>\r\n")
-            self.assertTrue(c.post(no_groups, 16000).startswith(b"441"))
-            self.assertTrue(c.post(headers(2), 20000).startswith(b"441"))
+            for head, lines in ((no_groups, 16000), (headers(2), 20000)):
+                c = Nntp(port)
+                reply = c.post(head, lines)
+                print("NATIVE-DEEP errors {} lines -> {!r}".format(lines, reply[:60]))
+                self.assertTrue(reply.startswith(b"441"), reply)
+                c.conn.close()
+            c = Nntp(port)
             self.assertTrue(c.post(headers(3), 10).startswith(b"240"))
             self.assertTrue(c.command("ARTICLE <deep-3@example.invalid>").startswith(b"220"))
             c.body()

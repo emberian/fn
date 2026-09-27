@@ -144,6 +144,10 @@ def normalize(data, *roots):
     # heap-figure's figure counts the image's core file (books/heap-figure.lisp
     # fn-heap-figure-octets): the full core is larger by design, an input.
     text = re.sub(r"\bheap=\d+ MB", "heap=<core-dependent> MB", text)
+    text = re.sub(r"\breservation=\d+ MB", "reservation=<core-dependent> MB", text)
+    # Wall-clock readings: a file's modification time, an accept's time.
+    text = re.sub(r"\bmodified=\d+", "modified=<clock>", text)
+    text = re.sub(r"\btime=\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "time=<clock>", text)
     text = re.sub(r"\bms=\d+", "ms=<N>", text)
     text = re.sub(r"\b\d+(\.\d+)? ?(ms|s)\b", "<N>\\2", text)
     return text
@@ -344,9 +348,8 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
 
     def test_init_budget_refusal_and_init(self):
         def act(image, cfg, store, port):
-            fresh = self.tmp / ("fresh-" + Path(image.path).name)
-            fcfg = config(self.tmp / ("fresh-" + Path(image.path).name + ".toml"),
-                          fresh, free_port())
+            fresh = Path(str(store) + "-fresh")
+            fcfg = config(Path(str(store) + "-fresh.toml"), fresh, free_port())
             refused = image.run(["operator", fcfg, "init", "--profile", "scale", "local.test"],
                                 FN_INIT_BUDGET_MB="1000")
             made = image.run(["operator", fcfg, "init", "local.test"],
@@ -406,9 +409,8 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr.decode())
 
         def act(image, cfg, store, port):
-            target = self.tmp / ("import-" + Path(image.path).name)
-            tcfg = config(self.tmp / ("import-" + Path(image.path).name + ".toml"),
-                          target, free_port())
+            target = Path(str(store) + "-imported")
+            tcfg = config(Path(str(store) + "-imported.toml"), target, free_port())
             got = image.run(["operator", tcfg, "store", "import", exported])
             status = self.status(image, tcfg)
             files = sorted(tree(target))
