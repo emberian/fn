@@ -97,10 +97,16 @@ class SlowDiskSourceTests(unittest.TestCase):
                         event.index("(setq reading (fnn-owner-monotonic-ms))"))
         chunk = owner[owner.index("(defun fnn-owner-handle-chunk-read "):owner.index("(defun fnn-owner-exposure-idle")]
         self.assertLess(chunk.index("(fnn-owner-advance-clock)"),
-                        chunk.index("(setq admit (fnn-owner-disk-admission service))"))
-        self.assertIn("'fn-owner-chunk-span cid 0 (length incoming) admit)", chunk)
-        admit = owner[owner.index("(defun fnn-owner-disk-admission "):owner.index("(defun fnn-owner-disk-stalled-p")]
+                        chunk.index("(multiple-value-setq (admit replies) (fnn-owner-read-admission service))"))
+        self.assertIn("'fn-owner-chunk-span cid 0 (length incoming) admit replies)", chunk)
+        admit = owner[owner.index("(defun fnn-owner-disk-admission "):owner.index("(defun fnn-owner-read-admission")]
         self.assertIn("'fn-otm-admit-post", admit)
+        # The read's admission and ACL2's reply lines naming the disk's
+        # reason come from one scheduler value (fn-otm-shed-replies).
+        read = owner[owner.index("(defun fnn-owner-read-admission "):owner.index("(defun fnn-owner-disk-stalled-p")]
+        self.assertEqual(read.count("(fnn-owner-gate-sched gate)"), 1, read)
+        self.assertIn("(fnn-core 'fn-otm-admit-post sched)", read)
+        self.assertIn("(fnn-core 'fn-otm-shed-replies sched)", read)
         clock = owner[owner.index("(defun fnn-owner-advance-clock "):owner.index("(defun fnn-owner-finish ")]
         self.assertIn(":served", clock)
         control = (ROOT / "host" / "native" / "control.lisp").read_text()
@@ -331,12 +337,16 @@ class SlowDiskNativeTests(unittest.TestCase):
         # The shed POST: ACL2's try-later 441 with the reason, promptly.
         # The article whose POST got 340 before the disk went slow: 441,
         # nothing stored (STAT 430 below).  Slice 2 runs the read with the
-        # connection's posting bit off, so the served machine's own 441
-        # answers it; the disk's reason is on health, status and the log
-        # (the reply text with the reason is an open item of the record).
-        self.assertTrue(refused.startswith(b"441 posting failed; "), refused)
+        # connection's posting bit off; the served machine's 441 and 440
+        # carry the disk's reason (books/owner-time-admission.lisp
+        # fn-otm-disk-reply-effects over fn-otm-shed-replies' lines).
+        self.assertTrue(refused.startswith(b"441 posting failed; the disk is slow (a write has waited "),
+                        refused)
+        self.assertTrue(refused.endswith(b": nothing was stored, try again later\r\n"), refused)
         self.assertLess(refused_at, 2.0, refused_at)
-        self.assertTrue(refused_command.startswith(b"440 posting not permitted"), refused_command)
+        self.assertTrue(refused_command.startswith(
+            b"440 posting not permitted now; the disk is slow (a write has waited "), refused_command)
+        self.assertTrue(refused_command.endswith(b", try again later\r\n"), refused_command)
         self.assertLess(refused_command_at, 2.0, refused_command_at)
         print("POST command during slow answered in %.3fs: %r" % (refused_command_at, refused_command))
         self.assertGreaterEqual(int(slow_line.group(1)), int(slow_line.group(2)))
@@ -460,7 +470,10 @@ class SlowDiskNativeTests(unittest.TestCase):
         self.assertLess(at, 6.0 + 1.5, at)
         self.assertLess(max(reads), 2.0, reads)
         self.assertEqual(int(stalled.group(5)), 1)
-        self.assertTrue(refused_command.startswith(b"440 posting not permitted"), refused_command)
+        self.assertTrue(refused_command.startswith(
+            b"440 posting not permitted now; the disk is stalled (a write has waited "), refused_command)
+        self.assertTrue(refused_command.endswith(b", deadline 2000 ms), try again later\r\n"),
+                        refused_command)
         # Recovery: the told articles are stored, the refused one is not.
         self.assertEqual(stat[b"stalled-a"], b"223", stat)
         self.assertEqual(stat[b"stalled-e"], b"223", stat)

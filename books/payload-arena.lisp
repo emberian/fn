@@ -634,6 +634,14 @@
   (equal (fn-arn-payloads-of (append records (list record)))
          (append (fn-arn-payloads-of records) (list (fn-record-payload record)))))
 
+;; The octets at a payload handle, read in place; a handle outside the arena
+;; reads as no bytes.  Only READS the arena (flip-L6-2's rule).
+(defun fn-handle-bytes (h fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (if (and (natp h) (< h (fn-arena-count fn-arena)))
+      (fn-arena-payload h fn-arena)
+    nil))
+
 ; The relation itself is logical (defun-nx): the arena's value against the
 ; history.  Nothing executes it; a commit and an open establish it by the
 ; two theorems that follow, and nothing on a served path evaluates it.

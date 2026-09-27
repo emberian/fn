@@ -1,8 +1,8 @@
 ; Reachable Store outcomes and teeth for the byte-identity decision
-; (books/store-node-existing-invariants.lisp, fn-sn-existing-action) and the
+; (books/store-node-existing-invariants.lisp, fn-sn-action-over) and the
 ; entry the host calls (books/store-intern.lisp fn-store-existing-action).
 ; by specification: the flip -- the held payload is a handle, so
-; fn-sn-existing-action is the specification over the WIRE view: its
+; fn-sn-action-over is the specification over the WIRE view: its
 ; outcomes are asserted over alpha of the Store's articles (the bytes under
 ; each handle, books/store-existing-alpha.lisp fn-sn-action-over over
 ; fn-sn-alpha-articles, which fn-store-existing-action-refines-byte-identity-
@@ -53,16 +53,14 @@
   (with-local-stobj fn-arena
     (mv-let (r fn-arena) (snex-sn-in (list *snex-record-wire*) msgid payload groups s fn-arena)
       r)))
-; On the live Store the decision is its definition over the articles
-; (handles): a byte-identical resend is no duplicate there, which is why the
-; outcomes below are over alpha.
+; Over the live Store's own articles (handles) a byte-identical resend is no
+; duplicate, which is why the outcomes below are over alpha (and why the
+; store-shaped twin fn-sn-existing-action was retired, PKT-860).
 (assert-event
- (and (equal (fn-sn-existing-action "<held@example>" '(65 66) *snex-groups* *snex-finished*)
-             (fn-sn-action-over "<held@example>" '(65 66) *snex-groups*
-                                (fn-state-articles (fn-node-acceptance
-                                                    (fn-sn-node *snex-finished*)))))
-      (equal (fn-sn-existing-action "<held@example>" '(65 66) *snex-groups* *snex-finished*)
-             :conflict)))
+ (equal (fn-sn-action-over "<held@example>" '(65 66) *snex-groups*
+                           (fn-state-articles (fn-node-acceptance
+                                               (fn-sn-node *snex-finished*))))
+        :conflict))
 (assert-event (equal (snex-sn
                       "<held@example>" '(65 66) *snex-groups* *snex-finished*)
                      :duplicate))

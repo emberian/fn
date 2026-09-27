@@ -908,7 +908,9 @@
       (fn-nntp-keywordp keyword "NEWGROUPS")
       ; NEWNEWS reads the archive and answers with stored identifiers, so it
       ; is gated exactly as the other archive readers are.
-      (fn-nntp-keywordp keyword "NEWNEWS")))
+      (fn-nntp-keywordp keyword "NEWNEWS")
+      ; PRF-325: the catch-up stream serves stored articles.
+      (fn-nntp-keywordp keyword "XFNCATCHUP")))
 
 (defun fn-auth-transit-keywordp (keyword)
   ; The three inbound-transfer verbs are peer policy, not reader policy.

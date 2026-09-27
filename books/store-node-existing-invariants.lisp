@@ -1,37 +1,35 @@
-; Exact duplicate and conflicting-binding outcomes of the byte-identity Store
-; decision.  Since D25 the host calls fn-pb-existing-action
-; (books/poster-bytes.lisp), which keys on the poster's bytes and refines this
-; one (fn-pb-existing-action-refines-the-byte-identity-decision,
-; books/poster-bytes-invariants.lisp).  The lookup is over the live node carried by the composed Store.
+; Exact duplicate and conflicting-binding outcomes of the byte-identity
+; decision over an octet-model article list (books/store-node.lisp
+; fn-sn-action-over).  Since D25 the verdict is source-keyed
+; (books/poster-bytes.lisp fn-pb-action-over), which refines this one
+; (fn-pb-action-over-refines-the-byte-identity-decision,
+; books/poster-bytes-invariants.lisp); the host's entry is
+; books/store-intern.lisp fn-store-existing-action, read against both over
+; ALPHA of the Store's articles in books/store-existing-alpha.lisp.  The three
+; equations restate the definition (-by-definition), no keystone.
 (in-package "ACL2")
 (include-book "store-node")
 
-(defthm fn-sn-existing-action-is-duplicate-iff-byte-identical-by-definition
-  (let ((held (fn-find-article
-               msgid (fn-state-articles
-                      (fn-node-acceptance (fn-sn-node s))))))
-    (equal (equal (fn-sn-existing-action msgid payload groups s) :duplicate)
+(defthm fn-sn-action-over-is-duplicate-iff-byte-identical-by-definition
+  (let ((held (fn-find-article msgid articles)))
+    (equal (equal (fn-sn-action-over msgid payload groups articles) :duplicate)
            (and held
                 (equal payload (fn-article-payload held))
                 (equal groups (fn-article-groups held)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-sn-existing-action))))
+  :hints (("Goal" :in-theory (enable fn-sn-action-over))))
 
-(defthm fn-sn-existing-action-is-conflict-iff-held-binding-differs-by-definition
-  (let ((held (fn-find-article
-               msgid (fn-state-articles
-                      (fn-node-acceptance (fn-sn-node s))))))
-    (equal (equal (fn-sn-existing-action msgid payload groups s) :conflict)
+(defthm fn-sn-action-over-is-conflict-iff-held-binding-differs-by-definition
+  (let ((held (fn-find-article msgid articles)))
+    (equal (equal (fn-sn-action-over msgid payload groups articles) :conflict)
            (and held
                 (or (not (equal payload (fn-article-payload held)))
                     (not (equal groups (fn-article-groups held)))))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-sn-existing-action))))
+  :hints (("Goal" :in-theory (enable fn-sn-action-over))))
 
-(defthm fn-sn-existing-action-is-missing-iff-no-held-binding-by-definition
-  (equal (null (fn-sn-existing-action msgid payload groups s))
-         (null (fn-find-article
-                msgid (fn-state-articles
-                       (fn-node-acceptance (fn-sn-node s))))))
+(defthm fn-sn-action-over-is-missing-iff-no-held-binding-by-definition
+  (equal (null (fn-sn-action-over msgid payload groups articles))
+         (null (fn-find-article msgid articles)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-sn-existing-action))))
+  :hints (("Goal" :in-theory (enable fn-sn-action-over))))

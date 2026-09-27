@@ -467,6 +467,18 @@
   (declare (xargs :guard t))
   (fn-otm-post-command-line (fn-otm-disk s) (fn-otm-now s)))
 
+; The two replies a served read gives while the disk sheds, each naming the
+; disk's reason (lane ax-fix/reply-text): (LINE-440 . LINE-441), the POST
+; command's 440 and the 441 of an article whose POST got 340 before; NIL when
+; the disk admits.  The host reads it with the admission, from the same value
+; (host/native/owner.lisp fnn-owner-read-admission), and hands it to the read
+; (books/owner-time-admission.lisp fn-otm-read-span); it never looks inside.
+(defun fn-otm-shed-replies (s)
+  (declare (xargs :guard t))
+  (if (eq (fn-otm-admit-post s) :shed)
+      (cons (fn-otm-post-command-reply s) (fn-otm-shed-reply s))
+    nil))
+
 ; health's lines and status's, at the recorded time (the host appends a
 ; clock event on demand before the render).
 (defun fn-otm-disk-lines (s)
@@ -1313,5 +1325,5 @@
 
 (in-theory (disable fn-otm-next fn-otm-observe fn-otm-commit-event fn-otm-committer-wake
                     fn-otm-disk-event fn-otm-admit-post fn-otm-mode fn-otm-wait-ms fn-otm-log-line
-                    fn-otm-shed-reply fn-otm-post-command-reply fn-otm-health-lines
-                    fn-otm-disk-lines fn-otm-stall-releases))
+                    fn-otm-shed-reply fn-otm-post-command-reply fn-otm-shed-replies
+                    fn-otm-health-lines fn-otm-disk-lines fn-otm-stall-releases))

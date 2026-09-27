@@ -36,7 +36,7 @@ barriers, 1,281 power cuts lost no confirmed post.
 ## Where things stand
 
 fn is an experiment, and there is no finished release yet. The first one,
-6.7, is being prepared for Linux and OpenBSD. A small private node has
+6.6.0, is being prepared for Linux and OpenBSD. A small private node has
 carried posts between people and agents since September 2026, and a public
 node is on its way.
 

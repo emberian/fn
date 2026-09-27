@@ -199,9 +199,8 @@
         *lgt-rc-configs* 8 nil))))
 ; The recovery barriers carry it on (fn-lgoc-rcon-io-preserves-invariant).
 (defconst *lgt-rc-ready*
-  (fn-rcon-ocfg-io (fn-rcon-ocfg-io (fn-rcon-ocfg-io (fn-rcon-ocfg-io (fn-rcon-ocfg-io
-    *lgt-rc* :recovery-barrier :ok) :recovery-barrier :ok) :recovery-barrier :ok)
-    :recovery-barrier :ok) :recovery-barrier :ok))
+  (fn-rcon-ocfg-io (fn-rcon-ocfg-io (fn-rcon-ocfg-io
+    *lgt-rc* :recovery-barrier :ok) :recovery-barrier :ok) :recovery-barrier :ok))
 (assert-event (equal (lgt-phase *lgt-rc-ready*) :ready))
 (assert-event (fn-lgoc-invariantp *lgt-rc-ready*))
 

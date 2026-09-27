@@ -1118,27 +1118,38 @@ fn-bpnr-selection-plan over the buffer's octets
       (setf (svref st 1) 0
             (svref st 0) (make-array 0 :element-type '(unsigned-byte 8))))))
 
-(defun fnn-bps-open (journal config wall wall-error)
+(defun fnn-bps-open (journal config wall wall-error &optional held)
+  "Open JOURNAL: take its shared journal lock and lifecycle lock, read the
+profile and the generation selection, and recover.  HELD, when given, is a
+service of this process that already holds both locks on JOURNAL
+(fnn-bps-reopen-in-place): the recovery runs under them, takes neither
+again and releases neither on a failure (HELD's owner does)."
   (let* ((profile-started (progn (fnn-bp-profile-points)
                                  (get-internal-real-time)))
          (root (fnn-bp-journal-dir journal))
          ; Shared journal ownership precedes cleanup and the lifecycle lock.
          ; No live bp/tcpcl writer can lose its staging file to recovery.
-         (spool-lock (fnn-tcl-spool-acquire root))
+         (spool-lock (if held
+                         (fnn-bps-spool-lock held)
+                         (fnn-tcl-spool-acquire root)))
          ;; The selected generation names the lifecycle namespace this
          ;; process reads and publishes into; generation 0 is "lifecycle".
          (node-profile (handler-case (fnn-bps-read-profile root)
                          (error (e)
-                           (fnn-tcl-spool-release spool-lock)
+                           (unless held (fnn-tcl-spool-release spool-lock))
                            (error e))))
          (profile (fnn-core 'fn-bpnpf-node-profile-base node-profile))
          (plan (handler-case (fnn-bps-selection-plan root profile)
                  (error (e)
-                   (fnn-tcl-spool-release spool-lock)
+                   (unless held (fnn-tcl-spool-release spool-lock))
                    (error e))))
          (life (fnn-join root (fnn-core 'fn-bpnr-plan-directory plan)))
-         (tally (make-fnn-bp-tally :config config :wall wall :wall-error wall-error
-                                   :journal root :spool-lock spool-lock))
+         ;; A reopen in place keeps the run's evidence (its tally).
+         (tally (if held
+                    (fnn-bps-tally held)
+                    (make-fnn-bp-tally :config config :wall wall
+                                       :wall-error wall-error
+                                       :journal root :spool-lock spool-lock)))
          (service nil))
     (handler-case
         (progn
@@ -1159,7 +1170,8 @@ fn-bpnr-selection-plan over the buffer's octets
           (setq service
                 (make-fnn-bps
                  :root root :lifecycle life :tally tally
-                 :spool-lock spool-lock :lock-fd (fnn-bps-lock root)
+                 :spool-lock spool-lock
+                 :lock-fd (if held (fnn-bps-lock-fd held) (fnn-bps-lock root))
                  :plan plan :profile profile :node-profile node-profile
                  :state (fnn-core 'fn-bpnf-initial-state
                                   config (first profile) (second profile))))
@@ -1232,10 +1244,35 @@ fn-bpnr-selection-plan over the buffer's octets
                 (fnn-bp-profile-open service profile-started)
                 service))))
       (error (e)
-        (if service
-            (fnn-bps-release service)
-          (fnn-tcl-spool-release spool-lock))
+        (unless held
+          (if service
+              (fnn-bps-release service)
+            (fnn-tcl-spool-release spool-lock)))
         (error e)))))
+
+(defun fnn-bps-reopen-in-place (service journal config wall wall-error)
+  "Recover JOURNAL again into SERVICE, under the locks SERVICE holds (no
+other process can take the journal in between): the recovery fnn-bps-open
+runs, over whatever is durable (the new selection after a rotation).  The
+fields a recovery decides are replaced (state, plan, recovery event,
+profile, the lifecycle namespace, the stages; the contact frontiers are
+empty, as at every open); the run's evidence, its session counter, its
+routing and its transfer scope stay, so the callers that captured SERVICE
+(the serve loop's deliver closure) see the reopened journal.  A failure
+signals with SERVICE still holding its locks; its owner releases them."
+  (let ((fresh (fnn-bps-open journal config wall wall-error service)))
+    (setf (fnn-bps-root service) (fnn-bps-root fresh)
+          (fnn-bps-lifecycle service) (fnn-bps-lifecycle fresh)
+          (fnn-bps-state service) (fnn-bps-state fresh)
+          (fnn-bps-stages service) (fnn-bps-stages fresh)
+          (fnn-bps-plan service) (fnn-bps-plan fresh)
+          (fnn-bps-recovery-event service) (fnn-bps-recovery-event fresh)
+          (fnn-bps-profile service) (fnn-bps-profile fresh)
+          (fnn-bps-node-profile service) (fnn-bps-node-profile fresh)
+          (fnn-bps-cursors service) nil
+          (fnn-bps-transfer service) nil
+          (fnn-bps-expected service) nil)
+    service))
 
 ;;; Routing (spec bp-node-machine 4.6; books/bp-route-jobs.lisp and
 ;;; books/bp-node-contact-driver.lisp).  The Store's table is read once,

@@ -81,8 +81,7 @@
 (defmacro rt-both (rule now h verdicts article expect)
   `(assert-event
     (and (equal (fn-rcl-reclaimable ,rule ,now ,h ,verdicts ,article) ,expect)
-         (equal (and (not (fn-rcl-tombstonep (fn-article-payload ,article)))
-                     (not (equal ,rule '(:keep-forever)))
+         (equal (and (not (equal ,rule '(:keep-forever)))
                      (fn-rcl-rulep ,rule)
                      (fn-rcl-rule-permits ,rule ,now (fn-article-stamp ,article))
                      (not (fn-rcl-verdict-heldp (fn-article-msgid ,article) ,verdicts))
@@ -104,6 +103,26 @@
 (rt-both '(:release-after 1) (+ 100 86399) *rt-none* nil *rt-a1* nil)
 (rt-both *rt-rall* 0 *rt-none* '(("<a1@x>" . :valid)) *rt-a1* nil)
 (assert-event (equal (fn-rcl-verdict *rt-rall* 0 *rt-feed* nil *rt-a1*) :held-feed))
+; fn-rcl-verdict-reclaimable-by-definition (PKT-858): the octet model's
+; verdict tests the tombstone on the payload's OCTETS; fn-rcl-reclaimable
+; (the standing verdict) reads no payload -- its caller tests the octets it
+; holds.  An octet article whose payload is a tombstone: :already-reclaimed,
+; though nothing holds it.
+(defconst *rt-a1-tomb*
+  (fn-make-article (fn-article-msgid *rt-a1*) (fn-hrt-bytes *rt-prior* *rt-tomb*)
+                   (fn-article-groups *rt-a1*) (fn-article-memberships *rt-a1*)
+                   (fn-article-pin *rt-a1*) (fn-article-stamp *rt-a1*)))
+(assert-event (fn-rcl-tombstonep (fn-article-payload *rt-a1-tomb*)))
+(assert-event (equal (fn-rcl-verdict *rt-rall* 0 *rt-none* nil *rt-a1-tomb*) :already-reclaimed))
+(assert-event (fn-rcl-reclaimable *rt-rall* 0 *rt-none* nil *rt-a1-tomb*))
+(assert-event (equal (fn-rcl-verdict *rt-rall* 0 *rt-none* nil *rt-a1*) :reclaimable))
+; Mutation: the model verdict does not answer :reclaimable for the tombstone.
+(must-fail-checked (assert-event (equal (fn-rcl-verdict *rt-rall* 0 *rt-none* nil *rt-a1-tomb*)
+                                        :reclaimable)))
+; The retained article (a HANDLE payload) has the same standing verdict as
+; its octet model: the standing verdict reads no payload.
+(assert-event (equal (fn-rcl-standing-verdict *rt-rall* 0 *rt-pin* nil *rt-a1*)
+                     (fn-rcl-standing-verdict *rt-rall* 0 *rt-pin* nil *rt-a1-tomb*)))
 (assert-event (equal (fn-rcl-plan *rt-rall* 0 *rt-pin* nil *rt-arts*)
                      '(("<a2@x>" . :reclaimable) ("<a1@x>" . :held-reader-pin))))
 

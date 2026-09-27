@@ -1,21 +1,18 @@
 ; fn: the duplicate-post checks over the arena (records-flip; D25; PKT-635).
 ;
-; Since the flip the acceptance articles hold HANDLES (books/store-intern.lisp):
-; fn-sn-existing-action (books/store-node.lisp, the byte-identity decision)
-; and fn-pb-existing-action (books/poster-bytes.lisp, D25's source-keyed
-; decision) compare the offered octets with the handle when applied to the
-; live store, so a true resend is a :conflict and their keystones speak of a
-; store the flipped node never holds.  They remain the SPECIFICATION over
-; the wire view: this book reads each over ALPHA of the acceptance articles
-; (fn-articles-wire-of: every handle replaced by the bytes under it) and
-; relates it to the entry the host calls, fn-store-existing-action
-; (host/store-node-host.lisp fn-store-sn-existing-action and
-; fn-store-sn-prepare; host/owner-host.lisp fn-owner-prepare and
-; fn-owner-existing-action-buffer through fn-pidx-existing-action).
+; Since the flip the acceptance articles hold HANDLES (books/store-intern.lisp).
+; The byte-identity decision (books/store-node.lisp fn-sn-action-over) and
+; D25's source-keyed decision (books/poster-bytes.lisp fn-pb-action-over)
+; are the SPECIFICATION over an octet-model article list: this book reads
+; each over ALPHA of the acceptance articles (fn-articles-wire-of: every
+; handle replaced by the bytes under it) and relates it to the entry the
+; host calls, fn-store-existing-action (host/store-node-host.lisp
+; fn-store-sn-existing-action and fn-store-sn-prepare; host/owner-host.lisp
+; fn-owner-existing-action, fn-owner-prepare, and fn-owner-existing-action-
+; buffer through fn-pidx-existing-action).  The store-shaped twins
+; fn-sn-existing-action and fn-pb-existing-action, which applied the
+; decisions to the live store's handles, were retired (PKT-860).
 ;
-;   fn-sn-action-over / fn-pb-action-over    the two decisions over an article
-;                                            list; the store forms are them over
-;                                            the store's articles (-by-definition).
 ; KEYSTONES (subject fn-store-existing-action):
 ;   fn-store-existing-action-is-pb-over-alpha
 ;       where the held bytes are no tombstone, the entry's verdict is D25's
@@ -29,43 +26,10 @@
 (include-book "store-intern")
 (include-book "store-node-existing-invariants")
 
-; -----------------------------------------------------------------------------
-; The two decisions over an article list.
-
-(fn-payload-kind fn-sn-action-over :wire "the verdict over alpha (octet articles)")
-(defun fn-sn-action-over (msgid payload groups articles)
-  (declare (xargs :guard t))
-  (let ((article (fn-find-article msgid articles)))
-    (if article
-        (if (and (equal payload (fn-article-payload article))
-                 (equal groups (fn-article-groups article)))
-            :duplicate
-          :conflict)
-      nil)))
-
-(fn-payload-kind fn-pb-action-over :wire "the verdict over alpha (octet articles)")
-(defun fn-pb-action-over (msgid payload groups articles)
-  (declare (xargs :guard t))
-  (let ((article (fn-find-article msgid articles)))
-    (if article
-        (if (and (fn-pb-same-articlep (fn-record-string-octets msgid) payload
-                                      (fn-article-payload article))
-                 (equal groups (fn-article-groups article)))
-            :duplicate
-          :conflict)
-      nil)))
-
-(defthm fn-sn-existing-action-is-action-over-by-definition
-  (equal (fn-sn-existing-action msgid payload groups s)
-         (fn-sn-action-over msgid payload groups
-                            (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
-  :hints (("Goal" :in-theory (enable fn-sn-existing-action))))
-
-(defthm fn-pb-existing-action-is-action-over-by-definition
-  (equal (fn-pb-existing-action msgid payload groups s)
-         (fn-pb-action-over msgid payload groups
-                            (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
-  :hints (("Goal" :in-theory (enable fn-pb-existing-action))))
+; The two decisions over an article list are books/store-node.lisp
+; fn-sn-action-over and books/poster-bytes.lisp fn-pb-action-over (their
+; store-shaped twins fn-sn-existing-action and fn-pb-existing-action compared
+; the offered octets with a handle and were retired, PKT-860).
 
 ; ALPHA of the store's acceptance articles.
 (defun fn-sn-alpha-articles (s fn-arena)

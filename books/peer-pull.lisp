@@ -1172,7 +1172,9 @@
                 (equal (fn-pull-r-unavailable (car (fn-pull-drain r fuel)))
                        (cons (fn-pull-r-current r)
                              (fn-pull-list (fn-pull-r-unavailable r))))))
-  :hints (("Goal" :in-theory (enable fn-pull-drain fn-pull-fail))))
+  ;; completep/terminal-codep closed: 969k prover steps to 203k.
+  :hints (("Goal" :in-theory (e/d (fn-pull-drain fn-pull-fail)
+                                  (fn-pull-completep fn-pull-terminal-codep)))))
 
 (defthm fn-pull-next-and-record-keep-unavailable
   (and (equal (fn-pull-r-unavailable (car (fn-pull-next r))) (fn-pull-r-unavailable r))

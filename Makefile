@@ -252,6 +252,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/connection-budget-tests \
 	books/store-open-pre-c1 \
 	tests/acl2/store-open-pre-c1-tests \
+	books/store-open-replay-refusal \
+	tests/acl2/store-open-replay-refusal-tests \
 	tests/acl2/history-fold-refinement-tests \
 	tests/acl2/linear-recognizers-tests \
 	tests/acl2/open-one-pass-tests \
@@ -377,6 +379,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-stream-tests \
 	books/store-log-damage \
 	tests/acl2/store-log-damage-tests \
+	books/store-log-buffer \
+	tests/acl2/store-log-buffer-tests \
+	books/store-log-walk-once \
+	tests/acl2/store-log-walk-once-tests \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
 	books/store-log-reclaim \
@@ -823,6 +829,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-arena-paged \
 	books/payload-arena-extent-logic \
 	books/payload-arena-extent \
+	books/store-intern-once \
+	tests/acl2/store-intern-once-tests \
 	books/payload-extent \
 	books/payload-commit-extent \
 	books/frame-digest-buffer \
@@ -1121,6 +1129,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-pull-tests \
 	books/peer-pull-session \
 	tests/acl2/peer-pull-session-tests \
+	books/peer-catchup-serve \
+	books/peer-catchup-effects \
+	books/peer-catchup \
+	tests/acl2/peer-catchup-tests \
 	tests/acl2/control-tests \
 	books/control-authority \
 	tests/acl2/control-authority-tests \
@@ -1596,7 +1608,7 @@ TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_process_supervisor tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_bridge_image tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_program_check \
-	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_check_steps tests.test_cert_cache_sync
+	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_check_steps tests.test_cert_cache_sync
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 

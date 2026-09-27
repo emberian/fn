@@ -83,12 +83,12 @@ if IMAGE_AVAILABLE:
                     finally:
                         node.reap()
 
-        def test_five_served_recovery_barriers_are_distinct_cuts(self):
+        def test_three_served_recovery_barriers_are_distinct_cuts(self):
             selected = os.environ.get("FN_NATIVE_SERVED_CUT")
             cuts = [cut for cut in native_cuts.RECOVERY_CUTS
                     if cut.model_name == "recover-barrier"
                     and (selected is None or cut.name == selected)]
-            self.assertEqual(len(cuts), 5 if selected is None else 1)
+            self.assertEqual(len(cuts), 3 if selected is None else 1)
             for cut in cuts:
                 with self.subTest(cut=cut.name), tempfile.TemporaryDirectory(
                         prefix="fn-served-recover-") as scratch:

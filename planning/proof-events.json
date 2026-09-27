@@ -555,11 +555,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-sn-open-observed-not-ready-before-five-barriers"
+          "name": "fn-sn-open-observed-not-ready-before-the-barriers"
         },
         {
           "kind": "theorem",
-          "name": "fn-sn-open-observed-five-barriers-open-ready"
+          "name": "fn-sn-open-observed-barriers-open-ready"
         },
         {
           "kind": "theorem",
@@ -3075,6 +3075,10 @@
         {
           "kind": "theorem",
           "name": "fn-bpnrd-due-rotation-preserves-recovery"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrd-rotation-keeps-every-held-family"
         }
       ]
     },
@@ -3420,10 +3424,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-pbb-existing-action-is-pb-existing-action"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-octets-append-back{correspondence}"
         },
         {
@@ -3708,6 +3708,18 @@
         {
           "kind": "theorem",
           "name": "fn-rcl-store-counts-is-the-model-over-alpha"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-store-classes-partition-the-articles"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rcl-signed-article-is-never-reclaimable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rclb-same-articlep-is-rcl-same-articlep"
         }
       ]
     },
@@ -5024,10 +5036,6 @@
         {
           "kind": "theorem",
           "name": "fn-bpnpf-profile-read-is-valid"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnpf-profile-write-never-lowers"
         },
         {
           "kind": "theorem",
@@ -9622,6 +9630,54 @@
         {
           "kind": "theorem",
           "name": "fn-lgob-journal-fence-keeps-the-rotated-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-fence-of-a-fenced-file-is-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-three-barrier-open-is-the-five-at-every-cut"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-three-and-five-barrier-opens-have-the-same-cut-states"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-only-a-write-unfences-a-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-recovered-state-meets-the-segment-hypothesis"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-three-barrier-open-after-recovery-is-the-five"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-two-barriers-without-journal-lose-a-rotated-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-three-barriers-keep-the-rotated-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-two-barriers-without-root-lose-a-checkpointed-history"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-three-barriers-keep-the-checkpoint"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-two-barriers-without-parent-lose-an-imported-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-three-barriers-keep-the-imported-store"
         }
       ]
     },
@@ -10868,6 +10924,22 @@
         {
           "kind": "theorem",
           "name": "fn-heap-store-figure-holds-every-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-statement-admission-keeps-the-vector"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cvec-statement-row-within-its-figure"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-oii-publication-group-count-is-the-rows"
         }
       ]
     },
@@ -10895,6 +10967,19 @@
         {
           "kind": "theorem",
           "name": "fn-heap-init-decide-fits-the-budget-and-the-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-budget-note-names-the-budget-init-sized-for",
+          "note": "KEYSTONE (batch AX fix init-budget, rehearsal finding R1). Host: host/native/operator.lisp init via host/native/heap.lisp fnn-heap-init-decision-noted."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-budget-note-only-when-named-below-machine-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-init-budget-is-the-named-below-the-machine"
         }
       ]
     },
@@ -10987,6 +11072,14 @@
         {
           "kind": "theorem",
           "name": "fn-payload-octets-are-not-a-handle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-stx-index-of-store-without-a-keyring"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ofa-feed-article-is-the-owner-step-article"
         }
       ]
     },
@@ -11029,6 +11122,131 @@
         {
           "kind": "theorem",
           "name": "fn-otm-closed-posting-never-awaits-an-article"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-closed-posting-answers-the-generic-440"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-posting-disallowed-refusal-is-the-generic-441"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-disk-reply-effects-is-a-map"
+        }
+      ]
+    },
+    {
+      "id": "PRF-328",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-step-buf-is-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-entry-places-is-list-places"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-decide-is-decide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-decide-is-flat"
+        }
+      ]
+    },
+    {
+      "id": "PRF-329",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sorr-refusal-only-on-a-stop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sorr-capacity-names-the-retention-state"
+        }
+      ]
+    },
+    {
+      "id": "PRF-330",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ipo-facts-context-is-facts-and-context"
+        }
+      ]
+    },
+    {
+      "id": "PRF-331",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-run-nf-then-fold-is-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-run-of-set-next-is-run-nf"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-step-buf-nf-is-step-nf"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-decode-next-exec-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-decode-next-exec-fold"
+        }
+      ]
+    },
+    {
+      "id": "PRF-325",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cu-select-serves-only-retrievable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-select-makes-progress"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-select-stays-within-the-quantum"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-serve-reply-effects-well-formed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-step-keeps-offers-verified"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-on-end-refuses-a-digest-mismatch"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-step-installs-only-through-the-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-records-replay-is-the-last-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-resume-asks-from-the-journaled-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cu-decode-of-encode"
         }
       ]
     }

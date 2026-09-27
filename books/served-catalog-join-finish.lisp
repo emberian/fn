@@ -522,7 +522,8 @@
 ; Step 2 at the identity finish (an instance; its own teeth OPEN).  host/owner-host.lisp
 ; fn-owner-finish-identity installs fn-rix-ocfg-complete, which is the
 ; article finish's owner with no configuration record staged and the
-; history stobj synced to the store (fn-scj-identity-finish-owner-is-article-
+; history stobj in R with the store (fn-hist-of-storep; history-columns-3
+; retired the event index; fn-scj-identity-finish-owner-is-article-
 ; finish-owner), then runs the same fn-sca-finish over its view: the join
 ; and the rows invariant are carried (a signed composite's EVENT loads its
 ; held row, fn-scj-load-h).

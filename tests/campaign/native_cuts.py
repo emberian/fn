@@ -54,7 +54,7 @@ RECOVERY_CUTS = (
     NativeCut("recover-replayed", "fn-lg-open-program", "n/a", book=LOG_ROUTE_BOOK),
     *(NativeCut("recover-barrier-{}".format(i), "fn-lg-open-program", "n/a",
                 model_name="recover-barrier", occurrence=i, book=LOG_ROUTE_BOOK)
-      for i in range(1, 6)),
+      for i in range(1, 4)),  # *fn-sf-recovery-barrier-count*: journal/, root, parent
     NativeCut("recovery-stage-unlinked", "fn-bs-recover-stage-cleanup-program", "n/a",
               follows="fn-lg-open-program"),
 )

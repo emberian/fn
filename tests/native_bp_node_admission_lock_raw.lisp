@@ -5,6 +5,35 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-core-state (name &rest args)
+  (declare (ignorable name args))
+  (harness-stub-reached 'fnn-core-state "host/native/io.lisp"))
+(defun fnn-hsig-observe-raw (ed-public-key ml-public-key message signatures)
+  (declare (ignorable ed-public-key ml-public-key message signatures))
+  (harness-stub-reached 'fnn-hsig-observe-raw "host/native/signatures.lisp"))
+(defun fnn-octet-list (octets)
+  (declare (ignorable octets))
+  (harness-stub-reached 'fnn-octet-list "host/native/io.lisp"))
+(defun fnn-string-octets (string)
+  (declare (ignorable string))
+  (harness-stub-reached 'fnn-string-octets "host/native/io.lisp"))
+(defun fnn-workflow-commit-receipt-intent (journal intent canonical-release-callback)
+  (declare (ignorable journal intent canonical-release-callback))
+  (harness-stub-reached 'fnn-workflow-commit-receipt-intent "host/native/workflow.lisp"))
+;;; ---- derived stubs: END ----
+
 (defvar *trusted* t)
 (defvar *calls* nil)
 (defvar *refusal-line* nil)
@@ -30,8 +59,8 @@
     (error "unexpected core call ~s" name))
   (push :trust *calls*)
   *trusted*)
-(defun fnn-owner-serialized (owner cid thunk)
-  (declare (ignore owner cid))
+(defun fnn-owner-serialized (owner cid thunk &optional class)
+  (declare (ignore owner cid class))
   ;; An admin changed the current owner config after outer preflight.
   (setq *trusted* nil)
   (push :lock *calls*)
@@ -86,6 +115,10 @@
 ;; The global the request entry clears and the refusal line reads is the
 ;; owner's own (mission-signed-2), not a stand-in.
 (load-shipped "host/native/owner.lisp" '(defvar) '(*fnn-owner-transit-detail*))
+;; The request entry takes the owner through the :transit class wrapper
+;; (fnn-owner-transit-serialized, the shipped body) since the owner's
+;; quantum classes; the stubbed fnn-owner-serialized above is the lock.
+(load-shipped "host/native/owner.lisp" '(defun) '(fnn-owner-transit-serialized))
 ;; fnn-bpnode-request-result is the deployed wrapper; since mission-signed-2
 ;; the decision is fnn-bpnode-request-result-1 and a refusal prints ACL2's
 ;; line through fnn-bpnode-refusal-line: all three are the shipped bodies.

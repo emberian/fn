@@ -268,6 +268,9 @@
 ; HDR :fn-enrollment (PKT-175): the verdict principal's current enrollment
 ; in the keyring view the control pin carries (books/nntp-enrollment.lisp).
 (include-book "nntp-enrollment")
+; PRF-325 (NNT-053): XFNCATCHUP, a peer's batched catch-up stream over the
+; pinned view (books/peer-catchup-serve.lisp).
+(include-book "peer-catchup-serve")
 
 (defun fn-nntp-number-withdrawn-p (session archive index token)
   (declare (xargs :guard t))
@@ -415,12 +418,18 @@
         (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
     (if (not (fn-nntp-keyword-tokenp keyword))
         (fn-nntp-single session "501 syntax error")
-      (if (not (fn-nntp-archive-keywordp keyword))
-          (fn-nntp-session-command session env keyword args)
-        (if (fn-nntp-session-projected session)
-            (fn-nntp-archive-command-pinned
-             session archive index verdicts env keyword args fn-arena)
-          (fn-nntp-single session "503 archive projection unavailable"))))))
+      ;; PRF-325: XFNCATCHUP answers over the pinned view, as the archive
+      ;; readers do; books/nntp-auth.lisp gates it with them.
+      (if (fn-nntp-keywordp keyword "XFNCATCHUP")
+          (if (fn-nntp-session-projected session)
+              (fn-cu-serve-reply session archive index args fn-arena)
+            (fn-nntp-single session "503 archive projection unavailable"))
+        (if (not (fn-nntp-archive-keywordp keyword))
+            (fn-nntp-session-command session env keyword args)
+          (if (fn-nntp-session-projected session)
+              (fn-nntp-archive-command-pinned
+               session archive index verdicts env keyword args fn-arena)
+            (fn-nntp-single session "503 archive projection unavailable")))))))
 
 (defun fn-nntp-step-pinned (session archive index verdicts env wire-event fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))

@@ -1,8 +1,9 @@
 ; fn: the poster-bytes existing-article test over the octet buffer (D27
 ; boundary 6, wave B; prefix `fn-pbb-').
 ;
-; `fn-pb-existing-action' (books/poster-bytes.lisp) is what the owner host
-; asks before a prepare: is this Message-ID already held, and if so is the
+; D25's verdict (books/poster-bytes.lisp `fn-pb-action-over'; the host's
+; entry books/store-intern.lisp `fn-store-existing-action') is what the owner
+; host asks before a prepare: is this Message-ID already held, and if so is the
 ; submission the same article (then :duplicate) or a different one (then
 ; :conflict).  "The same article" reads the injection source out of both
 ; payloads (`fn-inj-source-of', books/injection.lisp: strip the Path line,
@@ -21,10 +22,12 @@
 ; st[K..A) followed by st[B..), with K = A = B for a suffix, and the
 ; compare is `fn-pbb-range-match' over the first piece and
 ; `fn-oct-suffix-equalp' over the second.  The one keystone,
-; `fn-pbb-existing-action-is-pb-existing-action', says the buffer function
-; equals the list function on the buffer's logical value; the host calls
-; the buffer function (host/owner-host.lisp `fn-owner-existing-action-buffer'
-; and `fn-owner-prepare-buffer').
+; `fn-pbb-same-articlep-is-pb-same-articlep', says the buffer comparison
+; equals the list comparison on the buffer's logical value; the host's
+; buffer verdict (books/post-identity-index.lisp `fn-pidx-existing-action',
+; called by host/owner-host.lisp `fn-owner-existing-action-buffer' and
+; `fn-owner-prepare-buffer') uses it through its tombstone-aware form
+; (books/store-reclaim-buffer.lisp `fn-rclb-same-articlep').
 
 (in-package "ACL2")
 (include-book "poster-bytes")
@@ -1038,6 +1041,9 @@
         (fn-pbb-desc-equalp d (cdr b) fn-octets)
       (fn-oct-suffix-equalp 0 held-payload fn-octets))))
 
+; KEYSTONE (the buffer comparison).  On the buffer's logical value the
+; buffer's same-article test is the list's; the host's buffer verdict
+; (fn-pidx-existing-action) reaches it through fn-rclb-same-articlep.
 (defthm fn-pbb-same-articlep-is-pb-same-articlep
   (implies (true-listp fn-octets)
            (equal (fn-pbb-same-articlep msgid fn-octets held-payload)
@@ -1051,30 +1057,12 @@
                     fn-pbb-block-agent-is-pb-block-agent
                     fn-pbb-path-agent-is-pb-path-agent))
 
-(defun fn-pbb-existing-action (msgid fn-octets groups s)
-  ; `fn-pb-existing-action' with the submitted payload in the buffer.
-  (declare (xargs :stobjs fn-octets :guard t))
-  (let ((article (fn-find-article
-                  msgid (fn-state-articles
-                         (fn-node-acceptance (fn-sn-node s))))))
-    (if article
-        (if (and (fn-pbb-same-articlep (fn-record-string-octets msgid) fn-octets
-                                       (fn-article-payload article))
-                 (equal groups (fn-article-groups article)))
-            :duplicate
-          :conflict)
-      nil)))
-
-; The keystone: on the buffer's logical value the buffer function is the
-; list function.  The hypothesis is the stobj's recognizer, which every
-; live buffer satisfies (it is the guard of every stobj argument).
-(defthm fn-pbb-existing-action-is-pb-existing-action
-  (implies (fn-octets-p fn-octets)
-           (equal (fn-pbb-existing-action msgid fn-octets groups s)
-                  (fn-pb-existing-action msgid fn-octets groups s)))
-  :hints (("Goal" :in-theory (enable fn-pb-existing-action fn-octets-p))))
-
-(in-theory (disable fn-pbb-existing-action))
+; The buffer verdict over a whole store (fn-pbb-existing-action) was a
+; pre-flip twin comparing with the held handle and was retired (PKT-860):
+; the host's buffer verdict is books/post-identity-index.lisp
+; fn-pidx-existing-action, equal to the Store's entry fn-store-existing-action
+; (KEYSTONE fn-pidx-existing-action-is-store-existing-action) through the
+; comparison above (fn-pbb-same-articlep-is-pb-same-articlep).
 
 ; The buffer's logical value is an octet list in the acceptance model's
 ; vocabulary too: the recognizer test the list entry made is discharged by

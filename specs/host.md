@@ -887,7 +887,15 @@ are named in the entries' own guards: every host wrapper's byte-carrying
 formal (`tools/harness_check.py` entry-guards, gating), and every
 definition in books/ that reads a retained payload declares whether it
 works in handles or in the octet model (`fn-payload-kind`,
-`tools/payload_kind_check.py`, gating).
+`tools/payload_kind_check.py`, gating). The check has no waivers (lane
+entry-guards-2): each consumer it found reads the arena at the handle
+(control status and HDR :fn-control, reclaim's counts, the book owner's
+feed reply), or is the octet model a proved function over the arena equals
+(`fn-rcl-verdict`, `fn-rcl-summary`: `fn-rcl-store-counts-is-the-model-over-
+alpha`), or no longer reads a payload (`fn-rcl-reclaimable`, the standing
+verdict; the keyring-less opens build the empty statement index,
+`fn-stx-index-of-store-without-a-keyring`), or was retired (the five pre-flip
+duplicate-check twins).
 
 ### Differential evidence and measurements
 

@@ -1667,6 +1667,140 @@
   (implies (not (equal (car decision) :init))
            (equal (fn-heap-init-exit-code decision) 1)))
 
+; ---- A named budget below the machine init observes (finding R1 of the
+; public-node rehearsal, planning/evidence/public-node-rehearsal-2026-09-27.md).
+; FN_INIT_BUDGET_MB (the operator's named budget; there is no init option for
+; it) caps the budget init sizes for, so a store made under a named budget
+; below this machine is sized for the named budget.  When init runs outside
+; the service's memory limit with the limit named, the machine it observes is
+; larger than the named budget: init still writes (a named budget is how a
+; store is made for a smaller limit), and says so by name on stderr with both
+; figures, so the service's start is not where the operator learns the two
+; differ.  With no named budget, or a named budget at or above this machine,
+; nothing is added: init is as before.
+;   warning init-budget-below-machine named-budget=MB MB machine-budget=MB MB: ...
+
+; The budget init observes without the named one: the physical memory less
+; the OS's reserve and each limit the process runs under.
+(defun fn-heap-init-machine-octets (physical limits)
+  (declare (xargs :guard t))
+  (fn-heap-machine-octets (fn-heap-init-observations physical limits nil)))
+
+; The note the host prints after an accepted init: NIL, or
+; (:named-budget-below-machine NAMED-MB MACHINE-MB).
+(defun fn-heap-init-budget-note (decision physical limits budget-octets)
+  (declare (xargs :guard t))
+  (let ((named (fn-heap-init-explicit-budget budget-octets))
+        (machine-mb (floor (fn-heap-init-machine-octets physical limits)
+                           *fn-heap-mib*)))
+    (if (and (consp decision)
+             (equal (car decision) :init)
+             (posp named)
+             (< (floor named *fn-heap-mib*) machine-mb))
+        (list :named-budget-below-machine (floor named *fn-heap-mib*) machine-mb)
+      nil)))
+
+(defthm fn-heap-init-explicit-budget-type
+  (or (null (fn-heap-init-explicit-budget octets))
+      (equal (fn-heap-init-explicit-budget octets) :bad)
+      (posp (fn-heap-init-explicit-budget octets)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-heap-init-explicit-budget))))
+
+(local
+ (defthm fn-heap-init-observations-machine-with-a-named-budget
+   (implies (posp e)
+            (equal (fn-heap-machine-octets (fn-heap-init-observations physical limits e))
+                   (if (zp (fn-heap-init-machine-octets physical limits))
+                       e
+                     (min e (fn-heap-init-machine-octets physical limits)))))
+   :hints (("Goal" :in-theory (e/d (fn-heap-machine-octets-of-cons)
+                                   (fn-heap-available-physical-octets))))))
+
+; The budget init sized for is the named one when that is below the machine.
+(defthm fn-heap-init-budget-is-the-named-below-the-machine
+  (implies (and (posp e)
+                (< (floor e *fn-heap-mib*)
+                   (floor (fn-heap-init-machine-octets physical limits) *fn-heap-mib*)))
+           (equal (fn-heap-machine-octets (fn-heap-init-observations physical limits e))
+                  e))
+  :hints (("Goal" :in-theory (disable fn-heap-init-machine-octets
+                                      fn-heap-init-observations
+                                      fn-heap-machine-octets)
+           :cases ((< e (fn-heap-init-machine-octets physical limits))))))
+
+(local
+ (defthm fn-heap-init-decide-accepted-budget-mb
+   (let ((d (fn-heap-init-decide request core nursery physical limits
+                                 budget-octets sizing-octets)))
+     (implies (equal (car d) :init)
+              (equal (nth 4 d)
+                     (floor (fn-heap-machine-octets
+                             (fn-heap-init-observations
+                              physical limits
+                              (fn-heap-init-explicit-budget budget-octets)))
+                            *fn-heap-mib*))))
+   :hints (("Goal" :in-theory (disable fn-heap-reserve-acceptsp
+                                       fn-bs-profile-resolve
+                                       fn-heap-init-chosen
+                                       fn-heap-init-reservation-octets
+                                       fn-heap-init-observations
+                                       fn-heap-init-explicit-budget
+                                       fn-heap-init-sizing
+                                       fn-heap-profile-word fn-heap-mb-of
+                                       fn-heap-machine-octets
+                                       fn-heap-machine-sized-requestp)))))
+
+; Keystone (the subject is what the host calls: host/native/heap.lisp
+; fnn-heap-init-decision-noted, from fnn-operator-execute-init).  An accepted
+; init under a named budget below the machine it observes carries the note,
+; and the note names the budget init sized the store for (the decision's
+; budget, the named one) and the machine's, the larger.
+(defthm fn-heap-init-budget-note-names-the-budget-init-sized-for
+  (let* ((d (fn-heap-init-decide request core nursery physical limits
+                                 budget-octets sizing-octets))
+         (named (fn-heap-init-explicit-budget budget-octets))
+         (machine-mb (floor (fn-heap-init-machine-octets physical limits)
+                            *fn-heap-mib*))
+         (note (fn-heap-init-budget-note d physical limits budget-octets)))
+    (implies (and (equal (car d) :init)
+                  (posp named)
+                  (< (floor named *fn-heap-mib*) machine-mb))
+             (and (equal (car note) :named-budget-below-machine)
+                  (equal (nth 1 note) (nth 4 d))
+                  (equal (nth 2 note) machine-mb)
+                  (< (nth 4 d) machine-mb))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-heap-init-decide fn-heap-init-machine-octets
+                               fn-heap-init-explicit-budget
+                               fn-heap-init-observations fn-heap-machine-octets))))
+
+; ... and only then: no named budget (FN_INIT_BUDGET_MB unset), a named
+; budget at or above the machine, or a refusal carries no note.
+(defthm fn-heap-init-budget-note-only-when-named-below-machine-by-definition
+  (implies (fn-heap-init-budget-note decision physical limits budget-octets)
+           (and (equal (car decision) :init)
+                (posp (fn-heap-init-explicit-budget budget-octets))
+                (< (floor (fn-heap-init-explicit-budget budget-octets) *fn-heap-mib*)
+                   (floor (fn-heap-init-machine-octets physical limits) *fn-heap-mib*))))
+  :rule-classes nil)
+
+(in-theory (disable fn-heap-init-budget-note fn-heap-init-machine-octets))
+
+(defun fn-heap-init-budget-note-line (note)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-heap-decimal)))))
+  (if (consp note)
+      (let ((named (fn-heap-decimal (nth 1 (true-list-fix note))))
+            (machine (fn-heap-decimal (nth 2 (true-list-fix note)))))
+        (concatenate 'string
+                     "warning init-budget-below-machine named-budget=" named
+                     " MB machine-budget=" machine
+                     " MB: the store is sized for FN_INIT_BUDGET_MB, not this machine;"
+                     " run init under the service's memory limit, and give the service at least "
+                     named " MB"))
+    nil))
+
 ; -----------------------------------------------------------------------------
 ; The figure is heap-figure's formula since the records flip
 ; (books/heap-store-figure.lisp): the least dynamic space, at the trigger the

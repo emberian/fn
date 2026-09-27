@@ -8,8 +8,65 @@
 ;;; the offline store actions: they name the store the configuration declares
 ;;; and run the existing store entry against it, so a node is stood up,
 ;;; inspected and repaired with the one public verb and one binary.
+;;;
+;;; What this file does not carry: the NNTP service (`run', `post'), credential
+;;; administration (`principal') and every arm that talks to a running owner
+;;; over the control socket.  Those are host/native/operator-live.lisp's, which
+;;; registers them below when an image loads it; the DTN image
+;;; (host/native/build-dtn.lisp) does not, so it has none of those surfaces
+;;; and this file calls nothing it lacks (`tools/host_check.py --load --build
+;;; host/native/build-dtn.lisp').
 
 (in-package "ACL2")
+
+;;; The surfaces an image carries are the files it loaded.  An action that
+;;; needs one names it here; its executor is registered by the file that
+;;; implements it, and an image without that file refuses the action by the
+;;; surface's name (the usage exit) before anything runs.
+(defun fnn-operator-action-surface (action)
+  (case action
+    ((:run :post) :nntp-service)
+    (:principal :credentials)
+    ;; peer genesis|invite|accept|confirm reach the owner as control
+    ;; requests 9 to 11 (host/native/peer-invite.lisp); keys redecide as
+    ;; request 12 (host/native/keys.lisp); tls reload as request 19
+    ;; (host/native/tls-reload.lisp); moderation approve|reject and article
+    ;; withdraw as request 21.
+    ((:peering :keys :tls :moderate) :control)))
+
+(defvar *fnn-operator-surface-executors* nil
+  "Alist ACTION -> function of the operator result, one per surface action
+this image loaded (fnn-operator-register-action).")
+
+(defun fnn-operator-register-action (action executor)
+  (unless (fnn-operator-action-surface action)
+    (error "fnn-operator-register-action: ~s names no surface" action))
+  (setq *fnn-operator-surface-executors*
+        (acons action executor
+               (remove action *fnn-operator-surface-executors* :key #'car)))
+  action)
+
+;;; The running owner, as the offline verbs (`status', `health', admin,
+;;; `account invite') ask it.  NIL in an image without the control socket:
+;;; there is no owner of this image to ask, and each verb takes its offline
+;;; arm, whose exclusive lock refuses a store another image's owner holds.
+;;; host/native/operator-live.lisp installs it.
+(defstruct (fnn-operator-live-owner (:conc-name fnn-olo-))
+  ;; (path-octets) -> true when a socket node is at the control path.
+  socket-present
+  ;; (path-octets kind) -> the owner's answer, fnn-control-live-status's.
+  live-status
+  ;; (path-octets kind) -> after a live report is written, its trailing lines.
+  status-tail
+  ;; (root control-path-list queryp) -> the admin liveness decision
+  ;; (:live :stale :offline :held), a :stale node removed and ACL2's note
+  ;; printed, as fn-native-control-liveness-decides decides.
+  admin-observe
+  ;; (control-path argv liveness) -> exit code and the detail word of an
+  ;; administrative vector the live owner (:live) or its lock (:held) answered.
+  admin)
+
+(defvar *fnn-operator-live-owner* nil)
 
 (defun fnn-operator-argv-octets (texts max-arguments max-octets)
   (when (< max-arguments (length texts))
@@ -191,189 +248,6 @@ non-symlink file PATH, as an octet list; NIL when it cannot be read."
                      (fnn-octets-string (fnn-octets path-list))))))
     (fnn-core 'fn-native-health-host-last-run tail)))
 
-(defun fnn-operator-execute-run (result)
-  "Invoke the one owner entry only with ACL2-normalized plan projections."
-  (setq *fnn-owner-last-fault* nil)
-  (handler-case
-      (let* ((auth-path
-               (fnn-octets-string
-                (fnn-octets
-                 (fnn-core
-                  'fn-native-operator-host-result-run-auth-path-octets result))))
-             (auth-required
-               (fnn-core
-                'fn-native-operator-host-result-run-auth-requiredp result))
-             (auth-protected
-               (fnn-core
-                'fn-native-operator-host-result-run-auth-protected-onlyp result))
-             (certificate
-               (fnn-operator-optional-path
-                result 'fn-native-operator-host-result-run-tls-cert-octets))
-             (private-key
-               (fnn-operator-optional-path
-                result 'fn-native-operator-host-result-run-tls-key-octets))
-             ;; `[log] path', absolute by fn-native-config-log-pathp; NIL
-             ;; means the owner writes its service log to stderr.
-             (log-path
-               (fnn-operator-optional-path
-                result 'fn-native-operator-host-result-run-log-path-octets))
-             (tls-context nil)
-             (run-code nil)
-             (run-failure nil))
-        (setq *fnn-health-min-percent*
-              (fnn-core 'fn-native-operator-host-result-health-min-percent result))
-        (unwind-protect
-            (handler-case
-            (progn
-              ;; Append-only, created 0640 if absent, never through a
-              ;; symlink, never truncated or rotated here.  Opened before
-              ;; the store so a wrong path is refused before recovery runs.
-              (when log-path
-                (setq *fnn-owner-log-fd* (fnn-owner-open-log log-path)
-                      *fnn-owner-log-path* log-path)
-                (fnn-operator-log-run-line
-                 (fnn-core 'fn-native-health-host-run-started-line)))
-              ;; ACL2 already enforced paired presence.  Only a successfully
-              ;; loaded and key-checked context is passed to auth/owner.
-              (when certificate
-                (setq tls-context
-                      (fnn-tls-open-context certificate private-key)))
-              (let* ((*fnn-owner-startup-hooks*
-                       (list (fnn-native-auth-startup-hook
-                              auth-path auth-required auth-protected)))
-                     ;; The NEWNEWS pull feed (PRF-100) is a sibling lifecycle
-                     ;; extension: host/native/pull-service.lisp.
-                     (*fnn-owner-start-hooks*
-                       (list* #'fnn-feed-service-start #'fnn-pull-service-start
-                              *fnn-owner-start-hooks*))
-                     (*fnn-owner-stop-hooks*
-                       (list* #'fnn-feed-service-wake #'fnn-pull-service-wake
-                              *fnn-owner-stop-hooks*))
-                     (*fnn-owner-close-hooks*
-                       (list* #'fnn-feed-service-close #'fnn-pull-service-close
-                              *fnn-owner-close-hooks*))
-                     (code
-                       (fnn-control-owner-run-normalized
-                        (fnn-octets
-                         (fnn-core
-                          'fn-native-operator-host-result-run-store-octets result))
-                        (fnn-octets
-                         (fnn-core
-                          'fn-native-operator-host-result-run-listener-host-octets result))
-                        (fnn-core
-                         'fn-native-operator-host-result-run-listener-port result)
-                        (fnn-core 'fn-native-operator-host-result-run-oncep result)
-                        (fnn-core
-                         'fn-native-operator-host-result-run-max-connections result)
-                        (fnn-octets (fnn-core
-                                     'fn-native-operator-host-result-run-control-path-octets result))
-                        (fnn-core 'fn-native-operator-host-result-run-posting-enabledp result)
-                        tls-context
-                        ;; PRF-162: ACL2's implicit-TLS port, offered only
-                        ;; beside the certificate and key loaded above.
-                        (and tls-context
-                             (fnn-core
-                              'fn-native-operator-host-result-run-implicit-tls-port
-                              result)))))
-                (setq run-code code)
-                ;; The owner's fault, when it stopped on one, is the
-                ;; result line's reason: the last line the service
-                ;; manager's journal shows for this run says why.
-                (fnn-operator-emit-status
-                 (fnn-operator-status-of-exit-code code) "run"
-                 (and (/= code +fnn-exit-ok+) *fnn-owner-last-fault*))
-                code))
-              (error (condition)
-                ;; Recorded for the stop line below, then handled as before
-                ;; by the outer handler.
-                (setq run-failure condition)
-                (error condition)))
-          (let ((code (or run-code (and run-failure (fnn-exit-code-for run-failure)))))
-            (when (integerp code)
-              (fnn-operator-log-run-line
-               (fnn-core 'fn-native-health-host-run-stopped-line code
-                         (let ((reason (cond (run-failure
-                                              (ignore-errors (format nil "~a" run-failure)))
-                                             ((/= code +fnn-exit-ok+) *fnn-owner-last-fault*))))
-                           (and (stringp reason) (fnn-octet-list (fnn-string-octets reason))))))))
-          (when tls-context (fnn-tls-close-context tls-context))
-          (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
-            (when *fnn-owner-log-fd*
-              (ignore-errors (fnn-close *fnn-owner-log-fd*))
-              (setq *fnn-owner-log-fd* nil
-                    *fnn-owner-log-path* nil)))))
-    (error (condition)
-      (let ((code (fnn-exit-code-for condition)))
-        (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) "run" condition)
-        code))))
-
-(defun fnn-operator-status-detail (status word)
-  "STATUS, then the reason word ACL2 says the operator's line carries
-(fn-native-control-reply-detail, PKT-453 (a)): its octets, not a host word."
-  (let ((detail (and word (fnn-core 'fn-native-control-host-reply-detail status word))))
-    (if (fnn-octet-list-p detail)
-        (format nil "~a ~a" status (fnn-octets-string (fnn-octets detail)))
-      status)))
-
-(defun fnn-operator-execute-post (result)
-  "Use only ACL2-normalized request fields and ACL2-framed local control."
-  (handler-case
-      (multiple-value-bind (status word)
-               (fnn-control-submit
-                (fnn-octets
-                 (fnn-core
-                  'fn-native-operator-host-result-post-control-path-octets result))
-                (fnn-octets
-                 (fnn-core
-                  'fn-native-operator-host-result-post-msgid-octets result))
-                (mapcar #'fnn-octets
-                        (fnn-core
-                         'fn-native-operator-host-result-post-group-octets result))
-                (fnn-octets
-                 (fnn-core
-                  'fn-native-operator-host-result-post-payload-path-octets result)))
-        (let ((class (fnn-core 'fn-native-control-host-status-class status))
-              (code (fnn-core 'fn-native-control-host-status-exit-code status)))
-          (fnn-operator-emit-status class "post"
-                                    (fnn-operator-status-detail status word))
-          code))
-    (error (condition)
-      (let ((code (fnn-exit-code-for condition)))
-        (fnn-operator-emit-status
-         (fnn-operator-status-of-exit-code code) "post" condition)
-        code))))
-
-(defun fnn-operator-execute-moderate (result)
-  "PKT-657, PKT-575: `moderation approve|reject' and `article withdraw'.
-ACL2 frames the request (FNCT kind 21) from its normalized plan; the running
-owner decides it and answers the reasoned reply."
-  (let ((command (fnn-core 'fn-native-operator-host-result-command result)))
-    (handler-case
-        (let* ((request (fnn-core 'fn-native-operator-host-result-moderate-request
-                                  result))
-               (path (fnn-core
-                      'fn-native-operator-host-result-moderate-control-path-octets
-                      result))
-               (encoded (fnn-core 'fn-native-control-host-moderation-encode
-                                  (first request) (second request)
-                                  (third request) (fourth request))))
-          (unless (and (fnn-octet-list-p encoded) (fnn-octet-list-p path)
-                       (consp path))
-            (fnn-fault "ACL2 refused the moderation request"))
-          (multiple-value-bind (status word)
-              (fnn-control-reasoned-exchange (fnn-octets-string (fnn-octets path))
-                                             encoded (lambda () encoded))
-            (let ((class (fnn-core 'fn-native-control-host-status-class status))
-                  (code (fnn-core 'fn-native-control-host-status-exit-code status)))
-              (fnn-operator-emit-status class command
-                                        (fnn-operator-status-detail status word))
-              code)))
-      (error (condition)
-        (let ((code (fnn-exit-code-for condition)))
-          (fnn-operator-emit-status
-           (fnn-operator-status-of-exit-code code) command condition)
-          code)))))
-
 (defun fnn-operator-execute-init (result)
   "Initialise the store the configuration names, through the ACL2 plan.
 
@@ -404,16 +278,22 @@ observation into the outcome and this function only carries it out."
               ;; PKT-582: ACL2 decides what init writes within the budget and
               ;; says so (books/heap-reservation.lisp fn-heap-init-decide);
               ;; a refusal is printed by name and nothing is created.
-              (let* ((request (fnn-core
-                               'fn-native-operator-host-result-init-profile result))
-                     (decision (progn
-                                 (unless (consp request)
-                                   (fnn-fault "ACL2 accepted an init plan with no store profile"))
-                                 (fnn-heap-init-decision request)))
-                     (line (fnn-core 'fn-heap-init-report-line decision))
+              ;; Finding R1 (public-node rehearsal): a named budget below the
+              ;; machine init observes is ACL2's warning here, by name with
+              ;; both figures, not a refusal at the service's first start.
+              (multiple-value-bind (decision note)
+                  (let ((request (fnn-core
+                                  'fn-native-operator-host-result-init-profile result)))
+                    (unless (consp request)
+                      (fnn-fault "ACL2 accepted an init plan with no store profile"))
+                    (fnn-heap-init-decision-noted request))
+              (let* ((line (fnn-core 'fn-heap-init-report-line decision))
+                     (warning (fnn-core 'fn-heap-init-budget-note-line note))
                      (profile (fnn-core 'fn-heap-init-decision-request decision))
                      (code (if (consp profile)
                                (progn (fnn-out "~a" line)
+                                      (when (stringp warning)
+                                        (fnn-err "fn: ~a" warning))
                                       (fnn-command-init-published
                                        root groups profile
                                        ;; PKT-648: the store's durability policy,
@@ -425,7 +305,7 @@ observation into the outcome and this function only carries it out."
                                     (fnn-core 'fn-heap-init-exit-code decision)))))
                 (fnn-operator-emit-status
                  (fnn-operator-status-of-exit-code code) "init")
-                code))))
+                code)))))
       (error (condition)
         (let ((code (fnn-exit-code-for condition)))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
@@ -447,42 +327,18 @@ observation into the outcome and this function only carries it out."
                (control-path (and (not queryp)
                                   (fnn-octet-list-p control-path-list)
                                   (fnn-octets control-path-list)))
-               ;; An image without the control socket has no live owner
-               ;; to hand the plan to: the direct executor takes the
-               ;; exclusive lock, so a live owner of another image refuses it.
-               ;; PKT-344: two observations, ACL2's decision
-               ;; (fn-native-control-liveness-decides): a socket node with
-               ;; the lock free or absent is a crashed owner's (:stale), and
-               ;; only a free or absent lock starts the offline executor.
-               (socket-path (and (fnn-octet-list-p control-path-list)
-                                 (consp control-path-list)
-                                 (not (fnn-image-omits-p :control))
-                                 (fnn-octets control-path-list)))
-               ;; An image without the control surface (the DTN image)
-               ;; loads neither the decision nor the socket code: it has no
-               ;; socket to observe, and its executor's exclusive lock
-               ;; refuses a held store, as before PKT-344.
-               (liveness
-                 (if (fnn-image-omits-p :control)
-                     :offline
-                   (fnn-core 'fn-native-control-host-liveness
-                             (and socket-path
-                                  (fnn-control-socket-path-p
-                                   (fnn-lstat (fnn-octets-string socket-path)))
-                                  t)
-                             (fnn-store-owner-observation root))))
-               (note (and (not (fnn-image-omits-p :control))
-                          (fnn-core 'fn-native-control-host-liveness-note liveness)))
-               (livep (and control-path (eq liveness :live)))
+               (live *fnn-operator-live-owner*)
+               ;; PKT-344: the owner's liveness is ACL2's decision over two
+               ;; observations (fn-native-control-liveness-decides), taken by
+               ;; the live-owner surface.  An image without it (the DTN
+               ;; image) has no socket to observe, and its executor's
+               ;; exclusive lock refuses a held store, as before PKT-344.
+               (liveness (if live
+                             (funcall (fnn-olo-admin-observe live)
+                                      root control-path-list queryp)
+                           :offline))
                (code
                  (progn
-                  (when (eq liveness :stale)
-                    (fnn-control-remove-stale-offline socket-path))
-                  ;; A query does not use the :held arm (the read-only
-                  ;; executor's own shared lock answers it), so it prints
-                  ;; only the :stale note.
-                  (when (and (stringp note) (or (not queryp) (eq liveness :stale)))
-                    (fnn-err "~a" note))
                   (cond
                    ;; A query publishes no configuration record, so it has
                    ;; nothing to send the live owner and nothing to serialize
@@ -498,14 +354,12 @@ observation into the outcome and this function only carries it out."
                                (fnn-octets control-path-list))
                      (fnn-core 'fn-native-admin-host-report-kind plan)))
                    (queryp (fnn-admin-query root plan))
-                   (livep
-                    (multiple-value-bind (status word)
-                        (fnn-control-admin control-path argv)
-                      (let ((detail (fnn-operator-status-detail status word)))
-                        (unless (eq detail status) (setq live-detail detail)))
-                      (fnn-core 'fn-native-control-host-status-exit-code status)))
-                   ((eq liveness :held)
-                    (fnn-core 'fn-native-control-host-status-exit-code :refused))
+                   ;; :live and :held come only from the live-owner surface.
+                   ((member liveness '(:live :held))
+                    (multiple-value-bind (exit detail)
+                        (funcall (fnn-olo-admin live) control-path argv liveness)
+                      (when detail (setq live-detail detail))
+                      exit))
                    (t (fnn-admin-execute root plan))))))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code) command
                                     live-detail)
@@ -545,18 +399,16 @@ observation into the outcome and this function only carries it out."
                (control-path (and (fnn-octet-list-p control-path-list)
                                   (consp control-path-list)
                                   (fnn-octets control-path-list)))
-               (livep (and control-path
-                           (not (fnn-image-omits-p :control))
-                           (fnn-control-socket-path-p
-                            (fnn-lstat (fnn-octets-string control-path)))))
+               (live *fnn-operator-live-owner*)
+               (livep (and control-path live
+                           (funcall (fnn-olo-socket-present live) control-path)))
                (exit
                  (progn
                    (unless (and (stringp code) (stringp digest)
                                 (fnn-admin-plan-acceptedp plan))
                      (fnn-fault "ACL2 refused its own invitation vector"))
                    (if livep
-                       (fnn-core 'fn-native-control-host-status-exit-code
-                                 (fnn-control-admin control-path argv))
+                       (values (funcall (fnn-olo-admin live) control-path argv :live))
                      (fnn-admin-execute root plan)))))
           (when (eql exit +fnn-exit-ok+)
             (write-sequence (fnn-octets (fnn-ascii-octet-list
@@ -668,16 +520,15 @@ nothing answers and nothing holds the lock."
   (fnn-core 'fn-native-health-host-step socket-present answer
             (fnn-store-owner-observation root)
             (and (fnn-lstat (fnn-clone-fence-path (make-fnn-store root))) t)
-            (and control-path (not (fnn-image-omits-p :control)) t)))
+            (and control-path *fnn-operator-live-owner* t)))
 
 (defun fnn-operator-status-once (root control-path kind &optional result)
-  (let* ((socket-present
-           (and control-path
-                (not (fnn-image-omits-p :control))
-                (fnn-control-socket-path-p
-                 (fnn-lstat (fnn-octets-string control-path)))))
+  (let* ((live *fnn-operator-live-owner*)
+         (socket-present
+           (and control-path live
+                (funcall (fnn-olo-socket-present live) control-path)))
          (answer (if socket-present
-                     (fnn-control-live-status control-path kind)
+                     (funcall (fnn-olo-live-status live) control-path kind)
                    :none)))
     (when (and (consp answer) (eq (first answer) :refused))
       ;; The owner refused by the name ACL2 decided (a report its reply's
@@ -687,7 +538,7 @@ nothing answers and nothing holds the lock."
         (progn (fnn-write-report (second answer))
                ;; PRF-212: the certificate the running owner serves, its
                ;; names and notAfter, in ACL2's words.
-               (when (eq kind :status) (fnn-tls-status-line control-path))
+               (funcall (fnn-olo-status-tail live) control-path kind)
                +fnn-exit-ok+)
       (case (fnn-core 'fn-native-live-status-host-route socket-present answer)
         (:offline
@@ -742,13 +593,12 @@ nothing answers and nothing holds the lock."
 
 (defun fnn-operator-health-report (root control-path min &optional result)
   "The health report's octets, or :refused when the owner refused to answer."
-  (let* ((socket-present
-           (and control-path
-                (not (fnn-image-omits-p :control))
-                (fnn-control-socket-path-p
-                 (fnn-lstat (fnn-octets-string control-path)))))
+  (let* ((live *fnn-operator-live-owner*)
+         (socket-present
+           (and control-path live
+                (funcall (fnn-olo-socket-present live) control-path)))
          (answer (if socket-present
-                     (fnn-control-live-status control-path :health)
+                     (funcall (fnn-olo-live-status live) control-path :health)
                    :none)))
     (when (and (consp answer) (eq (first answer) :refused))
       (fnn-refuse "live status refused: ~(~a~)" (second answer)))
@@ -759,7 +609,7 @@ nothing answers and nothing holds the lock."
     (let ((step (fnn-core 'fn-native-health-host-step socket-present answer
                           (fnn-store-owner-observation root)
                           (and (fnn-lstat (fnn-clone-fence-path (make-fnn-store root))) t)
-                          (and control-path (not (fnn-image-omits-p :control)) t))))
+                          (and control-path *fnn-operator-live-owner* t))))
       (case (first step)
         ((:answered :fenced) (second step))
         (:refused :refused)
@@ -806,38 +656,6 @@ nothing answers and nothing holds the lock."
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
                                     "health" condition)
           code)))))
-
-(defun fnn-operator-store-max-credentials (root)
-  "The store profile's max-credentials (D27, PRF-102), read from config.json
-without the writer lock: principal administration does not open the store.
-The profile is written once, at init or import (D34), so this read sees the
-bound the owner loads under."
-  (let ((store (make-fnn-store root)))
-    (fnn-load-config store)
-    (fnn-profile-nat 'fn-store-profile-max-credentials store)))
-
-(defun fnn-operator-execute-principal (result)
-  "Execute only the credential plan and credential path projected by ACL2.
-The configured store is the one whose writer lock says whether an owner is
-serving the old credentials (fn-native-auth-admin-effect-word), and whose
-profile bounds the credentials (max-credentials, D27, PRF-102)."
-  (let ((*fnn-native-auth-admin-store-root*
-          (fnn-octets-string
-           (fnn-core 'fn-native-operator-host-result-principal-store-octets
-                     result)))
-        (*fnn-native-auth-admin-control-path*
-          (let ((control (fnn-core
-                          'fn-native-operator-host-result-principal-control-path-octets
-                          result)))
-            (and (fnn-octet-list-p control) (consp control)
-                 (fnn-octets-string (fnn-octets control))))))
-    (fnn-native-auth-admin-execute
-     (fnn-core 'fn-native-operator-host-result-principal-plan result)
-     (fnn-octets-string
-      (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
-                result))
-     (fnn-operator-store-max-credentials
-      (fnn-core 'fn-native-operator-host-result-store-root result)))))
 
 (defun fnn-operator-read-config (path maximum)
   "Classify only ordinary configuration-file defects as usage before reading.
@@ -907,21 +725,7 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
         (progn (fnn-operator-emit-result result)
                (fnn-core 'fn-native-operator-host-result-exit-code result))
       (let ((action (fnn-core 'fn-native-operator-host-result-native-action result)))
-        (let ((omitted (case action
-                         ((:run :post) :nntp-service)
-                         (:principal :credentials)
-                         ;; peer genesis|invite|accept|confirm reach the owner
-                         ;; as control requests 9 to 11 (host/native/peer-invite.lisp).
-                         (:peering :control)
-                         ;; keys redecide reaches the owner as control
-                         ;; request 12 (host/native/keys.lisp).
-                         (:keys :control)
-                         ;; tls reload reaches the owner as control
-                         ;; request 19 (host/native/tls-reload.lisp).
-                         (:tls :control)
-                         ;; moderation approve|reject and article withdraw
-                         ;; reach the owner as control request 21.
-                         (:moderate :control))))
+        (let ((surface (fnn-operator-action-surface action)))
           (when (and (member action '(:reclaim :reclaim-dry-run))
                      (null *fnn-reclaim-callback*))
             (fnn-operator-emit-status
@@ -931,19 +735,19 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
             (fnn-operator-emit-status
              :usage "action" "compact needs the checkpoint surface, which this image omits")
             (return-from fnn-operator-dispatch-plan +fnn-exit-usage+))
-          (when (and omitted (fnn-image-omits-p omitted))
-            (fnn-operator-emit-status
-             :usage "action"
-             (format nil "~(~a~) needs the ~(~a~) surface, which this image omits"
-                     action omitted))
-            (return-from fnn-operator-dispatch-plan +fnn-exit-usage+)))
+          (when surface
+            (let ((executor (cdr (assoc action *fnn-operator-surface-executors*))))
+              (unless executor
+                (fnn-operator-emit-status
+                 :usage "action"
+                 (format nil "~(~a~) needs the ~(~a~) surface, which this image omits"
+                         action surface))
+                (return-from fnn-operator-dispatch-plan +fnn-exit-usage+))
+              (return-from fnn-operator-dispatch-plan (funcall executor result)))))
         (case action
           (:help (fnn-operator-execute-help result))
           (:show (fnn-operator-execute-show result))
           (:init (fnn-operator-execute-init result))
-          (:run (fnn-operator-execute-run result))
-          (:post (fnn-operator-execute-post result))
-          (:moderate (fnn-operator-execute-moderate result))
           (:status (fnn-operator-execute-status result))
           (:health (fnn-operator-execute-health result))
           ((:recover :compact :checkpoint :export :import
@@ -951,10 +755,6 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
            (fnn-operator-execute-store-action result action))
           (:inspect (fnn-operator-execute-inspect result))
           (:admin (fnn-operator-execute-admin result))
-          (:peering (fnn-pinv-execute result))
-          (:principal (fnn-operator-execute-principal result))
-          (:keys (fnn-keys-execute result))
-          (:tls (fnn-tls-execute result))
           (:account-invite (fnn-operator-execute-account-invite result))
           (:account-hash (fnn-operator-execute-account-hash result))
           (:owner-required

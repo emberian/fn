@@ -258,6 +258,20 @@ decoded as source-address for durable command compatibility."
              :accepted nil :extend-peer
              (fn-record-string-octets (nth 2 words)) 0 nil rows)
           (fn-native-admin-result :refused :pull nil nil 0 nil nil))))
+     ; PRF-325: `peer catch-up NAME SECONDS' (0 stops): catch up from the
+     ; peer by XFNCATCHUP every SECONDS (books/peer-catchup.lisp
+     ; `fn-cu-plans'); one single-valued row.
+     ((equal (nth 1 words) "catch-up")
+      (if (and (equal (len words) 4)
+               (stringp (nth 2 words))
+               (fn-native-admin-decimalp (nth 3 words)))
+          (fn-native-admin-result
+           :accepted nil :extend-peer
+           (fn-record-string-octets (nth 2 words)) 0 nil
+           (list (fn-cfg-row-make (nth 2 words) *fn-pcb-catch-up-interval-slot* ""
+                                  (fn-native-admin-decimal-value
+                                   (coerce (nth 3 words) 'list)))))
+        (fn-native-admin-result :refused :catch-up nil nil 0 nil nil)))
      ; PRF-237 (PKT-675): `peer distributions NAME WILDMAT', the peer's
      ; outbound Distribution filter (books/owner-feed.lisp
      ; `fn-own-feed-distribution-admitsp'); one single-valued row, so a

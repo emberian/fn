@@ -18,7 +18,7 @@
 (defconst *osi-frontier* (fn-sf-frontier (fn-sn-files *bsb-store*)))
 (defconst *osi-enrolment* (list (car *osi-events*)))
 (defconst *osi-barriers*
-  (make-list 5 :initial-element '(:io :recovery-barrier :ok)))
+  (make-list *fn-sf-recovery-barrier-count* :initial-element '(:io :recovery-barrier :ok)))
 ;; by specification: the flip -- the Store retains the signed composite as
 ;; its composite ROW (books/held-record.lisp fn-hstxa-p; bp-signed-binding-tests
 ;; *bsb-row-composite*: the wire composite beside its article interned at

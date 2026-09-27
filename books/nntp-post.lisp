@@ -505,8 +505,9 @@
 ; its reason").  The owner renders the word it was handed only when the
 ; completion is a refusal (books/owner.lisp fn-own-outcome-rendering), so a
 ; kind here is never reached after a consumed completion.  :duplicate and
-; :conflict are fn-pb-existing-action's two answers (books/poster-bytes.lisp,
-; the decision the host calls since D25);
+; :conflict are D25's two answers (books/poster-bytes.lisp fn-pb-action-over,
+; which the host's books/store-intern.lisp fn-store-existing-action is over
+; alpha);
 ; :malformed is fn-owner-prepare's :invalid; :unaffordable is a refusal of
 ; the persisted profile (fn-store-publication-admissibility) or of the
 ; transaction capacity; :storage-failed is a Store write that failed before

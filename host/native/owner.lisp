@@ -780,7 +780,8 @@ checkpoint's S, or NIL."
             ;; SEC-006: the node secret, handed to the owner after the
             ;; recovery that built it (fnn-owner-load-node-secret).
             (fnn-owner-load-node-secret store)
-            ;; Five fresh namespace observations, now delivered to fn-owner.
+            ;; The recovery barriers again (three, fnn-store-recovery-barriers):
+            ;; fresh namespace observations, now delivered to fn-owner.
             (let ((phase nil))
               (dolist (barrier (fnn-store-recovery-barriers store))
                 (handler-case (funcall barrier)
@@ -998,6 +999,23 @@ decision that changed nothing in the value, with its two counts."
     (unless (member word '(:admit :shed))
       (fnn-fault "owner returned a malformed admission ~a" word))
     word))
+
+;; Lane ax-fix/reply-text: a served read takes the admission and ACL2's two
+;; replies naming the disk's reason (fn-otm-shed-replies: nil when the disk
+;; admits) from ONE value of the gate, so the lines are of the same reading
+;; as the word.  The replies go back to ACL2 unread.
+(defun fnn-owner-read-admission (service)
+  "The write admission at the gate's recorded time (fn-otm-admit-post) and
+the reply lines naming the disk's reason (fn-otm-shed-replies), both of one
+scheduler value: (values WORD REPLIES).  Appends nothing."
+  (let* ((gate (fnn-owner-service-gate service))
+         (sched (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                  (fnn-owner-gate-sched gate)))
+         (word (fnn-core 'fn-otm-admit-post sched))
+         (replies (fnn-core 'fn-otm-shed-replies sched)))
+    (unless (member word '(:admit :shed))
+      (fnn-fault "owner returned a malformed admission ~a" word))
+    (values word replies)))
 
 (defun fnn-owner-disk-stalled-p (service)
   "Whether the pending barrier's :stalled mode was entered (a clock event
@@ -1314,7 +1332,7 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 ;; The Store refusal kinds relayed to fn-own-outcome, each named by the ACL2
 ;; step that refused (books/owner.lisp fn-own-refusal-wordp).  fn-owner-prepare
 ;; answers :invalid for inputs outside its domain; its other non-prepared
-;; answers are fn-pb-existing-action's :duplicate / :conflict (books/poster-bytes.lisp,
+;; answers are D25's :duplicate / :conflict (books/store-intern.lisp fn-store-existing-action,
 ;; keyed on the poster's source through the injection inverse, D25), :clock-unusable,
 ;; :unaffordable (the Store's transaction budget, fn-sbud-refusal-kind), or
 ;; :refused.
@@ -1817,8 +1835,13 @@ reason before any Store call.  An ordinary article's groups are unchanged."
 (defun fnn-owner-identity-commit (service event)
   "Publish one ACL2-constructed keyring snapshot or atomic acceptance event."
   (let ((store (fnn-owner-service-store service)))
-    (fnn-owner-preflight-publication
-     service (fnn-core 'fn-store-event-kind event))
+    ;; ACL2's verdict over the event itself (host/owner-host.lisp
+    ;; fn-owner-identity-publication-verdict): a composite is charged its
+    ;; figure with its article's memberships.
+    (unless (eq (fnn-owner-core 'fn-owner-identity-publication-verdict event)
+                :admissible)
+      (fnn-refuse "Store transaction budget refuses ~(~a~) transaction"
+                  (fnn-core 'fn-wire-event-kind event)))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
@@ -1887,7 +1910,7 @@ reason before any Store call.  An ordinary article's groups are unchanged."
    (lambda ()
      (let* ((entropy-id
               (and (eq operation :install)
-                   (fnn-octet-list (fnn-anchor-csprng-nonce 32))))
+                   (fnn-csprng-octets 32 "topic installed ID")))
             (proposal
               (fnn-owner-core 'fn-owner-topic-propose
                               operation source-sequence observed-uid
@@ -3221,7 +3244,7 @@ EPIPE and the client saw a bare close)."
   (fnn-owner-serialized
    service cid
    (lambda ()
-     (let ((admit :admit))
+     (let ((admit :admit) (replies nil))
      (block step
        ;; One reading per read, before the transition that decides under it.
        ;; books/owner.lisp fn-own-open: "The injection clock is not pinned:
@@ -3234,8 +3257,10 @@ EPIPE and the client saw a bare close)."
        ;; time (the :served clock event above): while the disk sheds, the
        ;; read runs with posting not permitted (a POST command is answered
        ;; 440 before its article: host/owner-host.lisp fn-owner-chunk-span)
-       ;; and a submitted POST is shed below (441).
-       (setq admit (fnn-owner-disk-admission service))
+       ;; and a submitted POST is shed below (441).  REPLIES: ACL2's 440 and
+       ;; 441 naming the disk's reason, of the same value (lane
+       ;; ax-fix/reply-text; books/owner-time-admission.lisp).
+       (multiple-value-setq (admit replies) (fnn-owner-read-admission service))
        ;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge):
        ;; :proceed, or the milliseconds to wait.  Waiting reads nothing more
        ;; from this socket, so the client meets TCP backpressure and nothing
@@ -3255,7 +3280,7 @@ EPIPE and the client saw a bare close)."
        ;; step's typed result carries the effects, the plan the caller
        ;; renders off the mutex.
        (fnn-octets-fill incoming)
-       (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) admit)))
+       (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming) admit replies)))
          (when (eq step :unknown)
            (fnn-refuse "owner no longer knows connection ~d" cid))
          (fnn-owner-refresh-read-octets service)

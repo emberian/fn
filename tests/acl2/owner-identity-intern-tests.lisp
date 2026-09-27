@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-identity-intern")
 (include-book "owner-signed-post-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (bpr-lift fn-ocfg-step 2)
 
@@ -144,3 +144,25 @@
 (make-event `(defconst *oiit-far-staged*
   ',(with-guard-checking :none (fn-oii-ocfg-prepare-identity *oiit-far-oc* *ospt-event* *oiit-h*))))
 
+; -- fn-oii-publication-group-count-is-the-rows (lane bp-retention-leftovers):
+; the reachable signed POST's composite.  The preflight's count is the
+; number of groups the wire article names, and the interned row's held
+; article is filed in exactly those (the memberships its charge carries).
+(assert-event
+ (let ((k (fn-oii-publication-group-count *ospt-event*)))
+   (and (posp k)
+        (equal k (len (fn-record-groups (fn-replay-composite-record *ospt-event*))))
+        (equal (len (fn-record-groups (fn-hstxa-held *oiit-row*))) k))))
+; Any other event: 0 (a keyring snapshot carries no article).
+(assert-event (equal (fn-oii-publication-group-count
+                      (car (fn-sn-keyring-snapshots *oiit-s*)))
+                     0))
+; Mutation witness (labelled: not a hypothesis-removal tooth): off by one
+; from the count, the equation fails on a keyring snapshot, which interns to
+; itself and carries no held article.
+(must-fail-checked
+ (defthm oiit-group-count-without-a-composite
+   (let ((k (car (fn-sn-keyring-snapshots *oiit-s*))))
+     (equal (len (fn-record-groups (fn-hstxa-held (fn-oii-identity-row k nil 0 *oiit-h*))))
+            (+ 1 (fn-oii-publication-group-count k))))
+   :rule-classes nil))

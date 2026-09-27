@@ -401,9 +401,9 @@
                                       fn-mvb-envelope-id))))
 
 
-; By definition (PKT-657; PRF-228; the representation boundary, lane
-; matrix-reds; the ledger flags it a restatement, so it is named so and is no
-; keystone).  The held proto-article the approval commits is the body of
+; The representation boundary (PKT-657, lane matrix-reds), by definition:
+; the ledger reads both sides as the same term, so it is cited as the
+; bridge, not as a keystone.  The held proto-article the approval commits is the body of
 ; the envelope's OCTET MODEL (books/nntp-session.lisp fn-nntp-article-alpha:
 ; the archive article with its handle replaced by the bytes it names), the
 ; body the pre-flip plan parsed from the envelope's own payload.  With the

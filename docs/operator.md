@@ -85,7 +85,9 @@ newfs -O 1 /dev/rsd1a
 mkdir -p /var/fn
 echo '/dev/sd1a /var/fn ffs rw,nodev,nosuid 1 2' >> /etc/fstab
 mount /var/fn
-``` To see a partition's format, as root:
+```
+
+To see a partition's format, as root:
 `dumpfs /dev/rsd0X | head -1` prints `FFS1` or `FFS2`. To move a store off
 FFS2: `store export`, make the FFS1 partition, then `store import`
 ([moving data](install.md#4-reinstalling)).
@@ -112,8 +114,18 @@ Start and stop fn with the service manager:
 | stop | `systemctl stop fn` | `rcctl stop fn` |
 | is it running? | `systemctl status fn` | `rcctl check fn` |
 
-A stop is always clean: fn finishes its work, then exits. The service
-restarts fn only after a failure, never after a stop.
+A stop is always clean: fn finishes its work, then exits. On Linux the
+service restarts fn only after a failure, never after a stop.
+
+On OpenBSD, rc.d never restarts fn: after a crash (or `kill -9`),
+`rcctl check fn` says `fn(failed)` and the node stays down until you run
+`rcctl start fn`. At boot `rcctl enable fn` starts it. To have it started
+again within five minutes of a crash, add to root's crontab
+(`crontab -e`):
+
+```
+*/5 * * * * rcctl check fn >/dev/null || rcctl start fn >/dev/null
+```
 
 If fn fails to start five times in a minute, systemd stops trying. After
 that, every `restart` is quietly refused while looking like success. Run
@@ -290,7 +302,8 @@ fn operator CONFIG account list
    ```
 
    `--cafile` names your node's certificate file, when it is your own
-   (self-made) one. Add `--tls` and the port (`news.example.org:563`) for a
+   (self-made) one. A node on another port than 119 is named with it
+   (`news.example.org:11563`). Add `--tls` and the port (`news.example.org:563`) for a
    node that speaks TLS from the start. `redeemed: the account carol is
    ready` means it worked. A newsreader cannot do this step; a program can
    send `XREDEEM CODE LOGIN`, then `XREDEEM PASS PASSWORD`, over TLS.
@@ -789,6 +802,14 @@ to make a store for a bigger machine, name that machine's memory with
 `within-budget=no target-budget=16384 MB`, and fn refuses to run that
 store here, with `fn: refused machine-cannot-hold-profile`.
 
+The same variable sizes a store for a memory limit smaller than this
+machine: a service under `MemoryMax=1536M` needs a store `init` made with
+`FN_INIT_BUDGET_MB=1536`, or made by an `init` run under that limit. When
+the named budget is below what this machine gives (an `init` run outside
+the service's limit), `init` writes the store for the named budget and
+warns on stderr with both numbers, exit code 0:
+`fn: warning init-budget-below-machine named-budget=1536 MB machine-budget=5818 MB: the store is sized for FN_INIT_BUDGET_MB, not this machine; run init under the service's memory limit, and give the service at least 1536 MB`.
+
 `init` with no `--profile` and no limit (and every `init` under a
 `mission`) picks the largest of four sizes this machine's memory holds:
 64, 32 or 16 MiB of articles, else 8 MiB. A short post to one group
@@ -804,6 +825,10 @@ with `store export` and `store import --max-... N`.
 - `fn operator CONFIG help VERB`: explains any command.
 - `peer pull NAME SECONDS [ROUNDS]`: fetch from a peer every SECONDS
   (0 stops).
+- `peer catch-up NAME SECONDS`: every SECONDS (0 stops), copy the peer's articles
+  in batches (XFNCATCHUP), each batch checked against the peer's digest before
+  any article is offered to this node's own verdict; the round resumes after a
+  restart ([catching up](peering-with-a-friend.md#catching-up); spec peering 1.2.9).
 - `capacity N`: the room reserved for held articles.
 - `pins`, `obligations`: what the store is holding, and why.
 - `run`: what the service runs.

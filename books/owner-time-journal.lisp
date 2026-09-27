@@ -723,12 +723,13 @@
                 (equal (fn-otm-wait-ms a) (fn-otm-wait-ms b))
                 (equal (fn-otm-shed-reply a) (fn-otm-shed-reply b))
                 (equal (fn-otm-post-command-reply a) (fn-otm-post-command-reply b))
+                (equal (fn-otm-shed-replies a) (fn-otm-shed-replies b))
                 (equal (fn-otm-disk-lines a) (fn-otm-disk-lines b))
                 (equal (fn-otm-log-line a w) (fn-otm-log-line b w))))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-otm-admit-post fn-otm-mode fn-otm-wait-ms
                                 fn-otm-shed-reply fn-otm-post-command-reply
-                                fn-otm-disk-lines fn-otm-log-line fn-otm-now
+                                fn-otm-shed-replies fn-otm-disk-lines fn-otm-log-line fn-otm-now
                                 fn-otm-regressions)
                               (theory 'minimal-theory)))))
 

@@ -129,6 +129,7 @@ if [ "$service" = no ]; then
   exit 0
 fi
 [ "$(id -u)" -eq 0 ] || { echo 'install: installing the service needs root (or pass --no-service)' >&2; exit 2; }
+mkdir -p "$node"
 if ! id "$user" >/dev/null 2>&1; then
   if [ "$system" = OpenBSD ]; then
     useradd -L daemon -d "$node" -s /sbin/nologin -c 'fn news node' "$user"
@@ -153,6 +154,7 @@ fi
 
 # The web reader: its own account and folder, never the node's.
 [ "$ruser" != "$user" ] || { echo "install: the reader's account must not be the node's ($user)" >&2; exit 2; }
+mkdir -p "$rstate"
 if ! id "$ruser" >/dev/null 2>&1; then
   if [ "$system" = OpenBSD ]; then
     useradd -L daemon -d "$rstate" -s /sbin/nologin -c 'fn web reader' "$ruser"

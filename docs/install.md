@@ -16,9 +16,13 @@ reach safely. Words you may not know are in
   [storage](operator.md#1-choose-the-disk-for-the-store) before you begin.
   On OpenBSD this matters most: the store needs its own FFS1 partition.
 
-Each release is one file per platform, `fn-6.7.N-linux-x86_64.tar.gz` or
-`fn-6.7.N-openbsd-amd64.tar.gz`, with a `SHA256SUMS` file beside it. N goes
-up by one with each release. The release brings everything it needs except
+Each release is one file per platform, `fn-VERSION-linux-x86_64.tar.gz` or
+`fn-VERSION-openbsd-amd64.tar.gz`, with a `SHA256SUMS` file beside it. The
+first release is 6.6.0. Releases follow a fixed sequence, not the size of
+the number: 6.6.0 to 6.6.5, then the 6.7.x series (6.7.0, 6.7.1, and so
+on), then 6.6.6, the final release, and after it one more `.6` each time
+(6.6.6.6). So 6.6.6 is newer than 6.7.12. The list and its rule are in
+[the release sequence](../planning/release-sequence.json). The release brings everything it needs except
 the system's TLS library.
 
 ## 1. Check, unpack and install
@@ -27,7 +31,7 @@ As root, on Linux:
 
 ```sh
 sha256sum -c --ignore-missing SHA256SUMS
-tar -xzf fn-6.7.N-linux-x86_64.tar.gz
+tar -xzf fn-VERSION-linux-x86_64.tar.gz
 sh fn/install.sh
 ```
 
@@ -36,15 +40,15 @@ the installer runs the unpacked copy, and there it halts with
 `RWX mmap not supported`):
 
 ```sh
-sha256 -C SHA256SUMS fn-6.7.N-openbsd-amd64.tar.gz
-mkdir -p /usr/local/src && tar -xzf fn-6.7.N-openbsd-amd64.tar.gz -C /usr/local/src
+sha256 -C SHA256SUMS fn-VERSION-openbsd-amd64.tar.gz
+mkdir -p /usr/local/src && tar -xzf fn-VERSION-openbsd-amd64.tar.gz -C /usr/local/src
 sh /usr/local/src/fn/install.sh
 ```
 
 Unpack under `/usr/local`: the installer runs fn once, and OpenBSD lets it
 run only from a file system mounted `wxallowed`.
 
-You will see the version, like `fn 6.7.N (REV)`. The installer:
+You will see the version, like `fn 6.6.0 (REV)`. The installer:
 
 - checks every file of the release;
 - copies fn to `/opt/fn` (OpenBSD: `/usr/local/fn`);
@@ -123,6 +127,16 @@ the commands, and `fn operator CONFIG help VERB` explains one command.
    and makes nothing; exit code 1. The node's name (`path-identity`) should
    be its public host name.
 
+   If the service runs under a memory limit (the unit's `MemoryMax`, a
+   container's `mem_limit`), the store must be sized for that limit, not
+   for the machine: run `init` under the same limit, or name the limit in
+   MiB with `FN_INIT_BUDGET_MB=1536` in `init`'s environment. With a named
+   budget below what this machine gives, `init` sizes the store for the
+   named budget and says so on stderr with both numbers:
+   `fn: warning init-budget-below-machine named-budget=1536 MB machine-budget=5818 MB: ...`.
+   With neither, `init` sizes for the whole machine and the service then
+   refuses to start under its limit (`machine-cannot-hold-profile`).
+
 5. Leave the account's shell. As root, start the service:
 
    ```sh
@@ -183,6 +197,10 @@ service, and needs Python 3 and a web name. Install it with
   fn redeem news.example.org CODE carol --cafile cert.pem
   ```
 
+  A node on another port than 119 (every OpenBSD node: its service cannot
+  use a port below 1024) is named with its port:
+  `fn redeem news.example.org:11563 CODE carol --cafile cert.pem`.
+
   See [accounts](operator.md#accounts-and-invitation-codes).
 
 ## 4. Reinstalling
@@ -206,6 +224,18 @@ Export with the **old** release, before you remove it:
    rm -rf /opt/fn
    sh fn/install.sh
    ```
+
+   On OpenBSD, `/var/fn` is its own FFS1 partition, and `mv` refuses it
+   (`cannot rename a mount point`). Move what is in it instead, then
+   unpack the new release under `/usr/local/src` as in step 1:
+
+   ```sh
+   mkdir /var/fn.old && mv /var/fn/* /var/fn.old/
+   rm -rf /usr/local/fn /usr/local/src/fn
+   ```
+
+   Below, read `/var/fn` for `/var/lib/fn` and `/var/fn.old` for
+   `/var/lib/fn.old`.
 
 2. As the service account, write the settings again (or copy `fn.toml`,
    `tls/` and `log/` from the old folder: without `log/` the service stops

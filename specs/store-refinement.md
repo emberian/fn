@@ -453,8 +453,9 @@ identities only to preserve alias equality; ACL2 computes the comparison and
 the all-issued-operation SIGKILL image. All thirteen declared post cuts now
 cover allocator staging, replacement, observation and reservation; record
 staging, link, observation, durable directory barrier, completion and cleanup;
-and both finish cuts. The five recovery barriers have distinct host
-selectors and distinct occurrences of `fn-bs-recover-program`'s barrier cut;
+and both finish cuts. The recovery barriers (five then, three since lane
+open-barriers: `recover-barrier-1` to `-3` of `fn-lg-open-program`) have
+distinct host selectors and distinct occurrences of the open program's barrier cut;
 they preserve the prior acknowledged article through reopen. See the
 [runtime record](../tests/evidence/2026-09-23-served-crash-observation.md).
 `fn-bso-served-agreement-preserves-scan` in

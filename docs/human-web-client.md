@@ -39,7 +39,20 @@ The node's log then shows `LISTENING-TLS 1563`.
 
 On your side:
 
-1. Use a tin built with `./configure --with-nntps=openssl`.
+1. Use a tin built with `./configure --with-nntps=openssl`. `tin -V`
+   shows `+NNTP(S)_ABLE` when it has TLS. OpenBSD's tin package does not
+   (`-NNTPS_ABLE`: `-p 563 -A` answers `Option not enabled. Recompile with
+   --with-nntps.`). Build it yourself, with LibreSSL's libtls (tested with
+   tin 2.6.4 on OpenBSD 7.9; `pkg_add tin` first brings the libraries it
+   uses):
+
+   ```sh
+   ftp https://sunsite.icm.edu.pl/pub/unix/news/tin/v2.6/tin-2.6.4.tar.xz
+   xz -dc tin-2.6.4.tar.xz | tar -xf - && cd tin-2.6.4
+   ./configure --with-nntps=libtls --prefix=$HOME/tin && make build && make install
+   ```
+
+   Then use `$HOME/tin/bin/tin` below.
 2. In `~/.tin/tinrc`, name the node's certificate:
 
    ```text
@@ -64,7 +77,11 @@ If it goes wrong:
   the check, and then the connection is not safe.
 - tin refuses to post from a machine without a domain name
   (`Bad address in From: header`). Give it one: the build's `DOMAIN_NAME`,
-  or `disable_sender=ON` in the site's `tin.defaults`.
+  or `disable_sender=ON` in the site's `tin.defaults`. Simplest: put your
+  own address in `~/.tin/tinrc`, `mail_address=Your Name <you@example.org>`.
+  tin cancels only a post whose From matches that address; without it, a
+  post made with no name in your account's details may be refused later
+  with `Article cannot be cancelled (deleted).`
 
 ## Cancelling your own post
 

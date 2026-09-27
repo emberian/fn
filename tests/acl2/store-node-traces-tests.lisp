@@ -21,7 +21,6 @@
                    (equal (fn-record-payload *snt-second*) 1)))
 (defconst *snt-barriers*
   '((:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
-    (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
     (:io :recovery-barrier :ok)))
 (defconst *snt-reserve*
   '((:io :start-frontier nil) (:io :frontier-file :ok)

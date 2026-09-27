@@ -52,8 +52,8 @@
 (assert-event
  (let ((st (fn-sn-open-state (sobt-host *sobt-configs*))))
    (and (equal (fn-sf-records (fn-sn-files st)) (sobt-r))
-        (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 4))) :recovering)
-        (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 5))) :ready)
+        (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 2))) :recovering)
+        (equal (fn-sf-phase (fn-sn-files (fn-sn-observed-rebarrier st 3))) :ready)
         (fn-cpo-history-relation st))))
 
 ; Drop fn-sob-configured-openp: a configuration journal that replays :fault.

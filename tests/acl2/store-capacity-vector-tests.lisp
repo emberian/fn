@@ -433,3 +433,83 @@
 (assert-event (equal (fn-cvec-article-refusal-word :refused *cvt-p* 1 *cvt-mb*
                                                    *cvt-record-10* 0)
                      :refused))
+
+; -----------------------------------------------------------------------------
+; The accepted-statement figure (lane bp-retention-leftovers, membership-
+; budget's deferral).  Under *cvt-p* (R = 196 608, so the kind's count
+; budget is T) a composite whose article is in ten groups is charged
+; 196 608 + 3 200 = 199 808; at 46 097 committed octets the vector holds
+; after the ceiling alone (the gate before this lane admitted it) but not
+; after the figure: the ten-group composite is refused, a one-group one
+; admitted.
+(assert-event (equal (fn-cvec-statement-figure 10) 199808))
+(assert-event (equal (fn-cvec-statement-figure 1) 196928))
+(defconst *cvt-sb* 46097)
+(assert-event (equal (fn-cvec-verdict-at *cvt-p* :accepted-statement 1 *cvt-sb* 0)
+                     :admissible))
+(assert-event (equal (fn-cvec-statement-verdict-at *cvt-p* 1 *cvt-sb* 10 0)
+                     :unaffordable))
+(assert-event (equal (fn-cvec-statement-verdict-at *cvt-p* 1 *cvt-sb* 1 0)
+                     :admissible))
+; The bug the old gate had: its admission, followed by a composite charged
+; its figure, leaves the vector short.
+(assert-event (not (fn-cvec-roomp *cvt-p* 2 (+ *cvt-sb* 199808) 0)))
+
+; fn-cvec-statement-admission-keeps-the-vector.  Witness: admitted one
+; octet lower, a composite charged its whole figure keeps the vector.
+(assert-event
+ (and (equal (fn-cvec-statement-verdict-at *cvt-p* 1 (1- *cvt-sb*) 10 0)
+             :admissible)
+      (fn-cvec-roomp *cvt-p* 2 (+ (1- *cvt-sb*) 199808)
+                     (fn-cvec-debt-step :accepted-statement 0))))
+; Tooth, the verdict: at *cvt-sb* (refused) the same charge breaks it.
+(must-fail-checked
+ (defthm cvt-statement-without-the-verdict
+   (fn-cvec-roomp *cvt-p* 2 (+ *cvt-sb* 199808) 0)
+   :rule-classes nil))
+; Tooth, the charge within the figure: admitted, one octet past the figure
+; at the edge breaks it.
+(must-fail-checked
+ (defthm cvt-statement-past-its-figure
+   (fn-cvec-roomp *cvt-p* 2 (+ (1- *cvt-sb*) 199809) 0)
+   :rule-classes nil))
+
+; fn-cvec-statement-row-within-its-figure over a retained composite: the
+; held row in one group inside a small composite (charge = encoding + 320,
+; within the figure) and inside one whose article record alone is past the
+; ceiling (charge past the figure, encoding past the ceiling).
+(defconst *cvt-stxa* (fn-stxa-make 1 5 5 0 '(1) '(1) '(1) '(1)))
+(defconst *cvt-hstxa* (fn-hstxa-make *cvt-stxa* *cvt-row*))
+(defconst *cvt-stxa-big*
+  (fn-stxa-make 1 5 5 0 '(1) '(1) (make-list 200000 :initial-element 7) '(1)))
+(defconst *cvt-hstxa-big* (fn-hstxa-make *cvt-stxa-big* *cvt-row*))
+(assert-event
+ (and (fn-hstxa-p *cvt-hstxa*)
+      (equal (fn-store-event-kind *cvt-hstxa*) :accepted-statement)
+      (equal (fn-sbud-row-memberships *cvt-hstxa*) 1)
+      (equal (fn-sbud-row-octets *cvt-hstxa*)
+             (+ (len (fn-store-event-encode *cvt-stxa*)) 320))
+      (<= (fn-sbud-row-octets *cvt-hstxa*) (fn-cvec-statement-figure 1))
+      (<= (len (fn-store-event-encode *cvt-stxa*)) 196608)))
+(assert-event
+ (and (fn-hstxa-p *cvt-hstxa-big*)
+      (< 196608 (len (fn-store-event-encode *cvt-stxa-big*)))
+      (< (fn-cvec-statement-figure 1) (fn-sbud-row-octets *cvt-hstxa-big*))))
+; The history arm: the small composite at *cvt-sb* is admitted and keeps
+; the vector.
+(assert-event (fn-cvec-record-admittedp *cvt-p* 1 *cvt-sb* 0 *cvt-hstxa*))
+(assert-event (not (fn-cvec-record-admittedp *cvt-p* 1 *cvt-sb* 0 *cvt-hstxa-big*)))
+
+; The developer `store post''s word (fn-cvec-article-verdict-word): the
+; ten-group article at *cvt-mb* is refused for its memberships, the
+; one-group one admitted, the ten-group article past its record figure
+; refused as the store's budget, and the count gate refusing is not the
+; memberships.
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 1 *cvt-mb* 1000 10 0)
+                     :memberships))
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 1 *cvt-mb* 1000 1 0)
+                     :admissible))
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 1 *cvt-mb* 10000 10 0)
+                     :unaffordable))
+(assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 8 *cvt-mb* 1000 10 0)
+                     :unaffordable))
