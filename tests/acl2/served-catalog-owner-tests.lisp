@@ -139,18 +139,24 @@
 (defconst *scot-r* (scot-exec *scot-records* *scot-view*))
 
 ;; R, <b@x>'s row (1) visible at the count, the view of the version (every
-;; row), and the join ALPHA-WISE: after the records flip the owner's archive
-;; articles carry the HANDLE in the payload position, the catalog's view
-;; materializes the bytes, so the catalog's view is the archive with each
-;; handle read through the arena (store-intern's fn-articles-wire-of), and
-;; NOT the archive itself -- fn-sca-join as stated (archive = catalog view)
-;; is false on the flipped store (an open finding, reported).
+;; row), and THE JOIN (fn-sca-join, the hypothesis fn-scr-catalogp carries):
+;; the catalog's view at the version the owner's view carries IS the owner's
+;; archive, article for article.  After the records flip both carry the row's
+;; HANDLE in the payload position (the view reads no bytes): handles 2, 1, 0,
+;; newest first, and NOT the octets; a reader serves the bytes through the
+;; arena, and the archive with each handle read (store-intern's
+;; fn-articles-wire-of, element 6) carries the wire records' payloads.
+(defun scot-article-payloads (arts)
+  (declare (xargs :verify-guards nil))
+  (if (consp arts) (cons (fn-article-payload (car arts)) (scot-article-payloads (cdr arts))) nil))
 (assert-event (equal (nth 0 *scot-r*) 3))
 (assert-event (equal (nth 1 *scot-r*) t))
 (assert-event (equal (nth 2 *scot-r*) 1))
 (assert-event (equal (nth 3 *scot-r*) 3))
-(assert-event (equal (nth 4 *scot-r*) (nth 6 *scot-r*)))
-(assert-event (not (equal (nth 4 *scot-r*) (fn-state-articles (fn-own-view-archive *scot-view*)))))
+(assert-event (equal (nth 4 *scot-r*) (fn-state-articles (fn-own-view-archive *scot-view*))))
+(assert-event (equal (scot-article-payloads (nth 4 *scot-r*)) '(2 1 0)))
+(assert-event (not (equal (nth 4 *scot-r*) (nth 6 *scot-r*))))
+(assert-event (equal (scot-article-payloads (nth 6 *scot-r*)) (reverse *scot-payloads*)))
 ;; The positive witness of fn-sca-load-held-rows-establishes-relation on the
 ;; owner's own history: every hypothesis holds (element 5) and R holds
 ;; (element 1).
@@ -173,7 +179,7 @@
 (assert-event (equal (nth 3 *scot-rh*) 3))
 (assert-event (equal (fn-article-msgids (nth 4 *scot-rh*)) '("<c@x>" "<a@x>")))
 (assert-event (equal (nth 4 *scot-rh*)
-                     (let ((arts (nth 6 *scot-rh*)))
+                     (let ((arts (fn-state-articles (fn-own-view-archive *scot-view*))))
                        (list (car arts) (caddr arts)))))
 
 ;; The load's keystone needs a natural generation (the row's context fails

@@ -99,7 +99,7 @@
          (fn-cnx-freshp *scct-c*)
          ;; the article at number 3 by the catalog is the pinned reply, a 220
          (equal (fn-scr-command *scct-session* arch index nil nil (scct-tokens "ARTICLE 3") 3 *scct-a* *scct-c*)
-                (fn-nntp-command-pinned *scct-session* arch index nil nil (scct-tokens "ARTICLE 3") fn-arena))
+                (fn-nntp-command-pinned *scct-session* arch index nil nil (scct-tokens "ARTICLE 3") *scct-a*))
          ;; the effect is (:reply octets); the reply's first octets are "220"
          (equal (take 3 (cadr (car (fn-nntp-result-effects
                                     (fn-scr-command *scct-session* arch index nil nil (scct-tokens "ARTICLE 3")
@@ -107,9 +107,9 @@
                 (list 50 50 48))
          ;; OVER over the range, and STAT by Message-ID
          (equal (fn-scr-command *scct-session* arch index nil nil (scct-tokens "OVER 1-3") 3 *scct-a* *scct-c*)
-                (fn-nntp-command-pinned *scct-session* arch index nil nil (scct-tokens "OVER 1-3") fn-arena))
+                (fn-nntp-command-pinned *scct-session* arch index nil nil (scct-tokens "OVER 1-3") *scct-a*))
          (equal (fn-scr-command *scct-session* arch index nil nil (scct-tokens "STAT <b@x>") 3 *scct-a* *scct-c*)
-                (fn-nntp-command-pinned *scct-session* arch index nil nil (scct-tokens "STAT <b@x>") fn-arena))))
+                (fn-nntp-command-pinned *scct-session* arch index nil nil (scct-tokens "STAT <b@x>") *scct-a*))))
   :rule-classes nil)
 
 ;; The view hypothesis has teeth: the same archive served at the view the
@@ -120,7 +120,7 @@
     (and (not (equal (fn-state-articles arch) (fn-cat-view-articles 2 *scct-a* *scct-c*)))
          (not (equal (fn-scr-command *scct-session* arch index nil nil (scct-tokens "ARTICLE 3")
                                      2 *scct-a* *scct-c*)
-                     (fn-nntp-command-pinned *scct-session* arch index nil nil (scct-tokens "ARTICLE 3") fn-arena)))))
+                     (fn-nntp-command-pinned *scct-session* arch index nil nil (scct-tokens "ARTICLE 3") *scct-a*)))))
   :rule-classes nil)
 
 ;; (3) Every layer the host reaches is guard-verified.
