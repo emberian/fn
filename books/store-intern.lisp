@@ -279,7 +279,76 @@
                                        (fn-cat-intern-list fn-replay-composite-record
                                         fn-stxa-p fn-record-p)))))
 
-; The row reads the wire event's coordinates.
+;; The row reads the wire event's coordinates.  One lemma per arm over closed
+;; recognizers (opened together the proof took 4 to 7 s).
+(local (defun fn-si-coordinates (x retained)
+  (if retained
+      (list (fn-store-event-sequence x) (fn-store-event-txid x)
+            (fn-store-event-generation x) (fn-store-event-kind x))
+    (list (fn-wire-event-sequence x) (fn-wire-event-txid x)
+          (fn-wire-event-generation x) (fn-wire-event-kind x)))))
+
+(local (defthm fn-si-coordinates-of-held
+  (implies (fn-held-p x)
+           (equal (fn-si-coordinates x t)
+                  (list (fn-record-sequence x) (fn-record-txid x)
+                        (fn-record-generation x) :article)))
+  :hints (("Goal" :in-theory (union-theories '(fn-si-coordinates fn-store-event-sequence
+                                               fn-store-event-txid fn-store-event-generation
+                                               fn-store-event-kind)
+                                             (theory 'minimal-theory))))))
+
+(local (defthm fn-si-coordinates-of-record
+  (implies (fn-record-p x)
+           (equal (fn-si-coordinates x nil)
+                  (list (fn-record-sequence x) (fn-record-txid x)
+                        (fn-record-generation x) :article)))
+  :hints (("Goal" :in-theory (union-theories '(fn-si-coordinates fn-wire-event-sequence
+                                               fn-wire-event-txid fn-wire-event-generation
+                                               fn-wire-event-kind)
+                                             (theory 'minimal-theory))))))
+
+(local (defthm fn-si-coordinates-of-hstxa
+  (implies (fn-hstxa-p x)
+           (equal (fn-si-coordinates x t)
+                  (fn-si-coordinates (fn-hstxa-stxa x) nil)))
+  :hints (("Goal" :use ((:instance fn-hstxa-is-no-wire-event)
+                        (:instance fn-hstxa-is-not-held)
+                        (:instance fn-hstxa-p-fields)
+                        (:instance fn-stxa-is-no-other-wire-event (x (fn-hstxa-stxa x))))
+           :in-theory (union-theories '(fn-si-coordinates fn-store-event-sequence
+                                        fn-store-event-txid fn-store-event-generation
+                                        fn-store-event-kind fn-wire-event-sequence
+                                        fn-wire-event-txid fn-wire-event-generation
+                                        fn-wire-event-kind)
+                                      (theory 'minimal-theory))))))
+
+(local (defthm fn-si-coordinates-of-other
+  (implies (and (fn-wire-event-p x) (not (fn-record-p x)) (not (fn-stxa-p x)))
+           (equal (fn-si-coordinates x t) (fn-si-coordinates x nil)))
+  :hints (("Goal" :use ((:instance fn-held-is-no-wire-event)
+                        (:instance fn-hstxa-is-no-wire-event))
+           :cases ((fn-held-p x) (fn-hstxa-p x))
+           :in-theory (union-theories '(fn-si-coordinates fn-wire-event-p fn-store-event-sequence
+                                        fn-store-event-txid fn-store-event-generation
+                                        fn-store-event-kind fn-wire-event-sequence
+                                        fn-wire-event-txid fn-wire-event-generation
+                                        fn-wire-event-kind)
+                                      (theory 'minimal-theory))))))
+
+(local (defthm fn-si-intern-event-coordinates
+  (implies (and (natp generation)
+                (not (equal (mv-nth 0 (fn-intern-event w keyring generation fn-arena)) :bad)))
+           (equal (fn-si-coordinates (mv-nth 0 (fn-intern-event w keyring generation fn-arena)) t)
+                  (fn-si-coordinates w nil)))
+  :hints (("Goal" :cases ((fn-record-p w) (fn-stxa-p w))
+           :use ((:instance fn-held-p-of-intern-list)
+                 (:instance fn-held-p-of-intern-list (w (fn-replay-composite-record w))))
+           :in-theory (e/d (fn-intern-event)
+                           (fn-si-coordinates fn-cat-intern-list fn-held-p-of-intern-list
+                            fn-wire-event-p fn-replay-composite-record fn-stxa-p fn-record-p
+                            fn-held-p fn-hstxa-p fn-hstxa-make))))))
+
 (defthm fn-intern-event-keeps-coordinates
   (implies (and (natp generation)
                 (not (equal (mv-nth 0 (fn-intern-event w keyring generation fn-arena)) :bad)))
@@ -288,25 +357,9 @@
                   (equal (fn-store-event-txid row) (fn-wire-event-txid w))
                   (equal (fn-store-event-generation row) (fn-wire-event-generation w))
                   (equal (fn-store-event-kind row) (fn-wire-event-kind w)))))
-  :hints (("Goal" :cases ((fn-record-p w) (fn-stxa-p w))
-           :in-theory (e/d (fn-intern-event
-                            fn-store-event-sequence fn-wire-event-sequence
-                            fn-store-event-txid fn-wire-event-txid
-                            fn-store-event-generation fn-wire-event-generation
-                            fn-store-event-kind fn-wire-event-kind)
-                           (fn-cat-intern-list fn-held-p-of-intern-list fn-wire-event-p
-                            fn-replay-composite-record fn-stxa-p fn-record-p))
-           :use ((:instance fn-held-p-of-intern-list)
-                 (:instance fn-held-p-of-intern-list (w (fn-replay-composite-record w)))))
-          ("Subgoal 1" :in-theory (e/d (fn-intern-event fn-wire-event-p
-                                        fn-store-event-sequence fn-wire-event-sequence
-                                        fn-store-event-txid fn-wire-event-txid
-                                        fn-store-event-generation fn-wire-event-generation
-                                        fn-store-event-kind fn-wire-event-kind)
-                                       (fn-cat-intern-list fn-replay-composite-record
-                                        fn-stxa-p fn-record-p))
-           :use ((:instance fn-held-is-no-wire-event (x w))
-                 (:instance fn-hstxa-is-no-wire-event (x w))))))
+  :hints (("Goal" :use fn-si-intern-event-coordinates
+           :in-theory (union-theories '(fn-si-coordinates car-cons cdr-cons)
+                                      (theory 'minimal-theory)))))
 
 ; The new arena is the old one with the row's bytes sealed (the wire record's
 ; payload, or the composite's article's), or unchanged.
@@ -365,8 +418,8 @@
 (local (defthm fn-other-wire-event-is-its-own-row
   (implies (and (fn-wire-event-p w) (not (fn-record-p w)) (not (fn-stxa-p w)))
            (equal (fn-row-wire-of w fn-arena) w))
-  :hints (("Goal" :in-theory (e/d (fn-wire-event-p fn-row-wire-of)
-                                  (fn-hstxa-is-no-wire-event fn-held-is-no-wire-event))
+  :hints (("Goal" :cases ((fn-held-p w) (fn-hstxa-p w))
+           :in-theory (union-theories '(fn-wire-event-p fn-row-wire-of) (theory 'minimal-theory))
            :use ((:instance fn-held-is-no-wire-event (x w))
                  (:instance fn-hstxa-is-no-wire-event (x w)))))))
 
@@ -401,20 +454,79 @@
                       (fn-arena-seal-list (fn-record-payload w) fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-row-context-okp fn-row-bytes) (fn-cat-intern-list))))))
 
+(local (defthm fn-rows-contexts-okp-of-atom
+  (implies (atom rows) (equal (fn-rows-contexts-okp rows keyring generation fn-arena) t))
+  :hints (("Goal" :in-theory (enable fn-rows-contexts-okp)))))
+
+(local (defthm fn-rows-contexts-okp-of-list
+  (equal (fn-rows-contexts-okp (list r) keyring generation fn-arena)
+         (cond ((fn-held-p r) (fn-row-context-okp r keyring generation fn-arena))
+               ((fn-hstxa-p r) (fn-row-context-okp (fn-hstxa-held r) keyring generation fn-arena))
+               (t t)))
+  :hints (("Goal" :expand ((fn-rows-contexts-okp (list r) keyring generation fn-arena))
+           :in-theory (disable fn-held-p fn-hstxa-p fn-row-context-okp)))))
+
+; One lemma per arm, each over closed recognizers (with them open the single
+; proof took 76 s: persvati r1 of flip-L1).
+(local (defthm fn-intern-event-context-okp-record
+  (implies (and (fn-record-p w) (natp generation))
+           (fn-rows-contexts-okp (list (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))
+                                 keyring generation
+                                 (mv-nth 1 (fn-intern-event w keyring generation fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-intern-event)
+                                  (fn-cat-intern-list fn-row-context-okp fn-held-p-of-intern-list
+                                   fn-wire-event-p fn-record-p fn-stxa-p fn-held-p fn-hstxa-p
+                                   fn-rows-contexts-okp))
+           :use ((:instance fn-held-p-of-intern-list))))))
+
+(local (defthm fn-intern-event-context-okp-composite
+  (implies (and (fn-stxa-p w) (natp generation)
+                (fn-record-p (fn-replay-composite-record w)))
+           (fn-rows-contexts-okp (list (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))
+                                 keyring generation
+                                 (mv-nth 1 (fn-intern-event w keyring generation fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-intern-event)
+                                  (fn-cat-intern-list fn-row-context-okp fn-held-p-of-intern-list
+                                   fn-wire-event-p fn-record-p fn-stxa-p fn-held-p fn-hstxa-p
+                                   fn-hstxa-make fn-replay-composite-record
+                                   fn-rows-contexts-okp))
+           :use ((:instance fn-held-p-of-intern-list (w (fn-replay-composite-record w)))
+                 (:instance fn-hstxa-is-not-held
+                            (x (fn-hstxa-make w (car (fn-cat-intern-list
+                                                      (fn-replay-composite-record w)
+                                                      keyring generation fn-arena)))))
+                 (:instance fn-stxa-is-no-other-wire-event (x w)))))))
+
+(local (defthm fn-intern-event-context-okp-other
+  (implies (and (not (fn-record-p w)) (not (fn-stxa-p w)))
+           (fn-rows-contexts-okp (list (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))
+                                 keyring generation
+                                 (mv-nth 1 (fn-intern-event w keyring generation fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-intern-event)
+                                  (fn-cat-intern-list fn-row-context-okp
+                                   fn-wire-event-p fn-record-p fn-stxa-p fn-held-p fn-hstxa-p
+                                   fn-rows-contexts-okp))
+           :use ((:instance fn-held-is-no-wire-event (x w))
+                 (:instance fn-hstxa-is-no-wire-event (x w))
+                 (:instance fn-held-is-no-wire-event (x :bad))
+                 (:instance fn-hstxa-is-no-wire-event (x :bad)))))))
+
 (defthm fn-intern-event-context-okp
   (implies (and (fn-arena-p fn-arena) (natp generation)
                 (not (equal (mv-nth 0 (fn-intern-event w keyring generation fn-arena)) :bad)))
            (fn-rows-contexts-okp (list (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))
                                  keyring generation
                                  (mv-nth 1 (fn-intern-event w keyring generation fn-arena))))
-  :hints (("Goal" :cases ((fn-record-p w) (fn-stxa-p w))
-           :in-theory (e/d (fn-intern-event fn-rows-contexts-okp)
-                           (fn-cat-intern-list fn-row-context-okp fn-held-p-of-intern-list
-                            fn-wire-event-p))
-           :use ((:instance fn-held-p-of-intern-list)
-                 (:instance fn-held-p-of-intern-list (w (fn-replay-composite-record w)))
-                 (:instance fn-held-is-no-wire-event (x w))
-                 (:instance fn-hstxa-is-no-wire-event (x w))))))
+  :hints (("Goal" :cases ((fn-record-p w)
+                           (and (fn-stxa-p w) (fn-record-p (fn-replay-composite-record w)))
+                           (fn-stxa-p w))
+           :use (fn-intern-event-context-okp-record fn-intern-event-context-okp-composite
+                 fn-intern-event-context-okp-other)
+           :in-theory (union-theories '(natp) (theory 'minimal-theory)))
+          ("Subgoal 1" :in-theory (e/d (fn-intern-event)
+                                       (fn-rows-contexts-okp fn-record-p fn-stxa-p
+                                        fn-cat-intern-list fn-replay-composite-record
+                                        fn-intern-event-arena)))))
 
 ; -- 4.2 The list.
 
@@ -465,7 +577,9 @@
   (implies (and (fn-arena-p fn-arena) (fn-wire-event-listp ws))
            (fn-arena-p (mv-nth 1 (fn-intern-events ws keyring generation fn-arena))))
   :hints (("Goal" :induct (fn-intern-events ws keyring generation fn-arena)
-           :in-theory (e/d (fn-intern-events) (fn-intern-event)))))
+           :in-theory (e/d (fn-intern-events)
+                           (fn-intern-event fn-intern-event-arena fn-wire-event-p
+                            fn-record-p fn-stxa-p fn-arena-p)))))
 
 (local (defthm fn-rows-handles-inp-survives-intern-event
   (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp rows fn-arena))
@@ -476,7 +590,9 @@
   (implies (and (fn-arena-p fn-arena) (fn-wire-event-listp ws) (fn-rows-handles-inp rows fn-arena))
            (fn-rows-handles-inp rows (mv-nth 1 (fn-intern-events ws keyring generation fn-arena))))
   :hints (("Goal" :induct (fn-intern-events ws keyring generation fn-arena)
-           :in-theory (e/d (fn-intern-events) (fn-intern-event fn-rows-handles-inp))))))
+           :in-theory (e/d (fn-intern-events)
+                           (fn-intern-event fn-rows-handles-inp fn-intern-event-arena
+                            fn-wire-event-p fn-record-p fn-stxa-p fn-arena-p))))))
 
 (local (defthm fn-rows-handles-inp-of-cons
   (implies (syntaxp (not (equal rs ''nil)))
@@ -794,9 +910,27 @@
 
 ; KEYSTONE (the prepare entry): the entry is the intern followed by the
 ; store's prepare, except that a refused prepare does not seal.
+; The entry the host calls executes guard-verified.
+(verify-guards fn-store-prepare-interned
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep)
+                                  (fn-sf-statep fn-node-statep fn-sn-prepare
+                                   fn-intern-row-at fn-record-p)))))
+
+;; The keyring and generation conjuncts of the entry's gate are fn-sn-statep's:
+;; off a statep store both the entry and fn-sn-prepare return S, so the
+;; keystone needs only that W is a wire record.
+(local (defthm fn-si-prepare-off-state-is-identity
+  (implies (not (fn-sn-statep s)) (equal (fn-sn-prepare s row) s))
+  :hints (("Goal" :in-theory (enable fn-sn-prepare)))))
+
+(local (defthm fn-si-statep-keyring-fields
+  (implies (fn-sn-statep s)
+           (and (fn-prin-keyringp (fn-sn-keyring s))
+                (natp (fn-sn-keyring-generation s))))
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep))))))
+
 (defthm fn-store-prepare-interned-is-intern-then-prepare
-  (implies (and (fn-record-p w) (fn-prin-keyringp (fn-sn-keyring s))
-                (natp (fn-sn-keyring-generation s)))
+  (implies (fn-record-p w)
            (let* ((k (fn-sn-keyring s)) (g (fn-sn-keyring-generation s))
                   (row (mv-nth 0 (fn-cat-intern-list w k g fn-arena)))
                   (next (fn-sn-prepare s row)))
@@ -805,8 +939,36 @@
                          (if (equal next s)
                              fn-arena
                            (mv-nth 1 (fn-cat-intern-list w k g fn-arena)))))))
+  :hints (("Goal" :cases ((fn-sn-statep s))
+           :in-theory (e/d (fn-store-prepare-interned)
+                           (fn-sn-prepare fn-intern-row-at fn-sn-statep)))))
+
+;; What the entry does to the arena, stated on its own: a refused prepare
+;; leaves the arena exactly as it was (no refused article's bytes are
+;; retained); an accepted one seals exactly one payload, the wire record's
+;; bytes, at the handle the staged row names (the arena's count before).
+(defthm fn-store-prepare-interned-refusal-keeps-the-arena
+  (implies (equal (mv-nth 0 (fn-store-prepare-interned s w fn-arena)) s)
+           (equal (mv-nth 1 (fn-store-prepare-interned s w fn-arena)) fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-store-prepare-interned)
                                   (fn-sn-prepare fn-intern-row-at)))))
+
+(local (defthm fn-si-nth-len-of-append-one
+  (equal (nth (len xs) (append xs (list y))) y)))
+
+(defthm fn-store-prepare-interned-acceptance-seals-one-payload
+  (implies (and (fn-arena-p fn-arena)
+                (not (equal (mv-nth 0 (fn-store-prepare-interned s w fn-arena)) s)))
+           (let ((after (mv-nth 1 (fn-store-prepare-interned s w fn-arena))))
+             (and (fn-record-p w)
+                  (equal (fn-arena-count after) (+ 1 (fn-arena-count fn-arena)))
+                  (equal (fn-arena-payload (fn-arena-count fn-arena) after)
+                         (fn-record-payload w)))))
+  :hints (("Goal" :in-theory (e/d (fn-store-prepare-interned fn-arena-count-is-len
+                                   fn-arena-payload-is-nth fn-arena-seal-list-is-append
+                                   fn-arena-p-is-payload-listp)
+                                  (fn-sn-prepare fn-intern-row-at fn-record-p))
+           :do-not-induct t)))
 
 ; -----------------------------------------------------------------------------
 ; 6. THE DUPLICATE/CONFLICT ENTRY (a POST of a Message-ID the store holds).
@@ -844,24 +1006,31 @@
           :conflict)
       nil)))
 
+(verify-guards fn-articles-wire-of)
+(verify-guards fn-store-existing-action)
+
 (local (defthm fn-find-article-of-articles-wire-of
+  (implies (stringp msgid)
   (equal (fn-find-article msgid (fn-articles-wire-of articles fn-arena))
          (let ((a (fn-find-article msgid articles)))
            (and a
                 (fn-make-article (fn-article-msgid a)
                                  (fn-handle-bytes (fn-article-payload a) fn-arena)
                                  (fn-article-groups a) (fn-article-memberships a)
-                                 (fn-article-pin a) (fn-article-stamp a)))))
+                                 (fn-article-pin a) (fn-article-stamp a))))))
   :hints (("Goal" :in-theory (e/d (fn-find-article fn-articles-wire-of) (fn-handle-bytes))))))
 
 ; KEYSTONE: the entry's verdict is D25's verdict (fn-rcl-action-over, the
 ; verdict over the article list) over ALPHA of the acceptance articles: the
-; same answer the store gave when it retained the bytes themselves.
+; same answer the store gave when it retained the bytes themselves.  The
+; Message-ID is a string (the host passes the parsed header's); a NIL
+; Message-ID would match a NIL list element, which alpha makes an article.
 (defthm fn-store-existing-action-is-the-verdict-over-alpha
+  (implies (stringp msgid)
   (equal (fn-store-existing-action msgid payload groups s fn-arena)
          (fn-rcl-action-over msgid payload groups
                              (fn-articles-wire-of
                               (fn-state-articles (fn-node-acceptance (fn-sn-node s)))
-                              fn-arena)))
+                              fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-store-existing-action fn-rcl-action-over)
                                   (fn-handle-bytes fn-rcl-same-articlep)))))

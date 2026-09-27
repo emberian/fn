@@ -1436,6 +1436,24 @@
 
 ; The files every enabled finish leaves: the completion published and the
 ; success emitted on the exact pair.
+; The files each constructor fn-sn-finish's arms end in leaves.
+(local (defthm fn-sni-files-of-finish-constructors
+  (and (equal (fn-sn-files (fn-sn-update-accepted s f n i m v)) f)
+       (equal (fn-sn-files (fn-sn-update-indexed s f n i)) f)
+       (equal (fn-sn-files (fn-sn-advance-identity-next s)) (fn-sn-files s))
+       (equal (fn-sn-files (fn-sn-with-consumer s c)) (fn-sn-files s))
+       (equal (fn-sn-files (fn-sn-with-topic s tp)) (fn-sn-files s))
+       (equal (fn-sn-files (fn-sn-finish-identity s f r n)) f))
+  :hints (("Goal" :in-theory (e/d (fn-sn-update-accepted fn-sn-update-indexed
+                                   fn-sn-advance-identity-next fn-sn-with-consumer
+                                   fn-sn-with-topic fn-sn-finish-identity fn-sn-make-v6
+                                   fn-sn-files)
+                                  (fn-replay-identity-step fn-sn-identity-context
+                                   fn-stx-index-add fn-sn-composite-delta
+                                   fn-replay-verdict-pairs))))))
+
+; The files every enabled finish leaves: the completion published and the
+; success emitted on the exact pair.  Every arm is closed but its files.
 (local (defthmd fn-sni-finish-files
   (implies (fn-sn-completion-enabledp s)
            (equal (fn-sn-files (fn-sn-finish s))
@@ -1445,18 +1463,8 @@
                                           (fn-store-event-txid (fn-sn-completion-record s)))
                    (fn-store-event-sequence (fn-sn-completion-record s))
                    (fn-store-event-txid (fn-sn-completion-record s)))))
-  :hints (("Goal" :in-theory (e/d (fn-sn-finish fn-sn-finish-identity fn-sn-update-accepted
-                                   fn-sn-update-indexed fn-sn-advance-identity-next
-                                   fn-sn-with-consumer fn-sn-with-topic fn-sn-make-v6 fn-sn-files)
-                                  (fn-sn-completion-enabledp fn-sn-completion-record
-                                   fn-replay-apply-record fn-replay-apply-retention-event
-                                   fn-replay-identity-step fn-sn-identity-context
-                                   fn-sf-core-completion fn-sf-emit-success fn-node-complete
-                                   fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p
-                                   fn-hstxa-p fn-cpe-eventp fn-th-topic-eventp
-                                   fn-record-shape-vocabulary fn-record-record-vocabulary
-                                   fn-stx-index-add fn-sn-accepted-delta fn-sn-composite-delta
-                                   fn-cpe-projection-step fn-th-prefix-step fn-sn-statep))))))
+  :hints (("Goal" :in-theory (union-theories '(fn-sn-finish fn-sni-files-of-finish-constructors)
+                                             (theory 'minimal-theory))))))
 
 ; The completion pair is the completion record's.
 (local (defthm fn-sni-find-record-pair
@@ -2098,35 +2106,65 @@
 
 ; -by-recomputation: a crash resets the node to the empty store and the index
 ; to the empty one; the rows are not indexed again until recovery.
+; The files and the index each constructor the crash and the recovery end in
+; leaves; with these the two proofs below never open the 14-slot state.
+(local (defthm fn-sni-files-index-of-constructors
+  (and (equal (fn-sn-files (fn-sn-update-indexed s f n i)) f)
+       (equal (fn-sn-index (fn-sn-update-indexed s f n i)) i)
+       (equal (fn-sn-files (fn-sn-update-replayed s f n i c)) f)
+       (equal (fn-sn-index (fn-sn-update-replayed s f n i c)) i)
+       (equal (fn-sn-files (fn-sn-update s f n)) f)
+       (equal (fn-sn-index (fn-sn-update s f n)) (fn-sn-index s))
+       (equal (fn-sn-files (fn-sn-with-topic s tp)) (fn-sn-files s))
+       (equal (fn-sn-index (fn-sn-with-topic s tp)) (fn-sn-index s))
+       (equal (fn-sn-files (fn-sn-with-consumer s c)) (fn-sn-files s))
+       (equal (fn-sn-index (fn-sn-with-consumer s c)) (fn-sn-index s))
+       (equal (fn-sn-files (fn-sn-with-event-index s e)) (fn-sn-files s))
+       (equal (fn-sn-index (fn-sn-with-event-index s e)) (fn-sn-index s)))
+  :hints (("Goal" :in-theory (enable fn-sn-update-indexed fn-sn-update-replayed fn-sn-update
+                                     fn-sn-with-topic fn-sn-with-consumer fn-sn-with-event-index
+                                     fn-sn-make-v6 fn-sn-files fn-sn-index)))))
+
+(local (defthm fn-sni-statep-files
+  (implies (fn-sn-statep s) (fn-sf-statep (fn-sn-files s)))
+  :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep))))))
+
 (defthm fn-sn-crash-preserves-indexedp-by-recomputation
   (implies (fn-sn-indexedp s)
            (fn-sn-indexedp (fn-sn-crash s frontier-choice record-choice)))
-  :hints (("Goal" :in-theory (e/d (fn-sn-crash fn-sn-update-indexed fn-sn-with-consumer
-                                   fn-sn-with-topic fn-sn-with-event-index fn-sn-make-v6
-                                   fn-sn-files fn-sn-index fn-sn-statep)
-                                  (fn-sf-crash fn-node-statep fn-node-initial-state fn-sf-statep
-                                   fn-sn-verdict-listp fn-sn-keyring-snapshot-listp
-                                   fn-sn-index-of-rows fn-sn-indexed-rows-of
-                                   fn-sf-crash-choicep))
-           :use ((:instance fn-sn-crash-preserves-state)))))
+  :hints (("Goal" :use ((:instance fn-sn-crash-preserves-state)
+                        (:instance fn-sn-indexed-rows-of-crash (files (fn-sn-files s))))
+           :in-theory (union-theories '(fn-sn-indexedp fn-sn-crash fn-sn-indexed-rows
+                                        fn-sni-files-index-of-constructors fn-sni-statep-files
+                                        fn-sn-index-of-rows-of-nil)
+                                      (theory 'minimal-theory)))))
+
+; The :fault arm of the recovery: its files hold no indexed row and no
+; completion, and the store's index at :replaying was the empty fold.
+(local (defthm fn-sni-fault-files-facts
+  (and (equal (fn-sn-indexed-rows-of (fn-sf-make :fault fr nil rs nil nil su 0)) nil)
+       (fn-sn-completion-is-last-p (fn-sf-make :fault fr nil rs nil nil su 0)))
+  :hints (("Goal" :in-theory (enable fn-sn-indexed-rows-of fn-sn-completion-is-last-p)))))
+
+(local (defthm fn-sni-replaying-has-no-indexed-rows
+  (implies (equal (fn-sf-phase files) :replaying)
+           (equal (fn-sn-indexed-rows-of files) nil))
+  :hints (("Goal" :in-theory (enable fn-sn-indexed-rows-of)))))
 
 ; -by-recomputation: recovery's node comes from a replay, not from a step of
 ; this machine, so its index is recomputed: the fold of every row's context.
 (defthm fn-sn-recover-preserves-indexedp-by-recomputation
   (implies (fn-sn-indexedp s)
            (fn-sn-indexedp (fn-sn-recover s)))
-  :hints (("Goal" :in-theory (e/d (fn-sn-recover fn-sn-update-replayed fn-sn-update
-                                   fn-sn-with-consumer fn-sn-with-topic fn-sn-with-event-index
-                                   fn-sn-make-v6 fn-sn-files fn-sn-index fn-sn-statep
-                                   fn-sn-indexed-rows-of fn-sn-completion-is-last-p)
-                                  (fn-sf-replay-node fn-sf-recover fn-node-statep fn-sf-statep
-                                   fn-sn-verdict-listp fn-sn-keyring-snapshot-listp
-                                   fn-sn-index-of-rows fn-replay-identity
-                                   fn-cpe-projection-replay fn-th-prefix-project fn-cei-build
-                                   fn-replay-verdict-pairs))
-           :use ((:instance fn-sn-recover-preserves-state)
-                 (:instance fn-sn-indexed-rows-of-recover (files (fn-sn-files s))
-                            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s)))))))
+  :hints (("Goal" :use ((:instance fn-sn-recover-preserves-state)
+                        (:instance fn-sn-indexed-rows-of-recover (files (fn-sn-files s))
+                                   (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s)))
+                        (:instance fn-sni-replaying-has-no-indexed-rows (files (fn-sn-files s))))
+           :in-theory (union-theories '(fn-sn-indexedp fn-sn-recover fn-sn-indexed-rows
+                                        fn-sni-files-index-of-constructors fn-sni-statep-files
+                                        fn-sni-fault-files-facts fn-sn-index-of-rows-of-nil
+                                        eq)
+                                      (theory 'minimal-theory)))))
 
 ; The keyring installation rebuilds the history with new contexts
 ; (fn-sn-recontext-rows): every row keeps its kind and its coordinates, so

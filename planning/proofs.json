@@ -1166,7 +1166,8 @@
         "fn-sn-finish-preserves-indexedp",
         "fn-sn-statement-lookup-is-the-lace-lookup",
         "fn-sn-equivocatorp-is-the-lace-equivocator"
-      ]
+      ],
+      "progress_note": "RECORDS FLIP (2026-09-27, flip-L1): the two served-query keystones fn-sn-statement-lookup-is-the-lace-lookup and fn-sn-equivocatorp-is-the-lace-equivocator were stated over the acceptance articles BYTES; after the flip those carry handles, so records-flip-2 removed them from books/store-node-invariants.lisp and this row no longer cites them.  What holds today: the store index is the fold of the retained rows contexts (fn-sn-indexedp over fn-sn-index-of-rows, preserved by every transition in books/store-node-invariants.lisp) and that fold is the wire index of the rows bytes read through the arena (books/store-intern.lisp fn-rows-index-is-the-wire-index, under fn-rows-contexts-okp, which fn-intern-events-contexts-okp establishes at the intern).  OPEN (named): the two lookup keystones restated over alpha in books/store-intern.lisp (lookup in fn-sn-index = lookup in the lace of fn-rows-articles-newest-first)."
     },
     {
       "id": "PRF-024",
@@ -3881,7 +3882,7 @@
         "planning/evidence/manifests/certify-20260926T093114Z-1141563.json",
         "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
       ],
-      "progress_note": "Open: the identity prepare (host fn-owner-prepare-identity) still goes through the unverified fn-ocfg-step and fn-sn-prepare-identity, whose fn-sf-prepare-record replays the whole appended history (fn-sf-history-recoverablep); the article path's correspondence (fn-spc-related-candidate-is-recoverable) has no identity analog yet. fn-replay-apply-record and fn-replay-identity-step still recognize the composite and decode its record on the gate and again on the finish. UPDATED 2026-09-26 (PRF-144, lane signed-history-index): the identity prepare no longer replays the appended history; fn-ccar-sn-prepare-identity stages through fn-spc-stage-record and equals fn-sn-prepare-identity under fn-snt-relation.",
+      "progress_note": "Open: the identity prepare (host fn-owner-prepare-identity) still goes through the unverified fn-ocfg-step and fn-sn-prepare-identity, whose fn-sf-prepare-record replays the whole appended history (fn-sf-history-recoverablep); the article path's correspondence (fn-spc-related-candidate-is-recoverable) has no identity analog yet. fn-replay-apply-record and fn-replay-identity-step still recognize the composite and decode its record on the gate and again on the finish. UPDATED 2026-09-26 (PRF-144, lane signed-history-index): the identity prepare no longer replays the appended history; fn-ccar-sn-prepare-identity stages through fn-spc-stage-record and equals fn-sn-prepare-identity under fn-snt-relation. RECORDS FLIP (2026-09-27, flip-L1): the class-by-shape readings are over the RETAINED vocabulary: an article row is fn-held-p and an accepted statement row fn-hstxa-p (fn-evc-class-by-shape-is-fn-held-p, -is-fn-hstxa-p); the wire kinds fn-record-p and fn-stxa-p are the codec domain (fn-wire-event-p) and never a retained event.",
       "events": [
         "fn-evc-field-by-shape-is-store-event-sequence",
         "fn-evc-field-by-shape-is-store-event-txid",

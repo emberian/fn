@@ -2,6 +2,15 @@
 ; Recovery may scan history; a served path must carry this projection instead.
 (in-package "ACL2")
 (include-book "store-events")
+;
+; A retained accepted statement (fn-hstxa-p, three wide) is never a topic
+; event (eight or nine wide, or a six-wide local install): the prefix step's
+; statement arm and its topic arm are disjoint.
+(defthm fn-th-topic-event-is-no-hstxa
+  (implies (fn-th-topic-eventp event)
+           (not (fn-hstxa-p event)))
+  :hints (("Goal" :in-theory (enable fn-th-topic-eventp fn-th-local-admin-eventp
+                                     fn-hstxa-p))))
 
 ; (:ok next snapshots accepted anchors installed-admin nil), or :fault with
 ; a reason in the last slot. Historical installation comes from a preceding

@@ -63,6 +63,13 @@
   :hints (("Goal" :in-theory (enable fn-stxk-p fn-stxk-shapep
                                      fn-stxk-sequence fn-record-uint32p))))
 
+; A snapshot is no retained composite (fn-hstxa-p, headed :hstxa): the
+; identity step reads it as itself (fn-replay-identity-wire).
+(defthm fn-hls-snapshot-is-no-retained-composite
+  (implies (fn-stxk-p event) (not (fn-hstxa-p event)))
+  :hints (("Goal" :use fn-hls-snapshot-has-numeric-first-field
+           :in-theory (disable fn-stxk-p))))
+
 (defthm fn-hls-snapshot-disjoint-from-other-store-events
   (implies (fn-stxk-p event)
            (and (not (fn-store-retention-event-p event))
@@ -110,7 +117,7 @@
                     (fn-sn-identity-context s) event))
                   nil))
   :hints (("Goal" :in-theory
-           (e/d (fn-replay-identity-step fn-sn-identity-context
+           (e/d (fn-replay-identity-step fn-sn-identity-context fn-replay-identity-wire
                   fn-stxk-apply-snapshot fn-stxk-fault fn-stxk-context)
                 (fn-stxk-p fn-stxe-p fn-stxa-p
                  fn-hsig-keyring-snapshot-value
@@ -202,8 +209,10 @@
 
 ;; ---------------------------------------------------------------------------
 ;; P8 / PRF-026.  A kind-4 (hybrid acceptance) completion records its verdict.
-;; The kind-4 composite is fn-stxa-p; its verdict event is the exact kind-2
-;; bytes it carries.  Standalone kind-2 evidence (fn-stxe-p) is validated but
+;; The kind-4 composite is fn-stxa-p on the wire; the history retains it as
+;; the row fn-hstxa-p (books/held-record.lisp), whose wire composite
+;; (fn-hstxa-stxa) the identity step reads.  Its verdict event is the exact
+;; kind-2 bytes that composite carries.  Standalone kind-2 evidence (fn-stxe-p) is validated but
 ;; deliberately contributes no accepted verdict (books/replay.lisp).
 (defthm fn-hls-kind4-has-numeric-first-field
   (implies (fn-stxa-p event) (natp (car event)))
@@ -228,8 +237,21 @@
                   fn-stxe-p fn-stxe-shapep)
                 (fn-th-topic-eventp)))))
 
+(defthm fn-hls-retained-kind4-disjoint-from-other-store-events
+  (implies (fn-hstxa-p event)
+           (and (not (fn-store-retention-event-p event))
+                (not (fn-cpe-eventp event))
+                (not (fn-th-topic-eventp event))
+                (not (fn-stxk-p event))
+                (not (fn-stxe-p event))))
+  :hints (("Goal"
+           :in-theory
+           (enable fn-hstxa-p fn-store-retention-event-p fn-store-event-nth
+                   fn-cpe-eventp fn-cp-nth fn-th-topic-eventp fn-th-local-admin-eventp
+                   fn-stxk-p fn-stxk-shapep fn-stxe-p fn-stxe-shapep))))
+
 (defthm fn-hls-kind4-identity-step-emits-its-verdict-event
-  (implies (and (fn-stxa-p event)
+  (implies (and (fn-hstxa-p event)
                 (equal (fn-stxk-context-kind
                         (fn-replay-identity-step (fn-sn-identity-context s)
                                                  event))
@@ -238,51 +260,57 @@
                    (fn-replay-identity-step (fn-sn-identity-context s) event))
                   (list (fn-stmt-value
                          (fn-stxe-decode-exact
-                          (fn-stxa-verdict-event event))))))
+                          (fn-stxa-verdict-event (fn-hstxa-stxa event)))))))
   :hints (("Goal"
-           :use ((:instance fn-hls-kind4-disjoint-from-other-store-events))
+           :use ((:instance fn-hls-kind4-disjoint-from-other-store-events
+                            (event (fn-hstxa-stxa event)))
+                 (:instance fn-hls-retained-kind4-disjoint-from-other-store-events))
            :in-theory
-           (e/d (fn-replay-identity-step fn-sn-identity-context
+           (e/d (fn-replay-identity-step fn-sn-identity-context fn-replay-identity-wire
                   fn-stxk-apply-verdict fn-stxk-fault fn-stxk-context)
                 (fn-stxk-p fn-stxe-p fn-stxa-p fn-stxa-bindsp
                  fn-hsig-article-event-snapshot-bindsp fn-stxe-decode-exact
                  fn-hls-kind4-disjoint-from-other-store-events
-                 fn-replay-identity-advance)))))
+                 fn-hls-retained-kind4-disjoint-from-other-store-events
+                 fn-hstxa-p fn-replay-identity-advance)))))
 
 (defthm fn-hls-kind4-identity-step-ok-has-evidence-record
-  (implies (and (fn-stxa-p event)
+  (implies (and (fn-hstxa-p event)
                 (equal (fn-stxk-context-kind
                         (fn-replay-identity-step (fn-sn-identity-context s)
                                                  event))
                        :ok))
            (fn-stxe-p (fn-stmt-value
                        (fn-stxe-decode-exact
-                        (fn-stxa-verdict-event event)))))
+                        (fn-stxa-verdict-event (fn-hstxa-stxa event))))))
   :hints (("Goal"
-           :use ((:instance fn-hls-kind4-disjoint-from-other-store-events))
+           :use ((:instance fn-hls-kind4-disjoint-from-other-store-events
+                            (event (fn-hstxa-stxa event)))
+                 (:instance fn-hls-retained-kind4-disjoint-from-other-store-events))
            :in-theory
-           (e/d (fn-replay-identity-step fn-sn-identity-context
+           (e/d (fn-replay-identity-step fn-sn-identity-context fn-replay-identity-wire
                   fn-stxk-apply-verdict fn-stxk-fault fn-stxk-context)
                 (fn-stxk-p fn-stxe-p fn-stxa-p fn-stxa-bindsp
                  fn-hsig-article-event-snapshot-bindsp fn-stxe-decode-exact
                  fn-hls-kind4-disjoint-from-other-store-events
-                 fn-replay-identity-advance)))))
+                 fn-hls-retained-kind4-disjoint-from-other-store-events
+                 fn-hstxa-p fn-replay-identity-advance)))))
 
 (defthm fn-hls-finish-kind4-verdicts
   (implies (and (fn-sn-completion-enabledp s)
-                (fn-stxa-p (fn-sn-completion-record s)))
+                (fn-hstxa-p (fn-sn-completion-record s)))
            (equal (fn-sn-verdicts (fn-sn-finish s))
                   (let ((v (fn-stmt-value
                             (fn-stxe-decode-exact
                              (fn-stxa-verdict-event
-                              (fn-sn-completion-record s))))))
+                              (fn-hstxa-stxa (fn-sn-completion-record s)))))))
                     (cons (cons (fn-stxe-msgid v)
                                 (fn-stx-make-verdict
                                  (fn-stxe-token v) (fn-stxe-detail v)
                                  (fn-stxe-keyring-generation v)))
                           (fn-sn-verdicts s)))))
   :hints (("Goal"
-           :use ((:instance fn-hls-kind4-disjoint-from-other-store-events
+           :use ((:instance fn-hls-retained-kind4-disjoint-from-other-store-events
                             (event (fn-sn-completion-record s)))
                  (:instance fn-hls-kind4-identity-step-emits-its-verdict-event
                             (event (fn-sn-completion-record s)))
@@ -291,10 +319,10 @@
            :in-theory
            (e/d (fn-sn-finish fn-sn-finish-identity fn-replay-verdict-pairs
                   fn-sn-completion-enabledp fn-sn-completion-core-enabledp)
-                (fn-stxk-p fn-stxe-p fn-stxa-p fn-store-retention-event-p
+                (fn-stxk-p fn-stxe-p fn-stxa-p fn-hstxa-p fn-store-retention-event-p
                  fn-cpe-eventp fn-th-topic-eventp fn-replay-identity-step
                  fn-sn-identity-context fn-stxe-decode-exact
-                 fn-hls-kind4-disjoint-from-other-store-events
+                 fn-hls-retained-kind4-disjoint-from-other-store-events
                  fn-hls-kind4-identity-step-emits-its-verdict-event
                  fn-hls-kind4-identity-step-ok-has-evidence-record
                  fn-sn-completion-record fn-replay-apply-record
@@ -304,7 +332,8 @@
 
 (defun fn-hls-kind4-verdict-event (record)
   (declare (xargs :guard t))
-  (fn-stmt-value (fn-stxe-decode-exact (fn-stxa-verdict-event record))))
+  (fn-stmt-value (fn-stxe-decode-exact
+                  (fn-stxa-verdict-event (fn-replay-identity-wire record)))))
 
 ;; Keystone.  Subject: fn-sn-finish, which the owner's (:complete) event runs
 ;; (books/owner.lisp fn-own-complete; host/owner-host.lisp fn-owner-finish)
@@ -312,19 +341,19 @@
 ;; query is fn-sn-verdict-lookup, the list the reader pin copies.
 (defthm fn-sn-finish-of-a-kind-4-acceptance-records-its-verdict
   (implies (and (fn-sn-completion-enabledp s)
-                (fn-stxa-p (fn-sn-completion-record s)))
+                (fn-hstxa-p (fn-sn-completion-record s)))
            (let ((v (fn-hls-kind4-verdict-event (fn-sn-completion-record s))))
              (equal (fn-sn-verdict-lookup (fn-sn-finish s) (fn-stxe-msgid v))
                     (fn-stx-make-verdict (fn-stxe-token v) (fn-stxe-detail v)
                                          (fn-stxe-keyring-generation v)))))
   :hints (("Goal"
            :in-theory (e/d (fn-sn-verdict-lookup fn-sn-verdict-lookup-list
-                            fn-hls-kind4-verdict-event)
+                            fn-hls-kind4-verdict-event fn-replay-identity-wire)
                            (fn-sn-finish fn-sn-completion-enabledp
                             fn-stxa-p fn-stxe-decode-exact fn-stx-make-verdict)))))
 (defthm fn-sn-finish-of-a-kind-4-acceptance-keeps-other-verdicts
   (implies (and (fn-sn-completion-enabledp s)
-                (fn-stxa-p (fn-sn-completion-record s))
+                (fn-hstxa-p (fn-sn-completion-record s))
                 (not (equal msgid
                             (fn-stxe-msgid (fn-hls-kind4-verdict-event
                                             (fn-sn-completion-record s))))))
@@ -332,6 +361,6 @@
                   (fn-sn-verdict-lookup s msgid)))
   :hints (("Goal"
            :in-theory (e/d (fn-sn-verdict-lookup fn-sn-verdict-lookup-list
-                            fn-hls-kind4-verdict-event)
+                            fn-hls-kind4-verdict-event fn-replay-identity-wire)
                            (fn-sn-finish fn-sn-completion-enabledp
                             fn-stxa-p fn-stxe-decode-exact fn-stx-make-verdict)))))
