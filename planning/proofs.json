@@ -9499,7 +9499,7 @@
         "PRF-259"
       ],
       "assumptions": [],
-      "status": "uncertified-at-current-digest",
+      "status": "certified",
       "evidence": [
         "books/config-owner-carried.lisp",
         "tests/acl2/config-owner-carried-tests.lisp",
