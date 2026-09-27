@@ -244,7 +244,7 @@
 ;; install from the extended value with `fn-ock-recover-extended'
 ;; (fn-owner-recover-extended below).  From a verified checkpoint
 ;; (fn-owner-recover-from-checkpoint) the records are the suffix after S; on
-;; a full replay (fn-owner-recover) the checkpoint is the capture of the
+;; a full replay (fn-owner-recover-rows) the checkpoint is the capture of the
 ;; empty prefix and the records are the whole history.  The keystone
 ;; fn-owner-recover-from-checkpoint-equals-full-recover says both install the
 ;; owner of the full open, the composition
@@ -315,49 +315,38 @@
          (fn-ock-install (cadr opened) (caddr opened) max-conns)
          (car opened) state)))))
 
-; The records flip: both opens intern the decoded journal into the arena
-; first (host/store-node-host.lisp fn-store-sn-recover's note), so the
-; extended capture is over ROWS; (mv nil KEYWORD fn-arena state).
-(defun fn-owner-recover (octet-records frontier config-octet-records max-conns
-                                       fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (let ((records (fn-store-decode-records octet-records))
-        (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (equal records :bad) (equal config-records :bad))
-        (mv nil :fault fn-arena state)
-      (let ((fn-arena (fn-arena-clear fn-arena)))
-        (mv-let (rows fn-arena)
-        (fn-store-intern-records records fn-arena)
-        (if (equal rows :bad)
-            (mv nil :fault fn-arena state)
-          (mv-let (erp val state)
-            (fn-owner-recover-extended
-             (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
-             config-records frontier max-conns state)
-            (mv erp val fn-arena state))))))))
+;; The records flip: both opens intern the decoded journal into the arena
+;; first, so the extended capture is over ROWS.  No :program entry here
+;; updates the arena (invariant-risk; host/store-node-host.lisp
+;; fn-store-sn-recover-records' note): the bridge (tools/run_owner.py
+;; recover) decodes with fn-store-sn-recover-records, empties the arena and
+;; interns with the guard-verified fn-intern-events at top level, then calls
+;; this entry over the rows.  The native owner installs from the Store open
+;; instead (fn-owner-recover-from-store-open).  (mv nil KEYWORD state).
+(defun fn-owner-recover-rows (rows frontier config-octet-records max-conns state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((config-records (fn-store-cfg-decode-records config-octet-records)))
+    (if (or (equal rows :bad) (equal config-records :bad))
+        (value :fault)
+      (fn-owner-recover-extended
+       (fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)
+       config-records frontier max-conns state))))
 
-; The open from the checkpoint the Store open decoded and verified
-; (`fn-store-sco-checkpoint', host/store-node-host.lisp) and the octets of
-; the records after it.
-(defun fn-owner-recover-from-checkpoint (suffix-octet-records frontier config-octet-records
-                                                              max-conns fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+; The open from the checkpoint the Store open loaded (`fn-store-sco-checkpoint',
+; host/store-node-host.lisp) over the ROWS of the records after it, which the
+; caller interned ON TOP of the loaded arena (fn-intern-events records nil 0:
+; host/native/io.lisp fnn-recover-suffix-rows); the entry reads no arena.
+; books/store-checkpoint-arena.lisp fn-scka-recover-from-checkpoint-is-full-
+; recover: the extension is the full recover's.  (mv nil KEYWORD state).
+(defun fn-owner-recover-from-checkpoint (rows frontier config-octet-records max-conns state)
+  (declare (xargs :stobjs state :mode :program))
   (let ((checkpoint (fn-store-sco-current state))
-        (records (fn-store-decode-records suffix-octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
-    (if (or (null checkpoint) (equal records :bad) (equal config-records :bad))
-        (mv nil :fault fn-arena state)
-      ; The checkpoint's rows reference no handle (fn-store-sco-decode).
-      (let ((fn-arena (fn-arena-clear fn-arena)))
-        (mv-let (rows fn-arena)
-        (fn-store-intern-records records fn-arena)
-        (if (equal rows :bad)
-            (mv nil :fault fn-arena state)
-          (mv-let (erp val state)
-            (fn-owner-recover-extended
-             (fn-rii-sco-extend checkpoint config-records rows)
-             config-records frontier max-conns state)
-            (mv erp val fn-arena state))))))))
+    (if (or (null checkpoint) (equal rows :bad) (equal config-records :bad))
+        (value :fault)
+      (fn-owner-recover-extended
+       (fn-rii-sco-extend checkpoint config-records rows)
+       config-records frontier max-conns state))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
