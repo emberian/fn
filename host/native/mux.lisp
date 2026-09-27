@@ -18,7 +18,8 @@
 ;;; (fnn-mux-conn) holding what the worker held on its stack:
 ;;;
 ;;;   input   the octets the next step is handed: the read in hand, or the
-;;;           suffix a step left (at most one +fnn-max-read+ read);
+;;;           suffix a step left (at most one read of ACL2's size,
+;;;           fn-cbud-step-read-octets: 64 KiB, 512 under a step rate);
 ;;;   out     the one window of the reply being written, its offset and
 ;;;           deadline, and the render plan's continuation (HST-023: the step
 ;;;           answers a plan; fnn-owner-render-next renders the next window,
@@ -76,7 +77,10 @@
   ;; loop's completed passes and whether it sleeps in poll(2) now, which the
   ;; committer reads to know every ready connection was stepped
   ;; (host/native/owner.lisp fnn-owner-loops-passed-p).
-  (arrived nil) (passes 0) (polling nil))
+  (arrived nil) (passes 0) (polling nil)
+  ;; The loop's one read buffer, of the served read size ACL2 decided
+  ;; (fnn-mux-read-buffer): a read allocates only the octets it returns.
+  (buffer nil))
 
 (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn))
   socket fd implicit-tls channel ssl cid opened-cid
@@ -133,31 +137,47 @@ TIMEOUT-MS milliseconds; all zero after a timeout or an interrupted wait."
 ;;; ---------------------------------------------------------------------------
 ;;; Transport, one attempt each.
 
-(defun fnn-mux-read-plain (fd)
-  "One read(2): octets, empty at end of input, or :input."
-  (let* ((buffer (fnn-make-octets +fnn-max-read+))
+(defun fnn-mux-read-plain (fd &optional buffer)
+  "One read(2) into BUFFER (a fresh +fnn-max-read+ one when NIL): the octets
+read, empty at end of input, or :input."
+  (let* ((buffer (or buffer (fnn-make-octets +fnn-max-read+)))
          (count (fnn-read-fd fd buffer nil t)))
     (if (eq count :would-block) :input (subseq buffer 0 count))))
 
-(defun fnn-mux-peek-plain (fd)
-  "One MSG_PEEK: the octets waiting (not consumed), empty at end, or :input."
-  (let ((buffer (fnn-make-octets +fnn-max-read+)))
-    (loop
-      (multiple-value-bind (count errno)
-          (funcall *fnn-tls-peek-syscall* fd buffer)
-        (cond ((and (null count) (fnn-eintr-p errno)) nil)
-              ((and (null count) (fnn-would-block-p errno)) (return :input))
-              ((null count) (fnn-os-fail errno))
-              (t (return (subseq buffer 0 count))))))))
+(defun fnn-mux-peek-plain (fd buffer)
+  "One MSG_PEEK into BUFFER: the octets waiting (not consumed), empty at end,
+or :input."
+  (loop
+    (multiple-value-bind (count errno)
+        (funcall *fnn-tls-peek-syscall* fd buffer)
+      (cond ((and (null count) (fnn-eintr-p errno)) nil)
+            ((and (null count) (fnn-would-block-p errno)) (return :input))
+            ((null count) (fnn-os-fail errno))
+            (t (return (subseq buffer 0 count)))))))
 
-(defun fnn-mux-receive-now (service conn)
+(defun fnn-mux-read-buffer (service loop)
+  "LOOP's read buffer, of exactly the octets one served step may read:
+ACL2's fn-cbud-step-read-octets (books/connection-budget.lisp), installed by
+fnn-owner-refresh-read-octets under the owner mutex.  Reallocated only when
+that size changes (a live change of the step rate)."
+  (let ((size (fnn-owner-service-read-octets service))
+        (buffer (fnn-mux-loop-buffer loop)))
+    (unless (and (integerp size) (> size 0))
+      (fnn-fault "the served read size is not installed"))
+    (if (and buffer (= (length buffer) size))
+        buffer
+      (setf (fnn-mux-loop-buffer loop) (fnn-make-octets size)))))
+
+(defun fnn-mux-receive-now (service loop conn)
   "The served read, as fnn-owner-receive chose it: through TLS once
 protected; by MSG_PEEK while a loaded context makes STARTTLS reachable (ACL2
-then chooses the exact prefix to consume); else read(2)."
-  (let ((channel (fnn-mux-conn-channel conn)) (fd (fnn-mux-conn-fd conn)))
-    (cond (channel (fnn-tls-read-now channel))
-          ((fnn-owner-service-tls-context service) (fnn-mux-peek-plain fd))
-          (t (fnn-mux-read-plain fd)))))
+then chooses the exact prefix to consume); else read(2).  At most the octets
+ACL2 lets one served step read (fnn-mux-read-buffer)."
+  (let ((channel (fnn-mux-conn-channel conn)) (fd (fnn-mux-conn-fd conn))
+        (buffer (fnn-mux-read-buffer service loop)))
+    (cond (channel (fnn-tls-read-now channel (length buffer) buffer))
+          ((fnn-owner-service-tls-context service) (fnn-mux-peek-plain fd buffer))
+          (t (fnn-mux-read-plain fd buffer)))))
 
 (defun fnn-mux-write-now (conn)
   "One write of the queued reply from its offset: the octets written, or the
@@ -504,7 +524,7 @@ no exposure wait pending."
          (incoming (fnn-owner-connection-call
                     service :receive
                     (lambda ()
-                      (let ((value (fnn-mux-receive-now service conn)))
+                      (let ((value (fnn-mux-receive-now service loop conn)))
                         (unless (or (member value '(:input :output))
                                     (typep value 'fnn-octets))
                           (error "malformed connection receive result"))

@@ -91,6 +91,11 @@
   ;; AWAITING maps a connection id to the mux connection waiting for its
   ;; completion, DONE a completion that arrived before its connection
   ;; registered; SPARING the member sockets a failed batch's stop spares.
+  ;; The octets the next served read may take: ACL2's
+  ;; fn-cbud-step-read-octets (host/owner-host.lisp fn-owner-read-octets),
+  ;; read under the owner mutex (fnn-owner-refresh-read-octets) and read
+  ;; here, without the mutex, by the I/O loops (host/native/mux.lisp).
+  (read-octets nil)
   (batching nil) (committer nil) (queued 0)
   (commit-lock (sb-thread:make-mutex :name "fn owner commit"))
   (commit-ready (sb-thread:make-waitqueue :name "fn owner commit ready"))
@@ -198,6 +203,15 @@ SBCL's SB-UNIX may lack the internal clock symbols."
 
 (defun fnn-owner-core (name &rest args)
   (apply #'fnn-core-state name args))
+
+(defun fnn-owner-refresh-read-octets (service)
+  "Install ACL2's read size for the next served read (under the owner mutex:
+the exposure install, and every served step, so a live change of the step
+rate reaches the next read)."
+  (let ((octets (fnn-owner-core 'fn-owner-read-octets)))
+    (unless (and (integerp octets) (> octets 0))
+      (fnn-fault "owner returned a malformed read size"))
+    (setf (fnn-owner-service-read-octets service) octets)))
 
 (defun fnn-owner-octets-global (name)
   (let ((value (fnn-global name)))
@@ -2548,6 +2562,7 @@ EPIPE and the client saw a bare close)."
        (let ((step (fnn-core-buffer-state 'fn-owner-chunk-span cid 0 (length incoming))))
          (when (eq step :unknown)
            (fnn-refuse "owner no longer knows connection ~d" cid))
+         (fnn-owner-refresh-read-octets service)
          (unless (fnn-core 'fn-splan-step-p step)
            (fnn-fault "owner returned a malformed served step"))
          ;; One ACL2-rendered line per 441 this read sends (books/owner-log.lisp
@@ -2969,6 +2984,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                                                                   more-addresses)))
                                   '(:public :loopback))
                     (fnn-fault "owner refused the exposure install"))
+                  (fnn-owner-refresh-read-octets service)
                   (setf (fnn-owner-service-tls-context service) tls-context
                         (fnn-owner-service-connection-fault-operation service)
                         connection-fault-operation)
