@@ -488,7 +488,8 @@
     :rule-classes nil
     :hints (("Goal" :in-theory (enable fn-scr-owner-catalogp fn-scr-conn-okp fn-scr-conn-catalogp
                                        fn-scr-live-catalogp fn-scr-fields-catalogp
-                                       fn-scr-catalogp)))))
+                                       fn-scr-catalogp fn-scol-okp fn-scol-rows-okp
+                                       fn-scol-row-okp)))))
 
 ; Removal of the catalog premise (CORRUPTED catalog, not reached): the same
 ; owners, views and read, every other hypothesis as above; the catalog holds
