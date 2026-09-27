@@ -3857,7 +3857,12 @@ disk from GENESIS (the chain's trailer after the closed segments the open
 scanned): the first fn-lgc-count of the segment's records, the count read
 under the kernel lock."
   (let* ((log (fnn-store-log store))
-         (count (fnn-log-with-kernel (log) (fnn-core 'fn-lgc-count (fnn-log-kernel log)))))
+         ;; The lock by hand: fnn-log-with-kernel is a macro defined with the
+         ;; log's structure further down, and a use before its definition
+         ;; compiled as a call of CL:LOG with no argument (batch AW r14:
+         ;; "invalid number of arguments: 0" at every format-9 open).
+         (count (sb-thread:with-recursive-lock ((fnn-log-lock log))
+                  (fnn-core 'fn-lgc-count (fnn-log-kernel log)))))
     (if (eql count 0)
         nil
       (fnn-core 'fn-lgc-first count
