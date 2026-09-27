@@ -5351,6 +5351,21 @@
         "tools/profile/control_quanta.py",
         "tools/profile/prof_control.py"
       ]
+    },
+    {
+      "id": "SCN-182",
+      "title": "The developer image's fnn-call refuses, by name and before the entry runs, an arena handle where an entry's guard names octets, an octet vector, a handle in the second position and the wrong argument count; octets reach the entry",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-026"
+      ],
+      "steps": "Build the developer image; evaluate in its saved core, through fnn-core: fn-store-record-txid on the natural 7, on an octet vector of two elements, on two arguments, and on the octets (1 2 3); fn-owner-transit-decide on octets and the natural 7 (tests/test_native_entry_guard.py).",
+      "expected": "The first four answer the fault host-entry-guard naming the entry, the argument position, the formal and the kind (octets), with the natural's value or the vector's length; the octets reach fn-store-record-txid and answer its own verdict.",
+      "evidence": [
+        "tests/test_native_entry_guard.py",
+        "planning/evidence/entry-guards-2026-09-27.md"
+      ]
     }
   ]
 }

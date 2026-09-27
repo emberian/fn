@@ -10956,6 +10956,23 @@
           "name": "fn-arx-commit-reseats-keep-the-arena"
         }
       ]
+    },
+    {
+      "id": "PRF-311",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-payload-handle-is-not-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-payload-octets-are-not-a-handle"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-payload-handle-p-is-natp"
+        }
+      ]
     }
   ]
 }

@@ -11150,6 +11150,28 @@
         "tools/native_program_check.py"
       ],
       "progress_note": "Lane ack-before-barrier (Opus 5.5, 2026-09-27), from log-recovery-2's diagnosis (planning/evidence/log-recovery-2026-09-27.md section 8): a served statement's cut and executor ran inside the drain, before the batch's barrier, so FN_NATIVE_KEY_STATEMENT_FAULT=statement-committed:kill killed with the statement in memory only and the key-statement line reported an unfenced key change. Teeth: tests/acl2/owner-ack-after-barrier-tests.lisp (reachable: an ordinary article, the acting succession and the declining carried statement in one batch, trace non-vacuous; the pipeline; every kind; hypothesis removal: an ordinary composite is not fenced, an unrouted kind fails; mutations M1 the pre-fix unfenced cut, M2 an undeferred executor line, M3 replies without the barrier, each failing the property)."
+    },
+    {
+      "id": "PRF-311",
+      "title": "A payload handle is not octets: the retained article's and held row's payload is a handle by recognizer, disjoint from octets, and the host's every call into ACL2 refuses a wrong-kind argument or argument count by name before the entry runs",
+      "statement": "books/payload-kinds.lisp. fn-payload-handle-p (a compound recognizer for natp) types the retained payload fields (books/acceptance.lisp fn-article-payload, books/held-record.lisp fn-held-payload). KEYSTONES fn-payload-handle-is-not-octets and fn-payload-octets-are-not-a-handle: no value is both a handle and fn-cbor-octet-listp octets, so a guard naming one kind refuses the other. The host entry guard (host/native/io.lisp fnn-entry-guard, run by fnn-call, the dispatcher every fnn-core* wrapper applies) evaluates, on the actual arguments, the entry's arity and exactly the conjuncts (R v) of the entry's own ACL2 guard with R in *fn-entry-guard-kinds* and v a non-stobj formal, and raises fnn-entry-guard-fault naming the entry, the position, the formal and the kind; it never evaluates another conjunct (no whole-state revalidation). tools/harness_check.py entry-guards: every dispatched entry's byte-carrying formal is covered by a kind conjunct (111), a body-first kind test (11) or a named exemption (16); tools/payload_kind_check.py: every definition that reads a retained payload declares its kind (fn-payload-kind :handle, :source or :wire) or is a named live defect (14 waivers, PKT-EG-1..4).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-026"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/payload-kinds.lisp",
+        "tests/acl2/payload-kinds-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_entry_guard.py",
+        "tools/harness_check.py",
+        "tools/payload_kind_check.py",
+        "planning/evidence/entry-guards-2026-09-27.md"
+      ],
+      "progress_note": "Lane entry-guards (2026-09-27). The two keystones are proved; the host entry guard is host code, witnessed by tests/test_native_entry_guard.py on the developer image (a handle, an octet vector, a wrong count, a handle in the second position: each the named fault; octets reach the entry)."
     }
   ]
 }
