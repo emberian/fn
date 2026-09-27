@@ -538,6 +538,64 @@
                                    (o (fn-ocfg-owner oc)))
                         (:instance fn-ocfg-make-of-its-fields (x oc))))))
 
+; -----------------------------------------------------------------------------
+; The operator's retry (books/owner.lisp fn-own-operator-decision; flip-L8-2).
+; The decision reads the octets the store holds for the Message-ID, STORED,
+; which the pure step cannot read after the records flip (the acceptance
+; article holds a handle).  This entry computes them: the bytes under the
+; held handle, read through the arena the host holds (fn-handle-bytes,
+; books/store-intern.lisp), or :absent when the node holds no article with
+; the Message-ID.  The host passes its value to fn-own-operator-submit-result
+; and as the (:operator-submit MSGID GROUPS OCTETS STORED) event's last
+; element (host/owner-host.lisp fn-owner-operator-submit; flip-L8-2's request
+; to flip-L6).
+(defun fn-own-operator-stored-octets (o msgid fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (let ((article (fn-find-article (fn-record-octets-string msgid)
+                                  (fn-state-articles
+                                   (fn-node-acceptance (fn-sn-node (fn-own-store o)))))))
+    (if article
+        (fn-handle-bytes (fn-article-payload article) fn-arena)
+      :absent)))
+
+; KEYSTONE (the retry at the entry).  When the node holds MSGID's article
+; and ALPHA of it (the bytes under its handle through the arena) is the
+; injection the operator's octets got under an earlier clock reading FIRST,
+; the decision at the owner's current clock, given what this entry reads,
+; is that stored injection itself -- not a fresh injection with a new
+; Injection-Date, which the store would refuse as a conflict.  The host
+; calls fn-own-operator-submit-result / the (:operator-submit ...) event over
+; fn-own-operator-stored-octets (flip-L6's wiring).
+(defthm fn-own-operator-retry-at-the-entry-is-the-stored-injection
+  (let* ((cfg (fn-own-config o))
+         (first-d (fn-inj-decide octets cfg first))
+         (article (fn-find-article (fn-record-octets-string msgid)
+                                   (fn-state-articles
+                                    (fn-node-acceptance (fn-sn-node (fn-own-store o)))))))
+    (implies (and (fn-inj-injectedp first-d)
+                  (equal (fn-inj-decision-msgid first-d) msgid)
+                  article
+                  (equal (fn-handle-bytes (fn-article-payload article) fn-arena)
+                         (fn-inj-decision-octets first-d))
+                  (fn-clock-observationp (fn-own-clock o))
+                  (fn-clock-has-wall (fn-own-clock o)))
+             (equal (fn-own-operator-decision-of
+                     o msgid groups octets (fn-own-operator-stored-octets o msgid fn-arena))
+                    (fn-inj-make-decision :injected nil msgid groups
+                                          (fn-inj-decision-octets first-d)))))
+  :hints (("Goal" :in-theory (e/d (fn-own-operator-decision-of fn-own-operator-stored-octets)
+                                  (fn-own-operator-decision fn-inj-decide fn-handle-bytes
+                                   fn-find-article))
+           :use ((:instance fn-own-operator-retry-resubmits-the-stored-injection
+                            (cfg (fn-own-config o)) (later (fn-own-clock o))
+                            (stored (fn-handle-bytes
+                                     (fn-article-payload
+                                      (fn-find-article (fn-record-octets-string msgid)
+                                                       (fn-state-articles
+                                                        (fn-node-acceptance
+                                                         (fn-sn-node (fn-own-store o))))))
+                                     fn-arena)))))))
+
 (in-theory (disable fn-own-finish fn-own-completion-names-submission-p
-                    fn-own-sub-stored-octets
+                    fn-own-sub-stored-octets fn-own-operator-stored-octets
                     fn-ocfg-writer-eventp))

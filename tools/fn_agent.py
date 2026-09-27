@@ -105,8 +105,11 @@ class Agent:
                          "--timeout", seconds)
             result = self.native(*words, timeout=int(seconds) + 60)
             if result.returncode != 0:
-                return fail(result.returncode, "wait: consumer %s" % (
-                    {1: "refused", 3: "uncertain"}.get(result.returncode, "fault")))
+                # The node's own line names the outcome and a refusal's
+                # reason (`consumer refused credential`, PKT-709).
+                said = result.stdout.decode("ascii", "replace").strip().splitlines()
+                return fail(result.returncode, "wait: " + (said[-1] if said else "consumer %s" % (
+                    {1: "refused", 3: "uncertain"}.get(result.returncode, "fault"))))
             if report.stat().st_size == 0:
                 # The empty page: nothing new before the timeout.  Its cursor
                 # is the position, and acking it is a no-op; keep nothing.
@@ -128,6 +131,12 @@ class Agent:
         fields.  CURSOR is unused: the report alone names the article."""
         result = self.native("consumer-article", report)
         words = result.stdout.decode("ascii", "replace").split()
+        if result.returncode == 0 and len(words) == 2 and words[0] == "fn-consumer-withdrawn-v1":
+            # PKT-710: the article was withdrawn (its author's cancel, or a
+            # supersession).  The event carries its Message-ID and no
+            # content; ack it like any other event.
+            return {"kind": "withdrawn",
+                    "message_id": bytes.fromhex(words[1]).decode("ascii", "replace")}
         if result.returncode != 0 or len(words) != 3 or words[0] != "fn-consumer-article-v1":
             # Not an article (or not decodable): the event is still
             # delivered, and still acked by `ack`.
@@ -147,8 +156,9 @@ class Agent:
         else:
             result = self.native("consumer", "ack", self.config["control"], self.cursor)
         if result.returncode != 0:
-            return fail(result.returncode, "ack: consumer %s" % (
-                {1: "refused", 3: "uncertain"}.get(result.returncode, "fault")))
+            said = result.stdout.decode("ascii", "replace").strip().splitlines()
+            return fail(result.returncode, "ack: " + (said[-1] if said else "consumer %s" % (
+                {1: "refused", 3: "uncertain"}.get(result.returncode, "fault"))))
         pending = json.loads(self.event.read_text(encoding="utf-8")) \
             if self.event.exists() else {}
         self.cursor.unlink()

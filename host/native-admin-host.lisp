@@ -44,15 +44,39 @@
                      plan (fn-own-clock (fn-owner-core state)))
                   (fn-native-admin-plan-deltas-over
                    plan (fn-cfg-peers (fn-cfg-value (fn-owner-config state)))))))
-    (if deltas
-        (fn-owner-reconfigure-deltas id deltas fn-arena state)
-      ;; No delta for this plan over the live owner's tables: the result
-      ;; says so, never a previous request's reason (PKT-453 (a)).
-      (value (fn-ores-config-refused :no-delta)))))
+    (cond
+     ;; PKT-709: a bind of a consumer name no registration declared is
+     ;; refused by name (books/consumer-owner-local.lisp fn-col-bind-refusal).
+     ((and (equal (fn-native-admin-result-kind plan) :consumer-bind)
+           (fn-col-bind-refusal (fn-sn-consumer (fn-own-store (fn-owner-core state)))
+                                (fn-native-admin-result-name plan)
+                                (fn-native-admin-result-value plan)))
+      (value (fn-ores-config-refused
+              (fn-col-bind-refusal (fn-sn-consumer (fn-own-store (fn-owner-core state)))
+                                   (fn-native-admin-result-name plan)
+                                   (fn-native-admin-result-value plan)))))
+     (deltas
+      (fn-owner-reconfigure-deltas id deltas fn-arena state))
+     ;; No delta for this plan over the live owner's tables: the result
+     ;; says so, never a previous request's reason (PKT-453 (a)).
+     (t (value (fn-ores-config-refused :no-delta))))))
 (defun fn-native-admin-host-apply (plan monotonic wall state)
   (declare (xargs :stobjs state :mode :program))
   (let ((kind (fn-native-admin-result-kind plan)))
-    (cond ((member-equal kind '(:set-bp-boundary :set-bp-route :remove-bp-route
+    (cond ;; PKT-709: offline, a bind of an unregistered consumer name is
+          ;; refused by name over the opened Store (fn-col-bind-refusal).
+          ((and (equal kind :consumer-bind)
+                (fn-col-bind-refusal (fn-sn-consumer (f-get-global 'fn-store-sn state))
+                                     (fn-native-admin-result-name plan)
+                                     (fn-native-admin-result-value plan)))
+           (let ((state (f-put-global
+                         'fn-store-cfg-last-reason
+                         (fn-col-bind-refusal (fn-sn-consumer (f-get-global 'fn-store-sn state))
+                                              (fn-native-admin-result-name plan)
+                                              (fn-native-admin-result-value plan))
+                         state)))
+             (value :refused)))
+          ((member-equal kind '(:set-bp-boundary :set-bp-route :remove-bp-route
                                 :grant-control :revoke-control :set-retention
                                 ;; PRF-161: an exposure limit row.
                                 :set-exposure

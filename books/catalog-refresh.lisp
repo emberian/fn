@@ -271,10 +271,15 @@
          (raw (cons a old-raw))
          (old-verdicts (fn-own-view-verdicts view))
          (verdicts (cons (cons (fn-article-msgid a) verdict) old-verdicts))
+         ;; the records made before A arrived that name it as their target are
+         ;; resolved to A's row's locks, as the refresh's cons arm does
+         ;; (books/control-visible.lisp fn-ctl-resolve-tlocks; flip-L8-2)
          (ws (fn-ctl-prepend (fn-ctl-article-withdrawals a verdicts
                                                          (fn-sf-records (fn-sn-files s))
                                                          (fn-sn-config-history s))
-                             (fn-own-view-withdrawals view)))
+                             (fn-ctl-resolve-tlocks (fn-own-view-withdrawals view)
+                                                    (fn-article-msgid a)
+                                                    (fn-sf-records (fn-sn-files s)))))
          (old-visible (fn-state-articles (fn-own-view-archive view)))
          (visible (fn-ctl-visible-add a old-visible old-raw ws verdicts))
          (archive (fn-ctl-visible-state-of (fn-node-acceptance (fn-sn-node s)) visible))
@@ -335,7 +340,9 @@
                                                 (fn-own-view-verdicts view))
                                         (fn-sf-records (fn-sn-files s))
                                         (fn-sn-config-history s))
-                                       (fn-own-view-withdrawals view))
+                                       (fn-ctl-resolve-tlocks (fn-own-view-withdrawals view)
+                                                              (fn-article-msgid a)
+                                                              (fn-sf-records (fn-sn-files s))))
                                       (fn-article-msgid a)))
                 (not (fn-ctl-withdrawn-by-p a
                                             (fn-ctl-prepend
@@ -344,7 +351,9 @@
                                                       (fn-own-view-verdicts view))
                                               (fn-sf-records (fn-sn-files s))
                                               (fn-sn-config-history s))
-                                             (fn-own-view-withdrawals view))
+                                             (fn-ctl-resolve-tlocks (fn-own-view-withdrawals view)
+                                                                    (fn-article-msgid a)
+                                                                    (fn-sf-records (fn-sn-files s))))
                                             (cons a (fn-own-view-raw view))
                                             (cons (cons (fn-article-msgid a) verdict)
                                                   (fn-own-view-verdicts view))))
@@ -360,7 +369,8 @@
                   (equal (fn-own-view-version view2) (len (fn-sf-records (fn-sn-files s)))))))
   :hints (("Goal" :in-theory (e/d (fn-crf-apply-article fn-ctl-visible-add fn-midx-refresh
                                    fn-gidx-refresh fn-own-view-fields-of-make-visible)
-                                  (fn-ctl-article-withdrawals fn-ctl-prepend fn-ctl-causes-p
+                                  (fn-ctl-article-withdrawals fn-ctl-prepend fn-ctl-causes-p fn-ctl-resolve-tlocks
+                                   fn-ctl-resolve-tlocks-is-set-tlocks
                                    fn-ctl-withdrawn-by-p fn-ctl-drop-via fn-ctl-subseq-diff
                                    fn-midx-build fn-gidx-build fn-midx-extend fn-gidx-put-all
                                    fn-index-article-entries fn-ctl-visible-articles

@@ -2651,6 +2651,11 @@
           "kind": "theorem",
           "name": "fn-inj-injected-article-is-a-reinjection-of-its-source",
           "note": "The keystone the three above rest on, over fn-inj-decide. One hypothesis with a must-fail (tests/acl2/injection-tests.lisp)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-operator-retry-at-the-entry-is-the-stored-injection",
+          "note": "flip-L8-2: at the host's entry (host/owner-host.lisp fn-owner-operator-submit calls fn-own-operator-stored-octets through the arena), ALPHA of the held article under its handle being the first injection makes the decision that stored injection. Witness on a Date-less article whose fresh re-injection differs, the regression over the handle, and the alpha separation (tests/acl2/owner-operator-tests.lisp)."
         }
       ]
     },
@@ -2982,10 +2987,6 @@
           "kind": "theorem",
           "name": "fn-ncl-status-nonaccepted-reply-roundtrip",
           "note": "The exact host-called kind-9 status encoder and decoder recover refused, uncertain and fault with empty fields; an unrecognized status is a separating tooth."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ncl-cli-after-retries-only-a-refused-register"
         }
       ]
     },
@@ -8562,10 +8563,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ctl-withdrawal-effect-of-a-principal-record-ignores-the-octets"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-ctl-withdrawal-plan-record-is-bound"
         },
         {
@@ -8619,6 +8616,11 @@
         {
           "kind": "theorem",
           "name": "fn-cld-a-changed-source-is-a-conflict-whatever-the-account"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ctl-control-of-fields",
+          "note": "flip-L8-2: the control fact decided at intern (books/catalog-record.lisp fn-held-facts-of, fn-hf-control-of-held-facts-of) is the target, Cancel-Key and Cancel-Lock readers over the row's bytes, so the TLOCKS a record carries are the target's locks (tests/acl2/control-visible-tests, owner-cancel-refresh-tests)."
         }
       ]
     },
@@ -9637,6 +9639,105 @@
         {
           "kind": "theorem",
           "name": "fn-spo-layout-fields-of-a-layout-frame"
+        }
+      ]
+    },
+    {
+      "id": "PRF-261",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-srs-steps-are-one-step-of-the-concatenation",
+          "note": "KEYSTONE (PKT-823). Host: host/native/io.lisp fnn-bridge-recover makes fn-srs-step's two calls per chunk (fn-store-decode-records = fn-srs-decode, then fn-srs-intern-step). Teeth: tests/acl2/store-recover-stream-tests.lisp (four chunkings of real records; a corrupted record; the dotted-chunk hypothesis removal)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srs-one-step-is-the-intern-of-the-decode",
+          "note": "The one step is the open's intern of the decoded history (fn-srs-rows, same arena)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srs-decode-of-append",
+          "note": "Supporting."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-srs-intern-events-of-append",
+          "note": "Supporting."
+        }
+      ]
+    },
+    {
+      "id": "PRF-263",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-printed-reason-is-the-decisions"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-request-decode-is-the-plain-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-framep-of-seal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-cli-after-retries-only-an-unbootstrapped-register"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-col-bind-refusal-refuses-exactly-an-unregistered-bind"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-json-object-is-ascii"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-withdrawal-roundtrip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ncr-withdrawal-report-fits-the-poll-reply"
+        }
+      ]
+    },
+    {
+      "id": "PRF-262",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-page-never-serves-withdrawn-content"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-scan-delivers-a-withdrawing-cause"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-scan-withdrawal-advances"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-page-of-a-withdrawal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-page-without-withdrawals-is-the-answer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-scan-is-the-poll-scan-unless-a-withdrawal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-page-of-a-refusal"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
         }
       ]
     }

@@ -3,8 +3,8 @@
 
 Written by lane served-readers (2026-09-27) to make the served readers take
 the payload arena; reusable for any interface change that adds a stobj
-formal to a call tree (flip-L4 wrote an ad-hoc predecessor).  Host entries
-whose formals end in STATE get fn-arena just before state.
+formal to a call tree.  Host entries whose formals end in STATE get fn-arena
+just before state.
 
 NAMESFILE lists functions whose last formal is (or becomes) fn-arena.  Every
 unquoted call (F ...) of a listed F, not inside a theory expression, gains a
@@ -226,6 +226,9 @@ for f in files:
     for m in re.finditer(r"\((?:defun|defund)\s+(" + SYM.pattern + r")\s*\(([^()]*)\)", texts[f]):
         nm = m.group(1).lower(); fl = m.group(2).lower().split()
         if nm in names and 'fn-arena' in fl: arity[nm] = len(fl)
+        if nm in names and fl and fl[-1] == 'state':
+            statelast.add(nm)
+            if 'fn-arena' not in fl: arity[nm] = len(fl) + 1
 orig = dict(texts)
 while True:
     before = len(names)

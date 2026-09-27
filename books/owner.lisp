@@ -1524,10 +1524,21 @@
 ; the submission IS the stored article and the store answers its duplicate
 ; (fn-own-operator-retry-resubmits-the-stored-injection, books/owner-invariants).
 ;
+; STORED is those octets, or :absent when the node holds no article with the
+; Message-ID.  After the records flip the acceptance article holds a HANDLE,
+; which this pure step cannot read: the event carries the octets, and the
+; entry that computes them reads them under the held handle through the
+; arena (books/owner-served-invariants.lisp fn-own-operator-stored-octets,
+; flip-L8-2).  Whatever STORED a caller passes, only a reinjection of the
+; operator's own source by this agent is ever enqueued
+; (fn-own-operator-decision-is-an-injection-of-the-payload), and the store's
+; duplicate check over alpha decides duplicate or conflict.
+;
 ; The hybrid-signed author path and the BP application path still submit
 ; exact authored octets through fn-own-control-submit: a signature binds
 ; those octets, and neither path is this verb.
-(defun fn-own-stored-octets (node msgid)
+; The handle of the node's article with MSGID, or :absent.
+(defun fn-own-stored-handle (node msgid)
   (declare (xargs :guard t))
   (let ((article (fn-find-article (fn-record-octets-string msgid)
                                   (fn-state-articles (fn-node-acceptance node)))))
@@ -1537,30 +1548,29 @@
   (declare (xargs :guard t))
   (and (fn-clock-observationp clock) (fn-clock-has-wall clock) t))
 
-(defun fn-own-operator-decision (cfg clock node msgid groups octets)
+(defun fn-own-operator-decision (cfg clock stored msgid groups octets)
   (declare (xargs :guard t))
   (if (not (fn-own-clock-usablep clock))
       (fn-inj-refuse :clock-unusable)
-    (let ((stored (fn-own-stored-octets node msgid)))
-      (if (and (fn-inj-config-allow cfg)
-               (not (equal stored :absent))
-               (fn-inj-reinjectionp stored octets (fn-inj-config-agent cfg) msgid))
-          (fn-inj-make-decision :injected nil msgid groups stored)
-        (let ((d (fn-inj-decide octets cfg clock)))
-          (cond ((not (fn-inj-injectedp d)) d)
-                ((not (and (equal (fn-inj-decision-msgid d) msgid)
-                           (equal (fn-inj-decision-groups d) groups)))
-                 (fn-inj-refuse :control-mismatch))
-                (t d)))))))
+    (if (and (fn-inj-config-allow cfg)
+             (not (equal stored :absent))
+             (fn-inj-reinjectionp stored octets (fn-inj-config-agent cfg) msgid))
+        (fn-inj-make-decision :injected nil msgid groups stored)
+      (let ((d (fn-inj-decide octets cfg clock)))
+        (cond ((not (fn-inj-injectedp d)) d)
+              ((not (and (equal (fn-inj-decision-msgid d) msgid)
+                         (equal (fn-inj-decision-groups d) groups)))
+               (fn-inj-refuse :control-mismatch))
+              (t d))))))
 
-(defun fn-own-operator-decision-of (o msgid groups octets)
+(defun fn-own-operator-decision-of (o msgid groups octets stored)
   (declare (xargs :guard t))
-  (fn-own-operator-decision (fn-own-config o) (fn-own-clock o)
-                            (fn-sn-node (fn-own-store o)) msgid groups octets))
+  (fn-own-operator-decision (fn-own-config o) (fn-own-clock o) stored msgid groups
+                            octets))
 
-(defun fn-own-operator-submit-result (o msgid groups octets)
+(defun fn-own-operator-submit-result (o msgid groups octets stored)
   (declare (xargs :guard t))
-  (let ((decision (fn-own-operator-decision-of o msgid groups octets)))
+  (let ((decision (fn-own-operator-decision-of o msgid groups octets stored)))
     (cond ((not (fn-inj-injectedp decision)) :refused)
           ((or (consp (fn-own-queue o))
                (fn-own-inflight o)
@@ -1570,13 +1580,13 @@
            :busy)
           (t :submitted))))
 
-(defun fn-own-operator-submit (o msgid groups octets)
+(defun fn-own-operator-submit (o msgid groups octets stored)
   (declare (xargs :guard t))
-  (if (equal (fn-own-operator-submit-result o msgid groups octets) :submitted)
+  (if (equal (fn-own-operator-submit-result o msgid groups octets stored) :submitted)
       (fn-own-enqueue
        o (fn-own-sub-make *fn-own-control-id*
                           (fn-own-view-version (fn-own-view o)) nil
-                          (fn-own-operator-decision-of o msgid groups octets)))
+                          (fn-own-operator-decision-of o msgid groups octets stored)))
     o))
 
 ; The node a peer connection's OFFER decision reads.
@@ -2858,7 +2868,7 @@
                                (cadr (cddddr event))
                                (caddr (cddddr event))))
     (:operator-submit (fn-own-operator-submit o (cadr event) (caddr event)
-                                              (cadddr event)))
+                                              (cadddr event) (car (cddddr event))))
     (:outcome (cdr (fn-own-outcome o (cadr event) (caddr event))))
     (:control-outcome (fn-own-control-outcome o (cadr event)))
     (:bp-transit-outcome (fn-own-bp-transit-outcome o (cadr event)))
@@ -2914,7 +2924,7 @@
     fn-own-read fn-own-read-step fn-own-advance fn-own-close fn-own-begin
     fn-own-control-decision fn-own-control-submit-result fn-own-control-submit
     fn-own-control-submissionp fn-own-control-outcome-result
-    fn-own-stored-octets fn-own-clock-usablep fn-own-operator-decision
+    fn-own-stored-handle fn-own-clock-usablep fn-own-operator-decision
     fn-own-operator-decision-of fn-own-operator-submit-result
     fn-own-operator-submit
     fn-own-control-outcome fn-own-control-outcome-records

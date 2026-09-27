@@ -344,11 +344,18 @@ reopen predicate, writer-lock observation and observed final namespace."
 ; (fn-intern-events-materializes), which is what the byte-store relation
 ; compares (books/byte-store-k0-recovery: fn-bs-recovered-rowsp).  The
 ; open's answer (fn-store-sn-recover-rows) is (mv nil KEYWORD state).
-; The host makes three calls (host/native/io.lisp fnn-bridge-recover,
-; tools/run_store.py recover): fn-store-sn-recover-records decodes; the host
-; clears the arena and calls the guard-verified fn-intern-events itself
-; (records nil 0: the open's keyring and generation); fn-store-sn-recover-rows
-; opens over the rows.  Neither :program entry calls an arena updater: one that
+; tools/run_store.py recover makes three calls: fn-store-sn-recover-records
+; decodes; the host clears the arena and calls the guard-verified
+; fn-intern-events itself (records nil 0: the open's keyring and generation);
+; fn-store-sn-recover-rows opens over the rows.  The native host
+; (host/native/io.lisp fnn-bridge-recover) sends the history in CHUNKS
+; (PKT-823; books/store-recover-stream.lisp): it clears the arena, then per
+; chunk calls fn-store-decode-records (fn-srs-decode) and the guard-verified
+; fn-srs-intern-step (the rows accumulated newest first), then fn-srs-rows and
+; fn-store-sn-recover-rows.  KEYSTONE fn-srs-steps-are-one-step-of-the-
+; concatenation: any chunking gives the rows and arena of one step over the
+; whole history, which fn-srs-one-step-is-the-intern-of-the-decode says is
+; the intern of the decoded history.  Neither :program entry calls an arena updater: one that
 ; did would carry ACL2's invariant-risk, run through its *1* body (every
 ; guard-verified callee re-checking its guard) and print a warning on
 ; standard output (flip-L6-2 LANEDUMP).

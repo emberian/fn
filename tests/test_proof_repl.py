@@ -30,8 +30,10 @@ import proof_repl  # noqa: E402
 from tests.test_certs import manifest_for, worktree, TEST_COMPATIBILITY  # noqa: E402
 
 FAKE_ACL2 = r'''#!/usr/bin/env python3
-import sys
-for line in sys.stdin:
+import sys, time
+world, labels = 0, {}
+lines = iter(sys.stdin)
+for line in lines:
     text = line.strip()
     if text.startswith('(cw "~%FN-REPL-DONE'):
         print(text.split('FN-REPL-DONE ')[1].split('~%')[0].join(["FN-REPL-DONE ", ""]))
@@ -39,9 +41,26 @@ for line in sys.stdin:
         continue
     if "(good-bye)" in text:
         break
-    if "(defthm bad" in text:
+    if text == "(sleep-form)":
+        time.sleep(60)
+    if text == ":ubt!":
+        next(lines, None)  # reads its argument: the sentinel
+        print("ACL2 !>")
+    elif text == "(raw-abort)":
+        print("***** ABORTING from raw Lisp *****")
+        print("Error:  Control stack exhausted")
+        next(lines, None)  # ACL2 discards the pending input
+    elif "FN-PROBE-AT" in text:
+        print("FN-PROBE-AT %d" % world)
+    elif text.startswith("(ubu! '"):
+        world = labels[text[len("(ubu! '"):-1]]
+    elif "(deflabel " in text:
+        world += 1
+        labels[text.split("(deflabel ")[1].split(")")[0]] = world
+    elif "(defthm bad" in text:
         print("ACL2 Error [Failure] in ( DEFTHM BAD ...):  See :DOC failure.")
     elif "(defthm" in text or "(defun" in text or "with-prover-time-limit" in text:
+        world += 1
         for i in range(70):
             print("Subgoal *1/%d" % i)
         print("*** Key checkpoint at the top level: ***")
@@ -230,6 +249,123 @@ class ProbeFormTests(unittest.TestCase):
                          "(local (defthm Foo-probe t))")
         self.assertEqual(proof_repl.probe_form("(defun g (x) (g x))", None),
                          "(defun g (x) (g x))")
+
+
+class CommandTests(unittest.TestCase):
+    def test_a_keyword_command_takes_the_rest_of_its_line(self):
+        self.assertEqual(proof_repl.commands(":ubt! foo"), [":ubt! foo"])
+        self.assertEqual(proof_repl.commands(":ubt! foo\n(defthm a t)"),
+                         [":ubt! foo", "(defthm a t)"])
+        self.assertEqual(proof_repl.commands("(a) (b)"), ["(a)", "(b)"])
+        self.assertEqual(proof_repl.commands(":pe f ; why\n:u\n(x)"), [":pe f", ":u", "(x)"])
+        self.assertEqual(proof_repl.commands(":ubt! 'foo"), [":ubt! 'foo"])
+        self.assertTrue(proof_repl.is_keyword_command("  :pbt :max"))
+        self.assertFalse(proof_repl.is_keyword_command("(ubt! 'foo)"))
+
+    def test_several_probe_forms_rename_only_the_target_and_hint_the_last(self):
+        text = "(defthm helper t)\n(defthm target (p x))"
+        self.assertEqual(proof_repl.probe_attempts(text, "target", "(h)"),
+                         ["(defthm helper t)", "(defthm target-probe (p x) :hints (h))"])
+        self.assertEqual(proof_repl.probe_attempts("(defthm target t)", "target", None),
+                         ["(defthm target-probe t)"])
+        self.assertEqual(proof_repl.probe_attempts("(defun h (x) x) (defthm z t)", "target",
+                                                   None),
+                         ["(defun h (x) x)", "(defthm z t)"])
+
+    def test_undo_to_base_reports_what_it_did_and_when_it_could_not(self):
+        def scripted(numbers):
+            answers = iter(numbers)
+
+            def ask(_name, request, **_kw):
+                if "FN-PROBE-AT" in request["form"]:
+                    value = next(answers)
+                    return {"output": "" if value is None else f"FN-PROBE-AT {value}\n"}
+                return {"output": ""}
+            return ask
+        with mock.patch.object(proof_repl, "ask", scripted([7])):
+            self.assertEqual(proof_repl.undo_to_base("p", 7), (True, "clean"))
+        with mock.patch.object(proof_repl, "ask", scripted([9, 7])):
+            self.assertEqual(proof_repl.undo_to_base("p", 7),
+                             (True, "undid 2 command(s) above the checkpoint"))
+        with mock.patch.object(proof_repl, "ask", scripted([9, 8])):
+            clean, how = proof_repl.undo_to_base("p", 7)
+            self.assertFalse(clean)
+            self.assertIn("command 8", how)
+        with mock.patch.object(proof_repl, "ask", scripted([5])):
+            self.assertFalse(proof_repl.undo_to_base("p", 7)[0])
+        with mock.patch.object(proof_repl, "ask", scripted([None])):
+            self.assertFalse(proof_repl.undo_to_base("p", 7)[0])
+
+
+class EncapsulateTests(unittest.TestCase):
+    def test_a_from_source_book_in_one_encapsulate_keeps_its_locals_local(self):
+        text = ('(in-package "ACL2")\n(include-book "dep")\n(local (defthm l t))\n'
+                '(defun f (x) x)\n')
+        books = proof_repl.ROOT / "books"
+        self.assertEqual(proof_repl.encapsulated(text, books, set()),
+                         '(encapsulate ()\n(include-book "dep")\n(local (defthm l t))\n'
+                         '(defun f (x) x)\n)')
+        self.assertEqual(proof_repl.encapsulated(text, books, {"books/dep"}),
+                         "(encapsulate ()\n(local (defthm l t))\n(defun f (x) x)\n)")
+
+
+class RemoteTests(unittest.TestCase):
+    def test_remote_options_stay_on_this_side(self):
+        argv = ["start", "s", "books/x", "--host", "hbox", "--remote-tree=/t", "--no-sync",
+                "--upto", "y", "--host=persvati"]
+        self.assertEqual(proof_repl.strip_remote_options(argv),
+                         ["start", "s", "books/x", "--upto", "y"])
+
+    def test_each_box_runs_with_its_own_toolchain_cache_and_wrapper(self):
+        import farm
+        self.assertEqual(proof_repl.farm_hosts(), farm.HOSTS)
+        hbox = proof_repl.remote_script("hbox", "/tank/fn/gates/l-repl", "l",
+                                        ["start", "s", "books/x"])
+        self.assertIn("cd /tank/fn/gates/l-repl && export ", hbox)
+        self.assertIn(f"FN_ACL2={farm.HOSTS['hbox']['acl2']}", hbox)
+        self.assertIn(f"FN_CERT_CACHE={farm.HOSTS['hbox']['cache']}", hbox)
+        self.assertIn("FN_LANE=l", hbox)
+        self.assertIn("swarm-build python3 tools/proof_repl.py start s books/x", hbox)
+        send = proof_repl.remote_script("hbox", "/t", "l", ["send", "s", "(defthm a t)"])
+        self.assertNotIn("swarm-build", send)
+        self.assertIn("'(defthm a t)'", send)
+        persvati = proof_repl.remote_script("persvati", "fn-gates/l-repl", "l",
+                                            ["probe", "s", "e"])
+        self.assertIn(f"FN_ACL2={farm.HOSTS['persvati']['acl2']}", persvati)
+        self.assertNotIn("swarm-build", persvati)
+        self.assertEqual(proof_repl.remote_tree("persvati", "lane"), "fn-gates/lane-repl")
+        self.assertEqual(proof_repl.remote_tree("hbox", "lane"), "/tank/fn/gates/lane-repl")
+        self.assertEqual(proof_repl.remote_tree("hbox", None, "/x"), "/x")
+        with self.assertRaises(SystemExit):
+            proof_repl.remote_tree("hbox", None)
+        with self.assertRaises(SystemExit):
+            proof_repl.box_settings("laptop")
+
+    def test_the_sync_is_tools_and_the_closure_never_planning(self):
+        files = proof_repl.sync_files(["books/wildmat"], ["tests/acl2/extra.lisp"])
+        self.assertIn("tools/proof_repl.py", files)
+        self.assertIn("books/wildmat.lisp", files)
+        self.assertIn("tests/acl2/extra.lisp", files)
+        self.assertFalse(any(name.startswith("planning/") for name in files))
+        self.assertFalse(any("__pycache__" in name or name.endswith(".pyc") for name in files))
+        closure = proof_repl.include_graph(proof_repl.ROOT, "books/wildmat")
+        self.assertEqual({name for name in files if name.startswith("books/")},
+                         {f"{name}.lisp" for name in closure})
+
+    def test_a_farm_box_defaults_its_own_acl2_and_cache(self):
+        import farm
+        env = {}
+        self.assertEqual(proof_repl.apply_box_defaults(env, "persvati.local"), "persvati")
+        self.assertEqual(env["FN_ACL2"], farm.HOSTS["persvati"]["acl2"])
+        self.assertEqual(env["FN_CERT_CACHE"],
+                         os.path.expanduser(farm.HOSTS["persvati"]["cache"]))
+        mine = {"FN_ACL2": "/mine"}
+        proof_repl.apply_box_defaults(mine, "hbox")
+        self.assertEqual(mine["FN_ACL2"], "/mine")
+        self.assertEqual(mine["FN_CERT_CACHE"], farm.HOSTS["hbox"]["cache"])
+        laptop = {}
+        self.assertIsNone(proof_repl.apply_box_defaults(laptop, "embers-laptop"))
+        self.assertEqual(laptop, {})
 
 
 class SourceDependencyTests(unittest.TestCase):
@@ -574,9 +710,11 @@ class SessionTests(unittest.TestCase):
             again = self.cli("probe", self.name, "g2", "--book",
                              "build/proof-repl-test/probe", "--stop")
             self.assertIn("reusing", again.stdout)
+            self.assertIn("world at its checkpoint: clean", again.stdout)
             log = (proof_repl.SESSIONS / probe / "log").read_text()
             self.assertIn('(defthm g2-probe (equal (f x) x) :hints (nil))', log)
-            self.assertIn("(ubt! 'fn-probe-mark)", log)
+            self.assertIn("(ubu! 'fn-probe-base)", log)
+            self.assertIn("[probe undone: world back at its checkpoint", first.stdout)
             state = json.loads((proof_repl.SESSIONS / probe / "state.json").read_text())
             self.assertEqual(state["loaded"], ["in-package", "f", "g1"])
         finally:
@@ -584,6 +722,54 @@ class SessionTests(unittest.TestCase):
             shutil.rmtree(proof_repl.SESSIONS / probe, ignore_errors=True)
         after = json.loads((proof_repl.SESSIONS / self.name / "state.json").read_text())
         self.assertEqual(after["sends"], before["sends"])
+
+    def test_2d_a_probe_undoes_what_was_left_above_its_checkpoint_and_takes_several_forms(self):
+        (self.scratch / "probe2.lisp").write_text(
+            '(in-package "ACL2")\n(defun f (x) x)\n(defthm g2 (equal (f x) x))\n')
+        probe = self.name + ".probe"
+        book = "build/proof-repl-test/probe2"
+        try:
+            first = self.cli("probe", self.name, "g2", "--book", book)
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+            # A trial sent by hand to the probe session stays as a rule...
+            self.assertEqual(self.cli("send", probe, "(defthm trial t)").returncode, 0)
+            # ...until the next probe undoes it before it runs.
+            again = self.cli("probe", self.name, "g2", "--book", book,
+                             "--form", "(defthm helper t)\n(defthm g2 (equal (f x) x))",
+                             "--hints", "(nil)")
+            self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+            self.assertIn("undid 1 command(s) above the checkpoint", again.stdout)
+            self.assertIn("ok      #1 defthm helper", again.stdout)
+            self.assertIn("ok      #2 defthm g2-probe", again.stdout)
+            self.assertIn("(2 forms): admitted", again.stdout)
+            log = (proof_repl.SESSIONS / probe / "log").read_text()
+            self.assertIn("(defthm g2-probe (equal (f x) x) :hints (nil))", log)
+            self.assertIn("(defthm helper t)", log)
+            refused = self.cli("probe", self.name, "g2", "--book", book, "--stop",
+                               "--form", "(defthm bad t) (defthm g2 t)")
+            self.assertEqual(refused.returncode, 1)
+            self.assertIn("REFUSED #1 defthm bad", refused.stdout)
+            self.assertNotIn("#2 defthm g2", refused.stdout)
+            self.assertIn("[probe undone", refused.stdout)
+        finally:
+            self.cli("stop", probe)
+            shutil.rmtree(proof_repl.SESSIONS / probe, ignore_errors=True)
+
+    def test_2e_keyword_commands_and_raw_lisp_aborts_do_not_hang_the_session(self):
+        started = time.monotonic()
+        ubt = self.cli("send", self.name, ":ubt!", "--limit", "60")
+        self.assertEqual(ubt.returncode, 0, ubt.stdout)
+        self.assertLess(time.monotonic() - started, 30)
+        one = self.cli("send", self.name, ":ubt! foo")
+        self.assertEqual(one.returncode, 0, one.stdout)
+        self.assertNotIn("#1", one.stdout)  # one command, not two forms
+        abort = self.cli("send", self.name, "(raw-abort)")
+        self.assertEqual(abort.returncode, 1, abort.stdout)
+        self.assertIn("raw-Lisp abort", abort.stdout)
+        after = self.cli("send", self.name, "(+ 1 2)")
+        self.assertEqual(after.returncode, 0, after.stdout)
+        self.assertIn("GOT (+ 1 2)", after.stdout)
+        self.assertNotIn("FN-REPL-DONE", after.stdout)
 
     def test_3_status_and_stop(self):
         status = self.cli("status", self.name)
@@ -683,6 +869,35 @@ class OwnershipTests(unittest.TestCase):
         fd = proof_repl.open_session_lock(name)
         self.assertIsNotNone(fd)
         os.close(fd)
+
+    def test_stop_ends_a_start_stuck_in_its_load_and_the_refusal_names_it(self):
+        (self.scratch / "slow.lisp").write_text('(in-package "ACL2")\n(sleep-form)\n')
+        name = f"own-stuck-{os.getpid()}"
+        self.names.append(name)
+        book = str((self.scratch / "slow").relative_to(ROOT))
+        starter = subprocess.Popen(
+            [sys.executable, str(ROOT / "tools" / "proof_repl.py"), "start", name, book,
+             "--load-timeout", "120"], env=self.env, cwd=ROOT,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline:
+                if proof_repl.lock_holder(name).get("role") == "serve":
+                    break
+                time.sleep(0.2)
+            again = self.cli("start", name, book)
+            self.assertEqual(again.returncode, 2)
+            self.assertIn("held by pid", again.stdout)
+            self.assertIn("still running", again.stdout)
+            stopped = self.cli("stop", name)
+            self.assertEqual(stopped.returncode, 0, stopped.stdout)
+            self.assertIn("held the lock with no socket", stopped.stdout)
+            fd = proof_repl.open_session_lock(name)
+            self.assertIsNotNone(fd)
+            os.close(fd)
+        finally:
+            starter.kill()
+            starter.wait()
 
     def test_a_send_postpones_the_idle_deadline_and_a_status_does_not(self):
         name = self.start("busy", "--lane", "lane-busy", "--idle-seconds", "3")

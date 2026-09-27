@@ -2,32 +2,45 @@
 """Report measured ACL2 book cost at the current source and include closure.
 
 This is not a certification or cache-validity check. The default scans
-archived and local manifests, retaining the newest matching measurement for
-each book, host and toolchain. An installed certificate has no proof time in
-that run. `--manifest` keeps the one-run diagnostic and never fails.
+archived and local manifests for measured attempts of each book at its current
+include-closure bytes. An installed certificate has no proof time in that run.
+`--manifest` keeps the one-run diagnostic and never fails.
 
-The ten-second rule is a ratchet. planning/proof-cost-baseline.json lists every
-book whose worst current measurement (over all hosts and toolchains) was above
-the threshold when the baseline was written, with that seconds figure, run id
-and host. The unfiltered history mode (what `make check` runs) exits 1 when a
-measured book is over the threshold and is absent from the baseline, or is
-more than 25% over its baseline seconds. A baseline book now under the
-threshold is reported "improved; remove from baseline". Unmeasured books stay
-warnings. Decision D26: the ratchet's number is the scoped measurement,
-from a run whose manifest says it certified at `RATCHET_JOBS` (2) jobs or
-fewer (`jobs_effective`). A measurement at more jobs is still selected and
-printed as "RECORDED ... at N jobs" and never fails; a manifest without
-`jobs_effective` is unknown, and the ratchet skips its measurements with a
-warning naming the run. `--write-baseline` rewrites the file from the current measurements:
-it drops improved books and lowers numbers, never raises a number, and refuses
-to write at all when a book would be added or would exceed its tolerance,
-unless `--allow-regression` is given. The baseline only shrinks.
+Two numbers, two jobs (D26 as defined 2026-09-27; docs/proofs.md):
+
+- **Prover steps** are the ratchet. ACL2 counts them itself (`Prover steps
+  counted:` in the CERTIFY-BOOK summary, tools/acl2_cost.py) and the same bytes
+  and toolchain give the same count on any box at any load. A baseline book
+  fails when its steps are more than STEP_TOLERANCE over its row's.
+- **Wall seconds** decide whether a book is over the ten-second rule at all.
+  Load only ever adds seconds (on hbox's and persvati's hybrid cores a loaded
+  box moves a 2-job certification onto slow cores: the same bytes measured 6.4
+  and 14.9 s), so a book's D26 seconds are the LOWEST passed measurement at
+  two jobs or fewer of its current bytes, over every run, host and toolchain.
+  At or under the threshold that settles it (it can only be faster quiet). Over
+  it, the number is conclusive only when the measurement was quiet (the box's
+  one-minute load average at most QUIET_LOAD_FRACTION of its CPUs when the
+  book's ACL2 process started and ended; `book_load_average` and `cpu_count`
+  in the manifest) or when it exceeds LOAD_FACTOR times the line (more than
+  load has been seen to add). Otherwise it prints UNQUIET, a warning naming
+  the run and the command for a quiet re-measure, and never fails.
+
+A book not in planning/proof-cost-baseline.json fails when conclusively over
+threshold * (1 + NEAR_BAND); between the line and that it prints NEAR (D30).
+A baseline row without steps (written before 2026-09-27) is ratcheted by its
+seconds, under the same quiet rule, until a measurement supplies steps.
+A failed certification measures no cost: it prints FAILED, keeps its baseline
+row, and is never IMPROVED. Measurements at more than RATCHET_JOBS jobs print
+RECORDED and never ratchet; a manifest without `jobs_effective` is unknown and
+skipped with a warning. `--write-baseline` drops improved books, lowers steps
+and seconds, never raises either and refuses to add a row unless
+`--allow-regression` is given. The baseline only shrinks.
 """
 
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 import json
 from pathlib import Path
@@ -38,6 +51,18 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 BASELINE = ROOT / "planning" / "proof-cost-baseline.json"
 TOLERANCE = 0.25
+# Prover steps are deterministic for fixed bytes and toolchain, so their band
+# only has to absorb a changed include closure's rules, not noise.
+STEP_TOLERANCE = 0.10
+# A measurement is quiet when the box's one-minute load average stayed at or
+# below this fraction of its CPUs over the book's process: with at most a
+# quarter of the logical CPUs busy, a 2-job certification keeps performance
+# cores on either box.
+QUIET_LOAD_FRACTION = 0.25
+# Load has been measured to multiply a book's wall by up to 2.6 (hbox load
+# 11-22, 17 s against 45 s; persvati 6.4 against 14.9 s).  A figure above this
+# multiple of a line is over it whatever the load.
+LOAD_FACTOR = 3.0
 # A book not in the baseline fails only above threshold * (1 + NEAR_BAND); between
 # the threshold and that line it prints NEAR (D30, 2026-09-25).
 NEAR_BAND = 0.10
@@ -45,14 +70,11 @@ NEAR_BAND = 0.10
 RATCHET_JOBS = 2
 SCOPED, WIDE, UNKNOWN = "scoped", "wide", "unknown"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import acl2_cost  # noqa: E402
 import certs  # noqa: E402
 import green_check  # noqa: E402
 import ledger  # noqa: E402
 
-SUMMARY = re.compile(r"(?m)^Summary\s*$")
-FORM = re.compile(r"(?m)^Form:\s*(.*)$")
-TIME = re.compile(r"(?m)^Time:\s*([0-9]+(?:\.[0-9]+)?) seconds")
-WRAPPER = re.compile(r"^\(\s*(?:ENCAPSULATE|PROGN|MAKE-EVENT|CERTIFY-BOOK)\b", re.I)
 
 
 def latest_manifest(root: Path) -> Path | None:
@@ -60,24 +82,73 @@ def latest_manifest(root: Path) -> Path | None:
     return max(candidates, key=lambda path: path.stat().st_mtime, default=None)
 
 
-def slowest_event(log: Path) -> tuple[str, float] | None:
-    if not log.is_file():
+def read_log(log: Path) -> str | None:
+    try:
+        return log.read_text(encoding="utf-8", errors="replace") if log.is_file() else None
+    except OSError:
         return None
-    source = log.read_text(encoding="utf-8", errors="replace")
-    best: tuple[str, float] | None = None
-    starts = [match.start() for match in SUMMARY.finditer(source)]
-    for first, last in zip(starts, starts[1:] + [len(source)]):
-        block = source[first:last]
-        form, duration = FORM.search(block), TIME.search(block)
-        if form is None or duration is None:
-            continue
-        name = form.group(1).strip()
-        if WRAPPER.match(name):
-            continue
-        seconds = float(duration.group(1))
-        if best is None or seconds > best[1]:
-            best = name, seconds
-    return best
+
+
+def slowest_event(log: Path) -> tuple[str, float] | None:
+    text = read_log(log)
+    event = acl2_cost.slowest_event(text) if text is not None else None
+    return (event.form, event.seconds) if event is not None else None
+
+
+def event_detail(log: Path, recorded: dict | None = None) -> str:
+    """The costliest event by prover steps (and the slowest by time) of a book.
+
+    `recorded` is the manifest's `book_costliest_event` entry, which survives
+    archiving; the local log, where it exists, adds the slowest event.
+    """
+    text = read_log(log)
+    parts = []
+    heaviest = acl2_cost.costliest_event(text) if text is not None else None
+    if heaviest is not None:
+        parts.append(f"costliest-event={heaviest.form} {heaviest.steps:,} steps")
+    elif isinstance(recorded, dict) and isinstance(recorded.get("steps"), int):
+        parts.append(f"costliest-event={recorded.get('form')} {recorded['steps']:,} steps")
+    slow = acl2_cost.slowest_event(text) if text is not None else None
+    if slow is not None:
+        parts.append(f"slowest-event={slow.form} {slow.seconds:.2f}s")
+    return "; " + "; ".join(parts) if parts else "; per-event=unavailable"
+
+
+def number(value) -> float | None:
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:
+        return float(value)
+    return None
+
+
+def book_load(manifest: dict, book: str) -> float | None:
+    """The higher of the load averages at the book's process start and end."""
+    pair = (manifest.get("book_load_average") or {}).get(book)
+    if not isinstance(pair, list):
+        return None
+    values = [value for value in map(number, pair) if value is not None]
+    return max(values) if values else None
+
+
+def book_steps(manifest: dict, book: str, log: Path | None = None) -> int | None:
+    value = (manifest.get("book_prover_steps") or {}).get(book)
+    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+        return value
+    text = read_log(log) if log is not None else None
+    return acl2_cost.book_steps(text) if text is not None else None
+
+
+def quietness(load: float | None, cpus: int | None) -> bool | None:
+    """True quiet, False loaded, None when the run did not record its load."""
+    if load is None or not cpus:
+        return None
+    return load <= QUIET_LOAD_FRACTION * cpus
+
+
+def load_words(load: float | None, cpus: int | None) -> str:
+    if load is None or not cpus:
+        return "load=unrecorded"
+    word = "quiet" if quietness(load, cpus) else "loaded"
+    return f"load={load:g}/{cpus}cpu ({word})"
 
 
 def source_scope(manifest: dict, checkout: Path = ROOT) -> str:
@@ -146,12 +217,16 @@ def report(path: Path, threshold: float) -> list[str]:
         f"sum-of-book-process-walls={sum(measured.values()):.3f}s; "
         f"sum-of-slot-waits={wait_total:.3f}s; CPU=unavailable",
     ]
+    cpus = manifest.get("cpu_count") if isinstance(manifest.get("cpu_count"), int) else None
     for book, seconds in sorted(measured.items(), key=lambda item: (-item[1], item[0])):
         if seconds <= threshold:
             continue
-        event = slowest_event(path.parent / (book.replace("/", "--") + ".certify.log"))
-        detail = f"; slowest-event={event[0]} {event[1]:.2f}s" if event else "; per-event=unavailable"
+        log = path.parent / (book.replace("/", "--") + ".certify.log")
+        detail = event_detail(log, (manifest.get("book_costliest_event") or {}).get(book))
+        steps = book_steps(manifest, book, log)
         lines.append(f"WARNING {book}: process-wall={seconds:.3f}s > {threshold:g}s"
+                     f" steps={'unknown' if steps is None else f'{steps:,}'}"
+                     f" {load_words(book_load(manifest, book), cpus)}"
                      f" verdict={results.get(book, 'unknown')}{detail}")
     if not any(line.startswith("WARNING ") for line in lines):
         lines.append(f"No measured book exceeds {threshold:g}s.")
@@ -167,10 +242,26 @@ class Measurement:
     host: str
     toolchain: str
     jobs: int | None = None
+    steps: int | None = None
+    load: float | None = None
+    cpus: int | None = None
 
     @property
     def band(self) -> str:
         return jobs_band(self.jobs)
+
+    @property
+    def passed(self) -> bool:
+        return self.verdict == "passed"
+
+    @property
+    def quiet(self) -> bool | None:
+        return quietness(self.load, self.cpus)
+
+    def words(self) -> str:
+        steps = "unknown" if self.steps is None else f"{self.steps:,}"
+        return (f"steps={steps} {load_words(self.load, self.cpus)} host={self.host} "
+                f"jobs={self.jobs} run={self.run_id}")
 
 
 def manifest_jobs(manifest: dict) -> int | None:
@@ -206,9 +297,14 @@ def history(root: Path, books: set[str], *, toolchain: str | None = None,
     retains its failed verdict. Shared dependency bytes are memoized by
     certs.book_facts, and each requested book's closure is built only once.
 
-    The newest measurement is kept per book, host, toolchain and jobs band
+    One measurement is kept per book, host, toolchain and jobs band
     (SCOPED, WIDE, UNKNOWN), so a newer wide run never hides the scoped
-    number the ratchet reads (D26).
+    number the ratchet reads (D26). Every candidate measured the same
+    closure bytes, and load only adds seconds, so the kept one is the
+    FASTEST passed attempt (the least-loaded); a book with no passed attempt
+    keeps its newest failed one, which names it FAILED and is never a cost.
+    Steps missing from an older manifest are read from the run's local
+    certify log where it still exists.
     """
     runs = green_check.manifests(root) if runs is None else runs
     closures: dict[str, list[str] | None] = {}
@@ -265,6 +361,8 @@ def history(root: Path, books: set[str], *, toolchain: str | None = None,
         results = manifest.get("book_results") or {}
         installed = manifest.get("installed_books") or {}
         jobs = manifest_jobs(manifest)
+        cpus = manifest.get("cpu_count")
+        cpus = cpus if isinstance(cpus, int) and not isinstance(cpus, bool) and cpus > 0 else None
         if not all(isinstance(field, dict) for field in (walls, results, installed)):
             continue
         for book in installed:
@@ -278,11 +376,32 @@ def history(root: Path, books: set[str], *, toolchain: str | None = None,
             if not matches(book, manifest):
                 continue
             key = (book, machine, identity, jobs_band(jobs))
-            # green_check.manifests is ordered by run-id timestamp; a newer
-            # partial run only replaces the books it actually measured.
-            selected[key] = Measurement(
+            record = Measurement(
                 book, float(seconds), str(results.get(book, "unknown")),
-                run.run_id, machine, identity, jobs)
+                run.run_id, machine, identity, jobs,
+                book_steps(manifest, book), book_load(manifest, book), cpus)
+            prior = selected.get(key)
+            # green_check.manifests is ordered by run-id timestamp; a newer
+            # partial run only replaces the books it actually measured, a
+            # passed attempt is never replaced by a failed one, and a slower
+            # passed attempt of the same bytes never replaces a faster one.
+            if (prior is None
+                    or (record.passed and not prior.passed)
+                    or (record.passed == prior.passed
+                        and (not record.passed or record.seconds < prior.seconds))):
+                if record.passed and record.steps is None and prior is not None \
+                        and prior.passed and prior.steps is not None:
+                    record = replace(record, steps=prior.steps)
+                selected[key] = record
+            elif record.passed and prior.steps is None and record.steps is not None:
+                selected[key] = replace(prior, steps=record.steps)
+    for key, record in selected.items():
+        if record.steps is None and record.passed:
+            log = (root / "build/acl2" / record.run_id
+                   / (record.book.replace("/", "--") + ".certify.log"))
+            steps = book_steps({}, record.book, log)
+            if steps is not None:
+                selected[key] = replace(record, steps=steps)
     return selected, installed_current, measured_rows
 
 
@@ -302,7 +421,8 @@ def history_report(root: Path, threshold: float, *, toolchain: str | None = None
         f"scope: current-root-books={len(books)} measured-rows-considered={rows} "
         f"books-with-matching-measurement={len(measured_books)} "
         f"unmeasured={len(missing)} installed-only={len(installed_only)}; "
-        "newest per book/host/toolchain, current include closure",
+        "fastest passed attempt per book/host/toolchain (load only adds time), "
+        "current include closure",
         "scope: archived and local measured attempts; elapsed time is per ACL2 "
         "process, never inferred from installed certificates; failed attempts "
         "retain their verdict",
@@ -325,9 +445,7 @@ def history_report(root: Path, threshold: float, *, toolchain: str | None = None
                 continue
             log = (root / "build/acl2" / record.run_id
                    / (record.book.replace("/", "--") + ".certify.log"))
-            event = slowest_event(log)
-            detail = (f"; slowest-event={event[0]} {event[1]:.2f}s"
-                      if event else "; per-event=unavailable")
+            detail = event_detail(log)
             if band == WIDE:
                 recorded.append(
                     f"RECORDED {record.book}: process-wall={record.seconds:.3f}s "
@@ -338,6 +456,8 @@ def history_report(root: Path, threshold: float, *, toolchain: str | None = None
             slow_count += 1
             lines.append(f"WARNING {record.book}: process-wall={record.seconds:.3f}s "
                          f"> {threshold:g}s jobs={record.jobs or 'unknown'} "
+                         f"steps={'unknown' if record.steps is None else f'{record.steps:,}'} "
+                         f"{load_words(record.load, record.cpus)} "
                          f"verdict={record.verdict} run={record.run_id}{detail}")
     if not slow_count:
         lines.append(f"No matching measured attempt exceeds {threshold:g}s.")
@@ -356,21 +476,49 @@ def history_report(root: Path, threshold: float, *, toolchain: str | None = None
     return lines
 
 
-def worst(selected: dict[tuple[str, str, str, str], Measurement]
-          ) -> dict[str, Measurement]:
-    """Each book's slowest scoped measurement over every host and toolchain.
+def decisive(selected: dict[tuple[str, str, str, str], Measurement]
+             ) -> tuple[dict[str, Measurement], dict[str, Measurement]]:
+    """Each book's D26 measurement, and the books whose every attempt failed.
 
     Only runs at RATCHET_JOBS jobs or fewer count (D26); wide and unknown
-    measurements are reported by history_report and never ratchet.
+    measurements are reported by history_report and never ratchet. The D26
+    measurement is the fastest passed one over every host and toolchain:
+    load only adds seconds, so the lowest is the least-disturbed figure for
+    the same bytes. Its steps are the largest any passed attempt counted
+    (equal for one toolchain; the higher where toolchains differ).
     """
-    found: dict[str, Measurement] = {}
+    best: dict[str, Measurement] = {}
+    steps: dict[str, int] = {}
+    failed: dict[str, Measurement] = {}
     for record in selected.values():
         if record.band != SCOPED:
             continue
-        prior = found.get(record.book)
-        if prior is None or record.seconds > prior.seconds:
-            found[record.book] = record
-    return found
+        if not record.passed:
+            prior = failed.get(record.book)
+            if prior is None or record.run_id > prior.run_id:
+                failed[record.book] = record
+            continue
+        if record.steps is not None:
+            steps[record.book] = max(steps.get(record.book, 0), record.steps)
+        prior = best.get(record.book)
+        if prior is None or record.seconds < prior.seconds:
+            best[record.book] = record
+    for book, record in best.items():
+        if book in steps and record.steps != steps[book]:
+            best[book] = replace(record, steps=steps[book])
+    return best, {book: record for book, record in failed.items() if book not in best}
+
+
+def worst(selected: dict[tuple[str, str, str, str], Measurement]
+          ) -> dict[str, Measurement]:
+    """Compatibility name: the D26 measurement per book (see `decisive`)."""
+    return decisive(selected)[0]
+
+
+def conclusive_over(record: Measurement, line: float) -> bool:
+    """Whether `record` shows its book over `line` whatever the box was doing."""
+    return record.seconds > line and (record.quiet is True
+                                      or record.seconds > line * LOAD_FACTOR)
 
 
 def load_baseline(path: Path) -> dict[str, dict]:
@@ -382,8 +530,12 @@ def load_baseline(path: Path) -> dict[str, dict]:
             isinstance(entry, dict)
             and isinstance(entry.get("seconds"), (int, float))
             and not isinstance(entry.get("seconds"), bool)
+            and (entry.get("steps") is None
+                 or (isinstance(entry.get("steps"), int)
+                     and not isinstance(entry.get("steps"), bool)))
             for entry in books.values()):
-        raise ValueError(f"{path}: expected {{\"books\": {{book: {{\"seconds\": n, ...}}}}}}")
+        raise ValueError(f"{path}: expected {{\"books\": {{book: "
+                         f"{{\"seconds\": n, \"steps\": n, ...}}}}}}")
     return books
 
 
@@ -393,93 +545,161 @@ class Ratchet:
     improved: list[str]
     kept: list[str]
     proposed: dict[str, dict]
+    failed: list[str] = field(default_factory=list)
+    unquiet: list[str] = field(default_factory=list)
+
+
+def entry(record: Measurement) -> dict:
+    value = {"seconds": round(record.seconds, 3), "run": record.run_id,
+             "host": record.host, "jobs": record.jobs, "verdict": record.verdict}
+    if record.steps is not None:
+        value["steps"] = record.steps
+    if record.load is not None:
+        value["load"] = record.load
+    if record.cpus is not None:
+        value["cpus"] = record.cpus
+    return value
+
+
+def lowered(prior: dict, record: Measurement) -> dict:
+    """The row after a measurement that raised nothing: each number the lower."""
+    value = dict(prior)
+    if record.seconds < float(prior["seconds"]):
+        value.update(entry(record))
+        value.pop("steps", None)
+    if record.steps is not None and (prior.get("steps") is None
+                                     or record.steps <= prior["steps"]):
+        value["steps"] = record.steps
+    elif prior.get("steps") is not None:
+        value["steps"] = prior["steps"]
+    return value
 
 
 def ratchet(selected: dict[tuple[str, str, str, str], Measurement], books: set[str],
             baseline: dict[str, dict], threshold: float,
-            tolerance: float = TOLERANCE) -> Ratchet:
-    """Compare each book's worst current measurement with the baseline.
+            tolerance: float = TOLERANCE,
+            step_tolerance: float = STEP_TOLERANCE) -> Ratchet:
+    """Compare each book's D26 measurement and steps with the baseline.
 
     `proposed` is the baseline `--write-baseline` would write without
     `--allow-regression`: improved books dropped, numbers lowered to the
     current measurement, never raised, nothing added.
     """
-    slowest = worst(selected)
-    failing: list[str] = []
-    improved: list[str] = []
-    kept: list[str] = []
-    proposed: dict[str, dict] = {}
-    for book, record in sorted(slowest.items()):
-        entry = {"seconds": round(record.seconds, 3), "run": record.run_id,
-                 "host": record.host, "jobs": record.jobs,
-                 "verdict": record.verdict}
+    best, failed_only = decisive(selected)
+    result = Ratchet([], [], [], {})
+    remeasure = (f"re-measure quietly: python3 tools/farm.py submit <box> --jobs 2 "
+                 f"<book> while the box's load stays under {QUIET_LOAD_FRACTION:.0%} "
+                 "of its CPUs")
+    for book, record in sorted(best.items()):
         prior = baseline.get(book)
         if record.seconds <= threshold:
             if prior is not None:
-                improved.append(
-                    f"IMPROVED {book}: worst={record.seconds:.3f}s <= {threshold:g}s "
-                    f"(baseline {float(prior['seconds']):.3f}s) host={record.host} "
-                    f"run={record.run_id}; improved; remove from baseline")
+                result.improved.append(
+                    f"IMPROVED {book}: best={record.seconds:.3f}s <= {threshold:g}s "
+                    f"(baseline {float(prior['seconds']):.3f}s) {record.words()}; "
+                    "improved; remove from baseline")
             continue
         if prior is None:
             if record.seconds <= threshold * (1 + NEAR_BAND):
-                # D30 (2026-09-25): ten to eleven seconds is a warning band, not
-                # a failure; it is an operating rule, not proof the excursion is
-                # noise, so the line still names the run for a matched re-check.
-                kept.append(
-                    f"NEAR {book}: worst={record.seconds:.3f}s is within "
-                    f"{NEAR_BAND:.0%} above {threshold:g}s host={record.host} "
-                    f"jobs={record.jobs} run={record.run_id}; re-measure under matched load")
-                continue
-            failing.append(
-                f"FAIL {book}: worst={record.seconds:.3f}s > {threshold:g}s "
-                f"host={record.host} jobs={record.jobs} run={record.run_id}; not in baseline")
+                # D30 (2026-09-25): ten to eleven seconds is a warning band.
+                result.kept.append(
+                    f"NEAR {book}: best={record.seconds:.3f}s is within "
+                    f"{NEAR_BAND:.0%} above {threshold:g}s {record.words()}; "
+                    "re-measure under matched load")
+            elif conclusive_over(record, threshold * (1 + NEAR_BAND)):
+                result.failing.append(
+                    f"FAIL {book}: best={record.seconds:.3f}s > {threshold:g}s "
+                    f"{record.words()}; not in baseline")
+            else:
+                result.unquiet.append(
+                    f"UNQUIET {book}: best={record.seconds:.3f}s > {threshold:g}s "
+                    f"only in measurements not known to be quiet {record.words()}; "
+                    f"not a verdict; {remeasure}")
             continue
+        prior_steps = prior.get("steps")
+        if prior_steps is not None and record.steps is not None:
+            limit = prior_steps * (1 + step_tolerance)
+            if record.steps > limit:
+                result.failing.append(
+                    f"FAIL {book}: steps={record.steps:,} > baseline {prior_steps:,} "
+                    f"+{step_tolerance:.0%} = {limit:,.0f} (best={record.seconds:.3f}s) "
+                    f"{record.words()} (baseline run={prior.get('run', 'unknown')})")
+                result.proposed[book] = dict(prior)
+            elif record.steps > prior_steps:
+                result.kept.append(
+                    f"KEPT {book}: steps={record.steps:,} is within "
+                    f"{step_tolerance:.0%} of baseline {prior_steps:,}; baseline not raised")
+                result.proposed[book] = dict(prior)
+            else:
+                result.proposed[book] = lowered(prior, record)
+            continue
+        # A row or a measurement without steps: the seconds ratchet, quiet rule.
         limit = float(prior["seconds"]) * (1 + tolerance)
-        if record.seconds > limit:
-            failing.append(
-                f"FAIL {book}: worst={record.seconds:.3f}s > baseline "
+        if record.seconds > limit and conclusive_over(record, limit):
+            result.failing.append(
+                f"FAIL {book}: best={record.seconds:.3f}s > baseline "
                 f"{float(prior['seconds']):.3f}s +{tolerance:.0%} = {limit:.3f}s "
-                f"host={record.host} jobs={record.jobs} run={record.run_id} "
-                f"(baseline run={prior.get('run', 'unknown')})")
-            proposed[book] = dict(prior)
+                f"{record.words()} (baseline run={prior.get('run', 'unknown')}; "
+                "no step count on both sides)")
+            result.proposed[book] = dict(prior)
+        elif record.seconds > limit:
+            result.unquiet.append(
+                f"UNQUIET {book}: best={record.seconds:.3f}s > baseline "
+                f"{float(prior['seconds']):.3f}s +{tolerance:.0%} only in measurements "
+                f"not known to be quiet {record.words()}; not a verdict; {remeasure}")
+            result.proposed[book] = dict(prior)
         elif record.seconds > float(prior["seconds"]):
-            kept.append(f"KEPT {book}: worst={record.seconds:.3f}s is within "
-                        f"{tolerance:.0%} of baseline {float(prior['seconds']):.3f}s; "
-                        "baseline not raised")
-            proposed[book] = dict(prior)
+            result.kept.append(f"KEPT {book}: best={record.seconds:.3f}s is within "
+                               f"{tolerance:.0%} of baseline {float(prior['seconds']):.3f}s; "
+                               "baseline not raised")
+            value = dict(prior)
+            if record.steps is not None and prior_steps is None:
+                value["steps"] = record.steps
+            result.proposed[book] = value
         else:
-            proposed[book] = entry
+            result.proposed[book] = lowered(prior, record)
+    for book, record in sorted(failed_only.items()):
+        prior = baseline.get(book)
+        result.failed.append(
+            f"FAILED {book}: every matching attempt at <= {RATCHET_JOBS} jobs failed "
+            f"(newest {record.seconds:.3f}s, run={record.run_id} host={record.host}); "
+            "a failed certification measures no cost"
+            + ("; baseline row kept" if prior is not None else ""))
+        if prior is not None:
+            result.proposed[book] = dict(prior)
     for book, prior in sorted(baseline.items()):
-        if book in slowest:
+        if book in best or book in failed_only:
             continue
         if book not in books:
-            improved.append(f"IMPROVED {book}: no longer a current root-closure book; "
-                            "improved; remove from baseline")
+            result.improved.append(f"IMPROVED {book}: no longer a current root-closure "
+                                   "book; improved; remove from baseline")
         else:
             # Unmeasured at the current closure: no number to compare, keep it.
-            proposed[book] = dict(prior)
-    return Ratchet(failing, improved, kept, proposed)
+            result.proposed[book] = dict(prior)
+    return result
 
 
 def regression_baseline(selected: dict[tuple[str, str, str, str], Measurement],
                         threshold: float) -> dict[str, dict]:
-    return {book: {"seconds": round(record.seconds, 3), "run": record.run_id,
-                   "host": record.host, "jobs": record.jobs,
-                   "verdict": record.verdict}
-            for book, record in sorted(worst(selected).items())
-            if record.seconds > threshold}
+    """Rows for every book conclusively over the threshold (never UNQUIET)."""
+    return {book: entry(record)
+            for book, record in sorted(decisive(selected)[0].items())
+            if conclusive_over(record, threshold)}
 
 
 def write_baseline(path: Path, entries: dict[str, dict], threshold: float) -> None:
     value = {
-        "about": ("Books over the ten-second rule, with their worst current "
-                  f"measurement at {RATCHET_JOBS} jobs or fewer over all hosts "
-                  "and toolchains (D26). Generated by "
+        "about": ("Books over the ten-second rule (D26): each row's prover "
+                  "steps (the ratchet) and its fastest passed measurement at "
+                  f"{RATCHET_JOBS} jobs or fewer over all hosts and toolchains, "
+                  "with the load it was taken under. Generated by "
                   "python3 tools/proof_cost.py --write-baseline; only shrinks "
                   "without --allow-regression. See docs/proofs.md."),
         "threshold_seconds": threshold,
         "tolerance": TOLERANCE,
+        "step_tolerance": STEP_TOLERANCE,
+        "quiet_load_fraction": QUIET_LOAD_FRACTION,
+        "load_factor": LOAD_FACTOR,
         "max_jobs": RATCHET_JOBS,
         "books": dict(sorted(entries.items())),
     }
@@ -526,7 +746,8 @@ def main(argv: list[str] | None = None) -> int:
         baseline = load_baseline(args.baseline)
         verdict = ratchet(computed[0], books, baseline, args.threshold)
         unmeasured = len(books - {record.book for record in computed[0].values()})
-        for line in verdict.kept + verdict.improved + verdict.failing:
+        for line in (verdict.kept + verdict.unquiet + verdict.improved
+                     + verdict.failed + verdict.failing):
             print(line)
         if args.write_baseline:
             if args.allow_regression:
@@ -549,7 +770,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ratchet: scope=runs at <= {RATCHET_JOBS} jobs (D26); "
               f"baseline={len(baseline)} books; failing={len(verdict.failing)}; "
               f"improved={len(verdict.improved)}; within-tolerance={len(verdict.kept)}; "
-              f"unmeasured={unmeasured} (warning only); tolerance={TOLERANCE:.0%}")
+              f"unquiet={len(verdict.unquiet)} (warning only); "
+              f"failed-attempts={len(verdict.failed)} (no cost; green_check owns red); "
+              f"unmeasured={unmeasured} (warning only); step-tolerance="
+              f"{STEP_TOLERANCE:.0%}; seconds-tolerance={TOLERANCE:.0%} (rows without steps)")
         return 1 if verdict.failing else 0
     except (OSError, ValueError, KeyError, certs.UnreadableBook) as error:
         print(f"proof_cost: {error}")

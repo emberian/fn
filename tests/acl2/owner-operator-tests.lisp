@@ -27,6 +27,7 @@
 (in-package "ACL2")
 (include-book "held-rows-tests")
 (include-book "../../books/owner-invariants")
+(include-book "../../books/owner-served-invariants")   ; fn-own-operator-stored-octets
 (include-book "../../books/injection-invariants")
 (include-book "std/testing/must-fail" :dir :system)
 
@@ -96,17 +97,17 @@
 ; Keystones 1 and 2: what is queued is an injection of the payload
 
 (defconst *opt-decision* (fn-own-operator-decision-of *opt-0* *opt-msgid*
-                                                      *opt-groups* *opt-payload*))
+                                                      *opt-groups* *opt-payload* :absent))
 (assert-event (fn-inj-injectedp *opt-decision*))
 ; The exact octets: the Path innd asked for is there.
 (assert-event (equal (fn-inj-decision-octets *opt-decision*) *opt-injected*))
 (assert-event (fn-inj-reinjectionp (fn-inj-decision-octets *opt-decision*)
                                    *opt-payload* *opt-agent* *opt-msgid*))
 (assert-event (equal (fn-own-operator-submit-result *opt-0* *opt-msgid*
-                                                    *opt-groups* *opt-payload*)
+                                                    *opt-groups* *opt-payload* :absent)
                      :submitted))
 (defconst *opt-queued* (fn-own-operator-submit *opt-0* *opt-msgid* *opt-groups*
-                                               *opt-payload*))
+                                               *opt-payload* :absent))
 (assert-event (equal (len (fn-own-queue *opt-queued*)) 1))
 (assert-event (fn-own-control-submissionp (car (fn-own-queue *opt-queued*))))
 (assert-event (equal (fn-inj-decision-octets
@@ -133,7 +134,7 @@
                    ""
                    "hello from yue")))
 (defconst *opt-yue-decision*
-  (fn-own-operator-decision-of *opt-0* *opt-yue-msgid* *opt-groups* *opt-yue*))
+  (fn-own-operator-decision-of *opt-0* *opt-yue-msgid* *opt-groups* *opt-yue* :absent))
 (assert-event (not (fn-inj-injectedp *opt-yue-decision*)))
 (assert-event (equal (fn-inj-decision-reason *opt-yue-decision*) :from-invalid))
 
@@ -141,12 +142,12 @@
 ; are no re-injection of the payload.
 (must-fail
  (defthm opt-decision-without-injection
-   (let ((d (fn-own-operator-decision cfg clock node msgid groups octets)))
+   (let ((d (fn-own-operator-decision cfg clock stored msgid groups octets)))
      (fn-inj-reinjectionp (fn-inj-decision-octets d) octets
                           (fn-inj-config-agent cfg) msgid))
    :hints (("Goal" :in-theory (e/d (fn-own-operator-decision)
                                    (fn-inj-decide fn-inj-reinjectionp
-                                    fn-own-stored-octets fn-own-clock-usablep))
+                                    fn-own-clock-usablep))
             :use ((:instance fn-inj-injected-article-is-a-reinjection-of-its-source
                              (source octets) (config cfg) (observation clock)))))))
 (assert-event (not (fn-inj-reinjectionp (fn-inj-decision-octets *opt-yue-decision*)
@@ -157,13 +158,13 @@
 (assert-event
  (equal (fn-inj-decision-reason
          (fn-own-operator-decision-of *opt-0* (opt-octets "<other@example.invalid>")
-                                      *opt-groups* *opt-payload*))
+                                      *opt-groups* *opt-payload* :absent))
         :control-mismatch))
 
 ; Tooth for keystone 2: without `:submitted' the queue holds nothing.
 (must-fail
  (defthm opt-submission-without-submitted
-   (let* ((q (fn-own-queue (fn-own-operator-submit o msgid groups octets)))
+   (let* ((q (fn-own-queue (fn-own-operator-submit o msgid groups octets stored)))
           (d (fn-own-sub-decision (car q))))
      (and (equal (len q) 1)
           (fn-own-control-submissionp (car q))
@@ -173,11 +174,11 @@
                                     fn-own-operator-decision-of)
                                    (fn-own-operator-decision fn-inj-reinjectionp))))))
 (assert-event (equal (fn-own-operator-submit-result *opt-0* *opt-yue-msgid*
-                                                    *opt-groups* *opt-yue*)
+                                                    *opt-groups* *opt-yue* :absent)
                      :refused))
 (assert-event (equal (len (fn-own-queue (fn-own-operator-submit
                                          *opt-0* *opt-yue-msgid* *opt-groups*
-                                         *opt-yue*)))
+                                         *opt-yue* :absent)))
                      0))
 
 ; -----------------------------------------------------------------------------
@@ -186,20 +187,19 @@
 (defconst *opt-no-clock* (fn-own-configure *opt-bare* *opt-config*))
 (assert-event (null (fn-own-clock *opt-no-clock*)))
 (assert-event (equal (fn-own-operator-submit-result *opt-no-clock* *opt-msgid*
-                                                    *opt-groups* *opt-payload*)
+                                                    *opt-groups* *opt-payload* :absent)
                      :refused))
 (assert-event (equal (fn-own-operator-submit *opt-no-clock* *opt-msgid*
-                                             *opt-groups* *opt-payload*)
+                                             *opt-groups* *opt-payload* :absent)
                      *opt-no-clock*))
 (assert-event (equal (fn-inj-decision-reason
                       (fn-own-operator-decision-of *opt-no-clock* *opt-msgid*
-                                                   *opt-groups* *opt-payload*))
+                                                   *opt-groups* *opt-payload* :absent))
                      :clock-unusable))
 ; A reading without a wall time is no clock either.
 (defconst *opt-blind* (fn-clock-observation 1000000 843427607000 500 nil))
 (assert-event (equal (fn-inj-decision-reason
-                      (fn-own-operator-decision *opt-config* *opt-blind*
-                                                (fn-sn-node (fn-own-store *opt-0*))
+                      (fn-own-operator-decision *opt-config* *opt-blind* :absent
                                                 *opt-msgid* *opt-groups*
                                                 *opt-payload*))
                      :clock-unusable))
@@ -207,8 +207,8 @@
 ; Tooth: without the hypothesis, the clocked owner submits.
 (must-fail
  (defthm opt-refusal-without-no-clock
-   (and (equal (fn-own-operator-submit-result o msgid groups octets) :refused)
-        (equal (fn-own-operator-submit o msgid groups octets) o))
+   (and (equal (fn-own-operator-submit-result o msgid groups octets stored) :refused)
+        (equal (fn-own-operator-submit o msgid groups octets stored) o))
    :hints (("Goal" :in-theory (e/d (fn-own-operator-submit-result
                                     fn-own-operator-submit
                                     fn-own-operator-decision-of
@@ -216,7 +216,7 @@
                                     fn-own-clock-usablep)
                                    (fn-inj-decide))))))
 (assert-event (not (equal (fn-own-operator-submit *opt-0* *opt-msgid*
-                                                  *opt-groups* *opt-payload*)
+                                                  *opt-groups* *opt-payload* :absent)
                           *opt-0*)))
 
 ; -----------------------------------------------------------------------------
@@ -251,34 +251,133 @@
 (defconst *opt-stored*
   (fn-own-observe (fn-own-control-outcome *opt-done* :durable) *opt-later*))
 (assert-event (equal (fn-own-clock *opt-stored*) *opt-later*))
-(assert-event (equal (fn-own-stored-octets (fn-sn-node (fn-own-store *opt-stored*))
+; After the records flip the node holds the article's HANDLE (0, the first
+; row interned); the octets are read under it through the arena of the entry
+; that interned the journal: fn-own-operator-stored-octets
+; (books/owner-served-invariants.lisp), the value the host passes as STORED.
+(defun opt-stored-in (o msgid prior fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-hrt-events prior nil 0 fn-arena)
+    (declare (ignore rows))
+    (mv (fn-own-operator-stored-octets o msgid fn-arena) fn-arena)))
+(defun opt-stored (o msgid prior)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (stored fn-arena)
+      (opt-stored-in o msgid prior fn-arena)
+      stored)))
+(defconst *opt-read* (opt-stored *opt-stored* *opt-msgid* (list *opt-record-wire*)))
+(assert-event (equal (fn-own-stored-handle (fn-sn-node (fn-own-store *opt-stored*))
                                            *opt-msgid*)
-                     *opt-injected*))
+                     0))
+(assert-event (equal *opt-read* *opt-injected*))
 
 ; The retry, a minute later: the decision is the stored article, so the store
 ; answers its duplicate.  For a Date-less article a fresh injection would
 ; differ in its Injection-Date and generated Date.
 (assert-event
  (equal (fn-own-operator-decision-of *opt-stored* *opt-msgid* *opt-groups*
-                                     *opt-payload*)
+                                     *opt-payload* *opt-read*)
         (fn-inj-make-decision :injected nil *opt-msgid* *opt-groups* *opt-injected*)))
+;; The article above carries Date and Message-ID, so a fresh injection at the
+;; later clock is the same octets: its retry never needed the retry arm
+;; (flip-tests-green's finding, 2026-09-27).  The Date-less article is the
+;; one whose fresh re-injection differs (a new Injection-Date and generated
+;; Date), so its retry is the arm this keystone is about.
+(defconst *opt-nd-injected*
+  (fn-inj-decision-octets (fn-inj-decide *opt-nodate* *opt-config* *opt-obs*)))
+(defconst *opt-nd-queued*
+  (fn-own-operator-submit *opt-0* *opt-msgid* *opt-groups* *opt-nodate* :absent))
+(assert-event (equal (fn-inj-decision-octets
+                      (fn-own-sub-decision (car (fn-own-queue *opt-nd-queued*))))
+                     *opt-nd-injected*))
+(defconst *opt-nd-wire*
+  (fn-record-make 0 0 0
+                  "<inn-lab-fn-operator-8a5f502-20260922T212621Z@example.invalid>"
+                  *opt-nd-injected* '("fn.letters")
+                  "opt-pin" "opt-content" "opt-release" 2
+                  (fn-record-stamp-of-observation *opt-obs*)))
+(defconst *opt-nd-stored*
+  (fn-own-observe
+   (fn-own-control-outcome
+    (in-arena-fn-own-run *sr-arena* (fn-own-take-submission *opt-nd-queued*) (list '(:store (:io :start-frontier nil))
+                      '(:store (:io :frontier-file :ok))
+                      '(:store (:io :frontier-replace :ok))
+                      '(:store (:io :frontier-directory :ok))
+                      (list :store (list :prepare (car (fn-hrt-rows (list *opt-nd-wire*) nil 0))))
+                      '(:store (:io :record-file :ok))
+                      '(:store (:io :record-link :ok))
+                      '(:store (:io :record-directory :ok))
+                      '(:complete)))
+    :durable)
+   *opt-later*))
+(defconst *opt-nd-read* (opt-stored *opt-nd-stored* *opt-msgid* (list *opt-nd-wire*)))
+(assert-event (equal *opt-nd-read* *opt-nd-injected*))
+; The retry at the later clock resubmits the stored injection ...
 (assert-event
- (not (equal (fn-inj-decision-octets
-              (fn-inj-decide *opt-nodate* *opt-config* *opt-later*))
-             (fn-inj-decision-octets
-              (fn-inj-decide *opt-nodate* *opt-config* *opt-obs*)))))
+ (equal (fn-own-operator-decision-of *opt-nd-stored* *opt-msgid* *opt-groups*
+                                     *opt-nodate* *opt-nd-read*)
+        (fn-inj-make-decision :injected nil *opt-msgid* *opt-groups* *opt-nd-injected*)))
+; ... which a fresh injection is not ...
+(assert-event
+ (not (equal (fn-inj-decision-octets (fn-inj-decide *opt-nodate* *opt-config* *opt-later*))
+             *opt-nd-injected*)))
+; ... and the flip regression: over the HANDLE (0) the decision is that
+; fresh injection, which the store would answer `conflict'.
+(assert-event (equal (fn-own-stored-handle (fn-sn-node (fn-own-store *opt-nd-stored*))
+                                           *opt-msgid*)
+                     0))
+(assert-event
+ (not (equal (fn-own-operator-decision-of *opt-nd-stored* *opt-msgid* *opt-groups*
+                                          *opt-nodate* 0)
+             (fn-inj-make-decision :injected nil *opt-msgid* *opt-groups*
+                                   *opt-nd-injected*))))
+
+; The keystone at the entry (fn-own-operator-retry-at-the-entry-is-the-
+; stored-injection): its antecedent and conclusion over the entry's read, on
+; the Date-less article (whose fresh re-injection differs).
+(assert-event
+ (let* ((first-d (fn-inj-decide *opt-nodate* (fn-own-config *opt-nd-stored*) *opt-obs*))
+        (art (fn-find-article (fn-record-octets-string *opt-msgid*)
+                              (fn-state-articles
+                               (fn-node-acceptance (fn-sn-node (fn-own-store *opt-nd-stored*)))))))
+   (and (fn-inj-injectedp first-d)
+        (equal (fn-inj-decision-msgid first-d) *opt-msgid*)
+        art
+        (equal (fn-hrt-bytes (list *opt-nd-wire*) (fn-article-payload art))
+               (fn-inj-decision-octets first-d))
+        (fn-clock-observationp (fn-own-clock *opt-nd-stored*))
+        (fn-clock-has-wall (fn-own-clock *opt-nd-stored*))
+        (equal (fn-own-operator-decision-of *opt-nd-stored* *opt-msgid* *opt-groups*
+                                            *opt-nodate* *opt-nd-read*)
+               (fn-inj-make-decision :injected nil *opt-msgid* *opt-groups*
+                                     (fn-inj-decision-octets first-d))))))
+; Separation for its alpha hypothesis: an arena that interned another
+; journal names other bytes under handle 0, and the decision is the fresh
+; injection, not the stored one.
+(defconst *opt-other-wire*
+  (fn-record-make 0 0 0 "<x@example.invalid>" *opt-payload* '("fn.letters")
+                  "x-pin" "x-content" "x-release" 2
+                  (fn-record-stamp-of-observation *opt-obs*)))
+(defconst *opt-read-other* (opt-stored *opt-nd-stored* *opt-msgid* (list *opt-other-wire*)))
+(assert-event (not (equal *opt-read-other* *opt-nd-injected*)))
+(assert-event
+ (not (equal (fn-own-operator-decision-of *opt-nd-stored* *opt-msgid* *opt-groups*
+                                          *opt-nodate* *opt-read-other*)
+             (fn-inj-make-decision :injected nil *opt-msgid* *opt-groups*
+                                   *opt-nd-injected*))))
 
 ; One tooth per hypothesis, the keystone's hints kept.
 (defmacro opt-retry (name &rest hyps)
   `(defthm ,name
      (implies (and ,@hyps)
-              (equal (fn-own-operator-decision cfg later node msgid groups octets)
+              (equal (fn-own-operator-decision cfg later stored msgid groups octets)
                      (fn-inj-make-decision
                       :injected nil msgid groups
                       (fn-inj-decision-octets (fn-inj-decide octets cfg first)))))
      :hints (("Goal" :in-theory (e/d (fn-own-operator-decision fn-own-clock-usablep)
                                      (fn-inj-decide fn-inj-reinjectionp
-                                      fn-own-stored-octets
                                       fn-inj-injected-article-is-a-reinjection-of-its-source
                                       fn-inj-injection-requires-posting-allowed))
               :use ((:instance fn-inj-injected-article-is-a-reinjection-of-its-source
@@ -297,7 +396,7 @@
 (opt-retry opt-retry-full
            (fn-inj-injectedp (fn-inj-decide octets cfg first))
            (equal (fn-inj-decision-msgid (fn-inj-decide octets cfg first)) msgid)
-           (equal (fn-own-stored-octets node msgid)
+           (equal stored
                   (fn-inj-decision-octets (fn-inj-decide octets cfg first)))
            (fn-clock-observationp later)
            (fn-clock-has-wall later))
@@ -306,7 +405,7 @@
 (must-fail
  (opt-retry opt-retry-without-injected
             (equal (fn-inj-decision-msgid (fn-inj-decide octets cfg first)) msgid)
-            (equal (fn-own-stored-octets node msgid)
+            (equal stored
                    (fn-inj-decision-octets (fn-inj-decide octets cfg first)))
             (fn-clock-observationp later)
             (fn-clock-has-wall later)))
@@ -316,7 +415,7 @@
 (must-fail
  (opt-retry opt-retry-without-msgid
             (fn-inj-injectedp (fn-inj-decide octets cfg first))
-            (equal (fn-own-stored-octets node msgid)
+            (equal stored
                    (fn-inj-decision-octets (fn-inj-decide octets cfg first)))
             (fn-clock-observationp later)
             (fn-clock-has-wall later)))
@@ -338,28 +437,26 @@
             (fn-clock-observationp later)
             (fn-clock-has-wall later)))
 (assert-event
- (not (equal (fn-own-operator-decision-of *opt-0* *opt-msgid* *opt-groups* *opt-nodate*)
-             (fn-own-operator-decision *opt-config* *opt-later*
-                                       (fn-sn-node (fn-own-store *opt-0*))
+ (not (equal (fn-own-operator-decision-of *opt-0* *opt-msgid* *opt-groups* *opt-nodate* :absent)
+             (fn-own-operator-decision *opt-config* *opt-later* :absent
                                        *opt-msgid* *opt-groups* *opt-nodate*))))
 ; Without a later reading at all, and without its wall time: refused.
 (must-fail
  (opt-retry opt-retry-without-observation
             (fn-inj-injectedp (fn-inj-decide octets cfg first))
             (equal (fn-inj-decision-msgid (fn-inj-decide octets cfg first)) msgid)
-            (equal (fn-own-stored-octets node msgid)
+            (equal stored
                    (fn-inj-decision-octets (fn-inj-decide octets cfg first)))
             (fn-clock-has-wall later)))
 (must-fail
  (opt-retry opt-retry-without-wall
             (fn-inj-injectedp (fn-inj-decide octets cfg first))
             (equal (fn-inj-decision-msgid (fn-inj-decide octets cfg first)) msgid)
-            (equal (fn-own-stored-octets node msgid)
+            (equal stored
                    (fn-inj-decision-octets (fn-inj-decide octets cfg first)))
             (fn-clock-observationp later)))
 (assert-event
  (equal (fn-inj-decision-reason
-         (fn-own-operator-decision *opt-config* *opt-blind*
-                                   (fn-sn-node (fn-own-store *opt-stored*))
+         (fn-own-operator-decision *opt-config* *opt-blind* *opt-read*
                                    *opt-msgid* *opt-groups* *opt-payload*))
         :clock-unusable))
