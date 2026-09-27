@@ -1413,9 +1413,10 @@ class Store:
         # Validate and replay first, then establish the recovered namespace
         # frontier before treating it as a usable durable state.
         try:
+            # books/byte-store-programs.lisp fn-bs-recover-program: the three
+            # recovery barriers (*fn-sf-recovery-barrier-count*); the config and
+            # frontier files are fenced before their names are published.
             for barrier in (
-                    lambda: fsync_regular(self.config_path),
-                    lambda: fsync_regular(self.frontier_path),
                     lambda: fsync_dir(self.transactions),
                     lambda: fsync_dir(self.root),
                     lambda: fsync_dir(self.root.parent)):

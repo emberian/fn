@@ -81,12 +81,8 @@
   (fn-sf-recovery-barrier *sf-unused-recovery-0* :ok))
 (defconst *sf-unused-recovery-2*
   (fn-sf-recovery-barrier *sf-unused-recovery-1* :ok))
-(defconst *sf-unused-recovery-3*
-  (fn-sf-recovery-barrier *sf-unused-recovery-2* :ok))
-(defconst *sf-unused-recovery-4*
-  (fn-sf-recovery-barrier *sf-unused-recovery-3* :ok))
 (defconst *sf-unused-recovered*
-  (fn-sf-recovery-barrier *sf-unused-recovery-4* :ok))
+  (fn-sf-recovery-barrier *sf-unused-recovery-2* :ok))
 (assert-event (equal (fn-sf-phase *sf-unused-recovered*) :ready))
 (assert-event (equal (fn-sf-prepare-record *sf-unused-recovered* *sf-record-0*
                                            *sf-groups* 10)
@@ -284,16 +280,15 @@
 (assert-event (fn-sf-crash-imagep *sf-acked* 1 (list *sf-record-0*)))
 (assert-event (not (fn-sf-crash-imagep *sf-acked* 1 nil)))
 
-; Recovery performs actual fn-replay and remains unavailable until all five
+; Recovery performs actual fn-replay and remains unavailable until all three
 ; prerequisite barriers succeed.
 (defconst *sf-recovered-1* (fn-sf-recovery-barrier *sf-recovered-0* :ok))
 (defconst *sf-recovered-2* (fn-sf-recovery-barrier *sf-recovered-1* :ok))
+(assert-event (not (equal (fn-sf-phase *sf-recovered-1*) :ready)))
+(assert-event (not (equal (fn-sf-phase *sf-recovered-2*) :ready)))
 (defconst *sf-recovered-3* (fn-sf-recovery-barrier *sf-recovered-2* :ok))
-(defconst *sf-recovered-4* (fn-sf-recovery-barrier *sf-recovered-3* :ok))
-(assert-event (not (equal (fn-sf-phase *sf-recovered-4*) :ready)))
-(defconst *sf-recovered-5* (fn-sf-recovery-barrier *sf-recovered-4* :ok))
-(assert-event (equal (fn-sf-phase *sf-recovered-5*) :ready))
-(assert-event (equal (fn-sf-records *sf-recovered-5*)
+(assert-event (equal (fn-sf-phase *sf-recovered-3*) :ready))
+(assert-event (equal (fn-sf-records *sf-recovered-3*)
                      (list *sf-record-0*)))
 
 ; A failed recovery barrier fences and cannot be bypassed by another barrier.

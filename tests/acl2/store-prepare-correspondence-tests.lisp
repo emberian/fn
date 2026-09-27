@@ -115,7 +115,6 @@
   (fn-sn-open-observed *spc-groups* 10 1 (list *spc-first*)))
 (defconst *spc-open-events*
   '((:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
-    (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
     (:io :recovery-barrier :ok)
     (:io :start-frontier nil) (:io :frontier-file :ok)
     (:io :frontier-replace :ok) (:io :frontier-directory :ok)))

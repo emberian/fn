@@ -78,7 +78,6 @@
 
 (defconst *fn-so-barriers*
   '((:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
-    (:io :recovery-barrier :ok) (:io :recovery-barrier :ok)
     (:io :recovery-barrier :ok)))
 (defconst *fn-so-reserve*
   '((:io :start-frontier nil) (:io :frontier-file :ok)

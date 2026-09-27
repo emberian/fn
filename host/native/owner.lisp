@@ -770,7 +770,8 @@ checkpoint's S, or NIL."
             ;; SEC-006: the node secret, handed to the owner after the
             ;; recovery that built it (fnn-owner-load-node-secret).
             (fnn-owner-load-node-secret store)
-            ;; Five fresh namespace observations, now delivered to fn-owner.
+            ;; The recovery barriers again (three, fnn-store-recovery-barriers):
+            ;; fresh namespace observations, now delivered to fn-owner.
             (let ((phase nil))
               (dolist (barrier (fnn-store-recovery-barriers store))
                 (handler-case (funcall barrier)

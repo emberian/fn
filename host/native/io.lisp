@@ -3007,16 +3007,15 @@ a source-pinned post-syscall cut."
                 "developer-only native initializer fault"))))))
 
 ;; In the order fnn-recover reaches them.  `recover-replayed' and
-;; `recover-barrier' are fn-bs-recover-program's own cuts
-;; (books/byte-store-programs.lisp); `recover-barrier-N' selects each of the
-;; five model cuts.  `recovery-stage-unlinked' is
+;; `recover-barrier' are fn-lg-open-program's own cuts
+;; (books/store-log-route-programs.lisp); `recover-barrier-N' selects each of
+;; the three model cuts.  `recovery-stage-unlinked' is
 ;; fn-bs-recover-stage-cleanup-program's cut, and that program runs once per
-;; removed orphan AFTER fn-bs-recover-program has completed: fnn-recover
-;; sweeps only once the fifth barrier observation has reached :ready.
+;; removed orphan AFTER fn-lg-open-program has completed: fnn-recover
+;; sweeps only once the last barrier observation has reached :ready.
 (defparameter +fnn-recovery-model-cuts+
   '("recover-replayed" "recover-barrier-1" "recover-barrier-2"
-    "recover-barrier-3" "recover-barrier-4" "recover-barrier-5"
-    "recovery-stage-unlinked"))
+    "recover-barrier-3" "recovery-stage-unlinked"))
 
 (defun fnn-recovery-test-fault ()
   "Developer-only FN_NATIVE_RECOVERY_FAULT=MODEL-CUT:eio|kill selector.
@@ -5446,17 +5445,16 @@ replay."
         (+ s (length suffix))))))
 
 (defun fnn-store-recovery-barriers (store)
-  "The five recovery barriers' thunks, in the model's order: the config file,
-the history's authority (the segment on format 9, the frontier file on
-format 8), its directory (journal/ or transactions/), the root and the root's
-parent."
-  (list (lambda () (fnn-fsync-regular (fnn-config-path store)))
-        (if (fnn-store-logp store)
-            (lambda () (fnn-log-fdatasync (fnn-log-fd (fnn-store-log store))))
-          (lambda () (fnn-fsync-regular (fnn-frontier-path store))))
-        (if (fnn-store-logp store)
-            (lambda () (fnn-fsync-dir (fnn-journal-dir store)))
-          (lambda () (fnn-fsync-dir (fnn-transactions store))))
+  "The open's recovery barriers' thunks after P-LOG-RECOVER's segment fence,
+in the model's order (books/store-log-route-programs.lisp fn-lg-open-program;
+*fn-sf-recovery-barrier-count* 3): journal/ (a create or unlink a death in
+P-ROTATE, P-DROP or init left pending), the root (a checkpoint renamed before
+its root fence, ahead of the open's drop) and the root's parent (an import
+at import-published).  The config file's and the segment's second fence are
+gone: both are the identity at the open (books/store-log-open-barriers.lisp
+fn-lgob-three-barrier-open-after-recovery-is-the-five); none of the three can
+go (the same book's fn-lgob-two-barriers-without-* counterexamples)."
+  (list (lambda () (fnn-fsync-dir (fnn-journal-dir store)))
         (lambda () (fnn-fsync-dir (fnn-store-root store)))
         (lambda () (fnn-fsync-dir (fnn-parent (fnn-store-root store))))))
 

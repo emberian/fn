@@ -462,8 +462,8 @@
                                        '(:crash :new :present)
                                        (sfe-result-edges *sfe-result*)))
 
-; Repeated recovery is in the event domain, and all five barrier counts are
-; reached.  Readiness is therefore gated by the final barrier in the explored
+; Repeated recovery is in the event domain, and all three barrier counts below
+; the last are reached, and none at the count (that one is :ready).  Readiness is therefore gated by the final barrier in the explored
 ; states, while uncertainty reaches a fenced recovery state.
 (assert-event (sfe-any-changing-eventp '(:recover) (sfe-result-edges *sfe-result*)))
 (assert-event (sfe-any-edge-at-phasep :recovering '(:recover)
@@ -474,7 +474,5 @@
                                                  (sfe-result-states *sfe-result*)))
 (assert-event (sfe-any-recovering-barrier-countp 2
                                                  (sfe-result-states *sfe-result*)))
-(assert-event (sfe-any-recovering-barrier-countp 3
-                                                 (sfe-result-states *sfe-result*)))
-(assert-event (sfe-any-recovering-barrier-countp 4
-                                                 (sfe-result-states *sfe-result*)))
+(assert-event (not (sfe-any-recovering-barrier-countp 3
+                                                      (sfe-result-states *sfe-result*))))

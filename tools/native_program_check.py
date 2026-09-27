@@ -36,7 +36,7 @@ For each byte-model program the native cut table names
 It CANNOT decide, and does not claim: runtime control flow -- which arm of a
 `handler-case`, `ignore-errors`, `when`/`unless`/`if` runs; every form is read
 as executed once, in source order, and a `loop`/`dolist` other than
-`fnn-recover`'s barrier loop (expanded to its five lambdas) is read as one
+`fnn-recover`'s barrier loop (expanded to its three lambdas) is read as one
 iteration; whether an opaque ACL2 call (`OPAQUE_CALLS`) performs the
 transitions it is declared to; what a `funcall` of any other callback or a
 function defined outside io.lisp does; operating-system semantics of the

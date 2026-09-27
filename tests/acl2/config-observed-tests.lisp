@@ -58,13 +58,12 @@
           8 *cpo-t-events*))
         :error))
 
-; The five real recovery barriers are still required before an administrative
+; The three real recovery barriers are still required before an administrative
 ; config transition. It changes the carried history, domain/capacity and node
 ; together, while the Store event list and frontier remain exact.
 (defconst *cpo-t-ready*
-  (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io
+  (fn-sn-io (fn-sn-io (fn-sn-io
              (fn-sn-open-state *cpo-t-open*) :recovery-barrier :ok)
-             :recovery-barrier :ok) :recovery-barrier :ok)
              :recovery-barrier :ok) :recovery-barrier :ok))
 (defconst *cpo-t-increase*
   (fn-cfg-record-make 2 8 3 (list (fn-cfg-set-capacity 20))
