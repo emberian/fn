@@ -24,9 +24,13 @@
   '(77 101 115 115 97 103 101 45 73 68 58 32 60 67 97 115 101 64 73 100 46 105
     110 118 97 108 105 100 62 13 10 83 117 98 106 101 99 116 58 32 84 101 115
     116 13 10 13 10 72 101 108 108 111 13 10 46 100 111 116 13 10))
+;; by specification: the flip -- an accepted article's payload is an arena
+;; handle (natp), not its octets; *lg-payload* stays the bytes handle 0 stands
+;; for (and *lg-phrase-payload* the bytes of handle 1).
+(defconst *lg-payload-handle* 0)
 (defconst *lg-archive*
   (fn-accept-complete
-   (fn-accept-prepare (fn-initial-state *lg-groups*) 1 *lg-id* *lg-payload*
+   (fn-accept-prepare (fn-initial-state *lg-groups*) 1 *lg-id* *lg-payload-handle*
                       '("fn.letters") 841000000)
    0 1 :durable))
 (assert-event (fn-nntp-projectionp *lg-archive*))
@@ -359,10 +363,12 @@
           (fn-nntp-string-octets "Subject: Hello there world") '(13 10)
           '(13 10)
           (fn-nntp-string-octets "Hi") '(13 10)))
+; by specification: the flip -- the phrase payload's handle.
+(defconst *lg-phrase-payload-handle* 1)
 (defconst *lg-phrase-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *lg-groups*) 1 *lg-phrase-id*
-                      *lg-phrase-payload* '("fn.letters") 841000000)
+                      *lg-phrase-payload-handle* '("fn.letters") 841000000)
    0 1 :durable))
 (assert-event (fn-nntp-projectionp *lg-phrase-archive*))
 (defconst *lg-phrase-session*
@@ -431,6 +437,10 @@
 ; so that field is empty; the two hypotheses each have a violating value.
 (defconst *lg-article* (fn-find-article *lg-id* (fn-state-articles *lg-archive*)))
 (assert-event (consp *lg-article*))
+; by specification: the flip -- the stored payload is the handle, and the
+; bytes it stands for are *lg-payload*; the two hypothesis teeth below parse
+; those bytes.
+(assert-event (equal (fn-article-payload *lg-article*) *lg-payload-handle*))
 (assert-event
  (equal (fn-nntp-hdr-octets
          (fn-nntp-hdr-content (fn-nntp-string-octets "from") *lg-article*))
@@ -440,7 +450,7 @@
 (assert-event
  (not (consp (fn-article-get-headers
               (fn-article-result-article
-               (fn-article-parse (fn-article-payload *lg-article*)))
+               (fn-article-parse *lg-payload*))
               (fn-nntp-string-octets ":lines")))))
 (assert-event
  (equal (fn-nntp-hdr-octets
@@ -450,7 +460,7 @@
 (assert-event
  (consp (fn-article-get-headers
          (fn-article-result-article
-          (fn-article-parse (fn-article-payload *lg-article*)))
+          (fn-article-parse *lg-payload*))
          (fn-nntp-string-octets "subject"))))
 (assert-event
  (equal (fn-nntp-hdr-octets

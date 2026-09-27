@@ -20,6 +20,7 @@
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "poster-bytes-tests")
+(include-book "held-rows-tests")
 
 (defun vjt-reserve (s)
   (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io s :start-frontier nil)
@@ -56,12 +57,33 @@
           (fn-record-string-octets "Control: cancel <vj-target@example.invalid>")
           *vjt-crlf* *vjt-crlf* (fn-record-string-octets "cancel") *vjt-crlf*))
 
-(defconst *vjt-t-record*
+(defconst *vjt-t-record-wire*
   (fn-record-make 0 0 0 *vjt-t* *vjt-t-payload* '("fn.test") "vj-pin-1"
                   "vj-subject" "vj-release" 2 841000000))
-(defconst *vjt-c-record*
+(defconst *vjt-c-record-wire*
   (fn-record-make 1 1 1 *vjt-c* *vjt-c-payload* '("control.cancel") "vj-pin-2"
                   "vj-subject" "vj-release" 2 841000001))
+; by specification: the flip -- the Store retains held rows
+; (books/held-record.lisp): T and C interned in order on a fresh arena, T's
+; payload the handle 0 and C's the handle 1.  Reclamation (below) writes T's
+; tombstone under a new handle (books/store-reclaim.lisp fn-rcl-reclaim-state
+; acts only on a natp), so the arena's third payload is that tombstone
+; (handle 2), carried by a record the way store-reclaim-tests carries it.
+(defconst *vjt-tomb-octets*
+  (fn-rcl-tombstone-of *vjt-t-payload* (fn-record-string-octets *vjt-t*)))
+(defconst *vjt-prior*
+  (list *vjt-t-record-wire* *vjt-c-record-wire*
+        (fn-record-make 2 2 2 "<vj-tomb@example.invalid>" *vjt-tomb-octets*
+                        '("fn.test") "vj-pin-3" "vj-subject" "vj-release" 1 841000002)))
+(defconst *vjt-rows* (fn-hrt-rows *vjt-prior* nil 0))
+(defconst *vjt-t-record* (car *vjt-rows*))
+(defconst *vjt-c-record* (cadr *vjt-rows*))
+(assert-event (and (fn-held-p *vjt-t-record*) (fn-held-p *vjt-c-record*)
+                   (equal (fn-record-payload *vjt-t-record*) 0)
+                   (equal (fn-record-payload *vjt-c-record*) 1)
+                   (equal (fn-hrt-bytes *vjt-prior* 0) *vjt-t-payload*)
+                   (equal (fn-hrt-bytes *vjt-prior* 1) *vjt-c-payload*)
+                   (equal (fn-hrt-bytes *vjt-prior* 2) *vjt-tomb-octets*)))
 
 (defconst *vjt-one*
   (fn-sn-finish (vjt-publish (fn-spc-prepare
@@ -108,6 +130,15 @@
       (equal (vjt-buffer-action *vjt-t* *vjt-t-payload* '("fn.test") *vjt-two*) :duplicate)
       (equal (fn-rcl-existing-action *vjt-t* *vjt-changed* '("fn.test") *vjt-two*) :conflict)
       (equal (vjt-buffer-action *vjt-t* *vjt-changed* '("fn.test") *vjt-two*) :conflict)))
+; The same outcomes through the entry the host calls after the flip
+; (store-intern fn-store-existing-action, here fn-hrt-existing-action over
+; the arena that interned the Store's rows): the offered octets are compared
+; with the bytes under T's handle.
+(assert-event
+ (and (equal (fn-hrt-existing-action *vjt-prior* *vjt-t* *vjt-t-payload* '("fn.test") *vjt-two*)
+             :duplicate)
+      (equal (fn-hrt-existing-action *vjt-prior* *vjt-t* *vjt-changed* '("fn.test") *vjt-two*)
+             :conflict)))
 ; Teeth (1): drop "held": a Message-ID not held before is not held after,
 ; and the decision answers nil (a fresh prepare).
 (assert-event (and (stringp *vjt-absent*)
@@ -138,7 +169,9 @@
 ; reclaimed to its tombstone; the resend of its source is still :duplicate
 ; (the tombstone's digest), a changed source :conflict.
 (defconst *vjt-acc* (fn-node-acceptance (fn-sn-node *vjt-two*)))
-(defconst *vjt-tomb* (fn-rcl-tombstone-of *vjt-t-payload* (fn-record-string-octets *vjt-t*)))
+; by specification: the flip -- the tombstone is the handle 2 (its bytes,
+; pinned above, are the octet tombstone of T's source).
+(defconst *vjt-tomb* 2)
 (defconst *vjt-reclaimed*
   (let ((node (fn-sn-node *vjt-two*)))
     (update-nth 3 (update-nth (vjt-index-of *vjt-acc* node 0)
@@ -149,14 +182,28 @@
       (fn-acceptedp *vjt-t* (fn-state-articles *vjt-acc*))
       (equal (fn-vj-articles *vjt-reclaimed*)
              (fn-state-articles (fn-rcl-reclaim-state *vjt-acc* *vjt-t* *vjt-tomb*)))
-      (fn-rcl-tombstonep (fn-article-payload
-                          (fn-find-article *vjt-t* (fn-vj-articles *vjt-reclaimed*))))))
+      ; by specification: the flip -- the payload is a handle; the bytes
+      ; under it are the tombstone.
+      (equal (fn-article-payload (fn-find-article *vjt-t* (fn-vj-articles *vjt-reclaimed*)))
+             *vjt-tomb*)
+      (fn-rcl-tombstonep (fn-hrt-bytes *vjt-prior*
+                                       (fn-article-payload
+                                        (fn-find-article *vjt-t* (fn-vj-articles *vjt-reclaimed*)))))))
 (assert-event
  (and (equal (fn-rcl-existing-action *vjt-t* *vjt-t-payload* '("fn.test") *vjt-reclaimed*)
              :duplicate)
       (equal (vjt-buffer-action *vjt-t* *vjt-t-payload* '("fn.test") *vjt-reclaimed*)
              :duplicate)
       (equal (vjt-buffer-action *vjt-t* *vjt-changed* '("fn.test") *vjt-reclaimed*)
+             :conflict)))
+; Through the post-flip entry over the arena (T's payload is now the
+; tombstone handle 2).
+(assert-event
+ (and (equal (fn-hrt-existing-action *vjt-prior* *vjt-t* *vjt-t-payload* '("fn.test")
+                                     *vjt-reclaimed*)
+             :duplicate)
+      (equal (fn-hrt-existing-action *vjt-prior* *vjt-t* *vjt-changed* '("fn.test")
+                                     *vjt-reclaimed*)
              :conflict)))
 ; Teeth (1): drop "held".
 (assert-event (not (fn-acceptedp *vjt-absent* (fn-state-articles *vjt-acc*))))

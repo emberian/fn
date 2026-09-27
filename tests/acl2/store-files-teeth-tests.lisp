@@ -21,6 +21,7 @@
 (include-book "../../books/store-files-invariants")
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 ; -----------------------------------------------------------------------------
 ; A reachable, non-degenerate witness: the whole publication sequence, driven
@@ -29,10 +30,18 @@
 ; real record, and reaches :completed rather than being written down.
 
 (defconst *sft-groups* '("fn.letters" "fn.test"))
-(defconst *sft-record*
+(defconst *sft-record-wire*
   (fn-record-make 0 0 0 "<zero@example.invalid>" '(90)
                   '("fn.letters" "fn.test")
                   "archive-zero" "content-zero" "release-zero" 2 841000000))
+; The kernel stages HELD ROWS (records-flip): the wire record interned on a
+; fresh arena takes handle 0.
+(defconst *sft-record* (car (fn-hrt-rows (list *sft-record-wire*) nil 0)))
+(assert-event (fn-held-p *sft-record*))
+; by specification: the flip -- the payload is handle 0, whose bytes are the
+; wire record's payload.
+(assert-event (equal (fn-record-payload *sft-record*) 0))
+(assert-event (equal (fn-hrt-bytes (list *sft-record-wire*) 0) '(90)))
 
 (defconst *sft-frontier-staged* (fn-sf-start-frontier (fn-sf-initial-state)))
 (defconst *sft-frontier-durable*

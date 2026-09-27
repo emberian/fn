@@ -29,8 +29,12 @@
                   *tha-principal* *tha-keys* *tha-signatures* *tha-ml-key*
                   :verified :verified
                   (fn-clock-observation 1 841000000000 0 t))))
+; by specification: the flip -- the Store retains the composite's row
+; (books/held-record.lisp fn-hstxa-p): the wire composite beside its article
+; held at the next handle (topic-history-store-node-tests thsn-row); the root
+; source is the first article, handle 0, and the report below handle 1.
 (make-event `(defconst *cts-root-accepted*
-               ',(thsn-identity-commit *cts-enrolled* *cts-root-event*)))
+               ',(thsn-identity-commit *cts-enrolled* (thsn-row *cts-root-event* 0))))
 (assert-event (equal (fn-sf-phase (fn-sn-files *cts-root-accepted*)) :ready))
 
 ; The missing general-proof branch is a valid topic admin proposal at the
@@ -83,7 +87,7 @@
                   :verified :verified
                   (fn-clock-observation 1 841000000000 0 t))))
 (make-event `(defconst *cts-report-accepted*
-               ',(thsn-identity-commit *cts-anchored* *cts-report-event*)))
+               ',(thsn-identity-commit *cts-anchored* (thsn-row *cts-report-event* 1))))
 (make-event `(defconst *cts-admit-result*
                ',(fn-th-prepare-report
                   7 7 7 *cts-report-event* *cts-snapshot*
