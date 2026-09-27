@@ -537,9 +537,115 @@ def pan(args, wire, out):
     return result
 
 
+# -- tin ---------------------------------------------------------------------
+
+def tin(args, wire, out):
+    """Debian tin (NNTPS-able) in a tmux pane: read, follow up, post, cancel.
+
+    tin 2.6 talks TLS from the first byte (-T) to the relay, logs in with
+    AUTHINFO when asked (-A, ~/.newsauth: `server password user`), and
+    reads its newsrc from ~/.newsrc.  The editor appends one body line; the
+    post prompt is answered `p`."""
+    home = out / "tinhome"
+    home.mkdir(parents=True, exist_ok=True)
+    password = Path(args.password_file).read_text().strip()
+    (home / ".newsauth").write_text("127.0.0.1 {} {}\n".format(password, args.user))
+    (home / ".newsauth").chmod(0o600)
+    groups = [g for g in (args.group, args.second_group) if g]
+    (home / ".newsrc").write_text("".join("{}:\n".format(g) for g in groups))
+    tindir = home / ".tin"
+    tindir.mkdir(exist_ok=True)
+    # No first-run questions, no confirmation of quitting, the editor ours.
+    (tindir / "tinrc").write_text(
+        "confirm_choice=0\nauto_reconnect=ON\nshow_description=OFF\n"
+        "use_mouse=OFF\nbeginner_level=OFF\nshow_only_unread_arts=OFF\n"
+        "default_editor_format=%E %F\nshow_signatures=OFF\n")
+    editor = home / "editor.sh"
+    editor.write_text("#!/bin/sh\necho '{}' >> \"$1\"\n".format(BODY.format("tin")))
+    editor.chmod(0o755)
+    base = ("env HOME={h} TERM=xterm EDITOR={e} VISUAL={e} NNTPSERVER=127.0.0.1 "
+            "tin -r -T -A -p {p} -q -d".format(h=shlex.quote(str(home)),
+                                                 e=shlex.quote(str(editor)), p=args.port))
+    version = run(["tin", "-V"]).splitlines()
+    result = {"client": version[0] if version else "tin", "features":
+              [l.strip() for l in version if "NNTP" in l][:1], "actions": {}}
+    acts = result["actions"]
+    run(["tmux", "kill-session", "-t", "tin"])
+    run(["tmux", "new-session", "-d", "-s", "tin", "-x", "132", "-y", "40",
+         base + " 2>{}/tin.stderr; echo TIN-EXITED $?; sleep 600".format(out)])
+    pane = Pane("tin", out)
+    offset = wire.mark("read")
+    ready = pane.wait(r"Group Selection|TIN-EXITED", 90)
+    pane.shot("groups")
+    act = {"groups_screen": bool(ready and "Group Selection" in ready)}
+    acts["read"] = act
+    if not act["groups_screen"]:
+        act["pane_tail"] = [l for l in pane.text().splitlines() if l.strip()][-8:]
+        return result
+    # The cursor to args.group, then into it and open the first thread.
+    pane.keys("g")
+    pane.answer([(r"[Gg]roup", (args.group,))], lambda: pane.wait(
+        r"{}".format(re.escape(args.group)), 0.1), 10)
+    time.sleep(1)
+    pane.keys("Enter")
+    act["group"] = pane.wait(r"{}".format(re.escape(args.group)), 30)
+    time.sleep(1)
+    pane.keys("Enter")
+    act["article"] = wire.wait(offset, r"C: (ARTICLE|BODY|HEAD)[^\n]*\n[^\n]* S: \d{3}[^\n]*", 60)
+    pane.shot("read")
+
+    # follow up to the article on screen
+    offset = wire.mark("reply")
+    pane.keys("f")
+    final, seen = pane.answer([(r"[Pp]ost.*followup.*\?|[Qq]uote", "y"),
+                               (r"q\)uit, e\)dit.*p\)ost|p\)ost.*:", "p"),
+                               (r"[Cc]ontinue\?|[Aa]re you sure", "y")],
+                              lambda: wire.posted(offset, timeout=0.1), 90)
+    pane.shot("reply")
+    acts["reply"] = {"prompts": seen, "node": final}
+
+    # post a new article to the group
+    offset = wire.mark("post")
+    pane.keys("q")
+    time.sleep(1)
+    pane.keys("w")
+    final, seen = pane.answer([(r"[Ss]ubject", (SUBJECT.format("tin"),)),
+                               (r"q\)uit, e\)dit.*p\)ost|p\)ost.*:", "p"),
+                               (r"[Cc]ontinue\?|[Aa]re you sure", "y")],
+                              lambda: wire.posted(offset, timeout=0.1), 90)
+    pane.shot("post")
+    acts["post"] = {"prompts": seen, "node": final}
+
+    # cancel it: rescan, last article, D (delete/cancel), confirm.
+    offset = wire.mark("cancel")
+    time.sleep(2)
+    pane.keys("C-r")                                   # reread the group
+    time.sleep(3)
+    pane.keys("End")
+    time.sleep(1)
+    pane.keys("Enter")
+    act = {"opened": wire.wait(offset, r"S: Subject: {}".format(
+        re.escape(SUBJECT.format("tin"))), 30)}
+    pane.shot("cancel-open")
+    if act["opened"]:
+        pane.keys("D")
+        final, seen = pane.answer([(r"[Cc]ancel.*\?|[Dd]elete", "d"),
+                                   (r"q\)uit, e\)dit.*p\)ost|p\)ost.*:|[Cc]ancel.*\[", "p"),
+                                   (r"[Aa]re you sure|[Cc]ontinue\?", "y")],
+                                  lambda: wire.posted(offset, timeout=0.1), 60)
+        act.update(prompts=seen, node=final)
+    pane.shot("cancel")
+    acts["cancel"] = act
+    wire.mark("quit")
+    pane.keys("Q")
+    pane.answer([(r"[Qq]uit.*\?|[Ee]xit.*\?", "y")], lambda: pane.wait("TIN-EXITED", 0.1), 20)
+    run(["tmux", "kill-session", "-t", "tin"])
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("client", choices=("slrn", "pan"))
+    parser.add_argument("client", choices=("slrn", "pan", "tin"))
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--user", required=True)
     parser.add_argument("--password-file", required=True)
@@ -552,7 +658,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     wire = Wire(args.wire)
     try:
-        result = (slrn if args.client == "slrn" else pan)(args, wire, out)
+        result = {"slrn": slrn, "pan": pan, "tin": tin}[args.client](args, wire, out)
     except Exception as error:                          # noqa: BLE001
         result = {"error": "{}: {}".format(type(error).__name__, error)}
     print(json.dumps(result, default=str))

@@ -245,6 +245,13 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
         finally:
             diagnostics = stop_and_diagnostics(owner, timeout=120)
         assert owner.returncode == 0, diagnostics
+        # The same history with no checkpoint yet: `store checkpoint' below
+        # rotates the log and drops the segments the checkpoint covers
+        # (format 9), after which a store without its checkpoint is refused
+        # by name (checkpoint-damaged), not replayed.  The full replay runs
+        # on this copy (lane fitness, for release-machinery's native-rm1).
+        cls.base_log = cls.tmp / "base-log"
+        shutil.copytree(cls.base, cls.base_log, symlinks=True)
         published = cls.full.run(["operator", cfg, "store", "checkpoint"])
         assert published.returncode == 0, published.stderr.decode()
 
@@ -255,19 +262,19 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
         if out:
             Path(out).write_text(json.dumps(REPORT, indent=1, sort_keys=True))
 
-    def copy(self, name):
-        """A byte-identical copy of the base store and its configuration."""
+    def copy(self, name, base=None):
+        """A byte-identical copy of the base store (or BASE) and its configuration."""
         store = self.tmp / name
-        shutil.copytree(self.base, store, symlinks=True)
+        shutil.copytree(base or self.base, store, symlinks=True)
         port = free_port()
         return config(self.tmp / (name + ".toml"), store, port), store, port
 
-    def pair(self, name, action):
+    def pair(self, name, action, base=None):
         """ACTION(image, config, store, port) -> outcome, on a fresh copy of
-        the base for each image; returns both outcomes and both trees."""
+        the base (or BASE) for each image; returns both outcomes and both trees."""
         results = {}
         for label, image in (("full", self.full), ("stripped", self.stripped)):
-            cfg, store, port = self.copy("{}-{}".format(name, label))
+            cfg, store, port = self.copy("{}-{}".format(name, label), base)
             outcome = action(image, cfg, store, port)
             results[label] = (outcome, tree(store), store)
         return results
@@ -390,10 +397,12 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
         self.compare("corrupt-checkpoint", self.pair("corrupt", act))
 
     def test_full_replay(self):
+        """The whole log from segment 1, no checkpoint ever published."""
         def act(image, cfg, store, port):
-            for p in sorted(store.rglob("*"), reverse=True):
-                if "checkpoint" in p.name and p.is_file():
-                    p.unlink()
+            self.assertTrue((store / "journal" / "000001.log").is_file(),
+                            "the uncompacted base keeps segment 1")
+            self.assertFalse([p for p in store.rglob("*") if "checkpoint" in p.name],
+                             "the uncompacted base has no checkpoint")
             status = self.status(image, cfg)
             owner = image.start(["operator", cfg, "run"])
             wait_for_announcement(owner, b"LISTENING ", timeout=300)
@@ -404,7 +413,28 @@ class ReleaseAgainstReferenceTests(unittest.TestCase):
             transcript = s.close()
             stop_and_diagnostics(owner, timeout=120)
             return list(status) + [owner.returncode, transcript]
-        self.compare("full-replay", self.pair("replay", act))
+        self.compare("full-replay", self.pair("replay", act, base=self.base_log))
+
+    def test_checkpoint_deleted_after_compaction_is_refused_by_name(self):
+        """An operator error: the checkpoint removed after `store checkpoint'
+        dropped the segments it covers.  That is not a replay; both images
+        refuse the open by name (books/store-log-segments.lisp
+        :checkpoint-damaged) at `status' and at `run', and write nothing."""
+        def act(image, cfg, store, port):
+            self.assertFalse((store / "journal" / "000001.log").exists(),
+                             "the checkpointed base dropped segment 1")
+            for p in sorted(store.rglob("*"), reverse=True):
+                if "checkpoint" in p.name and p.is_file():
+                    p.unlink()
+            before = tree(store)
+            status = self.status(image, cfg)
+            run = image.run(["operator", cfg, "run"], timeout=300)
+            for code, err in ((status[0], status[2]), (run.returncode, run.stderr)):
+                self.assertEqual(code, 1, err)
+                self.assertIn(b"reason=checkpoint-damaged", err)
+            self.assertEqual(tree(store), before, "a refused open wrote nothing")
+            return list(status) + [run.returncode, run.stdout, run.stderr]
+        self.compare("checkpoint-deleted-after-compaction", self.pair("dropped", act))
 
     def test_export_and_import(self):
         exported = self.tmp / "export"
