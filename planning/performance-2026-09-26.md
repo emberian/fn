@@ -307,7 +307,7 @@ wire bytes identical. Row 11 narrowed to the allocation and PKT-546
 
 ### Consumer poll (this lane: `consumer-poll.json`)
 
-tests/perf/native_consumer_poll_cost.py on this image: 127 ms median at ACK 0
+planning/evidence/native-consumer-poll-cost/native_consumer_poll_cost.py on this image: 127 ms median at ACK 0
 and 135 ms at ACK 96 of 118 events (58 ms on 2026-09-24's quieter box). A
 poll answers at most one 16-event cursor window, so "a 1,000-entry page" is
 about 63 polls; each is a CLI process, and the process start is the cost.
