@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1134 |
-| Certification roots in the Makefile | 1099 |
-| Books inside the root closure | 1123 |
-| `defthm` and `defthmd` events | 16514 |
-| `defun` events | 11442 |
-| Functions with verified guards | 2377 |
-| Functions declared `:verify-guards nil` and never verified | 981 |
-| Functions left at the default with an explicit guard | 6373 |
-| Functions left at the default with no guard | 1711 |
-| `assert-event` checks | 16741 |
-| `must-fail` checks | 2023 |
+| Books read | 1138 |
+| Certification roots in the Makefile | 1103 |
+| Books inside the root closure | 1127 |
+| `defthm` and `defthmd` events | 16530 |
+| `defun` events | 11468 |
+| Functions with verified guards | 2382 |
+| Functions declared `:verify-guards nil` and never verified | 984 |
+| Functions left at the default with an explicit guard | 6380 |
+| Functions left at the default with no guard | 1722 |
+| `assert-event` checks | 16803 |
+| `must-fail` checks | 2038 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 82 |
 | Theorems flagged SUSPECT by shape | 170 |
 | Export-hygiene warnings | 187 |
 | Enabled-projection warnings | 44 |
 | Teeth-form warnings | 206 |
-| Include-hygiene warnings | 1105 |
-| Host-names warnings | 1297 |
+| Include-hygiene warnings | 1111 |
+| Host-names warnings | 1300 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -371,6 +371,8 @@ that `make certify` requests.
 | `books/consumer-store-events.lisp` | root | 1 | 13 | 13/0/0/0 | 0 | 0 | 0 |
 | `books/consumer-store-invariants.lisp` | root | 101 | 5 | 0/5/0/0 | 0 | 0 | 0 |
 | `books/consumer-store-projection.lisp` | root | 2 | 4 | 4/0/0/0 | 0 | 0 | 0 |
+| `books/consumer-wait-codec.lisp` | root | 10 | 7 | 3/2/2/0 | 0 | 0 | 0 |
+| `books/consumer-wait.lisp` | root | 6 | 8 | 2/1/5/0 | 0 | 0 | 0 |
 | `books/container-invariants.lisp` | root | 25 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/container.lisp` | root | 2 | 43 | 0/1/42/0 | 0 | 0 | 0 |
 | `books/control-authority.lisp` | root | 34 | 55 | 0/0/55/0 | 0 | 0 | 1 |
@@ -949,6 +951,8 @@ that `make certify` requests.
 | `tests/acl2/consumer-store-node-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 22 | 0 | 0 |
 | `tests/acl2/consumer-store-projection-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 11 | 1 | 0 |
 | `tests/acl2/consumer-topic-store-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 18 | 0 | 0 |
+| `tests/acl2/consumer-wait-codec-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 28 | 5 | 0 |
+| `tests/acl2/consumer-wait-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 34 | 10 | 0 |
 | `tests/acl2/container-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 62 | 0 | 0 |
 | `tests/acl2/control-authority-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 39 | 0 | 0 |
 | `tests/acl2/control-evidence-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 43 | 7 | 0 |
