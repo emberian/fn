@@ -28,7 +28,7 @@
 (defun fn-col-matchp (event group)
   "The poll's selection test: a group-matching accepted article event."
   (let ((article (fn-col-poll-article event)))
-    (and (or (fn-held-p article) (fn-record-p article))
+    (and (fn-col-poll-articlep article)
          (true-listp (fn-record-groups article))
          (member-equal (fn-record-octets-string group)
                        (fn-record-groups article))
@@ -53,7 +53,7 @@
           ((or (not (fn-store-event-p event))
                (not (equal (fn-store-event-sequence event) position)))
            0)
-          ((and (or (fn-hstxa-p event) (fn-stxa-p event))
+          ((and (fn-col-poll-compositep event)
                 (not (fn-col-poll-article event))) 0)
           ((fn-col-matchp event group) 1)
           (t (1+ (colp-offset (cdr events) group (1+ position)
@@ -64,7 +64,7 @@
  (deftheory colp-closed
    '(fn-store-event-p fn-store-event-sequence fn-stxa-p fn-col-poll-article
      fn-record-p fn-record-groups fn-record-octets-string
-     fn-hstxa-p fn-held-p)))
+     fn-hstxa-p fn-held-p fn-col-poll-articlep fn-col-poll-compositep)))
 
 (local
  (defthm colp-scan-position-is-offset
