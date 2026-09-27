@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1306 |
-| Certification roots in the Makefile | 1267 |
-| Books inside the root closure | 1304 |
-| `defthm` and `defthmd` events | 19440 |
-| `defun` events | 13447 |
+| Books read | 1308 |
+| Certification roots in the Makefile | 1269 |
+| Books inside the root closure | 1306 |
+| `defthm` and `defthmd` events | 19466 |
+| `defun` events | 13467 |
 | Functions with verified guards | 2489 |
-| Functions declared `:verify-guards nil` and never verified | 1630 |
-| Functions left at the default with an explicit guard | 7489 |
-| Functions left at the default with no guard | 1839 |
-| `assert-event` checks | 19250 |
-| `must-fail` checks | 2189 |
+| Functions declared `:verify-guards nil` and never verified | 1631 |
+| Functions left at the default with an explicit guard | 7497 |
+| Functions left at the default with no guard | 1850 |
+| `assert-event` checks | 19268 |
+| `must-fail` checks | 2193 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 97 |
-| Theorems flagged SUSPECT by shape | 1013 |
+| Theorems flagged SUSPECT by shape | 1014 |
 | Export-hygiene warnings | 237 |
 | Enabled-projection warnings | 49 |
-| Teeth-form warnings | 230 |
-| Include-hygiene warnings | 1785 |
+| Teeth-form warnings | 231 |
+| Include-hygiene warnings | 1789 |
 | Host-names warnings | 1402 |
 | Hand-written-record warnings | 18 |
 
@@ -199,7 +199,7 @@ that `make certify` requests.
 | `books/bp-node-machine.lisp` | root | 70 | 95 | 47/3/45/0 | 0 | 0 | 3 |
 | `books/bp-node-profile-admission.lisp` | root | 8 | 3 | 1/0/2/0 | 0 | 0 | 0 |
 | `books/bp-node-profile-replay.lisp` | root | 5 | 2 | 0/2/0/0 | 0 | 0 | 0 |
-| `books/bp-node-profile.lisp` | root | 20 | 19 | 0/0/19/0 | 0 | 0 | 1 |
+| `books/bp-node-profile.lisp` | root | 42 | 26 | 0/0/26/0 | 0 | 0 | 2 |
 | `books/bp-node-progress-bridge.lisp` | root | 19 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-guards.lisp` | root | 31 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/bp-node-progress-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 2 |
@@ -213,6 +213,7 @@ that `make certify` requests.
 | `books/bp-node-retire.lisp` | root | 14 | 18 | 0/6/12/0 | 0 | 0 | 0 |
 | `books/bp-node-rotation-buffer.lisp` | root | 20 | 12 | 1/2/8/1 | 0 | 0 | 0 |
 | `books/bp-node-rotation-codec.lisp` | root | 19 | 29 | 22/1/5/1 | 0 | 0 | 0 |
+| `books/bp-node-rotation-due.lisp` | root | 4 | 2 | 0/1/1/0 | 0 | 0 | 0 |
 | `books/bp-node-rotation-slice.lisp` | root | 12 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/bp-node-rotation-step.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 1 |
 | `books/bp-node-rotation.lisp` | root | 28 | 12 | 0/1/11/0 | 0 | 0 | 0 |
@@ -915,7 +916,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-machine-teeth-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 10 | 5 | 0 |
 | `tests/acl2/bp-node-machine-tests.lisp` | root | 1 | 0 | 0/0/0/0 | 47 | 4 | 0 |
 | `tests/acl2/bp-node-profile-admission-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 17 | 6 | 0 |
-| `tests/acl2/bp-node-profile-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 23 | 5 | 0 |
+| `tests/acl2/bp-node-profile-tests.lisp` | root | 0 | 7 | 0/0/0/7 | 32 | 6 | 0 |
 | `tests/acl2/bp-node-progress-premises-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 4 | 0 |
 | `tests/acl2/bp-node-receipt-send-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 38 | 15 | 0 |
 | `tests/acl2/bp-node-receive-boundary-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 29 | 1 | 0 |
@@ -923,6 +924,7 @@ that `make certify` requests.
 | `tests/acl2/bp-node-report-step-tests.lisp` | root | 0 | 5 | 0/5/0/0 | 9 | 1 | 0 |
 | `tests/acl2/bp-node-retire-tests.lisp` | root | 0 | 8 | 0/0/0/8 | 2 | 2 | 0 |
 | `tests/acl2/bp-node-rotation-buffer-tests.lisp` | root | 0 | 9 | 0/9/0/0 | 8 | 0 | 0 |
+| `tests/acl2/bp-node-rotation-due-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 9 | 3 | 0 |
 | `tests/acl2/bp-node-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 44 | 0 | 0 |
 | `tests/acl2/bp-outbound-guards-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 35 | 0 | 0 |
 | `tests/acl2/bp-outbound-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 38 | 0 | 0 |
@@ -1505,6 +1507,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-bpnp-payload-of-held` | `books/bp-node-progress-invariants.lisp` | 14 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-bpnp-primary-of-held` | `books/bp-node-progress-invariants.lisp` | 7 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-bpnp-primary |
 | `fn-bpnp-primary-of-make-bundle` | `books/bp-node-forward-retry.lisp` | 202 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-bpnpf-node-profile-read-older-branch-by-definition` | `books/bp-node-profile.lisp` | 664 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnpf-node-profile-read and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-bpnpf-node-profile-read and the conclusion is that branch's value |
 | `fn-bpnpf-read-absent` | `books/bp-node-profile.lisp` | 337 | arm-of-definition: constant arguments select one IF/COND arm of fn-bpnpf-read and the conclusion is that arm's value |
 | `fn-bpnpp-premises-components` | `books/bp-node-progress-premises.lisp` | 132 | recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-bpnp-step-guard-premisesp |
 | `fn-bpnrs-persist-step-when-uncertain` | `books/bp-node-rotation-step.lisp` | 44 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnp-rotation-persist-step and the conclusion is that arm's value |

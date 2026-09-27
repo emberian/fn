@@ -3571,7 +3571,9 @@
         "fn-bpnr-family-replay-aux-append",
         "fn-bpnp-rotate-step-proposes-only-own-projection",
         "fn-bpnr-retirement-cut-keeps-open-view",
-        "fn-bpnr-retired-names-never-the-selected-directory"
+        "fn-bpnr-retired-names-never-the-selected-directory",
+        "fn-bpnrd-due-rotation-event-by-definition",
+        "fn-bpnrd-due-rotation-preserves-recovery"
       ]
     },
     {
@@ -5554,7 +5556,12 @@
         "fn-bpa-encoding-bound",
         "fn-bpnpf-restart-names-held-beyond-profile",
         "fn-bpnf-family-without-offset-zero-is-not-ready",
-        "fn-bpnf-family-next-memo-is-aux"
+        "fn-bpnf-family-next-memo-is-aux",
+        "fn-bpnpf-node-profile-read-of-octets",
+        "fn-bpnpf-node-profile-read-of-older",
+        "fn-bpnpf-node-profile-read-is-valid",
+        "fn-bpnpf-node-profile-base-is-a-profile",
+        "fn-bpnpf-node-profile-write-never-lowers"
       ]
     },
     {
