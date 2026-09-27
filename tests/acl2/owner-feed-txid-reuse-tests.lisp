@@ -63,3 +63,44 @@
               nil (fn-own-feed-intent-values "peer.example" (fn-record-string-octets "<a@x>")
                                              '(1 2 3) '(4 5) 9 77 3))
              :feed-abort)))
+
+; fn-own-feed-intent-reconcile-kind-reads-no-txid, on a REACHED node that
+; holds the article, its binding and the retention pin (audit packet G1-3,
+; lane audit-fixes): owner-tests' reopened owner (*own-reopened*), where the
+; reconciliation answers :feed-commit.  It answers :feed-commit at the
+; journal's txid 9 and at any other generation, txid and tick; and the three
+; slots it reads matter (mutation witnesses: a changed identity, evidence or
+; Message-ID flips it to :feed-abort) -- so the equality is not the constant
+; answer of the empty node.
+(include-book "owner-tests")
+(defun oft-reopened-node () (fn-sn-node (fn-own-store *own-reopened*)))
+(defun oft-reopened-v (msgid identity evidence generation txid tick)
+  (fn-own-feed-intent-values "out" msgid identity evidence generation txid tick))
+(defun oft-m () (fn-frame-item 1 (own-reopened-intent-values)))
+(defun oft-i () (fn-frame-item 2 (own-reopened-intent-values)))
+(defun oft-e () (fn-frame-item 3 (own-reopened-intent-values)))
+(assert-event
+ (and (equal (fn-own-feed-intent-reconcile-kind
+              (oft-reopened-node) (oft-reopened-v (oft-m) (oft-i) (oft-e) 1 9 0))
+             :feed-commit)
+      (equal (fn-own-feed-intent-reconcile-kind
+              (oft-reopened-node) (oft-reopened-v (oft-m) (oft-i) (oft-e) 1 9 0))
+             (fn-own-feed-intent-reconcile-kind
+              (oft-reopened-node) (oft-reopened-v (oft-m) (oft-i) (oft-e) 3 5 7)))
+      (equal (fn-own-feed-intent-reconcile-kind
+              (oft-reopened-node) (oft-reopened-v (oft-m) (oft-i) (oft-e) 0 77 12))
+             :feed-commit)))
+; Mutation witnesses (each changes one READ slot; the answer flips).
+(assert-event
+ (and (equal (fn-own-feed-intent-reconcile-kind
+              (oft-reopened-node)
+              (oft-reopened-v (oft-m) (fn-record-string-octets "another-obligation") (oft-e) 1 9 0))
+             :feed-abort)
+      (equal (fn-own-feed-intent-reconcile-kind
+              (oft-reopened-node)
+              (oft-reopened-v (oft-m) (oft-i) (fn-record-string-octets "other-evidence") 1 9 0))
+             :feed-abort)
+      (equal (fn-own-feed-intent-reconcile-kind
+              (oft-reopened-node)
+              (oft-reopened-v (fn-record-string-octets "<absent@example>") (oft-i) (oft-e) 1 9 0))
+             :feed-abort)))
