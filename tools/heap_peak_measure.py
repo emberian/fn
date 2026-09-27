@@ -33,6 +33,7 @@ measurement: it decides nothing.
 from __future__ import annotations
 
 import argparse
+import tempfile
 import json
 import os
 import shutil
@@ -53,6 +54,7 @@ from tests.native_process import wait_for_announcement  # noqa: E402
 RIG_FLAGS = ["--max-transactions", "16384", "--max-history-octets", "8388608",
              "--max-record-octets", "196608", "--max-article-octets", "8192",
              "--max-groups-per-article", "16", "--max-open-suffix", "16"]
+LAST_MAXRSS_KB = None
 EXHAUSTED = (b"Heap exhausted", b"HEAP-EXHAUSTED", b"exhausted during garbage collection")
 
 
@@ -77,10 +79,17 @@ def write_config(work: Path, store: Path, port: int) -> Path:
 
 def op(image, config, words, heap_mb, timeout=3600):
     started = time.perf_counter()
-    r = subprocess.run([str(image), "--fn", "operator", str(config)] + words,
-                       env=environment(heap_mb), stdout=subprocess.PIPE,
-                       stderr=subprocess.STDOUT, timeout=timeout)
-    return r.returncode, time.perf_counter() - started, r.stdout
+    global LAST_MAXRSS_KB
+    with tempfile.TemporaryFile() as out:
+        proc = subprocess.Popen([str(image), "--fn", "operator", str(config)] + words,
+                                env=environment(heap_mb), stdout=out,
+                                stderr=subprocess.STDOUT)
+        # wait4: the child's own peak resident set (ru_maxrss, KiB on Linux).
+        _pid, status, usage = os.wait4(proc.pid, 0)
+        proc.returncode = os.waitstatus_to_exitcode(status)
+        LAST_MAXRSS_KB = usage.ru_maxrss
+        out.seek(0)
+        return proc.returncode, time.perf_counter() - started, out.read()
 
 
 def figure(image, config, words):
@@ -152,7 +161,7 @@ def probe(image, kept, work, operation, heap_mb, big_mb):
              if not l.startswith("reclaimed <")][:12]
     shutil.rmtree(trial)
     return {"mb": heap_mb, "rc": rc, "seconds": round(dt, 2), "heap_exhausted": exhausted,
-            "lines": lines}
+            "maxrss_kb": LAST_MAXRSS_KB if operation != "open" else None, "lines": lines}
 
 
 def bisect(image, kept, work, operation, lo, hi, step, big_mb, log):
@@ -189,6 +198,14 @@ def main():
     p.add_argument("--step", type=int, default=16)
     p.add_argument("--big", type=int, default=8192, help="MB for setup steps")
     p.add_argument("--json", required=True)
+    p.add_argument("--flags", default=None,
+                   help="init's profile flags, one string (default: the rig's)")
+    p.add_argument("--kept", default=None,
+                   help="a killed store another run kept (its `kept' directory): "
+                        "measure it instead of initialising and posting")
+    p.add_argument("--rss-at", type=int, default=None,
+                   help="run each operation once at this heap (MB) and record its "
+                        "peak RSS (wait4 ru_maxrss) and seconds, instead of bisecting")
     p.add_argument("--at-figure", action="store_true",
                    help="run each operation once at the launcher's own figure for it "
                         "(`IMAGE --fn heap -- operator CONFIG VERB...') instead of bisecting")
@@ -203,27 +220,33 @@ def main():
            "core_sha256": m.digest(str(image) + ".core"), "articles": a.articles,
            "octets": a.octets, "flags": RIG_FLAGS,
            "started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
-    rc, _dt, text = op(image, config, ["init"] + RIG_FLAGS + ["fn.test"], a.big)
-    out["init"] = text.decode("ascii", "replace")
-    if rc != 0:
-        raise SystemExit("init failed rc=%d: %s" % (rc, out["init"][-400:]))
+    flags = a.flags.split() if a.flags else RIG_FLAGS
+    out["flags"] = flags
+    if a.kept:
+        shutil.copytree(a.kept, store, symlinks=True)
+    else:
+        rc, _dt, text = op(image, config, ["init"] + flags + ["fn.test"], a.big)
+        out["init"] = text.decode("ascii", "replace")
+        if rc != 0:
+            raise SystemExit("init failed rc=%d: %s" % (rc, out["init"][-400:]))
     fig = figure(image, config, ["run"])
     out["figure_run"] = fig
     out["figure_reclaim"] = figure(image, config, ["store", "reclaim"])
     fig_mb = int(fig.split("heap=", 1)[1].split()[0]) if fig.startswith("heap=") else a.big
     out["figure_mb"] = fig_mb
-    proc = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"],
-                            env=environment(fig_mb), stdout=subprocess.PIPE,
-                            stderr=open(work / "owner.stderr", "wb"))
-    wait_for_announcement(proc, b"LISTENING ")
-    started = time.perf_counter()
-    c = m.Conn(port)
-    for i in range(a.articles):
-        rep.post(c, i, a.octets)
-    c.close()
-    out["post_seconds"] = round(time.perf_counter() - started, 1)
-    proc.kill()
-    proc.wait()
+    if not a.kept:
+        proc = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"],
+                                env=environment(max(fig_mb, a.big)), stdout=subprocess.PIPE,
+                                stderr=open(work / "owner.stderr", "wb"))
+        wait_for_announcement(proc, b"LISTENING ")
+        started = time.perf_counter()
+        c = m.Conn(port)
+        for i in range(a.articles):
+            rep.post(c, i, a.octets)
+        c.close()
+        out["post_seconds"] = round(time.perf_counter() - started, 1)
+        proc.kill()
+        proc.wait()
     kept = work / "kept"
     shutil.copytree(store, kept, symlinks=True)
     out["store_octets"] = sum(f.stat().st_size for f in kept.rglob("*") if f.is_file())
@@ -238,6 +261,13 @@ def main():
 
     words_of = {"recover": ["recover"], "open": ["run"], "compact": ["store", "compact"],
                 "reclaim": ["store", "reclaim"]}
+    for operation in a.ops.split(",") if a.rss_at else []:
+        result = probe(image, kept, work, operation, a.rss_at, a.big)
+        result["figure_line"] = figure(image, config, words_of[operation])
+        results[operation] = result
+        log(operation, result)
+        out["operations"] = results
+        Path(a.json).write_text(json.dumps(out, indent=1))
     for operation in a.ops.split(",") if a.at_figure else []:
         line = figure(image, config, words_of[operation])
         mb = int(line.split("heap=", 1)[1].split()[0]) if line.startswith("heap=") else None
@@ -247,7 +277,7 @@ def main():
         log(operation, result)
         out["operations"] = results
         Path(a.json).write_text(json.dumps(out, indent=1))
-    for operation in [] if a.at_figure else a.ops.split(","):
+    for operation in [] if (a.at_figure or a.rss_at) else a.ops.split(","):
         results[operation] = bisect(image, kept, work, operation, a.lo, a.hi, a.step, a.big, log)
         print("== %s least_mb=%s (figure %d MB)" % (operation, results[operation]["least_mb"], fig_mb),
               flush=True)

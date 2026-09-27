@@ -5633,11 +5633,11 @@ fenced (fn-lgk-fence-failed) and the store with it."
 ;;; heap cannot use.  A sixteenth of the reservation, at most
 ;;; +fnn-gc-nursery-octets+ (every reservation of 1 GiB or more, and the
 ;;; figure heap-from-profile's derivation assumes) and at least 8 MiB.
-(defparameter +fnn-gc-nursery-least-octets+ (* 8 1024 1024))
-
+;;; ACL2 decides it (books/heap-store-figure.lisp fn-heap-nursery-trigger, 8 MiB
+;;; least): the launcher's figure holds twice the trigger set here in the
+;;; dynamic space it reserved (fn-heap-with-nursery-holds-the-trigger).
 (defun fnn-gc-nursery-octets ()
-  (max +fnn-gc-nursery-least-octets+
-       (min +fnn-gc-nursery-octets+ (floor (sb-ext:dynamic-space-size) 16))))
+  (fnn-core 'fn-heap-nursery-trigger (sb-ext:dynamic-space-size) +fnn-gc-nursery-octets+))
 
 ;;; `fn redeem HOST[:PORT] CODE LOGIN [--tls] [--cafile PEM]': a friend
 ;;; redeems an invitation code (the stranger rehearsal's stop 10).  The host
