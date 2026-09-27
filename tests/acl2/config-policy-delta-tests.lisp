@@ -117,14 +117,14 @@
             :cases ((equal (car d) :policy))
             :in-theory (e/d (fn-delta-p)
                             (fn-cat-recontext-range fn-cat-count-is-len
-                             fn-cat-at-is-nth fn-cat-p-is-held-listp
+                             fn-cat-at-is-nth fn-cat-p-is-rowsp
                              fn-cat-apply-delta-step fn-cat-withdraw
                              fn-cat-redecide fn-dart-p)))
            ("Subgoal 2" :expand ((fn-cat-apply-in-quanta d cursor quanta keyring
                                                          fn-arena fn-cat)))
            ("Subgoal 1" :in-theory (e/d (fn-delta-p fn-cat-apply-delta)
                                         (fn-cat-recontext-range fn-cat-count-is-len
-                                         fn-cat-at-is-nth fn-cat-p-is-held-listp
+                                         fn-cat-at-is-nth fn-cat-p-is-rowsp
                                          fn-cat-apply-in-quanta min max))))))
 
 ; (2) natp of the cursor.  From -1 the run takes one step (row 0) and stops.
@@ -144,14 +144,14 @@
             :cases ((equal (car d) :policy))
             :in-theory (e/d (fn-delta-p)
                             (fn-cat-recontext-range fn-cat-count-is-len
-                             fn-cat-at-is-nth fn-cat-p-is-held-listp
+                             fn-cat-at-is-nth fn-cat-p-is-rowsp
                              fn-cat-apply-delta-step fn-cat-withdraw
                              fn-cat-redecide fn-dart-p)))
            ("Subgoal 2" :expand ((fn-cat-apply-in-quanta d cursor quanta keyring
                                                          fn-arena fn-cat)))
            ("Subgoal 1" :in-theory (e/d (fn-delta-p fn-cat-apply-delta)
                                         (fn-cat-recontext-range fn-cat-count-is-len
-                                         fn-cat-at-is-nth fn-cat-p-is-held-listp
+                                         fn-cat-at-is-nth fn-cat-p-is-rowsp
                                          fn-cat-apply-in-quanta min max))))))
 
 ; (3) the cursor at or before the range.  From 1 the run re-decides row 1
@@ -173,12 +173,12 @@
             :cases ((equal (car d) :policy))
             :in-theory (e/d (fn-delta-p)
                             (fn-cat-recontext-range fn-cat-count-is-len
-                             fn-cat-at-is-nth fn-cat-p-is-held-listp
+                             fn-cat-at-is-nth fn-cat-p-is-rowsp
                              fn-cat-apply-delta-step fn-cat-withdraw
                              fn-cat-redecide fn-dart-p)))
            ("Subgoal 2" :expand ((fn-cat-apply-in-quanta d cursor quanta keyring
                                                          fn-arena fn-cat)))
            ("Subgoal 1" :in-theory (e/d (fn-delta-p fn-cat-apply-delta)
                                         (fn-cat-recontext-range fn-cat-count-is-len
-                                         fn-cat-at-is-nth fn-cat-p-is-held-listp
+                                         fn-cat-at-is-nth fn-cat-p-is-rowsp
                                          fn-cat-apply-in-quanta min max))))))

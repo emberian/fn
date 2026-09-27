@@ -55,7 +55,7 @@
                      (fn-record-stamp h))))
 
 (verify-guards fn-cat-row-article
-  :hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth)
+  :hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth)
            :use ((:instance fn-cat-handles-inp-at (n (fn-cat-count fn-cat)) (seq seq))))))
 
 ; The rows below I visible at V, newest first (the archive's order).
@@ -73,7 +73,7 @@
         (fn-cat-view-below seq v fn-arena fn-cat)))))
 
 (verify-guards fn-cat-view-below
-  :hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth))))
+  :hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth))))
 
 (defun fn-cat-view-articles (v fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
@@ -87,7 +87,7 @@
 (defun fn-cat-view-find (msgid i v fn-cat)
   (declare (xargs :stobjs fn-cat
                   :guard (and (natp i) (natp v) (<= i (fn-cat-count fn-cat)))
-                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth)))))
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth)))))
   (if (zp i)
       nil
     (let ((seq (- i 1)))
@@ -100,7 +100,7 @@
 (defun fn-cat-view-number-find (group n i v fn-cat)
   (declare (xargs :stobjs fn-cat
                   :guard (and (natp i) (natp v) (<= i (fn-cat-count fn-cat)))
-                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth)))))
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth)))))
   (if (zp i)
       nil
     (let ((seq (- i 1)))
@@ -116,7 +116,7 @@
 (defun fn-cat-view-msgids-okp (i v fn-cat)
   (declare (xargs :stobjs fn-cat
                   :guard (and (natp i) (natp v) (<= i (fn-cat-count fn-cat)))
-                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth)))))
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth)))))
   (if (zp i)
       t
     (let ((seq (- i 1)))
@@ -166,7 +166,7 @@
 (defun fn-cat-view-bound-find (group n i v fn-cat)
   (declare (xargs :stobjs fn-cat
                   :guard (and (natp i) (natp v) (<= i (fn-cat-count fn-cat)))
-                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth)))))
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth)))))
   (if (zp i)
       nil
     (let ((seq (- i 1)))
@@ -259,7 +259,7 @@
 ; The newest visible seq of an ascending list of seqs, or nil.
 (defun fn-cat-view-last-visible (seqs v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)
-                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-held-listp fn-cat-count-is-len fn-cat-at-is-nth)))))
+                  :guard-hints (("Goal" :in-theory (disable fn-cat-p-is-rowsp fn-cat-count-is-len fn-cat-at-is-nth)))))
   (if (consp seqs)
       (let ((rest (fn-cat-view-last-visible (cdr seqs) v fn-cat)))
         (if rest
