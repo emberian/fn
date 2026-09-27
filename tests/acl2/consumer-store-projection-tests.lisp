@@ -2,15 +2,30 @@
 (in-package "ACL2")
 (include-book "../../books/consumer-store-projection")
 (include-book "std/testing/must-fail" :dir :system)
+(include-book "held-rows-tests")
 
 (defconst *cppt-boot* (fn-cpe-make 0 0 0 '(:bootstrap (1) (2))))
 (defconst *cppt-reg* (fn-cpe-make 1 1 1 '(:register (3) (4) (5) 1 1 1)))
-(defconst *cppt-article*
+(defconst *cppt-article-wire*
   (fn-record-make 2 2 2 "<cppt@example.invalid>" '(9) '("g")
                   "archive-cppt" "subject-cppt" "post-cppt" 1 :legacy))
 (defconst *cppt-cursor* (fn-cp-cursor '(1) '(2) '(3) '(4) '(5) 1 1 1 2))
 (defconst *cppt-ack* (fn-cpe-make 3 3 3 (list :ack *cppt-cursor*)))
-(defconst *cppt-history* (list *cppt-boot* *cppt-reg* *cppt-article* *cppt-ack*))
+(defconst *cppt-history-wire*
+  (list *cppt-boot* *cppt-reg* *cppt-article-wire* *cppt-ack*))
+; by specification: the flip -- the store's journal slots are retained rows
+; (books/held-record.lisp; a wire record is no longer fn-store-event-p): the
+; open interns the decoded history in order on a fresh arena (store-intern
+; fn-intern-events, keyring nil at generation 0).  The consumer events pass
+; through; the article is the row at handle 0, whose bytes are its octets.
+(defconst *cppt-history* (fn-hrt-rows *cppt-history-wire* nil 0))
+(defconst *cppt-article* (nth 2 *cppt-history*))
+(assert-event (and (equal (nth 0 *cppt-history*) *cppt-boot*)
+                   (equal (nth 1 *cppt-history*) *cppt-reg*)
+                   (equal (nth 3 *cppt-history*) *cppt-ack*)
+                   (fn-held-p *cppt-article*)
+                   (equal (fn-record-payload *cppt-article*) 0)
+                   (equal (fn-hrt-bytes *cppt-history-wire* 0) '(9))))
 (defconst *cppt-replayed* (fn-cpe-projection-replay nil *cppt-history* 0))
 (assert-event (equal (car *cppt-replayed*) :ok))
 (assert-event (fn-cp-statep (cadr *cppt-replayed*)))

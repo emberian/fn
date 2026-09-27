@@ -4,17 +4,20 @@
 (include-book "std/testing/must-fail" :dir :system)
 
 (defconst *gix-groups* '("fn.one" "fn.two" "fn.three"))
+; by specification: the flip -- an article's payload is an arena handle
+; (natp), not octets: the three distinct payloads (65), (66), (67) are
+; handles 0, 1, 2.
 (defconst *gix-a*
-  (fn-make-article "<gix-a@example.invalid>" '(65)
+  (fn-make-article "<gix-a@example.invalid>" 0
                    '("fn.one" "fn.two")
                    (list (cons "fn.one" 2) (cons "fn.two" 70))
                    t 841000000))
 (defconst *gix-b*
-  (fn-make-article "<gix-b@example.invalid>" '(66)
+  (fn-make-article "<gix-b@example.invalid>" 1
                    '("fn.three") (list (cons "fn.three" 9))
                    t 841000000))
 (defconst *gix-c*
-  (fn-make-article "<gix-c@example.invalid>" '(67)
+  (fn-make-article "<gix-c@example.invalid>" 2
                    '("fn.one") (list (cons "fn.one" 100))
                    t 841000000))
 (defconst *gix-old* (list *gix-a* *gix-b*))
@@ -57,12 +60,13 @@
     "fn.g12" "fn.g13" "fn.g14" "fn.g15" "fn.g16" "fn.g17"
     "fn.g18" "fn.g19" "fn.g20" "fn.g21" "fn.g22" "fn.g23"))
 
+; by specification: the flip -- the shared payload (65) is handle 0.
 (defun gix-many-articles (groups)
   (if (endp groups)
       nil
     (cons (fn-make-article
            (concatenate 'string "<" (car groups) "@example.invalid>")
-           '(65) (list (car groups)) (list (cons (car groups) 1))
+           0 (list (car groups)) (list (cons (car groups) 1))
            t 841000000)
           (gix-many-articles (cdr groups)))))
 

@@ -24,7 +24,9 @@
 ; Executable integration scenarios for acceptance plus retention.
 
 (defconst *node-groups* '("fn.letters" "fn.test"))
-(defconst *node-payload* '(72 105 13 10))
+; by specification: the flip -- the node carries the payload as an arena
+; handle (natp), not octets; one handle per distinct payload.
+(defconst *node-payload* 0)
 (defconst *node-empty* (fn-node-initial-state *node-groups* 8))
 (assert-event (fn-node-statep *node-empty*))
 
@@ -199,7 +201,9 @@
 ; Message-ID, so a witness that conflated them would not satisfy the binding
 ; clause.
 (defconst *node-teeth-groups* '("fn.letters" "fn.test"))
-(defconst *node-teeth-payload* '(72 105 13 10))
+; by specification: the flip -- payloads are handles: (72 105 13 10) is
+; handle 0, the second article's distinct payload (66 121 101 13 10) handle 1.
+(defconst *node-teeth-payload* 0)
 (defconst *node-teeth-empty* (fn-node-initial-state *node-teeth-groups* 12))
 
 (defconst *node-teeth-prepared*
@@ -209,7 +213,7 @@
   (fn-node-complete *node-teeth-prepared* 0 9 :durable))
 (defconst *node-teeth-staged-again*
   (fn-node-prepare *node-teeth-committed* 9 "<b@example.invalid>"
-                   '(66 121 101 13 10) '("fn.letters")
+                   1 '("fn.letters")
                    "archive-b" "content-b" "release-b" 4 841000000))
 
 (assert-event (fn-node-statep *node-teeth-empty*))
@@ -301,11 +305,15 @@
 ; recovery, and malformed-event rejection.  No disk or host result is inferred.
 
 (defconst *node-trace-groups* '("fn.letters" "fn.test"))
-(defconst *node-trace-payload* '(72 105 13 10))
+; by specification: the flip -- a prepare event carries its payload as an
+; arena handle (natp), not octets: the payload (72 105 13 10) is handle 0
+; throughout these traces, the distinct payload (72 105) handle 1.  The
+; malformed event below still carries a non-handle, (not-octets).
+(defconst *node-trace-payload* 0)
 (defconst *node-trace-empty* (fn-node-initial-state *node-trace-groups* 16))
 
 (defconst *node-trace-first-prepare*
-  '(:prepare 9 "<a@example.invalid>" (72 105 13 10)
+  '(:prepare 9 "<a@example.invalid>" 0
              ("fn.letters" "fn.test") "archive-a" "content-a" "release-a" 5 841000000))
 (defconst *node-trace-after-first-prepare*
   (fn-node-step *node-trace-empty* *node-trace-first-prepare*))
@@ -337,28 +345,28 @@
 ; abort, retry, and durable completion.  The first article is then used as an
 ; old binding while later transactions exercise the remaining branches.
 (defconst *node-trace-events*
-  '((:prepare 9 "<a@example.invalid>" (72 105 13 10)
+  '((:prepare 9 "<a@example.invalid>" 0
               ("fn.letters" "fn.test") "archive-a" "content-a" "release-a" 5 841000000)
-    (:prepare 9 "<b@example.invalid>" (72 105 13 10)
+    (:prepare 9 "<b@example.invalid>" 0
               ("fn.letters") "archive-b" "content-b" "release-b" 2 841000000)
     (:complete 99 9 :durable)
     (:complete 0 9 :durable)
-    (:prepare 9 "<c@example.invalid>" (72 105 13 10)
+    (:prepare 9 "<c@example.invalid>" 0
               ("fn.test") "archive-c" "content-c" "release-c" 1 841000000)
     (:complete 1 9 :indeterminate)
     (:recover 1 9 :absent)
-    (:prepare 9 "<b@example.invalid>" (72 105 13 10)
+    (:prepare 9 "<b@example.invalid>" 0
               ("fn.letters") "archive-b" "content-b" "release-b" 2 841000000)
     (:complete 99 9 :durable)
     (:complete 2 9 :indeterminate)
-    (:prepare 9 "<d@example.invalid>" (72 105 13 10)
+    (:prepare 9 "<d@example.invalid>" 0
               ("fn.test") "archive-d" "content-d" "release-d" 1 841000000)
     (:complete 99 9 :durable)
     (:recover 2 9 :committed)
-    (:prepare 9 "<d@example.invalid>" (72 105 13 10)
+    (:prepare 9 "<d@example.invalid>" 0
               ("fn.test") "archive-d" "content-d" "release-d" 1 841000000)
     (:complete 3 9 :aborted)
-    (:prepare 9 "<d@example.invalid>" (72 105 13 10)
+    (:prepare 9 "<d@example.invalid>" 0
               ("fn.test") "archive-d" "content-d" "release-d" 1 841000000)
     (:complete 4 9 :durable)))
 
@@ -402,15 +410,15 @@
 ; arbitrary suffix containing malformed, stale, and refusal events.
 (defconst *node-trace-prefix*
   (fn-node-trace *node-trace-empty*
-                 '((:prepare 9 "<a@example.invalid>" (72 105 13 10)
+                 '((:prepare 9 "<a@example.invalid>" 0
                              ("fn.letters") "archive-a" "content-a" "release-a" 3 841000000)
                    (:complete 0 9 :durable))))
 (defconst *node-trace-suffix*
   '((:bogus)
     (:complete 88 9 :durable)
-    (:prepare 9 "<bad-group@example.invalid>" (72 105)
+    (:prepare 9 "<bad-group@example.invalid>" 1
               ("fn.missing") "archive-bad" "content-bad" "release-bad" 2 841000000)
-    (:prepare 9 "<b@example.invalid>" (72 105)
+    (:prepare 9 "<b@example.invalid>" 1
               ("fn.test") "archive-b" "content-b" "release-b" 2 841000000)
     (:complete 1 9 :indeterminate)
     (:recover 1 9 :absent)))

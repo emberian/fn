@@ -8,10 +8,13 @@
 (defconst *fn-pidx-body*
   '(77 101 115 115 97 103 101 45 73 68 58 32 60 105 110 100 101 120 101 100
     64 102 110 46 105 110 118 97 108 105 100 62 13 10 13 10 88 13 10))
+; by specification: the flip -- the acceptance payload is a handle into the
+; arena (records-flip, books/held-record.lisp); *fn-pidx-body* is interned
+; first, so the article holds handle 0.
 (defconst *fn-pidx-archive*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state '("fn.test")) 1 *fn-pidx-id*
-                      *fn-pidx-body* '("fn.test") 841000000)
+                      0 '("fn.test") 841000000)
    0 1 :durable))
 (defconst *fn-pidx-index*
   (fn-midx-build (fn-state-articles *fn-pidx-archive*)))

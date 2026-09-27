@@ -12,6 +12,7 @@
 (in-package "ACL2")
 (include-book "../../books/consumer-artifact-retry")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 (include-book "std/testing/must-fail" :dir :system)
 
 (defun crt-text (s) (fn-record-string-octets s))
@@ -48,6 +49,14 @@
   (fn-hsig-injected-carrier-octets *crt-source* *crt-principal* *crt-keys* sigs config obs))
 
 ; A Store holding PAYLOAD under MSGID, through the real Store.
+; by specification: the flip -- the Store retains held rows
+; (books/held-record.lisp): the POST entry interns the wire record as the
+; first arena extent (store-intern fn-intern-event), so the store is handed
+; the row at handle 0, and the held article's payload is that handle; the
+; bytes under it are PAYLOAD (fn-hrt-bytes over `crt-wire').
+(defun crt-wire (msgid payload)
+  (fn-record-make 0 0 0 msgid payload *crt-groups*
+                  "crt-pin" "crt-subject" "crt-release" 2 841000000))
 (defun crt-store (msgid payload)
   (fn-sn-finish
    (fn-sn-io (fn-sn-io (fn-sn-io
@@ -55,8 +64,7 @@
       (fn-sn-io (fn-sn-io (fn-sn-io (fn-sn-io
         (fn-sn-initial *crt-groups* 10) :start-frontier nil)
         :frontier-file :ok) :frontier-replace :ok) :frontier-directory :ok)
-      (fn-record-make 0 0 0 msgid payload *crt-groups*
-                      "crt-pin" "crt-subject" "crt-release" 2 841000000))
+      (fn-hrt-row-at (crt-wire msgid payload) 0))
      :record-file :ok) :record-link :ok) :record-directory :ok)))
 (defun crt-held (msgid s)
   (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
@@ -83,7 +91,10 @@
  (let ((held (crt-held *crt-msgid* *crt-s*)))
    (and (fn-sn-statep *crt-s*)
         *crt-oa* *crt-ob*
-        (equal (fn-article-payload held) *crt-oa*)
+        ; by specification: the flip -- the held payload is handle 0, whose
+        ; bytes are the first carrier.
+        (equal (fn-article-payload held) 0)
+        (equal (fn-hrt-bytes (list (crt-wire *crt-msgid* *crt-oa*)) 0) *crt-oa*)
         (equal (first *crt-msgids*) *crt-mo*)
         (equal (second *crt-msgids*) *crt-mo*)
         (not (equal *crt-s1* *crt-s2*))
@@ -107,7 +118,10 @@
 (assert-event
  (let ((held (crt-held *crt-msgid* *crt-s*)))
    (and *crt-oa* *crt-ob-same*
-        (equal (fn-article-payload held) *crt-oa*)
+        ; by specification: the flip -- the held payload is handle 0 over the
+        ; first carrier.
+        (equal (fn-article-payload held) 0)
+        (equal (fn-hrt-bytes (list (crt-wire *crt-msgid* *crt-oa*)) 0) *crt-oa*)
         (equal (first *crt-msgids*) *crt-mo*)
         (equal (third *crt-msgids*) *crt-mo*)
         (equal (fn-rcl-existing-action *crt-msgid* *crt-ob-same* *crt-groups* *crt-s*)
@@ -132,6 +146,9 @@
 (assert-event
  (let ((held (crt-held *crt-msgid* *crt-empty*)))
    (and *crt-oa* *crt-ob*
+        ; by specification: the flip -- nothing is held, so no handle (the
+        ; carrier's handle 0) is held under this Message-ID.
+        (not (equal (fn-article-payload held) 0))
         (not (equal (fn-article-payload held) *crt-oa*))
         (equal (first *crt-msgids*) *crt-mo*)
         (equal (second *crt-msgids*) *crt-mo*)
@@ -163,7 +180,30 @@
  (and *crt-oa* (null *crt-ob-off*)
       (equal (fn-rcl-existing-action *crt-msgid* *crt-ob-off* *crt-groups* *crt-s*)
              :conflict)
-      (equal (fn-article-payload (crt-held *crt-other-msgid* *crt-misfiled*)) *crt-oa*)
+      ; by specification: the flip -- the misfiled article holds handle 0,
+      ; whose bytes are the first carrier.
+      (equal (fn-article-payload (crt-held *crt-other-msgid* *crt-misfiled*)) 0)
+      (equal (fn-hrt-bytes (list (crt-wire *crt-other-msgid* *crt-oa*)) 0) *crt-oa*)
       (equal (fn-rcl-existing-action *crt-other-msgid* *crt-ob* *crt-groups*
                                      *crt-misfiled*)
              :conflict)))
+
+; The same verdicts through the entry the host calls after the flip
+; (books/store-intern.lisp fn-store-existing-action, here
+; fn-hrt-existing-action over the arena that interned the held carrier): the
+; offered octets are compared with the bytes under the held handle.
+(assert-event
+ (equal (fn-hrt-existing-action (list (crt-wire *crt-msgid* *crt-oa*))
+                                *crt-msgid* *crt-ob* *crt-groups* *crt-s*)
+        :conflict))
+(assert-event
+ (equal (fn-hrt-existing-action (list (crt-wire *crt-msgid* *crt-oa*))
+                                *crt-msgid* *crt-ob-same* *crt-groups* *crt-s*)
+        :duplicate))
+(assert-event
+ (null (fn-hrt-existing-action (list (crt-wire *crt-other-msgid* *crt-oa*))
+                               *crt-msgid* *crt-ob* *crt-groups* *crt-empty*)))
+(assert-event
+ (equal (fn-hrt-existing-action (list (crt-wire *crt-other-msgid* *crt-oa*))
+                                *crt-other-msgid* *crt-ob* *crt-groups* *crt-misfiled*)
+        :conflict))

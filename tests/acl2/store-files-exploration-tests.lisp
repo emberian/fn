@@ -16,6 +16,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-files")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 (defconst *sfe-groups* '("fn.letters" "fn.test"))
 (defconst *sfe-capacity* 4)
@@ -23,11 +24,11 @@
 (defconst *sfe-max-records* 2)
 (defconst *sfe-fuel* 10000)
 
-(defconst *sfe-record-0*
+(defconst *sfe-record-0-wire*
   (fn-record-make 0 0 0 "<zero@example.invalid>" '(90)
                   '("fn.letters") "archive-zero" "content-zero"
                   "release-zero" 1 841000000))
-(defconst *sfe-record-1*
+(defconst *sfe-record-1-wire*
   (fn-record-make 1 1 1 "<one@example.invalid>" '(79)
                   '("fn.test") "archive-one" "content-one"
                   "release-one" 1 841000000))
@@ -35,10 +36,34 @@
 ; reservation 0 was consumed without a record (refusal or known abort) and
 ; reservation 1 was made durable, so its presence in the graph shows the gap
 ; path refuse-then-publish is explored.
-(defconst *sfe-record-0-gap*
+(defconst *sfe-record-0-gap-wire*
   (fn-record-make 0 1 1 "<gap@example.invalid>" '(71)
                   '("fn.letters") "archive-gap" "content-gap"
                   "release-gap" 1 841000000))
+
+; The kernel stages HELD ROWS (records-flip): the three wire records
+; interned in order on one arena take the distinct handles 0, 1, 2.  The
+; explored alphabet is the same three records and the same events; only the
+; payload position's representation changed (octets to a handle), and no
+; kernel transition reads it, so the counts below are unchanged.
+(defconst *sfe-wire*
+  (list *sfe-record-0-wire* *sfe-record-1-wire* *sfe-record-0-gap-wire*))
+(defconst *sfe-rows* (fn-hrt-rows *sfe-wire* nil 0))
+(defconst *sfe-record-0* (nth 0 *sfe-rows*))
+(defconst *sfe-record-1* (nth 1 *sfe-rows*))
+(defconst *sfe-record-0-gap* (nth 2 *sfe-rows*))
+(assert-event (and (fn-held-p *sfe-record-0*) (fn-held-p *sfe-record-1*)
+                   (fn-held-p *sfe-record-0-gap*)))
+; by specification: the flip -- the payloads are handles; the bytes under
+; them are the wire records' payloads.
+(assert-event (equal (list (fn-record-payload *sfe-record-0*)
+                           (fn-record-payload *sfe-record-1*)
+                           (fn-record-payload *sfe-record-0-gap*))
+                     '(0 1 2)))
+(assert-event (equal (list (fn-hrt-bytes *sfe-wire* 0)
+                           (fn-hrt-bytes *sfe-wire* 1)
+                           (fn-hrt-bytes *sfe-wire* 2))
+                     '((90) (79) (71))))
 
 ; The event dispatcher calls the storage kernel directly.  It deliberately
 ; carries no alternate phase or acceptance semantics.  fn-sf-lose-success is
