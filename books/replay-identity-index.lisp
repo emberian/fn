@@ -2,8 +2,9 @@
 ; it advances, and its history recognizer reads each record's kind once
 ; (PRF-242).
 ;
-; Measured before this book (planning/evidence/open-by-index-2026-09-26.md,
-; hbox sb-sprof of the 40,001-event fixture t40k-2k-cp5): a full replay spent
+; Measured before this book (lane open-by-index's hbox sb-sprof of the
+; 40,001-event fixture t40k-2k-cp5, quoted in
+; planning/evidence/replay-identity-2026-09-27.md): a full replay spent
 ; 51.7 percent of its samples in fn-retain-known-id-scanp and 23.0 percent in
 ; fn-acceptedp.  Each replayed article asks two identity questions of the node
 ; the replay has built so far, and both were a walk of a list that grows with

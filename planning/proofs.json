@@ -8038,9 +8038,11 @@
         "books/owner-store-indexed.lisp",
         "host/store-node-host.lisp",
         "host/owner-host.lisp",
-        "planning/evidence/replay-identity-2026-09-27.md"
+        "planning/evidence/replay-identity-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T025737Z-2413991.json",
+        "planning/evidence/manifests/certify-20260927T045015Z-3559746.json"
       ],
-      "progress_note": "Lane replay-identity (2026-09-27): REPL-admitted on persvati (every form of both books and both test books).",
+      "progress_note": "Lane replay-identity (2026-09-27): REPL-admitted on persvati (every form of both books and both test books); certified by persvati farm run run-20260927T025618Z-b42a (certify-20260927T025737Z-2413991: the two books, owner-store-indexed and their four test books plus store-carried-folds-tests, passed; owner-store-indexed 10.7 s of which 6.7 s is its include of owner-offer-indexed, no event over 0.4 s); hbox certified the two books again for the image. The book's header comment then changed (a citation): persvati run run-20260927T044936Z-d99b certified books/replay-identity-index and its tests at the final bytes (certify-20260927T045015Z-3559746).",
       "events": [
         "fn-rii-sco-extend-is-sco-extend",
         "fn-rii-classified-open-is-classified-open",
