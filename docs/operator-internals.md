@@ -193,7 +193,7 @@ R, A, G and the name bound within their codec ceilings; R at most 4,294,966,940 
 `1 <= K <= T`; each namespace count in `1..2^32-1`.
 
 ```text
-fn operator /path/to/fn.toml init --max-transactions 100000 --max-article-octets 20000 fn.letters
+fn operator /path/to/fn.toml init --max-transactions 100000 --max-history-octets 268435456 --max-article-octets 20000 fn.letters
 fn operator /path/to/fn.toml init --profile development fn.letters   # 128 transactions, 24 MiB
 fn operator /path/to/fn.toml init --profile scale fn.letters         # 4096 transactions, 768 MiB
 ```

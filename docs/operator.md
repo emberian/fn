@@ -711,7 +711,7 @@ A store's size limits are set by `init` and never change. Under a `mission`,
 choose them yourself, or to raise them later through an export:
 
 ```text
-fn operator /path/to/fn.toml init --max-transactions 100000 --max-article-octets 20000 fn.letters
+fn operator /path/to/fn.toml init --max-transactions 100000 --max-history-octets 268435456 --max-article-octets 20000 fn.letters
 fn operator /path/to/fn.toml store export /srv/fn-archive
 fn operator /path/to/fn.toml store import /srv/fn-archive --max-transactions 1000000
 ```

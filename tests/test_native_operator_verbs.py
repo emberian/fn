@@ -668,8 +668,8 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         groups = ["fn.g{}".format(n) for n in range(12)]
         created = self.operator(
             "init", "--profile", "development", "--max-history-octets", "262144",
-            "--max-record-octets", "262144", "--max-article-octets", "200000",
-            *groups)
+            "--max-record-octets", "196608", "--max-article-octets", "32768",
+            "--max-groups-per-article", "16", *groups)
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         owner = self.start_owner(IMAGE)
         # One group, then three: the stored charge is the payload as stored
@@ -696,16 +696,17 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         want_left = record + 4096 + 1600
         filler_total = room["history-bound"] - room["bytes-used"] - want_left
         owner = self.start_owner(IMAGE)
-        fill = 0
+        fill, count = 0, 0
         while filler_total - fill > 0:
-            size = min(150000, filler_total - fill - 320 - injected - 200)
+            size = min(30000, filler_total - fill - 320 - injected - 200)
             if size < 200:
                 break
             body = self.body_of(size)
-            reply, sent = self.post_article("<xp-f{:03d}@example.invalid>".format(fill % 1000),
+            reply, sent = self.post_article("<xp-f{:03d}@example.invalid>".format(count),
                                             groups[:1], body)
             self.assertEqual(reply, "240 article received OK")
             fill += sent + injected + 320
+            count += 1
         self.stop(owner)
         left = self.headroom()
         # The crosspost's stored payload P: its bytes plus the injected
@@ -757,9 +758,21 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
     def test_init_writes_the_operators_fields_and_status_prints_them(self):
         # D27: no flag is the default profile; flags set fields; a relation
         # the fields break is refused by its name and writes nothing.
-        created = self.operator("init", "--max-transactions", "1000",
+        # The default H is 1 TiB, whose full store no machine holds (the
+        # arena and the memberships H / 320 bounds): since lane
+        # membership-budget `init' refuses it by name unless a target budget
+        # is named (FN_INIT_BUDGET_MB, a store for another machine).
+        refused = self.operator("init", "--max-transactions", "1000",
                                 "--max-article-octets", "20000", "fn.test")
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
+        self.assertIn(b"refused init-budget-cannot-hold-profile profile=custom "
+                      b"sizing=requested reservation=", refused.stderr)
+        self.assertFalse(self.store.exists() and any(self.store.iterdir()))
+        created = self.operator("init", "--max-transactions", "1000",
+                                "--max-article-octets", "20000", "fn.test",
+                                env=dict(environment(), FN_INIT_BUDGET_MB="99999999"))
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.assertIn(b"within-budget=no target-budget=99999999 MB", created.stdout)
         fields = self.profile_line()
         self.assertEqual(fields["format"], 9)   # the record log (fn-store-9)
         self.assertEqual(fields["max-transactions"], 1000)
