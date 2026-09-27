@@ -997,6 +997,70 @@ class LintReportingTests(unittest.TestCase):
                       ledger.ledger_markdown(ledger_data))
 
 
+class DefkeystoneExpansionTests(unittest.TestCase):
+    """`defkeystone` (books/defkeystone.lisp) is a macro from another book;
+    the ledger expands it itself, never by evaluating.
+
+    The Lisp macro's expansion of one sample is pinned to a literal by
+    tests/acl2/defkeystone-tests.lisp; this reads the same two constants from
+    that book and requires the Python expansion to equal the same literal,
+    so the static tools and ACL2 cannot drift apart silently."""
+
+    BOOK = Path(__file__).resolve().parents[1] / "tests/acl2/defkeystone-tests.lisp"
+
+    def constants(self) -> dict:
+        forms = ledger.read_forms(self.BOOK.read_text(encoding="utf-8"))
+        return {str(form[1]): form[2] for form in forms
+                if ledger.head(form) == "defconst"}, forms
+
+    def test_expansion_equals_the_literal_the_lisp_macro_is_pinned_to(self):
+        constants, _forms = self.constants()
+        sample = constants["*fn-dkt-sample*"][1]
+        expected = constants["*fn-dkt-sample-expansion*"][1]
+        self.assertEqual(ledger.defkeystone_expansion(sample), [expected])
+
+    def test_the_sample_is_the_form_the_book_admits(self):
+        constants, forms = self.constants()
+        admitted = [form for form in forms if ledger.head(form) == "defkeystone"]
+        self.assertEqual(admitted, [constants["*fn-dkt-sample*"][1]])
+
+    def test_the_book_sees_the_keystone_and_its_teeth(self):
+        source = self.BOOK.read_text(encoding="utf-8")
+        book = tree_from({"tests/acl2/k.lisp": source}).books["tests/acl2/k.lisp"]
+        names = {theorem.name for theorem in book.theorems}
+        self.assertIn("fn-dkt-add-adds", names)
+        # the weakened theorems are asked to FAIL, so they are not theorems
+        self.assertNotIn("fn-dkt-add-adds-without-natp", names)
+        self.assertEqual(book.paired_must_fails,
+                         {"fn-dkt-add-adds-without-natp",
+                          "fn-dkt-add-adds-without-small",
+                          "fn-dkt-add-adds-mutant-off-by-one"})
+        # three generated must-fails, three literal ones around refused forms
+        self.assertEqual(book.must_fails, 6)
+
+    def test_a_form_the_macro_refuses_expands_to_nothing(self):
+        refused = ledger.read_forms(
+            "(defkeystone k (implies (and (p x) (q x)) (r x))"
+            " :subject r :hyps (p q) :witness ((x 1)) :breaks ((p ((x 2)))))")[0]
+        self.assertEqual(ledger.defkeystone_expansion(refused), [])
+        no_witness = ledger.read_forms(
+            "(defkeystone k (implies (p x) (r x)) :subject r :breaks ((h1 ((x 2)))))")[0]
+        self.assertEqual(ledger.defkeystone_expansion(no_witness), [])
+        no_teeth = ledger.read_forms(
+            "(defkeystone k (r x) :subject r :witness ((x 1)))")[0]
+        self.assertEqual(ledger.defkeystone_expansion(no_teeth), [])
+
+    def test_generated_must_fails_are_not_bare_general_claims(self):
+        source = ('(in-package "ACL2")\n'
+                  '(defkeystone k (implies (and (p x) (q x)) (r x)) :subject r'
+                  ' :hyps (p q) :witness ((x 1))'
+                  ' :breaks ((p ((x 2))) (q ((x 3)))))\n'
+                  '(must-fail-checked (defthm bare (r x)))\n')
+        tree = tree_from({"tests/acl2/k.lisp": source})
+        flagged = {entry["check"] for entry in ledger.teeth_form(tree)}
+        self.assertEqual(flagged, {"bare"})
+
+
 class DefrecordExpansionTests(unittest.TestCase):
     """`fn-defrecord` is a macro, so the reader must expand it to see the book.
 
