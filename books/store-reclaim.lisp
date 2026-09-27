@@ -21,8 +21,9 @@
 ;    say every decision the lifetimes table lists reads the same afterwards:
 ;    the duplicate history (a reclaimed Message-ID is still accepted, so it
 ;    never resurrects), the group numbering, each article's group bindings
-;    and stamp, and -- through `fn-pb-existing-action', which the host
-;    calls -- the duplicate-versus-conflict verdict.  A held article is never
+;    and stamp, and -- through `fn-rcl-action-over', which the host's entry
+;    books/store-intern.lisp `fn-store-existing-action' is over alpha --
+;    the duplicate-versus-conflict verdict.  A held article is never
 ;    touched.
 ;
 ; The durable step is not here: `store reclaim' rewrites the article's
@@ -529,32 +530,23 @@
         (equal (fn-sha256 (cdr a)) (fn-rcl-tomb-source-digest tomb))
       (equal (fn-sha256 payload) (fn-rcl-tomb-octets-digest tomb)))))
 
-; The Store's decision for an already held Message-ID, over a store that may
-; hold tombstones: `fn-pb-existing-action' (books/poster-bytes) for a live
-; payload, the digest comparison for a tombstone.  The host calls this in
-; place of `fn-pb-existing-action' at every site that called that.
+; The same-article test for an already held Message-ID whose held payload may
+; be a tombstone: `fn-pb-same-articlep' (books/poster-bytes) for a live
+; payload, the digest comparison for a tombstone.  The host's entry
+; (books/store-intern.lisp fn-store-existing-action) applies it to the bytes
+; read through the arena under the held handle.
 (defun fn-rcl-same-articlep (msgid payload held-payload)
   (declare (xargs :guard t))
   (if (fn-rcl-tombstonep held-payload)
       (fn-rcl-same-as-tombstonep msgid payload held-payload)
     (fn-pb-same-articlep msgid payload held-payload)))
 
-(defun fn-rcl-existing-action (msgid payload groups s)
-  (declare (xargs :guard t))
-  (let ((article (fn-find-article
-                  msgid (fn-state-articles
-                         (fn-node-acceptance (fn-sn-node s))))))
-    (if article
-        (if (and (fn-rcl-same-articlep (fn-record-string-octets msgid) payload
-                                       (fn-article-payload article))
-                 (equal groups (fn-article-groups article)))
-            :duplicate
-          :conflict)
-      nil)))
 
 ; -----------------------------------------------------------------------------
-; The duplicate-versus-conflict verdict (D25) the host calls,
-; `fn-pb-existing-action', read over the article list.
+; The duplicate-versus-conflict verdict (D25) over an octet-model article
+; list: the host's entry books/store-intern.lisp fn-store-existing-action is
+; this over ALPHA of the Store's articles
+; (fn-store-existing-action-is-the-verdict-over-alpha).
 
 (fn-payload-kind fn-rcl-action-over :wire "D25's verdict over an article list; applied over fn-articles-wire-of")
 (defun fn-rcl-action-over (msgid payload groups articles)
@@ -568,22 +560,18 @@
           :conflict)
       nil)))
 
-(defthm fn-rcl-existing-action-is-action-over-by-definition
-  (equal (fn-rcl-existing-action msgid payload groups s)
-         (fn-rcl-action-over msgid payload groups
-                             (fn-state-articles
-                              (fn-node-acceptance (fn-sn-node s)))))
-  :hints (("Goal" :in-theory (enable fn-rcl-existing-action))))
-
-; Before any reclamation the host's new call answers exactly as the old one.
-(defthm fn-rcl-existing-action-is-pb-without-a-tombstone
+; Before any reclamation the verdict is D25's list verdict: where the held
+; payload is no tombstone, fn-rcl-action-over is fn-pb-action-over.  (The
+; store-shaped twin fn-rcl-existing-action, which applied this to the live
+; store's handles, was retired, PKT-EG-4; the host's entry is
+; books/store-intern.lisp fn-store-existing-action, KEYSTONE
+; fn-store-existing-action-is-the-verdict-over-alpha.)
+(defthm fn-rcl-action-over-is-pb-without-a-tombstone
   (implies (not (fn-rcl-tombstonep
-                 (fn-article-payload
-                  (fn-find-article msgid (fn-state-articles
-                                          (fn-node-acceptance (fn-sn-node s)))))))
-           (equal (fn-rcl-existing-action msgid payload groups s)
-                  (fn-pb-existing-action msgid payload groups s)))
-  :hints (("Goal" :in-theory (enable fn-pb-existing-action))))
+                 (fn-article-payload (fn-find-article msgid articles))))
+           (equal (fn-rcl-action-over msgid payload groups articles)
+                  (fn-pb-action-over msgid payload groups articles)))
+  :hints (("Goal" :in-theory (enable fn-rcl-action-over fn-pb-action-over))))
 
 ; Two different octet lists with one SHA-256.
 (defun fn-rcl-collisionp (x y)

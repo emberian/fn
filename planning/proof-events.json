@@ -3453,10 +3453,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-pbb-existing-action-is-pb-existing-action"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-octets-append-back{correspondence}"
         },
         {
@@ -3688,7 +3684,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-rclb-existing-action-is-rcl-existing-action"
+          "name": "fn-rclb-same-articlep-is-rcl-same-articlep"
         },
         {
           "kind": "theorem",

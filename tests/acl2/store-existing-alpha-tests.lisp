@@ -40,12 +40,15 @@
 (defconst *sea-spec* (list *pbt-prior*))
 (defconst *sea-held* (pbt-octets *pbt-dateless* *pbt-a*))
 
-; The flip regression the book repairs: on the live store the list
-; decisions compare with the handle, so a byte-identical resend is a
-; conflict.
-(assert-event (equal (fn-sn-existing-action *pbt-msgid* *sea-held* *pbt-groups* *pbt-store*)
+; The flip regression the book repairs: applied to the live store's own
+; articles (handles) the list decisions compare with the handle, so a
+; byte-identical resend is a conflict (the store-shaped twins that did this
+; were retired, PKT-EG-4).
+(defconst *sea-live-articles*
+  (fn-state-articles (fn-node-acceptance (fn-sn-node *pbt-store*))))
+(assert-event (equal (fn-sn-action-over *pbt-msgid* *sea-held* *pbt-groups* *sea-live-articles*)
                      :conflict))
-(assert-event (equal (fn-pb-existing-action *pbt-msgid* *sea-held* *pbt-groups* *pbt-store*)
+(assert-event (equal (fn-pb-action-over *pbt-msgid* *sea-held* *pbt-groups* *sea-live-articles*)
                      :conflict))
 
 ; -----------------------------------------------------------------------------

@@ -4,11 +4,11 @@
 ; 4.7 ms near N = 0; planning/performance-2026-09-26.md row 5) because three
 ; tests walked a list of N entries with EQUAL:
 ;
-;   1. fn-rclb-existing-action (books/store-reclaim-buffer.lisp) finds the
-;      held article with fn-find-article over the store node's article list.
-;      host/owner-host.lisp fn-owner-existing-action-buffer and
-;      fn-owner-prepare-buffer call it, both from host/native/owner.lisp
-;      fnn-owner-attempt: twice per POST.
+;   1. the buffer verdict (then fn-rclb-existing-action, retired since,
+;      PKT-EG-4) found the held article with fn-find-article over the store
+;      node's article list.  host/owner-host.lisp
+;      fn-owner-existing-action-buffer and fn-owner-prepare-buffer called it,
+;      both from host/native/owner.lisp fnn-owner-attempt: twice per POST.
 ;   2. fn-accept-prepare (books/acceptance.lisp) refuses an accepted
 ;      Message-ID with fn-acceptedp over the same list.  It is reached from
 ;      fn-owner-prepare-buffer through fn-pcar-sbud-prepare ->
@@ -181,7 +181,8 @@
 ; (1) The duplicate-versus-conflict decision the host asks before a prepare.
 
 (defun fn-pidx-existing-action (msgid fn-octets groups o fn-arena)
-  ; fn-rclb-existing-action with the article found through the view trie and,
+  ; D25's tombstone-aware verdict (fn-rclb-same-articlep, the buffer twin of
+  ; fn-rcl-same-articlep) with the article found through the view trie and,
   ; after the records flip, its stored bytes read through the arena by the
   ; article's handle (books/store-intern.lisp fn-handle-bytes).
   (declare (xargs :stobjs (fn-octets fn-arena) :guard t))

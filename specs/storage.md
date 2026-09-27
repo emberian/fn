@@ -848,7 +848,8 @@ article check and is not a served ingress.
 history (`fn-acceptedp` for every Message-ID; a reclaimed ID is refused
 again, never resurrected), group numbering (per-group next numbers), each
 article's bindings, and the D25 duplicate-versus-conflict verdict the host
-calls (`fn-rcl-existing-action`) up to a SHA-256 collision on the compared
+calls (`fn-store-existing-action`, `fn-rcl-action-over` over the stored
+bytes) up to a SHA-256 collision on the compared
 pair. Verdict lookup reads the Store's verdict slot, which reclamation does
 not touch, and an article with a verdict is not reclaimed.
 

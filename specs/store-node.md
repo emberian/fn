@@ -40,14 +40,20 @@ rule has been duplicated in host code or in this composition.
 
 ## Existing article decision
 
-The live duplicate decision is `fn-sn-existing-action` in `books/store-node`.
-For a submitted exact Message-ID, payload octets and ordered selected groups,
-it looks up the article in the composed Store's live node. It returns
+The byte-identity duplicate decision is `fn-sn-action-over` in
+`books/store-node`, over an octet-model article list; the host's entry since
+the records flip is `fn-store-existing-action` (`books/store-intern.lisp`),
+which reads the held bytes through the arena and refines it over alpha
+(`fn-store-existing-action-refines-byte-identity-over-alpha`); since D25 its
+verdict is source-keyed (`fn-pb-action-over`). The store-shaped
+`fn-sn-existing-action` compared with the held handle and was retired
+(PKT-EG-4). For a submitted exact Message-ID, payload octets and ordered
+selected groups, `fn-sn-action-over` looks up the article in the list. It returns
 `:duplicate` exactly when a held article has both equal payload and groups,
 `:conflict` exactly when the ID is held and either differs, and `nil` when
 the ID is missing. The standalone Store and configured owner host prepare
-and query wrappers call this function after converting bounded octets and
-group codes. The function does not infer a durable acceptance or allocate a
+and query wrappers call `fn-store-existing-action` after converting bounded
+octets and group codes. The function does not infer a durable acceptance or allocate a
 local article number. `books/store-node-existing-invariants.lisp` states the
 three exact outcomes; `tests/acl2/store-node-existing-tests.lisp` exercises
 them after a reachable commit and flips payload, groups and binding.

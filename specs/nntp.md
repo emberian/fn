@@ -564,7 +564,8 @@ three parts have three different owners of the *reply*, all of them ACL2.
    distinct `441` line (`fn-post-outcome-store-refusal-kinds-are-distinct`):
    `:duplicate` "this article is already stored here", `:conflict` "a
    different article with this Message-ID is stored here" (the two answers of
-   `fn-pb-existing-action`, which since D25 compares the poster's *source*:
+   the Store's entry `fn-store-existing-action`, D25's `fn-pb-action-over`
+   over the stored bytes, which since D25 compares the poster's *source*:
    each article's source is recovered by the injection inverse
    `fn-inj-source-of`, under the agent the submission's own Path line names,
    and two sources are compared octet for octet; an article that inverse does
@@ -798,8 +799,8 @@ Message-ID (D25). The node answers it from the Store, not from a reader view:
 What is proved, over the decision the host calls
 (`books/visibility-join.lisp`; `host/native/owner.lisp` `fnn-owner-attempt`
 through `host/owner-host.lisp` `fn-owner-existing-action-buffer`, whose
-decision is `fn-rclb-existing-action`; the carried-signature ingress through
-`fn-owner-existing-action`, `fn-rcl-existing-action`): once a Message-ID is
+decision is `fn-pidx-existing-action`; the carried-signature ingress through
+`fn-owner-existing-action`, `fn-store-existing-action`): once a Message-ID is
 held, the decision answers `:duplicate` or `:conflict`, never nil, after any
 Store completion (`fn-vj-a-completion-keeps-a-held-message-id-answered`; the
 cancel that withdraws the target is such a completion, `fn-sn-finish`) and

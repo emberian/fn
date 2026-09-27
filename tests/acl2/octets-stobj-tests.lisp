@@ -4,9 +4,12 @@
 ; (`fn-octets-get{correspondence}' and the others) say that every export's
 ; executable step on the array equals the list operation on the abstraction
 ; whenever the correspondence and the export's guard hold; the consumer
-; keystone `fn-pbb-existing-action-is-pb-existing-action' says the
-; existing-article test over the buffer is the list test on the buffer's
-; logical value whenever the value is an octet list.  Each theorem gets a
+; keystone `fn-pbb-same-articlep-is-pb-same-articlep' says the
+; same-article test over the buffer is the list test on the buffer's
+; logical value whenever the value is an octet list (the verdict over an
+; article list below, `ost-pbb-action-over', is D25's `fn-pb-action-over'
+; with that test: the store-shaped twin fn-pbb-existing-action was retired,
+; PKT-EG-4).  Each theorem gets a
 ; ground positive witness asserting its complete antecedent and conclusion,
 ; and for each hypothesis a witness on which every retained hypothesis
 ; holds, the omitted one fails, and the conclusion fails.  The exec path is
@@ -54,8 +57,7 @@
       (eq (symbol-class 'fn-pbb-info-line-agent (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pbb-block-agent (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pbb-path-agent (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-pbb-same-articlep (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-pbb-existing-action (w state)) :common-lisp-compliant)))
+      (eq (symbol-class 'fn-pbb-same-articlep (w state)) :common-lisp-compliant)))
 
 ; -----------------------------------------------------------------------------
 ; The executable path on a live local buffer: what the host's fill and reads
@@ -489,10 +491,28 @@
       (equal (ost-entry *ost-msgid* *ost-changed* *ost-groups*) :conflict)
       (equal (ost-entry *ost-msgid* *ost-held* (cons "fn.other" *ost-groups*)) :conflict)
       (equal (ost-entry "<ost-absent@example.invalid>" *ost-held* *ost-groups*) nil)))
+; The articles of a Store.
+(defmacro ost-arts (s) `(fn-state-articles (fn-node-acceptance (fn-sn-node ,s))))
 ; The flip regression: on the live store the list decision compares the
 ; offered octets with the handle, so a true resend reads as a conflict.
-(assert-event (equal (fn-pb-existing-action *ost-msgid* *ost-held* *ost-groups* *ost-s*)
+(assert-event (equal (fn-pb-action-over *ost-msgid* *ost-held* *ost-groups* (ost-arts *ost-s*))
                      :conflict))
+
+; The articles of a Store, and D25's verdict over an article list with the
+; submitted payload in the buffer: fn-pb-action-over with the buffer's
+; same-article test (the keystone's subject, fn-pbb-same-articlep).
+(defun ost-pbb-action-over (msgid fn-octets groups articles)
+  (declare (xargs :stobjs fn-octets :verify-guards nil))
+  (let ((article (fn-find-article msgid articles)))
+    (if article
+        (if (and (fn-pbb-same-articlep (fn-record-string-octets msgid) fn-octets
+                                       (fn-article-payload article))
+                 (equal groups (fn-article-groups article)))
+            :duplicate
+          :conflict)
+      nil)))
+(defun ost-held-of (msgid s)
+  (fn-article-payload (fn-find-article msgid (ost-arts s))))
 
 ; The buffer twin, run the way the host runs it: the payload filled into a
 ; live local buffer, the test read by index.
@@ -501,30 +521,30 @@
   (with-local-stobj fn-octets
     (mv-let (r fn-octets)
       (let ((fn-octets (fn-octets-from-list payload fn-octets)))
-        (mv (fn-pbb-existing-action msgid fn-octets groups s) fn-octets))
+        (mv (ost-pbb-action-over msgid fn-octets groups (ost-arts s)) fn-octets))
       r)))
 
 (assert-event
- (and (equal (fn-pb-existing-action *ost-msgid* *ost-held* *ost-groups* *ost-s-wire*) :duplicate)
+ (and (equal (fn-pb-action-over *ost-msgid* *ost-held* *ost-groups* (ost-arts *ost-s-wire*)) :duplicate)
       (equal (ost-existing-action *ost-msgid* *ost-held* *ost-groups* *ost-s-wire*) :duplicate)
       ; the source path: other octets, the same source
-      (equal (fn-pb-existing-action *ost-msgid* *ost-reinjected* *ost-groups* *ost-s-wire*)
+      (equal (fn-pb-action-over *ost-msgid* *ost-reinjected* *ost-groups* (ost-arts *ost-s-wire*))
              :duplicate)
       (equal (ost-existing-action *ost-msgid* *ost-reinjected* *ost-groups* *ost-s-wire*)
              :duplicate)
       ; a changed body is another article
-      (equal (fn-pb-existing-action *ost-msgid* *ost-changed* *ost-groups* *ost-s-wire*) :conflict)
+      (equal (fn-pb-action-over *ost-msgid* *ost-changed* *ost-groups* (ost-arts *ost-s-wire*)) :conflict)
       (equal (ost-existing-action *ost-msgid* *ost-changed* *ost-groups* *ost-s-wire*) :conflict)
       ; the same article to other groups
-      (equal (fn-pb-existing-action *ost-msgid* *ost-held* (cons "fn.other" *ost-groups*)
-                                    *ost-s-wire*)
+      (equal (fn-pb-action-over *ost-msgid* *ost-held* (cons "fn.other" *ost-groups*)
+                                    (ost-arts *ost-s-wire*))
              :conflict)
       (equal (ost-existing-action *ost-msgid* *ost-held* (cons "fn.other" *ost-groups*)
                                   *ost-s-wire*)
              :conflict)
       ; an unknown Message-ID
-      (equal (fn-pb-existing-action "<ost-absent@example.invalid>" *ost-held* *ost-groups*
-                                    *ost-s-wire*)
+      (equal (fn-pb-action-over "<ost-absent@example.invalid>" *ost-held* *ost-groups*
+                                    (ost-arts *ost-s-wire*))
              nil)
       (equal (ost-existing-action "<ost-absent@example.invalid>" *ost-held* *ost-groups*
                                   *ost-s-wire*)
@@ -537,16 +557,36 @@
 (defconst *ost-improper* (append *ost-held* 3))
 (assert-event
  (and (not (fn-octets-p *ost-improper*))
-      (equal (fn-pb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s-wire*)
+      (equal (fn-pb-action-over *ost-msgid* *ost-improper* *ost-groups* (ost-arts *ost-s-wire*))
              :conflict)))
 (defthm ost-t-improper-buffer-reads-to-its-length
-  (equal (fn-pbb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s-wire*)
+  (equal (ost-pbb-action-over *ost-msgid* *ost-improper* *ost-groups* (ost-arts *ost-s-wire*))
          :duplicate)
   :rule-classes nil)
 (must-fail-checked
  (defthm ost-t-existing-action-without-octets-p
-   (equal (fn-pbb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s-wire*)
-          (fn-pb-existing-action *ost-msgid* *ost-improper* *ost-groups* *ost-s-wire*))))
+   (equal (ost-pbb-action-over *ost-msgid* *ost-improper* *ost-groups* (ost-arts *ost-s-wire*))
+          (fn-pb-action-over *ost-msgid* *ost-improper* *ost-groups* (ost-arts *ost-s-wire*)))))
+
+; The keystone itself, fn-pbb-same-articlep-is-pb-same-articlep: its
+; positive witness (an octet list, the held article's own octets) and its
+; one hypothesis removed (the improper value: the buffer reads to its
+; length and matches, the list test does not).
+(defthm ost-t-same-articlep-witness
+ (and (fn-octets-p *ost-held*)
+      (fn-pbb-same-articlep (fn-record-string-octets *ost-msgid*) *ost-held*
+                            (ost-held-of *ost-msgid* *ost-s-wire*))
+      (equal (fn-pbb-same-articlep (fn-record-string-octets *ost-msgid*) *ost-held*
+                                   (ost-held-of *ost-msgid* *ost-s-wire*))
+             (fn-pb-same-articlep (fn-record-string-octets *ost-msgid*) *ost-held*
+                                  (ost-held-of *ost-msgid* *ost-s-wire*))))
+ :rule-classes nil)
+(must-fail-checked
+ (defthm ost-t-same-articlep-without-octets-p
+   (equal (fn-pbb-same-articlep (fn-record-string-octets *ost-msgid*) *ost-improper*
+                                (ost-held-of *ost-msgid* *ost-s-wire*))
+          (fn-pb-same-articlep (fn-record-string-octets *ost-msgid*) *ost-improper*
+                               (ost-held-of *ost-msgid* *ost-s-wire*)))))
 
 ; The buffer's recognizer discharges the list entry's fn-octet-listp test.
 (assert-event (and (fn-octets-p *ost-held*) (fn-octet-listp *ost-held*)
@@ -685,9 +725,9 @@
 ; changed supplied Path and a Path-less resend are other articles; the
 ; list function and the buffer function agree on each.
 (assert-event
- (and (equal (fn-sn-existing-action *pbt-msgid* *ost-v3-resend* *pbt-groups* *ost-tin-wire*)
+ (and (equal (fn-sn-action-over *pbt-msgid* *ost-v3-resend* *pbt-groups* (ost-arts *ost-tin-wire*))
              :conflict)
-      (equal (fn-pb-existing-action *pbt-msgid* *ost-v3-resend* *pbt-groups* *ost-tin-wire*)
+      (equal (fn-pb-action-over *pbt-msgid* *ost-v3-resend* *pbt-groups* (ost-arts *ost-tin-wire*))
              :duplicate)
       (equal (ost-existing-action *pbt-msgid* *ost-v3-resend* *pbt-groups* *ost-tin-wire*)
              :duplicate)
@@ -709,13 +749,13 @@
 (defconst *ost-v3-improper* (append *ost-v3-resend* 3))
 (assert-event
  (and (not (fn-octets-p *ost-v3-improper*))
-      (equal (fn-pb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *ost-tin-wire*)
+      (equal (fn-pb-action-over *pbt-msgid* *ost-v3-improper* *pbt-groups* (ost-arts *ost-tin-wire*))
              :conflict)))
 (defthm ost-t-v3-improper-buffer-reads-to-its-length
-  (equal (fn-pbb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *ost-tin-wire*)
+  (equal (ost-pbb-action-over *pbt-msgid* *ost-v3-improper* *pbt-groups* (ost-arts *ost-tin-wire*))
          :duplicate)
   :rule-classes nil)
 (must-fail-checked
  (defthm ost-t-v3-existing-action-without-octets-p
-   (equal (fn-pbb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *ost-tin-wire*)
-          (fn-pb-existing-action *pbt-msgid* *ost-v3-improper* *pbt-groups* *ost-tin-wire*))))
+   (equal (ost-pbb-action-over *pbt-msgid* *ost-v3-improper* *pbt-groups* (ost-arts *ost-tin-wire*))
+          (fn-pb-action-over *pbt-msgid* *ost-v3-improper* *pbt-groups* (ost-arts *ost-tin-wire*)))))

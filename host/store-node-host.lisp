@@ -53,7 +53,8 @@
 (include-book "../books/store-checkpoint-codec")
 ; fn-bs-scp-program: the checkpoint file name is its rename target.
 (include-book "../books/byte-store-state-checkpoint-program")
-; fn-rcl-existing-action: the duplicate-versus-tombstone decision
+; fn-rcl-same-articlep: the duplicate-versus-tombstone comparison
+; fn-store-existing-action (books/store-intern.lisp) makes, which
 ; fn-store-sn-prepare and the retention prepare call.
 (include-book "../books/store-reclaim")
 (include-book "../books/acceptance-payload-ref")

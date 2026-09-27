@@ -13,7 +13,7 @@
 ; index.lisp).  The bytes under the held handle are either the injected
 ; article or, after `store reclaim', that article's tombstone
 ; (fn-rcl-tombstone-of).  books/poster-bytes-invariants.lisp proves the retry
-; and conflict keystones over fn-pb-existing-action, the decision without
+; and conflict keystones over fn-pb-action-over, the decision without
 ; tombstones; this book closes the two joins the corpus table showed without
 ; a theorem:
 ;

@@ -57,16 +57,19 @@
 
 (verify-guards fn-sn-node)
 
-; The live Store owns the decision for an already held Message-ID.  The host
-; supplies the parsed exact ID, source octets and selected group names; it
-; does not compare an article or infer acceptance from a transport result.
-; Keep the guard independent of fn-sn-statep: that recognizer walks the store
-; and must not run on this served path.
-(defun fn-sn-existing-action (msgid payload groups s)
+; The byte-identity decision for an already held Message-ID, over an
+; OCTET-MODEL article list (each payload the article's bytes).  Since the
+; records flip the Store's own articles hold handles, so this is the
+; specification the host's entry is read against, never applied to the live
+; store: books/store-existing-alpha.lisp relates it to the host-called
+; books/store-intern.lisp fn-store-existing-action over ALPHA of the Store's
+; articles (fn-store-existing-action-refines-byte-identity-over-alpha).  The
+; store-shaped twin fn-sn-existing-action compared the offered octets with a
+; handle and was retired (PKT-EG-4, lane entry-guards-2).
+(fn-payload-kind fn-sn-action-over :wire "the verdict over an octet-model article list (alpha)")
+(defun fn-sn-action-over (msgid payload groups articles)
   (declare (xargs :guard t))
-  (let ((article (fn-find-article
-                  msgid (fn-state-articles
-                         (fn-node-acceptance (fn-sn-node s))))))
+  (let ((article (fn-find-article msgid articles)))
     (if article
         (if (and (equal payload (fn-article-payload article))
                  (equal groups (fn-article-groups article)))

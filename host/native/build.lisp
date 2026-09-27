@@ -101,7 +101,8 @@
 (include-book "books/records-concrete-owner")
 ;; The octet buffer (D27 boundary 6) and the existing-article test over it:
 ;; fn-owner-existing-action-buffer and fn-owner-prepare-buffer
-;; (host/owner-host.lisp) call fn-pbb-existing-action.
+;; (host/owner-host.lisp) call fn-pidx-existing-action, whose buffer
+;; comparison is fn-pbb-same-articlep.
 (include-book "books/octets-stobj")
 ;; The owner's automatic checkpoint publication over the PUBLICATION buffer
 ;; fn-octets-pub (a second stobj congruent to fn-octets): host/native/owner.lisp
@@ -110,9 +111,9 @@
 ;; and fn-ock-capture-budget (PKT-492, PKT-315).
 (include-book "books/owner-checkpoint-pipeline")
 (include-book "books/poster-bytes-buffer")
-;; D13 (STO-014): the duplicate-versus-conflict verdict over a store that may
-;; hold tombstones.  host/owner-host.lisp and host/store-node-host.lisp call
-;; fn-rcl-existing-action (list payload) and fn-rclb-existing-action (buffer).
+;; D13 (STO-014): the tombstone-aware same-article test over the buffer
+;; (fn-rclb-same-articlep), which fn-pidx-existing-action, the served POST's
+;; duplicate verdict, calls.
 (include-book "books/store-reclaim-buffer")
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
 ;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
