@@ -48,6 +48,9 @@
 ; PRF-191: a POST's Message-ID tests through the owner's view trie
 ; (fn-pidx-existing-action, fn-pidx-sbud-prepare).
 (include-book "../books/post-identity-index")
+; The retention admission of a POST through a carried obligation-id trie
+; (fn-prc-refresh, fn-prc-sbud-prepare; fn-owner-prepare-buffer).
+(include-book "../books/post-retain-carried")
 ; PRF-180: the per-POST caches advanced through the derived event index.
 (include-book "../books/store-carried-folds")
 (include-book "../books/owner-advance-carried")
@@ -919,6 +922,18 @@
 ; fn-pidx-existing-action-is-store-existing-action) and the payload sealed
 ; from the buffer (fn-arena-seal-buffer: no list is retained; the wire
 ; record's list payload lives only for the facts, the context and the budget).
+;; The carried obligation-id trie (books/post-retain-carried.lisp): the
+;; global's only writer is fn-owner-prepare-buffer, which stores
+;; fn-prc-refresh of the value read here, so it always satisfies
+;; fn-prc-carryp (fn-prc-carryp-of-refresh; nil, before the first POST,
+;; by fn-prc-carryp-when-atom).  The recognizer names no owner state, so no
+;; owner step between two POSTs can falsify it.
+(defun fn-owner-retain-carry (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-retain-carry state)
+      (f-get-global 'fn-owner-retain-carry state)
+    nil))
+
 (defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
                                  subject-octets evidence-octets charge
                                  fn-octets fn-arena state)
@@ -967,16 +982,23 @@
                         (fn-intern-row-at record (fn-sn-keyring s)
                                           (fn-sn-keyring-generation s)
                                           (fn-arena-count fn-arena))))
+                 ; The carried obligation-id trie, brought to the Store
+                 ; node's ledger (one put after a commit).
+                 (carry (fn-prc-refresh (fn-owner-retain-carry state)
+                                        (fn-node-retention (fn-sn-node s))))
                  (state (if (equal record :clock-unusable)
                             state
                           (fn-owner-install-ocfg
-                           ; PRF-191: fn-pidx-sbud-prepare, equal to
-                           ; fn-pcar-sbud-prepare over the owner's carried
-                           ; view (fn-pidx-sbud-prepare-is-pcar-sbud-prepare):
-                           ; the duplicate test reads the view trie and the
-                           ; retention admission is decided once.
-                           (fn-pidx-sbud-prepare before row budget)
-                           state))))
+                           ; fn-prc-sbud-prepare, equal to PRF-191's
+                           ; fn-pidx-sbud-prepare under fn-prc-carryp
+                           ; (fn-prc-sbud-prepare-is-pidx-sbud-prepare), so
+                           ; to fn-pcar-sbud-prepare over the owner's carried
+                           ; view (fn-prc-sbud-prepare-of-refresh-is-pcar-
+                           ; sbud-prepare): the duplicate test reads the view
+                           ; trie and the retention admission the carried id
+                           ; trie, decided once.
+                           (fn-prc-sbud-prepare before row budget carry)
+                           (f-put-global 'fn-owner-retain-carry carry state)))))
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
