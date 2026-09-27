@@ -4277,7 +4277,15 @@ same size (fnn-probe-article), so the served reader can frame it."
   ;; never from a global.  This host serves read-only until it owns a writer
   ;; lock as well: it is set to nil explicitly, never left unbound.
   (fnn-core-state 'fn-reader-set-posting nil)
-  (let ((selection (fnn-core-state (if with-store 'fn-reader-use-store 'fn-reader-use-seed))))
+  ;; The seed's payload is sealed first: the seeded archive names it by its
+  ;; arena handle (host/reader-host.lisp fn-reader-use-seed).
+  (unless with-store
+    (let ((payload (fnn-core 'fn-reader-seed-payload)))
+      (unless (fnn-octet-list-p payload) (fnn-fault "unexpected ACL2 octet-list result"))
+      (fnn-seal-octets payload)))
+  (let ((selection (if with-store
+                       (fnn-core-state 'fn-reader-use-store)
+                     (fnn-core-arena-state 'fn-reader-use-seed))))
     (unless (member selection '(:ready :refused))
       (fnn-fault "unexpected ACL2 archive-selection result"))
     (unless (eq selection :ready)

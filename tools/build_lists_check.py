@@ -73,7 +73,7 @@ DTN_OMITTED: dict[str, tuple[str, dict[str, str]]] = {
         {name: "io.lisp's `reader` verb; the DTN image has no NNTP reader by design "
                "(build-dtn.lisp header)"
          for name in ("fn-reader-chunk", "fn-reader-outcome", "fn-reader-reset",
-                      "fn-reader-set-posting", "fn-reader-use-seed",
+                      "fn-reader-set-posting", "fn-reader-use-seed", "fn-reader-seed-payload",
                       "fn-reader-use-store")}),
     "host/native/reader-model-host.lisp": (
         "the differential reader model over books/served, left out by design",

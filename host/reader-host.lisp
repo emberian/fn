@@ -12,11 +12,28 @@
 ; Path, Injection-Info and any generated Message-ID from it.
 (defconst *fn-reader-agent*
   '(102 110 46 101 120 97 109 112 108 101 46 105 110 118 97 108 105 100))
-(defconst *fn-reader-archive*
+;; The seeded archive: one article, number 1 in fn.letters.  Its payload is
+;; a reference into the payload arena (PRF-219: fn-accept-prepare takes the
+;; handle of the sealed payload and refuses anything else).  The seed used to
+;; pass *fn-reader-payload* itself; prepare refused it, the archive was EMPTY,
+;; and GROUP fn.letters answered "211 0 1 0" on the model and on the socket
+;; alike (lane input-loop-2).  The host seals the octets
+;; `fn-reader-seed-payload' names, and `fn-reader-use-seed' selects the seed
+;; at the handle the arena holds them at.  *fn-reader-archive* is the seed at
+;; handle 0, the first seal of a fresh arena (tests/test_served_differential.py
+;; opens over it directly).
+(defun fn-reader-seed-payload ()
+  (declare (xargs :guard t))
+  *fn-reader-payload*)
+
+(defun fn-reader-seed-archive (handle)
+  (declare (xargs :mode :program))
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *fn-reader-groups*) 1 *fn-reader-id*
-                      *fn-reader-payload* *fn-reader-groups* :legacy)
+                      handle *fn-reader-groups* :legacy)
    0 1 :durable))
+
+(defconst *fn-reader-archive* (fn-reader-seed-archive 0))
 
 (defun fn-reader-group-octets (names)
   (declare (xargs :mode :program))
@@ -85,9 +102,17 @@
     (let ((state (f-put-global 'fn-reader-action :refused state)))
       (value :refused))))
 
-(defun fn-reader-use-seed (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-reader-install-selection (fn-rdc-selection *fn-reader-archive* nil) state))
+;; The seed is selected only over an arena whose last sealed payload is the
+;; seed's octets (the host sealed them just before); otherwise refused.
+(defun fn-reader-use-seed (fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let ((count (fn-arena-count fn-arena)))
+    (if (and (posp count)
+             (equal (fn-arena-payload (1- count) fn-arena) (fn-reader-seed-payload)))
+        (fn-reader-install-selection
+         (fn-rdc-selection (fn-reader-seed-archive (1- count)) nil) state)
+      (let ((state (f-put-global 'fn-reader-action :refused state)))
+        (value :refused)))))
 
 ; The operator's posting permission and the host's clock reading.  A clock
 ; reading is an observation, not a computed value: books/clock.lisp says what
