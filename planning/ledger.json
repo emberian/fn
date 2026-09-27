@@ -1026,6 +1026,8 @@
     "books/owner-log",
     "books/owner-results",
     "books/owner-served-bound",
+    "books/transit-bound",
+    "tests/acl2/wire-bounds-tests",
     "books/owner-log-reopen",
     "books/owner-bound-commit",
     "books/consumer-event-index",
@@ -1267,26 +1269,26 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1302,
-    "books_in_root_closure": 1300,
-    "roots": 1263,
-    "theorems": 19316,
-    "functions": 13327,
-    "assert_events": 19110,
+    "books": 1304,
+    "books_in_root_closure": 1302,
+    "roots": 1265,
+    "theorems": 19349,
+    "functions": 13335,
+    "assert_events": 19157,
     "must_fails": 2182,
     "prover_refusals": 0,
     "encapsulates": 97,
     "guards": {
       "verified": 2488,
       "declared-off": 1598,
-      "default-guarded": 7414,
-      "default-unguarded": 1827
+      "default-guarded": 7420,
+      "default-unguarded": 1829
     },
-    "suspect_theorems": 1007,
+    "suspect_theorems": 1009,
     "export_hygiene_warnings": 236,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 229,
-    "include_hygiene_warnings": 1779,
+    "include_hygiene_warnings": 1783,
     "host_names_warnings": 1410,
     "hand_written_record_warnings": 18
   },
@@ -15348,12 +15350,12 @@
       "book": "books/owner.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 109,
-      "functions": 182,
+      "theorems": 110,
+      "functions": 183,
       "guards": {
         "verified": 0,
         "declared-off": 5,
-        "default-guarded": 177,
+        "default-guarded": 178,
         "default-unguarded": 0
       },
       "verify_guards_events": 1,
@@ -16071,12 +16073,12 @@
       "book": "books/peer-inbound.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 77,
-      "functions": 76,
+      "theorems": 79,
+      "functions": 77,
       "guards": {
         "verified": 9,
         "declared-off": 7,
-        "default-guarded": 60,
+        "default-guarded": 61,
         "default-unguarded": 0
       },
       "verify_guards_events": 9,
@@ -18186,12 +18188,12 @@
       "book": "books/served.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 161,
-      "functions": 82,
+      "theorems": 166,
+      "functions": 84,
       "guards": {
         "verified": 2,
         "declared-off": 5,
-        "default-guarded": 75,
+        "default-guarded": 77,
         "default-unguarded": 0
       },
       "verify_guards_events": 2,
@@ -18251,7 +18253,7 @@
         "fn-served-conn-wire-of-make-group-indexed",
         "fn-served-dispatch-without-advance-is-core",
         "fn-served-feed-of-closed-wire",
-        "fn-served-feed-of-handshaking-connection",
+        "fn-served-haltedp-of-conn-with-wire",
         "fn-served-pin-old-or-live-p-cases",
         "fn-served-pin-old-or-live-p-reflexive",
         "fn-served-pin-verdicts-retains-effects",
@@ -22479,6 +22481,35 @@
       ],
       "system_includes": [],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/transit-bound.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 25,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 2,
+      "encapsulates": 0,
+      "includes": [
+        "owner-served-bound"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-tb-wire-close-keeps-the-body-limit",
+        "fn-tb-wire-close-keeps-the-line-limit"
+      ],
       "read_error": null
     },
     {
@@ -33914,10 +33945,10 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 246,
+      "assert_events": 251,
       "must_fails": 5,
       "prover_refusals": 0,
-      "defconsts": 76,
+      "defconsts": 77,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -38593,6 +38624,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/wire-bounds-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 3,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 2
+      },
+      "verify_guards_events": 0,
+      "assert_events": 42,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 30,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/transit-bound",
+        "arena-lift"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/wire-outbound-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -42848,7 +42907,7 @@
     {
       "theorem": "fn-peer-archive-command-pinned-preserves-consistent-session",
       "book": "books/peer-inbound.lisp",
-      "line": 1877,
+      "line": 1918,
       "reasons": [
         "instance-corollary: the statement is fn-nntp-archive-command-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
@@ -42880,7 +42939,7 @@
     {
       "theorem": "fn-peer-full-store-is-a-retry-code",
       "book": "books/peer-inbound.lisp",
-      "line": 1022,
+      "line": 1049,
       "reasons": [
         "arm-of-definition: constant arguments select one IF/COND arm of fn-peer-transit-code and the conclusion is that arm's value"
       ]
@@ -42888,7 +42947,7 @@
     {
       "theorem": "fn-peer-nntp-command-pinned-preserves-consistent-session",
       "book": "books/peer-inbound.lisp",
-      "line": 1892,
+      "line": 1933,
       "reasons": [
         "instance-corollary: the statement is fn-nntp-command-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
@@ -42896,7 +42955,7 @@
     {
       "theorem": "fn-peer-nntp-step-pinned-preserves-consistent-session",
       "book": "books/peer-inbound.lisp",
-      "line": 1907,
+      "line": 1948,
       "reasons": [
         "instance-corollary: the statement is fn-nntp-step-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
@@ -42904,7 +42963,7 @@
     {
       "theorem": "fn-peer-post-step-pinned-preserves-consistent-session",
       "book": "books/peer-inbound.lisp",
-      "line": 1920,
+      "line": 1961,
       "reasons": [
         "instance-corollary: the statement is fn-post-step-pinned-preserves-consistent-session instantiated, discharging nothing"
       ]
@@ -42920,7 +42979,7 @@
     {
       "theorem": "fn-peer-session-base-of-fn-peer-with-base",
       "book": "books/peer-inbound.lisp",
-      "line": 1611,
+      "line": 1652,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -42928,7 +42987,7 @@
     {
       "theorem": "fn-peer-session-base-of-fn-peer-with-node",
       "book": "books/peer-inbound.lisp",
-      "line": 1627,
+      "line": 1668,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -42944,7 +43003,7 @@
     {
       "theorem": "fn-peer-session-cfg-of-fn-peer-with-node",
       "book": "books/peer-inbound.lisp",
-      "line": 1651,
+      "line": 1692,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -42952,7 +43011,7 @@
     {
       "theorem": "fn-peer-session-fields-of-fn-peer-with-refused",
       "book": "books/peer-inbound.lisp",
-      "line": 1692,
+      "line": 1733,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -42968,7 +43027,7 @@
     {
       "theorem": "fn-peer-session-inflight-of-fn-peer-with-node",
       "book": "books/peer-inbound.lisp",
-      "line": 1646,
+      "line": 1687,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -42984,7 +43043,7 @@
     {
       "theorem": "fn-peer-session-node-of-fn-peer-with-node",
       "book": "books/peer-inbound.lisp",
-      "line": 1637,
+      "line": 1678,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -43000,7 +43059,7 @@
     {
       "theorem": "fn-peer-session-peer-of-fn-peer-with-node",
       "book": "books/peer-inbound.lisp",
-      "line": 1632,
+      "line": 1673,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -43016,7 +43075,7 @@
     {
       "theorem": "fn-peer-session-refused-of-fn-peer-with-node",
       "book": "books/peer-inbound.lisp",
-      "line": 1687,
+      "line": 1728,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -43032,7 +43091,7 @@
     {
       "theorem": "fn-peer-session-transfer-of-fn-peer-with-node",
       "book": "books/peer-inbound.lisp",
-      "line": 1641,
+      "line": 1682,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -44387,23 +44446,23 @@
     {
       "theorem": "fn-served-feed-of-closed-wire",
       "book": "books/served.lisp",
-      "line": 2560,
+      "line": 2590,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-served-feed and the conclusion is that arm's value"
       ]
     },
     {
-      "theorem": "fn-served-feed-of-handshaking-connection",
+      "theorem": "fn-served-haltedp-of-conn-with-wire",
       "book": "books/served.lisp",
-      "line": 2569,
+      "line": 1580,
       "reasons": [
-        "arm-of-definition: the hypotheses select one IF/COND arm of fn-served-feed and the conclusion is that arm's value"
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
       "theorem": "fn-served-pin-old-or-live-p-cases",
       "book": "books/served.lisp",
-      "line": 1746,
+      "line": 1776,
       "reasons": [
         "recognizer-body-conclusion: the conclusion is the body of the hypothesis fn-served-pin-old-or-live-p"
       ]
@@ -44411,7 +44470,7 @@
     {
       "theorem": "fn-served-pin-old-or-live-p-reflexive",
       "book": "books/served.lisp",
-      "line": 1719,
+      "line": 1749,
       "reasons": [
         "reflexive-conclusion: a conjunct is (equal X X)"
       ]
@@ -44443,7 +44502,7 @@
     {
       "theorem": "fn-served-post-outcome-effects-by-definition",
       "book": "books/served.lisp",
-      "line": 2077,
+      "line": 2107,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -44485,7 +44544,7 @@
     {
       "theorem": "fn-served-successful-selection-is-the-repinned-dispatch",
       "book": "books/served.lisp",
-      "line": 1806,
+      "line": 1836,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-served-dispatch and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-served-dispatch and the conclusion is that branch's value"
@@ -44502,7 +44561,7 @@
     {
       "theorem": "fn-served-transit-outcome-effects-by-definition",
       "book": "books/served.lisp",
-      "line": 2118,
+      "line": 2148,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -45854,6 +45913,22 @@
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-stxe-keyring-profile and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-stxe-keyring-profile and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-tb-wire-close-keeps-the-body-limit",
+      "book": "books/transit-bound.lisp",
+      "line": 42,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-tb-wire-close-keeps-the-line-limit",
+      "book": "books/transit-bound.lisp",
+      "line": 136,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
     },
     {
@@ -49830,25 +49905,25 @@
       {
         "check": "pt-relay-changes-nothing",
         "book": "tests/acl2/peer-inbound-tests.lisp",
-        "line": 736,
+        "line": 750,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "pt-relay-by-another-node-changes-nothing",
         "book": "tests/acl2/peer-inbound-tests.lisp",
-        "line": 755,
+        "line": 769,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "pt-every-article-is-xref-free",
         "book": "tests/acl2/peer-inbound-tests.lisp",
-        "line": 767,
+        "line": 781,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
         "check": "pt-relay-names-a-node-without-an-identity",
         "book": "tests/acl2/peer-inbound-tests.lisp",
-        "line": 777,
+        "line": 791,
         "reason": "bare-general-claim: the must-fail body has no constant, so it refutes nothing in particular"
       },
       {
@@ -54024,6 +54099,13 @@
         "line": 8,
         "include": "transfer",
         "included": "books/transfer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/transit-bound.lisp",
+        "line": 37,
+        "include": "owner-served-bound",
+        "included": "books/owner-served-bound.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -62704,6 +62786,27 @@
         "line": 95,
         "include": "../../books/wildmat-parser-invariants",
         "included": "books/wildmat-parser-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/wire-bounds-tests.lisp",
+        "line": 10,
+        "include": "../../books/transit-bound",
+        "included": "books/transit-bound.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/wire-bounds-tests.lisp",
+        "line": 11,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/wire-bounds-tests.lisp",
+        "line": 12,
+        "include": "arena-lift",
+        "included": "tests/acl2/arena-lift.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
