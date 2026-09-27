@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 1296 |
 | Certification roots in the Makefile | 1249 |
 | Books inside the root closure | 1285 |
-| `defthm` and `defthmd` events | 19219 |
-| `defun` events | 13160 |
-| Functions with verified guards | 2494 |
+| `defthm` and `defthmd` events | 19224 |
+| `defun` events | 13163 |
+| Functions with verified guards | 2495 |
 | Functions declared `:verify-guards nil` and never verified | 1569 |
-| Functions left at the default with an explicit guard | 7317 |
+| Functions left at the default with an explicit guard | 7319 |
 | Functions left at the default with no guard | 1780 |
-| `assert-event` checks | 18885 |
+| `assert-event` checks | 18888 |
 | `must-fail` checks | 2153 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 97 |
@@ -646,7 +646,7 @@ that `make certify` requests.
 | `books/relay-source-routes.lisp` | closure | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/relay-source.lisp` | root | 33 | 10 | 0/0/9/1 | 0 | 0 | 0 |
 | `books/relay.lisp` | root | 0 | 32 | 0/15/17/0 | 0 | 0 | 0 |
-| `books/replay-identity-index.lisp` | root | 59 | 34 | 18/0/16/0 | 0 | 0 | 0 |
+| `books/replay-identity-index.lisp` | root | 64 | 37 | 19/0/18/0 | 0 | 0 | 0 |
 | `books/replay-invariants.lisp` | root | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/replay.lisp` | root | 37 | 29 | 18/0/11/0 | 0 | 0 | 0 |
 | `books/retention-figures.lisp` | root | 0 | 2 | 0/2/0/0 | 0 | 0 | 0 |
@@ -1242,7 +1242,7 @@ that `make certify` requests.
 | `tests/acl2/records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 22 | 0 | 0 |
 | `tests/acl2/relay-source-routes-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 15 | 5 | 0 |
 | `tests/acl2/relay-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 62 | 4 | 0 |
-| `tests/acl2/replay-identity-index-tests.lisp` | root | 7 | 3 | 0/0/0/3 | 15 | 6 | 0 |
+| `tests/acl2/replay-identity-index-tests.lisp` | root | 7 | 3 | 0/0/0/3 | 18 | 6 | 0 |
 | `tests/acl2/replay-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 65 | 0 | 0 |
 | `tests/acl2/retention-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 55 | 1 | 0 |
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |

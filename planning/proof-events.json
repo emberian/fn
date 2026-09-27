@@ -10988,6 +10988,18 @@
         {
           "kind": "theorem",
           "name": "fn-rii-sco-store-open-is-sco-store-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-extend-open-is-extend-then-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-cpr-resume-paused-node-is-configured"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rii-sco-cpr-finish-configured-is-finish"
         }
       ]
     }

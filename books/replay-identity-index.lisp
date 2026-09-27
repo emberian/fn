@@ -1337,7 +1337,108 @@
 
 (verify-guards fn-rii-classified-open)
 
+; -----------------------------------------------------------------------------
+; 7b. The extension and its open in one call (lane snapshot-open-2).
+;
+; The host extended the checkpoint (fn-rii-sco-extend) and then opened the
+; extension (fn-rii-classified-open) in two calls; the resume checked the
+; checkpoint's node and the drain checked the resumed node again (a second
+; whole-node recognizer, ~0.075 s at 40k, O(state)).  After a resume over a
+; non-empty suffix the paused node is configured
+; (fn-rii-sco-cpr-resume-paused-node-is-configured), so the fused call drains
+; it without the check.
+
+(local
+ (defthm fn-rii-sco-cpr-prefix-paused-node-is-configured
+   (implies (and (consp events)
+                 (fn-sco-pausedp (fn-sco-cpr-prefix cn configs events cs es)))
+            (fn-cnode-statep (fn-sco-at 1 (fn-sco-cpr-prefix cn configs events cs es))))
+   :hints (("Goal" :induct (fn-sco-cpr-prefix cn configs events cs es)
+            :in-theory (e/d (fn-sco-cpr-prefix fn-replay-fault fn-sco-paused fn-sco-pausedp)
+                            (fn-cnode-statep fn-cnode-apply-config fn-cpr-apply-event
+                             fn-cnode-record-acceptablep fn-store-event-p fn-cfg-recordp
+                             fn-replay-advance-okp fn-replay-advance-txid))
+            :expand ((fn-sco-cpr-prefix cn configs events cs es)))
+           ("Subgoal *1/2" :expand ((:free (cn2 c2 s2 e2) (fn-sco-cpr-prefix cn2 c2 nil s2 e2)))))))
+
+(defthm fn-rii-sco-cpr-resume-paused-node-is-configured
+  (implies (and (consp suffix)
+                (fn-sco-pausedp (fn-sco-cpr-resume r configs suffix)))
+           (fn-cnode-statep (fn-sco-at 1 (fn-sco-cpr-resume r configs suffix))))
+  :hints (("Goal" :in-theory (e/d (fn-sco-cpr-resume) (fn-cnode-statep fn-sco-cpr-prefix fn-sco-pausedp fn-sco-at)))))
+
+; The drain of a paused fold whose node is known configured: fn-sco-cpr-finish's
+; logic (fn-cpr-loop from the paused node) without its executable check.
+(defun fn-rii-sco-cpr-finish-configured (r configs)
+  (declare (xargs :guard (and (fn-sco-pausedp r) (fn-cnode-statep (fn-sco-at 1 r)))))
+  (fn-cpr-loop (fn-sco-at 1 r) (fn-sco-nthcdr (nfix (fn-sco-at 2 r)) configs) nil
+               (fn-sco-at 2 r) (fn-sco-at 3 r)))
+
+(defthm fn-rii-sco-cpr-finish-configured-is-finish
+  (implies (fn-sco-pausedp r)
+           (equal (fn-rii-sco-cpr-finish-configured r configs)
+                  (fn-sco-cpr-finish r configs)))
+  :hints (("Goal" :in-theory (e/d (fn-sco-cpr-finish) (fn-cpr-loop fn-cnode-statep)))))
+
+; The open of a paused extension whose node is known configured.
+(defun fn-rii-sco-store-open-resumed (e configs frontier)
+  (declare (xargs :guard (and (fn-sco-pausedp (fn-sco-cpr e))
+                              (fn-cnode-statep (fn-sco-at 1 (fn-sco-cpr e))))
+                  :guard-hints (("Goal" :in-theory (disable fn-cnode-statep fn-cpr-loop
+                                                            fn-rii-sco-cpr-finish-configured-is-finish)
+                                 :use ((:instance fn-rii-sco-cpr-finish-ok-is-configured
+                                                  (r (fn-sco-cpr e))))))))
+  (let ((replayed (fn-rii-sco-cpr-finish-configured (fn-sco-cpr e) configs)))
+    (list replayed (fn-rii-sco-finalize-configured replayed e configs frontier))))
+
+(defthm fn-rii-sco-store-open-resumed-is-store-open
+  (implies (fn-sco-pausedp (fn-sco-cpr e))
+           (equal (fn-rii-sco-store-open-resumed e configs frontier)
+                  (fn-rii-sco-store-open e configs frontier)))
+  :hints (("Goal" :in-theory (e/d (fn-rii-sco-store-open)
+                                  (fn-rii-sco-finalize-configured fn-rii-sco-finalize-from
+                                   fn-sco-cpr-finish fn-cnode-statep fn-cpr-loop)))))
+
+; The extension and its classified open in one call (the host's two calls,
+; fused): after a resume over a non-empty suffix the paused node is configured
+; (fn-rii-sco-cpr-resume-paused-node-is-configured: the resume checked the
+; checkpoint's node and every step keeps it), so the drain does not check it
+; again.
+(defun fn-rii-sco-extend-open (c configs suffix frontier)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((e (fn-rii-sco-extend c configs suffix))
+         (refusal (fn-sopc-open-refusal e)))
+    (list e
+          (if refusal
+              refusal
+            (if (and (consp suffix) (fn-sco-pausedp (fn-sco-cpr e)))
+                (fn-rii-sco-store-open-resumed e configs frontier)
+              (fn-rii-sco-store-open e configs frontier))))))
+
+; KEYSTONE (3).  The fused call is the extension and the classified open, with
+; no hypothesis: host/store-node-host.lisp fn-store-sn-recover-from-checkpoint
+; and fn-store-sn-recover-rows.
+(defthm fn-rii-sco-extend-open-is-extend-then-open
+  (equal (fn-rii-sco-extend-open c configs suffix frontier)
+         (list (fn-rii-sco-extend c configs suffix)
+               (fn-rii-classified-open (fn-rii-sco-extend c configs suffix)
+                                       configs frontier)))
+  :hints (("Goal" :in-theory '(fn-rii-sco-extend-open fn-rii-classified-open)
+           :use ((:instance fn-rii-sco-store-open-resumed-is-store-open
+                            (e (fn-rii-sco-extend c configs suffix)))))))
+
+(verify-guards fn-rii-sco-extend-open
+  :hints (("Goal" :in-theory (e/d (fn-rii-sco-extend)
+                                  (fn-rii-sco-cpr-resume fn-cnode-statep fn-sopc-open-refusal
+                                   fn-rii-sco-store-open fn-rii-sco-store-open-resumed
+                                   fn-replay-identity-loop fn-sco-consumer-resume
+                                   fn-th-prefix-loop fn-cei-build-aux))
+           :use ((:instance fn-rii-sco-cpr-resume-paused-node-is-configured
+                            (r (fn-sco-cpr c)))))))
+
 (in-theory (disable fn-rii-sco-cpr-prefix fn-rii-sco-cpr-resume fn-rii-sco-extend
                     fn-rii-sco-store-open fn-rii-classified-open
                     fn-rii-sf-statep-carried fn-rii-sn-statep-carried
-                    fn-rii-advance-idlep fn-rii-sco-finalize-configured))
+                    fn-rii-advance-idlep fn-rii-sco-finalize-configured
+                    fn-rii-sco-cpr-finish-configured fn-rii-sco-store-open-resumed
+                    fn-rii-sco-extend-open))

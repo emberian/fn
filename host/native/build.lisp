@@ -128,7 +128,8 @@
 (include-book "books/history-columns-store")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
-;; tries and the one-dispatch history recognizer).
+;; tries and the one-dispatch history recognizer), and the store's recover
+;; entries their fusion fn-rii-sco-extend-open (PRF-312).
 (include-book "books/replay-identity-index")
 ;; The subject digest over the buffer (D27 wave C): host/native/io.lisp
 ;; fnn-subject-id-buffer calls fn-shb-subject-id-bounded.

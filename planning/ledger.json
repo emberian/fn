@@ -1256,16 +1256,16 @@
     "books": 1296,
     "books_in_root_closure": 1285,
     "roots": 1249,
-    "theorems": 19219,
-    "functions": 13160,
-    "assert_events": 18885,
+    "theorems": 19224,
+    "functions": 13163,
+    "assert_events": 18888,
     "must_fails": 2153,
     "prover_refusals": 0,
     "encapsulates": 97,
     "guards": {
-      "verified": 2494,
+      "verified": 2495,
       "declared-off": 1569,
-      "default-guarded": 7317,
+      "default-guarded": 7319,
       "default-unguarded": 1780
     },
     "suspect_theorems": 222,
@@ -16913,15 +16913,15 @@
       "book": "books/replay-identity-index.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 59,
-      "functions": 34,
+      "theorems": 64,
+      "functions": 37,
       "guards": {
-        "verified": 18,
+        "verified": 19,
         "declared-off": 0,
-        "default-guarded": 16,
+        "default-guarded": 18,
         "default-unguarded": 0
       },
-      "verify_guards_events": 18,
+      "verify_guards_events": 19,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -33950,10 +33950,10 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 15,
+      "assert_events": 18,
       "must_fails": 6,
       "prover_refusals": 0,
-      "defconsts": 32,
+      "defconsts": 33,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -62577,35 +62577,35 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 589,
+        "line": 601,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 694,
+        "line": 705,
         "name": "atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 733,
+        "line": 744,
         "name": "reverse",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 948,
+        "line": 959,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 1110,
+        "line": 1121,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

@@ -397,3 +397,52 @@
       (eq (symbol-class 'fn-rii-sn-statep-carried (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-rii-sf-statep-carried (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-rii-advance-idlep (w state)) :common-lisp-compliant)))
+
+; -----------------------------------------------------------------------------
+; 7b (lane snapshot-open-2): the extension and its open in one call.
+; fn-rii-sco-extend-open-is-extend-then-open has no hypothesis.  REACHABLE:
+; the checkpoint-resume path (the capture after the first article, extended
+; over the second) takes the resumed drain (the suffix is not empty and the
+; extension's fold is paused) and opens :ok, equal to the two calls; the
+; full-replay path (the empty capture over the whole history) and an empty
+; suffix are equal to the two calls too.
+(assert-event
+ (let* ((suffix (list *rii-t-article-2*))
+        (e (fn-rii-sco-extend *rii-t-capture* *rii-t-configs* suffix))
+        (fused (fn-rii-sco-extend-open *rii-t-capture* *rii-t-configs* suffix
+                                       *rii-t-frontier*)))
+   (and (fn-sco-pausedp (fn-sco-cpr e))
+        (fn-cnode-statep (fn-sco-at 1 (fn-sco-cpr e)))
+        (equal fused (list e (fn-rii-classified-open e *rii-t-configs* *rii-t-frontier*)))
+        (equal (fn-sn-open-kind (cadr (cadr fused))) :ok)
+        (equal (fn-rii-sco-extend-open *rii-t-empty* *rii-t-configs* *rii-t-events*
+                                       *rii-t-frontier*)
+               (list *rii-t-full-e*
+                     (fn-rii-classified-open *rii-t-full-e* *rii-t-configs*
+                                             *rii-t-frontier*)))
+        (equal (fn-rii-sco-extend-open *rii-t-capture* *rii-t-configs* nil
+                                       *rii-t-frontier*)
+               (let ((e0 (fn-rii-sco-extend *rii-t-capture* *rii-t-configs* nil)))
+                 (list e0 (fn-rii-classified-open e0 *rii-t-configs* *rii-t-frontier*)))))))
+
+; fn-rii-sco-cpr-resume-paused-node-is-configured, hypothesis removal
+; (corrupted state, labelled): a paused fold whose node is not configured
+; (the bindings corrupted, as in 7a).  With an EMPTY suffix the resume
+; returns it paused and unconfigured: the conclusion fails where the omitted
+; hypothesis (a non-empty suffix) fails; the retained one (paused) holds.
+; With a non-empty suffix the same fold is refused (not paused).
+(defconst *rii-t-bad-paused*
+  (fn-sco-paused (fn-cnode-make *rii-t-bad-node*
+                                (fn-cnode-config (fn-replay-result-node *rii-t-replayed*)))
+                 3 3))
+(assert-event
+ (and (fn-sco-pausedp (fn-sco-cpr-resume *rii-t-bad-paused* *rii-t-configs* nil))
+      (not (fn-cnode-statep (fn-sco-at 1 (fn-sco-cpr-resume *rii-t-bad-paused*
+                                                          *rii-t-configs* nil))))
+      (not (fn-sco-pausedp (fn-sco-cpr-resume *rii-t-bad-paused* *rii-t-configs*
+                                              (list *rii-t-article-2*))))))
+
+(assert-event
+ (and (eq (symbol-class 'fn-rii-sco-extend-open (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rii-sco-store-open-resumed (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rii-sco-cpr-finish-configured (w state)) :common-lisp-compliant)))

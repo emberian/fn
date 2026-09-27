@@ -11158,8 +11158,8 @@
     },
     {
       "id": "PRF-312",
-      "title": "The open finalizes a paused fold's drain without re-checking the configured node: one whole-node check where there were four",
-      "statement": "books/replay-identity-index.lisp section 7a: fn-rii-sco-finalize-configured is fn-rii-sco-finalize-from without fn-cnode-statep, without fn-replay-advance-okp's fn-node-statep (fn-rii-advance-idlep) and with fn-rii-sn-statep-carried in place of fn-rii-sn-statep (no node recognizer, no second history walk); fn-rii-sco-finalize-configured-is-finalize-from: EQUAL to the finalize whenever a successful result's node is configured. fn-rii-sco-store-open finalizes a paused fold's drain with it (fn-rii-sco-cpr-finish-ok-is-configured: the drain's successful node is configured, from fn-cpr-loop-ok-is-configured); the keystone fn-rii-sco-store-open-is-sco-store-open keeps its statement. Host subject: host/store-node-host.lisp fn-store-sn-open-extended calls fn-rii-classified-open. NOT done: the drain's own fn-cnode-statep and the resume's check of the decoded checkpoint node remain (two whole-node checks per open).",
+      "title": "The open checks the configured node once: the finalize and the drain read the fold's node as configured instead of re-checking it (five whole-node checks per open become one)",
+      "statement": "books/replay-identity-index.lisp section 7a: fn-rii-sco-finalize-configured is fn-rii-sco-finalize-from without fn-cnode-statep, without fn-replay-advance-okp's fn-node-statep (fn-rii-advance-idlep) and with fn-rii-sn-statep-carried in place of fn-rii-sn-statep (no node recognizer, no second history walk); fn-rii-sco-finalize-configured-is-finalize-from: EQUAL to the finalize whenever a successful result's node is configured. fn-rii-sco-store-open finalizes a paused fold's drain with it (fn-rii-sco-cpr-finish-ok-is-configured: the drain's successful node is configured, from fn-cpr-loop-ok-is-configured); the keystone fn-rii-sco-store-open-is-sco-store-open keeps its statement. Host subject: host/store-node-host.lisp fn-store-sn-open-extended calls fn-rii-classified-open. Section 7b: fn-rii-sco-extend-open is the extension and its classified open in one call (KEYSTONE fn-rii-sco-extend-open-is-extend-then-open, no hypothesis); after a resume over a non-empty suffix the paused node is configured (fn-rii-sco-cpr-resume-paused-node-is-configured), so the drain is fn-rii-sco-cpr-finish-configured (fn-cpr-loop without the check; fn-rii-sco-cpr-finish-configured-is-finish). Host subjects: host/store-node-host.lisp fn-store-sn-recover-rows and fn-store-sn-recover-from-checkpoint call fn-rii-sco-extend-open. NOT done: the resume's check of the decoded checkpoint's node remains (one whole-node check per checkpoint open), which a sealed snapshot retires.",
       "milestone": "M5",
       "requirements": [
         "REP-010"
@@ -11178,7 +11178,10 @@
       "events": [
         "fn-rii-sco-finalize-configured-is-finalize-from",
         "fn-rii-sco-cpr-finish-ok-is-configured",
-        "fn-rii-sco-store-open-is-sco-store-open"
+        "fn-rii-sco-store-open-is-sco-store-open",
+        "fn-rii-sco-extend-open-is-extend-then-open",
+        "fn-rii-sco-cpr-resume-paused-node-is-configured",
+        "fn-rii-sco-cpr-finish-configured-is-finish"
       ]
     }
   ]
