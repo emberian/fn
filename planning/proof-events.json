@@ -9411,6 +9411,35 @@
           "pending_subject": "Subject fn-store-existing-action (books/store-intern.lisp); the host line (host/store-node-host.lisp fn-store-sn-existing-action, host/owner-host.lisp via fn-pidx-existing-action) lands with flip-L6. Teeth: tests/acl2/store-existing-alpha-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-257",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lz-seal-form-denotes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-seal-form-of-literal-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-decode-of-literal-block"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-run-out-len-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-decode-buf-out-len-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lz-run-extends-out"
+        }
+      ]
     }
   ]
 }
