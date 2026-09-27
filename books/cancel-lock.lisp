@@ -229,6 +229,10 @@
            :in-theory (disable fn-cll-lines fn-cl-lock-value fn-cl-key-values
                                fn-ctl-received-fields))))
 
+(local
+ (defthm fn-cl-append-assoc
+   (equal (append (append a b) c) (append a (append b c)))))
+
 ; The lock line a served POST under ACCOUNT gets, when the owner holds a
 ; ring, the poster wrote no Cancel-Lock and signed nothing: exactly one
 ; Cancel-Lock line, ACCOUNT's lock for this Message-ID under the current
