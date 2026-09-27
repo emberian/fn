@@ -348,9 +348,9 @@
 ; retention event (fn-sn-prepare-retention; a configuration record goes
 ; through fn-oclc-complete, never the record files).  Staged on the reserved
 ; owner and ordered, it keeps the invariant: at this reachable state the
-; hypothesis is not needed.  No counterexample is known; the weakened
-; theorem was not proved (it needs fn-lgoc-rcon-io-preserves-invariant
-; without its safe-set premise, below).
+; hypothesis is not needed.  It is redundant: the weakened theorem is
+; fn-psrv-log-order-preserves-invariant, restated by name in
+; owner-prepare-served-events-tests (g12b-lgoc-log-order-...).
 (defun lgt-ret-event (oc kind charge)
   (let* ((s (lgt-store oc))
          (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
@@ -372,11 +372,11 @@
 ; invariant: the excluded directory :ok at :record-attempted over the
 ; retention candidate, an unknown operation, a directory observation at
 ; :ready, a barrier and a :complete word at :record-staged.  No tooth exists
-; on these witnesses.  A thm of the weakened statement (the keystone's hints
-; plus the owner-with-store lemma) fails with a checkpoint over the
-; operations fn-sn-file-step does not name (the history prefix after an
-; unknown operation), so the hypothesis is neither shown needed nor
-; redundant.
+; on these witnesses.  The hypothesis is redundant: the weakened theorem is
+; proved in owner-prepare-served-events-tests
+; (g12b-lgoc-rcon-io-preserves-invariant-without-io-safep, through
+; fn-snt-unknown-io-is-no-op for the operations fn-sn-file-step does not
+; name).
 (assert-event
  (and (fn-lgoc-invariantp *lgt-ret-attempted*)
       (equal (lgt-phase *lgt-ret-attempted*) :record-attempted)
@@ -398,6 +398,9 @@
 ; into a refusal, never into a staging the invariant rejects, on every
 ; witness tried; the premises are those of the bridge fn-pidx = fn-sbud
 ; (post-identity-index-tests' teeth), not of this invariant.  No tooth here.
+; The Store index premise (fn-ceis-indexedp) is redundant: the weakened
+; theorem is proved in owner-prepare-served-events-tests
+; (g12b-lgoc-pidx-sbud-prepare-without-ceis-indexedp).
 (defconst *lgt-f-reserved* (fn-olr-ocfg-reserve *lgt-finished*))
 (defun lgt-view-with-index (v index)
   (fn-own-view-make-visible
