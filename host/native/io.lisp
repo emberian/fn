@@ -480,23 +480,32 @@ receive an OS error for every failed read."
            (fnn-fault "read returned an invalid count"))
           (t count))))
 
-(defun fnn-read-bounded-fd (fd maximum)
-  "Read at most MAXIMUM octets from one already validated descriptor."
-  (let ((chunks nil) (remaining (+ maximum 1)) (total 0))
-             (loop while (> remaining 0) do
-               (let* ((buffer (fnn-make-octets (min 65536 remaining)))
-                      (count (fnn-read-fd fd buffer)))
-                 (when (zerop count) (return))
-                 (push (subseq buffer 0 count) chunks)
-                 (incf total count)
-                 (decf remaining count)))
-             (when (> total maximum)
+(defun fnn-read-bounded-fd (fd maximum &optional size)
+  "Read at most MAXIMUM octets from one already validated descriptor.
+SIZE, the descriptor's fstat size when the caller has it, sizes the first
+read's buffer exactly and the next read is a one-octet probe for end of file,
+so a file that did not change is read into one vector with no copy; the reads
+still go to end of file, and past MAXIMUM is refused whatever SIZE said."
+  (let ((chunks nil) (remaining (+ maximum 1)) (total 0)
+        (next (if (and size (> size 0)) size 65536)))
+    (loop while (> remaining 0) do
+      (let* ((buffer (fnn-make-octets (min next remaining)))
+             (count (fnn-read-fd fd buffer)))
+        (when (zerop count) (return))
+        (push (if (= count (length buffer)) buffer (subseq buffer 0 count)) chunks)
+        (incf total count)
+        (decf remaining count)
+        ;; After the hinted read, one octet asks whether the file ended.
+        (setq next (if (and size (= total size)) 1 65536))))
+    (when (> total maximum)
       (fnn-overbound "file exceeds ACL2-owned bound"))
-             (let ((data (fnn-make-octets total)) (at 0))
-               (dolist (chunk (nreverse chunks))
-                 (replace data chunk :start1 at)
-                 (incf at (length chunk)))
-      data)))
+    (if (and chunks (null (cdr chunks)))
+        (car chunks)
+        (let ((data (fnn-make-octets total)) (at 0))
+          (dolist (chunk (nreverse chunks))
+            (replace data chunk :start1 at)
+            (incf at (length chunk)))
+          data))))
 
 (defun fnn-read-regular-bounded (path maximum)
   "Read one regular, non-symlink file through a no-follow descriptor."
@@ -507,7 +516,7 @@ receive an OS error for every failed read."
              (fnn-fault "refusing non-regular store file: ~a" path))
            (when (> (sb-posix:stat-size info) maximum)
              (fnn-overbound "store file exceeds bound: ~a" path))
-           (fnn-read-bounded-fd fd maximum))
+           (fnn-read-bounded-fd fd maximum (sb-posix:stat-size info)))
       (fnn-close fd))))
 
 (defun fnn-check-regular (path)
@@ -1415,8 +1424,19 @@ host has no SHA-256 of its own."
 (defun fnn-unframe-list (raw)
   "FNN-UNFRAME answering ACL2's octet list of the record itself: the streaming
 open hands it to the step as it is (fnn-recover-file-chunks), so the record is
-not made a vector and then a list again."
-  (let ((value (fnn-core 'fn-store-frame-store-decode (fnn-octet-list raw) (fnn-digest-of raw))))
+not made a vector and then a list again.  The file goes over as one octet list
+of its protected prefix and the trailer's octets (the frame's trailer size is
+ACL2's constant, as fnn-digest-of splits it): ACL2 digests the prefix itself
+and answers the payload as the prefix's tail, with no copy
+(host/store-host.lisp fn-store-unframe-split, books/store-recover-stream.lisp
+KEYSTONE fn-srs-unframe-is-the-frame-decode).  A file shorter than a trailer
+goes over whole, as fnn-unframe sends it."
+  (let* ((cut (- (length raw) (fnn-constant :trailer)))
+         (value (if (< cut 0)
+                    (fnn-core 'fn-store-frame-store-decode (fnn-octet-list raw) nil)
+                    (fnn-core 'fn-store-unframe-split
+                              (loop for i below cut collect (aref raw i))
+                              (loop for i from cut below (length raw) collect (aref raw i))))))
     (unless (and (consp value) (eq (first value) :ok))
       (let ((reason (if (and (consp value) (consp (cdr value))) (second value) :unknown)))
         (fnn-fault "frame refused: ~(~a~)" reason)))

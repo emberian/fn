@@ -204,3 +204,45 @@
       (not (eq (car (srst-one (list (fn-srs-pair-octets *srst-misnumbered*)))) :bad))
       (not (equal (car (srst-checked-steps (list *srst-misnumbered*)))
                   (car (srst-one (list (fn-srs-pair-octets *srst-misnumbered*))))))))
+
+; -----------------------------------------------------------------------------
+; The unframe without a payload copy (section 6; host/native/io.lisp
+; fnn-unframe-list sends a transaction file as its protected prefix and its
+; trailer, host/store-host.lisp fn-store-unframe-split).  The keystone
+; fn-srs-unframe-is-the-frame-decode has no hypothesis; the witnesses below
+; are theorems because the digest is an attachment (fn-frame-digest, SHA-256)
+; that an event may not call: each holds for whatever the digest is.
+
+; A real journal frame of record r0 with its own trailer: the fast arm opens
+; it and the payload is the record (the frame decode's answer, by the keystone).
+(defconst *srst-prefix*
+  (fn-frame-protected *fn-frame-magic-store* *fn-frame-version* *fn-frame-store-kind* *srst-r0*))
+(defthm srst-unframe-opens-a-real-frame
+  (let ((fast (fn-srs-unframe *srst-prefix* (fn-frame-trailer *srst-prefix*))))
+    (and (fn-frame-result-okp fast)
+         (equal (fn-frame-result-payload fast) *srst-r0*)
+         (equal fast (fn-frame-store-decode (append *srst-prefix* (fn-frame-trailer *srst-prefix*))
+                                            (fn-frame-trailer *srst-prefix*)))))
+  :hints (("Goal" :use ((:instance fn-srs-unframe-is-the-frame-decode
+                                   (prefix *srst-prefix*) (trailer (fn-frame-trailer *srst-prefix*))))
+           :in-theory (e/d (fn-srs-unframe)
+                           (fn-srs-unframe-is-the-frame-decode fn-frame-store-decode))))
+  :rule-classes nil)
+
+; A trailer of the right length that is not the prefix's digest: :integrity.
+(defthm srst-unframe-refuses-a-wrong-trailer
+  (implies (and (fn-cbor-octet-listp trailer) (equal (len trailer) 32)
+                (not (equal trailer (fn-frame-trailer *srst-prefix*))))
+           (equal (fn-srs-unframe *srst-prefix* trailer) (fn-frame-error :integrity)))
+  :hints (("Goal" :in-theory (e/d (fn-srs-unframe)
+                                  (fn-srs-unframe-is-the-frame-decode fn-frame-store-decode))))
+  :rule-classes nil)
+
+; A prefix that is not octets: the fast arm does not apply and the answer is
+; the frame decode's refusal (evaluated: the digest of non-octets is :bad
+; with no attachment called).
+(assert-event
+ (let ((prefix (cons 256 (cdr *srst-prefix*))) (trailer (make-list 32 :initial-element 0)))
+   (and (not (fn-frame-result-okp (fn-srs-unframe prefix trailer)))
+        (equal (fn-srs-unframe prefix trailer)
+               (fn-frame-store-decode (append prefix trailer) (fn-frame-trailer prefix))))))

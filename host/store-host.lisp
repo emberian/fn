@@ -284,6 +284,15 @@
 (defun fn-store-frame-store-decode (octets digest)
   (fn-store-frame-result (fn-frame-store-decode octets digest)))
 
+; The open's unframe of a transaction file split at its trailer
+; (host/native/io.lisp fnn-unframe-list): books/store-recover-stream.lisp
+; fn-srs-unframe, KEYSTONE fn-srs-unframe-is-the-frame-decode (the frame
+; decode of PREFIX then TRAILER with PREFIX's trailer, as
+; fn-store-frame-store-decode above answers for the whole file and its
+; digest), with the payload PREFIX's own tail.
+(defun fn-store-unframe-split (prefix trailer)
+  (fn-store-frame-result (fn-srs-unframe prefix trailer)))
+
 (defun fn-store-frame-workflow-encode (kind values digest)
   (fn-frame-workflow-encode kind values digest))
 
