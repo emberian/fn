@@ -68,9 +68,10 @@
   (declare (xargs :stobjs cfgent :guard (natp n)))
   (if (zp n)
       cfgent
-    (let ((cfgent (cfgent-append (list (list (mod n 256)) (list 1 2 (mod n 256)) 5
-                                       (evenp n) :group (mod n 86401) (mod n 256))
-                                 cfgent)))
+    (let* ((b (if (< n 256) n 0))
+           (cfgent (cfgent-append (list (list b) (list 1 2 b) 5
+                                        (evenp n) :group (if (<= n 86400) n 0) b)
+                                  cfgent)))
       (cfgent-fill (1- n) cfgent))))
 
 (defun cfgent-run (n)

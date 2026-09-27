@@ -22,6 +22,7 @@
 (in-package "ACL2")
 (include-book "adt")
 (include-book "../consumer-position")
+(local (include-book "arithmetic/top" :dir :system))
 
 (defadt cpent
   (tag (:enum :entry))
@@ -41,6 +42,11 @@
 (local
  (defthm cpent-true-listp-len-0
    (implies (and (true-listp x) (equal (len x) 0)) (equal x nil))
+   :rule-classes :forward-chaining))
+
+(local
+ (defthm cpent-true-listp-atom
+   (implies (and (true-listp x) (not (consp x))) (equal x nil))
    :rule-classes :forward-chaining))
 
 ; The epoch field is bounded by the TABLE's next epoch, not by the entry:

@@ -277,6 +277,9 @@
                                                  ,@(adt-logic-names name fields))))))
     `(encapsulate
        ()
+       ; The proofs below reason about the stobj's logical image through the
+       ; library's list lemmas; nth, update-nth and resize-list stay closed.
+       (local (in-theory (disable nth update-nth resize-list)))
        (defconst ,schema-const ',schema)
        (defthm ,(adt-sym name "-SCHEMA-OK")
          (and (adt-schemap ,schema-const) (equal (adt-ncols ,schema-const) ,p))
