@@ -404,8 +404,12 @@ tail -4 $W/release.log
 python3 tools/runpath_check.py --tarball $W/release/$tb
 cd $W/fresh && cp $W/release/$tb $W/release/SHA256SUMS . && sha256 -C SHA256SUMS $tb
 tar xzf $tb && sh fn/install.sh --prefix $W/fresh/usr/local/fn --node $W/fresh/var/fn --no-service > $W/install.log 2>&1 || { tail -5 $W/install.log; exit 1; }
-cd $W/src && FN_RELEASE_TARBALL=$W/release/$tb python3 -m unittest -v tests.test_release_tarball 2> $W/release-test.log; tail -1 $W/release-test.log
-[ \"\$(tail -1 $W/release-test.log)\" = OK ] || { grep -E 'skipped|FAIL|ERROR' $W/release-test.log | head; echo 'test_release_tarball: not OK'; exit 1; }
+# The test installs under TMPDIR: an OpenBSD image maps its core RWX, so
+# that is a wxallowed file system (/bw), as /usr/local is on a node.  Its one
+# skip here is the Linux-only glibc-floor case; any other skip is red.
+mkdir -p $W/tmp && cd $W/src && TMPDIR=$W/tmp FN_RELEASE_TARBALL=$W/release/$tb python3 -m unittest -v tests.test_release_tarball 2> $W/release-test.log; tail -1 $W/release-test.log
+case \"\$(tail -1 $W/release-test.log)\" in 'OK'|'OK (skipped=1)') ;; *) grep -E '^(FAIL|ERROR)' $W/release-test.log | head; echo 'test_release_tarball: not OK'; exit 1 ;; esac
+[ \$(grep -c ' skipped ' $W/release-test.log) -eq \$(grep -c ' skipped .the glibc floor is the Linux release' $W/release-test.log) ] || { grep ' skipped ' $W/release-test.log; echo 'test_release_tarball: a skip other than the glibc floor'; exit 1; }
 echo \"== done \$(date -u +%FT%TZ)\""
   # The box half (hbox): the VM up, the archive in, the guest half, the
   # smoke under root's own login limits, the evidence out, the VM down.

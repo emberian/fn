@@ -561,7 +561,8 @@ def run(a) -> int:
         return 0
     if sh(f"ssh -n -o BatchMode=yes {HOST} test -x {q(a.tree)}/build/fn-host-developer").returncode:
         raise SystemExit(f"fundamentals: {HOST}:{a.tree}/build/fn-host-developer is not an image (build the tree with tools/hbox_native.sh --images developer,production,dtn,dtn-developer)")
-    if sh(f"rsync -a --delete {q(str(ROOT / 'tools' / 'fundamentals'))}/ {HOST}:{box}/harness/").returncode:
+    if sh(f"ssh -n -o BatchMode=yes {HOST} mkdir -p {box}/out").returncode or \
+            sh(f"rsync -a --delete {q(str(ROOT / 'tools' / 'fundamentals'))}/ {HOST}:{box}/harness/").returncode:
         raise SystemExit("fundamentals: shipping the harness failed")
     start = f"cd {box} && rm -f done && (env {env} sh harness/rows.sh {q(a.tree)} {box}/out {steps} > rows.log 2>&1; touch done) > /dev/null 2>&1 < /dev/null &"
     if sh(f"ssh -n -o BatchMode=yes {HOST} {q('nohup sh -c ' + q(start))}").returncode:
