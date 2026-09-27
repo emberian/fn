@@ -5,15 +5,19 @@
 (in-package "ACL2")
 (include-book "../../books/store-observed")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 (defconst *fn-so-groups* '("fn.letters"))
 (defconst *fn-so-empty*
   (fn-sn-open-observed *fn-so-groups* 10 0 nil))
 (assert-event (fn-sn-open-okp *fn-so-empty*))
 (assert-event (fn-snt-relation (fn-sn-open-state *fn-so-empty*)))
-(defconst *fn-so-record0*
+(defconst *fn-so-record0-wire*
   (fn-record-make 0 0 0 "<observed@example>" '(65) *fn-so-groups*
                   "observed-pin" "observed-content" "observed-release" 1 841000000))
+; The retained row (records-flip): interned on a fresh arena, handle 0.
+(defconst *fn-so-record0* (fn-hrt-row-at *fn-so-record0-wire* 0))
+(assert-event (fn-held-p *fn-so-record0*))
 (defconst *fn-so-replayed*
   (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-record0*)))
 (assert-event (fn-sn-open-okp *fn-so-replayed*))
@@ -23,9 +27,12 @@
 ; not configure.  This is the witness that :replay is a distinct refusal and
 ; the teeth for the recoverability hypothesis of
 ; fn-sn-open-observed-succeeds-on-recoverable-image.
-(defconst *fn-so-alien*
+(defconst *fn-so-alien-wire*
   (fn-record-make 0 0 0 "<alien@example>" '(65) '("fn.other")
                   "alien-pin" "alien-content" "alien-release" 1 841000000))
+; The retained row (records-flip): interned on a fresh arena, handle 0.
+(defconst *fn-so-alien* (fn-hrt-row-at *fn-so-alien-wire* 0))
+(assert-event (fn-held-p *fn-so-alien*))
 (assert-event (fn-sn-observed-historyp 1 (list *fn-so-alien*)))
 (assert-event (not (fn-sf-history-recoverablep *fn-so-groups* 10 (list *fn-so-alien*) 1)))
 (assert-event (equal (fn-sn-open-observed *fn-so-groups* 10 1 (list *fn-so-alien*))
@@ -43,13 +50,18 @@
 ; acknowledgement, an uncertain link, crash and recovery.
 
 (defconst *fn-so-live-groups* '("fn.letters" "fn.test"))
-(defconst *fn-so-first*
+(defconst *fn-so-first-wire*
   (fn-record-make 0 0 0 "<first@example>" '(65) *fn-so-live-groups*
                   "first-pin" "first-content" "first-release" 1 841000000))
+; The live store's records as retained rows (records-flip): interned in the
+; order the entry sees them on one arena, so the handle of each is the
+; number of live records before it (first 0 ... sixth 5).
+(defconst *fn-so-first* (fn-hrt-row-at *fn-so-first-wire* 0))
 ; txid 1 was consumed without a record before this image was taken.
-(defconst *fn-so-second*
+(defconst *fn-so-second-wire*
   (fn-record-make 1 2 2 "<second@example>" '(66) '("fn.test")
                   "second-pin" "second-content" "second-release" 1 841000000))
+(defconst *fn-so-second* (fn-hrt-row-at *fn-so-second-wire* 1))
 ; txid 3 was also consumed: the image frontier is 4.
 (defconst *fn-so-gap-open*
   (fn-sn-open-observed *fn-so-live-groups* 10 4 (list *fn-so-first* *fn-so-second*)))
@@ -73,15 +85,18 @@
     (:io :frontier-replace :ok) (:io :frontier-directory :ok)))
 ; txid 4 is refused; txid 5 is prepared then known-aborted; txid 6 is
 ; published and acknowledged; txid 7 is linked with an uncertain result.
-(defconst *fn-so-third*
+(defconst *fn-so-third-wire*
   (fn-record-make 2 5 5 "<third@example>" '(67) *fn-so-live-groups*
                   "third-pin" "third-content" "third-release" 1 841000000))
-(defconst *fn-so-fourth*
+(defconst *fn-so-third* (fn-hrt-row-at *fn-so-third-wire* 2))
+(defconst *fn-so-fourth-wire*
   (fn-record-make 2 6 6 "<fourth@example>" '(68) '("fn.letters")
                   "fourth-pin" "fourth-content" "fourth-release" 1 841000000))
-(defconst *fn-so-fifth*
+(defconst *fn-so-fourth* (fn-hrt-row-at *fn-so-fourth-wire* 3))
+(defconst *fn-so-fifth-wire*
   (fn-record-make 3 7 7 "<fifth@example>" '(69) '("fn.test")
                   "fifth-pin" "fifth-content" "fifth-release" 1 841000000))
+(defconst *fn-so-fifth* (fn-hrt-row-at *fn-so-fifth-wire* 4))
 
 (defconst *fn-so-acked*
   (fn-snrt-run *fn-so-gap-opened*
@@ -190,9 +205,14 @@
 ; The reopened process continues: five barriers, another publication, another
 ; crash; the acknowledged record is still there
 ; (fn-snrt-acknowledged-record-retained-across-observed-reopen).
-(defconst *fn-so-sixth*
+(defconst *fn-so-sixth-wire*
   (fn-record-make 4 8 8 "<sixth@example>" '(70) *fn-so-live-groups*
                   "sixth-pin" "sixth-content" "sixth-release" 1 841000000))
+(defconst *fn-so-sixth* (fn-hrt-row-at *fn-so-sixth-wire* 5))
+(assert-event (equal (fn-hrt-rows (list *fn-so-first-wire* *fn-so-second-wire* *fn-so-third-wire*
+                                         *fn-so-fourth-wire* *fn-so-fifth-wire* *fn-so-sixth-wire*) nil 0)
+                     (list *fn-so-first* *fn-so-second* *fn-so-third*
+                           *fn-so-fourth* *fn-so-fifth* *fn-so-sixth*)))
 (defconst *fn-so-after-reopen*
   (fn-snrt-run (fn-sn-open-state *fn-so-reopen-present*)
                (append *fn-so-barriers*

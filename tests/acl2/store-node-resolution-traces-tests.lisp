@@ -2,23 +2,36 @@
 (in-package "ACL2")
 (include-book "../../books/store-node-resolution")
 (include-book "../../books/codec-attach")
+(include-book "held-rows-tests")
 
 (defconst *snrt-groups* '("fn.test"))
 (defconst *snrt-reserve*
   '((:io :start-frontier nil) (:io :frontier-file :ok)
     (:io :frontier-replace :ok) (:io :frontier-directory :ok)))
-(defconst *snrt-staged*
+(defconst *snrt-staged-wire*
   (fn-record-make 0 1 1 "<staged@example>" '(65) *snrt-groups*
                   "staged-pin" "staged-content" "staged-release" 1 841000000))
-(defconst *snrt-written*
+(defconst *snrt-written-wire*
   (fn-record-make 0 2 2 "<written@example>" '(66) *snrt-groups*
                   "written-pin" "written-content" "written-release" 1 841000000))
-(defconst *snrt-committed*
+(defconst *snrt-committed-wire*
   (fn-record-make 0 3 3 "<committed@example>" '(67) *snrt-groups*
                   "committed-pin" "committed-content" "committed-release" 1 841000000))
-(defconst *snrt-later-abort*
+(defconst *snrt-later-abort-wire*
   (fn-record-make 1 5 5 "<later-abort@example>" '(68) *snrt-groups*
                   "later-pin" "later-content" "later-release" 1 841000000))
+; The store takes held rows (records-flip): the four records interned in the
+; order the entry sees them, on a fresh arena (handles 0 to 3).
+(defconst *snrt-rows*
+  (fn-hrt-rows (list *snrt-staged-wire* *snrt-written-wire*
+                     *snrt-committed-wire* *snrt-later-abort-wire*) nil 0))
+(defconst *snrt-staged* (nth 0 *snrt-rows*))
+(defconst *snrt-written* (nth 1 *snrt-rows*))
+(defconst *snrt-committed* (nth 2 *snrt-rows*))
+(defconst *snrt-later-abort* (nth 3 *snrt-rows*))
+(assert-event (and (fn-held-p *snrt-staged*) (fn-held-p *snrt-written*)
+                   (fn-held-p *snrt-committed*) (fn-held-p *snrt-later-abort*)
+                   (equal (fn-record-payload *snrt-committed*) 2)))
 
 ; Refuse txid 0, abort staged txid 1, abort written-but-unpublished txid 2.
 ; Every next operation uses the unchanged history sequence and advanced txid.

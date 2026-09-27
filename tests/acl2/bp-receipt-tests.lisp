@@ -28,7 +28,7 @@
                       :frontier-replace :ok)
             :frontier-directory :ok))
 (make-event `(defconst *bpr-prepared* ',(fn-bpi-ingress-prepare (bpr-reserve (fn-sn-initial *bpr-groups* 20))
-                          *bpr-policy* *bpr-context* *bpr-adu*)))
+                          *bpr-policy* *bpr-context* *bpr-adu* 0)))
 (make-event `(defconst *bpr-record* ',(fn-bpi-result-record *bpr-prepared*)))
 (make-event `(defconst *bpr-store* ',(fn-bpi-finish-prepared (fn-bpi-result-store *bpr-prepared*))))
 (assert-event (fn-bpi-durably-acceptedp *bpr-store* *bpr-record*))

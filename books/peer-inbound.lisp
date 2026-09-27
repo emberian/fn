@@ -79,6 +79,8 @@
 (include-book "relay-checks")
 ; PRF-235: the refused-offer memory.
 (include-book "refused-offers")
+; fn-arena: the transit entry interns the relayed octets (records-flip).
+(include-book "payload-arena")
 
 ; fn-cfg-peer-vocabulary (books/peer-config) stays closed here: no proof in
 ; this book needs the peer table open, and with it open the guard proof of
@@ -594,7 +596,14 @@
 
 ; (mv node2 decision).  On :want it is exactly one fn-node-prepare; it never
 ; calls fn-accept-prepare directly and never touches retention itself.
-(defun fn-peer-transfer (node cfg peer msgid octets clock generation id subject)
+;
+; The acceptance state holds an article's payload as an arena HANDLE
+; (records-flip, PKT-635: fn-accept-prepare refuses a non-natural payload),
+; so the prepare stages H, the handle the stored octets -- position 2 of
+; fn-peer-injection-arguments, the relayed octets -- take at the entry,
+; fn-peer-transfer-interned below, which seals them only when the node
+; staged.  Every other argument is fn-peer-injection-arguments' own.
+(defun fn-peer-transfer (node cfg peer msgid octets clock generation id subject h)
   (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
   (let ((d (fn-peer-decide-transfer node cfg peer msgid octets clock id subject)))
     (if (not (equal (fn-peer-decision-kind d) :want))
@@ -603,9 +612,29 @@
           (mv node (fn-peer-decision :defer :no-clock))
       (let ((a (fn-peer-injection-arguments node cfg peer msgid octets
                                             generation id subject clock)))
-        (mv (fn-node-prepare node (nth 0 a) (nth 1 a) (nth 2 a) (nth 3 a)
+        (mv (fn-node-prepare node (nth 0 a) (nth 1 a) h (nth 3 a)
                              (nth 4 a) (nth 5 a) (nth 6 a) (nth 7 a) (nth 8 a))
             d))))))
+
+; THE TRANSIT ENTRY (records-flip): the transfer at the handle the arena
+; hands out next, and the seal of the stored octets exactly when the node
+; staged, so a refused, deferred or duplicate transfer retains no bytes.
+; (mv node2 decision fn-arena).  The keystone that the staged handle reads
+; back the stored octets is fn-peer-transfer-interned-stores-the-relayed-
+; octets (books/peer-inbound-invariants.lisp).
+(defun fn-peer-transfer-interned (node cfg peer msgid octets clock generation id subject
+                                       fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-node-statep node) :verify-guards nil))
+  (mv-let (next d)
+    (fn-peer-transfer node cfg peer msgid octets clock generation id subject
+                      (fn-arena-count fn-arena))
+    (if (equal next node)
+        (mv next d fn-arena)
+      (let ((fn-arena (fn-arena-seal-list
+                       (nth 2 (fn-peer-injection-arguments node cfg peer msgid octets
+                                                           generation id subject clock))
+                       fn-arena)))
+        (mv next d fn-arena)))))
 
 ; -----------------------------------------------------------------------------
 ; The transit submission the served path carries to the owner

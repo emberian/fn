@@ -191,6 +191,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-node-invariants \
 	books/acceptance-stamp-invariants \
 	tests/acl2/acceptance-stamp-tests \
+	tests/acl2/held-rows-tests \
+	tests/acl2/held-rows-intern-tests \
 	tests/acl2/store-node-tests \
 	tests/acl2/consumer-store-node-tests \
 	tests/acl2/store-node-existing-tests \
@@ -237,6 +239,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/connection-budget-tests \
 	books/store-open-pre-c1 \
 	tests/acl2/store-open-pre-c1-tests \
+	tests/acl2/history-fold-refinement-tests \
 	tests/acl2/linear-recognizers-tests \
 	tests/acl2/open-one-pass-tests \
 	books/byte-store-state-checkpoint-program \

@@ -42,6 +42,7 @@
 (in-package "ACL2")
 (include-book "control-authority")
 (include-book "peer-authored-accept")
+(include-book "history-wire")
 
 (defconst *fn-ks-verb* "keys")
 
@@ -168,9 +169,12 @@
 ; The statement composite: the kind-4 event the owner committed.  Its stored
 ; verdict, as the reader pin would hold it, and its Message-ID.
 
+; EVENT is a wire composite or the history's retained row of one
+; (`fn-hw-composite', books/history-wire.lisp): `keys redecide' finds the row.
 (defun fn-ks-evidence (event)
   (declare (xargs :guard t))
-  (let ((decoded (fn-stxe-decode-exact (fn-stxa-verdict-event event))))
+  (let* ((event (fn-hw-composite event))
+         (decoded (fn-stxe-decode-exact (fn-stxa-verdict-event event))))
     (if (and (fn-stxa-p event) (fn-stmt-okp decoded)
              (fn-stxe-p (fn-stmt-value decoded)))
         (fn-stmt-value decoded)
@@ -191,7 +195,8 @@
 
 (defun fn-ks-source (event)
   (declare (xargs :guard t))
-  (if (fn-stxa-p event) (fn-stxa-authored-source event) nil))
+  (let ((event (fn-hw-composite event)))
+    (if (fn-stxa-p event) (fn-stxa-authored-source event) nil)))
 
 ; The primitive request the host serves before the decision: for a
 ; succession, (principal new-keys pop-source pop-signatures), the D09
@@ -736,12 +741,19 @@
                                                fn-stxk-shapep fn-stxa-shapep)
                                              (theory 'minimal-theory)))))
 
+;; Nor is it the history's retained row of one (books/held-record.lisp).
+(defthm fn-ks-snapshot-is-not-a-row
+  (implies (fn-stxk-p ev) (not (fn-hstxa-p ev)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-stxk-p fn-stxk-shapep fn-hstxa-p))))
+
 (defthm fn-ks-snapshot-is-never-pending
   (implies (fn-stxk-p ev) (not (fn-ks-pending ev)))
   :hints (("Goal" :in-theory (union-theories '(fn-ks-pending fn-ks-source
+                                               fn-hw-composite-of-a-wire-event
                                                (:e fn-ks-statement))
                                              (theory 'minimal-theory))
-           :use fn-ks-snapshot-is-not-a-composite)))
+           :use (fn-ks-snapshot-is-not-a-composite fn-ks-snapshot-is-not-a-row))))
 
 (defthm fn-ks-execute-is-a-snapshot
   (let ((ev (fn-ks-execute event snapshots rows observed ed ml
@@ -816,7 +828,8 @@
 ; books/store-events.lisp fn-store-event-txid answers for a composite).
 (defun fn-ks-txid (event)
   (declare (xargs :guard t))
-  (if (fn-stxa-p event) (fn-stxa-txid event) nil))
+  (let ((event (fn-hw-composite event)))
+    (if (fn-stxa-p event) (fn-stxa-txid event) nil)))
 
 ; The grants a statement is decided under: at acceptance, the live
 ; configuration's LIVE-ROWS; at open (AT-OPEN), the configuration in force at
@@ -1241,6 +1254,13 @@
   (implies (fn-stxk-p x) (not (fn-stxa-p x)))
   :hints (("Goal" :in-theory (enable fn-stxk-p fn-stxa-p fn-stxk-shapep
                                      fn-stxa-shapep))))
+
+; A snapshot is six wide, never the three-wide row of a composite.
+(defthm fn-ks-hw-composite-of-a-snapshot
+  (equal (fn-hw-composite (fn-stxk-make sequence txid generation version
+                                        profile snapshot))
+         (fn-stxk-make sequence txid generation version profile snapshot))
+  :hints (("Goal" :in-theory (enable fn-hw-composite fn-hstxa-p fn-stxk-make))))
 
 (defthm fn-ks-a-key-change-is-no-pending-statement
   (not (fn-ks-pending (fn-ks-event plan sequence txid store-generation
