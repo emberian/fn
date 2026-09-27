@@ -1719,7 +1719,13 @@ The node serves the binding from its configuration, not from the file: at
 start it publishes the file's bindings as configuration records, and when
 `bind` or `unbind` runs against a running node (the configuration names a
 `[control] path`) the verb asks the owner to re-read the file and publish
-the change at once (PKT-221; `books/login-binding-live.lisp`). The verb's
+the change at once (PKT-221; `books/login-binding-live.lisp`).
+`principal set-password` asks the same (control request 14): the owner
+rebuilds its credential table from the file with the load it ran at start
+(`host/native/auth.lisp` `fnn-native-auth-reload-config`, ACL2's
+`fn-native-auth-host-load`) before republishing the bindings, so a new
+password is served to the next connection without a restart
+(friend-path-2). The verb's
 last word says which: `applied` (the running owner published it),
 `effective-at-next-start` (no owner was running), `restart-required` (an
 owner holds the store and did not publish it, for example no control socket

@@ -1089,7 +1089,10 @@
        (equal (fn-pull-r-pending (car (fn-pull-step r event))) (fn-pull-r-pending r))
        (equal (fn-pull-r-bound (car (fn-pull-step r event))) (fn-pull-r-bound r))
        (equal (fn-pull-r-wildmat (car (fn-pull-step r event))) (fn-pull-r-wildmat r)))
-  :hints (("Goal" :in-theory (enable fn-pull-step))))
+  ;; 166,318 prover steps; 728,878 with the step's line helpers open.
+  :hints (("Goal" :in-theory (e/d (fn-pull-step)
+                                  (fn-pull-command fn-pull-local-code fn-pull-event-octets
+                                   fn-pull-code fn-pull-line-phasep)))))
 
 ; KEYSTONE.  No step changes the cursor a round asks with or journals
 ; anything: the round's durable state is fixed from `fn-pull-begin' to
@@ -1100,7 +1103,10 @@
        (equal (fn-pull-r-wildmat (car (fn-pull-step r event)))
               (fn-pull-r-wildmat r))
        (equal (fn-pull-journal-effects (mv-nth 1 (fn-pull-step r event))) nil))
-  :hints (("Goal" :in-theory (enable fn-pull-step))))
+  ;; 138,187 prover steps; 357,443 with the step's line helpers open.
+  :hints (("Goal" :in-theory (e/d (fn-pull-step)
+                                  (fn-pull-command fn-pull-local-code fn-pull-event-octets
+                                   fn-pull-code fn-pull-line-phasep)))))
 
 (defthm fn-pull-run-keeps-the-cursor-and-journals-nothing
   (and (equal (fn-pull-round-cursor (car (fn-pull-run r events)))
@@ -1132,7 +1138,10 @@
                                    (fn-pull-local-code
                                     (fn-pull-event-octets event)))
                              (fn-pull-r-answers r)))))
-  :hints (("Goal" :in-theory (enable fn-pull-step))))
+  ;; 198,297 prover steps; 404,347 with the step's line helpers open.
+  :hints (("Goal" :in-theory (e/d (fn-pull-step)
+                                  (fn-pull-command fn-pull-local-code fn-pull-event-octets
+                                   fn-pull-code fn-pull-line-phasep)))))
 
 ; PRF-165: only the peer marks an id unavailable.
 
@@ -1409,8 +1418,11 @@
                                 (mv-nth 1 (fn-pull-run r0 events)))))))
              (equal (fn-pull-r-since (fn-pull-begin recovered wildmat later bound))
                     (fn-pull-r-since dead))))
+  ;; 224,545 prover steps; 1,011,791 with the replay and journal open.
   :hints (("Goal" :in-theory (disable fn-pull-run fn-pull-close
-                                      fn-pull-advancesp)
+                                      fn-pull-advancesp fn-pull-replay
+                                      fn-pull-journal-effects fn-pull-begin-effects
+                                      fn-pull-startable-cursorp)
            :use ((:instance fn-pull-journal-is-the-cursor-at-every-cut)))))
 
 ; -----------------------------------------------------------------------------

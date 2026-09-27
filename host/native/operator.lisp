@@ -143,8 +143,57 @@ order, and the names it found handed straight back."
       (when (fnn-lstat (fnn-join root (fnn-octets-string (fnn-octets name))))
         (push name found)))))
 
+;;; friend-path-2: the service log's run lines.  `run' writes ACL2's
+;;; `run started' line when it opens `[log] path' and its `run stopped
+;;; exit=NN reason=...' line before it closes it; `health' and `status', with
+;;; no owner running, read the log's tail and ACL2 takes the last of those
+;;; lines (books/native-health.lisp fn-nh-last-run).  Nothing here parses.
+
+(defun fnn-operator-log-run-line (octets)
+  "Append ACL2's run line and one LF to the open service log, directly (the
+log writer is not running at either end of `run').  A failed write stops
+nothing: the log is an operator's record."
+  (when (and *fnn-owner-log-fd* (fnn-octet-list-p octets))
+    (ignore-errors
+     (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
+       (fnn-write-all *fnn-owner-log-fd* (fnn-octets (append octets (list 10))))))))
+
+(defun fnn-operator-log-tail (path)
+  "At most ACL2's fn-nh-log-tail-octets octets from the end of the regular,
+non-symlink file PATH, as an octet list; NIL when it cannot be read."
+  (ignore-errors
+   (let ((info (fnn-lstat path)))
+     (when (and info (fnn-regular-p info))
+       (let ((limit (fnn-core 'fn-native-health-host-log-tail-octets))
+             (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+         (unwind-protect
+              (let* ((size (sb-posix:stat-size (fnn-fstat fd)))
+                     (start (max 0 (- size limit)))
+                     (want (- size start))
+                     (buffer (fnn-make-octets want))
+                     (offset 0))
+                (sb-posix:lseek fd start sb-posix:seek-set)
+                (loop while (< offset want) do
+                  (let* ((chunk (fnn-make-octets (- want offset)))
+                         (count (fnn-read-fd fd chunk)))
+                    (when (zerop count) (return))
+                    (replace buffer chunk :start1 offset :end2 count)
+                    (incf offset count)))
+                (fnn-octet-list (subseq buffer 0 offset)))
+           (fnn-close fd)))))))
+
+(defun fnn-operator-last-run (result)
+  "ACL2's reading of the service log's last run line (fn-nh-last-run)."
+  (let* ((path-list (fnn-core 'fn-native-operator-host-result-status-log-path-octets
+                              result))
+         (tail (and (fnn-octet-list-p path-list) (consp path-list)
+                    (fnn-operator-log-tail
+                     (fnn-octets-string (fnn-octets path-list))))))
+    (fnn-core 'fn-native-health-host-last-run tail)))
+
 (defun fnn-operator-execute-run (result)
   "Invoke the one owner entry only with ACL2-normalized plan projections."
+  (setq *fnn-owner-last-fault* nil)
   (handler-case
       (let* ((auth-path
                (fnn-octets-string
@@ -168,17 +217,22 @@ order, and the names it found handed straight back."
              (log-path
                (fnn-operator-optional-path
                 result 'fn-native-operator-host-result-run-log-path-octets))
-             (tls-context nil))
+             (tls-context nil)
+             (run-code nil)
+             (run-failure nil))
         (setq *fnn-health-min-percent*
               (fnn-core 'fn-native-operator-host-result-health-min-percent result))
         (unwind-protect
+            (handler-case
             (progn
               ;; Append-only, created 0640 if absent, never through a
               ;; symlink, never truncated or rotated here.  Opened before
               ;; the store so a wrong path is refused before recovery runs.
               (when log-path
                 (setq *fnn-owner-log-fd* (fnn-owner-open-log log-path)
-                      *fnn-owner-log-path* log-path))
+                      *fnn-owner-log-path* log-path)
+                (fnn-operator-log-run-line
+                 (fnn-core 'fn-native-health-host-run-started-line)))
               ;; ACL2 already enforced paired presence.  Only a successfully
               ;; loaded and key-checked context is passed to auth/owner.
               (when certificate
@@ -221,9 +275,27 @@ order, and the names it found handed straight back."
                              (fnn-core
                               'fn-native-operator-host-result-run-implicit-tls-port
                               result)))))
+                (setq run-code code)
+                ;; The owner's fault, when it stopped on one, is the
+                ;; result line's reason: the last line the service
+                ;; manager's journal shows for this run says why.
                 (fnn-operator-emit-status
-                 (fnn-operator-status-of-exit-code code) "run")
+                 (fnn-operator-status-of-exit-code code) "run"
+                 (and (/= code +fnn-exit-ok+) *fnn-owner-last-fault*))
                 code))
+              (error (condition)
+                ;; Recorded for the stop line below, then handled as before
+                ;; by the outer handler.
+                (setq run-failure condition)
+                (error condition)))
+          (let ((code (or run-code (and run-failure (fnn-exit-code-for run-failure)))))
+            (when (integerp code)
+              (fnn-operator-log-run-line
+               (fnn-core 'fn-native-health-host-run-stopped-line code
+                         (let ((reason (cond (run-failure
+                                              (ignore-errors (format nil "~a" run-failure)))
+                                             ((/= code +fnn-exit-ok+) *fnn-owner-last-fault*))))
+                           (and (stringp reason) (fnn-octet-list (fnn-string-octets reason))))))))
           (when tls-context (fnn-tls-close-context tls-context))
           (sb-thread:with-recursive-lock (*fnn-owner-log-mutex*)
             (when *fnn-owner-log-fd*
@@ -589,7 +661,16 @@ observation into the outcome and this function only carries it out."
 ;;; the two is `fn-nls-route''s, and both print the octets ACL2 rendered
 ;;; (books/native-live-status.lisp); this file renders nothing.
 
-(defun fnn-operator-status-once (root control-path kind)
+(defun fnn-operator-not-running-step (root control-path socket-present answer)
+  "ACL2's health step (fn-nh-health-step) over this invocation's observations,
+the one decision `health' takes: (:not-running) when an owner would listen,
+nothing answers and nothing holds the lock."
+  (fnn-core 'fn-native-health-host-step socket-present answer
+            (fnn-store-owner-observation root)
+            (and (fnn-lstat (fnn-clone-fence-path (make-fnn-store root))) t)
+            (and control-path (not (fnn-image-omits-p :control)) t)))
+
+(defun fnn-operator-status-once (root control-path kind &optional result)
   (let* ((socket-present
            (and control-path
                 (not (fnn-image-omits-p :control))
@@ -609,7 +690,16 @@ observation into the outcome and this function only carries it out."
                (when (eq kind :status) (fnn-tls-status-line control-path))
                +fnn-exit-ok+)
       (case (fnn-core 'fn-native-live-status-host-route socket-present answer)
-        (:offline (fnn-command-live-report root kind))
+        (:offline
+         ;; friend-path-2: say first, in ACL2's words, that the node is not
+         ;; running and how its last run ended; then the store's facts.
+         (when (and result (eq kind :status)
+                    (eq (first (fnn-operator-not-running-step
+                                root control-path socket-present answer))
+                        :not-running))
+           (fnn-write-report (fnn-core 'fn-native-health-host-not-running-lines
+                                       (fnn-operator-last-run result))))
+         (fnn-command-live-report root kind))
         (:refused +fnn-exit-refused+)
         (t +fnn-exit-uncertain+)))))
 
@@ -627,7 +717,7 @@ observation into the outcome and this function only carries it out."
     ;; PKT-648: the store's mount, as this process observes it (live or not).
     (ignore-errors (fnn-filesystem-durability-warn root))
     (loop
-      (let ((code (handler-case (fnn-operator-status-once root control-path kind)
+      (let ((code (handler-case (fnn-operator-status-once root control-path kind result)
                     (error (condition)
                       (let ((code (fnn-exit-code-for condition)))
                         (fnn-operator-emit-status
@@ -650,7 +740,7 @@ observation into the outcome and this function only carries it out."
 ;;; (books/native-health.lisp), and reads the exit code back from the octets
 ;;; the host prints (fn-nh-report-exit-of-render).
 
-(defun fnn-operator-health-report (root control-path min)
+(defun fnn-operator-health-report (root control-path min &optional result)
   "The health report's octets, or :refused when the owner refused to answer."
   (let* ((socket-present
            (and control-path
@@ -673,6 +763,15 @@ observation into the outcome and this function only carries it out."
       (case (first step)
         ((:answered :fenced) (second step))
         (:refused :refused)
+        ;; friend-path-2: nothing runs where an owner would listen.
+        (:not-running
+         (let ((last (and result (fnn-operator-last-run result))))
+           (multiple-value-bind (store records) (fnn-open-live-store root nil)
+             (declare (ignore records))
+             (unwind-protect
+                  (fnn-core 'fn-native-health-host-not-running
+                            (fnn-store-config store) min last *the-live-state*)
+               (fnn-store-close store)))))
         (t (multiple-value-bind (store records) (fnn-open-live-store root nil)
              (declare (ignore records))
              (unwind-protect
@@ -691,7 +790,7 @@ observation into the outcome and this function only carries it out."
     ;; PKT-648: the store's mount, as this process observes it (live or not).
     (ignore-errors (fnn-filesystem-durability-warn root))
     (handler-case
-        (let ((report (fnn-operator-health-report root control-path min)))
+        (let ((report (fnn-operator-health-report root control-path min result)))
           (if (eq report :refused)
               (progn (fnn-operator-emit-status :refused "health")
                      +fnn-exit-refused+)

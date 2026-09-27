@@ -3693,8 +3693,14 @@ existing port only after fn-fc has made this connection ready."
                                          monotonic fn-arena state))
                   (:streaming-refused
                    (value (fn-owner-feed-word-publication :streaming-refused nil stop-line)))
-                  ((:need-input :connection-refused :closed :invalid)
+                  (:need-input
                    (value (fn-owner-feed-word-publication kind nil nil)))
+                  ;; friend-path-2: a refused, closed or unreadable
+                  ;; connection names why (books/peer-pull-session.lisp
+                  ;; fn-peer-feed-failure-line): the publication's log line.
+                  ((:connection-refused :closed :invalid)
+                   (value (fn-owner-feed-word-publication
+                           kind nil (fn-peer-feed-failure-line peer input step octets))))
                   (otherwise (value (fn-owner-feed-word-publication :fault nil nil))))))))))
 
 

@@ -2220,6 +2220,18 @@ when that store already exists is `fn-native-operator-init-outcome'."
        (fn-native-config-control-path (fn-native-operator-result-config result)))
     nil))
 
+; friend-path-2: the service log `status' and `health' read the last run
+; line from when no owner runs (books/native-health.lisp fn-nh-last-run), or
+; nil when the configuration names none (stderr).
+(defun fn-native-operator-result-status-log-path-octets (result)
+  (declare (xargs :guard t))
+  (if (and (or (fn-native-operator-result-status-planp result)
+               (fn-native-operator-result-admin-planp result))
+           (fn-native-config-log-path (fn-native-operator-result-config result)))
+      (fn-record-string-octets
+       (fn-native-config-log-path (fn-native-operator-result-config result)))
+    nil))
+
 ; PRF-112: the operator's [alerts] headroom_min_percent, the threshold of the
 ; health verdict's space-pressure state (books/native-health.lisp).
 (defun fn-native-operator-result-health-min-percent (result)

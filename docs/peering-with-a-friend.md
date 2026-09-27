@@ -103,10 +103,14 @@ their peer name for you is your node name (`news.example.org`), as
    fn operator /var/lib/fn/fn.toml peer pull friend 20
    ```
 
-4. Restart the node (as root: `systemctl restart fn`; OpenBSD:
-   `rcctl restart fn`). The login from step 1 answered `restart-required`:
-   until the restart, your friend's node cannot log in, and both logs show
-   `pull ... round=failed cursor=held at=preamble`.
+4. Check the login from step 1: its last word is `applied` when the node
+   was running (the node took the password at once), or
+   `effective-at-next-start` when it was not. If it said `restart-required`
+   (your `fn.toml` names no `[control] path`), restart the node (as root:
+   `systemctl restart fn`; OpenBSD: `rcctl restart fn`). A pull that fails
+   says why in the log, for example
+   `pull peer=friend round=failed cursor=held at=preamble reason=login-refused code=481 phase=auth-pass`:
+   your friend's node refused the login you saved in step 2.
 
 The words of `peer add`, in order: peer name, node name, address, port,
 groups you take, groups you send, `principal HEX` (who logs in as this

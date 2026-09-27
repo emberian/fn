@@ -236,7 +236,10 @@ waits its milliseconds and is fed the same octets."
          (begun (fnn-core 'fn-pull-session-begin-pair plan cursor wall
                           (fnn-pull-profile plan)))
          (session (first begun))
-         (socket nil) (fd nil) (context nil) (channel nil) (cid nil) (events nil))
+         (socket nil) (fd nil) (context nil) (channel nil) (cid nil) (events nil)
+         ;; friend-path-2: ACL2's name for why the round failed (the first
+         ;; failing step's fn-pull-session-failure), for the log line.
+         (why nil))
     (labels ((enqueue (event) (setq events (append events (list event))))
              (send-remote (octets)
                (if channel
@@ -258,7 +261,7 @@ waits its milliseconds and is fed the same octets."
                       (error (condition)
                         (fnn-peer-dial-report :pull peer (fnn-core 'fn-pull-plan-host plan)
                                               condition)
-                        (enqueue (list :lost))))
+                        (enqueue (list :lost :dial))))
                     (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
                       (setf (fnn-pull-runtime-socket runtime) socket)))
                    ;; (:tls SERVER-NAME TRUST-ANCHOR): the handshake ACL2 asked
@@ -266,7 +269,7 @@ waits its milliseconds and is fed the same octets."
                    ;; verified handshake is reported (:tls-up).
                    (:tls
                     (if (null fd)
-                        (enqueue (list :lost))
+                        (enqueue (list :lost :dial))
                       (handler-case
                           ;; PKT-613 (PRF-231): the check is ACL2's
                           ;; `fn-peer-tls-verification' of the configured name
@@ -285,9 +288,9 @@ waits its milliseconds and is fed the same octets."
                           (fnn-err "pull: TLS to peer ~a failed: ~a"
                                    (fnn-pull-peer-string peer) e)
                           (fnn-peer-dial-report :pull peer (fnn-core 'fn-pull-plan-host plan) e)
-                          (enqueue (list :lost))))))
+                          (enqueue (list :lost :tls))))))
                    (:remote (handler-case (send-remote (fnn-octets (cdr effect)))
-                              (error () (enqueue (list :lost)))))
+                              (error () (enqueue (list :lost :send)))))
                    (:open-local
                     (multiple-value-bind (opened greeting)
                         (fnn-pull-local-open service peer)
@@ -314,13 +317,14 @@ waits its milliseconds and is fed the same octets."
                         (enqueue (cons :local (fnn-octet-list reply))))
                       (when closing
                         (setq cid nil)
-                        (enqueue (list :lost)))))
+                        (enqueue (list :lost :local)))))
                    (:close nil)
                    (t (fnn-fault "unknown pull effect ~s" (car effect))))))
              (advance (event)
-               (let ((pair (fnn-core 'fn-pull-session-step-pair session event)))
-                 (setq session (first pair))
-                 (perform (second pair))))
+               (let ((triple (fnn-core 'fn-pull-session-step-triple session event)))
+                 (setq session (first triple))
+                 (unless why (setq why (third triple)))
+                 (perform (second triple))))
              (receive ()
                (let ((limit (or (fnn-core 'fn-pull-session-read-limit session)
                                 +fnn-max-read+)))
@@ -328,19 +332,19 @@ waits its milliseconds and is fed the same octets."
                      (if channel
                          (fnn-tls-read channel +fnn-pull-read-seconds+ limit)
                        (fnn-recv fd +fnn-pull-read-seconds+ limit))
-                   (error () :lost)))))
+                   (error () :read-error)))))
       (unwind-protect
            (progn
              (perform (second begun))
              (loop until (or (fnn-core 'fn-pull-session-done-p session)
                              (fnn-pull-stoppingp runtime)) do
                (if (or events (null fd))
-                   (advance (if events (pop events) (list :lost)))
+                   (advance (if events (pop events) (list :lost :dial)))
                  (let ((incoming (receive)))
-                   (advance (if (or (eq incoming :timeout) (eq incoming :lost)
-                                    (zerop (length incoming)))
-                                (list :lost)
-                              (cons :remote (fnn-octet-list incoming))))))))
+                   (advance (cond ((eq incoming :timeout) (list :lost :timeout))
+                                  ((member incoming '(:lost :read-error)) (list :lost :read))
+                                  ((zerop (length incoming)) (list :lost :eof))
+                                  (t (cons :remote (fnn-octet-list incoming)))))))))
         (sb-thread:with-mutex ((fnn-pull-runtime-lock runtime))
           (setf (fnn-pull-runtime-socket runtime) nil))
         (when cid
@@ -351,7 +355,7 @@ waits its milliseconds and is fed the same octets."
         (when context (ignore-errors (fnn-tls-close-context context)))
         (when socket (ignore-errors (fnn-socket-shut socket))))
       (perform (fnn-core 'fn-pull-session-close-effects session))
-      (fnn-log-line (fnn-core 'fn-pull-session-log-line session))
+      (fnn-log-line (fnn-core 'fn-pull-session-log-line-why session why))
       (fnn-core 'fn-pull-session-close session))))
 
 ;;; ---------------------------------------------------------------------------

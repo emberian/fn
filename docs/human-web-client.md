@@ -65,15 +65,15 @@ If it goes wrong:
 - tin refuses to post from a machine without a domain name
   (`Bad address in From: header`). Give it one: the build's `DOMAIN_NAME`,
   or `disable_sender=ON` in the site's `tin.defaults`.
-- A cancel from tin (`D`, then `d`) withdraws your own post on a node set
-  up with a `mission` (which serves `control.cancel`): readers then get
-  `430 withdrawn`. tin may ask for a cancel secret: press Enter.
 
 ## Cancelling your own post
 
 Use your reader's cancel command, logged in as yourself. The post
 disappears on this node, and on peers that get the cancel. Another
 login's cancel of your post is kept but does nothing. This was tested with tin and Thunderbird.
+In tin: `D`, then `d`; tin may ask for a cancel secret: press Enter.
+Readers then get `430 withdrawn`. The node must have been set up
+with a `mission` (which serves `control.cancel`).
 pan cancels only a post whose Sender line matches your pan profile.
 
 ## slrn and pan

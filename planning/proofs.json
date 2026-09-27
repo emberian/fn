@@ -11289,6 +11289,54 @@
         "fn-lgdm-least-valid-finds-any-witness",
         "fn-lgdm-least-valid-is-valid"
       ]
+    },
+    {
+      "id": "PRF-317",
+      "title": "A node that is not running says so, by name, with how its last run ended",
+      "statement": "books/native-health.lisp fn-nh-health-step (host/native/operator.lisp fnn-operator-health-report and fnn-operator-status-once through fnn-operator-not-running-step): KEYSTONE fn-nh-not-running-exactly-when-nothing-runs: the step answers (:not-running) exactly when no clone fence is present, an owner would listen (a control socket is configured), the writer lock is seen free or absent and nothing answered (route :offline). fn-nh-not-running-report-exit: the report `health' then prints (fn-nh-not-running-report) has exit 18, its own code. fn-nh-last-run (host fnn-operator-last-run, over at most fn-nh-log-tail-octets octets of the [log] path's end): KEYSTONE fn-nh-last-run-reads-the-stop-line: when the log's tail ends with the line `run' writes as it stops (fn-nh-run-stopped-line: the exit code and the reason, one clean line), that stop is what is read, whatever precedes it.",
+      "milestone": "M4",
+      "requirements": [
+        "HST-007",
+        "HST-009"
+      ],
+      "depends_on": [
+        "PRF-112"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/native-health.lisp",
+        "tests/acl2/native-health-tests.lisp",
+        "host/native/operator.lisp",
+        "host/native/owner.lisp",
+        "host/native-live-status-host.lisp",
+        "books/native-operator.lisp",
+        "tests/test_native_control.py"
+      ],
+      "progress_note": "Lane friend-path-2 (Opus 5.5, 2026-09-27): the friend rehearsal's crash loop showed `health exit=19 state=none-held' and nothing said the node was down. planning/evidence/friend-path-2-2026-09-27.md."
+    },
+    {
+      "id": "PRF-318",
+      "title": "Every failed peer connection names its reason: the pull round's first failing step and the feed's refused connection",
+      "statement": "books/peer-pull-session.lisp fn-pull-session-failure (host/native/pull-service.lisp fnn-pull-round through fn-pull-session-step-triple; the round's line is fn-pull-session-log-line-why): KEYSTONE fn-pull-session-failure-names-every-failed-step: the failure is non-nil exactly when the step moved a round that had not ended to :failed, and its words then begin ` reason='. The words: the feed-connection machine's refusal in its phase (login-refused, starttls-refused, greeting-refused, clear-login-refused, mode-refused, peer-closed, invalid-reply) with the peer's reply code, or the host's cause of a lost connection (lost-dial, lost-tls, lost-send, lost-timeout, lost-eof, lost-read, lost-local). fn-peer-feed-failure-line (host/owner-host.lisp fn-owner-feed-reply-chunk) and fn-peer-feed-lost-line (host/native/feed-service.lisp) give the outbound feed the same words (text; the test book's witnesses).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-018"
+      ],
+      "depends_on": [
+        "PRF-100"
+      ],
+      "assumptions": [],
+      "status": "planned",
+      "evidence": [
+        "books/peer-pull-session.lisp",
+        "tests/acl2/peer-pull-session-tests.lisp",
+        "host/native/pull-service.lisp",
+        "host/native/feed-service.lisp",
+        "host/owner-host.lisp",
+        "tests/test_native_peer_pull.py"
+      ],
+      "progress_note": "Lane friend-path-2 (Opus 5.5, 2026-09-27): `pull ... round=failed cursor=held at=preamble' named no reason in the friend rehearsal (a 481 after set-password). planning/evidence/friend-path-2-2026-09-27.md."
     }
   ]
 }

@@ -352,9 +352,11 @@ fn operator /etc/fn/fn.toml policy set posting-policy bound-logins
 ```
 
 `principal unbind alice` removes the tie. `policy set posting-policy open`
-turns the rule off. The command's last word says when the change applies:
-`applied` (now), `effective-at-next-start`, `restart-required`, or
-`uncertain`.
+turns the rule off. The last word of `principal set-password`, `bind` and
+`unbind` says when the change applies: `applied` (now: the running node
+reloaded its logins), `effective-at-next-start` (the node was not running),
+`restart-required` (the node runs but `fn.toml` names no `[control] path`
+to reach it), or `uncertain`.
 
 ## 5. Agents' consumers
 
@@ -588,6 +590,25 @@ Without a service it is on the screen, or in `log/fn.log` when `fn.toml`
 names a `[log] path`. A program that starts fn and keeps its error output
 in a file must show that file: the reason is there.
 
+`health` and `status` say so too. When nothing runs where the node should
+(its control socket does not answer and nothing holds the store), `health`
+answers exit 18 and `status` begins the same way:
+
+```text
+health exit=18 state=not-running (no process holds the store and nothing answers on its control socket: the node is not running)
+last-stop exit=04 reason=owner core/store fault; process stopped: ...
+```
+
+The second line comes from the `[log] path` file: `run` writes `run
+started` when it starts and `run stopped exit=NN reason=...` when it
+stops. `last-stop none` means the last run was killed (or the machine
+stopped) before it could write its stop line; `last-stop unrecorded` means
+the log has no run line (the node has not run since it was set up, there
+is no `[log] path`, or it last ran an older release). Under systemd, after
+five failed starts in a minute the service stays down (`Start request
+repeated too quickly`); once the cause is fixed, `systemctl restart fn`
+starts it again.
+
 The memory refusals, and what to do:
 
 - `fn: refused machine-cannot-hold-profile heap=H MB machine=M MB`: the
@@ -685,10 +706,11 @@ new store with bigger limits: `store export`, a fresh install, then
 [reinstalling](install.md#4-reinstalling) and
 [store settings](#store-settings)).
 
-With the node stopped, `store compact` writes a checkpoint of the store and
-drops the log segments it covers, so the next start opens from the
-checkpoint (`OWNER-OPEN open=checkpoint:N`) instead of replaying the whole
-log. It changes no article. It needs about 4 MiB free.
+The store is a log that grows with each post. Now and then the running
+node saves a summary (a checkpoint) and deletes the parts of the log it
+covers, so a restart reads less. You can do the same by hand, with the node
+stopped. It changes no article, and the next start opens from the
+checkpoint (`OWNER-OPEN open=checkpoint:N`). It needs about 4 MiB free:
 
 ```text
 fn operator /path/to/fn.toml store compact
@@ -771,11 +793,11 @@ store here, with `fn: refused machine-cannot-hold-profile`.
 `mission`) picks the largest of four sizes this machine's memory holds:
 64, 32 or 16 MiB of articles, else 8 MiB. A short post to one group
 takes about 1,180 bytes (860 for the post, 320 for its group), so that is
-about 56,000 posts at the top and about 7,000 at the bottom. A friend's feed uses the same room. For more, remove the `mission`
+about 56,000 posts at the top and about 7,000 at the bottom. `status`
+shows the limits on its `profile` line and about how many posts still fit
+on its `capacity articles-left=N` line. A friend's feed uses the same room. For more, remove the `mission`
 line from `fn.toml` and `init` with the limits above, or raise them later
 with `store export` and `store import --max-... N`.
-`status` then shows the limits on its `profile` line and about how many
-posts still fit on its `capacity articles-left=N` line.
 
 ### Other commands
 

@@ -122,6 +122,15 @@
        (search "encrypted keys are unsupported"
                (fnn-tls-error-detail condition))))
    "encrypted private key is refused without a password prompt")
+  ;; friend-path-2: a key file that is not there is named as missing, not as
+  ;; an encrypted key (OpenSSL's 0x80000002 is ENOENT).
+  (fnn-tls-test-check
+   (handler-case
+       (progn (fnn-tls-open-context certificate "/nonexistent/fn-friend-path-2/key.pem") nil)
+     (fnn-tls-config-error (condition)
+       (and (search "does not exist" (fnn-tls-error-detail condition))
+            (not (search "encrypted" (fnn-tls-error-detail condition))))))
+   "a missing private key is named as missing")
   (fnn-tls-test-check (string= (read-line *standard-input*) "stdin-sentinel")
                       "encrypted key refusal leaves stdin untouched")
   (let ((context (fnn-tls-open-context certificate private-key))

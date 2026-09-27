@@ -493,6 +493,11 @@ def health_states():
     return [word.lstrip(":") for word in states.split()], first, unobserved
 
 
+def health_not_running_exit():
+    text = book_text("books/native-health.lisp")
+    return int(re.search(r"\(defconst \*fn-nh-not-running-exit\* (\d+)\)", text).group(1))
+
+
 def post_refusals():
     text = book_text("books/nntp-post.lisp")
     body = text[text.index("(defun fn-post-refusal-line"):]
@@ -504,8 +509,11 @@ def reasons_region():
     states, first, unobserved = health_states()
     lines = [REASONS_BEGIN, "",
              "`health` ends with the code of the first problem it found, in this order. "
-             "0 means no problem. %d means fn could not check something (the two peer "
-             "checks need the node running):" % unobserved, "",
+             "0 means no problem. %d means the node is not running: nothing answers on "
+             "its control socket and nothing holds the store; the next line says how its "
+             "last run ended (`last-stop exit=NN reason=...`). %d means fn could not check "
+             "something (the two peer checks need the node running):"
+             % (health_not_running_exit(), unobserved), "",
              "| code | problem | what it means, what to do |", "| --- | --- | --- |"]
     for index, state in enumerate(states):
         lines.append("| %d | `%s` | %s |" % (first + index, state,
