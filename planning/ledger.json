@@ -1284,26 +1284,26 @@
     "tests/acl2/proto-adt-tests"
   ],
   "totals": {
-    "books": 1316,
+    "books": 1318,
     "books_in_root_closure": 1314,
     "roots": 1280,
-    "theorems": 19644,
-    "functions": 13578,
+    "theorems": 19705,
+    "functions": 13587,
     "assert_events": 19363,
     "must_fails": 2193,
     "prover_refusals": 0,
     "encapsulates": 101,
     "guards": {
       "verified": 2497,
-      "declared-off": 1638,
-      "default-guarded": 7579,
-      "default-unguarded": 1864
+      "declared-off": 1642,
+      "default-guarded": 7582,
+      "default-unguarded": 1866
     },
-    "suspect_theorems": 1021,
-    "export_hygiene_warnings": 245,
+    "suspect_theorems": 1027,
+    "export_hygiene_warnings": 246,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 231,
-    "include_hygiene_warnings": 1792,
+    "include_hygiene_warnings": 1793,
     "host_names_warnings": 1419,
     "hand_written_record_warnings": 18
   },
@@ -18023,6 +18023,66 @@
         "fn-scrs-dispatch-no-events",
         "fn-scrs-handshaking-of-with-wire",
         "fn-scrs-with-wire-twice"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/served-catalog-join-number.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 23,
+      "functions": 7,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 3,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "served-catalog-join"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-scj-fields-of-with-numbers",
+        "fn-scj-fields-of-with-withdrawn",
+        "fn-scj-numbers-of-assign",
+        "fn-scj-row-art-of-assign"
+      ],
+      "read_error": null
+    },
+    {
+      "book": "books/served-catalog-join-open.lisp",
+      "in_root_closure": false,
+      "is_root": false,
+      "theorems": 38,
+      "functions": 2,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 0,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "served-catalog-join-number"
+      ],
+      "system_includes": [],
+      "suspects": [
+        "fn-scj-acc-rowsp-is-fields",
+        "fn-scj-node-with-retention-keeps-acceptance"
       ],
       "read_error": null
     },
@@ -44351,6 +44411,14 @@
       ]
     },
     {
+      "theorem": "fn-scj-acc-rowsp-is-fields",
+      "book": "books/served-catalog-join-open.lisp",
+      "line": 145,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-scj-articles-of-visible-state-of",
       "book": "books/served-catalog-join.lisp",
       "line": 197,
@@ -44359,9 +44427,49 @@
       ]
     },
     {
+      "theorem": "fn-scj-fields-of-with-numbers",
+      "book": "books/served-catalog-join-number.lisp",
+      "line": 76,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-scj-fields-of-with-withdrawn",
+      "book": "books/served-catalog-join-number.lisp",
+      "line": 207,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-scj-node-with-retention-keeps-acceptance",
+      "book": "books/served-catalog-join-open.lisp",
+      "line": 77,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
       "theorem": "fn-scj-number-in-of-with-withdrawn",
       "book": "books/served-catalog-join.lisp",
       "line": 147,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-scj-numbers-of-assign",
+      "book": "books/served-catalog-join-number.lisp",
+      "line": 184,
+      "reasons": [
+        "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
+      ]
+    },
+    {
+      "theorem": "fn-scj-row-art-of-assign",
+      "book": "books/served-catalog-join-number.lisp",
+      "line": 174,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -48470,6 +48578,12 @@
         "theorem": "fn-rii-sn-statep-carried-is-sn-statep",
         "book": "books/replay-identity-index.lisp",
         "line": 1182,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-scj-node-complete-durable-installs",
+        "book": "books/served-catalog-join-open.lisp",
+        "line": 51,
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
@@ -53962,6 +54076,13 @@
         "line": 47,
         "include": "bp-workflow",
         "included": "books/bp-workflow.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/served-catalog-join-open.lisp",
+        "line": 15,
+        "include": "served-catalog-join-number",
+        "included": "books/served-catalog-join-number.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
