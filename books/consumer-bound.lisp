@@ -44,8 +44,20 @@
 ; Host callers: host/owner-host.lisp `fn-owner-consumer-local-bound-poll',
 ; `-bound-ack', and the plain `fn-owner-consumer-local-poll' / `-ack', each
 ; reached from host/native/owner.lisp `fnn-owner-consumer-local-serialized'.
+;
+; The records flip: the Store retains HELD rows, and a held article row's
+; report is its wire form read through the payload arena
+; (books/history-fold-refinement.lisp `fn-col-poll-report-over');
+; `fn-col-poll-report' refuses such a row `:report'.  The polls over the
+; arena, `fn-cbind-poll-over' and `fn-cbind-plain-poll-over' (section at the
+; end), carry KEYSTONES 1, 2 and 4 to that report, and equal the polls above
+; whenever the selected event is not a held row
+; (`fn-cbind-poll-over-is-poll-unless-a-held-row').  The host's two poll
+; lines switch to them with the live arena (flip-bridge REQUEST to the host
+; lane; the acks read no payload and are unchanged).
 (in-package "ACL2")
 (include-book "consumer-owner-local-progress")
+(include-book "history-fold-refinement")
 (include-book "owner-config")
 
 ; -----------------------------------------------------------------------------
@@ -162,10 +174,12 @@
           (fn-cbind-some-readablep text (cdr groups)))
     nil))
 
+; The article is the poll's: a held row or a wire record (fn-col-poll-articlep,
+; records-flip); its groups are read the same way on both.
 (defun fn-cbind-event-readablep (text event)
   (declare (xargs :guard t :verify-guards nil))
   (let ((article (fn-col-poll-article event)))
-    (and (fn-record-p article)
+    (and (fn-col-poll-articlep article)
          (fn-cbind-some-readablep text (fn-record-groups article))
          t)))
 
@@ -273,7 +287,7 @@
             (fn-cbind-event-readablep text event))
    :hints (("Goal" :in-theory (e/d (fn-cbind-event-readablep fn-col-matchp)
                                    (fn-col-poll-article fn-record-octets-string
-                                    fn-cbind-group-readablep fn-record-p
+                                    fn-cbind-group-readablep fn-col-poll-articlep
                                     fn-record-groups))))))
 
 (local
@@ -435,3 +449,110 @@
 (verify-guards fn-cbind-ack)
 (verify-guards fn-cbind-plain-poll)
 (verify-guards fn-cbind-plain-ack)
+
+; -----------------------------------------------------------------------------
+; The polls over the payload arena (records flip)
+
+(defun fn-cbind-poll-over (oc acfg consumer secret fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (or (fn-cbind-gate oc acfg consumer secret)
+      (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena)))
+
+(defun fn-cbind-plain-poll-over (oc consumer fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (if (fn-cbind-config-login oc consumer)
+      (list :refused :bound)
+    (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena)))
+
+(verify-guards fn-cbind-poll-over)
+(verify-guards fn-cbind-plain-poll-over)
+
+; The bridge: on a selection that is no held row the arena is not read and
+; each poll over the arena is the poll above.
+(defthm fn-cbind-poll-over-is-poll-unless-a-held-row
+  (implies (not (fn-held-p (caddr (fn-col-poll (fn-ocfg-owner oc) consumer))))
+           (and (equal (fn-cbind-poll-over oc acfg consumer secret fn-arena)
+                       (fn-cbind-poll oc acfg consumer secret))
+                (equal (fn-cbind-plain-poll-over oc consumer fn-arena)
+                       (fn-cbind-plain-poll oc consumer))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-col-poll-report-over-is-the-report-unless-a-held-row
+                                   (o (fn-ocfg-owner oc))))
+           :in-theory (e/d (fn-cbind-poll-over fn-cbind-poll
+                            fn-cbind-plain-poll-over fn-cbind-plain-poll)
+                           (fn-cbind-gate fn-col-poll-report-over fn-col-poll-report
+                            fn-col-poll fn-cbind-config-login)))))
+
+(local
+ (defthm fn-cbind-poll-over-when-gate-admits
+   (implies (not (fn-cbind-gate oc acfg consumer secret))
+            (equal (fn-cbind-poll-over oc acfg consumer secret fn-arena)
+                   (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena)))
+   :hints (("Goal" :in-theory '(fn-cbind-poll-over)))))
+
+(local
+ (defthm fn-cbind-poll-over-page-means-gate-admits
+   (implies (equal (car (fn-cbind-poll-over oc acfg consumer secret fn-arena)) :poll)
+            (not (fn-cbind-gate oc acfg consumer secret)))
+   :hints (("Goal" :use ((:instance fn-cbind-gate-is-a-refusal))
+            :in-theory '(fn-cbind-poll-over)))))
+
+(local
+ (defthm fn-cbind-report-over-page-means-poll-page
+   (implies (equal (car (fn-col-poll-report-over o consumer fn-arena)) :poll)
+            (equal (car (fn-col-poll o consumer)) :poll))
+   :hints (("Goal" :in-theory (e/d (fn-col-poll-report-over)
+                                   (fn-col-poll fn-col-poll-report-octets
+                                    fn-row-wire-of fn-ncl-poll-event-bytesp))))))
+
+; KEYSTONE 1 over the arena (confinement): a bound poll that answers a page
+; is the consumer poll's own page over the arena; the consumer is bound, the
+; credential checks, and the selected event's article has a group readable
+; under the bound account's read rule.
+(defthm fn-cbind-poll-over-delivers-only-readable-events
+  (let ((r (fn-cbind-poll-over oc acfg consumer secret fn-arena))
+        (d (fn-col-poll (fn-ocfg-owner oc) consumer))
+        (login (fn-cbind-config-login oc consumer)))
+    (implies (equal (car r) :poll)
+             (and login
+                  (fn-cbind-authenticp oc acfg login secret)
+                  (equal r (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena))
+                  (equal (car d) :poll)
+                  (implies (caddr d)
+                           (fn-cbind-event-readablep
+                            (fn-cbind-read-pattern oc login) (caddr d))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-cbind-poll-over-page-means-gate-admits)
+                 (:instance fn-cbind-poll-over-when-gate-admits)
+                 (:instance fn-cbind-gate-nil-facts)
+                 (:instance fn-cbind-report-over-page-means-poll-page
+                            (o (fn-ocfg-owner oc)))
+                 (:instance fn-cbind-readable-query-reads-the-event
+                            (o (fn-ocfg-owner oc))
+                            (text (fn-cbind-read-pattern
+                                   oc (fn-cbind-config-login oc consumer)))))
+           :in-theory nil)))
+
+; KEYSTONE 2 over the arena: the consumer poll's own answer or a refusal.
+(defthm fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal
+  (let ((r (fn-cbind-poll-over oc acfg consumer secret fn-arena)))
+    (or (equal r (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena))
+        (equal (car r) :refused)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-cbind-gate-is-a-refusal))
+           :in-theory (e/d (fn-cbind-poll-over)
+                           (fn-cbind-gate fn-col-poll-report-over
+                            fn-cbind-gate-is-a-refusal)))))
+
+; KEYSTONE 4 over the arena (the default).
+(defthm fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll
+  (and (implies (not (fn-cbind-config-login oc consumer))
+                (equal (fn-cbind-plain-poll-over oc consumer fn-arena)
+                       (fn-col-poll-report-over (fn-ocfg-owner oc) consumer fn-arena)))
+       (implies (fn-cbind-config-login oc consumer)
+                (equal (fn-cbind-plain-poll-over oc consumer fn-arena)
+                       '(:refused :bound))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cbind-plain-poll-over)
+                                  (fn-cbind-config-login fn-col-poll-report-over)))))
