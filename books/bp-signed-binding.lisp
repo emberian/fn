@@ -234,6 +234,15 @@
                                    fn-bpaj-request-planned-result
                                    fn-bpaj-request-planned-txid))))))
 
+;; A held row stands for its own wire form, which carries its Message-ID.
+(local (defthm fn-bpsb-held-row-stands-for-its-wire
+  (implies (fn-held-p row)
+           (and (fn-bpr-row-stands-for row (fn-row-wire-of row fn-arena) fn-arena)
+                (equal (fn-record-msgid (fn-row-wire-of row fn-arena))
+                       (fn-record-msgid row))))
+  :hints (("Goal" :in-theory (e/d (fn-bpr-row-stands-for fn-row-wire-of)
+                                  (fn-held-p fn-held-wire fn-row-bytes))))))
+
 (local (defthm fn-bpsb-accepted-fast-is-a-record
   (implies (fn-bpaj-store-record-accepted-fast store record fn-arena)
            (fn-record-p record))
@@ -308,8 +317,10 @@
                                     (cadr (fn-bpaj-dispatch-fast
                                            joined store request-octets generation fn-arena))
                                     (fn-sf-records (fn-sn-files store)) fn-arena))))
-           :in-theory (e/d (fn-bpaj-dispatch-msgid fn-bpr-row-stands-for fn-row-wire-of)
-                           (fn-bpsb-record-for-msgid-members
+           :in-theory (e/d (fn-bpaj-dispatch-msgid)
+                           (fn-bpr-row-stands-for fn-row-wire-of
+                            fn-bpr-row-stands-for-held-accessors
+                            fn-bpsb-record-for-msgid-members
                             fn-bpsb-article-event-of-member
                             fn-bpsb-composite-row-binds
                             fn-stxa-p fn-stxa-bindsp fn-held-p fn-held-wire fn-hstxa-p
