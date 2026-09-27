@@ -381,7 +381,8 @@
         "PRF-253",
         "PRF-254",
         "PRF-255",
-        "PRF-266"
+        "PRF-266",
+        "PRF-269"
       ],
       "verification": [
         "proof",
@@ -3657,7 +3658,8 @@
       "proof_targets": [
         "PRF-205",
         "PRF-258",
-        "PRF-270"
+        "PRF-270",
+        "PRF-268"
       ],
       "verification": [
         "proof",

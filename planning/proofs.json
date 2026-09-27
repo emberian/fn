@@ -3,6 +3,57 @@
   "description": "Broad proof targets with incremental certified component evidence. An in-progress target is not fully certified. Paths are repository-relative.",
   "proofs": [
     {
+      "id": "PRF-268",
+      "title": "A format-9 store is initialized and its log segment extended by modelled programs whose every cut is a model crash point",
+      "statement": "Extension: books/store-log-extend.lisp, host/native/io.lisp fnn-log-ensure-extent (called by fnn-log-seal-open-batch and fnn-log-commit-open-batch): KEYSTONE fn-lg-extend-program-keeps-the-relation (the log relation R holds after the segment grows by zeros to fn-olr-next-extent, over the same kernel), KEYSTONE fn-lg-extension-written-crash-reads-the-committed-records (a process death at the new cut log-extended, under any tear, scans to exactly the committed records and chain head, whole units, the old octets kept), fn-olr-extension-target-is-an-extent; the host keeps one spare unit past every append (fn-olr-extension-needed-p; a tooth shows a garbled extension of a full segment forging a record without it). fnn-log-preallocate grows from the old extent (the non-Linux fallback zeroed [0, EXTENT) and erased the log). Init: books/store-init-log-publication.lisp (host fnn-command-init-published): fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log, fn-bs-init-log-classify-by-what-is-known, fn-bs-init-log-segment-is-the-empty-log; books/byte-store-log-initializer.lisp (host fnn-initialize): fn-bsi-log-init-program-establishes-the-empty-log. A format-9 init writes no allocation-frontier.json and no transactions/. Teeth: tests/acl2/store-log-extend-tests.lisp, store-init-log-publication-tests.lisp, byte-store-log-initializer-tests. Lane log-2 (fork log-2-init), PKT-COL-2 and PKT-COL-4.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-028"
+      ],
+      "depends_on": [
+        "PRF-270"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-extend.lisp",
+        "books/store-init-log-publication.lisp",
+        "books/byte-store-log-initializer.lisp",
+        "planning/evidence/manifests/certify-20260927T111520Z-2734710.json",
+        "planning/evidence/manifests/hbox-certify-20260927T113845Z-2889974.json"
+      ],
+      "events": [
+        "fn-lg-extend-program-keeps-the-relation",
+        "fn-lg-extension-written-crash-reads-the-committed-records",
+        "fn-olr-extension-target-is-an-extent",
+        "fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log",
+        "fn-bs-init-log-classify-by-what-is-known",
+        "fn-bs-init-log-segment-is-the-empty-log",
+        "fn-bsi-log-init-program-establishes-the-empty-log"
+      ]
+    },
+    {
+      "id": "PRF-269",
+      "title": "A txid reused after a crash is a fresh feed intent: the open decides a dead intent without its txid",
+      "statement": "books/owner-feed-txid-reuse.lisp, host host/native/owner.lisp fnn-owner-feed-reconcile (every intent resolved before the owner serves): fn-own-feed-intent-reconcile-kind-reads-no-txid (the open decides a dead FNFD intent from its Message-ID, identity and evidence, never its txid) and KEYSTONE fn-own-feed-intent-reuse-is-a-fresh-intent (with no pending intent of that key, a new intent naming a reused txid and its resolution restore the pending set exactly). So the log's derived next txid (the PostgreSQL rule: a txid handed out and never logged is reused after a crash) needs no floor at the feed journals' intents (PKT-COL-8, option ii). Teeth: tests/acl2/owner-feed-txid-reuse-tests.lisp. Lane log-2 (fork log-2-init).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-feed-txid-reuse.lisp",
+        "tests/acl2/owner-feed-txid-reuse-tests.lisp",
+        "planning/evidence/manifests/certify-20260927T111520Z-2734710.json"
+      ],
+      "events": [
+        "fn-own-feed-intent-reconcile-kind-reads-no-txid",
+        "fn-own-feed-intent-reuse-is-a-fresh-intent"
+      ]
+    },
+    {
       "id": "PRF-270",
       "title": "Every process-death cut of the record-log route is a cut of a model program, at a related state",
       "statement": "books/store-log-route-programs.lisp: the format-9 arms of host/native/io.lisp fnn-advance-frontier, fnn-publish, fnn-mark-committed and fnn-recover call fnn-log-reserve, fnn-log-publish, nothing, and fnn-recover-log, whose durable steps and process-death cuts in source order are exactly fn-lg-reserve-program (frontier-reserved), fn-lg-append-program ++ fn-lg-fence-program ++ fn-lg-order-program (log-written, log-fenced, record-completing; a batch of one), and fn-lg-open-program (P-LOG-RECOVER's log-truncated and log-recovered, then recover-replayed and the five recovery barriers each followed by recover-barrier): tools/native_program_check.py checks each arm (tests/campaign/native_cuts.py verify_log_route_arms, in make check; teeth in tests/test_native_program_check.py LogRouteArmTests). fn-lg-reserve-program-keeps-the-relation: from R, the state at frontier-reserved (the kernel caught up by fn-olr-consume-to) is R-related; fn-lg-order-program-keeps-the-relation: from R and a record, the state at record-completing (the record taken into the open batch, fn-olr-take) is related; fn-lg-open-suffix-keeps-the-relation: from R with nothing in flight (as fn-lg-recover-program-establishes-the-relation leaves it), every state after log-recovered is related. So a process death at any cut is a crash of an R-related state (fn-lgk-crash-of-related-state-is-a-prefix). Teeth: tests/acl2/store-log-route-programs-tests.lisp (reached states of store-log-kernel-tests; R removed; a batch in flight at the open's barrier).",
