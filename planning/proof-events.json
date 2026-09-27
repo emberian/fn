@@ -7458,6 +7458,37 @@
           "name": "fn-bpaj-context-v2-receiver-is-existing-transition"
         }
       ]
+    },
+    {
+      "id": "PRF-245",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpfr-step-resumes",
+          "note": "KEYSTONE. Subject fn-bpfr-step. Host: none yet (integration boundary). Teeth: tests/acl2/bp-fragment-resume-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfr-run-is-reassemble",
+          "note": "KEYSTONE: bounded steps reach fn-bpfw-reassemble = fn-bpfw-spec."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfr-step-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfr-finished-state-is-the-sweep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfr-run-resumes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpfr-run-finishes"
+        }
+      ]
     }
   ]
 }

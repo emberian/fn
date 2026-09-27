@@ -7975,6 +7975,33 @@
         "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
       "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): REPL-admitted and certified with certify_books.py --incremental on persvati; the farm manifest is cited in the evidence record."
+    },
+    {
+      "id": "PRF-245",
+      "title": "BP fragment reassembly as a resumable step bounded in octets: any schedule of bounded steps reaches the one RFC 9171 reassembly",
+      "statement": "books/bp-fragment-resume.lisp over books/bp-fragment-sweep.lisp. fn-bpfr-step runs the executed reassembler's sweep (fn-bpfw-sweep-acc) for at most QUANTUM positions and returns its state (active suffixes, queue, position, positions left, cells). KEYSTONE fn-bpfr-step-resumes (hypothesis-free): resuming the sweep from the state one step leaves equals the sweep from the state before it. KEYSTONE fn-bpfr-run-is-reassemble: for (posp quantum), steps of QUANTUM run to completion from fn-bpfr-start leave no position, and fn-bpfr-finish of the result is fn-bpfw-reassemble and fn-bpfw-spec (the uncapped reference), for every fragment list and total: complete, missing, conflicting and invalid families alike. fn-bpfr-step-is-bounded: a step consumes and emits exactly min(QUANTUM, left) positions and cells. What it does not say: that the node calls it -- the family plan (bp-node-fragment-family) still reassembles in one foundation step; carrying the state across steps, and assembling into the Store's arena by extents (PKT-585) instead of an octet list, are the integration boundary.",
+      "milestone": "M4",
+      "requirements": [
+        "REP-008"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "events": [
+        "fn-bpfr-step-resumes",
+        "fn-bpfr-run-is-reassemble",
+        "fn-bpfr-step-is-bounded",
+        "fn-bpfr-finished-state-is-the-sweep",
+        "fn-bpfr-run-resumes",
+        "fn-bpfr-run-finishes"
+      ],
+      "evidence": [
+        "books/bp-fragment-resume.lisp",
+        "books/bp-fragment-sweep.lisp",
+        "tests/acl2/bp-fragment-resume-tests.lisp",
+        "planning/evidence/bp-fragments-10mib-2026-09-27.md"
+      ],
+      "progress_note": "Lane bp-fragments-10mib-2 (2026-09-27): REPL-admitted and certified with certify_books.py --incremental on persvati; no host caller yet."
     }
   ]
 }
