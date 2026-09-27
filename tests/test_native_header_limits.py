@@ -94,12 +94,8 @@ class NativeHeaderLimitsTests(unittest.TestCase):
 
     def start(self):
         config = self.root / "fn.toml"
-        config.write_text(
-            "[store]\npath = \"{}\"\n"
-            "[listener]\nhost = \"127.0.0.1\"\nport = {}\n"
-            "[control]\npath = \"{}\"\n".format(
-                self.store, self.port, self.root / "control.sock"),
-            encoding="ascii")
+        if not config.exists():
+            self.start_config_only(config)
         process = subprocess.Popen(
             [str(IMAGE), "--fn", "operator", str(config), "run"], cwd=ROOT,
             env=environment(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -188,6 +184,60 @@ class NativeHeaderLimitsTests(unittest.TestCase):
         reply, _ = self.post(folded, "<folded@example.invalid>")
         self.assertEqual(reply, b"441 posting failed; the header has more lines "
                                 b"than the profile's max-header-lines")
+
+    def transit_article(self, total_fields, message_id):
+        """A relayed article of TOTAL_FIELDS header fields: Path, Date and
+        the four of `article', and TOTAL_FIELDS - 6 X- fields."""
+        return (b"Path: src.example.invalid!not-for-mail\r\n"
+                b"Date: Mon, 21 Sep 2026 12:00:00 +0000\r\n"
+                + article(total_fields - 2, message_id))
+
+    def test_peer_transit_is_refused_past_the_profile_limits_by_name(self):
+        """PKT-660: IHAVE and TAKETHIS receive the profile's limits as POST
+        does (books/transit-header-limits.lisp): the default profile's 64
+        fields are relayed, the 65th is refused 437 (by name) / 439."""
+        self.init()
+        config = self.root / "fn.toml"
+        self.start_config_only(config)
+        result = self.image("operator", str(config), "peer", "add", "src",
+                            "src.example.invalid", "127.0.0.1", "1", "fn.*",
+                            "-", "127.0.0.1", "true")
+        self.assertEqual(result.returncode, 0, result.stderr.decode())
+        self.start()
+        replies = {}
+        with socket.create_connection(("127.0.0.1", self.port), timeout=120) as conn:
+            stream = conn.makefile("rwb", buffering=0)
+            self.assertTrue(stream.readline().startswith(b"200"))
+            for total, verb in ((64, "IHAVE"), (65, "IHAVE"), (65, "TAKETHIS")):
+                message_id = "<t%d-%s@example.invalid>" % (total, verb.lower())
+                octets = self.transit_article(total, message_id)
+                if verb == "IHAVE":
+                    stream.write(b"IHAVE " + message_id.encode("ascii") + b"\r\n")
+                    offer = stream.readline()
+                    self.assertTrue(offer.startswith(b"335"), offer)
+                    stream.write(octets + b".\r\n")
+                else:
+                    stream.write(b"TAKETHIS " + message_id.encode("ascii") + b"\r\n"
+                                 + octets + b".\r\n")
+                replies[(total, verb)] = stream.readline().rstrip(b"\r\n")
+            stream.write(b"QUIT\r\n")
+        print("NATIVE-HEADER-LIMITS-TRANSIT " + repr(replies))
+        self.assertTrue(replies[(64, "IHAVE")].startswith(b"235"), replies)
+        # 437 carries the reason text; 439 echoes the Message-ID only
+        # (RFC 4644 section 2.5).
+        self.assertEqual(replies[(65, "IHAVE")],
+                         b"437 transfer rejected; the header has more fields "
+                         b"than the profile's max-header-fields", replies)
+        self.assertEqual(replies[(65, "TAKETHIS")],
+                         b"439 <t65-takethis@example.invalid>", replies)
+
+    def start_config_only(self, config):
+        config.write_text(
+            "[store]\npath = \"{}\"\n"
+            "[listener]\nhost = \"127.0.0.1\"\nport = {}\n"
+            "[control]\npath = \"{}\"\n".format(
+                self.store, self.port, self.root / "control.sock"),
+            encoding="ascii")
 
 
 if __name__ == "__main__":
