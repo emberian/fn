@@ -1033,6 +1033,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-authored-accept-tests \
 	books/peer-carriage-rows \
 	books/peer-carriage \
+	books/owner-parse-carried \
+	tests/acl2/owner-parse-carried-tests \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \
