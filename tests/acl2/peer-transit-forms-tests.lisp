@@ -166,7 +166,6 @@
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
 (bpr-lift fn-peer-step-pinned 8)
-(bpr-lift ptf-step 2)
 (bpr-lift ptf-sub 1)
 (assert-event (equal (in-arena-ptf-sub *sr-arena* :takethis)
                      (fn-peer-make-submission "innA" :takethis *ptf-id*
@@ -181,6 +180,7 @@
 (defun ptf-step (ps line fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-peer-step-pinned ps *ptf-archive* nil nil nil nil nil (list :command (ptf-o line)) fn-arena))
+(bpr-lift ptf-step 2)
 (defun ptf-inflight (r) (fn-peer-session-inflight (fn-post-result-session r)))
 ; A pipeline at the bound: the fifteenth-to-sixteenth CHECK is promised
 ; (238, count 16 = max-inflight), the next is 431 and the count stays 16;

@@ -50,7 +50,6 @@
 (bpr-lift fn-pix-msgid-retrieval-indexed 5)
 (bpr-lift pix-ref 1)
 (bpr-lift pix-step 3)
-(bpr-lift pix-t-delegate 1)
 (assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
                      (list (pt-reply "435 duplicate"))))
 (assert-event (equal (in-arena-pix-step *sr-arena* (pt-cmd "CHECK <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
@@ -197,6 +196,7 @@
                                       *pt-inj* *pt-obs* *pt-obs* event fn-arena)
          (fn-peer-delegate-pinned *pt-ps1* *pix-t-archive* *pix-t-pin* nil
                                   *pt-inj* *pt-obs* *pt-obs* event fn-arena)))
+(bpr-lift pix-t-delegate 1)
 (assert-event (and (in-arena-pix-t-delegate *sr-arena* (pt-cmd "STAT <a1@example.invalid>"))
                    (in-arena-pix-t-delegate *sr-arena* (pt-cmd "STAT <loop@example.invalid>"))
                    (in-arena-pix-t-delegate *sr-arena* (pt-cmd "ARTICLE <a1@example.invalid>"))

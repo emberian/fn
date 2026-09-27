@@ -1257,9 +1257,6 @@
 (include-book "arena-lift")
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
-(bpr-lift bsk0-owner-frontier-eio-applied-conclusionp 4)
-(bpr-lift bsk0-owner-frontier-eio-appliedp 4)
-(bpr-lift bsk0-owner-frontier-eio-choice-conclusionp 5)
 (bpr-lift bsk0-owner-frontier-returnp 4)
 (bpr-lift fn-ocfg-step 2)
 (assert-event
@@ -1331,10 +1328,12 @@
                 (if (equal choice :apply)
                     (fn-sf-frontier-candidate k3)
                   (fn-bs-durable-frontier bs))))))
+(bpr-lift bsk0-owner-frontier-eio-choice-conclusionp 5)
 
 (defun bsk0-owner-frontier-eio-applied-conclusionp (bs oc stage octets fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (bsk0-owner-frontier-eio-choice-conclusionp bs oc stage octets :apply fn-arena))
+(bpr-lift bsk0-owner-frontier-eio-applied-conclusionp 4)
 
 ; The called owner path classifies a root-directory EIO after rename as a
 ; recovery fence.  The byte interpreter stops at the failing fsync (pair 12),
@@ -1357,6 +1356,7 @@
          (equal (len run) 13)
          (fn-bs-dir-quietp failed :root)
          (equal (fn-sf-frontier k4) (fn-sf-frontier (fn-sn-files s))))))
+(bpr-lift bsk0-owner-frontier-eio-appliedp 4)
 
 (assert-event
  (let* ((bs (bsk5-initial))

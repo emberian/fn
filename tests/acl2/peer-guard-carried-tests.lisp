@@ -65,12 +65,8 @@
 (defconst *sr-arena* nil)
 (bpr-lift fn-scar-peer-step-pinned 11)
 (bpr-lift pgc-arm 4)
-(bpr-lift pgc-arm-pinned 1)
 (bpr-lift pgc-ref 2)
-(bpr-lift pgc-ref-full 2)
-(bpr-lift pgc-ref-pinned 1)
 (bpr-lift pgc-scar 5)
-(bpr-lift pgc-scar-full 2)
 (assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
                      (list (pt-reply "435 duplicate"))))
 (assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "CHECK <a1@example.invalid>") *pix-t-trie* *pix-t-arts*)
@@ -109,10 +105,12 @@
   (fn-scar-peer-step-pinned ps *pt-node1* *pix-t-trie* *pix-t-arts*
                             *pix-t-archive* nil nil *pt-inj* *pt-obs* *pt-obs*
                             event fn-arena))
+(bpr-lift pgc-scar-full 2)
 (defun pgc-ref-full (ps event fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-peer-step-pinned ps *pix-t-archive* nil nil *pt-inj* *pt-obs* *pt-obs*
                        event fn-arena))
+(bpr-lift pgc-ref-full 2)
 (assert-event (fn-post-result-submission
                (in-arena-pgc-scar-full *sr-arena* *pgc-t-awaiting* (list :article *pt-loop-lines*))))
 (assert-event (equal (in-arena-pgc-scar-full *sr-arena* *pgc-t-awaiting* (list :article *pt-loop-lines*))
@@ -206,11 +204,13 @@
   (fn-post-result-effects
    (fn-pgc-peer-arm *pt-ps1* *pix-t-trie* *pix-t-arts* *pix-t-archive* *pix-t-pin* nil
                     *pt-inj* *pt-obs* *pt-obs* event fn-arena)))
+(bpr-lift pgc-arm-pinned 1)
 (defun pgc-ref-pinned (event fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-effects
    (fn-peer-step-pinned *pt-ps1* *pix-t-archive* *pix-t-pin* nil
                         *pt-inj* *pt-obs* *pt-obs* event fn-arena)))
+(bpr-lift pgc-ref-pinned 1)
 (assert-event (fn-peer-session-peer *pt-ps1*))
 (assert-event (equal (in-arena-pgc-arm-pinned *sr-arena* (pt-cmd "STAT <a1@example.invalid>"))
                      (in-arena-pgc-ref-pinned *sr-arena* (pt-cmd "STAT <a1@example.invalid>"))))

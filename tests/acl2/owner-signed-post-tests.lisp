@@ -39,9 +39,6 @@
 (bpr-lift fn-own-read 3)
 (bpr-lift fn-own-run 2)
 (bpr-lift fn-own-step 2)
-(bpr-lift ospt-finish-conclusion 3)
-(bpr-lift ospt-reader-verdict 1)
-(bpr-lift ospt-submit 2)
 (make-event
  `(defconst *ospt-open*
     ',(let* ((o (in-arena-fn-own-run *sr-arena* (fn-own-start *ospt-enrolled* 4) (list (list :configure *ospt-config*)
@@ -53,6 +50,7 @@
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let* ((offered (cdr (fn-own-read o *ospt-poster* *ospt-post-command* fn-arena))))
     (cdr (fn-own-read offered *ospt-poster* (append octets '(46 13 10)) fn-arena))))
+(bpr-lift ospt-submit 2)
 (make-event
  `(defconst *ospt-taken*
     ',(in-arena-fn-own-step *sr-arena* (in-arena-ospt-submit *sr-arena* *ospt-open* *tha-received*) '(:take))))
@@ -116,6 +114,7 @@
                                  *ospt-msgid*)
            (fn-stx-make-verdict (fn-stxe-token v) (fn-stxe-detail v)
                                 (nth 6 (fn-pa-current-plan received snapshots nil nil))))))
+(bpr-lift ospt-finish-conclusion 3)
 (assert-event (fn-sn-completion-enabledp (fn-own-store *ospt-completing*)))
 (assert-event (fn-hstxa-p (fn-sn-completion-record (fn-own-store *ospt-completing*))))
 (assert-event (equal (fn-hstxa-stxa (fn-sn-completion-record (fn-own-store *ospt-completing*)))
@@ -176,6 +175,7 @@
          (conn (fn-own-find-conn (fn-own-next-id o) (fn-own-conns o2))))
     (and conn
          (fn-stx-reader-verdict *ospt-msgid* (fn-own-conn-verdicts conn)))))
+(bpr-lift ospt-reader-verdict 1)
 (assert-event
  (equal (in-arena-ospt-reader-verdict *sr-arena* *ospt-completing*)
         (fn-stx-reader-item

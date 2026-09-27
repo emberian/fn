@@ -587,7 +587,7 @@
       (let* ((number (car numbers))
              (article (fn-scat-available-article group number v fn-arena fn-cat))
              (over (if (and (consp article)
-                            (not (fn-rcl-tombstonep (fn-article-payload article))))
+                            (not (fn-rcl-tombstonep (fn-nntp-article-bytes article fn-arena))))
                        (fn-nov-overview article fn-arena)
                      (list :error))))
         (if (fn-nov-okp over)
