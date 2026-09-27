@@ -6627,7 +6627,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-pidx-existing-action-is-rclb-existing-action"
+          "name": "fn-pidx-existing-action-is-store-existing-action"
         },
         {
           "kind": "theorem",
