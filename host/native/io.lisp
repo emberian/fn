@@ -2863,7 +2863,9 @@ open that follows checks it."
   "`store ROOT rebind-filesystem [on|off]': record the filesystem the store
 is on now, for a deliberate move or a restored backup.  The store's writer
 lock is taken (a running owner refuses this) and its profile and frontier
-load, but the identity is not checked: that is what this replaces.
+load, but the identity is not checked: that is what this replaces.  A
+format-9 store (ACL2's fn-store-profile-logp) has no frontier file: its
+frontier is derived from the log at recovery, as fnn-acquire reads it.
 REQUESTED is 1, 0 or NIL (keep the store's policy)."
   (let ((store (make-fnn-store root :writable t)))
     (fnn-safe-directory (fnn-store-root store))
@@ -2872,7 +2874,10 @@ REQUESTED is 1, 0 or NIL (keep the store's policy)."
     (unwind-protect
          (progn
            (fnn-load-config store)
-           (fnn-load-frontier store)
+           (setf (fnn-store-logp store)
+                 (and (fnn-core 'fn-store-profile-logp (fnn-store-config store)) t))
+           (unless (fnn-store-logp store)
+             (fnn-load-frontier store))
            (let* ((record (fnn-filesystem-record-observation store))
                   (observation (fnn-filesystem-observation (fnn-store-root store)))
                   (plan (fnn-core 'fn-smid-rebind-plan record observation requested)))
