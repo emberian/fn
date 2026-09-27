@@ -7340,13 +7340,19 @@
         "fn-cat-wire-list-of-redecide",
         "fn-cat-prefix-relation-of-withdraw",
         "fn-cat-prefix-relation-of-redecide",
-        "fn-cat-ocl-relation-at-recover",
-        "fn-cat-ocl-relation-at-init",
         "fn-cat-ocl-relation-of-article-finish",
         "fn-cat-ocl-relation-before-article-finish",
         "fn-cat-ocl-relation-of-other-finish",
         "fn-cat-ocl-relation-of-withdraw",
-        "fn-cat-ocl-relation-of-redecide"
+        "fn-cat-ocl-relation-of-redecide",
+        "fn-cat-ocl-relation-of-article-finish-by",
+        "fn-sca-ocl-relation-at-recover",
+        "fn-sca-ocl-relation-at-full-open",
+        "fn-sca-ocl-relation-of-finish",
+        "fn-sca-intern-events-accepts-wire-events",
+        "fn-sca-ocl-store-rows-are-values",
+        "fn-sca-intern-events-composites-okp",
+        "fn-sca-held-rowsp-of-record-values"
       ],
       "evidence": [
         "planning/evidence/catalog-slice-2026-09-26.md",
