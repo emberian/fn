@@ -3715,7 +3715,12 @@
         "fn-scka-recover-rows-rii-is-recover-rows",
         "fn-scka-write-run-is-run-segments",
         "fn-scka-next-checkpoint-is-capture",
-        "fn-scka-select-named-refuses-the-arena-by-name"
+        "fn-scka-select-named-refuses-the-arena-by-name",
+        "fn-sshr-share-is-identity",
+        "fn-scka-src-payloads-of-canon-srcs",
+        "fn-scka-srcs-n-compose",
+        "fn-scka-srcs-n-complete",
+        "fn-scka-restore-base-of-strip-of-capture"
       ]
     },
     {
@@ -7342,8 +7347,8 @@
         "fn-sca-ocl-relation-at-recover",
         "fn-sca-ocl-relation-at-full-open",
         "fn-sca-ocl-relation-of-finish",
-        "fn-sca-ocl-store-rows-are-values",
         "fn-sca-intern-events-accepts-wire-events",
+        "fn-sca-ocl-store-rows-are-values",
         "fn-sca-intern-events-composites-okp",
         "fn-sca-held-rowsp-of-record-values"
       ],
@@ -9915,7 +9920,7 @@
       "progress_note": "Lane owner-scheduler-2 (Opus 5.5, 2026-09-27; PKT-688 (4) slice 2, on lane commit-onto-log's :commit class). Host lines: host/native/owner.lisp fnn-owner-gate-pick calls fn-ocs-next at every release of the owner and every arrival at an idle one; fnn-owner-gate-leave calls fn-ocs-observe; fnn-owner-commit-event calls fn-ocs-commit-event inside the committer's :commit quanta (fnn-owner-commit-batch: START = fnn-owner-commit-start-locked, then fnn-owner-commit-barrier with the owner released, then COMPLETE = fnn-owner-commit-complete-locked under a second :commit quantum whose unwind-protect applies :completed); host/native/control.lisp fnn-control-live-status-answer enters as :inspect after ACL2's fn-native-live-status-host-requestp chose that path. Teeth: tests/acl2/owner-commit-steps-tests.lisp (states reached from fn-ocs-init; the keystone tight at 1 in and out of a batch; must-fail with the inspect absent for three picks: delay 3; in flight only readers waiting: nobody admitted, and the same readers admitted after :fenced/:completed (must-fail); the step machine's whole cycle and its faults). Native: tests.test_native_owner_scheduler test_status_is_answered_while_a_batch_barrier_is_in_flight (a developer selector holds the barrier 6 s: status answered inside it, GROUP and the 240 after it).",
       "events": [
         "fn-ocs-inspect-waits-at-most-one",
-        "fn-ocs-in-flight-admits-only-inspect-and-commit",
+        "fn-ocs-in-flight-admits-only-inspect-commit-and-reader",
         "fn-ocs-next-otherwise-is-ocm-next",
         "fn-ocs-inspect-pick-keeps-the-ocm",
         "fn-ocs-complete-only-after-the-barrier",
@@ -9929,7 +9934,8 @@
         "fn-ocs-failed-barrier-stops-telling-no-member",
         "fn-ocs-member-rendered-only-in-a-complete",
         "fn-ocs-member-otherwise-uncertain",
-        "fn-ocs-member-uncertain-word-told-uncertain"
+        "fn-ocs-member-uncertain-word-told-uncertain",
+        "fn-ocs-in-flight-commit-before-reader"
       ]
     },
     {
@@ -10034,7 +10040,7 @@
         "fn-ocp-next-opens-only-behind-a-sync",
         "fn-ocp-start-next-only-behind-a-sync",
         "fn-ocp-next-is-ocs-next",
-        "fn-ocp-in-flight-admits-only-inspect-and-commit"
+        "fn-ocp-in-flight-admits-only-inspect-commit-and-reader"
       ]
     },
     {

@@ -102,7 +102,7 @@ BUFFER_FINDINGS = [
         # prepare-served: fn-psrv-prepare replaced the call of
         # fn-prc-sbud-prepare; its book is dropped with the rest.
         ("fn-psrv-prepare", "books/owner-prepare-served.lisp"),
-        ("fn-psrv-prepare-identity", "books/owner-prepare-served.lisp"),
+        ("fn-psrv-prepare-identity-at", "books/owner-prepare-served.lisp"),
         ("fn-psrv-prepare-topic", "books/owner-prepare-served.lisp"),
         ("fn-psrv-refusal-kind", "books/owner-prepare-served.lisp"),
         ("fn-psrv-unstage", "books/owner-prepare-served.lisp"))]
@@ -292,7 +292,7 @@ class BuildListsCheckTests(unittest.TestCase):
                 ("fn-prc-refresh", "books/post-retain-carried.lisp"),
                 # prepare-served: the prepares' served decision.
                 ("fn-psrv-prepare", "books/owner-prepare-served.lisp"),
-                ("fn-psrv-prepare-identity", "books/owner-prepare-served.lisp"),
+                ("fn-psrv-prepare-identity-at", "books/owner-prepare-served.lisp"),
                 ("fn-psrv-prepare-topic", "books/owner-prepare-served.lisp"),
                 ("fn-psrv-refusal-kind", "books/owner-prepare-served.lisp"),
                 ("fn-psrv-unstage", "books/owner-prepare-served.lisp"),
