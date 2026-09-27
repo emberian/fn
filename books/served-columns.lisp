@@ -80,6 +80,7 @@
 ; -----------------------------------------------------------------------------
 ; The lookup: a row of the article's Message-ID with the article's handle.
 
+(fn-payload-kind fn-scol-find-row :handle "compares each candidate row's handle with H; reads no octets")
 (defun fn-scol-find-row (h seqs fn-cat)
   (declare (xargs :stobjs fn-cat :guard t))
   (if (atom seqs)
