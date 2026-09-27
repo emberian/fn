@@ -1375,3 +1375,12 @@
                '(:use ((:instance fn-bpnjc-drain-step)
                        (:instance fn-bpnjc-ask-position-bounds (st (car sts)))))))
   :rule-classes nil)
+
+; The list and arithmetic lemmas stay here; the includers get the ask, the
+; relation and the keystones.
+(in-theory (disable fn-bpnjc-prefix-and-drop fn-bpnjc-member-of-append
+                    fn-bpnjc-subset-of-append fn-bpnjc-subset-cons fn-bpnjc-keys-of-append
+                    fn-bpnjc-nfix-nfix fn-bpnjc-position-is-natural fn-bpnjc-intersectp-of-cons
+                    fn-bpnjc-disjoint-member fn-bpnjc-len-of-drop fn-bpnjc-drop-one-more
+                    fn-bpnjc-prefix-one-more fn-bpnjc-consp-drop fn-bpnjc-len-of-append
+                    fn-bpnjc-len-of-replace-job fn-bpnjc-apply-record-jobs))
