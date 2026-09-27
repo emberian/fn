@@ -3917,7 +3917,7 @@
     {
       "id": "PRF-087",
       "title": "The octet buffer abstracts to the octet list",
-      "statement": "fn-octets (books/octets-stobj.lisp) is an abstract stobj whose logical value is the octet list and whose executable is a resizable (unsigned-byte 8) array with a fill count. The abstraction relation fn-octets$corr (the array's first FILL cells read in order are the list, the fill count is within the array, the concrete object is well formed) is established by the creator (create-fn-octets{correspondence}) and preserved by every export, and every export's executable step equals the list operation on the abstraction under the export's guard: fn-octets-get{correspondence} is nth, fn-octets-put{correspondence} is update-nth, fn-octets-append-octet{correspondence} is append of one octet (through the array's doubling resize), fn-octets-list{correspondence} is the list read tail-recursively, fn-octets-from-list{correspondence} is the list written; each with the guard theorem and the logical preservation ACL2 requires. The derived readers a codec twin reads the buffer with are their take/nthcdr terms over the logical value, under the hypothesis that the value is a true list, which every buffer value is: fn-oct-slice-list-is-take-nthcdr, fn-oct-prefix-equalp-is-list-prefixp (a prefix test against the list-model shape fn-inj-strip has, not take, which pads with nil past the end), fn-oct-suffix-equalp-is-equal. Every executable function is guard-verified. The host fills the array from the byte vector of a socket read in raw Lisp (host/native/io.lisp fnn-octets-fill: reserve, one replace, the count; A-HOST) and calls the buffer entries with the live stobj (host/native/owner.lisp fnn-owner-attempt).",
+      "statement": "fn-octets (books/octets-stobj.lisp) is an abstract stobj whose logical value is the octet list and whose executable is a resizable (unsigned-byte 8) array with a fill count. The abstraction relation fn-octets$corr (the array's first FILL cells read in order are the list, the fill count is within the array, the concrete object is well formed) is established by the creator (create-fn-octets{correspondence}) and preserved by every export, and every export's executable step equals the list operation on the abstraction under the export's guard: fn-octets-get{correspondence} is nth, fn-octets-put{correspondence} is update-nth, fn-octets-append-octet{correspondence} is append of one octet (through the array's doubling resize), fn-octets-list{correspondence} is the list read tail-recursively, fn-octets-from-list{correspondence} is the list written; each with the guard theorem and the logical preservation ACL2 requires. The derived readers a codec twin reads the buffer with are their take/nthcdr terms over the logical value, under the hypothesis that the value is a true list, which every buffer value is: fn-oct-slice-list-is-take-nthcdr, fn-oct-prefix-equalp-is-list-prefixp (a prefix test against the list-model shape fn-inj-strip has, not take, which pads with nil past the end), fn-oct-suffix-equalp-is-equal. Every executable function is guard-verified. The host fills the array from the byte vector of a socket read in raw Lisp (host/native/io.lisp fnn-octets-fill: reserve, one replace, the count; A-HOST) and calls the buffer entries with the live stobj (host/native/owner.lisp fnn-owner-attempt). Bulk exports (lane octets-bulk, 2026-09-27): fn-octets-append-back{correspondence} is the octet-by-octet back copy fn-oct-back-copy (each appended octet the one OFF back when it is appended, so a run longer than OFF repeats, as an LZ match) executed as one reservation and one forward array loop; fn-octets-get-word{correspondence} is fn-oct-word-at (K octets as a little-endian natural; seven unrolled reads at K = 7); fn-octets-append-word{correspondence} is append of fn-oct-word-octets (a fixnum loop below 2^56, the octet-list write above); fn-oct-word-octets-of-word-at is the round trip that makes a word copy between two buffers the copy of the octets (a defabsstobj export cannot name a second buffer).",
       "milestone": "M5",
       "requirements": [
         "HST-001",
@@ -3935,7 +3935,9 @@
         "books/poster-bytes-buffer.lisp",
         "tests/acl2/octets-stobj-tests.lisp",
         "planning/evidence/rep-octets-2026-09-25.md",
-        "planning/evidence/manifests/certify-20260926T050746Z-356474.json"
+        "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
+        "tests/acl2/octets-bulk-tests.lisp",
+        "planning/evidence/octets-bulk-2026-09-27.md"
       ],
       "progress_note": "Consumers on the buffer: the existing-article test and the prepare of the served POST (fn-pbb-existing-action-is-pb-existing-action, host/owner-host.lisp fn-owner-existing-action-buffer and fn-owner-prepare-buffer). Since 2026-09-25 (pbb-d32) the buffer twin reads a recipe v3 record (D32, a supplied Path): the source is a description (K A B) of buffer positions, st[K..A) then st[B..) with the AGENT! insertion cut out, found by the index Path scan (fn-pbb-path-scan-is-inj-path-scan, fn-pbb-unsplice-at-is-inj-unsplice, fn-pbb-source-index-is-inj-source-of) and compared in place (fn-pbb-range-match-is-equal-of-append, fn-pbb-desc-equalp-is-equal); the agent of a v3 record is read from its block (fn-pbb-block-agent-is-pb-block-agent, fn-pbb-path-agent-is-pb-path-agent). Open: the payload digest over the buffer needs a SHA-256 reader by index (books/sha256-stobj.lisp, a third message reader beside the string and list readers); the chunk read (fn-owner-chunk) and the accumulated body are the owner's logical state (wave C); the record encoder, the frame and the article parser over the buffer are boundaries 7 to 9 of planning/design-2026-09-25-representation.md.",
       "events": [
@@ -3956,7 +3958,11 @@
         "fn-pbb-block-agent-is-pb-block-agent",
         "fn-pbb-path-agent-is-pb-path-agent",
         "fn-pbb-same-articlep-is-pb-same-articlep",
-        "fn-pbb-existing-action-is-pb-existing-action"
+        "fn-pbb-existing-action-is-pb-existing-action",
+        "fn-octets-append-back{correspondence}",
+        "fn-octets-get-word{correspondence}",
+        "fn-octets-append-word{correspondence}",
+        "fn-oct-word-octets-of-word-at"
       ]
     },
     {
@@ -5347,7 +5353,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-arena-seal-keeps-sealed",
         "fn-arena-seals-keep-sealed",
@@ -9453,7 +9459,7 @@
     {
       "id": "PRF-257",
       "title": "A sealed compressed payload denotes exactly the octets it was sealed from, whatever the encoder wrote; the ACL2 LZ4-block decoder is total, guard-verified, resumable in quanta and bounded by the recorded length",
-      "statement": "books/payload-lz.lisp (brief C1 of planning/evidence/article-compression-2026-09-27.md section 6). fn-lz-run is the LZ4 block decoder over three octet buffers (abstract stobjs congruent to fn-octets: the block in cells [start, end) of fn-octets, the dictionary in fn-lz-dict, the output appended to fn-lz-out), with the dictionary as a prefix an offset may reach into; its budget B counts steps and it answers :more (resumable from the state it returns), :done, or a refusal (:truncated, :overflow, :offset, :mode). fn-lz-decode-buf decodes a whole block in one budget of 3|c| + n + 2 steps; fn-lz-decode is the same over octet lists. fn-lz-seal-form dict octets candidate answers (:lz n candidate) when the candidate decodes to exactly the octets, else (:raw octets); fn-lz-denote is the decode of an :lz form and the octets of a :raw one. KEYSTONE fn-lz-seal-form-denotes: with no hypothesis, (fn-lz-denote dict (fn-lz-seal-form dict octets candidate)) = octets: no assumption about the encoder. fn-lz-seal-form-of-literal-block / fn-lz-decode-of-literal-block: for (fn-cbor-octet-listp x), the one-sequence literal block of x decodes to (:ok x) and seals as :lz, so the :lz arm is reachable for every payload. fn-lz-run-out-len-bound: the output never exceeds (max lim (len out)); fn-lz-decode-buf-out-len-bound: at most n (D27: the only allocation is the recorded length). fn-lz-run-extends-out: for a true-list output the run only appends.",
+      "statement": "books/payload-lz.lisp (brief C1 of planning/evidence/article-compression-2026-09-27.md section 6). fn-lz-run is the LZ4 block decoder over three octet buffers (abstract stobjs congruent to fn-octets: the block in cells [start, end) of fn-octets, the dictionary in fn-lz-dict, the output appended to fn-lz-out), with the dictionary as a prefix an offset may reach into; its budget B counts steps and it answers :more (resumable from the state it returns), :done, or a refusal (:truncated, :overflow, :offset, :mode). fn-lz-decode-buf decodes a whole block in one budget of 3|c| + n + 2 steps; fn-lz-decode is the same over octet lists. fn-lz-seal-form dict octets candidate answers (:lz n candidate) when the candidate decodes to exactly the octets, else (:raw octets); fn-lz-denote is the decode of an :lz form and the octets of a :raw one. KEYSTONE fn-lz-seal-form-denotes: with no hypothesis, (fn-lz-denote dict (fn-lz-seal-form dict octets candidate)) = octets: no assumption about the encoder. fn-lz-seal-form-of-literal-block / fn-lz-decode-of-literal-block: for (fn-cbor-octet-listp x), the one-sequence literal block of x decodes to (:ok x) and seals as :lz, so the :lz arm is reachable for every payload. fn-lz-run-out-len-bound: the output never exceeds (max lim (len out)); fn-lz-decode-buf-out-len-bound: at most n (D27: the only allocation is the recorded length). fn-lz-run-extends-out: for a true-list output the run only appends. Since lane octets-bulk (2026-09-27) fn-lz-copy-lits and fn-lz-copy-match keep their octet-at-a-time logic and execute through mbe as fn-lz-lits-words (seven-octet words from the block) and fn-lz-match-bulk (the dictionary part by words, the output part by one fn-lz-out-append-back); fn-lz-lits-words-is-append and fn-lz-match-bulk-is-copy-match are the equalities their guard proofs use.",
       "milestone": "M5",
       "requirements": [
         "STO-023"
@@ -9464,7 +9470,8 @@
       "evidence": [
         "books/payload-lz.lisp",
         "tests/acl2/payload-lz-tests.lisp",
-        "planning/evidence/codec-c1-2026-09-27.md"
+        "planning/evidence/codec-c1-2026-09-27.md",
+        "planning/evidence/octets-bulk-2026-09-27.md"
       ],
       "progress_note": "Lane codec-c1 (Opus 5.5, 2026-09-27): a prototype book with no host wiring. Teeth: tests/acl2/payload-lz-tests.lisp (a held-out 1993 Usenet article from usenet-20news-19997 and its liblz4-HC 9 blocks with and without a dictionary seal as :lz and denote the article; a corrupted block and a block of other octets seal as :raw and still denote it; literal blocks of 5 and 300 octets; the refusals :truncated, :offset (0 and past dict ++ out), :overflow and :short; the article's block decoded in quanta of seven steps reaches the same octets as one budget; hypothesis removal by must-fail and a ground counterexample for the octet-list and true-list hypotheses). Measured on hbox (i9-12900, one P-core) over the 9,733 held-out articles: see the record.",
       "pending_subject": "No host line calls fn-lz-* yet: lane C2 (arena-compressed) makes the compressed arena attachment whose seal is fn-lz-seal-form and whose reader is fn-lz-decode-buf, after the records flip lands.",
@@ -9474,7 +9481,9 @@
         "fn-lz-decode-of-literal-block",
         "fn-lz-run-out-len-bound",
         "fn-lz-decode-buf-out-len-bound",
-        "fn-lz-run-extends-out"
+        "fn-lz-run-extends-out",
+        "fn-lz-lits-words-is-append",
+        "fn-lz-match-bulk-is-copy-match"
       ]
     }
   ]

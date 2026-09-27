@@ -394,6 +394,10 @@
 
 ; The equalities the two :exec bodies rest on, over octet lists.
 (local
+ (defthm fn-lz-minus-minus
+   (implies (acl2-numberp x) (equal (- (- x)) x))))
+
+(local
  (defthm fn-lz-append-assoc-early
    (equal (append (append a b) c) (append a (append b c)))))
 
@@ -428,14 +432,13 @@
    :hints (("Goal" :induct (fn-lz-copy-lits ip n fn-octets fn-lz-out)
             :in-theory (enable fn-lz-nthcdr-cons-split)))))
 
-(local
- (defthm fn-lz-lits-words-is-append
-   (implies (and (fn-cbor-octet-listp fn-octets) (true-listp fn-lz-out)
-                 (natp ip) (natp n) (<= (+ ip n) (len fn-octets)))
-            (equal (fn-lz-lits-words ip n fn-octets fn-lz-out)
-                   (append fn-lz-out (take n (nthcdr ip fn-octets)))))
-   :hints (("Goal" :induct (fn-lz-lits-words ip n fn-octets fn-lz-out)
-            :in-theory (disable take)))))
+(defthm fn-lz-lits-words-is-append
+  (implies (and (fn-cbor-octet-listp fn-octets) (true-listp fn-lz-out)
+                (natp ip) (natp n) (<= (+ ip n) (len fn-octets)))
+           (equal (fn-lz-lits-words ip n fn-octets fn-lz-out)
+                  (append fn-lz-out (take n (nthcdr ip fn-octets)))))
+  :hints (("Goal" :induct (fn-lz-lits-words ip n fn-octets fn-lz-out)
+           :in-theory (disable take))))
 
 (local
  (defthm fn-lz-dict-words-is-append
@@ -490,31 +493,42 @@
    (implies (true-listp fn-lz-out)
             (true-listp (fn-lz-copy-match off n fn-lz-dict fn-lz-out)))))
 
-(local
- (defthm fn-lz-match-bulk-is-copy-match
-   (implies (and (fn-cbor-octet-listp fn-lz-dict) (true-listp fn-lz-out)
-                 (natp off) (<= 1 off) (natp n)
-                 (<= off (+ (len fn-lz-out) (len fn-lz-dict))))
-            (equal (fn-lz-match-bulk off n fn-lz-dict fn-lz-out)
-                   (fn-lz-copy-match off n fn-lz-dict fn-lz-out)))
-   :hints (("Goal" :do-not-induct t
-            :in-theory (disable fn-lz-copy-match fn-lz-copy-match-split
-                                fn-lz-dict-words-is-append fn-lz-copy-match-within-dict)
-            :use ((:instance fn-lz-dict-words-is-copy-match
-                             (s (+ (len fn-lz-dict) (len fn-lz-out) (- off)))
-                             (n (min n (- off (len fn-lz-out)))))
-                  (:instance fn-lz-copy-match-split
-                             (a (- off (len fn-lz-out))) (b (- n (- off (len fn-lz-out)))))
-                  (:instance fn-lz-copy-match-within-dict
-                             (n (- off (len fn-lz-out)))))))))
+(defthm fn-lz-match-bulk-is-copy-match
+  (implies (and (fn-cbor-octet-listp fn-lz-dict) (true-listp fn-lz-out)
+                (natp off) (<= 1 off) (natp n)
+                (<= off (+ (len fn-lz-out) (len fn-lz-dict))))
+           (equal (fn-lz-match-bulk off n fn-lz-dict fn-lz-out)
+                  (fn-lz-copy-match off n fn-lz-dict fn-lz-out)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-lz-copy-match fn-lz-copy-match-split
+                               fn-lz-dict-words-is-append fn-lz-copy-match-within-dict)
+           :use ((:instance fn-lz-dict-words-is-copy-match
+                            (s (+ (len fn-lz-dict) (len fn-lz-out) (- off)))
+                            (n (min n (- off (len fn-lz-out)))))
+                 (:instance fn-lz-copy-match-split
+                            (a (- off (len fn-lz-out))) (b (- n (- off (len fn-lz-out)))))
+                 (:instance fn-lz-copy-match-within-dict
+                            (n (- off (len fn-lz-out))))))))
 
-(verify-guards fn-lz-copy-lits)
-(verify-guards fn-lz-copy-match)
+(local
+ (defthm fn-lz-octet-listp-of-nthcdr
+   (implies (fn-cbor-octet-listp xs) (fn-cbor-octet-listp (nthcdr i xs)))))
+
+(local
+ (defthm fn-lz-octet-listp-of-take
+   (implies (and (fn-cbor-octet-listp xs) (<= (nfix n) (len xs)))
+            (fn-cbor-octet-listp (take n xs)))))
+
+(verify-guards fn-lz-copy-lits
+  :hints (("Goal" :in-theory (e/d (fn-lz-nthcdr-cons-split) (nth nthcdr)))))
+(verify-guards fn-lz-copy-match
+  :hints (("Goal" :in-theory (disable nth nthcdr))))
 
 (local (in-theory (disable fn-lz-copy-lits-is-append fn-lz-lits-words-is-append
                            fn-lz-dict-words-is-append fn-lz-copy-match-within-out
                            fn-lz-copy-match-within-dict fn-lz-copy-match-split
                            fn-lz-match-bulk-is-copy-match)))
+(in-theory (disable fn-lz-lits-words-is-append fn-lz-match-bulk-is-copy-match))
 
 (defthm fn-lz-copy-lits-octet-listp
   (implies (and (fn-cbor-octet-listp fn-octets) (fn-cbor-octet-listp fn-lz-out)
