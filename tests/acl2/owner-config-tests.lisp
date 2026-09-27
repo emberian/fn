@@ -14,6 +14,7 @@
 ; advance it measures MOVES a pin rather than confirming one.
 
 (in-package "ACL2")
+(include-book "held-rows-tests")
 (include-book "../../books/owner-config")
 (include-book "../../books/codec-attach")
 (include-book "std/testing/must-fail" :dir :system)
@@ -423,7 +424,7 @@
 ; (an empty delta list) over an owner in the middle of an article
 ; completion.  `(:complete)' is then the ARTICLE completion and the owner
 ; moves -- the first conjunct fails.
-(defun ocfg-l-record (sequence txid msgid)
+(defun ocfg-l-record-wire (sequence txid msgid)
   (fn-record-make sequence txid txid msgid
                   (list 77 101 115 115 97 103 101 45 73 68 58 32 60 120 62 13 10 13 10
                         72 105 13 10)
@@ -432,6 +433,12 @@
                   (concatenate 'string "ocfg-content:" msgid)
                   (concatenate 'string "ocfg-release:" msgid)
                   2 841000000))
+; The store retains held rows (records-flip, books/held-record.lisp): the
+; owner's (:store (:prepare r)) takes the row the entry interns
+; (tests/acl2/held-rows-tests fn-hrt-row-at, = store-intern fn-intern-row-at);
+; the journal interns in sequence order, so the handle is the sequence.
+(defun ocfg-l-record (sequence txid msgid)
+  (fn-hrt-row-at (ocfg-l-record-wire sequence txid msgid) sequence))
 (defconst *ocfg-l-completing*
   (fn-ocfg-make
    (fn-own-run (fn-own-step (fn-own-step (fn-own-start (fn-sn-initial *ocfg-t-groups* 10) 4)

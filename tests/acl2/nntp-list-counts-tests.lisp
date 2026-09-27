@@ -8,16 +8,20 @@
           '(13 10) (fn-nntp-string-octets "Subject: Test") '(13 10 13 10)
           (fn-nntp-string-octets "Hello") '(13 10)))
 
+; The acceptance payload is a handle into the arena (records-flip,
+; books/held-record.lisp): the bytes above are interned in acceptance order,
+; so article one holds handle 0 and article two handle 1.  LIST COUNTS reads
+; no bytes.
 (defconst *nlc-t-groups* '("fn.letters" "fn.other" "fn.empty"))
 (defconst *nlc-t-a1*
   (fn-accept-complete
    (fn-accept-prepare (fn-initial-state *nlc-t-groups*) 1 "<one@t.invalid>"
-                      (nlc-t-payload "<one@t.invalid>") '("fn.letters") 841000000)
+                      0 '("fn.letters") 841000000)
    0 1 :durable))
 (defconst *nlc-t-a2*
   (fn-accept-complete
    (fn-accept-prepare *nlc-t-a1* 1 "<two@t.invalid>"
-                      (nlc-t-payload "<two@t.invalid>")
+                      1
                       '("fn.letters" "fn.other") 841000001)
    1 1 :durable))
 (defconst *nlc-t-trie* (fn-midx-build (fn-state-articles *nlc-t-a2*)))

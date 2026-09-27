@@ -12,6 +12,7 @@
 ; conclusion.
 
 (in-package "ACL2")
+(include-book "held-rows-tests")
 (include-book "../../books/owner-invariants")
 (include-book "../../books/owner-fault")
 (include-book "../../books/owner-feed-subject")
@@ -57,7 +58,7 @@
 ; Message-ID as tools/run_store.py's metadata does: retention refuses a known
 ; obligation id (fn-retain-known-obligation-id-is-not-reused), so two posts
 ; cannot share one.
-(defun own-record (sequence txid msgid)
+(defun own-record-wire (sequence txid msgid)
   (fn-record-make sequence txid txid msgid
                   (list 77 101 115 115 97 103 101 45 73 68 58 32 60 120 62 13 10 13 10
                         72 105 13 10)
@@ -66,6 +67,15 @@
                   (concatenate 'string "own-content:" msgid)
                   (concatenate 'string "own-release:" msgid)
                   2 841000000))
+
+; The store retains held rows (records-flip, books/held-record.lisp): the
+; owner's (:store (:prepare r)) takes the row the entry interns
+; (books/store-intern.lisp fn-intern-row-at, restated as fn-hrt-row-at in tests/acl2/held-rows-tests: the wire record's positions, the
+; facts and context of its bytes under keyring nil at generation 0, and the
+; payload handle).  Each test journal interns its articles in sequence order,
+; so an article's handle is its journal sequence.
+(defun own-record (sequence txid msgid)
+  (fn-hrt-row-at (own-record-wire sequence txid msgid) sequence))
 
 (defun own-post-events (record)
   (list '(:store (:io :start-frontier nil))

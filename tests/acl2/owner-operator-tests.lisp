@@ -25,6 +25,7 @@
 ; refutes the weakened statement.
 
 (in-package "ACL2")
+(include-book "held-rows-tests")
 (include-book "../../books/owner-invariants")
 (include-book "../../books/injection-invariants")
 (include-book "std/testing/must-fail" :dir :system)
@@ -219,12 +220,17 @@
 
 ; The submission through the writer: take, the store events of the durable
 ; path over a record carrying exactly the queued octets, the completion.
-(defconst *opt-record*
+(defconst *opt-record-wire*
   (fn-record-make 0 0 0
                   "<inn-lab-fn-operator-8a5f502-20260922T212621Z@example.invalid>"
                   *opt-injected* '("fn.letters")
                   "opt-pin" "opt-content" "opt-release" 2
                   (fn-record-stamp-of-observation *opt-obs*)))
+; The store retains held rows (records-flip, books/held-record.lisp): the
+; owner's (:store (:prepare r)) takes the row the entry interns, the first
+; on a fresh arena (handle 0).
+(defconst *opt-record* (car (fn-hrt-rows (list *opt-record-wire*) nil 0)))
+(assert-event (fn-held-p *opt-record*))
 (defconst *opt-taken* (fn-own-take-submission *opt-queued*))
 (assert-event (fn-own-control-submissionp (fn-own-inflight *opt-taken*)))
 (defconst *opt-done*
