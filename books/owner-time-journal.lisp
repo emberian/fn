@@ -41,6 +41,8 @@
 (in-package "ACL2")
 (include-book "owner-time-model")
 (local (include-book "arithmetic-5/top" :dir :system))
+; The replay's reasoning is over whole events: never unfold one here.
+(local (in-theory (disable fn-otm-disk-event-unfolds fn-otm-now fn-otm-regressions fn-otm-jseq)))
 
 ; -----------------------------------------------------------------------------
 ; The line codec: an entry is a list of naturals, written as their decimal
@@ -584,7 +586,7 @@
                                                    (fn-otm-replay-args kind arg))
                                   rest)))
    :hints (("Goal" :in-theory (e/d (fn-otm-same-dc-jseq)
-                                   (fn-otm-replay-step fn-otm-disk-event-replayed2
+                                   (nfix fn-otm-replay-step fn-otm-disk-event-replayed2
                                     fn-otm-disk-event fn-otm-word-code
                                     fn-otm-event-args fn-otm-journal-entry fn-otm-replay
                                     fn-otm-replay-args fn-otm-op-of-kind fn-otm-kind-of-op
@@ -597,12 +599,32 @@
                   (:instance fn-otm-disk-event-replayed2))))))
 
 (local
+ (defthm fn-otm-note-entry-is
+   (equal (mv-nth 1 (fn-otm-note s a b))
+          (list (+ 1 (fn-otm-jseq s)) 5 (fn-otm-now s) (nfix a) (nfix b) 0 0))
+   :hints (("Goal" :in-theory (enable fn-otm-note fn-otm-jseq)))))
+
+(local
+ (defthm fn-otm-replay-note-step
+   (implies (and (natp a) (natp b) (natp n))
+            (equal (fn-otm-replay r (cons (list (+ 1 (fn-otm-jseq r)) 5 n a b 0 0) rest))
+                   (fn-otm-replay (fn-otm-note-state r a b) rest)))
+   :hints (("Goal" :expand ((fn-otm-replay r (cons (list (+ 1 (fn-otm-jseq r)) 5 n a b 0 0) rest)))
+            :in-theory (e/d (fn-otm-note-state) (fn-otm-note))))))
+
+(local
  (defthm fn-otm-replay-of-note-entry
    (implies (fn-otm-same-dc r s)
             (equal (fn-otm-replay r (cons (mv-nth 1 (fn-otm-note s a b)) rest))
                    (fn-otm-replay (fn-otm-note-state r a b) rest)))
-   :hints (("Goal" :expand ((fn-otm-replay r (cons (mv-nth 1 (fn-otm-note s a b)) rest)))
-            :in-theory (enable fn-otm-note fn-otm-note-state fn-otm-same-dc fn-otm-jseq)))))
+   :hints (("Goal" :in-theory (e/d (fn-otm-same-dc-jseq)
+                                   (fn-otm-note fn-otm-replay fn-otm-replay-note-step
+                                    fn-otm-note-state-of-nfix))
+            :use ((:instance fn-otm-replay-note-step (n (fn-otm-now s))
+                             (a (nfix a)) (b (nfix b)))
+                  (:instance fn-otm-note-state-of-nfix (s r)))))))
+
+(local (in-theory (disable fn-otm-note-entry-is fn-otm-replay-note-step)))
 
 (local
  (defthm fn-otm-ev-state-same-dc
@@ -702,10 +724,12 @@
                 (equal (fn-otm-post-command-reply a) (fn-otm-post-command-reply b))
                 (equal (fn-otm-disk-lines a) (fn-otm-disk-lines b))
                 (equal (fn-otm-log-line a w) (fn-otm-log-line b w))))
-  :hints (("Goal" :in-theory (enable fn-otm-admit-post fn-otm-mode fn-otm-wait-ms
-                                     fn-otm-shed-reply fn-otm-post-command-reply
-                                     fn-otm-disk-lines fn-otm-log-line fn-otm-now
-                                     fn-otm-regressions))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-otm-admit-post fn-otm-mode fn-otm-wait-ms
+                                fn-otm-shed-reply fn-otm-post-command-reply
+                                fn-otm-disk-lines fn-otm-log-line fn-otm-now
+                                fn-otm-regressions)
+                              (theory 'minimal-theory)))))
 
 (in-theory (disable fn-otm-disk-step fn-otm-note-step fn-otm-start-line fn-otm-replay
                     fn-otm-journal-read fn-otm-run))
