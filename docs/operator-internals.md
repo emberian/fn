@@ -267,7 +267,12 @@ resized when the budget holds it; past the budget it is refused
 `init-budget-cannot-hold-profile` with both figures (exit 1,
 `fn-heap-init-decide-refuses-the-operators-request-past-the-budget`),
 unless FN_INIT_BUDGET_MB names a target budget that holds it: then it is
-written with `within-budget=no target-budget=MB MB`. The
+written with `within-budget=no target-budget=MB MB`. A named budget below
+the budget init observes without it (init run outside the service's
+memory limit) is written for the named budget and warned on stderr by name
+with both figures (`fn-heap-init-budget-note`, keystone
+`fn-heap-init-budget-note-names-the-budget-init-sized-for`; finding R1 of
+the public-node rehearsal). The
 small preset has no `--profile` word (PKT-581); name its fields:
 `--max-transactions 16384 --max-history-octets 8388608 --max-record-octets
 196608 --max-article-octets 32768 --max-groups-per-article 16

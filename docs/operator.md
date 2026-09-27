@@ -789,6 +789,14 @@ to make a store for a bigger machine, name that machine's memory with
 `within-budget=no target-budget=16384 MB`, and fn refuses to run that
 store here, with `fn: refused machine-cannot-hold-profile`.
 
+The same variable sizes a store for a memory limit smaller than this
+machine: a service under `MemoryMax=1536M` needs a store `init` made with
+`FN_INIT_BUDGET_MB=1536`, or made by an `init` run under that limit. When
+the named budget is below what this machine gives (an `init` run outside
+the service's limit), `init` writes the store for the named budget and
+warns on stderr with both numbers, exit code 0:
+`fn: warning init-budget-below-machine named-budget=1536 MB machine-budget=5818 MB: the store is sized for FN_INIT_BUDGET_MB, not this machine; run init under the service's memory limit, and give the service at least 1536 MB`.
+
 `init` with no `--profile` and no limit (and every `init` under a
 `mission`) picks the largest of four sizes this machine's memory holds:
 64, 32 or 16 MiB of articles, else 8 MiB. A short post to one group

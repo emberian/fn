@@ -404,16 +404,22 @@ observation into the outcome and this function only carries it out."
               ;; PKT-582: ACL2 decides what init writes within the budget and
               ;; says so (books/heap-reservation.lisp fn-heap-init-decide);
               ;; a refusal is printed by name and nothing is created.
-              (let* ((request (fnn-core
-                               'fn-native-operator-host-result-init-profile result))
-                     (decision (progn
-                                 (unless (consp request)
-                                   (fnn-fault "ACL2 accepted an init plan with no store profile"))
-                                 (fnn-heap-init-decision request)))
-                     (line (fnn-core 'fn-heap-init-report-line decision))
+              ;; Finding R1 (public-node rehearsal): a named budget below the
+              ;; machine init observes is ACL2's warning here, by name with
+              ;; both figures, not a refusal at the service's first start.
+              (multiple-value-bind (decision note)
+                  (let ((request (fnn-core
+                                  'fn-native-operator-host-result-init-profile result)))
+                    (unless (consp request)
+                      (fnn-fault "ACL2 accepted an init plan with no store profile"))
+                    (fnn-heap-init-decision-noted request))
+              (let* ((line (fnn-core 'fn-heap-init-report-line decision))
+                     (warning (fnn-core 'fn-heap-init-budget-note-line note))
                      (profile (fnn-core 'fn-heap-init-decision-request decision))
                      (code (if (consp profile)
                                (progn (fnn-out "~a" line)
+                                      (when (stringp warning)
+                                        (fnn-err "fn: ~a" warning))
                                       (fnn-command-init-published
                                        root groups profile
                                        ;; PKT-648: the store's durability policy,
@@ -425,7 +431,7 @@ observation into the outcome and this function only carries it out."
                                     (fnn-core 'fn-heap-init-exit-code decision)))))
                 (fnn-operator-emit-status
                  (fnn-operator-status-of-exit-code code) "init")
-                code))))
+                code)))))
       (error (condition)
         (let ((code (fnn-exit-code-for condition)))
           (fnn-operator-emit-status (fnn-operator-status-of-exit-code code)
