@@ -176,6 +176,32 @@
           (mv (fn-delta-of-row expected (fn-cat-at expected fn-cat))
               nil fn-cat))))))
 
+; The completion of a row the owner's view already hides (R1, step 8: a
+; cancel that arrived before its target; books/served-catalog-owner.lisp):
+; the held record is committed withdrawn at its own index, so no view shows
+; it, as the owner's refresh shows it at no version.  The token discipline
+; is fn-cat-complete's; BY names the cause the caller knows (informational,
+; as fn-cat-withdraw's BY).
+(defthm fn-held-p-of-fn-held-with-withdrawn
+  (implies (and (fn-held-p h) (fn-held-withdrawnp w))
+           (fn-held-p (fn-held-with-withdrawn h w)))
+  :hints (("Goal" :in-theory (enable fn-held-p fn-held-with-withdrawn))))
+
+(defun fn-cat-complete-hidden (token pending by fn-cat)
+  (declare (xargs :stobjs fn-cat
+                  :guard (and (fn-pc-optionp pending) (natp by))
+                  :guard-hints (("Goal" :in-theory (enable fn-pc-p)))))
+  (if (or (null pending) (not (equal token (fn-pc-token pending))))
+      (mv (list :stale-token) pending fn-cat)
+    (let ((expected (fn-pc-expected pending)))
+      (if (not (equal expected (fn-cat-count fn-cat)))
+          (mv (list :expected-mismatch) pending fn-cat)
+        (let ((fn-cat (fn-cat-commit
+                       (fn-held-with-withdrawn (fn-pc-held pending) (cons expected by))
+                       fn-cat)))
+          (mv (fn-delta-of-row expected (fn-cat-at expected fn-cat))
+              nil fn-cat))))))
+
 ; => (mv status pending'): :ok and nothing pending, or :stale-token unchanged.
 (defun fn-cat-abandon (token pending)
   (declare (xargs :guard (fn-pc-optionp pending)

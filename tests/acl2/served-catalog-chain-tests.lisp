@@ -2,10 +2,10 @@
 ; (step 8 of the catalog slice).
 ;
 ; What is asserted: (1) the view a pinned version names, with and without
-; non-article records between the rows (fn-scc-view-of); (2) the lifted
+; non-article records between the rows (fn-scr-view-of); (2) the lifted
 ; dispatcher agrees with the pinned one on a reachable command over a
 ; catalog whose view IS the pinned archive, and disagrees when it is not
-; (the view hypothesis of fn-scc-catalogp is not idle); (3) every layer is
+; (the view hypothesis of fn-scr-catalogp is not idle); (3) every layer is
 ; guard-verified; (4) the keystone needs each of its hypotheses.
 ;
 ; The fixture is the served-catalog tests' (tests/acl2/served-catalog-tests.
@@ -53,23 +53,23 @@
 
 ;; (1) The view of a pinned version: the rows whose sequence is below it.
 (defthm scct-view-of-consecutive
-  (and (equal (fn-scc-view-of 0 *scct-c*) 0)
-       (equal (fn-scc-view-of 1 *scct-c*) 1)
-       (equal (fn-scc-view-of 2 *scct-c*) 2)
-       (equal (fn-scc-view-of 3 *scct-c*) 3)
-       (equal (fn-scc-view-of 7 *scct-c*) 3)
-       (equal (fn-scc-view-of 0 nil) 0)
-       (equal (fn-scc-view-of 5 nil) 0))
+  (and (equal (fn-scr-view-of 0 *scct-c*) 0)
+       (equal (fn-scr-view-of 1 *scct-c*) 1)
+       (equal (fn-scr-view-of 2 *scct-c*) 2)
+       (equal (fn-scr-view-of 3 *scct-c*) 3)
+       (equal (fn-scr-view-of 7 *scct-c*) 3)
+       (equal (fn-scr-view-of 0 nil) 0)
+       (equal (fn-scr-view-of 5 nil) 0))
   :rule-classes nil)
 
 (defthm scct-view-of-with-gaps
-  (and (equal (fn-scc-view-of 0 *scct-cg*) 0)
-       (equal (fn-scc-view-of 1 *scct-cg*) 1)   ; the record at 1 is not a row
-       (equal (fn-scc-view-of 2 *scct-cg*) 1)
-       (equal (fn-scc-view-of 3 *scct-cg*) 2)
-       (equal (fn-scc-view-of 5 *scct-cg*) 2)
-       (equal (fn-scc-view-of 6 *scct-cg*) 3)
-       (equal (fn-scc-view-of 100 *scct-cg*) 3))
+  (and (equal (fn-scr-view-of 0 *scct-cg*) 0)
+       (equal (fn-scr-view-of 1 *scct-cg*) 1)   ; the record at 1 is not a row
+       (equal (fn-scr-view-of 2 *scct-cg*) 1)
+       (equal (fn-scr-view-of 3 *scct-cg*) 2)
+       (equal (fn-scr-view-of 5 *scct-cg*) 2)
+       (equal (fn-scr-view-of 6 *scct-cg*) 3)
+       (equal (fn-scr-view-of 100 *scct-cg*) 3))
   :rule-classes nil)
 
 ;; (2) The lifted dispatcher on a reachable command.  The pinned archive is
@@ -98,17 +98,17 @@
          (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
          (fn-cnx-freshp *scct-c*)
          ;; the article at number 3 by the catalog is the pinned reply, a 220
-         (equal (fn-scc-command *scct-session* arch index nil nil (scct-tokens "ARTICLE 3") 3 *scct-a* *scct-c*)
+         (equal (fn-scr-command *scct-session* arch index nil nil (scct-tokens "ARTICLE 3") 3 *scct-a* *scct-c*)
                 (fn-nntp-command-pinned *scct-session* arch index nil nil (scct-tokens "ARTICLE 3")))
          ;; the effect is (:reply octets); the reply's first octets are "220"
          (equal (take 3 (cadr (car (fn-nntp-result-effects
-                                    (fn-scc-command *scct-session* arch index nil nil (scct-tokens "ARTICLE 3")
+                                    (fn-scr-command *scct-session* arch index nil nil (scct-tokens "ARTICLE 3")
                                                     3 *scct-a* *scct-c*)))))
                 (list 50 50 48))
          ;; OVER over the range, and STAT by Message-ID
-         (equal (fn-scc-command *scct-session* arch index nil nil (scct-tokens "OVER 1-3") 3 *scct-a* *scct-c*)
+         (equal (fn-scr-command *scct-session* arch index nil nil (scct-tokens "OVER 1-3") 3 *scct-a* *scct-c*)
                 (fn-nntp-command-pinned *scct-session* arch index nil nil (scct-tokens "OVER 1-3")))
-         (equal (fn-scc-command *scct-session* arch index nil nil (scct-tokens "STAT <b@x>") 3 *scct-a* *scct-c*)
+         (equal (fn-scr-command *scct-session* arch index nil nil (scct-tokens "STAT <b@x>") 3 *scct-a* *scct-c*)
                 (fn-nntp-command-pinned *scct-session* arch index nil nil (scct-tokens "STAT <b@x>")))))
   :rule-classes nil)
 
@@ -118,29 +118,29 @@
 (defthm scct-command-differs-off-the-view
   (let ((arch (scct-arch 3)) (index (scct-index 3)))
     (and (not (equal (fn-state-articles arch) (fn-cat-view-articles 2 *scct-a* *scct-c*)))
-         (not (equal (fn-scc-command *scct-session* arch index nil nil (scct-tokens "ARTICLE 3")
+         (not (equal (fn-scr-command *scct-session* arch index nil nil (scct-tokens "ARTICLE 3")
                                      2 *scct-a* *scct-c*)
                      (fn-nntp-command-pinned *scct-session* arch index nil nil (scct-tokens "ARTICLE 3"))))))
   :rule-classes nil)
 
 ;; (3) Every layer the host reaches is guard-verified.
 (assert-event
- (equal (list (symbol-class 'fn-scc-view-of (w state))
-              (symbol-class 'fn-scc-command (w state))
-              (symbol-class 'fn-scc-step (w state))
-              (symbol-class 'fn-scc-post-step (w state))
-              (symbol-class 'fn-scc-peer-delegate (w state))
-              (symbol-class 'fn-scc-peer-step (w state))
-              (symbol-class 'fn-scc-auth-delegate (w state))
-              (symbol-class 'fn-scc-auth-step (w state))
-              (symbol-class 'fn-scc-dispatch-core (w state))
-              (symbol-class 'fn-scc-dispatch (w state))
-              (symbol-class 'fn-scc-dispatch-events (w state))
-              (symbol-class 'fn-scc-feed-byte (w state))
-              (symbol-class 'fn-scc-feed-span (w state))
-              (symbol-class 'fn-scc-step-span-fast (w state))
-              (symbol-class 'fn-scc-own-read-span (w state))
-              (symbol-class 'fn-scc-ocfg-read-span (w state)))
+ (equal (list (symbol-class 'fn-scr-view-of (w state))
+              (symbol-class 'fn-scr-command (w state))
+              (symbol-class 'fn-scr-step (w state))
+              (symbol-class 'fn-scr-post-step (w state))
+              (symbol-class 'fn-scr-peer-delegate (w state))
+              (symbol-class 'fn-scr-peer-step (w state))
+              (symbol-class 'fn-scr-auth-delegate (w state))
+              (symbol-class 'fn-scr-auth-step (w state))
+              (symbol-class 'fn-scr-dispatch-core (w state))
+              (symbol-class 'fn-scr-dispatch (w state))
+              (symbol-class 'fn-scr-dispatch-events (w state))
+              (symbol-class 'fn-scr-feed-byte (w state))
+              (symbol-class 'fn-scr-feed-span (w state))
+              (symbol-class 'fn-scr-step-span-fast (w state))
+              (symbol-class 'fn-scr-own-read-span (w state))
+              (symbol-class 'fn-scr-ocfg-read-span (w state)))
         (make-list 16 :initial-element :common-lisp-compliant)))
 
 ;; (4) The keystone needs each hypothesis (as tests/acl2/served-span-tests.lisp
@@ -148,17 +148,17 @@
 (must-fail
  (defthm scct-read-span-needs-ocl-relation
    (implies (and (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                 (fn-scc-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (natp i) (natp end))
-            (equal (fn-scc-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))
 
 (must-fail
  (defthm scct-read-span-needs-view-indexedp
    (implies (and (fn-ocl-relation oc)
-                 (fn-scc-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (natp i) (natp end))
-            (equal (fn-scc-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))
 
 (must-fail
@@ -166,23 +166,23 @@
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (natp i) (natp end))
-            (equal (fn-scc-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))
 
 (must-fail
  (defthm scct-read-span-needs-natp-start
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                 (fn-scc-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (natp end))
-            (equal (fn-scc-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))
 
 (must-fail
  (defthm scct-read-span-needs-natp-end
    (implies (and (fn-ocl-relation oc)
                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                 (fn-scc-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
+                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (natp i))
-            (equal (fn-scc-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
+            (equal (fn-scr-ocfg-read-span oc id i end fn-octets fn-arena fn-cat)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets))))))

@@ -172,6 +172,21 @@ SBCL's SB-UNIX may lack the internal clock symbols."
       (fnn-fault "owner returned non-action from ~a" name))
     value))
 
+(defun fnn-owner-catalog-action (name &rest args)
+  "fnn-owner-action for a wrapper that reads or maintains the catalog (the
+live arena and catalog stobjs passed before state)."
+  (let ((value (apply #'fnn-core-catalog-state name args)))
+    (unless (keywordp value)
+      (fnn-fault "owner returned non-action from ~a" name))
+    value))
+
+(defun fnn-owner-buffer-catalog-action (name &rest args)
+  "fnn-owner-buffer-action for a wrapper over the buffer AND the catalog."
+  (let ((value (apply #'fnn-core-buffer-catalog-state name args)))
+    (unless (keywordp value)
+      (fnn-fault "owner returned non-action from ~a" name))
+    value))
+
 (defun fnn-owner-buffer-action (name &rest args)
   "fnn-owner-action for a wrapper that reads the octet buffer.  The owner's
 prepare answers owner outcomes (:unaffordable, :clock-unusable, ...) that the
@@ -229,7 +244,7 @@ function supplied no observation at all, which is a defect here."
 
 (defun fnn-owner-finish-submission ()
   "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
-  (fnn-owner-action 'fn-owner-finish-submission))
+  (fnn-owner-catalog-action 'fn-owner-finish-submission))
 
 ;;; The typed results (books/owner-results.lisp; wave 5 adapter retirement).
 ;;; A wrapper that used to answer a keyword and leave the rest of its result
@@ -571,7 +586,7 @@ checkpoint's S, or NIL."
   (declare (ignore records))
   (let* ((mode (fnn-store-open-mode store))
          (s (and (eq (first mode) :checkpoint) (second mode)))
-         (result (fnn-owner-core 'fn-owner-recover-from-store-open max-connections)))
+         (result (fnn-owner-catalog-action 'fn-owner-recover-from-store-open max-connections)))
     (unless (eq result :recovering)
       (fnn-fault "owner rejected committed history"))
     (unless (eq (fnn-owner-core 'fn-owner-sco-note-durable s) :noted)
@@ -955,7 +970,7 @@ follows is justified only by this line."
                 (fnn-metadata-buffer msgid)
               (declare (ignore ignored))
               (let ((prepared
-                      (fnn-owner-buffer-action
+                      (fnn-owner-buffer-catalog-action
                        'fn-owner-prepare-buffer (fnn-octet-list msgid) codes
                        (fnn-octet-list obligation) (fnn-octet-list subject)
                        (fnn-octet-list evidence) charge)))
@@ -1940,7 +1955,7 @@ EPIPE and the client saw a bare close)."
      ;; again for the payload after this read has returned, under the same
      ;; mutex (fnn-owner-attempt).
      (fnn-octets-fill incoming)
-     (unless (eq (fnn-owner-buffer-action 'fn-owner-chunk-span cid
+     (unless (eq (fnn-owner-buffer-catalog-action 'fn-owner-chunk-span cid
                                           0 (length incoming)) :ok)
        (fnn-refuse "owner no longer knows connection ~d" cid))
      ;; One ACL2-rendered line per 441 this read sends (books/owner-log.lisp

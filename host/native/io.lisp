@@ -242,6 +242,45 @@ return the index the bytes begin at."
     (setf (svref st 1) (+ fill n))
     fill))
 
+;;; The catalog's two stobjs (books/payload-arena.lisp fn-arena, books/catalog.
+;;; lisp fn-cat; step 8 of the catalog slice).  Like the octet buffer they are
+;;; ACL2's live objects, found once in the image's stobj table; the served
+;;; read passes them down books/served-catalog-chain.lisp, the owner's
+;;; entries maintain them (host/owner-host.lisp).
+(defvar *fnn-arena* nil)
+(defvar *fnn-cat* nil)
+
+(defun fnn-live-arena ()
+  (or *fnn-arena*
+      (setq *fnn-arena*
+            (or (cdr (assoc 'fn-arena (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the payload arena stobj is not in this image")))))
+
+(defun fnn-live-cat ()
+  (or *fnn-cat*
+      (setq *fnn-cat*
+            (or (cdr (assoc 'fn-cat (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the catalog stobj is not in this image")))))
+
+(defun fnn-core-catalog-state (name &rest args)
+  "A `state`-returning wrapper over the catalog: (mv erp value ... state) with
+the live arena and catalog passed before state; its value."
+  (destructuring-bind (erp val &rest ignored)
+      (apply #'fnn-call name (append args (list (fnn-live-arena) (fnn-live-cat) *the-live-state*)))
+    (declare (ignore ignored))
+    (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
+    val))
+
+(defun fnn-core-buffer-catalog-state (name &rest args)
+  "A `state`-returning wrapper over the buffer and the catalog: the live
+buffer, arena and catalog passed before state; its value."
+  (destructuring-bind (erp val &rest ignored)
+      (apply #'fnn-call name (append args (list (fnn-live-octets) (fnn-live-arena) (fnn-live-cat)
+                                                *the-live-state*)))
+    (declare (ignore ignored))
+    (when erp (fnn-fault "ACL2 error in ~(~a~)" name))
+    val))
+
 (defun fnn-core-buffer-state (name &rest args)
   "A `state`-returning wrapper over the buffer, (mv erp value state) with the
 live buffer passed before state: its value."

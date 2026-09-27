@@ -55,6 +55,9 @@
 (include-book "../books/owner-commit-ocl")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
+; Step 8 (catalog slice): the served read over the catalog and the catalog at
+; the owner's entries (books/served-catalog-chain, books/served-catalog-owner).
+(include-book "../books/served-catalog-owner")
 (include-book "../books/owner-prepare-correspondence")
 ; The transaction budget: `fn-owner-prepare' installs `fn-sbud-prepare'.
 (include-book "../books/owner-store-budget")
@@ -244,10 +247,10 @@
 ;; carried served keystones to what is installed here.  The extended value is
 ;; the capture of the whole history; the owner keeps it as the base of its
 ;; next publication (`fn-owner-sco-base').
-(defun fn-owner-install-extended (oc extended state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-install-extended (oc extended fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
   (if (equal oc :fault)
-        (value :fault)
+        (mv nil :fault fn-arena fn-cat state)
       (let* ((state (fn-owner-install-ocfg oc state))
              ; Rebuilt exclusively by successful FNFD scans after
              ; authoritative store recovery.  It is a carried
@@ -275,14 +278,26 @@
              ; PKT-583 (b): the count the publication in flight captured, or
              ; nil; and the one coalesced request observed while it ran.
              (state (f-put-global 'fn-owner-sco-inflight nil state))
-             (state (f-put-global 'fn-owner-sco-pending nil state)))
-        (value :recovering))))
+             (state (f-put-global 'fn-owner-sco-pending nil state))
+             ; The pending PreparedCommit of the catalog (fn-owner-prepare-buffer).
+             (state (f-put-global 'fn-owner-cat-pending nil state))
+             ; E (step 8): the catalog of the installed store's history, from
+             ; empty, under the store's keyring (books/served-catalog-owner.lisp
+             ; fn-sco-load-history; books/catalog-entries.lisp
+             ; fn-cat-ocl-relation-at-recover).
+             (store (fn-own-store (fn-ocfg-owner oc))))
+        (mv-let (fn-arena fn-cat)
+          (fn-sco-load-history (fn-sf-records (fn-sn-files store))
+                               (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
+                               (fn-sn-keyring store) (fn-sn-keyring-generation store)
+                               fn-arena fn-cat)
+          (mv nil :recovering fn-arena fn-cat state)))))
 
-(defun fn-owner-recover-extended (extended config-records frontier max-conns state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-recover-extended (extended config-records frontier max-conns fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
   (fn-owner-install-extended
    (fn-ock-recover-extended extended config-records frontier max-conns)
-   extended state))
+   extended fn-arena fn-cat state))
 
 ; The owner from the Store open this process just ran
 ; (fn-store-sn-open-extended, host/store-node-host.lisp): its extended
@@ -292,41 +307,41 @@
 ; so the keystone fn-owner-recover-from-checkpoint-equals-full-recover and
 ; fn-ock-recover-installs-ocl-relation hold of what is installed here, on
 ; both paths, with no second extension or finalization.
-(defun fn-owner-recover-from-store-open (max-conns state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-recover-from-store-open (max-conns fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
   (let ((opened (and (boundp-global 'fn-store-sco-open state)
                      (f-get-global 'fn-store-sco-open state))))
     (if (not (and (consp opened) (consp (cdr opened)) (consp (cddr opened))))
-        (value :fault)
+        (mv nil :fault fn-arena fn-cat state)
       (let ((state (f-put-global 'fn-store-sco-open nil state)))
         (fn-owner-install-extended
          (fn-ock-install (cadr opened) (caddr opened) max-conns)
-         (car opened) state)))))
+         (car opened) fn-arena fn-cat state)))))
 
-(defun fn-owner-recover (octet-records frontier config-octet-records max-conns state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-recover (octet-records frontier config-octet-records max-conns fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
   (let ((records (fn-store-decode-records octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (equal records :bad) (equal config-records :bad))
-        (value :fault)
+        (mv nil :fault fn-arena fn-cat state)
       (fn-owner-recover-extended
        (fn-sco-extend (fn-sco-capture config-records nil) config-records records)
-       config-records frontier max-conns state))))
+       config-records frontier max-conns fn-arena fn-cat state))))
 
 ; The open from the checkpoint the Store open decoded and verified
 ; (`fn-store-sco-checkpoint', host/store-node-host.lisp) and the octets of
 ; the records after it.
 (defun fn-owner-recover-from-checkpoint (suffix-octet-records frontier config-octet-records
-                                                              max-conns state)
-  (declare (xargs :stobjs state :mode :program))
+                                                              max-conns fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
   (let ((checkpoint (fn-store-sco-current state))
         (records (fn-store-decode-records suffix-octet-records))
         (config-records (fn-store-cfg-decode-records config-octet-records)))
     (if (or (null checkpoint) (equal records :bad) (equal config-records :bad))
-        (value :fault)
+        (mv nil :fault fn-arena fn-cat state)
       (fn-owner-recover-extended
        (fn-sco-extend checkpoint config-records records)
-       config-records frontier max-conns state))))
+       config-records frontier max-conns fn-arena fn-cat state))))
 
 (defun fn-owner-store (state)
   (declare (xargs :stobjs state :mode :program))
@@ -866,8 +881,8 @@
 ; the same prepare (fn-pcar-sbud-prepare) on the same record.
 (defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
                                  subject-octets evidence-octets charge
-                                 fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
+                                 fn-octets fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
@@ -877,9 +892,9 @@
             (not (fn-store-text-octetsp id-octets))
             (not (fn-store-text-octetsp subject-octets))
             (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
-        (value :invalid)
+        (mv nil :invalid fn-arena state)
       (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
-          (value :refused)
+          (mv nil :refused fn-arena state)
       (let* ((msgid (fn-store-octets->string msgid-octets))
              ; PRF-191: the held article through the view trie
              ; (books/post-identity-index.lisp
@@ -887,7 +902,7 @@
              (existing (fn-pidx-existing-action msgid fn-octets groups
                                                 (fn-owner-core state))))
         (if existing
-            (value existing)
+            (mv nil existing fn-arena state)
           (mv-let (bytes state) (fn-owner-record-octets state)
           (mv-let (debt state) (fn-owner-record-debt state)
           (let* ((record (fn-sn-article-record
@@ -918,10 +933,18 @@
                            (fn-pidx-sbud-prepare before record budget)
                            state))))
             (if (equal record :clock-unusable)
-                (value :clock-unusable)
+                (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
-                (value (fn-sbud-refusal-kind before budget))
-              (value :prepared))))))))))))
+                (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
+              ; Step 8 (catalog slice): the row prepared in the catalog over the
+              ; payload buffer, under the store's keyring; completed by token at
+              ; fn-owner-finish-submission (books/catalog-commit.lisp
+              ; fn-cat-prepare; a pending attempt is superseded).
+              (mv-let (pending fn-arena)
+                (fn-cat-prepare record nil nil fn-octets (fn-sn-keyring s)
+                                (fn-sn-keyring-generation s) nil fn-arena fn-cat)
+                (let ((state (f-put-global 'fn-owner-cat-pending pending state)))
+                  (mv nil :prepared fn-arena state))))))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge state)
@@ -1143,14 +1166,40 @@
 ;; fn-rcon-record-p (fn-rcon-record-p-is-record-p: equal to fn-record-p on
 ;; every input), which reads the record's strings in place instead of
 ;; building their octet lists.
-(defun fn-owner-finish-submission (state)
-  (declare (xargs :stobjs state :mode :program))
+(defun fn-owner-finish-submission (fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
   (let ((oc (fn-owner-ocfg state)))
     (if (fn-ocfg-staged oc)
-        (value :fault)
-      (let* ((result (fn-ccar-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc)))
-             (state (fn-owner-replace-core (cdr result) state)))
-        (value (car result))))))
+        (mv nil :fault fn-cat state)
+      ; Step 8 (catalog slice): the completing record's token, read before the
+      ; finish (fn-sf-record-candidate: the record the store is completing).
+      (let* ((candidate (fn-sf-record-candidate
+                         (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
+             (result (fn-ccar-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc)))
+             (state (fn-owner-replace-core (cdr result) state))
+             (pending (f-get-global 'fn-owner-cat-pending state)))
+        (if (not (and (equal (car result) :durable) pending (fn-record-p candidate)))
+            (mv nil (car result) fn-cat state)
+          ; T2 / R1 / T4 (books/served-catalog-owner.lisp): the row completed by
+          ; the completing record's token, hidden when the refreshed view no
+          ; longer shows its Message-ID; the article's withdrawal targets the
+          ; view no longer shows, withdrawn with this row as the cause.
+          (let ((view (fn-own-view (cdr result))))
+            (mv-let (word pending2 fn-cat)
+              (fn-sco-complete (cons (nfix (fn-record-txid candidate)) (fn-pc-expected pending))
+                               pending (fn-own-view-index view) fn-cat)
+              (let ((state (f-put-global 'fn-owner-cat-pending pending2 state)))
+                (if (or (equal (car word) :stale-token) (equal (car word) :expected-mismatch))
+                    ; the catalog refused the completion the store made durable:
+                    ; a recovery event, never a silent divergence (the catalog
+                    ; is rebuilt from the records at the next open).
+                    (mv nil :fault fn-cat state)
+                  (let ((fn-cat (fn-sco-withdraw-targets
+                                 (fn-sco-targets-of (fn-record-msgid candidate)
+                                                    (fn-own-view-withdrawals view))
+                                 (fn-own-view-index view)
+                                 (fn-pc-expected pending) fn-cat)))
+                    (mv nil (car result) fn-cat state)))))))))))
 
 (defun fn-owner-begin (id state)
   (declare (xargs :stobjs state :mode :program))
@@ -2498,6 +2547,10 @@
     (fn-served-reply-to-buffer (f-get-global 'fn-owner-effects state) fn-octets)
     (mv nil (if okp :ok :malformed) fn-octets state)))
 
+; Step 8 (catalog slice): the read runs books/served-catalog-chain.lisp
+; fn-scr-ocfg-read-span, the same chain with the catalog carried to the
+; retrieval arms (fn-scr-ocfg-read-span-is-reference-under-ocl-relation);
+; the paragraph below describes the carried read it equals.
 ; The same read over a range of the octet buffer (books/served-span.lisp;
 ; REP-012, PRF-181): host/native/owner.lisp fnn-owner-handle-chunk fills the
 ; buffer from the socket's byte vector and calls this with [start, end), so
@@ -2505,16 +2558,16 @@
 ; fn-scar-ocfg-read-tls-prefix over (fn-oct-slice-list start end fn-octets)
 ; (fn-scar-ocfg-read-span-is-reference-under-ocl-relation); everything
 ; installed below is installed as fn-owner-chunk installs it.
-(defun fn-owner-chunk-span (id start end fn-octets state)
-  (declare (xargs :stobjs (fn-octets state) :mode :program))
+(defun fn-owner-chunk-span (id start end fn-octets fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
   (let ((owner (fn-owner-core state)))
     (if (not (fn-own-find-conn id (fn-own-conns owner)))
         (value :unknown)
       (if (not (and (natp start) (natp end) (<= start end)
                     (<= end (fn-octets-len fn-octets))))
           (value :bad-range)
-        (let* ((result (fn-scar-ocfg-read-span
-                        (fn-owner-ocfg state) id start end fn-octets))
+        (let* ((result (fn-scr-ocfg-read-span
+                        (fn-owner-ocfg state) id start end fn-octets fn-arena fn-cat))
                (state (fn-owner-install-ocfg
                        (fn-own-tls-result-owner result) state))
                (state (fn-owner-install-effects
