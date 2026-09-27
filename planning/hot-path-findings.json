@@ -531,6 +531,36 @@
       "class": "unexpected",
       "packet": "PKT-448 (h)"
     },
+    "fn-prc-add-new-releases recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-279, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build)."
+    },
+    "fn-prc-add-pins recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-279, books/post-retain-carried.lisp): fn-prc-refresh's rebuild (fn-prc-build). The owner open (fn-owner-install-extended) builds the carry for the ledger it opens with (hbox REPL, 10,000 pins: 4.8 MB, 0.02 s), so on the served POST (fn-owner-prepare-buffer) it runs only when the carry names a ledger no retention delta reaches, which no host-selected owner step produces between an open and a POST (a reopen goes through the open)."
+    },
+    "fn-prc-add-releases recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-279, books/post-retain-carried.lisp): fn-prc-refresh's rebuild (fn-prc-build). The owner open (fn-owner-install-extended) builds the carry for the ledger it opens with (hbox REPL, 10,000 pins: 4.8 MB, 0.02 s), so on the served POST (fn-owner-prepare-buffer) it runs only when the carry names a ledger no retention delta reaches, which no host-selected owner step produces between an open and a POST (a reopen goes through the open)."
+    },
+    "fn-prc-all-released recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-279, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build)."
+    },
+    "fn-prc-pins-walk recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-279, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build)."
+    },
+    "fn-prc-releases-tailp recursion N": {
+      "class": "unexpected",
+      "packet": "open",
+      "note": "post-alloc-3 retain (PRF-279, books/post-retain-carried.lisp): fn-prc-refresh's delta on the served POST (fn-owner-prepare-buffer) and at the owner open (fn-owner-install-extended). The same ledger is one EQ test; a commit is O(1) (the walk's whole-tail EQUAL is one EQ test); a release walks the pins to the released pin's position (hbox REPL, 10,000 pins, pin #5000: ~50 us, no allocation); k retention steps between POSTs are one walk, O(N) at worst with no allocation but the new ids. A delta that does not have this shape falls to the rebuild (fn-prc-build)."
+    },
     "fn-rcl-held-count recursion N": {
       "class": "unexpected",
       "packet": "PKT-324 (8)"
@@ -601,14 +631,14 @@
       "packet": "PKT-448 (a)"
     },
     "fn-rii-kbuild-pins recursion N": {
-      "class": "unexpected",
+      "class": "cold",
       "packet": "open",
-      "note": "post-alloc-2 retain (books/post-retain-carried.lisp): fn-prc-refresh's rebuild branch on the served POST (fn-owner-prepare-buffer). It runs only when the carried obligation-id trie names a ledger that is neither the node's nor the node's under one consed pin: the first POST after the owner starts (the carry is nil), and a POST after a release, an expiry or two retention steps between POSTs. Every other POST takes the EQ branch or one trie put, and the per-POST pin walk (fn-retain-pin-id-scanp under fn-pidx-node-prepare) is gone. Open: build the carry at the owner open (fn-rii-ix-of over the recovered node) so the first POST pays nothing."
+      "note": "post-alloc-3 retain (PRF-279): books/post-retain-carried.lisp no longer calls fn-rii-kbuild (the carried set is its own path-compressed id trie); the remaining reach is the open's replay fold (fn-rii-ix-of), cold."
     },
     "fn-rii-kbuild-releases recursion N": {
-      "class": "unexpected",
+      "class": "cold",
       "packet": "open",
-      "note": "post-alloc-2 retain (books/post-retain-carried.lisp): fn-prc-refresh's rebuild branch on the served POST (fn-owner-prepare-buffer). It runs only when the carried obligation-id trie names a ledger that is neither the node's nor the node's under one consed pin: the first POST after the owner starts (the carry is nil), and a POST after a release, an expiry or two retention steps between POSTs. Every other POST takes the EQ branch or one trie put, and the per-POST pin walk (fn-retain-pin-id-scanp under fn-pidx-node-prepare) is gone. Open: build the carry at the owner open (fn-rii-ix-of over the recovered node) so the first POST pays nothing."
+      "note": "post-alloc-3 retain (PRF-279): books/post-retain-carried.lisp no longer calls fn-rii-kbuild (the carried set is its own path-compressed id trie); the remaining reach is the open's replay fold (fn-rii-ix-of), cold."
     },
     "fn-rtf-pin-count len N": {
       "class": "unexpected",

@@ -269,6 +269,16 @@
   (if (equal oc :fault)
         (value :fault)
       (let* ((state (fn-owner-install-ocfg oc state))
+             ; PRF-279: the carried obligation-id trie for the ledger the
+             ; owner opens with (books/post-retain-carried.lisp
+             ; fn-prc-refresh of nil; fn-prc-carryp-of-refresh), so the
+             ; first POST's refresh is a delta, not a build.
+             (state (f-put-global
+                     'fn-owner-retain-carry
+                     (fn-prc-refresh nil (fn-node-retention
+                                          (fn-sn-node
+                                           (fn-own-store (fn-owner-core state)))))
+                     state))
              ; Rebuilt exclusively by successful FNFD scans after
              ; authoritative store recovery.  It is a carried
              ; incremental fold, never a whole-journal rescan on a
@@ -1039,9 +1049,10 @@
 ; from the buffer (fn-arena-seal-buffer: no list is retained; the wire
 ; record's list payload lives only for the facts, the context and the budget).
 ;; The carried obligation-id trie (books/post-retain-carried.lisp): the
-;; global's only writer is fn-owner-prepare-buffer, which stores
-;; fn-prc-refresh of the value read here, so it always satisfies
-;; fn-prc-carryp (fn-prc-carryp-of-refresh; nil, before the first POST,
+;; global's two writers are fn-owner-install-extended (every recovery: the
+;; refresh of nil, so the first POST pays no build) and
+;; fn-owner-prepare-buffer, which stores fn-prc-refresh of the value read
+;; here; so it always satisfies fn-prc-carryp (fn-prc-carryp-of-refresh; nil
 ;; by fn-prc-carryp-when-atom).  The recognizer names no owner state, so no
 ;; owner step between two POSTs can falsify it.
 (defun fn-owner-retain-carry (state)
@@ -1105,7 +1116,7 @@
                                               (fn-arena-count fn-arena)
                                               (fn-owner-parse-carry state))))
                  ; The carried obligation-id trie, brought to the Store
-                 ; node's ledger (one put after a commit).
+                 ; node's ledger (a commit puts one id, a release none).
                  (carry (fn-prc-refresh (fn-owner-retain-carry state)
                                         (fn-node-retention (fn-sn-node s))))
                  (state (if (equal record :clock-unusable)
