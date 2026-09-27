@@ -693,7 +693,7 @@
                                    fn-native-admin-carries-rows
                                    fn-native-admin-carries-hexp subsetp-equal
                                    fn-native-admin-retention-days
-                                   fn-native-admin-peer-plan fn-record-group-namep
+                                   fn-native-admin-peer-plan fn-native-admin-moderate-plan fn-native-admin-describe-plan fn-record-group-namep
                                    fn-path-identityp fn-native-admin-decimalp
                                    fn-native-admin-decimal-value fn-native-admin-argvp
                                    fn-native-admin-bp-boundary-split
@@ -806,7 +806,7 @@ for itself which kinds are safe to read: the plan kinds are ACL2's."
                   (fn-native-admin-bp-boundary-plan (fn-native-admin-words argv))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
-                                  ((tau-system) fn-native-admin-peer-plan fn-native-admin-bp-boundary-plan
+                                  ((tau-system) fn-native-admin-peer-plan fn-native-admin-moderate-plan fn-native-admin-describe-plan fn-native-admin-bp-boundary-plan
                                    fn-record-octets-string fn-cbor-octet-listp
                                    fn-digest-octetsp-implies-octet-listp
                                    fn-record-group-namep fn-native-admin-decimalp
@@ -1119,7 +1119,7 @@ recovery observes it under (`fn-nco-observe')."
                                    fn-record-octets-string fn-cbor-octet-listp
                                    fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-words fn-native-admin-argvp
-                                   fn-native-admin-peer-plan
+                                   fn-native-admin-peer-plan fn-native-admin-moderate-plan fn-native-admin-describe-plan
                                    fn-native-admin-bp-boundary-plan
                                    fn-record-group-namep fn-path-identityp
                                    fn-native-admin-decimalp
@@ -1147,7 +1147,7 @@ recovery observes it under (`fn-nco-observe')."
                                    fn-record-octets-string fn-cbor-octet-listp
                                    fn-digest-octetsp-implies-octet-listp
                                    fn-native-admin-words fn-native-admin-argvp
-                                   fn-native-admin-peer-plan
+                                   fn-native-admin-peer-plan fn-native-admin-moderate-plan fn-native-admin-describe-plan
                                    fn-native-admin-bp-boundary-plan
                                    fn-record-group-namep fn-path-identityp
                                    fn-native-admin-decimalp
