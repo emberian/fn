@@ -90,3 +90,69 @@
       (equal (fn-bs-durable-entry (fn-bs-crash (fn-lgob-acked-batch nil) '(:apply))
                                   :journal "000002.log")
              2)))
+
+; -----------------------------------------------------------------------------
+; fn-lgob-recovered-segment-fence-is-identity (PRF-273), restated by lane
+; audit-fixes (keystone-audit G4-7) with its one needed hypothesis: the
+; segment's inode exists.  The weakened theorem is proved, so the six
+; hypotheses it dropped (among them the owner's sole-pending-writer
+; obligation) are gone rather than toothed; the two states below, each
+; violating one dropped hypothesis, evaluate the conclusion true, as the
+; weakened theorem says they must.
+
+(defun slob-recovered-final (bs ino)
+  (declare (xargs :verify-guards nil))
+  (let ((ks (fn-lg-recovered-kernel bs ino (slk-genesis) (slk-max) 1)))
+    (car (last (fn-lg-run bs ks (fn-lg-recover-program) nil ino)))))
+
+(defun slob-recovered-conclusionp (bs ino)
+  (declare (xargs :verify-guards nil))
+  (let ((final (slob-recovered-final bs ino)))
+    (mv-let (r bs1 ks1)
+      (fn-lg-step (car final) (cdr final) '(:fence :segment :tail) :ok ino)
+      (equal (list r bs1 ks1) (list :ok (car final) (cdr final))))))
+
+; Reachable witness: the crashed content of the kernel tests, inode 0
+; present; the recovery run reaches log-recovered (four states) and the
+; second fence is the identity.
+(assert-event
+ (let ((bs (slk-store (slk-content) nil)))
+   (and (assoc-equal 0 (fn-bs-inodes bs))
+        (equal (len (fn-lg-run bs (fn-lg-recovered-kernel bs 0 (slk-genesis) (slk-max) 1)
+                               (fn-lg-recover-program) nil 0))
+               4)
+        (slob-recovered-conclusionp bs 0))))
+
+; Dropped hypotheses, the conclusion still holds (consistent with the
+; weakened theorem; not teeth): a pending write of the segment (the
+; program's own fence lands it), and a pending entry operation of another
+; directory (the obligation's local witness fails; the file fence keeps it,
+; both times).
+(assert-event
+ (let ((bs (slk-store (slk-content) (list (list :write 0 0 (list 1 1 1 1))))))
+   (and (fn-bs-ops-for-ino (fn-bs-pending bs) 0)
+        (slob-recovered-conclusionp bs 0))))
+(assert-event
+ (let ((bs (slk-store (slk-content) (list (list :set-entry :journal "x" 0)))))
+   (and (fn-bs-ops-not-for-ino (fn-bs-pending bs) 0)
+        (slob-recovered-conclusionp bs 0))))
+
+; Hypothesis removed (the inode exists), CORRUPTED STATE: a store with a
+; seventh field and no inode 7.  The program's first write is refused
+; (:ebadf), the run stops there, and the fence rebuilds a six-field store.
+(assert-event
+ (let* ((bs (append (slk-store (slk-content) nil) '(extra)))
+        (run (fn-lg-run bs (fn-lg-recovered-kernel bs 7 (slk-genesis) (slk-max) 1)
+                        (fn-lg-recover-program) nil 7)))
+   (and (not (assoc-equal 7 (fn-bs-inodes bs)))
+        (equal (len run) 1)
+        (not (slob-recovered-conclusionp bs 7)))))
+
+; Hypothesis removed, CONSTRUCTED STATE (not known reachable): a well-shaped
+; store with a pending write of inode 7, which it does not hold.  The run
+; stops at the refused write, and the fence drains the orphan write.
+(assert-event
+ (let ((bs (slk-store (slk-content) (list (list :write 7 0 (list 1 1 1 1))))))
+   (and (not (assoc-equal 7 (fn-bs-inodes bs)))
+        (fn-bs-ops-for-ino (fn-bs-pending bs) 7)
+        (not (slob-recovered-conclusionp bs 7)))))

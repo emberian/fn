@@ -930,7 +930,17 @@ class Tree:
         if branch:
             reasons.append(branch)
 
-        # 6. A `*-preserves-*` name whose statement never calls its own subject.
+        # 6. The statement is definitional in a shape 4 and 5 do not read
+        #    (lane audit-fixes, 2026-09-27; the keystone audit found ten such
+        #    registered keystones): one IF/COND arm selected by a constant
+        #    argument or by the hypotheses, an ``iff`` with the definition's
+        #    own test, or two sides that unfold to the same term
+        #    (accessor-of-constructor).
+        arm = self.definitional_statement(theorem.statement)
+        if arm:
+            reasons.append(arm)
+
+        # 7. A `*-preserves-*` name whose statement never calls its own subject.
         preserves = self.preserves_without_subject(theorem)
         if preserves:
             reasons.append(preserves)
@@ -998,6 +1008,150 @@ class Tree:
                                 f"branch's value")
         return None
 
+    def definitional_statement(self, statement: object) -> str | None:
+        """Every conclusion conjunct is a definitional fact about one call.
+
+        A conjunct counts when it is (a) ``(equal (f ARGS) V)`` where the
+        constant arguments and the hypotheses decide f's IF/COND tests down
+        to one arm and V is that arm; (b) ``(iff (f ARGS) TEST)`` where f's
+        body is ``(if TEST NON-NIL nil)``; (c) ``(equal L R)`` whose sides
+        unfold (non-recursive definitions, car/cdr of a constructor) to the
+        same term; or (d) a ground check on a value (a) already fixed,
+        ``(not (member-equal (f ...) '(437 439)))``.  One real conjunct and
+        the statement is not flagged.
+        """
+        statement = beta(statement)
+        parts: list[tuple[list, object]] = []
+        for top in conjuncts(statement):
+            hypotheses, conclusion = split_implication(top)
+            for conjunct in conjuncts(conclusion):
+                parts.append(([normalise_eq(h) for h in hypotheses],
+                              normalise_eq(conjunct)))
+        found: list[str] = []
+        fixed: list[tuple[object, object]] = []
+        pending: list[object] = []
+        for hypotheses, conjunct in parts:
+            reason = (self.arm_of_definition(hypotheses, conjunct, fixed)
+                      or self.iff_of_definition_test(conjunct)
+                      or self.unfolds_alike(conjunct))
+            if reason:
+                found.append(reason)
+            else:
+                pending.append(conjunct)
+        if not found:
+            return None
+        for conjunct in pending:
+            if not ground_after(conjunct, fixed):
+                return None
+        return sorted(set(found))[0]
+
+    def arm_of_definition(self, hypotheses: list, conclusion: object,
+                          fixed: list) -> str | None:
+        if head(conclusion) != "equal" or len(conclusion) != 3:
+            return None
+        for call, value in ((conclusion[1], conclusion[2]),
+                            (conclusion[2], conclusion[1])):
+            name = head(call)
+            function = self.functions.get(name) if name else None
+            if function is None or not isinstance(function.formals, list):
+                continue
+            if len(function.formals) != len(call) - 1:
+                continue
+            bindings = {str(f): a for f, a in zip(function.formals, call[1:])
+                        if isinstance(f, Sym)}
+            body = normalise_eq(expand_cond(beta(substitute(
+                beta(logic_body(function)), bindings))))
+            arm, decided = select_arm(body, hypotheses)
+            if decided and arm is not None and same(arm, value):
+                fixed.append((call, value))
+                how = ("constant arguments" if not hypotheses
+                       else "the hypotheses")
+                return (f"arm-of-definition: {how} select one IF/COND arm of "
+                        f"{name} and the conclusion is that arm's value")
+        return None
+
+    def iff_of_definition_test(self, conclusion: object) -> str | None:
+        if head(conclusion) != "iff" or len(conclusion) != 3:
+            return None
+        for call, test in ((conclusion[1], conclusion[2]),
+                           (conclusion[2], conclusion[1])):
+            name = head(call)
+            function = self.functions.get(name) if name else None
+            if function is None or not isinstance(function.formals, list):
+                continue
+            if len(function.formals) != len(call) - 1:
+                continue
+            bindings = {str(f): a for f, a in zip(function.formals, call[1:])
+                        if isinstance(f, Sym)}
+            body = normalise_eq(expand_cond(beta(substitute(
+                beta(logic_body(function)), bindings))))
+            if head(body) != "if" or len(body) != 4:
+                continue
+            _, t, then, otherwise = body
+            if non_nil_literal(then) and same(otherwise, Sym("nil")) \
+                    and same(t, normalise_eq(test)):
+                return (f"iff-of-definition-test: {name} is (if TEST non-nil "
+                        f"nil) and the statement is its truth iff TEST")
+            if non_nil_literal(otherwise) and same(then, Sym("nil")) \
+                    and same([Sym("not"), t], normalise_eq(test)):
+                return (f"iff-of-definition-test: {name} is (if TEST nil "
+                        f"non-nil) and the statement is its truth iff (not TEST)")
+        return None
+
+    def unfolds_alike(self, conclusion: object) -> str | None:
+        if head(conclusion) != "equal" or len(conclusion) != 3:
+            return None
+        left, right = conclusion[1], conclusion[2]
+        if same(left, right) or not (calls(left) or calls(right)):
+            return None
+        a = self.unfold_fully(left)
+        b = self.unfold_fully(right)
+        if a is None or b is None:
+            return None
+        if same(normalise_eq(a), normalise_eq(b)):
+            return ("definition-restated: both sides unfold to the same term "
+                    "(non-recursive definitions, accessor of constructor)")
+        return None
+
+    def unfold_fully(self, form: object, budget: int = 200,
+                     limit: int = 4000) -> object | None:
+        """Expand non-recursive definitions and constructor projections to a
+        fixpoint; ``None`` when the budget or the term size runs out."""
+        state = {"budget": budget}
+
+        def walk(term: object) -> object:
+            if not isinstance(term, list) or not term or head(term) == "quote":
+                return term
+            if not isinstance(term[0], Sym):
+                return term
+            term = [term[0]] + [walk(item) for item in term[1:]]
+            reduced = project(term)
+            if reduced is not term:
+                return walk(reduced)
+            name = str(term[0])
+            function = self.functions.get(name)
+            if function is None or not isinstance(function.formals, list):
+                return term
+            if len(function.formals) != len(term) - 1:
+                return term
+            body = logic_body(function)
+            if name in calls(body):
+                return term
+            state["budget"] -= 1
+            if state["budget"] < 0:
+                raise OverflowError
+            bindings = {str(f): a for f, a in zip(function.formals, term[1:])
+                        if isinstance(f, Sym)}
+            expanded = beta(substitute(beta(body), bindings))
+            if size(expanded) > limit:
+                raise OverflowError
+            return walk(expanded)
+
+        try:
+            return walk(beta(form))
+        except (OverflowError, RecursionError):
+            return None
+
     def preserves_without_subject(self, theorem: Theorem) -> str | None:
         if "-preserves-" not in theorem.name:
             return None
@@ -1061,6 +1215,184 @@ def beta(form: object) -> object:
 def strip_declares(body: list) -> object:
     """The value form of a ``let`` body, ignoring declarations."""
     return body[-1] if body else Sym("nil")
+
+
+EQUALITY_SPELLINGS = ("eq", "eql", "=")
+
+
+def normalise_eq(form: object) -> object:
+    """``eq``/``eql``/``=`` as ``equal`` and ``null`` as ``(equal x nil)``:
+    one proposition, several spellings (a definition says ``eq`` where its
+    lemma says ``equal``)."""
+    form = normalise_null(form)
+    if isinstance(form, list) and form and head(form) != "quote":
+        parts = [normalise_eq(part) for part in form]
+        if head(form) in EQUALITY_SPELLINGS and len(parts) == 3:
+            return [Sym("equal"), parts[1], parts[2]]
+        if head(form) == "list" and len(parts) > 1 and all(literal(p) for p in parts[1:]):
+            # `(list :refused :bound)' and `'(:refused :bound)' are one value.
+            return [Sym("quote"), [p[1] if head(p) == "quote" else p
+                                   for p in parts[1:]]]
+        return parts
+    return form
+
+
+def expand_cond(form: object) -> object:
+    """``cond`` as nested ``if`` (an arm with no value is its test)."""
+    if not isinstance(form, list) or not form or head(form) == "quote":
+        return form
+    if head(form) == "cond":
+        result: object = Sym("nil")
+        for clause in reversed(form[1:]):
+            if not isinstance(clause, list) or not clause:
+                continue
+            test = expand_cond(clause[0])
+            value = expand_cond(clause[-1]) if len(clause) > 1 else test
+            if same(test, Sym("t")):
+                result = value
+            else:
+                result = [Sym("if"), test, value, result]
+        return result
+    return [expand_cond(item) for item in form]
+
+
+def literal(form: object) -> bool:
+    """A self-evaluating form: a number, a string, a keyword, t, nil, a quote."""
+    if isinstance(form, Sym):
+        return form.startswith(":") or form in ("t", "nil")
+    if isinstance(form, (int, float, str)):
+        return True
+    return head(form) == "quote" and len(form) == 2
+
+
+def non_nil_literal(form: object) -> bool:
+    """A form whose value is never nil: a non-nil literal or a constructor."""
+    if literal(form):
+        return not same(form, Sym("nil")) and not same(form, [Sym("quote"), Sym("nil")])
+    return head(form) in ("cons", "list", "list*") and len(form) > 1
+
+
+def decide(test: object, facts: list) -> bool | None:
+    """The truth of TEST from literal arithmetic and the hypotheses FACTS."""
+    if any(same(test, fact) for fact in facts):
+        return True
+    if any(same([Sym("not"), test], fact) for fact in facts):
+        return False
+    if literal(test):
+        return not (same(test, Sym("nil")) or same(test, [Sym("quote"), Sym("nil")]))
+    name = head(test)
+    if name == "not" and len(test) == 2:
+        inner = decide(test[1], facts)
+        return None if inner is None else not inner
+    if name in ("and", "or"):
+        values = [decide(part, facts) for part in test[1:]]
+        if name == "and":
+            if any(v is False for v in values):
+                return False
+            return True if all(v is True for v in values) else None
+        if any(v is True for v in values):
+            return True
+        return False if all(v is False for v in values) else None
+    if name == "equal" and len(test) == 3:
+        left, right = test[1], test[2]
+        if literal(left) and literal(right):
+            return same(left, right)
+        for subject, constant in ((left, right), (right, left)):
+            if not literal(constant):
+                continue
+            for fact in facts:
+                if head(fact) == "equal" and len(fact) == 3:
+                    for known, value in ((fact[1], fact[2]), (fact[2], fact[1])):
+                        if literal(value) and same(known, subject):
+                            return same(value, constant)
+        return None
+    if name == "consp" and len(test) == 2:
+        for fact in facts:
+            if head(fact) == "equal" and len(fact) == 3:
+                for known, value in ((fact[1], fact[2]), (fact[2], fact[1])):
+                    if (head(known) == "car" and len(known) == 2
+                            and same(known[1], test[1]) and non_nil_literal(value)):
+                        return True
+    return None
+
+
+def select_arm(body: object, facts: list) -> tuple[object | None, bool]:
+    """Walk BODY's IF chain, deciding each test; the arm reached and whether
+    any test was decided.  ``(None, _)`` when a test stays undecided."""
+    decided = False
+    while head(body) == "if" and len(body) == 4:
+        verdict = decide(body[1], facts)
+        if verdict is None:
+            return None, decided
+        decided = True
+        body = body[2] if verdict else body[3]
+    return body, decided
+
+
+def ground_after(conjunct: object, fixed: list) -> bool:
+    """CONJUNCT, with each fixed call replaced by its value, has no variable
+    and calls only built-in list and equality functions."""
+    for call, value in fixed:
+        conjunct = replace_form(conjunct, call, value)
+    return ground(conjunct)
+
+
+GROUND_FUNCTIONS = {"not", "equal", "member-equal", "member", "and", "or",
+                    "consp", "atom", "natp", "integerp", "stringp", "symbolp",
+                    "keywordp", "<", "<=", ">", ">=", "cons", "list", "car", "cdr"}
+
+
+def ground(form: object) -> bool:
+    if isinstance(form, Sym):
+        return literal(form)
+    if not isinstance(form, list):
+        return True
+    if head(form) == "quote":
+        return True
+    return head(form) in GROUND_FUNCTIONS and all(ground(item) for item in form[1:])
+
+
+def replace_form(form: object, target: object, value: object) -> object:
+    if same(form, target):
+        return value
+    if isinstance(form, list) and head(form) != "quote":
+        return [replace_form(item, target, value) for item in form]
+    return form
+
+
+def size(form: object) -> int:
+    if isinstance(form, list):
+        return 1 + sum(size(item) for item in form)
+    return 1
+
+
+CXR = re.compile(r"c([ad]{1,4})r\Z")
+
+
+def project(term: list) -> object:
+    """One step of car/cdr/nth over a constructor, or TERM unchanged."""
+    name = head(term)
+    match = CXR.match(name or "")
+    if match and len(term) == 2 and len(match.group(1)) > 1:
+        inner: object = term[1]
+        for letter in reversed(match.group(1)):
+            inner = [Sym("car" if letter == "a" else "cdr"), inner]
+        return inner
+    if name in ("car", "cdr") and len(term) == 2:
+        arg = term[1]
+        if head(arg) == "cons" and len(arg) == 3:
+            return arg[1] if name == "car" else arg[2]
+        if head(arg) == "list":
+            if len(arg) == 1:
+                return Sym("nil")
+            if name == "car":
+                return arg[1]
+            return [Sym("list")] + arg[2:] if len(arg) > 2 else Sym("nil")
+    if name == "nth" and len(term) == 3 and isinstance(term[1], int) \
+            and head(term[2]) == "list":
+        items = term[2][1:]
+        return items[term[1]] if term[1] < len(items) else Sym("nil")
+    return term
 
 
 def if_branches(form: object, found: list | None = None) -> list:

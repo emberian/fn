@@ -731,10 +731,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bp-unchecked-receipt-is-no-op"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpo-receipt-success-requires-local-policy"
         },
         {
@@ -893,11 +889,6 @@
           "kind": "theorem",
           "name": "fn-rcon-store-event-encode-is-store-event-encode",
           "note": "The staged record's encoder at write: host/owner-host.lisp:553 fn-owner-pending-octets and host/store-node-host.lisp:584 fn-store-sn-pending-octets call fn-rcon-store-event-encode, equal to fn-store-event-encode on every input, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rcon-sbud-pending-sequence-is-sbud-pending-sequence",
-          "note": "The staged record's sequence: host/owner-host.lisp:562 fn-owner-pending-sequence and host/store-node-host.lisp:591 fn-store-sn-pending-sequence call fn-rcon-sbud-pending-sequence, equal to fn-sbud-pending-sequence on every input, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp."
         },
         {
           "kind": "theorem",
@@ -2160,10 +2151,6 @@
           "kind": "theorem",
           "name": "fn-own-live-session-boundedp",
           "note": "The re-pin cannot drop a connection: it leaves the reader session identical, so fn-own-conn-boundedp -- the test fn-own-read applies after the step, and the one that made ADVANCE a silent no-op for a wave when a rebuild lost a wrapper -- answers exactly as before."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-peer-full-store-is-a-retry-code"
         }
       ]
     },
@@ -2559,10 +2546,6 @@
         {
           "kind": "theorem",
           "name": "fn-own-fault-releases-the-faulted-transaction"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-own-fault-is-not-a-store-event"
         },
         {
           "kind": "theorem",
@@ -3470,10 +3453,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-scka-select-named-refuses-the-arena-by-name"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-sshr-share-is-identity"
         },
         {
@@ -4138,10 +4117,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-pcb-admission-without-a-budget-admits-nothing"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-pcb-peer-budget-after-extend-delta"
         },
         {
@@ -4151,10 +4126,6 @@
         {
           "kind": "theorem",
           "name": "fn-pcb-present-carrier-not-accepted-has-a-class"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pcb-bound-carrier-with-a-failed-primitive-is-signature-failed"
         },
         {
           "kind": "theorem",
@@ -4834,21 +4805,12 @@
         {
           "kind": "theorem",
           "name": "fn-col-scope-entry-position-is-natural"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-col-ack-is-the-kernel-ack-unfolds"
         }
       ]
     },
     {
       "id": "PRF-120",
       "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bpnj-step-delegates-every-other-event",
-          "note": "The named equation: host/native/bp-service.lisp fnn-bps-foundation-step calls fn-bpnj-step, which is fn-bpnp-step on every event but :contact-job, :job-result and an unnamed base transport result, so every keystone over fn-bpnp-step is a fact about the called step on those events."
-        },
         {
           "kind": "theorem",
           "name": "fn-bpnj-contact-offers-while-a-ready-job-remains",
@@ -5991,15 +5953,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-nntp-enrollment-hdr-response-is-the-pinned-enrollment"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-own-reader-opened-after-completion-pins-the-finished-keyring"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-enr-item-of-an-enrolled-principal"
         }
       ]
     },
@@ -6594,14 +6548,6 @@
         {
           "kind": "theorem",
           "name": "fn-osp-key-change-reply-only-for-a-consumed-refused-key-change"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pcb-transit-verdict-names-the-accepted-arm"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-olog-detail-fields-print-an-accepted-arms-verdict"
         },
         {
           "kind": "theorem",
@@ -7412,10 +7358,6 @@
         {
           "kind": "theorem",
           "name": "fn-heap-reserve-decide-refuses-exactly-past-the-machine"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-heap-reserve-decide-keeps-heap-figures-refusals"
         },
         {
           "kind": "theorem",
@@ -8596,23 +8538,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cbind-plain-poll-of-an-unbound-consumer-is-the-consumer-poll"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cbind-plain-ack-of-an-unbound-consumer-is-the-consumer-ack"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cbind-poll-over-delivers-only-readable-events"
         },
         {
           "kind": "theorem",
           "name": "fn-cbind-poll-over-is-the-consumer-poll-or-a-refusal"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cbind-plain-poll-over-of-an-unbound-consumer-is-the-consumer-poll"
         },
         {
           "kind": "theorem",
@@ -8840,10 +8770,6 @@
         {
           "kind": "theorem",
           "name": "fn-oag-group-facts-are-group-facts"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-post-reader-env-facts"
         },
         {
           "kind": "theorem",
@@ -9704,10 +9630,6 @@
         {
           "kind": "theorem",
           "name": "fn-mvb-withdraw-makes-the-node-authorize-exactly-its-target"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-mvb-plan-unfolds"
         }
       ]
     },
@@ -9834,14 +9756,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ncr-cli-after-retries-only-an-unbootstrapped-register"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-col-bind-refusal-refuses-exactly-an-unregistered-bind"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-ncr-json-object-is-ascii"
         },
         {
@@ -9871,19 +9785,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cwd-page-of-a-withdrawal"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cwd-page-without-withdrawals-is-the-answer"
         },
         {
           "kind": "theorem",
           "name": "fn-cwd-scan-is-the-poll-scan-unless-a-withdrawal"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cwd-page-of-a-refusal"
         },
         {
           "kind": "theorem",
@@ -10018,10 +9924,6 @@
         {
           "kind": "theorem",
           "name": "fn-ocs-member-otherwise-uncertain"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ocs-member-uncertain-word-told-uncertain"
         },
         {
           "kind": "theorem",
@@ -10224,10 +10126,6 @@
         {
           "kind": "theorem",
           "name": "fn-pcar-files-candidatep-is-candidatep"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pcar-records-count-is-sbud-used"
         },
         {
           "kind": "theorem",
@@ -10534,20 +10432,12 @@
         {
           "kind": "theorem",
           "name": "fn-ocfg-at-reader-view-reads-the-reader-view"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ocfg-with-view-keeps-the-rest"
         }
       ]
     },
     {
       "id": "PRF-283",
       "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-own-ledger-of-fn-own-make"
-        },
         {
           "kind": "theorem",
           "name": "fn-own-refresh-ix-keeps-ledger-field"
