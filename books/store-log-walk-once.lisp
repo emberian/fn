@@ -196,11 +196,39 @@
                  nil))
          (decoded (if (fn-record-result-okp legacy) legacy
                     (ec-call (fn-store-event-decode-exact r)))))
-    (mv (if (and (consp decoded) (equal (car decoded) :ok) (consp (cdr decoded))
-                 (fn-rcon-wire-event-p (car (cdr decoded))))
-            (car (cdr decoded))
-          :bad)
+    ;; An accepted article record is a record (the seam's
+    ;; fn-record-decode-exact-yields-a-record), so a wire event: its
+    ;; recognizer is not run again on it.
+    (mv (if (fn-record-result-okp legacy)
+            (fn-record-result-record legacy)
+          (if (and (consp decoded) (equal (car decoded) :ok) (consp (cdr decoded))
+                   (fn-rcon-wire-event-p (car (cdr decoded))))
+              (car (cdr decoded))
+            :bad))
         txid)))
+
+(local
+ (defthm fn-lgb-event-decode-of-legacy
+   (implies (fn-record-result-okp (fn-record-decode-exact r))
+            (equal (fn-store-event-decode-exact r) (fn-record-decode-exact r)))
+   :hints (("Goal" :expand ((fn-store-event-decode-exact r))
+            :in-theory (disable fn-record-result-okp)))))
+
+(local
+ (defthm fn-lgb-legacy-is-a-wire-event
+   (implies (fn-record-result-okp (fn-record-decode-exact r))
+            (and (consp (fn-record-decode-exact r))
+                 (equal (car (fn-record-decode-exact r)) :ok)
+                 (consp (cdr (fn-record-decode-exact r)))
+                 (fn-rcon-wire-event-p (car (cdr (fn-record-decode-exact r))))
+                 (fn-wire-event-p (car (cdr (fn-record-decode-exact r))))
+                 (equal (fn-record-result-record (fn-record-decode-exact r))
+                        (car (cdr (fn-record-decode-exact r))))))
+   :hints (("Goal" :in-theory (e/d (fn-rcon-wire-event-p-is-wire-event-p fn-wire-event-p
+                                    fn-record-result-record fn-record-result-okp fn-cbor-ag-car)
+                                   (fn-rcon-wire-event-p fn-record-p
+                                    fn-record-decode-exact-yields-a-record))
+            :use ((:instance fn-record-decode-exact-yields-a-record (octets r)))))))
 
 (local
  (defthm fn-lgb-decode-one-is-decode-and-txid
@@ -211,8 +239,10 @@
                     (car (cdr decoded))
                   :bad)
                 (fn-lgt-txid r))))
-   :hints (("Goal" :in-theory (e/d (fn-lgt-txid) (fn-rcon-wire-event-p fn-record-txid))
-            :expand ((fn-store-event-decode-exact r))))))
+   :hints (("Goal" :cases ((fn-record-result-okp (fn-record-decode-exact r)))
+            :in-theory (e/d (fn-lgt-txid)
+                            (fn-rcon-wire-event-p fn-record-txid fn-store-event-decode-exact
+                             fn-record-result-okp fn-record-result-record))))))
 
 (in-theory (disable fn-lgb-decode-one))
 
