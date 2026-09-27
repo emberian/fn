@@ -1296,11 +1296,28 @@
                         (fn-own-feeds *own-control-fed-taken*))
        *own-control-msgid*)))
 
-; R, pinned before the post, still sees two articles; a reader opened after
-; the post sees three; R's pinned prefix is unchanged.
+; R, pinned before the post, is still at version 2; a reader opened after
+; the post sees three.  NNT-042 (catalog-slice-5, 2026-09-26): R's GROUP
+; acquires the committed view and answers three, and R is pinned at version 3
+; afterwards; a command that is not a refresh boundary (STAT) still answers
+; R's pinned prefix (430 for the third article) and moves nothing.  Before
+; NNT-042 this GROUP answered `211 2 1 2' and R kept its pin for life.
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 3 (fn-own-conns *own-after-post*))) 2))
 (assert-event (equal (fn-served-reply-octets (car (fn-own-read *own-after-post* 3 *own-group-octets*)))
-                     (append (fn-nntp-string-octets "211 2 1 2 fn.letters") '(13 10))))
+                     (append (fn-nntp-string-octets "211 3 1 3 fn.letters") '(13 10))))
+(assert-event (equal (fn-own-conn-version
+                      (fn-own-find-conn 3 (fn-own-conns (cdr (fn-own-read *own-after-post* 3 *own-group-octets*)))))
+                     3))
+(assert-event (equal (fn-own-read-repinned *own-after-post* 3 *own-group-octets*) t))
+(defconst *own-stat-three-octets*
+  (append (fn-nntp-string-octets "STAT <three@example>") '(13 10)))
+(assert-event (equal (fn-own-take 3 (fn-served-reply-octets
+                                    (car (fn-own-read *own-after-post* 3 *own-stat-three-octets*))))
+                     (fn-nntp-string-octets "430")))
+(assert-event (equal (fn-own-conn-version
+                      (fn-own-find-conn 3 (fn-own-conns (cdr (fn-own-read *own-after-post* 3 *own-stat-three-octets*)))))
+                     2))
+(assert-event (fn-own-relation (cdr (fn-own-read *own-after-post* 3 *own-group-octets*))))
 (defconst *own-late* (fn-own-run *own-after-post* '((:close 0) (:open))))
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 5 (fn-own-conns *own-late*))) 3))
 (assert-event
