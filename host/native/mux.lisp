@@ -44,6 +44,7 @@
 
 (defconstant +fnn-mux-loops+ 2)
 (defconstant +fnn-mux-handshakes-per-loop+ 8)
+(defconstant +fnn-mux-queued-per-loop+ 256)
 (defconstant +fnn-mux-send-seconds+ 10)
 (defconstant +fnn-mux-handshake-seconds+ 10)
 (defconstant +fnn-mux-idle-seconds+ 1)
@@ -62,7 +63,9 @@
   service thread
   (lock (sb-thread:make-mutex :name "fn mux inbox"))
   (inbox nil) (conns nil) wake-read wake-write
-  (handshaking 0) (waiting nil))
+  (handshaking 0) (waiting nil)
+  ;; Implicit-TLS sockets not yet admitted, waiting for a handshake slot.
+  (queued nil))
 
 (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn))
   socket fd implicit-tls channel ssl cid opened-cid
@@ -201,7 +204,9 @@ the TLS session, then the socket.  Idempotent."
       (when (eq was :handshake)
         (decf (fnn-mux-loop-handshaking loop)))
       (setf (fnn-mux-loop-waiting loop)
-            (delete conn (fnn-mux-loop-waiting loop) :test #'eq))
+            (delete conn (fnn-mux-loop-waiting loop) :test #'eq)
+            (fnn-mux-loop-queued loop)
+            (delete conn (fnn-mux-loop-queued loop) :test #'eq))
       (when cid
         (ignore-errors
           (fnn-owner-serialized
@@ -469,12 +474,25 @@ nothing."
     (incf (fnn-mux-loop-handshaking loop))
     (fnn-mux-handshake-step loop conn)))
 
+(defun fnn-mux-slot-free-p (loop)
+  (< (fnn-mux-loop-handshaking loop) +fnn-mux-handshakes-per-loop+))
+
 (defun fnn-mux-start-waiting-handshake (loop)
-  (loop while (and (fnn-mux-loop-waiting loop)
-                   (< (fnn-mux-loop-handshaking loop) +fnn-mux-handshakes-per-loop+))
-        do (let ((next (pop (fnn-mux-loop-waiting loop))))
-             (fnn-mux-guarded (loop next)
-               (fnn-mux-start-handshake loop next)))))
+  "A slot freed: an admitted STARTTLS upgrade first, then the oldest queued
+implicit-TLS socket, which is admitted now (fnn-mux-admit), just before its
+handshake."
+  (loop while (fnn-mux-slot-free-p loop)
+        do (cond ((fnn-mux-loop-waiting loop)
+                  (let ((next (pop (fnn-mux-loop-waiting loop))))
+                    (fnn-mux-guarded (loop next)
+                      (fnn-mux-start-handshake loop next))))
+                 ((fnn-mux-loop-queued loop)
+                  (let ((next (pop (fnn-mux-loop-queued loop))))
+                    (setf (fnn-mux-conn-phase next) :new
+                          (fnn-mux-conn-hs-deadline next) nil)
+                    (fnn-mux-guarded (loop next)
+                      (fnn-mux-admit loop next))))
+                 (t (return)))))
 
 (defun fnn-mux-handshake-step (loop conn)
   (let ((service (fnn-mux-service loop))
@@ -505,26 +523,39 @@ nothing."
                 (t (fnn-mux-after loop conn nil))))))))
 
 (defun fnn-mux-begin (loop conn)
+  "A socket a loop adopted: the handshake pool's gate, then the admission."
+  (let ((socket (fnn-mux-conn-socket conn)))
+    (setf (fnn-mux-conn-fd conn) (fnn-socket-fd socket))
+    ;; The handshake pool bounds handshake work, and it is bounded BEFORE the
+    ;; exposure admits anything (PKT-639): an implicit-TLS connection is
+    ;; admitted only when a handshake slot of its loop is free, just before
+    ;; SSL_accept.  Until then it waits unadmitted -- a socket and a record,
+    ;; no handshake work, no share of the capacity -- in a queue of at most
+    ;; +fnn-mux-queued-per-loop+ for at most the handshake deadline; past
+    ;; that it is closed and named (`tls refused reason=busy' or
+    ;; `reason=timeout').  So a flood of half-open handshakes holds at most
+    ;; the pool's slots of the capacity and a plaintext reader is still
+    ;; admitted (hostile campaign, TLS slowloris half-open x200), while a
+    ;; burst of legitimate TLS readers waits its turn instead of being
+    ;; refused.  Like the kernel's accept queue, it decides no protocol
+    ;; answer.
+    (when (and (fnn-mux-conn-implicit-tls conn) (not (fnn-mux-slot-free-p loop)))
+      (if (< (length (fnn-mux-loop-queued loop)) +fnn-mux-queued-per-loop+)
+          (setf (fnn-mux-conn-phase conn) :tls-queued
+                (fnn-mux-conn-hs-deadline conn)
+                (fnn-mux-ticks +fnn-mux-handshake-seconds+)
+                (fnn-mux-loop-queued loop)
+                (append (fnn-mux-loop-queued loop) (list conn)))
+        (progn (fnn-mux-tls-log loop conn :busy)
+               (fnn-mux-finish loop conn)))
+      (return-from fnn-mux-begin nil))
+    (fnn-mux-admit loop conn)))
+
+(defun fnn-mux-admit (loop conn)
   "The accept: the peer's address, then ACL2's admission and open in one
 call (books/public-exposure.lisp fn-exp-open), as the worker did it."
   (let ((service (fnn-mux-service loop))
         (socket (fnn-mux-conn-socket conn)))
-    (setf (fnn-mux-conn-fd conn) (fnn-socket-fd socket))
-    ;; The handshake pool bounds handshake work, and it is bounded BEFORE the
-    ;; exposure admits anything: an implicit-TLS connection arriving while
-    ;; every handshake slot of its loop is taken is closed and named
-    ;; (`tls refused reason=busy'), never admitted, so a flood of half-open
-    ;; handshakes holds at most the pool's slots of the capacity and a
-    ;; plaintext reader is still admitted (hostile campaign, TLS slowloris
-    ;; half-open x200).  The kernel's accept queue is the same kind of
-    ;; bound: it decides no protocol answer.
-    (when (and (fnn-mux-conn-implicit-tls conn)
-               (>= (+ (fnn-mux-loop-handshaking loop)
-                      (length (fnn-mux-loop-waiting loop)))
-                   +fnn-mux-handshakes-per-loop+))
-      (fnn-mux-tls-log loop conn :busy)
-      (fnn-mux-finish loop conn)
-      (return-from fnn-mux-begin nil))
     (multiple-value-bind (family address) (fnn-owner-socket-address service socket)
       (multiple-value-bind (opened greeting)
           (fnn-owner-serialized
@@ -616,6 +647,10 @@ operation then observes the error or the end of input)."
               ((and (eq (fnn-mux-conn-phase conn) :handshake)
                     (due (fnn-mux-conn-hs-deadline conn)))
                (error 'fnn-tls-handshake-error :detail "operation timed out"))
+              ((and (eq (fnn-mux-conn-phase conn) :tls-queued)
+                    (due (fnn-mux-conn-hs-deadline conn)))
+               (fnn-mux-tls-log loop conn :timeout)
+               (fnn-mux-finish loop conn))
               ((and (eq (fnn-mux-conn-phase conn) :draining)
                     (due (fnn-mux-conn-drain-deadline conn)))
                (fnn-mux-finish loop conn))
@@ -632,7 +667,7 @@ operation then observes the error or the end of input)."
           (unless (eq (fnn-mux-conn-phase conn) :done)
             (when (fnn-mux-conn-out conn) (note (fnn-mux-conn-out-deadline conn)))
             (case (fnn-mux-conn-phase conn)
-              (:handshake (note (fnn-mux-conn-hs-deadline conn)))
+              ((:handshake :tls-queued) (note (fnn-mux-conn-hs-deadline conn)))
               (:draining (note (fnn-mux-conn-drain-deadline conn)))
               (:serving (note (fnn-mux-conn-resume-at conn))
                (unless (or (fnn-mux-conn-out conn) (fnn-mux-conn-input conn))

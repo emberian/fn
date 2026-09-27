@@ -206,12 +206,13 @@
             fnn-owner-advance-clock fnn-owner-handle-chunk fnn-owner-exposure-idle)
            ("host/native/mux.lisp"
             +fnn-mux-send-seconds+ +fnn-mux-idle-seconds+ +fnn-mux-drain-seconds+
-            +fnn-mux-handshakes-per-loop+
+            +fnn-mux-handshakes-per-loop+ +fnn-mux-handshake-seconds+ +fnn-mux-queued-per-loop+
             fnn-mux-loop fnn-mux-conn fnn-mux-ticks fnn-mux-service fnn-mux-guarded
             fnn-mux-tls-log fnn-mux-finish fnn-mux-arm-idle fnn-mux-queue
             fnn-mux-flush fnn-mux-begin-drain fnn-mux-after fnn-mux-charge
             fnn-mux-step fnn-mux-work fnn-mux-readable fnn-mux-idle
-            fnn-mux-start-waiting-handshake fnn-mux-begin)))
+            fnn-mux-slot-free-p fnn-mux-start-waiting-handshake fnn-mux-begin
+            fnn-mux-admit)))
   (destructuring-bind (source . wanted) source-and-names
     (let ((found nil))
       (with-open-file (stream source)

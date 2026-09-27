@@ -839,9 +839,11 @@ send deadline (10 s), the handshake deadline (10 s) and the drain after a
 graceful close (1 s). TLS never waits inside OpenSSL: SSL_accept, SSL_read
 and SSL_write are single attempts answering which readiness to wait for,
 with partial writes, moving write buffers and released idle buffers; at
-most 8 handshakes per loop are in progress, the rest wait admitted. An
-implicit-TLS connection meets `fn-exp-open` before any handshake work
-(PKT-639), and a refused one is closed without SSL_accept; a TLS failure is
+most 8 handshakes per loop are in progress. An implicit-TLS connection meets
+`fn-exp-open` before any handshake work (PKT-639), when a handshake slot is
+free; until then it waits unadmitted (no handshake work, no share of the
+capacity) in a queue of at most 256 per loop for at most 10 s, and past that
+it is closed (`busy`, `timeout`). A refused one is closed without SSL_accept; a TLS failure is
 named in the service log (`tls refused reason=... connection=N`, PKT-640).
 
 The memory (books/connection-budget.lisp): a connection costs a heap part
