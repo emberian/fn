@@ -249,6 +249,8 @@
     "tests/acl2/connection-budget-tests",
     "books/store-open-pre-c1",
     "tests/acl2/store-open-pre-c1-tests",
+    "books/store-open-replay-refusal",
+    "tests/acl2/store-open-replay-refusal-tests",
     "tests/acl2/history-fold-refinement-tests",
     "tests/acl2/linear-recognizers-tests",
     "tests/acl2/open-one-pass-tests",
@@ -374,6 +376,10 @@
     "tests/acl2/store-log-stream-tests",
     "books/store-log-damage",
     "tests/acl2/store-log-damage-tests",
+    "books/store-log-buffer",
+    "tests/acl2/store-log-buffer-tests",
+    "books/store-log-walk-once",
+    "tests/acl2/store-log-walk-once-tests",
     "books/store-log-segments",
     "tests/acl2/store-log-segments-tests",
     "books/store-log-reclaim",
@@ -820,6 +826,8 @@
     "books/payload-arena-paged",
     "books/payload-arena-extent-logic",
     "books/payload-arena-extent",
+    "books/store-intern-once",
+    "tests/acl2/store-intern-once-tests",
     "books/payload-extent",
     "books/payload-commit-extent",
     "books/frame-digest-buffer",
@@ -1275,26 +1283,26 @@
     "tests/acl2/proto-adt-tests"
   ],
   "totals": {
-    "books": 1310,
-    "books_in_root_closure": 1308,
-    "roots": 1271,
-    "theorems": 19568,
-    "functions": 13553,
-    "assert_events": 19134,
+    "books": 1318,
+    "books_in_root_closure": 1316,
+    "roots": 1279,
+    "theorems": 19636,
+    "functions": 13617,
+    "assert_events": 19152,
     "must_fails": 2119,
     "prover_refusals": 0,
     "encapsulates": 101,
     "guards": {
-      "verified": 2492,
-      "declared-off": 1636,
-      "default-guarded": 7545,
+      "verified": 2495,
+      "declared-off": 1663,
+      "default-guarded": 7579,
       "default-unguarded": 1880
     },
-    "suspect_theorems": 1031,
-    "export_hygiene_warnings": 241,
+    "suspect_theorems": 1033,
+    "export_hygiene_warnings": 244,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 211,
-    "include_hygiene_warnings": 1788,
+    "include_hygiene_warnings": 1805,
     "host_names_warnings": 1426,
     "hand_written_record_warnings": 18
   },
@@ -15766,6 +15774,7 @@
         "payload-arena",
         "sha256-stobj",
         "store-intern",
+        "store-intern-once",
         "store-log",
         "store-recover-stream"
       ],
@@ -19763,6 +19772,32 @@
       "read_error": null
     },
     {
+      "book": "books/store-intern-once.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "catalog-record"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/store-intern.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -19791,6 +19826,36 @@
         "fn-article-payload-of-make-article",
         "fn-rows-contexts-okp-of-atom"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/store-log-buffer.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 49,
+      "functions": 17,
+      "guards": {
+        "verified": 0,
+        "declared-off": 1,
+        "default-guarded": 16,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "frame-digest-buffer",
+        "payload-extent",
+        "store-log-stream"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -20257,12 +20322,44 @@
       "encapsulates": 0,
       "includes": [
         "records",
+        "records-seam",
         "store-log-recover"
       ],
       "system_includes": [
         "arithmetic/top"
       ],
       "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "books/store-log-walk-once.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 16,
+      "functions": 8,
+      "guards": {
+        "verified": 1,
+        "declared-off": 3,
+        "default-guarded": 4,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 1,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-log-buffer"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [
+        "fn-lgb-event-decode-of-legacy",
+        "fn-lgb-legacy-is-a-wire-event"
+      ],
       "read_error": null
     },
     {
@@ -20842,6 +20939,34 @@
       "suspects": [
         "fn-sopc-identity-wire-is-hw-composite"
       ],
+      "read_error": null
+    },
+    {
+      "book": "books/store-open-replay-refusal.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 2,
+      "functions": 8,
+      "guards": {
+        "verified": 2,
+        "declared-off": 0,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 2,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "store-open-pre-c1"
+      ],
+      "system_includes": [
+        "arithmetic/top"
+      ],
+      "suspects": [],
       "read_error": null
     },
     {
@@ -36509,6 +36634,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-init-log-publication"
       ],
       "system_includes": [],
@@ -36543,6 +36669,32 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-intern-once-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 1,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 1,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 1,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 3,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-intern-once"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-intern-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -36563,6 +36715,33 @@
       "encapsulates": 0,
       "includes": [
         "../../books/store-intern"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-log-buffer-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 14,
+      "guards": {
+        "verified": 0,
+        "declared-off": 11,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 7,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/store-log-buffer"
       ],
       "system_includes": [],
       "suspects": [],
@@ -36641,6 +36820,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/frame-trailer",
         "../../books/store-log-extend",
         "../../books/store-log-txid"
@@ -36669,6 +36849,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-log-kernel-concrete",
         "store-log-extend-tests"
       ],
@@ -36723,6 +36904,7 @@
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-log-open-barriers",
         "store-log-kernel-tests"
       ],
@@ -36750,6 +36932,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/frame-trailer",
         "../../books/store-log-programs"
       ],
@@ -36832,6 +37015,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-log-route",
         "must-fail-checked",
         "store-log-kernel-tests"
@@ -36860,6 +37044,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/frame-trailer",
         "../../books/store-log-segments",
         "must-fail-checked"
@@ -36888,6 +37073,7 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/store-log-stream"
       ],
       "system_includes": [],
@@ -36941,8 +37127,36 @@
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
+        "../../books/codec-attach",
         "../../books/frame-trailer",
         "../../books/store-log-txid"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-log-walk-once-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 15,
+      "guards": {
+        "verified": 0,
+        "declared-off": 12,
+        "default-guarded": 3,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 6,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 0,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/codec-attach",
+        "../../books/store-log-walk-once"
       ],
       "system_includes": [],
       "suspects": [],
@@ -37427,6 +37641,33 @@
       "system_includes": [
         "std/testing/assert-equal"
       ],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/store-open-replay-refusal-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 0,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 4,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 14,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/store-open-replay-refusal",
+        "held-rows-tests"
+      ],
+      "system_includes": [],
       "suspects": [],
       "read_error": null
     },
@@ -39076,7 +39317,7 @@
     {
       "theorem": "fn-arx-composite-payload-octets",
       "book": "books/payload-extent.lisp",
-      "line": 229,
+      "line": 235,
       "reasons": [
         "instance-corollary: the statement is fn-arx-record-payload-octets instantiated, discharging nothing"
       ]
@@ -41325,6 +41566,23 @@
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-lg-log and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-lg-log and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-lgb-event-decode-of-legacy",
+      "book": "books/store-log-walk-once.lisp",
+      "line": 210,
+      "reasons": [
+        "arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-decode-exact and the conclusion is that arm's value",
+        "branch-of-definition: the hypothesis is a branch test of fn-store-event-decode-exact and the conclusion is that branch's value"
+      ]
+    },
+    {
+      "theorem": "fn-lgb-legacy-is-a-wire-event",
+      "book": "books/store-log-walk-once.lisp",
+      "line": 217,
+      "reasons": [
+        "reflexive-conclusion: a conjunct is (equal X X)"
       ]
     },
     {
@@ -48490,6 +48748,24 @@
         "reason": "accessor-equality: an enabled equality between two different one-argument applications"
       },
       {
+        "theorem": "fn-lgb-count-is-len-unpack",
+        "book": "books/store-log-buffer.lisp",
+        "line": 340,
+        "reason": "len-backchaining: an enabled len equality backchained to a len hypothesis"
+      },
+      {
+        "theorem": "fn-lgb-trailer-fast-is-trailer",
+        "book": "books/store-log-buffer.lisp",
+        "line": 429,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
+        "theorem": "fn-lgb-trailer-is-trailer",
+        "book": "books/store-log-buffer.lisp",
+        "line": 442,
+        "reason": "accessor-equality: an enabled equality between two different one-argument applications"
+      },
+      {
         "theorem": "fn-lg-apply-to-len-within",
         "book": "books/store-log-crash.lisp",
         "line": 311,
@@ -53980,6 +54256,20 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/store-log-buffer.lisp",
+        "line": 41,
+        "include": "frame-digest-buffer",
+        "included": "books/frame-digest-buffer.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-log-buffer.lisp",
+        "line": 42,
+        "include": "payload-extent",
+        "included": "books/payload-extent.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/store-log-extend.lisp",
         "line": 38,
         "include": "store-log-kernel",
@@ -54100,9 +54390,16 @@
       },
       {
         "book": "books/store-log-txid.lisp",
-        "line": 29,
+        "line": 30,
         "include": "store-log-recover",
         "included": "books/store-log-recover.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-log-txid.lisp",
+        "line": 32,
+        "include": "records-seam",
+        "included": "books/records-seam.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -54222,6 +54519,13 @@
         "line": 29,
         "include": "store-checkpoint-open",
         "included": "books/store-checkpoint-open.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/store-open-replay-refusal.lisp",
+        "line": 41,
+        "include": "store-open-pre-c1",
+        "included": "books/store-open-pre-c1.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -61932,6 +62236,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-init-log-publication-tests.lisp",
+        "line": 12,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/store-init-publication-tests.lisp",
         "line": 3,
         "include": "must-fail-checked",
@@ -61943,6 +62254,13 @@
         "line": 11,
         "include": "../../books/store-intern",
         "included": "books/store-intern.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-log-buffer-tests.lisp",
+        "line": 28,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -61967,8 +62285,22 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-log-extend-tests.lisp",
+        "line": 11,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/store-log-kernel-concrete-tests.lisp",
-        "line": 266,
+        "line": 17,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-log-kernel-concrete-tests.lisp",
+        "line": 269,
         "include": "store-log-extend-tests",
         "included": "tests/acl2/store-log-extend-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -61995,10 +62327,24 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-log-open-barriers-tests.lisp",
+        "line": 9,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/store-log-programs-tests.lisp",
         "line": 9,
         "include": "../../books/store-log-programs",
         "included": "books/store-log-programs.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-log-programs-tests.lisp",
+        "line": 13,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -62052,7 +62398,14 @@
       },
       {
         "book": "tests/acl2/store-log-route-tests.lisp",
-        "line": 122,
+        "line": 11,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-log-route-tests.lisp",
+        "line": 125,
         "include": "store-log-kernel-tests",
         "included": "tests/acl2/store-log-kernel-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -62072,10 +62425,38 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "tests/acl2/store-log-segments-tests.lisp",
+        "line": 11,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-log-stream-tests.lisp",
+        "line": 26,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "tests/acl2/store-log-txid-tests.lisp",
         "line": 11,
         "include": "../../books/store-log-txid",
         "included": "books/store-log-txid.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-log-txid-tests.lisp",
+        "line": 15,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-log-walk-once-tests.lisp",
+        "line": 18,
+        "include": "../../books/codec-attach",
+        "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -62356,6 +62737,20 @@
         "line": 20,
         "include": "must-fail-checked",
         "included": "tests/acl2/must-fail-checked.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-open-replay-refusal-tests.lisp",
+        "line": 20,
+        "include": "../../books/store-open-replay-refusal",
+        "included": "books/store-open-replay-refusal.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-open-replay-refusal-tests.lisp",
+        "line": 21,
+        "include": "held-rows-tests",
+        "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -69117,112 +69512,112 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5347,
+        "line": 5384,
         "name": "file-namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5395,
+        "line": 5432,
         "name": "some",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5395,
+        "line": 5432,
         "name": "fnn-extent-register",
         "source": "host/native/extent.lisp",
         "reason": "defined in host/native/extent.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5422,
+        "line": 5459,
         "name": "nconc",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5490,
+        "line": 5527,
         "name": "*standard-input*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5890,
+        "line": 5952,
         "name": "*fn-lg-genesis*",
         "source": "books/store-log.lisp",
         "reason": "defined in books/store-log.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6334,
+        "line": 6406,
         "name": "nth-value",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6387,
+        "line": 6459,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6551,
+        "line": 6623,
         "name": "open",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6551,
+        "line": 6623,
         "name": "logandc2",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6585,
+        "line": 6657,
         "name": "fnn-tls-send-all",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6585,
+        "line": 6657,
         "name": "fnn-tls-read",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6585,
+        "line": 6657,
         "name": "fnn-tls-open-client-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6585,
+        "line": 6657,
         "name": "fnn-tls-connect",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6585,
+        "line": 6657,
         "name": "fnn-tls-close-channel",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 6585,
+        "line": 6657,
         "name": "fnn-tls-close-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -73079,70 +73474,70 @@
       },
       {
         "host": "host/store-host.lisp",
-        "line": 122,
+        "line": 128,
         "name": "with-local-stobj",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 86,
+        "line": 87,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 211,
+        "line": 212,
         "name": "cadr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 317,
+        "line": 318,
         "name": "caddr",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 646,
+        "line": 666,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 741,
+        "line": 761,
         "name": "atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 780,
+        "line": 800,
         "name": "reverse",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 995,
+        "line": 1015,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 1157,
+        "line": 1177,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 1595,
+        "line": 1615,
         "name": "explode-atom",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

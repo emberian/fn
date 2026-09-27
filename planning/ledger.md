@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1310 |
-| Certification roots in the Makefile | 1271 |
-| Books inside the root closure | 1308 |
-| `defthm` and `defthmd` events | 19568 |
-| `defun` events | 13553 |
-| Functions with verified guards | 2492 |
-| Functions declared `:verify-guards nil` and never verified | 1636 |
-| Functions left at the default with an explicit guard | 7545 |
+| Books read | 1318 |
+| Certification roots in the Makefile | 1279 |
+| Books inside the root closure | 1316 |
+| `defthm` and `defthmd` events | 19636 |
+| `defun` events | 13617 |
+| Functions with verified guards | 2495 |
+| Functions declared `:verify-guards nil` and never verified | 1663 |
+| Functions left at the default with an explicit guard | 7579 |
 | Functions left at the default with no guard | 1880 |
-| `assert-event` checks | 19134 |
+| `assert-event` checks | 19152 |
 | `must-fail` checks | 2119 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 101 |
-| Theorems flagged SUSPECT by shape | 1031 |
-| Export-hygiene warnings | 241 |
+| Theorems flagged SUSPECT by shape | 1033 |
+| Export-hygiene warnings | 244 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 211 |
-| Include-hygiene warnings | 1788 |
+| Include-hygiene warnings | 1805 |
 | Host-names warnings | 1426 |
 | Hand-written-record warnings | 18 |
 
@@ -721,7 +721,9 @@ that `make certify` requests.
 | `books/store-import-publication.lisp` | root | 123 | 56 | 0/52/4/0 | 0 | 0 | 0 |
 | `books/store-init-log-publication.lisp` | root | 9 | 3 | 0/2/1/0 | 0 | 0 | 0 |
 | `books/store-init-publication.lisp` | root | 16 | 10 | 0/7/3/0 | 0 | 0 | 1 |
+| `books/store-intern-once.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/store-intern.lisp` | root | 75 | 22 | 3/0/18/1 | 0 | 0 | 2 |
+| `books/store-log-buffer.lisp` | root | 49 | 17 | 0/1/16/0 | 0 | 0 | 0 |
 | `books/store-log-crash.lisp` | root | 93 | 17 | 0/14/2/1 | 0 | 0 | 0 |
 | `books/store-log-damage.lisp` | root | 41 | 36 | 0/6/28/2 | 0 | 0 | 1 |
 | `books/store-log-decode.lisp` | root | 22 | 8 | 0/0/7/1 | 0 | 0 | 1 |
@@ -738,6 +740,7 @@ that `make certify` requests.
 | `books/store-log-segments.lisp` | root | 30 | 30 | 0/9/20/1 | 0 | 0 | 1 |
 | `books/store-log-stream.lisp` | root | 44 | 21 | 2/2/17/0 | 0 | 0 | 3 |
 | `books/store-log-txid.lisp` | root | 25 | 7 | 0/1/6/0 | 0 | 0 | 0 |
+| `books/store-log-walk-once.lisp` | root | 16 | 8 | 1/3/4/0 | 0 | 0 | 2 |
 | `books/store-log.lisp` | root | 104 | 29 | 0/19/10/0 | 0 | 0 | 2 |
 | `books/store-maintenance-reserve.lisp` | root | 10 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/store-mount-identity.lisp` | root | 65 | 61 | 6/0/54/1 | 0 | 0 | 1 |
@@ -754,6 +757,7 @@ that `make certify` requests.
 | `books/store-open-bridge.lisp` | root | 26 | 2 | 0/2/0/0 | 0 | 0 | 0 |
 | `books/store-open-node-bridge.lisp` | root | 21 | 4 | 0/0/2/2 | 0 | 0 | 0 |
 | `books/store-open-pre-c1.lisp` | root | 19 | 9 | 1/1/7/0 | 0 | 0 | 1 |
+| `books/store-open-replay-refusal.lisp` | root | 2 | 8 | 2/0/6/0 | 0 | 0 | 0 |
 | `books/store-prepare-carried.lisp` | root | 3 | 2 | 2/0/0/0 | 0 | 0 | 0 |
 | `books/store-prepare-correspondence.lisp` | root | 19 | 5 | 2/0/0/3 | 0 | 0 | 1 |
 | `books/store-prepare-served.lisp` | root | 1 | 1 | 0/0/1/0 | 0 | 0 | 0 |
@@ -1310,7 +1314,9 @@ that `make certify` requests.
 | `tests/acl2/store-import-publication-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 24 | 6 | 0 |
 | `tests/acl2/store-init-log-publication-tests.lisp` | root | 0 | 7 | 0/6/1/0 | 13 | 0 | 0 |
 | `tests/acl2/store-init-publication-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 22 | 2 | 0 |
+| `tests/acl2/store-intern-once-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 1 | 0 | 0 |
 | `tests/acl2/store-intern-tests.lisp` | root | 1 | 10 | 0/7/0/3 | 28 | 0 | 0 |
+| `tests/acl2/store-log-buffer-tests.lisp` | root | 0 | 14 | 0/11/3/0 | 7 | 0 | 0 |
 | `tests/acl2/store-log-damage-tests.lisp` | root | 0 | 27 | 0/24/3/0 | 9 | 0 | 0 |
 | `tests/acl2/store-log-decode-tests.lisp` | root | 0 | 4 | 0/1/3/0 | 4 | 0 | 0 |
 | `tests/acl2/store-log-extend-tests.lisp` | root | 0 | 23 | 0/18/5/0 | 17 | 0 | 0 |
@@ -1325,6 +1331,7 @@ that `make certify` requests.
 | `tests/acl2/store-log-stream-tests.lisp` | root | 0 | 17 | 0/13/4/0 | 10 | 0 | 0 |
 | `tests/acl2/store-log-tests.lisp` | root | 0 | 20 | 0/12/8/0 | 22 | 0 | 0 |
 | `tests/acl2/store-log-txid-tests.lisp` | root | 0 | 16 | 0/13/3/0 | 5 | 0 | 0 |
+| `tests/acl2/store-log-walk-once-tests.lisp` | root | 0 | 15 | 0/12/3/0 | 6 | 0 | 0 |
 | `tests/acl2/store-maintenance-reserve-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 2 | 0 |
 | `tests/acl2/store-mount-identity-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 104 | 27 | 0 |
 | `tests/acl2/store-node-composite-index-tests.lisp` | root | 0 | 3 | 0/2/0/1 | 41 | 5 | 0 |
@@ -1342,6 +1349,7 @@ that `make certify` requests.
 | `tests/acl2/store-open-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 7 | 2 | 0 |
 | `tests/acl2/store-open-node-bridge-tests.lisp` | root | 0 | 6 | 0/0/0/6 | 7 | 6 | 0 |
 | `tests/acl2/store-open-pre-c1-tests.lisp` | root | 0 | 10 | 0/0/0/10 | 18 | 6 | 0 |
+| `tests/acl2/store-open-replay-refusal-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 0 | 0 |
 | `tests/acl2/store-prepare-carried-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 17 | 1 | 0 |
 | `tests/acl2/store-prepare-correspondence-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 2 | 0 |
 | `tests/acl2/store-prepare-served-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 3 | 0 | 0 |
@@ -1423,7 +1431,7 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-article-parse-is-the-ceiling-limits-by-definition` | `books/article-header-limits.lisp` | 226 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-article-parse; reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-article-payload-of-make-article` | `books/store-intern.lisp` | 829 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-article-source-recomposes` | `books/article.lisp` | 629 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-arx-composite-payload-octets` | `books/payload-extent.lisp` | 229 | instance-corollary: the statement is fn-arx-record-payload-octets instantiated, discharging nothing |
+| `fn-arx-composite-payload-octets` | `books/payload-extent.lisp` | 235 | instance-corollary: the statement is fn-arx-record-payload-octets instantiated, discharging nothing |
 | `fn-arx-entry-of-extent` | `books/payload-arena-extent.lisp` | 179 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value |
 | `fn-arx-entry-of-resident` | `books/payload-arena-extent.lisp` | 187 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-entry and the conclusion is that arm's value |
 | `fn-arx-view-empty` | `books/payload-arena-extent.lisp` | 232 | arm-of-definition: the hypotheses select one IF/COND arm of fn-arx-view and the conclusion is that arm's value |
@@ -1697,6 +1705,8 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-lb-string-octets-of-octets-string-when-octets` | `books/login-binding-live.lisp` | 156 | instance-corollary: the statement is fn-record-string-octets-of-octets-string instantiated, discharging nothing |
 | `fn-lg-last-trailer-unfolds` | `books/store-log.lisp` | 867 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lg-last-trailer and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-lg-last-trailer and the conclusion is that branch's value |
 | `fn-lg-log-unfolds` | `books/store-log.lisp` | 856 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lg-log and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-lg-log and the conclusion is that branch's value |
+| `fn-lgb-event-decode-of-legacy` | `books/store-log-walk-once.lisp` | 210 | arm-of-definition: the hypotheses select one IF/COND arm of fn-store-event-decode-exact and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-store-event-decode-exact and the conclusion is that branch's value |
+| `fn-lgb-legacy-is-a-wire-event` | `books/store-log-walk-once.lisp` | 217 | reflexive-conclusion: a conjunct is (equal X X) |
 | `fn-lgc-committed-of-lgk-make` | `books/store-log-kernel-concrete.lisp` | 531 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-lgc-of-make` | `books/store-log-kernel-concrete.lisp` | 527 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-lgd-slice-when-short` | `books/store-log-decode.lisp` | 207 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lg-slice and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-lg-slice and the conclusion is that branch's value |

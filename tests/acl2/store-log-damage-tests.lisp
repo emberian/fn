@@ -29,6 +29,9 @@
 ;     nothing.
 (in-package "ACL2")
 (include-book "../../books/store-log-damage")
+; The record codec seam's attachment: since snapshot-open-3 the log's txid
+; reads the record through fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 (defun sld-unit () (declare (xargs :guard t)) 4)
 (defun sld-max () (declare (xargs :guard t)) 4096)
