@@ -15,18 +15,20 @@
          (fn-bpaj-nth 1 *bpaj-context-replay*) *bpaj-request-octets*)
         (fn-bpaj-request-status
          (fn-bpaj-nth 1 *bpaj-context-replay*) *bpaj-request-octets*)))
+(bpr-lift fn-bpaj-apply-record-fast 3)
+(bpr-lift fn-bpaj-dispatch 4)
+(bpr-lift fn-bpaj-dispatch-fast 4)
+(bpr-lift fn-bpaj-record-lookup-fast 2)
+(bpr-lift fn-bpaj-transit-record-lookup 3)
+(bpr-lift fn-bpaj-transit-record-lookup-fast 3)
+(bpr-lift fn-bpr-store-record-acceptedp 2)
+
 (assert-event
- (equal (fn-bpaj-dispatch-fast
-         (fn-bpaj-nth 1 *bpaj-intent-replay*)
-         *bpr-store* *bpaj-request-octets* 7)
-        (fn-bpaj-dispatch
-         (fn-bpaj-nth 1 *bpaj-intent-replay*)
-         *bpr-store* *bpaj-request-octets* 7)))
+ (equal (in-arena-fn-bpaj-dispatch-fast *bpr-payloads* (fn-bpaj-nth 1 *bpaj-intent-replay*) *bpr-store* *bpaj-request-octets* 7)
+        (in-arena-fn-bpaj-dispatch *bpr-payloads* (fn-bpaj-nth 1 *bpaj-intent-replay*) *bpr-store* *bpaj-request-octets* 7)))
 (assert-event
- (equal (fn-bpaj-transit-record-lookup-fast *bpr-store* *bpaj-request*
-                                            *bpaj-intent*)
-        (fn-bpaj-transit-record-lookup *bpr-store* *bpaj-request*
-                                       *bpaj-intent*)))
+ (equal (in-arena-fn-bpaj-transit-record-lookup-fast *bpr-payloads* *bpr-store* *bpaj-request* *bpaj-intent*)
+        (in-arena-fn-bpaj-transit-record-lookup *bpr-payloads* *bpr-store* *bpaj-request* *bpaj-intent*)))
 (assert-event
  (equal (fn-bpaj-config-status-fast
          (fn-bpaj-nth 1 *bpaj-context-replay*)
@@ -44,9 +46,7 @@
          (pending (fn-bpr-state-pending next)))
     (list :receipt-intent "work-native" "receipt:work-native"
           (fn-bpa-encode (fn-bpr-receipt-entry-receipt pending)) t)))
-(make-event `(defconst *bpaj-fast-receipt-answer* ',(fn-bpaj-apply-record-fast
-   (fn-bpaj-nth 1 *bpaj-context-replay*)
-   *bpr-store* *bpaj-fast-receipt-intent*)))
+(make-event `(defconst *bpaj-fast-receipt-answer* ',(in-arena-fn-bpaj-apply-record-fast *bpr-payloads* (fn-bpaj-nth 1 *bpaj-context-replay*) *bpr-store* *bpaj-fast-receipt-intent*)))
 (assert-event (car *bpaj-fast-receipt-answer*))
 (assert-event
  (fn-bpaj-statep (fn-bpaj-nth 1 *bpaj-fast-receipt-answer*)))
@@ -125,7 +125,7 @@
 ; PRF-220.
 ; fn-bpaj-record-lookup-fast-found-is-an-accepted-match (books/bp-native-app-fast.lisp).
 ; Positive witness: the receiver fixture's Store finds the request's record for the request.
-(defconst *bpaj-lookup* (fn-bpaj-record-lookup-fast *bpr-store* *bpaj-request*))
+(defconst *bpaj-lookup* (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpr-store* *bpaj-request*))
 (assert-event (and (fn-sn-statep *bpr-store*) (fn-ceis-indexedp *bpr-store*)
                    (equal (car *bpaj-lookup*) :found)))
 (assert-event
@@ -134,7 +134,7 @@
         (equal (fn-record-payload record) (fn-bpa-request-article *bpaj-request*))
         (equal (fn-record-content-subject record)
                (fn-bpa-request-subject *bpaj-request*))
-        (fn-bpr-store-record-acceptedp *bpr-store* record))))
+        (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpr-store* record))))
 ; Without fn-sn-statep (a CORRUPTED node: the Store's node with a junk binding after its real
 ; ones, which no host transition builds): the index still finds the
 ; record and the carried check accepts it; the checked Store predicate does
@@ -148,39 +148,32 @@
 (defconst *bpaj-bad-store* (update-nth 3 *bpaj-bad-node* *bpr-store*))
 (assert-event (and (not (fn-sn-statep *bpaj-bad-store*))
                    (fn-ceis-indexedp *bpaj-bad-store*)
-                   (equal (car (fn-bpaj-record-lookup-fast *bpaj-bad-store* *bpaj-request*))
+                   (equal (car (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-bad-store* *bpaj-request*))
                           :found)
-                   (not (fn-bpr-store-record-acceptedp
-                         *bpaj-bad-store*
-                         (cadr (fn-bpaj-record-lookup-fast *bpaj-bad-store*
-                                                           *bpaj-request*))))))
+                   (not (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpaj-bad-store* (cadr (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-bad-store* *bpaj-request*))))))
 (must-fail
  (thm (implies (and (fn-ceis-indexedp *bpaj-bad-store*)
-                    (equal (car (fn-bpaj-record-lookup-fast *bpaj-bad-store* *bpaj-request*))
+                    (equal (car (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-bad-store* *bpaj-request*))
                            :found))
-               (fn-bpr-store-record-acceptedp
-                *bpaj-bad-store*
-                (cadr (fn-bpaj-record-lookup-fast *bpaj-bad-store* *bpaj-request*))))))
+               (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpaj-bad-store* (cadr (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-bad-store* *bpaj-request*))))))
 ; Without fn-ceis-indexedp (a STALE index, a state no host transition
 ; reaches): the Store with its history intact and an index built from the
 ; same record at another transaction id.  The Store recognizer holds; the
 ; lookup finds that record (the node's article and binding agree with it);
-; it is not in the history, so the checked predicate refuses it.
-(defconst *bpaj-stale-record* (update-nth 0 99 (cadr *bpaj-lookup*)))
+; it is not in the history, so the checked predicate refuses it.  After the
+; records flip the index holds retained rows: the stale entry is the Store's
+; held row at another sequence.
+(defconst *bpaj-stale-record* (update-nth 0 99 *bpr-row*))
+(assert-event (fn-held-p *bpaj-stale-record*))
 (defconst *bpaj-cut-store*
   (update-nth 13 (fn-cei-build (list *bpaj-stale-record*)) *bpr-store*))
 (assert-event (and (fn-sn-statep *bpaj-cut-store*)
                    (not (fn-ceis-indexedp *bpaj-cut-store*))
-                   (equal (car (fn-bpaj-record-lookup-fast *bpaj-cut-store* *bpaj-request*))
+                   (equal (car (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-cut-store* *bpaj-request*))
                           :found)
-                   (not (fn-bpr-store-record-acceptedp
-                         *bpaj-cut-store*
-                         (cadr (fn-bpaj-record-lookup-fast *bpaj-cut-store*
-                                                           *bpaj-request*))))))
+                   (not (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpaj-cut-store* (cadr (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-cut-store* *bpaj-request*))))))
 (must-fail
  (thm (implies (and (fn-sn-statep *bpaj-cut-store*)
-                    (equal (car (fn-bpaj-record-lookup-fast *bpaj-cut-store* *bpaj-request*))
+                    (equal (car (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-cut-store* *bpaj-request*))
                            :found))
-               (fn-bpr-store-record-acceptedp
-                *bpaj-cut-store*
-                (cadr (fn-bpaj-record-lookup-fast *bpaj-cut-store* *bpaj-request*))))))
+               (in-arena-fn-bpr-store-record-acceptedp *bpr-payloads* *bpaj-cut-store* (cadr (in-arena-fn-bpaj-record-lookup-fast *bpr-payloads* *bpaj-cut-store* *bpaj-request*))))))
