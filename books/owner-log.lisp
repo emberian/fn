@@ -272,7 +272,7 @@ the owner resolved the source address to, or nil for a reader."
   (declare (xargs :guard t))
   (let ((c (fn-olog-transit-completion o kind word)))
     (cond (reason reason)
-          ((and (symbolp c) (fn-post-store-refusalp c)) c)
+          ((and (symbolp c) (not (equal c :refused)) (fn-post-store-refusalp c)) c)
           (t nil))))
 
 (defun fn-olog-transit-line (o id kind reason word detail verdict)

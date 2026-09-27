@@ -347,9 +347,10 @@ freed-octets=N'."
          (h (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr headroom))))))
          (tleft (nfix (- tb u)))
          (hleft (nfix (- h b))))
-    (if (and (posp u) (posp b))
-        (min tleft (floor (* hleft u) b))
-      tleft)))
+    (cond ((zp tleft) 0)
+          ((and (posp u) (posp b))
+           (if (zp hleft) 0 (min tleft (floor (* hleft u) b))))
+          (t tleft))))
 
 (defthm fn-nls-articles-left-is-at-most-the-transactions-left
   (<= (fn-nls-articles-left headroom)
@@ -363,6 +364,7 @@ freed-octets=N'."
   (implies (or (<= (nfix (fn-ag-car (fn-ag-cdr headroom)))
                    (nfix (fn-ag-car headroom)))
                (and (posp (fn-ag-car headroom))
+                    (posp (fn-ag-car (fn-ag-cdr (fn-ag-cdr headroom))))
                     (<= (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr headroom)))))
                         (nfix (fn-ag-car (fn-ag-cdr (fn-ag-cdr headroom)))))))
            (equal (fn-nls-articles-left headroom) 0)))

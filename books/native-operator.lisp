@@ -391,9 +391,16 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 ;; The groups the parse answers are the words, in order.
 (local
- (defthm fn-nop-member-of-ncfg-reverse-aux
-   (iff (member-equal x (fn-ncfg-reverse-aux xs acc))
-        (or (member-equal x xs) (member-equal x acc)))))
+ (defthm fn-nop-member-of-ncfg-reverse-aux-acc
+   (implies (member-equal x acc)
+            (member-equal x (fn-ncfg-reverse-aux xs acc)))
+   :hints (("Goal" :induct (fn-ncfg-reverse-aux xs acc)))))
+
+(local
+ (defthm fn-nop-member-of-ncfg-reverse-aux-xs
+   (implies (member-equal x xs)
+            (member-equal x (fn-ncfg-reverse-aux xs acc)))
+   :hints (("Goal" :induct (fn-ncfg-reverse-aux xs acc)))))
 
 (local
  (defthm fn-nop-parse-init-groups-keeps-its-words
