@@ -1,5 +1,5 @@
 ; fn: THE IDENTITY PREPARE INTERNS ITS COMPOSITE (lane signed-post,
-; 2026-09-27; PRF-289; D25, D27).
+; 2026-09-27; PRF-292; D25, D27).
 ;
 ; Since the records flip the Store retains an accepted signed article as a
 ; ROW: the wire composite beside its article interned (books/held-record.lisp
@@ -106,7 +106,7 @@
     (fn-ccar-ocfg-prepare-identity
      oc (fn-oii-identity-row w (fn-sn-keyring s) (fn-sn-keyring-generation s) h))))
 
-; KEYSTONE (PRF-289): the entry at the arena's count is the owner's
+; KEYSTONE (PRF-292): the entry at the arena's count is the owner's
 ; (:prepare-identity ROW) step over the interned row, on every owner the
 ; maintained relation admits.
 (defthm fn-oii-ocfg-prepare-identity-is-intern-then-step

@@ -3368,7 +3368,7 @@ the record is durable either way and the caller's outcome does not change."
     (setf (fnn-store-fenced store) nil)
     ;; A batch of one (every commit outside the owner's batch quantum): the
     ;; member's record is fenced already, so the log kernel acknowledges it
-    ;; now (fn-lgk-finish-one).  Inside a batch the committer acknowledges
+    ;; now (fn-lgc-finish-one).  Inside a batch the committer acknowledges
     ;; each member after the batch's barrier (fnn-log-batch-finish).
     (when (and (fnn-store-logp store) (not *fnn-log-batch*))
       (fnn-log-ack (fnn-store-log store) 1))
@@ -3834,8 +3834,35 @@ history."
             (fnn-log-read-closed-segment store k genesis unit max)
           (dolist (record records) (funcall fn (fnn-octets record)))
           (setq genesis last))))
-    (dolist (record (fnn-core 'fn-lgk-committed (fnn-log-kernel (fnn-store-log store))))
+    ;; The active segment's committed records: the concrete kernel
+    ;; (kernel-concrete-2) holds their count, not the records, so they are
+    ;; read again from disk and ACL2 takes the committed prefix
+    ;; (fn-lgc-first of fn-lgc-count; batch AW, kernel-concrete-2 x
+    ;; rm2-format9).
+    (dolist (record (fnn-log-active-committed-records store genesis))
       (funcall fn (fnn-octets record)))))
+
+(defun fnn-log-active-genesis (store)
+  "The chain's trailer the active segment starts from: the open plan's
+genesis carried across the closed segments the open scanned."
+  (destructuring-bind (prefixp closed genesis active) (fnn-log-history-plan store)
+    (declare (ignore prefixp active))
+    (let ((unit (fnn-store-log-unit)) (max (fnn-store-log-max store)))
+      (dolist (k closed genesis)
+        (setq genesis (nth-value 1 (fnn-log-read-closed-segment store k genesis unit max)))))))
+
+(defun fnn-log-active-committed-records (store genesis)
+  "The active segment's committed records (octet lists, ACL2's), read from
+disk from GENESIS (the chain's trailer after the closed segments the open
+scanned): the first fn-lgc-count of the segment's records, the count read
+under the kernel lock."
+  (let* ((log (fnn-store-log store))
+         (count (fnn-log-with-kernel (log) (fnn-core 'fn-lgc-count (fnn-log-kernel log)))))
+    (if (eql count 0)
+        nil
+      (fnn-core 'fn-lgc-first count
+                (fnn-log-read-closed-segment store (fnn-log-index log) genesis
+                                             (fnn-store-log-unit) (fnn-store-log-max store))))))
 
 (defun fnn-log-history-records (store)
   "A format-9 STORE's history as a list, each record's exact octets in log
@@ -3907,8 +3934,8 @@ the open scanned, else (a checkpoint open whose suffix is empty) the
 covered prefix's last (fn-store-sco-last-record-octets)."
   (when (fnn-store-logp store)
     (return-from fnn-history-last-record
-      (let ((last (car (last (fnn-core 'fn-lgk-committed
-                                       (fnn-log-kernel (fnn-store-log store)))))))
+      (let ((last (car (last (fnn-log-active-committed-records
+                               store (fnn-log-active-genesis store))))))
         (cond (last (fnn-octets last))
               ((car (last (fnn-log-closed-records store))))
               ((first (fnn-log-history-plan store))
@@ -5392,7 +5419,11 @@ tree root), or stop the build."
     "FN_PULL_TEST_KILL"
     "FN_NATIVE_RECLAIM_FAULT" "FN_NATIVE_CHECKPOINT_BATCH_FAULT"
     "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"
-    "FN_NATIVE_LOG_FAULT"))
+    "FN_NATIVE_LOG_FAULT"
+    ;; The power-loss rig's handshake for `fn log append': after each RECOVERED
+    ;; and ACK line, wait for the client's line, so its device mark precedes
+    ;; the next batch's writes; tools/power_loss.py log_run.
+    "FN_NATIVE_LOG_RIG_HANDSHAKE"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."
@@ -5441,12 +5472,21 @@ tree root), or stop the build."
 ;;; storage-log.md; lane w6-log-core).  One preallocated segment file.  ACL2
 ;;; decides every value the host writes or tests: the extent
 ;;; (fn-lg-extent-okp), the kernel at open from the segment's bytes
-;;; (fn-lg-open-kernel over fn-lg-decode), recovery's zeroing range
-;;; (fn-lg-recover-tail), each record's admission (fn-lgt-prepare: only at
-;;; the kernel's next txid), the append's admission and octets
-;;; (fn-lg-append-admitsp, fn-lgk-frontier, fn-lgk-append-octets) and the
-;;; kernel after each step (fn-lgk-append, fn-lgk-fence, fn-lgk-fence-failed,
-;;; fn-lgk-finish-one).  The host reads, writes and fences, in the order of
+;;; (fn-lgc-open over fn-lg-decode), recovery's zeroing range
+;;; (fn-lg-recover-tail), each record's admission (fn-lgc-t-prepare, fn-lgc-take:
+;;; only at the kernel's next txid), the extension (fn-lgc-extension-needed-p,
+;;; fn-lgc-extension-target), the append's admission and octets
+;;; (fn-lgc-append-admitsp, fn-lgc-frontier, fn-lgc-append-octets) and the
+;;; kernel after each step (fn-lgc-append, fn-lgc-fence, fn-lgc-fence-failed,
+;;; fn-lgc-finish-one).  The kernel the host holds is the CONCRETE one
+;;; (books/store-log-kernel-concrete.lisp, lanes per-record-state and
+;;; kernel-concrete-2, PRF-282): the committed records' COUNT in place of
+;;; their list, the append's length by arithmetic and its octets by
+;;; guard-verified framing (no per-octet recursion: a 10 MiB article), each
+;;; transition fn-lgc-of the logical one (KEYSTONE fn-lgc-run-refines-the-
+;;; kernel, over the pipelined commit's operations too); the open's records go
+;;; to the replay once (fnn-log-take-opened) and are dropped.  The host reads,
+;;; writes and fences, in the order of
 ;;; fn-lg-recover-program, fn-lg-append-program and fn-lg-fence-program
 ;;; (tests/campaign/native_cuts.py LOG_CUTS, verify_log_cut_map).  No owner
 ;;; path calls these yet: lane w6-log-owner moves the commit onto them.
@@ -5458,13 +5498,16 @@ tree root), or stop the build."
 
 (defstruct (fnn-log (:constructor %make-fnn-log))
   path fd kernel unit max extent
-  ;; The open batch's members and entry octets (fn-olr-take's COUNT and
+  ;; The records the open's decode found (fn-lgc-open's first value), held
+  ;; only until the open's replay takes them (fnn-log-take-opened).
+  (opened nil)
+  ;; The open batch's members and entry octets (fn-lgc-take's COUNT and
   ;; OCTETS), the operator's bounds (fn-owb-bmax / fn-owb-omax of the live
   ;; configuration; set by the owner), and the fenced members not yet
   ;; acknowledged.
   (count 0) (octets 0) (bmax 64) (omax 67108864) (pending 0)
   ;; The txid the owner reserved for the record being published (ACL2's,
-  ;; handed to fnn-log-reserve), which fn-olr-take admits at the log's next.
+  ;; handed to fnn-log-reserve), which fn-lgc-take admits at the log's next.
   (reserved nil)
   ;; The segment's index (books/store-log-segments.lisp): the active one of
   ;; the store; fnn-log-rotate moves to the next.
@@ -5572,88 +5615,115 @@ concrete input of fn-lg-decode (its model is fn-lgd-octets)."
     (map 'string #'code-char data)))
 
 (defun fnn-log-open-kernel (fd extent unit max &optional (genesis *fn-lg-genesis*))
-  "The segment's kernel scanned from GENESIS (fn-lg-open-kernel).  A scan
-that stops at an entry validating under another predecessor is a splice or
-a stale segment, refused by name (fn-lgs-chain-broken-string-p), never read
-as a torn tail."
-  (let* ((text (fnn-log-read-string fd extent))
-         (ks (fnn-core 'fn-lg-open-kernel text genesis unit max 1)))
-    ;; The check at the kernel's own stop (fn-lgs-chain-broken-at-is-the-
-    ;; model): one decode of the segment, not two.
-    (when (fnn-core 'fn-lgs-chain-broken-at text (fnn-core 'fn-lgk-frontier ks)
-                    genesis unit max)
-      (error 'fnn-store-open-refusal
-             :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
-    ks))
+  "The segment's decode from GENESIS: (values RECORDS KERNEL), the concrete
+kernel (fn-lgc-open; fn-lgc-open-refines: fn-lg-open-kernel's committed
+records and its abstraction).  A scan that stops at an entry validating
+under another predecessor is a splice or a stale segment, refused by name
+(fn-lgs-chain-broken-string-p), never read as a torn tail."
+  (let ((text (fnn-log-read-string fd extent)))
+    (destructuring-bind (records kernel)
+        (fnn-call 'fn-lgc-open text genesis unit max 1)
+      ;; The check at the kernel's own stop (log-recovery,
+      ;; fn-lgs-chain-broken-at-is-the-model): one decode of the segment, not
+      ;; two; the concrete kernel's frontier is the logical kernel's
+      ;; (fn-lgc-open-refines).
+      (when (fnn-core 'fn-lgs-chain-broken-at text (fnn-core 'fn-lgc-frontier kernel)
+                      genesis unit max)
+        (error 'fnn-store-open-refusal
+               :message "open refused reason=log-chain-broken: a log segment holds an entry chained from another history"))
+      (values records kernel))))
+
+(defun fnn-log-take-opened (log)
+  "The open's records, once: the slot is cleared so that the kernel's life
+does not hold them."
+  (prog1 (fnn-log-opened log) (setf (fnn-log-opened log) nil)))
 
 (defun fnn-log-recover (path extent unit max &optional (genesis *fn-lg-genesis*))
   "P-LOG-RECOVER (fn-lg-recover-program): the kernel of the segment's decode
 from GENESIS, then the tail [F, EXTENT) zeroed by one write and fenced.  The
 kernel is R-related to the segment at log-recovered
 (fn-lg-recover-program-establishes-the-relation)."
-  (let* ((fd (fnn-log-open-segment path extent unit))
-         (ks (handler-case (fnn-log-open-kernel fd extent unit max genesis)
-               (error (e) (fnn-close fd) (error e)))))
-    (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
-      (fnn-log-pwrite fd offset (fnn-make-octets count))
-      (fnn-log-at :log-truncated)
-      (fnn-log-fdatasync fd)
-      (fnn-log-at :log-recovered))
-    (%make-fnn-log :path path :fd fd :kernel ks :unit unit :max max :extent extent)))
+  (let ((fd (fnn-log-open-segment path extent unit)))
+    (multiple-value-bind (records ks)
+        (handler-case (fnn-log-open-kernel fd extent unit max genesis)
+          (error (e) (fnn-close fd) (error e)))
+      ;; fn-lg-recover-tail-of-abstraction: the range read from the
+      ;; concrete kernel is the logical kernel's.
+      (destructuring-bind (offset count) (fnn-call 'fn-lg-recover-tail ks extent)
+        (fnn-log-pwrite fd offset (fnn-make-octets count))
+        (fnn-log-at :log-truncated)
+        (fnn-log-fdatasync fd)
+        (fnn-log-at :log-recovered))
+      (%make-fnn-log :path path :fd fd :kernel ks :unit unit :max max :extent extent
+                     :opened records))))
 
 (defun fnn-log-prepare (log record)
   "The checked prepare: RECORD joins the open batch only at the kernel's
-next txid (fn-lgt-prepare)."
+next txid (fn-lgc-t-prepare)."
   (fnn-log-with-kernel (log)
-    (setf (fnn-log-kernel log) (fnn-core 'fn-lgt-prepare (fnn-log-kernel log) record))))
+    (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-t-prepare (fnn-log-kernel log) record))))
 
 (defun fnn-log-append (log)
   "P-BATCH's append (fn-lg-append-program): the kernel admits the open batch
 and its chained entries are written at the frontier in one positioned write."
   (fnn-log-with-kernel (log)
     (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
-      (unless (fnn-core 'fn-lg-append-admitsp ks unit extent)
+      (unless (fnn-core 'fn-lgc-append-admitsp ks unit extent)
         (fnn-refuse "the log kernel refuses the append (a batch in flight, fenced, or past the extent)"))
-      (fnn-log-pwrite (fnn-log-fd log) (fnn-core 'fn-lgk-frontier ks)
-                      (fnn-core 'fn-lgk-append-octets ks unit))
-      (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-append ks unit extent))))
+      (fnn-log-pwrite (fnn-log-fd log) (fnn-core 'fn-lgc-frontier ks)
+                      (fnn-core 'fn-lgc-append-octets ks unit))
+      (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-append ks unit extent))))
   (fnn-log-at :log-written))
 
 (defun fnn-log-fence (log)
   "P-BATCH's fence (fn-lg-fence-program): the barrier, then the kernel's
-fence.  A failed barrier fences the kernel (fn-lgk-fence-failed): every
+fence.  A failed barrier fences the kernel (fn-lgc-fence-failed): every
 member of the batch is uncertain until recovery decides.  The barrier runs
 outside the kernel lock (the owner may be preparing the next batch behind
-it: fn-lgk-prepare changes only the open batch and the txid, fn-lgk-fence
-only moves the batch in flight to the committed records, so the two
-commute); the kernel's fence reads the kernel as it is when the barrier
-returned."
+it: fn-lgc-take changes only the open batch and the txid, fn-lgc-fence
+only moves the batch in flight to the committed count); the kernel's fence
+reads the kernel as it is when the barrier returned, one step of the
+serialized run fn-lgc-run-refines-the-kernel speaks of."
   (handler-case (fnn-log-fdatasync (fnn-log-fd log))
     (fnn-os-error (e)
       (fnn-log-with-kernel (log)
-        (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence-failed (fnn-log-kernel log))))
+        (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))))
       (fnn-indeterminate "log barrier failed: ~a" e)))
   (fnn-log-with-kernel (log)
-    (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence (fnn-log-kernel log) (fnn-log-unit log))))
+    (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence (fnn-log-kernel log) (fnn-log-unit log))))
   (fnn-log-at :log-fenced))
 
 (defun fnn-log-finish (log count)
-  "Acknowledge COUNT members in order (fn-lgk-finish-one; the kernel never
-acknowledges past the committed records)."
+  "Acknowledge COUNT members in order (fn-lgc-finish-one; the kernel never
+acknowledges past the committed records' count)."
   (fnn-log-with-kernel (log)
     (dotimes (i count)
-      (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-finish-one (fnn-log-kernel log))))))
+      (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-finish-one (fnn-log-kernel log))))))
 
 (defun fnn-log-rig-line (what log size)
   ;; Not `fnn-log-line': that is the service log's one-argument writer
   ;; (above), which this rig's definition used to replace in the image, so
   ;; every owner start faulted in fn-lgk-acked (friend-blockers-2, 09:10Z).
-  (let ((ks (fnn-log-kernel log)))
+  ;; The oracle's records are the segment's own, decoded again from its
+  ;; bytes (the concrete kernel keeps only their count).
+  (let ((ks (fnn-log-kernel log))
+        (records (fnn-log-open-kernel (fnn-log-fd log) (fnn-log-extent log)
+                                      (fnn-log-unit log) (fnn-log-max log))))
     (fnn-out "~a records=~d frontier=~d next=~d last=~a workload=~(~a~)"
-             what (fnn-core 'fn-lgk-acked ks) (fnn-core 'fn-lgk-frontier ks)
-             (fnn-core 'fn-lgk-next-txid ks) (fnn-hex (fnn-core 'fn-lgk-last ks))
-             (if (fnn-core 'fn-lg-workload-prefixp (fnn-core 'fn-lgk-committed ks) 1 size)
+             what (fnn-core 'fn-lgc-acked ks) (fnn-core 'fn-lgc-frontier ks)
+             (fnn-core 'fn-lgc-next-txid ks) (fnn-hex (fnn-core 'fn-lgc-last ks))
+             (if (fnn-core 'fn-lg-workload-prefixp records 1 size)
                  "t" "nil"))))
+
+(defun fnn-log-rig-handshake ()
+  "With FN_NATIVE_LOG_RIG_HANDSHAKE (developer image), the line just printed
+is flushed and the verb waits for one line from the client before it writes
+again: the power-loss rig marks the device between the two, so its windows
+are exact (a client reading behind the process let two batches land inside
+one ack window, kernel-concrete-2's first rig run)."
+  (when (fnn-developer-selector "FN_NATIVE_LOG_RIG_HANDSHAKE")
+    (finish-output *standard-output*)
+    (read-line *standard-input* nil nil)))
 
 (defun fnn-log-nat-arg (text what)
   (let ((n (and text (every #'digit-char-p text) (plusp (length text))
@@ -5672,7 +5742,7 @@ acknowledges past the committed records)."
 ;;;                     frontier file exists.  The log kernel first consumes the
 ;;;                     txids the owner consumed by refusals (fn-olr-consume-to).
 ;;;   fnn-log-publish   the record joins the log kernel's open batch
-;;;                     (fn-olr-take: T5's allocation rule), then -- in a batch of
+;;;                     (fn-lgc-take: T5's allocation rule), then -- in a batch of
 ;;;                     one -- P-BATCH's append (cut log-written) and barrier
 ;;;                     (cut log-fenced), and only then the owner's :log-order
 ;;;                     (fn-olr-ocfg-order).  Inside the owner's batch quantum
@@ -5680,7 +5750,7 @@ acknowledges past the committed records)."
 ;;;                     the batch's end (fnn-log-commit-open-batch), before any
 ;;;                     member's reply leaves the owner.
 ;;;   fnn-mark-committed nothing: M := D.
-;;;   fnn-finish        the kernel acknowledges the member (fn-lgk-finish-one)
+;;;   fnn-finish        the kernel acknowledges the member (fn-lgc-finish-one)
 ;;;                     after its barrier.
 ;;; ACL2 decides every value: the segment name, the unit, the extent and its
 ;;; growth, the take and its bounds, the append's octets and offset.
@@ -5725,10 +5795,11 @@ init completes, never truncates): the retry branch, not the program."
 (defun fnn-log-open-read-only (path unit max &optional (genesis *fn-lg-genesis*))
   (let* ((extent (fnn-log-observed-extent path))
          (fd (fnn-log-open-segment path extent unit t)))
-    (handler-case
-        (%make-fnn-log :path path :fd fd :unit unit :max max :extent extent
-                       :kernel (fnn-log-open-kernel fd extent unit max genesis))
-      (error (e) (fnn-close fd) (error e)))))
+    (multiple-value-bind (records ks)
+        (handler-case (fnn-log-open-kernel fd extent unit max genesis)
+          (error (e) (fnn-close fd) (error e)))
+      (%make-fnn-log :path path :fd fd :unit unit :max max :extent extent
+                     :kernel ks :opened records))))
 
 (defun fnn-log-batch-reset (log)
   (setf (fnn-log-count log) 0 (fnn-log-octets log) 0))
@@ -5851,12 +5922,12 @@ open's plan names again (fn-lgs-open-plan's DROP), never a segment it scans."
 (defun fnn-log-rotate (store)
   "P-ROTATE (design 2026-09-27 storage-log sections 4 and 6), at a
 checkpoint's capture, with no batch open, none in flight and every member
-acknowledged (fn-lgs-rotate-admitsp): the next segment (fn-lgs-next-segment)
+acknowledged (fn-lgc-rotate-admitsp): the next segment (fn-lgs-next-segment)
 is created and preallocated to ACL2's initial extent (cut rotate-created),
 fenced (cut rotate-fenced) and journal/ fenced (cut rotate-durable) before
-anything names it; then it is the active segment, its kernel fn-lgs-rotate
-of the closed one's (the kernel recovery derives from its zeros:
-fn-lgs-rotate-is-the-recovered-kernel).  Returns the log position the
+anything names it; then it is the active segment, its kernel fn-lgc-rotate
+of the closed one's (fn-lgc-rotate-refines: fn-lgs-rotate's abstraction, the
+kernel recovery derives from its zeros: fn-lgs-rotate-is-the-recovered-kernel).  Returns the log position the
 checkpoint's F row carries: (K GENESIS), the new segment and the closed
 one's last trailer.  An OS error before the switch leaves the closed segment
 active and removes what it created (a leftover is an interrupted rotation
@@ -5864,14 +5935,14 @@ the next open completes); it is a known failure of the checkpoint."
   (let* ((log (fnn-store-log store))
          (ks (fnn-log-kernel log))
          (next (fnn-core 'fn-lgs-next-segment (fnn-log-index log))))
-    (unless (fnn-core 'fn-lgs-rotate-admitsp ks)
+    (unless (fnn-core 'fn-lgc-rotate-admitsp ks)
       ;; A batch open, in flight or unacknowledged: no rotation now (the
       ;; checkpoint is not published; the owner retries at its next due).
       (fnn-refuse "rotation refused reason=batch-in-flight"))
     ;; An empty active segment is already where the suffix starts.
-    (unless (fnn-core 'fn-lgs-rotate-needed-p ks)
+    (unless (fnn-core 'fn-lgc-rotate-needed-p ks)
       (return-from fnn-log-rotate
-        (list (fnn-log-index log) (fnn-core 'fn-lgk-last ks))))
+        (list (fnn-log-index log) (fnn-core 'fn-lgc-last ks))))
     (unless next
       (fnn-refuse "rotation refused reason=segment-index-exhausted"))
     (let* ((path (fnn-segment-path-at store next))
@@ -5894,12 +5965,12 @@ the next open completes); it is a known failure of the checkpoint."
       (fnn-close (fnn-log-fd log))
       (setf (fnn-log-path log) path
             (fnn-log-fd log) fd
-            (fnn-log-kernel log) (fnn-core 'fn-lgs-rotate ks)
+            (fnn-log-kernel log) (fnn-core 'fn-lgc-rotate ks)
             (fnn-log-index log) next
             (fnn-log-extent log) extent
             (fnn-log-pending log) 0)
       (fnn-log-batch-reset log)
-      (list next (fnn-core 'fn-lgk-last ks)))))
+      (list next (fnn-core 'fn-lgc-last ks)))))
 
 (defun fnn-log-covered-indices (store first)
   "The segments present below FIRST (a checkpoint's first suffix segment)."
@@ -5908,7 +5979,7 @@ the next open completes); it is a known failure of the checkpoint."
 
 (defun fnn-log-scan-segments (store scan genesis)
   "Scan the segments SCAN (indices, the last the active one) from GENESIS,
-the chain carried from each segment's kernel to the next (fn-lgk-last).
+the chain carried from each segment's kernel to the next (fn-lgc-last).
 The closed segments are read only; the active one is recovered (a writable
 open: P-LOG-RECOVER) or read.  Returns (values RECORDS LOG): every scanned
 record in order, and the active segment's log."
@@ -5928,10 +5999,8 @@ record in order, and the active segment's log."
                            (fnn-log-recover path (fnn-log-observed-extent path) unit max genesis)
                          (fnn-log-open-read-only path unit max genesis))))
               (setf (fnn-log-index log) k)
-              ;; The kernel's committed records as the kernel holds them
-              ;; (octet lists), not copied: the replay's chunks read them in
-              ;; place (PKT-823).
-              (push (fnn-core 'fn-lgk-committed (fnn-log-kernel log)) records)
+              (push (mapcar #'fnn-octets (fnn-log-take-opened log))
+                    records)
               (return-from fnn-log-scan-segments
                 (values (apply #'append (nreverse records)) log)))))))
     (fnn-fault "the log's open plan named no segment")))
@@ -6019,8 +6088,8 @@ does, and records how the log holds the history (fnn-store-log-history) for
               ;; txid), at least the checkpoint's frontier at S (the dropped
               ;; segments' txids), and the log kernel caught up to it.
               (let ((next (fnn-log-next-txid-streamed
-                           scanned (max floor (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log))))))
-                (setf (fnn-log-kernel log) (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) next)
+                           scanned (max floor (fnn-core 'fn-lgc-next-txid (fnn-log-kernel log))))))
+                (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) next)
                       (fnn-store-log store) log
                       (fnn-store-frontier store) next))
               (setf (fnn-store-log-history store)
@@ -6094,7 +6163,7 @@ the observe callback): the frontier is the log's derived one."
       (fnn-refuse "finite transaction-ID domain exhausted"))
     (fnn-log-with-kernel (log)
       (setf (fnn-log-kernel log)
-            (fnn-core 'fn-olr-consume-to (fnn-log-kernel log) current-txid)
+            (fnn-core 'fn-lgc-consume-to (fnn-log-kernel log) current-txid)
             (fnn-log-reserved log) current-txid))
     (unless (eq (fnn-observe store :log-reserve) :reserved)
       (setf (fnn-store-fenced store) t)
@@ -6104,18 +6173,19 @@ the observe callback): the frontier is the log's derived one."
     next))
 
 (defun fnn-log-take (store record)
-  "RECORD into the open batch (fn-olr-take).  :full commits the open batch
+  "RECORD into the open batch (fn-lgc-take; fn-lgc-take-refines: fn-olr-take's
+verdict, kernel and entry length).  :full commits the open batch
 first (inside a batch quantum the batch closes at the operator's bounds)."
   (let* ((log (fnn-store-log store))
          (octets (fnn-octet-list record)))
     (loop repeat 2 do
-      (when (eq (fnn-log-with-kernel (log) (fnn-core 'fn-lgk-phase (fnn-log-kernel log))) :fault)
+      (when (eq (fnn-log-with-kernel (log) (fnn-core 'fn-lgc-phase (fnn-log-kernel log))) :fault)
         ;; The barrier of the batch in flight failed (the syncer fenced the
         ;; kernel) while this member was prepared behind it.
         (fnn-indeterminate "the log's barrier failed; the store needs recovery"))
       (destructuring-bind (verdict ks entry)
           (fnn-log-with-kernel (log)
-            (let ((answer (fnn-core 'fn-olr-take (fnn-log-kernel log) octets (fnn-log-reserved log)
+            (let ((answer (fnn-core 'fn-lgc-take (fnn-log-kernel log) octets (fnn-log-reserved log)
                                     (fnn-log-count log) (fnn-log-octets log)
                                     (fnn-log-bmax log) (fnn-log-omax log) (fnn-log-unit log))))
               (when (eq (first answer) :taken)
@@ -6137,24 +6207,20 @@ first (inside a batch quantum the batch closes at the operator's bounds)."
     (fnn-fault "the log kernel refused an empty batch's take")))
 
 (defun fnn-log-ensure-extent (log)
-  "books/store-log-extend.lisp fn-lg-extend-program: when the open batch and
-one spare unit do not fit the segment (fn-olr-extension-needed-p), grow it to
-ACL2's target (fn-olr-extension-target: whole units, past the old extent),
-then one barrier.  Runs at rest (no batch in flight); the octets before the
-old extent are never written, the new ones read zeros, and the kernel is
-unchanged (fn-lg-extend-program-keeps-the-relation).  A death at
+  "books/store-log-extend.lisp fn-lg-extend-program: when the open batch's
+append and one spare unit do not fit the segment (fn-lgc-extension-needed-p),
+grow it to ACL2's target (fn-lgc-extension-target: whole units, past the old
+extent), then one barrier.  Runs at rest (no batch in flight); the octets
+before the old extent are never written, the new ones read zeros, and the
+kernel is unchanged (fn-lgc-extend-program-keeps-the-relation), and the
+append then fits (fn-lgc-sealed-extent-fits-the-batch).  A death at
 log-extended recovers exactly the committed records
-(fn-lg-extension-written-crash-reads-the-committed-records)."
-  (let* ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log))
-         ;; The open batch's log length, digest-free (PKT-749: one packed
-         ;; entry padded once; books/store-log.lisp fn-lg-log-len, which
-         ;; fn-olr-log-need-is-the-append-end ties to the append's end).
-         (octets (fnn-nat (fnn-core 'fn-lg-log-len (fnn-core 'fn-lgk-batch ks) unit))))
-    (when (fnn-core 'fn-olr-extension-needed-p (fnn-core 'fn-lgk-frontier ks)
-                    octets extent unit)
-      (let ((next (fnn-nat (fnn-core 'fn-olr-extension-target
-                                     (fnn-core 'fn-lgk-frontier ks) octets
-                                     extent unit))))
+(fn-lg-extension-written-crash-reads-the-committed-records).  The append's
+length is ACL2's arithmetic over the records' lengths (fn-lgc-append-len):
+no octet of the batch is built here."
+  (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
+    (when (fnn-core 'fn-lgc-extension-needed-p ks extent unit)
+      (let ((next (fnn-nat (fnn-core 'fn-lgc-extension-target ks extent unit))))
         (unless (and (fnn-core 'fn-lg-extent-okp next unit) (> next extent))
           (fnn-fault "ACL2 returned an invalid log extent"))
         (fnn-log-preallocate (fnn-log-fd log) next extent)
@@ -6167,7 +6233,7 @@ log-extended recovers exactly the committed records
   "P-BATCH's append and barrier for the open batch (its members' records
 are in the kernel's batch), cuts log-written and log-fenced.  Any OS error
 from the append to the barrier is uncertain for every member: the kernel is
-fenced (fn-lgk-fence-failed) and the store with it."
+fenced (fn-lgc-fence-failed) and the store with it."
   (let ((log (fnn-store-log store))
         (fenced (fnn-store-fenced store)))
     (when (plusp (fnn-log-count log))
@@ -6185,7 +6251,8 @@ fenced (fn-lgk-fence-failed) and the store with it."
             (fnn-at store :log-fenced))
         ((or fnn-store-indeterminate fnn-store-fault) (e) (error e))
         (fnn-os-error (e)
-          (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence-failed (fnn-log-kernel log)))
+          (fnn-log-with-kernel (log)
+            (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))))
           (fnn-indeterminate "log batch outcome is indeterminate: ~a" e))
         (fnn-store-error (e)
           ;; fnn-log-append's refusal: the kernel does not admit the batch
@@ -6205,7 +6272,7 @@ fenced (fn-lgk-fence-failed) and the store with it."
 5.3): the fresh segment of the staged STORE (profile VALUES) receives
 RECORDS, a list of (SEQUENCE . OCTETS) in increasing sequence, from the
 genesis, through the kernel the open recovered from it and the commit
-route's own steps: per record the take (fn-olr-take at the kernel's own next
+route's own steps: per record the take (fn-lgc-take at the kernel's own next
 txid: the import allocates nothing; the open derives the frontier from the
 records, so the archive's burned reservations stay burned) (fn-olr-take, at the bounds of a configuration naming none: fn-olr-bmax,
 fn-olr-omax); a full batch, and the last, is P-BATCH's append and barrier
@@ -6228,7 +6295,7 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
              ;; transaction, as the per-file layout's did); the ordinary open
              ;; that admits the stage derives the frontier from the records
              ;; (fn-store-log-next-txid).
-             (setf (fnn-log-reserved log) (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log)))
+             (setf (fnn-log-reserved log) (fnn-core 'fn-lgc-next-txid (fnn-log-kernel log)))
              (fnn-log-take store (cdr record))
              (fnn-log-batch-finish store))
            (fnn-log-commit-open-batch store)
@@ -6256,7 +6323,7 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
 
 (defun fnn-log-ack (log count)
   "The log kernel acknowledges COUNT fenced members in order
-(fn-lgk-finish-one)."
+(fn-lgc-finish-one)."
   (fnn-log-with-kernel (log)
     (fnn-log-finish log count)
     (setf (fnn-log-pending log) (max 0 (- (fnn-log-pending log) count)))))
@@ -6302,7 +6369,7 @@ sync returns at once)."
         ((or fnn-store-indeterminate fnn-store-fault) (e) (error e))
         (fnn-os-error (e)
           (fnn-log-with-kernel (log)
-            (setf (fnn-log-kernel log) (fnn-core 'fn-lgk-fence-failed (fnn-log-kernel log))))
+            (setf (fnn-log-kernel log) (fnn-core 'fn-lgc-fence-failed (fnn-log-kernel log))))
           (fnn-indeterminate "log batch outcome is indeterminate: ~a" e))
         (fnn-store-error (e)
           (fnn-fault "the log kernel refused the batch's append: ~a" e))))
@@ -6365,7 +6432,8 @@ observation (the COMPLETE re-signals it under the owner)."
          (unwind-protect
               (fnn-log-rig-line "SCAN" (%make-fnn-log :path path :fd fd :unit unit :max max
                                                   :extent extent
-                                                  :kernel (fnn-log-open-kernel fd extent unit max))
+                                                  :kernel (nth-value 1 (fnn-log-open-kernel
+                                                                        fd extent unit max)))
                             size)
            (fnn-close fd))))
       (t
@@ -6374,17 +6442,19 @@ observation (the COMPLETE re-signals it under the owner)."
               (progn
                 (fnn-log-rig-line "RECOVERED" log size)
                 (when (string= command "append")
+                  (fnn-log-rig-handshake)
                   (let ((batches (fnn-log-nat-arg (sixth argv) "BATCHES"))
                         (per (fnn-log-nat-arg (seventh argv) "PER")))
                     (dotimes (b batches)
                       (dotimes (i per)
                         (fnn-log-prepare
                          log (fnn-core 'fn-lg-workload-record
-                                       (fnn-core 'fn-lgk-next-txid (fnn-log-kernel log)) size)))
+                                       (fnn-core 'fn-lgc-next-txid (fnn-log-kernel log)) size)))
                       (fnn-log-append log)
                       (fnn-log-fence log)
                       (fnn-log-finish log per)
-                      (fnn-log-rig-line (format nil "ACK batch=~d" (1+ b)) log size)))))
+                      (fnn-log-rig-line (format nil "ACK batch=~d" (1+ b)) log size)
+                      (fnn-log-rig-handshake)))))
            (fnn-close (fnn-log-fd log)))))))
   +fnn-exit-ok+)
 
