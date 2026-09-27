@@ -6,6 +6,7 @@ Python only writes those bytes and drives real native processes.
 
 import os
 from pathlib import Path
+import re
 import select
 import shutil
 import socket
@@ -193,13 +194,19 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
         )
 
     def article_count(self):
-        store, bridge, _records = run_bp_ingress.open_live_bp_store(
-            self.store, False)
-        try:
-            return bridge.article_count()
-        finally:
-            bridge.close()
-            store.close()
+        # The node's own read-only open (`store PATH status`,
+        # books/native-live-status.lisp fn-nls-report's `articles=' word):
+        # it replays and verifies every durable record the way the served
+        # path does, at any admitted record size.  The Python text bridge
+        # (tools/frame_bridge.py) prints each record as a decimal list, and
+        # its ACL2 exhausts its control stack decoding a 10 MiB record
+        # (SCN-077), so it is not the readback here.
+        status = self.invoke("store", self.store, "status", timeout=900)
+        self.assertEqual(status.returncode, 0, (status.stdout, status.stderr))
+        counts = re.findall(rb"^transactions=[0-9]+ articles=([0-9]+) ",
+                            status.stdout, re.MULTILINE)
+        self.assertEqual(len(counts), 1, status.stdout)
+        return int(counts[0])
 
     def test_nonzero_fragment_then_restart_offset_zero_dispatches_once(self):
         first, port = self.start_receiver()
@@ -306,6 +313,7 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
             b"Date: Mon, 21 Sep 2026 08:00:00 +0000\r\n"
             b"Message-ID: " + msgid + b"\r\n\r\n" + body
         )
+        self.large_msgid, self.large_article = msgid, article
         bridge = run_bp_ingress.Acl2BpIngress()
         try:
             for book in ("bp-adu", "bp-fragment", "bp-fragment-fast",
@@ -464,6 +472,14 @@ class NativeBpFragmentNodeTests(unittest.TestCase):
                          [line for line in out.splitlines()
                           if b"delivery" in line or b"refused" in line
                           or b"application" in line])
+        # The Store holds exactly the article the ADU carried: the node's
+        # own lookup (`store PATH inspect MSGID`) writes them to stdout.
+        inspected = self.invoke("store", self.store, "inspect",
+                                self.large_msgid.decode("ascii"), timeout=900)
+        self.assertEqual(inspected.returncode, 0, inspected.stderr[-4000:])
+        self.assertEqual(len(inspected.stdout), len(self.large_article))
+        self.assertTrue(inspected.stdout == self.large_article,
+                        "the stored article differs from the one the ADU carried")
 
     def test_adu_past_the_profile_is_refused_before_custody(self):
         # PRF-134: under the default profile (ADU 65,538 octets) a fragment
