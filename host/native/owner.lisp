@@ -2060,13 +2060,23 @@ the number of members committed (0 when nothing was queued)."
          (dolist (m members) (fnn-owner-deliver service (first m) (second m)))))
       (length members))))
 
-(defun fnn-owner-loops-passed-p (service snapshot)
-  "Every I/O loop completed the pass it was in at SNAPSHOT, or sleeps in
-poll(2): every connection that was ready then has been stepped, and its
-submission, if it had one, is queued."
+(defun fnn-owner-loops-snapshot (service)
+  "Per I/O loop, the pass count by which it will have polled (and stepped)
+every connection ready now: the next pass when it sleeps in poll(2), the
+pass after its current one otherwise.  Each loop is woken (its wake pipe),
+so the pass comes at once, not at the poll's timeout."
   (loop for loop in (fnn-owner-service-mux service)
-        for n in snapshot
-        always (or (fnn-mux-loop-polling loop) (> (fnn-mux-loop-passes loop) n))))
+        collect (prog1 (+ (fnn-mux-loop-passes loop)
+                          (if (fnn-mux-loop-polling loop) 1 2))
+                  (fnn-mux-wake loop))))
+
+(defun fnn-owner-loops-passed-p (service targets)
+  "Every I/O loop reached its target pass: every connection that was ready
+at the snapshot has been stepped, and its submission, if it had one, is
+queued."
+  (loop for loop in (fnn-owner-service-mux service)
+        for n in targets
+        always (>= (fnn-mux-loop-passes loop) n)))
 
 (defun fnn-owner-committer-loop (service)
   "The committer thread: one commit quantum whenever a submission is queued,
@@ -2080,9 +2090,9 @@ timer)."
                           (fnn-owner-service-stopping service))
                 do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
                                              (fnn-owner-service-commit-lock service)))
-          (let ((snapshot (mapcar #'fnn-mux-loop-passes (fnn-owner-service-mux service))))
+          (let ((targets (fnn-owner-loops-snapshot service)))
             (loop until (or (fnn-owner-service-stopping service)
-                            (fnn-owner-loops-passed-p service snapshot))
+                            (fnn-owner-loops-passed-p service targets))
                   do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
                                                (fnn-owner-service-commit-lock service)))))
         (when (fnn-owner-service-stopping service) (return))
