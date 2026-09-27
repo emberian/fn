@@ -5354,21 +5354,25 @@
     },
     {
       "id": "SCN-182",
-      "title": "A stalled disk: while a batch barrier is held 30 s, status, health and a reader's GROUP/ARTICLE stay flat; past the deadline health says disk slow and a new POST is refused try-later with the reason; the held POST's 240 follows the device's return; health recovers with the latency",
+      "title": "A stalled disk: while a batch barrier is held 30 s, status, health and a reader's GROUP/ARTICLE stay flat; past the deadline health says disk slow and a new POST is refused try-later with the reason; the held POST's 240 follows the device's return; health recovers with the latency; slice 2: past H the posters are told uncertain and their articles land after recovery, a POST command is answered 440, a mutating control request BUSY, and the decision journal holds the run in sequence",
       "milestone": "M5",
       "status": "specified",
       "requirements": [
-        "HST-026"
+        "HST-026",
+        "HST-028"
       ],
       "steps": [
-        "tests/test_native_slow_disk.py on the developer image: FN_NATIVE_TEST_DISK_STALL_FILE names a file; a healthy POST first; then the file is created (every barrier waits before its fdatasync while it exists) and POST A is sent; for 30 s: GROUP and ARTICLE on a reader connection, `operator status' every 0.5 s, and after 7 s `operator health' and a new POST B; then the file is removed."
+        "tests/test_native_slow_disk.py on the developer image: FN_NATIVE_TEST_DISK_STALL_FILE names a file; a healthy POST first; then the file is created (every barrier waits before its fdatasync while it exists) and POST A is sent; for 30 s: GROUP and ARTICLE on a reader connection, `operator status' every 0.5 s, and after 7 s `operator health' and a new POST B; then the file is removed.",
+        "Slice 2, the first case: `policy set barrier-stall-ms 120000' first; B's POST command answered 340 before the stall and its article sent while slow; a POST command on D while slow. The second case: `policy set barrier-deadline-ms 2000', `barrier-stall-ms 6000', `clock-event-ms 250'; the stall file; POSTs A (in flight), E (0.3 s later, prepared behind it) and F (0.6 s, queued); at 3 s `health' and `policy set clock-event-ms 500'; GROUP every 0.25 s until A, E and F are answered; `health'; a POST command on G; the file removed; `health' until ok; a POST; STAT of each; the journal file read."
       ],
       "expected": [
-        "Every read under 2 s and every status under 5 s while the barrier is pending, no growth between the first and last third; health and status print `disk slow: barrier N ms pending'; B answered `441 posting failed; the disk is slow ...' within 2 s and not stored; A unanswered during the stall and answered 240 after the device returns; health then `disk ok' with last-barrier-ms at least the stall and slow-episodes=1; the next POST 240; the service log names the episode entered and left."
+        "Every read under 2 s and every status under 5 s while the barrier is pending, no growth between the first and last third; health and status print `disk slow: barrier N ms pending'; B answered `441 posting failed; the disk is slow ...' within 2 s and not stored; A unanswered during the stall and answered 240 after the device returns; health then `disk ok' with last-barrier-ms at least the stall and slow-episodes=1; the next POST 240; the service log names the episode entered and left.",
+        "B's article answered `441 posting failed; the disk is slow ...' and D's command `440 posting not permitted now; the disk is slow ...' each within 2 s. In the second case: the control request refused BUSY within 5 s; A and E each answered ACL2's uncertain 441 and closed between 5.5 and 7.5 s after the stall began, F `441 posting failed; the disk is stalled ...'; reads under 2 s; health `disk stalled: ... stalls=1 ... members=uncertain'; G `440 ... the disk is stalled'; after recovery STAT A and E 223 (the documented ambiguity), F 430, health `disk ok' stalls=1, the next POST 240; the log names the stall and the recovery after it; the journal's last segment has sequence 1..n, readings non-decreasing, the issue with limits 2000 6000 250, a :became-stalled, the note (2 members, 1 shed) and :recovered-from-stall."
       ],
       "evidence": [
         "tests/test_native_slow_disk.py",
-        "planning/evidence/time-model-2026-09-27.md"
+        "planning/evidence/time-model-2026-09-27.md",
+        "planning/evidence/time-model-2-2026-09-27.md"
       ],
       "implementation": {
         "test": "tests.test_native_slow_disk",
@@ -5379,6 +5383,21 @@
         "native": true,
         "record": "planning/evidence/time-model-2026-09-27.md"
       }
+    },
+    {
+      "id": "SCN-183",
+      "title": "The developer image's fnn-call refuses, by name and before the entry runs, an arena handle where an entry's guard names octets, an octet vector, a handle in the second position and the wrong argument count; octets reach the entry",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-027"
+      ],
+      "steps": "Build the developer image; evaluate in its saved core, through fnn-core: fn-store-record-txid on the natural 7, on an octet vector of two elements, on two arguments, and on the octets (1 2 3); fn-owner-transit-decide on octets and the natural 7 (tests/test_native_entry_guard.py).",
+      "expected": "The first four answer the fault host-entry-guard naming the entry, the argument position, the formal and the kind (octets), with the natural's value or the vector's length; the octets reach fn-store-record-txid and answer its own verdict.",
+      "evidence": [
+        "tests/test_native_entry_guard.py",
+        "planning/evidence/entry-guards-2026-09-27.md"
+      ]
     }
   ]
 }

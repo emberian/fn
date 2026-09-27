@@ -772,6 +772,7 @@
                                   (fn-bpi-ingress-prepare fn-bpi-result-kind
                                    fn-arena-seal-list fn-arena-count)))))
 
+(fn-payload-kind fn-bpi-node-record-committedp :handle "compares the article's handle with the held row's handle")
 (defun fn-bpi-node-record-committedp (node record)
   (declare (xargs :guard t :verify-guards nil))
   ; This unfolds the actual node's published article and archive binding; it

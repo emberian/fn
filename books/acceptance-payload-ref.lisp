@@ -51,6 +51,7 @@
 
 ; The relation: every article names an article record of the history, and
 ; its payload is that record's payload.
+(fn-payload-kind fn-apr-refsp :handle "compares the article's handle with the history row's handle")
 (defun fn-apr-refsp (articles events)
   (declare (xargs :guard t))
   (if (consp articles)
@@ -387,6 +388,7 @@
 
 ; The value a reader of the acceptance field returned: the stored article's
 ; payload, or NIL.  (The subject every host reader below replaced.)
+(fn-payload-kind fn-apr-field-payload :source "returns the article's handle")
 (defun fn-apr-field-payload (msgid s)
   (declare (xargs :guard t))
   (let ((article (fn-find-article msgid (fn-stx-store (fn-sn-node s)))))

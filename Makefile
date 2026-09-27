@@ -578,6 +578,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-retire \
 	tests/acl2/bp-node-retire-tests \
 	tests/acl2/bp-node-counterexamples-tests \
+	books/bp-node-rotation-due \
+	tests/acl2/bp-node-rotation-due-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-node-forward-retry \
@@ -894,11 +896,15 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-join-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
+	books/payload-kinds \
+	tests/acl2/payload-kinds-tests \
 	books/owner-feed-article \
 	tests/acl2/owner-feed-article-tests \
 	tests/acl2/catalog-number-index-tests \
 	books/sha256-buffer \
 	tests/acl2/sha256-buffer-tests \
+	books/sha256-range \
+	tests/acl2/sha256-range-tests \
 	books/owner-advance-carried \
 	books/owner-intent-carried \
 	books/owner-commit-ocl \
@@ -1186,7 +1192,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reader-view-tests \
 	books/owner-reader-read \
 	tests/acl2/owner-reader-read-tests \
+	books/clock-wall-reading \
 	books/owner-time-model \
+	books/owner-time-journal \
+	books/owner-time-admission \
 	tests/acl2/owner-time-model-tests \
 	books/state-digest \
 	tests/acl2/state-digest-tests \
@@ -1423,6 +1432,9 @@ check:
 # `--convert` rewrites bare ones after a merge.  Static, no ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/must_fail_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_must_fail_check
+# A retained payload is a HANDLE (books/payload-kinds.lisp); every definition
+# that reads one declares which kind it takes (lane entry-guards, 2026-09-27).
+	@$(CHECK_STEP) $(PYTHON) tools/payload_kind_check.py
 # The multiple-value shape of every ACL2-mode host call.  At 9c344d1d the
 # image build refused host/owner-host.lisp because an error triple,
 # `(fn-owner-clock-observation state)', was passed as an argument; `make

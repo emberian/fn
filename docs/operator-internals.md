@@ -2299,8 +2299,13 @@ that never existed exit 7. Neither asks for recovery: the job is durable
 and the next contact re-offers it under the same identity. A BP node's
 held rows, held octets, largest ADU and largest bundle are raised offline
 with `bp-node profile JOURNAL NODE MAX-HELD-ROWS MAX-HELD-OCTETS
-[MAX-ADU-OCTETS MAX-BUNDLE-OCTETS]` (default 64, 16 MiB, 65,538 and 1 MiB;
-each at most 2^24; never lowered). A bundle past the ADU or bundle bound is
+[MAX-ADU-OCTETS MAX-BUNDLE-OCTETS [ROTATE-RECORDS]]` (default 64, 16 MiB,
+65,538 and 1 MiB; each at most 2^24; never lowered). ROTATE-RECORDS (default
+4,096; it may be lowered) is when the journal rotates by itself: `bp-node
+serve` and `bp-node dispatch` rotate at their open once the selected
+generation holds that many records (`BP journal rotation generation=G
+records=N threshold=T`, then `BP journal generation selected`), so no
+operator `bp-node checkpoint` is needed to keep a node taking custody. A bundle past the ADU or bundle bound is
 refused (`BP refused reason=adu-beyond-profile` or
 `bundle-beyond-profile`, exit 1); a journal opened under a profile smaller
 than its rows or held octets fences with `held-beyond-profile`, and since

@@ -370,3 +370,353 @@
                   (<= (caddr old) adu) (<= (cadddr old) bundle))))
   :hints (("Goal" :in-theory (disable fn-bpnpf-profile-read
                                       fn-bpnpf-profile-octets))))
+
+; -----------------------------------------------------------------------------
+; Profile 3 (lane bp-rotation): (ROWS OCTETS ADU BUNDLE ROTATE).  ROTATE is
+; the rotation threshold: how many received FNBS records the selected
+; generation may carry before the open of a node verb (bp-node serve,
+; dispatch) rotates the journal (books/bp-node-rotation-due,
+; fn-bpnrd-due-rotation-event).  It says when to rotate, never what the
+; journal may hold, so unlike the other fields it may be lowered as well as
+; raised.  It is a machine limit (1 to 2^24).  Format 1, format 2 and no file
+; read with the default, *fn-bpn-machine-max-records* (4,096, half of the
+; received namespace's 8,192 records per generation).  The four fields the
+; admission and the machine read are the profile-2 value
+; (fn-bpnpf-node-profile-base), unchanged by this field.
+
+(defconst *fn-bpnpf-format-3*
+  '(102 110 45 98 112 45 112 114 111 102 105 108 101 45 51)) ; fn-bp-profile-3
+(defconst *fn-bpnpf-spec-3* '(:text :nat :nat :nat :nat :nat))
+(defconst *fn-bpnpf-default-rotate* *fn-bpn-machine-max-records*)
+
+(defun fn-bpnpf-node-profile-validp (rows octets adu bundle rotate)
+  (declare (xargs :guard t))
+  (and (fn-bpnpf-profile-validp rows octets adu bundle)
+       (fn-bpn-machine-limitp rotate)))
+
+(defun fn-bpnpf-node-profilep (p)
+  (declare (xargs :guard t))
+  (and (true-listp p) (equal (len p) 5)
+       (fn-bpnpf-node-profile-validp (car p) (cadr p) (caddr p) (cadddr p)
+                                     (car (cddddr p)))))
+
+; The profile-2 value the machine and the receive admission read.
+(defun fn-bpnpf-node-profile-base (p)
+  (declare (xargs :guard t))
+  (list (fn-bpn-nth 0 p) (fn-bpn-nth 1 p) (fn-bpn-nth 2 p) (fn-bpn-nth 3 p)))
+
+(defun fn-bpnpf-rotate-records (p)
+  (declare (xargs :guard t))
+  (fn-bpn-nth 4 p))
+
+(local
+ (defthm fn-bpnpf-node-profile-values-ok
+   (implies (fn-bpnpf-node-profile-validp rows octets adu bundle rotate)
+            (fn-frame-values-okp *fn-bpnpf-spec-3*
+                                 (list *fn-bpnpf-format-3* rows octets adu
+                                       bundle rotate)))
+   :hints (("Goal" :in-theory (enable fn-frame-values-okp fn-frame-field-okp)))))
+
+(defun fn-bpnpf-node-profile-octets (rows octets adu bundle rotate)
+  (declare (xargs :guard t))
+  (if (fn-bpnpf-node-profile-validp rows octets adu bundle rotate)
+      (fn-frame-fields-octets *fn-bpnpf-spec-3*
+                              (list *fn-bpnpf-format-3* rows octets adu bundle
+                                    rotate))
+    nil))
+
+; The profile a node journal opens under (the function the host calls,
+; host/native/bp-service.lisp fnn-bps-read-profile).  Whatever
+; fn-bpnpf-profile-read admits (format 1, format 2, no file) takes the
+; default threshold; a format-3 file is exactly one frame of a valid
+; profile 3; anything else is NIL (the host refuses to open).
+(defun fn-bpnpf-node-profile-read (present bytes)
+  (declare (xargs :guard t))
+  (let ((old (fn-bpnpf-profile-read present bytes)))
+    (if old
+        (append old (list *fn-bpnpf-default-rotate*))
+      (if (not (and present (fn-cbor-octet-listp bytes)))
+          nil
+        (let ((parsed (fn-frame-fields-parse *fn-bpnpf-spec-3* bytes)))
+          (if (not (fn-frame-parse-okp parsed))
+              nil
+            (let ((v (fn-frame-parse-value parsed)))
+              (if (and (true-listp v) (equal (len v) 6)
+                       (equal (car v) *fn-bpnpf-format-3*)
+                       (fn-bpnpf-node-profile-validp (nth 1 v) (nth 2 v)
+                                                     (nth 3 v) (nth 4 v)
+                                                     (nth 5 v)))
+                  (list (nth 1 v) (nth 2 v) (nth 3 v) (nth 4 v) (nth 5 v))
+                nil))))))))
+
+; The octets `bp-node profile' publishes: NIL (refused) unless the write
+; raises or keeps each of the four held and codec fields in force and names
+; a valid threshold.
+(defun fn-bpnpf-node-profile-write-octets (old rows octets adu bundle rotate)
+  (declare (xargs :guard t))
+  (if (and (fn-bpnpf-node-profilep old)
+           (fn-bpnpf-profile-upgradep (fn-bpnpf-node-profile-base old)
+                                      rows octets adu bundle)
+           (fn-bpn-machine-limitp rotate))
+      (fn-bpnpf-node-profile-octets rows octets adu bundle rotate)
+    nil))
+
+; A format-3 frame is neither a format-1 nor a format-2 profile: each
+; shorter spec parses its own fields and refuses the ones that follow as
+; trailing octets.
+(local
+ (defthm fn-bpnpf-format-3-octets-split-1
+   (equal (fn-frame-fields-octets *fn-bpnpf-spec-3*
+                                  (list f rows octets adu bundle rotate))
+          (append (fn-frame-fields-octets *fn-bpnpf-spec* (list f rows octets))
+                  (fn-frame-fields-octets '(:nat :nat :nat)
+                                          (list adu bundle rotate))))
+   :hints (("Goal" :in-theory (e/d (fn-frame-fields-octets)
+                                   (fn-frame-field-octets))))))
+
+(local
+ (defthm fn-bpnpf-format-3-octets-split-2
+   (equal (fn-frame-fields-octets *fn-bpnpf-spec-3*
+                                  (list f rows octets adu bundle rotate))
+          (append (fn-frame-fields-octets *fn-bpnpf-spec-2*
+                                          (list f rows octets adu bundle))
+                  (fn-frame-fields-octets '(:nat) (list rotate))))
+   :hints (("Goal" :in-theory (e/d (fn-frame-fields-octets)
+                                   (fn-frame-field-octets))))))
+
+(local
+ (defthm fn-bpnpf-three-nats-are-consp
+   (consp (fn-frame-fields-octets '(:nat :nat :nat) (list adu bundle rotate)))
+   :hints (("Goal" :in-theory (enable fn-frame-fields-octets
+                                      fn-frame-field-octets)))))
+
+(local
+ (defthm fn-bpnpf-one-nat-is-consp
+   (consp (fn-frame-fields-octets '(:nat) (list rotate)))
+   :hints (("Goal" :in-theory (enable fn-frame-fields-octets
+                                      fn-frame-field-octets)))))
+
+(local
+ (defthm fn-bpnpf-three-nats-values-ok
+   (implies (and (fn-bpn-machine-limitp adu) (fn-bpn-machine-limitp bundle)
+                 (fn-bpn-machine-limitp rotate))
+            (fn-frame-values-okp '(:nat :nat :nat) (list adu bundle rotate)))
+   :hints (("Goal" :in-theory (enable fn-frame-values-okp fn-frame-field-okp)))))
+
+(local
+ (defthm fn-bpnpf-one-nat-values-ok
+   (implies (fn-bpn-machine-limitp rotate)
+            (fn-frame-values-okp '(:nat) (list rotate)))
+   :hints (("Goal" :in-theory (enable fn-frame-values-okp fn-frame-field-okp)))))
+
+(local
+ (defthm fn-bpnpf-format-3-head-values-ok-1
+   (implies (fn-bpnpf-validp rows octets)
+            (fn-frame-values-okp *fn-bpnpf-spec*
+                                 (list *fn-bpnpf-format-3* rows octets)))
+   :hints (("Goal" :in-theory (enable fn-frame-values-okp fn-frame-field-okp)))))
+
+(local
+ (defthm fn-bpnpf-format-3-head-values-ok-2
+   (implies (fn-bpnpf-profile-validp rows octets adu bundle)
+            (fn-frame-values-okp *fn-bpnpf-spec-2*
+                                 (list *fn-bpnpf-format-3* rows octets adu
+                                       bundle)))
+   :hints (("Goal" :in-theory (enable fn-frame-values-okp fn-frame-field-okp)))))
+
+(local
+ (defthm fn-bpnpf-format-3-is-not-format-1
+   (implies (fn-bpnpf-node-profile-validp rows octets adu bundle rotate)
+            (not (fn-bpnpf-read t (fn-bpnpf-node-profile-octets
+                                   rows octets adu bundle rotate))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bpnpf-node-profile-octets fn-frame-fields-parse)
+                            (fn-frame-fields-octets fn-frame-fields-parse-aux
+                             fn-bpnpf-validp fn-bpn-machine-limitp
+                             fn-bpnpf-format-3-octets-split-2))
+            :use ((:instance fn-frame-fields-parse-aux-of-octets
+                   (specs *fn-bpnpf-spec*)
+                   (values (list *fn-bpnpf-format-3* rows octets))
+                   (rest (fn-frame-fields-octets '(:nat :nat :nat)
+                                                 (list adu bundle rotate))))
+                  (:instance fn-frame-fields-octets-are-octets
+                   (specs *fn-bpnpf-spec-3*)
+                   (values (list *fn-bpnpf-format-3* rows octets adu bundle
+                                 rotate)))
+                  (:instance fn-frame-fields-octets-are-octets
+                   (specs '(:nat :nat :nat))
+                   (values (list adu bundle rotate)))
+                  (:instance fn-bpnpf-format-3-head-values-ok-1)
+                  (:instance fn-bpnpf-three-nats-values-ok)
+                  (:instance fn-bpnpf-node-profile-values-ok))))))
+
+(local
+ (defthm fn-bpnpf-format-3-is-not-format-2
+   (implies (fn-bpnpf-node-profile-validp rows octets adu bundle rotate)
+            (not (fn-frame-parse-okp
+                  (fn-frame-fields-parse *fn-bpnpf-spec-2*
+                                         (fn-bpnpf-node-profile-octets
+                                          rows octets adu bundle rotate)))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bpnpf-node-profile-octets fn-frame-fields-parse)
+                            (fn-frame-fields-octets fn-frame-fields-parse-aux
+                             fn-bpnpf-validp fn-bpn-machine-limitp
+                             fn-bpnpf-format-3-octets-split-1
+                             fn-bpnpf-format-2-octets-split
+                             fn-bpnpf-one-nat-is-consp))
+            :use ((:instance fn-frame-fields-parse-aux-of-octets
+                   (specs *fn-bpnpf-spec-2*)
+                   (values (list *fn-bpnpf-format-3* rows octets adu bundle))
+                   (rest (fn-frame-fields-octets '(:nat) (list rotate))))
+                  (:instance fn-frame-fields-octets-are-octets
+                   (specs *fn-bpnpf-spec-3*)
+                   (values (list *fn-bpnpf-format-3* rows octets adu bundle
+                                 rotate)))
+                  (:instance fn-frame-fields-octets-are-octets
+                   (specs '(:nat))
+                   (values (list rotate)))
+                  (:instance fn-bpnpf-format-3-head-values-ok-2)
+                  (:instance fn-bpnpf-one-nat-is-consp)
+                  (:instance fn-bpnpf-one-nat-values-ok)
+                  (:instance fn-bpnpf-node-profile-values-ok))))))
+
+(local
+ (defthm fn-bpnpf-format-3-is-no-older-profile
+   (implies (fn-bpnpf-node-profile-validp rows octets adu bundle rotate)
+            (not (fn-bpnpf-profile-read t (fn-bpnpf-node-profile-octets
+                                           rows octets adu bundle rotate))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-bpnpf-profile-read)
+                            (fn-bpnpf-read fn-bpnpf-node-profile-octets
+                             fn-frame-fields-parse fn-bpnpf-node-profile-validp))
+            :use ((:instance fn-bpnpf-format-3-is-not-format-1)
+                  (:instance fn-bpnpf-format-3-is-not-format-2))))))
+
+(defthm fn-bpnpf-node-profile-default-is-valid
+  (fn-bpnpf-node-profilep (fn-bpnpf-node-profile-read nil nil)))
+
+; Keystone: a saved profile 3 opens.  The octets written for every profile
+; the relation admits read back as exactly that profile: no valid threshold
+; is one the file cannot carry.
+(defthm fn-bpnpf-node-profile-read-of-octets
+  (implies (fn-bpnpf-node-profile-validp rows octets adu bundle rotate)
+           (equal (fn-bpnpf-node-profile-read
+                   t (fn-bpnpf-node-profile-octets rows octets adu bundle
+                                                   rotate))
+                  (list rows octets adu bundle rotate)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bpnpf-node-profile-octets)
+                           (fn-frame-fields-octets fn-frame-fields-parse
+                            fn-bpnpf-profile-validp fn-bpnpf-profile-read
+                            fn-bpnpf-format-3-octets-split-1
+                            fn-bpnpf-format-3-octets-split-2))
+           :use ((:instance fn-bpnpf-format-3-is-no-older-profile)
+                 (:instance fn-frame-fields-parse-of-octets
+                  (specs *fn-bpnpf-spec-3*)
+                  (values (list *fn-bpnpf-format-3* rows octets adu bundle
+                                rotate)))
+                 (:instance fn-frame-fields-octets-are-octets
+                  (specs *fn-bpnpf-spec-3*)
+                  (values (list *fn-bpnpf-format-3* rows octets adu bundle
+                                rotate)))))))
+
+; A file an older node wrote (format 1 or format 2), or none, opens with its
+; fields, the format-1 defaults where it has none, and the default threshold.
+(defthm fn-bpnpf-node-profile-read-of-older
+  (and (implies (fn-bpnpf-profile-validp rows octets adu bundle)
+                (equal (fn-bpnpf-node-profile-read
+                        t (fn-bpnpf-profile-octets rows octets adu bundle))
+                       (list rows octets adu bundle
+                             *fn-bpnpf-default-rotate*)))
+       (implies (fn-bpnpf-validp rows octets)
+                (equal (fn-bpnpf-node-profile-read
+                        t (fn-bpnpf-octets rows octets))
+                       (list rows octets *fn-bpnpf-default-adu*
+                             *fn-bpnpf-default-bundle*
+                             *fn-bpnpf-default-rotate*)))
+       (equal (fn-bpnpf-node-profile-read nil bytes)
+              (list *fn-bpnpf-default-rows* *fn-bpnpf-default-octets*
+                    *fn-bpnpf-default-adu* *fn-bpnpf-default-bundle*
+                    *fn-bpnpf-default-rotate*)))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnpf-profile-read-of-octets)
+                 (:instance fn-bpnpf-profile-read-of-format-1))
+           :in-theory (disable fn-bpnpf-profile-read fn-bpnpf-profile-octets
+                               fn-bpnpf-octets fn-bpnpf-profile-validp
+                               fn-bpnpf-validp
+                               fn-bpnpf-profile-read-of-octets
+                               fn-bpnpf-profile-read-of-format-1))))
+
+;; The two arms of the reading, then the base of any profile 3.
+(local
+ (defthm fn-bpnpf-append-rotate-of-profile
+   (implies (fn-bpnpf-profilep p)
+            (equal (append p (list x))
+                   (list (car p) (cadr p) (caddr p) (cadddr p) x)))
+   :hints (("Goal" :in-theory (enable fn-bpnpf-profilep)
+            :expand ((append p (list x)) (append (cdr p) (list x))
+                     (append (cddr p) (list x))
+                     (append (cdddr p) (list x))
+                     (append (cddddr p) (list x))
+                     (len p) (len (cdr p)) (len (cddr p)) (len (cdddr p))
+                     (len (cddddr p)))))))
+
+(local
+ (defthm fn-bpnpf-node-profile-read-older-branch-by-definition
+   (implies (fn-bpnpf-profile-read present bytes)
+            (equal (fn-bpnpf-node-profile-read present bytes)
+                   (append (fn-bpnpf-profile-read present bytes)
+                           (list *fn-bpnpf-default-rotate*))))
+   :hints (("Goal" :in-theory (disable fn-bpnpf-profile-read)))))
+
+(local
+ (defthm fn-bpnpf-node-profile-read-older-arm
+   (implies (fn-bpnpf-profile-read present bytes)
+            (fn-bpnpf-node-profilep (fn-bpnpf-node-profile-read present bytes)))
+   :hints (("Goal" :use ((:instance fn-bpnpf-profile-read-is-valid)
+                         (:instance fn-bpnpf-append-rotate-of-profile
+                                    (p (fn-bpnpf-profile-read present bytes))
+                                    (x *fn-bpnpf-default-rotate*)))
+            :in-theory (e/d (fn-bpnpf-profilep)
+                            (fn-bpnpf-profile-read
+                             fn-bpnpf-profile-read-is-valid
+                             fn-bpnpf-append-rotate-of-profile
+                             fn-frame-fields-parse))))))
+
+(local
+ (defthm fn-bpnpf-node-profile-read-format-3-arm
+   (implies (and (not (fn-bpnpf-profile-read present bytes))
+                 (fn-bpnpf-node-profile-read present bytes))
+            (fn-bpnpf-node-profilep (fn-bpnpf-node-profile-read present bytes)))
+   :hints (("Goal" :in-theory (disable fn-bpnpf-profile-read
+                                       fn-frame-fields-parse)))))
+
+(defthm fn-bpnpf-node-profile-base-is-a-profile
+  (implies (fn-bpnpf-node-profilep p)
+           (fn-bpnpf-profilep (fn-bpnpf-node-profile-base p)))
+  :hints (("Goal" :in-theory (enable fn-bpn-nth))))
+
+; What the node reads is always a valid profile 3 or a refusal, and its base
+; is a valid profile 2 (what the admission and the machine read).
+(defthm fn-bpnpf-node-profile-read-is-valid
+  (let ((p (fn-bpnpf-node-profile-read present bytes)))
+    (implies p
+             (and (fn-bpnpf-node-profilep p)
+                  (fn-bpnpf-profilep (fn-bpnpf-node-profile-base p)))))
+  :hints (("Goal" :cases ((fn-bpnpf-profile-read present bytes))
+           :in-theory (disable fn-bpnpf-profile-read fn-bpnpf-node-profile-read
+                               fn-bpnpf-node-profilep fn-bpnpf-profilep
+                               fn-bpnpf-node-profile-base))))
+
+; Keystone: an admitted write never lowers a held or codec field in force,
+; and it is read back as written.
+(defthm fn-bpnpf-node-profile-write-never-lowers
+  (let ((w (fn-bpnpf-node-profile-write-octets old rows octets adu bundle
+                                               rotate)))
+    (implies w
+             (and (equal (fn-bpnpf-node-profile-read t w)
+                         (list rows octets adu bundle rotate))
+                  (<= (car old) rows) (<= (cadr old) octets)
+                  (<= (caddr old) adu) (<= (cadddr old) bundle))))
+  :hints (("Goal" :in-theory (disable fn-bpnpf-node-profile-read
+                                      fn-bpnpf-node-profile-octets))))

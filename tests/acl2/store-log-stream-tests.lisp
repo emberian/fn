@@ -194,3 +194,37 @@
      (and (equal records nil)
           (equal (fn-lgw-pos st) 0)
           (equal (fn-lgw-broken st) t)))))
+
+; -----------------------------------------------------------------------------
+; The batch body's guard-verified unpack (lane snapshot-open-2).
+; fn-lgw-unpack-is-unpack, fn-lgw-unpack-exactp-is-exactp and
+; fn-lgw-unpack-okp-is-okp have no hypothesis.  REACHABLE: the batch entry's
+; body (the payload after the chain trailer) unpacks to the three records by
+; both, and is accepted by both; a body cut inside its last record is refused
+; by both (not exact), and a lone record's packing is refused by both (a batch
+; holds at least two).  The step's decision runs the twins compiled.
+(defun slw-batch-body () (declare (xargs :guard t :verify-guards nil))
+  (fn-lg-pack (list (slw-rec 1) (slw-rec 2) (slw-rec 3))))
+
+(assert-event
+ (let ((x (slw-batch-body)))
+   (and (fn-cbor-octet-listp x)
+        (equal (fn-lgw-unpack x) (list (slw-rec 1) (slw-rec 2) (slw-rec 3)))
+        (equal (fn-lgw-unpack x) (fn-lg-unpack x))
+        (fn-lgw-unpack-exactp x)
+        (fn-lgw-unpack-okp x (slw-max))
+        (equal (fn-lgw-unpack-okp x (slw-max)) (fn-lg-unpack-okp x (slw-max)))
+        (let ((cut (fn-bs-take (- (len x) 1) x)))
+          (and (not (fn-lgw-unpack-exactp cut))
+               (equal (fn-lgw-unpack-exactp cut) (fn-lg-unpack-exactp cut))
+               (not (fn-lgw-unpack-okp cut (slw-max)))))
+        (let ((one (fn-lg-pack (list (slw-rec 1)))))
+          (and (fn-lgw-unpack-exactp one)
+               (not (fn-lgw-unpack-okp one (slw-max)))
+               (equal (fn-lgw-unpack-okp one (slw-max)) (fn-lg-unpack-okp one (slw-max))))))))
+
+(assert-event
+ (and (eq (symbol-class 'fn-lgw-unpack (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-lgw-unpack-exactp (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-lgw-unpack-okp (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-lgw-decide (w state)) :common-lisp-compliant)))

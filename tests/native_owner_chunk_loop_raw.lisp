@@ -127,8 +127,8 @@
 ;; The transport, one attempt each (fnn-mux-receive-now, fnn-mux-write-now):
 ;; a read takes the next scripted chunk (empty when the script ends: the
 ;; peer closed); a write takes the whole reply.
-(defun fnn-mux-receive-now (service conn)
-  (declare (ignore service conn))
+(defun fnn-mux-receive-now (service loop conn)
+  (declare (ignore service loop conn))
   (incf *read-count*)
   (if *reads* (pop *reads*) (fnn-make-octets 0)))
 (defun fnn-mux-write-now (conn)
@@ -184,8 +184,14 @@
 (defun fnn-owner-octets-global (name)
   (ecase name (fn-owner-output *output*)))
 (defun fnn-core (name &rest args)
-  (declare (ignore args))
+  (declare (ignorable args))
   (ecase name
+    ;; books/clock-wall-reading.lisp fn-otm-wall-reading, the stub the
+    ;; image's ACL2 answers (lane time-model-2: the wall clock's validity).
+    (fn-otm-wall-reading
+     (destructuring-bind (seconds microseconds offset) args
+       (let ((wall (+ (* 1000 (- seconds offset)) (floor microseconds 1000))))
+         (if (minusp wall) (list 0 nil) (list wall t)))))
     (fn-splan-step-p t)
     (fn-splan-step-closep (second *step*))
     (fn-splan-step-starttlsp (third *step*))
@@ -212,6 +218,7 @@
             +fnn-owner-wall-error-ms+ +fnn-owner-unix-dtn-offset-seconds+
             fnn-owner-wall-milliseconds)
            ("host/native/owner.lisp"
+            *fnn-owner-time-service* fnn-owner-monotonic-ms
             fnn-owner-advance-clock fnn-owner-handle-chunk fnn-owner-exposure-idle)
            ("host/native/mux.lisp"
             +fnn-mux-send-seconds+ +fnn-mux-idle-seconds+ +fnn-mux-drain-seconds+
@@ -228,7 +235,7 @@
         (loop for form = (read stream nil :eof)
               until (eq form :eof)
               when (and (consp form)
-                        (member (car form) '(defun defconstant defmacro defstruct))
+                        (member (car form) '(defun defconstant defmacro defstruct defvar))
                         (member (if (consp (cadr form)) (car (cadr form)) (cadr form))
                                 wanted))
                 do (eval form)

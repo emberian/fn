@@ -229,7 +229,8 @@
   (fn-native-operator-preflight-needs-config-path-p result))
 
 (defun fn-native-operator-host-mission-run (path-octets argv-octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program
+                  :guard (fn-cbor-octet-listp path-octets)))
   (fn-native-operator-mission-run path-octets argv-octets))
 
 (defun fn-native-operator-host-mission-outcome (result existsp)

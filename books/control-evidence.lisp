@@ -232,6 +232,7 @@
 
 ; RECEIVED is the envelope's octets: a key record's effect (the :poster arm,
 ; RFC 8315 Cancel-Lock, SEC-006) reads the target's locks from them.
+(fn-payload-kind fn-cev-withdrawn-by-some :handle "passes the payload to fn-ctl-withdrawal-effect, which ignores it")
 (defun fn-cev-withdrawn-by-some (msgid ws groups verdict received)
   (declare (xargs :guard t))
   (if (consp ws)

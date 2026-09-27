@@ -3516,7 +3516,7 @@
     {
       "id": "PRF-081",
       "title": "BP journal rotation: recovery from a selected held-row checkpoint equals recovery over the whole history, and every publication cut leaves one authority",
-      "statement": "fn-bpnr-recover-from-checkpoint-equals-full-recover (restated for N16-F1, lane bp-n16-prod): for every authority plan0 that is not damaged, whose ordered received-final rows replay :ready, the projection ck1 of that replay (a checkpoint), E the epoch field of the recovery event over plan0 and the rows, and the file of the checkpoint the rotation publishes, fn-bpnr-rotation-checkpoint ck1 E (operation frontier (E . 0), the rotation's own id; what fn-bpnp-rotate-step's effect carries and host/native/bp-service.lisp fnn-bps-publish-generation writes): fn-bpnr-recover-auto-event (the event fnn-bps-open passes to fn-bpnp-step) over that file with no later rows names epoch E + 1 with the old replay at frontier (E . 0) and row count 0, so no operation after the reopen reuses the rotation's id; over later rows that start after (E . 0) it equals the event over plan0 and the concatenated rows with field 5 set to the later rows' count. fn-bpnr-rotation-crash-recovers-old-or-new: at every phase of the publication driver fn-bpnr-publish-action/-step/-outcome (followed by fnn-bps-publish-generation) and for either outcome of an atomic rename, the visible selection file is the old or the new one, before the rename may have been issued it is the old one, and under the new one recovery with no rows is the reopen event above. fn-bpnp-rotate-step-proposes-only-own-projection: a proposal carries fn-bpnr-rotation-checkpoint of the state's own projection, from a quiescent state, and its file exists. fn-bpnr-retirement-cut-keeps-open-view: when the root's selection file selects G and no other name the open reads is retired, the open's view (selection plan, selected directory, the other names) after any prefix of fn-bpnr-retire-ops (the removal program host/native/bp-service.lisp fnn-bps-retire-generations runs step by step: older generation directories and killed rotations' staged selections) equals the view before it; fn-bpnr-retired-names-never-the-selected-directory. fn-bpnr-checkpoint-decode-of-octets: every file fn-bpnr-checkpoint-octets writes decodes to its checkpoint. Covered scope: one atomically renamed kind-19 file; the chunked kinds 19 plus a manifest kind, the :quiesce event and the empty new-generation premise are not modelled; the removal model is a name-to-entry alist, not K0's byte store; the codec runs on octet lists (no D27 concrete twin); a killed rotation's unselected new-generation directory is kept (never reused).",
+      "statement": "fn-bpnr-recover-from-checkpoint-equals-full-recover (restated for N16-F1, lane bp-n16-prod): for every authority plan0 that is not damaged, whose ordered received-final rows replay :ready, the projection ck1 of that replay (a checkpoint), E the epoch field of the recovery event over plan0 and the rows, and the file of the checkpoint the rotation publishes, fn-bpnr-rotation-checkpoint ck1 E (operation frontier (E . 0), the rotation's own id; what fn-bpnp-rotate-step's effect carries and host/native/bp-service.lisp fnn-bps-publish-generation writes): fn-bpnr-recover-auto-event (the event fnn-bps-open passes to fn-bpnp-step) over that file with no later rows names epoch E + 1 with the old replay at frontier (E . 0) and row count 0, so no operation after the reopen reuses the rotation's id; over later rows that start after (E . 0) it equals the event over plan0 and the concatenated rows with field 5 set to the later rows' count. fn-bpnr-rotation-crash-recovers-old-or-new: at every phase of the publication driver fn-bpnr-publish-action/-step/-outcome (followed by fnn-bps-publish-generation) and for either outcome of an atomic rename, the visible selection file is the old or the new one, before the rename may have been issued it is the old one, and under the new one recovery with no rows is the reopen event above. fn-bpnp-rotate-step-proposes-only-own-projection: a proposal carries fn-bpnr-rotation-checkpoint of the state's own projection, from a quiescent state, and its file exists. fn-bpnr-retirement-cut-keeps-open-view: when the root's selection file selects G and no other name the open reads is retired, the open's view (selection plan, selected directory, the other names) after any prefix of fn-bpnr-retire-ops (the removal program host/native/bp-service.lisp fnn-bps-retire-generations runs step by step: older generation directories and killed rotations' staged selections) equals the view before it; fn-bpnr-retired-names-never-the-selected-directory. fn-bpnr-checkpoint-decode-of-octets: every file fn-bpnr-checkpoint-octets writes decodes to its checkpoint. Covered scope: one atomically renamed kind-19 file; the chunked kinds 19 plus a manifest kind, the :quiesce event and the empty new-generation premise are not modelled; the removal model is a name-to-entry alist, not K0's byte store; the codec runs on octet lists (no D27 concrete twin); a killed rotation's unselected new-generation directory is kept (never reused). Natural rotation (lane bp-rotation, 2026-09-27; books/bp-node-rotation-due.lisp): host/native/bp-node.lisp fnn-bps-rotate-when-due, called at the open of bp-node serve and dispatch (fnn-bps-open-node), drives fn-bpnrd-due-rotation-event's answer. fn-bpnrd-due-rotation-event-by-definition: it answers (:rotate G CK) exactly when the profile is a profile 3, the recovered generation's record count has reached its rotation threshold and the state is quiescent, with G above the selected generation and CK the checkpoint of the open's recovery event (the event `bp-node checkpoint` drives). fn-bpnrd-due-rotation-preserves-recovery: when the open drove the host's recovery event (fn-bpnr-recover-auto-event over ROWS0 and a non-damaged PLAN0 whose replay is :ready, with a clock-domain decision appended), the machine state is at that event's epoch E, and fn-bpnp-rotate-step proposes the due event's publication, the published checkpoint read back at the machine's depth budget recovers with no later rows epoch E + 1 with the old replay at frontier (E . 0) and row count 0, and over later rows that start after (E . 0) the event over PLAN0 and the concatenated rows with field 5 set to their count. The state/epoch premise is a hypothesis (the recovery arm's installation of the epoch is not restated). The publication and retirement programs are the operator rotation's, so the crash and retirement keystones above cover every cut of it.",
       "milestone": "M4",
       "requirements": [
         "REP-005",
@@ -3557,9 +3557,13 @@
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T063856Z-608753.json",
         "planning/evidence/manifests/certify-20260926T061654Z-546487.json",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "books/bp-node-rotation-due.lisp",
+        "tests/acl2/bp-node-rotation-due-tests.lisp",
+        "tests/test_bp_fragment_node_native.py",
+        "planning/evidence/bp-rotation-2026-09-27.md"
       ],
-      "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2. Lane bp-n16-prod (2026-09-25): N16-F1 repaired (the published checkpoint's frontier is the rotation's own id; the recovery keystone restated with the event's epoch), and old generations retired by an ACL2 program whose every prefix is a model crash point; teeth in tests/acl2/bp-node-counterexamples-tests (N16 section, over real kind-5 rows) and tests/acl2/bp-node-retire-tests.",
+      "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2. Lane bp-n16-prod (2026-09-25): N16-F1 repaired (the published checkpoint's frontier is the rotation's own id; the recovery keystone restated with the event's epoch), and old generations retired by an ACL2 program whose every prefix is a model crash point; teeth in tests/acl2/bp-node-counterexamples-tests (N16 section, over real kind-5 rows) and tests/acl2/bp-node-retire-tests. Lane bp-rotation (2026-09-27, F7): natural rotation by a profile threshold at a node verb's open; teeth in tests/acl2/bp-node-rotation-due-tests (reachable witness over N16's real rows through fn-bpnp-step with a clock-domain decision; must-fails for later rows at the rotation's id, and corrupted-state witnesses for the publication and epoch premises); tests/test_bp_fragment_node_native's rotation test runs on production and developer images with no developer cut.",
       "events": [
         "fn-bpnr-recover-from-checkpoint-equals-full-recover",
         "fn-bpnr-rotation-crash-recovers-old-or-new",
@@ -3567,7 +3571,9 @@
         "fn-bpnr-family-replay-aux-append",
         "fn-bpnp-rotate-step-proposes-only-own-projection",
         "fn-bpnr-retirement-cut-keeps-open-view",
-        "fn-bpnr-retired-names-never-the-selected-directory"
+        "fn-bpnr-retired-names-never-the-selected-directory",
+        "fn-bpnrd-due-rotation-event-by-definition",
+        "fn-bpnrd-due-rotation-preserves-recovery"
       ]
     },
     {
@@ -5492,7 +5498,7 @@
     {
       "id": "PRF-134",
       "title": "A BP node's ADU octets and bundle octets are the operator's profile, the held image's bound is its held octets, and the ADU, bundle and held-image codecs are widths that never cap below a profile",
-      "statement": "books/bp-node-profile.lisp: profile 2 is (ROWS OCTETS ADU BUNDLE), each a machine limit (1..2^24). fnn-bps-open reads bp-node-profile through fn-bpnpf-profile-read. fn-bpnpf-profile-read-of-octets: every valid profile 2 written by fn-bpnpf-profile-octets reads back as exactly itself. fn-bpnpf-profile-read-of-format-1: a format-1 frame of a valid (ROWS OCTETS) reads as (ROWS OCTETS 65538 1048576), and no file is the default. fn-bpnpf-profile-read-is-valid. fn-bpnpf-profile-write-never-lowers: a write bp-node profile publishes (fn-bpnpf-profile-write-octets) reads back as written and raises or keeps each of the four fields. books/bp-node-profile-admission.lisp: host/native/bp-service.lisp fnn-bps-receive calls fn-bpnpf-admitted-receive-event with the profile in force. fn-bpnpf-admission-within-profile-is-the-channel-answer: with a valid profile, a wire within the bundle octets and (if :ready) a bundle whose ADU (a fragment's total ADU length) is within the ADU octets, the answer is fn-bpaj-admitted-receive-event's (PRF-128). fn-bpnpf-admission-ready-is-within-profile: a :ready answer has a valid profile, a wire within its bundle octets, an ADU within its ADU octets, and is the channel answer. fn-bpnpf-admission-refuses-beyond-the-profile: on an admitted channel, a wire past the bundle octets is (:refused :bundle-beyond-profile) and a :ready bundle whose ADU is past the ADU octets is (:refused :adu-beyond-profile). fn-bpnpf-profile-within-codec-widths: every profile field is within its codec's width (*fn-bpa-max-octets*, *fn-bpb-max-data*, *fn-bpb-max-input*, *fn-bpnf-max-held-image* = 2^24; *fn-bpn-lifecycle-max-payload* = 2^24 + 3072). books/bp-node-profile-replay.lisp: fn-bpnpf-replay-past-the-octets-is-refused: after any prefix replaying :ready, a well-formed received row whose image does not fit the profile's held octets beside the held rows makes fn-bpnf-family-replay-rows-aux over the whole journal (:fault :held-beyond-profile). books/bp-adu.lisp: the ADU's fields are record items (fn-record-item-encode: the generic CBOR bytes at or below 65,535 octets), the article width is *fn-bpa-max-article* = 2^24 - 2106, and fn-bpa-round-trip and fn-bpa-encoding-bound hold at that width (their statements unchanged). books/bp-limits.lisp: fn-bpn-limits-compose-at-the-codec-widths replaces fn-bpn-limits-compose. fn-bpfw-reassemble-is-spec (PRF-121) is unchanged. Scope: the sender machine's job image stays the plain :blob (131,072); decoding a held family image at replay is one step linear in its octets, not a resumable quantum (PKT-294).",
+      "statement": "books/bp-node-profile.lisp: profile 2 is (ROWS OCTETS ADU BUNDLE), each a machine limit (1..2^24). fnn-bps-open reads bp-node-profile through fn-bpnpf-profile-read. fn-bpnpf-profile-read-of-octets: every valid profile 2 written by fn-bpnpf-profile-octets reads back as exactly itself. fn-bpnpf-profile-read-of-format-1: a format-1 frame of a valid (ROWS OCTETS) reads as (ROWS OCTETS 65538 1048576), and no file is the default. fn-bpnpf-profile-read-is-valid. fn-bpnpf-profile-write-never-lowers: a write bp-node profile publishes (fn-bpnpf-profile-write-octets) reads back as written and raises or keeps each of the four fields. books/bp-node-profile-admission.lisp: host/native/bp-service.lisp fnn-bps-receive calls fn-bpnpf-admitted-receive-event with the profile in force. fn-bpnpf-admission-within-profile-is-the-channel-answer: with a valid profile, a wire within the bundle octets and (if :ready) a bundle whose ADU (a fragment's total ADU length) is within the ADU octets, the answer is fn-bpaj-admitted-receive-event's (PRF-128). fn-bpnpf-admission-ready-is-within-profile: a :ready answer has a valid profile, a wire within its bundle octets, an ADU within its ADU octets, and is the channel answer. fn-bpnpf-admission-refuses-beyond-the-profile: on an admitted channel, a wire past the bundle octets is (:refused :bundle-beyond-profile) and a :ready bundle whose ADU is past the ADU octets is (:refused :adu-beyond-profile). fn-bpnpf-profile-within-codec-widths: every profile field is within its codec's width (*fn-bpa-max-octets*, *fn-bpb-max-data*, *fn-bpb-max-input*, *fn-bpnf-max-held-image* = 2^24; *fn-bpn-lifecycle-max-payload* = 2^24 + 3072). books/bp-node-profile-replay.lisp: fn-bpnpf-replay-past-the-octets-is-refused: after any prefix replaying :ready, a well-formed received row whose image does not fit the profile's held octets beside the held rows makes fn-bpnf-family-replay-rows-aux over the whole journal (:fault :held-beyond-profile). books/bp-adu.lisp: the ADU's fields are record items (fn-record-item-encode: the generic CBOR bytes at or below 65,535 octets), the article width is *fn-bpa-max-article* = 2^24 - 2106, and fn-bpa-round-trip and fn-bpa-encoding-bound hold at that width (their statements unchanged). books/bp-limits.lisp: fn-bpn-limits-compose-at-the-codec-widths replaces fn-bpn-limits-compose. fn-bpfw-reassemble-is-spec (PRF-121) is unchanged. Scope: the sender machine's job image stays the plain :blob (131,072); decoding a held family image at replay is one step linear in its octets, not a resumable quantum (PKT-294). Profile 3 (lane bp-rotation, 2026-09-27): (ROWS OCTETS ADU BUNDLE ROTATE), ROTATE the rotation threshold (a machine limit, which may be lowered). fnn-bps-read-profile reads through fn-bpnpf-node-profile-read; the machine and the admission read its base (fn-bpnpf-node-profile-base). fn-bpnpf-node-profile-read-of-octets: every valid profile 3 written by fn-bpnpf-node-profile-octets reads back as itself. fn-bpnpf-node-profile-read-of-older: whatever fn-bpnpf-profile-read admits (formats 1 and 2, no file) reads with the default threshold 4,096. fn-bpnpf-node-profile-read-is-valid, fn-bpnpf-node-profile-base-is-a-profile. fn-bpnpf-node-profile-write-never-lowers: a write bp-node profile publishes (fn-bpnpf-node-profile-write-octets) reads back as written and raises or keeps each held and codec field.",
       "milestone": "M4",
       "requirements": [
         "REP-008",
@@ -5529,7 +5535,8 @@
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T063856Z-608753.json",
         "planning/evidence/manifests/certify-20260926T061654Z-546487.json",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "planning/evidence/bp-rotation-2026-09-27.md"
       ],
       "progress_note": "Lane bp-lifecycle-4 (2026-09-26, wave 2), PKT-276's codec items, PKT-294. See the record.",
       "events": [
@@ -5549,7 +5556,12 @@
         "fn-bpa-encoding-bound",
         "fn-bpnpf-restart-names-held-beyond-profile",
         "fn-bpnf-family-without-offset-zero-is-not-ready",
-        "fn-bpnf-family-next-memo-is-aux"
+        "fn-bpnf-family-next-memo-is-aux",
+        "fn-bpnpf-node-profile-read-of-octets",
+        "fn-bpnpf-node-profile-read-of-older",
+        "fn-bpnpf-node-profile-read-is-valid",
+        "fn-bpnpf-node-profile-base-is-a-profile",
+        "fn-bpnpf-node-profile-write-never-lowers"
       ]
     },
     {
@@ -10139,7 +10151,7 @@
         "PRF-221"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-arp-add-page-step",
         "fn-arp-write-octet-step",
@@ -11065,8 +11077,8 @@
     },
     {
       "id": "PRF-311",
-      "title": "A batch barrier is a request with a deadline and the disk's mode is ACL2's over recorded time: reads and status never wait on a pending barrier, a deadline never tells a member anything, and a POST arriving while the disk is slow is refused try-later with the reason exactly when health says so",
-      "statement": "Subjects: fn-otm-next, fn-otm-observe, fn-otm-commit-event, fn-otm-committer-wake (host/native/owner.lisp fnn-owner-gate-pick, fnn-owner-gate-leave, fnn-owner-commit-event, fnn-owner-commit-wake), fn-otm-disk-event (fnn-owner-disk-event: the committer's :issue at the syncer's start, :clock at each expiry of its timed wait, :return at the completion it observes; :clock on demand before a POST admission and a health/status render), fn-otm-wait-ms (fnn-owner-disk-wait-ms), fn-otm-admit-post (fnn-owner-disk-admit, in the served read quantum that queued a POST), fn-otm-disk-lines / fn-otm-health-lines (host/native-live-status-host.lisp). KEYSTONE fn-otm-barrier-reader-bound (books/owner-time-model.lisp): for S with the pipeline's phase :staged (the barrier pending) and every sequence WS of pick observations (W EVENT) with a reader waiting at every pick and the commit class waiting only when the committer's wake is :start-next (fn-otm-barrier-walk-okp), the quanta picked before the first :reader pick (fn-otm-barrier-walk) contain no control, poster or transit quantum, at most one :commit whose event is :next-started, and at most one more :inspect than :commit; EVENT is unconstrained and the device's latency is not a quantity of the walk. KEYSTONE fn-otm-disk-event-keeps-the-pipeline: every disk event leaves the pipeline's value unchanged (so fn-ocs-members-told-only-after-the-barrier and fn-ocp-complete-only-after-the-barrier hold of every run with deadlines: a deadline never tells a member anything). fn-otm-next-is-ocp-next, fn-otm-commit-event-is-ocp-commit-event, fn-otm-observe-keeps-the-disk: the pipeline's keystones (PRF-248, PRF-267, PRF-272, PRF-288) hold of the host's calls. fn-otm-recorded-time-is-monotone (the recorded time is the max of the readings; a lower reading increments the regression count and moves nothing); fn-otm-shed-only-past-the-deadline and fn-otm-past-the-deadline-sheds (a POST is shed exactly while a barrier is pending D or more at the recorded time); fn-otm-shed-iff-slow (shed iff the health/status disk line says disk slow); fn-otm-return-recovers, fn-otm-clock-event-never-issues (the completion is the recovery; no clock event re-enters slow without a new barrier); fn-otm-return-records-the-latency; fn-otm-wait-reaches-the-deadline (a clock event WAIT-MS after the recorded time finds the barrier past its deadline and enters :slow once); fn-otm-issue-only-when-none-pending, fn-otm-issue-is-pending-and-admits. Hypotheses of the wall-clock reading (stated, not proved): the store commits through the record log (format 9); the quanta admitted during a barrier contain no I/O wait (true of :inspect, :reader and START-NEXT; the inline barrier of :control/:poster/:transit quanta is not admitted in flight, PKT-825 (c)); the served read's octets are in memory; the committer thread is scheduled (its clock events can be late, never early).",
+      "title": "A batch barrier is a request with a deadline and the disk's mode is ACL2's over recorded time: reads and status never wait on a pending barrier, a deadline never tells a member anything, and a POST arriving while the disk is slow is refused try-later with the reason exactly when health says so; past the stall deadline H every poster of the batch in flight is told uncertain, never accepted or refused, within H plus one committer wake (F4-W)",
+      "statement": "Subjects: fn-otm-next, fn-otm-observe, fn-otm-commit-event, fn-otm-committer-wake (host/native/owner.lisp fnn-owner-gate-pick, fnn-owner-gate-leave, fnn-owner-commit-event, fnn-owner-commit-wake), fn-otm-disk-event (fnn-owner-disk-event: the committer's :issue at the syncer's start, :clock at each expiry of its timed wait, :return at the completion it observes; :clock on demand before a POST admission and a health/status render), fn-otm-wait-ms (fnn-owner-disk-wait-ms), fn-otm-admit-post (fnn-owner-disk-admit, in the served read quantum that queued a POST), fn-otm-disk-lines / fn-otm-health-lines (host/native-live-status-host.lisp). KEYSTONE fn-otm-barrier-reader-bound (books/owner-time-model.lisp): for S with the pipeline's phase :staged (the barrier pending) and every sequence WS of pick observations (W EVENT) with a reader waiting at every pick and the commit class waiting only when the committer's wake is :start-next (fn-otm-barrier-walk-okp), the quanta picked before the first :reader pick (fn-otm-barrier-walk) contain no control, poster or transit quantum, at most one :commit whose event is :next-started, and at most one more :inspect than :commit; EVENT is unconstrained and the device's latency is not a quantity of the walk. KEYSTONE fn-otm-disk-event-keeps-the-pipeline: every disk event leaves the pipeline's value unchanged (so fn-ocs-members-told-only-after-the-barrier and fn-ocp-complete-only-after-the-barrier hold of every run with deadlines: a deadline never tells a member anything). fn-otm-next-is-ocp-next, fn-otm-commit-event-is-ocp-commit-event, fn-otm-observe-keeps-the-disk: the pipeline's keystones (PRF-248, PRF-267, PRF-272, PRF-288) hold of the host's calls. fn-otm-recorded-time-is-monotone (the recorded time is the max of the readings; a lower reading increments the regression count and moves nothing); fn-otm-shed-only-past-the-deadline and fn-otm-past-the-deadline-sheds (a POST is shed exactly while a barrier is pending D or more at the recorded time); fn-otm-shed-iff-slow (shed iff the health/status disk line says disk slow); fn-otm-return-recovers, fn-otm-clock-event-never-issues (the completion is the recovery; no clock event re-enters slow without a new barrier); fn-otm-return-records-the-latency; fn-otm-wait-reaches-the-deadline (a clock event WAIT-MS after the recorded time finds the barrier past its deadline and enters :slow once); fn-otm-issue-only-when-none-pending, fn-otm-issue-is-pending-and-admits. Hypotheses of the wall-clock reading (stated, not proved): the store commits through the record log (format 9); the quanta admitted during a barrier contain no I/O wait (true of :inspect, :reader and START-NEXT; the inline barrier of :control/:poster/:transit quanta is not admitted in flight, PKT-825 (c)); the served read's octets are in memory; the committer thread is scheduled (its clock events can be late, never early). Slice 2 (lane time-model-2): the limits (D H C) are the live configuration's barrier-deadline-ms, barrier-stall-ms and clock-event-ms rows (host/owner-host.lisp fn-owner-barrier-limits; fn-otm-limits: defaults 5,000 / 30,000 / 1,000 ms, H read as at least D), carried by the barrier's :issue. fn-otm-disk-mode is :stalled past H; fn-otm-admit-is-the-mode (shed exactly in :slow and :stalled). KEYSTONE fn-otm-stall-tells-no-member-its-outcome: fn-otm-stall-releases (host/native/owner.lisp fnn-owner-stall-release, called by the committer once per barrier when fnn-owner-disk-stalled-p) releases every member :own-uncertain, :uncertain-reply or :close, never :rendered, one per member; with fn-otm-disk-event-keeps-the-pipeline a member is told its own outcome only in a COMPLETE after a fenced barrier, and a member told at the stall is dropped from the COMPLETE's releases (fnn-owner-unreleased). KEYSTONE fn-otm-f4w-stall-within-h: from a pending barrier not past H (since at most the recorded time), committer clock events each at most its wait (fn-otm-wait-ms) plus LATE after the recorded time (fn-otm-clock-run-okp) enter :stalled at a reading at most since + H + LATE, and until one does every reading is before since + H; fn-otm-wait-stays-within-the-stall (the wait never reaches past H). fn-otm-return-after-a-stall-is-named (the completion after a stall answers :recovered-from-stall). Hypotheses stated, not proved: the committer is not blocked on the device (the syncer is); LATE bounds the scheduler's lateness of one timed wait; the committer appends a clock event at every wake while a barrier is pending (host). Not claimed: that the since-at-most-now hypothesis is needed (no counterexample found; the weakened statement is not yet proved).",
       "milestone": "M5",
       "requirements": [
         "HST-026"
@@ -11086,9 +11098,12 @@
         "host/native-live-status-host.lisp",
         "tests/test_native_slow_disk.py",
         "planning/design-time-model-2026-09-27.md",
-        "planning/evidence/time-model-2026-09-27.md"
+        "planning/evidence/time-model-2026-09-27.md",
+        "books/owner-time-journal.lisp",
+        "host/native/control.lisp",
+        "planning/evidence/time-model-2-2026-09-27.md"
       ],
-      "progress_note": "Lane time-model (Opus 5.5, 2026-09-27): slice 1 of planning/design-time-model-2026-09-27.md. REPL-admitted on hbox (book and test book; ACL2 time 3.1 s with its includes). Teeth: tests/acl2/owner-time-model-tests.lisp (prefix otmt-): a reached run (START, issue at 1,000 ms, clock events, a 30 s stall, the completion), each keystone's complete antecedent and conclusion, and one removal witness per hypothesis of fn-otm-barrier-reader-bound (the barrier not pending: a mutating control quantum runs; a reader not waiting: three :inspect quanta with no :commit; the commit waiting past its wake: a second START-NEXT) and of fn-otm-wait-reaches-the-deadline.",
+      "progress_note": "Lane time-model (Opus 5.5, 2026-09-27): slice 1 of planning/design-time-model-2026-09-27.md. REPL-admitted on hbox (book and test book; ACL2 time 3.1 s with its includes). Teeth: tests/acl2/owner-time-model-tests.lisp (prefix otmt-): a reached run (START, issue at 1,000 ms, clock events, a 30 s stall, the completion), each keystone's complete antecedent and conclusion, and one removal witness per hypothesis of fn-otm-barrier-reader-bound (the barrier not pending: a mutating control quantum runs; a reader not waiting: three :inspect quanta with no :commit; the commit waiting past its wake: a second START-NEXT) and of fn-otm-wait-reaches-the-deadline. Lane time-model-2 (2026-09-27): slice 2 (H, the stall release, F4-W, the cadence as a profile field); REPL-admitted on hbox (the book 4.4 s ACL2 time from source); teeth in tests/acl2/owner-time-model-tests.lisp (prefix t2-); native SCN-182 extended; record planning/evidence/time-model-2-2026-09-27.md.",
       "events": [
         "fn-otm-barrier-reader-bound",
         "fn-otm-disk-event-keeps-the-pipeline",
@@ -11104,7 +11119,12 @@
         "fn-otm-return-records-the-latency",
         "fn-otm-wait-reaches-the-deadline",
         "fn-otm-issue-only-when-none-pending",
-        "fn-otm-issue-is-pending-and-admits"
+        "fn-otm-issue-is-pending-and-admits",
+        "fn-otm-admit-is-the-mode",
+        "fn-otm-return-after-a-stall-is-named",
+        "fn-otm-stall-tells-no-member-its-outcome",
+        "fn-otm-wait-stays-within-the-stall",
+        "fn-otm-f4w-stall-within-h"
       ]
     },
     {
@@ -11337,6 +11357,152 @@
         "tests/test_native_peer_pull.py"
       ],
       "progress_note": "Lane friend-path-2 (Opus 5.5, 2026-09-27): `pull ... round=failed cursor=held at=preamble' named no reason in the friend rehearsal (a 481 after set-password). planning/evidence/friend-path-2-2026-09-27.md."
+    },
+    {
+      "id": "PRF-320",
+      "title": "The frame digest over a window of an octet buffer: SHA-256 of a prefix and buffer[a, a+wn) read in place, attached as fn-frame-digest-range, and the checkpoint reader's frame seal over it",
+      "statement": "books/sha256-range.lisp: fn-sha256-of-prefixed-range PREFIX A WN BUF reads the window by index with a base offset (KEYSTONE fn-sha256-of-prefixed-range-is-sha256: it is fn-sha256 of (append PREFIX (fn-shr-win A WN BUF)), no hypothesis; fn-shr-win-is-slice relates the window to fn-oct-slice-list inside the buffer). books/frame-digest-buffer.lisp: the constrained fn-frame-digest-range (KEYSTONE fn-frame-digest-range-is-the-frame-digest), attached together with fn-frame-digest and fn-frame-digest-buffer in one defattach (the obligation is fn-sha256-of-prefixed-range-any-is-sha256). books/store-checkpoint-reader.lisp: fn-sccr-open-frame's seal is an mbe whose exec fn-sccr-window-seal digests the frame's window in place, never slicing it (fn-sccr-window-seal-is-seal: equal to fn-scc-seal over the slice on a live buffer, an in-range window and an octet header). Host subject: host/native/io.lisp fnn-state-checkpoint-load-arena calls fn-store-sco-decode and fn-store-sco-decode-finish (host/store-node-host.lisp), whose reader is fn-sccr-join over fn-sccr-open-frame. NOT done: the log walk's entry check (fn-lgw-decide) still frames and digests the entry as a list.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010",
+        "REP-014"
+      ],
+      "depends_on": [
+        "PRF-295"
+      ],
+      "assumptions": [
+        "A-CRYPTO",
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/sha256-range.lisp",
+        "books/frame-digest-buffer.lisp",
+        "books/store-checkpoint-reader.lisp",
+        "tests/acl2/sha256-range-tests.lisp",
+        "planning/evidence/snapshot-open-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane snapshot-open-2 (2026-09-27): the checkpoint open's list hashing.",
+      "events": [
+        "fn-sha256-of-prefixed-range-is-sha256",
+        "fn-frame-digest-range-is-the-frame-digest",
+        "fn-sccr-window-seal-is-seal"
+      ]
+    },
+    {
+      "id": "PRF-321",
+      "title": "The open checks the configured node once: the finalize and the drain read the fold's node as configured instead of re-checking it (five whole-node checks per open become one)",
+      "statement": "books/replay-identity-index.lisp section 7a: fn-rii-sco-finalize-configured is fn-rii-sco-finalize-from without fn-cnode-statep, without fn-replay-advance-okp's fn-node-statep (fn-rii-advance-idlep) and with fn-rii-sn-statep-carried in place of fn-rii-sn-statep (no node recognizer, no second history walk); fn-rii-sco-finalize-configured-is-finalize-from: EQUAL to the finalize whenever a successful result's node is configured. fn-rii-sco-store-open finalizes a paused fold's drain with it (fn-rii-sco-cpr-finish-ok-is-configured: the drain's successful node is configured, from fn-cpr-loop-ok-is-configured); the keystone fn-rii-sco-store-open-is-sco-store-open keeps its statement. Host subject: host/store-node-host.lisp fn-store-sn-open-extended calls fn-rii-classified-open. Section 7b: fn-rii-sco-extend-open is the extension and its classified open in one call (KEYSTONE fn-rii-sco-extend-open-is-extend-then-open, no hypothesis); after a resume over a non-empty suffix the paused node is configured (fn-rii-sco-cpr-resume-paused-node-is-configured), so the drain is fn-rii-sco-cpr-finish-configured (fn-cpr-loop without the check; fn-rii-sco-cpr-finish-configured-is-finish). Host subjects: host/store-node-host.lisp fn-store-sn-recover-rows and fn-store-sn-recover-from-checkpoint call fn-rii-sco-extend-open. NOT done: the resume's check of the decoded checkpoint's node remains (one whole-node check per checkpoint open), which a sealed snapshot retires.",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [
+        "PRF-242"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/replay-identity-index.lisp",
+        "tests/acl2/replay-identity-index-tests.lisp",
+        "planning/evidence/snapshot-open-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane snapshot-open-2 (2026-09-27): whole-state rechecks at the open.",
+      "events": [
+        "fn-rii-sco-finalize-configured-is-finalize-from",
+        "fn-rii-sco-cpr-finish-ok-is-configured",
+        "fn-rii-sco-store-open-is-sco-store-open",
+        "fn-rii-sco-extend-open-is-extend-then-open",
+        "fn-rii-sco-cpr-resume-paused-node-is-configured",
+        "fn-rii-sco-cpr-finish-configured-is-finish"
+      ]
+    },
+    {
+      "id": "PRF-319",
+      "title": "A payload handle is not octets: the retained article's and held row's payload is a handle by recognizer, disjoint from octets, and the host's every call into ACL2 refuses a wrong-kind argument or argument count by name before the entry runs",
+      "statement": "books/payload-kinds.lisp. fn-payload-handle-p (a compound recognizer for natp) types the retained payload fields (books/acceptance.lisp fn-article-payload, books/held-record.lisp fn-held-payload). KEYSTONES fn-payload-handle-is-not-octets and fn-payload-octets-are-not-a-handle: no value is both a handle and fn-cbor-octet-listp octets, so a guard naming one kind refuses the other. The host entry guard (host/native/io.lisp fnn-entry-guard, run by fnn-call, the dispatcher every fnn-core* wrapper applies) evaluates, on the actual arguments, the entry's arity and exactly the conjuncts (R v) of the entry's own ACL2 guard with R in *fn-entry-guard-kinds* and v a non-stobj formal, and raises fnn-entry-guard-fault naming the entry, the position, the formal and the kind; it never evaluates another conjunct (no whole-state revalidation). tools/harness_check.py entry-guards: every dispatched entry's byte-carrying formal is covered by a kind conjunct (111), a body-first kind test (11) or a named exemption (16); tools/payload_kind_check.py: every definition that reads a retained payload declares its kind (fn-payload-kind :handle, :source or :wire) or is a named live defect (14 waivers, PKT-857..4).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-027"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/payload-kinds.lisp",
+        "tests/acl2/payload-kinds-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_entry_guard.py",
+        "tools/harness_check.py",
+        "tools/payload_kind_check.py",
+        "planning/evidence/entry-guards-2026-09-27.md"
+      ],
+      "progress_note": "Lane entry-guards (2026-09-27). The two keystones are proved; the host entry guard is host code, witnessed by tests/test_native_entry_guard.py on the developer image (a handle, an octet vector, a wrong count, a handle in the second position: each the named fault; octets reach the entry).",
+      "events": [
+        "fn-payload-handle-is-not-octets",
+        "fn-payload-octets-are-not-a-handle"
+      ]
+    },
+    {
+      "id": "PRF-322",
+      "title": "The decision journal: every event the scheduler's disk-and-clock value takes is one journal entry, the journal reads back whole and replays to agreement from the run's start, and every decision the host asks of the value reads only what the journal determines",
+      "statement": "Subjects: fn-otm-disk-step (host/native/owner.lisp fnn-owner-disk-event: every disk and clock event, the served read's :served reading included, fnn-owner-advance-clock), fn-otm-note-step (fnn-owner-journal-note: the stall's release, members told and queued POSTs shed), fn-otm-start-line (fnn-owner-journal-open), each rendering the entry (SEQ OP READING A B C WORD) with fn-otm-jline; the host offers it to the service-log writer thread (host/native/io.lisp fnn-journal-line), which appends it to STORE/journal/decisions.fnj, never on the owner and never waited on, bounded by ACL2's sink (books/log-sink.lisp). fn-otm-disk-step-unfolds: the step's word and value are fn-otm-disk-event's. fn-otm-journal-read-of-jlines: a list of entries (naturals) rendered and read back is itself, the reader's status :whole. KEYSTONE fn-otm-journal-determines-the-decisions: for every run STEPS of the host's calls (fn-otm-run: disk events of the four kinds, notes, and the gate's fn-otm-next, fn-otm-observe and fn-otm-commit-event interleaved in any order; hypothesis fn-otm-run-okp: the host appends only :clock, :served, :issue and :return events), the journal it writes reads back :whole and fn-otm-replay from the run's start answers :agrees (every recomputed word equals the journaled one, no gap) at the run's disk and clock. fn-otm-decisions-read-only-the-journal-state: admission, mode, wait, the 441 and 440 reply lines, health's disk lines and the log lines read only the disk and the clock. fn-otm-wall-reading-shape (books/clock-wall-reading.lisp, N3 of lane proto-determinism): the wall reading's validity is ACL2's (host/native/io.lisp fnn-owner-wall-milliseconds). fn-otm-journal-report-of-a-run: the operator's replay (host/native/io.lisp `store ROOT journal' calls fn-otm-journal-report and fn-otm-journal-exit) of the journal of any such run from fn-otm-init reports status=whole replay=agrees. Not claimed: that the file on disk holds every entry (the sink drops by name under its bound: a gap replay reports as (:gap SEQ)); anything about the record log's fold (lane proto-determinism: deterministic); the served machine's own replay from the :served readings (the readings are journaled; the served transcript replay is not built).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-028"
+      ],
+      "depends_on": [
+        "PRF-311"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-time-journal.lisp",
+        "books/clock-wall-reading.lisp",
+        "tests/acl2/owner-time-model-tests.lisp",
+        "host/native/owner.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/time-model-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane time-model-2 (Opus 5.5, 2026-09-27). REPL-admitted on hbox (the book 4.6 s ACL2 time from source). Teeth (tests/acl2/owner-time-model-tests.lisp, prefix t2-): a reached run of nine interleaved host calls whose six entries are exact, read back whole and replayed to agreement; a tampered word (:diverged 3); a dropped entry (:gap 3); a run with an event kind the host never appends (:malformed 1, fn-otm-run-okp removed); two values with equal disk and clock decide alike and a different clock does not.",
+      "events": [
+        "fn-otm-journal-determines-the-decisions",
+        "fn-otm-decisions-read-only-the-journal-state",
+        "fn-otm-journal-read-of-jlines",
+        "fn-otm-disk-step-unfolds",
+        "fn-otm-wall-reading-shape",
+        "fn-otm-journal-report-of-a-run"
+      ]
+    },
+    {
+      "id": "PRF-323",
+      "title": "While the disk sheds a served read runs with posting not permitted, so a POST command is answered 440 before its article, and the node's configuration is never changed by it",
+      "statement": "Subject: fn-otm-read-span (books/owner-time-admission.lisp), which host/owner-host.lisp fn-owner-chunk-span-at calls with ADMIT, the disk's admission at the read's recorded time (host/native/owner.lisp fnn-owner-handle-chunk-read: fnn-owner-advance-clock's :served event, then fnn-owner-disk-admission). fn-otm-read-span-when-admitted-unfolds: admitted, it is fn-orr-read-span (every reader-read theorem, PRF-288/PRF-296, holds of the host's call). KEYSTONE fn-otm-read-span-while-shedding: while shedding, connection ID's read is fn-orr-read-span over the owner with that connection's injection configuration's posting bit off (the served step reads the connection's snapshot, books/owner.lisp fn-own-served-conn; its effects are that read's), and afterwards the connection, when its record has the owner's shape, has the posting bit it had before; the owner's own configuration is never touched. fn-otm-closed-posting-never-awaits-an-article: under a configuration that does not permit posting, fn-scr-post-step from a session not awaiting an article leaves it not awaiting one (the POST is answered 440, RFC 3977 section 6.3.1, and no article is read). Mutating control (host/native/control.lisp: an operator post, a live configuration change, a moderation decision) is answered BUSY while fn-otm-admit-post sheds, at a clock event appended before it waits for the gate. Not claimed: the chain from fn-orr-read-span to fn-scr-post-step (the served machine calls it with the connection's injection configuration; stated, not proved here); IHAVE/CHECK during slow (PKT-862).",
+      "milestone": "M5",
+      "requirements": [
+        "HST-026"
+      ],
+      "depends_on": [
+        "PRF-311",
+        "PRF-288"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/owner-time-admission.lisp",
+        "tests/acl2/owner-time-model-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/owner.lisp",
+        "host/native/control.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/time-model-2-2026-09-27.md"
+      ],
+      "progress_note": "Lane time-model-2 (Opus 5.5, 2026-09-27). REPL-admitted on hbox. Teeth: the posting bit of a real injection configuration set and restored exactly (test book); the 440 reached natively (SCN-182: a POST command during slow and during a stall). The shedding keystone's positive witness over a live ocfg is the native case, not a test-book witness (the ocfg needs the served stobjs).",
+      "events": [
+        "fn-otm-read-span-while-shedding",
+        "fn-otm-closed-posting-never-awaits-an-article"
+      ]
     }
   ]
 }

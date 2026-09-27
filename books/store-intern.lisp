@@ -807,6 +807,7 @@
 
 ; The wire index with a seed: fn-stx-index-of-store is the fold from the
 ; empty index, oldest article innermost.
+(fn-payload-kind fn-stx-index-of-store-from :wire "its articles are fn-rows-articles-newest-first's, built with fn-row-bytes (octets)")
 (local (defun fn-stx-index-of-store-from (articles index keyring)
   (declare (xargs :guard (fn-prin-keyringp keyring)))
   (if (consp articles)

@@ -117,6 +117,9 @@
 ;; The held projection at open: fnn-bps-open calls fn-bphp-recover-auto-event.
 (include-book "books/bp-held-projection")
 (include-book "books/bp-node-retire")
+;; Natural rotation at a node verb's open (fnn-bps-rotate-when-due calls
+;; fn-bpnrd-due-rotation-event; profile 3).
+(include-book "books/bp-node-rotation-due")
 (include-book "books/bp-report-observe")
 (include-book "books/bp-report-guards")
 (include-book "books/bp-app-handoff")
@@ -172,7 +175,8 @@
 (include-book "books/owner-prepare-served")
 ;; PRF-242: host/store-node-host.lisp and host/owner-host.lisp call
 ;; fn-rii-sco-extend and fn-rii-classified-open (the open's replay identity
-;; tries and the one-dispatch history recognizer).
+;; tries and the one-dispatch history recognizer), and the store's recover
+;; entries their fusion fn-rii-sco-extend-open (PRF-321).
 (include-book "books/replay-identity-index")
 (ld "host/store-host.lisp" :ld-error-action :error)
 ;; The octet buffer's checkpoint writers (rep-wave-d-2; the frames' octets):
@@ -191,6 +195,9 @@
 ;; The served read over the octet buffer (ingress-span): host/owner-host.lisp
 ;; fn-owner-chunk-span calls fn-scar-ocfg-read-span.
 (include-book "books/served-span")
+;; Lane time-model-2: host/native/io.lisp fnn-owner-wall-milliseconds calls
+;; fn-otm-wall-reading (the wall clock's validity is ACL2's).
+(include-book "books/clock-wall-reading")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file

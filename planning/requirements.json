@@ -2793,7 +2793,9 @@
         "PRF-294",
         "PRF-281",
         "PRF-295",
-        "PRF-309"
+        "PRF-309",
+        "PRF-320",
+        "PRF-321"
       ],
       "verification": [
         "proof",
@@ -4357,7 +4359,8 @@
         "PRF-294",
         "PRF-281",
         "PRF-295",
-        "PRF-309"
+        "PRF-309",
+        "PRF-320"
       ],
       "verification": [
         "proof",
@@ -4697,7 +4700,8 @@
       "milestone": "M5",
       "status": "implemented",
       "proof_targets": [
-        "PRF-311"
+        "PRF-311",
+        "PRF-323"
       ],
       "verification": [
         "proof",
@@ -4712,9 +4716,62 @@
         "host/native-live-status-host.lisp",
         "tests/test_native_slow_disk.py",
         "planning/design-time-model-2026-09-27.md",
-        "planning/evidence/time-model-2026-09-27.md"
+        "planning/evidence/time-model-2026-09-27.md",
+        "books/owner-time-admission.lisp",
+        "host/native/control.lisp",
+        "planning/evidence/time-model-2-2026-09-27.md"
       ],
-      "implementation_note": "Slice 1 of planning/design-time-model-2026-09-27.md. The committer's wait for the syncer is timed by ACL2 and appends clock events; the barrier's deadline is the live configuration's barrier-deadline-ms limit (default 5,000 ms; the admin verb to set it is slice 2). A POST shed while slow gets fn-own-outcome's :refused outcome with ACL2's reason line (441; RFC 3977 section 6.3.1). Not yet: the stall deadline H and the in-flight members' uncertain answer, 440 at the POST command, IHAVE 436 during slow, mutating control try-later, the inline barrier and configuration publication as requests."
+      "implementation_note": "Slices 1 and 2 of planning/design-time-model-2026-09-27.md. The limits D, H and the clock-event cadence are the live configuration's barrier-deadline-ms, barrier-stall-ms and clock-event-ms rows (policy set; defaults 5,000 / 30,000 / 1,000 ms). Past D: a POST command is answered 440 with the reason, an article already announced 441 with the reason, a mutating control request BUSY; past H every poster of the batch in flight and of the next is told uncertain and the queued POSTs are refused try-later. Not yet: IHAVE 436 / CHECK 431 during slow (PKT-862: transit is not admitted while a barrier is pending; peers wait), the inline barrier and configuration publication as requests (slice 3), health's exit in stalled (PKT-853 (b))."
+    },
+    {
+      "id": "HST-027",
+      "title": "The host hands an ACL2 entry only the kind of value its guard names: a payload handle where octets are meant, an octet vector where a list is meant, or the wrong argument count is refused by name (host-entry-guard) before the entry runs, never a silent refusal downstream",
+      "specification": "specs/host.md#the-host-entry-guard",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-319"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "inspection"
+      ],
+      "evidence": [
+        "books/payload-kinds.lisp",
+        "tests/acl2/payload-kinds-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_entry_guard.py",
+        "tools/harness_check.py",
+        "tools/payload_kind_check.py",
+        "planning/evidence/entry-guards-2026-09-27.md"
+      ],
+      "implementation_note": "Lane entry-guards (2026-09-27). fnn-call runs fnn-entry-guard; 89 host wrappers name the kind of their byte-carrying formals; harness_check entry-guards and payload_kind_check gate new entries and new payload reads."
+    },
+    {
+      "id": "HST-028",
+      "title": "Every decision that stores nothing is reproducible: the scheduler's disk-and-clock events are journaled in order off the owner, and replay of the journal reproduces every such decision",
+      "specification": "specs/host.md#the-disk-as-an-adversarial-environment",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-322"
+      ],
+      "verification": [
+        "proof",
+        "integration",
+        "test"
+      ],
+      "evidence": [
+        "books/owner-time-journal.lisp",
+        "books/clock-wall-reading.lisp",
+        "host/native/owner.lisp",
+        "host/native/io.lisp",
+        "tests/acl2/owner-time-model-tests.lisp",
+        "tests/test_native_slow_disk.py",
+        "planning/evidence/time-model-2-2026-09-27.md"
+      ],
+      "implementation_note": "Lane time-model-2. The journal is STORE/journal/decisions.fnj, one segment per run (a start entry), written by the service-log writer thread under ACL2's sink bound; a dropped entry is a visible gap. What a death with entries unflushed loses: those entries, i.e. the replay of decisions that stored nothing; never durable state. Not yet: a native replay verb (the replay is ACL2's fn-otm-replay; the native case checks the file's sequence and events), the served transcript replay from the :served readings."
     }
   ]
 }

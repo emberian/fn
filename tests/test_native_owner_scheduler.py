@@ -94,8 +94,8 @@ class SchedulerSourceTests(unittest.TestCase):
         self.assertLess(batch.index("(fnn-owner-start-syncer service)"),
                         batch.index("(fnn-owner-commit-start-locked service :seal nil)"))
         self.assertLess(batch.index("(sb-thread:join-thread syncer"),
-                        batch.index("(fnn-owner-commit-complete-locked service :complete members deferred)"))
-        self.assertLess(batch.index("(fnn-owner-commit-complete-locked service :complete members deferred)"),
+                        batch.index("service :complete (fnn-owner-unreleased members released) deferred)"))
+        self.assertLess(batch.index("service :complete (fnn-owner-unreleased members released) deferred)"),
                         batch.index("(fnn-log-seal-open-batch store)"))
         self.assertEqual(batch.count("(fnn-owner-start-syncer service)"), 1)
         syncer = owner[owner.index("(defun fnn-owner-commit-sync "):owner.index("(defun fnn-owner-commit-complete-locked")]

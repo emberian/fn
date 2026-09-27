@@ -167,6 +167,7 @@
 (defun fn-acct-host-salt-octets () *fn-authsec-salt-octets*)
 (defun fn-acct-host-code-text (entropy) (fn-acct-code-text entropy))
 (defun fn-acct-host-code-digest-text (code-octets)
+  (declare (xargs :guard (fn-cbor-octet-listp code-octets) :verify-guards nil))
   (fn-acct-code-digest-text code-octets))
 (defun fn-acct-host-invite-argv (digest seconds)
   (list (fn-record-string-octets "account")
