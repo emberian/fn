@@ -9,7 +9,7 @@
 ; a natural, a HANDLE into the arena (books/payload-arena.lisp), and four
 ; positions after it:
 ;
-;   11 facts     (octets body-start body-lines)   decided ONCE from the bytes at intern
+;   11 facts     (octets body-start body-lines control)  decided ONCE from the bytes at intern
 ;   12 context   (verdict delta generation)        decided at intern under the keyring in force
 ;   13 numbers   ((group . n) ...)                 assigned by the catalog's commit; nil before
 ;   14 withdrawn nil | (at . by)                   the version at which a cancel withdrew it
@@ -40,11 +40,18 @@
   (declare (xargs :guard t))
   (or (null x) (natp x)))
 
+; CONTROL is what the control vocabulary reads from the bytes
+; (books/control-authority.lisp fn-ctl-control-of): (TARGET KEYS LOCKS), the
+; article's one withdrawal target, its RFC 8315 Cancel-Key entries and its
+; Cancel-Lock entries.  Decided once at intern like the others, so the owner's
+; refresh, which holds no arena, reads a cancel's target and a target's locks
+; from the rows (flip-L8-2, 2026-09-27).
 (fn-defrecord fn-hf
-  :constructor (fn-hf-make octets body-start body-lines)
+  :constructor (fn-hf-make octets body-start body-lines control)
   :fields ((fn-hf-octets natp)
            (fn-hf-body-start fn-hf-startp)
-           (fn-hf-body-lines natp))
+           (fn-hf-body-lines natp)
+           (fn-hf-control true-listp))
   :recognizer fn-hf-p
   :car-fn fn-cbor-ag-car
   :cdr-fn fn-cbor-ag-cdr)
@@ -256,7 +263,7 @@
                 (fn-held-numbers h) (fn-held-withdrawn h)))
 
 ; The held row of a wire record with HANDLE and no bytes read: the facts of
-; an unread payload (its octet count, no split, no lines) and the context
+; an unread payload (its octet count, no split, no lines, no control) and the context
 ; that no statement was seen (verdict :absent at generation 0, no delta).
 ; For the test books and for an entry that has a handle but decides nothing
 ; from the bytes; the intern (books/catalog-record.lisp) reads them.
@@ -267,7 +274,7 @@
                 (fn-record-obligation-id w) (fn-record-content-subject w)
                 (fn-record-release-evidence w) (fn-record-charge w)
                 (fn-record-stamp w)
-                (fn-hf-make (len (fn-record-payload w)) nil 0)
+                (fn-hf-make (len (fn-record-payload w)) nil 0 nil)
                 (fn-hc-make (fn-stx-make-verdict :absent nil 0) nil 0)
                 nil nil))
 
