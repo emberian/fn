@@ -162,6 +162,11 @@
   (declare (xargs :mode :program))
   (fn-ncl-cli-plan command argv))
 
+;; PRF-234: the password a bound consumer's secret file holds.
+(defun fn-native-control-host-consumer-secret-of-file (octets)
+  (declare (xargs :mode :program))
+  (fn-ncl-secret-of-file octets))
+
 ;; PKT-453 (a): the refusal reason on the wire (books/native-control-reason).
 (defun fn-native-control-host-reasoned-request-encode (msgid groups article)
   (declare (xargs :mode :program))

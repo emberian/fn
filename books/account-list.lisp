@@ -15,6 +15,7 @@
 ;   binding LOGIN PRINCIPAL-HEX
 ;   access LOGIN read READ post POST   (PRF-222, mark 3; LOGIN "" is
 ;                                       printed "(anonymous)")
+;   consumer NAME account LOGIN     (PRF-234, mark 4)
 ;   unknown                         (a mark no writer makes)
 ;
 ; Never a digest or a verifier.
@@ -28,6 +29,7 @@
           ((equal mark 1) :redeemed)
           ((equal mark 2) :binding)
           ((equal mark 3) :access)
+          ((equal mark 4) :consumer)
           (t :unknown))))
 
 (defun fn-acct-kind-word (kind)
@@ -36,6 +38,7 @@
         ((equal kind :redeemed) "redeemed ")
         ((equal kind :binding) "binding ")
         ((equal kind :access) "access ")
+        ((equal kind :consumer) "consumer ")
         (t "unknown")))
 
 (defun fn-acct-list-text (x)
@@ -61,6 +64,9 @@
                         (fn-acct-list-text (fn-cfg-row-a row)))
                       " read " (fn-acct-list-text (fn-cfg-row-b row))
                       " post " (fn-acct-list-text (fn-cfg-row-c row))))
+        ((equal kind :consumer)
+         (concatenate 'string (fn-acct-list-text (fn-cfg-row-a row))
+                      " account " (fn-acct-list-text (fn-cfg-row-b row))))
         (t "")))
 
 (defun fn-acct-list-line (row)

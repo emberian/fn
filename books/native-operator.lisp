@@ -480,7 +480,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-help-subjectp (subject)
   (declare (xargs :guard t))
-  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd")))
+  (member-equal subject '("help" "init" "run" "post" "show" "mission" "status" "health" "pins" "obligations" "recover" "store" "group" "capacity" "peer" "bp-boundary" "bp-route" "policy" "control" "principal" "keys" "tls" "retention" "account" "motd" "consumer")))
 
 (defun fn-nop-help-text (subject)
   "Bounded operator help output, selected only from ACL2-normalized subjects."
@@ -523,6 +523,8 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          "usage: fn operator CONFIG policy set {path-identity IDENTITY | posting-policy bound-logins|open}")
         ((equal subject "principal")
          "usage: fn operator CONFIG principal {list | set-password NAME [--principal HEX] [--posting|--no-posting] | bind NAME HEX | unbind NAME} (set-password reads the password twice from the terminal or two lines of stdin, restart to apply; bind and unbind apply to a running node at once)")
+        ((equal subject "consumer")
+         "usage: fn operator CONFIG consumer {bind NAME --account LOGIN | unbind NAME | show} (bind confines local consumer NAME to the groups LOGIN may read: its poll and ack then need LOGIN's password and serve only the events of a group LOGIN's access rule admits; unbind returns it to the operator's unrestricted consumer; show is the account list report; apply to a running node at once; spec consumer-progress Bound consumers)")
         ((equal subject "account")
          "usage: fn operator CONFIG account {invite [--expires SECONDS] | list | access {LOGIN|--anonymous} --read WILDMAT --post WILDMAT | access show} (invite prints one code, once, for a friend's XREDEEM; the node keeps only its digest; SECONDS defaults to 604800; list shows logins and principals, never codes, digests or verifiers, and each access rule; access sets the groups a login sees and may post to; spec nntp Invitation-code accounts, Group access)")
         ((equal subject "keys")
@@ -530,7 +532,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         ((equal subject "tls")
          "usage: fn operator CONFIG tls reload (the running owner re-reads its tls_cert and tls_key and serves them to new connections; sessions already open keep theirs; refused by name, the old certificate still served, when the files do not load, the key does not match, the certificate is not valid now, or it drops a name the served one has)")
         ((equal subject "help") "usage: fn operator CONFIG help [COMMAND]")
-        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
+        (t "usage: fn operator CONFIG {help|init|run|post|show|mission|status|health|pins|obligations|recover|store|group|capacity|retention|peer|bp-boundary|bp-route|policy|control|principal|keys|tls|account|motd|consumer} (fn operator CONFIG help COMMAND for one command's words; fn --version for the source revision)")))
 
 (defun fn-nop-parse-principal (argv config)
   "Compose the existing ACL2 credential plan under the public operator."
@@ -740,7 +742,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                  (equal command "peer") (equal command "bp-boundary")
                  (equal command "bp-route") (equal command "policy")
                  (equal command "control") (equal command "retention")
-                 (equal command "motd"))
+                 (equal command "motd") (equal command "consumer"))
              (fn-nop-parse-administration command argv config))
             ((equal command "principal")
              (fn-nop-parse-principal argv config))
@@ -1175,6 +1177,7 @@ formed and the operator asked for something the node declined to do."
            (equal (fn-native-operator-result-command result) "retention")
            (equal (fn-native-operator-result-command result) "control")
            (equal (fn-native-operator-result-command result) "motd")
+           (equal (fn-native-operator-result-command result) "consumer")
            (and (equal (fn-native-operator-result-command result) "account")
                 (not (equal (fn-ncfg-first
                              (fn-native-operator-result-arguments result))
@@ -1349,6 +1352,7 @@ when that store already exists is `fn-native-operator-init-outcome'."
                (equal (fn-native-operator-result-command result) "policy")
                (equal (fn-native-operator-result-command result) "retention")
                (equal (fn-native-operator-result-command result) "motd")
+               (equal (fn-native-operator-result-command result) "consumer")
            (equal (fn-native-operator-result-command result) "control")) :admin)
           ((and (equal (fn-native-operator-result-command result) "account")
                 (equal (fn-ncfg-first (fn-native-operator-result-arguments result))

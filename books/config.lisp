@@ -781,7 +781,7 @@
     :grant-control :revoke-control :issue-invitation :consume-invitation
     :account-invite :account-redeem :login-binding
     :add-peer-rows :remove-peer-rows :set-group-description
-    :set-group-status :account-access))
+    :set-group-status :account-access :consumer-bind))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -807,6 +807,7 @@
         ((equal kind :set-group-description) 20)
         ((equal kind :set-group-status) 21)
         ((equal kind :account-access) 22)
+        ((equal kind :consumer-bind) 24)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -833,6 +834,7 @@
         ((equal code 20) :set-group-description)
         ((equal code 21) :set-group-status)
         ((equal code 22) :account-access)
+        ((equal code 24) :consumer-bind)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -1286,6 +1288,65 @@
         (fn-cfg-access-table (cdr rows)))
     nil))
 
+;; Consumer bindings (PRF-234, CNS-006; specs/consumer-progress.md "Bound
+;; consumers").  The same slot holds one account binding per local consumer:
+;; a row (NAME LOGIN "" 4), mark 4 beside the account rows' 0 and 1, the
+;; login bindings' 2 and the access rules' 3, written only by
+;;
+;;   (:consumer-bind NAME LOGIN 0 ((NAME LOGIN "" 4)))            code 24
+;;   (:consumer-bind NAME "" 0 ())                            (the unbind)
+;;
+;; which replaces every mark-4 row whose name spells the same octets and
+;; leaves every other row where it was.  NAME is a local consumer's id as
+;; `fn consumer register' spells it (at most 64 graphic octets, the
+;; consumer id bound `*fn-cp-max-id*'); LOGIN is an account login.  A
+;; consumer with no row is unbound and behaves exactly as before the slot
+;; had this mark.  What a binding means is books/consumer-bound.lisp's.
+(defun fn-cfg-consumer-namep (text)
+  (declare (xargs :guard t))
+  (and (stringp text)
+       (fn-cfg-labelp text)
+       (consp (fn-record-string-octets text))
+       (<= (len (fn-record-string-octets text)) 64)
+       (fn-cfg-graphic-octetsp (fn-record-string-octets text))))
+
+(defun fn-cfg-consumer-bind-rows (name login)
+  (declare (xargs :guard t))
+  (if (equal login "")
+      nil
+    (list (fn-cfg-row-make name login "" 4))))
+
+(defun fn-cfg-consumer-bind (name login)
+  (declare (xargs :guard t))
+  (fn-cfg-delta-make :consumer-bind name login 0
+                     (fn-cfg-consumer-bind-rows name login)))
+
+(defun fn-cfg-consumer-bind-rowp (row)
+  (declare (xargs :guard t))
+  (equal (fn-cfg-row-n row) 4))
+
+(defun fn-cfg-rows-without-consumer-bind (rows name)
+  ; ROWS less every consumer binding row whose name spells NAME's octets.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (fn-cfg-consumer-bind-rowp (car rows))
+               (equal (fn-record-string-octets (fn-cfg-row-a (car rows)))
+                      (fn-record-string-octets name)))
+          (fn-cfg-rows-without-consumer-bind (cdr rows) name)
+        (cons (car rows) (fn-cfg-rows-without-consumer-bind (cdr rows) name)))
+    nil))
+
+(defun fn-cfg-consumer-bind-reason (d)
+  (declare (xargs :guard t))
+  (let ((name (fn-cfg-delta-a d)) (login (fn-cfg-delta-b d)))
+    (cond ((not (fn-cfg-consumer-namep name)) :consumer-name)
+          ((not (or (equal login "") (fn-cfg-account-loginp login)))
+           :consumer-login)
+          ((not (equal (fn-cfg-delta-rows d)
+                       (fn-cfg-consumer-bind-rows name login)))
+           :consumer-row)
+          (t nil))))
+
 ; The row a code's digest keys, or nil.
 (defun fn-cfg-account-row (rows digest)
   (declare (xargs :guard t))
@@ -1674,6 +1735,17 @@
                                   (fn-cfg-accounts v) a)
                                  rows)
                          (fn-cfg-descriptions v)))
+     ; A consumer binding replaces that consumer's binding row (PRF-234).
+     ((equal kind :consumer-bind)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)
+                         (append (fn-cfg-rows-without-consumer-bind
+                                  (fn-cfg-accounts v) a)
+                                 rows)
+                         (fn-cfg-descriptions v)))
      ; A description replaces every row keyed on its name (PRF-195).
      ((equal kind :set-group-description)
       (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
@@ -1840,6 +1912,7 @@
               (t nil))))
      ((equal kind :login-binding) (fn-cfg-login-binding-reason d))
      ((equal kind :account-access) (fn-cfg-account-access-reason d))
+     ((equal kind :consumer-bind) (fn-cfg-consumer-bind-reason d))
      ((equal kind :set-group-description)
       (fn-cfg-set-group-description-reason v gen d))
      (t nil))))
