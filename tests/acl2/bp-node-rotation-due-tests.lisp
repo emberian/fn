@@ -11,7 +11,7 @@
 (in-package "ACL2")
 (include-book "bp-node-counterexamples-tests")
 (include-book "../../books/bp-node-rotation-due")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 ;; Profile 3 with a threshold of one record, and with two.
 (defconst *bprd-profile-1* '(8 1048576 65538 1048576 1))
@@ -100,7 +100,7 @@
 ;; holds (the witness above).
 (assert-event
  (not (fn-bpnr-rows-start-after (list (bpcx-n16-row-b2)) '(2 . 0))))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (bprd-reopen (bprd-st) *bprd-profile-1* (list (bpcx-n16-row-b2)))
          (bprd-expected-later (list (bpcx-n16-row-b2))))))
@@ -118,7 +118,7 @@
       (equal (fn-bpnf-epoch (bprd-st-no-held)) 2)
       (equal (car (bprd-eff (bprd-st-no-held) *bprd-profile-1*))
              :rotation-refused)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (bprd-reopen (bprd-st-no-held) *bprd-profile-1* nil)
          (bprd-expected-empty))))
@@ -132,7 +132,7 @@
  (and (equal (fn-bpnf-epoch (bprd-st-epoch-5)) 5)
       (equal (car (bprd-eff (bprd-st-epoch-5) *bprd-profile-1*))
              :persist-checkpoint)))
-(must-fail
+(must-fail-checked
  (assert-event
   (equal (bprd-reopen (bprd-st-epoch-5) *bprd-profile-1* nil)
          (bprd-expected-empty))))
@@ -189,7 +189,7 @@
 ;; its held list.
 (assert-event
  (equal (car (bprd-eff (bprd-st-no-held) *bprd-profile-1*)) :rotation-refused))
-(must-fail
+(must-fail-checked
  (assert-event
   (let ((replay (bprd-keeps-replay (bprd-st-no-held) *bprd-profile-1*)))
     (and (equal (car replay) :ready)

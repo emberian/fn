@@ -3116,6 +3116,10 @@
         {
           "kind": "theorem",
           "name": "fn-bpnrd-due-rotation-preserves-recovery"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrd-rotation-keeps-every-held-family"
         }
       ]
     },
@@ -5081,10 +5085,6 @@
         {
           "kind": "theorem",
           "name": "fn-bpnpf-profile-read-is-valid"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnpf-profile-write-never-lowers"
         },
         {
           "kind": "theorem",

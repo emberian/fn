@@ -276,7 +276,7 @@
       (not (equal (fn-bpnpf-node-profile-read
                    t (fn-bpnpf-node-profile-octets 64 16777216 65538 1048576 0))
                   '(64 16777216 65538 1048576 0)))))
-(must-fail
+(must-fail-checked
  (defthm bpnpft-node-profile-read-without-validity
    (equal (fn-bpnpf-node-profile-read
            t (fn-bpnpf-node-profile-octets rows octets adu bundle rotate))

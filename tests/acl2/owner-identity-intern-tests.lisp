@@ -5,7 +5,7 @@
 (in-package "ACL2")
 (include-book "../../books/owner-identity-intern")
 (include-book "owner-signed-post-tests")
-(include-book "std/testing/must-fail" :dir :system)
+(include-book "must-fail-checked")
 
 (bpr-lift fn-ocfg-step 2)
 
@@ -176,7 +176,7 @@
 ; Mutation witness (labelled: not a hypothesis-removal tooth): off by one
 ; from the count, the equation fails on a keyring snapshot, which interns to
 ; itself and carries no held article.
-(must-fail
+(must-fail-checked
  (defthm oiit-group-count-without-a-composite
    (let ((k (car (fn-sn-keyring-snapshots *oiit-s*))))
      (equal (len (fn-record-groups (fn-hstxa-held (fn-oii-identity-row k nil 0 *oiit-h*))))

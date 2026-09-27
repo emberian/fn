@@ -3516,7 +3516,7 @@
     {
       "id": "PRF-081",
       "title": "BP journal rotation: recovery from a selected held-row checkpoint equals recovery over the whole history, and every publication cut leaves one authority",
-      "statement": "fn-bpnr-recover-from-checkpoint-equals-full-recover (restated for N16-F1, lane bp-n16-prod): for every authority plan0 that is not damaged, whose ordered received-final rows replay :ready, the projection ck1 of that replay (a checkpoint), E the epoch field of the recovery event over plan0 and the rows, and the file of the checkpoint the rotation publishes, fn-bpnr-rotation-checkpoint ck1 E (operation frontier (E . 0), the rotation's own id; what fn-bpnp-rotate-step's effect carries and host/native/bp-service.lisp fnn-bps-publish-generation writes): fn-bpnr-recover-auto-event (the event fnn-bps-open passes to fn-bpnp-step) over that file with no later rows names epoch E + 1 with the old replay at frontier (E . 0) and row count 0, so no operation after the reopen reuses the rotation's id; over later rows that start after (E . 0) it equals the event over plan0 and the concatenated rows with field 5 set to the later rows' count. fn-bpnr-rotation-crash-recovers-old-or-new: at every phase of the publication driver fn-bpnr-publish-action/-step/-outcome (followed by fnn-bps-publish-generation) and for either outcome of an atomic rename, the visible selection file is the old or the new one, before the rename may have been issued it is the old one, and under the new one recovery with no rows is the reopen event above. fn-bpnp-rotate-step-proposes-only-own-projection: a proposal carries fn-bpnr-rotation-checkpoint of the state's own projection, from a quiescent state, and its file exists. fn-bpnr-retirement-cut-keeps-open-view: when the root's selection file selects G and no other name the open reads is retired, the open's view (selection plan, selected directory, the other names) after any prefix of fn-bpnr-retire-ops (the removal program host/native/bp-service.lisp fnn-bps-retire-generations runs step by step: older generation directories and killed rotations' staged selections) equals the view before it; fn-bpnr-retired-names-never-the-selected-directory. fn-bpnr-checkpoint-decode-of-octets: every file fn-bpnr-checkpoint-octets writes decodes to its checkpoint. Covered scope: one atomically renamed kind-19 file; the chunked kinds 19 plus a manifest kind, the :quiesce event and the empty new-generation premise are not modelled; the removal model is a name-to-entry alist, not K0's byte store; the codec runs on octet lists (no D27 concrete twin); a killed rotation's unselected new-generation directory is kept (never reused). Natural rotation (lane bp-rotation, 2026-09-27; books/bp-node-rotation-due.lisp): host/native/bp-node.lisp fnn-bps-rotate-when-due, called at the open of bp-node serve and dispatch (fnn-bps-open-node), drives fn-bpnrd-due-rotation-event's answer. fn-bpnrd-due-rotation-event-by-definition: it answers (:rotate G CK) exactly when the profile is a profile 3, the recovered generation's record count has reached its rotation threshold and the state is quiescent, with G above the selected generation and CK the checkpoint of the open's recovery event (the event `bp-node checkpoint` drives). fn-bpnrd-due-rotation-preserves-recovery: when the open drove the host's recovery event (fn-bpnr-recover-auto-event over ROWS0 and a non-damaged PLAN0 whose replay is :ready, with a clock-domain decision appended), the machine state is at that event's epoch E, and fn-bpnp-rotate-step proposes the due event's publication, the published checkpoint read back at the machine's depth budget recovers with no later rows epoch E + 1 with the old replay at frontier (E . 0) and row count 0, and over later rows that start after (E . 0) the event over PLAN0 and the concatenated rows with field 5 set to their count. The state/epoch premise is a hypothesis (the recovery arm's installation of the epoch is not restated). The publication and retirement programs are the operator rotation's, so the crash and retirement keystones above cover every cut of it.",
+      "statement": "fn-bpnr-recover-from-checkpoint-equals-full-recover (restated for N16-F1, lane bp-n16-prod): for every authority plan0 that is not damaged, whose ordered received-final rows replay :ready, the projection ck1 of that replay (a checkpoint), E the epoch field of the recovery event over plan0 and the rows, and the file of the checkpoint the rotation publishes, fn-bpnr-rotation-checkpoint ck1 E (operation frontier (E . 0), the rotation's own id; what fn-bpnp-rotate-step's effect carries and host/native/bp-service.lisp fnn-bps-publish-generation writes): fn-bpnr-recover-auto-event (the event fnn-bps-open passes to fn-bpnp-step) over that file with no later rows names epoch E + 1 with the old replay at frontier (E . 0) and row count 0, so no operation after the reopen reuses the rotation's id; over later rows that start after (E . 0) it equals the event over plan0 and the concatenated rows with field 5 set to the later rows' count. fn-bpnr-rotation-crash-recovers-old-or-new: at every phase of the publication driver fn-bpnr-publish-action/-step/-outcome (followed by fnn-bps-publish-generation) and for either outcome of an atomic rename, the visible selection file is the old or the new one, before the rename may have been issued it is the old one, and under the new one recovery with no rows is the reopen event above. fn-bpnp-rotate-step-proposes-only-own-projection: a proposal carries fn-bpnr-rotation-checkpoint of the state's own projection, from a quiescent state, and its file exists. fn-bpnr-retirement-cut-keeps-open-view: when the root's selection file selects G and no other name the open reads is retired, the open's view (selection plan, selected directory, the other names) after any prefix of fn-bpnr-retire-ops (the removal program host/native/bp-service.lisp fnn-bps-retire-generations runs step by step: older generation directories and killed rotations' staged selections) equals the view before it; fn-bpnr-retired-names-never-the-selected-directory. fn-bpnr-checkpoint-decode-of-octets: every file fn-bpnr-checkpoint-octets writes decodes to its checkpoint. Covered scope: one atomically renamed kind-19 file; the chunked kinds 19 plus a manifest kind, the :quiesce event and the empty new-generation premise are not modelled; the removal model is a name-to-entry alist, not K0's byte store; the codec runs on octet lists (no D27 concrete twin); a killed rotation's unselected new-generation directory is kept (never reused). Natural rotation (lane bp-rotation, 2026-09-27; books/bp-node-rotation-due.lisp): host/native/bp-node.lisp fnn-bps-rotate-when-due, called at the open of bp-node serve and dispatch (fnn-bps-open-node), drives fn-bpnrd-due-rotation-event's answer. fn-bpnrd-due-rotation-event-by-definition: it answers (:rotate G CK) exactly when the profile is a profile 3, the recovered generation's record count has reached its rotation threshold and the state is quiescent, with G above the selected generation and CK the checkpoint of the open's recovery event (the event `bp-node checkpoint` drives). fn-bpnrd-due-rotation-preserves-recovery: when the open drove the host's recovery event (fn-bpnr-recover-auto-event over ROWS0 and a non-damaged PLAN0 whose replay is :ready, with a clock-domain decision appended), the machine state is at that event's epoch E, and fn-bpnp-rotate-step proposes the due event's publication, the published checkpoint read back at the machine's depth budget recovers with no later rows epoch E + 1 with the old replay at frontier (E . 0) and row count 0, and over later rows that start after (E . 0) the event over PLAN0 and the concatenated rows with field 5 set to their count. The state/epoch premise is a hypothesis (the recovery arm's installation of the epoch is not restated). The publication and retirement programs are the operator rotation's, so the crash and retirement keystones above cover every cut of it. In-serve rotation (lane bp-retention-leftovers): host/native/bp-node.lisp fnn-bps-serve-rotate-when-due asks fn-bpnrd-serve-rotation-due-p between sessions (threshold reached at a safe point: nothing issued, no pending image, no outbound session), recovers in place under the locks the serve holds (host/native/bp-service.lisp fnn-bps-reopen-in-place), drives the open-time decision's rotation and reopens in place. KEYSTONE fn-bpnrd-rotation-keeps-every-held-family: for every state the machine rotates from, a proposed publication's file reopens (no rows) :ready with exactly that state's held rows, handoffs and arrival frontier at frontier (E . 0).",
       "milestone": "M4",
       "requirements": [
         "REP-005",
@@ -3561,7 +3561,8 @@
         "books/bp-node-rotation-due.lisp",
         "tests/acl2/bp-node-rotation-due-tests.lisp",
         "tests/test_bp_fragment_node_native.py",
-        "planning/evidence/bp-rotation-2026-09-27.md"
+        "planning/evidence/bp-rotation-2026-09-27.md",
+        "planning/evidence/bp-retention-leftovers-2026-09-27.md"
       ],
       "progress_note": "Lane n16-rotation (2026-09-25), spec bp-node-machine 3.6 slice E, trace N16. Teeth in tests/acl2/bp-node-counterexamples-tests: the positive trace through fn-bpnp-step, must-fails for a damaged plan0, absent octets and an unready prefix (recovery keystone) and a visible new file before the rename (crash keystone). Certified in hbox runs run-20260925T044146Z-230d, run-20260925T050214Z-702e and run-20260925T051528Z-15c2. Lane bp-n16-prod (2026-09-25): N16-F1 repaired (the published checkpoint's frontier is the rotation's own id; the recovery keystone restated with the event's epoch), and old generations retired by an ACL2 program whose every prefix is a model crash point; teeth in tests/acl2/bp-node-counterexamples-tests (N16 section, over real kind-5 rows) and tests/acl2/bp-node-retire-tests. Lane bp-rotation (2026-09-27, F7): natural rotation by a profile threshold at a node verb's open; teeth in tests/acl2/bp-node-rotation-due-tests (reachable witness over N16's real rows through fn-bpnp-step with a clock-domain decision; must-fails for later rows at the rotation's id, and corrupted-state witnesses for the publication and epoch premises); tests/test_bp_fragment_node_native's rotation test runs on production and developer images with no developer cut.",
       "events": [
@@ -3571,7 +3572,10 @@
         "fn-bpnr-family-replay-aux-append",
         "fn-bpnp-rotate-step-proposes-only-own-projection",
         "fn-bpnr-retirement-cut-keeps-open-view",
-        "fn-bpnr-retired-names-never-the-selected-directory"
+        "fn-bpnr-retired-names-never-the-selected-directory",
+        "fn-bpnrd-due-rotation-event-by-definition",
+        "fn-bpnrd-due-rotation-preserves-recovery",
+        "fn-bpnrd-rotation-keeps-every-held-family"
       ]
     },
     {
@@ -4046,7 +4050,9 @@
         "fn-rcl-tombstone-refused-at-carrier-form",
         "fn-rca-nul-first-octet-is-not-an-article",
         "fn-rcl-tombstone-contributes-nothing",
-        "fn-rcl-store-counts-is-the-model-over-alpha"
+        "fn-rcl-store-counts-is-the-model-over-alpha",
+        "fn-rcl-store-classes-partition-the-articles",
+        "fn-rcl-signed-article-is-never-reclaimable"
       ]
     },
     {
@@ -5543,7 +5549,6 @@
         "fn-bpnpf-profile-read-of-octets",
         "fn-bpnpf-profile-read-of-format-1",
         "fn-bpnpf-profile-read-is-valid",
-        "fn-bpnpf-profile-write-never-lowers",
         "fn-bpnpf-profile-within-codec-widths",
         "fn-bpnpf-admission-within-profile-is-the-channel-answer",
         "fn-bpnpf-admission-ready-is-within-profile",
@@ -5556,7 +5561,12 @@
         "fn-bpa-encoding-bound",
         "fn-bpnpf-restart-names-held-beyond-profile",
         "fn-bpnf-family-without-offset-zero-is-not-ready",
-        "fn-bpnf-family-next-memo-is-aux"
+        "fn-bpnf-family-next-memo-is-aux",
+        "fn-bpnpf-node-profile-read-of-octets",
+        "fn-bpnpf-node-profile-read-of-older",
+        "fn-bpnpf-node-profile-read-is-valid",
+        "fn-bpnpf-node-profile-base-is-a-profile",
+        "fn-bpnpf-node-profile-write-never-lowers"
       ]
     },
     {
@@ -11236,7 +11246,11 @@
         "fn-cvec-record-keeps-the-vector",
         "fn-heap-membership-bound-holds-the-charged-memberships",
         "fn-heap-membership-term-is-at-most-twice-h",
-        "fn-heap-store-figure-holds-every-store"
+        "fn-heap-store-figure-holds-every-store",
+        "fn-cvec-statement-admission-keeps-the-vector",
+        "fn-cvec-statement-row-within-its-figure",
+        "fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at",
+        "fn-oii-publication-group-count-is-the-rows"
       ]
     },
     {

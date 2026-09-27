@@ -793,6 +793,11 @@
     "fnn-bp-profile-session length F": {
       "class": "unexpected",
       "packet": "PKT-448 (f)"
+    },
+    "fn-rcl-class-count-in recursion N": {
+      "class": "unexpected",
+      "packet": "PKT-324 (8)",
+      "note": "bp-retention-leftovers (PKT-844, 2026-09-27): the signed and kept classes status prints beside the reclaim counts (fn-rcl-store-classes); the same per-article walk as fn-rcl-summary-in, on the offline/operator status report only, never per request."
     }
   },
   "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."
