@@ -210,9 +210,13 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         fnn-advance-frontier stages, the content what a staged frontier holds.
         """
         store = self.initialized("allocation-orphans")
-        frontier = (store / "allocation-frontier.json").read_bytes()
+        # Format 9 holds no allocator file (the log derives the frontier):
+        # the orphans' bytes are what a per-file store's staged frontier held,
+        # and the recovery must leave the history (the segment) as it was.
+        segment = (store / "journal" / "000001.log").read_bytes()
         for number in range(65):
-            (store / "staging" / ".allocation-4242-{:024x}".format(number)).write_bytes(frontier)
+            (store / "staging" / ".allocation-4242-{:024x}".format(number)).write_bytes(
+                b'{"next_txid": 4242}')
         # A reader does not sweep; it reports one bounded observation and
         # says there is more.  It still opens.
         status = self.invoke(store, "status")
@@ -224,7 +228,7 @@ class NativeRecoveryFidelityTests(unittest.TestCase):
         self.assertEqual(recovered.returncode, run_store.EXIT_OK, recovered.stderr)
         self.assertIn(b"staging-orphans=0", recovered.stdout)
         self.assertEqual(list((store / "staging").iterdir()), [])
-        self.assertEqual((store / "allocation-frontier.json").read_bytes(), frontier)
+        self.assertEqual((store / "journal" / "000001.log").read_bytes(), segment)
         again = self.invoke(store, "status")
         self.assertEqual(again.returncode, run_store.EXIT_OK, again.stderr)
         self.assertIn(b"staging-orphans=0", again.stdout)
