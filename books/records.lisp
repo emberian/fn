@@ -194,6 +194,29 @@
                    (cons name (fn-record-parse-value tail))
                    (fn-record-parse-rest tail)))))))))))
 
+;; PRF-333: the decode checks each payload ONCE.  The two equations its
+;; exec branches run under (the :logic definitions are unchanged, so no
+;; codec or seam theorem moves).  An item the decoder read from the checked
+;; input is already an octet list: its payload check is the length bound.
+(defthm fn-record-payloadp-of-octets-is-len-bound
+  (implies (fn-cbor-octet-listp payload)
+           (equal (fn-record-payloadp payload)
+                  (<= (len payload) *fn-record-max-payload*))))
+
+;; The record check of a made record whose payload is valid is the check of
+;; the same record with the empty payload: fn-record-p's other conjuncts do
+;; not read the payload.  (syntaxp: the right side is an instance of the left.)
+(defthm fn-record-p-of-make-is-without-payload
+  (implies (and (syntaxp (not (equal payload ''nil)))
+                (fn-record-payloadp payload))
+           (equal (fn-record-p (fn-record-make sequence txid generation msgid payload groups
+                                               obligation-id content-subject
+                                               release-evidence charge stamp))
+                  (fn-record-p (fn-record-make sequence txid generation msgid nil groups
+                                               obligation-id content-subject
+                                               release-evidence charge stamp))))
+  :hints (("Goal" :in-theory (enable fn-record-p fn-record-internals))))
+
 (defun fn-record-decode-tail (schema sequence txid generation msgid payload octets)
   (declare (xargs :guard (and (member-equal schema '(0 1 2))
                               (fn-record-uint64p sequence)
@@ -255,7 +278,17 @@
                                     stamp-result
                                   (if (not (null (fn-record-parse-rest stamp-result)))
                                     (fn-record-parse-error :trailing)
-                                  (if (fn-record-p record)
+                                  ;; PRF-333: the payload position was checked above and is
+                                  ;; in the guard; the exec checks the record with an empty
+                                  ;; payload in its place (fn-record-p-of-make-is-without-payload).
+                                  (if (mbe :logic (fn-record-p record)
+                                           :exec (fn-record-p
+                                                  (fn-record-make
+                                                   sequence txid generation msgid nil
+                                                   (fn-record-parse-value groups-result)
+                                                   id subject evidence
+                                                   (fn-record-parse-value charge-result)
+                                                   (fn-record-parse-value stamp-result))))
                                       (fn-record-parse-ok record nil)
                                     (fn-record-parse-error :invalid))))))))))))))))))))
 
@@ -289,7 +322,12 @@
                         (if (not (fn-record-parse-okp payload-result))
                             payload-result
                           (let ((payload (fn-record-parse-value payload-result)))
-                            (if (not (fn-record-payloadp payload))
+                            ;; PRF-333: the item's octets are already an octet list (the
+                            ;; whole input's one check, fn-record-read-bytes-success-domain);
+                            ;; only the length bound is left to test
+                            ;; (fn-record-payloadp-of-octets-is-len-bound).
+                            (if (not (mbe :logic (fn-record-payloadp payload)
+                                          :exec (<= (len payload) *fn-record-max-payload*)))
                                 (fn-record-parse-error :payload)
                               (fn-record-decode-tail
                                schema
