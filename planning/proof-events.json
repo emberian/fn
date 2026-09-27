@@ -10760,6 +10760,35 @@
           "note": "A composite whose article decodes interns to a retained composite carrying it unchanged, and seals. Teeth: tests/acl2/owner-identity-intern-tests.lisp."
         }
       ]
+    },
+    {
+      "id": "PRF-299",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-is-exact-node-abort"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-preserves-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sn-known-abort-cannot-acknowledge"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-known-abort-preserves"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-psrv-known-abort-preserves-invariant"
+        }
+      ]
     }
   ]
 }

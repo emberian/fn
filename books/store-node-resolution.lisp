@@ -41,6 +41,18 @@
 ; Only a proposal whose immutable publication has not been attempted has a
 ; known-absent resolution.  Exact sequence, txid, generation, and record data
 ; come from the bound candidate rather than from a host completion claim.
+;
+; Two kinds of candidate, as `fn-snt-relation' (books/store-node-traces-
+; prepare) splits them: an article row (`fn-held-p') is the proposal standing
+; on the live node, and it must be the node's own (`fn-sn-record-bindsp');
+; every other Store event -- retention, identity (keyring, acceptance, signed
+; composite), consumer, topic -- is DEFERRED: its prepare staged the record
+; and left the node where the reservation left it, so its abort is enabled
+; when the event would apply to that node (the condition the deferred link
+; `fn-snt-deferred-linkp' carries).  Before lane host-decisions (2026-09-27)
+; only the retention event had this arm, and a known abort of a staged
+; identity, consumer or topic record was the identity: the owner answered
+; :fault and the host fenced where the abort was known.
 (defun fn-sn-known-abort-enabledp (s)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (let ((files (fn-sn-files s)))
@@ -48,9 +60,10 @@
          (or (equal (fn-sf-phase files) :record-staged)
              (equal (fn-sf-phase files) :record-data-durable))
          (let ((record (fn-sf-record-candidate files)))
-           (if (fn-store-retention-event-p record)
-               (consp (fn-replay-apply-retention-event (fn-sn-node s) record))
-             (fn-sn-record-bindsp (fn-sn-node s) record))))))
+           (if (fn-held-p record)
+               (fn-sn-record-bindsp (fn-sn-node s) record)
+             (and (fn-store-event-p record)
+                  (consp (fn-replay-apply-record (fn-sn-node s) record))))))))
 
 (verify-guards fn-sn-known-abort-enabledp
   :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep)))))
@@ -89,8 +102,9 @@
    (implies (fn-held-p record) (true-listp record))
    :hints (("Goal" :in-theory (enable fn-held-p)))))
 
-; The retention arm advances the live node over the transaction id the
-; abort consumes, exactly as `fn-sn-refuse-reservation' above advances it
+; The deferred arm (a retention, identity, consumer or topic candidate;
+; lane host-decisions extended it from the retention event alone) advances
+; the live node over the transaction id the abort consumes, exactly as `fn-sn-refuse-reservation' above advances it
 ; over a refused reservation.  `6ab2c783' added this arm and left the node
 ; alone, which is a `fn-sn-node' one transaction id behind the durable
 ; frontier in a `:ready' state: the store's own invariant says an idle node
@@ -98,7 +112,7 @@
 ; (`fn-snt-relation', books/store-node-traces) and
 ; `fn-own-idle-node-is-replay' (books/owner-invariants) is what lets the
 ; reader path serve from the live node instead of replaying.  The article arm
-; consumes the id through the aborted completion; a retention candidate
+; consumes the id through the aborted completion; a deferred candidate
 ; staged no proposal to complete, so the advance is the whole of it.  Nothing
 ; else changes: `fn-replay-advance-txid' touches no article, pin, binding,
 ; watermark or capacity (books/replay).
@@ -107,12 +121,12 @@
   (if (fn-sn-known-abort-enabledp s)
       (let* ((files (fn-sn-files s))
              (record (fn-sf-record-candidate files))
-             (node (if (fn-store-retention-event-p record)
-                       (fn-replay-advance-txid (fn-sn-node s)
-                                               (fn-sf-frontier files))
-                     (fn-node-complete
-                      (fn-sn-node s) (fn-record-txid record)
-                      (fn-record-generation record) :aborted))))
+             (node (if (fn-held-p record)
+                       (fn-node-complete
+                        (fn-sn-node s) (fn-record-txid record)
+                        (fn-record-generation record) :aborted)
+                     (fn-replay-advance-txid (fn-sn-node s)
+                                             (fn-sf-frontier files)))))
         (fn-sn-update s (fn-sn-known-abort-files files) node))
     s))
 
@@ -439,12 +453,12 @@
                           (fn-sn-files (fn-sn-known-abort s)))
                          :ready)
                   (equal (fn-sn-node (fn-sn-known-abort s))
-                         (if (fn-store-retention-event-p record)
-                             (fn-replay-advance-txid
-                              (fn-sn-node s) (fn-sf-frontier (fn-sn-files s)))
-                           (fn-node-complete
-                            (fn-sn-node s) (fn-record-txid record)
-                            (fn-record-generation record) :aborted))))))
+                         (if (fn-held-p record)
+                             (fn-node-complete
+                              (fn-sn-node s) (fn-record-txid record)
+                              (fn-record-generation record) :aborted)
+                           (fn-replay-advance-txid
+                            (fn-sn-node s) (fn-sf-frontier (fn-sn-files s))))))))
   :hints (("Goal"
            :in-theory (e/d (fn-sn-known-abort
                              fn-sn-known-abort-enabledp fn-sn-update)
@@ -481,18 +495,39 @@
 ; Both arms land `:ready', and on both the node is the replay of the durable
 ; history at the frontier, which is what the `:ready' arm of the relation
 ; asks for.  On the article arm that is the aborted completion, as before.
-; On the retention arm the relation carries the deferred link
+; On the deferred arm (retention, identity, consumer, topic) the relation
+; carries the deferred link
 ; (`fn-snt-deferred-linkp', books/store-node-traces), whose node is the
 ; replay at the frontier's predecessor, and the advance `6ab2c783' left out
 ; is exactly `fn-snt-advance-replayed-node' -- the same step
 ; `fn-sn-refuse-reservation-preserves-relation' above takes.
+;
+; The deferred link, held closed: its body names every deferred kind's
+; replay step, and opening it inside the relation proof below cost 4.2
+; million prover steps once the known abort covered every deferred kind (lane
+; host-decisions); the abort needs only these three facts of it.
+(local
+(defthm fn-snr-deferred-link-node-facts
+  (implies (fn-snt-deferred-linkp s)
+           (let ((files (fn-sn-files s)))
+             (and (posp (fn-sf-frontier files))
+                  (fn-sf-history-recoverablep
+                   (fn-sn-groups s) (fn-sn-capacity s)
+                   (fn-sf-records files) (1- (fn-sf-frontier files)))
+                  (equal (fn-sn-node s)
+                         (fn-sf-replay-node
+                          (fn-sn-groups s) (fn-sn-capacity s)
+                          (fn-sf-records files) (1- (fn-sf-frontier files)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-snt-deferred-linkp)))))
+
 (defthm fn-sn-known-abort-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-known-abort s)))
   :hints (("Goal"
            :cases ((fn-sn-known-abort-enabledp s))
            :use (fn-sn-known-abort-preserves-state
-                 fn-sn-known-abort-is-exact-node-abort
+                 fn-sn-known-abort-is-exact-node-abort fn-snr-deferred-link-node-facts
                  (:instance fn-snt-an-article-record-is-no-other-store-event
                    (record (fn-sf-record-candidate (fn-sn-files s))))
                  (:instance fn-snt-advance-replayed-node
@@ -502,7 +537,7 @@
                    (first (+ -1 (fn-sf-frontier (fn-sn-files s))))
                    (second (fn-sf-frontier (fn-sn-files s)))))
            :in-theory (e/d (fn-snt-relation fn-snt-idle-phasep
-                             fn-snt-pending-linkp fn-snt-deferred-linkp
+                             fn-snt-pending-linkp
                              fn-snt-completion-linkp
                              fn-sn-known-abort fn-sn-known-abort-enabledp
                              fn-sn-known-abort-files
@@ -510,7 +545,7 @@
                              fn-sf-record-file-result
                              fn-sf-prepublish-abort
                              fn-sf-abort-completion)
-                            (fn-sn-statep fn-sf-statep
+                            (fn-sn-statep fn-sf-statep fn-snt-deferred-linkp
                              fn-sn-record-bindsp
                              fn-sf-history-recoverablep
                              fn-sf-replay-node fn-node-complete

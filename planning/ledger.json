@@ -1239,9 +1239,9 @@
     "books": 1279,
     "books_in_root_closure": 1268,
     "roots": 1232,
-    "theorems": 18918,
+    "theorems": 18919,
     "functions": 12936,
-    "assert_events": 18603,
+    "assert_events": 18646,
     "must_fails": 2184,
     "prover_refusals": 0,
     "encapsulates": 99,
@@ -19326,7 +19326,7 @@
       "book": "books/store-node-resolution.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 39,
+      "theorems": 40,
       "functions": 8,
       "guards": {
         "verified": 6,
@@ -27908,10 +27908,10 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 22,
+      "assert_events": 32,
       "must_fails": 0,
       "prover_refusals": 0,
-      "defconsts": 14,
+      "defconsts": 15,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -35033,7 +35033,7 @@
         "default-unguarded": 7
       },
       "verify_guards_events": 0,
-      "assert_events": 71,
+      "assert_events": 95,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 11,
@@ -37026,7 +37026,7 @@
         "default-unguarded": 5
       },
       "verify_guards_events": 0,
-      "assert_events": 27,
+      "assert_events": 36,
       "must_fails": 1,
       "prover_refusals": 0,
       "defconsts": 5,
@@ -37034,6 +37034,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/store-node",
+        "../../books/store-node-resolution",
         "topic-history-admission-tests",
         "topic-history-local-admin-tests"
       ],
@@ -38955,7 +38956,7 @@
     {
       "theorem": "fn-sn-known-abort-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 157,
+      "line": 171,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-known-abort and the conclusion is that branch's value"
       ]
@@ -38971,7 +38972,7 @@
     {
       "theorem": "fn-sn-refuse-reservation-disabled-is-no-op",
       "book": "books/store-node-resolution.lisp",
-      "line": 151,
+      "line": 165,
       "reasons": [
         "branch-of-definition: the hypothesis negates a branch test of fn-sn-refuse-reservation and the conclusion is that branch's value"
       ]
@@ -51782,14 +51783,14 @@
       },
       {
         "book": "tests/acl2/topic-history-store-node-tests.lisp",
-        "line": 5,
+        "line": 7,
         "include": "topic-history-local-admin-tests",
         "included": "tests/acl2/topic-history-local-admin-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/topic-history-store-node-tests.lisp",
-        "line": 6,
+        "line": 8,
         "include": "topic-history-admission-tests",
         "included": "tests/acl2/topic-history-admission-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
