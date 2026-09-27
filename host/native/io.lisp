@@ -3382,7 +3382,7 @@ or refuses by name, saying what to run."
        (lambda (stage) (fnn-record-filesystem-at-init stage profile policy))
        (fnn-core 'fn-bs-init-log-subdir-names))
       ;; SEC-006: the node's key files, as `fnn-command-init' writes them,
-      ;; once the store is published (outside fn-bs-init-pub-program: a
+      ;; once the store is published (outside fn-bs-init-log-program: a
       ;; death between the two leaves the complete store without
       ;; keys/node-secret.key, which `run' refuses by name until
       ;; `store ROOT node-secret create'; PKT-694).
@@ -3638,7 +3638,8 @@ fn-bs-imp-program's cuts."
 
 (defun fnn-pub-at (store kind suffix)
   "The cut KIND-SUFFIX of fn-bs-imp-program (KIND \"import\") or of
-fn-bs-init-pub-program (KIND \"init\": the same program, init's cut names)."
+fn-bs-init-log-program (KIND \"init\": the same program over the log's plan,
+init's cut names)."
   (fnn-at store (intern (string-upcase (fnn-concat kind "-" suffix)) :keyword)))
 
 (defun fnn-import-write-file (store path octets &optional (kind "import"))
@@ -3878,7 +3879,7 @@ presence of the two names is classified by fn-bs-imp-classify."
 replay RECORD-COUNT records), and publish it at ROOT-PATH by a no-replace
 rename, then fence ROOT-PATH's parent: books/store-import-publication.lisp
 fn-bs-imp-program step for step, with its cuts (KIND \"import\") or
-books/store-init-publication.lisp fn-bs-init-pub-program's (KIND \"init\":
+books/store-init-log-publication.lisp fn-bs-init-log-program's (KIND \"init\":
 the same steps, init's cut names).  An OS error before the rename is a known
 failure (exit 1, the staged directory named); at or after it the outcome is
 uncertain (exit 3) and the observed presence of the two names is classified

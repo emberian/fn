@@ -4,7 +4,7 @@ books/store-init-publication.lisp).
 host/native/io.lisp `fnn-command-init-published` builds the empty store in
 ROOT.init-XXXX beside ROOT and publishes it through `fnn-staged-publication`,
 the import's program (fn-bs-imp-program) with init's cut names
-(fn-bs-init-pub-program).  Before writing anything it observes a leftover
+(books/store-init-log-publication.lisp fn-bs-init-log-program).  Before writing anything it observes a leftover
 ROOT.init-* and ROOT, and ACL2 (fn-bs-init-pub-admission over
 fn-bs-imp-classify) proceeds or refuses by name, saying what to run.
 

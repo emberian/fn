@@ -1139,12 +1139,13 @@ directory), never "no store was created". `store export` is Store-history
 export, not a node backup (docs/operator.md).
 
 `operator init` publishes the empty store by the same program (P-INIT-PUB,
-books/store-init-publication.lisp `fn-bs-init-pub-program`: init's plan --
-the three subdirectories, `config.json`, the allocation frontier and the
-generation-1 configuration record -- staged in `ROOT.init-XXXX`, init's cut
-names). A crash leaves no store at ROOT or the complete empty store, nothing
-named in `transactions/` (PRF-217,
-`fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store`).
+books/store-init-log-publication.lisp `fn-bs-init-log-program`: init's plan --
+the three subdirectories `staging/`, `config/` and `journal/`, `config.json`,
+the generation-1 configuration record and the empty log segment
+`journal/000001.log` -- staged in `ROOT.init-XXXX`, init's cut names from
+books/store-init-publication.lisp). A crash leaves no store at ROOT or the
+complete empty store, whose segment is the empty log (PRF-268,
+`fn-bs-init-log-program-crash-is-no-store-or-the-complete-empty-log`).
 Before writing, ACL2's admission (`fn-bs-init-pub-admission`) refuses a
 leftover staged directory by name (`interrupted-init`: remove it and init
 again; `publication-uncertain`) and an existing ROOT without the store's

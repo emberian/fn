@@ -29,7 +29,7 @@ client run as the invoking user):
            reference is read.  Last, `store export` writes the archive to
            the same file system and `store import` publishes it as a second
            store beside the first (phase `import': fn-bs-imp-program; the
-           `init' phase is fn-bs-init-pub-program, see publication_phases).
+           `init' phase is fn-bs-init-log-program, see publication_phases).
   index    the log device parsed (dm-log-writes' on-disk format: a super
            sector, then per entry a sector of {sector, nr_sectors, flags,
            data_len} and the data); the full replay must equal the data
@@ -94,8 +94,8 @@ CKPT = re.compile(rb"CHECKPOINT auto sequence=(\d+)")
 def publication_phases():
     from tests.campaign import native_cuts
     return {
-        "init": {"program": "fn-bs-init-pub-program",
-                 "book": "books/store-init-publication.lisp",
+        "init": {"program": "fn-bs-init-log-program",
+                 "book": "books/store-init-log-publication.lisp",
                  "cuts": [c.name for c in native_cuts.INIT_PUB_CUTS],
                  "oracle": "ROOT absent (at most one ROOT.init-*, which the next "
                            "init names as interrupted-init; init succeeds once it "
@@ -975,7 +975,7 @@ def stages_beside(root, kind):
 
 
 def check_init(ctx, violations):
-    """A cut during `init` (fn-bs-init-pub-program): nothing was
+    """A cut during `init` (fn-bs-init-log-program): nothing was
     acknowledged.  The keystone: ROOT is absent or the complete empty store.
     Absent: at most one ROOT.init-*, which the next `init` names
     (interrupted-init) and after whose removal `init` succeeds; present: it
