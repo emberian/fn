@@ -536,7 +536,7 @@ class FrameSession:
 
     def message_id_valid(self, msgid: bytes) -> bool:
         return self.call(
-            "(fn-store-msgid-validp " + _octets(msgid) + ")") is True
+            "(fn-pfld-msgid-validp " + _octets(msgid) + ")") is True
 
     def identity_text(self, identity: bytes) -> bytes:
         """The one rendering of a canonical identity where a string is forced.

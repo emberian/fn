@@ -29,31 +29,19 @@
 (include-book "../books/store-profile-namespace")
 (include-book "../books/native-operator")
 (include-book "../books/article-fields")
+(include-book "../books/post-fields")
 (include-book "../books/store-log-route")
+;; The log kernel the host holds (lane per-record-state; host/native/io.lisp
+;; fnn-log-*): the committed records' count in place of their list.
+(include-book "../books/store-log-kernel-concrete")
+(include-book "../books/store-log-stream")
 (include-book "../books/store-log-segments")
 (include-book "../books/store-log-extend")
 (include-book "../books/store-init-log-publication")
 
-(defconst *fn-store-max-text* 512)
-
-(defun fn-store-text-octetsp-tail (xs)
-  (if (consp xs)
-      (and (fn-octetp (car xs)) (<= 33 (car xs)) (<= (car xs) 126)
-           (fn-store-text-octetsp-tail (cdr xs)))
-    (null xs)))
-
-(defun fn-store-text-octetsp (xs)
-  (and (consp xs)
-       (<= (len xs) *fn-store-max-text*)
-       (fn-octet-listp xs)
-       (<= 33 (car xs)) (<= (car xs) 126)
-       (fn-store-text-octetsp-tail (cdr xs))))
-
-; One Message-ID bound for the whole system.  `books/article-fields` owns the
-; RFC 5536 section 3.1.3 grammar and its 250-octet limit; this wrapper adds
-; nothing and subtracts nothing.
-(defun fn-store-msgid-octetsp (xs)
-  (fn-af-message-idp xs))
+; The field checks of the Store's prepares (the metadata text domain, the
+; Message-ID grammar, the composed POST verdicts) are ACL2's:
+; books/post-fields.lisp (fn-pfld-).  This file defines none of them.
 
 (defun fn-store-octets->string (xs)
   (fn-record-octets-string xs))
@@ -388,9 +376,6 @@
 (defun fn-store-charge (length)
   (if (natp length) (fn-charge-for-payload length) 0))
 
-(defun fn-store-msgid-validp (octets)
-  (if (fn-store-msgid-octetsp octets) t nil))
-
 (defun fn-store-group-name-octets (groups)
   (if (consp groups)
       (cons (fn-record-string-octets (car groups))
@@ -463,6 +448,33 @@
 (defun fn-store-log-next-txid (records floor)
   (declare (xargs :mode :program))
   (fn-store-log-next-txid-loop records (nfix floor)))
+
+;; The same fold one record at a time (the format-9 open streams its records,
+;; host/native/io.lisp fnn-recover-log): (fn-store-log-next-txid-loop R ACC)
+;; is the steps over R in order, by its definition; and the join of two
+;; frontiers (the fold's, the checkpoint's, the log kernel's next).
+(defun fn-store-log-next-txid-step (record acc)
+  (declare (xargs :mode :program))
+  (fn-store-log-next-txid-loop (list record) (nfix acc)))
+
+;; The same fold over records the replay has already decoded
+;; (books/store-recover-stream.lisp fn-srs-decode: each record's
+;; fn-store-event-decode-exact, kept when it is :ok with a wire event, which is
+;; exactly when fn-store-log-next-txid-loop's step reads that event's txid; any
+;; other record makes the chunk :bad and the open faults), so the streamed
+;; open decodes each record once.
+(defun fn-store-log-next-txid-of-events (events acc)
+  (declare (xargs :mode :program))
+  (if (consp events)
+      (fn-store-log-next-txid-of-events
+       (cdr events)
+       (let ((txid (fn-rcon-wire-event-txid (car events))))
+         (if (natp txid) (max acc (+ 1 txid)) acc)))
+    acc))
+
+(defun fn-store-log-next-txid-join (a b)
+  (declare (xargs :mode :program))
+  (max (nfix a) (nfix b)))
 
 ;; The record log's layout (books/store-log-route.lisp).
 (defun fn-store-log-segment-name () (fn-olr-segment-name))

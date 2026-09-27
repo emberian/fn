@@ -71,7 +71,7 @@ class MountIdentitySourceTests(unittest.TestCase):
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="utf-8")
         install = owner[owner.index("(defun fnn-owner-install "):]
         self.assertLess(install.index("(fnn-check-filesystem-identity store t)"),
-                        install.index("(fnn-owner-recover-core store records"))
+                        install.index("(fnn-owner-recover-core store "))
 
 
 @unittest.skipUnless(executable(IMAGE), "native image not built")

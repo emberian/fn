@@ -138,8 +138,12 @@
 (include-book "../books/served-reply-buffer")
 (include-book "../books/owner-open-carried")
 ; PKT-828: a reader quantum during a batch's barrier runs at the reader view
-; (fn-owner-at-reader-view, fn-ocfg-with-view; fn-ocv-capture).
+; (fn-owner-at-reader-view, fn-ocfg-with-view; fn-ocv-capture); the span read
+; there, the working view put back, is fn-orr-read-span, whose keystone
+; fn-orr-read-span-at-a-captured-view-restores-the-owner restates the relation
+; after it (books/owner-reader-read.lisp).
 (include-book "../books/owner-reader-view")
+(include-book "../books/owner-reader-read")
 ; PRF-099: the opaque-carriage budget and the refusal classes.
 (include-book "../books/peer-carriage")
 ;
@@ -909,7 +913,7 @@
   ; record, or :refused with the named ACL2 refusal reason.  No state is
   ; published until fn-owner-reconfigure-complete follows a durable write.
   (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (let ((name (if (fn-store-text-octetsp name-octets)
+  (let ((name (if (fn-pfld-group-name-requestp name-octets)
                   (fn-store-octets->string name-octets) :bad)))
     (if (equal name :bad)
         (value (fn-ores-config-refused :group-name))
@@ -1058,12 +1062,13 @@
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
-    (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (not (fn-octet-listp payload)) (> (len payload) *fn-record-max-payload*)
-            (equal groups :bad) (null groups)
-            (not (fn-store-text-octetsp id-octets))
-            (not (fn-store-text-octetsp subject-octets))
-            (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
+    ; The fields' checks are ACL2's (books/post-fields.lisp
+    ; fn-pfld-article-inputsp): the Message-ID grammar, the codec's payload
+    ; ceiling, the resolved groups, the record's metadata domain, the charge.
+    (if (or (not (fn-octet-listp payload))
+            (not (fn-pfld-article-inputsp msgid-octets (len payload) groups
+                                          id-octets subject-octets
+                                          evidence-octets charge)))
         (mv nil :invalid fn-arena state)
       ; A name in the domain but not served at the live generation (a retired
       ; group) is refused by the prepare itself (fn-psrv-prepare, lane
@@ -1194,12 +1199,10 @@
   (let* ((s (fn-owner-store state))
          (groups (fn-store-groups-from-codes
                   group-codes (fn-state-groups (fn-node-acceptance (fn-sn-node s))))))
-    (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (> (fn-octets-len fn-octets) *fn-record-max-payload*)
-            (equal groups :bad) (null groups)
-            (not (fn-store-text-octetsp id-octets))
-            (not (fn-store-text-octetsp subject-octets))
-            (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
+    ; books/post-fields.lisp fn-pfld-article-inputsp, over the buffer's fill.
+    (if (not (fn-pfld-article-inputsp msgid-octets (fn-octets-len fn-octets)
+                                      groups id-octets subject-octets
+                                      evidence-octets charge))
         (mv nil :invalid fn-arena state)
       ; A retired group (in the domain, not served at the live generation)
       ; is refused by the prepare below (fn-psrv-prepare, lane
@@ -1286,11 +1289,9 @@
   (declare (xargs :stobjs (state fn-arena) :mode :program))
   (let* ((s (fn-owner-store state))
          (node (fn-sn-node s)))
-    (if (or (not (member-equal kind '(:undertake :release)))
-            (not (fn-store-text-octetsp id-octets))
-            (not (fn-store-text-octetsp subject-octets))
-            (not (fn-store-text-octetsp evidence-octets))
-            (not (natp charge)))
+    ; books/post-fields.lisp fn-pfld-retention-inputsp.
+    (if (not (fn-pfld-retention-inputsp kind id-octets subject-octets
+                                        evidence-octets charge))
         (value :invalid)
       (let* ((txid (fn-state-next-txid (fn-node-acceptance node)))
              (event (fn-store-retention-event-make
@@ -1304,7 +1305,7 @@
 ; The caller supplies an ACL2-constructed kind-3 or kind-4 event.  This
 ; boundary deliberately accepts no separate profile, key, article, or verdict
 ; fields that host code could recombine differently.
-;; The owner's identity entry (lane signed-post, PRF-289).  Since the records
+;; The owner's identity entry (lane signed-post, PRF-292).  Since the records
 ;; flip the Store retains a composite as a ROW (fn-hstxa-p); the event ACL2
 ;; built is the wire composite, so the entry stages the row the intern would
 ;; make at the arena's count (books/owner-identity-intern.lisp
@@ -1328,18 +1329,36 @@
   (let ((s (fn-owner-store state)))
     (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
         (value :invalid)
-      ;; books/owner-identity-served.lisp fn-oiis-prepare-identity: the
-      ;; wire composite interned into the arena's row (signed-post), then
-      ;; prepare-served's served test over that row; KEYSTONE
-      ;; fn-oiis-prepare-identity-preserves-invariant.
-      (let ((state (fn-owner-install-ocfg
-                    (fn-oiis-prepare-identity (fn-owner-ocfg state) event
-                                              (fn-arena-count fn-arena))
-                    state)))
-        (value (cond ((equal (fn-owner-store state) s) :refused)
-                     ((fn-oii-identity-sealsp event)
-                      (list :seal (fn-oii-identity-payload event)))
-                     (t :prepared)))))))
+      ;; fn-oiis-prepare-identity (books/owner-identity-served.lisp): the
+      ;; owner's identity prepare over the ROW the intern makes of EVENT at
+      ;; the arena's count (signed-post: fn-oii-identity-row, KEYSTONE
+      ;; fn-oii-ocfg-prepare-identity-is-intern-then-step), when the row's
+      ;; article groups are served (prepare-served's test over the row --
+      ;; over the wire event it answered t for every composite; KEYSTONE
+      ;; fn-oiis-prepare-identity-preserves-invariant), and the owner
+      ;; unchanged otherwise.
+      (let* ((row (fn-oii-identity-row event (fn-sn-keyring s) (fn-sn-keyring-generation s)
+                                       (fn-arena-count fn-arena)))
+             (state (fn-owner-install-ocfg
+                     (fn-oiis-prepare-identity (fn-owner-ocfg state) event
+                                                  (fn-arena-count fn-arena))
+                     state)))
+        (cond ((equal (fn-owner-store state) s) (value :refused))
+              ((fn-oii-identity-sealsp event)
+               ; The catalog (signed-post's red, catalog-columns): the article
+               ; this event serves and its held row -- the row itself for a
+               ; plain record, the held row inside the composite for a signed
+               ; one -- kept for the catalog's prepare after the host's seal
+               ; (fn-owner-cat-prepare-sealed), completed by
+               ; fn-owner-finish-identity (T4 then T2, as a POST).
+               (let ((state (f-put-global
+                             'fn-owner-cat-candidate
+                             (if (fn-hstxa-p row)
+                                 (cons (fn-replay-composite-record event) (fn-hstxa-held row))
+                               (cons event row))
+                             state)))
+                 (value (list :seal (fn-oii-identity-payload event)))))
+              (t (value :prepared)))))))
 
 ; The consumer proposal is constructed by ACL2.  The host carries this exact
 ; bounded event into Store; it does not rebuild the scope, epoch or cursor.
@@ -1588,6 +1607,36 @@
                     ; is rebuilt from the store's rows at the next open).
                     (mv nil :fault fn-cat state)
                   (mv nil (car result) fn-cat state))))))))))
+
+;; The completion of an identity event that carried an article (a signed
+;; composite: signed-post), with the catalog's T4 then T2 over the pending
+;; row fn-owner-cat-prepare-sealed prepared after the host's seal, exactly as
+;; fn-owner-finish-submission completes a POST (books/served-catalog-owner.lisp
+;; fn-sca-finish; its R keystone fn-sca-ocl-relation-of-finish is stated over
+;; the article the history's rows serve, fn-cat-history-articles, which
+;; reads a composite row's held article).  Without a pending row it is
+;; fn-owner-finish.  (mv nil WORD fn-cat state).
+(defun fn-owner-finish-identity (fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program)
+           (ignorable fn-arena))
+  (let ((completion (fn-sf-completion (fn-sn-files (fn-owner-store state)))))
+    (mv-let (erp word state)
+      (fn-owner-finish state)
+      (declare (ignore erp))
+      (let ((pending (f-get-global 'fn-owner-cat-pending state)))
+        (if (not (and (equal word :durable) pending (consp completion)))
+            (mv nil word fn-cat state)
+          (let ((view (fn-own-view (fn-owner-core state))))
+            (mv-let (cword pending2 fn-cat)
+              (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
+                             pending (fn-own-view-index view)
+                             (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
+                                                (fn-own-view-withdrawals view))
+                             fn-cat)
+              (let ((state (f-put-global 'fn-owner-cat-pending pending2 state)))
+                (if (or (equal (car cword) :stale-token) (equal (car cword) :expected-mismatch))
+                    (mv nil :fault fn-cat state)
+                  (mv nil word fn-cat state))))))))))
 
 (defun fn-owner-begin (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
@@ -2680,8 +2729,8 @@
   (let ((groups (fn-store-groups-from-codes
                  group-codes
                  (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
-    (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (not (fn-octet-listp payload)) (equal groups :bad) (null groups))
+    (if (or (not (fn-pfld-lookup-inputsp msgid-octets groups))
+            (not (fn-octet-listp payload)))
         (value :absent)
       ; fn-store-existing-action-is-the-verdict-over-alpha.
       (let ((action (fn-store-existing-action
@@ -2706,8 +2755,7 @@
   (let ((groups (fn-store-groups-from-codes
                  group-codes
                  (fn-state-groups (fn-node-acceptance (fn-owner-node state))))))
-    (if (or (not (fn-store-msgid-octetsp msgid-octets))
-            (equal groups :bad) (null groups))
+    (if (not (fn-pfld-lookup-inputsp msgid-octets groups))
         (value :absent)
       ; PRF-191: fn-rclb-existing-action through the view trie
       ; (fn-pidx-existing-action-is-store-existing-action).
@@ -3077,8 +3125,12 @@
       (if (not (and (natp start) (natp end) (<= start end)
                     (<= end (fn-octets-len fn-octets))))
           (value :bad-range)
-        (let* ((result (fn-scr-ocfg-read-span
-                        (fn-owner-ocfg state) id start end fn-octets fn-arena fn-cat))
+        ;; PKT-828: at the reader view while the committer holds a capture,
+        ;; the working view put back after it (books/owner-reader-read.lisp
+        ;; fn-orr-read-span; with no capture it is fn-scr-ocfg-read-span).
+        (let* ((result (fn-orr-read-span
+                        (fn-owner-ocfg state) (fn-owner-reader-views state)
+                        id start end fn-octets fn-arena fn-cat))
                (effects (fn-own-tls-result-effects result))
                (consumed (fn-own-tls-result-consumed result))
                (state (fn-owner-install-ocfg
@@ -3098,12 +3150,7 @@
 
 (defun fn-owner-chunk-span (id start end fn-octets fn-arena fn-cat state)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat state) :mode :program))
-  (let* ((working (fn-own-view (fn-owner-core state)))
-         (state (fn-owner-at-reader-view state)))
-    (mv-let (erp val state)
-      (fn-owner-chunk-span-at id start end fn-octets fn-arena fn-cat state)
-      (let ((state (fn-owner-at-working-view working state)))
-        (mv erp val state)))))
+  (fn-owner-chunk-span-at id start end fn-octets fn-arena fn-cat state))
 
 (defun fn-owner-close (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
@@ -3161,7 +3208,7 @@
 
 (defun fn-owner-declare-group (name-octets fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (if (not (fn-store-text-octetsp name-octets))
+  (if (not (fn-pfld-group-name-requestp name-octets))
       (value :invalid)
     (let* ((before (fn-owner-core state))
            (state (fn-owner-step

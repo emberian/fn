@@ -1199,8 +1199,17 @@ def log_parse(text):
 def log_run(image, argv, k, wl):
     """One `fn log` process; mark the device at its RECOVERED and ACK lines."""
     mark("rec-begin-%d" % k)
+    # The handshake (host/native/io.lisp fnn-log-rig-handshake): `append'
+    # waits for our line after each RECOVERED and ACK line, so each mark
+    # lands before the next batch's writes and a window holds at most the
+    # one batch the oracle allows past its mark.
+    handshake = argv[0] == "append"
+    env = dict(os.environ)
+    if handshake:
+        env["FN_NATIVE_LOG_RIG_HANDSHAKE"] = "1"
     p = subprocess.Popen([str(image), "--fn", "log"] + argv, stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE, text=True)
+                         stderr=subprocess.PIPE, stdin=subprocess.PIPE if handshake else None,
+                         text=True, env=env)
     last = None
     for text in p.stdout:
         (line,) = log_parse(text) or [None]
@@ -1210,6 +1219,12 @@ def log_run(image, argv, k, wl):
             mark("rec-end-%d" % k)
         elif line["what"] == "ACK":
             mark("logack-%d" % line["records"])
+        if handshake and line["what"] in ("RECOVERED", "ACK"):
+            try:
+                p.stdin.write("\n")
+                p.stdin.flush()
+            except OSError:
+                pass
         out_line(wl, tag="line", run=k, **line)
         last = line
     rc = p.wait()

@@ -579,6 +579,104 @@ class NativeHybridAuthorTest(unittest.TestCase):
         finally:
             self.stop_owner(owner)
 
+    def test_signed_and_unsigned_posts_share_one_numbering(self):
+        """GROUP, LISTGROUP and OVER count and number signed articles.
+
+        Signed-post's red (2026-09-27): the catalog the served machine reads
+        (books/served-catalog-owner.lisp) loaded only plain article rows and
+        the identity commit never updated it, so GROUP counted only the
+        unsigned articles while the owner's view numbered them all.  Now the
+        catalog commits the held article row of every signed composite, at
+        the durable commit (host/owner-host.lisp fn-owner-finish-identity)
+        and at every open (fn-sca-load-held-rows).  Five POSTs, signed and
+        unsigned interleaved: GROUP says 5 1 5, LISTGROUP lists 1..5, OVER
+        1-5 lists the five Message-IDs in posting order, each ARTICLE by
+        Message-ID answers its number -- before and after a restart.
+        """
+        def carrier(stem):
+            source = self.root / (stem + "-source.eml")
+            source.write_bytes(
+                b"From: agent@example.invalid\r\n"
+                b"Date: Wed, 23 Sep 2026 12:00:00 +0000\r\n"
+                b"Newsgroups: fn.test\r\nSubject: signed " + stem.encode() + b"\r\n"
+                b"Message-ID: <" + stem.encode() + b"@example.invalid>\r\n"
+                b"\r\nsigned body\r\n")
+            carried = self.root / (stem + "-carried.eml")
+            signed = self.invoke(
+                "hybrid-sign-carrier", str(self.principal), str(self.ed_public),
+                str(self.ed_secret), str(self.ml_public), str(self.ml_private),
+                str(source), str(carried))
+            self.assertEqual(signed.returncode, 0, signed.stderr.decode())
+            return carried.read_bytes()
+
+        def plain(stem):
+            return (b"From: agent@example.invalid\r\nNewsgroups: fn.test\r\n"
+                    b"Subject: plain " + stem.encode() + b"\r\n"
+                    b"Message-ID: <" + stem.encode() + b"@example.invalid>\r\n"
+                    b"\r\nplain body\r\n")
+
+        def post(octets):
+            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
+                with whole_stream(sock) as stream:
+                    self.assertTrue(stream.readline().startswith(b"200 "))
+                    stream.write(b"POST\r\n")
+                    self.assertTrue(stream.readline().startswith(b"340 "))
+                    body = b"".join(
+                        (b"." + line if line.startswith(b".") else line)
+                        for line in octets.splitlines(keepends=True))
+                    stream.write(body + b".\r\n")
+                    return stream.readline()
+
+        def multiline(stream):
+            lines = []
+            while True:
+                line = stream.readline()
+                if line == b".\r\n":
+                    return lines
+                lines.append(line)
+
+        order = ["cat-plain-1", "cat-signed-2", "cat-plain-3", "cat-signed-4", "cat-plain-5"]
+
+        def check():
+            with socket.create_connection(("127.0.0.1", self.port), timeout=30) as sock:
+                with whole_stream(sock) as stream:
+                    self.assertTrue(stream.readline().startswith(b"200 "))
+                    stream.write(b"GROUP fn.test\r\n")
+                    self.assertEqual(stream.readline(), b"211 5 1 5 fn.test\r\n")
+                    stream.write(b"LISTGROUP fn.test\r\n")
+                    self.assertTrue(stream.readline().startswith(b"211 5 1 5 fn.test"))
+                    self.assertEqual(multiline(stream), [b"%d\r\n" % n for n in range(1, 6)])
+                    stream.write(b"OVER 1-5\r\n")
+                    self.assertTrue(stream.readline().startswith(b"224 "))
+                    over = multiline(stream)
+                    self.assertEqual([line.split(b"\t")[0] for line in over],
+                                     [b"%d" % n for n in range(1, 6)], over)
+                    self.assertEqual([line.split(b"\t")[4] for line in over],
+                                     [b"<" + stem.encode() + b"@example.invalid>"
+                                      for stem in order], over)
+                    for n, stem in enumerate(order, 1):
+                        stream.write(b"STAT <" + stem.encode() + b"@example.invalid>\r\n")
+                        self.assertEqual(stream.readline().split(b" ")[:2],
+                                         [b"223", b"%d" % n], stem)
+
+        owner = self.start_owner()
+        try:
+            enrolled = self.invoke("hybrid-enroll", str(self.control), "1",
+                                   str(self.principal), str(self.ed_public),
+                                   str(self.ml_public))
+            self.assertEqual(enrolled.returncode, 0, enrolled.stderr.decode())
+            for stem in order:
+                octets = carrier(stem) if "signed" in stem else plain(stem)
+                self.assertTrue(post(octets).startswith(b"240 "), stem)
+            check()
+        finally:
+            self.stop_owner(owner)
+        owner = self.start_owner()
+        try:
+            check()
+        finally:
+            self.stop_owner(owner)
+
     def test_authored_carrier_survives_native_peering_and_receiver_restart(self):
         """Real owner/feed/receiver path; portable verification is independent.
 

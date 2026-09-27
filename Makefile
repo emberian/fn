@@ -46,6 +46,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/article-work-tests \
 	books/article-fields \
 	tests/acl2/article-fields-tests \
+	books/post-fields \
+	tests/acl2/post-fields-tests \
 	books/store-config \
 	books/sha256 \
 	tests/acl2/sha256-tests \
@@ -394,6 +396,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-programs-tests \
 	books/store-log-route \
 	tests/acl2/store-log-route-tests \
+	books/store-log-kernel-concrete \
+	tests/acl2/store-log-kernel-concrete-tests \
+	books/store-log-stream \
+	tests/acl2/store-log-stream-tests \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
 	books/store-log-reclaim \
@@ -961,6 +967,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-prepare-served \
 	books/owner-prepare-served-ocl \
 	tests/acl2/owner-prepare-served-tests \
+	tests/acl2/owner-prepare-served-events-tests \
+	tests/acl2/owner-identity-served-tests \
+	tests/acl2/owner-prepare-served-abort-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \
@@ -1157,8 +1166,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-commit-pipeline-tests \
 	books/owner-reader-view \
 	tests/acl2/owner-reader-view-tests \
+	books/owner-reader-read \
+	tests/acl2/owner-reader-read-tests \
 	books/store-log-route-programs \
 	tests/acl2/store-log-route-programs-tests \
+	books/store-log-open-barriers \
+	tests/acl2/store-log-open-barriers-tests \
 	books/owner-open-carried \
 	tests/acl2/owner-open-carried-tests \
 	books/reader-open-carried \
