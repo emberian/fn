@@ -1149,23 +1149,23 @@
     "books": 1182,
     "books_in_root_closure": 1171,
     "roots": 1142,
-    "theorems": 17477,
-    "functions": 12090,
-    "assert_events": 17449,
-    "must_fails": 2127,
+    "theorems": 17484,
+    "functions": 12113,
+    "assert_events": 17460,
+    "must_fails": 2132,
     "prover_refusals": 0,
     "encapsulates": 91,
     "guards": {
       "verified": 2421,
-      "declared-off": 1235,
+      "declared-off": 1254,
       "default-guarded": 6672,
-      "default-unguarded": 1762
+      "default-unguarded": 1766
     },
     "suspect_theorems": 186,
     "export_hygiene_warnings": 201,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 205,
-    "include_hygiene_warnings": 1204,
+    "include_hygiene_warnings": 1206,
     "host_names_warnings": 1341,
     "hand_written_record_warnings": 18
   },
@@ -7432,7 +7432,7 @@
       "book": "books/cancel-lock-d25.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 16,
+      "theorems": 18,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -9076,11 +9076,11 @@
       "book": "books/consumer-wait.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 8,
-      "functions": 10,
+      "theorems": 10,
+      "functions": 12,
       "guards": {
         "verified": 4,
-        "declared-off": 1,
+        "declared-off": 3,
         "default-guarded": 5,
         "default-unguarded": 0
       },
@@ -9103,7 +9103,7 @@
       "book": "books/container-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 25,
+      "theorems": 27,
       "functions": 2,
       "guards": {
         "verified": 0,
@@ -9150,6 +9150,7 @@
       "includes": [
         "identity",
         "node-invariants",
+        "payload-arena",
         "records"
       ],
       "system_includes": [
@@ -16475,7 +16476,7 @@
       "book": "books/source-routes.lisp",
       "in_root_closure": true,
       "is_root": false,
-      "theorems": 15,
+      "theorems": 16,
       "functions": 0,
       "guards": {
         "verified": 0,
@@ -16493,6 +16494,7 @@
       "includes": [
         "hybrid-store-injected",
         "poster-bytes-invariants",
+        "store-intern",
         "store-reclaim"
       ],
       "system_includes": [],
@@ -19716,6 +19718,7 @@
       "encapsulates": 0,
       "includes": [
         "poster-bytes-invariants",
+        "store-intern",
         "store-node-retention",
         "store-reclaim-buffer"
       ],
@@ -24566,10 +24569,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 11,
+      "functions": 13,
       "guards": {
         "verified": 0,
-        "declared-off": 4,
+        "declared-off": 6,
         "default-guarded": 0,
         "default-unguarded": 7
       },
@@ -25740,10 +25743,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 6,
+      "functions": 8,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 2,
         "default-guarded": 0,
         "default-unguarded": 6
       },
@@ -26223,18 +26226,18 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 12,
+      "functions": 18,
       "guards": {
         "verified": 0,
-        "declared-off": 3,
+        "declared-off": 6,
         "default-guarded": 0,
-        "default-unguarded": 9
+        "default-unguarded": 12
       },
       "verify_guards_events": 0,
-      "assert_events": 35,
-      "must_fails": 10,
+      "assert_events": 40,
+      "must_fails": 15,
       "prover_refusals": 0,
-      "defconsts": 14,
+      "defconsts": 15,
       "defmacros": 1,
       "encapsulates": 0,
       "includes": [
@@ -26252,19 +26255,19 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 7,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 6,
         "default-guarded": 0,
-        "default-unguarded": 0
+        "default-unguarded": 1
       },
       "verify_guards_events": 0,
-      "assert_events": 62,
+      "assert_events": 67,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 39,
-      "defmacros": 0,
+      "defmacros": 4,
       "encapsulates": 0,
       "includes": [
         "../../books/container-invariants"
@@ -31632,10 +31635,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 22,
+      "functions": 23,
       "guards": {
         "verified": 0,
-        "declared-off": 11,
+        "declared-off": 12,
         "default-guarded": 0,
         "default-unguarded": 11
       },
@@ -32744,15 +32747,15 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 0,
+      "functions": 2,
       "guards": {
         "verified": 0,
-        "declared-off": 0,
+        "declared-off": 2,
         "default-guarded": 0,
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 11,
+      "assert_events": 12,
       "must_fails": 8,
       "prover_refusals": 0,
       "defconsts": 7,
@@ -32760,6 +32763,7 @@
       "encapsulates": 0,
       "includes": [
         "../../books/codec-attach",
+        "../../books/store-existing-alpha",
         "../../books/store-node-existing-invariants",
         "held-rows-tests"
       ],
@@ -34288,10 +34292,10 @@
       "in_root_closure": true,
       "is_root": true,
       "theorems": 0,
-      "functions": 5,
+      "functions": 6,
       "guards": {
         "verified": 0,
-        "declared-off": 2,
+        "declared-off": 3,
         "default-guarded": 0,
         "default-unguarded": 3
       },
@@ -40670,7 +40674,7 @@
       },
       {
         "book": "books/cancel-lock-d25.lisp",
-        "line": 30,
+        "line": 31,
         "include": "source-routes",
         "included": "books/source-routes.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -40817,7 +40821,7 @@
       },
       {
         "book": "books/consumer-artifact-retry.lisp",
-        "line": 30,
+        "line": 32,
         "include": "source-routes",
         "included": "books/source-routes.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -41923,16 +41927,23 @@
       },
       {
         "book": "books/source-routes.lisp",
-        "line": 26,
+        "line": 34,
         "include": "poster-bytes-invariants",
         "included": "books/poster-bytes-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/source-routes.lisp",
-        "line": 27,
+        "line": 35,
         "include": "store-reclaim",
         "included": "books/store-reclaim.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/source-routes.lisp",
+        "line": 38,
+        "include": "store-intern",
+        "included": "books/store-intern.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -42448,16 +42459,23 @@
       },
       {
         "book": "books/visibility-join.lisp",
-        "line": 51,
+        "line": 58,
         "include": "store-node-retention",
         "included": "books/store-node-retention.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "books/visibility-join.lisp",
-        "line": 52,
+        "line": 59,
         "include": "poster-bytes-invariants",
         "included": "books/poster-bytes-invariants.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "books/visibility-join.lisp",
+        "line": 60,
+        "include": "store-intern",
+        "included": "books/store-intern.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -44583,21 +44601,21 @@
       },
       {
         "book": "tests/acl2/cancel-lock-d25-tests.lisp",
-        "line": 12,
+        "line": 13,
         "include": "held-rows-tests",
         "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/cancel-lock-d25-tests.lisp",
-        "line": 13,
+        "line": 14,
         "include": "../../books/cancel-lock-d25",
         "included": "books/cancel-lock-d25.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/cancel-lock-d25-tests.lisp",
-        "line": 14,
+        "line": 15,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -44940,21 +44958,21 @@
       },
       {
         "book": "tests/acl2/consumer-artifact-retry-tests.lisp",
-        "line": 13,
+        "line": 15,
         "include": "../../books/consumer-artifact-retry",
         "included": "books/consumer-artifact-retry.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/consumer-artifact-retry-tests.lisp",
-        "line": 14,
+        "line": 16,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/consumer-artifact-retry-tests.lisp",
-        "line": 15,
+        "line": 17,
         "include": "held-rows-tests",
         "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -45080,14 +45098,14 @@
       },
       {
         "book": "tests/acl2/consumer-wait-tests.lisp",
-        "line": 14,
+        "line": 16,
         "include": "../../books/consumer-wait",
         "included": "books/consumer-wait.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/consumer-wait-tests.lisp",
-        "line": 16,
+        "line": 18,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -46354,21 +46372,21 @@
       },
       {
         "book": "tests/acl2/source-routes-tests.lisp",
-        "line": 15,
+        "line": 17,
         "include": "held-rows-tests",
         "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/source-routes-tests.lisp",
-        "line": 16,
+        "line": 18,
         "include": "../../books/source-routes",
         "included": "books/source-routes.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/source-routes-tests.lisp",
-        "line": 17,
+        "line": 19,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
@@ -46711,21 +46729,21 @@
       },
       {
         "book": "tests/acl2/store-node-existing-tests.lisp",
-        "line": 3,
+        "line": 11,
         "include": "../../books/store-node-existing-invariants",
         "included": "books/store-node-existing-invariants.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/store-node-existing-tests.lisp",
-        "line": 4,
+        "line": 13,
         "include": "../../books/codec-attach",
         "included": "books/codec-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
         "book": "tests/acl2/store-node-existing-tests.lisp",
-        "line": 5,
+        "line": 14,
         "include": "held-rows-tests",
         "included": "tests/acl2/held-rows-tests.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

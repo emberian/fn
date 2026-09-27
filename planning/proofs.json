@@ -9141,7 +9141,9 @@
         "fn-cwait-request-decode-of-another-code-is-the-consumer-decode",
         "fn-cwait-cli-plan-of-another-command-is-the-consumer-plan",
         "fn-cwait-step-over-is-the-poll-or-a-sleep-on-an-empty-page",
-        "fn-cwait-step-over-is-step-unless-a-held-row"
+        "fn-cwait-step-over-is-step-unless-a-held-row",
+        "fn-cwait-run-over-answers-the-poll-at-its-return-point",
+        "fn-cwait-run-over-sleeps-only-over-empty-pages"
       ]
     },
     {
