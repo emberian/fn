@@ -14,6 +14,7 @@ See the [store refinement contract](store-refinement.md) and the
 | A-WRITE-ISOLATION | Later incomplete writes cannot damage previously durable committed storage outside the modeled write unit. The adapter/layout must establish that isolation. |
 | A-HOST | The adapter preserves event identity/order contracts, reports outcomes honestly, and does not mutate logical data behind the core. |
 | A-HOST-EXCLUSIVE-READ | While a store is open under its lock no other writer changes the files a range read covers, so the concatenation of range reads equals one whole-file read (P3; `books/assumptions.lisp`). |
+| A-CRYPTO-TRAILER | The tears the platform produces of a written frame are tears of the byte model, and none validates as a frame unless it is the exact write (`fn-assume-crash-tearp`, `fn-assume-crash-tear-never-validates-unless-exact`, `books/assumptions.lisp`). Qualification is statistical: a validating tear is a garbled region whose 32-octet trailer is the SHA-256 of its own prefix; the pessimistic figure is the collision bound, about 2^-128 per chosen pair (the record log, PRF-244). |
 | A-CRYPTO | Selected primitives meet the stated integrity/authentication assumptions for the deployment; no universal digest-injectivity axiom. |
 | A-PEER | A peer whose retention undertaking is relied upon follows that undertaking within the declared node-failure model. |
 | A-IDENTITY | Origin/incarnation allocation and restore procedures avoid unrecognized reuse, subject to their explicit freshness assumptions. |

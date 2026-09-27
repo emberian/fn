@@ -6589,84 +6589,6 @@
       ]
     },
     {
-      "id": "PRF-199",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-sct-decode-file-of-file-is-the-capture"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-capture-of-tables-of-capture"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-run-of-program"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-run-of-rows-program"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-decode-rows-of-rows-program"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-agreep-of-build"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-decode-programs-of-table-programs"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-run-decode-of-run-segments"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sct-decode-file-of-file-segments"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ockp-run-writes-the-file"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ockp-run-is-the-remaining"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ockp-encode-batch-ok-is-encodable"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ockp-step-preserves-statep"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ockp-step-preserves-encodable"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ockp-run-of-encodable-never-refuses-a-row"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ockp-setup-not-unencodable-never-refuses-a-row"
-        }
-      ]
-    },
-    {
-      "id": "PRF-200",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-ockp-decide-defers-by-the-estimate"
-        }
-      ]
-    },
-    {
       "id": "PRF-193",
       "events": [
         {
@@ -7295,6 +7217,84 @@
       ]
     },
     {
+      "id": "PRF-199",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sct-decode-file-of-file-is-the-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-capture-of-tables-of-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-run-of-program"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-run-of-rows-program"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-decode-rows-of-rows-program"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-agreep-of-build"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-decode-programs-of-table-programs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-run-decode-of-run-segments"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sct-decode-file-of-file-segments"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-run-writes-the-file"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-run-is-the-remaining"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-encode-batch-ok-is-encodable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-step-preserves-statep"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-step-preserves-encodable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-run-of-encodable-never-refuses-a-row"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-setup-not-unencodable-never-refuses-a-row"
+        }
+      ]
+    },
+    {
+      "id": "PRF-200",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ockp-decide-defers-by-the-estimate"
+        }
+      ]
+    },
+    {
       "id": "PRF-206",
       "events": [
         {
@@ -7503,6 +7503,157 @@
       ]
     },
     {
+      "id": "PRF-216",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrb-checkpoint-decode-is-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrb-selection-plan-is-selection-plan"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnrb-dec-is-dec"
+        }
+      ]
+    },
+    {
+      "id": "PRF-244",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-tear-write-is-pieces"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-crash-of-aligned-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-batch-tear-is-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-batch-crash-is-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-no-forgery-under-a-crypto-trailer"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer"
+        }
+      ]
+    },
+    {
+      "id": "PRF-245",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-complete-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-last-of-complete-append"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-append-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-fence-content"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-fence-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-prepare-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-finish-one-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-known-abort-preserves-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-crash-of-related-state-is-a-prefix"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-consumed-aligned"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-consumed-within"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-of-take-consumed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-recovered-frontier-is-the-last-complete-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-scan-last-digestp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-recovered-content-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgk-recover-establishes-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-txids-strictly-increase"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-recovered-okp-of-verdict"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-prepare-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-known-abort-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-append-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-fence-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-fence-failed-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-finish-one-preserves-okp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgt-prepare-preserves-relation"
+        }
+      ]
+    },
+    {
       "id": "PRF-209",
       "events": [
         {
@@ -7540,23 +7691,6 @@
         {
           "kind": "theorem",
           "name": "fn-cfgc-readback-verified-is-the-reopen"
-        }
-      ]
-    },
-    {
-      "id": "PRF-216",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bpnrb-checkpoint-decode-is-decode"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnrb-selection-plan-is-selection-plan"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnrb-dec-is-dec"
         }
       ]
     },
