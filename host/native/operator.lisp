@@ -754,12 +754,15 @@ configuration usage result."
   "HST-008: an accepted plan that needs a store, over a root holding none of
 the store's entries, becomes ACL2's :no-store refusal before any open
 (fn-native-operator-store-outcome, PRF-130).  The observation is the lstat
-one `init' makes; nothing is opened or locked."
+one `init' makes; nothing is opened or locked.  Then a `run' whose control
+path no platform binds whole becomes ACL2's :control-path-too-long refusal
+(fn-native-operator-control-outcome)."
   (if (eq (fnn-core 'fn-native-operator-host-result-status result) :accepted)
       (let ((root (fnn-core 'fn-native-operator-host-result-store-root result)))
-        (fnn-core 'fn-native-operator-host-store-outcome result
-                  (and (stringp root)
-                       (fnn-operator-init-observed (fnn-absolute root)))))
+        (fnn-core 'fn-native-operator-host-control-outcome
+                  (fnn-core 'fn-native-operator-host-store-outcome result
+                            (and (stringp root)
+                                 (fnn-operator-init-observed (fnn-absolute root))))))
     result))
 
 ;;; `store inspect MESSAGE-ID' (NNT-032): the operator's settling lookup.

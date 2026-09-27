@@ -1118,6 +1118,46 @@
 (assert-event (not (equal (fn-native-operator-result-reason
                            (fn-nop-refused :store-exists "init" nil nil))
                           :no-store)))
+
+; -----------------------------------------------------------------------------
+; fn-native-operator-long-control-path-is-refused teeth (lane ops-fixes).
+; Reachable witness: the store path of AW's heap_from_profile run, whose
+; default control path store/control.sock is 109 octets; `run' there faulted
+; with ENOENT after a truncated bind.  Its run plan is refused by name, exit 1.
+(defconst *fn-nop-deep-config*
+  (fn-nop-test-lines '("[store]" "path = \"/tank/fn/scratch/throughput-gate/native-img-913c2625b/tree/build/test-tmp/fn-heap-fm3ho5mm/fresh\"")))
+(defconst *fn-nop-deep-run*
+  (fn-native-operator-run *fn-nop-deep-config* (fn-nop-test-argv '("run"))))
+(assert-event (equal (len (fn-record-string-octets
+                           (fn-native-config-control-path
+                            (fn-native-operator-result-config *fn-nop-deep-run*))))
+                     109))
+(assert-event (fn-native-operator-control-path-too-longp *fn-nop-deep-run*))
+(defconst *fn-nop-deep-refused* (fn-native-operator-control-outcome *fn-nop-deep-run*))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-deep-refused*) :refused))
+(assert-event (equal (fn-native-operator-result-reason *fn-nop-deep-refused*)
+                     :control-path-too-long))
+(assert-event (equal (fn-native-operator-exit-code *fn-nop-deep-refused*) 1))
+(assert-event (equal (fn-native-operator-result-native-action *fn-nop-deep-refused*) :none))
+(assert-event (stringp (fn-native-operator-result-hint *fn-nop-deep-refused*)))
+; Hypothesis removed, the action: `status' under the same deep store needs
+; no bind and passes through, accepted.
+(defconst *fn-nop-deep-status*
+  (fn-native-operator-run *fn-nop-deep-config* (fn-nop-test-argv '("status"))))
+(assert-event (not (fn-native-operator-control-path-too-longp *fn-nop-deep-status*)))
+(assert-event (equal (fn-native-operator-control-outcome *fn-nop-deep-status*)
+                     *fn-nop-deep-status*))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-native-operator-control-outcome *fn-nop-deep-status*))
+                     :accepted))
+; Hypothesis removed, the length: a run whose control path is 103 octets or
+; fewer (/srv/fn/control.sock) passes through, accepted.
+(assert-event (not (fn-native-operator-control-path-too-longp *fn-nop-run*)))
+(assert-event (equal (fn-native-operator-control-outcome *fn-nop-run*) *fn-nop-run*))
+(assert-event (equal (fn-native-operator-result-status *fn-nop-run*) :accepted))
+(must-fail
+ (thm (equal (fn-native-operator-result-status (fn-native-operator-control-outcome result))
+             :refused)))
 ; A usage result carries ACL2's accepted form.
 (assert-event (equal (fn-native-operator-result-hint
                       (fn-nop-usage :flag-word-as-group "init" nil nil))

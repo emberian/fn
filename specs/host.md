@@ -1059,7 +1059,11 @@ after recovery and before listen, ACL2 decides the live capacity against it
 (`fn-cbud-run-decide`, host `fn-owner-connection-budget`): `connections
 holds=B per-connection=K KiB` to the service log, or `refused
 connections-exceed-memory capacity=C holds=B per-connection=K KiB machine=M
-MB` and exit 1. A live reconfiguration whose capacity passes the bound the
+MB` and exit 1; when the base itself does not fit (neither the store's heap
+figure nor the process's dynamic space, each with the fixed threads and the
+core, is within the machine: holds=0 whatever the capacity), the line goes
+on ` base-exceeds-machine heap-figure=F MB dynamic=D MB fixed=R MB`
+(`fn-cbud-run-refusal-line`). A live reconfiguration whose capacity passes the bound the
 run held is refused `:connections-exceed-memory` before anything is staged
 (`fn-owner-reconfigure-deltas`). Trusted sources count in the capacity like
 every other (the trusted range exempts a source from the per-address rule
