@@ -22,13 +22,16 @@
 ;     correct.
 ; Every function is guard-verified.
 ;
-; Reducing the per-byte connection rebuild to a per-FRAMED-EVENT rebuild (the
-; wire machine already frames the whole body in one span; the served fold does
-; not yet dispatch per span) is PKT-479, with the per-line wire index scan.
+; The per-byte connection rebuild is gone from the executable (PKT-479):
+; fn-scar-step-span-core runs books/served-scan.lisp fn-scar-scan-span, which
+; rebuilds the connection once per framed event and runs the wire machine a
+; line at a time (books/wire-scan.lisp fn-wire-scan); this fold stays the
+; logical definition every theorem above the read is stated over.
 
 (in-package "ACL2")
 (include-book "owner-served-carried")
 (include-book "wire-span")
+(include-book "served-scan")
 
 ; -----------------------------------------------------------------------------
 ; The carried fold over a buffer range: fn-scar-feed-counted, reading the range
@@ -144,7 +147,12 @@
                               (natp i) (natp end) (<= i end)
                               (<= end (fn-octets-len fn-octets)))))
   (let* ((wire (fn-served-conn-wire conn))
-         (fed (fn-scar-feed-span conn i end live trie arts fn-octets))
+         ;; PKT-479: executed one framed event at a time (books/served-scan.lisp
+         ;; fn-scar-scan-span, equal to the byte fold under this guard by
+         ;; fn-scar-scan-span-is-feed-counted and
+         ;; fn-scar-feed-span-is-feed-counted).
+         (fed (mbe :logic (fn-scar-feed-span conn i end live trie arts fn-octets)
+                   :exec (fn-scar-scan-span conn i end live trie arts fn-octets)))
          (result (fn-served-counted-result fed))
          (wire2 (fn-served-conn-wire (fn-served-result-conn result))))
     (fn-served-counted-make
