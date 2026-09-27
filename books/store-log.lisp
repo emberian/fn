@@ -843,8 +843,7 @@
   (implies (fn-lg-recordsp records max) (true-listp records))
   :rule-classes :forward-chaining)
 
-(local
- (defthm fn-lg-log-of-consp
+(defthm fn-lg-log-unfolds
    (implies (consp records)
             (equal (fn-lg-log records prev unit)
                    (append (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len records) records) unit)
@@ -853,17 +852,16 @@
                                        (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len records)
                                                                      records)))
                                       unit))))
-   :hints (("Goal" :expand ((fn-lg-log records prev unit))))))
+   :hints (("Goal" :expand ((fn-lg-log records prev unit)))))
 
-(local
- (defthm fn-lg-last-trailer-of-consp
+(defthm fn-lg-last-trailer-unfolds
    (implies (consp records)
             (equal (fn-lg-last-trailer records prev)
                    (fn-lg-last-trailer (nthcdr (fn-lg-chunk-len records) records)
                                        (fn-lg-trailer
                                         (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len records)
                                                                       records))))))
-   :hints (("Goal" :expand ((fn-lg-last-trailer records prev))))))
+   :hints (("Goal" :expand ((fn-lg-last-trailer records prev)))))
 
 (local
  (defthm fn-lg-scan-step-then
@@ -1161,3 +1159,7 @@
                                fn-lg-last-trailer fn-lg-scan-of-log-append
                                fn-lg-forgeryp fn-bs-torn-variantp fn-lg-recordsp
                                fn-lg-recordp fn-lg-chunkp))))
+
+; The unfolding rules stay available by name (the crash book enables them
+; where it steps a batch chunk by chunk).
+(in-theory (disable fn-lg-log-unfolds fn-lg-last-trailer-unfolds))
