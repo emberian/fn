@@ -50,6 +50,7 @@
   (if (not (consp x)) nil
     (let ((head (car x)))
       (cond ((eq head :retention) (fn-store-event-nth (+ 2 n) x))
+            ((eq head :hstxa) (fn-store-event-nth n (fn-store-event-nth 1 x)))
             ((symbolp head) (fn-store-event-nth (+ 1 n) x))
             (t (fn-store-event-nth n x))))))
 
@@ -59,6 +60,7 @@
     (let ((head (car x)))
       (cond ((eq head :retention) :retention)
             ((eq head :consumer) :consumer)
+            ((eq head :hstxa) :hstxa)
             ((symbolp head) :topic)
             ((not (consp (fn-evc-drop 6 x))) :stxk)
             ((not (consp (fn-evc-drop 8 x))) :stxe)
@@ -76,14 +78,15 @@
             :in-theory (union-theories '(fn-evc-drop len)
                                        (theory 'ground-zero))))))
 (local
- (defthm fn-evc-record-shape
-   (implies (fn-record-p x)
-            (and (consp x) (natp (car x)) (equal (len x) 11)
+ (defthm fn-evc-held-shape
+   (implies (fn-held-p x)
+            (and (consp x) (natp (car x)) (equal (len x) 15)
                  (equal (fn-record-sequence x) (fn-store-event-nth 0 x))
                  (equal (fn-record-txid x) (fn-store-event-nth 1 x))
                  (equal (fn-record-generation x) (fn-store-event-nth 2 x))))
    :rule-classes :forward-chaining
-   :hints (("Goal" :in-theory '(fn-record-p fn-record-shapep fn-record-uint32p fn-record-uint64p
+   :hints (("Goal" :in-theory '(fn-held-p fn-held-shapep fn-record-uint32p fn-record-uint64p
+                                fn-held-sequence fn-held-txid fn-held-generation
                                 fn-record-sequence fn-record-txid
                                 fn-record-generation fn-store-event-nth
                                 zp natp len nfix fix
@@ -91,6 +94,29 @@
                                 (:executable-counterpart not)
                                 (:executable-counterpart binary-+)
                                 (:executable-counterpart unary--))))))
+; The composite row (:hstxa stxa held): its head, and its inner composite,
+; which is a composite (the stxa shape then applies to it).  The inner sits
+; at position 1, so a field N of the row by shape is field N of the inner.
+(local
+ (defthm fn-evc-hstxa-shape
+   (implies (fn-hstxa-p x)
+            (and (consp x) (equal (car x) :hstxa)
+                 (fn-stxa-p (fn-hstxa-stxa x))))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory '(fn-hstxa-p fn-hstxa-stxa)))))
+(local
+ (defthm fn-evc-hstxa-inner
+   (implies (fn-hstxa-p x)
+            (equal (fn-store-event-nth 1 x) (fn-hstxa-stxa x)))
+   :hints (("Goal" :in-theory '(fn-hstxa-p fn-hstxa-stxa fn-store-event-nth
+                                zp natp len nfix fix true-listp
+                                (:executable-counterpart zp)
+                                (:executable-counterpart not)
+                                (:executable-counterpart binary-+)
+                                (:executable-counterpart unary--))
+            :expand ((fn-store-event-nth 1 x) (fn-store-event-nth 0 (cdr x))
+                    (fn-store-event-nth 1 (fn-hstxa-stxa x))
+                    (fn-store-event-nth 0 (cdr (fn-hstxa-stxa x))))))))
 (local
  (defthm fn-evc-stxe-shape
    (implies (fn-stxe-p x)
@@ -112,6 +138,26 @@
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory '(fn-stxa-p fn-stxa-shapep fn-record-uint32p
                                 fn-stxa-sequence natp len)))))
+; The composite's three counters by position, for the inner composite of a
+; row (a term, which the expand hints on X above do not reach).
+(local
+ (defthm fn-evc-stxa-fields-by-nth
+   (implies (fn-stxa-p y)
+            (and (equal (fn-store-event-nth 0 y) (fn-stxa-sequence y))
+                 (equal (fn-store-event-nth 1 y) (fn-stxa-txid y))
+                 (equal (fn-store-event-nth 2 y) (fn-stxa-generation y))))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-stxa-sequence fn-stxa-txid fn-stxa-generation
+                                 fn-store-event-nth fn-evc-stxa-shape
+                                 zp natp len nfix fix
+                                 (:executable-counterpart zp)
+                                 (:executable-counterpart not)
+                                 (:executable-counterpart binary-+)
+                                 (:executable-counterpart unary--))
+                               (theory 'ground-zero))
+            :expand ((fn-store-event-nth 2 y) (fn-store-event-nth 1 (cdr y))
+                     (fn-store-event-nth 0 (cddr y)) (fn-store-event-nth 1 y)
+                     (fn-store-event-nth 0 (cdr y)) (fn-store-event-nth 0 y))))))
 (local
  (defthm fn-evc-retention-shape
    (implies (fn-store-retention-event-p x)
@@ -131,7 +177,8 @@
    (implies (fn-th-topic-eventp x)
             (and (consp x) (symbolp (car x))
                  (not (equal (car x) :retention))
-                 (not (equal (car x) :consumer))))
+                 (not (equal (car x) :consumer))
+                 (not (equal (car x) :hstxa))))
    :rule-classes :forward-chaining
    :hints (("Goal" :in-theory '(fn-th-topic-eventp fn-th-local-admin-eventp
                                 fn-th-at zp (:executable-counterpart zp))))))
@@ -171,8 +218,8 @@
                                 fn-evc-field-by-shape fn-store-event-nth
                                 fn-record-sequence fn-stxe-sequence fn-stxk-sequence fn-stxa-sequence
                                 fn-cpe-sequence fn-evc-cp-nth-is-event-nth fn-evc-th-at-is-event-nth
-                                fn-evc-record-shape fn-evc-stxe-shape
-                                fn-evc-stxk-shape fn-evc-stxa-shape
+                                fn-evc-held-shape fn-evc-stxe-shape
+                                fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
                                 fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape zp)
                               (theory 'ground-zero)))))
@@ -185,8 +232,8 @@
                                 fn-evc-field-by-shape fn-store-event-nth
                                 fn-record-txid fn-stxe-txid fn-stxk-txid fn-stxa-txid
                                 fn-cpe-txid fn-evc-cp-nth-is-event-nth fn-evc-th-at-is-event-nth
-                                fn-evc-record-shape fn-evc-stxe-shape
-                                fn-evc-stxk-shape fn-evc-stxa-shape
+                                fn-evc-held-shape fn-evc-stxe-shape
+                                fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
                                 fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape zp)
                               (theory 'ground-zero)))))
@@ -199,22 +246,25 @@
                                 fn-evc-field-by-shape fn-store-event-nth
                                 fn-record-generation fn-stxe-generation fn-stxk-generation fn-stxa-generation
                                 fn-cpe-generation fn-evc-cp-nth-is-event-nth fn-evc-th-at-is-event-nth
-                                fn-evc-record-shape fn-evc-stxe-shape
-                                fn-evc-stxk-shape fn-evc-stxa-shape
+                                fn-evc-held-shape fn-evc-stxe-shape
+                                fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
                                 fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape zp)
                               (theory 'ground-zero))
            :expand ((fn-store-event-nth 2 x) (fn-store-event-nth 1 (cdr x))
-                    (fn-store-event-nth 0 (cddr x))))))
-(defthm fn-evc-class-by-shape-is-fn-record-p
+                    (fn-store-event-nth 0 (cddr x))
+                    (fn-store-event-nth 2 (fn-hstxa-stxa x))
+                    (fn-store-event-nth 1 (cdr (fn-hstxa-stxa x)))
+                    (fn-store-event-nth 0 (cddr (fn-hstxa-stxa x)))))))
+(defthm fn-evc-class-by-shape-is-fn-held-p
   (implies (fn-store-event-p x)
-           (iff (fn-record-p x) (equal (fn-evc-class-by-shape x) :record)))
+           (iff (fn-held-p x) (equal (fn-evc-class-by-shape x) :record)))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories
                               '(fn-store-event-p fn-evc-class-by-shape
                                 fn-evc-consp-drop
-                                fn-evc-record-shape fn-evc-stxe-shape
-                                fn-evc-stxk-shape fn-evc-stxa-shape
+                                fn-evc-held-shape fn-evc-stxe-shape
+                                fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
                                 fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
@@ -225,8 +275,8 @@
   :hints (("Goal" :in-theory (union-theories
                               '(fn-store-event-p fn-evc-class-by-shape
                                 fn-evc-consp-drop
-                                fn-evc-record-shape fn-evc-stxe-shape
-                                fn-evc-stxk-shape fn-evc-stxa-shape
+                                fn-evc-held-shape fn-evc-stxe-shape
+                                fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
                                 fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
@@ -237,8 +287,8 @@
   :hints (("Goal" :in-theory (union-theories
                               '(fn-store-event-p fn-evc-class-by-shape
                                 fn-evc-consp-drop
-                                fn-evc-record-shape fn-evc-stxe-shape
-                                fn-evc-stxk-shape fn-evc-stxa-shape
+                                fn-evc-held-shape fn-evc-stxe-shape
+                                fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
                                 fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
@@ -249,20 +299,20 @@
   :hints (("Goal" :in-theory (union-theories
                               '(fn-store-event-p fn-evc-class-by-shape
                                 fn-evc-consp-drop
-                                fn-evc-record-shape fn-evc-stxe-shape
-                                fn-evc-stxk-shape fn-evc-stxa-shape
+                                fn-evc-held-shape fn-evc-stxe-shape
+                                fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
                                 fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
-(defthm fn-evc-class-by-shape-is-fn-stxa-p
+(defthm fn-evc-class-by-shape-is-fn-hstxa-p
   (implies (fn-store-event-p x)
-           (iff (fn-stxa-p x) (equal (fn-evc-class-by-shape x) :stxa)))
+           (iff (fn-hstxa-p x) (equal (fn-evc-class-by-shape x) :hstxa)))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories
                               '(fn-store-event-p fn-evc-class-by-shape
                                 fn-evc-consp-drop
-                                fn-evc-record-shape fn-evc-stxe-shape
-                                fn-evc-stxk-shape fn-evc-stxa-shape
+                                fn-evc-held-shape fn-evc-stxe-shape
+                                fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
                                 fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
@@ -273,8 +323,8 @@
   :hints (("Goal" :in-theory (union-theories
                               '(fn-store-event-p fn-evc-class-by-shape
                                 fn-evc-consp-drop
-                                fn-evc-record-shape fn-evc-stxe-shape
-                                fn-evc-stxk-shape fn-evc-stxa-shape
+                                fn-evc-held-shape fn-evc-stxe-shape
+                                fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
                                 fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
@@ -285,8 +335,8 @@
   :hints (("Goal" :in-theory (union-theories
                               '(fn-store-event-p fn-evc-class-by-shape
                                 fn-evc-consp-drop
-                                fn-evc-record-shape fn-evc-stxe-shape
-                                fn-evc-stxk-shape fn-evc-stxa-shape
+                                fn-evc-held-shape fn-evc-stxe-shape
+                                fn-evc-stxk-shape fn-evc-stxa-shape fn-evc-hstxa-shape fn-evc-hstxa-inner fn-evc-stxa-fields-by-nth
                                 fn-evc-retention-shape fn-evc-consumer-shape
                                 fn-evc-topic-shape)
                               (theory 'ground-zero)))))
@@ -315,10 +365,10 @@
   (mbe :logic (fn-store-event-generation x) :exec (fn-evc-field-by-shape 2 x)))
 (defun fn-evc-recordp (x)
   (declare (xargs :guard (fn-store-event-p x)
-                  :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-record-p
-                                 :in-theory (union-theories '((:type-prescription fn-record-p))
+                  :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-held-p
+                                 :in-theory (union-theories '((:type-prescription fn-held-p))
                                                             (theory 'ground-zero))))))
-  (mbe :logic (fn-record-p x) :exec (eq (fn-evc-class-by-shape x) :record)))
+  (mbe :logic (fn-held-p x) :exec (eq (fn-evc-class-by-shape x) :record)))
 (defun fn-evc-retentionp (x)
   (declare (xargs :guard (fn-store-event-p x)
                   :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-store-retention-event-p
@@ -339,10 +389,10 @@
   (mbe :logic (fn-stxk-p x) :exec (eq (fn-evc-class-by-shape x) :stxk)))
 (defun fn-evc-stxap (x)
   (declare (xargs :guard (fn-store-event-p x)
-                  :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-stxa-p
-                                 :in-theory (union-theories '((:type-prescription fn-stxa-p))
+                  :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-hstxa-p
+                                 :in-theory (union-theories '((:type-prescription fn-hstxa-p))
                                                             (theory 'ground-zero))))))
-  (mbe :logic (fn-stxa-p x) :exec (eq (fn-evc-class-by-shape x) :stxa)))
+  (mbe :logic (fn-hstxa-p x) :exec (eq (fn-evc-class-by-shape x) :hstxa)))
 (defun fn-evc-consumerp (x)
   (declare (xargs :guard (fn-store-event-p x)
                   :guard-hints (("Goal" :use fn-evc-class-by-shape-is-fn-cpe-eventp

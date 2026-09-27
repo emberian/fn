@@ -48,7 +48,7 @@
                         fn-store-files-invariants-vocabulary
                         fn-store-files-traces-vocabulary
                         fn-store-node-invariants-vocabulary)
-                       (fn-node-statep fn-sf-statep fn-record-p
+                       (fn-node-statep fn-sf-statep fn-record-p fn-held-p fn-hstxa-p
                         fn-node-prepare fn-node-complete fn-node-recover
                         fn-replay-advance-txid fn-replay fn-replay-loop
                         fn-sf-replay-node fn-sn-prepare-node
@@ -124,7 +124,7 @@
     (implies
      (and (true-listp history)
           (fn-sf-history-recoverablep groups capacity history txid)
-          (fn-record-p record)
+          (fn-held-p record)
           (equal (fn-record-sequence record) (len history))
           (fn-node-pending-matchesp pending txid (fn-record-generation record)))
      (and (equal (fn-node-complete pending txid (fn-record-generation record) :aborted)
@@ -297,7 +297,7 @@
          (files (fn-sn-files s)) (node (fn-sn-node s))
          (history (fn-sf-records files)) (frontier (fn-sf-frontier files))
          (record (fn-sn-completion-record s)))
-    (if (fn-record-p record)
+    (if (fn-held-p record)
         (equal (fn-node-complete node (fn-record-txid record)
                                  (fn-record-generation record) :durable)
                (fn-sf-replay-node groups capacity history frontier))
@@ -326,8 +326,13 @@
           ; false of every event that is not an article record, so the test
           ; and the arm agree.
           ((fn-sf-record-phasep phase)
-           (if (fn-record-p (fn-sf-record-candidate files))
-               (fn-snt-pending-linkp groups capacity files node)
+           (if (fn-held-p (fn-sf-record-candidate files))
+               (and (fn-snt-pending-linkp groups capacity files node)
+                    ; the staged row's context is of the generation in force
+                    ; (fn-sn-prepare's gate), which the finish requires
+                    (equal (fn-hc-generation
+                            (fn-held-context (fn-sf-record-candidate files)))
+                           (fn-sn-keyring-generation s)))
              (fn-snt-deferred-linkp s)))
           ; Before `6ab2c783' and `4bb7bb3d' the completing arm had one
           ; kind and nothing had to say which; this book has not certified
@@ -366,18 +371,21 @@
 ; Typed as forward-chaining and type-prescription: the counters must be
 ; known naturals for the frontier arithmetic below to normalise.
 (defthm fn-snt-record-counters-natural
-  (implies (fn-record-p record)
+  (implies (fn-held-p record)
            (and (natp (fn-record-txid record))
                 (natp (fn-record-generation record))
                 (natp (fn-record-sequence record))))
   :rule-classes ((:forward-chaining)
                  (:type-prescription :corollary
-                  (implies (fn-record-p record) (natp (fn-record-txid record))))
+                  (implies (fn-held-p record) (natp (fn-record-txid record))))
                  (:type-prescription :corollary
-                  (implies (fn-record-p record) (natp (fn-record-generation record))))
+                  (implies (fn-held-p record) (natp (fn-record-generation record))))
                  (:type-prescription :corollary
-                  (implies (fn-record-p record) (natp (fn-record-sequence record)))))
-  :hints (("Goal" :in-theory (enable fn-record-p fn-record-uint32p))))
+                  (implies (fn-held-p record) (natp (fn-record-sequence record)))))
+  :hints (("Goal" :in-theory '(fn-held-p fn-held-shapep fn-record-uint64p
+                               fn-held-sequence fn-held-txid fn-held-generation
+                               fn-record-sequence fn-record-txid fn-record-generation
+                               fn-cbor-ag-car fn-cbor-ag-cdr natp))))
 
 ; `fn-sn-make' is the six-field constructor, which fills the four fields
 ; `6e992351' added to `fn-sn-state' with 0, NIL, NIL and 0.  Rebuilding a
@@ -600,7 +608,7 @@
 ; it there unfolds the record codec (books/replay.lisp, same measurement).
 (defthm fn-snt-bound-record-is-an-article-record
   (implies (fn-sn-record-bindsp node record)
-           (fn-record-p record))
+           (fn-held-p record))
   :rule-classes :forward-chaining
   :hints (("Goal" :in-theory (e/d (fn-sn-record-bindsp)
                                   (fn-node-pending-matchesp
@@ -609,9 +617,10 @@
 (defthm fn-snt-bound-record-excludes-consumer-by-shape
   (implies (fn-sn-record-bindsp node record)
            (not (fn-cpe-eventp record)))
-  :hints (("Goal" :use fn-snt-bound-record-is-an-article-record
-           :in-theory (disable fn-sn-record-bindsp fn-record-p
-                               fn-cpe-eventp))))
+  :hints (("Goal" :use (fn-snt-bound-record-is-an-article-record
+                        (:instance fn-held-p-forward-natural-head (x record)))
+           :in-theory (e/d (fn-cpe-eventp fn-cp-nth)
+                           (fn-sn-record-bindsp fn-held-p fn-record-p)))))
 
 ; The reserved frontier is the candidate's successor, so the node the
 ; relation carries (replay at frontier - 1) is replay at the candidate txid.
@@ -625,25 +634,28 @@
 ; a related record phase carries, to dismiss the retention arm `6ab2c783'
 ; gave `fn-sn-known-abort'.
 (defthm fn-snt-an-article-record-is-no-other-store-event
-   (implies (fn-record-p record)
+   (implies (fn-held-p record)
             (and (not (fn-store-retention-event-p record))
                  (not (fn-stxe-p record))
                  (not (fn-stxk-p record))
-                 (not (fn-stxa-p record))
+                 (not (fn-hstxa-p record))
                  (not (fn-th-topic-eventp record))))
    :hints (("Goal"
-            :in-theory (e/d ((:d fn-record-p) (:d fn-record-shapep)
+            :in-theory (e/d ((:d fn-held-p) (:d fn-held-shapep) (:d fn-record-uint64p)
                              (:d fn-store-retention-event-p)
                              (:d fn-stxe-p) (:d fn-stxe-shapep)
                              (:d fn-stxk-p) (:d fn-stxk-shapep)
-                             (:d fn-stxa-p) (:d fn-stxa-shapep)
+                             (:d fn-hstxa-p)
                              (:d fn-th-topic-eventp)
                              (:d fn-th-local-admin-eventp))
                             ((:d fn-stxe-bounded-octetsp)
                              (:d fn-record-uint32p) (:d fn-record-msgidp)
                              (:d fn-record-payloadp)
                              (:d fn-record-groups-validp)
-                             (:d fn-record-metadata-bytes-p))))))
+                             (:d fn-record-metadata-bytes-p)
+                             (:d fn-record-stampp)
+                             (:d fn-hf-p) (:d fn-hc-p)
+                             (:d fn-held-numbersp) (:d fn-held-withdrawnp))))))
 
 ; Topic-admit and retention both have nine list fields. Their first tags,
 ; rather than length alone, separate the two payload grammars.
@@ -674,7 +686,7 @@
                  (not (fn-stxk-p event))
                  (not (fn-stxa-p event))))
    :hints (("Goal" :in-theory
-            (e/d (fn-th-topic-eventp fn-stxe-p fn-stxk-p fn-stxa-p
+            (e/d (fn-th-topic-eventp fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
                    fn-stxe-shapep fn-stxk-shapep fn-stxa-shapep
                    fn-stxe-sequence fn-stxk-sequence fn-stxa-sequence
                    fn-th-local-admin-eventp fn-th-at)
@@ -683,7 +695,7 @@
 
 (local
  (defthm fn-snt-store-event-fields-of-an-article-record
-   (implies (fn-record-p record)
+   (implies (fn-held-p record)
             (and (equal (fn-store-event-sequence record)
                         (fn-record-sequence record))
                  (equal (fn-store-event-txid record) (fn-record-txid record))
@@ -729,15 +741,15 @@
 (local
  (defthm fn-snt-store-event-final-arms-by-definition
    (implies (and (fn-store-event-p event)
-                 (not (fn-record-p event))
+                 (not (fn-held-p event))
                  (not (fn-store-retention-event-p event))
                  (not (fn-stxe-p event))
                  (not (fn-stxk-p event)))
-            (or (fn-stxa-p event) (fn-cpe-eventp event)
+            (or (fn-hstxa-p event) (fn-cpe-eventp event)
                 (fn-th-topic-eventp event)))
    :hints (("Goal" :in-theory (e/d (fn-store-event-p)
-                                   (fn-record-p fn-store-retention-event-p
-                                    fn-stxe-p fn-stxk-p fn-stxa-p
+                                   (fn-record-p fn-held-p fn-hstxa-p fn-store-retention-event-p
+                                    fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
                                     fn-cpe-eventp fn-th-topic-eventp
                                     fn-record-shape-vocabulary
                                     fn-record-record-vocabulary))))))
@@ -759,7 +771,7 @@
                                     fn-record-shape-vocabulary
                                     fn-record-record-vocabulary
                                     fn-store-event-p fn-store-retention-event-p
-                                    fn-stxe-p fn-stxk-p fn-stxa-p))))))
+                                    fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p))))))
 
 ; The loop over one event, from its own definition.
 (local
@@ -819,7 +831,7 @@
                              fn-record-shape-vocabulary
                              fn-record-record-vocabulary
                              fn-store-event-p fn-store-retention-event-p
-                             fn-stxe-p fn-stxk-p fn-stxa-p
+                             fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
                              fn-retain-admissiblep fn-retain-admit
                              fn-retain-release fn-retain-matching-releasep
                              fn-snt-advance-twice))))))
@@ -868,7 +880,7 @@
                             fn-record-shape-vocabulary
                             fn-record-record-vocabulary
                             fn-store-event-p fn-store-retention-event-p
-                            fn-stxe-p fn-stxk-p fn-stxa-p
+                            fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
                             fn-snt-extended-history-is-the-applied-event
                             fn-snt-apply-after-advance-to-its-txid
                             fn-snt-replayed-node-idle-and-frontier
@@ -889,7 +901,7 @@
     :cases ((and (fn-sn-statep s)
                  (equal (fn-sf-phase (fn-sn-files s)) :reserved)
                  (null (fn-node-stage (fn-sn-node s)))
-                 (fn-record-p record)
+                 (fn-held-p record)
                  (fn-sn-record-bindsp (fn-sn-prepare-node (fn-sn-node s) record) record)
                  (equal (fn-sf-phase (fn-sf-prepare-record
                                       (fn-sn-files s) record
@@ -909,7 +921,7 @@
                      fn-snt-completion-linkp
                      fn-record-shape-vocabulary
                      fn-store-event-p fn-store-retention-event-p
-                     fn-stxe-p fn-stxk-p fn-stxa-p
+                     fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
                      fn-cpe-eventp fn-th-topic-eventp
                      fn-th-local-admin-eventp
                      fn-replay-apply-record
@@ -945,7 +957,7 @@
                                    fn-replay-apply-retention-event
                                    fn-record-shape-vocabulary
                                    fn-store-event-p fn-store-retention-event-p
-                                   fn-stxe-p fn-stxk-p fn-stxa-p)))))
+                                   fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p)))))
 
 (defthm fn-sn-prepare-identity-preserves-state
   (implies (fn-sn-statep s)
@@ -958,7 +970,7 @@
                                    fn-sn-identity-context
                                    fn-record-shape-vocabulary
                                    fn-store-event-p fn-store-retention-event-p
-                                   fn-stxe-p fn-stxk-p fn-stxa-p)))))
+                                   fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p)))))
 
 (defthm fn-sn-prepare-consumer-preserves-state
   (implies (fn-sn-statep s)
@@ -1013,7 +1025,7 @@
                      fn-snt-completion-linkp
                      fn-record-shape-vocabulary fn-record-record-vocabulary
                      fn-store-event-p fn-store-retention-event-p
-                     fn-stxe-p fn-stxk-p fn-stxa-p
+                     fn-stxe-p fn-stxk-p fn-stxa-p fn-hstxa-p
                      fn-th-topic-eventp fn-th-local-admin-eventp)))
           ; Subgoal 1 is the case in which the gate above holds.
           ("Subgoal 1"
@@ -1036,6 +1048,13 @@
             (history (fn-sf-records (fn-sn-files s)))
             (txid (+ -1 (fn-sf-frontier (fn-sn-files s)))))))))
 
+(defthm fn-snt-topic-event-is-not-hstxa
+  (implies (fn-th-topic-eventp event)
+           (not (fn-hstxa-p event)))
+  :hints (("Goal" :use (:instance fn-hstxa-p-forward-shape (x event))
+           :in-theory (e/d (fn-th-topic-eventp fn-th-local-admin-eventp fn-th-at)
+                           (fn-hstxa-p)))))
+
 (defthm fn-snt-prepare-identity-preserves-relation
   (implies (fn-snt-relation s)
            (fn-snt-relation (fn-sn-prepare-identity s event)))
@@ -1046,7 +1065,7 @@
     ; to every case; planning/evidence/chain-remainder-cost-2026-09-23.md).
     :cases ((and (fn-sn-statep s)
                  (equal (fn-sf-phase (fn-sn-files s)) :reserved)
-                 (or (fn-stxe-p event) (fn-stxk-p event) (fn-stxa-p event))
+                 (or (fn-stxe-p event) (fn-stxk-p event) (fn-hstxa-p event))
                  (consp (fn-replay-apply-record (fn-sn-node s) event))
                  (equal (fn-stxk-context-kind
                          (fn-replay-identity-step (fn-sn-identity-context s) event))
@@ -1088,6 +1107,7 @@
           fn-th-topic-event-is-not-stxe
           fn-th-topic-event-is-not-stxk
           fn-th-topic-event-is-not-stxa
+          fn-snt-topic-event-is-not-hstxa
           (:instance fn-snt-an-article-record-is-no-other-store-event
             (record event))
           (:instance fn-snt-candidate-is-frontier-predecessor

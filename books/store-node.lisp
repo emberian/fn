@@ -1042,12 +1042,19 @@
                     (fn-node-stage-charge stage) (fn-pending-stamp pending))))
 
 (verify-guards fn-sn-pending-record)
+; The completing row is a HELD record (books/held-record.lisp): its eleven
+; wire positions, with the handle at the payload position, are the pending
+; record's (whose payload is the pending's handle: fn-sn-prepare-node put it
+; there).  The byte facts and the context beside them are the intern's and
+; are bound by nothing in the node.  The comparison is eleven positions and
+; one natural, never a payload walk.
 (defun fn-sn-record-bindsp (node record)
   (declare (xargs :guard (fn-node-statep node) :verify-guards nil))
-  (and (fn-record-p record)
+  (and (fn-held-p record)
        (fn-node-pending-matchesp node (fn-record-txid record)
                                 (fn-record-generation record))
-       (equal record (fn-sn-pending-record node (fn-record-sequence record)))))
+       (equal (fn-held-wire record (fn-record-payload record))
+              (fn-sn-pending-record node (fn-record-sequence record)))))
 
 (verify-guards fn-sn-record-bindsp)
 
@@ -1078,8 +1085,14 @@
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
            (null (fn-node-stage (fn-sn-node s)))
-           (fn-record-p record)
+           (fn-held-p record)
            (not (equal (fn-record-stamp record) :legacy))
+           ; The row's context must be of the generation in force: the
+           ; finish consumes it only then (fn-sn-completion-core-enabledp),
+           ; so a row interned under an older keyring would stage and then
+           ; wedge the transaction.  The entry re-interns it instead.
+           (equal (fn-hc-generation (fn-held-context record))
+                  (fn-sn-keyring-generation s))
            (eq (car (fn-cpe-projection-step
                      (fn-sn-consumer s) record (fn-sn-identity-next s))) :ok))
       (let* ((node (fn-sn-prepare-node (fn-sn-node s) record))
@@ -1139,11 +1152,11 @@
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
            (equal (fn-sf-phase (fn-sn-files s)) :reserved)
-           (or (fn-stxe-p event) (fn-stxk-p event) (fn-stxa-p event))
+           (or (fn-stxe-p event) (fn-stxk-p event) (fn-hstxa-p event))
            (eq (car (fn-cpe-projection-step
                      (fn-sn-consumer s) event (fn-sn-identity-next s))) :ok)
-           (or (not (fn-stxa-p event))
-               (not (equal (fn-record-stamp (fn-replay-composite-record event))
+           (or (not (fn-hstxa-p event))
+               (not (equal (fn-record-stamp (fn-replay-composite-held event))
                            :legacy)))
            (consp (fn-replay-apply-record (fn-sn-node s) event))
            (equal (fn-stxk-context-kind
@@ -1219,14 +1232,20 @@
        (let ((record (fn-sn-completion-record s)))
          (and (cond ((fn-store-retention-event-p record)
                 (consp (fn-replay-apply-retention-event (fn-sn-node s) record)))
-               ((or (fn-stxe-p record) (fn-stxk-p record) (fn-stxa-p record))
+               ((or (fn-stxe-p record) (fn-stxk-p record) (fn-hstxa-p record))
                 (and (consp (fn-replay-apply-record (fn-sn-node s) record))
                      (equal (fn-stxk-context-kind
                              (fn-replay-identity-step
                               (fn-sn-identity-context s) record)) :ok)))
                ((or (fn-cpe-eventp record) (fn-th-topic-eventp record))
                 (consp (fn-replay-apply-record (fn-sn-node s) record)))
-               (t (fn-sn-record-bindsp (fn-sn-node s) record)))))
+               ; The row's context was decided under the generation in
+               ; force at its intern; the finish consumes it only under the
+               ; same one (fn-sn-set-keyring is refused outside :ready, so
+               ; the generation cannot move inside a transaction).
+               (t (and (fn-sn-record-bindsp (fn-sn-node s) record)
+                       (equal (fn-hc-generation (fn-held-context record))
+                              (fn-sn-keyring-generation s)))))))
        (equal (fn-sf-completion (fn-sn-files s))
               (fn-sf-record-pair (fn-sn-completion-record s)))))
 
@@ -1237,7 +1256,7 @@
 (verify-guards fn-sn-completion-core-enabledp
   :hints (("Goal" :in-theory (e/d (fn-sn-statep)
                                   (fn-sf-statep fn-node-statep
-                                   fn-record-p fn-store-retention-event-p
+                                   fn-record-p fn-held-p fn-hstxa-p fn-store-retention-event-p
                                    fn-stxe-p fn-stxk-p fn-stxa-p
                                    fn-cpe-eventp fn-th-topic-eventp)))))
 
@@ -1267,12 +1286,15 @@
 ; fn-stx-durable-completion-is-an-acceptance (books/stx-lace.lisp) is the
 ; theorem that says so.  It is read off the state BEFORE the completion,
 ; because the completion clears the pending.
+; After the flip (records-flip, 2026-09-27) the completing row carries the
+; decision: its context's delta is fn-stx-delta of its bytes under the
+; store's keyring, decided at the intern (books/catalog-record.lisp
+; fn-held-context-of; the entry's theorem that the context is the bytes'
+; is books/store-intern.lisp).  No byte is read here.
 (defun fn-sn-accepted-delta (s)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
-  (fn-stx-delta (fn-article-payload
-                 (fn-article-from-pending
-                  (fn-state-pending (fn-node-acceptance (fn-sn-node s)))))
-                (fn-sn-keyring s)))
+  (let ((record (fn-sn-completion-record s)))
+    (if (fn-held-p record) (fn-hc-delta (fn-held-context record)) nil)))
 
 (verify-guards fn-sn-accepted-delta
   :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep)))))
@@ -1291,22 +1313,27 @@
 ; composed machine.  The decoder stays closed in the guard proof: opening
 ; `fn-replay-composite-record' unfolds the record codec into the conjecture
 ; (measured 2026-09-22, hbox certify-20260922T054916Z-2704241).
+; The retained composite row (fn-hstxa-p) carries its article interned; the
+; delta is that held record's context delta, decided at the intern under the
+; store's keyring.  The keyring argument is kept for the callers' shape; the
+; decision it once parameterized was moved to the intern.
 (defun fn-sn-composite-delta (event keyring)
-  (declare (xargs :guard t
-                  :guard-hints
-                  (("Goal" :in-theory (disable fn-replay-composite-record)))))
+  (declare (xargs :guard t))
   (if (not (fn-prin-keyringp keyring)) nil
-    (let ((record (fn-replay-composite-record event)))
-      (if (fn-record-p record)
-          (fn-stx-delta (fn-record-payload record) keyring)
-        (fn-stx-delta nil keyring)))))
+    (if (fn-hstxa-p event)
+        (fn-hc-delta (fn-held-context (fn-hstxa-held event)))
+      nil)))
+
+(defthm fn-sn-composite-delta-is-lace
+  (fn-lace-p (fn-sn-composite-delta event keyring))
+  :hints (("Goal" :in-theory (enable fn-sn-composite-delta))))
 
 (defun fn-sn-finish-identity (s files record node)
   (declare (xargs :guard t))
   (let* ((ctx (fn-replay-identity-step (fn-sn-identity-context s) record))
          (new-verdicts (fn-replay-verdict-pairs
                         (fn-stxk-context-verdicts ctx)))
-         (index (if (fn-stxa-p record)
+         (index (if (fn-hstxa-p record)
                     (fn-stx-index-add (fn-sn-index s)
                                       (fn-sn-composite-delta record
                                                              (fn-sn-keyring s)))
@@ -1336,7 +1363,7 @@
              (consumerp (fn-cpe-eventp record))
              (topicp (fn-th-topic-eventp record))
              (identityp (or (fn-stxe-p record) (fn-stxk-p record)
-                            (fn-stxa-p record)))
+                            (fn-hstxa-p record)))
              (projection (fn-cpe-projection-step
                           (fn-sn-consumer s) record (fn-sn-identity-next s)))
              (topic-projection (fn-th-prefix-step (fn-sn-topic s) record))
@@ -1373,9 +1400,7 @@
               node
               (fn-stx-index-add (fn-sn-index s) (fn-sn-accepted-delta s))
               (fn-record-msgid record)
-              (fn-stx-verdict-of-octets
-               (fn-record-payload record)
-               (fn-sn-keyring s) (fn-sn-keyring-generation s))))))
+              (fn-hc-verdict (fn-held-context record))))))
           (fn-cp-nth 1 projection))
          topic-projection))
     s))
@@ -1399,7 +1424,7 @@
                  fn-sn-completion-enabledp fn-sn-record-bindsp
                  fn-sn-identity-context fn-replay-identity-step
                  fn-replay-apply-retention-event fn-replay-apply-record
-                 fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p
+                 fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p fn-held-p fn-hstxa-p
                  fn-record-record-vocabulary fn-record-shape-vocabulary)))))
 
 ; The I/O surface cannot inject a core-completion observation or emit success.
@@ -1463,6 +1488,42 @@
     s))
 
 (verify-guards fn-sn-crash)
+;; The index a retained history answers from its rows' contexts (records-flip).
+;; A row's delta: an article row's context delta, a composite row's interned
+;; article's context delta, nothing for the other kinds.  The fold adds the
+;; oldest row first (the history is oldest first), which is the order
+;; fn-sn-finish added them: the index after a history is this fold of it.
+(defun fn-sn-row-delta (row)
+  (declare (xargs :guard t))
+  (cond ((fn-held-p row) (fn-hc-delta (fn-held-context row)))
+        ((fn-hstxa-p row) (fn-hc-delta (fn-held-context (fn-hstxa-held row))))
+        (t nil)))
+
+(defthm fn-sn-row-delta-is-lace
+  (fn-lace-p (fn-sn-row-delta row))
+  :hints (("Goal" :in-theory (enable fn-sn-row-delta))))
+
+(defun fn-sn-index-fold (rows index)
+  (declare (xargs :guard t))
+  (if (atom rows)
+      index
+    (fn-sn-index-fold (cdr rows)
+                      (fn-stx-index-add index (fn-sn-row-delta (car rows))))))
+
+(defun fn-sn-index-of-rows (rows)
+  (declare (xargs :guard t))
+  (fn-sn-index-fold rows (fn-stx-index-empty)))
+
+(defthm fn-sn-index-fold-of-append
+  (equal (fn-sn-index-fold (append a b) index)
+         (fn-sn-index-fold b (fn-sn-index-fold a index))))
+
+(defthm fn-sn-index-of-rows-of-append-one
+  (equal (fn-sn-index-of-rows (append rows (list row)))
+         (fn-stx-index-add (fn-sn-index-of-rows rows) (fn-sn-row-delta row))))
+
+(in-theory (disable fn-sn-row-delta fn-sn-index-fold fn-sn-index-of-rows))
+
 (defun fn-sn-recover (s)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
@@ -1479,7 +1540,9 @@
              (topic-replay (fn-th-prefix-project (fn-sf-records files))))
         ; Recovery is the one transition whose node does not come from a
         ; step of this machine, so it is the one that recomputes.  It is not
-        ; a served path: it runs once, at open, on the replayed store.
+        ; a served path: it runs once, at open, on the replayed store.  The
+        ; index is the rows' fold: every context was decided at the intern
+        ; under the store's keyring; no byte is read here (records-flip).
         (if (and (equal (fn-sf-phase files) :recovering)
                  (equal (fn-stxk-context-kind identity-context) :ok)
                  (eq (car consumer-replay) :ok)
@@ -1489,7 +1552,7 @@
              (fn-sn-with-consumer
               (fn-sn-update-replayed
               s files node
-              (fn-stx-index-of-store (fn-stx-store node) (fn-sn-keyring s))
+              (fn-sn-index-of-rows (fn-sf-records files))
               identity-context)
               (fn-cp-nth 1 consumer-replay))
              (fn-cei-build (fn-sf-records files)))
@@ -1536,18 +1599,54 @@
 ; reconfiguration event, not a served path.  A malformed keyring is refused
 ; -- the state is returned unchanged -- rather than installed, because
 ; fn-sn-statep carries fn-prin-keyringp of this field.
-(defun fn-sn-set-keyring (s keyring)
+; The rows re-contexted: every article row and every composite row takes the
+; next context of CONTEXTS (one per such row, oldest first); the other rows
+; are unchanged.  The contexts are decided by the entry from the rows' bytes
+; through the arena (books/store-intern.lisp fn-contexts-of-rows) under the
+; new keyring and generation; this machine checks each is a context of that
+; generation and zips.  NIL when the list does not fit the rows.
+(defun fn-sn-recontext-rows (rows contexts generation)
+  (declare (xargs :guard t))
+  (cond ((atom rows) (if (null contexts) nil :mismatch))
+        ((or (fn-held-p (car rows)) (fn-hstxa-p (car rows)))
+         (if (and (consp contexts) (fn-hc-p (car contexts))
+                  (equal (fn-hc-generation (car contexts)) generation))
+             (let ((rest (fn-sn-recontext-rows (cdr rows) (cdr contexts) generation)))
+               (if (eq rest :mismatch) :mismatch
+                 (cons (if (fn-held-p (car rows))
+                           (fn-held-with-context (car rows) (car contexts))
+                         (fn-hstxa-make (fn-hstxa-stxa (car rows))
+                                        (fn-held-with-context (fn-hstxa-held (car rows))
+                                                              (car contexts))))
+                       rest)))
+           :mismatch))
+        (t (let ((rest (fn-sn-recontext-rows (cdr rows) contexts generation)))
+             (if (eq rest :mismatch) :mismatch (cons (car rows) rest))))))
+
+(defun fn-sn-set-keyring (s keyring contexts)
   (declare (xargs :guard (fn-sn-statep s) :verify-guards nil))
   (if (and (mbe :logic (fn-sn-statep s) :exec t)
-           (fn-prin-keyringp keyring))
-      (fn-sn-make-v6 (fn-sn-groups s) (fn-sn-capacity s) (fn-sn-files s)
-                  (fn-sn-node s) keyring
-                  (fn-stx-index-of-store (fn-stx-store (fn-sn-node s)) keyring)
-                  (1+ (fn-sn-keyring-generation s))
-                  (fn-sn-verdicts s) (fn-sn-keyring-snapshots s)
-                  (fn-sn-identity-next s) (fn-sn-config-history s)
-                  (fn-sn-consumer s) (fn-sn-topic s)
-                  (fn-sn-event-index s))
+           (fn-prin-keyringp keyring)
+           ; Outside a transaction only: the staged row's context would
+           ; otherwise be of the old generation (fn-sn-completion-core-enabledp).
+           (equal (fn-sf-phase (fn-sn-files s)) :ready))
+      (let* ((files (fn-sn-files s))
+             (generation (1+ (fn-sn-keyring-generation s)))
+             (rows (fn-sn-recontext-rows (fn-sf-records files) contexts generation)))
+        (if (eq rows :mismatch)
+            s
+          (fn-sn-make-v6 (fn-sn-groups s) (fn-sn-capacity s)
+                      (fn-sf-make (fn-sf-phase files) (fn-sf-frontier files)
+                                  (fn-sf-frontier-candidate files) rows
+                                  (fn-sf-record-candidate files) (fn-sf-completion files)
+                                  (fn-sf-successes files) (fn-sf-barriers files))
+                      (fn-sn-node s) keyring
+                      (fn-sn-index-of-rows rows)
+                      generation
+                      (fn-sn-verdicts s) (fn-sn-keyring-snapshots s)
+                      (fn-sn-identity-next s) (fn-sn-config-history s)
+                      (fn-sn-consumer s) (fn-sn-topic s)
+                      (fn-cei-build rows))))
     s))
 
 (verify-guards fn-sn-set-keyring
@@ -1559,11 +1658,62 @@
 ; keystone there.  Making it a conjunct of fn-sn-statep instead would put a
 ; whole-store re-derivation -- with a signature verification per article --
 ; into the guard the host checks on every call into this machine (D20, D3).
+; The rows whose deltas the carried index holds (records-flip).  The history
+; grows at the directory barrier (fn-sf-record-dir-result: phase :completing)
+; and the index at the finish that follows, so in :completing the last row is
+; durable but not yet indexed; after a crash (phase :replaying, or :fault when
+; the recovery refused) the node is the empty one and so is the index, and
+; recovery recomputes over every row.  Everywhere else the index is the fold
+; of the whole history.
+(defun fn-sn-all-but-last (xs)
+  (declare (xargs :guard t))
+  (if (atom xs)
+      nil
+    (if (atom (cdr xs))
+        nil
+      (cons (car xs) (fn-sn-all-but-last (cdr xs))))))
+
+(defthm fn-sn-all-but-last-of-append-one
+  (implies (true-listp xs)
+           (equal (fn-sn-all-but-last (append xs (list x))) xs)))
+
+(defun fn-sn-indexed-rows-of (files)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((phase (fn-sf-phase files))
+        (records (fn-sf-records files)))
+    (cond ((or (equal phase :replaying) (equal phase :fault)) nil)
+          ((equal phase :completing) (fn-sn-all-but-last records))
+          (t records))))
+
+(verify-guards fn-sn-indexed-rows-of)
+
+(defun fn-sn-indexed-rows (s)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-sn-indexed-rows-of (fn-sn-files s)))
+
+(verify-guards fn-sn-indexed-rows)
+
+; In :completing the completion pair is the last row's (the directory barrier
+; set both), which is what lets the finish index exactly the row it completes.
+(defun fn-sn-completion-is-last-p (files)
+  (declare (xargs :guard t :verify-guards nil))
+  (implies (equal (fn-sf-phase files) :completing)
+           (and (consp (fn-sf-records files))
+                (equal (fn-sf-completion files)
+                       (fn-sf-record-pair (car (last (fn-sf-records files))))))))
+
+(verify-guards fn-sn-completion-is-last-p)
+
 (defun fn-sn-indexedp (s)
   (declare (xargs :guard t :verify-guards nil))
   (and (fn-sn-statep s)
-       (fn-stx-index-invariantp (fn-sn-index s) (fn-sn-node s)
-                                (fn-sn-keyring s))))
+       (fn-sn-completion-is-last-p (fn-sn-files s))
+       (equal (fn-sn-index s)
+              (fn-sn-index-of-rows (fn-sn-indexed-rows s)))))
+
+(defthm fn-sn-index-of-rows-of-nil
+  (equal (fn-sn-index-of-rows nil) (fn-stx-index-empty))
+  :hints (("Goal" :in-theory (enable fn-sn-index-of-rows fn-sn-index-fold))))
 
 (verify-guards fn-sn-indexedp
   :hints (("Goal" :in-theory (e/d (fn-sn-statep) (fn-sf-statep fn-node-statep)))))

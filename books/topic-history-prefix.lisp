@@ -35,9 +35,12 @@
      ((fn-stxk-p event)
       (fn-th-prefix-state :ok (1+ (nfix next)) (cons event snapshots)
                           accepted anchors installed nil))
-     ((fn-stxa-p event)
+     ; The retained accepted statement is the composite row (fn-hstxa-p,
+     ; books/held-record.lisp): the statement recorded is its wire composite.
+     ; A bare fn-stxa-p is no retained event (the test above faults it).
+     ((fn-hstxa-p event)
       (fn-th-prefix-state :ok (1+ (nfix next)) snapshots
-                          (cons event accepted) anchors installed nil))
+                          (cons (fn-hstxa-stxa event) accepted) anchors installed nil))
      ((fn-th-local-admin-eventp event)
       (let ((updated (fn-th-local-admin-commit event installed)))
         (if (fn-stmt-okp updated)

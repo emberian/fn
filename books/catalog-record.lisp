@@ -40,6 +40,7 @@
 ; continuation, PKT-585), not this book's.
 
 (in-package "ACL2")
+(include-book "held-record")
 (include-book "payload-arena")
 (include-book "stx-lace")
 (include-book "nntp-session")
@@ -102,26 +103,13 @@
           (if n n 0))
       0)))
 
-(defun fn-hf-startp (x)
-  (declare (xargs :guard t))
-  (or (null x) (natp x)))
-
-(fn-defrecord fn-hf
-  :constructor (fn-hf-make octets body-start body-lines)
-  :fields ((fn-hf-octets natp)
-           (fn-hf-body-start fn-hf-startp)
-           (fn-hf-body-lines natp))
-  :recognizer fn-hf-p
-  :car-fn fn-cbor-ag-car
-  :cdr-fn fn-cbor-ag-cdr)
-
 (defun fn-held-facts-of (bytes)
   (declare (xargs :guard (true-listp bytes)))
   (fn-hf-make (len bytes) (fn-hf-split-index bytes 0) (fn-hf-body-lines-of bytes)))
 
 (defthm fn-hf-p-of-held-facts-of
   (fn-hf-p (fn-held-facts-of bytes))
-  :hints (("Goal" :in-theory (enable fn-hf-p fn-hf-internals))))
+  :hints (("Goal" :in-theory (enable fn-hf-p fn-hf-internals fn-hf-startp))))
 
 ; -----------------------------------------------------------------------------
 ; The equations with the served machine's definitions (books/nntp-session).
@@ -240,19 +228,6 @@
 ; The context: what the finish decides from the bytes, decided at intern
 ; under the keyring and generation in force.
 
-(defun fn-hc-anyp (x)
-  (declare (xargs :guard t) (ignore x))
-  t)
-
-(fn-defrecord fn-hc
-  :constructor (fn-hc-make verdict delta generation)
-  :fields ((fn-hc-verdict fn-hc-anyp)
-           (fn-hc-delta fn-hc-anyp)
-           (fn-hc-generation natp))
-  :recognizer fn-hc-p
-  :car-fn fn-cbor-ag-car
-  :cdr-fn fn-cbor-ag-cdr)
-
 (defun fn-held-context-of (bytes keyring generation)
   (declare (xargs :guard (and (fn-prin-keyringp keyring) (natp generation))))
   (fn-hc-make (fn-stx-verdict-of-octets bytes keyring generation)
@@ -262,120 +237,13 @@
 (defthm fn-hc-p-of-held-context-of
   (implies (natp generation)
            (fn-hc-p (fn-held-context-of bytes keyring generation)))
-  :hints (("Goal" :in-theory (enable fn-hc-p fn-hc-internals))))
-
-; -----------------------------------------------------------------------------
-; The held record.
-
-(defun fn-held-numbersp (x)
-  (declare (xargs :guard t))
-  (if (atom x)
-      (null x)
-    (and (consp (car x)) (posp (cdr (car x)))
-         (fn-held-numbersp (cdr x)))))
-
-(defun fn-held-withdrawnp (x)
-  (declare (xargs :guard t))
-  (or (null x)
-      (and (consp x) (natp (car x)) (natp (cdr x)))))
-
-(fn-defrecord fn-held
-  :constructor (fn-held-make sequence txid generation msgid payload groups
-                             obligation-id content-subject release-evidence
-                             charge stamp facts context numbers withdrawn)
-  :fields ((fn-held-sequence fn-record-uint64p)
-           (fn-held-txid fn-record-uint64p)
-           (fn-held-generation fn-record-uint64p)
-           (fn-held-msgid fn-record-msgidp)
-           (fn-held-payload natp)
-           (fn-held-groups fn-record-groups-validp)
-           (fn-held-obligation-id fn-record-metadata-bytes-p)
-           (fn-held-content-subject fn-record-metadata-bytes-p)
-           (fn-held-release-evidence fn-record-metadata-bytes-p)
-           (fn-held-charge fn-record-uint64p)
-           (fn-held-stamp fn-record-stampp)
-           (fn-held-facts fn-hf-p)
-           (fn-held-context fn-hc-p)
-           (fn-held-numbers fn-held-numbersp)
-           (fn-held-withdrawn fn-held-withdrawnp))
-  :recognizer fn-held-p
-  :recognizer-verify-guards nil
-  :car-fn fn-cbor-ag-car
-  :cdr-fn fn-cbor-ag-cdr)
-
-; The eleven wire positions are read by the wire accessors: one vocabulary
-; (a held accessor rewrites to the wire one; the wire's rules then apply).
-(defthm fn-held-accessors-are-the-wire-accessors
-  (and (equal (fn-held-sequence h) (fn-record-sequence h))
-       (equal (fn-held-txid h) (fn-record-txid h))
-       (equal (fn-held-generation h) (fn-record-generation h))
-       (equal (fn-held-msgid h) (fn-record-msgid h))
-       (equal (fn-held-payload h) (fn-record-payload h))
-       (equal (fn-held-groups h) (fn-record-groups h))
-       (equal (fn-held-obligation-id h) (fn-record-obligation-id h))
-       (equal (fn-held-content-subject h) (fn-record-content-subject h))
-       (equal (fn-held-release-evidence h) (fn-record-release-evidence h))
-       (equal (fn-held-charge h) (fn-record-charge h))
-       (equal (fn-held-stamp h) (fn-record-stamp h)))
-  :hints (("Goal" :in-theory (enable fn-record-internals fn-held-internals))))
-
-; The recognizer executes (its field recognizers are the wire record's,
-; all guard-verified); a list of held records; what a row of one satisfies.
-(verify-guards fn-held-p)
-
-(defun fn-held-listp (xs)
-  (declare (xargs :guard t))
-  (if (atom xs)
-      (null xs)
-    (and (fn-held-p (car xs)) (fn-held-listp (cdr xs)))))
-
-(defthm fn-held-listp-forward-true-listp
-  (implies (fn-held-listp xs) (true-listp xs))
-  :rule-classes :forward-chaining)
-
-(defthm fn-held-p-of-nth-of-held-listp
-  (implies (and (fn-held-listp xs) (natp i) (< i (len xs)))
-           (fn-held-p (nth i xs))))
-
-(defthm fn-held-listp-of-update-nth
-  (implies (and (fn-held-listp xs) (fn-held-p h) (natp i) (< i (len xs)))
-           (fn-held-listp (update-nth i h xs))))
-
-(defthm fn-held-listp-of-append-one
-  (implies (and (fn-held-listp xs) (fn-held-p h))
-           (fn-held-listp (append xs (list h)))))
-
-(defthm fn-held-p-fields
-  (implies (fn-held-p h)
-           (and (natp (fn-record-payload h))
-                (fn-hf-p (fn-held-facts h))
-                (fn-hc-p (fn-held-context h))
-                (fn-held-numbersp (fn-held-numbers h))
-                (fn-held-withdrawnp (fn-held-withdrawn h))))
-  :hints (("Goal" :in-theory (enable fn-held-p))))
-
-; -----------------------------------------------------------------------------
-; ALPHA: the wire record a held record stands for, given its bytes.
-
-(defun fn-held-wire (h payload)
-  (declare (xargs :guard t))
-  (fn-record-make (fn-record-sequence h) (fn-record-txid h)
-                  (fn-record-generation h) (fn-record-msgid h) payload
-                  (fn-record-groups h) (fn-record-obligation-id h)
-                  (fn-record-content-subject h) (fn-record-release-evidence h)
-                  (fn-record-charge h) (fn-record-stamp h)))
+  :hints (("Goal" :in-theory (enable fn-hc-p fn-hc-internals fn-hc-verdictp))))
 
 (defun fn-held-wire-of (h fn-arena)
   (declare (xargs :stobjs fn-arena
                   :guard (and (natp (fn-record-payload h))
                               (< (fn-record-payload h) (fn-arena-count fn-arena)))))
   (fn-held-wire h (fn-arena-payload (fn-record-payload h) fn-arena)))
-
-; On a wire record, replacing the payload by its own is the identity.
-(defthm fn-held-wire-of-wire-record
-  (implies (fn-record-shapep w)
-           (equal (fn-held-wire w (fn-record-payload w)) w))
-  :hints (("Goal" :in-theory (enable fn-held-wire))))
 
 ; -----------------------------------------------------------------------------
 ; INTERN.
@@ -428,7 +296,8 @@
   (implies (and (fn-record-p w) (natp generation))
            (fn-held-p (mv-nth 0 (fn-cat-intern-list w keyring generation fn-arena))))
   :hints (("Goal" :in-theory (enable fn-record-p fn-held-p fn-record-internals
-                                     fn-held-internals fn-hf-p fn-hc-p))))
+                                     fn-held-internals fn-hf-p fn-hc-p
+                                     fn-hf-startp fn-hc-verdictp))))
 
 (defthm fn-intern-list-handle
   (equal (fn-record-payload (mv-nth 0 (fn-cat-intern-list w keyring generation fn-arena)))
@@ -439,27 +308,7 @@
   (equal (mv-nth 1 (fn-cat-intern-list w keyring generation fn-arena))
          (fn-arena-seal-list (fn-record-payload w) fn-arena)))
 
-; The wire accessors of a held record built by the constructor.
-(defthm fn-record-accessors-of-held-make
-  (let ((h (fn-held-make sequence txid generation msgid payload groups
-                         obligation-id content-subject release-evidence
-                         charge stamp facts context numbers withdrawn)))
-    (and (equal (fn-record-sequence h) sequence)
-         (equal (fn-record-txid h) txid)
-         (equal (fn-record-generation h) generation)
-         (equal (fn-record-msgid h) msgid)
-         (equal (fn-record-payload h) payload)
-         (equal (fn-record-groups h) groups)
-         (equal (fn-record-obligation-id h) obligation-id)
-         (equal (fn-record-content-subject h) content-subject)
-         (equal (fn-record-release-evidence h) release-evidence)
-         (equal (fn-record-charge h) charge)
-         (equal (fn-record-stamp h) stamp)
-         (equal (fn-held-facts h) facts)
-         (equal (fn-held-context h) context)
-         (equal (fn-held-numbers h) numbers)
-         (equal (fn-held-withdrawn h) withdrawn)))
-  :hints (("Goal" :in-theory (enable fn-record-internals fn-held-internals))))
+; fn-record-accessors-of-held-make: books/held-record.lisp (moved down, records-flip).
 
 ; KEYSTONE: alpha of intern is the identity on the wire record.  The sealed
 ; handle is the old count, which after the seal denotes the payload

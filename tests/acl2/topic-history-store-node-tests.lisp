@@ -19,6 +19,11 @@
   (fn-sn-finish (thsn-publish (fn-sn-prepare-topic (thsn-reserve s) event))))
 (defun thsn-identity-commit (s event)
   (fn-sn-finish (thsn-publish (fn-sn-prepare-identity (thsn-reserve s) event))))
+; The retained row of a wire composite: the composite beside its article
+; interned (records-flip; books/held-record.lisp).  The test has no arena,
+; so the article is the plain held row at HANDLE.
+(defun thsn-row (event handle)
+  (fn-hstxa-make event (fn-held-plain (fn-replay-composite-record event) handle)))
 
 (defconst *thsn-initial* (fn-sn-initial '("fn.test") 32))
 (make-event `(defconst *thsn-snapshot*
@@ -38,7 +43,7 @@
                   (fn-clock-observation 1 841000000000 0 t))))
 (assert-event (fn-stxa-p *thsn-root-event*))
 (make-event `(defconst *thsn-root-accepted*
-               ',(thsn-identity-commit *thsn-enrolled* *thsn-root-event*)))
+               ',(thsn-identity-commit *thsn-enrolled* (thsn-row *thsn-root-event* 0))))
 (assert-event (equal (fn-th-at 1 (fn-sn-topic *thsn-root-accepted*)) 2))
 (assert-event (equal (len (fn-th-at 3 (fn-sn-topic *thsn-root-accepted*))) 1))
 
@@ -95,7 +100,7 @@
                   (fn-clock-observation 1 841000000000 0 t))))
 (assert-event (fn-stxa-p *thsn-report-event*))
 (make-event `(defconst *thsn-report-accepted*
-               ',(thsn-identity-commit *thsn-anchored* *thsn-report-event*)))
+               ',(thsn-identity-commit *thsn-anchored* (thsn-row *thsn-report-event* 1))))
 (assert-event (equal (fn-th-at 1 (fn-sn-topic *thsn-report-accepted*)) 5))
 (make-event `(defconst *thsn-admit-result*
                ',(fn-th-prepare-report
