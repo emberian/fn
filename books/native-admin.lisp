@@ -258,12 +258,31 @@
             (fn-native-admin-line-pieces (cdr lines)))
     nil))
 
+;; PKT-597: `policy set complaints-to ADDR' with ADDR an addr-spec
+;; (books/injection-info-policy.lisp).  One opaque test in the plan, so the
+;; plan's theorems do not case-split on the address grammar.
+(defun fn-native-admin-complaints-wordsp (words argv)
+  (declare (xargs :guard t))
+  (and (true-listp words) (equal (len words) 4)
+       (equal (car words) "policy")
+       (equal (cadr words) "set")
+       (equal (caddr words) *fn-ipp-complaints-slot*)
+       (consp argv) (consp (cdr argv)) (consp (cddr argv)) (consp (cdddr argv))
+       (fn-ipp-addr-specp (fn-ipp-octets (cadddr argv)))))
+
+(defthm fn-native-admin-complaints-wordsp-names-the-slot
+  (implies (fn-native-admin-complaints-wordsp words argv)
+           (and (equal (len words) 4)
+                (equal (caddr words) *fn-ipp-complaints-slot*)))
+  :rule-classes :forward-chaining)
+
+(in-theory (disable fn-native-admin-complaints-wordsp))
+
 (defun fn-native-admin-plan (argv)
   "Normalize an administrative request; configuration admission stays in the store core."
   (declare (xargs :guard t
                   :guard-hints
                   (("Goal" :in-theory (disable fn-native-admin-decimalp
-                                               fn-ipp-addr-specp fn-ipp-octets
                                                fn-native-admin-decimal-value
                                                (tau-system))))))
   (if (or (not (fn-native-admin-argvp argv))
@@ -324,11 +343,7 @@
        ; 3.2.8), a durable `:set-policy' row like path-identity, applied
        ; live; the value must be an <addr-spec> of two dot-atoms, so it
        ; stands in the header's quoted-string as it is.
-       ((and (equal (len words) 4)
-             (equal (car words) "policy")
-             (equal (cadr words) "set")
-             (equal (caddr words) *fn-ipp-complaints-slot*)
-             (fn-ipp-addr-specp (fn-ipp-octets (cadddr argv))))
+       ((fn-native-admin-complaints-wordsp words argv)
         (fn-native-admin-result :accepted nil :set-policy (caddr argv) 0 nil
                                 (cadddr argv)))
        ; The served POST posting policy (books/login-binding.lisp):
