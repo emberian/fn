@@ -380,6 +380,15 @@
         (list :fsync-dir :journal)
         (list :cut "drop-durable")))
 
+; A rotation is needed only when the active segment holds a record: an empty
+; active segment K (just rotated to, its checkpoint deferred or failed) is
+; already where the suffix starts, and the checkpoint's F row names it with its
+; own genesis (its kernel's last), so deferred checkpoints do not pile up
+; empty segments.
+(defun fn-lgs-rotate-needed-p (ks)
+  (declare (xargs :guard (true-listp ks)))
+  (consp (fn-lgk-committed ks)))
+
 (defthm fn-lgs-rotate-is-the-recovered-kernel
   (implies (fn-lg-zerosp z)
            (equal (fn-lgk-recover z (fn-lgk-last ks) unit max (fn-lgk-next-txid ks))

@@ -103,6 +103,8 @@
 (assert-event (equal (fn-lgs-rotate *slst-ks1*)
                      (fn-lgk-recover (fn-bs-zeros *slst-unit*) *slst-g1* *slst-unit* *slst-max* 3)))
 (assert-event (not (fn-lgs-rotate-admitsp (fn-lgk-prepare *slst-ks1* *slst-r3*))))
+(assert-event (fn-lgs-rotate-needed-p *slst-ks1*))
+(assert-event (not (fn-lgs-rotate-needed-p (fn-lgs-rotate *slst-ks1*))))
 
 ; -----------------------------------------------------------------------------
 ;; T8, reachable, over the host's fold (fn-lg-open-kernel per segment, read

@@ -5496,7 +5496,13 @@ the next open completes); it is a known failure of the checkpoint."
          (ks (fnn-log-kernel log))
          (next (fnn-core 'fn-lgs-next-segment (fnn-log-index log))))
     (unless (fnn-core 'fn-lgs-rotate-admitsp ks)
-      (fnn-fault "the log kernel does not admit a rotation (a batch open or unacknowledged)"))
+      ;; A batch open, in flight or unacknowledged: no rotation now (the
+      ;; checkpoint is not published; the owner retries at its next due).
+      (fnn-refuse "rotation refused reason=batch-in-flight"))
+    ;; An empty active segment is already where the suffix starts.
+    (unless (fnn-core 'fn-lgs-rotate-needed-p ks)
+      (return-from fnn-log-rotate
+        (list (fnn-log-index log) (fnn-core 'fn-lgk-last ks))))
     (unless next
       (fnn-refuse "rotation refused reason=segment-index-exhausted"))
     (let* ((path (fnn-segment-path-at store next))
