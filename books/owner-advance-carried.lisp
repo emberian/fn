@@ -238,7 +238,7 @@
                (next (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                                  (fn-own-next-id o) (fn-own-max-conns o)
                                  (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
-                                 (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                                 (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                                  (fn-own-config o) (fn-own-queue o) nil
                                  (if (equal completion :durable)
                                      (fn-own-feed-durable o sub)
@@ -282,7 +282,7 @@
                   (o (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                                   (fn-own-next-id o) (fn-own-max-conns o)
                                   (if (equal (fn-own-pending o) id) nil (fn-own-pending o))
-                                  (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                                  (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                                   (fn-own-config o) (fn-own-queue o) nil
                                   (if (equal (fn-own-outcome-completion o word) :durable)
                                       (fn-own-feed-durable o (fn-own-inflight o))

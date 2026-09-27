@@ -56,6 +56,7 @@
 
 (in-package "ACL2")
 (include-book "nntp-xref")
+(include-book "nntp-article-block")
 
 ; -----------------------------------------------------------------------------
 ; NEWGROUPS and LIST ACTIVE.TIMES over the facts the view holds
@@ -329,18 +330,55 @@
 ; octets.  The two sessions agree whenever the served octets frame as the
 ; stored ones do; where they would not, the stored octets are served, so the
 ; cursor never depends on the Xref line.
+;
+; The executable (lane gate-regress, 2026-09-27; D27): the article's bytes
+; are read through the arena ONCE; the served answer is built over the
+; served octets in one pass (fn-nntp-article-response-of-bytes); the stored
+; answer's session is decided by fn-nntp-response-okp-of-bytes, allocating
+; nothing, and the stored answer is built only when the two sessions
+; differ.  fn-rcompat-article-reply-exec-is-the-reply is the equality.
+(defun fn-rcompat-served-payload-of-bytes (server article payload)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (consp (fn-xref-pairs article))
+           (not (fn-rcl-tombstonep payload))
+           (mbe :logic (fn-nntp-split-okp (fn-nntp-split-article payload))
+                :exec (and (fn-octet-listp payload) (fn-nntp-blank-linep payload))))
+      (append (fn-xref-field server (fn-xref-pairs article))
+              (list 13 10)
+              payload)
+    payload))
+
+(defun fn-rcompat-article-reply-exec (session article number kind updatep group
+                                              server fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (let* ((stored-bytes (fn-nntp-article-bytes article fn-arena))
+         (served (fn-nntp-article-response-of-bytes
+                  session article
+                  (fn-rcompat-served-payload-of-bytes server article stored-bytes)
+                  number kind updatep group)))
+    (if (equal (fn-nntp-result-session served)
+               (if (fn-nntp-response-okp-of-bytes article stored-bytes kind)
+                   (if updatep (fn-nntp-set-cursor session group number) session)
+                 session))
+        served
+      (fn-nntp-article-response-of-bytes session article stored-bytes
+                                         number kind updatep group))))
+
 (defun fn-rcompat-article-reply (session article number kind updatep group
                                          server fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
-  (let ((stored (fn-nntp-article-response session article number kind
-                                          updatep group fn-arena))
-        (served (fn-nntp-article-response
-                 session (fn-rcompat-served-article server article fn-arena)
-                 number kind updatep group fn-arena)))
-    (if (equal (fn-nntp-result-session served)
-               (fn-nntp-result-session stored))
-        served
-      stored)))
+  (mbe :logic
+       (let ((stored (fn-nntp-article-response session article number kind
+                                               updatep group fn-arena))
+             (served (fn-nntp-article-response
+                      session (fn-rcompat-served-article server article fn-arena)
+                      number kind updatep group fn-arena)))
+         (if (equal (fn-nntp-result-session served)
+                    (fn-nntp-result-session stored))
+             served
+           stored))
+       :exec (fn-rcompat-article-reply-exec session article number kind updatep
+                                            group server fn-arena)))
 
 (defthm fn-rcompat-article-reply-session
   (equal (fn-nntp-result-session
@@ -624,7 +662,62 @@
 (verify-guards fn-rcompat-xref-value)
 (verify-guards fn-rcompat-served-payload)
 (verify-guards fn-rcompat-served-article)
-(verify-guards fn-rcompat-article-reply)
+(verify-guards fn-rcompat-served-payload-of-bytes
+  :hints (("Goal" :use ((:instance fn-nntp-blank-linep-is-split-okp (bytes payload))))))
+(verify-guards fn-rcompat-article-reply-exec)
+
+; The served article's bytes are its served payload: a payload the arena
+; holds is never a handle, and the Xref'd one is a cons.
+(local
+ (defthm fn-rcompat-arena-element-not-natp
+   (implies (and (fn-arena-p fn-arena) (natp h) (< h (len fn-arena)))
+            (not (natp (nth h fn-arena))))
+   :hints (("Goal" :in-theory (enable fn-arena-p-is-payload-listp)
+            :use ((:instance fn-arena-p-is-payload-listp))))))
+
+(local
+ (defthm fn-rcompat-served-article-bytes
+   (implies (fn-arena-p fn-arena)
+            (equal (fn-nntp-article-bytes
+                    (fn-rcompat-served-article server article fn-arena) any-arena)
+                   (fn-rcompat-served-payload-of-bytes
+                    server article (fn-nntp-article-bytes article fn-arena))))
+   :hints (("Goal" :in-theory (enable fn-rcompat-served-article fn-rcompat-served-payload
+                                      fn-nntp-article-bytes fn-nntp-payload-bytes
+                                      fn-arena-payload-is-nth fn-arena-count-is-len)))))
+
+; The response depends on the article only through its Message-ID.
+(local
+ (defthm fn-rcompat-response-of-served-article
+   (equal (fn-nntp-article-response-of-bytes
+           session (fn-rcompat-served-article server article fn-arena)
+           bytes number kind updatep group)
+          (fn-nntp-article-response-of-bytes session article bytes number kind
+                                             updatep group))
+   :hints (("Goal" :in-theory (enable fn-rcompat-served-article
+                                      fn-nntp-article-response-of-bytes
+                                      fn-nntp-article-idp
+                                      fn-nntp-retrieval-initial)))))
+
+; KEYSTONE (D27, the served ARTICLE's executable).  Over the live arena, the
+; one-read, one-pass reply is the reply fn-rcompat-article-reply specifies.
+(defthm fn-rcompat-article-reply-exec-is-the-reply
+  (implies (fn-arena-p fn-arena)
+           (equal (fn-rcompat-article-reply-exec session article number kind
+                                                 updatep group server fn-arena)
+                  (fn-rcompat-article-reply session article number kind updatep
+                                            group server fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-rcompat-article-reply-exec
+                                   fn-rcompat-article-reply
+                                   fn-nntp-article-response-is-of-bytes)
+                                  (fn-nntp-article-response-of-bytes
+                                   fn-nntp-response-okp-of-bytes
+                                   fn-rcompat-served-payload-of-bytes
+                                   fn-rcompat-served-article
+                                   fn-nntp-article-bytes)))))
+
+(verify-guards fn-rcompat-article-reply
+  :hints (("Goal" :use ((:instance fn-rcompat-article-reply-exec-is-the-reply)))))
 (verify-guards fn-rcompat-retrieval)
 (verify-guards fn-rcompat-xref-content)
 (verify-guards fn-rcompat-hdr-lines)

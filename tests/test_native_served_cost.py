@@ -37,7 +37,10 @@ class NativeServedCostTests(unittest.TestCase):
         self.assertIn("(fnn-core-buffer-state 'fn-owner-chunk-span cid", handoff)
         self.assertNotIn("fnn-octet-list incoming", handoff)
         self.assertNotIn("'fn-owner-chunk cid", handoff)
-        self.assertIn("(fn-scr-ocfg-read-span", definition(host, "fn-owner-chunk-span"))
+        # fn-owner-chunk-span reads at the reader view (fn-owner-at-reader-view)
+        # through fn-owner-chunk-span-at, which calls the catalog chain.
+        self.assertIn("(fn-owner-chunk-span-at", definition(host, "fn-owner-chunk-span"))
+        self.assertIn("(fn-scr-ocfg-read-span", definition(host, "fn-owner-chunk-span-at"))
         self.assertIn("(fn-scr-step-span-fast", definition(chain, "fn-scr-own-read-span"))
         fast = definition(chain, "fn-scr-step-span-fast")
         self.assertIn("fn-wire-fast-statep", fast)
@@ -47,15 +50,25 @@ class NativeServedCostTests(unittest.TestCase):
         # The served span fold reads each octet of the range from the buffer
         # by index (fn-octets-get); the list of the range's octets
         # (fn-oct-slice-list) is the logical model in the theorems only.
-        # The per-line index scan (no wire state inside a line) is PKT-479
-        # and has no static check until it lands.
+        # PKT-479: the fold is the LOGIC of the host-called core; it is
+        # executed by the catalog chain's scan, one framed event at a time
+        # (fn-scr-scan-span, KEYSTONE fn-scr-scan-span-is-feed-span).
         span = (ROOT / "books/served-catalog-chain.lisp").read_text()
         fold = definition(span, "fn-scr-feed-span")
         self.assertIn("(fn-octets-get i fn-octets)", fold)
         self.assertNotIn("fn-oct-slice-list", fold)
         self.assertNotIn("fn-octets-list", fold)
-        core = definition(span, "fn-scar-step-span-core")
+        core = definition(span, "fn-scr-step-span-core")
         self.assertRegex(core, re.compile(
+            r"\(mbe :logic \(fn-scr-feed-span conn i end [^)]*\)\s+"
+            r":exec \(fn-scr-scan-span conn i end [^)]*\)\)"))
+        self.assertIn("(fn-wire-scan (fn-served-conn-wire conn) i end fn-octets)",
+                      definition(span, "fn-scr-scan-span"))
+        # The carried chain (the reference the catalog chain is equated to)
+        # keeps its own scan.
+        carried = definition((ROOT / "books/served-span.lisp").read_text(),
+                             "fn-scar-step-span-core")
+        self.assertRegex(carried, re.compile(
             r"\(mbe :logic \(fn-scar-feed-span conn i end [^)]*\)\s+"
             r":exec \(fn-scar-scan-span conn i end [^)]*\)\)"))
         scan = (ROOT / "books/wire-scan.lisp").read_text()

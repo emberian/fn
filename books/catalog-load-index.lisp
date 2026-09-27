@@ -18,7 +18,7 @@
 ; (`fn-obi-extents-agreep': what the schema-3 reader's ref op restores, P[s]
 ; at the row's payload leaf), the load by extents IS `fn-cat-load' over the
 ; rows, from any state, under any keyring and generation; so with
-; `fn-cat-ocl-relation-at-recover' (books/catalog-entries.lisp) the catalog
+; `fn-sca-ocl-relation-at-recover' (books/served-catalog-owner.lisp) the catalog
 ; the E3 entry installs by extents is in R.  OPEN (PKT-680): discharging the
 ; agreement from the reader (the P run's extents by index against
 ; `fn-sct-load's rows) and the host call (no served arm reads the catalog

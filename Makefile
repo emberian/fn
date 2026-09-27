@@ -383,6 +383,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-programs-tests \
 	books/store-log-route \
 	tests/acl2/store-log-route-tests \
+	books/store-log-kernel-concrete \
+	tests/acl2/store-log-kernel-concrete-tests \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
 	books/store-log-reclaim \
@@ -482,6 +484,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-identity-index-tests \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
+	books/store-profile-carried \
+	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
 	books/owner-store-indexed \
@@ -750,6 +754,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/nntp-session \
 	books/nntp-projection \
 	books/nntp-responses \
+	books/nntp-article-block \
 	books/nntp-reader-compat \
 	books/nntp \
 	books/nntp-overview \
@@ -777,6 +782,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/group-descriptions-tests \
 	tests/acl2/nntp-xref-tests \
 	tests/acl2/nntp-reader-compat-tests \
+	tests/acl2/nntp-article-block-tests \
 	tests/acl2/posting-account-tests \
 	tests/acl2/injection-info-params-tests \
 	tests/acl2/owner-injection-info-tests \
@@ -846,6 +852,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
 	books/store-checkpoint-arena \
+	books/store-checkpoint-share \
 	books/store-checkpoint-arena-load \
 	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
@@ -863,6 +870,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-refresh-tests \
 	tests/acl2/served-catalog-tests \
 	tests/acl2/served-catalog-chain-tests \
+	tests/acl2/served-catalog-scan-tests \
 	tests/acl2/served-catalog-owner-tests \
 	books/acceptance-payload-ref \
 	tests/acl2/acceptance-payload-ref-tests \
@@ -925,6 +933,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-log-ocl-tests \
 	books/config-owner-live-authorize \
 	tests/acl2/config-owner-live-authorize-tests \
+	books/owner-prepare-served \
+	books/store-prepare-served \
+	books/owner-prepare-served-ocl \
+	tests/acl2/owner-prepare-served-tests \
 	books/config-crash-replay \
 	tests/acl2/config-crash-replay-tests \
 	books/owner-config \
@@ -1053,6 +1065,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/peer-carriage \
 	books/owner-parse-carried \
 	tests/acl2/owner-parse-carried-tests \
+	books/owner-identity-intern \
+	tests/acl2/owner-identity-intern-tests \
+	books/owner-identity-served \
 	tests/acl2/peer-carriage-tests \
 	books/peer-pull \
 	tests/acl2/peer-pull-tests \

@@ -71,7 +71,7 @@ class MountIdentitySourceTests(unittest.TestCase):
         owner = (ROOT / "host" / "native" / "owner.lisp").read_text(encoding="utf-8")
         install = owner[owner.index("(defun fnn-owner-install "):]
         self.assertLess(install.index("(fnn-check-filesystem-identity store t)"),
-                        install.index("(fnn-owner-recover-core store records"))
+                        install.index("(fnn-owner-recover-core store "))
 
 
 @unittest.skipUnless(executable(IMAGE), "native image not built")
@@ -105,6 +105,20 @@ class MountIdentityNativeTests(unittest.TestCase):
         copy = self.tmp / "copy"
         shutil.copytree(store, copy)
         self.expect(self.fn("store", copy, "recover"), EXIT_OK, "recover the copy")
+
+    def test_rebind_on_the_same_filesystem_opens_a_log_store(self):
+        # Every store init makes is a format-9 log store, which has no
+        # allocation-frontier file (its frontier is derived from the log).
+        # The rebind loaded one unconditionally and faulted on every such
+        # store (lane catalog-scan, 2026-09-27: the hbox fixtures could not
+        # be rebound); the tests below that move a store skip wherever the
+        # temporary directory and the tree share a filesystem, as on hbox.
+        store = self.tmp / "store"
+        self.expect(self.fn("store", store, "init", "fn.test"), EXIT_OK, "init")
+        self.assertFalse((store / "allocation-frontier.json").exists())
+        rebound = self.expect(self.fn("store", store, "rebind-filesystem"), EXIT_OK, "rebind")
+        self.assertIn("store filesystem", rebound)
+        self.expect(self.fn("store", store, "recover"), EXIT_OK, "recover after rebind")
 
     def test_a_store_on_another_filesystem_is_refused_by_name_then_rebound(self):
         if same_filesystem(self.tmp, self.other):

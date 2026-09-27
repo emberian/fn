@@ -5,7 +5,10 @@
 ; host only plumbs (host/owner-host.lisp):
 ;   E  fn-sca-load-held-rows    at recovery (fn-owner-install-extended): the
 ;                               catalog of the installed store's ROWS, from
-;                               empty, reading no byte and sealing nothing
+;                               empty -- plain article rows and the held
+;                               article row of every signed composite
+;                               (catalog-columns: signed-post's red) --
+;                               reading no byte and sealing nothing
 ;                               (the records flip; fn-sca-load-history is
 ;                               the pre-flip load over wire records, which
 ;                               clears the arena, and the host no longer
@@ -38,8 +41,10 @@
 ; (fn-cat-prepare-is-seal-then-prepare-sealed) without a second seal.
 ;
 ; R (books/catalog-relation.lisp fn-cat-history-relation) is established by E
-; (fn-cat-ocl-relation-at-recover) and preserved by T2 in both forms
-; (fn-cat-ocl-relation-of-article-finish, fn-cat-relation-of-complete-hidden)
+; (fn-sca-ocl-relation-at-recover, fn-sca-ocl-relation-at-full-open, below,
+; over the host's fn-sca-load-held-rows) and preserved by T2 in both forms
+; (fn-sca-ocl-relation-of-finish below over the host's fn-sca-finish;
+; fn-cat-ocl-relation-of-article-finish, fn-cat-relation-of-complete-hidden)
 ; and by T4 (fn-cat-ocl-relation-of-withdraw), all in books/catalog-entries
 ; and catalog-relation; the theorems below are this book's shapes of those
 ; keystones over the functions the host calls.
@@ -56,6 +61,14 @@
 (include-book "catalog-entries")
 (include-book "catalog-refresh")
 (include-book "store-intern")
+(include-book "history-fold-refinement")   ; fn-row-composite-okp: what the intern makes of a row
+
+; The row and view lemmas below never reason about a Message-ID's syntax;
+; these rules fired uselessly through every Message-ID term (815 k prover
+; steps in fn-sca-withdraw-targets-hides alone; catalog-columns, 2026-09-27).
+(local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
+                           fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp
+                           fn-nntp-index-msgid-okp fn-cp-id-length-bound)))
 
 ; -----------------------------------------------------------------------------
 ; E: the catalog of a history, from empty.
@@ -339,27 +352,46 @@
 ; a held record (the store's history is store events: fn-sf-record-valuesp,
 ; which implies it: fn-sca-held-rowsp-of-record-values).  The body dispatches
 ; on the digest-free shape fn-cat-rowp and never executes fn-held-p.
+; A composite row (a signed article's atomic acceptance) by its shape: the
+; held row inside it is a catalog row.  The loader dispatches on shapes and
+; never executes fn-held-p or fn-hstxa-p (their delta checks digest).
+(defun fn-sca-composite-shapep (r)
+  (declare (xargs :guard t))
+  (and (consp r) (eq (car r) :hstxa) (fn-cat-rowp (fn-hstxa-held r))))
+
 (defun fn-sca-held-rowsp (rows)
   (declare (xargs :guard t))
   (if (consp rows)
       (and (or (not (fn-cat-rowp (car rows))) (fn-held-p (car rows)))
+           (or (not (fn-sca-composite-shapep (car rows)))
+               (fn-held-p (fn-hstxa-held (car rows))))
            (fn-sca-held-rowsp (cdr rows)))
     t))
 
 ; One row: an article row (by the digest-free shape) committed, visible when
 ; the view shows its Message-ID, else withdrawn at its own index as
-; fn-cat-load-row-hidden commits it; any other event skipped.
+; fn-cat-load-row-hidden commits it; a composite row's held article row
+; committed the same way (a signed article: signed-post's red, the catalog
+; had skipped it); any other event skipped.
 (defun fn-sca-load-held-row (r view-index fn-cat)
   (declare (xargs :stobjs fn-cat
-                  :guard (or (not (fn-cat-rowp r)) (fn-held-p r))
+                  :guard (and (or (not (fn-cat-rowp r)) (fn-held-p r))
+                              (or (not (fn-sca-composite-shapep r))
+                                  (fn-held-p (fn-hstxa-held r))))
                   :guard-hints (("Goal" :in-theory (e/d (fn-held-withdrawnp) (fn-held-p))
                                  :use ((:instance fn-held-p-of-fn-held-with-withdrawn
-                                                  (h r) (w (cons (fn-cat-count fn-cat) 0))))))))
-  (if (fn-cat-rowp r)
-      (if (fn-midx-lookup (fn-record-msgid r) view-index)
-          (fn-cat-commit r fn-cat)
-        (fn-cat-commit (fn-held-with-withdrawn r (cons (fn-cat-count fn-cat) 0)) fn-cat))
-    fn-cat))
+                                                  (h r) (w (cons (fn-cat-count fn-cat) 0)))
+                                       (:instance fn-held-p-of-fn-held-with-withdrawn
+                                                  (h (fn-hstxa-held r))
+                                                  (w (cons (fn-cat-count fn-cat) 0))))))))
+  (let ((h (cond ((fn-cat-rowp r) r)
+                 ((fn-sca-composite-shapep r) (fn-hstxa-held r))
+                 (t nil))))
+    (if h
+        (if (fn-midx-lookup (fn-record-msgid h) view-index)
+            (fn-cat-commit h fn-cat)
+          (fn-cat-commit (fn-held-with-withdrawn h (cons (fn-cat-count fn-cat) 0)) fn-cat))
+      fn-cat)))
 
 (defun fn-sca-load-held-rows-from (rows view-index fn-cat)
   (declare (xargs :stobjs fn-cat :guard (fn-sca-held-rowsp rows)))
@@ -415,10 +447,38 @@
             :use ((:instance fn-sca-cat-rowp-held-shapep)
                   (:instance fn-sca-held-shape-is-no-other-event))))))
 
+; A store event of the composite shape is a composite row: no other kind
+; has the tag and a catalog row in third place (a held row starts with its
+; sequence; a keyring snapshot's third field is a number).
+; No other kind of store event carries the composite's tag.
+(local (defthm fn-sca-held-is-not-tagged-composite (implies (and (fn-held-p x) (consp x)) (not (equal (car x) :hstxa))) :hints (("Goal" :in-theory (enable fn-held-p fn-held-shapep fn-record-sequence fn-held-internals fn-record-internals fn-record-uint64p fn-held-accessors-are-the-wire-accessors)))))
+(local (defthm fn-sca-ret-is-not-tagged-composite (implies (and (fn-store-retention-event-p x) (consp x)) (not (equal (car x) :hstxa))) :hints (("Goal" :in-theory (enable fn-store-retention-event-p)))))
+(local (defthm fn-sca-stxe-is-not-tagged-composite (implies (and (fn-stxe-p x) (consp x)) (not (equal (car x) :hstxa))) :hints (("Goal" :in-theory (enable fn-stxe-p fn-stxe-shapep fn-stxe-sequence fn-record-uint32p)))))
+(local (defthm fn-sca-stxk-is-not-tagged-composite (implies (and (fn-stxk-p x) (consp x)) (not (equal (car x) :hstxa))) :hints (("Goal" :in-theory (enable fn-stxk-p fn-stxk-shapep fn-stxk-sequence fn-record-uint32p)))))
+(local (defthm fn-sca-cpe-is-not-tagged-composite (implies (and (fn-cpe-eventp x) (consp x)) (not (equal (car x) :hstxa))) :hints (("Goal" :in-theory (enable fn-cpe-eventp)))))
+(local (defthm fn-sca-topic-is-not-tagged-composite (implies (and (fn-th-topic-eventp x) (consp x)) (not (equal (car x) :hstxa))) :hints (("Goal" :in-theory (enable fn-th-topic-eventp fn-th-local-admin-eventp)))))
+
+(local (defthm fn-sca-composite-shape-is-composite
+   (implies (and (fn-store-event-p x) (fn-sca-composite-shapep x))
+            (fn-hstxa-p x))
+   :hints (("Goal" :in-theory (union-theories '(fn-store-event-p fn-sca-composite-shapep
+                                                fn-sca-held-is-not-tagged-composite
+                                                fn-sca-ret-is-not-tagged-composite
+                                                fn-sca-stxe-is-not-tagged-composite
+                                                fn-sca-stxk-is-not-tagged-composite
+                                                fn-sca-cpe-is-not-tagged-composite
+                                                fn-sca-topic-is-not-tagged-composite)
+                                              (theory 'minimal-theory))))))
+
+(local (defthm fn-sca-composite-held-is-held
+   (implies (fn-hstxa-p x) (fn-held-p (fn-hstxa-held x)))
+   :hints (("Goal" :in-theory (enable fn-hstxa-p fn-hstxa-held)))))
+
 (defthm fn-sca-held-rowsp-of-record-values
   (implies (fn-sf-record-valuesp rows) (fn-sca-held-rowsp rows))
   :hints (("Goal" :induct (fn-sca-held-rowsp rows)
-           :in-theory (e/d (fn-sf-record-valuesp) (fn-store-event-p fn-held-p fn-cat-rowp)))))
+           :in-theory (e/d (fn-sf-record-valuesp fn-sca-composite-shapep)
+                           (fn-store-event-p fn-held-p fn-cat-rowp fn-hstxa-p)))))
 
 ; A store event that is no held record materializes to no wire record.
 (local (defthm fn-sca-other-event-wire-not-record
@@ -509,81 +569,317 @@
 (local (defthm fn-sca-append-assoc
    (equal (append (append a b) c) (append a (append b c)))))
 
+(local (defthm fn-sca-handles-of-cons
+   (implies (and (consp rows) (fn-rows-handles-inp rows fn-arena))
+            (and (fn-rows-handles-inp (cdr rows) fn-arena)
+                 (or (not (fn-held-p (car rows))) (fn-row-handle-inp (car rows) fn-arena))
+                 (or (fn-held-p (car rows)) (not (fn-hstxa-p (car rows)))
+                     (fn-row-handle-inp (fn-hstxa-held (car rows)) fn-arena))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-rows-handles-inp)
+                                   (fn-held-p fn-hstxa-p fn-row-handle-inp))))))
+
+(local (defthm fn-sca-composite-is-not-held
+   (implies (fn-hstxa-p x) (not (fn-held-p x)))
+   :hints (("Goal" :use ((:instance fn-hstxa-is-not-held))
+            :in-theory (disable fn-hstxa-p fn-held-p)))))
+
+(local (defthm fn-sca-composite-is-shaped
+   (implies (fn-hstxa-p x) (fn-sca-composite-shapep x))
+   :hints (("Goal" :use ((:instance fn-sca-composite-held-is-held)
+                         (:instance fn-held-p-implies-cat-rowp (x (fn-hstxa-held x))))
+            :in-theory (union-theories '(fn-sca-composite-shapep fn-hstxa-p)
+                                       (theory 'minimal-theory))))))
+
+(local (defthm fn-sca-composite-is-not-cat-row
+   (implies (fn-hstxa-p x) (not (fn-cat-rowp x)))
+   :hints (("Goal" :use ((:instance fn-sca-cat-rowp-held-shapep)
+                         (:instance fn-sca-held-shape-is-no-other-event))
+            :in-theory (disable fn-hstxa-p fn-cat-rowp fn-held-shapep)))))
+
+; One row of E: an article row committed (visible, or withdrawn at its own
+; index), a composite row's article row the same, any other store event
+; skipped; the history grows by the row's ARTICLE (fn-cat-history-article).
+(local (defthm fn-sca-load-step
+   (implies (and (fn-cat-history-relation history fn-arena fn-cat)
+                 (fn-store-event-p r)
+                 (or (not (fn-held-p r)) (fn-row-handle-inp r fn-arena))
+                 (or (fn-held-p r) (not (fn-hstxa-p r))
+                     (fn-row-handle-inp (fn-hstxa-held r) fn-arena))
+                 (fn-row-composite-okp r fn-arena))
+            (fn-cat-history-relation
+             (append history (list (fn-cat-history-article r fn-arena))) fn-arena
+             (fn-sca-load-held-row r view-index fn-cat)))
+   :hints (("Goal" :cases ((fn-held-p r) (fn-hstxa-p r))
+            :in-theory (union-theories '(fn-sca-relation-of-non-article fn-sca-load-held-row
+                                         fn-cat-history-article fn-row-composite-okp
+                                         (:executable-counterpart fn-cat-rowp)
+                                         (:executable-counterpart fn-hstxa-p)
+                                         (:executable-counterpart fn-held-p)
+                                         (:executable-counterpart fn-store-event-p)
+                                         (:executable-counterpart fn-sca-composite-shapep))
+                                       (theory 'minimal-theory))
+            :use ((:instance fn-sca-store-event-rowp-is-held (x r))
+                  (:instance fn-sca-composite-shape-is-composite (x r))
+                  (:instance fn-sca-composite-is-shaped (x r))
+                  (:instance fn-sca-composite-is-not-cat-row (x r))
+                  (:instance fn-sca-composite-is-not-held (x r))
+                  (:instance fn-sca-composite-held-is-held (x r))
+                  (:instance fn-sca-other-event-wire-not-record (x r))
+                  (:instance fn-held-p-implies-cat-rowp (x r))
+                  (:instance fn-sca-commit-row-keeps-relation (records history) (row r))
+                  (:instance fn-sca-commit-row-keeps-relation (records history)
+                             (row (fn-hstxa-held r))))))))
+
 (local (defun fn-sca-held-ind (rows history view-index fn-arena fn-cat)
    (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil)
             (irrelevant history))
    (if (consp rows)
        (let ((fn-cat (fn-sca-load-held-row (car rows) view-index fn-cat)))
-         (fn-sca-held-ind (cdr rows) (append history (list (fn-row-wire-of (car rows) fn-arena)))
+         (fn-sca-held-ind (cdr rows)
+                          (append history (list (fn-cat-history-article (car rows) fn-arena)))
                           view-index fn-arena fn-cat))
      fn-cat)))
-
-(local (defthm fn-sca-handles-of-cons
-   (implies (and (consp rows) (fn-rows-handles-inp rows fn-arena))
-            (and (fn-rows-handles-inp (cdr rows) fn-arena)
-                 (or (not (fn-held-p (car rows))) (fn-row-handle-inp (car rows) fn-arena))))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-rows-handles-inp)
-                                   (fn-held-p fn-hstxa-p fn-row-handle-inp))))))
-
-; One row of E: an article row committed (visible, or withdrawn at its own
-; index), any other store event skipped; the history grows by the row's wire.
-(local (defthm fn-sca-load-step
-   (implies (and (fn-cat-history-relation history fn-arena fn-cat)
-                 (fn-store-event-p r)
-                 (or (not (fn-held-p r)) (fn-row-handle-inp r fn-arena))
-                 (fn-wire-event-p (fn-row-wire-of r fn-arena)))
-            (fn-cat-history-relation
-             (append history (list (fn-row-wire-of r fn-arena))) fn-arena
-             (fn-sca-load-held-row r view-index fn-cat)))
-   :hints (("Goal" :cases ((fn-held-p r))
-            :in-theory (union-theories '(fn-sca-relation-of-non-article fn-sca-load-held-row)
-                                       (theory 'minimal-theory))
-            :use ((:instance fn-sca-store-event-rowp-is-held (x r))
-                  (:instance fn-sca-other-event-wire-not-record (x r))
-                  (:instance fn-held-p-implies-cat-rowp (x r))
-                  (:instance fn-sca-held-wire-event-is-record (h r))
-                  (:instance fn-sca-commit-row-keeps-relation (records history) (row r)))))))
 
 (defthm fn-sca-load-held-rows-from-keeps-relation
   (implies (and (fn-cat-history-relation history fn-arena fn-cat)
                 (fn-sf-record-valuesp rows)
                 (fn-rows-handles-inp rows fn-arena)
-                (fn-wire-event-listp (fn-rows-wire-of rows fn-arena)))
-           (fn-cat-history-relation (append history (fn-rows-wire-of rows fn-arena)) fn-arena
+                (fn-rows-composites-okp rows fn-arena))
+           (fn-cat-history-relation (append history (fn-cat-history-articles rows fn-arena)) fn-arena
                                     (fn-sca-load-held-rows-from rows view-index fn-cat)))
   :hints (("Goal" :induct (fn-sca-held-ind rows history view-index fn-arena fn-cat)
            :expand ((fn-sca-load-held-rows-from rows view-index fn-cat)
-                    (fn-rows-wire-of rows fn-arena)
-                    (fn-sf-record-valuesp rows))
+                    (fn-cat-history-articles rows fn-arena)
+                    (fn-sf-record-valuesp rows)
+                    (fn-rows-composites-okp rows fn-arena))
            :in-theory (union-theories '(fn-sca-append-assoc fn-sca-relation-of-append-atom
-                                        fn-wire-event-listp car-cons cdr-cons binary-append
+                                        car-cons cdr-cons binary-append
                                         (:induction fn-sca-held-ind))
                                       (theory 'minimal-theory)))
-          ("Subgoal *1/2" :expand ((fn-rows-wire-of rows fn-arena)
+          ("Subgoal *1/2" :expand ((fn-cat-history-articles rows fn-arena)
                                    (fn-sca-load-held-rows-from rows view-index fn-cat)))
           ("Subgoal *1/1" :use ((:instance fn-sca-handles-of-cons)
                                 (:instance fn-sca-load-step (r (car rows)))))))
 
-; KEYSTONE (E after the flip): committing the store's rows from the cleared
-; catalog establishes R over the rows' wire events (store-intern's ALPHA),
-; under the invariants the open establishes of the rows: they are store
-; events (fn-intern-events-are-store-events), their handles are in the arena
-; (fn-intern-events-handles-in), and they materialize to wire events
-; (fn-intern-events-materializes).  No byte is read and no payload sealed.
+; KEYSTONE (E after the flip, with the signed articles): committing the
+; store's rows from the cleared catalog establishes R over the rows'
+; ARTICLES (fn-cat-history-articles: a held row and a composite row's held
+; article row read by handle), under the invariants the open establishes of
+; the rows: they are store events (fn-intern-events-are-store-events), their
+; handles are in the arena (fn-intern-events-handles-in), and each is what
+; the intern makes of a row (fn-rows-composites-okp,
+; books/history-fold-refinement.lisp; fn-sca-intern-events-composites-okp
+; below).  No byte is read and no payload sealed.
 (defthm fn-sca-load-held-rows-establishes-relation
   (implies (and (fn-arena-p fn-arena)
                 (fn-sf-record-valuesp rows)
                 (fn-rows-handles-inp rows fn-arena)
-                (fn-wire-event-listp (fn-rows-wire-of rows fn-arena)))
-           (fn-cat-history-relation (fn-rows-wire-of rows fn-arena) fn-arena
+                (fn-rows-composites-okp rows fn-arena))
+           (fn-cat-history-relation (fn-cat-history-articles rows fn-arena) fn-arena
                                     (fn-sca-load-held-rows rows view-index fn-arena fn-cat)))
   :hints (("Goal" :use ((:instance fn-sca-load-held-rows-from-keeps-relation
                                    (history nil) (fn-cat nil)))
            :in-theory (e/d (fn-sca-load-held-rows fn-cat-history-relation)
                            (fn-sca-load-held-rows-from-keeps-relation fn-sca-load-held-rows-from
-                            fn-rows-wire-of fn-sf-record-valuesp fn-rows-handles-inp
-                            fn-wire-event-listp)))))
+                            fn-cat-history-articles fn-sf-record-valuesp fn-rows-handles-inp
+                            fn-rows-composites-okp)))))
+
+; The installed store's rows are store events: the owner's live relation
+; carries the store's structural state (books/owner-commit-carried.lisp
+; fn-ccar-ocl-relation-carries-sn-statep), whose record list is one.
+(defthm fn-sca-ocl-store-rows-are-values
+  (implies (fn-ocl-relation oc)
+           (fn-sf-record-valuesp (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
+  :hints (("Goal" :use ((:instance fn-ccar-ocl-relation-carries-sn-statep))
+           :in-theory (e/d (fn-sn-statep fn-sf-statep)
+                           (fn-ocl-relation fn-sf-phase-shapep fn-sf-success-listp fn-node-statep)))))
+
+; The open's intern makes every row what fn-rows-composites-okp names
+; (books/history-fold-refinement.lisp fn-intern-event-composite-okp, one
+; event; below, the list), and a later seal keeps what a row reads.
+; What a held row reads survives a later seal (the arena grows at its end).
+(local (defthm fn-sca-nth-of-append-below-len
+   (implies (and (natp i) (< i (len a)))
+            (equal (nth i (append a b)) (nth i a)))
+   :hints (("Goal" :in-theory (enable nth)))))
+
+(local (defthm fn-sca-row-wire-of-held-survives-seal
+   (implies (and (fn-held-p h) (fn-row-handle-inp h fn-arena))
+            (and (equal (fn-row-wire-of h (fn-arena-seal-list xs fn-arena))
+                        (fn-row-wire-of h fn-arena))
+                 (fn-row-handle-inp h (fn-arena-seal-list xs fn-arena))))
+   :hints (("Goal" :in-theory (e/d (fn-row-wire-of fn-row-bytes fn-row-handle-inp
+                                    fn-held-wire-of fn-arena-payload-is-nth
+                                    fn-arena-seal-list-is-append fn-arena-count-is-len)
+                                   (fn-held-p fn-held-wire))))))
+
+(local (defthm fn-sca-composite-okp-survives-seal
+   (implies (and (fn-rows-handles-inp (list row) fn-arena)
+                 (fn-row-composite-okp row fn-arena))
+            (and (fn-row-composite-okp row (fn-arena-seal-list xs fn-arena))
+                 (fn-rows-handles-inp (list row) (fn-arena-seal-list xs fn-arena))))
+   :hints (("Goal" :cases ((fn-held-p row) (fn-hstxa-p row))
+            :in-theory (e/d (fn-rows-handles-inp fn-row-composite-okp)
+                            (fn-held-p fn-hstxa-p fn-row-wire-of fn-row-handle-inp
+                             fn-arena-seal-list-is-append))
+            :use ((:instance fn-sca-row-wire-of-held-survives-seal (h row))
+                  (:instance fn-sca-row-wire-of-held-survives-seal (h (fn-hstxa-held row)))
+                  (:instance fn-sca-composite-held-is-held (x row))
+                  (:instance fn-sca-composite-is-not-held (x row)))))))
+
+(local (defthm fn-sca-composite-okp-survives-intern-events
+   (implies (and (fn-rows-handles-inp (list row) fn-arena)
+                 (fn-row-composite-okp row fn-arena))
+            (and (fn-row-composite-okp row (mv-nth 1 (fn-intern-events ws keyring generation fn-arena)))
+                 (fn-rows-handles-inp (list row)
+                                      (mv-nth 1 (fn-intern-events ws keyring generation fn-arena)))))
+   :hints (("Goal" :induct (fn-intern-events ws keyring generation fn-arena)
+            :in-theory (union-theories '(fn-intern-events fn-intern-event-arena
+                                         fn-sca-composite-okp-survives-seal
+                                         mv-nth car-cons cdr-cons
+                                         (:executable-counterpart zp)
+                                         (:induction fn-intern-events))
+                                       (theory 'minimal-theory))))))
+
+(defthm fn-sca-intern-events-composites-okp
+  (implies (and (fn-arena-p fn-arena) (natp generation) (fn-wire-event-listp ws)
+                (not (equal (mv-nth 0 (fn-intern-events ws keyring generation fn-arena)) :bad)))
+           (fn-rows-composites-okp (mv-nth 0 (fn-intern-events ws keyring generation fn-arena))
+                                   (mv-nth 1 (fn-intern-events ws keyring generation fn-arena))))
+  :hints (("Goal" :induct (fn-intern-events ws keyring generation fn-arena)
+           :in-theory (e/d (fn-intern-events fn-rows-composites-okp fn-wire-event-listp)
+                           (fn-intern-event fn-row-composite-okp fn-rows-handles-inp
+                            fn-wire-event-p fn-arena-seal-list-is-append fn-record-p
+                            fn-stxa-p fn-replay-composite-record fn-cat-intern-list
+                            fn-intern-event-arena)))
+          ("Subgoal *1/4"
+           :use ((:instance fn-intern-event-composite-okp (w (car ws)))
+                 (:instance fn-intern-event-handle-in (w (car ws)))
+                 (:instance fn-intern-events-arena-p (ws (list (car ws))))
+                 (:instance fn-sca-composite-okp-survives-intern-events
+                            (row (mv-nth 0 (fn-intern-event (car ws) keyring generation fn-arena)))
+                            (ws (cdr ws))
+                            (fn-arena (mv-nth 1 (fn-intern-event (car ws) keyring generation fn-arena))))))))
+
+; KEYSTONE (E at the host's entries, over the flipped store).  The owner
+; host/owner-host.lisp fn-owner-install-extended installs from the capture of
+; any prefix of ROWS extended over any suffix (fn-owner-recover-rows: prefix
+; nil; fn-owner-recover-from-checkpoint, -from-store-open: the verified
+; checkpoint's rows), when it is not :fault, holds exactly those rows at an
+; idle store, and the catalog the host then loads from them
+; (fn-sca-load-held-rows, under any view index) is in R with it -- R over
+; the rows' ARTICLES through the arena the rows' handles index
+; (fn-cat-history-articles: plain and signed).  The two row hypotheses (the
+; handles are in the arena; each row is what the intern makes of one,
+; fn-rows-composites-okp) are what the open's intern establishes (full open
+; below) and what a checkpoint load must establish of its rows; that the
+; rows are store events follows from the install
+; (fn-sca-ocl-store-rows-are-values).  The
+; host extends with fn-rii-sco-extend, which is fn-sco-extend
+; (books/replay-identity-index.lisp fn-rii-sco-extend-is-sco-extend).
+(defthm fn-sca-ocl-relation-at-recover
+  (let* ((oc (fn-ock-recover-extended
+              (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
+              configs frontier max-conns))
+         (rows (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
+    (implies (and (not (equal oc :fault))
+                  (fn-arena-p fn-arena)
+                  (fn-rows-handles-inp (append prefix suffix) fn-arena)
+                  (fn-rows-composites-okp (append prefix suffix) fn-arena))
+             (and (equal rows (append prefix suffix))
+                  (fn-own-store-idlep (fn-own-store (fn-ocfg-owner oc)))
+                  (fn-cat-ocl-relation oc fn-arena
+                                       (fn-sca-load-held-rows rows view-index fn-arena fn-cat)))))
+  :hints (("Goal" :use (fn-ock-recover-installs-ocl-relation
+                        fn-owner-recover-from-checkpoint-equals-full-recover
+                        (:instance fn-cbo-recover-full-store (events (append prefix suffix)))
+                        (:instance fn-cbo-open-ok-records-and-phase (events (append prefix suffix)))
+                        (:instance fn-sca-ocl-store-rows-are-values
+                                   (oc (fn-ock-recover-extended
+                                        (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
+                                        configs frontier max-conns)))
+                        (:instance fn-sca-load-held-rows-establishes-relation
+                                   (rows (append prefix suffix))))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-cat-ocl-relation)))))
+
+; The open's intern: an event list the intern accepts is a list of wire
+; events (fn-intern-event refuses every other value).
+(local (defthm fn-sca-intern-event-accepts-wire-event
+   (implies (not (equal (mv-nth 0 (fn-intern-event w keyring generation fn-arena)) :bad))
+            (fn-wire-event-p w))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (union-theories '(fn-intern-event fn-wire-event-p
+                                                mv-nth car-cons cdr-cons
+                                                (:executable-counterpart zp)
+                                                (:executable-counterpart equal))
+                                              (theory 'minimal-theory))))))
+
+(defthm fn-sca-intern-events-accepts-wire-events
+  (implies (and (true-listp ws)
+                (not (equal (mv-nth 0 (fn-intern-events ws keyring generation fn-arena)) :bad)))
+           (fn-wire-event-listp ws))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-intern-events ws keyring generation fn-arena)
+           :in-theory (union-theories '(fn-intern-events fn-wire-event-listp true-listp
+                                        mv-nth car-cons cdr-cons (:executable-counterpart zp)
+                                        (:executable-counterpart equal)
+                                        (:executable-counterpart fn-wire-event-listp)
+                                        (:induction fn-intern-events))
+                                      (theory 'minimal-theory)))
+          ("Subgoal *1/4" :use ((:instance fn-sca-intern-event-accepts-wire-event (w (car ws)))))
+          ("Subgoal *1/3" :use ((:instance fn-sca-intern-event-accepts-wire-event (w (car ws)))))
+          ("Subgoal *1/2" :use ((:instance fn-sca-intern-event-accepts-wire-event (w (car ws)))))))
+
+; KEYSTONE (E2 and E1, the full open).  The rows the open interns from the
+; decoded journal WS into the cleared arena (books/store-intern.lisp
+; fn-intern-events under the open's keyring nil and generation 0; the native
+; chunked intern is the same step, books/store-recover-stream.lisp
+; fn-srs-one-step-is-the-intern-of-the-decode): the installed store's
+; history is WS through that arena, and the catalog the host loads is in R.
+; The hypotheses are the host's own checks (:bad, :fault) and WS a true list.
+(local (defthm fn-sca-arena-p-of-clear
+   (fn-arena-p (fn-arena-clear fn-arena))
+   :hints (("Goal" :in-theory (enable fn-arena-clear)))))
+
+(defthm fn-sca-ocl-relation-at-full-open
+  (let* ((arena0 (fn-arena-clear fn-arena))
+         (rows (mv-nth 0 (fn-intern-events ws nil 0 arena0)))
+         (arena (mv-nth 1 (fn-intern-events ws nil 0 arena0)))
+         (oc (fn-ock-recover-extended
+              (fn-sco-extend (fn-sco-capture configs nil) configs rows)
+              configs frontier max-conns)))
+    (implies (and (true-listp ws)
+                  (not (equal rows :bad))
+                  (not (equal oc :fault)))
+             (and (equal (fn-rows-wire-of (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                                          arena)
+                         ws)
+                  (fn-cat-ocl-relation
+                   oc arena
+                   (fn-sca-load-held-rows (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))
+                                          view-index arena fn-cat)))))
+  :hints (("Goal" :use ((:instance fn-sca-ocl-relation-at-recover
+                                   (prefix nil)
+                                   (suffix (mv-nth 0 (fn-intern-events ws nil 0 (fn-arena-clear fn-arena))))
+                                   (fn-arena (mv-nth 1 (fn-intern-events ws nil 0 (fn-arena-clear fn-arena)))))
+                        (:instance fn-sca-intern-events-accepts-wire-events
+                                   (keyring nil) (generation 0) (fn-arena (fn-arena-clear fn-arena)))
+                        (:instance fn-intern-events-arena-p
+                                   (keyring nil) (generation 0) (fn-arena (fn-arena-clear fn-arena)))
+                        (:instance fn-intern-events-handles-in
+                                   (keyring nil) (generation 0) (fn-arena (fn-arena-clear fn-arena)))
+                        (:instance fn-intern-events-materializes
+                                   (keyring nil) (generation 0) (fn-arena (fn-arena-clear fn-arena)))
+                        (:instance fn-sca-intern-events-composites-okp
+                                   (keyring nil) (generation 0) (fn-arena (fn-arena-clear fn-arena)))
+                        (:instance fn-intern-events-are-store-events
+                                   (keyring nil) (generation 0) (fn-arena (fn-arena-clear fn-arena))))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(binary-append fn-sca-arena-p-of-clear
+                                        (:executable-counterpart natp)
+                                        (:executable-counterpart consp))))))
 
 ;; -----------------------------------------------------------------------------
 ; The finish the host calls (fn-owner-finish-submission): T4 BEFORE T2.
@@ -657,6 +953,52 @@
                  (:instance fn-sca-complete-keeps-the-relation
                             (fn-cat (fn-sca-withdraw-targets targets view-index
                                                              (fn-pc-expected pending) fn-cat)))))))
+
+
+; KEYSTONE (T2 at the host's finish, over the flipped store).
+; host/owner-host.lisp fn-owner-finish-submission installs the finished owner
+; (fn-apc-own-finish, which is fn-ccar-own-finish under the carried parse
+; and the store's event index: books/owner-parse-carried.lisp
+; fn-apc-own-finish-is-own-finish) and then runs fn-sca-finish with the token
+; it reads off the store's completion, (sequence-or-txid of the completion .
+; the pending's expected).  Before the finish the store is at :completing,
+; the ARTICLES of its rows through the arena are the catalog's history
+; RECORDS0 followed by the completing record W, and the pending holds the
+; store's own row for W (fn-cat-prepare-sealed: its handle is in the arena
+; and it materializes to W).  After, R holds as the equality at the idle
+; store, with the owner's live relation.
+(defthm fn-sca-ocl-relation-of-finish
+  (let* ((s (fn-own-store (fn-ocfg-owner oc)))
+         (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files s)))) (fn-pc-expected pending)))
+         (w (fn-held-wire-of (fn-pc-held pending) fn-arena)))
+    (implies (and (fn-ocl-relation oc)
+                  (fn-cat-history-relation records0 fn-arena fn-cat)
+                  (fn-sn-completion-enabledp s)
+                  (equal (fn-sf-article-records (fn-cat-history-articles (fn-sf-records (fn-sn-files s)) fn-arena))
+                         (append (fn-sf-article-records records0) (list w)))
+                  (fn-pc-p pending)
+                  (equal token (fn-pc-token pending))
+                  (equal (fn-pc-expected pending) (fn-cat-count fn-cat))
+                  (< (fn-record-payload (fn-pc-held pending)) (fn-arena-count fn-arena))
+                  (fn-record-p w))
+             (fn-cat-ocl-relation
+              (fn-ocfg-with-owner oc (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))
+              fn-arena
+              (mv-nth 2 (fn-sca-finish token pending view-index targets fn-cat)))))
+  :hints (("Goal" :use ((:instance fn-cat-ocl-relation-of-article-finish-by
+                                   (w (fn-held-wire-of (fn-pc-held pending) fn-arena))
+                                   (fn-cat2 (mv-nth 2 (fn-sca-finish
+                                                       (cons (nfix (cdr (fn-sf-completion
+                                                                         (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
+                                                             (fn-pc-expected pending))
+                                                       pending view-index targets fn-cat))))
+                        (:instance fn-sca-finish-keeps-the-relation
+                                   (records records0)
+                                   (token (cons (nfix (cdr (fn-sf-completion
+                                                            (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
+                                                (fn-pc-expected pending)))
+                                   (w (fn-held-wire-of (fn-pc-held pending) fn-arena))))
+           :in-theory (theory 'minimal-theory))))
 
 (local (defthm fn-sca-view-articles-of-complete-pinned
    (implies (and (natp v) (<= v (fn-cat-count fn-cat)))

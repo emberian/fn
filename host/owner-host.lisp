@@ -55,6 +55,10 @@
 ; The retention admission of a POST through a carried obligation-id trie
 ; (fn-prc-refresh, fn-prc-sbud-prepare; fn-owner-prepare-buffer).
 (include-book "../books/post-retain-carried")
+;; lane prepare-served: the served decision inside the prepares the host calls
+;; (fn-psrv-prepare, fn-psrv-refusal-kind, fn-psrv-prepare-identity,
+;; fn-psrv-prepare-topic) and the configuration un-stage (fn-psrv-unstage).
+(include-book "../books/owner-prepare-served")
 ; PRF-180: the per-POST caches advanced through the derived event index.
 (include-book "../books/store-carried-folds")
 (include-book "../books/owner-log-route")
@@ -62,6 +66,8 @@
 (include-book "../books/owner-intent-carried")
 ; The POST's article parsed once at take (fn-apc-; fn-owner-parse-carry).
 (include-book "../books/owner-parse-carried")
+(include-book "../books/owner-identity-intern")
+(include-book "../books/owner-identity-served")
 (include-book "../books/owner-commit-ocl")
 (include-book "../books/owner-served-invariants")
 (include-book "../books/owner-feed-port")
@@ -75,6 +81,10 @@
 ; PKT-169: the maintenance reservation (the served gates below).
 (include-book "../books/store-maintenance-reserve")
 (include-book "../books/store-capacity-vector")
+; PRF-284: the profile's admission decided once at open and carried
+; (fn-pvc-make; fn-pvc-article-budget-carried, fn-pvc-verdict-carried,
+; fn-pvc-post-boundary-carried).
+(include-book "../books/store-profile-carried")
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/feed-wire-input")
 (include-book "../books/feed-connection")
@@ -298,6 +308,16 @@
   (if (equal oc :fault)
         (mv nil :fault fn-arena fn-cat state)
       (let* ((state (fn-owner-install-ocfg oc state))
+             ; PRF-289: the carried obligation-id trie for the ledger the
+             ; owner opens with (books/post-retain-carried.lisp
+             ; fn-prc-refresh of nil; fn-prc-carryp-of-refresh), so the
+             ; first POST's refresh is a delta, not a build.
+             (state (f-put-global
+                     'fn-owner-retain-carry
+                     (fn-prc-refresh nil (fn-node-retention
+                                          (fn-sn-node
+                                           (fn-own-store (fn-owner-core state)))))
+                     state))
              ; Rebuilt exclusively by successful FNFD scans after
              ; authoritative store recovery.  It is a carried
              ; incremental fold, never a whole-journal rescan on a
@@ -308,6 +328,8 @@
              ; then the budget is 0 and every publication is
              ; :unaffordable (books/store-budget.lisp).
              (state (f-put-global 'fn-owner-store-profile nil state))
+             ; PRF-284: its carried verdict with it (fn-pvc-carryp-when-atom).
+             (state (f-put-global 'fn-owner-profile-carry nil state))
              ; Socket-only reply framers are recreated after
              ; authoritative recovery; their durable counterpart is
              ; the FNFD replay above, not this retained input.
@@ -316,7 +338,9 @@
              ; The owner's checkpoint state: the capture it extends at its
              ; next publication, the newest durable checkpoint's S (set by
              ; fn-owner-sco-note-durable), and the count of the last attempt.
-             (state (f-put-global 'fn-owner-sco-base extended state))
+             ; (kept stripped of its event index, rebuilt at the next
+             ; publication: fn-scka-restore-base-of-strip-of-capture)
+             (state (f-put-global 'fn-owner-sco-base (fn-scka-strip-base extended) state))
              ; The base's canonical payload count (the arena's count at the
              ; open: fn-owner-sco-note-base-payloads), nil until noted.
              (state (f-put-global 'fn-owner-sco-base-payloads nil state))
@@ -433,6 +457,10 @@
     (if (equal verdict :installed)
         (let* ((state (fn-owner-replace-core next state))
                (state (f-put-global 'fn-owner-store-profile values state))
+               ; PRF-284: the profile's admission, decided once here
+               ; (fn-pvc-carryp-of-make); see fn-owner-profile-carry.
+               (state (f-put-global 'fn-owner-profile-carry
+                                    (fn-pvc-make values) state))
                ; PRF-180: the committed record octets, the completion debt
                ; and the carried usage are folded once here, over the Store
                ; this open replayed (valid caches: fn-sbud-full-cache-is-valid,
@@ -461,6 +489,19 @@
   (declare (xargs :stobjs state :mode :program))
   (if (boundp-global 'fn-owner-store-profile state)
       (f-get-global 'fn-owner-store-profile state)
+    nil))
+
+; The carried verdict of the profile (books/store-profile-carried.lisp).
+; Its writers are fn-owner-install-profile (fn-pvc-make of the profile it
+; installs, fn-pvc-carryp-of-make) and the recovery reset (nil,
+; fn-pvc-carryp-when-atom), so it always satisfies fn-pvc-carryp; the
+; recognizer names no owner state, so no owner step can falsify it.  A
+; reader uses the verdict only for the profile the carry names (the same
+; object as fn-owner-store-profile's, so the EQUAL is an EQ).
+(defun fn-owner-profile-carry (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-profile-carry state)
+      (f-get-global 'fn-owner-profile-carry state)
     nil))
 
 ; The carried profile's article bound A and group bound G, for the control
@@ -621,7 +662,10 @@
 ; fn-scka-next-checkpoint: BASE extended over the canonical rows of the rows
 ; after it, handles from H0; KEYSTONE fn-scka-next-checkpoint-is-capture;
 ; the whole capture when no H0 was noted), then the setup of the arena run
-; (fn-scka-write-setup) and of the file (fn-scka-publication-setup: the
+; from WALKED, the host's bounded fn-scka-srcs-n calls over RECORDS (ROWS'
+; LACC SACC: each canonical payload's length and source, reversed;
+; fn-scka-srcs-n-compose, fn-scka-srcs-n-complete), by fn-scka-lens-setup,
+; and of the file (fn-scka-publication-setup: the
 ; decision by name over the whole file's octets before anything is
 ; allocated).  LOG is the record log's position at the capture's S (a
 ; format-9 owner rotated the log there; NIL otherwise): the F row carries it.
@@ -631,21 +675,23 @@
 ; thread only appends to it (a seal never moves a sealed payload's bytes),
 ; so what is read is what was sealed before the capture.
 (defun fn-owner-sco-prepare (base h0 configs records frontier revision log seg budget free
-                                  fn-arena)
+                                  walked fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
   (let* ((next0 (and base (natp h0) (<= (len (fn-sco-records base)) (len records))
-                     (fn-scka-next-checkpoint base h0 configs records fn-arena)))
+                     (fn-scka-next-checkpoint (fn-scka-restore-base base) h0 configs records
+                                              fn-arena)))
          (next (if (or (null next0) (equal next0 :bad))
                    (let ((canon (fn-scka-canon-rows records fn-arena 0)))
                      (if (equal canon :bad) :bad (fn-sco-capture configs canon)))
                  next0)))
-    (if (equal next :bad)
+    (if (or (equal next :bad) (not (and (consp walked) (atom (nth 0 walked)))))
         (list (list :unencodable nil nil nil nil 0 0) nil 0 nil)
-      (let* ((ws (fn-scka-write-setup records seg fn-arena))
+      (let* ((ws (fn-scka-lens-setup (reverse (nth 1 walked)) seg))
              (setup (fn-scka-publication-setup next frontier revision log seg budget free
                                                (nth 3 ws))))
         (list setup next (nth 0 ws)
-              (list (nth 0 ws) (nth 2 ws) (fn-scka-initial-state records (nth 1 ws) 0)))))))
+              (list (nth 0 ws) (nth 2 ws)
+                    (fn-scka-initial-state (reverse (nth 2 walked)) (nth 1 ws) 0)))))))
 
 ; Outside the mutex, the host calls `fn-ock-next-checkpoint' (NEXT, the
 ; capture of the captured history: fn-ock-next-checkpoint-is-the-capture),
@@ -662,7 +708,7 @@
 ; :none.
 (defun fn-owner-sco-publication-done (next payloads durablep verdict state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((state (f-put-global 'fn-owner-sco-base next state))
+  (let* ((state (f-put-global 'fn-owner-sco-base (fn-scka-strip-base next) state))
          ; NEXT's canonical payload count, the next publication's H0
          (state (f-put-global 'fn-owner-sco-base-payloads (and (natp payloads) payloads)
                               state))
@@ -759,8 +805,10 @@
     (mv-let (debt state) (fn-owner-record-debt state)
       (let ((s (fn-owner-store state)))
         ; PRF-180: the count read from the index (fn-sbud-count-is-used).
-        (value (fn-cvec-verdict-at (fn-owner-store-profile state) kind
-                                   (fn-sbud-count s) bytes debt))))))
+        ; PRF-284: fn-pvc-verdict-carried-is-cvec-verdict-at.
+        (value (fn-pvc-verdict-carried (fn-owner-profile-carry state)
+                                       (fn-owner-store-profile state) kind
+                                       (fn-sbud-count s) bytes debt))))))
 
 ; (used budget bytes-used history-bound reserved-charge charge-capacity), all
 ; read from the carried state; the host prints it and computes none of it.
@@ -901,6 +949,19 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-oclc-live-authorizep (fn-owner-ocfg state))))
 
+;; lane prepare-served: a live request refused BEFORE its record was written
+;; (the authorization above, the candidate open, or the immutable publisher's
+;; :refused; host/native/admin.lisp fnn-owner-live-reconfigure-locked) drops
+;; the staged record, ACL2's fn-psrv-unstage (KEYSTONE
+;; fn-psrv-unstage-preserves-invariant).  Before it the staged record stayed:
+;; the configuration lock held and :begin/:take refused every POST until a
+;; restart.  Answers :unstaged, or :none when nothing was staged.
+(defun fn-owner-reconfigure-unstage (state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((before (fn-owner-ocfg state))
+         (state (fn-owner-install-ocfg (fn-psrv-unstage before) state)))
+    (value (if (fn-ocfg-staged before) :unstaged :none))))
+
 (defun fn-owner-config-generation (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cfg-generation (fn-owner-config state))))
@@ -966,6 +1027,19 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-olr-bounds (fn-owner-config state))))
 
+;; The carried obligation-id trie (books/post-retain-carried.lisp): the
+;; global's writers are fn-owner-install-extended (every recovery: the
+;; refresh of nil, so the first POST pays no build), fn-owner-prepare-buffer
+;; and fn-owner-prepare, which store fn-prc-refresh of the value read here;
+;; so it always satisfies fn-prc-carryp (fn-prc-carryp-of-refresh; nil by
+;; fn-prc-carryp-when-atom).  The recognizer names no owner state, so no
+;; owner step between two POSTs can falsify it.
+(defun fn-owner-retain-carry (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-retain-carry state)
+      (f-get-global 'fn-owner-retain-carry state)
+    nil))
+
 ; THE OWNER'S POST ENTRY (records-flip).  The duplicate test is the Store's
 ; entry over the arena (fn-store-existing-action, KEYSTONE
 ; fn-store-existing-action-is-the-verdict-over-alpha); the budget is sized on
@@ -991,9 +1065,8 @@
             (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
         (mv nil :invalid fn-arena state)
       ; A name in the domain but not served at the live generation (a retired
-      ; group) is refused by the predicate fn-cnode-prepare applies.
-      (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
-          (mv nil :refused fn-arena state)
+      ; group) is refused by the prepare itself (fn-psrv-prepare, lane
+      ; prepare-served): the host makes no served test of its own.
       (let* ((msgid (fn-store-octets->string msgid-octets))
              (existing (fn-store-existing-action msgid payload groups s fn-arena)))
         (if existing
@@ -1026,7 +1099,10 @@
                  ; the maintenance release) still holds after the article
                  ; (books/store-capacity-vector.lisp
                  ; `fn-cvec-prepare-keeps-the-vector').
-                 (budget (fn-cvec-article-budget-for
+                 ; PRF-284: fn-pvc-article-budget-carried-is-cvec-
+                 ; article-budget-for (the carry satisfies fn-pvc-carryp).
+                 (budget (fn-pvc-article-budget-carried
+                          (fn-owner-profile-carry state)
                           (fn-owner-store-profile state) (fn-sbud-count s)
                           bytes record debt))
                  (before (fn-owner-ocfg state))
@@ -1038,20 +1114,26 @@
                                               (fn-sn-keyring-generation s)
                                               (fn-arena-count fn-arena)
                                               (fn-owner-parse-carry state))))
+                 (carry (fn-prc-refresh (fn-owner-retain-carry state)
+                                        (fn-node-retention (fn-sn-node s))))
                  (state (if (equal record :clock-unusable)
                             state
-                          (fn-owner-install-ocfg
-                           (fn-pcar-sbud-prepare before row budget)
-                           state))))
+                          (let ((state (f-put-global 'fn-owner-retain-carry
+                                                     carry state)))
+                            ; fn-psrv-prepare: the served test, then
+                            ; fn-prc-sbud-prepare, as the buffer entry below.
+                            (fn-owner-install-ocfg
+                             (fn-psrv-prepare before row budget carry)
+                             state)))))
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
-                (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
+                (mv nil (fn-psrv-refusal-kind before row budget) fn-arena state)
               ; The entry reads the arena only (no invariant-risk: it runs
               ; compiled, no callee re-checks its guard); it names the payload
               ; and the host seals it with one fn-arena-seal-list call
               ; (tools/run_owner.py prepare), exactly when the Store changed.
-              (mv nil (list :seal payload) fn-arena state))))))))))))
+              (mv nil (list :seal payload) fn-arena state)))))))))))
 
 ; Step 8 (catalog slice) after the records flip: the host sealed the POST's
 ; payload (host/native/owner.lisp fnn-owner-attempt, after
@@ -1103,17 +1185,6 @@
 ; fn-pidx-existing-action-is-store-existing-action) and the payload sealed
 ; from the buffer (fn-arena-seal-buffer: no list is retained; the wire
 ; record's list payload lives only for the facts, the context and the budget).
-;; The carried obligation-id trie (books/post-retain-carried.lisp): the
-;; global's only writer is fn-owner-prepare-buffer, which stores
-;; fn-prc-refresh of the value read here, so it always satisfies
-;; fn-prc-carryp (fn-prc-carryp-of-refresh; nil, before the first POST,
-;; by fn-prc-carryp-when-atom).  The recognizer names no owner state, so no
-;; owner step between two POSTs can falsify it.
-(defun fn-owner-retain-carry (state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (boundp-global 'fn-owner-retain-carry state)
-      (f-get-global 'fn-owner-retain-carry state)
-    nil))
 
 (defun fn-owner-prepare-buffer (msgid-octets group-codes id-octets
                                  subject-octets evidence-octets charge
@@ -1129,8 +1200,9 @@
             (not (fn-store-text-octetsp subject-octets))
             (not (fn-store-text-octetsp evidence-octets)) (not (posp charge)))
         (mv nil :invalid fn-arena state)
-      (if (not (fn-cnode-selection-servedp (fn-owner-config state) groups))
-          (mv nil :refused fn-arena state)
+      ; A retired group (in the domain, not served at the live generation)
+      ; is refused by the prepare below (fn-psrv-prepare, lane
+      ; prepare-served): the host makes no served test of its own.
       (let* ((msgid (fn-store-octets->string msgid-octets))
              ; PRF-191: the held article through the view trie
              ; (books/post-identity-index.lisp
@@ -1154,7 +1226,10 @@
                  ; the maintenance release) still holds after the article
                  ; (books/store-capacity-vector.lisp
                  ; `fn-cvec-prepare-keeps-the-vector').
-                 (budget (fn-cvec-article-budget-for
+                 ; PRF-284: fn-pvc-article-budget-carried-is-cvec-
+                 ; article-budget-for (the carry satisfies fn-pvc-carryp).
+                 (budget (fn-pvc-article-budget-carried
+                          (fn-owner-profile-carry state)
                           (fn-owner-store-profile state) (fn-sbud-count s)
                           bytes record debt))
                  (before (fn-owner-ocfg state))
@@ -1167,7 +1242,7 @@
                                               (fn-arena-count fn-arena)
                                               (fn-owner-parse-carry state))))
                  ; The carried obligation-id trie, brought to the Store
-                 ; node's ledger (one put after a commit).
+                 ; node's ledger (a commit puts one id, a release none).
                  (carry (fn-prc-refresh (fn-owner-retain-carry state)
                                         (fn-node-retention (fn-sn-node s))))
                  (state (if (equal record :clock-unusable)
@@ -1183,12 +1258,16 @@
                            ; sbud-prepare): the duplicate test reads the view
                            ; trie and the retention admission the carried id
                            ; trie, decided once.
-                           (fn-prc-sbud-prepare before row budget carry)
+                           ; fn-psrv-prepare (lane prepare-served): the
+                           ; served test is the prepare's own, then
+                           ; fn-prc-sbud-prepare (KEYSTONE
+                           ; fn-psrv-prepare-preserves-invariant).
+                           (fn-psrv-prepare before row budget carry)
                            state)))))
             (if (equal record :clock-unusable)
                 (mv nil :clock-unusable fn-arena state)
               (if (equal (fn-owner-store state) s)
-                (mv nil (fn-sbud-refusal-kind before budget) fn-arena state)
+                (mv nil (fn-psrv-refusal-kind before row budget) fn-arena state)
               ; Reads the arena and the buffer only (no invariant-risk; see
               ; fn-owner-prepare): :seal-buffer tells the host to seal the
               ; buffer's payload with one fn-arena-seal-buffer call
@@ -1199,7 +1278,7 @@
               ; catalog's prepare after that seal (fn-owner-cat-prepare-sealed;
               ; books/served-catalog-owner.lisp fn-cat-prepare-sealed).
               (let ((state (f-put-global 'fn-owner-cat-candidate (cons record row) state)))
-                (mv nil :seal-buffer fn-arena state)))))))))))))
+                (mv nil :seal-buffer fn-arena state))))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge fn-arena state)
@@ -1224,24 +1303,60 @@
 ; The caller supplies an ACL2-constructed kind-3 or kind-4 event.  This
 ; boundary deliberately accepts no separate profile, key, article, or verdict
 ; fields that host code could recombine differently.
-(defun fn-owner-prepare-identity (event state)
-  (declare (xargs :stobjs state :mode :program))
+;; The owner's identity entry (lane signed-post, PRF-292).  Since the records
+;; flip the Store retains a composite as a ROW (fn-hstxa-p); the event ACL2
+;; built is the wire composite, so the entry stages the row the intern would
+;; make at the arena's count (books/owner-identity-intern.lisp
+;; fn-oii-ocfg-prepare-identity, KEYSTONE
+;; fn-oii-ocfg-prepare-identity-is-intern-then-step) and, when the Store took
+;; it and the intern seals (fn-oii-identity-sealsp), answers (:seal PAYLOAD):
+;; the host seals exactly those octets (fn-oii-seal-is-the-intern-arena), so
+;; a refused composite's bytes are never retained.  A keyring snapshot
+;; (fn-stxk-p) interns to itself and seals nothing.
+;; fn-ccar-ocfg-prepare-identity (books/owner-commit-carried.lisp) is
+;; fn-ocfg-step of this event on every owner fn-own-relation admits
+;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation, PRF-144):
+;; it stages without replaying the appended history, whose replay the
+;; maintained store relation carries, and its candidate test reads the
+;; history's last record, not every record (PRF-193,
+;; fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record).
+;; Guard-verified under fn-sn-statep of the store, which fn-ocl-relation
+;; carries.
+(defun fn-owner-prepare-identity (event fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((s (fn-owner-store state)))
     (if (not (or (fn-stxk-p event) (fn-stxa-p event)))
         (value :invalid)
-;; fn-ccar-ocfg-prepare-identity (books/owner-commit-carried.lisp) is
-      ;; fn-ocfg-step of this event on every owner fn-own-relation admits
-      ;; (fn-ccar-ocfg-prepare-identity-is-ocfg-step-under-relation, PRF-144):
-      ;; it stages without replaying the appended history, whose replay the
-      ;; maintained store relation carries, and its candidate test reads the
-      ;; history's last record, not every record (PRF-193,
-      ;; fn-ccar-sn-prepare-identity-stages-the-next-event-above-the-last-record).
-      ;; Guard-verified under fn-sn-statep of the store, which fn-ocl-relation
-      ;; carries.
-      (let ((state (fn-owner-install-ocfg
-                    (fn-ccar-ocfg-prepare-identity (fn-owner-ocfg state) event)
-                    state)))
-        (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
+      ;; fn-oiis-prepare-identity (books/owner-identity-served.lisp): the
+      ;; owner's identity prepare over the ROW the intern makes of EVENT at
+      ;; the arena's count (signed-post: fn-oii-identity-row, KEYSTONE
+      ;; fn-oii-ocfg-prepare-identity-is-intern-then-step), when the row's
+      ;; article groups are served (prepare-served's test over the row --
+      ;; over the wire event it answered t for every composite; KEYSTONE
+      ;; fn-oiis-prepare-identity-preserves-invariant), and the owner
+      ;; unchanged otherwise.
+      (let* ((row (fn-oii-identity-row event (fn-sn-keyring s) (fn-sn-keyring-generation s)
+                                       (fn-arena-count fn-arena)))
+             (state (fn-owner-install-ocfg
+                     (fn-oiis-prepare-identity (fn-owner-ocfg state) event
+                                                  (fn-arena-count fn-arena))
+                     state)))
+        (cond ((equal (fn-owner-store state) s) (value :refused))
+              ((fn-oii-identity-sealsp event)
+               ; The catalog (signed-post's red, catalog-columns): the article
+               ; this event serves and its held row -- the row itself for a
+               ; plain record, the held row inside the composite for a signed
+               ; one -- kept for the catalog's prepare after the host's seal
+               ; (fn-owner-cat-prepare-sealed), completed by
+               ; fn-owner-finish-identity (T4 then T2, as a POST).
+               (let ((state (f-put-global
+                             'fn-owner-cat-candidate
+                             (if (fn-hstxa-p row)
+                                 (cons (fn-replay-composite-record event) (fn-hstxa-held row))
+                               (cons event row))
+                             state)))
+                 (value (list :seal (fn-oii-identity-payload event)))))
+              (t (value :prepared)))))))
 
 ; The consumer proposal is constructed by ACL2.  The host carries this exact
 ; bounded event into Store; it does not rebuild the scope, epoch or cursor.
@@ -1257,12 +1372,18 @@
 ; ACL2 constructs the exact topic event before this host boundary. Store's
 ; carried historical projection decides whether it may be staged.
 (defun fn-owner-prepare-topic (event fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena) :mode :program)
+           (ignorable fn-arena))
   (let ((s (fn-owner-store state)))
     (if (not (fn-th-topic-eventp event))
         (value :invalid)
-      (let ((state (fn-owner-step
-                    (list :store (list :prepare-topic event)) fn-arena state)))
+      ; fn-psrv-prepare-topic (lane prepare-served): (:store (:prepare-topic
+      ; E)) when the consumer projection accepts E, which its completion
+      ; needs (fn-psrv-prepare-topic-is-ocfg-step-when-admitted,
+      ; fn-psrv-prepare-topic-preserves-invariant).
+      (let ((state (fn-owner-install-ocfg
+                    (fn-psrv-prepare-topic (fn-owner-ocfg state) event)
+                    state)))
         (value (if (equal (fn-owner-store state) s) :refused :prepared))))))
 
 ; This is the one owner-side proposal read. ACL2 selects an exact earlier T10
@@ -1377,8 +1498,11 @@
 (defun fn-owner-post-boundary (msgid-octets payload-length group-count charge
                                             state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-sbud-post-boundary (fn-owner-store-profile state) msgid-octets
-                                payload-length group-count charge)))
+  ; PRF-284: fn-pvc-post-boundary-carried-is-sbud-post-boundary.
+  (value (fn-pvc-post-boundary-carried (fn-owner-profile-carry state)
+                                       (fn-owner-store-profile state)
+                                       msgid-octets payload-length
+                                       group-count charge)))
 
 ; Completion is the owner's (:complete) event: fn-sn-finish consumed once,
 ; its pair appended to the ledger once (fn-own-completion-consumed-once).
@@ -1406,8 +1530,8 @@
          (after-files (fn-sn-files (fn-own-store after))))
     (if (and (equal (fn-sf-phase before-files) :completing)
              (equal (fn-sf-phase after-files) :ready)
-             (equal (len (fn-own-ledger after))
-                    (1+ (len (fn-own-ledger before)))))
+             (equal (fn-own-ledger-count after)
+                    (1+ (fn-own-ledger-count before))))
         (value :durable)
       (value :fault))))
 
@@ -1481,6 +1605,36 @@
                     ; is rebuilt from the store's rows at the next open).
                     (mv nil :fault fn-cat state)
                   (mv nil (car result) fn-cat state))))))))))
+
+;; The completion of an identity event that carried an article (a signed
+;; composite: signed-post), with the catalog's T4 then T2 over the pending
+;; row fn-owner-cat-prepare-sealed prepared after the host's seal, exactly as
+;; fn-owner-finish-submission completes a POST (books/served-catalog-owner.lisp
+;; fn-sca-finish; its R keystone fn-sca-ocl-relation-of-finish is stated over
+;; the article the history's rows serve, fn-cat-history-articles, which
+;; reads a composite row's held article).  Without a pending row it is
+;; fn-owner-finish.  (mv nil WORD fn-cat state).
+(defun fn-owner-finish-identity (fn-arena fn-cat state)
+  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program)
+           (ignorable fn-arena))
+  (let ((completion (fn-sf-completion (fn-sn-files (fn-owner-store state)))))
+    (mv-let (erp word state)
+      (fn-owner-finish state)
+      (declare (ignore erp))
+      (let ((pending (f-get-global 'fn-owner-cat-pending state)))
+        (if (not (and (equal word :durable) pending (consp completion)))
+            (mv nil word fn-cat state)
+          (let ((view (fn-own-view (fn-owner-core state))))
+            (mv-let (cword pending2 fn-cat)
+              (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
+                             pending (fn-own-view-index view)
+                             (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
+                                                (fn-own-view-withdrawals view))
+                             fn-cat)
+              (let ((state (f-put-global 'fn-owner-cat-pending pending2 state)))
+                (if (or (equal (car cword) :stale-token) (equal (car cword) :expected-mismatch))
+                    (mv nil :fault fn-cat state)
+                  (mv nil word fn-cat state))))))))))
 
 (defun fn-owner-begin (id fn-arena state)
   (declare (xargs :stobjs (state fn-arena) :mode :program))

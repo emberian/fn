@@ -346,6 +346,10 @@ function supplied no observation at all, which is a defect here."
 (defun fnn-owner-finish ()
   (fnn-owner-action 'fn-owner-finish))
 
+(defun fnn-owner-finish-identity ()
+  "An identity event's completion with the catalog's T4 then T2 (host/owner-host.lisp fn-owner-finish-identity)."
+  (fnn-owner-core 'fn-owner-finish-identity))
+
 (defun fnn-owner-finish-submission ()
   "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
   (fnn-owner-core 'fn-owner-finish-submission))
@@ -732,10 +736,7 @@ checkpoint's S, or NIL."
                   (fnn-node-secret-directory store)))))
 
 (defun fnn-owner-install (root max-connections &optional fault)
-  ;; The owner does not take the history's octets (fnn-owner-recover-core
-  ;; installs from the Store open's extension): after a state-checkpoint open
-  ;; the covered prefix is not re-encoded (checkpoint-arena-2).
-  (multiple-value-bind (store records) (fnn-open-live-store root t fault nil)
+  (multiple-value-bind (store count) (fnn-open-live-store root t fault)
     (let ((service nil))
       (handler-case
           (progn
@@ -743,7 +744,7 @@ checkpoint's S, or NIL."
             ;; (books/store-mount-identity.lisp fn-smid-start-verdict),
             ;; before the owner serves anything.
             (fnn-check-filesystem-identity store t)
-            (fnn-owner-recover-core store records max-connections)
+            (fnn-owner-recover-core store count max-connections)
             (fnn-err "OWNER-OPEN ~a" (fnn-open-report store))
             ;; The persisted profile ACL2 decoded at open, handed back once:
             ;; the owner's transaction budget is derived from it there.
@@ -792,13 +793,18 @@ checkpoint's S, or NIL."
                     (unless (eq (fnn-owner-feed-word restart) :restarted)
                       (fnn-fault "owner refused the feed restart"))
                     (fnn-owner-feed-flush service restart))))
+              ;; The open keeps no records (PKT-823): the pending key
+              ;; statement is read off the newest record alone.
               (fnn-owner-key-statement-recover
-               service (let ((last (fnn-open-last-record store records))) (and last (list last))))
+               service (and (plusp count) (list (fnn-history-last-record store))))
               ;; The Store open's loaded checkpoint is consumed (the owner's
               ;; base is the open's extension, fn-owner-sco-base): release it,
               ;; so the reopened owner does not hold the checkpoint's capture
-              ;; beside the extension (checkpoint-arena-2's reopen heap).
+              ;; beside the extension (checkpoint-arena-2's reopen heap).  A
+              ;; later read of a format-9 history whose prefix was the
+              ;; checkpoint's then faults by name (fnn-log-history-plan).
               (fnn-core-state 'fn-store-sco-clear)
+              (fnn-log-history-release-prefix store)
               service))
         (error (e)
           (when service (fnn-owner-feed-close-all service))
@@ -1622,7 +1628,25 @@ reason before any Store call.  An ordinary article's groups are unchanged."
           (*fnn-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
-      (let ((prepared (fnn-owner-action 'fn-owner-prepare-identity event)))
+      ;; The entry stages the interned row and reads the arena only; when
+      ;; the Store took a composite it names the article's payload and the
+      ;; host seals exactly those octets (host/owner-host.lisp
+      ;; fn-owner-prepare-identity, books/owner-identity-intern.lisp).
+      (let ((prepared (fnn-core-arena-state 'fn-owner-prepare-identity event)))
+        (when (and (consp prepared) (eq (first prepared) :seal))
+          (unless (and (consp (rest prepared)) (null (cddr prepared))
+                       (fnn-octet-list-p (second prepared)))
+            (fnn-fault "ACL2 returned a malformed identity seal"))
+          (fnn-seal-octets (second prepared))
+          ;; The catalog's row for the article the event carries, after the
+          ;; one seal (fn-owner-cat-prepare-sealed), completed by
+          ;; fn-owner-finish-identity at the durable finish.
+          (unless (eq (fnn-owner-action 'fn-owner-cat-prepare-sealed) :prepared)
+            (fnn-fault "owner did not prepare the catalog row of the identity event"))
+          (setq *fnn-finish-callback* #'fnn-owner-finish-identity)
+          (setq prepared :prepared))
+        (unless (keywordp prepared)
+          (fnn-fault "owner returned non-action from fn-owner-prepare-identity"))
         (unless (eq prepared :prepared)
           (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
             (fnn-indeterminate "owner could not consume refused identity reservation"))
@@ -3088,7 +3112,8 @@ the crash keystone) and serving continues."
               ;; READS the live arena below the captured count).
               (destructuring-bind (setup prepared-next n arun)
                   (fnn-core 'fn-owner-sco-prepare base base-payloads configs records
-                            frontier revision position segment budget free (fnn-live-arena))
+                            frontier revision position segment budget free
+                            (fnn-checkpoint-walk records) (fnn-live-arena))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
                 (setq next prepared-next payloads n)
@@ -3108,12 +3133,15 @@ the crash keystone) and serving continues."
                          (store (fnn-owner-service-store service)))
                      (handler-case
                          (progn
-                           (fnn-state-checkpoint-write
-                            store
-                            (lambda (fd)
-                              (setq steps (fnn-checkpoint-write-steps
-                                           fd setup segment sequence (fnn-store-config store)
-                                           (fnn-live-octets-pub) arun))))
+                           (unwind-protect
+                                (fnn-state-checkpoint-write
+                                 store
+                                 (lambda (fd)
+                                   (setq steps (fnn-checkpoint-write-steps
+                                                fd setup segment sequence (fnn-store-config store)
+                                                (fnn-live-octets-pub) arun))))
+                             ;; the buffer's array back (PKT-PRS-2)
+                             (fnn-octets-pub-release))
                            (setq durablep t)
                            ;; T8: the installed checkpoint covers the segments
                            ;; below its first suffix segment; they go now,

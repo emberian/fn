@@ -89,7 +89,7 @@
          (files (update-nth 4 (cdr (fn-sf-records *pcar-t-files*)) *pcar-t-files*)))
     (fn-own-make (update-nth 2 files (fn-own-store o))
                  (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
-                 (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+                 (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                  (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                  (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))
 (defconst *pcar-t-bad-oc* (fn-ocfg-make *pcar-t-bad-o* *osi-cfg* nil nil))
