@@ -9,7 +9,7 @@ Runs ON hbox (Linux).  From the laptop:
     ssh hbox python3 /tank/fn/scratch/arena-store-host/tree/tools/proto/pagestore_bench.py build
     ssh hbox python3 .../pagestore_bench.py q1|q2|q3|q4|cut-map|summarize [--out DIR]
 
-`build` certifies books/proto/pagestore-words, pagestore and pagestore-exec
+`build` certifies books/pagestore-words, pagestore and pagestore-exec
 in the w28 ACL2 (their include closure's sha256 certificates come from the
 proof REPL tree), includes pagestore-exec, loads
 host/native/proto-pagestore.lisp and saves one image

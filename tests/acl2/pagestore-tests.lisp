@@ -1,5 +1,5 @@
 ; fn: witnesses and teeth for the page store's keystones
-; (books/proto/pagestore-keystones.lisp, books/proto/pagestore-reclaim.lisp;
+; (books/pagestore-keystones.lisp, books/pagestore-reclaim.lisp;
 ; lanes proto-pagestore and arena-store, 2026-09-27).
 ;
 ; The digest seam is attached to a toy structural hash for the reachable
@@ -14,7 +14,7 @@
 ; directory run at 5, the data page at 4 (the stale one) and the table page
 ; at 6, and writes the record to slot 1.
 (in-package "ACL2")
-(include-book "../../books/proto/pagestore-reclaim")
+(include-book "../../books/pagestore-reclaim")
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defun pgs-toy-h (x)

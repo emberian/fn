@@ -3,7 +3,7 @@
 ;; The stobj the host fills and drains with its two byte primitives
 ;; (host/native/proto-pagestore-io.lisp), and SHA-256 over a range of its
 ;; little-endian u64 words with books/sha256-stobj.lisp's compression.  Split
-;; out of books/proto/pagestore.lisp so that the word digest's correspondence
+;; out of books/pagestore.lisp so that the word digest's correspondence
 ;; to `fn-sha256' (A-PGS-OBSERVE's SHA part) is proved against a frozen book.
 ;;
 ;; The arrays (all (unsigned-byte 64), resizable):
@@ -18,7 +18,7 @@
 ;; A word range is named by a selector SEL: 0 the image, 1 the metadata,
 ;; 2 the table pages (`pgs-x-len', `pgs-x-word').
 (in-package "ACL2")
-(include-book "../sha256-stobj")
+(include-book "sha256-stobj")
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 (local (include-book "arithmetic/top" :dir :system))
 

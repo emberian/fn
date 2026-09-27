@@ -1,7 +1,7 @@
 ; fn: the page store's executable layer (lane arena-store, 2026-09-27).  Prefix pgs-x-.
 ;
-; The model's decisions (books/proto/pagestore.lisp) over the stobj
-; `pgs-mem' of books/proto/pagestore-words.lisp, with the refinement
+; The model's decisions (books/pagestore.lisp) over the stobj
+; `pgs-mem' of books/pagestore-words.lisp, with the refinement
 ; theorems that make the stobj's words the model's lists.  The table stays
 ; in words (no abstract stobj): the word SHA-256 digests the table pages in
 ; place (`pgs-x-words-digest', proved SHA-256 in pagestore-words-sha).

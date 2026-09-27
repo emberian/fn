@@ -1,6 +1,6 @@
 ; fn: reclamation for the page store (lane arena-store, 2026-09-27).
 ;
-; Over the model of books/proto/pagestore.lisp and its keystones:
+; Over the model of books/pagestore.lisp and its keystones:
 ;   pgs-keeps-after-commit   a commit keeps nothing new but what it just
 ;                            allocated: every address a valid record of any
 ;                            root keeps afterwards was kept before, or is

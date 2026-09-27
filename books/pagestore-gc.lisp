@@ -1,7 +1,7 @@
 ; fn: the page store's executable reclamation cycle (lane arena-store,
 ; 2026-09-27).  Prefix pgs-g-.
 ;
-; The mark-and-sweep cycle of books/proto/pagestore-reclaim.lisp, as the
+; The mark-and-sweep cycle of books/pagestore-reclaim.lisp, as the
 ; host runs it: over a stobj `pgs-gc' of its own (pgs-mem is untouched),
 ; every call bounded by a work quantum Q and resumable from the cursor it
 ; returns.

@@ -1,6 +1,6 @@
 ; fn: the page store's keystones (lanes proto-pagestore and arena-store, 2026-09-27).
 ;
-; Over the model of books/proto/pagestore.lisp (the two-level page table):
+; Over the model of books/pagestore.lisp (the two-level page table):
 ;   pgs-open-after-commit   commit-then-open denotes the committed state:
 ;                           after the complete commit of DIRTY on root R,
 ;                           R opens on the next transaction and the state

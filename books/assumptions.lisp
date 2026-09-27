@@ -545,7 +545,7 @@
 
 ; -----------------------------------------------------------------------------
 ; A-PGS-HOST-IO (lane arena-store, 2026-09-27; the page store,
-; books/proto/pagestore*.lisp; the host I/O half of what the prototype called
+; books/pagestore*.lisp; the host I/O half of what the prototype called
 ; A-PGS-OBSERVE).
 ;
 ; "The page file holds, at page ADDR, the 2048 little-endian u64 words the
@@ -553,13 +553,13 @@
 ;
 ; What is PROVED at this boundary, and so not assumed: the word digest the
 ; host calls is SHA-256 of the words' octets (pgs-x-words-digest-is-sha256,
-; books/proto/pagestore-words-sha.lisp); a table page's and the directory
+; books/pagestore-words-sha.lisp); a table page's and the directory
 ; run's words are the encodings of the model's table pages and directory,
 ; and decoding them gives those back (pgs-x-table-page-words,
 ; pgs-x-dir-run-words, pgs-decode-encode-table); the open's verdicts over the
 ; decoded words are the model's (pgs-x-dir-verdict-is-model,
 ; pgs-x-table-verdict-is-model); the commit the host runs refines the model's
-; (pgs-x-commit-refines) -- all in books/proto/pagestore-exec.lisp.
+; (pgs-x-commit-refines) -- all in books/pagestore-exec.lisp.
 ;
 ; What is ASSUMED: `(fn-pgs-page-words file addr)' is the list of 2048 u64
 ; words the page file FILE holds at page ADDR, and
@@ -569,7 +569,7 @@
 ; every other error a named condition, never a silent zero fill; the
 ; little-endian check at load, A-PGS-LE), answers exactly those words.
 ; Durability of what was written is A-DURABILITY's (a completed fdatasync);
-; the page store's crash model is books/proto/pagestore.lisp `pgs-crash'
+; the page store's crash model is books/pagestore.lisp `pgs-crash'
 ; (any subset of the commit's writes), which the power-loss rig checks
 ; against dm-log-writes replays.
 ;

@@ -1037,14 +1037,14 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/consumer-event-index-tests \
 	books/history-columns \
 	tests/acl2/history-columns-tests \
-	books/proto/pagestore-words \
-	books/proto/pagestore-words-sha \
-	books/proto/pagestore \
-	books/proto/pagestore-keystones \
-	books/proto/pagestore-reclaim \
-	books/proto/pagestore-exec \
-	books/proto/pagestore-gc \
-	tests/acl2/proto-pagestore-tests \
+	books/pagestore-words \
+	books/pagestore-words-sha \
+	books/pagestore \
+	books/pagestore-keystones \
+	books/pagestore-reclaim \
+	books/pagestore-exec \
+	books/pagestore-gc \
+	tests/acl2/pagestore-tests \
 	books/history-columns-store \
 	tests/acl2/history-columns-store-tests \
 	books/snapshot-segments \

@@ -1,7 +1,7 @@
 ;;; host/native/proto-pagestore.lisp -- the page store's host (lane
 ;;; proto-pagestore, 2026-09-27; rewritten for the two-level table by lane
 ;;; arena-store, 2026-09-27).  Raw Lisp, loaded after
-;;; books/proto/pagestore-exec.lisp in an ACL2 session
+;;; books/pagestore-exec.lisp in an ACL2 session
 ;;; (tools/proto/pagestore_bench.py builds one saved image per tree).
 ;;;
 ;;; THE TRUST BOUNDARY.  Exactly two functions here touch file bytes:
@@ -34,7 +34,7 @@
 ;;; page is good or bad.
 ;;;
 ;;; Everything that is not open/close/fstat/fdatasync/fsync is an ACL2 call
-;;; into books/proto/pagestore-exec.lisp (section numbers there):
+;;; into books/pagestore-exec.lisp (section numbers there):
 ;;;   open    pgs-x-read-rec, pgs-rec-ok, pgs-slot-refusals, pgs-open-order
 ;;;           (which record, in what order); pgs-dir-run-pages (how much
 ;;;           directory to read); pgs-x-open-dir; pgs-x-reset-table;

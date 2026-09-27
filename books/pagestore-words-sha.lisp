@@ -2,7 +2,7 @@
 ;; 2026-09-27; the SHA part of A-PGS-OBSERVE).  Prefix pgs-.
 ;;
 ;; What is proved.  `pgs-x-words-digest-is-sha256' (the keystone): the
-;; digest the host calls, `pgs-x-words-digest' (books/proto/pagestore-words;
+;; digest the host calls, `pgs-x-words-digest' (books/pagestore-words;
 ;; host/native/proto-pagestore.lisp calls it for the table check, the table
 ;; commit and the image digest), is `fn-sha256' of the octets of the 8*NB
 ;; words from BASE of the array SEL names, each word least significant octet
