@@ -2202,10 +2202,14 @@ through fn-bs-scp-program's staged file before the next), all outside the
 mutex; then fn-owner-sco-publication-done under it.  A failed write leaves
 the old checkpoint (or, at and after the rename, the old or the new one:
 the crash keystone) and serving continues."
-  (destructuring-bind (base configs records segment count suffix budget frontier free revision)
+  (destructuring-bind (base configs records record-octets count suffix budget frontier free revision)
       captured
     (declare (ignore count))
-    (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil))
+    (let ((started (get-internal-real-time)) (next nil) (durablep nil) (verdict nil)
+          ;; the writer's segment: ACL2's choice under the record bound R the
+          ;; capture handed over (fn-ockp-segment-octets, the verb's derivation)
+          (segment (fnn-core 'fn-ockp-segment-octets record-octets
+                             +fnn-checkpoint-batch-octets+)))
       (flet ((elapsed ()
                (round (* 1000 (- (get-internal-real-time) started))
                       internal-time-units-per-second)))

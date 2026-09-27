@@ -471,6 +471,36 @@
 (in-theory (disable fn-ockp-decide fn-ock-publication-blockedp fn-ockp-space))
 
 ; -----------------------------------------------------------------------------
+; The writer's segment size (checkpoint-pipeline-5).  The reader admits a
+; segment up to the profile's record bound R (`fn-sccr-admit-segment' under
+; `fn-scc-segment-max-octets' of R), and a row may straddle segments (a run's
+; chunks are joined before its rows are decoded), so SEG is the writer's
+; choice under R.  Before this the host passed R itself: for the scale-1m
+; profile R is 17,138,486 octets (the article record for A and G), so every
+; segment was 16 MiB, the residue the pipeline keeps in the buffer between
+; steps ("under one segment") was up to 17 MB copied as a list every step,
+; and a per-step octet bound below SEG (4 MiB) made each step encode one
+; row after re-copying the whole run (record section 7: 2,291 steps, 330 s
+; for 8,452 rows).  SEG is now the smaller of R and a quarter of the step's
+; octet bound, at least one octet, so the residue is at most a quarter of
+; the step's octets, a step emits at least three full chunks once a run is
+; long, and no segment exceeds the reader's bound.  The file's tables are
+; the same at every SEG (PRF-199 holds for any segment size); its framing
+; is not, and the verb republishes the owner's file byte for byte because
+; both derive SEG the same way from the same two numbers.
+(defun fn-ockp-segment-octets (record-octets bytes)
+  (declare (xargs :guard t))
+  (max 1 (min (nfix record-octets) (floor (nfix bytes) 4))))
+
+(defthm fn-ockp-segment-octets-bounds
+  (and (posp (fn-ockp-segment-octets record-octets bytes))
+       (<= (fn-ockp-segment-octets record-octets bytes) (max 1 (nfix record-octets)))
+       (<= (fn-ockp-segment-octets record-octets bytes) (max 1 (nfix bytes))))
+  :hints (("Goal" :in-theory (enable floor))))
+
+(in-theory (disable fn-ockp-segment-octets))
+
+; -----------------------------------------------------------------------------
 ; The writer: a row's program written forward into the buffer (the tables
 ; codec's `fn-sct-program' as `fn-sccb-renc' writes `fn-scc-program').
 

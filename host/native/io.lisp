@@ -2272,7 +2272,12 @@ buffer at once."
       (fnn-open-live-store root t (fnn-state-checkpoint-test-fault))
     (unwind-protect
          (let* ((profile (fnn-store-config store))
-                (segment (fnn-profile-nat 'fn-store-profile-max-record-octets store))
+                ;; the writer's segment: ACL2's choice under the record bound
+                ;; (fn-ockp-segment-octets: the smaller of R and a quarter of
+                ;; the step's octets); the same derivation as the owner's thread
+                (segment (fnn-core 'fn-ockp-segment-octets
+                                   (fnn-profile-nat 'fn-store-profile-max-record-octets store)
+                                   +fnn-checkpoint-batch-octets+))
                 (budget (fnn-core 'fn-ock-capture-budget profile))
                 (answer (fnn-core-state 'fn-store-sco-publish-setup segment budget
                                         (fnn-disk-free-octets store)

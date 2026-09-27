@@ -47,6 +47,7 @@
       (eq (symbol-class 'fn-ockp-statep (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-ockp-initial-state (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-ockp-donep (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-ockp-segment-octets (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-sct-load (w state)) :common-lisp-compliant)))
 
 (defconst *sctt-events*
@@ -232,6 +233,17 @@
         (equal (fn-sccr-admit-segment h2 0 1000 100000) (list :refused :schema))
         (equal (fn-sco-select-named :schema 0 5 10) (list :full-replay :checkpoint-schema))
         (equal (fn-sco-select-named :ok 3 5 10) (list :checkpoint 3)))))
+
+; -----------------------------------------------------------------------------
+; The writer's segment size (checkpoint-pipeline-5): the development
+; profile's R (32,768) stays the segment under a 4 MiB step; the scale-1m
+; profile's R (17,138,486) gives a 1 MiB segment; a bound of 0 gives 1.
+(assert-event
+ (and (equal (fn-ockp-segment-octets 32768 4194304) 32768)
+      (equal (fn-ockp-segment-octets 17138486 4194304) 1048576)
+      (equal (fn-ockp-segment-octets 0 4194304) 1)
+      (equal (fn-ockp-segment-octets 17138486 0) 1)
+      (equal (fn-ockp-segment-octets "r" 4194304) 1)))
 
 ; -----------------------------------------------------------------------------
 ; The invariants carried between steps (checkpoint-pipeline-5, PKT-583 (a)).
