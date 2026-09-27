@@ -593,6 +593,15 @@ reopen predicate, writer-lock observation and observed final namespace."
   (value (fn-store-sco-encode-records (fn-sco-records (fn-store-sco-current state))
                                       fn-arena)))
 
+; The covered prefix's LAST record's octets, or NIL: an open that does not
+; take the history (the owner) reads its pending key statement off the
+; history's last record (host/native/io.lisp fnn-open-last-record).
+(defun fn-store-sco-last-record-octets (fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (let ((records (fn-sco-records (fn-store-sco-current state))))
+    (value (and (consp records)
+                (fn-rcon-store-event-encode (fn-row-wire-of (car (last records)) fn-arena))))))
+
 ; The verb's pipeline setup from the recovered Store.  Under the records
 ; flip the file is the arena run of the live rows' CANONICAL payloads and
 ; the tables of the capture of their CANONICAL rows

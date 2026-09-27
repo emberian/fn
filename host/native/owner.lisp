@@ -691,7 +691,10 @@ checkpoint's S, or NIL."
                   (fnn-node-secret-directory store)))))
 
 (defun fnn-owner-install (root max-connections &optional fault)
-  (multiple-value-bind (store records) (fnn-open-live-store root t fault)
+  ;; The owner does not take the history's octets (fnn-owner-recover-core
+  ;; installs from the Store open's extension): after a state-checkpoint open
+  ;; the covered prefix is not re-encoded (checkpoint-arena-2).
+  (multiple-value-bind (store records) (fnn-open-live-store root t fault nil)
     (let ((service nil))
       (handler-case
           (progn
@@ -751,7 +754,8 @@ checkpoint's S, or NIL."
                     (unless (eq (fnn-owner-feed-word restart) :restarted)
                       (fnn-fault "owner refused the feed restart"))
                     (fnn-owner-feed-flush service restart))))
-              (fnn-owner-key-statement-recover service records)
+              (fnn-owner-key-statement-recover
+               service (let ((last (fnn-open-last-record store records))) (and last (list last))))
               service))
         (error (e)
           (when service (fnn-owner-feed-close-all service))

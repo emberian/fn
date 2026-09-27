@@ -1470,7 +1470,13 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; fnn-recover after its barriers, only by a writable open.
   (marker-catch-up nil)
   ;; The one scripted fault point, or NIL: tools/run_store.py's ScriptedFaults.
-  (fault-point nil) (fault-class nil) (fault-message nil))
+  (fault-point nil) (fault-class nil) (fault-message nil)
+  ;; Whether the open returns the whole history's record octets (the verbs
+  ;; that pack, compact or export take them).  The owner opens with NIL: after
+  ;; a state-checkpoint open the covered prefix lives in the arena and the
+  ;; checkpoint's rows, and is not re-encoded as octet lists (checkpoint-arena-2;
+  ;; fnn-recover-from-state-checkpoint).
+  (history t))
 
 (defun fnn-profile-nat (name store)
   (let ((value (fnn-core name (fnn-store-config store))))
@@ -2227,9 +2233,29 @@ arena.lisp, KEYSTONE fn-scka-recover-from-checkpoint-is-full-recover)."
           (fnn-action (fnn-core-state 'fn-store-sn-recover-from-checkpoint
                                       rows (fnn-store-frontier store) configs))))))
 
+(defun fnn-state-checkpoint-prefix-octets ()
+  "The record octets of the prefix the state checkpoint covered, encoded from
+the checkpoint's rows through the arena (host/store-node-host.lisp
+fn-store-sco-prefix-octets): O(prefix) lists, for a verb that takes the
+whole history's octets."
+  (mapcar #'fnn-as-octets (fnn-core-arena-state 'fn-store-sco-prefix-octets)))
+
+(defun fnn-open-last-record (store records)
+  "The history's last record's octets, or NIL: the last of RECORDS, or, after a
+state-checkpoint open that did not take the history and read no suffix, the
+covered prefix's last (fn-store-sco-last-record-octets)."
+  (or (car (last records))
+      (and (not (fnn-store-history store))
+           (eq (first (fnn-store-open-mode store)) :checkpoint)
+           (let ((octets (fnn-core-arena-state 'fn-store-sco-last-record-octets)))
+             (and octets (fnn-as-octets octets))))))
+
 (defun fnn-recover-from-state-checkpoint (store config-records)
-  "The records of the history when the checkpoint opened the Store, else NIL
-after recording why not in open-mode (the caller then replays in full)."
+  "The records of the history when the checkpoint opened the Store, else :FULL
+after recording why not in open-mode (the caller then replays in full).  An
+open that does not take the history (fnn-store-history NIL: the owner)
+answers the suffix's records only; the prefix is the arena's and the
+checkpoint's rows."
   (multiple-value-bind (status sequence) (fnn-state-checkpoint-load store)
     (let* ((lower (funcall *fnn-pack-lower-bound-callback* store))
            (pairs (if (eq status :ok) (fnn-transaction-files store lower) nil))
@@ -2242,7 +2268,7 @@ after recording why not in open-mode (the caller then replays in full)."
         (fnn-fault "ACL2 returned a malformed checkpoint selection"))
       (when (eq (first choice) :full-replay)
         (setf (fnn-store-open-mode store) (list :full-replay (second choice)))
-        (return-from fnn-recover-from-state-checkpoint nil))
+        (return-from fnn-recover-from-state-checkpoint :full))
       (let* ((s (second choice))
              (suffix
                (if (>= s lower)
@@ -2262,10 +2288,11 @@ after recording why not in open-mode (the caller then replays in full)."
           (fnn-core-state 'fn-store-sco-clear)
           (fnn-bridge-reset)
           (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
-          (return-from fnn-recover-from-state-checkpoint nil))
+          (return-from fnn-recover-from-state-checkpoint :full))
         (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
-        (append (mapcar #'fnn-as-octets (fnn-core-arena-state 'fn-store-sco-prefix-octets))
-                suffix)))))
+        (if (fnn-store-history store)
+            (append (fnn-state-checkpoint-prefix-octets) suffix)
+            suffix)))))
 
 (defun fnn-open-report (store)
   (let ((mode (fnn-store-open-mode store)))
@@ -2823,8 +2850,11 @@ buffer at once."
           (fnn-load-frontier store)
           (let ((config-records (fnn-config-records store)))
             (setq records (fnn-with-pack-memo
-                            (or (fnn-recover-from-state-checkpoint store config-records)
-                                (fnn-recover-full-replay store config-records)))))
+                            (let ((opened (fnn-recover-from-state-checkpoint
+                                           store config-records)))
+                              (if (eq opened :full)
+                                  (fnn-recover-full-replay store config-records)
+                                  opened)))))
           (setf (fnn-store-config-generation store) (fnn-bridge-config-generation)
                 (fnn-store-config-served store) (fnn-bridge-config-names 'fn-store-cfg-served)
                 (fnn-store-config-domain store) (fnn-bridge-config-names 'fn-store-cfg-domain)))
@@ -2881,8 +2911,16 @@ buffer at once."
     ; Full journal replay above remains authoritative.  The checkpoint layer
     ; restores into separate ACL2 globals and compares that image with
     ; fn-store-sn; it cannot reset or replace the live node.
+    ;; An open without the history (the owner) hands the generation
+    ;; checkpoint layer the whole history only when it has a generation to
+    ;; compare (its directory exists); the prefix is then encoded once, here.
     (setf (fnn-store-checkpoint-outcome store)
-          (funcall *fnn-checkpoint-recover-callback* store records))
+          (funcall *fnn-checkpoint-recover-callback* store
+                   (if (and (not (fnn-store-history store))
+                            (eq (first (fnn-store-open-mode store)) :checkpoint)
+                            (fnn-lstat (fnn-checkpoints store)))
+                       (append (fnn-state-checkpoint-prefix-octets) records)
+                       records)))
     (setf (fnn-store-fenced store) nil)
     records))
 
@@ -3147,8 +3185,9 @@ prints its octets."
           ((fnn-octet-list-p text) (fnn-refuse "~a" (fnn-octets-string text)))
           (t (fnn-fault "ACL2 returned a malformed POST boundary refusal")))))
 
-(defun fnn-open-live-store (root writable &optional fault)
+(defun fnn-open-live-store (root writable &optional fault (history t))
   (let ((store (make-fnn-store root :writable writable :fault fault)))
+    (setf (fnn-store-history store) history)
     (fnn-acquire store)
     (handler-case
         (progn
