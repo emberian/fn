@@ -113,7 +113,7 @@ carrier to observe."
            (fnn-owner-live-reconfigure-locked
             service
             (lambda (cid)
-              (fnn-owner-result 'fn-ores-config-result-p 'fn-pinv-host-owner-reconfigure cid
+              (fnn-owner-action 'fn-pinv-host-owner-reconfigure cid
                                 (second plan))))))))))
 
 (defun fnn-pinv-owner-accept (service received)
@@ -139,7 +139,7 @@ fn-pinv-accept-record-plan); the enrolment follows it."
                     (fnn-owner-live-reconfigure-locked
                      service
                      (lambda (cid)
-                       (fnn-owner-result 'fn-ores-config-result-p 'fn-pinv-host-owner-reconfigure-deltas
+                       (fnn-owner-action 'fn-pinv-host-owner-reconfigure-deltas
                                          cid (second plan))))))
               (unless (eq published :accepted)
                 (return-from fnn-pinv-owner-accept published))
@@ -215,7 +215,7 @@ the enrolment follows it."
                     (fnn-owner-live-reconfigure-locked
                      service
                      (lambda (cid)
-                       (fnn-owner-result 'fn-ores-config-result-p 'fn-pinv-host-owner-reconfigure-deltas
+                       (fnn-owner-action 'fn-pinv-host-owner-reconfigure-deltas
                                          cid (second plan))))))
               (unless (eq published :accepted)
                 (return-from fnn-pinv-owner-confirm published))

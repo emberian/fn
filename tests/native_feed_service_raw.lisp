@@ -46,27 +46,25 @@
 (defun fnn-owner-serialized (service cid thunk)
   (declare (ignore service cid))
   (funcall thunk))
-;; The ACL2 reply wrapper answers a FeedPublication (books/owner-results.lisp);
-;; here the publication is stood for by its word, and its command, log line
-;; and flush are the recording stubs below.
-(defun fnn-owner-feed-step (name &rest args)
+(defun fnn-owner-action (name &rest args)
   (unless (eq name 'fn-owner-feed-reply-chunk)
-    (error "unexpected owner feed step: ~s" name))
+    (error "unexpected owner action: ~s" name))
   (push (second args) *test-reply-inputs*)
   (or (pop *test-words*) (error "too many reply actions")))
-;; The publication's word, and the line fnn-feed-reply-step logs after a reply
-;; outcome (on :ready the IHAVE fallback after a 500/501 to MODE STREAM,
-;; PRF-207, is that publication's log line).
-(defun fnn-owner-feed-word (publication) publication)
+;; The line fnn-feed-reply-step offers after a reply outcome, and the
+;; optional line it offers on :ready (the IHAVE fallback after a 500/501 to
+;; MODE STREAM, PRF-207; empty otherwise, so nothing is written).
 (defvar *test-logs* 0)
-(defun fnn-owner-feed-log (publication)
-  (declare (ignore publication))
+(defun fnn-owner-log (&optional global optional)
+  (assert (eq global 'fn-owner-feed-log-line))
+  (assert optional)
   (incf *test-logs*))
-(defun fnn-owner-feed-flush (service publication)
-  (declare (ignore service publication))
+(defun fnn-owner-feed-flush (service)
+  (declare (ignore service))
   (incf *test-flushes*))
-(defun fnn-owner-feed-command (publication)
-  (declare (ignore publication))
+(defun fnn-owner-octets-global (name)
+  (unless (eq name 'fn-owner-feed-command)
+    (error "unexpected global: ~s" name))
   #(9 10))
 (defun fnn-send-all (fd octets seconds)
   (declare (ignore seconds))
