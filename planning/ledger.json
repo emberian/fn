@@ -11608,7 +11608,7 @@
       ],
       "system_includes": [],
       "suspects": [
-        "fn-mvb-held-article-is-the-model-body",
+        "fn-mvb-held-article-is-the-model-body-by-definition",
         "fn-mvb-plan-unfolds"
       ],
       "read_error": null
@@ -41465,9 +41465,9 @@
       ]
     },
     {
-      "theorem": "fn-mvb-held-article-is-the-model-body",
+      "theorem": "fn-mvb-held-article-is-the-model-body-by-definition",
       "book": "books/moderation-verbs.lisp",
-      "line": 410,
+      "line": 411,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]

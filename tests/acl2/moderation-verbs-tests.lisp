@@ -103,7 +103,7 @@
 (assert-event (equal (fn-inj-config-closed (fn-mvb-login-config *mvt-cfg* (mvt-o "alice")))
                      (list (list :approver (mvt-o "fn.mod") (mvt-o "fn.queue")))))
 
-; fn-mvb-held-article-is-the-model-body: the held body read through the
+; fn-mvb-held-article-is-the-model-body-by-definition: the held body read through the
 ; arena is the body of the envelope's octet model, which is the envelope as
 ; the pre-flip archive stored it (octets in the payload position).
 (assert-event (equal (in-arena-fn-mvb-held-article *mvt-arena* *mvt-env*)

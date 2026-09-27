@@ -401,13 +401,14 @@
                                       fn-mvb-envelope-id))))
 
 
-; KEYSTONE (PKT-657; PRF-228; the representation boundary, lane
-; matrix-reds).  The held proto-article the approval commits is the body of
+; By definition (PKT-657; PRF-228; the representation boundary, lane
+; matrix-reds; the ledger flags it a restatement, so it is named so and is no
+; keystone).  The held proto-article the approval commits is the body of
 ; the envelope's OCTET MODEL (books/nntp-session.lisp fn-nntp-article-alpha:
 ; the archive article with its handle replaced by the bytes it names), the
 ; body the pre-flip plan parsed from the envelope's own payload.  With the
 ; keystone above: the approved octets are `Approved: LOGIN' and that body.
-(defthm fn-mvb-held-article-is-the-model-body
+(defthm fn-mvb-held-article-is-the-model-body-by-definition
   (equal (fn-mvb-held-article a fn-arena)
          (fn-mvb-after-blank (fn-article-payload (fn-nntp-article-alpha a fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-article-alpha) (fn-nntp-article-bytes fn-mvb-after-blank)))))
