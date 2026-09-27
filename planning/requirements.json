@@ -1258,8 +1258,8 @@
       "status": "implemented",
       "proof_targets": [
         "PRF-006",
-        "PRF-311",
-        "PRF-312"
+        "PRF-312",
+        "PRF-313"
       ],
       "verification": [
         "proof",
