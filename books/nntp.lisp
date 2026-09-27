@@ -129,19 +129,46 @@
     (fn-nntp-newnews-response session archive env args fn-arena))
    (t (fn-nntp-retrieval session archive :stat args fn-arena))))
 
+;; The reader dispatcher's command layer, ONE text (lane host-lints): the
+;; reference fn-nntp-command and fn-nntp-command-pinned and the pinned
+;; reference's concrete twins fn-pix-command-pinned
+;; (books/peer-offer-indexed.lisp) and fn-scr-command
+;; (books/served-catalog-chain.lisp) are each this expansion around their own
+;; archive dispatcher call.  An arm added here is in all four, and the twins'
+;; -is- theorems (fn-pix-command-pinned-is-command-pinned,
+;; fn-scr-command-is-command-pinned), which unfold both sides, keep their
+;; proofs; before, each twin was a hand copy that went red when the reference
+;; gained an arm (lane peer-catchup, XFNCATCHUP).  The expansion names the
+;; caller's formals SESSION, ENV and TOKENS (and ARCHIVE, INDEX and FN-ARENA
+;; with :pinned t) and binds KEYWORD and ARGS, which ARCHIVE-CALL uses.
+(defmacro fn-nntp-command-dispatch (archive-call &key pinned)
+  (let ((archive-arm
+         `(if (not (fn-nntp-archive-keywordp keyword))
+              (fn-nntp-session-command session env keyword args)
+            ; RFC 3977 section 3.2.1 assigns 503 to a recognized command the
+            ; server cannot carry out because it does not hold the required
+            ; information.
+            (if (fn-nntp-session-projected session)
+                ,archive-call
+              (fn-nntp-single session "503 archive projection unavailable")))))
+    `(let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
+           (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
+       (if (not (fn-nntp-keyword-tokenp keyword))
+           (fn-nntp-single session "501 syntax error")
+         ,(if pinned
+              ;; PRF-325: XFNCATCHUP answers over the pinned view, as the
+              ;; archive readers do; books/nntp-auth.lisp gates it with them.
+              `(if (fn-nntp-keywordp keyword "XFNCATCHUP")
+                   (if (fn-nntp-session-projected session)
+                       (fn-cu-serve-reply session archive index args fn-arena)
+                     (fn-nntp-single session "503 archive projection unavailable"))
+                 ,archive-arm)
+            archive-arm)))))
+
 (defun fn-nntp-command (session archive env tokens fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
-        (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
-    (if (not (fn-nntp-keyword-tokenp keyword))
-        (fn-nntp-single session "501 syntax error")
-      (if (not (fn-nntp-archive-keywordp keyword))
-          (fn-nntp-session-command session env keyword args)
-        ; RFC 3977 section 3.2.1 assigns 503 to a recognized command the server
-        ; cannot carry out because it does not hold the required information.
-        (if (fn-nntp-session-projected session)
-            (fn-nntp-archive-command session archive env keyword args fn-arena)
-          (fn-nntp-single session "503 archive projection unavailable"))))))
+  (fn-nntp-command-dispatch
+   (fn-nntp-archive-command session archive env keyword args fn-arena)))
 ; A single command event is the integration boundary.  Other wire events are
 ; rejected as syntax, and a closed session produces no further effects.  The
 ; archive projection is not revalidated here: fn-nntp-open-session decided it
@@ -340,11 +367,17 @@
               (fn-nntp-single session "503 control status unavailable")))))
     (fn-nntp-single session "501 syntax error")))
 
-(defun fn-nntp-archive-command-pinned
-    (session archive index verdicts env keyword args fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
+;; The pinned dispatcher's arms, ONE text (lane host-lints): the reference
+;; fn-nntp-archive-command-pinned below and its guard-verified twin
+;; fn-pix-archive-command-pinned (books/peer-offer-indexed.lisp) are this
+;; expansion, differing only in the Message-ID retrieval they call, so an arm
+;; added here is in both and fn-pix-archive-command-pinned-is-archive-command-
+;; pinned keeps its proof (both sides unfold to the same case split).  The
+;; caller's formals are SESSION ARCHIVE INDEX VERDICTS ENV KEYWORD ARGS
+;; FN-ARENA (the expansion names them).
+(defmacro fn-nntp-archive-pinned-arms (msgid-retrieval)
   ;; R3 (PRF-206): the Xref arms first (books/nntp-xref.lisp).
-  (let ((xref (fn-nntp-xref-reply session archive index env keyword args fn-arena)))
+  `(let ((xref (fn-nntp-xref-reply session archive index env keyword args fn-arena)))
     (if xref xref
       (cond
        ((and (fn-nntp-keywordp keyword "LIST")
@@ -412,24 +445,17 @@
         (fn-nntp-enrollment-hdr-response session archive index verdicts args))
        (t (fn-nntp-archive-command session archive env keyword args fn-arena))))))
 
+(defun fn-nntp-archive-command-pinned
+    (session archive index verdicts env keyword args fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-nntp-archive-pinned-arms fn-nntp-msgid-retrieval-indexed))
+
 (defun fn-nntp-command-pinned (session archive index verdicts env tokens fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (let ((keyword (mbe :logic (car tokens) :exec (fn-ag-car tokens)))
-        (args (mbe :logic (cdr tokens) :exec (fn-ag-cdr tokens))))
-    (if (not (fn-nntp-keyword-tokenp keyword))
-        (fn-nntp-single session "501 syntax error")
-      ;; PRF-325: XFNCATCHUP answers over the pinned view, as the archive
-      ;; readers do; books/nntp-auth.lisp gates it with them.
-      (if (fn-nntp-keywordp keyword "XFNCATCHUP")
-          (if (fn-nntp-session-projected session)
-              (fn-cu-serve-reply session archive index args fn-arena)
-            (fn-nntp-single session "503 archive projection unavailable"))
-        (if (not (fn-nntp-archive-keywordp keyword))
-            (fn-nntp-session-command session env keyword args)
-          (if (fn-nntp-session-projected session)
-              (fn-nntp-archive-command-pinned
-               session archive index verdicts env keyword args fn-arena)
-            (fn-nntp-single session "503 archive projection unavailable")))))))
+  (fn-nntp-command-dispatch
+   (fn-nntp-archive-command-pinned
+    session archive index verdicts env keyword args fn-arena)
+   :pinned t))
 
 (defun fn-nntp-step-pinned (session archive index verdicts env wire-event fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
