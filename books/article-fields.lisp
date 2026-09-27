@@ -13,10 +13,16 @@
 
 ; RFC 5536 §3.1.3.
 (defconst *fn-af-max-message-id-octets* 250)
-; One field value is part of the header, so the header's work bound
-; (`*fn-article-max-header-octets*', books/article) already bounds it; this
-; is that bound, not a separate cap on data.
-(defconst *fn-af-max-field-value-octets* *fn-article-max-header-octets*)
+; One field value is part of the header, so the header octets the parse
+; admitted it under already bound it: the store profile's max-header-octets
+; (field 17, PRF-230), checked by the parse under the profile's limits
+; (`fn-article-parse-under') at every admission.  This preflight is the
+; widest header any valid profile admits (the profile relation refuses
+; max-header-octets above the article codec's ceiling,
+; `:max-header-octets-above-codec'), so it never refuses a Newsgroups value
+; the operator's profile admitted: no second, hidden header cap (D27).
+(defconst *fn-af-max-field-value-octets*
+  (fn-article-limit-octets *fn-article-ceiling-limits*))
 
 (defconst *fn-af-message-id-name* '(109 101 115 115 97 103 101 45 105 100))
 (defconst *fn-af-newsgroups-name* '(110 101 119 115 103 114 111 117 112 115))
@@ -207,8 +213,8 @@
             (list :error :invalid-newsgroups)))))))
 
 (defun fn-af-newsgroup-list-parse (value)
-  ; The article parser has a separate header envelope. This 8,192-octet
-  ; field-value preflight also protects standalone calls to this parser.
+  ; The article parser has a separate header envelope (the profile's
+  ; limits).  This ceiling preflight also bounds standalone calls.
   (if (or (not (fn-cbor-at-mostp value *fn-af-max-field-value-octets*))
           (not (fn-cbor-octet-listp value)))
       (list :error :limit)

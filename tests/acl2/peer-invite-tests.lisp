@@ -841,3 +841,19 @@
                                                 *pit-b-token* *pit-b-keys*
                                                 (fn-pinv-text "b.example")
                                                 (fn-pinv-text "-"))))
+
+; PKT-613 (PRF-231): an invitation carries a DNS name as its Host; a host
+; that is neither an IPv4 literal nor an RFC 1123 name makes no invitation,
+; and neither does such an Inviter-Host (`-' still says none).
+(defun pit-hosted-source (host inviter-host)
+  (fn-pinv-invitation-source *pit-date* *pit-nonce* (pit-a) *pit-a-token* *pit-a-keys*
+                             (fn-pinv-text "nodeB") (fn-pinv-text "a.example")
+                             (fn-pinv-text "fn.*") (fn-pinv-text host)
+                             (fn-pinv-text "563") (fn-pinv-text inviter-host)
+                             (fn-pinv-text "563")))
+(assert-event (consp (pit-hosted-source "news.example.org" "fn.example.net")))
+(assert-event (equal (fn-pinv-field "Host" (pit-hosted-source "news.example.org" "-"))
+                     (fn-pinv-text "news.example.org")))
+(assert-event (null (pit-hosted-source "bad_host" "-")))
+(assert-event (null (pit-hosted-source "news.example.org" "bad host")))
+(must-fail (assert-event (null (pit-hosted-source "news.example.org" "-"))))

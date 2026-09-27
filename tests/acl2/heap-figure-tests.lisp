@@ -36,19 +36,19 @@
 ; The figures (SBCL megabytes; the machine 2 GiB).
 
 (assert! (equal (fn-heap-figure-octets *fn-heap-small-profile* *hft-core* *hft-nursery*)
-                1050137266))
+                1051710130))
 (assert! (equal (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
                                 (list *hft-2g*))
-                '(:heap 1002 "small" 2048)))
+                '(:heap 1003 "small" 2048)))
 (assert! (equal (fn-heap-decide *fn-bs-profile-development* *hft-core* *hft-nursery*
                                 (list *hft-2g*))
-                '(:refused :machine-cannot-hold-profile 2671 2048)))
+                '(:refused :machine-cannot-hold-profile 2673 2048)))
 (assert! (equal (fn-heap-decide *fn-bs-profile-scale* *hft-core* *hft-nursery*
                                 (list 132000000000))
-                '(:heap 54751 "scale" 125885)))
+                '(:heap 54753 "scale" 125885)))
 (assert! (equal (fn-heap-decide *fn-bs-profile-defaults* *hft-core* *hft-nursery*
                                 (list 132000000000))
-                '(:refused :machine-cannot-hold-profile 73402932 125885)))
+                '(:refused :machine-cannot-hold-profile 73402933 125885)))
 ; No store: the image must fit, then the machine is the figure.
 (assert! (equal (fn-heap-decide nil *hft-core* *hft-nursery* (list *hft-2g*))
                 '(:heap 2048 "none" 2048)))
@@ -71,14 +71,14 @@
 (assert! (equal (fn-heap-report-line
                  (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
                                  (list *hft-2g*)))
-                "heap=1002 MB profile=small machine=2048 MB"))
+                "heap=1003 MB profile=small machine=2048 MB"))
 (assert! (equal (fn-heap-report-line
                  (fn-heap-decide *fn-bs-profile-development* *hft-core* *hft-nursery*
                                  (list *hft-2g*)))
-                "refused machine-cannot-hold-profile heap=2671 MB machine=2048 MB"))
-(assert! (equal (fn-heap-decision-exit-code '(:heap 1002 "small" 2048)) 0))
+                "refused machine-cannot-hold-profile heap=2673 MB machine=2048 MB"))
+(assert! (equal (fn-heap-decision-exit-code '(:heap 1003 "small" 2048)) 0))
 (assert! (equal (fn-heap-decision-exit-code
-                 '(:refused :machine-cannot-hold-profile 2671 2048))
+                 '(:refused :machine-cannot-hold-profile 2673 2048))
                 1))
 
 ; -----------------------------------------------------------------------------
@@ -117,6 +117,7 @@
                                        fn-bs-profile-admittedp
                                        fn-bs-profile-max-history-octets
                                        fn-bs-profile-max-record-octets
+                                       fn-bs-profile-field
                                        fn-heap-profile-word))
             :use ((:instance fn-heap-mb-of-covers
                              (octets (fn-heap-figure-octets profile core nursery))))))))
@@ -142,6 +143,7 @@
                                        fn-bs-profile-admittedp
                                        fn-bs-profile-max-history-octets
                                        fn-bs-profile-max-record-octets
+                                       fn-bs-profile-field
                                        fn-heap-profile-word))
             :use ((:instance fn-heap-mb-of-covers
                              (octets (fn-heap-figure-octets profile core nursery))))))))
@@ -167,6 +169,7 @@
                                        fn-bs-profile-admittedp
                                        fn-bs-profile-max-history-octets
                                        fn-bs-profile-max-record-octets
+                                       fn-bs-profile-field
                                        fn-heap-profile-word))
             :use ((:instance fn-heap-mb-of-covers
                              (octets (fn-heap-figure-octets profile core nursery))))))))
@@ -193,6 +196,7 @@
                                        fn-bs-profile-admittedp
                                        fn-bs-profile-max-history-octets
                                        fn-bs-profile-max-record-octets
+                                       fn-bs-profile-field
                                        fn-heap-profile-word))
             :use ((:instance fn-heap-mb-of-covers
                              (octets (fn-heap-figure-octets profile core nursery))))))))
@@ -219,6 +223,7 @@
                                        fn-bs-profile-admittedp
                                        fn-bs-profile-max-history-octets
                                        fn-bs-profile-max-record-octets
+                                       fn-bs-profile-field
                                        fn-heap-profile-word))
             :use ((:instance fn-heap-mb-of-covers
                              (octets (fn-heap-figure-octets profile core nursery))))))))
@@ -227,10 +232,10 @@
 ; The refusal theorem's witnesses: both arms reached on admitted profiles.
 
 (assert! (equal (car (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
-                                     (list (* 1001 *fn-heap-mib*))))
+                                     (list (* 1002 *fn-heap-mib*))))
                 :refused))
 (assert! (equal (car (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
-                                     (list (* 1002 *fn-heap-mib*))))
+                                     (list (* 1003 *fn-heap-mib*))))
                 :heap))
 
 ; -----------------------------------------------------------------------------

@@ -52,6 +52,9 @@
 (defconst *nmt-init*
   (fn-native-operator-run *nmt-text* (nmt-argv '("init" "fn.test"))))
 (assert-event (equal (fn-native-operator-result-status *nmt-init*) :accepted))
+; PKT-648: a store `init' makes under a mission's fn.toml requires durable
+; storage (books/store-mount-identity.lisp fn-smid-init-policy of this).
+(assert-event (fn-native-operator-result-config-mission *nmt-init*))
 (assert-event (equal (fn-native-operator-result-init-profile *nmt-init*)
                      (fn-native-mission-request "relay")))
 (defconst *nmt-sc-text*

@@ -109,16 +109,16 @@
    (and (fn-article-field-listp fields-rev)
         (or (null current) (fn-article-fieldp current))
         (fn-article-result-okp
-         (fn-article-parse-lines octets lines-left header-bytes fields-rev
+         (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                  current header-rev)))
    (fn-article-field-listp
     (fn-article-fields
      (fn-article-result-article
-      (fn-article-parse-lines octets lines-left header-bytes fields-rev
+      (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                               current header-rev)))))
   :hints
   (("Goal"
-    :induct (fn-article-parse-lines octets lines-left header-bytes fields-rev
+    :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                     current header-rev)
     :in-theory (disable fn-article-next-line fn-article-next-line-aux
                         fn-article-new-field fn-article-add-fold
@@ -130,17 +130,17 @@
 (defthm fn-article-successful-parse-is-parse-lines
   (implies (fn-article-result-okp (fn-article-parse octets))
            (equal (fn-article-parse octets)
-                  (fn-article-parse-lines octets
-                                          (1+ *fn-article-max-header-lines*)
-                                          0 nil nil nil)))
-  :hints (("Goal" :in-theory (enable fn-article-parse))))
+                  (fn-article-parse-lines octets *fn-article-ceiling-limits*
+                                          (1+ *fn-article-max-octets*)
+                                           0 0 nil nil nil)))
+  :hints (("Goal" :in-theory (enable fn-article-parse fn-article-parse-under))))
 
 (defthm fn-article-successful-parse-lines-okp
   (implies (fn-article-result-okp (fn-article-parse octets))
            (fn-article-result-okp
-            (fn-article-parse-lines octets
-                                    (1+ *fn-article-max-header-lines*)
-                                    0 nil nil nil)))
+            (fn-article-parse-lines octets *fn-article-ceiling-limits*
+                                    (1+ *fn-article-max-octets*)
+                                     0 0 nil nil nil)))
   :hints (("Goal" :use fn-article-successful-parse-is-parse-lines)))
 
 (defthm fn-article-successful-parse-fields-wellformed
@@ -153,8 +153,8 @@
     :use (fn-article-successful-parse-is-parse-lines
           fn-article-successful-parse-lines-okp
           (:instance fn-ap-parse-lines-fields-wellformed
-           (lines-left (1+ *fn-article-max-header-lines*))
-           (header-bytes 0) (fields-rev nil) (current nil) (header-rev nil)))
+           (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
+           (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
     :in-theory (disable fn-article-parse fn-article-parse-lines))))
 
 ; -----------------------------------------------------------------------------
@@ -212,29 +212,29 @@
 (defthm fn-article-successful-parse-input-octets
   (implies (fn-article-result-okp (fn-article-parse octets))
            (fn-cbor-octet-listp octets))
-  :hints (("Goal" :in-theory (enable fn-article-parse))))
+  :hints (("Goal" :in-theory (enable fn-article-parse fn-article-parse-under))))
 
 (defthm fn-ap-parse-lines-components-are-octets
   (implies
    (and (fn-cbor-octet-listp octets)
         (fn-cbor-octet-listp header-rev)
         (fn-article-result-okp
-         (fn-article-parse-lines octets lines-left header-bytes fields-rev
+         (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                  current header-rev)))
    (and
     (fn-cbor-octet-listp
      (fn-article-header
       (fn-article-result-article
-       (fn-article-parse-lines octets lines-left header-bytes fields-rev
+       (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                current header-rev))))
     (fn-cbor-octet-listp
      (fn-article-body
       (fn-article-result-article
-       (fn-article-parse-lines octets lines-left header-bytes fields-rev
+       (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                current header-rev))))))
   :hints
   (("Goal"
-    :induct (fn-article-parse-lines octets lines-left header-bytes fields-rev
+    :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                     current header-rev)
     :in-theory (disable fn-article-next-line fn-article-next-line-aux
                         fn-article-new-field fn-article-add-fold
@@ -257,28 +257,28 @@
     :use (fn-article-successful-parse-is-parse-lines
           fn-article-successful-parse-lines-okp
           (:instance fn-ap-parse-lines-components-are-octets
-           (lines-left (1+ *fn-article-max-header-lines*))
-           (header-bytes 0) (fields-rev nil) (current nil) (header-rev nil))))))
+           (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
+           (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil))))))
 
 (defthm fn-ap-parse-lines-article-shape
   (implies
    (fn-article-result-okp
-    (fn-article-parse-lines octets lines-left header-bytes fields-rev
+    (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                             current header-rev))
    (and
     (true-listp
      (fn-article-result-article
-      (fn-article-parse-lines octets lines-left header-bytes fields-rev
+      (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                               current header-rev)))
     (equal
      (len
       (fn-article-result-article
-       (fn-article-parse-lines octets lines-left header-bytes fields-rev
+       (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                current header-rev)))
      3)))
   :hints
   (("Goal"
-    :induct (fn-article-parse-lines octets lines-left header-bytes fields-rev
+    :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                     current header-rev)
     :in-theory (disable fn-article-next-line fn-article-next-line-aux
                         fn-article-new-field fn-article-add-fold
@@ -299,8 +299,8 @@
     :use (fn-article-successful-parse-is-parse-lines
           fn-article-successful-parse-lines-okp
           (:instance fn-ap-parse-lines-article-shape
-           (lines-left (1+ *fn-article-max-header-lines*))
-           (header-bytes 0) (fields-rev nil) (current nil) (header-rev nil)))
+           (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
+           (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
     :in-theory (disable fn-article-parse fn-article-parse-lines))))
 
 (defthm fn-article-successful-parse-syntax-p
@@ -326,7 +326,7 @@
 (defthm fn-article-successful-parse-input-bound
   (implies (fn-article-result-okp (fn-article-parse octets))
            (<= (len octets) *fn-article-max-octets*))
-  :hints (("Goal" :in-theory (enable fn-article-parse)))
+  :hints (("Goal" :in-theory (enable fn-article-parse fn-article-parse-under)))
   :rule-classes :linear)
 
 (defthm fn-article-successful-parse-source-bound
@@ -359,20 +359,20 @@
    (and (natp header-bytes)
         (true-listp header-rev)
         (equal (len header-rev) header-bytes)
-        (<= header-bytes *fn-article-max-header-octets*)
+        (<= header-bytes (fn-article-limit-octets limits))
         (fn-article-result-okp
-         (fn-article-parse-lines octets lines-left header-bytes fields-rev
+         (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                  current header-rev)))
    (<=
     (len
      (fn-article-header
       (fn-article-result-article
-       (fn-article-parse-lines octets lines-left header-bytes fields-rev
+       (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                current header-rev))))
-    *fn-article-max-header-octets*))
+    (fn-article-limit-octets limits)))
   :hints
   (("Goal"
-    :induct (fn-article-parse-lines octets lines-left header-bytes fields-rev
+    :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                     current header-rev)
     :in-theory (disable fn-article-next-line fn-article-next-line-aux
                         fn-article-new-field fn-article-add-fold
@@ -388,14 +388,14 @@
     (len
      (fn-article-header
       (fn-article-result-article (fn-article-parse octets))))
-    *fn-article-max-header-octets*))
+    *fn-article-max-octets*))
   :hints
   (("Goal"
     :use (fn-article-successful-parse-is-parse-lines
           fn-article-successful-parse-lines-okp
           (:instance fn-ap-parse-lines-header-bound
-           (lines-left (1+ *fn-article-max-header-lines*))
-           (header-bytes 0) (fields-rev nil) (current nil) (header-rev nil)))
+           (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
+           (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
     :in-theory (disable fn-article-parse fn-article-parse-lines)))
   :rule-classes :linear)
 
@@ -429,22 +429,23 @@
 (defthm fn-ap-parse-lines-field-count-bound
   (implies
    (and (true-listp fields-rev)
+        (equal nfields (len fields-rev))
         (or current (null fields-rev))
         (<= (+ (len fields-rev) (if current 1 0))
-            *fn-article-max-fields*)
+            (fn-article-limit-fields limits))
         (fn-article-result-okp
-         (fn-article-parse-lines octets lines-left header-bytes fields-rev
+         (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                  current header-rev)))
    (<=
     (len
      (fn-article-fields
       (fn-article-result-article
-       (fn-article-parse-lines octets lines-left header-bytes fields-rev
+       (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                current header-rev))))
-    *fn-article-max-fields*))
+    (fn-article-limit-fields limits)))
   :hints
   (("Goal"
-    :induct (fn-article-parse-lines octets lines-left header-bytes fields-rev
+    :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields fields-rev
                                     current header-rev)
     :in-theory (disable fn-article-next-line fn-article-next-line-aux
                         fn-article-new-field fn-article-add-fold
@@ -460,14 +461,14 @@
     (len
      (fn-article-fields
       (fn-article-result-article (fn-article-parse octets))))
-    *fn-article-max-fields*))
+    *fn-article-max-octets*))
   :hints
   (("Goal"
     :use (fn-article-successful-parse-is-parse-lines
           fn-article-successful-parse-lines-okp
           (:instance fn-ap-parse-lines-field-count-bound
-           (lines-left (1+ *fn-article-max-header-lines*))
-           (header-bytes 0) (fields-rev nil) (current nil) (header-rev nil)))
+           (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
+           (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
     :in-theory (disable fn-article-parse fn-article-parse-lines)))
   :rule-classes :linear)
 
@@ -479,11 +480,11 @@
      (and (<= (len (fn-article-source article))
               *fn-article-max-octets*)
           (<= (len (fn-article-header article))
-              *fn-article-max-header-octets*)
+              *fn-article-max-octets*)
           (<= (len (fn-article-body article))
               *fn-article-max-octets*)
           (<= (len (fn-article-fields article))
-              *fn-article-max-fields*))))
+              *fn-article-max-octets*))))
   :hints
   (("Goal"
     :use (fn-article-successful-parse-source-bound

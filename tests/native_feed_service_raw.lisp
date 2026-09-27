@@ -18,6 +18,7 @@
 (define-condition fnn-store-fault (fnn-store-error) ())
 (define-condition fnn-os-error (error) ())
 (define-condition fnn-tls-error (error) ())
+(define-condition fnn-tls-handshake-error (fnn-tls-error) ())
 
 (defconstant +fnn-max-read+ 512)
 
@@ -31,9 +32,12 @@
 (defun fnn-fault (control &rest args)
   (error (apply #'format nil control args)))
 
-(defun fnn-core (&rest args)
-  (declare (ignore args))
-  (error "unexpected raw core call"))
+(defun fnn-core (name &rest args)
+  ;; PKT-613: the one core call the TLS transition makes, answered as
+  ;; books/peer-host.lisp `fn-peer-tls-verification' answers a pinned DNS name.
+  (if (eq name 'fn-peer-tls-verification)
+      (list :verify (first args) t (list :pinned (second args)))
+    (error "unexpected raw core call")))
 (defun fnn-octet-list-p (x)
   (and (listp x) (every (lambda (b) (and (integerp b) (<= 0 b 255))) x)))
 (defun fnn-octets (x) x)
@@ -74,6 +78,14 @@
 (defun fnn-connect (&rest ignored)
   (declare (ignore ignored))
   (error "unexpected raw TCP connect"))
+;; PKT-613: the feed dials through fnn-peer-connect (host/native/io.lisp).
+(define-condition fnn-peer-dial-error (error) ((outcome :initarg :outcome)))
+(defun fnn-peer-connect (&rest ignored)
+  (declare (ignore ignored))
+  (error "unexpected raw peer connect"))
+(defvar *test-dial-reports* nil)
+(defun fnn-peer-dial-report (via peer host condition)
+  (push (list via peer host (type-of condition)) *test-dial-reports*))
 (defun fnn-tls-open-client-context (&rest ignored) (declare (ignore ignored)) :context)
 (defun fnn-tls-connect (&rest ignored) (declare (ignore ignored)) (error 'fnn-tls-error))
 (defun fnn-tls-close-context (&rest ignored) (declare (ignore ignored)) nil)
@@ -219,7 +231,7 @@
                                   :next-dial 0))
        (seen nil)
        (old-plan (symbol-function 'fnn-feed-dial-plan))
-       (old-connect (symbol-function 'fnn-connect))
+       (old-connect (symbol-function 'fnn-peer-connect))
        (old-fd (symbol-function 'fnn-socket-fd))
        (old-core (symbol-function 'fnn-feed-connect-core)))
   (unwind-protect
@@ -228,9 +240,8 @@
                (lambda (&rest ignored)
                  (declare (ignore ignored))
                  (values t "127.0.0.1" 119 7 13))
-               (symbol-function 'fnn-connect)
-               (lambda (host port &key family timeout)
-                 (declare (ignore family))
+               (symbol-function 'fnn-peer-connect)
+               (lambda (host port &key timeout)
                  (setq seen (list host port timeout))
                  :connected-socket)
                (symbol-function 'fnn-socket-fd)
@@ -245,9 +256,44 @@
          (unless (equal seen '("127.0.0.1" 119 13))
            (error "feed did not pass ACL2 TCP timeout to shared connect: ~s" seen)))
     (setf (symbol-function 'fnn-feed-dial-plan) old-plan
-          (symbol-function 'fnn-connect) old-connect
+          (symbol-function 'fnn-peer-connect) old-connect
           (symbol-function 'fnn-socket-fd) old-fd
           (symbol-function 'fnn-feed-connect-core) old-core)))
+
+;; PKT-613: a resolution failure is a named, retried loss, never a fault:
+;; the dial reports it (ACL2's service-log line) and drops the link through
+;; the ACL2 backoff; nothing escapes the worker.
+(let* ((runtime (%make-fnn-feed-runtime :service :dns-test
+                                         :lock (sb-thread:make-mutex)))
+       (link (%make-fnn-feed-link :peer "named" :peer-octets #(110) :next-dial 0))
+       (dropped nil)
+       (old-plan (symbol-function 'fnn-feed-dial-plan))
+       (old-connect (symbol-function 'fnn-peer-connect))
+       (old-drop (symbol-function 'fnn-feed-drop-link)))
+  (setq *test-dial-reports* nil)
+  (unwind-protect
+       (progn
+         (setf (symbol-function 'fnn-feed-dial-plan)
+               (lambda (&rest ignored)
+                 (declare (ignore ignored))
+                 (values t "no-such-peer.invalid" 119 250 13 '(:clear) nil))
+               (symbol-function 'fnn-peer-connect)
+               (lambda (&rest ignored)
+                 (declare (ignore ignored))
+                 (error 'fnn-peer-dial-error :outcome :unresolved))
+               (symbol-function 'fnn-feed-drop-link)
+               (lambda (runtime link now backoff)
+                 (declare (ignore runtime link))
+                 (setq dropped (list now backoff))))
+         (fnn-feed-dial runtime link 5)
+         (unless (equal dropped '(5 250))
+           (error "an unresolved peer was not dropped through the backoff: ~s" dropped))
+         (unless (equalp *test-dial-reports*
+                        '((:feed #(110) "no-such-peer.invalid" fnn-peer-dial-error)))
+           (error "an unresolved peer was not reported: ~s" *test-dial-reports*)))
+    (setf (symbol-function 'fnn-feed-dial-plan) old-plan
+          (symbol-function 'fnn-peer-connect) old-connect
+          (symbol-function 'fnn-feed-drop-link) old-drop)))
 
 ;; A failed authenticated handshake transfers context ownership to the link
 ;; before SSL_connect and releases it exactly once on every retry.

@@ -4419,6 +4419,204 @@
         "native": true,
         "record": "planning/evidence/connection-multiplexing-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-167",
+      "title": "The arena's generic runs over the attached byte array: a record interned into the live arena materializes to itself, a pinned row list reads the same bytes across later seals and a reclaim, and the catalog loaded from a mixed history answers the store's identity index from its contexts",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "REP-014",
+        "REP-011"
+      ],
+      "steps": [
+        "books/payload-arena-attach.lisp fn-paa-smoke (at certification, the live fn-arena with fn-arena-bytes attached): clear, two seals, the intern of a ground wire record (handle 2), fn-arena-payload-len of the handle = the fn-hf-octets fact = the article's length, fn-held-wire-of the held record = the record, handle 0 still reads (1 2 3).",
+        "tests/acl2/records-freeze-tests.lisp rft-exec (live fn-arena and fn-cat, list foundation): fn-cat-load over (article, retention event, article) with keyring nil and generation 0; the two rows satisfy fn-rfz-handles-inp and fn-rfz-contexts-okp on the live arena; fn-rfz-index-of-rows equals fn-stx-index-of-store over the rows' articles; fn-rfz-wire-rows is the two wire records; after two more seals (a reclaim's tombstone and another) the same rows materialize the same.",
+        "tests/acl2/payload-arena-tests.lisp pat-bytes-exec / pat-exec: the same seals and reads on fn-arena-bytes directly and on the generic answer equal values.",
+        "The ground half: every theorem of books/records-freeze.lisp with its positive witness and, per hypothesis, a witness on which the retained hypotheses hold, the omitted one fails and the conclusion fails (must-fail)."
+      ],
+      "expected": "fn-paa-smoke prints (3 2 L L T (1 2 3) 5) with L the article's length and the assert-event holds; rft-exec's list of checks is all t with the wire rows (w0 w2); the two foundations' runs are equal.",
+      "evidence": [
+        "books/payload-arena-attach.lisp",
+        "tests/acl2/records-freeze-tests.lisp",
+        "tests/acl2/payload-arena-tests.lisp"
+      ],
+      "note": "Lane records-freeze (2026-09-26/27). The native half (the node's arena holding the served payloads) waits on the join with catalog-slice-5 step 8 and acceptance-payload-arena; no native module is owed by this lane."
+    },
+    {
+      "id": "SCN-148",
+      "title": "store import or operator init killed or failed at every cut of its publication program leaves no store or the complete (empty) store, and the next import or init says exactly what to do",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-029"
+      ],
+      "steps": [
+        "Export a served store; for every cut of tests/campaign/native_cuts.py IMPORT_CUTS and each of SIGKILL and EIO (FN_NATIVE_IMPORT_FAULT on the developer image), import it to a fresh ROOT.",
+        "Observe ROOT and any ROOT.import-* beside it; import again.",
+        "For every cut of tests/campaign/native_cuts.py INIT_PUB_CUTS and each of SIGKILL and EIO (FN_NATIVE_INIT_FAULT on the developer image), run operator init on a fresh ROOT; observe ROOT and any ROOT.init-*; init again."
+      ],
+      "expected": [
+        "Before the rename: exit 1 (EIO) or death, ROOT absent, the next import refuses reason=interrupted-import naming the staged directory; after its removal the import succeeds.",
+        "At and after the rename: ROOT, when present, opens to the exported history article for article; a staged directory beside a present ROOT is refused reason=publication-uncertain, never treated as no store.",
+        "An existing unrelated ROOT is never replaced (reason=store-exists).",
+        "init: before the rename ROOT is absent and the next init refuses reason=interrupted-init naming the staged directory, after whose removal init succeeds; at and after the rename a present ROOT is the empty store (status transactions=0) and init refuses STORE-EXISTS; an existing empty ROOT is refused reason=store-path-exists."
+      ]
+    },
+    {
+      "id": "SCN-156",
+      "title": "a store whose profile raises max-header-fields to 1,000 accepts a 900-field POST and refuses 1,001 by name; the default profile refuses the 65th field and a 258-line header by name; a peer's IHAVE/TAKETHIS of the 65th field is refused 437 by name / 439 (PKT-660)",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "STO-030"
+      ],
+      "steps": [
+        "`store ROOT init --max-header-fields 1000 --max-header-lines 2000 --max-header-octets 1048576 fn.test`; run the owner; POST a 900-field article; ARTICLE it; POST 1,000 and 1,001 fields.",
+        "`store ROOT init fn.test`; POST 64, 65 and 900 fields and a 258-physical-line header.",
+        "`store ROOT init fn.test`; `operator CONFIG peer add src ... 127.0.0.1 true`; from 127.0.0.1 IHAVE a 64-field and a 65-field relayed article, TAKETHIS a 65-field one."
+      ],
+      "expected": [
+        "240 for 900 and 1,000 fields, ARTICLE serves the 896 X- fields back; 441 naming max-header-fields for 1,001.",
+        "240 for 64 fields; 441 naming max-header-fields for 65 and 900; 441 naming max-header-lines for the 258-line header.",
+        "235 for 64 fields; `437 transfer rejected; the header has more fields than the profile's max-header-fields` for IHAVE of 65; `439 <id>` for TAKETHIS of 65."
+      ],
+      "evidence": [
+        "planning/evidence/header-limits-profile-2026-09-27.md",
+        "planning/evidence/header-limits-profile/native-header-limits.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_header_limits",
+        "cases": [
+          "test_a_raised_profile_accepts_900_fields_and_refuses_1001_by_name",
+          "test_the_default_profile_is_unchanged",
+          "test_peer_transit_is_refused_past_the_profile_limits_by_name"
+        ],
+        "native": true,
+        "record": "planning/evidence/header-limits-profile-2026-09-27.md",
+        "log": "planning/evidence/header-limits-profile/native-header-limits.log"
+      }
+    },
+    {
+      "id": "SCN-141",
+      "title": "A friend cancels their own unsigned post with RFC 8315 Cancel-Lock/Cancel-Key (as tin writes them): gone from ARTICLE and OVER on their node and on two peers in either arrival order, kept gone after SIGKILL; another login's cancel with its own key is filed and withdraws nothing",
+      "milestone": "M4",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_own_cancel",
+        "cases": [
+          "test_a_login_cancels_its_own_post_here_and_on_peers"
+        ],
+        "native": true,
+        "log": "planning/evidence/newsreader-cancel-2026-09-26/native-own-cancel.log",
+        "record": "planning/evidence/newsreader-cancel-2026-09-26.md"
+      },
+      "requirements": [
+        "SEC-006"
+      ],
+      "steps": [
+        "Node H requires AUTHINFO with logins alice and bob; nodes A and B take IHAVE from a configured peer.",
+        "alice POSTs T with `Cancel-Lock: sha256:Base64(SHA-256(K))`; bob POSTs `Control: cancel T` with a Cancel-Key of his own; alice POSTs `Control: cancel T` with `Cancel-Key: sha256:K`; ARTICLE T and OVER after each; SIGKILL H and restart.",
+        "Relay T, bob's cancel and alice's cancel (as H stored them) to A (target first) and to B (cancels first)."
+      ],
+      "evidence": [
+        "tests/acl2/cancel-lock-tests.lisp",
+        "tests/test_native_own_cancel.py"
+      ],
+      "expected": [
+        "T as stored carries alice's Cancel-Lock unchanged; each cancel carries its Cancel-Key.",
+        "After bob's cancel (240) T answers 220; after alice's cancel (240) T answers 430 withdrawn and OVER no longer lists it; after the restart T still answers 430.",
+        "A serves T after T and bob's cancel, and answers 430 after alice's cancel; B answers 430 and its OVER omits T."
+      ]
+    },
+    {
+      "id": "SCN-154",
+      "title": "Draining a contact of N ready base jobs examines each job record once and answers the head scan's offers in order",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-009"
+      ],
+      "steps": [
+        "Queue N base jobs for one peer on its routed hop (N = 1,000 through the machine's own :enqueue records; N = 10,000 as copies of one queued job, above the 4,096-record ceiling).",
+        "Drain one contact, asking before every offer, with the head scan (fn-bpnj-contact-next) and with the cursor (fn-bpnjc-contact-next), driving each offer's outcome.",
+        "Count the job records each drain's asks examine and time both drains and the transitions alone (tools/bench/bp-drain-bench.lisp)."
+      ],
+      "expected": [
+        "Both drains offer the same N jobs in the same order.",
+        "The cursor's asks examine N records in all (the head scan's about 2N^2), and the cursor drain's wall less the transitions' is a small constant share."
+      ],
+      "evidence": [
+        "tools/bench/bp-drain-bench.lisp",
+        "planning/evidence/bp-cursors-2026-09-27.md"
+      ]
+    },
+    {
+      "id": "SCN-157",
+      "title": "A peer named by a DNS name: the feed dials `localhost` under the system roots, a name mismatch is refused by name and retried, an unresolvable name is reported and retried, and peer add refuses a non-host",
+      "milestone": "M3",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peer_by_name",
+        "cases": [
+          "test_feed_by_name_under_the_system_roots",
+          "test_name_mismatch_is_refused_by_name_and_retried",
+          "test_resolution_failure_is_named_and_retried",
+          "test_peer_add_refuses_a_host_that_is_not_a_host"
+        ],
+        "native": true,
+        "record": "planning/evidence/peers-by-name-2026-09-27.md",
+        "log": "planning/evidence/peers-by-name-2026-09-27/native-peer-by-name-production.log"
+      },
+      "requirements": [
+        "NNT-048"
+      ],
+      "steps": [
+        "Scratch CA; nodes A and B with CA-signed certificates; A started with SSL_CERT_FILE=CA; A's peer B added as host localhost, starttls - - (the host's name, the system roots); post on A.",
+        "Same, B's certificate names other.test.",
+        "A's peer B at no-such-peer.invalid; post on A.",
+        "peer add with host bad_host.example, and with 127.0.0.1 and server name `-`."
+      ],
+      "evidence": [
+        "tests/acl2/peer-host-tests.lisp",
+        "tests/test_native_peer_by_name.py"
+      ],
+      "expected": [
+        "The article arrives on B byte-identical; no dial failure line.",
+        "At least two `peer dial via=feed ... host=localhost outcome=name-mismatch retry=yes` lines; nothing arrives; both nodes alive.",
+        "At least two `outcome=unresolved retry=yes` lines; A alive and serving the article.",
+        "Both refused with a nonzero exit; no record written."
+      ]
+    },
+    {
+      "id": "SCN-159",
+      "title": "A store is opened on the filesystem it was made on, refused by name when its path now lands on another filesystem (the node volume missing) or holds no record, rebound deliberately and opened; a store requiring durable storage is refused at start on tmpfs and starts once the risk is accepted",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests/test_native_store_mount_identity.py",
+        "cases": [],
+        "native": true,
+        "record": "planning/evidence/store-mount-identity-2026-09-27.md",
+        "log": "planning/evidence/store-mount-identity-2026-09-27/native-run.log"
+      },
+      "requirements": [
+        "STO-031"
+      ],
+      "steps": [
+        "init a store in a temporary directory; recover opens it; a copy on the same filesystem opens.",
+        "copy it onto another filesystem (tmpfs to ZFS on hbox): recover and status are refused with `store filesystem changed: expected ..., found ...`; `store rebind-filesystem` records the move and recover opens it.",
+        "an empty directory at the store path is refused as `store filesystem unrecorded` and nothing is created there; a corrupted record is refused as `record invalid`, a removed one as `unrecorded`; rebind opens it.",
+        "an operator store on tmpfs (policy 0) warns at status and starts; with `--storage-require-durable on` its start is refused by name; with `off` it starts again.",
+        "by hand on hbox (root): a loop-mounted ext4 volume opens; unmounted, the empty directory underneath is refused by name; rebind works (the record)."
+      ],
+      "evidence": [
+        "planning/evidence/store-mount-identity-2026-09-27.md",
+        "planning/evidence/store-mount-identity-2026-09-27/native-run.log",
+        "planning/evidence/store-mount-identity-2026-09-27/loop-mount.log",
+        "tests/test_native_store_mount_identity.py"
+      ],
+      "expected": "Opens on the filesystem it was made on; on another filesystem, on an empty directory, or with a missing or corrupted record every open exits 1 with ACL2's named line and writes nothing; rebind-filesystem records the move and the store opens; a policy-1 store on tmpfs or nobarrier is refused at start by name and a policy-0 one warns and starts."
     }
   ]
 }
