@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1235 |
-| Certification roots in the Makefile | 1188 |
-| Books inside the root closure | 1224 |
-| `defthm` and `defthmd` events | 18139 |
-| `defun` events | 12547 |
+| Books read | 1237 |
+| Certification roots in the Makefile | 1190 |
+| Books inside the root closure | 1226 |
+| `defthm` and `defthmd` events | 18163 |
+| `defun` events | 12555 |
 | Functions with verified guards | 2441 |
-| Functions declared `:verify-guards nil` and never verified | 1479 |
-| Functions left at the default with an explicit guard | 6904 |
+| Functions declared `:verify-guards nil` and never verified | 1480 |
+| Functions left at the default with an explicit guard | 6911 |
 | Functions left at the default with no guard | 1723 |
-| `assert-event` checks | 18002 |
-| `must-fail` checks | 2157 |
+| `assert-event` checks | 18016 |
+| `must-fail` checks | 2159 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 98 |
 | Theorems flagged SUSPECT by shape | 195 |
-| Export-hygiene warnings | 205 |
+| Export-hygiene warnings | 206 |
 | Enabled-projection warnings | 49 |
-| Teeth-form warnings | 207 |
-| Include-hygiene warnings | 1325 |
+| Teeth-form warnings | 208 |
+| Include-hygiene warnings | 1328 |
 | Host-names warnings | 1375 |
 | Hand-written-record warnings | 18 |
 
@@ -351,6 +351,7 @@ that `make certify` requests.
 | `books/config-observed.lisp` | root | 5 | 4 | 3/0/1/0 | 0 | 0 | 0 |
 | `books/config-owner-advance-invariants.lisp` | root | 21 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-owner-advance-reader-invariants.lisp` | root | 5 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/config-owner-carried.lisp` | root | 24 | 8 | 0/1/7/0 | 0 | 0 | 0 |
 | `books/config-owner-live-complete.lisp` | closure | 29 | 11 | 0/0/11/0 | 0 | 0 | 0 |
 | `books/config-owner-live-open.lisp` | closure | 52 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/config-owner-live-read.lisp` | closure | 47 | 0 | 0/0/0/0 | 0 | 0 | 0 |
@@ -986,6 +987,7 @@ that `make certify` requests.
 | `tests/acl2/config-observed-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 24 | 0 | 0 |
 | `tests/acl2/config-owner-advance-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 12 | 1 | 0 |
 | `tests/acl2/config-owner-advance-reader-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 6 | 1 | 0 |
+| `tests/acl2/config-owner-carried-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 14 | 2 | 0 |
 | `tests/acl2/config-owner-live-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 55 | 2 | 0 |
 | `tests/acl2/config-owner-publish-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 39 | 7 | 0 |
 | `tests/acl2/config-owner-read-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 17 | 3 | 0 |
