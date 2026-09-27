@@ -3071,8 +3071,7 @@
       "progress_note": "The ACL2 local status codec, owner scope decision and native-control host test passed the scoped status/index run. The general accepted and nonaccepted kind-9 codec roundtrips and their isolating teeth certified in the selected hbox book/test roots at the exact new source bytes; these are proof-only changes to the executable codec. The earlier e160442f image passed unknown-consumer refusal, read-only status, advancing ACK and recovered status checks. The joined topic/index source has scoped certification but has not yet run on a matching saved image. The diagnostic does not assert application processing or discharge.",
       "events": [
         "fn-ncl-status-accepted-reply-roundtrip",
-        "fn-ncl-status-nonaccepted-reply-roundtrip",
-        "fn-ncl-cli-after-retries-only-a-refused-register"
+        "fn-ncl-status-nonaccepted-reply-roundtrip"
       ]
     },
     {
