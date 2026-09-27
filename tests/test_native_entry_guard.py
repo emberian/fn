@@ -44,8 +44,7 @@ def image_command(forms):
 
 # One probe: call the entry through the dispatcher and print what came back:
 # the named guard fault, another condition, or the value.
-PROBE = """(in-package "ACL2")
-(format t "~&PROBE ~a ~a~%" {label!r}
+PROBE = """(format t "~&PROBE ~a ~a~%" {label!r}
   (handler-case (progn (fnn-core '{entry} {args}) "returned")
     (fnn-entry-guard-fault (c) (format nil "GUARD[~a]" (fnn-message c)))
     (serious-condition (c) (format nil "OTHER[~a]" c))))"""
