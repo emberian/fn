@@ -278,7 +278,7 @@
 (defconst *bsb-non-record* (list 0 0 0 *bsb-msgid*))
 (defconst *bsb-forged-store*
   (let ((forged (fn-sn-update *bsb-store0*
-                              (update-nth 4 (list *bsb-non-record*)
+                              (update-nth 4 (fn-sl-of (list *bsb-non-record*))
                                           (fn-sn-files *bsb-store0*))
                               (fn-sn-node *bsb-store0*))))
     (fn-sn-with-event-index forged

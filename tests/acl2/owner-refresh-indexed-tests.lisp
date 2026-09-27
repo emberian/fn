@@ -25,9 +25,13 @@
   (if (and (consp xs) (consp (cdr xs))) (cons (car xs) (ori-butlast (cdr xs))) nil))
 
 ; The owner after T, then C's events up to (not including) its :complete.
+(include-book "arena-lift")
+;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
+(defconst *sr-arena* nil)
+(bpr-lift fn-own-run 2)
+(bpr-lift fn-own-step 2)
 (defconst *ori-pre*
-  (fn-own-run (fn-own-step *ocr-t-first* '(:begin 1))
-              (ori-butlast (own-post-events *ocr-rc1*))))
+  (in-arena-fn-own-run *sr-arena* (in-arena-fn-own-step *sr-arena* *ocr-t-first* '(:begin 1)) (ori-butlast (own-post-events *ocr-rc1*))))
 (defconst *ori-s* (fn-sn-finish (fn-own-store *ori-pre*)))
 (defconst *ori-mid* (ori-with-store *ori-pre* *ori-s*))
 
