@@ -5366,19 +5366,17 @@ the records at or after the checkpoint's S (the log holds every record)."
         (return-from fnn-recover-log-from-state-checkpoint nil))
       (let* ((s (second choice))
              (suffix (nthcdr s records)))
-        (unless (eq (fnn-action
-                     (fnn-core-arena-state 'fn-store-sn-recover-from-checkpoint
-                                     (mapcar #'fnn-octet-list suffix)
-                                     (fnn-store-frontier store)
-                                     (mapcar #'fnn-octet-list config-records)))
-                    :recovering)
+        ;; checkpoint-arena-2: the suffix interned on top of the loaded arena
+        ;; and opened over its rows (fnn-recover-suffix-rows), as the
+        ;; per-file route does; the log already holds every record's octets,
+        ;; so the prefix is not re-encoded.
+        (unless (eq (fnn-recover-suffix-rows store suffix config-records) :recovering)
           (fnn-core-state 'fn-store-sco-clear)
           (fnn-bridge-reset)
           (setf (fnn-store-open-mode store) (list :full-replay :checkpoint-open-refused))
           (return-from fnn-recover-log-from-state-checkpoint nil))
         (setf (fnn-store-open-mode store) (list :checkpoint s (length suffix)))
-        (append (mapcar #'fnn-as-octets (fnn-core-arena-state 'fn-store-sco-prefix-octets))
-                suffix)))))
+        records))))
 
 (defun fnn-store-recovery-barriers (store)
   "The five recovery barriers' thunks, in the model's order: the config file,
