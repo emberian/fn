@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1315 |
-| Certification roots in the Makefile | 1276 |
-| Books inside the root closure | 1313 |
-| `defthm` and `defthmd` events | 19643 |
-| `defun` events | 13572 |
+| Books read | 1316 |
+| Certification roots in the Makefile | 1280 |
+| Books inside the root closure | 1314 |
+| `defthm` and `defthmd` events | 19644 |
+| `defun` events | 13578 |
 | Functions with verified guards | 2497 |
 | Functions declared `:verify-guards nil` and never verified | 1638 |
-| Functions left at the default with an explicit guard | 7574 |
-| Functions left at the default with no guard | 1863 |
-| `assert-event` checks | 19343 |
+| Functions left at the default with an explicit guard | 7579 |
+| Functions left at the default with no guard | 1864 |
+| `assert-event` checks | 19363 |
 | `must-fail` checks | 2193 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 101 |
@@ -1241,6 +1241,7 @@ that `make certify` requests.
 | `tests/acl2/posting-account-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 5 | 2 | 0 |
 | `tests/acl2/principal-tests.lisp` | root | 0 | 12 | 0/0/0/12 | 44 | 0 | 0 |
 | `tests/acl2/profile-monotonicity-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 23 | 0 | 0 |
+| `tests/acl2/proto-adt-tests.lisp` | root | 1 | 6 | 0/0/5/1 | 20 | 0 | 0 |
 | `tests/acl2/provenance-inspect-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 0 | 0 |
 | `tests/acl2/provenance-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 103 | 0 | 0 |
 | `tests/acl2/public-exposure-reply-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 13 | 2 | 0 |

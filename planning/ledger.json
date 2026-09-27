@@ -1277,23 +1277,27 @@
     "tests/acl2/store-node-index-tests",
     "tests/acl2/store-node-composite-index-tests",
     "books/scheduler-peers",
-    "tests/acl2/scheduler-peers-tests"
+    "tests/acl2/scheduler-peers-tests",
+    "books/proto/adt-lib",
+    "books/proto/adt",
+    "books/proto/adt-consumer-position",
+    "tests/acl2/proto-adt-tests"
   ],
   "totals": {
-    "books": 1315,
-    "books_in_root_closure": 1313,
-    "roots": 1276,
-    "theorems": 19643,
-    "functions": 13572,
-    "assert_events": 19343,
+    "books": 1316,
+    "books_in_root_closure": 1314,
+    "roots": 1280,
+    "theorems": 19644,
+    "functions": 13578,
+    "assert_events": 19363,
     "must_fails": 2193,
     "prover_refusals": 0,
     "encapsulates": 101,
     "guards": {
       "verified": 2497,
       "declared-off": 1638,
-      "default-guarded": 7574,
-      "default-unguarded": 1863
+      "default-guarded": 7579,
+      "default-unguarded": 1864
     },
     "suspect_theorems": 1021,
     "export_hygiene_warnings": 245,
@@ -34606,6 +34610,34 @@
         "../../books/store-profile-facts"
       ],
       "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
+      "book": "tests/acl2/proto-adt-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 1,
+      "functions": 6,
+      "guards": {
+        "verified": 0,
+        "declared-off": 0,
+        "default-guarded": 5,
+        "default-unguarded": 1
+      },
+      "verify_guards_events": 0,
+      "assert_events": 20,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/proto/adt-consumer-position"
+      ],
+      "system_includes": [
+        "std/testing/assert-bang"
+      ],
       "suspects": [],
       "read_error": null
     },
