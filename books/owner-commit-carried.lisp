@@ -600,8 +600,7 @@
     (fn-own-refresh
      (fn-own-make (fn-ccar-sn-finish-enabled s) (fn-own-view o) (fn-own-conns o)
                   (fn-own-next-id o) (fn-own-max-conns o) nil
-                  (fn-ag-append (fn-own-ledger o)
-                                (list (fn-sf-completion (fn-sn-files s))))
+                  (fn-sl-snoc (fn-own-ledger-field o) (fn-sf-completion (fn-sn-files s)))
                   (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                   (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o)))))
 
@@ -874,7 +873,7 @@
      (fn-own-refresh
       (fn-own-make (fn-ccar-sn-prepare-identity (fn-own-store o) event)
                    (fn-own-view o) (fn-own-conns o) (fn-own-next-id o)
-                   (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger o)
+                   (fn-own-max-conns o) (fn-own-pending o) (fn-own-ledger-field o)
                    (fn-own-clock o) (fn-own-facts o) (fn-own-config o)
                    (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-node-secret o) (fn-own-refused o))))))
 ; KEYSTONE for the host line (PRF-144 part 2): host/owner-host.lisp

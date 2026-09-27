@@ -6,7 +6,9 @@
 ; satisfy PRF-191's three hypotheses.  The
 ; ledger R0 is its Store node's; R1 is the ledger a durable commit of the
 ; fresh record installs (R0 with the pin "own-pin:pit" consed), built by the
-; node's own prepare and completion.
+; node's own prepare and completion.  RU and RR (section "Retention steps")
+; are R1 after a forwarding undertaking and then its release, applied by the
+; Store's own retention transition (fn-replay-apply-retention-event).
 (in-package "ACL2")
 (include-book "std/testing/must-fail" :dir :system)
 (include-book "../../books/post-retain-carried")
@@ -27,11 +29,19 @@
 (defun pit-phase (oc)
   (fn-sf-phase (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))
 
+;; Whether the refresh from CARRY to LEDGER takes the delta branch.
+(defun prct-delta-okp (carry ledger)
+  (declare (xargs :guard (consp carry)))
+  (mv-let (ok trie) (fn-prc-delta carry ledger)
+    (declare (ignore trie))
+    ok))
+
 (defconst *prct-node0* (fn-sn-node (fn-own-store *pit-o*)))
 (defconst *prct-r0* (fn-node-retention *prct-node0*))
 
 ; The host's first POST: the carry is refreshed from nil (the global's value
-; before any POST), which builds the trie of R0.
+; before any POST, and what the owner open installs), which builds the
+; trie of R0.
 (defconst *prct-carry0* (fn-prc-refresh nil *prct-r0*))
 
 ; -----------------------------------------------------------------------------
@@ -44,7 +54,7 @@
       (fn-scar-view-indexedp (fn-ocfg-owner *pit-oc*))
       (fn-ceis-indexedp (fn-sbud-oc-store *pit-oc*))
       (equal (car *prct-carry0*) *prct-r0*)
-      (equal (fn-rii-kbuild *prct-r0*) (cdr *prct-carry0*))))
+      (equal (fn-prc-build *prct-r0*) (cdr *prct-carry0*))))
 (assert-event (fn-prc-carryp *prct-carry0*))
 
 (assert-event
@@ -66,8 +76,8 @@
         (car *prct-carry0*)))
 
 ; -----------------------------------------------------------------------------
-; The commit's ledger: the refresh's one-put branch, and the carried trie
-; refusing a known obligation id.
+; The commit's ledger: the refresh's delta branch (one put), and the carried
+; trie refusing a known obligation id.
 
 (defconst *prct-staged*
   (fn-pidx-sn-prepare-node *prct-node0* *pit-fresh-record*
@@ -84,14 +94,15 @@
 (assert-event
  (and (consp (fn-node-stage *prct-staged*))
       (null (fn-node-stage *prct-node1*))
-      ; R1 is R0 under one new pin, the releases unchanged: the one-put branch.
+      ; R1 is R0 under one new pin, the releases unchanged: the delta branch.
       (equal (cdr (fn-retain-pins *prct-r1*)) (fn-retain-pins *prct-r0*))
       (equal (fn-retain-releases *prct-r1*) (fn-retain-releases *prct-r0*))
       (equal (fn-retain-obligation-id (car (fn-retain-pins *prct-r1*)))
              "own-pin:pit")
+      (prct-delta-okp *prct-carry0* *prct-r1*)
       (equal *prct-carry1*
-             (cons *prct-r1* (fn-rii-id-put "own-pin:pit" (cdr *prct-carry0*))))
-      (fn-rii-id-hasp "own-pin:pit" (cdr *prct-carry1*))
+             (cons *prct-r1* (fn-prc-add "own-pin:pit" (cdr *prct-carry0*))))
+      (fn-prc-has "own-pin:pit" (cdr *prct-carry1*))
       (fn-rii-knownp "own-pin:pit" *prct-r1*)))
 
 ; A record under a fresh Message-ID and the committed obligation id: the
@@ -128,13 +139,13 @@
 (assert-event
  (let ((view (fn-own-view *pit-o*)))
    (and (not (equal (car *prct-carry0*) *prct-r1*))
-        (not (fn-rii-id-hasp "own-pin:pit" (cdr *prct-carry0*)))
+        (not (fn-prc-has "own-pin:pit" (cdr *prct-carry0*)))
         (equal (fn-prc-admissiblep *prct-r1* "own-pin:pit" "own-content:pit"
                                    :archive "own-release:pit" 2 *prct-carry0*)
                (fn-retain-admissiblep *prct-r1* "own-pin:pit" "own-content:pit"
                                       :archive "own-release:pit" 2))
-        (fn-rii-admissiblep *prct-r1* "own-pin:pit" "own-content:pit"
-                            :archive "own-release:pit" 2 (cdr *prct-carry0*))
+        (fn-prc-set-admissiblep *prct-r1* "own-pin:pit" "own-content:pit"
+                                :archive "own-release:pit" 2 (cdr *prct-carry0*))
         (equal (fn-prc-sn-prepare-node *prct-node1* *prct-reuse-record* view
                                        *prct-carry0*)
                (fn-sn-prepare-node *prct-node1* *prct-reuse-record*)))))
@@ -145,7 +156,7 @@
 ; refuses the fresh record (retention says its id is known) where the
 ; reference stages it; so the keystone is false without its hypothesis.
 (defconst *prct-bad-carry*
-  (cons *prct-r0* (fn-rii-id-put "own-pin:pit" (cdr *prct-carry0*))))
+  (cons *prct-r0* (fn-prc-add "own-pin:pit" (cdr *prct-carry0*))))
 ; The host's call is raw (no guard is evaluated per POST); here the
 ; corrupted run evaluates without guard checking, as that call would.
 (make-event
@@ -156,7 +167,7 @@
 (assert-event
  (and (not (fn-prc-carryp *prct-bad-carry*))
       (not (fn-rii-knownp "own-pin:pit" *prct-r0*))
-      (fn-rii-id-hasp "own-pin:pit" (cdr *prct-bad-carry*))
+      (fn-prc-has "own-pin:pit" (cdr *prct-bad-carry*))
       (equal *prct-bad-prepared* *pit-oc*)
       (equal (pit-phase (fn-pidx-sbud-prepare *pit-oc* *pit-fresh-record* 100))
              :record-staged)))
@@ -165,6 +176,135 @@
    (equal (fn-prc-sbud-prepare *pit-oc* *pit-fresh-record* 100 *prct-bad-carry*)
           (fn-pidx-sbud-prepare *pit-oc* *pit-fresh-record* 100))
    :hints (("Goal" :in-theory (disable (:e fn-prc-sbud-prepare))))))
+
+;; The recognizer's other half.  An INCOMPLETE carry (the trie of R0 named
+;; as R1's: it lacks R1's new pin): not carryp; the host's call, run raw,
+;; stages a record reusing the committed id, which the reference refuses.
+(defconst *prct-short-carry* (cons *prct-r1* (cdr *prct-carry0*)))
+(make-event
+ `(defconst *prct-short-prepared*
+    ',(with-guard-checking
+       :none
+       (fn-prc-sn-prepare-node *prct-node1* *prct-reuse-record*
+                               (fn-own-view *pit-o*) *prct-short-carry*))))
+(assert-event
+ (and (not (fn-prc-carryp *prct-short-carry*))
+      (fn-rii-knownp "own-pin:pit" *prct-r1*)
+      (not (fn-prc-has "own-pin:pit" (cdr *prct-short-carry*)))
+      (consp (fn-node-stage *prct-short-prepared*))
+      (null (fn-node-stage (fn-sn-prepare-node *prct-node1* *prct-reuse-record*)))))
+(must-fail
+ (defthm prct-sn-prepare-without-carryp
+   (equal (fn-prc-sn-prepare-node *prct-node1* *prct-reuse-record*
+                                  (fn-own-view *pit-o*) *prct-short-carry*)
+          (fn-pidx-sn-prepare-node *prct-node1* *prct-reuse-record*
+                                   (fn-own-view *pit-o*)))
+   :hints (("Goal" :in-theory (disable (:e fn-prc-sn-prepare-node))))))
+
+;; fn-prc-carryp-of-refresh without its hypothesis: the refresh keeps a
+;; carry that already names the ledger, so a corrupted one stays corrupted.
+(assert-event
+ (and (not (fn-prc-carryp *prct-bad-carry*))
+      (equal (fn-prc-refresh *prct-bad-carry* *prct-r0*) *prct-bad-carry*)
+      (not (fn-prc-carryp (fn-prc-refresh *prct-bad-carry* *prct-r0*)))))
+
+; -----------------------------------------------------------------------------
+; Retention steps between POSTs.  NU is node1 after a forwarding undertaking
+; of "fwd-pin:pit" and NR is NU after its release, each the Store's own
+; retention transition (fn-replay-apply-retention-event); RU and RR are their
+; ledgers.  Every refresh takes the delta branch (no rebuild): the
+; undertaking puts one id, the release puts none (the released id is still
+; known, now through the releases), and the two steps at once put one.
+
+(defconst *prct-tx1* (fn-state-next-txid (fn-node-acceptance *prct-node1*)))
+(defconst *prct-nu*
+  (fn-replay-apply-retention-event
+   *prct-node1*
+   (fn-store-retention-event-make :undertake 9 *prct-tx1* *prct-tx1*
+                                  "fwd-pin:pit" "fwd-content:pit"
+                                  "fwd-receipt:pit" 2)))
+(defconst *prct-tx2* (fn-state-next-txid (fn-node-acceptance *prct-nu*)))
+(defconst *prct-nr*
+  (fn-replay-apply-retention-event
+   *prct-nu*
+   (fn-store-retention-event-make :release 10 *prct-tx2* *prct-tx2*
+                                  "fwd-pin:pit" "fwd-content:pit"
+                                  "fwd-receipt:pit" 0)))
+(defconst *prct-ru* (fn-node-retention *prct-nu*))
+(defconst *prct-rr* (fn-node-retention *prct-nr*))
+(defconst *prct-carry-u* (fn-prc-refresh *prct-carry1* *prct-ru*))
+(defconst *prct-carry-ur* (fn-prc-refresh *prct-carry-u* *prct-rr*))
+(defconst *prct-carry-r* (fn-prc-refresh *prct-carry1* *prct-rr*))
+
+(assert-event
+ (and (fn-node-statep *prct-nu*) (fn-node-statep *prct-nr*)
+      (null (fn-node-stage *prct-nr*))
+      ; RR: the pin moved to the releases.
+      (equal (fn-retain-pins *prct-rr*) (fn-retain-pins *prct-r1*))
+      (equal (cdr (fn-retain-releases *prct-rr*)) (fn-retain-releases *prct-r1*))
+      (equal (fn-retain-release-id (car (fn-retain-releases *prct-rr*)))
+             "fwd-pin:pit")
+      ; The undertaking: delta, one put.
+      (prct-delta-okp *prct-carry1* *prct-ru*)
+      (equal *prct-carry-u*
+             (cons *prct-ru* (fn-prc-add "fwd-pin:pit" (cdr *prct-carry1*))))
+      ; The release: delta, the trie unchanged.
+      (prct-delta-okp *prct-carry-u* *prct-rr*)
+      (equal *prct-carry-ur* (cons *prct-rr* (cdr *prct-carry-u*)))
+      ; Both steps between two POSTs: delta, one put.
+      (prct-delta-okp *prct-carry1* *prct-rr*)
+      (equal *prct-carry-r*
+             (cons *prct-rr* (fn-prc-add "fwd-pin:pit" (cdr *prct-carry1*))))
+      (fn-prc-carryp *prct-carry-u*)
+      (fn-prc-carryp *prct-carry-ur*)
+      (fn-prc-carryp *prct-carry-r*)))
+
+; A POST after the release, through either carry: the record reusing the
+; released id is refused by retention exactly as the reference refuses it,
+; and a fresh one is staged exactly as the reference stages it.
+(defconst *prct-tx3* (fn-state-next-txid (fn-node-acceptance *prct-nr*)))
+(defun prct-record-at (msgid oid)
+  (fn-hrt-row-at
+   (fn-record-make *prct-tx3* *prct-tx3* *prct-tx3* msgid
+                   (fn-own-sub-octets *osi-sub*) '("fn.letters")
+                   oid "own-content:pit" "own-release:pit" 2 841000000)
+   *prct-tx3*))
+(defconst *prct-released-record*
+  (prct-record-at "<prct-released@example>" "fwd-pin:pit"))
+(defconst *prct-after-record*
+  (prct-record-at "<prct-after@example>" "after-pin:pit"))
+(assert-event
+ (let ((view (fn-own-view *pit-o*)))
+   (and (not (fn-retain-admissiblep *prct-rr* "fwd-pin:pit" "own-content:pit"
+                                    :archive "own-release:pit" 2))
+        (fn-prc-has "fwd-pin:pit" (cdr *prct-carry-ur*))
+        (not (fn-prc-has "after-pin:pit" (cdr *prct-carry-ur*)))
+        (equal (fn-prc-sn-prepare-node *prct-nr* *prct-released-record* view
+                                       *prct-carry-ur*)
+               (fn-sn-prepare-node *prct-nr* *prct-released-record*))
+        (null (fn-node-stage (fn-prc-sn-prepare-node
+                              *prct-nr* *prct-released-record* view
+                              *prct-carry-ur*)))
+        (equal (fn-prc-sn-prepare-node *prct-nr* *prct-after-record* view
+                                       *prct-carry-ur*)
+               (fn-sn-prepare-node *prct-nr* *prct-after-record*))
+        (consp (fn-node-stage (fn-prc-sn-prepare-node
+                               *prct-nr* *prct-after-record* view
+                               *prct-carry-ur*)))
+        (equal (fn-prc-sn-prepare-node *prct-nr* *prct-released-record* view
+                                       *prct-carry-r*)
+               (fn-sn-prepare-node *prct-nr* *prct-released-record*))
+        (equal (fn-prc-sn-prepare-node *prct-nr* *prct-after-record* view
+                                       *prct-carry-r*)
+               (fn-sn-prepare-node *prct-nr* *prct-after-record*)))))
+
+; An unknown ledger (a recovery back to R0: a pin gone without a release):
+; no delta, the rebuild branch, and the recognizer still holds.
+(assert-event
+ (and (not (prct-delta-okp *prct-carry-r* *prct-r0*))
+      (equal (fn-prc-refresh *prct-carry-r* *prct-r0*)
+             (cons *prct-r0* (fn-prc-build *prct-r0*)))
+      (fn-prc-carryp (fn-prc-refresh *prct-carry-r* *prct-r0*))))
 
 ; -----------------------------------------------------------------------------
 ; The host's calls run compiled code: every function is guard-verified.
@@ -178,5 +318,11 @@
       (eq (symbol-class 'fn-prc-opc-owner-prepare (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-prc-opc-prepare (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-prc-sbud-prepare (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-delta (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-pins-walk (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-build (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-set-admissiblep (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rit-hasp (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-rit-put (w state)) :common-lisp-compliant)
       (equal (guard 'fn-prc-node-prepare nil (w state))
              (guard 'fn-node-prepare nil (w state)))))

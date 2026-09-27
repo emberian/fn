@@ -15,6 +15,7 @@
 
 (in-package "ACL2")
 (include-book "store-checkpoint-arena")
+(include-book "store-checkpoint-share")
 (local (include-book "arithmetic/top" :dir :system))
 
 (local (in-theory (disable fn-cp-idp fn-cp-idp-true-listp
@@ -512,7 +513,9 @@
           loaded
         (if (not (equal (fn-sco-at 1 (fn-sct-tables-f (cadr loaded))) s))
             (list :refused :close)
-          loaded)))))
+          ; One object per string content (fn-sshr-share-is-identity): the
+          ; R tables' strings are the E rows', as the full replay's are.
+          (fn-sshr-share loaded))))))
 
 (defun fn-scka-load (plan fn-octets fn-arena)
   (declare (xargs :stobjs (fn-octets fn-arena) :verify-guards nil))

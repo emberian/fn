@@ -731,7 +731,7 @@
             (fn-own-relation
              (fn-own-make (fn-own-store o) (fn-own-view o) (fn-own-conns o)
                           (fn-own-next-id o) (fn-own-max-conns o) pending
-                          (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o)
+                          (fn-own-ledger-field o) (fn-own-clock o) (fn-own-facts o)
                           config queue inflight feeds node-secret refused)))
    :hints (("Goal" :in-theory (e/d (fn-own-relation)
                                    (fn-own-view-okp fn-own-conns-okp
@@ -766,7 +766,7 @@
                                             (fn-own-next-id o) (fn-own-max-conns o)
                                             (if (equal (fn-own-pending o) id)
                                                 nil (fn-own-pending o))
-                                            (fn-own-ledger o) (fn-own-clock o)
+                                            (fn-own-ledger-field o) (fn-own-clock o)
                                             (fn-own-facts o) (fn-own-config o)
                                             (fn-own-queue o) nil
                                             (if (equal (fn-own-outcome-completion

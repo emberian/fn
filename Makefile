@@ -512,6 +512,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-identity-index-tests \
 	books/post-retain-carried \
 	tests/acl2/post-retain-carried-tests \
+	books/store-profile-carried \
+	tests/acl2/store-profile-carried-tests \
 	books/replay-identity-index \
 	tests/acl2/replay-identity-index-tests \
 	books/owner-store-indexed \
@@ -876,6 +878,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
 	books/store-checkpoint-arena \
+	books/store-checkpoint-share \
 	books/store-checkpoint-arena-load \
 	books/store-checkpoint-arena-writer \
 	tests/acl2/octets-stobj-tests \
