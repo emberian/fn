@@ -1080,12 +1080,16 @@
 ;; fn-rcon-record-p (fn-rcon-record-p-is-record-p: equal to fn-record-p on
 ;; every input), which reads the record's strings in place instead of
 ;; building their octet lists.
-(defun fn-owner-finish-submission (state)
-  (declare (xargs :stobjs state :mode :program))
+;; The records flip (flip-L8): the submission is named through ALPHA of the
+;; completing row, read through the arena (fn-ccar-own-finish takes it; the
+;; owner installed is independent of the arena,
+;; fn-ccar-own-finish-installs-ccar-own-complete-by-definition).
+(defun fn-owner-finish-submission (fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((oc (fn-owner-ocfg state)))
     (if (fn-ocfg-staged oc)
         (value :fault)
-      (let* ((result (fn-ccar-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc)))
+      (let* ((result (fn-ccar-own-finish (fn-ocfg-owner oc) (fn-ocfg-config oc) fn-arena))
              (state (fn-owner-replace-core (cdr result) state)))
         (value (car result))))))
 

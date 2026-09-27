@@ -188,7 +188,7 @@ function supplied no observation at all, which is a defect here."
 
 (defun fnn-owner-finish-submission ()
   "The article completion's word, fn-ccar-own-finish's, which is fn-own-finish's (host/owner-host.lisp)."
-  (fnn-owner-action 'fn-owner-finish-submission))
+  (fnn-owner-arena-action 'fn-owner-finish-submission))
 
 (defun fnn-owner-name-list (octets)
   "Split ACL2's LF-joined name projection; LF is excluded by the name grammar."
