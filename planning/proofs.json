@@ -7305,7 +7305,8 @@
         "planning/evidence/manifests/certify-20260927T001344Z-408497.json",
         "books/served-catalog.lisp",
         "books/catalog-number-index.lisp",
-        "tests/acl2/served-catalog-tests.lisp"
+        "tests/acl2/served-catalog-tests.lisp",
+        "planning/evidence/manifests/certify-20260927T044349Z-763688.json"
       ],
       "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); proved by lane catalog-boundary-owner (Fable, gpt-6's wave-5 review section 5) on 2026-09-26 in books/catalog-refresh.lisp over the owner's own view vocabulary, so the statement's subject is the refresh the host reaches today; the catalog-side twins are the same book's. catalog-slice-2 and -4's groundwork (the delta grammar, fn-view-cancel-after-target, fn-cat-view-articles) is what the catalog side is stated over.",
       "progress_note": "catalog-slice-5 (2026-09-26): step 7a, the pinned-view semantics in the served machine the host calls today (the served connection carries the owner's committed view as its live pin; GROUP/LISTGROUP re-pin before the arm and keep the re-pin exactly on 211); the retrieval arms over the catalog are 7b (PKT-585). catalog-slice-6 (2026-09-27): 7a certified over its closure (the farm runs in the record); 7b first increment in books/served-catalog.lisp: the Message-ID and article-number finders over the catalog (fn-scat-msgid-article through the Message-ID column, fn-scat-number-article through index-stobjs fn-cnx-view-seq), the two retrieval arms over them, and the boundary theorem fn-nntp-archive-command-cat-is-pinned: the pinned case split with those arms reading the catalog equals fn-nntp-archive-command-pinned under archive = the view's articles, trie = its Message-ID index, a fresh number column. OVER/XOVER, LISTGROUP, LIST COUNTS, HDR/XHDR/XPAT, the lift to fn-served-dispatch-core and the host switch remain (7b rest, 8).",
