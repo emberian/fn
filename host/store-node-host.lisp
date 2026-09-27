@@ -1053,15 +1053,19 @@ reopen predicate, writer-lock observation and observed final namespace."
           :bad))
     (if (null pairs) nil :bad)))
 
-(defun fn-store-sn-set-keyring (pairs state)
-  (declare (xargs :stobjs state :mode :program))
+; The entry is books/store-intern.lisp fn-store-set-keyring: every row's
+; context recomputed from its bytes, read through the arena, under the new
+; keyring and generation (the one reconfiguration that re-reads bytes); the
+; arena is read, not changed.
+(defun fn-store-sn-set-keyring (pairs fn-arena state)
+  (declare (xargs :stobjs (fn-arena state) :mode :program))
   (let ((keyring (fn-store-sn-keyring-of-pairs pairs)))
     (if (or (equal keyring :bad) (not (fn-prin-keyringp keyring)))
         (value :invalid)
       (let ((state (f-put-global
                     'fn-store-sn
-                    (fn-sn-set-keyring (f-get-global 'fn-store-sn state)
-                                       keyring)
+                    (fn-store-set-keyring (f-get-global 'fn-store-sn state)
+                                          keyring fn-arena)
                     state)))
         (value :configured)))))
 
