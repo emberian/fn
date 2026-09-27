@@ -250,14 +250,27 @@ class BuildListsCheckTests(unittest.TestCase):
             self.assertIn("raw: host/native/io.lisp calls fnn-checkpoint-name-result, "
                           "defined only in host/native/checkpoint.lisp", "\n".join(found))
 
-    def test_unlisted_raw_reach_is_found(self):
-        reach = dict(check.DTN_RAW_REACH)
-        del reach[("host/native/operator.lisp", "fnn-native-auth-admin-execute")]
-        found = check.findings(reach=reach)
-        self.assertEqual(found, ["raw: host/native/operator.lisp calls "
-                                 "fnn-native-auth-admin-execute, defined only in "
-                                 "host/native/auth-admin.lisp, which "
-                                 "host/native/build-dtn.lisp does not load"])
+    def test_unguarded_raw_reach_is_found(self):
+        # operator.lisp reaches auth-admin.lisp (which build-dtn.lisp does
+        # not load) only through io.lisp's surface guard; the same call made
+        # directly, or quoted outside the guard, is found.
+        operator = (ROOT / "host/native/operator.lisp").read_text()
+        guarded = "(fnn-surface-call :credentials 'fnn-native-auth-admin-execute"
+        self.assertIn(guarded, operator)
+        expected = ["raw: host/native/operator.lisp calls "
+                    "fnn-native-auth-admin-execute, defined only in "
+                    "host/native/auth-admin.lisp, which "
+                    "host/native/build-dtn.lisp does not load"]
+        for unguarded in ("(fnn-native-auth-admin-execute",
+                          "(funcall 'fnn-native-auth-admin-execute"):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                shutil.copytree(ROOT / "host", root / "host")
+                (root / "host/native/operator.lisp").write_text(
+                    operator.replace(guarded, unguarded))
+                self.assertEqual(check.raw_findings(
+                    root, (ROOT / check.DEFAULT_BUILD).read_text(),
+                    (ROOT / check.DTN_BUILD).read_text(), {}), expected, unguarded)
 
     def test_missing_buffer_includes_are_found(self):
         # native-drift-2026-09-25 finding 3: at 32842f50 build-dtn.lisp did

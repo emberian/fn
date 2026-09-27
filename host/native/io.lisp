@@ -1721,7 +1721,6 @@ route's point and the record log's, lane commit-onto-log)."
            (error (fnn-store-fault-class store) :message (fnn-store-fault-message store))))))
 
 (defun fnn-config-path (s) (fnn-join (fnn-store-root s) "config.json"))
-(defun fnn-transactions (s) (fnn-join (fnn-store-root s) "transactions"))
 (defun fnn-staging (s) (fnn-join (fnn-store-root s) "staging"))
 (defun fnn-lock-path (s) (fnn-join (fnn-store-root s) "writer.lock"))
 (defvar *fnn-clone-activation* nil)
@@ -1748,7 +1747,6 @@ route's point and the record log's, lane commit-onto-log)."
   (when (and (fnn-lstat (fnn-clone-fence-path s))
              (not *fnn-clone-activation*))
     (fnn-refuse "clone is fenced pending durable incarnation rollover")))
-(defun fnn-frontier-path (s) (fnn-join (fnn-store-root s) "allocation-frontier.json"))
 ;; The record log's directory and its one segment (format 9).  The name is
 ;; ACL2's (books/owner-log-route.lisp fn-olr-segment-name).
 (defun fnn-journal-dir (s) (fnn-join (fnn-store-root s) "journal"))
@@ -2809,7 +2807,7 @@ it covers are dropped (fnn-log-drop; T8)."
                             (fnn-profile-nat 'fn-store-profile-max-record-octets store)
                             +fnn-checkpoint-batch-octets+))
          (budget (fnn-core 'fn-ock-capture-budget profile))
-         (position (and (fnn-store-logp store) (fnn-log-rotate store)))
+         (position (fnn-log-rotate store))
          ;; one walk of the live rows, a bounded number per call: each
          ;; canonical payload's length and source (fn-store-sco-pass-step)
          (walked (progn
@@ -3872,8 +3870,7 @@ presence of the two names is classified by fn-bs-imp-classify."
         +fnn-exit-ok+))))
 
 (defun fnn-staged-publication (kind stage root-path files record-count
-                               &optional record-filesystem
-                                 (subdirs '("transactions" "staging" "config")))
+                               record-filesystem subdirs)
   "Build the store STAGE (at ROOT-PATH.KIND-XXXX) from FILES, a list of
 (PATH . OCTETS) in plan order, admit it through the ordinary open (it must
 replay RECORD-COUNT records), and publish it at ROOT-PATH by a no-replace
@@ -4891,6 +4888,34 @@ connection `fn-reader-reset' opens and projects with
 (defun fnn-image-omits-p (surface)
   (and (member surface *fnn-image-omitted-surfaces*) t))
 
+(defun fnn-surface-function (surface name)
+  "The function NAME, defined by a raw file of SURFACE, a surface a build
+script may leave out of its image (*fnn-image-omitted-surfaces*).  An image
+that omits SURFACE refuses by name, a usage error (exit 5): the operator's
+dispatch (host/native/operator.lisp fnn-operator-dispatch-plan) refuses such a
+plan before any call, and every other call site asks fnn-image-omits-p first,
+so this is the second line, and never an undefined-function fault.  A surface
+the image claims whose file it did not load is a build defect: a fault naming
+both.  Every call from a file both builds load into a file only the default
+build loads goes through here (tools/host_check.py --load, both builds)."
+  (cond ((fnn-image-omits-p surface)
+         (error 'fnn-usage-error
+                :message (format nil "~(~a~) needs the ~(~a~) surface, which this image omits"
+                                 name surface)))
+        ((fboundp name) (fdefinition name))
+        (t (fnn-fault "~(~a~) of the ~(~a~) surface is not loaded in this image"
+                      name surface))))
+
+(defun fnn-surface-call (surface name &rest arguments)
+  "NAME of SURFACE applied to ARGUMENTS (fnn-surface-function)."
+  (apply (fnn-surface-function surface name) arguments))
+
+;; The running owner's [alerts] headroom_min_percent: ACL2's projection of
+;; its run plan (fn-native-operator-host-result-health-min-percent), set by
+;; host/native/operator.lisp's `run' and carried for the health report the
+;; owner renders (host/native/control.lisp, books/native-health.lisp).
+(defvar *fnn-health-min-percent* 0)
+
 (defun fnn-select-image-profile
     (&optional (name (or (sb-ext:posix-getenv "FN_NATIVE_PROFILE")
                          "production")))
@@ -5670,16 +5695,13 @@ replay."
 
 (defun fnn-store-recovery-barriers (store)
   "The five recovery barriers' thunks, in the model's order: the config file,
-the history's authority (the segment on format 9, the frontier file on
-format 8), its directory (journal/ or transactions/), the root and the root's
-parent."
+the history's authority (the active log segment), its directory (journal/),
+the root and the root's parent.  Every store an image opens is on the record
+log (fnn-acquire faults otherwise), so the per-file layout's frontier file and
+transactions/ have no barrier here (lane log-leftovers)."
   (list (lambda () (fnn-fsync-regular (fnn-config-path store)))
-        (if (fnn-store-logp store)
-            (lambda () (fnn-log-fdatasync (fnn-log-fd (fnn-store-log store))))
-          (lambda () (fnn-fsync-regular (fnn-frontier-path store))))
-        (if (fnn-store-logp store)
-            (lambda () (fnn-fsync-dir (fnn-journal-dir store)))
-          (lambda () (fnn-fsync-dir (fnn-transactions store))))
+        (lambda () (fnn-log-fdatasync (fnn-log-fd (fnn-store-log store))))
+        (lambda () (fnn-fsync-dir (fnn-journal-dir store)))
         (lambda () (fnn-fsync-dir (fnn-store-root store)))
         (lambda () (fnn-fsync-dir (fnn-parent (fnn-store-root store))))))
 

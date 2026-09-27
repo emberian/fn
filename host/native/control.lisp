@@ -293,10 +293,8 @@ joins it before the process exits."
     (setf (fnn-control-state-clients control)
           (delete socket (fnn-control-state-clients control) :test #'eq))))
 
-;; The running owner's [alerts] headroom_min_percent: ACL2's projection of
-;; its run plan (fn-native-operator-host-result-health-min-percent), carried
-;; for the health report the owner renders (books/native-health.lisp).
-(defvar *fnn-health-min-percent* 0)
+;; *fnn-health-min-percent*, the running owner's [alerts] headroom_min_percent
+;; the health report reads below, is io.lisp's (operator.lisp's `run' sets it).
 
 (defvar *fnn-live-status-buffers* nil
   "The owner's rendered status reports, one per kind, as ACL2 chose them

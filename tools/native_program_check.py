@@ -10,8 +10,7 @@ For each byte-model program the native cut table names
   `fnn-at` cuts on the straight-line success path, read in source order,
   must equal the program's step list in `books/byte-store-programs.lisp`,
   step for step.  A step compares by kind AND directory: `(fnn-fsync-dir
-  (fnn-transactions store))` is `(:fsync-dir :transactions)`, never
-  `:root`.  A file name compares only where the host expression is a fixed
+  (fnn-staging store))` is `(:fsync-dir :staging)`, never `:root`.  A file name compares only where the host expression is a fixed
   name (config.json, allocation-frontier.json); a `stage`/`final` variable
   matches a model variable and nothing else.  File contents are not compared.
   Calls to other `io.lisp` functions that reach a step primitive are expanded
@@ -100,7 +99,6 @@ SEQUELS = {
 # Model directory ids for host directory expressions.
 DIR_ACCESSORS = {
     "fnn-store-root": ":root",
-    "fnn-transactions": ":transactions",
     "fnn-staging": ":staging",
 }
 

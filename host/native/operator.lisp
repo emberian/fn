@@ -239,21 +239,24 @@ non-symlink file PATH, as an octet list; NIL when it cannot be read."
                 (setq tls-context
                       (fnn-tls-open-context certificate private-key)))
               (let* ((*fnn-owner-startup-hooks*
-                       (list (fnn-native-auth-startup-hook
-                              auth-path auth-required auth-protected)))
+                       (list (fnn-surface-call :nntp-service 'fnn-native-auth-startup-hook
+                                               auth-path auth-required auth-protected)))
                      ;; The NEWNEWS pull feed (PRF-100) is a sibling lifecycle
                      ;; extension: host/native/pull-service.lisp.
                      (*fnn-owner-start-hooks*
-                       (list* #'fnn-feed-service-start #'fnn-pull-service-start
+                       (list* (fnn-surface-function :nntp-service 'fnn-feed-service-start)
+                              (fnn-surface-function :nntp-service 'fnn-pull-service-start)
                               *fnn-owner-start-hooks*))
                      (*fnn-owner-stop-hooks*
-                       (list* #'fnn-feed-service-wake #'fnn-pull-service-wake
+                       (list* (fnn-surface-function :nntp-service 'fnn-feed-service-wake)
+                              (fnn-surface-function :nntp-service 'fnn-pull-service-wake)
                               *fnn-owner-stop-hooks*))
                      (*fnn-owner-close-hooks*
-                       (list* #'fnn-feed-service-close #'fnn-pull-service-close
+                       (list* (fnn-surface-function :nntp-service 'fnn-feed-service-close)
+                              (fnn-surface-function :nntp-service 'fnn-pull-service-close)
                               *fnn-owner-close-hooks*))
                      (code
-                       (fnn-control-owner-run-normalized
+                       (fnn-surface-call :nntp-service 'fnn-control-owner-run-normalized
                         (fnn-octets
                          (fnn-core
                           'fn-native-operator-host-result-run-store-octets result))
@@ -319,7 +322,7 @@ non-symlink file PATH, as an octet list; NIL when it cannot be read."
   "Use only ACL2-normalized request fields and ACL2-framed local control."
   (handler-case
       (multiple-value-bind (status word)
-               (fnn-control-submit
+               (fnn-surface-call :nntp-service 'fnn-control-submit
                 (fnn-octets
                  (fnn-core
                   'fn-native-operator-host-result-post-control-path-octets result))
@@ -361,7 +364,7 @@ owner decides it and answers the reasoned reply."
                        (consp path))
             (fnn-fault "ACL2 refused the moderation request"))
           (multiple-value-bind (status word)
-              (fnn-control-reasoned-exchange (fnn-octets-string (fnn-octets path))
+              (fnn-surface-call :control 'fnn-control-reasoned-exchange (fnn-octets-string (fnn-octets path))
                                              encoded (lambda () encoded))
             (let ((class (fnn-core 'fn-native-control-host-status-class status))
                   (code (fnn-core 'fn-native-control-host-status-exit-code status)))
@@ -467,7 +470,7 @@ observation into the outcome and this function only carries it out."
                      :offline
                    (fnn-core 'fn-native-control-host-liveness
                              (and socket-path
-                                  (fnn-control-socket-path-p
+                                  (fnn-surface-call :control 'fnn-control-socket-path-p
                                    (fnn-lstat (fnn-octets-string socket-path)))
                                   t)
                              (fnn-store-owner-observation root))))
@@ -477,7 +480,7 @@ observation into the outcome and this function only carries it out."
                (code
                  (progn
                   (when (eq liveness :stale)
-                    (fnn-control-remove-stale-offline socket-path))
+                    (fnn-surface-call :control 'fnn-control-remove-stale-offline socket-path))
                   ;; A query does not use the :held arm (the read-only
                   ;; executor's own shared lock answers it), so it prints
                   ;; only the :stale note.
@@ -500,7 +503,7 @@ observation into the outcome and this function only carries it out."
                    (queryp (fnn-admin-query root plan))
                    (livep
                     (multiple-value-bind (status word)
-                        (fnn-control-admin control-path argv)
+                        (fnn-surface-call :control 'fnn-control-admin control-path argv)
                       (let ((detail (fnn-operator-status-detail status word)))
                         (unless (eq detail status) (setq live-detail detail)))
                       (fnn-core 'fn-native-control-host-status-exit-code status)))
@@ -547,7 +550,7 @@ observation into the outcome and this function only carries it out."
                                   (fnn-octets control-path-list)))
                (livep (and control-path
                            (not (fnn-image-omits-p :control))
-                           (fnn-control-socket-path-p
+                           (fnn-surface-call :control 'fnn-control-socket-path-p
                             (fnn-lstat (fnn-octets-string control-path)))))
                (exit
                  (progn
@@ -556,7 +559,7 @@ observation into the outcome and this function only carries it out."
                      (fnn-fault "ACL2 refused its own invitation vector"))
                    (if livep
                        (fnn-core 'fn-native-control-host-status-exit-code
-                                 (fnn-control-admin control-path argv))
+                                 (fnn-surface-call :control 'fnn-control-admin control-path argv))
                      (fnn-admin-execute root plan)))))
           (when (eql exit +fnn-exit-ok+)
             (write-sequence (fnn-octets (fnn-ascii-octet-list
@@ -674,10 +677,10 @@ nothing answers and nothing holds the lock."
   (let* ((socket-present
            (and control-path
                 (not (fnn-image-omits-p :control))
-                (fnn-control-socket-path-p
+                (fnn-surface-call :control 'fnn-control-socket-path-p
                  (fnn-lstat (fnn-octets-string control-path)))))
          (answer (if socket-present
-                     (fnn-control-live-status control-path kind)
+                     (fnn-surface-call :control 'fnn-control-live-status control-path kind)
                    :none)))
     (when (and (consp answer) (eq (first answer) :refused))
       ;; The owner refused by the name ACL2 decided (a report its reply's
@@ -687,7 +690,7 @@ nothing answers and nothing holds the lock."
         (progn (fnn-write-report (second answer))
                ;; PRF-212: the certificate the running owner serves, its
                ;; names and notAfter, in ACL2's words.
-               (when (eq kind :status) (fnn-tls-status-line control-path))
+               (when (eq kind :status) (fnn-surface-call :control 'fnn-tls-status-line control-path))
                +fnn-exit-ok+)
       (case (fnn-core 'fn-native-live-status-host-route socket-present answer)
         (:offline
@@ -745,10 +748,10 @@ nothing answers and nothing holds the lock."
   (let* ((socket-present
            (and control-path
                 (not (fnn-image-omits-p :control))
-                (fnn-control-socket-path-p
+                (fnn-surface-call :control 'fnn-control-socket-path-p
                  (fnn-lstat (fnn-octets-string control-path)))))
          (answer (if socket-present
-                     (fnn-control-live-status control-path :health)
+                     (fnn-surface-call :control 'fnn-control-live-status control-path :health)
                    :none)))
     (when (and (consp answer) (eq (first answer) :refused))
       (fnn-refuse "live status refused: ~(~a~)" (second answer)))
@@ -831,7 +834,7 @@ profile bounds the credentials (max-credentials, D27, PRF-102)."
                           result)))
             (and (fnn-octet-list-p control) (consp control)
                  (fnn-octets-string (fnn-octets control))))))
-    (fnn-native-auth-admin-execute
+    (fnn-surface-call :credentials 'fnn-native-auth-admin-execute
      (fnn-core 'fn-native-operator-host-result-principal-plan result)
      (fnn-octets-string
       (fnn-core 'fn-native-operator-host-result-principal-auth-path-octets
@@ -951,10 +954,10 @@ path no platform binds whole becomes ACL2's :control-path-too-long refusal
            (fnn-operator-execute-store-action result action))
           (:inspect (fnn-operator-execute-inspect result))
           (:admin (fnn-operator-execute-admin result))
-          (:peering (fnn-pinv-execute result))
+          (:peering (fnn-surface-call :control 'fnn-pinv-execute result))
           (:principal (fnn-operator-execute-principal result))
-          (:keys (fnn-keys-execute result))
-          (:tls (fnn-tls-execute result))
+          (:keys (fnn-surface-call :control 'fnn-keys-execute result))
+          (:tls (fnn-surface-call :control 'fnn-tls-execute result))
           (:account-invite (fnn-operator-execute-account-invite result))
           (:account-hash (fnn-operator-execute-account-hash result))
           (:owner-required

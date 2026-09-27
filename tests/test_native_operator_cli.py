@@ -41,7 +41,7 @@ class NativeOperatorPrincipalCompositionTests(unittest.TestCase):
             self.assertEqual(len(definitions), 1, f"{tail} is not defined once as argv's tail")
             self.assertEqual(len(set(definitions[0])), 1, f"{tail} is not the tail of its argument")
         self.assertIn("'fn-native-operator-host-result-principal-plan result", host)
-        self.assertIn("(fnn-native-auth-admin-execute", host)
+        self.assertIn("(fnn-surface-call :credentials 'fnn-native-auth-admin-execute", host)
 
 
 def invoke(config, *words):
