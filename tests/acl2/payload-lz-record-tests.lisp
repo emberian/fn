@@ -527,3 +527,121 @@
       (equal (fn-lzr-dicts-add *plr-dicts* 2 (make-list 65537 :initial-element 0))
              (list :refused :lz-dictionary-format))
       (equal (car (fn-lzr-dicts-add *plr-dicts* 2 '(1 2 3))) :ok)))
+
+; -----------------------------------------------------------------------------
+; The arena's compressed exports (books/payload-arena.lisp).
+
+(defconst *plr-arena* (list *plz-article*))
+
+; fn-arena-seal-lz-extent-payload has no hypothesis: the witness is its
+; instance at the real extent over a one-payload arena.
+(defthm plr-seal-lz-witness
+  (and (equal (fn-arena-payload 1 (fn-arena-seal-lz-extent 3 4096 (nth 2 *plr-e*) (nth 3 *plr-e*) 395
+                                                           0 750 *plz-dict* *plr-arena*))
+              (fn-lzr-lz-value *plz-dict* (fn-durable-octets 3 (nth 3 *plr-e*) 395) 750))
+       (equal (fn-arena-payload 0 (fn-arena-seal-lz-extent 3 4096 (nth 2 *plr-e*) (nth 3 *plr-e*) 395
+                                                           0 750 *plz-dict* *plr-arena*))
+              *plz-article*))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-arena-seal-lz-extent-payload
+                                   (file 3) (eoff 4096) (elen (nth 2 *plr-e*)) (poff (nth 3 *plr-e*))
+                                   (plen 395) (trailer 0) (n 750) (dict *plz-dict*)
+                                   (fn-arena *plr-arena*) (h 0)))
+           :in-theory (disable fn-arena-seal-lz-extent-payload))))
+
+; fn-arena-reseat-lz-extent-keeps-a-faithful-arena: the positive witness
+; under the faithful write (the block the log holds at the extent is the real
+; block), every other hypothesis affirmed at the ground arena.
+(defthm plr-reseat-lz-witness
+  (implies (equal (fn-durable-octets 3 (nth 3 *plr-e*) 395) *plz-dict-block*)
+           (and (fn-arena-p *plr-arena*)
+                (< 0 (fn-arena-count *plr-arena*))
+                (equal (fn-lzr-lz-value *plz-dict* (fn-durable-octets 3 (nth 3 *plr-e*) 395) 750)
+                       (fn-arena-payload 0 *plr-arena*))
+                (equal (fn-arena-reseat-lz-extent 0 3 4096 (nth 2 *plr-e*) (nth 3 *plr-e*) 395 0 750
+                                                  *plz-dict* *plr-arena*)
+                       *plr-arena*)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-arena-reseat-lz-extent-keeps-a-faithful-arena)
+           :use ((:instance fn-arena-reseat-lz-extent-keeps-a-faithful-arena
+                            (fn-arena *plr-arena*) (h 0) (file 3) (eoff 4096)
+                            (elen (nth 2 *plr-e*)) (poff (nth 3 *plr-e*)) (plen 395) (trailer 0)
+                            (n 750) (dict *plz-dict*))
+                 (:instance fn-lzr-lz-value-of-decode
+                            (dict *plz-dict*) (c *plz-dict-block*) (n 750)
+                            (payload *plz-article*))))))
+
+; Without the value hypothesis: the value the block decodes to need not be
+; the handle's payload.
+(must-fail-checked
+ (defthm plr-reseat-lz-no-value
+   (implies (and (fn-arena-p fn-arena) (natp h) (< h (fn-arena-count fn-arena)))
+            (equal (fn-arena-reseat-lz-extent h file eoff elen poff plen trailer n dict fn-arena)
+                   fn-arena))
+   :hints (("Goal" :do-not-induct t))))
+
+; Ground: the other dictionary's value is not the article.
+(assert-event
+ (not (equal (fn-lzr-lz-value nil *plz-dict-block* 750) *plz-article*)))
+
+; -----------------------------------------------------------------------------
+; The replay's intern and the commit's reseat with compressed records.
+
+; The intern step: under the faithful place of the frame, the step with
+; compressed extents is the resident step (the witness is the keystone's
+; instance at the real frame, place and table).
+(defthm plr-intern-step-witness
+  (implies (equal (fn-durable-octets 3 (+ 4096 42) (len *plr-z1*)) *plr-z1*)
+           (and (fn-arena-p *plr-arena*)
+                (fn-arx-faithful-p (list *plr-z1*) (list (cons 3 *plr-pos*)))
+                (equal (fn-lzr-intern-step nil (list *plr-w*) (list *plr-z1*)
+                                           (list (cons 3 *plr-pos*)) *plr-dicts* *plr-arena*)
+                       (fn-srs-intern-step nil (list *plr-w*) *plr-arena*))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-lzr-intern-step-refines fn-lzr-intern-step
+                                      fn-srs-intern-step)
+           :use ((:instance fn-lzr-intern-step-refines
+                            (acc nil) (ws (list *plr-w*)) (zs (list *plr-z1*))
+                            (ps (list (cons 3 *plr-pos*))) (dicts *plr-dicts*)
+                            (fn-arena *plr-arena*))))))
+
+(must-fail-checked
+ (defthm plr-intern-step-no-faithful
+   (implies (fn-arena-p fn-arena)
+            (equal (fn-lzr-intern-step acc ws zs ps dicts fn-arena)
+                   (fn-srs-intern-step acc ws fn-arena)))
+   :hints (("Goal" :do-not-induct t))))
+
+; The commit's reseat: a fenced member (handle 0, file 3, the frame's place)
+; under the faithful write leaves the arena.
+(defthm plr-commit-reseats-witness
+  (implies (equal (fn-durable-octets 3 (+ 4096 42) (len *plr-z1*)) *plr-z1*)
+           (and (fn-arena-p *plr-arena*)
+                (fn-arx-commit-faithful-p (list (list 0 3 *plr-pos* *plr-z1*)))
+                (equal (fn-lzr-commit-reseats (list (list 0 3 *plr-pos* *plr-z1*)) *plr-dicts*
+                                              *plr-arena*)
+                       *plr-arena*)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-lzr-commit-reseats-keep-the-arena fn-lzr-commit-reseats)
+           :use ((:instance fn-lzr-commit-reseats-keep-the-arena
+                            (members (list (list 0 3 *plr-pos* *plr-z1*))) (dicts *plr-dicts*)
+                            (fn-arena *plr-arena*))))))
+
+(must-fail-checked
+ (defthm plr-commit-reseats-no-faithful
+   (implies (fn-arena-p fn-arena)
+            (equal (fn-lzr-commit-reseats members dicts fn-arena) fn-arena))
+   :hints (("Goal" :do-not-induct t))))
+
+; The host's realizer runs fn-lzr-lz-read: the real block reads as the
+; article; the block against the empty dictionary is refused by name.
+(assert-event
+ (and (equal (fn-lzr-lz-read *plz-dict* *plz-dict-block* 750) (list :ok *plz-article*))
+      (equal (fn-lzr-lz-read nil *plz-dict-block* 750) (list :refused :lz-decode))
+      (equal (fn-lzr-lz-read *plz-dict* *plz-dict-block* 749) (list :refused :lz-decode))))
+
+; The chunk expansion: a frame and a plain record expand; a frame under an
+; unknown dictionary makes the chunk :bad (the open refuses it).
+(assert-event
+ (and (equal (fn-lzr-expand-chunk *plr-dicts* (list *plr-z1* *plr-r*)) (list *plr-r* *plr-r*))
+      (equal (fn-lzr-expand-chunk (list (cons 0 nil)) (list *plr-z1*)) :bad)))
