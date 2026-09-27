@@ -114,8 +114,18 @@ Start and stop fn with the service manager:
 | stop | `systemctl stop fn` | `rcctl stop fn` |
 | is it running? | `systemctl status fn` | `rcctl check fn` |
 
-A stop is always clean: fn finishes its work, then exits. The service
-restarts fn only after a failure, never after a stop.
+A stop is always clean: fn finishes its work, then exits. On Linux the
+service restarts fn only after a failure, never after a stop.
+
+On OpenBSD, rc.d never restarts fn: after a crash (or `kill -9`),
+`rcctl check fn` says `fn(failed)` and the node stays down until you run
+`rcctl start fn`. At boot `rcctl enable fn` starts it. To have it started
+again within five minutes of a crash, add to root's crontab
+(`crontab -e`):
+
+```
+*/5 * * * * rcctl check fn >/dev/null || rcctl start fn >/dev/null
+```
 
 If fn fails to start five times in a minute, systemd stops trying. After
 that, every `restart` is quietly refused while looking like success. Run
@@ -292,7 +302,8 @@ fn operator CONFIG account list
    ```
 
    `--cafile` names your node's certificate file, when it is your own
-   (self-made) one. Add `--tls` and the port (`news.example.org:563`) for a
+   (self-made) one. A node on another port than 119 is named with it
+   (`news.example.org:11563`). Add `--tls` and the port (`news.example.org:563`) for a
    node that speaks TLS from the start. `redeemed: the account carol is
    ready` means it worked. A newsreader cannot do this step; a program can
    send `XREDEEM CODE LOGIN`, then `XREDEEM PASS PASSWORD`, over TLS.

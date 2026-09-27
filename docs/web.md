@@ -49,7 +49,11 @@ Open `/var/lib/fn-reader/reader.conf` in an editor. Change two lines:
   `:` and its TLS port. That is `563` if you added `tls_port = 563` to
   `fn.toml` ([how](install.md#reading-and-posting-from-another-machine)).
   Its plain port (the `--port` you gave `mission`, like `119`) works too: the
-  reader then switches to TLS itself.
+  reader then switches to TLS itself. A TLS port other than 563 (on OpenBSD,
+  where the node cannot use ports below 1024, the `tls_port` is one like
+  `11564`) needs the line `tls = yes` as well; without it the reader
+  speaks STARTTLS to that port, and making an account fails with
+  `refused redeem connection: the server closed or did not answer`.
 - `site =` the name your friends see at the top of every page.
 
 If your node's certificate is from Let's Encrypt (or another public
@@ -99,6 +103,25 @@ reader. It gets the certificate for your web name by itself.
    ```sh
    systemctl reload caddy
    ```
+
+   **On OpenBSD** (`pkg_add caddy`; start it with `rcctl enable caddy &&
+   rcctl start caddy`), Caddy runs without privileges. The package's
+   `/etc/caddy/Caddyfile` begins with a block of settings that make it
+   listen on this machine only, on ports 8080 and 8443. Keep that block
+   and add yours after it; replacing the whole file makes Caddy fail at
+   start (`caddy(failed)`: it may not use ports 80 and 443). Then remove
+   the block's `default_bind` line, so browsers can reach it, and send
+   ports 80 and 443 to it with `pf`, in `/etc/pf.conf` (then
+   `pfctl -f /etc/pf.conf`):
+
+   ```
+   pass in on egress inet proto tcp to port 80 rdr-to 127.0.0.1 port 8080
+   pass in on egress inet proto tcp to port 443 rdr-to 127.0.0.1 port 8443
+   ```
+
+   Tested on OpenBSD 7.9: Caddy with the package's block and a site block
+   served the reader over HTTPS on port 8443. The `pf` rules and Caddy's
+   own certificate from Let's Encrypt were not tested.
 
 3. Open `https://news.example.org/` in your browser. You see the sign-in
    page.

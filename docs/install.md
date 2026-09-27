@@ -183,6 +183,10 @@ service, and needs Python 3 and a web name. Install it with
   fn redeem news.example.org CODE carol --cafile cert.pem
   ```
 
+  A node on another port than 119 (every OpenBSD node: its service cannot
+  use a port below 1024) is named with its port:
+  `fn redeem news.example.org:11563 CODE carol --cafile cert.pem`.
+
   See [accounts](operator.md#accounts-and-invitation-codes).
 
 ## 4. Reinstalling
@@ -206,6 +210,18 @@ Export with the **old** release, before you remove it:
    rm -rf /opt/fn
    sh fn/install.sh
    ```
+
+   On OpenBSD, `/var/fn` is its own FFS1 partition, and `mv` refuses it
+   (`cannot rename a mount point`). Move what is in it instead, then
+   unpack the new release under `/usr/local/src` as in step 1:
+
+   ```sh
+   mkdir /var/fn.old && mv /var/fn/* /var/fn.old/
+   rm -rf /usr/local/fn /usr/local/src/fn
+   ```
+
+   Below, read `/var/fn` for `/var/lib/fn` and `/var/fn.old` for
+   `/var/lib/fn.old`.
 
 2. As the service account, write the settings again (or copy `fn.toml`,
    `tls/` and `log/` from the old folder: without `log/` the service stops
