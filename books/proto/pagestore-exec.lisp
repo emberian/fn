@@ -664,7 +664,7 @@
   (implies (pgs-x-inv s b n pgs-mem) (and (natp b) (natp n)))
   :rule-classes :forward-chaining)
 
-(defthm pgs-ptab-run-pages-posp
+(defthm pgs-x-ptab-run-pages-posp
   (and (integerp (pgs-ptab-run-pages n)) (<= 1 (pgs-ptab-run-pages n)))
   :rule-classes ((:type-prescription :corollary (integerp (pgs-ptab-run-pages n)))
                  (:linear :corollary (<= 1 (pgs-ptab-run-pages n)))))
@@ -978,7 +978,7 @@
 
 (in-theory (disable pgs-x-mk-entry))
 
-(defthm pgs-nfix-when-natp
+(defthm pgs-x-nfix-when-natp
   (implies (natp n) (equal (nfix n) n)))
 
 (defun pgs-x-plan-entries (sel base lpages fresh digests txid n pgs-mem)
@@ -1311,15 +1311,15 @@
   :hints (("Goal" :induct (pgs-run-ind i k))))
 
 (local
- (defun pgs-chunk-ind (tp i)
-   (if (zp tp) (list tp i) (pgs-chunk-ind (1- tp) (+ 341 i)))))
+ (defun pgs-x-chunk-ind (tp i)
+   (if (zp tp) (list tp i) (pgs-x-chunk-ind (1- tp) (+ 341 i)))))
 
 (defthm pgs-nth-chunk-of-tab-from
   ; Table page TP of the decoded view is entries 341 TP ... of it.
   (implies (and (natp i) (natp n) (natp tp) (< (+ i (* 341 tp)) n))
            (equal (nth tp (pgs-chunk (pgs-x-tab-from s b i n pgs-mem)))
                   (pgs-x-tab-from s b (+ i (* 341 tp)) (min n (+ i (* 341 tp) 341)) pgs-mem)))
-  :hints (("Goal" :induct (pgs-chunk-ind tp i)
+  :hints (("Goal" :induct (pgs-x-chunk-ind tp i)
                   :expand ((pgs-chunk (pgs-x-tab-from s b i n pgs-mem))))))
 
 (defthm pgs-x-eaddr-2-page-start
@@ -2036,10 +2036,10 @@
   (declare (xargs :stobjs pgs-mem :guard (natp k)))
   (if (< (pgs-m-length pgs-mem) k) (pgs-x-resize 1 k pgs-mem) pgs-mem))
 
-(defthm pgs-nat-listp-of-touched
+(defthm pgs-x-nat-listp-of-touched
   (nat-listp (pgs-touched lpages prev)))
 
-(defthm pgs-dir-run-pages-posp
+(defthm pgs-x-dir-run-pages-posp
   (and (integerp (pgs-dir-run-pages n)) (<= 1 (pgs-dir-run-pages n)))
   :rule-classes ((:type-prescription :corollary (integerp (pgs-dir-run-pages n)))
                  (:linear :corollary (<= 1 (pgs-dir-run-pages n)))))
