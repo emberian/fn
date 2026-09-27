@@ -4360,7 +4360,7 @@
       "id": "SCN-164",
       "title": "slrn and pan against a scratch native owner over TLS: NEWGROUPS lists a group created live, slrn --create subscribes from LIST SUBSCRIPTIONS, slrn reads with XOVER and marks a cross-post read in its other group, on the production and developer images",
       "milestone": "M6",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "NNT-052"
       ],

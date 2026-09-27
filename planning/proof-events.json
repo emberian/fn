@@ -7565,15 +7565,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-rcompat-newgroups-unfolds"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-rcompat-subscription-names-member"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-rcompat-subscription-names-keep-the-configured-order"
         },
         {
           "kind": "theorem",

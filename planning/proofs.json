@@ -7992,7 +7992,7 @@
         "PRF-144"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/bp-native-app-fast.lisp",
         "books/owner-store-indexed.lisp",
@@ -8045,9 +8045,7 @@
       "progress_note": "reader-compat (2026-09-27): books, teeth, native slrn/pan rows; batch certification pending.",
       "events": [
         "fn-rcompat-newgroups-names-member",
-        "fn-rcompat-newgroups-unfolds",
         "fn-rcompat-subscription-names-member",
-        "fn-rcompat-subscription-names-keep-the-configured-order",
         "fn-rcompat-served-payload-inserts-one-line",
         "fn-rcompat-hdr-value-is-the-field-value",
         "fn-rcompat-article-reply-session",

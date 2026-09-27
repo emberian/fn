@@ -568,7 +568,7 @@
 
 ; The session every arm leaves: the command's own for ARTICLE and HEAD (the
 ; generic retrieval's), and the given session for every other arm.
-(defthm fn-rcompat-reply-session
+(defthmd fn-rcompat-reply-session
   (implies (fn-rcompat-reply session archive index env keyword args)
            (equal (fn-nntp-result-session
                    (fn-rcompat-reply session archive index env keyword args))
