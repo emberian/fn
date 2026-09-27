@@ -7292,6 +7292,23 @@
           "name": "fn-bphh-octets-at-p-is-equal-payload"
         }
       ]
+    },
+    {
+      "id": "PRF-218",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-nntp-stuff-lines-iter-is-stuff-lines"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-body-octets-iter-is-body-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wire-list-length-onto-is-list-length"
+        }
+      ]
     }
   ]
 }

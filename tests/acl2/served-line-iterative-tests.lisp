@@ -140,3 +140,43 @@
  (defthm sli-t-mut-join-is-body-octets
    (equal (fn-ag-rev-onto (sli-t-mut-join-onto *sli-t-post-lines* nil) nil)
           (fn-post-body-octets *sli-t-post-lines*))))
+
+; -----------------------------------------------------------------------------
+; fn-wire-list-length-onto-is-list-length (books/wire.lisp): the length
+; fn-wire-after-line charges each article line against the body budget
+; (fn-wire-line-cost), on the served POST (fn-owner-chunk-span ->
+; fn-wire-feed-span -> fn-wire-feed-byte -> fn-wire-after-line).
+
+; Reachable witness.
+(assert-event (equal (fn-wire-list-length-onto '(76 76 76) 0) 3))
+(assert-event (equal (fn-wire-list-length '(76 76 76)) 3))
+(assert-event (eq (symbol-class 'fn-wire-list-length (w state)) :common-lisp-compliant))
+
+; Served size, composed: an article-mode wire state whose body budget admits
+; one line of 20,000,000 octets takes it as one body line and charges it
+; 20,000,002 (the line and its CRLF).  The recursion this replaced took a
+; frame per octet of the line: an article of one 4 MiB line stopped the
+; owner at 1 MiB of stack (native r1).
+(defconst *sli-t-article-state*
+  (fn-wire-make-state :article nil 0 nil nil 0 20000001 20000002))
+(assert-event
+ (let ((r (fn-wire-after-line *sli-t-article-state*
+                              (make-list 20000000 :initial-element 76))))
+   (and (null (fn-wire-result-events r))
+        (equal (fn-wire-state-body-size (fn-wire-result-state r)) 20000002)
+        (equal (len (car (fn-wire-state-body-rev (fn-wire-result-state r))))
+               20000000))))
+; One octet less of budget and the same line closes the wire (over limit).
+(assert-event
+ (consp (fn-wire-result-events
+         (fn-wire-after-line (fn-wire-make-state :article nil 0 nil nil 0 20000001 20000001)
+                             (make-list 20000000 :initial-element 76)))))
+
+; MUTATION (labelled): the loop started at one (the CRLF's charge folded
+; into the count) is not the length.
+(assert-event (not (equal (fn-wire-list-length-onto '(76 76 76) 1)
+                          (fn-wire-list-length '(76 76 76)))))
+(must-fail
+ (defthm sli-t-mut-length-from-one
+   (equal (fn-wire-list-length-onto '(76 76 76) 1)
+          (fn-wire-list-length '(76 76 76)))))

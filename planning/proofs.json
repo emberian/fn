@@ -7784,6 +7784,32 @@
         "fn-bphh-request-article-matches-is-wire",
         "fn-bphh-octets-at-p-is-equal-payload"
       ]
+    },
+    {
+      "id": "PRF-218",
+      "title": "The served path's per-line and per-octet-of-line folds run as loops: serving and posting an article uses a control stack independent of its line count and line length",
+      "statement": "Three keystones, each with no hypotheses, each the :exec of an mbe whose :logic is the unchanged recursive definition, so the guard proof makes the loop the executable the host runs. fn-nntp-stuff-lines-iter-is-stuff-lines (books/nntp-session.lisp): (fn-nntp-stuff-lines-iter lines) = (fn-nntp-stuff-lines lines), the dot-stuffed CRLF block of every multi-line reply (ARTICLE, HEAD, BODY, OVER, HDR, LIST), built by a tail-recursive accumulator (fn-nntp-stuff-lines-onto) turned round once. fn-post-body-octets-iter-is-body-octets (books/nntp-post.lisp): (fn-post-body-octets-iter lines) = (fn-post-body-octets lines), the POST's article reassembled from the wire's (:article lines) event. fn-wire-list-length-onto-is-list-length (books/wire.lisp): (fn-wire-list-length-onto xs 0) = (fn-wire-list-length xs), the length fn-wire-after-line charges each article line (fn-wire-line-cost). The recursions they replaced took one control-stack frame per article line (stuff-lines, post-body-octets) or per octet of one line (fn-inj-append inside post-body-octets, fn-wire-list-length); the profile admits a line as long as the article (fn-wire-article-line-limit), so each was a remote stop. Host chain: host/native/owner.lisp fnn-owner-handle-chunk -> host/owner-host.lisp fn-owner-chunk-span -> fn-scar-ocfg-read-span, whose wire fold (fn-wire-feed-span -> fn-wire-feed-byte -> fn-wire-after-line) calls fn-wire-line-cost, whose served POST (fn-nntp-post-step-pinned -> fn-nntp-post-step) calls fn-post-body-octets, and whose retrievals (fn-nntp-article-response) call fn-nntp-stuff-lines. Scope: a measured constant, not a theorem about frames: the native witness posts, serves, reopens and serves articles of 2,000,000 lines and of one 4 MiB line at 1 MiB of control stack per thread on both images.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-001"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/nntp-session.lisp",
+        "books/nntp-post.lisp",
+        "books/wire.lisp",
+        "tests/acl2/served-line-iterative-tests.lisp",
+        "tests/test_native_served_line_stack.py",
+        "planning/evidence/served-line-iterative-2026-09-26.md"
+      ],
+      "progress_note": "Lane served-line-iterative (2026-09-26; image-floor packet 2, PKT-481's class, D27). Cause by persvati REPL backtrace (FN-POST-BODY-OCTETS frames to exhaustion on 3,000,000 lines) and by the native witness (one 4 MiB line: Control stack exhausted in fn-owner-chunk-span until fn-wire-list-length was a loop). Teeth: tests/acl2/served-line-iterative-tests.lisp (reachable witnesses, the composed BODY reply, served-size witnesses of 2,100,000 lines and of one 20,000,000-octet line through the compiled executables, labelled MUTATION witnesses refuted on ground instances).",
+      "events": [
+        "fn-nntp-stuff-lines-iter-is-stuff-lines",
+        "fn-post-body-octets-iter-is-body-octets",
+        "fn-wire-list-length-onto-is-list-length"
+      ]
     }
   ]
 }
