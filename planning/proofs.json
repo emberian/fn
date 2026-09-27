@@ -7912,7 +7912,7 @@
         "specs/bp-node-machine.md",
         "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
-      "progress_note": "Lane bp-fragments-10mib (2026-09-27): certified on hbox with certify_books.py --incremental (2 jobs); the farm manifest is cited in the evidence record."
+      "progress_note": "Lane bp-fragments-10mib (2026-09-27): farm r1 run-20260927T010932Z-27e6 passed (manifest planning/evidence/manifests/certify-20260927T011018Z-3953584.json) and r2 run-20260927T020859Z-118b (certify-20260927T021005Z-134473.json); native v1/v2 tests.test_bp_fragment_node_native print the refused handoff by name."
     },
     {
       "id": "PRF-225",
@@ -7935,7 +7935,7 @@
         "tests/acl2/bp-primary-tests.lisp",
         "planning/evidence/bp-fragments-10mib-2026-09-27.md"
       ],
-      "progress_note": "Lane bp-fragments-10mib (2026-09-27): admitted in the hbox REPL; the farm manifest is cited in the evidence record."
+      "progress_note": "Lane bp-fragments-10mib (2026-09-27): farm r2 run-20260927T020859Z-118b passed 189/189 (manifest planning/evidence/manifests/certify-20260927T021005Z-134473.json; bp-primary 9.5 s at 2 jobs). SCN-077 reassembly and handoff 280.3 s -> 117.2 s (native v2)."
     }
   ]
 }
