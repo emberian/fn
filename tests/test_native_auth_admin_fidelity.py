@@ -47,6 +47,9 @@ def raw_prefix() -> str:
     return """(in-package \"ACL2\")
 (ld \"books/native-auth-admin.lisp\" :ld-error-action :error)
 (ld \"host/native-auth-admin-host.lisp\" :ld-error-action :error)
+; host/native/io.lisp's exit codes are ACL2's (fn-outcome-code, PRF-143),
+; read when it loads: host/native/build.lisp includes the book first.
+(include-book \"books/outcome-class\")
 (defttag :fn-native-auth-admin-fidelity)
 (progn!
  (set-raw-mode t)

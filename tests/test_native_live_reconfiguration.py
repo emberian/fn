@@ -92,7 +92,8 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         self.assertIn("(fn-native-admin-plan-deltas-over plan "
                       "(fn-cfg-peers (fn-cfg-value (fn-owner-config state))))",
                       " ".join(body.split()))
-        self.assertIn("(fn-owner-reconfigure-deltas id deltas state)", body)
+        # (the arena threaded through since the records flip)
+        self.assertIn("(fn-owner-reconfigure-deltas id deltas fn-arena state)", body)
         # No delta constructor and no octet/string conversion in the bridge:
         # the labels' type is decided once, in the book.
         for forbidden in ("fn-cfg-create-group", "fn-cfg-remove-group",
@@ -125,15 +126,33 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         # Both Store opens extend a checkpoint once and open from it
         # (fn-sco-store-open-of-extended-capture: the full open
         # fn-cpo-open-observed); the owner installs from that open.
-        self.assertIn("(fn-sco-extend (fn-sco-capture config-records nil) config-records records)", store)
+        # Over the held rows since the records flip: fn-rii-sco-extend, EQUAL
+        # to fn-sco-extend (books/replay-identity-index.lisp
+        # fn-rii-sco-extend-is-sco-extend).
+        self.assertIn("(fn-rii-sco-extend (fn-sco-capture config-records nil) config-records rows)", store)
+        self.assertIn("(defthm fn-rii-sco-extend-is-sco-extend",
+                      (ROOT / "books" / "replay-identity-index.lisp").read_text(encoding="ascii"))
         # Directly or through the book wrapper the host calls in its place
-        # (fn-sopc-classified-open since 2e25e21b).
+        # (fn-sopc-classified-open since 2e25e21b; since replay-identity the
+        # host calls fn-rii-classified-open, EQUAL to it by the keystone
+        # fn-rii-classified-open-is-classified-open, and it calls
+        # fn-sco-store-open).
         self.assertTrue(native_cuts.calls_through_book(
             native_cuts.host_function(store, "fn-store-sn-open-extended"),
-            "fn-sco-store-open", "e config-records frontier"))
+            "fn-rii-sco-store-open", "e config-records frontier"))
+        self.assertIn("(defthm fn-rii-classified-open-is-classified-open",
+                      (ROOT / "books" / "replay-identity-index.lisp").read_text(encoding="ascii"))
+        self.assertIn("(fn-sco-store-open e configs frontier)",
+                      native_cuts.book_function("fn-sopc-classified-open")[1])
         self.assertIn("(fn-ock-install (cadr opened) (caddr opened) max-conns)", owner)
         publish = (ROOT / "books" / "config-owner-publish.lisp").read_text(encoding="ascii")
-        self.assertIn("(fn-ocl-publish (fn-owner-ocfg state) generation", owner)
+        # The carried completion since PKT-827 (PRF-274): fn-oclc-publish,
+        # fn-ocl-publish under the owner's invariant (fn-oclc-publish-is-publish)
+        # and carrying it (fn-oclc-publish-carries-ocl-relation).
+        self.assertIn("(fn-oclc-publish (fn-owner-ocfg state) generation", owner)
+        carried = (ROOT / "books" / "config-owner-carried.lisp").read_text(encoding="ascii")
+        for name in ("fn-oclc-publish-is-publish", "fn-oclc-publish-carries-ocl-relation"):
+            self.assertIn("(defthm " + name, carried)
         self.assertIn("(fn-ocl-complete oc)", publish)
         self.assertIn("(fn-ocl-request-deltas kind name)", owner)
         self.assertNotIn("(defun fn-owner-config-deltas", owner)
@@ -166,6 +185,11 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         self.assertNotIn("(fnn-owner-action 'fn-owner-open)", body)
         bridge = (ROOT / "host" / "owner-host.lisp").read_text(encoding="ascii")
         open_start = bridge.index("(defun fn-owner-open (state)")
+        open_body = bridge[open_start:bridge.index("(defun", open_start + 10)]
+        # Since PKT-828 fn-owner-open runs fn-owner-open-at at the reader
+        # view and puts the working view back; the id is answered there.
+        self.assertIn("(fn-owner-open-at state)", open_body)
+        open_start = bridge.index("(defun fn-owner-open-at (state)")
         open_body = bridge[open_start:bridge.index("(defun", open_start + 10)]
         self.assertIn("(value id)", open_body)
 

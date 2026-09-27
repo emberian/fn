@@ -64,6 +64,11 @@ ROOT = Path(__file__).resolve().parent.parent
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
 IMAGE = Path(IMAGE_TEXT) if IMAGE_TEXT else None
 READY = bool(IMAGE is not None and IMAGE.is_file() and os.access(IMAGE, os.X_OK))
+# FN_PULL_TEST_KILL is a developer-image selector (host/native/pull-service.lisp
+# through fnn-developer-selector); a production image refuses to start with
+# it by name, so an owner started with a cut runs the developer image.
+DEVELOPER_TEXT = os.environ.get("FN_NATIVE_DEVELOPER_HOST")
+DEVELOPER = Path(DEVELOPER_TEXT) if DEVELOPER_TEXT else None
 INN_SRC = os.environ.get("FN_INN_SRC")
 INN_READY = bool(INN_SRC and (Path(INN_SRC) / "bin" / "innd").is_file())
 INTERVAL = "2"
@@ -370,9 +375,14 @@ class NativePeerPullTests(unittest.TestCase):
                       name, INTERVAL])
 
     def start(self, node):
+        image = IMAGE
+        if "FN_PULL_TEST_KILL" in self.env:
+            if DEVELOPER is None or not os.access(DEVELOPER, os.X_OK):
+                self.skipTest("set FN_NATIVE_DEVELOPER_HOST: the FN_PULL_TEST_KILL cuts")
+            image = DEVELOPER
         err = open(node["root"] / "stderr.log", "ab")
         process = subprocess.Popen(
-            [str(IMAGE), "--fn", "operator", str(node["config"]), "run"],
+            [str(image), "--fn", "operator", str(node["config"]), "run"],
             cwd=ROOT, env=self.env, stdout=subprocess.PIPE, stderr=err)
         self.processes.append(process)
         node["process"] = process
@@ -562,6 +572,8 @@ class NativePeerPullTests(unittest.TestCase):
                 self.env["FN_PULL_TEST_KILL"] = label
                 try:
                     self.start(b)
+                except unittest.SkipTest:
+                    raise
                 except Exception:  # died before announcing LISTENING
                     pass
                 finally:
@@ -800,6 +812,8 @@ class NativePeerPullTests(unittest.TestCase):
                 self.env["FN_PULL_TEST_KILL"] = label
                 try:
                     self.start(b)
+                except unittest.SkipTest:
+                    raise
                 except Exception:  # died before announcing LISTENING
                     pass
                 finally:
@@ -893,6 +907,8 @@ class NativePeerPullTests(unittest.TestCase):
             self.env["FN_PULL_TEST_KILL"] = cut
             try:
                 self.start(b)
+            except unittest.SkipTest:
+                raise
             except Exception:
                 pass
             finally:
@@ -951,6 +967,8 @@ class NativePeerPullTests(unittest.TestCase):
             self.env["FN_PULL_TEST_KILL"] = cut
             try:
                 self.start(b)
+            except unittest.SkipTest:
+                raise
             except Exception:
                 pass
             finally:
