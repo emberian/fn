@@ -180,3 +180,96 @@
    (equal (fn-nntp-listing-server
            (fn-inj-config-listing (fn-oag-post-config cfg max-octets)))
           (fn-record-string-octets (fn-oag-identity cfg)))))
+
+; -----------------------------------------------------------------------------
+; Indexed served lines over a reclaimed article (audit packets G5-5 and G5-6,
+; lane audit-fixes).  C is a third article in fn.one at number 5 whose
+; handle (2) holds a reclaim tombstone: the FN-RCL1 magic padded to the fixed
+; tombstone length.  The number index and trie are the ones the owner's
+; refresh builds from the article list (fn-gidx-build, fn-midx-build;
+; group-number-index-tests shows refresh = build).
+(defconst *xrt-tomb-octets* (append *fn-rcl-magic* (make-list 81 :initial-element 32)))
+(defconst *xrt-c*
+  (fn-make-article "<xrt-c@example.invalid>" 2
+                   '("fn.one") (list (cons "fn.one" 5))
+                   t 841000000))
+(defconst *xrt-idx-articles* (list *xrt-c* *xrt-a* *xrt-b*))
+(defconst *xrt-idx-arena*
+  (list (fn-xrt-payload "<xrt-a@example.invalid>" "A")
+        (fn-xrt-payload "<xrt-b@example.invalid>" "B")
+        *xrt-tomb-octets*))
+(defconst *xrt-trie* (fn-midx-build *xrt-idx-articles*))
+(defconst *xrt-buckets* (fn-gidx-build *xrt-idx-articles*))
+(defconst *xrt-nidx* (fn-gidx-bucket-numbers "fn.one" *xrt-buckets*))
+(defconst *xrt-entries* (fn-gidx-bucket "fn.one" *xrt-buckets*))
+(bpr-lift fn-nntp-article-tombstonep 1)
+(bpr-lift fn-nov-served-lines-numbered 4)
+(bpr-lift fn-nov-lines-for-numbers-indexed 4)
+(bpr-lift fn-nntp-article-bytes 1)
+(assert-event (fn-rcl-tombstonep *xrt-tomb-octets*))
+
+; fn-nov-served-lines-numbered-has-the-article-line (PRF-206).  Positive:
+; number 2 (A, live) in (2 5 7), with and without a server name: every
+; hypothesis and the conclusion.
+(defun xrt-has-line-hyps (n numbers nidx trie payloads)
+  (declare (xargs :verify-guards nil))
+  (let ((article (fn-gidx-nidx-number-article n nidx trie)))
+    (and (member-equal n numbers)
+         (consp article)
+         (not (in-arena-fn-nntp-article-tombstonep payloads article))
+         (fn-nov-okp (in-arena-fn-nov-overview payloads article)))))
+(defun xrt-has-line-concl (n numbers nidx trie server payloads)
+  (declare (xargs :verify-guards nil))
+  (let ((article (fn-gidx-nidx-number-article n nidx trie)))
+    (member-equal (fn-nov-served-line n (in-arena-fn-nov-overview payloads article)
+                                      server article)
+                  (in-arena-fn-nov-served-lines-numbered payloads numbers nidx trie server))))
+(assert-event (and (xrt-has-line-hyps 2 '(2 5 7) *xrt-nidx* *xrt-trie* *xrt-idx-arena*)
+                   (xrt-has-line-concl 2 '(2 5 7) *xrt-nidx* *xrt-trie* *xrt-server* *xrt-idx-arena*)
+                   (xrt-has-line-concl 2 '(2 5 7) *xrt-nidx* *xrt-trie* nil *xrt-idx-arena*)))
+; Removal of (member-equal n numbers): 2 is live and has an overview, but the
+; range (5 7) does not ask for it and its line is not served.
+(assert-event
+ (let ((article (fn-gidx-nidx-number-article 2 *xrt-nidx* *xrt-trie*)))
+   (and (not (member-equal 2 '(5 7)))
+        (consp article)
+        (not (in-arena-fn-nntp-article-tombstonep *xrt-idx-arena* article))
+        (fn-nov-okp (in-arena-fn-nov-overview *xrt-idx-arena* article))
+        (not (xrt-has-line-concl 2 '(5 7) *xrt-nidx* *xrt-trie* *xrt-server* *xrt-idx-arena*)))))
+; The tombstone and (consp article) hypotheses have no separate removal
+; witness: a tombstone's first octet is NUL, and the overview of C's bytes is
+; (:ERROR) (evaluated below), so the okp hypothesis fails with it; an
+; unindexed number (7) has no article, and the overview of NIL is not ok
+; either.  Both hypotheses fail only together with okp on every state the
+; parser admits; the weakened theorem was not attempted.
+(assert-event
+ (let ((c (fn-gidx-nidx-number-article 5 *xrt-nidx* *xrt-trie*)))
+   (and (member-equal 5 '(2 5 7))
+        (consp c)
+        (in-arena-fn-nntp-article-tombstonep *xrt-idx-arena* c)
+        (equal (in-arena-fn-nov-overview *xrt-idx-arena* c) '(:error))
+        (not (fn-gidx-nidx-number-article 7 *xrt-nidx* *xrt-trie*))
+        (not (fn-nov-okp (in-arena-fn-nov-overview *xrt-idx-arena* nil))))))
+
+; fn-nov-lines-indexed-skip-a-reclaimed-article (PRF-088), the scan the served
+; OVER runs.  Positive: C (number 5) is a tombstone, and the lines over
+; (2 5 7) are the lines over (2 7).
+(assert-event
+ (and (fn-rcl-tombstonep
+       (in-arena-fn-nntp-article-bytes
+        *xrt-idx-arena* (fn-gidx-entry-number-article "fn.one" 5 *xrt-entries* *xrt-trie*)))
+      (equal (in-arena-fn-nov-lines-for-numbers-indexed *xrt-idx-arena* "fn.one" '(2 5 7) *xrt-entries* *xrt-trie*)
+             (in-arena-fn-nov-lines-for-numbers-indexed *xrt-idx-arena* "fn.one" (remove-equal 5 '(2 5 7))
+                                                        *xrt-entries* *xrt-trie*))
+      (equal (len (in-arena-fn-nov-lines-for-numbers-indexed *xrt-idx-arena* "fn.one" '(2 5 7)
+                                                             *xrt-entries* *xrt-trie*))
+             1)))
+; Removal of the tombstone hypothesis: A (number 2) is live, and removing it
+; changes the lines.
+(assert-event
+ (and (not (fn-rcl-tombstonep
+            (in-arena-fn-nntp-article-bytes
+             *xrt-idx-arena* (fn-gidx-entry-number-article "fn.one" 2 *xrt-entries* *xrt-trie*))))
+      (not (equal (in-arena-fn-nov-lines-for-numbers-indexed *xrt-idx-arena* "fn.one" '(2 5 7) *xrt-entries* *xrt-trie*)
+                  (in-arena-fn-nov-lines-for-numbers-indexed *xrt-idx-arena* "fn.one" (remove-equal 2 '(2 5 7))
+                                                             *xrt-entries* *xrt-trie*)))))
