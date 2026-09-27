@@ -65,18 +65,53 @@
 ; well-formed line sequence (a bare CR, a bare LF, a NUL, or an unterminated
 ; tail): `fn-nntp-crlf-lines-aux' with its accumulators replaced by the one
 ; bit it decides on at the end.
-(defun fn-hf-crlf-count (bytes inline)
-  (declare (xargs :guard t))
+;
+; The executable is a loop (D27; lane line-stack, 2026-09-27): the count
+; rides in ACC and every step is a tail call.  The recursion it replaces
+; took one control-stack frame per LINE of the article at every intern (the
+; committer's `fn-cat-intern'): a POST of 2,000,000 lines exhausted a 1 MiB
+; stack and stopped the owner (tests.test_native_served_line_stack).
+(defun fn-hf-crlf-count-onto (bytes inline acc)
+  (declare (xargs :guard (natp acc)))
   (if (consp bytes)
       (if (eql (car bytes) 13)
           (if (and (consp (cdr bytes)) (eql (car (cdr bytes)) 10))
-              (let ((r (fn-hf-crlf-count (cdr (cdr bytes)) nil)))
-                (if r (+ 1 r) nil))
+              (fn-hf-crlf-count-onto (cdr (cdr bytes)) nil (+ 1 acc))
             nil)
         (if (or (eql (car bytes) 10) (eql (car bytes) 0))
             nil
-          (fn-hf-crlf-count (cdr bytes) t)))
-    (if inline nil 0)))
+          (fn-hf-crlf-count-onto (cdr bytes) t acc)))
+    (if inline nil acc)))
+
+(defun fn-hf-crlf-count (bytes inline)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp bytes)
+           (if (eql (car bytes) 13)
+               (if (and (consp (cdr bytes)) (eql (car (cdr bytes)) 10))
+                   (let ((r (fn-hf-crlf-count (cdr (cdr bytes)) nil)))
+                     (if r (+ 1 r) nil))
+                 nil)
+             (if (or (eql (car bytes) 10) (eql (car bytes) 0))
+                 nil
+               (fn-hf-crlf-count (cdr bytes) t)))
+         (if inline nil 0))
+       :exec (fn-hf-crlf-count-onto bytes inline 0)))
+
+(local
+ (defthm fn-hf-crlf-count-onto-adds
+   (implies (acl2-numberp acc)
+            (equal (fn-hf-crlf-count-onto bytes inline acc)
+                   (let ((r (fn-hf-crlf-count bytes inline)))
+                     (if r (+ acc r) nil))))))
+
+;  KEYSTONE (D27, constant stack at the intern).  The loop the host runs is
+; the count the specification defines, on every argument.
+(defthm fn-hf-crlf-count-onto-is-crlf-count
+  (equal (fn-hf-crlf-count-onto bytes inline 0)
+         (fn-hf-crlf-count bytes inline)))
+
+(verify-guards fn-hf-crlf-count)
 
 (defthm fn-hf-split-index-type
   (implies (natp i)
@@ -343,6 +378,6 @@
   :hints (("Goal" :in-theory (enable fn-held-wire fn-cat-intern fn-cat-intern-list
                                      fn-arena-seal-buffer fn-arena-seal-list))))
 
-(in-theory (disable fn-hf-split-index fn-hf-crlf-count fn-hf-body-lines-of
+(in-theory (disable fn-hf-split-index fn-hf-crlf-count-onto fn-hf-crlf-count fn-hf-body-lines-of
                     fn-held-facts-of fn-held-context-of fn-held-wire
                     fn-held-wire-of fn-cat-intern-list fn-cat-intern))

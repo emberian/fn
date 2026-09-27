@@ -916,7 +916,7 @@ which answers nothing on a production image.
 | `FN_NATIVE_OWNER_TEST_PAUSE_BEFORE_LISTEN` | any value | the owner holds the recovered Store and waits for SIGTERM before its control socket and listener start (`health` reads `starting`) |
 | `FN_NATIVE_OWNER_TEST_BARRIER_MS` | decimal milliseconds | a sleep before each batch's barrier (`fnn-owner-commit-sync`), holding a batch in flight for the scheduler's native cases |
 | `FN_NATIVE_OWNER_TEST_PIPELINE_TRACE` | any value | one stderr line per START (`start: seal=S bmax=N members=K`) and per batch prepared behind a barrier (`pipeline: K members prepared behind the barrier`) |
-| `FN_NATIVE_FAULT_BACKTRACE` | any value | a diagnostic, not a fault: a serious condition other than a store error inside an owner action (`fnn-owner-shared-action-locked`) prints `fault backtrace: CONDITION` and 80 frames to stderr where it is signalled, before the handler unwinds it into exit 4 |
+| `FN_NATIVE_FAULT_BACKTRACE` | any value | a diagnostic, not a fault: a serious condition other than a store error inside an owner action (`fnn-owner-shared-action-locked`) prints `fault backtrace: CONDITION` and 80 frames to stderr where it is signalled, before the handler unwinds it into exit 4; a control-stack exhaustion on any thread prints `fault backtrace (thread NAME): control stack exhausted` and every frame as run-length rows `frames FUNCTION xDEPTH`, innermost first (a per-line recursion is one deep row; the rows under it are its callers) |
 | `store ROOT post ... FAULT ...` | one of the four `+fnn-cli-faults+` names | the same four store faults as `FN_NATIVE_CONTROL_FAULT`, for one `store post` |
 
 `FN_NATIVE_FAULT_BACKTRACE` changes no outcome: the fence, the exit code and
