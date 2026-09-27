@@ -9396,6 +9396,21 @@
           "name": "fn-mvb-plan-unfolds"
         }
       ]
+    },
+    {
+      "id": "PRF-257",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-store-existing-action-is-pb-over-alpha",
+          "pending_subject": "Subject fn-store-existing-action (books/store-intern.lisp); the host line (host/store-node-host.lisp fn-store-sn-existing-action, host/owner-host.lisp via fn-pidx-existing-action) lands with flip-L6. Teeth: tests/acl2/store-existing-alpha-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-store-existing-action-refines-byte-identity-over-alpha",
+          "pending_subject": "Subject fn-store-existing-action (books/store-intern.lisp); the host line (host/store-node-host.lisp fn-store-sn-existing-action, host/owner-host.lisp via fn-pidx-existing-action) lands with flip-L6. Teeth: tests/acl2/store-existing-alpha-tests.lisp."
+        }
+      ]
     }
   ]
 }

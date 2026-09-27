@@ -9449,6 +9449,31 @@
         "fn-mvb-withdraw-makes-the-node-authorize-exactly-its-target",
         "fn-mvb-plan-unfolds"
       ]
+    },
+    {
+      "id": "PRF-257",
+      "title": "After the records flip, the store's duplicate verdict is D25's source-keyed decision over alpha (the held rows' bytes read through the arena)",
+      "statement": "Subject fn-store-existing-action (books/store-intern.lisp), the entry flip-L6 routes host/store-node-host.lisp fn-store-sn-existing-action and the owner's POST duplicate test (fn-pidx-existing-action, fn-pidx-existing-action-is-store-existing-action) to; on dev at batch AV the host still calls the pre-flip forms, so the host line lands with flip-L6. fn-store-existing-action-is-pb-over-alpha (books/store-existing-alpha.lisp, KEYSTONE): for a string Message-ID whose held bytes (fn-handle-bytes of the found article's payload handle) are no tombstone, the entry equals fn-pb-action-over of the store's acceptance articles with each payload replaced by its bytes (fn-sn-alpha-articles through fn-articles-wire-of), i.e. the answer fn-pb-existing-action gave when the store retained bytes. fn-store-existing-action-refines-byte-identity-over-alpha (KEYSTONE): the entry is non-nil at exactly the Message-IDs the byte-identity decision over alpha answers, and where the held bytes are no tombstone a byte-identical resend with the same groups is :duplicate. fn-sn-existing-action-is-action-over-by-definition and fn-pb-existing-action-is-action-over-by-definition name the store forms. A tombstone's resend is decided by digest (PRF-117, fn-rcl-same-as-tombstonep). Teeth: tests/acl2/store-existing-alpha-tests.lisp (a reachable witness; per hypothesis a separating positive and a must-fail; the live-store regression: comparing offered octets with the handle answered wrongly). Id assigned by batch AV (flip-L8 took none).",
+      "milestone": "M3",
+      "requirements": [
+        "NNT-020"
+      ],
+      "depends_on": [
+        "PRF-117"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-existing-alpha.lisp",
+        "tests/acl2/store-existing-alpha-tests.lisp",
+        "planning/evidence/flip-L8-2026-09-27.md"
+      ],
+      "events": [
+        "fn-store-existing-action-is-pb-over-alpha",
+        "fn-store-existing-action-refines-byte-identity-over-alpha",
+        "fn-sn-existing-action-is-action-over-by-definition",
+        "fn-pb-existing-action-is-action-over-by-definition"
+      ]
     }
   ]
 }
