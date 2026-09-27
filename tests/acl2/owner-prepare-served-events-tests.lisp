@@ -191,11 +191,11 @@
 (assert-event (equal (lgt-phase (fn-psrv-prepare-identity *pse-k2-reserved* *pse-crow*))
                      :record-staged))
 (assert-event (fn-lgoc-invariantp (fn-psrv-prepare-identity *pse-k2-reserved* *pse-crow*)))
-; FINDING (lane host-decisions): the plain composite -- the value
-; fn-owner-prepare-identity admits (fn-stxa-p) and fn-pcb-carried-event /
-; fn-pa-authorized-event return -- is not staged: fn-ccar-sn-prepare-identity
-; admits a composite only as the row (fn-hstxa-p), so the host's identity
-; prepare of a signed composite leaves the owner unchanged (:refused).
+; The plain composite (fn-stxa-p, the wire value fn-pa-authorized-event and
+; fn-pcb-carried-event return) is not staged: fn-ccar-sn-prepare-identity
+; admits a composite only as the row (fn-hstxa-p).  The host's entry interns
+; the row first (books/owner-identity-served.lisp fn-oiis-prepare-identity,
+; signed-post); its teeth are tests/acl2/owner-identity-served-tests.lisp.
 (assert-event (not (fn-hstxa-p *pse-comp*)))
 (assert-event (equal (fn-psrv-prepare-identity *pse-k2-reserved* *pse-comp*)
                      *pse-k2-reserved*))
