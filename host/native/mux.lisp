@@ -685,13 +685,16 @@ stop spared, fnn-owner-stop-service-locked), then end every connection."
       (setf (fnn-mux-loop-conns loop)
             (append (fnn-mux-loop-inbox loop) (fnn-mux-loop-conns loop))
             (fnn-mux-loop-inbox loop) nil))
-    (dolist (conn (copy-list (fnn-mux-loop-conns loop)))
-      (when (and (fnn-mux-conn-out conn) (fnn-mux-conn-fd conn))
-        (ignore-errors
-          (fnn-owner-send (fnn-mux-conn-fd conn) (fnn-mux-conn-channel conn)
-                          (subseq (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn))
-                          +fnn-mux-send-seconds+)))
-      (fnn-mux-finish loop conn))
+    ;; One deadline for all of them, as the workers' sends ran in parallel
+    ;; under one 10 s each: a stop never waits longer on its loops' output.
+    (let ((deadline (fnn-mux-ticks +fnn-mux-send-seconds+)))
+      (dolist (conn (copy-list (fnn-mux-loop-conns loop)))
+        (when (and (fnn-mux-conn-out conn) (fnn-mux-conn-fd conn))
+          (ignore-errors
+            (fnn-owner-send (fnn-mux-conn-fd conn) (fnn-mux-conn-channel conn)
+                            (subseq (fnn-mux-conn-out conn) (fnn-mux-conn-out-at conn))
+                            (fnn-seconds-to-deadline deadline))))
+        (fnn-mux-finish loop conn)))
     (ignore-errors (sb-posix:close (fnn-mux-loop-wake-read loop)))
     (ignore-errors (sb-posix:close (fnn-mux-loop-wake-write loop)))
     service))

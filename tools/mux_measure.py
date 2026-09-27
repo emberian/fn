@@ -32,6 +32,7 @@ import os
 from pathlib import Path
 import resource
 import socket
+import ssl
 import statistics
 import subprocess
 import sys
@@ -79,10 +80,14 @@ def raise_nofile():
     resource.setrlimit(resource.RLIMIT_NOFILE, (max(soft, want), hard))
 
 
+TLS = None  # an ssl.SSLContext when --tls: the reader connections use implicit TLS
+
+
 class Conn:
-    def __init__(self, port, timeout=120):
-        self.sock = socket.create_connection(("127.0.0.1", port), timeout=timeout)
-        self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    def __init__(self, port, timeout=120, tls=None):
+        sock = socket.create_connection(("127.0.0.1", port), timeout=timeout)
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        self.sock = tls.wrap_socket(sock, server_hostname="localhost") if tls else sock
         self.stream = self.sock.makefile("rwb", buffering=0)
         self.greeting = self.stream.readline()
 
@@ -135,6 +140,8 @@ def main():
     p.add_argument("--overs", type=int, default=20)
     p.add_argument("--posts", type=int, default=50)
     p.add_argument("--connect", type=int, default=250)
+    p.add_argument("--tls", action="store_true",
+                   help="readers over implicit TLS (a fresh self-signed RSA-2048 pair)")
     a = p.parse_args()
     raise_nofile()
     image, work = Path(a.image), Path(a.work)
@@ -145,15 +152,28 @@ def main():
     env["ACL2_CUSTOMIZATION"] = "NONE"
     port = free_port()
     config = work / "fn.toml"
-    config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n'
+    listener = ""
+    rport = port
+    tls = None
+    if a.tls:
+        cert, key = work / "cert.pem", work / "key.pem"
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout", str(key),
+                        "-out", str(cert), "-sha256", "-days", "1", "-nodes", "-subj",
+                        "/CN=localhost"], check=True, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL)
+        rport = free_port()
+        listener = 'tls_cert = "%s"\ntls_key = "%s"\ntls_port = %d\n' % (cert, key, rport)
+        tls = ssl.create_default_context(cafile=str(cert))
+    config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n%s'
                       '[control]\npath = "%s"\n[log]\npath = "%s"\n'
-                      % (work / "store", port, work / "c.sock", work / "fn.log"),
+                      '[auth]\nprotected_only = false\n'
+                      % (work / "store", port, listener, work / "c.sock", work / "fn.log"),
                       encoding="ascii")
     run(image, "operator", config, "init", "--profile", "development", "fn.letters",
         GROUP, env=env)
     capacity = a.idle + a.active + 64
     run(image, "operator", config, "policy", "set", "exposure-connections", capacity, env=env)
-    doc = {"image": str(image), "idle": a.idle, "active": a.active, "overs": a.overs,
+    doc = {"image": str(image), "tls": a.tls, "idle": a.idle, "active": a.active, "overs": a.overs,
            "posts": a.posts, "capacity": capacity}
     stderr = open(work / "owner.stderr", "wb")
     proc = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"], env=env,
@@ -181,7 +201,7 @@ def main():
         held = []
         started = time.perf_counter()
         for _ in range(a.idle):
-            conn = Conn(port)
+            conn = Conn(rport, tls=tls)
             if not conn.greeting.startswith(b"20"):
                 raise RuntimeError("idle connection %d: %r" % (len(held), conn.greeting))
             held.append(conn)
@@ -201,7 +221,7 @@ def main():
             try:
                 barrier.wait(timeout=120)
                 t0 = time.perf_counter()
-                conn = Conn(port)
+                conn = Conn(rport, tls=tls)
                 g = time.perf_counter() - t0
                 mine = []
                 if not conn.line("GROUP %s" % GROUP).startswith(b"211"):
@@ -237,7 +257,7 @@ def main():
         def connector():
             for _ in range(a.connect):
                 try:
-                    conn = Conn(port)
+                    conn = Conn(rport, tls=tls)
                     conn.line("QUIT")
                     conn.close()
                     with lock:
