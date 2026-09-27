@@ -10,16 +10,16 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1183 |
-| Certification roots in the Makefile | 1143 |
-| Books inside the root closure | 1172 |
-| `defthm` and `defthmd` events | 17415 |
-| `defun` events | 12072 |
+| Books read | 1185 |
+| Certification roots in the Makefile | 1145 |
+| Books inside the root closure | 1174 |
+| `defthm` and `defthmd` events | 17429 |
+| `defun` events | 12090 |
 | Functions with verified guards | 2421 |
-| Functions declared `:verify-guards nil` and never verified | 1237 |
-| Functions left at the default with an explicit guard | 6658 |
+| Functions declared `:verify-guards nil` and never verified | 1249 |
+| Functions left at the default with an explicit guard | 6664 |
 | Functions left at the default with no guard | 1756 |
-| `assert-event` checks | 17459 |
+| `assert-event` checks | 17467 |
 | `must-fail` checks | 2117 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 89 |
@@ -27,8 +27,8 @@ stale. Counts describe artifacts, not coverage; see
 | Export-hygiene warnings | 201 |
 | Enabled-projection warnings | 49 |
 | Teeth-form warnings | 205 |
-| Include-hygiene warnings | 1207 |
-| Host-names warnings | 1340 |
+| Include-hygiene warnings | 1211 |
+| Host-names warnings | 1337 |
 | Hand-written-record warnings | 18 |
 
 ## Lints
@@ -703,6 +703,7 @@ that `make certify` requests.
 | `books/store-reclaim-holders.lisp` | root | 4 | 6 | 0/2/4/0 | 0 | 0 | 0 |
 | `books/store-reclaim-pack.lisp` | root | 30 | 13 | 0/12/1/0 | 0 | 0 | 2 |
 | `books/store-reclaim.lisp` | root | 38 | 39 | 1/5/33/0 | 0 | 0 | 0 |
+| `books/store-recover-stream.lisp` | root | 14 | 9 | 0/3/6/0 | 0 | 0 | 0 |
 | `books/store-retention-codec-invariants.lisp` | root | 21 | 1 | 0/1/0/0 | 0 | 0 | 0 |
 | `books/store-sweep.lisp` | root | 36 | 16 | 0/0/15/1 | 0 | 0 | 0 |
 | `books/stx-accept-records.lisp` | root | 16 | 22 | 10/0/12/0 | 0 | 0 | 0 |
@@ -1230,6 +1231,7 @@ that `make certify` requests.
 | `tests/acl2/store-reclaim-holders-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 13 | 5 | 0 |
 | `tests/acl2/store-reclaim-pack-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 29 | 8 | 0 |
 | `tests/acl2/store-reclaim-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 57 | 20 | 0 |
+| `tests/acl2/store-recover-stream-tests.lisp` | root | 0 | 9 | 0/9/0/0 | 8 | 0 | 0 |
 | `tests/acl2/store-retention-codec-invariants-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 2 | 1 | 0 |
 | `tests/acl2/store-sweep-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 33 | 0 | 0 |
 | `tests/acl2/stx-accept-records-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 30 | 0 | 0 |
