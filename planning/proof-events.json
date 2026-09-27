@@ -9782,6 +9782,26 @@
         {
           "kind": "theorem",
           "name": "fn-lg-open-program-is-recover-then-the-suffix-by-definition"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-duplicate-segment-fence-is-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-recovered-segment-fence-is-identity"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-file-fence-keeps-entry-operations"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-one-barrier-loses-a-rotated-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgob-journal-fence-keeps-the-rotated-segment"
         }
       ]
     },
