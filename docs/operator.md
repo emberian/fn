@@ -1610,6 +1610,50 @@ group's name, and the name grants no creation, moderation, deletion or
 forwarding authority. The plan for creating one is exactly the plan for any
 other valid name (`fn-native-admin-plan-create-ignores-special-purpose`).
 
+## Moderate a group
+
+```
+fn operator /etc/fn/fn.toml group create fn.announce.moderation
+fn operator /etc/fn/fn.toml group moderate fn.announce --moderators alice,bob
+fn operator /etc/fn/fn.toml group moderate fn.announce --off
+```
+
+A moderated group (RFC 5537 section 3.5.1, LIST ACTIVE status `m`) takes
+local posts only through its moderators. The moderators are accounts
+(`--moderators` takes their logins; `account list` shows each as
+`moderator LOGIN GROUP`). A post to the group without an `Approved:` header
+is answered 240 and held, not posted: the node files it in the group's
+queue (`--queue QUEUE`, default `NAME.moderation`, a group you create
+first) as an article of type `application/news-transmission;
+usage=moderate` whose body is the post. A moderator reads the queue with
+any newsreader, and approves by posting that body, with an `Approved:`
+line added, while logged in as themself. An `Approved:` header from anyone
+who is not a moderator of every moderated group the post names is refused
+with a 441 that says so. `--submission ADDRESS` records a submission
+address; `--off` ends the moderation. A relayed article in a moderated group
+without `Approved:` is refused by name.
+
+The queue is private to the moderators without further configuration: a
+reader connection whose login moderates none of the groups a queue serves
+(and every connection before AUTHINFO) is served a view without that group
+or its articles, exactly as a group the node does not carry (the queue is
+added to the login's `account access` read rule as a hidden group), and an
+article filed in a queue group is never offered to a peer, whatever the
+peers' feed patterns say.
+
+To see what is waiting:
+
+```
+fn operator /etc/fn/fn.toml moderation list fn.announce
+```
+
+prints `moderation group=fn.announce queue=fn.announce.moderation held=N`
+and one line per envelope in the queue, `held`, `approved` (the post's own
+Message-ID is stored) or `rejected` (a withdrawal record withdraws the
+envelope), with `envelope=<fn-moderate....>` and the post's `message-id=`.
+It asks the running owner, or reads the store offline. There is no
+`moderation approve/reject` verb yet (PKT-657): approve over NNTP as above.
+
 ## Accounts for friends (invitation codes)
 
 An account for a friend is made by the friend, from a code you hand them

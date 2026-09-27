@@ -8004,6 +8004,74 @@
           "name": "fn-gac-access-views-covers-pattern"
         }
       ]
+    },
+    {
+      "id": "PRF-228",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-set-group-moderation-sets-the-moderation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-unapproved-article-is-never-in-a-moderated-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-moderator-approved-article-is-committed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-forged-approval-is-refused-by-name"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mod-session-entries-approver-iff-moderator"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mod-session-entries-keep-the-status"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mod-gate-unapproved-names-no-moderated-group"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-post-submission-is-the-decision-or-its-envelope"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mod-envelope-msgid-is-not-a-generated-id"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-moderation-config-closed"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-transfer-never-stages-an-unapproved-moderated-article",
+          "note": "The relay refusal over fn-peer-transfer. Teeth: tests/acl2/peer-inbound-tests.lisp (P3 section)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-feed-durable-never-enqueues-a-queue",
+          "note": "PKT-658 over the durable enqueue. Teeth: tests/acl2/owner-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-view-hides-the-queue-from-a-non-moderator",
+          "note": "PKT-658 reader half over fn-auth-view-archive. Teeth: tests/acl2/moderation-tests.lisp section 7."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mod-hidden-queues-is-hiddenp"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-auth-access-text-of-moderation-config"
+        }
+      ]
     }
   ]
 }

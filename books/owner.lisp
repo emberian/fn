@@ -1939,10 +1939,16 @@
       (let* ((tbl (fn-own-feeds o))
              (msgid (fn-own-sub-msgid sub))
              (octets (fn-own-sub-octets sub))
-             (targets (fn-own-feed-targets
-                       tbl (fn-own-sub-origin sub)
-                       (fn-own-sub-feed-groups sub)
-                       (fn-own-feed-path-of octets))))
+             (groups (fn-own-sub-feed-groups sub))
+             ; PKT-658: a submission naming a moderation queue group of the
+             ; owner's posting configuration (books/moderation.lisp) is
+             ; offered to no peer: held posts never leave the node.
+             (targets (if (fn-mod-names-a-queuep
+                           groups (fn-inj-config-closed (fn-own-config o)))
+                          nil
+                        (fn-own-feed-targets
+                         tbl (fn-own-sub-origin sub) groups
+                         (fn-own-feed-path-of octets)))))
         (fn-own-feed-new-targets targets tbl msgid)))))
 
 (defun fn-own-submission-intent-result (o evidence generation txid)

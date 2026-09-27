@@ -98,6 +98,33 @@
         ;; `fn-gac-listing-table'), the accounts slot's mark-3 rows.
         (fn-cfg-access-table (fn-cfg-accounts (fn-cfg-value cfg)))))
 
+;; P3 (moderated groups, PRF-228): one status entry per live moderated
+;; group, (:moderated G-OCTETS QUEUE-OCTETS (LOGIN-OCTETS ...)), from the
+;; configuration's moderation rows (books/config.lisp
+;; `fn-cfg-group-moderation').  They ride in the closed list beside the
+;; read-only groups, so LIST ACTIVE's "m", the POST gate
+;; (books/moderation.lisp) and a connection's approver view
+;; (books/nntp-auth.lisp `fn-auth-moderation-config') read one list.
+(defun fn-oag-login-octets (logins)
+  (declare (xargs :guard t))
+  (if (consp logins)
+      (cons (fn-nntp-string-octets (car logins))
+            (fn-oag-login-octets (cdr logins)))
+    nil))
+
+(defun fn-oag-moderation-entries (names v gen)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (let ((m (fn-cfg-group-moderation v gen (car names))))
+        (if (consp m)
+            (cons (list :moderated (fn-nntp-string-octets (car names))
+                        (fn-nntp-string-octets (fn-cfg-ag-car m))
+                        (fn-oag-login-octets
+                         (fn-cfg-ag-car (fn-cfg-ag-cdr (fn-cfg-ag-cdr m)))))
+                  (fn-oag-moderation-entries (cdr names) v gen))
+          (fn-oag-moderation-entries (cdr names) v gen)))
+    nil))
+
 (defun fn-oag-post-config (cfg max-octets)
   "The posting configuration the owner installs for configuration CFG.
 
@@ -114,8 +141,11 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
    ;; O2: the served groups whose configured status is "n"
    ;; (books/config.lisp `fn-cfg-closed-names'), read by the served POST
    ;; gate and LIST ACTIVE's status field (books/group-status.lisp).
-   (fn-oag-group-octets (fn-cfg-closed-names (fn-cfg-value cfg)
-                                             (fn-cfg-generation cfg)))))
+   (append (fn-oag-group-octets (fn-cfg-closed-names (fn-cfg-value cfg)
+                                                     (fn-cfg-generation cfg)))
+           (fn-oag-moderation-entries (fn-cnode-served-of cfg)
+                                      (fn-cfg-value cfg)
+                                      (fn-cfg-generation cfg)))))
 
 (defthm fn-oag-post-config-agent-is-the-path-identity
   (implies (fn-oag-identity-setp cfg)
@@ -171,6 +201,26 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
 ; -----------------------------------------------------------------------------
 ; Up the served stack: fn-nntp-post-step, fn-peer-step, fn-auth-step
 
+(defthm fn-oag-injection-names-the-configured-agent
+  (fn-oag-names-agentp (fn-inj-decide source config observation)
+                       (fn-inj-config-agent config))
+  :hints (("Goal" :in-theory (disable fn-inj-decide fn-inj-infixp
+                                      fn-inj-injection-info-line))))
+
+; P3: the moderated-group gate returns the decision it was given, a
+; refusal, or the injection of the envelope under the same configuration, so
+; what it returns names the agent the decision did (books/moderation.lisp).
+(defthm fn-oag-mod-gate-names-the-configured-agent
+  (implies (fn-oag-names-agentp decision (fn-inj-config-agent config))
+           (fn-oag-names-agentp (fn-mod-gate source config observation decision)
+                                (fn-inj-config-agent config)))
+  :hints (("Goal" :in-theory (e/d (fn-mod-gate fn-mod-forward)
+                                  (fn-inj-decide fn-mod-facts
+                                   fn-mod-named-entries fn-mod-envelope-source
+                                   fn-mod-forwarded-source fn-mod-some-gatedp
+                                   fn-mod-envelope-msgid fn-inj-infixp
+                                   fn-inj-injection-info-line)))))
+
 (defthm fn-oag-post-step-submission-names-the-configured-agent
   (fn-oag-names-agentp
    (fn-post-result-submission
@@ -181,7 +231,14 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                                    fn-inj-injection-info-line
                                    fn-inj-infixp fn-nntp-step
                                    fn-post-offeredp
-                                   fn-post-refusal-line)))))
+                                   fn-post-refusal-line fn-mod-gate
+                                   fn-oag-names-agentp))
+           :use ((:instance fn-oag-mod-gate-names-the-configured-agent
+                            (source (fn-post-body-octets (cadr wire-event)))
+                            (observation injection)
+                            (decision (fn-inj-decide
+                                       (fn-post-body-octets (cadr wire-event))
+                                       config injection)))))))
 
 (defthm fn-oag-peer-step-submission-names-the-configured-agent
   (fn-oag-names-agentp
@@ -220,7 +277,8 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                     (fn-auth-step as archive config observation injection wire-event)))
            :use ((:instance fn-auth-submission-is-the-delegated-submission)
                  (:instance fn-oag-peer-step-submission-names-the-configured-agent
-                            (ps (fn-auth-session-base as)))))))
+                            (ps (fn-auth-session-base as))
+                            (config (fn-auth-moderation-config as config)))))))
 
 ; -----------------------------------------------------------------------------
 ; The dispatcher and the byte fold.  fn-served-connp is the carried served
@@ -290,7 +348,7 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                             (ps (fn-auth-view-session as config))
                             (archive (fn-auth-view-archive as config archive))
                             (index (fn-auth-view-index as config archive index))
-                            (config (fn-auth-view-config as config archive)))))))
+                            (config (fn-auth-view-config as (fn-auth-moderation-config as config) archive)))))))
 
 (local
  (defthm fn-oag-auth-effects-carry-no-submission

@@ -15,6 +15,8 @@
 ;   binding LOGIN PRINCIPAL-HEX
 ;   access LOGIN read READ post POST   (PRF-222, mark 3; LOGIN "" is
 ;                                       printed "(anonymous)")
+;   moderator LOGIN GROUP           (P3: LOGIN moderates GROUP)
+;   moderation GROUP QUEUE [ADDRESS]
 ;   unknown                         (a mark no writer makes)
 ;
 ; Never a digest or a verifier.
@@ -28,6 +30,9 @@
           ((equal mark 1) :redeemed)
           ((equal mark 2) :binding)
           ((equal mark 3) :access)
+          ;; P3 (PRF-228): a moderator role and a group's moderation.
+          ((equal mark 4) :moderator)
+          ((equal mark 5) :moderation)
           (t :unknown))))
 
 (defun fn-acct-kind-word (kind)
@@ -36,6 +41,8 @@
         ((equal kind :redeemed) "redeemed ")
         ((equal kind :binding) "binding ")
         ((equal kind :access) "access ")
+        ((equal kind :moderator) "moderator ")
+        ((equal kind :moderation) "moderation ")
         (t "unknown")))
 
 (defun fn-acct-list-text (x)
@@ -61,6 +68,17 @@
                         (fn-acct-list-text (fn-cfg-row-a row)))
                       " read " (fn-acct-list-text (fn-cfg-row-b row))
                       " post " (fn-acct-list-text (fn-cfg-row-c row))))
+        ; moderator LOGIN GROUP
+        ((equal kind :moderator)
+         (concatenate 'string (fn-acct-list-text (fn-cfg-row-a row)) " "
+                      (fn-acct-list-text (fn-cfg-row-b row))))
+        ; moderation GROUP QUEUE [ADDRESS]
+        ((equal kind :moderation)
+         (concatenate 'string (fn-acct-list-text (fn-cfg-row-a row)) " "
+                      (fn-acct-list-text (fn-cfg-row-b row))
+                      (if (equal (fn-cfg-row-c row) "") ""
+                        (concatenate 'string " "
+                                     (fn-acct-list-text (fn-cfg-row-c row))))))
         (t "")))
 
 (defun fn-acct-list-line (row)

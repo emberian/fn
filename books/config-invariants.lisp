@@ -149,6 +149,61 @@
   :hints (("Goal" :in-theory (enable fn-cfg-group-status fn-cfg-group-livep
                                      fn-cfg-status-policy-id))))
 
+;; Moderated groups (P3, PRF-228).  The moderation reader over the rows the
+;; code-23 arm writes.
+(defthm fn-cfg-moderation-row-of-append
+  (equal (fn-cfg-moderation-row (append a b) x)
+         (or (fn-cfg-moderation-row a x) (fn-cfg-moderation-row b x)))
+  :hints (("Goal" :in-theory (enable fn-cfg-row-n fn-cfg-ag-car fn-cfg-ag-cdr))))
+
+(defthm fn-cfg-moderation-row-of-rows-without-moderation
+  (equal (fn-cfg-moderation-row (fn-cfg-rows-without-moderation rows name) x)
+         (if (equal x name) nil (fn-cfg-moderation-row rows x))))
+
+(defthm fn-cfg-moderator-logins-of-append
+  (equal (fn-cfg-moderator-logins (append a b) x)
+         (append (fn-cfg-moderator-logins a x) (fn-cfg-moderator-logins b x))))
+
+(defthm fn-cfg-moderator-logins-of-rows-without-moderation
+  (equal (fn-cfg-moderator-logins (fn-cfg-rows-without-moderation rows name) x)
+         (if (equal x name) nil (fn-cfg-moderator-logins rows x))))
+
+(defthm fn-cfg-moderation-row-of-moderator-rows
+  (equal (fn-cfg-moderation-row (fn-cfg-moderator-rows name logins) x) nil))
+
+(defthm fn-cfg-moderator-logins-of-moderator-rows
+  (equal (fn-cfg-moderator-logins (fn-cfg-moderator-rows name logins) x)
+         (if (equal x name) (true-list-fix logins) nil)))
+
+; KEYSTONE (P3, PRF-228).  An admitted `group moderate' (:set-group-moderation,
+; code 23) makes NAME's moderation exactly (QUEUE ADDRESS LOGINS) -- or none,
+; for `--off' (no LOGINS) -- and changes no other group's.  Subject:
+; `fn-cfg-apply-delta', the fold replay and live publication both run; the
+; delta is staged by books/native-admin.lisp `fn-native-admin-plan-deltas'.
+; The hypothesis is what `fn-cfg-delta-reason' admits.
+(defthm fn-cfg-set-group-moderation-sets-the-moderation
+  (implies (not (fn-cfg-set-group-moderation-reason
+                 v gen (fn-cfg-set-group-moderation name queue address logins)))
+           (and (equal (fn-cfg-group-moderation
+                        (fn-cfg-apply-delta
+                         v gen stamp
+                         (fn-cfg-set-group-moderation name queue address logins))
+                        gen name)
+                       (if (consp logins)
+                           (list queue address (true-list-fix logins))
+                         nil))
+                (implies (not (equal other name))
+                         (equal (fn-cfg-group-moderation
+                                 (fn-cfg-apply-delta
+                                  v gen stamp
+                                  (fn-cfg-set-group-moderation
+                                   name queue address logins))
+                                 gen other)
+                                (fn-cfg-group-moderation v gen other)))))
+  :hints (("Goal" :in-theory (enable fn-cfg-group-livep fn-cfg-row-make
+                                     fn-cfg-row-a fn-cfg-row-b fn-cfg-row-c
+                                     fn-cfg-row-n))))
+
 ; The closed list is exactly the served groups whose status is "n".
 (defthm fn-cfg-closed-filter-member
   (iff (member-equal x (fn-cfg-closed-filter names v gen))
@@ -258,6 +313,10 @@
 (local (defthm fn-cfg-rows-without-access-is-row-listp
   (implies (fn-cfg-row-listp rows)
            (fn-cfg-row-listp (fn-cfg-rows-without-access rows a)))))
+; P3: the moderation arm rebuilds the accounts slot the same way.
+(local (defthm fn-cfg-rows-without-moderation-is-row-listp
+  (implies (fn-cfg-row-listp rows)
+           (fn-cfg-row-listp (fn-cfg-rows-without-moderation rows a)))))
 (local (defthm fn-cfg-row-listp-of-append
   (implies (and (fn-cfg-row-listp a) (fn-cfg-row-listp b))
            (fn-cfg-row-listp (append a b)))))

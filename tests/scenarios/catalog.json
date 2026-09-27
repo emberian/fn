@@ -4542,6 +4542,45 @@
         "planning/evidence/group-access-2026-09-27.md",
         "planning/evidence/group-access-2026-09-27/native-a3-test_native_group_access.log"
       ]
+    },
+    {
+      "id": "SCN-155",
+      "title": "A moderated group: an unapproved post is queued and not visible, a moderator's approval makes it visible, a forged Approved is refused, status m across a restart, and --off live",
+      "milestone": "M4",
+      "status": "implemented",
+      "requirements": [
+        "NNT-047"
+      ],
+      "steps": [
+        "`init fn.test`; `group create fn.mod`, `group create fn.mod.moderation`; offline `group moderate fn.absent --moderators alice` and `group moderate fn.test --moderators alice --queue fn.absent` (refused), `group moderate fn.mod --moderators alice`.",
+        "Start the owner (implicit TLS, protected_only); accounts alice and carol by invitation; `account list`.",
+        "carol: LIST ACTIVE; POST to fn.mod without Approved; STAT its Message-ID; GROUP fn.mod; POST to fn.mod with `Approved: carol@...`.",
+        "alice: GROUP fn.mod.moderation; ARTICLE <fn-moderate.ID>; POST the envelope's body with `Approved: alice@...`; a new carol connection GROUP fn.mod and STAT the Message-ID.",
+        "Restart; carol: LIST ACTIVE; cross-post fn.test,fn.mod without Approved and STAT it.",
+        "Live `group moderate fn.mod --off`; a new carol connection: LIST ACTIVE; POST to fn.mod; STAT."
+      ],
+      "expected": [
+        "The two refusals exit non-zero; the moderation exits 0.",
+        "`account list` shows `moderator alice fn.mod` and `moderation fn.mod fn.mod.moderation`.",
+        "LIST ACTIVE: fn.mod m, fn.mod.moderation y, fn.test y; the unapproved POST answers 240, its STAT 430, GROUP fn.mod 0 articles; carol's Approved answers `441 posting failed; Approved is accepted only from a moderator of each moderated group named (LIST ACTIVE status m)` and is not stored.",
+        "The queue holds 1 envelope with `Content-Type: application/news-transmission; usage=moderate` and `Newsgroups: fn.mod.moderation`, whose body is the proto-article with its Message-ID and a node-added Date; alice's approved POST answers 240; GROUP fn.mod shows 1 and STAT 223.",
+        "After the restart fn.mod is still m; the cross-post answers 240 and STAT 430.",
+        "After --off fn.mod is y; the POST answers 240 and STAT 223."
+      ],
+      "implementation": {
+        "test": "tests.test_native_moderation",
+        "cases": [
+          "NativeModerationTests.test_moderated_group_holds_approves_and_refuses"
+        ],
+        "native": true,
+        "record": "planning/evidence/moderated-groups-2026-09-27.md",
+        "log": "planning/evidence/moderated-groups-2026-09-27/native-m3-test_native_moderation.log"
+      },
+      "evidence": [
+        "tests/test_native_moderation.py",
+        "planning/evidence/moderated-groups-2026-09-27/native-m3-test_native_moderation.log",
+        "planning/evidence/moderated-groups-2026-09-27.md"
+      ]
     }
   ]
 }

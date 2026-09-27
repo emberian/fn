@@ -1227,9 +1227,67 @@
      nil))
    (t nil)))
 
+;; Moderated groups (P3, PRF-228; books/moderation.lisp).  The posting
+;; configuration a delegated command is served: the connection's, with each
+;; moderated group whose moderators include this connection's login seen as
+;; :approver.  The login is the AUTHINFO USER name once the connection
+;; authenticated (the pending slot keeps it, as books/login-binding.lisp
+;; reads it); a connection that has not authenticated approves nothing.
+(defun fn-auth-moderation-login (as)
+  (declare (xargs :guard t))
+  (and (fn-auth-session-subject as) (fn-auth-session-pending as)))
+
+(defun fn-auth-moderation-config (as config)
+  (declare (xargs :guard t))
+  (let ((login (fn-auth-moderation-login as)))
+    (if (and login (fn-inj-config-shapep config))
+        (fn-inj-make-config-full
+         (fn-inj-config-allow config) (fn-inj-config-agent config)
+         (fn-inj-config-groups config) (fn-inj-config-max-octets config)
+         (fn-inj-config-listing config)
+         (fn-mod-session-entries (fn-inj-config-closed config) login))
+      config)))
+
+; The view changes nothing but the status list, and there only which
+; moderated entries this login approves (books/moderation.lisp
+; `fn-mod-session-entries-approver-iff-moderator').
+(defthm fn-auth-moderation-config-closed
+  (equal (fn-inj-config-closed (fn-auth-moderation-config as config))
+         (if (and (fn-auth-moderation-login as) (fn-inj-config-shapep config))
+             (fn-mod-session-entries (fn-inj-config-closed config)
+                                     (fn-auth-moderation-login as))
+           (fn-inj-config-closed config))))
+
+(defthm fn-auth-moderation-config-keeps-the-rest
+  (implies (fn-inj-config-shapep config)
+           (and (equal (fn-inj-config-allow (fn-auth-moderation-config as config))
+                       (fn-inj-config-allow config))
+                (equal (fn-inj-config-agent (fn-auth-moderation-config as config))
+                       (fn-inj-config-agent config))
+                (equal (fn-inj-config-groups (fn-auth-moderation-config as config))
+                       (fn-inj-config-groups config))
+                (equal (fn-inj-config-max-octets
+                        (fn-auth-moderation-config as config))
+                       (fn-inj-config-max-octets config))
+                (equal (fn-inj-config-listing
+                        (fn-auth-moderation-config as config))
+                       (fn-inj-config-listing config))
+                (fn-inj-config-shapep (fn-auth-moderation-config as config)))))
+
+(defthm fn-auth-moderation-config-agent
+  (equal (fn-inj-config-agent (fn-auth-moderation-config as config))
+         (fn-inj-config-agent config)))
+
+(defthm fn-auth-moderation-config-without-a-login
+  (implies (not (fn-auth-moderation-login as))
+           (equal (fn-auth-moderation-config as config) config)))
+
+(in-theory (disable fn-auth-moderation-login fn-auth-moderation-config))
+
 (defun fn-auth-delegate (as archive config observation injection wire-event)
   (declare (xargs :guard t :verify-guards nil))
-  (let ((r (fn-peer-step (fn-auth-session-base as) archive config observation
+  (let ((r (fn-peer-step (fn-auth-session-base as) archive
+                         (fn-auth-moderation-config as config) observation
                          injection wire-event)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
@@ -1690,7 +1748,8 @@
                             fn-peer-step-preserves-consistent-session
                             fn-nntp-printable-tokenp fn-prin-idp))
            :use ((:instance fn-peer-step-preserves-consistent-session
-                            (ps (fn-auth-session-base as))))))))
+                            (ps (fn-auth-session-base as))
+                            (config (fn-auth-moderation-config as config))))))))
 
 (defthm fn-auth-step-preserves-consistent-session
   (implies (fn-auth-session-consistentp as archive)
@@ -1824,7 +1883,8 @@
                    (fn-auth-step as archive config observation injection
                                  wire-event))
                   (fn-post-result-submission
-                   (fn-peer-step (fn-auth-session-base as) archive config
+                   (fn-peer-step (fn-auth-session-base as) archive
+                                 (fn-auth-moderation-config as config)
                                  observation injection wire-event))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-auth-step fn-auth-delegate
@@ -1890,7 +1950,8 @@
                             fn-peer-step-submission-is-typed))
            :use ((:instance fn-auth-submission-is-the-delegated-submission)
                  (:instance fn-peer-step-submission-is-typed
-                            (ps (fn-auth-session-base as))))))
+                            (ps (fn-auth-session-base as))
+                            (config (fn-auth-moderation-config as config))))))
   :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
@@ -3090,11 +3151,22 @@
   (declare (xargs :guard t))
   (and (fn-auth-session-subject as) (fn-auth-session-pending as)))
 
+;; PKT-658 (PRF-228): the READ rule of a login that moderates none of a
+;; moderated group's groups also hides that group's queue
+;; (books/moderation.lisp `fn-mod-hidden-queues' over the owner's status
+;; entries); an unrestricted login's rule is then "*" with the queues hidden.
 (defun fn-auth-access-text (as config field)
   (declare (xargs :guard t))
   (and (null (fn-auth-session-peer as))
-       (fn-gac-pattern (fn-gac-listing-table (fn-inj-config-listing config))
-                       (fn-auth-access-login as) field)))
+       (let ((base (fn-gac-pattern
+                    (fn-gac-listing-table (fn-inj-config-listing config))
+                    (fn-auth-access-login as) field))
+             (hidden (and (equal field 1)
+                          (fn-mod-hidden-queues (fn-inj-config-closed config)
+                                                (fn-auth-access-login as)))))
+         (if (consp hidden)
+             (list* :hide (or base "*") hidden)
+           base))))
 
 (defun fn-auth-access-read (as config)
   (declare (xargs :guard t))
@@ -3166,6 +3238,92 @@
                                 fn-inj-config-max-octets-of-fn-inj-make-config-full
                                 fn-inj-config-listing-of-fn-inj-make-config-full))))
 
+;; PKT-658 (PRF-228).  The connection's moderation view
+;; (`fn-auth-moderation-config', the posting configuration the delegate
+;; composes under the access view) reads the same rule: it keeps the listing
+;; and turns into :approver entries only entries whose queues the login may
+;; read anyway (books/moderation.lisp fn-mod-hidden-queues-of-session-entries).
+(defthm fn-auth-access-text-of-moderation-config
+  (equal (fn-auth-access-text as (fn-auth-moderation-config as config) field)
+         (fn-auth-access-text as config field))
+  :hints (("Goal" :in-theory (enable fn-auth-access-text fn-auth-access-login
+                                     fn-auth-moderation-config
+                                     fn-auth-moderation-login))))
+
+(defthm fn-auth-access-restrictedp-of-moderation-config
+  (equal (fn-auth-access-restrictedp as (fn-auth-moderation-config as config))
+         (fn-auth-access-restrictedp as config))
+  :hints (("Goal" :in-theory (enable fn-auth-access-restrictedp
+                                     fn-auth-access-read fn-auth-access-post))))
+
+(defun fn-auth-arts-name-groupp (g arts)
+  (declare (xargs :guard t))
+  (if (consp arts)
+      (or (and (consp (car arts))
+               (member-equal g (true-list-fix (fn-article-groups (car arts))))
+               t)
+          (fn-auth-arts-name-groupp g (cdr arts)))
+    nil))
+
+(local (defthm fn-auth-all-readablep-member
+  (implies (and (fn-gac-all-readablep text gs) (member-equal g gs))
+           (fn-gac-readablep text g))))
+
+(local (defthm fn-auth-articles-readablep-exclude
+  (implies (and (fn-gac-articles-readablep text arts)
+                (not (fn-gac-readablep text g)))
+           (not (fn-auth-arts-name-groupp g arts)))
+  :hints (("Goal" :in-theory (enable fn-gac-article-readablep)))))
+
+(local (defthm fn-auth-hidden-queue-is-unreadable
+  (implies (and (consp text) (equal (car text) :hide) (consp (cdr text))
+                (member-equal (fn-gac-text-octets g) (cddr text)))
+           (not (fn-gac-readablep text g)))
+  :hints (("Goal" :in-theory (enable fn-gac-readablep)))))
+
+(local (defthm fn-auth-restrict-articles-exclude
+  (implies (not (fn-gac-readablep text g))
+           (not (fn-auth-arts-name-groupp g (fn-gac-restrict-articles text arts))))
+  :hints (("Goal" :use (fn-gac-restrict-articles-memberships-readable
+                        (:instance fn-auth-articles-readablep-exclude
+                                   (arts (fn-gac-restrict-articles text arts))))
+           :in-theory (disable fn-gac-restrict-articles-memberships-readable
+                               fn-auth-articles-readablep-exclude
+                               fn-gac-restrict-articles fn-gac-readablep)))))
+
+;; KEYSTONE (PKT-658).  The store a reader connection is served
+;; (`fn-auth-view-archive', which `fn-auth-delegate-pinned' passes to the
+;; reader machine; host: books/served.lisp through host/reader-host.lisp)
+;; holds neither a moderation queue G whose moderated group the login does
+;; not moderate (or any queue, before AUTHINFO) nor any article filed in it:
+;; GROUP answers as for a group the node does not carry, and ARTICLE by
+;; Message-ID finds no envelope.
+(defthm fn-auth-view-hides-the-queue-from-a-non-moderator
+  (implies (and (fn-mod-queue-hiddenp (fn-gac-text-octets g)
+                                      (fn-inj-config-closed config)
+                                      (fn-auth-access-login as))
+                (null (fn-auth-session-peer as))
+                (fn-nntp-session-projected (fn-auth-reader-session as)))
+           (and (not (member-equal g (fn-state-groups
+                                      (fn-auth-view-archive as config archive))))
+                (not (fn-auth-arts-name-groupp
+                      g (fn-state-articles
+                         (fn-auth-view-archive as config archive))))))
+  :hints (("Goal" :in-theory (e/d (fn-auth-view-archive fn-auth-access-read
+                                   fn-auth-access-text)
+                                  (fn-gac-restrict-state fn-mod-queue-hiddenp
+                                   fn-mod-hidden-queues fn-gac-pattern
+                                   fn-mod-hidden-queues-is-hiddenp
+                                   fn-gac-text-octets))
+           :use ((:instance fn-mod-hidden-queues-is-hiddenp
+                            (g (fn-gac-text-octets g))
+                            (closed (fn-inj-config-closed config))
+                            (login (fn-auth-access-login as)))
+                 (:instance fn-gac-restrict-state-groups-are-readable
+                            (text (fn-auth-access-text as config 1))
+                            (s archive))
+))))
+
 (in-theory (disable fn-auth-access-login fn-auth-access-text fn-auth-access-read
                     fn-auth-access-post fn-auth-access-restrictedp
                     fn-auth-view-session fn-auth-view-archive fn-auth-view-index
@@ -3179,7 +3337,7 @@
             (fn-auth-view-archive as config archive)
             (fn-auth-view-index as config archive index)
             verdicts
-            (fn-auth-view-config as config archive)
+            (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
             observation injection wire-event)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
@@ -3292,7 +3450,7 @@
                             (ps (fn-auth-view-session as config))
                             (archive (fn-auth-view-archive as config archive))
                             (index (fn-auth-view-index as config archive index))
-                            (config (fn-auth-view-config as config archive)))
+                            (config (fn-auth-view-config as (fn-auth-moderation-config as config) archive)))
                  (:instance fn-auth-view-consistent-back
                             (ps (fn-post-result-session
                                  (fn-peer-step-pinned
@@ -3300,7 +3458,7 @@
                                   (fn-auth-view-archive as config archive)
                                   (fn-auth-view-index as config archive index)
                                   verdicts
-                                  (fn-auth-view-config as config archive)
+                                  (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
                                   observation injection wire-event))))
                  (:instance fn-auth-with-base-consistent
                             (base (fn-post-result-session
@@ -3309,7 +3467,7 @@
                                   (fn-auth-view-archive as config archive)
                                   (fn-auth-view-index as config archive index)
                                   verdicts
-                                  (fn-auth-view-config as config archive)
+                                  (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
                                   observation injection wire-event))))))))
 
 (defthm fn-auth-step-pinned-preserves-consistent-session
@@ -3364,7 +3522,7 @@
                             (ps (fn-auth-view-session as config))
                             (archive (fn-auth-view-archive as config archive))
                             (index (fn-auth-view-index as config archive index))
-                            (config (fn-auth-view-config as config archive)))))))
+                            (config (fn-auth-view-config as (fn-auth-moderation-config as config) archive)))))))
 
 (defthm fn-auth-step-pinned-effects-well-formed
   (implies (and (fn-auth-session-consistentp as archive)
@@ -3398,7 +3556,7 @@
                     (fn-auth-view-archive as config archive)
                     (fn-auth-view-index as config archive index)
                     verdicts
-                    (fn-auth-view-config as config archive)
+                    (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
                     observation injection wire-event))))
   :rule-classes nil
   :hints (("Goal" :in-theory
@@ -3493,7 +3651,7 @@
                             (ps (fn-auth-view-session as config))
                             (archive (fn-auth-view-archive as config archive))
                             (index (fn-auth-view-index as config archive index))
-                            (config (fn-auth-view-config as config archive)))
+                            (config (fn-auth-view-config as (fn-auth-moderation-config as config) archive)))
                  (:instance fn-auth-view-session-is-a-session))))
   :rule-classes nil)
 

@@ -59,6 +59,8 @@
                                 :set-exposure
                                 ;; O2: a group's LIST ACTIVE status.
                                 :set-group-status
+                                ;; P3: a group's moderation (code 23).
+                                :set-group-moderation
                                 ;; PRF-195: a description or the message.
                                 :set-group-description :set-motd
                                 ;; PRF-222: a login's group access.

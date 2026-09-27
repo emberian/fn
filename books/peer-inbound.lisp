@@ -90,7 +90,8 @@
 (defconst *fn-peer-reasons*
   '(:not-a-peer :no-inbound :message-id-syntax :history :staged :busy :fenced
     :inflight-limit :capacity :out-of-scope :loop :no-date :date-future :no-clock
-    :proto-article :oversize :unknown-group :date-cutoff))
+    :proto-article :oversize :unknown-group :date-cutoff
+    :unapproved-moderated))
 
 (defun fn-peer-decision-shapep (x)
   (declare (xargs :guard t))
@@ -143,6 +144,8 @@
         ((equal reason :no-date) "no Injection-Date or Date")
         ((equal reason :proto-article) "not a valid article")
         ((equal reason :oversize) "article exceeds the configured size")
+        ((equal reason :unapproved-moderated)
+         "no Approved header field for a moderated newsgroup")
         (t "refused")))
 
 ; -----------------------------------------------------------------------------
@@ -181,6 +184,19 @@
                  (not (member-equal name rest)))
             (cons name rest)
           rest))
+    nil))
+
+;; Moderated groups (P3, PRF-228).  RFC 5537 section 3.6 item 6 (a relaying
+;; agent "MAY reject any article without an Approved header field posted to
+;; a newsgroup known to be moderated.  This practice is strongly
+;; encouraged") and section 3.7 item 5 (a serving agent "MUST reject" one):
+;; whether a group NAMES would store the article under is moderated here
+;; (books/config.lisp `fn-cfg-group-moderation').
+(defun fn-peer-moderated-namesp (names v gen)
+  (declare (xargs :guard t))
+  (if (consp names)
+      (or (consp (fn-cfg-group-moderation v gen (car names)))
+          (fn-peer-moderated-namesp (cdr names) v gen))
     nil))
 
 ; The provenance of a transit acceptance (specs/peering.md section 2.4).
@@ -349,6 +365,14 @@
           ; live now.
           ((null (fn-peer-scope-groups (fn-peer-check-groups check) record cfg))
            (fn-peer-decision :refuse :out-of-scope))
+          ; P3: a group it would be stored under is moderated here and the
+          ; article carries no Approved header field (RFC 5537 sections
+          ; 3.6 item 6 and 3.7 item 5): refused by name, never stored.
+          ((and (fn-peer-moderated-namesp
+                 (fn-peer-scope-groups (fn-peer-check-groups check) record cfg)
+                 (fn-cfg-value cfg) (fn-cfg-generation cfg))
+                (fn-inj-absentp article *fn-mod-approved-name*))
+           (fn-peer-decision :refuse :unapproved-moderated))
           ; RFC 5537 section 3.6 step 7: the Path update is part of
           ; accepting the article.  If the updated article no longer fits
           ; the article bounds (books/article.lisp: a header line, the

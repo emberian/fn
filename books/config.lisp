@@ -781,7 +781,7 @@
     :grant-control :revoke-control :issue-invitation :consume-invitation
     :account-invite :account-redeem :login-binding
     :add-peer-rows :remove-peer-rows :set-group-description
-    :set-group-status :account-access))
+    :set-group-status :account-access :set-group-moderation))
 
 (defun fn-cfg-kind-code (kind)
   (declare (xargs :guard t))
@@ -807,6 +807,7 @@
         ((equal kind :set-group-description) 20)
         ((equal kind :set-group-status) 21)
         ((equal kind :account-access) 22)
+        ((equal kind :set-group-moderation) 23)
         (t 0)))
 
 (defun fn-cfg-code-kind (code)
@@ -833,6 +834,7 @@
         ((equal code 20) :set-group-description)
         ((equal code 21) :set-group-status)
         ((equal code 22) :account-access)
+        ((equal code 23) :set-group-moderation)
         (t nil)))
 
 (defun fn-cfg-deltap (d)
@@ -908,8 +910,9 @@
 ;;   (:set-group-status NAME STATUS 0 nil)                          code 21
 ;; with STATUS "y" or "n"; it rewrites the live entry's policy identifier and
 ;; nothing else (`fn-cfg-groups-set-policy').  Code 20 is
-;; :set-group-description (lane usenet-headers).  "m" (moderated, P3) and
-;; "x" are deferred; "j" and "=" are never (no junk group, no aliases).
+;; :set-group-description (lane usenet-headers).  "m" (moderated, P3) is not
+;; a policy identifier: it is the group's moderation, code 23 below; "x" is
+;; deferred; "j" and "=" are never (no junk group, no aliases).
 (defconst *fn-cfg-default-policy-id* "fn-policy-default-1")
 (defconst *fn-cfg-read-only-policy-id* "fn-policy-read-only-1")
 
@@ -1336,6 +1339,155 @@
            (fn-cfg-account-verifier-hexp
             (fn-cfg-row-c (fn-cfg-ag-car rows)))))))
 
+;; Moderated groups (P3; PRF-228, NNT-047; specs/nntp.md "Moderated
+;; groups").  RFC 5537 section 3.5 item 7 and section 3.5.1: an article
+;; posted to a moderated group without an Approved header field is forwarded
+;; to the group's moderator, never posted.  fn's moderator is an account
+;; with a role: the accounts slot holds, beside the account rows (marks 0
+;; and 1) and the login bindings (mark 2), two more row kinds, written only
+;; by
+;;
+;;   (:set-group-moderation NAME QUEUE 0 ROWS)                       code 23
+;;
+;; ROWS is either nil, with QUEUE "" (NAME is no longer moderated), or
+;;
+;;   ((NAME QUEUE ADDRESS 5) (LOGIN-1 NAME "" 4) ... (LOGIN-k NAME "" 4))
+;;
+;; with k >= 1: the group's moderation row (mark 5: QUEUE is the live group
+;; the node forwards held articles into, ADDRESS the optional submission
+;; address, "" for none) and one role row per moderator login (mark 4).  The
+;; delta replaces every mark-5 row keyed on NAME and every mark-4 row whose
+;; group is NAME, and leaves every other row where it was.  The queue is a
+;; live group other than NAME that is not itself moderated, and NAME is not
+;; the queue of another moderated group, so a forwarded article never lands
+;; in a moderated group.
+(defun fn-cfg-moderator-rows (name logins)
+  (declare (xargs :guard t))
+  (if (consp logins)
+      (cons (fn-cfg-row-make (car logins) name "" 4)
+            (fn-cfg-moderator-rows name (cdr logins)))
+    nil))
+
+(defun fn-cfg-moderation-rows (name queue address logins)
+  (declare (xargs :guard t))
+  (cons (fn-cfg-row-make name queue address 5)
+        (fn-cfg-moderator-rows name logins)))
+
+; The verb's delta: moderate NAME into QUEUE for LOGINS (at least one), or,
+; with no LOGINS, end NAME's moderation.
+(defun fn-cfg-set-group-moderation (name queue address logins)
+  (declare (xargs :guard t))
+  (if (consp logins)
+      (fn-cfg-delta-make :set-group-moderation name queue 0
+                         (fn-cfg-moderation-rows name queue address logins))
+    (fn-cfg-delta-make :set-group-moderation name "" 0 nil)))
+
+(defun fn-cfg-moderation-rowp (row)
+  (declare (xargs :guard t))
+  (equal (fn-cfg-row-n row) 5))
+
+(defun fn-cfg-moderator-rowp (row)
+  (declare (xargs :guard t))
+  (equal (fn-cfg-row-n row) 4))
+
+(defun fn-cfg-rows-without-moderation (rows name)
+  ; ROWS less NAME's moderation row and every moderator row of NAME.
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (or (and (fn-cfg-moderation-rowp (car rows))
+                   (equal (fn-cfg-row-a (car rows)) name))
+              (and (fn-cfg-moderator-rowp (car rows))
+                   (equal (fn-cfg-row-b (car rows)) name)))
+          (fn-cfg-rows-without-moderation (cdr rows) name)
+        (cons (car rows) (fn-cfg-rows-without-moderation (cdr rows) name)))
+    nil))
+
+; NAME's moderation row among ROWS, or nil.
+(defun fn-cfg-moderation-row (rows name)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (fn-cfg-moderation-rowp (car rows))
+               (equal (fn-cfg-row-a (car rows)) name))
+          (car rows)
+        (fn-cfg-moderation-row (cdr rows) name))
+    nil))
+
+; The logins of NAME's moderator rows, in slot order.
+(defun fn-cfg-moderator-logins (rows name)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (if (and (fn-cfg-moderator-rowp (car rows))
+               (equal (fn-cfg-row-b (car rows)) name))
+          (cons (fn-cfg-row-a (car rows))
+                (fn-cfg-moderator-logins (cdr rows) name))
+        (fn-cfg-moderator-logins (cdr rows) name))
+    nil))
+
+; Whether some moderation row other than NAME's own names NAME as its queue.
+(defun fn-cfg-queue-of-anotherp (rows name)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (or (and (fn-cfg-moderation-rowp (car rows))
+               (not (equal (fn-cfg-row-a (car rows)) name))
+               (equal (fn-cfg-row-b (car rows)) name))
+          (fn-cfg-queue-of-anotherp (cdr rows) name))
+    nil))
+
+; The logins a delta's moderator rows carry, in order.
+(defun fn-cfg-row-logins (rows)
+  (declare (xargs :guard t))
+  (if (consp rows)
+      (cons (fn-cfg-row-a (car rows)) (fn-cfg-row-logins (cdr rows)))
+    nil))
+
+(defun fn-cfg-moderator-loginsp (logins)
+  (declare (xargs :guard t))
+  (if (consp logins)
+      (and (fn-cfg-account-loginp (car logins))
+           (fn-cfg-moderator-loginsp (cdr logins)))
+    (null logins)))
+
+(defun fn-cfg-moderation-addressp (text)
+  (declare (xargs :guard t))
+  (or (equal text "") (fn-cfg-account-loginp text)))
+
+; The moderation of group NAME at generation GEN: (QUEUE ADDRESS LOGINS)
+; when NAME is live and moderated, else nil.  The one reader: LIST ACTIVE's
+; "m", the POST gate and the relay gate all come from here
+; (books/owner-agent.lisp `fn-oag-moderation-entries').
+(defun fn-cfg-group-moderation (v gen name)
+  (declare (xargs :guard t))
+  (let ((row (fn-cfg-moderation-row (fn-cfg-accounts v) name)))
+    (if (and (fn-cfg-group-livep v gen name) (consp row))
+        (list (fn-cfg-row-b row) (fn-cfg-row-c row)
+              (fn-cfg-moderator-logins (fn-cfg-accounts v) name))
+      nil)))
+
+(defun fn-cfg-set-group-moderation-reason (v gen d)
+  (declare (xargs :guard t))
+  (let ((name (fn-cfg-delta-a d)) (queue (fn-cfg-delta-b d))
+        (rows (fn-cfg-delta-rows d)) (accounts (fn-cfg-accounts v)))
+    (cond ((not (fn-cfg-group-livep v gen name)) :no-such-group)
+          ((not (equal (fn-cfg-delta-n d) 0)) :moderation-row)
+          ((not (consp rows)) (if (equal queue "") nil :moderation-row))
+          ((or (equal queue name)
+               (not (fn-cfg-group-livep v gen queue))
+               (consp (fn-cfg-moderation-row accounts queue))
+               (fn-cfg-queue-of-anotherp accounts name))
+           :moderation-queue)
+          ((not (and (consp (fn-cfg-ag-cdr rows))
+                     (fn-cfg-moderator-loginsp
+                      (fn-cfg-row-logins (fn-cfg-ag-cdr rows)))))
+           :moderator-login)
+          ((not (fn-cfg-moderation-addressp
+                 (fn-cfg-row-c (fn-cfg-ag-car rows))))
+           :moderation-address)
+          ((not (equal rows (fn-cfg-moderation-rows
+                             name queue (fn-cfg-row-c (fn-cfg-ag-car rows))
+                             (fn-cfg-row-logins (fn-cfg-ag-cdr rows)))))
+           :moderation-row)
+          (t nil))))
+
 ;; Group descriptions and the node's message (PRF-195, NNT-039; specs/nntp.md
 ;; "Group descriptions and the message of the day").  The eleventh slot's
 ;; rows are written only by
@@ -1674,6 +1826,18 @@
                                   (fn-cfg-accounts v) a)
                                  rows)
                          (fn-cfg-descriptions v)))
+     ; A moderation replaces the group's moderation and moderator rows
+     ; (PRF-228).
+     ((equal kind :set-group-moderation)
+      (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
+                         (fn-cfg-quotas v) (fn-cfg-policies v)
+                         (fn-cfg-listeners v) (fn-cfg-peers v)
+                         (fn-cfg-limits v) (fn-cfg-authorities v)
+                         (fn-cfg-invitations v)
+                         (append (fn-cfg-rows-without-moderation
+                                  (fn-cfg-accounts v) a)
+                                 rows)
+                         (fn-cfg-descriptions v)))
      ; A description replaces every row keyed on its name (PRF-195).
      ((equal kind :set-group-description)
       (fn-cfg-value-make-full (fn-cfg-groups v) (fn-cfg-capacity v)
@@ -1842,6 +2006,8 @@
      ((equal kind :account-access) (fn-cfg-account-access-reason d))
      ((equal kind :set-group-description)
       (fn-cfg-set-group-description-reason v gen d))
+     ((equal kind :set-group-moderation)
+      (fn-cfg-set-group-moderation-reason v gen d))
      (t nil))))
 
 (defun fn-cfg-admissible-reason (v gen stamp reserved ceiling deltas)

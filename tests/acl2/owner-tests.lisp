@@ -1951,6 +1951,8 @@
          (not (equal (fn-own-sub-origin sub) name))
          (not (consp (fn-feed-find (fn-own-sub-msgid sub)
                                    (fn-feed-queue (fn-own-feed-find name tbl)))))
+         (not (fn-mod-names-a-queuep (fn-own-sub-feed-groups sub)
+                                     (fn-inj-config-closed (fn-own-config o))))
          t)))
 
 ; Witness A (the Newsgroups arm; the two-machine session's case).  A signed
@@ -2059,3 +2061,49 @@
 (assert-event (null (fn-own-inflight (fn-own-feeds-reconfigure *own-after-post* *own-out-cfg*))))
 (assert-event (null (fn-own-submission-targets
                      (fn-own-feeds-reconfigure *own-after-post* *own-out-cfg*))))
+
+; -----------------------------------------------------------------------------
+; PKT-658 (PRF-228): a submission naming a moderation queue group is offered to
+; no peer (books/owner-feed-subject.lisp fn-own-submission-targets-of-a-queue-by-definition,
+; fn-own-feed-durable-never-enqueues-a-queue).  *own-cancel-queued* is
+; *own-cancel-a* under a posting configuration whose status list names
+; fn.letters as the queue of a moderated group (the entry the owner installs,
+; books/owner-agent.lisp fn-oag-moderation-entries).
+(defun own-with-queue (o queue)
+  (let ((c (fn-own-config o)))
+    (fn-own-configure
+     o (fn-inj-make-config-full
+        (fn-inj-config-allow c) (fn-inj-config-agent c) (fn-inj-config-groups c)
+        (fn-inj-config-max-octets c) (fn-inj-config-listing c)
+        (list (list :moderated (fn-nntp-string-octets "fn.mod")
+                    (fn-nntp-string-octets queue)
+                    (list (fn-nntp-string-octets "alice"))))))))
+(defconst *own-cancel-queued* (own-with-queue *own-cancel-a* "fn.letters"))
+; Positive witness: the hypothesis holds and there is no target, where the
+; same submission without the queue entry has the target "out".
+(assert-event (fn-mod-names-a-queuep
+               (fn-own-sub-feed-groups (fn-own-inflight *own-cancel-queued*))
+               (fn-inj-config-closed (fn-own-config *own-cancel-queued*))))
+(assert-event (equal (fn-own-submission-targets *own-cancel-queued*) nil))
+(assert-event (equal (fn-own-feed-durable *own-cancel-queued*
+                                          (fn-own-inflight *own-cancel-queued*))
+                     (fn-own-feeds *own-cancel-queued*)))
+; Hypothesis removal: *own-cancel-a* names no queue, and both conclusions fail.
+(assert-event (not (fn-mod-names-a-queuep
+                    (fn-own-sub-feed-groups (fn-own-inflight *own-cancel-a*))
+                    (fn-inj-config-closed (fn-own-config *own-cancel-a*)))))
+(must-fail (assert-event (equal (fn-own-submission-targets *own-cancel-a*) nil)))
+(must-fail (assert-event (equal (fn-own-feed-durable *own-cancel-a*
+                                                     (fn-own-inflight *own-cancel-a*))
+                                (fn-own-feeds *own-cancel-a*))))
+; The PKT-400 keystone's new literal, removed: every other literal of its
+; antecedent holds for "out" on *own-cancel-queued* (the same octets, table
+; and Path as *own-cancel-a*), the queue literal fails, and so does the
+; conclusion.
+(assert-event (equal (fn-own-inflight *own-cancel-queued*) (fn-own-inflight *own-cancel-a*)))
+(assert-event (equal (fn-own-feeds *own-cancel-queued*) (fn-own-feeds *own-cancel-a*)))
+(must-fail (assert-event (own-pkt400-antecedent *own-cancel-queued* "out")))
+(must-fail (assert-event (member-equal "out" (fn-own-submission-targets *own-cancel-queued*))))
+; A queue the submission does not name leaves the target.
+(assert-event (equal (fn-own-submission-targets (own-with-queue *own-cancel-a* "fn.other"))
+                     '("out")))

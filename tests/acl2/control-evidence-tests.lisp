@@ -194,3 +194,46 @@
             (equal (fn-cev-request-decode (fn-cev-request-encode kind offset))
                    (list :live-status kind offset)))
    :rule-classes nil))
+
+; ---------------------------------------------------------------------------
+; PKT-657 (PRF-228): `moderation list GROUP' (FNLS frame kind 3, code 10).
+(assert-event (equal (fn-cev-envelope-original "<fn-moderate.a@b.invalid>") "<a@b.invalid>"))
+(assert-event (null (fn-cev-envelope-original "<a@b.invalid>")))
+(assert-event (null (fn-cev-envelope-original "<fn-moderate.")))
+(assert-event (fn-cevg-kindp '(:moderation-list . "fn.mod")))
+(assert-event (not (fn-cevg-kindp '(:moderation-list . "fn mod"))))
+(assert-event (equal (fn-cevg-moderation-parse '("list" "fn.mod"))
+                     '(:kind (:moderation-list . "fn.mod"))))
+(assert-event (equal (fn-cevg-moderation-parse '("list")) '(:usage :group)))
+(assert-event (equal (fn-cevg-moderation-parse '("approve" "x")) '(:usage :moderation-verb)))
+(assert-event (equal (fn-cev-kind-code '(:moderation-list . "fn.mod")) 10))
+(assert-event (equal (fn-cev-any-request-decode
+                      (fn-cev-any-request-encode '(:moderation-list . "fn.mod") 0))
+                     '(:live-status (:moderation-list . "fn.mod") 0)))
+; The report over a queue holding one held and one approved envelope, and a
+; group that is not moderated.
+(defconst *cevm-configs*
+  (list (fn-cfg-record-make 0 0 1
+                            (append *fn-cfg-default-change*
+                                    (list (fn-cfg-create-group "fn.mod" *fn-cfg-default-policy-id*)
+                                          (fn-cfg-create-group "fn.mod.moderation" *fn-cfg-default-policy-id*)
+                                          (fn-cfg-set-group-moderation
+                                           "fn.mod" "fn.mod.moderation" "" '("alice"))))
+                            *fn-cfg-default-stamp*)))
+(defun cevm-art (id groups)
+  (fn-make-article id nil groups (list (cons (car groups) 1)) t 841000000))
+(defconst *cevm-raw*
+  (list (cevm-art "<fn-moderate.h@x.invalid>" '("fn.mod.moderation"))
+        (cevm-art "<fn-moderate.a@x.invalid>" '("fn.mod.moderation"))
+        (cevm-art "<a@x.invalid>" '("fn.mod"))
+        (cevm-art "<other@x.invalid>" '("fn.mod.moderation"))))
+(assert-event
+ (equal (fn-cev-report '(:moderation-list . "fn.mod") nil *cevm-raw* nil nil *cevm-configs*)
+        (fn-nls-text (concatenate 'string
+          "moderation group=fn.mod queue=fn.mod.moderation held=1" (string #\Newline)
+          "held envelope=<fn-moderate.h@x.invalid> message-id=<h@x.invalid>" (string #\Newline)
+          "approved envelope=<fn-moderate.a@x.invalid> message-id=<a@x.invalid>" (string #\Newline)))))
+(assert-event
+ (equal (fn-cev-report '(:moderation-list . "fn.letters") nil *cevm-raw* nil nil *cevm-configs*)
+        (fn-nls-text (concatenate 'string "moderation group=fn.letters moderated=no"
+                                  (string #\Newline)))))

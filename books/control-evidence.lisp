@@ -198,13 +198,113 @@
               (append (fn-nls-text " stored=no") *fn-nls-lf*))
             (fn-cev-targeting-lines msgid ws a verdicts))))
 
+;; -----------------------------------------------------------------------------
+;; PKT-657 (PRF-228): `moderation list GROUP'.  A held post is the envelope
+;; books/moderation.lisp `fn-mod-forward' injected into GROUP's queue, whose
+;; Message-ID is the post's with "fn-moderate." after the `<'.  Its state is
+;; read, never kept: `rejected' when a withdrawal record of WS withdraws the
+;; envelope, `approved' when the archive holds the post's own Message-ID (the
+;; moderator's approved injection, RFC 5537 section 3.9 step 4), `held'
+;; otherwise.  One walk of the archive N for the queue's envelopes, and per
+;; envelope one walk of N and one pass over WS; the configuration is the
+;; journal applied once (as `control evidence' applies it).
+
+(defconst *fn-cev-envelope-prefix* "<fn-moderate.")
+
+; What follows prefix P in O, or :no when O does not begin with P.
+(defun fn-cev-after-prefix (p o)
+  (declare (xargs :guard t))
+  (if (consp p)
+      (if (and (consp o) (equal (car p) (car o)))
+          (fn-cev-after-prefix (cdr p) (cdr o))
+        :no)
+    o))
+
+; The post's Message-ID an envelope Message-ID ID names, or nil.
+(defun fn-cev-envelope-original (id)
+  (declare (xargs :guard t))
+  (let ((rest (fn-cev-after-prefix
+               (fn-record-string-octets *fn-cev-envelope-prefix*)
+               (fn-record-string-octets id))))
+    (if (and (consp rest) (fn-cbor-octet-listp rest))
+        (fn-record-octets-string (cons 60 rest))
+      nil)))
+
+(defun fn-cev-withdrawn-by-some (msgid ws groups verdict)
+  (declare (xargs :guard t))
+  (if (consp ws)
+      (or (and (fn-ctl-withdrawalp (car ws))
+               (equal (fn-ctl-w-target (car ws)) msgid)
+               (fn-ctl-effect-withdrawsp
+                (fn-ctl-withdrawal-effect (car ws) groups verdict)))
+          (fn-cev-withdrawn-by-some msgid (cdr ws) groups verdict))
+    nil))
+
+(defun fn-cev-envelope-state (a ws raw verdicts)
+  (declare (xargs :guard t))
+  (cond ((fn-cev-withdrawn-by-some
+          (fn-article-msgid a) ws (fn-article-groups a)
+          (fn-ctl-lookup-verdict (fn-article-msgid a) verdicts))
+         "rejected")
+        ((consp (fn-cev-find-article
+                 (fn-cev-envelope-original (fn-article-msgid a)) raw))
+         "approved")
+        (t "held")))
+
+; The queue Q's envelopes among ARTS, in archive order.
+(defun fn-cev-queue-envelopes (q arts)
+  (declare (xargs :guard t))
+  (if (consp arts)
+      (if (and (consp (car arts))
+               (member-equal q (true-list-fix (fn-article-groups (car arts))))
+               (fn-cev-envelope-original (fn-article-msgid (car arts))))
+          (cons (car arts) (fn-cev-queue-envelopes q (cdr arts)))
+        (fn-cev-queue-envelopes q (cdr arts)))
+    nil))
+
+(defun fn-cev-held-count (envs ws raw verdicts)
+  (declare (xargs :guard t))
+  (if (consp envs)
+      (+ (if (equal (fn-cev-envelope-state (car envs) ws raw verdicts) "held") 1 0)
+         (fn-cev-held-count (cdr envs) ws raw verdicts))
+    0))
+
+(defun fn-cev-envelope-lines (envs ws raw verdicts)
+  (declare (xargs :guard t))
+  (if (consp envs)
+      (append (fn-nls-text (fn-cev-envelope-state (car envs) ws raw verdicts))
+              (fn-nls-text " envelope=") (fn-cev-string (fn-article-msgid (car envs)))
+              (fn-nls-text " message-id=")
+              (fn-cev-string (fn-cev-envelope-original (fn-article-msgid (car envs))))
+              *fn-nls-lf*
+              (fn-cev-envelope-lines (cdr envs) ws raw verdicts))
+    nil))
+
+(defun fn-cev-moderation-report (group ws raw verdicts configs)
+  (declare (xargs :guard t))
+  (let* ((cfg (fn-ctl-apply-records (fn-cfg-initial) configs))
+         (m (fn-cfg-group-moderation (fn-cfg-value cfg) (fn-cfg-generation cfg)
+                                     group)))
+    (if (not (consp m))
+        (append (fn-nls-text "moderation group=") (fn-cev-string group)
+                (fn-nls-text " moderated=no") *fn-nls-lf*)
+      (let ((envs (fn-cev-queue-envelopes (car m) raw)))
+        (append (fn-nls-text "moderation group=") (fn-cev-string group)
+                (fn-nls-text " queue=") (fn-cev-string (car m))
+                (fn-nls-text " held=")
+                (fn-nls-nat (fn-cev-held-count envs ws raw verdicts))
+                *fn-nls-lf*
+                (fn-cev-envelope-lines envs ws raw verdicts))))))
+
 ; The report of KIND (`fn-cevg-kindp') over the records WS, the archive RAW,
 ; the verdicts, the Store's records and its configuration journal.
 (defun fn-cev-report (kind ws raw verdicts records configs)
   (declare (xargs :guard t))
-  (if (consp kind)
-      (fn-cev-evidence-report (cdr kind) ws raw verdicts records configs)
-    (fn-cev-log-report ws)))
+  (cond ((and (consp kind) (equal (car kind) :moderation-list))
+         (fn-cev-moderation-report (cdr kind) ws raw verdicts configs))
+        ((consp kind)
+         (fn-cev-evidence-report (cdr kind) ws raw verdicts records configs))
+        (t (fn-cev-log-report ws))))
 
 ; What the running owner answers, over the view it carries.  Host:
 ; host/native-live-status-host.lisp `fn-native-live-status-host-answer'
@@ -240,6 +340,8 @@
   (declare (xargs :guard t))
   (cond ((equal kind :control-log) 8)
         ((and (consp kind) (equal (car kind) :control-evidence)) 9)
+        ; PKT-657: `moderation list GROUP' (FNLS frame kind 3, code 10).
+        ((and (consp kind) (equal (car kind) :moderation-list)) 10)
         (t 0)))
 
 (defun fn-cev-kind-argument (kind)
@@ -261,6 +363,9 @@
   (cond ((and (equal code 8) (null argument)) :control-log)
         ((and (equal code 9) (fn-cbor-octet-listp argument))
          (let ((kind (cons :control-evidence (fn-record-octets-string argument))))
+           (if (fn-cevg-kindp kind) kind nil)))
+        ((and (equal code 10) (fn-cbor-octet-listp argument))
+         (let ((kind (cons :moderation-list (fn-record-octets-string argument))))
            (if (fn-cevg-kindp kind) kind nil)))
         (t nil)))
 
@@ -421,7 +526,14 @@
            (and (fn-cbor-octet-listp (fn-record-string-octets x))
                 (<= (len (fn-record-string-octets x)) *fn-cevg-max-msgid-octets*)
                 (equal (fn-record-octets-string (fn-record-string-octets x)) x)))
-  :hints (("Goal" :in-theory (enable fn-cevg-msgidp fn-record-string-octets fn-record-octets-string)))))
+  :hints (("Goal" :in-theory (enable fn-cevg-msgidp fn-record-string-octets fn-record-octets-string))))
+; PKT-657: the group argument of `moderation list' likewise.
+(defthm fn-cev-group-octets
+  (implies (fn-cevg-groupp x)
+           (and (fn-cbor-octet-listp (fn-record-string-octets x))
+                (<= (len (fn-record-string-octets x)) *fn-cevg-max-msgid-octets*)
+                (equal (fn-record-octets-string (fn-record-string-octets x)) x)))
+  :hints (("Goal" :in-theory (enable fn-cevg-groupp fn-record-string-octets fn-record-octets-string)))))
 
 (encapsulate ()
 (local (defthm fn-cev-octets-of-append
@@ -433,9 +545,11 @@
   (implies (fn-cevg-kindp kind)
            (and (fn-cbor-octet-listp (fn-cev-kind-argument kind))
                 (<= (len (fn-cev-kind-argument kind)) *fn-cevg-max-msgid-octets*)))
-  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind))))
+  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind)))
+                        (:instance fn-cev-group-octets (x (cdr kind))))
            :in-theory (e/d (fn-cevg-kindp fn-cev-kind-argument)
-                           (fn-cev-msgid-octets fn-cevg-msgidp fn-record-string-octets
+                           (fn-cev-msgid-octets fn-cev-group-octets fn-cevg-msgidp
+                            fn-cevg-groupp fn-record-string-octets
                             fn-record-octets-string))))))
 (defthm fn-cev-request-payload-fits
   (implies (fn-cevg-kindp kind)
@@ -492,9 +606,11 @@
   (implies (fn-cevg-kindp kind)
            (and (fn-cbor-octet-listp (fn-cev-kind-argument kind))
                 (<= (len (fn-cev-kind-argument kind)) *fn-record-max-octets*)))
-  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind))))
+  :hints (("Goal" :use ((:instance fn-cev-msgid-octets (x (cdr kind)))
+                        (:instance fn-cev-group-octets (x (cdr kind))))
            :in-theory (e/d (fn-cevg-kindp fn-cev-kind-argument)
-                           (fn-cev-msgid-octets fn-cevg-msgidp fn-record-string-octets
+                           (fn-cev-msgid-octets fn-cev-group-octets fn-cevg-msgidp
+                            fn-cevg-groupp fn-record-string-octets
                             fn-record-octets-string))))))
 (local (defthm fn-cev-kind-code-uint
   (fn-record-uint32p (fn-cev-kind-code kind))

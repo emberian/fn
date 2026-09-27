@@ -500,7 +500,9 @@
                             (ps (fn-auth-view-session as config))
                             (archive (fn-auth-view-archive as config archive))
                             (index (fn-auth-view-index as config archive index))
-                            (config (fn-auth-view-config as config archive)))))))
+                            (config (fn-auth-view-config
+                                     as (fn-auth-moderation-config as config)
+                                     archive)))))))
 
 (defun fn-auth-fold-post-awaiting (as)
   (declare (xargs :guard t))
@@ -695,7 +697,12 @@
                 (fn-peer-step-pinned fn-auth-command
                  fn-nntp-tokenize fn-nntp-keywordp))
            :use ((:instance fn-auth-fold-peer-step-no-local-submission
-                            (ps (fn-auth-session-base as)))))))
+                            (ps (fn-auth-view-session as config))
+                            (archive (fn-auth-view-archive as config archive))
+                            (index (fn-auth-view-index as config archive index))
+                            (config (fn-auth-view-config
+                                     as (fn-auth-moderation-config as config)
+                                     archive)))))))
 
 (defun fn-auth-fold-safe-connp (conn)
   (declare (xargs :guard t :verify-guards nil))

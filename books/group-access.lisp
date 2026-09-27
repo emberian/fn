@@ -107,7 +107,7 @@
 ; GROUP is readable under TEXT when TEXT parses as a wildmat and matches
 ; GROUP.  A text that does not parse admits nothing (fail closed); the
 ; operator's verb admits only texts that parse (books/native-admin.lisp).
-(defun fn-gac-readablep (text group)
+(defun fn-gac-text-readablep (text group)
   (declare (xargs :guard t))
   (let ((parsed (fn-wildmat-parse (fn-gac-text-octets text))))
     (and (fn-wildmat-result-okp parsed)
@@ -115,6 +115,20 @@
          (fn-nntp-group-matches-parsed-wildmatp
           (fn-wildmat-result-value parsed) group)
          t)))
+
+; PKT-658 (PRF-228): a READ rule may also be (:hide TEXT Q ...), TEXT's rule
+; with the moderation queues Q (group octets) absent: the queues a login
+; that moderates none of their groups may not read (books/moderation.lisp
+; `fn-mod-hidden-queues', composed by books/nntp-auth.lisp
+; `fn-auth-access-text').
+(defun fn-gac-readablep (text group)
+  (declare (xargs :guard t))
+  (if (and (consp text) (equal (car text) :hide) (consp (cdr text)))
+      (and (fn-gac-text-readablep (cadr text) group)
+           (not (member-equal (fn-gac-text-octets group)
+                              (true-list-fix (cddr text))))
+           t)
+    (fn-gac-text-readablep text group)))
 
 (defun fn-gac-filter-groups (text groups)
   (declare (xargs :guard t))
@@ -236,7 +250,7 @@
 ; -----------------------------------------------------------------------------
 ; The view is a store the reader machine serves
 
-(in-theory (disable fn-gac-readablep))
+(in-theory (disable fn-gac-readablep fn-gac-text-readablep))
 
 (defthm fn-gac-member-of-filter-groups
   (iff (member-equal g (fn-gac-filter-groups text groups))
@@ -278,7 +292,7 @@
 (defthm fn-gac-readablep-implies-stringp
   (implies (fn-gac-readablep text g) (stringp g))
   :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-gac-readablep))))
+  :hints (("Goal" :in-theory (enable fn-gac-readablep fn-gac-text-readablep))))
 
 (defthm fn-gac-next-number-of-filter
   (implies (fn-gac-readablep text group)

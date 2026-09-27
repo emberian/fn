@@ -139,7 +139,7 @@
             (fn-auth-view-archive as config archive)
             (fn-auth-view-index as config archive index)
             verdicts
-            (fn-auth-view-config as config archive)
+            (fn-auth-view-config as (fn-auth-moderation-config as config) archive)
             observation injection wire-event)))
     (fn-post-make-result (fn-auth-with-base as (fn-post-result-session r))
                          (fn-post-result-effects r)
