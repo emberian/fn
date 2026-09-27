@@ -9539,11 +9539,13 @@
       "evidence": [
         "books/store-recover-stream.lisp",
         "tests/acl2/store-recover-stream-tests.lisp",
-        "host/store-node-host.lisp",
         "host/native/io.lisp",
-        "planning/evidence/recover-memory-2026-09-27.md"
+        "host/store-host.lisp",
+        "planning/evidence/recover-memory-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T094014Z-2171763.json",
+        "planning/evidence/manifests/certify-20260927T091028Z-2009960.json"
       ],
-      "progress_note": "Lane recover-memory (2026-09-27, PKT-823): REPL-admitted on hbox (the book and its test book, 29 forms); certified on hbox (see the record).",
+      "progress_note": "Lane recover-memory (2026-09-27, PKT-823): every form REPL-admitted on hbox; certified on hbox at the lane's final bytes (run-20260927T093905Z-d480, certify-20260927T094014Z-2171763; both books in run-20260927T090826Z-d6d2, certify-20260927T091028Z-2009960). Measured on the 32 KiB fixture (10,064 records) post-flip: peak dynamic 11,437 -> 1,817 MB, RSS 17.0 -> 2.13 GB; native SCN-077 10 MiB OK on the post-flip image.",
       "events": [
         "fn-srs-steps-are-one-step-of-the-concatenation",
         "fn-srs-one-step-is-the-intern-of-the-decode",
