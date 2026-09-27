@@ -1,6 +1,7 @@
 """Two native endpoints exercise BP request -> owner Store -> FNRJ receipt."""
 
 import os
+import re
 from pathlib import Path
 import select
 import shutil
@@ -155,23 +156,37 @@ class NativeBpApplicationTests(unittest.TestCase):
             stderr=subprocess.PIPE,
         )
 
+    def store_verb(self, *args):
+        done = self.invoke("store", self.store, *args)
+        self.assertEqual(done.returncode, 0, (done.stdout, done.stderr))
+        return done.stdout
+
     def recovered_counts(self):
-        store, bridge, records = run_bp_ingress.open_live_bp_store(
-            self.store, False)
-        try:
-            return len(records), bridge.article_count(), bridge.pin_count()
-        finally:
-            bridge.close()
-            store.close()
+        """(committed transactions, articles, retention pins) of the Store,
+        from the node's own read-only opens of the format-9 record log:
+        `store PATH status' (fn-nls-report's transactions= word is
+        fn-sbud-used, the file kernel's records; articles= the accepted
+        articles) and `store PATH retention' (pins=, the replayed ledger's
+        pin count).  The Python Store (tools/run_store.py) reads another
+        layout and is not this Store's readback."""
+        status = re.findall(rb"^transactions=([0-9]+) articles=([0-9]+) ",
+                            self.store_verb("status"), re.MULTILINE)
+        self.assertEqual(len(status), 1)
+        pins = re.findall(rb"^pins=([0-9]+) ", self.store_verb("retention"),
+                          re.MULTILINE)
+        self.assertEqual(len(pins), 1)
+        return int(status[0][0]), int(status[0][1]), int(pins[0])
 
     def recovered_provenance(self):
-        store, bridge, _records = run_bp_ingress.open_live_bp_store(
-            self.store, False)
-        try:
-            return bridge.prov_for_msgid(self.msgid)
-        finally:
-            bridge.close()
-            store.close()
+        """The provenance the Store's retention pin records for the article.
+        ACL2 decides it (books/provenance-inspect.lisp fn-provi-of-msgid,
+        called by host/store-node-host.lisp fn-store-prov-for-msgid), but no
+        verb of the native image prints it: `store PATH inspect' writes the
+        article's octets only and `status'/`retention' carry no evidence.
+        Decoding the exported records here would re-derive it in Python."""
+        self.fail("no native store verb reports an article's provenance "
+                  "(fn-provi-of-msgid); the check needs one, e.g. "
+                  "`store PATH provenance MSGID'")
 
     def prepare_sender_obligation(self):
         sender_store = self.temp / "sender-store"
@@ -503,15 +518,6 @@ class NativeBpApplicationTests(unittest.TestCase):
                                 self.msgid.decode("ascii"))
         self.assertEqual(inspected.returncode, 0, inspected.stderr.decode())
         self.assertEqual(inspected.stdout, self.article)
-        # A BP request is peer transit (specs/bp-node-machine.md, the
-        # :request-transit-intent join): the Store record's provenance is
-        # the one fn-peer-injection-arguments gives, naming the principal
-        # the channel admitted.  The `bp-receive node=... label=...' form is
-        # the historical control-submission binding, which a request only
-        # took while the ingress was dropped and no principal was admitted.
-        provenance = self.recovered_provenance()
-        self.assertIn(b"peer-transit:sender-boundary", provenance)
-        self.assertNotIn(b"bp-receive", provenance)
 
         result_files = sorted(
             (self.sender_spool / "receive-evidence").glob("*.adu")
@@ -524,6 +530,15 @@ class NativeBpApplicationTests(unittest.TestCase):
         self.assertEqual(replay.returncode, 0, replay.stderr.decode())
         receipt = result_files[0].read_bytes()
         self.assertIn(("hex=" + receipt.hex()).encode("ascii"), replay.stdout)
+        # A BP request is peer transit (specs/bp-node-machine.md, the
+        # :request-transit-intent join): the Store record's provenance is
+        # the one fn-peer-injection-arguments gives, naming the principal
+        # the channel admitted.  The `bp-receive node=... label=...' form is
+        # the historical control-submission binding, which a request only
+        # took while the ingress was dropped and no principal was admitted.
+        provenance = self.recovered_provenance()
+        self.assertIn(b"peer-transit:sender-boundary", provenance)
+        self.assertNotIn(b"bp-receive", provenance)
 
     def test_visible_decision_namespace_eio_fences_before_receipt(self):
         receiver, port = self.start_receiver(fail_decision_namespace=True)
