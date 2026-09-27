@@ -99,7 +99,11 @@ def vmhwm(pid):
 
 class Harness:
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="fn-heap-"))
+        # A durable mount: a mission's init requires durable storage
+        # (store-mount-identity, PKT-670) and /tmp is tmpfs on hbox.
+        durable = ROOT / "build" / "test-tmp"
+        durable.mkdir(parents=True, exist_ok=True)
+        self.tmp = Path(tempfile.mkdtemp(prefix="fn-heap-", dir=durable))
         self.addCleanup(shutil.rmtree, self.tmp, True)
         prefix = self.tmp / "opt" / "fn"
         (prefix / "bin").mkdir(parents=True)
