@@ -1179,7 +1179,7 @@ planning/design-2026-09-27-storage-log.md, lane commit-onto-log). The
 per-file layout `fn-store-8` (the allocation frontier, `transactions/`, the
 committed-history marker) is still opened and committed through its own
 programs while the native modules that read that layout are retired
-(PKT-COL-1, the coordinator numbers it); a developer image writes it under
+(PKT-830, the coordinator numbers it); a developer image writes it under
 `FN_NATIVE_STORE_FORMAT=8`. The open refuses a profile frame of any other
 format by name (`open refused reason=store-format: reinstall from the release
 and import`, exit 1) and translates nothing. A profile frame of another

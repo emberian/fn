@@ -133,9 +133,12 @@ class Acl2BpIngress(run_store.Acl2Store):
         form += " " + str(charge) + " '" + self.literal(adu)
         form += " {} {} {} {} fn-arena state)".format(
             monotonic_ns, wall_ns, error_ms, "t" if has_wall else "nil")
-        value = run_store.acl2_result(self.call(form)).upper()
-        if value == b":PREPARED":
+        body = run_store.acl2_result(self.call(form))
+        # A prepared ADU answers (:SEAL ADU): the entry read the arena only
+        # (books/bp-ingress.lisp fn-bpi-ingress-prepare-interned-unfolds).
+        if self.seal_named(body):
             return "prepared"
+        value = body.upper()
         if value == b":REJECTED":
             return "rejected"
         if value == b":CLOCK-UNUSABLE":

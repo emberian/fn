@@ -242,8 +242,13 @@ class NativeApplicationJournalTests(unittest.TestCase):
         try:
             msgid = self.msgid.encode("ascii")
             _archive, subject, _evidence = run_store.metadata(msgid, article, bridge)
-            transaction = next((self.store / "transactions").glob("*.txn"))
-            record = run_store.unframe(transaction.read_bytes(), bridge)
+            # The committed record's exact octets, as the open reads them:
+            # `store export' writes them (format 9 keeps them in the record
+            # log, not in a transaction file).
+            archive = self.tmp / "archive"
+            exported = self.invoke("store", self.store, "export", archive)
+            self.assertEqual(exported.returncode, 0, exported.stderr)
+            record = next((archive / "records").glob("*.txn")).read_bytes()
             bridge.call(
                 '(ld "host/bp-receipt-journal-host.lisp" '
                 ':ld-error-action :return :ld-error-triples t)'

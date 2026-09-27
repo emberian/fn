@@ -84,7 +84,7 @@
 ; through the record log (journal/000001.log, books/store-log*.lisp) and holds
 ; no allocation frontier, transactions/ directory or committed-history
 ; marker.  Format 9 is what `init' writes.  Format 8 stays readable while the
-; native modules that read the per-file layout are retired (PKT-COL-1, the coordinator numbers it); the
+; native modules that read the per-file layout are retired (PKT-830, the coordinator numbers it); the
 ; commit route of an opened store is `fn-bs-profile-logp' of its profile.
 (defconst *fn-bs-meta-format-9*
   '(102 110 45 115 116 111 114 101 45 57)) ; fn-store-9
@@ -303,18 +303,14 @@
   (fn-bs-profile-validp (fn-bs-profile-of values)))
 
 ; The commit route of the store a profile opens (lane commit-onto-log): the
-; record log for format 9, the per-file programs for format 8.  A value that
-; is not a profile names neither (the open refuses it before this is read).
+; record log for format 9.  A format-8 profile (the per-file layout) is
+; valid and decodes, for `store import''s migration of an old release's
+; archive (books/store-export.lisp fn-sxp-log-profile), but no image opens it
+; (books/store-profile-open.lisp, :store-format).  A value that is not a
+; profile names no route.
 (defun fn-bs-profile-logp (values)
   (declare (xargs :guard t))
   (equal (fn-bs-meta-nth 0 (fn-bs-profile-of values)) *fn-bs-meta-format-9*))
-
-; The same profile in the per-file layout: what a developer image's `init'
-; writes under FN_NATIVE_STORE_FORMAT=8 for the modules that read that layout
-; (PKT-COL-1).  Validity does not read the word beyond its being a format.
-(defun fn-bs-profile-as-format-8 (values)
-  (declare (xargs :guard t))
-  (if (consp values) (cons *fn-bs-meta-format-8* (cdr values)) values))
 
 ; The named accessors every consumer reads.  Each reads the profile the
 ; store runs under, and a value that is not a valid profile gives 0.
@@ -1163,7 +1159,7 @@
     (if (equal (car verdict) :init) (cadr verdict) nil)))
 
 ; The operator's view of the profile a store runs under: the format it is
-; persisted in (9, or 8 while PKT-COL-1 stands) and every field by its
+; persisted in (9, or 8 while PKT-830 stands) and every field by its
 ; operator name, read through `fn-bs-profile-of' (0 for a value that is not
 ; a profile).  `operator status' prints it; the host formats, never computes.
 (defun fn-bs-profile-report-value (i values)

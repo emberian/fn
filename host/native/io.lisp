@@ -1006,20 +1006,14 @@ scope ends, however it ends."
 ;;; mirror tools/frame_bridge.py's wrappers: the raw host neither frames nor
 ;;; parses a field, and it does not restate the frontier domain or successor.
 
-(defun fnn-store-format-8-selected-p ()
-  "FN_NATIVE_STORE_FORMAT=8 on a developer image: init writes format 8."
-  (equal (fnn-developer-selector "FN_NATIVE_STORE_FORMAT") "8"))
-
 (defun fnn-metadata-config-frame (profile)
-  (let ((value (if (fnn-store-format-8-selected-p)
-                   (fnn-core 'fn-store-metadata-config-frame-format-8 profile)
-                 (fnn-core 'fn-store-metadata-config-frame profile))))
+  (let ((value (fnn-core 'fn-store-metadata-config-frame profile)))
     (when (or (null value) (not (fnn-octet-list-p value)))
       (fnn-fault "ACL2 returned malformed metadata profile frame"))
     (fnn-octets value)))
 
 (defun fnn-metadata-config-decode (octets)
-  "ACL2's decoded store profile: a format-8 profile (the one format, D34).  The host keeps the value opaque and
+  "ACL2's decoded store profile: a format-9 profile (the one format, D34).  The host keeps the value opaque and
 reads every field through an ACL2 accessor.  The verdict is ACL2's open
 (books/store-profile-open.lisp fn-spo-config-open): a saved profile whose
 record bound the poll reply cannot carry, a profile frame of another
@@ -1495,16 +1489,16 @@ resolves the names against `domain' and the host carries that list verbatim."
   (marker-catch-up nil)
   ;; The one scripted fault point, or NIL: tools/run_store.py's ScriptedFaults.
   (fault-point nil) (fault-class nil) (fault-message nil)
-  ;; Lane commit-onto-log: the commit route ACL2 names from the profile
-  ;; (fn-store-profile-logp: format 9) and, on that route, the open record
-  ;; log (an fnn-log: the segment's descriptor and the log kernel).
-  (logp nil) (log nil)
   ;; Whether the open returns the whole history's record octets (the verbs
   ;; that pack, compact or export take them).  The owner opens with NIL: after
   ;; a state-checkpoint open the covered prefix lives in the arena and the
   ;; checkpoint's rows, and is not re-encoded as octet lists (checkpoint-arena-2;
   ;; fnn-recover-from-state-checkpoint).
-  (history t))
+  (history t)
+  ;; Lane commit-onto-log: the commit route ACL2 names from the profile
+  ;; (fn-store-profile-logp: format 9) and, on that route, the open record
+  ;; log (an fnn-log: the segment's descriptor and the log kernel).
+  (logp nil) (log nil))
 
 (defun fnn-profile-nat (name store)
   (let ((value (fnn-core name (fnn-store-config store))))
@@ -2020,7 +2014,7 @@ acknowledged without its marker."
            (fnn-init-cut store "init-parent-fenced")
            ;; Format 9: the record log's segment, after the per-file init
            ;; program (whose frontier file and transactions/ directory a
-           ;; format-9 store never reads: PKT-COL-2 gives format 9 its own
+           ;; format-9 store never reads: PKT-831 gives format 9 its own
            ;; init program).
            (when (fnn-core 'fn-store-profile-logp (fnn-store-config store))
              (fnn-log-init-segment store)))
@@ -2199,8 +2193,9 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
 (defun fnn-state-checkpoint-load (store)
   "Decode the checkpoint into ACL2's global: (values STATUS S) with STATUS
 :absent, :refused, :exceeds-bound, :schema (a file of another schema, D34:
-the journal replays, `status' says reason=checkpoint-schema) or :ok, the
-vocabulary of fn-sco-select-named."
+the journal replays, `status' says reason=checkpoint-schema), :arena (a file
+without the arena run: reason=checkpoint-arena) or :ok, the vocabulary of
+fn-scka-select-named."
   (multiple-value-bind (status value)
       (handler-case (fnn-state-checkpoint-plan store)
         (fnn-os-error () (values :refused :io)))
@@ -2213,7 +2208,9 @@ vocabulary of fn-sco-select-named."
                     (every (lambda (x) (and (integerp x) (>= x 0))) (rest answer)))
                (fnn-state-checkpoint-load-arena (second answer) (third answer)
                                                 (fourth answer))
-               (values :refused 0)))))))
+               ;; A file without the arena run (tables-only, written before
+               ;; the flip) is refused by name: reason=checkpoint-arena.
+               (values (if (equal answer '(:refused :arena)) :arena :refused) 0)))))))
 
 (defconstant +fnn-checkpoint-load-batch-payloads+ 1024
   "Payloads sealed into the arena per call while a state checkpoint loads
@@ -3601,7 +3598,7 @@ or refuses by name, saying what to run."
        (lambda (stage)
          (fnn-record-filesystem-at-init stage profile policy)
          ;; Format 9: the record log's segment is part of the published
-         ;; stage (PKT-COL-2: fn-bs-init-pub-program does not name it yet).
+         ;; stage (PKT-831: fn-bs-init-pub-program does not name it yet).
          (when (fnn-core 'fn-store-profile-logp
                          (fnn-metadata-config-decode
                           (fnn-metadata-config-frame profile)))
@@ -5084,10 +5081,7 @@ tree root), or stop the build."
     "FN_PULL_TEST_KILL"
     "FN_NATIVE_RECLAIM_FAULT" "FN_NATIVE_CHECKPOINT_BATCH_FAULT"
     "FN_ACCOUNT_TEST_STOP_AFTER_PUBLISH"
-    "FN_NATIVE_LOG_FAULT"
-    ;; commit-onto-log: `8' makes a developer image's init write the
-    ;; per-file layout (format 8) for the modules that read it (PKT-COL-1).
-    "FN_NATIVE_STORE_FORMAT"))
+    "FN_NATIVE_LOG_FAULT"))
 
 (defun fnn-developer-selector (name)
   "The value of developer selector NAME on a developer image, else NIL."
@@ -5738,7 +5732,7 @@ first (inside a batch quantum the batch closes at the operator's bounds)."
   "Grow the segment when the open batch does not fit (fn-lgk-fitsp): ACL2's
 next extent (fn-olr-next-extent), posix_fallocate and one barrier.  The
 octets past the frontier stay zeros (the relation's tail).  The extension is
-not a P-BATCH step (PKT-COL-4: its program and cut): a death during it leaves
+not a P-BATCH step (PKT-832: its program and cut): a death during it leaves
 the old extent or the new one, zeros past the frontier either way."
   (let ((ks (fnn-log-kernel log)) (unit (fnn-log-unit log)) (extent (fnn-log-extent log)))
     (unless (fnn-core 'fn-lgk-fitsp ks unit extent)
@@ -6033,11 +6027,11 @@ ROOT.import-XXXX, never a store at ROOT (fn-bs-imp-classify)."
 ;;; heap cannot use.  A sixteenth of the reservation, at most
 ;;; +fnn-gc-nursery-octets+ (every reservation of 1 GiB or more, and the
 ;;; figure heap-from-profile's derivation assumes) and at least 8 MiB.
-(defparameter +fnn-gc-nursery-least-octets+ (* 8 1024 1024))
-
+;;; ACL2 decides it (books/heap-store-figure.lisp fn-heap-nursery-trigger, 8 MiB
+;;; least): the launcher's figure holds twice the trigger set here in the
+;;; dynamic space it reserved (fn-heap-with-nursery-holds-the-trigger).
 (defun fnn-gc-nursery-octets ()
-  (max +fnn-gc-nursery-least-octets+
-       (min +fnn-gc-nursery-octets+ (floor (sb-ext:dynamic-space-size) 16))))
+  (fnn-core 'fn-heap-nursery-trigger (sb-ext:dynamic-space-size) +fnn-gc-nursery-octets+))
 
 ;;; `fn redeem HOST[:PORT] CODE LOGIN [--tls] [--cafile PEM]': a friend
 ;;; redeems an invitation code (the stranger rehearsal's stop 10).  The host

@@ -9,6 +9,7 @@
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/checkpoint-compaction-preservation")
 (include-book "../books/store-compact-verb")
+(include-book "../books/store-compact-window")
 (include-book "../books/checkpoint-pack-chain-once")
 (include-book "../books/store-reclaim-pack")
 (include-book "../books/store-log-reclaim")
@@ -213,6 +214,20 @@
   (fn-cverb-decide profile octet-records lower names generations selected
                    disk-free))
 
+;; The same decision over the history's length and one link's window
+;; (books/store-compact-window.lisp, PKT-686 item 2): what the host calls.
+;; `fn-cverb-decide-window-is-cverb-decide' equates it with the one above
+;; when WINDOW is what `fn-store-compact-window-count' named.
+(defun fn-store-compact-window-count (lens lower)
+  (declare (xargs :mode :program))
+  (fn-scw-window-count lens lower))
+
+(defun fn-store-compact-decide-window (profile used lower window names generations
+                                               selected disk-free)
+  (declare (xargs :mode :program))
+  (fn-cverb-decide-window profile used lower window names generations selected
+                          disk-free))
+
 ;; `operator CONFIG store reclaim [--dry-run]' (host/native/checkpoint.lisp
 ;; `fnn-reclaim-steps'): the whole decision over the Store this process
 ;; replayed and the compact verb's observation.  The subject of
@@ -413,6 +428,21 @@
            (list :nothing-uncovered
                  (fn-store-checkpoint-pack-nothing-line (cadr captured)
                                                         (len records))))
+          (t captured))))
+
+;; The capture over the history's length and the link's window
+;; (`fn-ccc-capture-link-window-is-capture-link'): what the host calls.
+(defun fn-store-checkpoint-chain-capture-window (used window lower lower-frontier
+                                                     pred-generation pred-digest)
+  (declare (xargs :mode :program))
+  (let ((captured (fn-ccc-capture-link-window used window lower lower-frontier
+                                              pred-generation pred-digest)))
+    (cond ((equal (car captured) :ok)
+           (list :ok (fn-ccc-encode-link (cadr captured))
+                 (fn-ccc-boundary (cadr captured))))
+          ((equal (car captured) :nothing-uncovered)
+           (list :nothing-uncovered
+                 (fn-store-checkpoint-pack-nothing-line (cadr captured) used)))
           (t captured))))
 
 (defun fn-store-checkpoint-chain-retire-plan (generations chain bound)

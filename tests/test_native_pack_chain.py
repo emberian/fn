@@ -1,20 +1,34 @@
-"""Chained packs on the native developer image (P5, SCN-046).
+"""Compaction of a scale store over the record log (P5, SCN-046; format 9).
 
-A scale-profile store with more than one link's worth of transactions is
-compacted into a chain; reads and the next number are unchanged; `status`
-shows the chain; and every process-death cut of the chain publication, from
-both entries (`operator CONFIG store compact` and `checkpoint pack STORE
-select`), reopens to the whole history and resumes to a complete chain.
+On format 9 there are no packs (design 2026-09-27 storage-log section 6,
+section 9 row 5): `operator CONFIG store compact' publishes a state
+checkpoint with the log ROTATED and DROPS the segments it covers
+(books/store-log-segments.lisp, T8 fn-lg-segment-drop-preserves-the-open).
+What P5 required of compacting a store bigger than one unit of work stays:
+a store of CUT_N probe articles (default 4500) and, gated, the scale store
+of N (default 20000) compact; the committed history (the `store export'
+archive, file for file) and every sampled article are unchanged; the open
+after it replays the same counts; the next POST takes the next number; a
+second compaction covers the new suffix.  The kill cuts of the rotation and
+the drop are tests.test_native_log_compaction's.
 
-FN_P5_N (default 20000) sets the size of the scale store and FN_P5_CUT_N
-(default 4500: three links of 4 MiB, so both occurrences of every cut are
-reached) the size of the cut and EIO campaigns' store.  FN_P5_TIMEOUT (default 1800 s)
-bounds each native call; a 20,000-record open costs minutes
-(planning/evidence/bounds-p5-2026-09-25.md).  Articles are 2 KiB: the
-profile's max-article-octets, which the in-process `probe N article' commits
-as well-formed articles the served reader frames.
+Retired with the pack chain (design section 9 row 5; books and host code go
+in lane log-recovery's pack deletion):
+* test_every_chain_publication_cut_from_both_entries -- the pack chain's
+  candidate/selection/pack-chain-link cuts (the log's are rotate-* and drop-*,
+  tests.test_native_log_compaction);
+* test_pack_chain_link_cut_leaves_exactly_the_selected_links -- chain links;
+* test_eio_at_each_link_publication_cut_from_both_entries -- a link's
+  immutable publication and the selection marker (no such files on format 9);
+* test_chain_reclaim_retire_and_suffix_cuts_resume -- pack-reclaim and
+  pack-retire (`checkpoint pack*' refuses reason=record-log on format 9).
+
+FN_P5_TIMEOUT (default 1800 s) bounds each native call.  Articles are 2 KiB:
+the profile's max-article-octets, which the in-process `probe N article'
+commits as well-formed articles the served reader frames.
 """
 import base64
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -23,33 +37,15 @@ import shutil
 import unittest
 
 from tests.test_native_checkpoint import IMAGE, NativeCheckpointTests
-from tools import run_store
 
 N = int(os.environ.get("FN_P5_N", "20000"))
 CUT_N = int(os.environ.get("FN_P5_CUT_N", "4500"))
-# A chain fixture built once (planning/evidence/pack-chain-open-2026-09-26/
-# chain_fixture.py build): the scale test copies it instead of probing.
+# A scale store built once (planning/evidence/pack-chain-open-2026-09-26/
+# chain_fixture.py build, tools/fixtures.py chain-20000): the scale test
+# copies it instead of probing.
 FIXTURE = os.environ.get("FN_P5_FIXTURE")
 PROFILE_FLAGS = ("--profile", "scale", "--max-transactions", "1048576",
                  "--max-article-octets", "2048")
-CUTS = ("candidate-file", "candidate-link", "candidate-directory",
-        "selection-file", "selection-replace", "selection-directory",
-        "pack-chain-link")
-# EIO before each syscall of one link's publication: the candidate's
-# immutable publication (host/native/immutable-publish.lisp) and the
-# selection marker's replacement (host/native/checkpoint.lisp).  A failure
-# of a syscall that cannot have published the name refuses; a failed link or
-# rename leaves the name's visibility unknown, and a failed directory barrier
-# leaves its durability unknown: both are uncertain.
-EIO_CUTS = (
-    ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "stage", run_store.EXIT_REFUSED),
-    ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "file-barrier", run_store.EXIT_REFUSED),
-    ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "link", run_store.EXIT_UNCERTAIN),
-    ("FN_IMMUTABLE_PUBLISH_TEST_FAIL", "namespace", run_store.EXIT_UNCERTAIN),
-    ("FN_CHECKPOINT_TEST_FAIL", "selection-file", run_store.EXIT_REFUSED),
-    ("FN_CHECKPOINT_TEST_FAIL", "selection-replace", run_store.EXIT_UNCERTAIN),
-    ("FN_CHECKPOINT_TEST_FAIL", "selection-directory", run_store.EXIT_UNCERTAIN),
-)
 
 
 def decode_view(recorded):
@@ -61,12 +57,13 @@ def decode_view(recorded):
             for key, value in recorded.items()}
 
 
-def fewest_links(n):
-    """A link holds at most 4096 events (and at most 4 MiB), so a whole chain
-    over N records has at least this many links.  The partition itself is
-    ACL2's (fn-ccc-fit); the tests read it from `status', never compute it:
-    2 KiB articles fill the 4 MiB first, near 1,775 records a link."""
-    return -(-n // 4096)
+def segments(store):
+    return sorted(p.name for p in (Path(store) / "journal").iterdir() if p.is_file())
+
+
+def archive_tree(root):
+    return {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(Path(root).rglob("*")) if p.is_file()}
 
 
 @unittest.skipUnless(IMAGE.exists(), "build/fn-host-developer is required")
@@ -74,12 +71,6 @@ class NativePackChainTests(unittest.TestCase):
     image = IMAGE
     # A scale store's probe and its compaction take minutes, not seconds.
     native_timeout = int(os.environ.get("FN_P5_TIMEOUT", "1800"))
-    # A stop hook is reached after the open and the capture of the store.
-    stop_deadline = native_timeout
-    # The owner's greeting waits for its open (LISTENING after 196.0 s over
-    # the 12-link, 20,000-record chain fixture on hbox, 154.4 s before
-    # compaction on tmpfs: planning/evidence/pack-chain-open-2026-09-26.md),
-    # and its stop for the close.
     served_timeout = native_timeout
     setUp = NativeCheckpointTests.setUp
     tearDown = NativeCheckpointTests.tearDown
@@ -89,8 +80,6 @@ class NativePackChainTests(unittest.TestCase):
     stop_owner = NativeCheckpointTests.stop_owner
     operator_post = NativeCheckpointTests.operator_post
     served_view = NativeCheckpointTests.served_view
-    transaction_bytes = NativeCheckpointTests.transaction_bytes
-    stopped_then_killed = NativeCheckpointTests.stopped_then_killed
     assert_view_kept_and_next_number = NativeCheckpointTests.assert_view_kept_and_next_number
 
     def scale_store(self, name, n):
@@ -101,16 +90,55 @@ class NativePackChainTests(unittest.TestCase):
         self.native("store", store, "probe", str(n), "article")
         return store, config, port
 
-    def chain(self, store):
-        status = self.native("store", store, "status").stdout
-        match = re.search(r"pack-chain (none|links=(\d+) boundary=(\d+))", status)
-        self.assertIsNotNone(match, status)
-        return (0, 0) if match.group(1) == "none" else (int(match.group(2)),
-                                                        int(match.group(3)))
+    def history(self, store, label):
+        archive = self.base / ("archive-" + label)
+        exported = self.native("store", store, "export", archive)
+        self.assertIn("exported records=", exported.stdout)
+        tree = archive_tree(archive)
+        shutil.rmtree(archive)
+        return tree
 
     def recovered(self, store, n):
         out = self.native("store", store, "recover").stdout
         self.assertIn("transactions={} articles={}".format(n, n), out)
+
+    def compacted(self, out, n):
+        match = re.search(r"compacted steps=checkpoint,drop records=(\d+) .*"
+                          r"segment=(\d+) dropped=(\d+)", out)
+        self.assertIsNotNone(match, out)
+        self.assertEqual(int(match.group(1)), n, out)
+        return int(match.group(2)), int(match.group(3))
+
+    def inspect(self, store, msgids):
+        return {m: self.native("store", store, "inspect", m).stdout for m in msgids}
+
+    def test_a_multi_unit_store_compacts_over_the_log(self):
+        store, config, _ = self.scale_store("cut-base", CUT_N)
+        sample = ["<capacity-{}@example.invalid>".format(k)
+                  for k in (0, 1, 1774, 1775, 4095, CUT_N // 2, CUT_N - 1)]
+        before = self.history(store, "before")
+        seen = self.inspect(store, sample)
+        self.assertEqual(segments(store), ["000001.log"])
+        segment, dropped = self.compacted(
+            self.native("operator", config, "store", "compact").stdout, CUT_N)
+        self.assertEqual((segment, dropped), (2, 1))
+        self.assertEqual(segments(store), ["000002.log"])
+        self.assertEqual(self.history(store, "after"), before)
+        self.assertEqual(self.inspect(store, sample), seen)
+        self.recovered(store, CUT_N)
+        # The suffix after the checkpoint: one more record, the next number.
+        owner = self.run_owner(config)
+        try:
+            self.operator_post(config, "<p5-next@example.invalid>", "p5-next")
+        finally:
+            self.stop_owner(owner)
+        self.recovered(store, CUT_N + 1)
+        segment, dropped = self.compacted(
+            self.native("operator", config, "store", "compact").stdout, CUT_N + 1)
+        self.assertEqual((segment, dropped), (3, 1))
+        self.assertEqual(segments(store), ["000003.log"])
+        self.assertEqual(self.inspect(store, sample), seen)
+        self.recovered(store, CUT_N + 1)
 
     @unittest.skipUnless(os.environ.get("FN_P5_SCALE") == "1" or FIXTURE,
                          "N=20,000: building the scale store takes about 20 minutes on "
@@ -131,24 +159,17 @@ class NativePackChainTests(unittest.TestCase):
             before = self.served_view(config, port, sample)
             before_retention = self.native("store", store, "retention").stdout
             compacted = self.native("operator", config, "store", "compact").stdout
-        match = re.search(r"compacted steps=pack,select,reclaim,retire records=(\d+) "
-                          r"generation=(\d+) links=(\d+) reclaimed=(\d+) retired=0",
-                          compacted)
-        self.assertIsNotNone(match, compacted)
-        links = int(match.group(3))
-        self.assertEqual((int(match.group(1)), int(match.group(2)), int(match.group(4))),
-                         (n, links - 1, n))
-        self.assertGreaterEqual(links, max(2, fewest_links(n)))
-        self.assertEqual(self.chain(store), (links, n))
-        self.assertEqual(self.transaction_bytes(store), {})
+        segment, dropped = self.compacted(compacted, n)
+        self.assertEqual((segment, dropped), (2, 1))
+        self.assertEqual(segments(store), ["000002.log"])
         self.recovered(store, n)
         self.assert_view_kept_and_next_number(store, config, port, sample,
                                               before, before_retention,
                                               "scale-chain")
-        # The post is the uncovered suffix: the next compaction packs only it.
-        again = self.native("operator", config, "store", "compact")
-        self.assertIn("links=1 reclaimed=1 retired=0", again.stdout)
-        self.assertEqual(self.chain(store), (links + 1, n + 1))
+        # The post is the uncovered suffix: the next compaction covers it.
+        again = self.native("operator", config, "store", "compact").stdout
+        self.assertEqual(self.compacted(again, n + 1), (3, 1))
+        self.assertEqual(segments(store), ["000003.log"])
 
     def scale_fixture(self, name):
         fixture = Path(FIXTURE)
@@ -160,8 +181,6 @@ class NativePackChainTests(unittest.TestCase):
         # than the one tools/fixtures.py built it on: it is rebound before
         # use (PKT-579).
         self.native("store", store, "rebind-filesystem")
-        # SEC-006: a fixture built before the key files gets its secret once
-        # (a start never creates one).
         if not (store / "keys" / "node-secret.key").exists():
             self.native("store", store, "node-secret", "create")
         config, port = self.owner_config(store, name)
@@ -169,222 +188,6 @@ class NativePackChainTests(unittest.TestCase):
                 decode_view(recorded["view"]),
                 (fixture / "retention.txt").read_text(encoding="utf-8"),
                 (fixture / "compact.txt").read_text(encoding="utf-8"))
-
-    def test_every_chain_publication_cut_from_both_entries(self):
-        base, config0, _ = self.scale_store("cut-base", CUT_N)
-        # The uncut compaction of a copy gives the whole chain's length.
-        reference = self.base / "cut-reference"
-        shutil.copytree(base, reference, symlinks=True)
-        self.native("checkpoint", "pack", reference, "select")
-        whole, boundary = self.chain(reference)
-        self.assertEqual(boundary, CUT_N)
-        self.assertGreaterEqual(whole, max(2, fewest_links(CUT_N)))
-        shutil.rmtree(reference)
-        entries = {
-            "compact": lambda store, config: ("operator", config, "store", "compact"),
-            "pack": lambda store, config: ("checkpoint", "pack", store, "select"),
-        }
-        for entry, argv in entries.items():
-            for point in CUTS:
-                for occurrence in (1, 2):
-                    with self.subTest(entry=entry, point=point, occurrence=occurrence):
-                        name = "cut-{}-{}-{}".format(entry, point, occurrence)
-                        store = self.base / name
-                        shutil.copytree(base, store, symlinks=True)
-                        config, _ = self.owner_config(store, name)
-                        self.stopped_then_killed(argv(store, config), point, occurrence)
-                        # The old chain or the old chain plus one complete link.
-                        links, boundary = self.chain(store)
-                        self.assertIn(links, (occurrence - 1, occurrence), point)
-                        if links == 0:
-                            self.assertEqual(boundary, 0)
-                        elif links == whole:
-                            self.assertEqual(boundary, CUT_N)
-                        else:
-                            self.assertTrue(0 < boundary < CUT_N, boundary)
-                        self.recovered(store, CUT_N)
-                        # Resume: the same entry completes the chain.
-                        self.native(*argv(store, config))
-                        self.assertEqual(self.chain(store), (whole, CUT_N))
-                        self.recovered(store, CUT_N)
-                        shutil.rmtree(store)
-
-
-    def generations(self, store):
-        status = self.native("store", store, "status").stdout
-        match = re.search(r"pack-chain links=\d+ boundary=\d+ generations=([0-9,]+)", status)
-        self.assertIsNotNone(match, status)
-        return [int(g) for g in match.group(1).split(",")]
-
-    def pack_files(self, store):
-        """The pack generation files by name; the selection marker apart."""
-        return {path.name: path.read_bytes()
-                for path in sorted((store / "packs").iterdir())
-                if path.name != "selected.fncp"}
-
-    def test_pack_chain_link_cut_leaves_exactly_the_selected_links(self):
-        """A death at `pack-chain-link' after link N, the chain program's cut
-        (books/checkpoint-pack-chain.lisp fn-ccc-chain-program;
-        fn-ccc-chain-link-cut-walks-the-extended-chain and
-        fn-ccc-chain-link-cut-reopens-to-the-history), from both entries:
-        exactly links 1..N are published, byte-identical to the uncut
-        compaction's first N, and selected, newest first; the transaction
-        files are untouched; the reopen recovers the whole history; and the
-        same entry resumes to the uncut chain, byte for byte."""
-        base, _, _ = self.scale_store("link-base", CUT_N)
-        before = self.transaction_bytes(base)
-        reference = self.base / "link-reference"
-        shutil.copytree(base, reference, symlinks=True)
-        self.native("checkpoint", "pack", reference, "select")
-        whole, boundary = self.chain(reference)
-        self.assertEqual(boundary, CUT_N)
-        self.assertGreaterEqual(whole, 3)
-        order = self.generations(reference)
-        packs = self.pack_files(reference)
-        self.assertEqual(len(packs), whole)
-        shutil.rmtree(reference)
-        entries = {
-            "compact": lambda store, config: ("operator", config, "store", "compact"),
-            "pack": lambda store, config: ("checkpoint", "pack", store, "select"),
-        }
-        boundaries = {}
-        for entry, argv in entries.items():
-            for occurrence in (1, 2):
-                with self.subTest(entry=entry, occurrence=occurrence):
-                    name = "link-{}-{}".format(entry, occurrence)
-                    store = self.base / name
-                    shutil.copytree(base, store, symlinks=True)
-                    config, _ = self.owner_config(store, name)
-                    self.stopped_then_killed(argv(store, config), "pack-chain-link",
-                                             occurrence)
-                    links, covered = self.chain(store)
-                    self.assertEqual(links, occurrence)
-                    self.assertTrue(0 < covered < CUT_N, covered)
-                    self.assertEqual(boundaries.setdefault(occurrence, covered), covered)
-                    # The marker names link N; the walk reads N..1.
-                    self.assertEqual(self.generations(store), order[-occurrence:])
-                    killed = self.pack_files(store)
-                    self.assertEqual(len(killed), occurrence)
-                    for file, octets in killed.items():
-                        self.assertEqual(octets, packs[file], file)
-                    self.assertEqual(self.transaction_bytes(store), before)
-                    self.recovered(store, CUT_N)
-                    self.native(*argv(store, config))
-                    self.assertEqual(self.chain(store), (whole, CUT_N))
-                    self.assertEqual(self.pack_files(store), packs)
-                    self.recovered(store, CUT_N)
-                    shutil.rmtree(store)
-        self.assertLess(boundaries[1], boundaries[2])
-
-    def test_eio_at_each_link_publication_cut_from_both_entries(self):
-        base, config0, _ = self.scale_store("eio-base", CUT_N)
-        self.native("operator", config0, "store", "compact")
-        whole, boundary = self.chain(base)
-        self.assertEqual(boundary, CUT_N)
-        # One more record: the next compaction publishes one link on the head.
-        self.native("store", base, "post", "<eio-next@example.invalid>",
-                    self.payload, "-", "-", "fn.letters")
-        entries = {
-            "compact": lambda store, config: ("operator", config, "store", "compact"),
-            "pack": lambda store, config: ("checkpoint", "pack", store, "select"),
-        }
-        for entry, argv in entries.items():
-            for variable, point, expected in EIO_CUTS:
-                with self.subTest(entry=entry, point=point):
-                    name = "eio-{}-{}".format(entry, point)
-                    store = self.base / name
-                    shutil.copytree(base, store, symlinks=True)
-                    config, _ = self.owner_config(store, name)
-                    env = dict(self.env)
-                    env[variable] = point
-                    self.native(*argv(store, config), expected=expected, env=env)
-                    # The old chain, or the old chain and the one new link.
-                    links, boundary = self.chain(store)
-                    self.assertIn(links, (whole, whole + 1), point)
-                    self.assertEqual(boundary, CUT_N if links == whole else CUT_N + 1)
-                    self.recovered(store, CUT_N + 1)
-                    self.native(*argv(store, config))
-                    self.assertEqual(self.chain(store), (whole + 1, CUT_N + 1))
-                    self.recovered(store, CUT_N + 1)
-                    shutil.rmtree(store)
-
-
-    def test_chain_reclaim_retire_and_suffix_cuts_resume(self):
-        """Interrupted covered-file reclaim across a multi-link chain,
-        interrupted retirement of generations outside the chain, and the
-        uncovered suffix's recovery around both: every cut reopens to the whole
-        history, and the reclaim and retire entries finish the work."""
-        base, _, _ = self.scale_store("life-base", CUT_N)
-        reference = self.base / "life-reference"
-        shutil.copytree(base, reference, symlinks=True)
-        self.native("checkpoint", "pack", reference, "select")
-        whole, _ = self.chain(reference)
-        self.assertGreaterEqual(whole, 2)
-        shutil.rmtree(reference)
-        compact = lambda config: ("operator", config, "store", "compact")
-        # 1. Reclaim of the covered prefix of the whole chain, cut after the
-        #    first, second and a late covered unlink (the last one the
-        #    developer stop selector can name: it takes occurrences up to 4096,
-        #    host/native/checkpoint.lisp fnn-checkpoint-test-stop-after) and at
-        #    the directory barrier, where no covered file is left.
-        late = min(CUT_N, 4096)
-        for point, occurrence, left in (("pack-reclaim-unlink", 1, CUT_N - 1),
-                                        ("pack-reclaim-unlink", 2, CUT_N - 2),
-                                        ("pack-reclaim-unlink", late, CUT_N - late),
-                                        ("pack-reclaim-directory", 1, 0)):
-            with self.subTest(point=point, occurrence=occurrence):
-                name = "life-reclaim-{}-{}".format(point, occurrence)
-                store = self.base / name
-                shutil.copytree(base, store, symlinks=True)
-                config, _ = self.owner_config(store, name)
-                self.stopped_then_killed(compact(config), point, occurrence)
-                self.assertEqual(self.chain(store), (whole, CUT_N))
-                self.assertEqual(len(self.transaction_bytes(store)), left)
-                self.recovered(store, CUT_N)
-                resumed = self.native("checkpoint", "pack-reclaim", store)
-                self.assertIn("reclaimed transaction-prefix={}".format(left),
-                              resumed.stdout)
-                self.assertEqual(self.transaction_bytes(store), {})
-                self.recovered(store, CUT_N)
-                # Nothing is left: the verb refuses before any durable change.
-                refused = self.native(*compact(config), expected=run_store.EXIT_REFUSED)
-                self.assertIn("already-compact", refused.stderr)
-                self.assertEqual(self.chain(store), (whole, CUT_N))
-                shutil.rmtree(store)
-        # 2. The compacted chain and an uncovered suffix of one record.
-        config0, _ = self.owner_config(base, "life-base")
-        self.native(*compact(config0))
-        self.assertEqual(self.chain(base), (whole, CUT_N))
-        self.native("store", base, "post", "<life-suffix@example.invalid>",
-                    self.payload, "-", "-", "fn.letters")
-        self.recovered(base, CUT_N + 1)
-        # Two interrupted link publications leave two complete candidates that
-        # were never selected: generations outside the chain.
-        for attempt in (1, 2):
-            self.stopped_then_killed(compact(config0), "selection-file", 1)
-            self.assertEqual(self.chain(base), (whole, CUT_N))
-            self.recovered(base, CUT_N + 1)
-        # 3. Each retirement cut of the next compaction, which packs the
-        #    suffix into a new link and retires the two orphans.
-        for point, occurrence, left in (("pack-retire-unlink", 1, 1),
-                                        ("pack-retire-unlink", 2, 0),
-                                        ("pack-retire-directory", 1, 0)):
-            with self.subTest(point=point, occurrence=occurrence):
-                name = "life-retire-{}-{}".format(point, occurrence)
-                store = self.base / name
-                shutil.copytree(base, store, symlinks=True)
-                config, _ = self.owner_config(store, name)
-                self.stopped_then_killed(compact(config), point, occurrence)
-                self.assertEqual(self.chain(store), (whole + 1, CUT_N + 1))
-                self.assertEqual(self.transaction_bytes(store), {})
-                self.recovered(store, CUT_N + 1)
-                retired = self.native("checkpoint", "pack-retire", store)
-                self.assertIn("retired pack-generations={}".format(left), retired.stdout)
-                self.assertEqual(self.chain(store), (whole + 1, CUT_N + 1))
-                self.recovered(store, CUT_N + 1)
-                refused = self.native(*compact(config), expected=run_store.EXIT_REFUSED)
-                self.assertIn("already-compact", refused.stderr)
-                shutil.rmtree(store)
 
 
 if __name__ == "__main__":

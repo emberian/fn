@@ -45,8 +45,13 @@
 # the start instead.  The box run survives a dropped ssh (nohup).
 #
 # Options: --name NAME, --label LABEL, --images LIST, --mem SIZE,
-# --jobs N (certify, default 8), --image-acl2 PATH (the ACL2 wrapper of
-# the image builds only), --no-build (reuse the images already in that
+# --image-acl2 PATH (the ACL2 wrapper the IMAGES are built with; certification
+# keeps the toolchain's.  Default /tank/fn/toolchains/w28/acl2-literal-4g-tls64k,
+# the w28 launcher at --tls-limit 65536 (coordinator decision 2026-09-27): the
+# served image's load exhausted SBCL's thread-local storage at 16384 on
+# 2026-09-27 (batch AV's native-av-bb1a and recover-memory-2); give the
+# toolchain's own path to build at 16384),
+# --jobs N (certify, default 8), --no-build (reuse the images already in that
 # scratch tree), --env NAME=VALUE (repeatable; paths may use $T, the tree),
 # --deadline S (default 5400), --dry-run (print the box script; the refusal
 # and the per-module environment show there).  Options may come before or
@@ -61,13 +66,13 @@ NAME=$(basename "$HERE")
 LABEL=
 IMAGES=developer
 MEM=24G
+IMAGE_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k
 JOBS=8
 BUILD=1
 DETACH=0
 DRY=0
 DEADLINE=5400
 ENVS=
-IMAGE_ACL2=
 POSITIONAL=
 usage() { sed -n '2,52p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 while [ $# -gt 0 ]; do
@@ -84,8 +89,8 @@ while [ $# -gt 0 ]; do
         # The ACL2 wrapper the IMAGE builds run under (certification keeps
         # the toolchain's, whose identity the cache keys on).  The world is
         # past SBCL's --tls-limit 16384 since batch AV ("Thread local
-        # storage exhausted"; recover-memory-2's packet): e.g.
-        # --image-acl2 /tank/fn/scratch/recover-memory-2/acl2-tls64k.
+        # storage exhausted"; recover-memory-2's packet); the default is the
+        # tls64k wrapper above.
         --image-acl2)
             case $2 in /*) ;; *) echo "hbox_native: --image-acl2 takes an absolute path" >&2; exit 2 ;; esac
             case $2 in *[!A-Za-z0-9_./-]*) echo "hbox_native: bad --image-acl2 path" >&2; exit 2 ;; esac
@@ -248,7 +253,7 @@ BOX
                 dtn-developer) profile=developer build=host/native/build-dtn.lisp out=build/fn-host-dtn-developer world=full ;;
             esac
             cat <<BOX
-step image-$image env ${IMAGE_ACL2:+FN_ACL2=$IMAGE_ACL2 }FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log swarm-build sh tools/build_native_host.sh
+step image-$image env FN_ACL2=${IMAGE_ACL2:-\$ACL2} FN_NATIVE_PROFILE=$profile FN_NATIVE_WORLD=$world FN_NATIVE_BUILD=$build FN_NATIVE_IMAGE=$out FN_NATIVE_LOG=\$L/native-build-$image.log swarm-build sh tools/build_native_host.sh
 BOX
         done
     fi

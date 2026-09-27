@@ -239,6 +239,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-checkpoint-open-tests \
 	tests/acl2/store-checkpoint-tables-tests \
 	tests/acl2/store-checkpoint-arena-tests \
+	books/heap-store-figure \
 	books/heap-figure \
 	books/heap-reservation \
 	tests/acl2/heap-reservation-tests \
@@ -347,6 +348,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/catalog-load-index-tests \
 	books/store-compact-verb \
 	tests/acl2/store-compact-verb-tests \
+	books/store-compact-window \
+	tests/acl2/store-compact-window-tests \
 	books/store-history-marker \
 	books/reclaim-tombstone \
 	books/reclaim-rule \
@@ -424,6 +427,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-ingress \
 	tests/acl2/bp-ingress-tests \
 	tests/acl2/bp-ingress-guards-tests \
+	books/bp-ingress-carried \
+	tests/acl2/bp-ingress-carried-tests \
 	books/record-width-producers \
 	tests/acl2/record-width-producers-tests \
 	tests/acl2/profile-monotonicity-tests \

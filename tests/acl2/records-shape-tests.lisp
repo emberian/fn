@@ -193,3 +193,32 @@
   (defthm rst-length-without-hypothesis
     (implies (<= 1 (len (fn-record-string-octets text)))
              (not (fn-record-group-namep text))))))
+
+; The in-place recognizers (lane post-alloc): fn-record-msgidp and
+; fn-record-metadata-bytes-p execute their :exec branches here (both are
+; guard-verified with guard t), and agree with the octet-list definitions at
+; each boundary: the empty string, the length bound and one past it, a
+; non-ASCII character (a Message-ID refuses it; metadata admits every octet),
+; a non-string.
+(defconst *rst-250* (coerce (make-list 250 :initial-element #\a) 'string))
+(defconst *rst-251* (coerce (make-list 251 :initial-element #\a) 'string))
+(defconst *rst-high* (coerce (list #\a (code-char 200) #\b) 'string))
+(assert-event (fn-record-msgidp "<a@b>"))
+(assert-event (fn-record-msgidp *rst-250*))
+(assert-event (not (fn-record-msgidp *rst-251*)))
+(assert-event (not (fn-record-msgidp "")))
+(assert-event (not (fn-record-msgidp *rst-high*)))
+(assert-event (not (fn-record-msgidp '(60 97 62))))
+(assert-event (fn-record-metadata-bytes-p *rst-high*))
+(assert-event (fn-record-metadata-bytes-p "x"))
+(assert-event (not (fn-record-metadata-bytes-p "")))
+(assert-event (not (fn-record-metadata-bytes-p 7)))
+(assert-event (fn-record-metadata-bytes-p
+               (coerce (make-list *fn-record-max-metadata* :initial-element #\z) 'string)))
+(assert-event (not (fn-record-metadata-bytes-p
+                    (coerce (make-list (+ 1 *fn-record-max-metadata*) :initial-element #\z)
+                            'string))))
+(assert-event (equal (fn-record-msgidp *rst-high*)
+                     (and (fn-record-ascii-stringp *rst-high*)
+                          (fn-record-nonempty-at-mostp (fn-record-string-octets *rst-high*)
+                                                       *fn-record-max-msgid*))))

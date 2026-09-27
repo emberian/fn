@@ -16,7 +16,8 @@ fnn-command-store-import read and write.  On the image under test:
   and a raised field that breaks a relation (profile REASON); a raised field
   that keeps the relations is imported and reported by `status`;
 * a store made by another release (synthesized by
-  tests/older_release_store.py: a format-7 frame, and the thirteen-field
+  tests/older_release_store.py: a format-7 frame, a format-8 frame (the
+  per-file layout before the record log), and the thirteen-field
   layout of every store made before batch AS) is refused at open by name:
   `open refused reason=store-format` and `open refused
   reason=older-release`, exit 1, its files unchanged (PKT-695: no fixture
@@ -193,6 +194,12 @@ class StoreExportTests(ProfileFixture):
 
     def test_a_store_of_the_older_layout_is_refused_by_name(self):
         self.refused_by_name("older-release")
+
+    def test_a_format_8_store_is_refused_by_name(self):
+        # The per-file layout (fn-store-8) opens on no image: D34's one
+        # format is the record log's (fn-spo-open-of-a-format-8-profile-
+        # refuses-by-name).
+        self.refused_by_name("format-8")
 
 
 if __name__ == "__main__":

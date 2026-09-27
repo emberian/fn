@@ -908,6 +908,11 @@
           "kind": "theorem",
           "name": "fn-rcon-ocfg-io-is-ocfg-step",
           "note": "The owner's transaction observation: host/owner-host.lisp:349 fn-owner-io calls fn-rcon-ocfg-io, equal to fn-ocfg-step of (:store (:io operation result)) for every configured owner, no hypothesis. Teeth: tests/acl2/records-concrete-tests.lisp (:record-directory :ok reaches the completing owner, :error fences, other operations)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpi-ingress-prepare-carried-is-prepare",
+          "note": "The BP ingress prepare: host/bp-ingress-host.lisp fn-bpi-host-prepare calls fn-bpi-ingress-prepare-carried (books/bp-ingress-carried.lisp) over the arena's count; under fn-snt-relation it equals fn-bpi-ingress-prepare, every argument (the policy test without fn-sn-statep, the prepare fn-pcar-spc-prepare without the replay). With the host's seal it is the entry fn-bpi-ingress-prepare-interned (fn-bpi-ingress-prepare-interned-unfolds). Teeth: tests/acl2/bp-ingress-carried-tests.lisp (related reserved store prepares alike; related duplicate refused alike; CORRUPTED store with a refused-reservation node over the durable history: the carried prepare stages the duplicate, the specification refuses it)."
         }
       ]
     },
@@ -3462,6 +3467,10 @@
         {
           "kind": "theorem",
           "name": "fn-scka-next-checkpoint-is-capture"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scka-select-named-refuses-the-arena-by-name"
         }
       ]
     },
@@ -7314,7 +7323,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-small-profile-fits-a-small-machine"
+          "name": "fn-heap-small-profile-run-fits-a-small-machine"
         },
         {
           "kind": "theorem",
@@ -7399,6 +7408,26 @@
         {
           "kind": "theorem",
           "name": "fn-heap-reserve-of-holds-the-decision"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-store-figure-holds-every-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-with-nursery-holds-the-trigger"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-store-figure-observed-is-at-most-unobserved"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-operation-decide-holds-the-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-heap-reserve-first-run-accepted-is-within-the-machine"
         }
       ]
     },
@@ -9775,6 +9804,26 @@
         {
           "kind": "theorem",
           "name": "fn-cwd-wait-step-over-is-the-page-or-a-sleep-on-an-empty-page"
+        }
+      ]
+    },
+    {
+      "id": "PRF-264",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-olr-crash-reads-a-prefix-of-the-history",
+          "note": "Subject: the kernel transitions host/native/io.lisp fnn-log-take/-append/-fence call (fn-olr-take, fn-lgk-append, fn-lgk-fence); the link kept by fn-olr-linkp-of-*."
+        }
+      ]
+    },
+    {
+      "id": "PRF-265",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ocm-commit-waits-at-most-the-bound",
+          "note": "Teeth: tests/acl2/owner-commit-class-tests.lisp."
         }
       ]
     },

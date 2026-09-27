@@ -14,8 +14,11 @@
 ; Nothing is translated at open.
 ;
 ; D34 also makes the store format one format: a profile frame whose format
-; word is not fn-store-8 (a format-7 store, or any other) is refused at the
-; open by name, `:store-format', never translated.
+; word is not fn-store-9 (a format-8 store of the per-file layout, a format-7
+; store, or any other) is refused at the open by name, `:store-format', never
+; translated (lane log-recovery: the format-8 scaffold of PKT-COL-1 is gone;
+; a format-8 history travels by `store export' on the release that made it
+; and `store import' here, books/store-export.lisp fn-sxp-log-profile).
 ;
 ;   * `fn-spo-config-open' OCTETS: the open of config.json the host calls
 ;     (host/native/io.lisp `fnn-metadata-config-decode', through
@@ -142,7 +145,7 @@
             nil))))))
 
 ; D34: a sealed profile frame whose format is not a format this image opens
-; (9, and 8 while PKT-COL-1 stands).
+; (9, and 8 while PKT-830 stands).
 (defun fn-spo-foreign-formatp (octets)
   (declare (xargs :guard t))
   (let ((word (fn-spo-saved-format-word octets)))
@@ -217,7 +220,9 @@
             (list :refused :max-record-octets-above-the-poll-reply)
           (let ((decoded (fn-bs-config-decode octets)))
             (cond ((and decoded (fn-bs-profile-admittedp decoded))
-                   (list :opened decoded))
+                   (if (fn-bs-profile-logp decoded)
+                       (list :opened decoded)
+                     (list :refused :store-format)))
                   ((fn-spo-foreign-formatp octets) (list :refused :store-format))
                   (t (list :rejected)))))))))
 
@@ -787,7 +792,9 @@
  (defthm fn-spo-open-of-a-valid-frame
    (implies (fn-bs-profile-validp values)
             (equal (fn-spo-config-open (fn-bs-config-encode values))
-                   (list :opened values)))
+                   (if (fn-bs-profile-logp values)
+                       (list :opened values)
+                     (list :refused :store-format))))
    :hints (("Goal" :use (fn-spo-saved-format-8-of-encode
                          fn-bs-config-decode-of-encode
                          fn-spo-validp-is-admitted
@@ -796,6 +803,15 @@
                                     (octets (fn-bs-config-encode values))))
             :in-theory (union-theories '(fn-spo-config-open (:e fn-bs-profile-validp))
                                        (theory 'minimal-theory))))))
+
+; A valid profile is a log profile exactly when its word is fn-store-9.
+(local
+ (defthm fn-spo-logp-of-valid
+   (implies (fn-bs-profile-validp values)
+            (equal (fn-bs-profile-logp values)
+                   (equal (car values) *fn-bs-meta-format-9*)))
+   :hints (("Goal" :in-theory (e/d (fn-bs-profile-logp fn-bs-profile-of fn-bs-meta-nth)
+                                   (fn-bs-profile-validp))))))
 
 (local
  (defthm fn-spo-v2-valid-names-format-8
@@ -831,26 +847,31 @@
                              fn-bs-pf))))))
 
 ; -----------------------------------------------------------------------------
-; KEYSTONE (the open).  Every profile the format-8 encoder saved (under the
-; relation before PKT-467) either opens, as itself, or is refused by name at
-; the open the host calls; never the generic fault (:rejected).  At or below
-; the poll reply's ceiling it opens (so this is the old open there); above it
-; the refusal names the window.
+; KEYSTONE (the open).  Every profile the encoder saved (under the relation
+; before PKT-467) either opens, as itself, or is refused by name at the open
+; the host calls; never the generic fault (:rejected).  At or below the poll
+; reply's ceiling it opens when its word is fn-store-9 (so this is the old open
+; there) and is refused `:store-format' otherwise (a format-8 store, D34);
+; above it the refusal names the window.
 (defthm fn-spo-open-of-a-saved-format-8-profile-opens-or-refuses-by-name
   (implies (fn-bs-profile-v2-validp values)
            (equal (fn-spo-config-open (fn-spo-saved-frame values))
                   (if (<= (fn-bs-pf 4 values) *fn-stxa-max-octets*)
-                      (list :opened values)
+                      (if (equal (car values) *fn-bs-meta-format-9*)
+                          (list :opened values)
+                        (list :refused :store-format))
                     (list :refused :max-record-octets-above-the-poll-reply))))
   :hints (("Goal" :do-not-induct t
            :cases ((<= (fn-bs-pf 4 values) *fn-stxa-max-octets*))
            :use (fn-bs-profile-v2-valid-within-the-width-is-valid
                  fn-spo-open-of-a-window-frame
                  (:instance fn-spo-open-of-a-valid-frame)
-                 fn-spo-saved-frame-of-valid-is-encode)
+                 fn-spo-saved-frame-of-valid-is-encode
+                 fn-spo-logp-of-valid)
            :in-theory (disable fn-bs-profile-v2-valid-within-the-width-is-valid
                                fn-spo-open-of-a-window-frame
                                fn-spo-open-of-a-valid-frame
+                               fn-spo-logp-of-valid fn-bs-profile-logp
                                fn-spo-saved-frame-of-valid-is-encode
                                fn-bs-profile-v2-validp fn-bs-profile-validp
                                fn-spo-config-open fn-bs-config-encode
@@ -910,15 +931,18 @@
                                    fn-frame-open)))))
 
 ; KEYSTONE (D34, one format).  The open answers `:store-format' exactly for a
-; frame outside the window that the profile decoder does not decode and that
-; is a sealed profile frame naming a format other than fn-store-8.  So the
-; open decodes one format and names every other; nothing is translated.
+; frame outside the window that either the profile decoder decodes to a
+; profile of the per-file layout (not fn-bs-profile-logp: a format-8 store) or
+; the decoder does not decode and is a sealed profile frame naming a format
+; other than fn-store-8 and fn-store-9.  So the open opens one format (9) and
+; names every other; nothing is translated.
 (defthm fn-spo-config-open-store-format-is-exactly-a-foreign-frame
   (equal (equal (fn-spo-config-open octets) (list :refused :store-format))
          (and (not (and (fn-spo-saved-format-8 octets)
                         (fn-spo-in-the-windowp (fn-spo-saved-format-8 octets))))
-              (not (fn-bs-config-decode octets))
-              (fn-spo-foreign-formatp octets)))
+              (if (fn-bs-config-decode octets)
+                  (not (fn-bs-profile-logp (fn-bs-config-decode octets)))
+                (fn-spo-foreign-formatp octets))))
   :hints (("Goal" :use (fn-spo-decoded-is-valid
                         fn-spo-foreign-frame-has-no-layout
                         fn-spo-layout-fields-of-a-decoded-frame)
@@ -929,7 +953,21 @@
                             fn-bs-profile-validp fn-spo-decoded-is-valid
                             fn-spo-foreign-frame-has-no-layout
                             fn-spo-layout-fields-of-a-decoded-frame
-                            fn-spo-layout-fields)))))
+                            fn-spo-layout-fields fn-bs-profile-logp)))))
+
+; KEYSTONE (D34 after PKT-COL-1).  Every valid profile of the per-file layout
+; -- the frame a format-8 store's init or import wrote -- is refused at the
+; open the host calls by name, `:store-format', on every image: it is never
+; opened and never the generic fault.
+(defthm fn-spo-open-of-a-format-8-profile-refuses-by-name
+  (implies (and (fn-bs-profile-validp values)
+                (not (equal (car values) *fn-bs-meta-format-9*)))
+           (equal (fn-spo-config-open (fn-bs-config-encode values))
+                  (list :refused :store-format)))
+  :hints (("Goal" :use (fn-spo-open-of-a-valid-frame fn-spo-logp-of-valid)
+           :in-theory (e/d () (fn-spo-open-of-a-valid-frame fn-spo-logp-of-valid
+                               fn-spo-config-open fn-bs-config-encode
+                               fn-bs-profile-validp fn-bs-profile-logp)))))
 
 ;; -----------------------------------------------------------------------------
 ;; KEYSTONE (PKT-705, the layout).  Every profile frame a release wrote under a

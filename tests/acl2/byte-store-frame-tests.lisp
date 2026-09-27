@@ -290,7 +290,8 @@
                      9))
 (assert-event (equal (cdr (assoc-equal "format"
                                        (fn-bs-profile-report
-                                        (fn-bs-profile-as-format-8 *fn-bs-profile-scale*))))
+                                        (cons *fn-bs-meta-format-8*
+                                              (cdr *fn-bs-profile-scale*)))))
                      8))
 (assert-event (equal (fn-bs-profile-report *bsft-free*)
                      (cons '("format" . 9)

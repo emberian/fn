@@ -180,7 +180,8 @@ class Context:
 def recipe_chain(ctx: Context, n: int) -> None:
     """planning/evidence/pack-chain-open-2026-09-26/chain_fixture.py build:
     the scale store of N probe articles, the served BEFORE view, the retention
-    listing and `operator CONFIG store compact`; the test copies it
+    listing and `operator CONFIG store compact` (format 9: rotation and drop);
+    the test copies it
     (tests.test_native_pack_chain, FN_P5_FIXTURE)."""
     ctx.run([PY, TREE / EVIDENCE / "pack-chain-open-2026-09-26/chain_fixture.py", "build",
              ctx.work / "chain", ctx.dest, n])
@@ -273,7 +274,8 @@ class Fixture:
 REGISTRY = [
     Fixture("chain-20000", lambda c: recipe_chain(c, 20000), mem="40G",
             readme="20,000 probe articles (scale profile, --max-transactions 1048576, "
-                   "--max-article-octets 2048) compacted into a pack chain, with the served "
+                   "--max-article-octets 2048) compacted over the record log (format 9: a "
+                   "checkpoint with the log rotated, segment 1 dropped), with the served "
                    "before-view, retention and compact output. FN_P5_FIXTURE for "
                    "tests.test_native_pack_chain; scenario steps name it."),
     Fixture("n10k-2k", lambda c: recipe_posted(c, "measure", 10000),
