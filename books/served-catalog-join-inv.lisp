@@ -14,6 +14,10 @@
 (include-book "served-catalog-join-read")
 (include-book "served-catalog-join-frame")
 (include-book "served-catalog-join-pinned")
+(include-book "served-catalog-join-frame-conns")
+(include-book "served-catalog-join-frame-store")
+(include-book "store-files-traces")
+(include-book "owner-time-admission")
 
 (local (in-theory (disable fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp
                            fn-scat-msgid-idp fn-nntp-index-msgid-okp-stringp
@@ -616,3 +620,230 @@
                                       (theory 'minimal-theory))
            :use ((:instance fn-scj-identity-finish-owner-is-article-finish-owner (cfg (fn-ocfg-config oc)))
                  (:instance fn-scj-invp-at-host-finish (o (fn-ocfg-owner oc)) (cfg (fn-ocfg-config oc)))))))
+
+; -----------------------------------------------------------------------------
+; The article finish over the carried facts: the history before the in-flight
+; event is fn-scjs-seenp's (fn-scjs-rows-invp-before-in-flight), the event is
+; the history's last record, the finish keeps the history.
+
+(defthm fn-scj-records-of-ccar-finish
+  (equal (fn-sf-records (fn-sn-files (fn-ccar-sn-finish-enabled s)))
+         (fn-sf-records (fn-sf-emit-success (fn-sf-core-completion (fn-sn-files s)
+                                                                   (fn-evc-sequence (fn-ccar-completion-record s))
+                                                                   (fn-evc-txid (fn-ccar-completion-record s)))
+                                            (fn-evc-sequence (fn-ccar-completion-record s))
+                                            (fn-evc-txid (fn-ccar-completion-record s)))))
+  :hints (("Goal" :in-theory (e/d (fn-ccar-sn-finish-enabled fn-sn-update-accepted fn-sn-update-indexed
+                                   fn-sn-finish-identity fn-sn-advance-identity-next fn-sn-with-topic
+                                   fn-sn-with-consumer)
+                                  (fn-sn-make-v6 fn-node-complete fn-replay-apply-record
+                                   fn-replay-apply-retention-event fn-sf-core-completion
+                                   fn-sf-emit-success fn-stx-index-add fn-ccar-accepted-delta
+                                   fn-ccar-cpe-projection-step fn-ccar-th-prefix-step
+                                   fn-replay-identity-step fn-replay-verdict-pairs)))))
+
+(defthm fn-scj-snoc-of-butlast-last
+  (implies (and (consp r) (true-listp r))
+           (equal (append (butlast r 1) (list (car (last r)))) r)))
+
+(defthm fn-scj-records-kept-by-ccar-finish
+  (equal (fn-sf-records (fn-sn-files (fn-ccar-sn-finish-enabled s)))
+         (fn-sf-records (fn-sn-files s)))
+  :hints (("Goal" :in-theory (union-theories '(fn-scj-records-of-ccar-finish fn-sf-records-of-emit-success
+                                               fn-sf-records-of-core-completion)
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-scj-host-finish-store
+  (implies (fn-ccar-completion-enabledp (fn-own-store o))
+           (equal (fn-own-store (cdr (fn-ccar-own-finish o cfg fn-arena)))
+                  (fn-ccar-sn-finish-enabled (fn-own-store o))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-scj-host-finish-view-and-store))
+           :in-theory (union-theories '() (theory 'minimal-theory)))))
+
+(defthm fn-scj-true-listp-butlast
+  (true-listp (butlast x n)))
+
+(defthm fn-scj-enabled-is-completing
+  (implies (fn-ccar-completion-enabledp s)
+           (equal (fn-sf-phase (fn-sn-files s)) :completing))
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn-ccar-completion-enabledp fn-ccar-completion-core-enabledp))))
+
+; KEYSTONE (the invariant across the host's article finish, over the carried
+; facts).  fn-scj-invp-at-host-article-finish with the history before the
+; in-flight event read off fn-scjs-seenp (fn-scjs-rows-invp-before-in-flight):
+; EVENTS0 is the store's history less its last record, EVENT that record.
+(defthm fn-scj-invp-at-host-article-finish-carried
+  (let* ((s (fn-own-store o))
+         (r (fn-ccar-completion-record s))
+         (records (fn-sf-records (fn-sn-files s)))
+         (event (car (last records)))
+         (view (fn-own-view o))
+         (o2 (cdr (fn-ccar-own-finish o cfg fn-arena)))
+         (s2 (fn-own-store o2))
+         (view2 (fn-own-view o2))
+         (acc2 (fn-node-acceptance (fn-sn-node s2)))
+         (held (fn-pc-held pending))
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+                                      (fn-sca-targets-of (fn-record-msgid held)
+                                                         (fn-own-view-withdrawals view2))
+                                      fn-cat))))
+    (implies (and (fn-ccar-completion-enabledp s)
+                  (fn-statep (fn-node-acceptance (fn-sn-node s)))
+                  (not (fn-evc-retentionp r)) (not (fn-evc-consumerp r)) (not (fn-evc-topicp r))
+                  (not (fn-evc-stxep r)) (not (fn-evc-stxkp r)) (not (fn-evc-stxap r))
+                  (fn-scj-invp o fn-arena fn-cat)
+                  (fn-scjs-seenp o)
+                  (fn-scjs-historyp o)
+                  (consp records)
+                  (fn-scar-view-indexedp o)
+                  (fn-cst-relation s2)
+                  (fn-own-store-idlep s2)
+                  (fn-rows-composites-okp records fn-arena)
+                  (fn-scj-rows-clearp records)
+                  (equal (fn-scj-load-h event) held)
+                  (fn-pc-p pending)
+                  (equal token (fn-pc-token pending))
+                  (equal (fn-pc-expected pending) (len fn-cat))
+                  (equal (fn-state-articles (fn-own-view-archive view))
+                         (fn-ctl-visible-articles (fn-own-view-raw view)
+                                                  (fn-own-view-withdrawals view)
+                                                  (fn-own-view-verdicts view)))
+                  (equal (fn-state-articles (fn-own-view-archive view2))
+                         (fn-ctl-visible-articles (fn-state-articles acc2)
+                                                  (fn-own-view-withdrawals view2)
+                                                  (fn-own-view-verdicts view2)))
+                  (fn-scj-seqs-sortedp fn-cat)
+                  (fn-cnx-freshp fn-cat)
+                  (fn-scj-versions-okp o)
+                  (fn-own-view-okp view2 (fn-sn-groups s2) (fn-sn-capacity s2)
+                                   (fn-sf-records (fn-sn-files s2)))
+                  (fn-nntp-projectionp (fn-own-view-archive view2)))
+             (and (fn-scj-invp o2 fn-arena c2)
+                  (fn-scj-seqs-sortedp c2)
+                  (fn-cnx-freshp c2))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-scj-versions-okp fn-scjs-historyp fn-scj-true-listp-butlast nfix natp (:type-prescription len))
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-scj-enabled-is-completing (s (fn-own-store o)))
+                 (:instance fn-scjs-rows-invp-before-in-flight)
+                 (:instance fn-scj-host-finish-store)
+                 (:instance fn-scj-records-kept-by-ccar-finish (s (fn-own-store o)))
+                 (:instance fn-scj-snoc-of-butlast-last (r (fn-sf-records (fn-sn-files (fn-own-store o)))))
+                 (:instance fn-scj-invp-at-host-article-finish
+                            (events0 (butlast (fn-sf-records (fn-sn-files (fn-own-store o))) 1))
+                            (event (car (last (fn-sf-records (fn-sn-files (fn-own-store o)))))))))))
+
+; -----------------------------------------------------------------------------
+; The host's read entry since owner-time-model: host/owner-host.lisp calls
+; fn-otm-read-span (books/owner-time-admission.lisp), which is
+; fn-orr-read-span when admitted and, when shed, the same read with the
+; connection's posting allowance switched off and restored -- a field of the
+; connection's configuration, which no pin reads.
+
+(defthm fn-scj-conn-pin-fields-of-update-6
+  (implies (< 6 (len c))
+           (and (equal (fn-own-conn-archive (update-nth 6 v c)) (fn-own-conn-archive c))
+                (equal (fn-own-conn-version (update-nth 6 v c)) (fn-own-conn-version c))
+                (equal (fn-own-conn-index (update-nth 6 v c)) (fn-own-conn-index c))
+                (equal (fn-own-conn-group-index (update-nth 6 v c)) (fn-own-conn-group-index c))
+                (equal (fn-own-conn-control (update-nth 6 v c)) (fn-own-conn-control c))))
+  :hints (("Goal" :in-theory (enable fn-own-conn-archive fn-own-conn-version fn-own-conn-index
+                                     fn-own-conn-group-index fn-own-conn-control update-nth
+                                     fn-ag-car fn-ag-cdr)
+           :expand ((:free (v) (update-nth 6 v c)) (:free (v) (update-nth 5 v (cdr c)))
+                    (:free (v) (update-nth 4 v (cddr c))) (:free (v) (update-nth 3 v (cdddr c)))
+                    (:free (v) (update-nth 2 v (cddddr c)))
+                    (:free (v) (update-nth 1 v (cdr (cddddr c))))
+                    (:free (v) (update-nth 0 v (cddr (cddddr c))))))))
+
+(defthm fn-scj-conn-pinp-of-with-allow
+  (equal (fn-scj-conn-pinp (fn-otm-conn-with-allow c allow) fn-arena fn-cat)
+         (fn-scj-conn-pinp c fn-arena fn-cat))
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-conn-with-allow fn-scj-conn-pinp fn-scj-conn-pinned-index
+                                               fn-scj-conn-pin-fields-of-update-6)
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-scj-invp-of-otm-owner-with-allow
+  (implies (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+           (fn-scj-invp (fn-ocfg-owner (fn-otm-owner-with-allow oc id allow)) fn-arena fn-cat))
+  :hints (("Goal" :in-theory (e/d (fn-otm-owner-with-allow)
+                                  (fn-otm-conn-with-allow fn-scj-invp fn-own-set-conns fn-own-replace-conn))
+           :use ((:instance fn-scj-invp-conns (o (fn-ocfg-owner oc)))
+                 (:instance fn-scj-conns-pinp-find (conns (fn-own-conns (fn-ocfg-owner oc))))
+                 (:instance fn-scj-invp-of-own-set-conns
+                            (o (fn-ocfg-owner oc))
+                            (conns (fn-own-replace-conn
+                                    (fn-otm-conn-with-allow (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))
+                                                            allow)
+                                    (fn-own-conns (fn-ocfg-owner oc)))))))))
+
+(defthm fn-scj-otm-read-span-owner
+  (equal (fn-ocfg-owner (fn-own-tls-result-owner
+                         (fn-otm-read-span oc views id i end admit replies fn-octets fn-arena fn-cat)))
+         (if (eq admit :shed)
+             (fn-ocfg-owner
+              (fn-otm-owner-with-allow
+               (fn-own-tls-result-owner
+                (fn-orr-read-span (fn-otm-owner-with-allow oc id nil) views id i end
+                                  fn-octets fn-arena fn-cat))
+               id (fn-otm-conn-allow oc id)))
+           (fn-ocfg-owner (fn-own-tls-result-owner
+                           (fn-orr-read-span oc views id i end fn-octets fn-arena fn-cat)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-otm-read-span fn-scj-tls-result-owner-of-make)
+                                             (theory 'minimal-theory)))))
+
+; KEYSTONE (the host's read entry keeps the invariant).
+(defthm fn-scj-invp-of-otm-read-span
+  (implies (and (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+                (implies (consp views) (fn-scj-live-okp (car views) fn-arena fn-cat)))
+           (fn-scj-invp (fn-ocfg-owner (fn-own-tls-result-owner
+                                        (fn-otm-read-span oc views id i end admit replies
+                                                          fn-octets fn-arena fn-cat)))
+                        fn-arena fn-cat))
+  :hints (("Goal" :in-theory (union-theories '(fn-scj-otm-read-span-owner) (theory 'minimal-theory))
+           :use ((:instance fn-scj-invp-of-orr-read-span)
+                 (:instance fn-scj-invp-of-orr-read-span (oc (fn-otm-owner-with-allow oc id nil)))
+                 (:instance fn-scj-invp-of-otm-owner-with-allow (allow nil))
+                 (:instance fn-scj-invp-of-otm-owner-with-allow
+                            (oc (fn-own-tls-result-owner
+                                 (fn-orr-read-span (fn-otm-owner-with-allow oc id nil) views id i end
+                                                   fn-octets fn-arena fn-cat)))
+                            (allow (fn-otm-conn-allow oc id)))))))
+
+; The premise of books/owner-reader-read.lisp's keystone
+; fn-orr-read-span-at-a-captured-view-restores-the-owner (the catalog at the
+; owner with the captured view in place) from the invariant and the captured
+; view's being live over the catalog.
+(defthm fn-scj-captured-owner-catalogp
+  (implies (and (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
+                (fn-scj-live-okp v fn-arena fn-cat))
+           (fn-scr-owner-catalogp (fn-ocfg-owner (fn-ocfg-with-view oc v)) id fn-arena fn-cat))
+  :hints (("Goal" :in-theory (union-theories '() (theory 'minimal-theory))
+           :use ((:instance fn-scj-invp-conns (o (fn-ocfg-owner oc)))
+                 (:instance fn-orr-with-view-fields)
+                 (:instance fn-scj-owner-catalogp-of-conns-and-live
+                            (o (fn-ocfg-owner (fn-ocfg-with-view oc v))))))))
+
+; A captured reader view stays live across the catalog's finish, like any
+; pin at or below the completed row's sequence.
+(defthm fn-scj-live-okp-of-finish
+  (let ((c2 (mv-nth 2 (fn-sca-finish token pending idx targets fn-cat))))
+    (implies (and (fn-scj-live-okp v fn-arena fn-cat)
+                  (fn-scj-seqs-sortedp fn-cat)
+                  (fn-scj-seqs-below fn-cat (fn-record-sequence (fn-pc-held pending)))
+                  (<= (nfix (fn-own-view-version v)) (nfix (fn-record-sequence (fn-pc-held pending)))))
+             (fn-scj-live-okp v fn-arena c2)))
+  :hints (("Goal" :in-theory (union-theories '(fn-scj-live-okp fn-scr-live-catalogp fn-scr-fields-catalogp
+                                               fn-own-view-live-fields fn-served-pinned-version
+                                               fn-served-pinned-make fn-ag-car car-cons)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-scj-catalogp-of-finish
+                            (archive (fn-own-view-archive v))
+                            (index (if (fn-own-view-group-index v)
+                                       (fn-gidx-pin-with-control (fn-own-view-index v)
+                                                                 (fn-own-view-group-index v)
+                                                                 (fn-own-view-control v))
+                                     (fn-own-view-index v)))
+                            (v (fn-own-view-version v)))))))

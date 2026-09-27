@@ -214,10 +214,10 @@
 
 (defthm fn-scj-invp-of-own-feed-reply
   (implies (fn-scj-invp o fn-arena fn-cat)
-           (fn-scj-invp (cdr (fn-own-feed-reply o peer octets obs)) fn-arena fn-cat))
+           (fn-scj-invp (cdr (fn-own-feed-reply o peer octets obs fn-arena)) fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-own-feed-reply)
                                   (fn-own-with-feeds fn-own-feed-put fn-feed-observe
-                                   fn-own-feed-parse-response fn-own-feed-article)))))
+                                   fn-own-feed-parse-response fn-own-feed-article fn-handle-bytes fn-own-feed-entry-of fn-own-feed-entry-feed fn-own-feed-inflight-msgid fn-feed-queue fn-own-feed-entry-record)))))
 
 (defthm fn-scj-invp-of-own-tick
   (implies (fn-scj-invp o fn-arena fn-cat)
@@ -434,8 +434,8 @@
 
 (defthm fn-scj-versions-atmost-of-own-feed-reply
   (implies (fn-scj-versions-okp o)
-           (fn-scj-versions-okp (cdr (fn-own-feed-reply o peer octets obs))))
-  :hints (("Goal" :in-theory (e/d (fn-own-feed-reply) (fn-own-with-feeds fn-own-feed-put fn-feed-observe fn-own-feed-parse-response fn-own-feed-article)))))
+           (fn-scj-versions-okp (cdr (fn-own-feed-reply o peer octets obs fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-own-feed-reply) (fn-own-with-feeds fn-own-feed-put fn-feed-observe fn-own-feed-parse-response fn-own-feed-article fn-handle-bytes fn-own-feed-entry-of fn-own-feed-entry-feed fn-own-feed-inflight-msgid fn-feed-queue fn-own-feed-entry-record)))))
 
 (defthm fn-scj-versions-atmost-of-own-tick
   (implies (fn-scj-versions-okp o)
