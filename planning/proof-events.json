@@ -7379,6 +7379,35 @@
           "note": "KEYSTONE at the owner: the read host/owner-host.lisp fn-owner-chunk(-span) calls hands fn-own-finish-read at most one submission."
         }
       ]
+    },
+    {
+      "id": "PRF-227",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rdc-reset-is-served-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rdc-selection-establishes"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rdc-selection-ready-iff-projectable"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rdc-served-open-is-served-open"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rdc-projection-is-a-state"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-replay-advance-preserves-node-statep"
+        }
+      ]
     }
   ]
 }
