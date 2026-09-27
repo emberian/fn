@@ -704,6 +704,11 @@
 ; injecting agent under which the removed payload still gives back a source.
 ; The collision disjuncts are the stated limit: SHA-256's collision
 ; resistance, about 2^128 work, is the assumption, and it is not proved.
+(local
+ (defthm fn-rcl-found-stays-found
+   (implies (fn-find-article m a)
+            (fn-find-article m (fn-rcl-reclaim-articles a m tomb)))))
+
 (defthm fn-rcl-existing-action-after-reclaim
   (let* ((held (fn-article-payload (fn-find-article m articles)))
          (mo (fn-record-string-octets m))
@@ -720,9 +725,13 @@
                  (fn-rcl-collisionp (cdr a) (cdr b))
                  (and (not (equal agent (fn-pb-path-agent held mo)))
                       (equal (car b) :source)))))
+  ;; The finds stay closed (fn-rcl-reclaim-keeps-every-binding and the
+  ;; lemma above say what the reclaimed list holds): 2.2M prover steps with
+  ;; them open, 13k closed.
   :hints (("Goal" :cases ((equal x m))
-                  :in-theory (e/d (fn-pb-same-articlep)
-                                  (fn-rcl-tombstone-of fn-sha256 fn-pb-subject
+                  :in-theory (e/d (fn-pb-same-articlep fn-rcl-action-over)
+                                  (fn-find-article fn-rcl-reclaim-articles
+                                   fn-rcl-tombstone-of fn-sha256 fn-pb-subject
                                    fn-pb-path-agent fn-rcl-tombstonep
                                    fn-rcl-tomb-sourcep fn-rcl-tomb-agent
                                    fn-rcl-tomb-octets-digest
