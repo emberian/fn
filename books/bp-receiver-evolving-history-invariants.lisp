@@ -281,26 +281,33 @@
                 (fn-record-content-subject record))
          (equal (fn-bpa-request-article request) (fn-record-payload record))
          (equal context (fn-bpr-context-from-request record request)))))
-(defun fn-bprv-find-grounding-record (config context history)
+;; HISTORY's article records are retained rows (records-flip): the search
+;; answers the WIRE form of the first row that grounds CONTEXT, its bytes
+;; read through the arena.
+(defun fn-bprv-find-grounding-record (config context history fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp history)
-      (if (fn-bprv-record-grounds config context (car history))
-          (car history)
-        (fn-bprv-find-grounding-record config context (cdr history)))
+      (if (fn-bprv-record-grounds config context (fn-row-wire-of (car history) fn-arena))
+          (fn-row-wire-of (car history) fn-arena)
+        (fn-bprv-find-grounding-record config context (cdr history) fn-arena))
     nil))
-(defun fn-bprv-context-groundedp (config context history)
+(defun fn-bprv-context-groundedp (config context history fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (consp (fn-bprv-find-grounding-record config context
-                                        (fn-bpr-article-records history))))
-(defun fn-bprv-contexts-groundedp (config contexts history)
+                                        (fn-bpr-article-records history) fn-arena)))
+(defun fn-bprv-contexts-groundedp (config contexts history fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp contexts)
-      (and (fn-bprv-context-groundedp config (car contexts) history)
-           (fn-bprv-contexts-groundedp config (cdr contexts) history))
+      (and (fn-bprv-context-groundedp config (car contexts) history fn-arena)
+           (fn-bprv-contexts-groundedp config (cdr contexts) history fn-arena))
     t))
 
 ; R(history, receiver-state).  The linked, pending and decided conjuncts are
 ; the existing definitions, unchanged.
-(defun fn-bprv-history-relationalp (history st)
+(defun fn-bprv-history-relationalp (history st fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (and (fn-bprv-contexts-groundedp (fn-bpr-state-config st)
-                                   (fn-bpr-state-contexts st) history)
+                                   (fn-bpr-state-contexts st) history fn-arena)
        (fn-bprv-entries-linkedp (fn-bpr-state-config st)
                                 (fn-bpr-state-contexts st)
                                 (fn-bpr-state-receipts st))
@@ -308,9 +315,10 @@
                                 (fn-bpr-state-contexts st)
                                 (fn-bpr-state-receipts st)
                                 (fn-bpr-state-pending st))))
-(defun fn-bprv-evolving-invariantp (store st journal)
+(defun fn-bprv-evolving-invariantp (store st journal fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (and (fn-bpr-statep st)
-       (fn-bprv-history-relationalp (fn-bprv-history store) st)
+       (fn-bprv-history-relationalp (fn-bprv-history store) st fn-arena)
        (fn-bprv-entries-decidedp (fn-bpr-state-receipts st) journal)))
 
 ; -----------------------------------------------------------------------------
@@ -338,54 +346,69 @@
   :rule-classes :forward-chaining)
 (local (in-theory (disable fn-bprv-record-grounds)))
 (defthm fn-bprv-find-grounding-record-from-member
-  (implies (and (member-equal record history)
-                (fn-bprv-record-grounds config context record))
-           (consp (fn-bprv-find-grounding-record config context history)))
-  :hints (("Goal" :induct (fn-bprv-find-grounding-record config context history))))
+  (implies (and (member-equal row history)
+                (fn-bprv-record-grounds config context (fn-row-wire-of row fn-arena)))
+           (consp (fn-bprv-find-grounding-record config context history fn-arena)))
+  :hints (("Goal" :induct (fn-bprv-find-grounding-record config context history fn-arena)
+           :in-theory (disable fn-row-wire-of))))
 (defthm fn-bprv-found-grounding-record-grounds
-  (implies (consp (fn-bprv-find-grounding-record config context history))
+  (implies (consp (fn-bprv-find-grounding-record config context history fn-arena))
            (fn-bprv-record-grounds config context
-                                   (fn-bprv-find-grounding-record config context history)))
-  :hints (("Goal" :induct (fn-bprv-find-grounding-record config context history))))
+                                   (fn-bprv-find-grounding-record config context history fn-arena)))
+  :hints (("Goal" :induct (fn-bprv-find-grounding-record config context history fn-arena)
+           :in-theory (disable fn-row-wire-of))))
+; The found record stands for a row of HISTORY.
 (defthm fn-bprv-found-grounding-record-is-member
-  (implies (consp (fn-bprv-find-grounding-record config context history))
-           (member-equal (fn-bprv-find-grounding-record config context history) history))
-  :hints (("Goal" :induct (fn-bprv-find-grounding-record config context history))))
+  (implies (consp (fn-bprv-find-grounding-record config context history fn-arena))
+           (fn-bpr-rows-stand-for (fn-bprv-find-grounding-record config context history fn-arena)
+                                  history fn-arena))
+  :hints (("Goal" :induct (fn-bprv-find-grounding-record config context history fn-arena)
+           :in-theory (disable fn-row-wire-of))))
 
 (defthm fn-bprv-grounded-monotone
-  (implies (and (fn-bprv-context-groundedp config context h1)
+  (implies (and (fn-bprv-context-groundedp config context h1 fn-arena)
                 (fn-sf-prefixp h1 h2))
-           (fn-bprv-context-groundedp config context h2))
+           (fn-bprv-context-groundedp config context h2 fn-arena))
   :hints (("Goal"
            :use ((:instance fn-bprv-find-grounding-record-from-member
-                            (record (fn-bprv-find-grounding-record
-                                     config context (fn-bpr-article-records h1)))
+                            (row (fn-bpr-row-standing-for
+                                  (fn-bprv-find-grounding-record
+                                   config context (fn-bpr-article-records h1) fn-arena)
+                                  (fn-bpr-article-records h1) fn-arena))
                             (history (fn-bpr-article-records h2)))
                  (:instance fn-bprv-found-grounding-record-is-member
                             (history (fn-bpr-article-records h1)))
                  (:instance fn-bprv-found-grounding-record-grounds
                             (history (fn-bpr-article-records h1)))
+                 (:instance fn-bpr-row-standing-for-witnesses
+                            (record (fn-bprv-find-grounding-record
+                                     config context (fn-bpr-article-records h1) fn-arena))
+                            (rows (fn-bpr-article-records h1)))
                  fn-bprv-article-records-prefix
                  (:instance fn-bprv-prefix-preserves-member
                             (h1 (fn-bpr-article-records h1))
                             (h2 (fn-bpr-article-records h2))
-                            (x (fn-bprv-find-grounding-record
-                                config context (fn-bpr-article-records h1)))))
+                            (x (fn-bpr-row-standing-for
+                                (fn-bprv-find-grounding-record
+                                 config context (fn-bpr-article-records h1) fn-arena)
+                                (fn-bpr-article-records h1) fn-arena))))
            :in-theory (e/d (fn-bprv-context-groundedp)
                            (fn-bprv-find-grounding-record
                             fn-bprv-find-grounding-record-from-member
                             fn-bprv-found-grounding-record-is-member
                             fn-bprv-found-grounding-record-grounds
+                            fn-bpr-row-standing-for-witnesses fn-bpr-row-standing-for
+                            fn-bpr-rows-stand-for fn-row-wire-of
                             fn-bprv-article-records-prefix
                             fn-bpr-article-records
                             fn-bprv-prefix-preserves-member)))))
 (defthm fn-bprv-grounded-implies-consp-context
-  (implies (fn-bprv-context-groundedp config context h) (consp context))
+  (implies (fn-bprv-context-groundedp config context h fn-arena) (consp context))
   :hints (("Goal" :use ((:instance fn-bprv-found-grounding-record-grounds
                                    (history (fn-bpr-article-records h)))
                         (:instance fn-bprv-grounds-implies-consp-context
                                    (record (fn-bprv-find-grounding-record
-                                            config context (fn-bpr-article-records h)))))
+                                            config context (fn-bpr-article-records h) fn-arena))))
            :in-theory (e/d (fn-bprv-context-groundedp)
                            (fn-bprv-find-grounding-record
                             fn-bprv-found-grounding-record-grounds
@@ -393,22 +416,22 @@
   :rule-classes :forward-chaining)
 (local (in-theory (disable fn-bprv-context-groundedp)))
 (defthm fn-bprv-contexts-grounded-monotone
-  (implies (and (fn-bprv-contexts-groundedp config contexts h1)
+  (implies (and (fn-bprv-contexts-groundedp config contexts h1 fn-arena)
                 (fn-sf-prefixp h1 h2))
-           (fn-bprv-contexts-groundedp config contexts h2))
-  :hints (("Goal" :induct (fn-bprv-contexts-groundedp config contexts h1))))
+           (fn-bprv-contexts-groundedp config contexts h2 fn-arena))
+  :hints (("Goal" :induct (fn-bprv-contexts-groundedp config contexts h1 fn-arena))))
 (defthm fn-bprv-contexts-grounded-cons
-  (implies (and (fn-bprv-context-groundedp config context h)
-                (fn-bprv-contexts-groundedp config contexts h))
-           (fn-bprv-contexts-groundedp config (cons context contexts) h)))
+  (implies (and (fn-bprv-context-groundedp config context h fn-arena)
+                (fn-bprv-contexts-groundedp config contexts h fn-arena))
+           (fn-bprv-contexts-groundedp config (cons context contexts) h fn-arena)))
 (defthm fn-bprv-found-context-grounded
-  (implies (and (fn-bprv-contexts-groundedp config contexts h)
+  (implies (and (fn-bprv-contexts-groundedp config contexts h fn-arena)
                 (fn-bpr-find-context id contexts))
-           (fn-bprv-context-groundedp config (fn-bpr-find-context id contexts) h))
+           (fn-bprv-context-groundedp config (fn-bpr-find-context id contexts) h fn-arena))
   :hints (("Goal" :induct (fn-bpr-find-context id contexts)
            :in-theory (enable fn-bpr-find-context))))
 (defthm fn-bprv-nonnil-found-context-grounded-consp
-  (implies (and (fn-bprv-contexts-groundedp config contexts h)
+  (implies (and (fn-bprv-contexts-groundedp config contexts h fn-arena)
                 (fn-bpr-find-context id contexts))
            (consp (fn-bpr-find-context id contexts)))
   :hints (("Goal" :use (fn-bprv-found-context-grounded
@@ -418,8 +441,8 @@
                                fn-bprv-grounded-implies-consp-context
                                fn-bprv-contexts-groundedp))))
 (defthm fn-bprv-history-relational-monotone
-  (implies (and (fn-bprv-history-relationalp h1 st) (fn-sf-prefixp h1 h2))
-           (fn-bprv-history-relationalp h2 st))
+  (implies (and (fn-bprv-history-relationalp h1 st fn-arena) (fn-sf-prefixp h1 h2))
+           (fn-bprv-history-relationalp h2 st fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-bprv-history-relationalp)
                                   (fn-bprv-contexts-groundedp fn-bprv-entries-linkedp
                                    fn-bprv-pending-linkedp)))))
@@ -428,24 +451,32 @@
 ; The live gate implies grounding in the history it inspected (L8).
 
 (defthm fn-bprv-acceptable-grounds
-  (implies (fn-bpr-request-acceptablep store config record request authorized)
+  (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
            (fn-bprv-record-grounds config (fn-bpr-context-from-request record request) record))
   :hints (("Goal" :use fn-bprv-acceptable-implies-consp-record
            :in-theory (e/d (fn-bprv-record-grounds fn-bpr-request-acceptablep)
                            (fn-bprv-acceptable-implies-consp-record)))))
 (defthm fn-bprv-acceptable-implies-grounded
-  (implies (fn-bpr-request-acceptablep store config record request authorized)
+  (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
            (fn-bprv-context-groundedp config (fn-bpr-context-from-request record request)
-                                      (fn-bprv-history store)))
+                                      (fn-bprv-history store) fn-arena))
   :hints (("Goal"
            :use ((:instance fn-bprv-find-grounding-record-from-member
                             (context (fn-bpr-context-from-request record request))
+                            (row (fn-bpr-row-standing-for
+                                  record (fn-bpr-article-records
+                                          (fn-sf-records (fn-sn-files store))) fn-arena))
                             (history (fn-bpr-article-records
                                       (fn-sf-records (fn-sn-files store)))))
+                 (:instance fn-bpr-row-standing-for-witnesses
+                            (rows (fn-bpr-article-records
+                                   (fn-sf-records (fn-sn-files store)))))
                  fn-bprv-acceptable-record-is-member fn-bprv-acceptable-grounds)
            :in-theory (e/d (fn-bprv-context-groundedp fn-bprv-history)
                            (fn-bprv-find-grounding-record
                             fn-bprv-find-grounding-record-from-member
+                            fn-bpr-row-standing-for-witnesses fn-bpr-row-standing-for
+                            fn-bpr-rows-stand-for fn-row-wire-of
                             fn-bprv-acceptable-record-is-member
                             fn-bprv-acceptable-grounds)))))
 
@@ -457,44 +488,44 @@
                            fn-bprv-pending-linkedp fn-bprv-contexts-groundedp
                            fn-bprv-history)))
 (defthm fn-bprv-accept-preserves-history-relation
-  (implies (fn-bprv-history-relationalp (fn-bprv-history store) st)
+  (implies (fn-bprv-history-relationalp (fn-bprv-history store) st fn-arena)
            (fn-bprv-history-relationalp
             (fn-bprv-history store)
-            (cadr (fn-bpr-accept-request st store record request authorized))))
+            (cadr (fn-bpr-accept-request st store record request authorized fn-arena)) fn-arena))
   :hints (("Goal" :in-theory (enable fn-bpr-accept-request fn-bprv-history-relationalp
                                      fn-bprv-pending-linkedp))))
 (defthm fn-bprv-prepare-preserves-history-relation
-  (implies (fn-bprv-history-relationalp h st)
-           (fn-bprv-history-relationalp h (fn-bpr-prepare-receipt st work-id receipt-id authorized)))
+  (implies (fn-bprv-history-relationalp h st fn-arena)
+           (fn-bprv-history-relationalp h (fn-bpr-prepare-receipt st work-id receipt-id authorized) fn-arena))
   :hints (("Goal" :in-theory (enable fn-bpr-prepare-receipt fn-bprv-history-relationalp))))
 (defthm fn-bprv-commit-preserves-history-relation
-  (implies (fn-bprv-history-relationalp h st)
-           (fn-bprv-history-relationalp h (fn-bpr-commit-receipt st work-id receipt-id outcome)))
+  (implies (fn-bprv-history-relationalp h st fn-arena)
+           (fn-bprv-history-relationalp h (fn-bpr-commit-receipt st work-id receipt-id outcome) fn-arena))
   :hints (("Goal" :in-theory (enable fn-bpr-commit-receipt fn-bprv-history-relationalp
                                      fn-bprv-pending-linkedp fn-bprv-entries-linkedp))))
 (local (in-theory (disable fn-bprv-history-relationalp fn-bprv-entries-decidedp)))
 (defthm fn-bprv-apply-record-preserves-history-relation
-  (implies (fn-bprv-history-relationalp (fn-bprv-history store) st)
+  (implies (fn-bprv-history-relationalp (fn-bprv-history store) st fn-arena)
            (fn-bprv-history-relationalp (fn-bprv-history store)
-                                        (cadr (fn-bprr-apply-record st store r))))
+                                        (cadr (fn-bprr-apply-record st store r fn-arena)) fn-arena))
   :hints (("Goal" :in-theory (enable fn-bprr-apply-record))))
 (defthm fn-bprv-apply-record-preserves-evolving-invariant
-  (implies (and (fn-bprv-evolving-invariantp store st journal)
+  (implies (and (fn-bprv-evolving-invariantp store st journal fn-arena)
                 (member-equal r journal))
-           (fn-bprv-evolving-invariantp store (cadr (fn-bprr-apply-record st store r)) journal))
+           (fn-bprv-evolving-invariantp store (cadr (fn-bprr-apply-record st store r fn-arena)) journal fn-arena))
   :hints (("Goal" :use ((:instance fn-bprr-apply-record-preserves-statep (record r)))
            :in-theory (e/d (fn-bprv-evolving-invariantp)
                            (fn-bprr-apply-record-preserves-statep)))))
 (defthm fn-bprv-replay-rest-preserves-history-relation
-  (implies (fn-bprv-history-relationalp (fn-bprv-history store) st)
+  (implies (fn-bprv-history-relationalp (fn-bprv-history store) st fn-arena)
            (fn-bprv-history-relationalp (fn-bprv-history store)
-                                        (cadr (fn-bprr-replay-rest st store records))))
-  :hints (("Goal" :induct (fn-bprr-replay-rest st store records)
+                                        (cadr (fn-bprr-replay-rest st store records fn-arena)) fn-arena))
+  :hints (("Goal" :induct (fn-bprr-replay-rest st store records fn-arena)
            :in-theory (enable fn-bprr-replay-rest))))
 (defthm fn-bprv-replay-rest-preserves-evolving-invariant
-  (implies (and (fn-bprv-evolving-invariantp store st journal)
+  (implies (and (fn-bprv-evolving-invariantp store st journal fn-arena)
                 (fn-bprv-journal-subsetp records journal))
-           (fn-bprv-evolving-invariantp store (cadr (fn-bprr-replay-rest st store records)) journal))
+           (fn-bprv-evolving-invariantp store (cadr (fn-bprr-replay-rest st store records fn-arena)) journal fn-arena))
   :hints (("Goal" :use fn-bprr-replay-rest-preserves-statep
            :in-theory (e/d (fn-bprv-evolving-invariantp)
                            (fn-bprr-replay-rest-preserves-statep)))))
@@ -503,36 +534,36 @@
 ; Initial and replayed states (L15, L16).
 
 (defthm fn-bprv-initial-history-relational
-  (fn-bprv-history-relationalp h (fn-bpr-initial-state config))
+  (fn-bprv-history-relationalp h (fn-bpr-initial-state config) fn-arena)
   :hints (("Goal" :in-theory (enable fn-bpr-initial-state fn-bprv-history-relationalp
                                      fn-bprv-contexts-groundedp fn-bprv-entries-linkedp
                                      fn-bprv-pending-linkedp fn-bpr-state-config
                                      fn-bpr-state-contexts fn-bpr-state-receipts
                                      fn-bpr-state-pending fn-bpr-make-state fn-bpa-nth))))
 (defthm fn-bprv-nil-history-relational
-  (fn-bprv-history-relationalp h nil)
+  (fn-bprv-history-relationalp h nil fn-arena)
   :hints (("Goal" :in-theory (enable fn-bprv-history-relationalp fn-bprv-contexts-groundedp
                                      fn-bprv-entries-linkedp fn-bprv-pending-linkedp
                                      fn-bpr-state-config fn-bpr-state-contexts
                                      fn-bpr-state-receipts fn-bpr-state-pending fn-bpa-nth))))
 (defthm fn-bprv-initial-evolving-invariant
   (implies (fn-bpr-configp config)
-           (fn-bprv-evolving-invariantp store (fn-bpr-initial-state config) journal))
+           (fn-bprv-evolving-invariantp store (fn-bpr-initial-state config) journal fn-arena))
   :hints (("Goal" :in-theory (enable fn-bprv-evolving-invariantp))))
 (defthm fn-bprv-replay-has-history-relation
-  (fn-bprv-history-relationalp (fn-bprv-history store) (cadr (fn-bprr-replay store records)))
+  (fn-bprv-history-relationalp (fn-bprv-history store) (cadr (fn-bprr-replay store records fn-arena)) fn-arena)
   :hints (("Goal" :in-theory (enable fn-bprr-replay))))
 (defthm fn-bprv-successful-replay-has-evolving-invariant
-  (implies (and (car (fn-bprr-replay store records))
+  (implies (and (car (fn-bprr-replay store records fn-arena))
                 (fn-sf-prefixp (fn-bprv-history store) (fn-bprv-history later)))
-           (fn-bprv-evolving-invariantp later (cadr (fn-bprr-replay store records)) records))
+           (fn-bprv-evolving-invariantp later (cadr (fn-bprr-replay store records fn-arena)) records fn-arena))
   :hints (("Goal"
            :use (fn-bprr-successful-replay-has-statep
                  fn-bprv-replay-receipts-have-committed-decisions
                  fn-bprv-replay-has-history-relation
                  (:instance fn-bprv-history-relational-monotone
                             (h1 (fn-bprv-history store)) (h2 (fn-bprv-history later))
-                            (st (cadr (fn-bprr-replay store records)))))
+                            (st (cadr (fn-bprr-replay store records fn-arena)))))
            :in-theory (e/d (fn-bprv-evolving-invariantp)
                            (fn-bprr-successful-replay-has-statep
                             fn-bprv-replay-receipts-have-committed-decisions
@@ -543,11 +574,11 @@
 ; Grounded receipt, in every phase (L17, L18).
 
 (defthm fn-bprv-grounded-context-has-history-record
-  (implies (fn-bprv-context-groundedp config context h)
+  (implies (fn-bprv-context-groundedp config context h fn-arena)
            (let ((record (fn-bprv-find-grounding-record
-                          config context (fn-bpr-article-records h))))
+                          config context (fn-bpr-article-records h) fn-arena)))
              (and (fn-record-p record)
-                  (member-equal record (fn-bpr-article-records h))
+                  (fn-bpr-rows-stand-for record (fn-bpr-article-records h) fn-arena)
                   (equal context (fn-bpr-context-from-request
                                   record (fn-bpr-context-request context)))
                   (equal (fn-bpa-request-article (fn-bpr-context-request context))
@@ -565,7 +596,7 @@
                             fn-bprv-found-grounding-record-is-member)))))
 
 (defthm fn-bprv-evolving-output-has-linked-committed-entry
-  (implies (and (fn-bprv-history-relationalp h st) (fn-bpr-receipt-adu st request))
+  (implies (and (fn-bprv-history-relationalp h st fn-arena) (fn-bpr-receipt-adu st request))
            (let* ((context (fn-bpr-find-context (fn-bpa-request-work-id request)
                                                 (fn-bpr-state-contexts st)))
                   (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context)
@@ -574,7 +605,7 @@
                   (equal request (fn-bpr-context-request context))
                   (member-equal entry (fn-bpr-state-receipts st))
                   (equal context (fn-bpr-receipt-entry-context entry))
-                  (fn-bprv-context-groundedp (fn-bpr-state-config st) context h)
+                  (fn-bprv-context-groundedp (fn-bpr-state-config st) context h fn-arena)
                   (equal (fn-bpr-receipt-entry-receipt entry)
                          (fn-bpr-receipt-for context (fn-bpr-state-config st)
                                              (fn-bpa-receipt-id (fn-bpr-receipt-entry-receipt entry))))
@@ -589,7 +620,7 @@
                            (fn-bprv-found-receipt-linked)))))
 
 (defthm fn-bprv-evolving-output-is-history-grounded
-  (implies (and (fn-bprv-evolving-invariantp store st journal)
+  (implies (and (fn-bprv-evolving-invariantp store st journal fn-arena)
                 (fn-bpr-receipt-adu st request))
            (let* ((context (fn-bpr-find-context (fn-bpa-request-work-id request)
                                                 (fn-bpr-state-contexts st)))
@@ -597,11 +628,12 @@
                                               (fn-bpr-state-receipts st)))
                   (record (fn-bprv-find-grounding-record
                            (fn-bpr-state-config st) context
-                           (fn-bpr-article-records (fn-bprv-history store)))))
+                           (fn-bpr-article-records (fn-bprv-history store)) fn-arena)))
              (and (consp context)
                   (equal request (fn-bpr-context-request context))
                   (fn-record-p record)
-                  (member-equal record (fn-bpr-article-records (fn-bprv-history store)))
+                  (fn-bpr-rows-stand-for record (fn-bpr-article-records (fn-bprv-history store))
+                                         fn-arena)
                   (equal context (fn-bpr-context-from-request record request))
                   (equal (fn-bpa-request-article request) (fn-record-payload record))
                   (equal (fn-bpa-request-subject request)
@@ -634,7 +666,7 @@
 ; (restatements of the retention theorems over fn-bprv-history).
 
 (defthm fn-bprv-evolving-commit-preserves-existing-receipt
-  (implies (and (fn-bprv-history-relationalp h st)
+  (implies (and (fn-bprv-history-relationalp h st fn-arena)
                 (fn-bpr-find-receipt id (fn-bpr-state-receipts st)))
            (equal (fn-bpr-find-receipt id (fn-bpr-state-receipts
                                            (fn-bpr-commit-receipt st work-id receipt-id outcome)))
@@ -642,24 +674,24 @@
   :hints (("Goal" :in-theory (enable fn-bpr-commit-receipt fn-bprv-history-relationalp
                                      fn-bprv-pending-linkedp))))
 (defthm fn-bprv-evolving-apply-record-preserves-existing-receipt
-  (implies (and (fn-bprv-history-relationalp (fn-bprv-history store) st)
+  (implies (and (fn-bprv-history-relationalp (fn-bprv-history store) st fn-arena)
                 (fn-bpr-find-receipt id (fn-bpr-state-receipts st)))
            (equal (fn-bpr-find-receipt id (fn-bpr-state-receipts
-                                           (cadr (fn-bprr-apply-record st store r))))
+                                           (cadr (fn-bprr-apply-record st store r fn-arena))))
                   (fn-bpr-find-receipt id (fn-bpr-state-receipts st))))
   :hints (("Goal" :in-theory (enable fn-bprr-apply-record))))
 (defthm fn-bprv-evolving-replay-rest-preserves-existing-receipt
-  (implies (and (fn-bprv-history-relationalp (fn-bprv-history store) st)
+  (implies (and (fn-bprv-history-relationalp (fn-bprv-history store) st fn-arena)
                 (fn-bpr-find-receipt id (fn-bpr-state-receipts st)))
            (equal (fn-bpr-find-receipt id (fn-bpr-state-receipts
-                                           (cadr (fn-bprr-replay-rest st store records))))
+                                           (cadr (fn-bprr-replay-rest st store records fn-arena))))
                   (fn-bpr-find-receipt id (fn-bpr-state-receipts st))))
-  :hints (("Goal" :induct (fn-bprr-replay-rest st store records)
+  :hints (("Goal" :induct (fn-bprr-replay-rest st store records fn-arena)
            :in-theory (enable fn-bprr-replay-rest))))
 (defthm fn-bprv-evolving-replay-rest-preserves-receipt-adu
-  (implies (and (fn-bprv-history-relationalp (fn-bprv-history store) st)
+  (implies (and (fn-bprv-history-relationalp (fn-bprv-history store) st fn-arena)
                 (fn-bpr-receipt-adu st request))
-           (equal (fn-bpr-receipt-adu (cadr (fn-bprr-replay-rest st store records)) request)
+           (equal (fn-bpr-receipt-adu (cadr (fn-bprr-replay-rest st store records fn-arena)) request)
                   (fn-bpr-receipt-adu st request)))
   :hints (("Goal"
            :use ((:instance fn-bprv-evolving-output-has-linked-committed-entry

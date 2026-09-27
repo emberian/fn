@@ -258,33 +258,34 @@
 ; Extension/retry cannot overwrite an existing context or committed receipt.
 
 ; A combined invariant over the actual receiver and a fixed recovered Store.
-(defun fn-bprv-invariantp (store st journal)
+(defun fn-bprv-invariantp (store st journal fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
  (and (fn-bpr-statep st)
-      (fn-bprv-relationalp store st)
+      (fn-bprv-relationalp store st fn-arena)
       (fn-bprv-entries-decidedp (fn-bpr-state-receipts st) journal)))
 
 (defthm fn-bprv-initial-invariant
  (implies (fn-bpr-configp config)
-  (fn-bprv-invariantp store (fn-bpr-initial-state config) journal))
+  (fn-bprv-invariantp store (fn-bpr-initial-state config) journal fn-arena))
  :hints (("Goal" :in-theory (enable fn-bprv-invariantp))))
 
 (defthm fn-bprv-actual-record-preserves-invariant
- (implies (and (fn-bprv-invariantp store st journal)
+ (implies (and (fn-bprv-invariantp store st journal fn-arena)
                (member-equal r journal))
-  (fn-bprv-invariantp store (cadr (fn-bprr-apply-record st store r)) journal))
+  (fn-bprv-invariantp store (cadr (fn-bprr-apply-record st store r fn-arena)) journal fn-arena))
  :hints (("Goal" :use ((:instance fn-bprr-apply-record-preserves-statep (record r)))
  :in-theory (e/d (fn-bprv-invariantp) (fn-bprr-apply-record-preserves-statep)))))
 
 (defthm fn-bprv-actual-finite-replay-preserves-invariant
- (implies (and (fn-bprv-invariantp store st journal)
+ (implies (and (fn-bprv-invariantp store st journal fn-arena)
                (fn-bprv-journal-subsetp records journal))
-  (fn-bprv-invariantp store (cadr (fn-bprr-replay-rest st store records)) journal))
+  (fn-bprv-invariantp store (cadr (fn-bprr-replay-rest st store records fn-arena)) journal fn-arena))
  :hints (("Goal" :use ((:instance fn-bprr-replay-rest-preserves-statep))
  :in-theory (e/d (fn-bprv-invariantp) (fn-bprr-replay-rest-preserves-statep)))))
 
 (defthm fn-bprv-successful-replay-has-invariant
- (implies (car (fn-bprr-replay store records))
-  (fn-bprv-invariantp store (cadr (fn-bprr-replay store records)) records))
+ (implies (car (fn-bprr-replay store records fn-arena))
+  (fn-bprv-invariantp store (cadr (fn-bprr-replay store records fn-arena)) records fn-arena))
  :hints (("Goal" :use ((:instance fn-bprr-successful-replay-has-statep))
  :in-theory (e/d (fn-bprv-invariantp) (fn-bprr-successful-replay-has-statep)))))
 
@@ -293,9 +294,9 @@
  :hints (("Goal" :in-theory (enable fn-bpr-receipt-adu))))
 
 (defthm fn-bprv-replay-rest-preserves-receipt-adu
- (implies (and (fn-bprv-relationalp store st)
+ (implies (and (fn-bprv-relationalp store st fn-arena)
                (fn-bpr-receipt-adu st request))
-  (equal (fn-bpr-receipt-adu (cadr (fn-bprr-replay-rest st store records)) request)
+  (equal (fn-bpr-receipt-adu (cadr (fn-bprr-replay-rest st store records fn-arena)) request)
          (fn-bpr-receipt-adu st request)))
  :hints (("Goal"
   :use ((:instance fn-bprv-output-has-linked-committed-entry)

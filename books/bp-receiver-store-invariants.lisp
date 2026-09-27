@@ -255,25 +255,33 @@
 ; runs over the history's article records (`fn-bpr-article-records'): a
 ; signed article is committed as a kind-4 composite whose article record it
 ; carries, and grounds a context as a plain record does.
-(defun fn-bprv-record-binds (store config context record)
+(defun fn-bprv-record-binds (store config context record fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (and (consp record)
        (fn-bpr-request-acceptablep store config record
-                                   (fn-bpr-context-request context) t)
+                                   (fn-bpr-context-request context) t fn-arena)
        (equal context
               (fn-bpr-context-from-request record (fn-bpr-context-request context)))))
-(defun fn-bprv-find-record (store config context records)
+;; RECORDS are the history's article records: retained rows (records-flip).
+;; The search answers the WIRE form of the first row that binds CONTEXT, its
+;; bytes read through the arena: the record the receiver was handed.
+(defun fn-bprv-find-record (store config context records fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp records)
-      (if (fn-bprv-record-binds store config context (car records))
-          (car records)
-        (fn-bprv-find-record store config context (cdr records)))
+      (if (fn-bprv-record-binds store config context
+                                (fn-row-wire-of (car records) fn-arena) fn-arena)
+          (fn-row-wire-of (car records) fn-arena)
+        (fn-bprv-find-record store config context (cdr records) fn-arena))
     nil))
-(defun fn-bprv-context-backedp (store config context)
+(defun fn-bprv-context-backedp (store config context fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (consp (fn-bprv-find-record store config context
-                             (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))))
-(defun fn-bprv-contexts-backedp (store config contexts)
+                             (fn-bpr-article-records (fn-sf-records (fn-sn-files store))) fn-arena)))
+(defun fn-bprv-contexts-backedp (store config contexts fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp contexts)
-      (and (fn-bprv-context-backedp store config (car contexts))
-           (fn-bprv-contexts-backedp store config (cdr contexts)))
+      (and (fn-bprv-context-backedp store config (car contexts) fn-arena)
+           (fn-bprv-contexts-backedp store config (cdr contexts) fn-arena))
     t))
 
 (defthm fn-bprv-request-of-derived-context
@@ -281,54 +289,73 @@
   :hints (("Goal" :in-theory (enable fn-bpr-context-request
     fn-bpr-context-from-request fn-bpr-make-context fn-bpa-nth))))
 (defthm fn-bprv-acceptable-implies-consp-record
-  (implies (fn-bpr-request-acceptablep store config record request authorized)
+  (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
            (consp record))
   :hints (("Goal" :in-theory (enable fn-bpr-request-acceptablep fn-record-p))))
 (defthm fn-bprv-derived-context-record-binds
-  (implies (fn-bpr-request-acceptablep store config record request authorized)
+  (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
            (fn-bprv-record-binds store config
-                                 (fn-bpr-context-from-request record request) record))
+                                 (fn-bpr-context-from-request record request) record fn-arena))
   :hints (("Goal" :use fn-bprv-acceptable-implies-consp-record
    :in-theory (e/d (fn-bprv-record-binds fn-bpr-request-acceptablep) (fn-bprv-acceptable-implies-consp-record)))))
 (defthm fn-bprv-record-binds-consp
- (implies (fn-bprv-record-binds store config context record) (consp record))
+ (implies (fn-bprv-record-binds store config context record fn-arena) (consp record))
  :rule-classes :forward-chaining)
 (local (in-theory (disable fn-bprv-record-binds)))
 (defthm fn-bprv-find-record-from-member
-  (implies (and (member-equal record records)
-                (consp record)
-                (fn-bprv-record-binds store config context record))
-           (consp (fn-bprv-find-record store config context records)))
-  :hints (("Goal" :induct (fn-bprv-find-record store config context records))))
+  (implies (and (member-equal row records)
+                (fn-bprv-record-binds store config context
+                                      (fn-row-wire-of row fn-arena) fn-arena))
+           (consp (fn-bprv-find-record store config context records fn-arena)))
+  :hints (("Goal" :induct (fn-bprv-find-record store config context records fn-arena)
+           :in-theory (disable fn-row-wire-of))))
+; An acceptable record stands for a row of the history's article records.
 (defthm fn-bprv-acceptable-record-is-member
-  (implies (fn-bpr-request-acceptablep store config record request authorized)
-           (member-equal record (fn-bpr-article-records (fn-sf-records (fn-sn-files store)))))
-  :hints (("Goal" :in-theory (enable fn-bpr-request-acceptablep fn-bpr-store-record-acceptedp))))
+  (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
+           (fn-bpr-rows-stand-for record
+                                  (fn-bpr-article-records (fn-sf-records (fn-sn-files store)))
+                                  fn-arena))
+  :hints (("Goal" :in-theory (e/d (fn-bpr-request-acceptablep fn-bpr-store-record-acceptedp)
+                                  (fn-bpr-rows-stand-for)))))
 (defthm fn-bprv-derived-context-backed
-  (implies (fn-bpr-request-acceptablep store config record request authorized)
-           (fn-bprv-context-backedp store config (fn-bpr-context-from-request record request)))
+  (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
+           (fn-bprv-context-backedp store config (fn-bpr-context-from-request record request) fn-arena))
   :hints (("Goal" :use ((:instance fn-bprv-find-record-from-member
       (context (fn-bpr-context-from-request record request))
-      (records (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))))
-    :in-theory (enable fn-bprv-context-backedp))))
+      (row (fn-bpr-row-standing-for
+            record (fn-bpr-article-records (fn-sf-records (fn-sn-files store))) fn-arena))
+      (records (fn-bpr-article-records (fn-sf-records (fn-sn-files store)))))
+      fn-bprv-acceptable-record-is-member
+      fn-bprv-derived-context-record-binds
+      (:instance fn-bpr-row-standing-for-witnesses
+       (rows (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))))
+    :in-theory (e/d (fn-bprv-context-backedp)
+                    (fn-bprv-find-record-from-member fn-bprv-acceptable-record-is-member
+                     fn-bprv-derived-context-record-binds fn-bpr-row-standing-for-witnesses
+                     fn-bpr-rows-stand-for fn-bpr-row-standing-for fn-row-wire-of
+                     fn-bpr-request-acceptablep)))))
 (defthm fn-bprv-found-record-binds
-  (implies (consp (fn-bprv-find-record store config context records))
+  (implies (consp (fn-bprv-find-record store config context records fn-arena))
            (fn-bprv-record-binds store config context
-                                 (fn-bprv-find-record store config context records)))
-  :hints (("Goal" :induct (fn-bprv-find-record store config context records))))
+                                 (fn-bprv-find-record store config context records fn-arena) fn-arena))
+  :hints (("Goal" :induct (fn-bprv-find-record store config context records fn-arena))))
+; The found record stands for a row of the searched rows.
 (defthm fn-bprv-found-record-is-member
-  (implies (consp (fn-bprv-find-record store config context records))
-           (member-equal (fn-bprv-find-record store config context records) records))
-  :hints (("Goal" :induct (fn-bprv-find-record store config context records))))
+  (implies (consp (fn-bprv-find-record store config context records fn-arena))
+           (fn-bpr-rows-stand-for (fn-bprv-find-record store config context records fn-arena)
+                                  records fn-arena))
+  :hints (("Goal" :induct (fn-bprv-find-record store config context records fn-arena)
+           :in-theory (disable fn-row-wire-of))))
 (defthm fn-bprv-backed-context-has-actual-ready-record
-  (implies (fn-bprv-context-backedp store config context)
+  (implies (fn-bprv-context-backedp store config context fn-arena)
    (let ((record (fn-bprv-find-record store config context
-                                     (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))))
+                                     (fn-bpr-article-records (fn-sf-records (fn-sn-files store))) fn-arena)))
      (and (fn-sn-statep store)
           (equal (fn-sf-phase (fn-sn-files store)) :ready)
           (fn-record-p record)
-          (member-equal record (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))
-          (fn-bpi-node-record-committedp (fn-sn-node store) record)
+          (fn-bpr-rows-stand-for record (fn-bpr-article-records (fn-sf-records (fn-sn-files store)))
+                                 fn-arena)
+          (fn-bpi-node-wire-committedp (fn-sn-node store) record fn-arena)
           (equal context (fn-bpr-context-from-request record (fn-bpr-context-request context)))
           (equal (fn-bpa-request-article (fn-bpr-context-request context))
                  (fn-record-payload record))
@@ -344,12 +371,12 @@
                        fn-bpr-request-acceptablep fn-bpr-store-record-acceptedp)
                      (fn-bprv-find-record fn-bprv-found-record-binds fn-bprv-found-record-is-member)))))
 (defthm fn-bprv-contexts-backed-cons
-  (implies (and (fn-bprv-context-backedp store config context)
-                (fn-bprv-contexts-backedp store config contexts))
-           (fn-bprv-contexts-backedp store config (cons context contexts))))
+  (implies (and (fn-bprv-context-backedp store config context fn-arena)
+                (fn-bprv-contexts-backedp store config contexts fn-arena))
+           (fn-bprv-contexts-backedp store config (cons context contexts) fn-arena)))
 (defthm fn-bprv-found-context-backed
-  (implies (and (fn-bprv-contexts-backedp store config contexts)
+  (implies (and (fn-bprv-contexts-backedp store config contexts fn-arena)
                 (consp (fn-bpr-find-context work-id contexts)))
-           (fn-bprv-context-backedp store config (fn-bpr-find-context work-id contexts)))
+           (fn-bprv-context-backedp store config (fn-bpr-find-context work-id contexts) fn-arena))
   :hints (("Goal" :induct (fn-bpr-find-context work-id contexts)
      :in-theory (enable fn-bpr-find-context))))

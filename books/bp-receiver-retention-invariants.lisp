@@ -258,7 +258,7 @@
 (defthm fn-bprv-accept-preserves-existing-context
  (implies (consp (fn-bpr-find-context id (fn-bpr-state-contexts st)))
   (equal (fn-bpr-find-context id
-           (fn-bpr-state-contexts (cadr (fn-bpr-accept-request st store record request authorized))))
+           (fn-bpr-state-contexts (cadr (fn-bpr-accept-request st store record request authorized fn-arena))))
          (fn-bpr-find-context id (fn-bpr-state-contexts st))))
  :hints (("Goal" :in-theory (enable fn-bpr-accept-request))))
 (defthm fn-bprv-prepare-contexts-unchanged
@@ -275,7 +275,7 @@
             entry (fn-bpr-find-receipt id entries)))
  :hints (("Goal" :expand ((fn-bpr-find-receipt id (cons entry entries))))))
 (defthm fn-bprv-commit-preserves-existing-receipt
- (implies (and (fn-bprv-relationalp store st)
+ (implies (and (fn-bprv-relationalp store st fn-arena)
                (fn-bpr-find-receipt id (fn-bpr-state-receipts st)))
   (equal (fn-bpr-find-receipt id
            (fn-bpr-state-receipts (fn-bpr-commit-receipt st work-id receipt-id outcome)))
@@ -285,30 +285,30 @@
 (defthm fn-bprv-apply-record-preserves-existing-context
  (implies (consp (fn-bpr-find-context id (fn-bpr-state-contexts st)))
   (equal (fn-bpr-find-context id
-           (fn-bpr-state-contexts (cadr (fn-bprr-apply-record st store r))))
+           (fn-bpr-state-contexts (cadr (fn-bprr-apply-record st store r fn-arena))))
          (fn-bpr-find-context id (fn-bpr-state-contexts st))))
  :hints (("Goal" :in-theory (enable fn-bprr-apply-record))))
 (defthm fn-bprv-apply-record-preserves-existing-receipt
- (implies (and (fn-bprv-relationalp store st)
+ (implies (and (fn-bprv-relationalp store st fn-arena)
                (fn-bpr-find-receipt id (fn-bpr-state-receipts st)))
   (equal (fn-bpr-find-receipt id
-           (fn-bpr-state-receipts (cadr (fn-bprr-apply-record st store r))))
+           (fn-bpr-state-receipts (cadr (fn-bprr-apply-record st store r fn-arena))))
          (fn-bpr-find-receipt id (fn-bpr-state-receipts st))))
  :hints (("Goal" :in-theory (enable fn-bprr-apply-record))))
 (defthm fn-bprv-replay-rest-preserves-existing-context
  (implies (consp (fn-bpr-find-context id (fn-bpr-state-contexts st)))
   (equal (fn-bpr-find-context id
-           (fn-bpr-state-contexts (cadr (fn-bprr-replay-rest st store records))))
+           (fn-bpr-state-contexts (cadr (fn-bprr-replay-rest st store records fn-arena))))
          (fn-bpr-find-context id (fn-bpr-state-contexts st))))
- :hints (("Goal" :induct (fn-bprr-replay-rest st store records)
+ :hints (("Goal" :induct (fn-bprr-replay-rest st store records fn-arena)
    :in-theory (enable fn-bprr-replay-rest))))
 (defthm fn-bprv-replay-rest-preserves-existing-receipt
- (implies (and (fn-bprv-relationalp store st)
+ (implies (and (fn-bprv-relationalp store st fn-arena)
                (fn-bpr-find-receipt id (fn-bpr-state-receipts st)))
   (equal (fn-bpr-find-receipt id
-           (fn-bpr-state-receipts (cadr (fn-bprr-replay-rest st store records))))
+           (fn-bpr-state-receipts (cadr (fn-bprr-replay-rest st store records fn-arena))))
          (fn-bpr-find-receipt id (fn-bpr-state-receipts st))))
- :hints (("Goal" :induct (fn-bprr-replay-rest st store records)
+ :hints (("Goal" :induct (fn-bprr-replay-rest st store records fn-arena)
    :in-theory (enable fn-bprr-replay-rest))))
 
 (defthm fn-bprv-found-receipt-linked
@@ -338,14 +338,14 @@
 ; This is an output implication, not an output filter: the actual encoder and
 ; journal transitions are unchanged.
 (defthm fn-bprv-output-has-linked-committed-entry
- (implies (and (fn-bprv-relationalp store st) (fn-bpr-receipt-adu st request))
+ (implies (and (fn-bprv-relationalp store st fn-arena) (fn-bpr-receipt-adu st request))
   (let* ((context (fn-bpr-find-context (fn-bpa-request-work-id request) (fn-bpr-state-contexts st)))
          (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context) (fn-bpr-state-receipts st))))
    (and (consp context)
         (equal request (fn-bpr-context-request context))
         (member-equal entry (fn-bpr-state-receipts st))
         (equal context (fn-bpr-receipt-entry-context entry))
-        (fn-bprv-context-backedp store (fn-bpr-state-config st) context)
+        (fn-bprv-context-backedp store (fn-bpr-state-config st) context fn-arena)
         (equal (fn-bpr-receipt-entry-receipt entry)
           (fn-bpr-receipt-for context (fn-bpr-state-config st)
             (fn-bpa-receipt-id (fn-bpr-receipt-entry-receipt entry))))
@@ -360,17 +360,18 @@
                     (fn-bprv-found-receipt-linked)))))
 
 (defthm fn-bprv-replayed-receipt-is-grounded
- (let* ((st (cadr (fn-bprr-replay store records)))
+ (let* ((st (cadr (fn-bprr-replay store records fn-arena)))
         (context (fn-bpr-find-context (fn-bpa-request-work-id request) (fn-bpr-state-contexts st)))
         (entry (fn-bpr-find-receipt (fn-bpr-context-work-id context) (fn-bpr-state-receipts st)))
         (record (fn-bprv-find-record store (fn-bpr-state-config st) context
-                                     (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))))
+                                     (fn-bpr-article-records (fn-sf-records (fn-sn-files store))) fn-arena)))
   (implies (fn-bpr-receipt-adu st request)
    (and (fn-sn-statep store)
         (equal (fn-sf-phase (fn-sn-files store)) :ready)
         (fn-record-p record)
-        (member-equal record (fn-bpr-article-records (fn-sf-records (fn-sn-files store))))
-        (fn-bpi-node-record-committedp (fn-sn-node store) record)
+        (fn-bpr-rows-stand-for record (fn-bpr-article-records (fn-sf-records (fn-sn-files store)))
+                               fn-arena)
+        (fn-bpi-node-wire-committedp (fn-sn-node store) record fn-arena)
         (equal context (fn-bpr-context-from-request record request))
         (equal (fn-bpa-request-article request) (fn-record-payload record))
         (equal (fn-bpa-request-subject request) (fn-record-content-subject record))
@@ -384,15 +385,15 @@
  :rule-classes nil
  :hints (("Goal"
   :use ((:instance fn-bprv-output-has-linked-committed-entry
-           (st (cadr (fn-bprr-replay store records))))
+           (st (cadr (fn-bprr-replay store records fn-arena))))
         (:instance fn-bprv-backed-context-has-actual-ready-record
-           (config (fn-bpr-state-config (cadr (fn-bprr-replay store records))))
+           (config (fn-bpr-state-config (cadr (fn-bprr-replay store records fn-arena))))
            (context (fn-bpr-find-context (fn-bpa-request-work-id request)
-                      (fn-bpr-state-contexts (cadr (fn-bprr-replay store records))))))
+                      (fn-bpr-state-contexts (cadr (fn-bprr-replay store records fn-arena))))))
         (:instance fn-bprv-replay-receipts-have-committed-decisions)
         (:instance fn-bprv-found-receipt-decided
            (id (fn-bpa-request-work-id request))
-           (entries (fn-bpr-state-receipts (cadr (fn-bprr-replay store records))))
+           (entries (fn-bpr-state-receipts (cadr (fn-bprr-replay store records fn-arena))))
            (journal records)))
   :in-theory (e/d (fn-bpr-receipt-adu fn-bprv-relationalp)
     (fn-bprv-replay-receipts-have-committed-decisions fn-bprv-found-receipt-decided)))))

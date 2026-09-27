@@ -309,8 +309,8 @@
 
 (defthm fn-bprv-store-step-preserves-evolving-invariant
   (implies (and (fn-snt-relation store)
-                (fn-bprv-evolving-invariantp store st journal))
-           (fn-bprv-evolving-invariantp (fn-snrt-step store event) st journal))
+                (fn-bprv-evolving-invariantp store st journal fn-arena))
+           (fn-bprv-evolving-invariantp (fn-snrt-step store event) st journal fn-arena))
   :hints (("Goal" :use ((:instance fn-bprv-snrt-step-extends-history (s store))
                         (:instance fn-bprv-history-relational-monotone
                                    (h1 (fn-bprv-history store))
@@ -320,8 +320,8 @@
                             fn-bprv-history-relational-monotone)))))
 (defthm fn-bprv-store-run-preserves-evolving-invariant
   (implies (and (fn-snt-relation store)
-                (fn-bprv-evolving-invariantp store st journal))
-           (fn-bprv-evolving-invariantp (fn-snrt-run store events) st journal))
+                (fn-bprv-evolving-invariantp store st journal fn-arena))
+           (fn-bprv-evolving-invariantp (fn-snrt-run store events) st journal fn-arena))
   :hints (("Goal" :use ((:instance fn-bprv-snrt-run-extends-history (s store))
                         (:instance fn-bprv-history-relational-monotone
                                    (h1 (fn-bprv-history store))
@@ -347,15 +347,17 @@
 ; event or a receiver journal record.  fn-bprv-system-invariantp carries the
 ; Store's own live-history relation alongside the receiver relation.
 
-(defun fn-bprv-system-step (store st event)
+(defun fn-bprv-system-step (store st event fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (case (car event)
     (:store (list (fn-snrt-step store (cadr event)) st))
-    (:receiver (list store (cadr (fn-bprr-apply-record st store (cadr event)))))
+    (:receiver (list store (cadr (fn-bprr-apply-record st store (cadr event) fn-arena))))
     (otherwise (list store st))))
-(defun fn-bprv-system-run (store st events)
+(defun fn-bprv-system-run (store st events fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp events)
-      (let ((next (fn-bprv-system-step store st (car events))))
-        (fn-bprv-system-run (car next) (cadr next) (cdr events)))
+      (let ((next (fn-bprv-system-step store st (car events) fn-arena)))
+        (fn-bprv-system-run (car next) (cadr next) (cdr events) fn-arena))
     (list store st)))
 (defun fn-bprv-system-events-journaledp (events journal)
   (if (consp events)
@@ -363,23 +365,24 @@
                (member-equal (cadr (car events)) journal))
            (fn-bprv-system-events-journaledp (cdr events) journal))
     t))
-(defun fn-bprv-system-invariantp (store st journal)
+(defun fn-bprv-system-invariantp (store st journal fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (and (fn-snt-relation store)
-       (fn-bprv-evolving-invariantp store st journal)))
+       (fn-bprv-evolving-invariantp store st journal fn-arena)))
 
 (defthm fn-bprv-system-step-preserves-invariant
-  (implies (and (fn-bprv-system-invariantp store st journal)
+  (implies (and (fn-bprv-system-invariantp store st journal fn-arena)
                 (or (not (equal (car event) :receiver))
                     (member-equal (cadr event) journal)))
-           (let ((next (fn-bprv-system-step store st event)))
-             (fn-bprv-system-invariantp (car next) (cadr next) journal)))
+           (let ((next (fn-bprv-system-step store st event fn-arena)))
+             (fn-bprv-system-invariantp (car next) (cadr next) journal fn-arena)))
   :hints (("Goal" :in-theory (disable fn-bprr-apply-record))))
 (defthm fn-bprv-system-run-preserves-invariant
-  (implies (and (fn-bprv-system-invariantp store st journal)
+  (implies (and (fn-bprv-system-invariantp store st journal fn-arena)
                 (fn-bprv-system-events-journaledp events journal))
-           (let ((final (fn-bprv-system-run store st events)))
-             (fn-bprv-system-invariantp (car final) (cadr final) journal)))
-  :hints (("Goal" :induct (fn-bprv-system-run store st events)
+           (let ((final (fn-bprv-system-run store st events fn-arena)))
+             (fn-bprv-system-invariantp (car final) (cadr final) journal fn-arena)))
+  :hints (("Goal" :induct (fn-bprv-system-run store st events fn-arena)
            :in-theory (disable fn-bprv-system-invariantp fn-bprv-system-step))))
 
 ; -----------------------------------------------------------------------------
@@ -446,7 +449,7 @@
                             fn-sn-observed-topic-okp)))))
 
 (defthm fn-bprv-evolving-invariant-survives-observed-reopen
-  (implies (and (fn-bprv-system-invariantp store st journal)
+  (implies (and (fn-bprv-system-invariantp store st journal fn-arena)
                 (fn-csi-full-relationp store)
                 (fn-sf-crash-imagep (fn-sn-files store) frontier records)
                 (fn-sn-observed-identity-okp records)
@@ -454,7 +457,7 @@
            (let ((opened (fn-sn-open-observed (fn-sn-groups store) (fn-sn-capacity store)
                                               frontier records)))
              (and (fn-sn-open-okp opened)
-                  (fn-bprv-system-invariantp (fn-sn-open-state opened) st journal))))
+                  (fn-bprv-system-invariantp (fn-sn-open-state opened) st journal fn-arena))))
   :hints (("Goal" :use ((:instance fn-bprv-observed-reopen-facts (s store))
                         (:instance fn-bprv-history-relational-monotone
                                    (h1 (fn-bprv-history store))
@@ -486,31 +489,34 @@
 (defun fn-bpr-live-store (live) (car live))
 (defun fn-bpr-live-state (live) (cadr live))
 (defun fn-bpr-live-journal (live) (caddr live))
-(defun fn-bpr-live-step (live event)
+(defun fn-bpr-live-step (live event fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((store (car live)) (st (cadr live)) (journal (caddr live)))
     (case (car event)
       (:store (list (fn-snrt-step store (cadr event)) st journal))
-      (:apply (let ((answer (fn-bprr-apply-record st store (cadr event))))
+      (:apply (let ((answer (fn-bprr-apply-record st store (cadr event) fn-arena)))
                 (if (car answer)
                     (list store (cadr answer) (append journal (list (cadr event))))
                   (list store st journal))))
       (otherwise (list store st journal)))))
-(defun fn-bpr-live-run (live events)
+(defun fn-bpr-live-run (live events fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp events)
-      (fn-bpr-live-run (fn-bpr-live-step live (car events)) (cdr events))
+      (fn-bpr-live-run (fn-bpr-live-step live (car events) fn-arena) (cdr events) fn-arena)
     live))
 ; fn-bprj-install: the receiver state is the replay of the journal against the
 ; Store the process holds.
-(defun fn-bpr-live-install (store journal)
-  (list store (cadr (fn-bprr-replay store journal)) journal))
+(defun fn-bpr-live-install (store journal fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (list store (cadr (fn-bprr-replay store journal fn-arena)) journal))
 
 (defthm fn-bpr-live-step-preserves-store-relation
   (implies (fn-snt-relation (car live))
-           (fn-snt-relation (car (fn-bpr-live-step live event))))
+           (fn-snt-relation (car (fn-bpr-live-step live event fn-arena))))
   :hints (("Goal" :in-theory (disable fn-bprr-apply-record))))
 (defthm fn-bpr-live-step-preserves-consumer-full-relation
   (implies (fn-csi-full-relationp (car live))
-           (fn-csi-full-relationp (car (fn-bpr-live-step live event))))
+           (fn-csi-full-relationp (car (fn-bpr-live-step live event fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-csi-store-step-preserves-full-relation
                             (s (car live)) (event (cadr event))))
@@ -519,68 +525,68 @@
                             fn-csi-store-step-preserves-full-relation)))))
 (defthm fn-bpr-live-step-extends-history
   (implies (fn-snt-relation (car live))
-           (fn-bprv-extendsp (car live) (car (fn-bpr-live-step live event))))
+           (fn-bprv-extendsp (car live) (car (fn-bpr-live-step live event fn-arena))))
   :hints (("Goal" :use ((:instance fn-bprv-snrt-step-extends-history (s (car live))
                                    (event (cadr event))))
            :in-theory (e/d (fn-bprv-extendsp) (fn-bprr-apply-record
                                                fn-bprv-snrt-step-extends-history)))))
 (defthm fn-bpr-live-run-preserves-store-relation
   (implies (fn-snt-relation (car live))
-           (fn-snt-relation (car (fn-bpr-live-run live events))))
-  :hints (("Goal" :induct (fn-bpr-live-run live events)
+           (fn-snt-relation (car (fn-bpr-live-run live events fn-arena))))
+  :hints (("Goal" :induct (fn-bpr-live-run live events fn-arena)
            :in-theory (disable fn-bpr-live-step))))
 (defthm fn-bpr-live-run-preserves-consumer-full-relation
   (implies (fn-csi-full-relationp (car live))
-           (fn-csi-full-relationp (car (fn-bpr-live-run live events))))
-  :hints (("Goal" :induct (fn-bpr-live-run live events)
+           (fn-csi-full-relationp (car (fn-bpr-live-run live events fn-arena))))
+  :hints (("Goal" :induct (fn-bpr-live-run live events fn-arena)
            :in-theory (disable fn-bpr-live-step fn-csi-full-relationp))))
 (defthm fn-bpr-live-run-extends-from
   (implies (and (fn-snt-relation (car live))
                 (fn-bprv-extendsp base (car live)))
-           (fn-bprv-extendsp base (car (fn-bpr-live-run live events))))
-  :hints (("Goal" :induct (fn-bpr-live-run live events)
+           (fn-bprv-extendsp base (car (fn-bpr-live-run live events fn-arena))))
+  :hints (("Goal" :induct (fn-bpr-live-run live events fn-arena)
            :in-theory (disable fn-bpr-live-step))))
 (defthm fn-bpr-live-run-extends-history
   (implies (fn-snt-relation (car live))
-           (fn-bprv-extendsp (car live) (car (fn-bpr-live-run live events))))
+           (fn-bprv-extendsp (car live) (car (fn-bpr-live-run live events fn-arena))))
   :hints (("Goal" :use ((:instance fn-bpr-live-run-extends-from (base (car live))))
            :in-theory (e/d (fn-bprv-extendsp)
                            (fn-bpr-live-run-extends-from fn-bpr-live-run)))))
 
 ; Replay of an appended journal is replay of the prefix continued.
 (defthm fn-bprv-replay-rest-nil
-  (equal (fn-bprr-replay-rest st store nil) (list t st))
+  (equal (fn-bprr-replay-rest st store nil fn-arena) (list t st))
   :hints (("Goal" :in-theory (enable fn-bprr-replay-rest))))
 (defthm fn-bprv-replay-rest-single
-  (equal (fn-bprr-replay-rest st store (list r))
-         (let ((answer (fn-bprr-apply-record st store r)))
+  (equal (fn-bprr-replay-rest st store (list r) fn-arena)
+         (let ((answer (fn-bprr-apply-record st store r fn-arena)))
            (if (car answer) (list t (cadr answer)) (list nil st))))
   :hints (("Goal" :in-theory (enable fn-bprr-replay-rest))))
 (defthm fn-bprv-replay-rest-append
-  (equal (fn-bprr-replay-rest st store (append a b))
-         (let ((answer (fn-bprr-replay-rest st store a)))
-           (if (car answer) (fn-bprr-replay-rest (cadr answer) store b) answer)))
-  :hints (("Goal" :induct (fn-bprr-replay-rest st store a)
+  (equal (fn-bprr-replay-rest st store (append a b) fn-arena)
+         (let ((answer (fn-bprr-replay-rest st store a fn-arena)))
+           (if (car answer) (fn-bprr-replay-rest (cadr answer) store b fn-arena) answer)))
+  :hints (("Goal" :induct (fn-bprr-replay-rest st store a fn-arena)
            :in-theory (enable fn-bprr-replay-rest))))
 
 ; A receiver step taken against the live Store is the step replay takes
 ; against any ready related Store whose history extends the live one.
 (defthm fn-bprv-apply-record-agrees-at-ready-extension
-  (implies (and (car (fn-bprr-apply-record st s1 r))
+  (implies (and (car (fn-bprr-apply-record st s1 r fn-arena))
                 (fn-sf-prefixp (fn-bprv-history s1) (fn-bprv-history s2))
                 (fn-snt-relation s2)
                 (equal (fn-bprv-phase s2) :ready))
-           (equal (fn-bprr-apply-record st s2 r) (fn-bprr-apply-record st s1 r)))
+           (equal (fn-bprr-apply-record st s2 r fn-arena) (fn-bprr-apply-record st s1 r fn-arena)))
   :hints (("Goal" :in-theory (enable fn-bprr-apply-record fn-bpr-accept-request))))
 
 (defthm fn-bpr-live-step-replays
   (implies (and (fn-snt-relation (car live))
-                (equal (fn-bprr-replay probe (caddr live)) (list t (cadr live)))
+                (equal (fn-bprr-replay probe (caddr live) fn-arena) (list t (cadr live)))
                 (fn-snt-relation probe)
                 (equal (fn-bprv-phase probe) :ready)
                 (fn-bprv-extendsp (car live) probe))
-           (equal (fn-bprr-replay probe (caddr (fn-bpr-live-step live event)))
-                  (list t (cadr (fn-bpr-live-step live event)))))
+           (equal (fn-bprr-replay probe (caddr (fn-bpr-live-step live event fn-arena)) fn-arena)
+                  (list t (cadr (fn-bpr-live-step live event fn-arena)))))
   :hints (("Goal"
            :use ((:instance fn-bprv-apply-record-agrees-at-ready-extension
                             (st (cadr live)) (s1 (car live)) (s2 probe) (r (cadr event))))
@@ -592,45 +598,45 @@
 ; related Store whose history extends the final live Store: a restart that
 ; reopens such a Store and runs fn-bprj-install recovers the live state.
 (defthm fn-bpr-live-state-is-replay-of-journal
-  (let ((final (fn-bpr-live-run live events)))
+  (let ((final (fn-bpr-live-run live events fn-arena)))
     (implies (and (fn-snt-relation (car live))
-                  (equal (fn-bprr-replay probe (caddr live)) (list t (cadr live)))
+                  (equal (fn-bprr-replay probe (caddr live) fn-arena) (list t (cadr live)))
                   (fn-snt-relation probe)
                   (equal (fn-bprv-phase probe) :ready)
                   (fn-bprv-extendsp (car final) probe))
-             (equal (fn-bprr-replay probe (caddr final)) (list t (cadr final)))))
-  :hints (("Goal" :induct (fn-bpr-live-run live events)
+             (equal (fn-bprr-replay probe (caddr final) fn-arena) (list t (cadr final)))))
+  :hints (("Goal" :induct (fn-bpr-live-run live events fn-arena)
            :in-theory (disable fn-bpr-live-step fn-bpr-live-step-replays
                                fn-bprv-extendsp-transitive
                                fn-bpr-live-run-extends-history))
           ("Subgoal *1/2" :use ((:instance fn-bpr-live-step-replays (event (car events)))
                  (:instance fn-bpr-live-run-extends-history
-                            (live (fn-bpr-live-step live (car events)))
+                            (live (fn-bpr-live-step live (car events) fn-arena))
                             (events (cdr events)))
                  (:instance fn-bprv-extendsp-transitive
-                            (a (car (fn-bpr-live-step live (car events))))
-                            (b (car (fn-bpr-live-run (fn-bpr-live-step live (car events))
-                                                     (cdr events))))
+                            (a (car (fn-bpr-live-step live (car events) fn-arena)))
+                            (b (car (fn-bpr-live-run (fn-bpr-live-step live (car events) fn-arena)
+                                                     (cdr events) fn-arena)))
                             (c probe))
                  (:instance fn-bprv-extendsp-transitive
                             (a (car live))
-                            (b (car (fn-bpr-live-step live (car events))))
+                            (b (car (fn-bpr-live-step live (car events) fn-arena)))
                             (c probe)))
            :in-theory (disable fn-bpr-live-step fn-bpr-live-step-replays
                                fn-bprv-extendsp-transitive
                                fn-bpr-live-run-extends-history))
           ("Subgoal *1/1" :use ((:instance fn-bpr-live-step-replays (event (car events)))
                  (:instance fn-bpr-live-run-extends-history
-                            (live (fn-bpr-live-step live (car events)))
+                            (live (fn-bpr-live-step live (car events) fn-arena))
                             (events (cdr events)))
                  (:instance fn-bprv-extendsp-transitive
-                            (a (car (fn-bpr-live-step live (car events))))
-                            (b (car (fn-bpr-live-run (fn-bpr-live-step live (car events))
-                                                     (cdr events))))
+                            (a (car (fn-bpr-live-step live (car events) fn-arena)))
+                            (b (car (fn-bpr-live-run (fn-bpr-live-step live (car events) fn-arena)
+                                                     (cdr events) fn-arena)))
                             (c probe))
                  (:instance fn-bprv-extendsp-transitive
                             (a (car live))
-                            (b (car (fn-bpr-live-step live (car events))))
+                            (b (car (fn-bpr-live-step live (car events) fn-arena)))
                             (c probe)))
            :in-theory (disable fn-bpr-live-step fn-bpr-live-step-replays
                                fn-bprv-extendsp-transitive
@@ -640,20 +646,20 @@
 ; related Store whose history extends it: the journal fn-bprj-install reads
 ; after a restart reproduces the state a live process held.
 (defthm fn-bprv-replay-rest-agrees-at-ready-extension
-  (implies (and (car (fn-bprr-replay-rest st s1 records))
+  (implies (and (car (fn-bprr-replay-rest st s1 records fn-arena))
                 (fn-sf-prefixp (fn-bprv-history s1) (fn-bprv-history s2))
                 (fn-snt-relation s2)
                 (equal (fn-bprv-phase s2) :ready))
-           (equal (fn-bprr-replay-rest st s2 records)
-                  (fn-bprr-replay-rest st s1 records)))
-  :hints (("Goal" :induct (fn-bprr-replay-rest st s1 records)
+           (equal (fn-bprr-replay-rest st s2 records fn-arena)
+                  (fn-bprr-replay-rest st s1 records fn-arena)))
+  :hints (("Goal" :induct (fn-bprr-replay-rest st s1 records fn-arena)
            :in-theory (e/d (fn-bprr-replay-rest) (fn-bprr-apply-record)))))
 (defthm fn-bprv-replay-agrees-at-ready-extension
-  (implies (and (car (fn-bprr-replay s1 records))
+  (implies (and (car (fn-bprr-replay s1 records fn-arena))
                 (fn-sf-prefixp (fn-bprv-history s1) (fn-bprv-history s2))
                 (fn-snt-relation s2)
                 (equal (fn-bprv-phase s2) :ready))
-           (equal (fn-bprr-replay s2 records) (fn-bprr-replay s1 records)))
+           (equal (fn-bprr-replay s2 records fn-arena) (fn-bprr-replay s1 records fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-bprr-replay)
                                   (fn-bprr-apply-record fn-bprr-replay-rest)))))
 
@@ -669,13 +675,13 @@
    :hints (("Goal" :in-theory (enable fn-csi-full-relationp)))))
 
 (defthm fn-bpr-live-receipt-regenerated-after-restart
-  (let* ((final (fn-bpr-live-run live events))
+  (let* ((final (fn-bpr-live-run live events fn-arena))
          (opened (fn-sn-open-observed (fn-sn-groups (car final)) (fn-sn-capacity (car final))
                                       frontier records))
          (probe (fn-snrt-run (fn-sn-open-state opened) recovery-events))
-         (installed (fn-bpr-live-install probe (caddr final))))
+         (installed (fn-bpr-live-install probe (caddr final) fn-arena)))
     (implies (and (fn-csi-full-relationp (car live))
-                  (equal (fn-bprr-replay (car live) (caddr live)) (list t (cadr live)))
+                  (equal (fn-bprr-replay (car live) (caddr live) fn-arena) (list t (cadr live)))
                   (fn-sf-crash-imagep (fn-sn-files (car final)) frontier records)
                   (fn-sn-observed-identity-okp records)
                   (fn-sn-observed-topic-okp records)
@@ -685,27 +691,27 @@
                   (equal (fn-bpr-receipt-adu (cadr installed) request)
                          (fn-bpr-receipt-adu (cadr final) request)))))
   :hints (("Goal"
-           :use ((:instance fn-bprv-observed-reopen-facts (s (car (fn-bpr-live-run live events))))
+           :use ((:instance fn-bprv-observed-reopen-facts (s (car (fn-bpr-live-run live events fn-arena))))
                  (:instance fn-bprv-crash-image-extends-history
-                            (s (car (fn-bpr-live-run live events))))
+                            (s (car (fn-bpr-live-run live events fn-arena))))
                  (:instance fn-sf-prefixp-transitive
-                            (xs (fn-bprv-history (car (fn-bpr-live-run live events))))
+                            (xs (fn-bprv-history (car (fn-bpr-live-run live events fn-arena))))
                             (ys records)
                             (zs (fn-bprv-history (fn-snrt-run
                                  (fn-sn-open-state
                                   (fn-sn-open-observed
-                                   (fn-sn-groups (car (fn-bpr-live-run live events)))
-                                   (fn-sn-capacity (car (fn-bpr-live-run live events)))
+                                   (fn-sn-groups (car (fn-bpr-live-run live events fn-arena)))
+                                   (fn-sn-capacity (car (fn-bpr-live-run live events fn-arena)))
                                    frontier records))
                                  recovery-events))))
                  (:instance fn-sf-prefixp-transitive
                             (xs (fn-bprv-history (car live)))
-                            (ys (fn-bprv-history (car (fn-bpr-live-run live events))))
+                            (ys (fn-bprv-history (car (fn-bpr-live-run live events fn-arena))))
                             (zs (fn-bprv-history (fn-snrt-run
                                  (fn-sn-open-state
                                   (fn-sn-open-observed
-                                   (fn-sn-groups (car (fn-bpr-live-run live events)))
-                                   (fn-sn-capacity (car (fn-bpr-live-run live events)))
+                                   (fn-sn-groups (car (fn-bpr-live-run live events fn-arena)))
+                                   (fn-sn-capacity (car (fn-bpr-live-run live events fn-arena)))
                                    frontier records))
                                  recovery-events))))
                  (:instance fn-bpr-live-run-preserves-store-relation)
@@ -715,8 +721,8 @@
                             (probe (fn-snrt-run
                                     (fn-sn-open-state
                                      (fn-sn-open-observed
-                                      (fn-sn-groups (car (fn-bpr-live-run live events)))
-                                      (fn-sn-capacity (car (fn-bpr-live-run live events)))
+                                      (fn-sn-groups (car (fn-bpr-live-run live events fn-arena)))
+                                      (fn-sn-capacity (car (fn-bpr-live-run live events fn-arena)))
                                       frontier records))
                                     recovery-events)))
                  (:instance fn-bprv-replay-agrees-at-ready-extension
@@ -724,47 +730,47 @@
                             (s2 (fn-snrt-run
                                  (fn-sn-open-state
                                   (fn-sn-open-observed
-                                   (fn-sn-groups (car (fn-bpr-live-run live events)))
-                                   (fn-sn-capacity (car (fn-bpr-live-run live events)))
+                                   (fn-sn-groups (car (fn-bpr-live-run live events fn-arena)))
+                                   (fn-sn-capacity (car (fn-bpr-live-run live events fn-arena)))
                                    frontier records))
                                  recovery-events))
                             (records (caddr live)))
                  (:instance fn-bprv-extendsp-transitive
                             (a (car live))
-                            (b (car (fn-bpr-live-run live events)))
+                            (b (car (fn-bpr-live-run live events fn-arena)))
                             (c (fn-snrt-run
                                 (fn-sn-open-state
                                  (fn-sn-open-observed
-                                  (fn-sn-groups (car (fn-bpr-live-run live events)))
-                                  (fn-sn-capacity (car (fn-bpr-live-run live events)))
+                                  (fn-sn-groups (car (fn-bpr-live-run live events fn-arena)))
+                                  (fn-sn-capacity (car (fn-bpr-live-run live events fn-arena)))
                                   frontier records))
                                 recovery-events)))
                  (:instance fn-bprv-snrt-run-extends-history
                             (s (fn-sn-open-state
                                 (fn-sn-open-observed
-                                 (fn-sn-groups (car (fn-bpr-live-run live events)))
-                                 (fn-sn-capacity (car (fn-bpr-live-run live events)))
+                                 (fn-sn-groups (car (fn-bpr-live-run live events fn-arena)))
+                                 (fn-sn-capacity (car (fn-bpr-live-run live events fn-arena)))
                                  frontier records)))
                             (events recovery-events))
                  (:instance fn-snrt-mixed-trace-preserves-live-history-relation
                             (s (fn-sn-open-state
                                 (fn-sn-open-observed
-                                 (fn-sn-groups (car (fn-bpr-live-run live events)))
-                                 (fn-sn-capacity (car (fn-bpr-live-run live events)))
+                                 (fn-sn-groups (car (fn-bpr-live-run live events fn-arena)))
+                                 (fn-sn-capacity (car (fn-bpr-live-run live events fn-arena)))
                                  frontier records)))
                             (events recovery-events))
                  (:instance fn-bprv-extendsp-transitive
-                            (a (car (fn-bpr-live-run live events)))
+                            (a (car (fn-bpr-live-run live events fn-arena)))
                             (b (fn-sn-open-state
                                 (fn-sn-open-observed
-                                 (fn-sn-groups (car (fn-bpr-live-run live events)))
-                                 (fn-sn-capacity (car (fn-bpr-live-run live events)))
+                                 (fn-sn-groups (car (fn-bpr-live-run live events fn-arena)))
+                                 (fn-sn-capacity (car (fn-bpr-live-run live events fn-arena)))
                                  frontier records)))
                             (c (fn-snrt-run
                                 (fn-sn-open-state
                                  (fn-sn-open-observed
-                                  (fn-sn-groups (car (fn-bpr-live-run live events)))
-                                  (fn-sn-capacity (car (fn-bpr-live-run live events)))
+                                  (fn-sn-groups (car (fn-bpr-live-run live events fn-arena)))
+                                  (fn-sn-capacity (car (fn-bpr-live-run live events fn-arena)))
                                   frontier records))
                                 recovery-events))))
            :in-theory (e/d (fn-bprv-extendsp)
