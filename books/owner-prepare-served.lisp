@@ -18,6 +18,7 @@
 (in-package "ACL2")
 (include-book "post-retain-carried")
 (include-book "owner-commit-carried")
+(include-book "owner-identity-intern")
 
 ; -----------------------------------------------------------------------------
 ; The served decision.  An event that creates an article (a held row, or the

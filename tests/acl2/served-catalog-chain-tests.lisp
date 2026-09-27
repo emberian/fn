@@ -215,3 +215,64 @@
    :hints (("Goal" :do-not-induct t
             :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
                                        (theory 'minimal-theory))))))
+
+; -----------------------------------------------------------------------------
+; PKT-479 on the catalog path (catalog-columns, 2026-09-27):
+; fn-scr-scan-span-is-feed-span, the scan fn-scr-step-span-core runs as the
+; executable of the byte fold.  No hypothesis, so no must-fail: the witness
+; runs the executable scan on a live buffer and catalog, as the host runs it,
+; against the byte fold, over every sub-range a socket read can cut (every
+; start with the read running to the end, every end with the read starting
+; at 0), on served-scan-tests' reader connection and its DATE and two
+; pipelined POSTs; and the host's step, which yields after the first article
+; (PKT-600).
+
+(include-book "served-scan-tests")
+
+(assert-event
+ (equal (list (symbol-class 'fn-scr-scan-span (w state))
+              (symbol-class 'fn-scr-step-span-core (w state)))
+        '(:common-lisp-compliant :common-lisp-compliant)))
+
+(defun scct-scan-agree (conn i end fn-octets fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil))
+  (equal (fn-scr-scan-span conn i end nil nil nil fn-octets fn-arena fn-cat)
+         (fn-scr-feed-span conn i end nil nil nil fn-octets fn-arena fn-cat)))
+
+(defun scct-scan-cuts (conn cut n fn-octets fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil
+                  :measure (nfix (- (1+ n) cut))))
+  (if (or (not (natp cut)) (not (natp n)) (> cut n))
+      t
+    (and (scct-scan-agree conn 0 cut fn-octets fn-arena fn-cat)
+         (scct-scan-agree conn cut n fn-octets fn-arena fn-cat)
+         (scct-scan-cuts conn (1+ cut) n fn-octets fn-arena fn-cat))))
+
+(defun scct-scan-all (conn octets)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (v fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (v fn-arena fn-cat)
+          (with-local-stobj fn-octets
+            (mv-let (v fn-octets fn-arena fn-cat)
+              (let ((fn-octets (fn-octets-from-list octets fn-octets)))
+                (mv (list (scct-scan-cuts conn 0 (fn-octets-len fn-octets) fn-octets fn-arena fn-cat)
+                          (fn-served-counted-consumed
+                           (fn-scr-step-span-core conn 0 (fn-octets-len fn-octets) nil nil nil
+                                                  fn-octets fn-arena fn-cat))
+                          (fn-served-counted-consumed
+                           (fn-scr-feed-span conn 0 (fn-octets-len fn-octets) nil nil nil
+                                             fn-octets fn-arena fn-cat)))
+                    fn-octets fn-arena fn-cat))
+              (mv v fn-arena fn-cat)))
+          (mv v fn-arena)))
+      v)))
+
+(defconst *scct-scan* (scct-scan-all *sct-reader* *sct-two-posts*))
+(assert-event (equal (first *scct-scan*) t))
+; the host's step consumed DATE, POST and the first article, and yielded:
+; the same count as the byte fold, short of the whole input.
+(assert-event (and (equal (second *scct-scan*) (third *scct-scan*))
+                   (< (second *scct-scan*) (len *sct-two-posts*))
+                   (< (+ (len (sct-line "DATE")) (len *sct-post-a*) -1) (second *scct-scan*))))
