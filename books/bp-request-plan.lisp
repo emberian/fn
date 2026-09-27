@@ -236,6 +236,10 @@
                                    fn-bprl-apply-journal-record
                                    fn-bpo-request-adu fn-bpo-result-okp
                                    fn-bpo-result-value
+                                   fn-bpo-request-result-value
+                                   fn-bpo-request-result-okp
+                                   fn-bpo-request-message fn-bpa-requestp
+                                   fn-bpa-encode
                                    fn-bprq-submit-effectsp)))))
 
 (defthm fn-bprq-attempt-record-names-its-attempt
