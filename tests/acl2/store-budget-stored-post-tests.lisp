@@ -146,11 +146,12 @@
 ; The owner's POST (fn-pcar-sbud-prepare-keeps-the-stored-octets): an owner
 ; over the reached store *sbsp-s4*; the row fn-intern-row-at makes of W2 at the
 ; arena's count; the seal when the store changed.  DEV'S carried prepare
-; (books/owner-prepare-carried.lisp fn-pcar-spc-prepare) still asks
-; fn-rcon-record-p of what it stages, so it refuses the row and this witness
-; reaches the REFUSAL branch only (store and arena unchanged); the staging
-; branch is reached once flip-L6's carried prepare stages held rows (REQUEST in
-; the lane record).  The keystone's proof covers both.
+; (books/owner-prepare-carried.lisp fn-pcar-spc-prepare, 2026-09-27) still
+; asks fn-rcon-record-p of what it stages, so on dev it refuses the row and
+; this witness reaches the REFUSAL branch (store and arena unchanged); once
+; flip-L6's carried prepare stages held rows it reaches the STAGING branch
+; (row at handle 1, W2's payload sealed).  The assertions below hold on both
+; branches, and the keystone's proof covers both.
 (defconst *sbsp-oc* (fn-ocfg-make (fn-own-start *sbsp-s4* 4) nil nil nil))
 (assert-event (equal (fn-sbud-oc-store *sbsp-oc*) *sbsp-s4*))
 
@@ -179,7 +180,6 @@
 
 (defconst *sbsp-own* (sbsp-owner *sbsp-oc* *sbsp-w2* (list *sbsp-w1*)))
 (assert-event (equal (nth 0 *sbsp-own*) t))
-(assert-event (equal (nth 1 *sbsp-own*) *sbsp-s4*))
 (assert-event (equal (nth 2 *sbsp-own*) t))
 ; Removal of the relation: the empty arena.
 (defconst *sbsp-own-bad* (sbsp-owner *sbsp-oc* *sbsp-w2* nil))
