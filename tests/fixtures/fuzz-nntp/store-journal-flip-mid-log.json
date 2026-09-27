@@ -1,0 +1,15 @@
+{
+ "articles": 12,
+ "campaign": "store",
+ "class": "served-missing",
+ "mutation": {
+  "at": 25184,
+  "bit": 1,
+  "file": "journal/000001.log",
+  "kind": "flip",
+  "op": "flip"
+ },
+ "note": "The flip lands in record 6: recover reports transactions=6 articles=6, exit 0, and records 6..11 (committed, fsynced) are gone without a line.",
+ "packet": "F3 (silent loss)",
+ "status": "open"
+}

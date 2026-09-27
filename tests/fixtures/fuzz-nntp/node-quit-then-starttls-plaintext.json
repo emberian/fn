@@ -1,0 +1,13 @@
+{
+ "campaign": "node",
+ "class": "shape",
+ "minimized_hex": [
+  "515549540d0a5354415254544c530d0a"
+ ],
+ "node_tls": true,
+ "note": "Production owner with the STARTTLS pair: 205, then 382 and a TLS handshake after QUIT (host/native/mux.lisp sets close-after-handshake for exactly this). Campaign node seeds 203898, 238516, 341257.",
+ "packet": "F1 (after-QUIT)",
+ "role": "reader",
+ "status": "open",
+ "tls": false
+}

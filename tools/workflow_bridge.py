@@ -44,7 +44,7 @@ class Acl2WorkflowReplay:
         if not records:
             self.initialized=False
             return self
-        outcome=acl2_symbol(self.store.call("(fn-workflow-install-replay "+records_form(records)+" state)"))
+        outcome=acl2_symbol(self.store.call("(fn-workflow-install-replay "+records_form(records)+" fn-arena state)"))
         if outcome != "ready": raise JournalFault("ACL2 rejected workflow journal")
         self.initialized=True
         return self
@@ -66,13 +66,13 @@ class Acl2WorkflowReplay:
         return raw[1:].decode("ascii")
     def preflight(self, record):
         return acl2_symbol(self.store.call("(fn-workflow-preflight-record "+
-                           record_form(record)+" state)")) == "ready"
+                           record_form(record)+" fn-arena state)")) == "ready"
     def history_preflight(self, records):
         return acl2_symbol(self.store.call("(fn-workflow-preflight-history "+
-                           records_form(records)+" state)")) == "ready"
+                           records_form(records)+" fn-arena state)")) == "ready"
     def apply_record(self, record):
         outcome=acl2_symbol(self.store.call("(fn-workflow-apply-record "+
-                            record_form(record)+" state)"))
+                            record_form(record)+" fn-arena state)"))
         if outcome != "ready": raise JournalFault("ACL2 rejected durable workflow record")
     def take_submit(self, values):
         form="(fn-workflow-take-submit "+_string(values["work-id"])+" "+\
