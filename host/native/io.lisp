@@ -2826,13 +2826,140 @@ entries and MANIFEST are ACL2's (fn-sxp-entries, fn-sxp-manifest)."
 (defun fnn-archive-read-dir (dir sub)
   (sort (copy-list (fnn-list-directory (fnn-join dir sub))) #'string<))
 
+;; books/store-import-publication.lisp fn-bs-imp-program's cuts, in program
+;; order.  The per-subdirectory and per-file cuts repeat; `fnn-at' fires at
+;; every match, so the selected cut stops the import at its first occurrence.
+(defparameter +fnn-import-model-cuts+
+  '("import-stage-created" "import-subdir-created" "import-file-created"
+    "import-file-written" "import-file-durable" "import-subdir-durable"
+    "import-staged-durable" "import-validated" "import-published"
+    "import-durable"))
+
+(defun fnn-import-test-fault ()
+  "Developer-only FN_NATIVE_IMPORT_FAULT=MODEL-CUT:eio|kill selector for
+fn-bs-imp-program's cuts."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_IMPORT_FAULT")))
+    (when raw
+      (let ((colon (position #\: raw :from-end t)))
+        (unless colon
+          (fnn-fault "invalid FN_NATIVE_IMPORT_FAULT (expected MODEL-CUT:eio|kill)"))
+        (let ((label (subseq raw 0 colon)) (action (subseq raw (1+ colon))))
+          (unless (member label +fnn-import-model-cuts+ :test #'string=)
+            (fnn-fault "unknown FN_NATIVE_IMPORT_FAULT cut: ~a" label))
+          (list (intern (string-upcase label) :keyword)
+                (cond ((string= action "eio") 'fnn-os-error)
+                      ((string= action "kill") :fnn-test-kill)
+                      (t (fnn-fault "invalid FN_NATIVE_IMPORT_FAULT action: ~a" action)))
+                "developer-only native import fault"))))))
+
+(defun fnn-import-write-file (store path octets)
+  "fn-bs-imp-file-steps: create PATH (it must not exist), write OCTETS, fence
+it, with the program's cut after each of the three syscalls."
+  (let ((fd (fnn-open path (logior sb-posix:o-wronly sb-posix:o-creat sb-posix:o-excl
+                                    +fnn-o-nofollow+)
+                      #o600)))
+    (unwind-protect
+         (progn
+           (fnn-at store :import-file-created)
+           (fnn-write-all fd (fnn-octets octets))
+           (fnn-at store :import-file-written)
+           (fnn-fsync-file fd)
+           (fnn-at store :import-file-durable))
+      (fnn-close fd))))
+
+#+linux
+(sb-alien:define-alien-routine ("renameat2" fnn-%import-renameat2)
+    sb-alien:int
+  (old-directory sb-alien:int) (old-name sb-alien:c-string)
+  (new-directory sb-alien:int) (new-name sb-alien:c-string)
+  (flags sb-alien:unsigned-int))
+
+(defun fnn-rename-no-replace (old new)
+  "Rename OLD onto NEW without replacing an existing NEW (fn-bs-imp-program's
+:rename-dir-noreplace).  NIL once renamed; :EXISTS when NEW exists and nothing
+was renamed; :UNSUPPORTED when the filesystem refuses the no-replace flag and
+nothing was renamed.  Any other failure is an fnn-os-error, whose outcome the
+caller does not know."
+  #+linux
+  (let ((result (fnn-%import-renameat2 -100 old -100 new 1)))   ; AT_FDCWD, RENAME_NOREPLACE
+    (if (>= result 0)
+        nil
+      (let ((errno (sb-alien:get-errno)))
+        (cond ((= errno sb-posix:eexist) :exists)
+              ((or (= errno sb-posix:einval) (= errno sb-posix:enosys)) :unsupported)
+              (t (fnn-os-fail errno new))))))
+  ;; No renameat2 here (OpenBSD).  NEW is observed immediately before
+  ;; rename(2), which itself refuses a non-empty directory and a
+  ;; non-directory at NEW.  Residual: an EMPTY directory created at NEW
+  ;; between the lstat and the rename is replaced.  The OpenBSD evidence for
+  ;; this path is scoped separately.
+  #-linux
+  (if (fnn-lstat new)
+      :exists
+    (handler-case (progn (sb-posix:rename old new) nil)
+      (sb-posix:syscall-error (e)
+        (let ((errno (sb-posix:syscall-errno e)))
+          (if (member errno (list sb-posix:eexist sb-posix:enotempty sb-posix:enotdir))
+              :exists
+            (fnn-os-fail errno new)))))))
+
+(defun fnn-import-leftover-stage (root-path)
+  "The path of the first entry of ROOT-PATH's parent named BASENAME.import-*
+(BASENAME being ROOT-PATH's last component), or NIL.  The directory is
+streamed and one name retained."
+  (let* ((parent (fnn-parent root-path))
+         (slash (position #\/ root-path :from-end t))
+         (prefix (fnn-concat (if slash (subseq root-path (1+ slash)) root-path) ".import-"))
+         (found nil))
+    (when (fnn-lstat parent)
+      (let ((dir (fnn-posix (parent) (sb-posix:opendir parent))))
+        (unwind-protect
+             (loop
+               (let ((entry (fnn-posix (parent) (sb-posix:readdir dir))))
+                 (when (sb-alien:null-alien entry) (return))
+                 (let ((name (sb-posix:dirent-name entry)))
+                   (when (and (> (length name) (length prefix))
+                              (string= prefix name :end2 (length prefix)))
+                     (setq found name)
+                     (return)))))
+          (fnn-posix (parent) (sb-posix:closedir dir)))))
+    (and found (fnn-join parent found))))
+
+(defun fnn-import-classify (stage-root root-path)
+  "ACL2's reading (fn-bs-imp-classify) of whether STAGE-ROOT and ROOT-PATH
+are present."
+  (let ((verdict (fnn-core 'fn-bs-imp-classify
+                           (and (fnn-lstat stage-root) t)
+                           (and (fnn-lstat root-path) t))))
+    (unless (member verdict '(:no-store :not-published :publication-uncertain :store-present))
+      (fnn-fault "ACL2 returned a malformed import classification"))
+    verdict))
+
 (defun fnn-command-store-import (root dir request)
   "Offline: make a new store at ROOT (it must not exist) from the archive at
 DIR.  ACL2's plan (fn-sxp-import-plan) checks the MANIFEST, the order and the
 profile (REQUEST's field overrides over the archive's) and refuses by name;
 the host writes the plan's files into ROOT.import-XXXX as init writes its
 files, opens that store the ordinary way (full replay, marker catch-up), and
-renames it onto ROOT only when the open admitted it."
+publishes it by a no-replace rename onto ROOT only when the open admitted
+it, then fences ROOT's parent: books/store-import-publication.lisp
+fn-bs-imp-program, step for step, with its cuts (+fnn-import-model-cuts+).
+A staged directory left beside ROOT by an earlier import is classified by
+fn-bs-imp-classify and refused by name before anything is written.  An OS
+error before the rename is a known failure (exit 1, the staged directory
+named); at or after it the outcome is uncertain (exit 3) and the observed
+presence of the two names is classified by fn-bs-imp-classify."
+  (let* ((root-path (string-right-trim "/" root))
+         (leftover (fnn-import-leftover-stage root-path)))
+    (when leftover
+      (case (fnn-import-classify leftover root-path)
+        (:not-published
+         (fnn-refuse "import refused reason=interrupted-import stage=~a: no store was published; remove ~a and import again"
+                     leftover leftover))
+        (:publication-uncertain
+         (fnn-refuse "import refused reason=publication-uncertain stage=~a: run recover on ~a, then remove ~a"
+                     leftover root-path leftover))
+        (t (fnn-fault "ACL2 classified a present staged directory as absent")))))
   (when (fnn-lstat root)
     (fnn-refuse "import refused reason=store-exists"))
   (let* ((profile (fnn-octet-list (fnn-read-regular-bounded (fnn-join dir "profile") 16384)))
@@ -2873,32 +3000,71 @@ renames it onto ROOT only when the open admitted it."
                           ((keywordp detail) (string-downcase (symbol-name detail)))
                           (t detail)))))
     (destructuring-bind (values frontier configs records) (rest plan)
-      (let* ((stage-root (format nil "~a.import-~a" (string-right-trim "/" root) (fnn-random-hex 6)))
-             (stage (make-fnn-store stage-root :writable t)))
-        (fnn-mkdir stage-root #o700)
-        (dolist (sub '("transactions" "staging" "config"))
-          (fnn-mkdir (fnn-join stage-root sub) #o700))
-        (fnn-archive-write-file (fnn-config-path stage)
-                                (fnn-core 'fn-bs-config-encode values))
-        (fnn-archive-write-file (fnn-frontier-path stage) frontier)
-        (dolist (config configs)
-          (fnn-archive-write-file (fnn-join (fnn-config-dir stage) (car config)) (cdr config)))
-        (dolist (record records)
-          (fnn-archive-write-file (fnn-join (fnn-transactions stage)
-                                            (fnn-transaction-name (car record)))
-                                  (fnn-frame (fnn-octets (cdr record)))))
-        (dolist (sub '("transactions" "staging" "config"))
-          (fnn-fsync-dir (fnn-join stage-root sub)))
-        (fnn-fsync-dir stage-root)
-        ;; The ordinary open admits the imported history or refuses it.
-        (multiple-value-bind (opened replayed) (fnn-open-live-store stage-root t)
-          (unwind-protect
-               (unless (= (length replayed) (length records))
-                 (fnn-fault "the imported store replayed ~d of ~d records"
-                            (length replayed) (length records)))
-            (fnn-store-close opened)))
-        (fnn-replace stage-root root)
-        (fnn-fsync-dir (directory-namestring (string-right-trim "/" root)))
+      (let* ((root-path (string-right-trim "/" root))
+             (parent (fnn-parent root-path))
+             (stage-root (format nil "~a.import-~a" root-path (fnn-random-hex 6)))
+             (stage (make-fnn-store stage-root :writable t :fault (fnn-import-test-fault)))
+             (created nil)
+             (attempted nil))
+        (handler-case
+            (progn
+              ;; fn-bs-imp-stage-steps
+              (fnn-mkdir stage-root #o700)
+              (setq created t)
+              (fnn-at stage :import-stage-created)
+              ;; fn-bs-imp-subdir-steps
+              (dolist (sub '("transactions" "staging" "config"))
+                (fnn-mkdir (fnn-join stage-root sub) #o700)
+                (fnn-at stage :import-subdir-created))
+              ;; fn-bs-imp-files-steps
+              (fnn-import-write-file stage (fnn-config-path stage)
+                                     (fnn-core 'fn-bs-config-encode values))
+              (fnn-import-write-file stage (fnn-frontier-path stage) frontier)
+              (dolist (config configs)
+                (fnn-import-write-file stage (fnn-join (fnn-config-dir stage) (car config))
+                                       (cdr config)))
+              (dolist (record records)
+                (fnn-import-write-file stage (fnn-join (fnn-transactions stage)
+                                                       (fnn-transaction-name (car record)))
+                                       (fnn-frame (fnn-octets (cdr record)))))
+              ;; fn-bs-imp-fence-steps
+              (dolist (sub '("transactions" "staging" "config"))
+                (fnn-fsync-dir (fnn-join stage-root sub))
+                (fnn-at stage :import-subdir-durable))
+              ;; fn-bs-imp-seal-steps
+              (fnn-fsync-dir stage-root)
+              (fnn-at stage :import-staged-durable)
+              ;; fn-bs-imp-publication-program.  The ordinary open admits the
+              ;; imported history or refuses it.
+              (multiple-value-bind (opened replayed) (fnn-open-live-store stage-root t)
+                (unwind-protect
+                     (unless (= (length replayed) (length records))
+                       (fnn-fault "the imported store replayed ~d of ~d records"
+                                  (length replayed) (length records)))
+                  (fnn-store-close opened)))
+              (fnn-at stage :import-validated)
+              (setq attempted t)
+              (case (fnn-rename-no-replace stage-root root-path)
+                ((nil))
+                (:exists
+                 (fnn-refuse "import refused reason=store-exists stage=~a: remove ~a"
+                             stage-root stage-root))
+                (:unsupported
+                 (fnn-refuse-io "import failed before publication: the filesystem refuses a no-replace rename; remove ~a"
+                                stage-root))
+                (t (fnn-fault "invalid no-replace rename outcome")))
+              (fnn-at stage :import-published)
+              (fnn-fsync-dir parent)
+              (fnn-at stage :import-durable))
+          (fnn-os-error (e)
+            (cond ((not attempted)
+                   (fnn-refuse-io "import failed before publication: ~a; ~:[no staged directory was left~;remove ~a~]"
+                                  e created stage-root))
+                  (t
+                   (let ((verdict (handler-case (fnn-import-classify stage-root root-path)
+                                    (fnn-os-error () nil))))
+                     (fnn-indeterminate "import publication uncertain state=~(~a~) stage=~a root=~a: ~a"
+                                        (or verdict "unobserved") stage-root root-path e))))))
         (fnn-out "imported records=~d configuration=~d" (length records) (length configs))
         +fnn-exit-ok+))))
 
@@ -3803,7 +3969,7 @@ serialized profile when the saved image later starts."
 ;;; not (review of the dabebb84 campaign, F4 to F6).
 (defparameter +fnn-developer-selectors+
   '("FN_NATIVE_INIT_FAULT" "FN_NATIVE_RECOVERY_FAULT" "FN_NATIVE_POST_FAULT"
-    "FN_NATIVE_STATE_CHECKPOINT_FAULT"
+    "FN_NATIVE_STATE_CHECKPOINT_FAULT" "FN_NATIVE_IMPORT_FAULT"
     "FN_NATIVE_CHECKPOINT_BUDGET_TEST"
     "FN_NATIVE_DISK_FREE"
     "FN_NATIVE_CONTROL_FAULT" "FN_NATIVE_CONTROL_TEST_STOP"

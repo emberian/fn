@@ -1042,3 +1042,18 @@ admits it by the ordinary open (full replay) before it appears at its path.
 The import of an export replays the same history under the same profile
 (PRF-205). The MANIFEST is a transport check: the digest seam is abstract.
 
+STO-029: `store import` publishes by an explicit program (P-IMPORT,
+books/store-import-publication.lisp): the staged `ROOT.import-XXXX` is
+created beside ROOT, every file of the plan is written and fsynced, every
+subdirectory and the staged directory are fsynced, the ordinary open admits
+it, it is renamed onto ROOT without replacing an existing destination
+(renameat2 RENAME_NOREPLACE; an existing ROOT is `store-exists`, exit 1) and
+the parent is fsynced. A crash at any cut, or an ambiguous rename or barrier
+outcome, leaves no store at ROOT or the complete imported store (PRF-217).
+Recovery classifies what it observes (ACL2 `fn-bs-imp-classify`): a staged
+directory without ROOT is `interrupted-import` (no store was published;
+remove it by name and import again); a staged directory beside ROOT is
+`publication-uncertain` (run recover on ROOT, then remove the staged
+directory), never "no store was created". `store export` is Store-history
+export, not a node backup (docs/operator.md).
+

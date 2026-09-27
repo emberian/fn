@@ -124,8 +124,11 @@
 (include-book "books/store-history-required")
 ;; D34: `store export' and `store import': io.lisp fnn-command-store-export and
 ;; fnn-command-store-import call fn-sxp-entries, fn-sxp-manifest and
-;; fn-sxp-import-plan.
+;; fn-sxp-import-plan; fnn-command-store-import follows fn-bs-imp-program's
+;; publication (staged, validated, no-replace rename, parent fenced) and
+;; classifies a leftover staged directory through fn-bs-imp-classify.
 (include-book "books/store-export")
+(include-book "books/store-import-publication")
 ;; The store bridge's record dispatchers (host/store-host.lisp,
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")

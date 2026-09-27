@@ -3873,6 +3873,27 @@
         "planning/evidence/tls-reload-2026-09-26.md"
       ],
       "implementation_note": "FNCT kind 19 (request reload|status) and kind 20 (reply: status, reason word, served line). The decision is ACL2's over the library's observations; the swap is the host's, under the context lock SSL_new also takes."
+    },
+    {
+      "id": "STO-029",
+      "title": "store import publishes its staged store by a no-replace rename and a parent barrier: a crash leaves no store or the complete store, and an interrupted or ambiguous publication is refused by name",
+      "specification": "specs/storage.md#one-format-and-the-archive",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-217"
+      ],
+      "verification": [
+        "proof",
+        "integration"
+      ],
+      "evidence": [
+        "books/store-import-publication.lisp",
+        "tests/acl2/store-import-publication-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_import_publication.py"
+      ],
+      "implementation_note": "gpt-6 review 2026-09-26 section 7. The staged ROOT.import-XXXX is completed and fenced, admitted by the ordinary open, published by renameat2(RENAME_NOREPLACE) and the parent fenced; a leftover staged directory is classified by ACL2 (interrupted-import, publication-uncertain) and refused by name."
     }
   ]
 }

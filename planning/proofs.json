@@ -7784,6 +7784,31 @@
         "fn-bphh-request-article-matches-is-wire",
         "fn-bphh-octets-at-p-is-equal-payload"
       ]
+    },
+    {
+      "id": "PRF-217",
+      "title": "store import publication (P-IMPORT): a crash or an ambiguous rename/barrier outcome leaves no store at ROOT or the complete imported store, never replaces an unrelated destination, and recovery classifies by what it observes",
+      "statement": "books/store-import-publication.lisp fn-bs-imp-program-crash-is-no-store-or-the-complete-store: for a fresh process (nothing pending), an existing parent directory, distinct STAGE and ROOT names and plan files inside the staged tree, at every pair of every run of fn-bs-imp-program under any well-formed syscall outcomes (fn-bs-imp-outcomesp: :ok or an error pair, including (errno . :issued) renames and failed barriers with torn landings) and every crash choice, ROOT's durable entry is its old one (none, or an unrelated destination untouched), or -- only when ROOT was absent -- the staged directory with every subdirectory named and every plan file named and durable with exactly its octets. fn-bs-imp-classify-by-what-is-known: fn-bs-imp-classify over the two observable names answers :no-store/:not-published only when ROOT is absent and :store-present/:publication-uncertain only when ROOT is the complete staged tree. Host: host/native/io.lisp fnn-command-store-import writes the program step for step (cuts +fnn-import-model-cuts+, renameat2 RENAME_NOREPLACE on Linux) and calls fn-bs-imp-classify before writing and after an error at or after the rename. Scope: the ordinary open between staged-durable and the rename is its own program (P-RECOVER) and is modelled here as the cut import-validated; OpenBSD has no renameat2 (lstat-then-rename: an empty directory created at ROOT in that window would be replaced).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-029"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-import-publication.lisp",
+        "tests/acl2/store-import-publication-tests.lisp",
+        "host/native/io.lisp",
+        "tests/test_native_import_publication.py",
+        "tests/campaign/native_cuts.py",
+        "planning/evidence/import-publication-2026-09-26.md"
+      ],
+      "progress_note": "Lane import-publication 2026-09-26: book and test book admitted in the persvati REPL (session imp); certification and the native campaign are recorded in the evidence file.",
+      "events": [
+        "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
+        "fn-bs-imp-classify-by-what-is-known"
+      ]
     }
   ]
 }

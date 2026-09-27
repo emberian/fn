@@ -4160,6 +4160,24 @@
         "planning/evidence/tls-reload-2026-09-26.md",
         "planning/evidence/tls-reload-2026-09-26/test-tests.test_native_tls_reload.log"
       ]
+    },
+    {
+      "id": "SCN-148",
+      "title": "store import killed or failed at every cut of its publication program leaves no store or the complete store, and the next import says exactly what to do",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-029"
+      ],
+      "steps": [
+        "Export a served store; for every cut of tests/campaign/native_cuts.py IMPORT_CUTS and each of SIGKILL and EIO (FN_NATIVE_IMPORT_FAULT on the developer image), import it to a fresh ROOT.",
+        "Observe ROOT and any ROOT.import-* beside it; import again."
+      ],
+      "expected": [
+        "Before the rename: exit 1 (EIO) or death, ROOT absent, the next import refuses reason=interrupted-import naming the staged directory; after its removal the import succeeds.",
+        "At and after the rename: ROOT, when present, opens to the exported history article for article; a staged directory beside a present ROOT is refused reason=publication-uncertain, never treated as no store.",
+        "An existing unrelated ROOT is never replaced (reason=store-exists)."
+      ]
     }
   ]
 }

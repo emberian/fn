@@ -200,6 +200,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-profile-facts \
 	books/store-export \
 	tests/acl2/store-export-tests \
+	books/store-import-publication \
+	tests/acl2/store-import-publication-tests \
 	tests/acl2/store-profile-facts-tests \
 	books/store-profile-open \
 	tests/acl2/store-profile-open-tests \

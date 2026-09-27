@@ -227,6 +227,15 @@ fn operator /path/to/fn.toml store import /srv/fn-archive --max-transactions 100
 imported records=7 configuration=1
 ```
 
+`store export` is a Store-history export, not a node backup. It carries the
+profile, the allocation frontier, the configuration records and the Store
+records, and nothing else: not the node's private state and secrets (the TLS
+keys, credentials, the HKDF and pseudonym roots), not peer journals, not
+consumer or application state held outside the Store, and not the other
+persistence domains (the BP and TCPCL stores). The MANIFEST's SHA-256 per
+entry says each file is the one the export wrote; it does not establish that
+the archive is the newest history of that node.
+
 `store export DIR` takes the store's writer lock, so it is refused (1, `store
 is already locked`) while an owner runs; DIR must not exist (`export refused
 reason=archive-exists`). The archive is a directory: `profile` (config.json's
@@ -239,9 +248,37 @@ store: the configured store must not exist (`import refused
 reason=store-exists`); ACL2's plan (`fn-sxp-import-plan`) refuses a MANIFEST
 that does not match (`reason=manifest-mismatch NAME`), a record out of
 sequence (`reason=record-out-of-sequence N`) and a profile the codec cannot
-represent (`reason=profile REASON`), each exit 1 with nothing written; the
-store is then built beside its path, opened the ordinary way (full replay),
-and renamed into place only when that open admitted it. Fields only matter
+represent (`reason=profile REASON`), each exit 1 with nothing written.
+
+The import then publishes the store in the order of the byte program
+`fn-bs-imp-program` (`books/store-import-publication.lisp`): it stages the
+store in a new directory `ROOT.import-XXXX` beside the configured store ROOT
+(each file created exclusively, written and fenced, then the subdirectories
+and the staged directory fenced), opens the staged store the ordinary way
+(full replay), renames it onto ROOT with a rename that never replaces an
+existing ROOT (`renameat2` with `RENAME_NOREPLACE` on Linux; on OpenBSD, which
+has no such rename, ROOT is observed absent immediately before `rename(2)`,
+which itself refuses a non-empty directory or a file at ROOT, so only an
+empty directory created at ROOT in that window could be replaced), and fences
+ROOT's parent directory. A ROOT that appears before the rename is refused
+(1, `import refused reason=store-exists stage=PATH`) and the staged
+directory PATH is left for you to remove. An OS error before the rename is a
+known failure (1, `import failed before publication: ...; remove PATH`); at
+or after the rename the outcome is uncertain (3, `import publication
+uncertain state=STATE stage=PATH root=ROOT`).
+
+Before writing anything, the import looks beside ROOT for a staged directory
+an earlier import left (killed, or failed), and ACL2 classifies what it finds
+(`fn-bs-imp-classify`, from whether the staged directory and ROOT are
+present):
+
+- `import refused reason=interrupted-import stage=PATH` (exit 1): ROOT is
+  absent, so no store was published. Remove PATH and import again.
+- `import refused reason=publication-uncertain stage=PATH` (exit 1): ROOT is
+  present as well. Never read this as "no store was created": run `recover`
+  on the configured store, then remove PATH.
+
+Fields only matter
 upward in practice (the records were committed under the old bounds, and the
 import's open refuses a history the new profile cannot hold). The retention
 charge capacity is a different number and IS reconfigurable
@@ -706,6 +743,7 @@ which answers nothing on a production image.
 | `FN_NATIVE_POST_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-post-model-cuts+` | the frontier, record and finish cuts of a post, in `store ROOT post` and in the served owner (`operator CONFIG run`, and the developer `owner run`) |
 | `FN_NATIVE_RECOVERY_FAULT` | `CUT:eio\|kill`, CUT one of `recover-replayed`, `recover-barrier` (the first of its five sites), `recovery-stage-unlinked` | recovery's cuts, in `store ROOT recover`, `operator CONFIG recover`, `store ROOT post` and the served owner's own recovery at start |
 | `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts |
+| `FN_NATIVE_IMPORT_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-import-model-cuts+` (a repeated cut at its first occurrence) | `store import`'s publication cuts (`fn-bs-imp-program`) |
 | `FN_NATIVE_CONTROL_FAULT` | one of `prepublish`, `postpublish`, `frontierbarrier`, `recordbarrier` | the owner's store for exactly one control submission; `postpublish` is the uncertain outcome |
 | `FN_NATIVE_CONTROL_TEST_STOP` | `after-submit` | a SIGSTOP of the owner from the worker that holds the reply, after the owner answered accepted, duplicate or refused and before the reply is sent; the stop is directed at that thread (`pthread_kill`), so the reply cannot leave first |
 | `FN_NATIVE_AUTH_ADMIN_FAULT` | `CUT:eio\|kill` | the AUTHINFO credential writer's cuts |
@@ -1590,8 +1628,12 @@ refused at open by name (`open refused reason=store-format: reinstall from
 the release and import`, exit 1). The archive carries the committed records,
 the configuration records, the profile and the allocation frontier; the
 store identity and consumer state are records, so they travel with them.
-Feed journals and BP spools do not: a reinstalled node re-peers. Keep the
-archive until the new node serves; it is the only copy.
+Feed journals and BP spools do not: a reinstalled node re-peers. It is a
+Store-history export, not a node backup: the node's secrets and private
+state (TLS keys, credentials, the HKDF and pseudonym roots), peer journals
+and the BP and TCPCL stores are kept separately, and the MANIFEST does not
+say the archive is the node's newest history. Keep the archive until the new
+node serves; it is the only copy of that history.
 
 What an older release refuses of this store's records (facts about releases, not a rollback procedure: under D34 a deploy is a fresh install and an older release is never started over a newer store):
 

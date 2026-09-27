@@ -199,7 +199,21 @@ fn operator /var/lib/fn/fn.toml store import /var/lib/fn-export
 ```
 
 and start the service. The imported store answers with the same articles,
-numbers and Message-IDs. A release refuses to open a store of another store
+numbers and Message-IDs.
+
+The export is the Store's history (the profile, the allocation frontier, the
+configuration records and the Store records), not a backup of the node. It
+does not carry the node's secrets and private state (the TLS keys,
+credentials, the HKDF and pseudonym roots), peer journals, consumer or
+application state kept outside the Store, or the BP and TCPCL stores: copy
+`tls/` and the rest yourself as above. Its MANIFEST checks each file; it does
+not show that the archive is the node's newest history. The import stages
+the store beside the node's store path, opens it, and publishes it by a
+rename that never replaces an existing store. If an earlier import was
+interrupted, it refuses by name: `reason=interrupted-import` (no store was
+published: remove the named directory and import again) or
+`reason=publication-uncertain` (a store is present: run `recover`, then
+remove the named directory). See the operator guide. A release refuses to open a store of another store
 format by name (`reason=store-format`), and `install.sh` asks the new
 release about an existing node directory before it copies anything, so a
 reinstall over an incompatible store stops before it starts.

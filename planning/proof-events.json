@@ -7292,6 +7292,21 @@
           "name": "fn-bphh-octets-at-p-is-equal-payload"
         }
       ]
+    },
+    {
+      "id": "PRF-217",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
+          "note": "KEYSTONE. Host: host/native/io.lisp fnn-command-store-import writes fn-bs-imp-program step for step (native_cuts.verify_import_cut_map). Teeth: tests/acl2/store-import-publication-tests.lisp (reachable run, every landing at import-published, six hypothesis-removal witnesses)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bs-imp-classify-by-what-is-known",
+          "note": "The recovery classification over every crash image; host: fnn-command-store-import calls fn-bs-imp-classify (fnn-import-classify). Teeth: the four verdicts reached at import-published in the test book."
+        }
+      ]
     }
   ]
 }
