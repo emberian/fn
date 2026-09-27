@@ -859,6 +859,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/payload-arena-extent \
 	books/payload-extent \
 	books/payload-commit-extent \
+	books/frame-digest-buffer \
+	books/payload-extent-read \
 	books/payload-arena \
 	books/payload-arena-attach \
 	books/records-freeze \
@@ -892,6 +894,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/payload-arena-extent-tests \
 	tests/acl2/payload-extent-tests \
 	tests/acl2/payload-commit-extent-tests \
+	tests/acl2/frame-digest-buffer-tests \
 	tests/acl2/records-freeze-tests \
 	tests/acl2/catalog-record-tests \
 	tests/acl2/catalog-tests \

@@ -18,6 +18,8 @@
 ; The open's extent seals and the served read's trailer check (PRF-294);
 ; the commit's extent reseat (PRF-296; it includes payload-extent).
 (include-book "../books/payload-commit-extent")
+; The served read's entry check over the realizer's buffer (PRF-295).
+(include-book "../books/payload-extent-read")
 (include-book "../books/store-config")
 (include-book "../books/identity")
 (include-book "../books/crypto-attach")

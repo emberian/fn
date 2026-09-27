@@ -12,7 +12,8 @@
 ;;; closed and never reused within the process: an unlinked segment stays
 ;;; readable through it), preads an entry's protected prefix into a bounded
 ;;; cache (ACL2's fn-arx-read-cache-entries entries) with the entry's trailer,
-;;; and asks ACL2 whether the prefix's SHA-256 is that trailer (fn-arx-entry-ok).  A
+;;; and asks ACL2 whether the prefix's frame digest is that trailer, over its
+;;; own octet buffer (fn-arx-entry-ok-buffer, books/payload-extent-read.lisp).  A
 ;;; mismatch or a short read is refused by name -- arena-extent-digest,
 ;;; arena-extent-read -- as a store fault (a recovery event: the store is
 ;;; fenced); the octet is never answered.  pread, not mmap: portable (Linux,
@@ -63,11 +64,35 @@ FN_NATIVE_EXTENT_CACHE_TEST_OFF=1 (the matched measurement's cache-off arm)."
       0
     (fnn-core 'fn-arx-read-cache-entries)))
 
+(defvar *fnn-octets-rd* nil)
+
+(defun fnn-live-octets-rd ()
+  (or *fnn-octets-rd*
+      (setq *fnn-octets-rd*
+            (or (cdr (assoc 'fn-octets-rd (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the realizer's buffer stobj is not in this image")))))
+
+(defun fnn-extent-entry-ok (octets elen)
+  "ACL2's check of the entry read into OCTETS (its protected prefix, ELEN
+octets, then its 32-octet trailer): the realizer's own buffer fn-octets-rd
+holds the prefix in place (its array is OCTETS, its fill ELEN) and
+fn-arx-entry-ok-buffer (books/payload-extent-read.lisp, KEYSTONE
+fn-arx-entry-ok-buffer-is-the-frame-check) compares the frame digest of the
+buffer, read by index, with the trailer.  Called with the realizer's lock
+held; the buffer lets go of OCTETS afterwards."
+  (let ((st (fnn-live-octets-rd)))
+    (setf (svref st 0) octets
+          (svref st 1) elen)
+    (unwind-protect
+         (first (fnn-call 'fn-arx-entry-ok-buffer (coerce (subseq octets elen) 'list) st))
+      (setf (svref st 1) 0
+            (svref st 0) (make-array 0 :element-type '(unsigned-byte 8))))))
+
 (defun fnn-extent-entry (file eoff elen trailer)
   (declare (ignore trailer))
   "The verified protected prefix of the entry at [EOFF, EOFF+ELEN) of FILE,
 from the cache or read once (one pread of the prefix and its trailer) and
-checked by ACL2 (fn-arx-entry-ok).  Called with the realizer's lock held."
+checked by ACL2 (fnn-extent-entry-ok).  Called with the realizer's lock held."
   (let ((hit (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)))
                       *fnn-extent-cache*)))
     (if hit
@@ -87,7 +112,7 @@ checked by ACL2 (fn-arx-entry-ok).  Called with the realizer's lock held."
           (error 'fnn-extent-fault
                  :message (format nil "arena-extent-read: ~a at ~a holds fewer than ~a octets"
                                   (gethash file *fnn-extent-paths*) eoff (+ elen 32))))
-        (unless (eq (fnn-core 'fn-arx-entry-ok (coerce octets 'list) elen) t)
+        (unless (eq (fnn-extent-entry-ok octets elen) t)
           (incf (third *fnn-extent-stats*))
           (error 'fnn-extent-fault
                  :message (format nil "arena-extent-digest: the entry at ~a of ~a does not match its trailer"
