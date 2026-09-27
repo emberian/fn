@@ -129,6 +129,9 @@
 ;; classifies a leftover staged directory through fn-bs-imp-classify.
 (include-book "books/store-export")
 (include-book "books/store-import-publication")
+;; `operator init` publishes the empty store by the same program (PKT-647):
+;; fnn-command-init-published asks fn-bs-init-pub-admission.
+(include-book "books/store-init-publication")
 ;; The store bridge's record dispatchers (host/store-host.lisp,
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")

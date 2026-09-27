@@ -65,7 +65,8 @@ class ImportPublicationSourceTests(unittest.TestCase):
                       native_cuts.host_function(io, "fnn-import-classify"))
         body = native_cuts.host_function(io, "fnn-command-store-import")
         self.assertIn("(fnn-import-classify leftover root-path)", body)
-        self.assertIn("(fnn-import-classify stage-root root-path)", body)
+        self.assertIn("(fnn-import-classify stage-root root-path)",
+                      native_cuts.host_function(io, "fnn-staged-publication"))
         self.assertIn("(fnn-import-test-fault)", body)
         self.assertIn("FN_NATIVE_IMPORT_FAULT", native_cuts.developer_selectors())
         for build in ("build.lisp", "build-dtn.lisp", "build-store-test.lisp"):

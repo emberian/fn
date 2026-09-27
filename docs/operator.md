@@ -90,6 +90,32 @@ entries -- `config.json`, `writer.lock`, `allocation-frontier.json`,
 locked to find that out. An existing store is adopted by `run` and repaired by
 `recover`; `init` does not reinitialise one.
 
+`init` never builds the store in place (PKT-647). It builds the empty store
+in a new directory `ROOT.init-XXXX` beside the configured store ROOT and
+publishes it by the same program as `store import` (below; `fn-bs-imp-program`
+with init's cut names, `fn-bs-init-pub-program` in
+`books/store-init-publication.lisp`): each file created exclusively, written
+and fenced, the directories fenced, the staged store opened the ordinary way,
+renamed onto ROOT without replacing anything, ROOT's parent fenced. A crash
+at any point leaves no store at ROOT or the complete empty store
+(`fn-bs-init-pub-program-crash-is-no-store-or-the-complete-empty-store`),
+never a partial one. Before writing anything `init` looks for a staged
+directory an earlier `init` left, and ACL2 answers
+(`fn-bs-init-pub-admission` over `fn-bs-imp-classify`):
+
+- `init refused reason=interrupted-init stage=PATH` (exit 1): ROOT is absent,
+  so no store was published. Remove PATH and run `init` again.
+- `init refused reason=publication-uncertain stage=PATH` (exit 1): ROOT is
+  present as well; run `recover`, then remove PATH.
+- `init refused reason=store-path-exists` (exit 1): ROOT exists (an empty
+  directory, say) without the store's entries. `init` creates the store
+  directory itself and never fills or replaces an existing one: remove it or
+  name another path.
+
+An OS error before the rename is a known failure (1, `init failed before
+publication: ...; remove PATH`); at or after it the outcome is uncertain (3,
+`init publication uncertain state=STATE stage=PATH root=ROOT`).
+
 The converse is refused too, with its own code. Every verb that opens the
 store (`run`, `post`, `status`, `pins`, `obligations`, `health`, `recover`,
 `store ...`, `group`, `capacity`, `peer`, `policy`, `bp-boundary`,
@@ -107,8 +133,9 @@ refused operator status NO-STORE
 never a fault (4); the word `NO-STORE` and the `run:` line, not the code,
 tell it from another refusal. ACL2 decides it (`fn-native-operator-store-outcome`,
 `fn-native-operator-absent-store-is-refused`, books/native-operator.lisp);
-a store with some of its entries (an interrupted `init`) is not "no store"
-and goes to the open, which recovers or refuses it.
+a store with some of its entries is not "no store" and goes to the open,
+which recovers or refuses it (an interrupted `init` of this release leaves
+no such store: see above).
 
 **Init under a mission.** A `fn.toml` written by `mission NAME` carries
 `[ops] mission`, and the mission fixes the store profile: `init` then takes
@@ -257,10 +284,20 @@ store in a new directory `ROOT.import-XXXX` beside the configured store ROOT
 and the staged directory fenced), opens the staged store the ordinary way
 (full replay), renames it onto ROOT with a rename that never replaces an
 existing ROOT (`renameat2` with `RENAME_NOREPLACE` on Linux; on OpenBSD, which
-has no such rename, ROOT is observed absent immediately before `rename(2)`,
-which itself refuses a non-empty directory or a file at ROOT, so only an
-empty directory created at ROOT in that window could be replaced), and fences
-ROOT's parent directory. A ROOT that appears before the rename is refused
+has no such rename, see below), and fences ROOT's parent directory.
+
+**On OpenBSD** (no `renameat2`), `store import` and `init` hold an exclusive
+advisory lock (`flock`) on the sibling file `ROOT.lock` for the whole
+program, and re-check under it, immediately before `rename(2)`, that ROOT is
+absent; `rename(2)` itself refuses a non-empty directory or a file at ROOT.
+A second fn import or init of the same ROOT is refused while the lock is
+held (1, `publication refused reason=publication-locked`). The residual
+window is a process that does not take the lock creating an EMPTY directory
+at ROOT between that check and the rename: `rename(2)` would replace it. So
+on OpenBSD, **nothing but fn may create ROOT**: do not pre-create the store
+directory, and do not run another tool that makes it. `ROOT.lock` stays
+beside ROOT (removing it could race a second process that already opened
+it); it holds no data. A ROOT that appears before the rename is refused
 (1, `import refused reason=store-exists stage=PATH`) and the staged
 directory PATH is left for you to remove. An OS error before the rename is a
 known failure (1, `import failed before publication: ...; remove PATH`); at
@@ -742,7 +779,7 @@ which answers nothing on a production image.
 | --- | --- | --- |
 | `FN_NATIVE_POST_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-post-model-cuts+` | the frontier, record and finish cuts of a post, in `store ROOT post` and in the served owner (`operator CONFIG run`, and the developer `owner run`) |
 | `FN_NATIVE_RECOVERY_FAULT` | `CUT:eio\|kill`, CUT one of `recover-replayed`, `recover-barrier` (the first of its five sites), `recovery-stage-unlinked` | recovery's cuts, in `store ROOT recover`, `operator CONFIG recover`, `store ROOT post` and the served owner's own recovery at start |
-| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts |
+| `FN_NATIVE_INIT_FAULT` | `CUT:eio\|kill\|eacces` | the initializer's cuts (`store ROOT init`), and `operator init`'s publication cuts `+fnn-init-publication-cuts+` (`fn-bs-init-pub-program`, eio or kill) |
 | `FN_NATIVE_IMPORT_FAULT` | `CUT:eio\|kill`, CUT one of `+fnn-import-model-cuts+` (a repeated cut at its first occurrence) | `store import`'s publication cuts (`fn-bs-imp-program`) |
 | `FN_NATIVE_CONTROL_FAULT` | one of `prepublish`, `postpublish`, `frontierbarrier`, `recordbarrier` | the owner's store for exactly one control submission; `postpublish` is the uncertain outcome |
 | `FN_NATIVE_CONTROL_TEST_STOP` | `after-submit` | a SIGSTOP of the owner from the worker that holds the reply, after the owner answered accepted, duplicate or refused and before the reply is sent; the stop is directed at that thread (`pthread_kill`), so the reply cannot leave first |

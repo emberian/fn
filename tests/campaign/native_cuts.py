@@ -120,6 +120,18 @@ IMPORT_CUTS = tuple(
         ("import-published", "fn-bs-imp-publication-program", "either"),
         ("import-durable", "fn-bs-imp-publication-program", "present")))
 
+# The suffixes of the publication program's cuts, in its order.
+PUBLICATION_SUFFIXES = tuple(c.name[len("import-"):] for c in IMPORT_CUTS)
+
+# `operator CONFIG init' (host/native/io.lisp `fnn-command-init-published',
+# PKT-647): books/store-init-publication.lisp fn-bs-init-pub-program, the
+# import's program with init's cut names, selected by FN_NATIVE_INIT_FAULT.
+INIT_PUB_BOOK = "store-init-publication.lisp"
+INIT_PUB_CUTS = tuple(
+    NativeCut("init-" + c.name[len("import-"):], "fn-bs-init-pub-program", c.candidate,
+              book=INIT_PUB_BOOK)
+    for c in IMPORT_CUTS)
+
 # The chained-packs program (lane pack-chain-cut, PKT-459).
 CHAIN_BOOK = "checkpoint-pack-chain.lisp"
 
@@ -343,38 +355,100 @@ def verify_import_cut_map() -> None:
     body = host_function(source, "fnn-command-store-import")
     if "(fnn-core 'fn-bs-imp-classify" not in host_function(source, "fnn-import-classify"):
         raise AssertionError("fnn-import-classify does not call fn-bs-imp-classify")
-    order = [body.index("(fnn-import-leftover-stage root-path)"),
+    if not (body.index("(fnn-import-leftover-stage root-path)")
+            < body.index("(fnn-staged-publication\n         \"import\"")):
+        raise AssertionError("fnn-command-store-import does not classify before publishing")
+    verify_staged_publication(source, "import", declared)
+    _import_candidates()
+
+
+def verify_staged_publication(source: str, kind: str, declared: tuple) -> None:
+    """`fnn-staged-publication' reaches fn-bs-imp-program's steps and cuts in
+    its order (the three file cuts inside `fnn-import-write-file', between its
+    open, write and fence), each cut named KIND-SUFFIX, and publishes with a
+    no-replace rename only."""
+    if declared != tuple("{}-{}".format(kind, s) for s in PUBLICATION_SUFFIXES):
+        raise AssertionError("{} cuts are not the publication program's".format(kind))
+    body = host_function(source, "fnn-staged-publication")
+    at = '(fnn-pub-at stage kind "{}")'.format
+    order = [body.index("(fnn-publication-lock root-path)"),
              body.index("(fnn-mkdir stage-root #o700)"),
-             body.index("(fnn-at stage :import-stage-created)"),
+             body.index(at("stage-created")),
              body.index("(fnn-mkdir (fnn-join stage-root sub) #o700)"),
-             body.index("(fnn-at stage :import-subdir-created)"),
-             body.index("(fnn-import-write-file stage (fnn-config-path stage)"),
-             body.index("(fnn-import-write-file stage (fnn-frontier-path stage)"),
+             body.index(at("subdir-created")),
+             body.index("(fnn-import-write-file stage (car file) (cdr file) kind)"),
              body.index("(fnn-fsync-dir (fnn-join stage-root sub))"),
-             body.index("(fnn-at stage :import-subdir-durable)"),
+             body.index(at("subdir-durable")),
              body.index("(fnn-fsync-dir stage-root)"),
-             body.index("(fnn-at stage :import-staged-durable)"),
+             body.index(at("staged-durable")),
              body.index("(fnn-open-live-store stage-root t)"),
-             body.index("(fnn-at stage :import-validated)"),
+             body.index(at("validated")),
              body.index("(fnn-rename-no-replace stage-root root-path)"),
-             body.index("(fnn-at stage :import-published)"),
+             body.index(at("published")),
              body.index("(fnn-fsync-dir parent)"),
-             body.index("(fnn-at stage :import-durable)")]
+             body.index(at("durable")),
+             body.index("(fnn-publication-unlock lock)")]
     if order != sorted(order):
-        raise AssertionError("fnn-command-store-import is out of fn-bs-imp-program's order")
+        raise AssertionError("fnn-staged-publication is out of fn-bs-imp-program's order")
     if "(fnn-replace " in body:
-        raise AssertionError("fnn-command-store-import publishes with a replacing rename")
+        raise AssertionError("fnn-staged-publication publishes with a replacing rename")
     write = host_function(source, "fnn-import-write-file")
     order = [write.index("(fnn-open path"),
-             write.index("(fnn-at store :import-file-created)"),
+             write.index('(fnn-pub-at store kind "file-created")'),
              write.index("(fnn-write-all fd"),
-             write.index("(fnn-at store :import-file-written)"),
+             write.index('(fnn-pub-at store kind "file-written")'),
              write.index("(fnn-fsync-file fd)"),
-             write.index("(fnn-at store :import-file-durable)")]
+             write.index('(fnn-pub-at store kind "file-durable")')]
     if order != sorted(order):
         raise AssertionError("fnn-import-write-file is out of fn-bs-imp-file-steps order")
     if "sb-posix:o-excl" not in write:
         raise AssertionError("fnn-import-write-file does not create exclusively")
+
+
+def init_publication_cut_names() -> dict:
+    """books/store-init-publication.lisp *fn-bs-init-pub-cut-names*: each
+    fn-bs-imp-program cut to init's name for it."""
+    book = (ROOT / "books" / INIT_PUB_BOOK).read_text()
+    table = book[book.index("(defconst *fn-bs-init-pub-cut-names*"):]
+    table = table[:table.index("\n\n")]
+    return dict(re.findall(r'\("([a-z-]+)" \. "([a-z-]+)"\)', table))
+
+
+def verify_init_publication_cut_map() -> None:
+    """`operator init' (fnn-command-init-published) runs the import's
+    program with init's cut names: the host's +fnn-init-publication-cuts+ are
+    *fn-bs-init-pub-cut-names* applied to fn-bs-imp-program's cuts in order,
+    fn-bs-init-pub-program renames the cuts of fn-bs-imp-program, the host
+    asks ACL2's admission before publishing through fnn-staged-publication,
+    and the candidate column is the import's."""
+    declared = tuple(c.name for c in INIT_PUB_CUTS)
+    if declared != native_declared_cut_names("fnn-init-publication-cuts"):
+        raise AssertionError("native/model init publication cuts differ")
+    renamed = init_publication_cut_names()
+    if declared != tuple(renamed[c.name] for c in IMPORT_CUTS):
+        raise AssertionError("init cuts are not the import program's, renamed")
+    book = (ROOT / "books" / INIT_PUB_BOOK).read_text()
+    program = host_function(book, "fn-bs-init-pub-program")
+    if "(fn-bs-init-pub-rename-cuts\n   (fn-bs-imp-program " not in program:
+        raise AssertionError("fn-bs-init-pub-program is not fn-bs-imp-program renamed")
+    if tuple(c.candidate for c in INIT_PUB_CUTS) != tuple(c.candidate for c in IMPORT_CUTS):
+        raise AssertionError("init candidates differ from the import program's")
+    source = (ROOT / "host/native/io.lisp").read_text()
+    body = host_function(source, "fnn-command-init-published")
+    order = [body.index('(fnn-import-leftover-stage root-path "init")'),
+             body.index("(fnn-import-classify leftover root-path)"),
+             body.index("(fnn-core 'fn-bs-init-pub-admission"),
+             body.index('(fnn-staged-publication\n       "init"')]
+    if order != sorted(order):
+        raise AssertionError("fnn-command-init-published publishes before ACL2 admits")
+    operator = (ROOT / "host/native/operator.lisp").read_text()
+    if "(fnn-command-init-published root groups profile)" not in host_function(
+            operator, "fnn-operator-execute-init"):
+        raise AssertionError("operator init does not run the publication program")
+    verify_staged_publication(source, "init", declared)
+
+
+def _import_candidates() -> None:
     for cut in IMPORT_CUTS:
         own = IMPORT_PROGRAMS.index(cut.program)
         before = [step for program in IMPORT_PROGRAMS[:own]
