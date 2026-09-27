@@ -1,0 +1,345 @@
+; fn prototype (lane proto-adt-2, 2026-09-27): `defadt-keyed', a keyed set
+; declared at the ADT level, backed by the sequence constructor's columns,
+; a live column and a hash index (books/proto/adt-key-lib.lisp).  NOT on a
+; served path; no host calls it.
+;
+;   (defadt-keyed NAME :order ORDER :key FIELD (FIELD KIND) ...)
+;
+; ORDER is :stack (insert conses at the front: the logical value is the live
+; slots reversed) or :append (insert appends).  The logical value is a true
+; list of records with unique KEY; the exports are the model's operations:
+;   NAME-FIND k          (adt-kfind j k a)          the record, or nil
+;   NAME-GET-F k         (nth f (adt-kfind j k a))  one field, no record built
+;   NAME-INSERT r        (adt-kinsert order r a)    guard: key absent
+;   NAME-REMOVE k        (adt-kremove j k a)
+;   NAME-REPLACE r       (adt-kreplace order j r a) replace by key, else insert
+;   NAME-UPDATE-F k v    (adt-kupdate j k f v a)    F not the key
+; As for `defadt', every executable is bridged to the library operation at
+; the constant schema, the one per-type recursion (the bucket walk) is a
+; functional instance of the library's constrained walk, and the
+; defabsstobj obligations are ACL2's own, each closed by one uniform hint
+; with the library's adt-kcorr-* keystones.  No step is written per type.
+
+(in-package "ACL2")
+(include-book "adt")
+(include-book "adt-key-lib")
+
+(program)
+
+(defun adt-field-pos (f fields i)
+  (cond ((endp fields) nil)
+        ((eq (car (car fields)) f) i)
+        (t (adt-field-pos f (cdr fields) (+ 1 i)))))
+
+; (list (if (okp i st) (get i st) nil) ...) over the user fields.
+(defun adt-krow-body (name ufields st)
+  (if (endp ufields)
+      nil
+    (let ((getf (adt-sym3 name "$C-GET-" (car (car ufields)))))
+      (cons `(if (,(adt-sym getf "-OKP") i ,st) (,getf i ,st) nil)
+            (adt-krow-body name (cdr ufields) st)))))
+
+; The whole-record write: r0 walks R, one field setter per field.
+(defun adt-ksetrec-body (name ufields st)
+  (if (endp ufields)
+      nil
+    (let ((set (adt-sym3 name "$C-SET-" (car (car ufields)))))
+      (if (endp (cdr ufields))
+          (list `(,st (,set i (car r0) ,st)))
+        (list* `(,st (,set i (car r0) ,st))
+               '(r0 (cdr r0))
+               (adt-ksetrec-body name (cdr ufields) st))))))
+
+(defun adt-kfield-events (name ufields m keyj uschema)
+  ; Per user field: the keyed get, and (not the key) the keyed update.
+  (if (endp ufields)
+      nil
+    (let* ((f (car (car ufields)))
+           (k (cadr (car ufields)))
+           (st (adt-sym name "$C"))
+           (a (adt-sym name "$A"))
+           (ap (adt-sym name "$AP"))
+           (getf (adt-sym3 name "$C-GET-" f))
+           (kget (adt-sym3 name "$C-KGET-" f))
+           (akget (adt-sym3 name "$A-GET-" f))
+           (kupd (adt-sym3 name "$C-KUPDATE-" f))
+           (akupd (adt-sym3 name "$A-UPDATE-" f))
+           (lookup (adt-sym name "$C-LOOKUP"))
+           (bhints `(("Goal" :in-theory (enable adt-kinstance-unfold)))))
+      (append
+       `((defun ,kget (k ,st)
+           (declare (xargs :stobjs ,st
+                           :guard-hints (("Goal" :in-theory (enable adt-klookup-c)))))
+           (let ((i (,lookup k ,st)))
+             (if (and i (,(adt-sym getf "-OKP") i ,st)) (,getf i ,st) nil)))
+         (defthm ,(adt-sym kget "-BRIDGE")
+           (equal (,kget k c) (adt-kget-c ,uschema ,keyj k ,m c))
+           :hints (("Goal" :in-theory (enable ,kget adt-kinstance-unfold))))
+         (in-theory (disable ,kget))
+         (defun ,akget (k ,a)
+           (declare (xargs :guard (,ap ,a)))
+           (nth ,m (adt-kfind ,keyj k ,a))))
+       (if (equal m keyj)
+           nil
+         `((defun ,kupd (k v ,st)
+             (declare (xargs :stobjs ,st
+                             :guard (adt-val-okp ',k v)
+                             :guard-hints (("Goal" :in-theory (enable adt-klookup-c adt-val-okp)))))
+             (let ((i (,lookup k ,st)))
+               (if i (,(adt-sym3 name "$C-SET-" f) i v ,st) ,st)))
+           (defthm ,(adt-sym kupd "-BRIDGE")
+             (equal (,kupd k v c) (adt-kupdate-c ,uschema ,keyj k ,m v c))
+             :hints ,bhints)
+           (in-theory (disable ,kupd))
+           (defun ,akupd (k v ,a)
+             (declare (xargs :guard (and (,ap ,a) (adt-val-okp ',k v))))
+             (adt-kupdate ,keyj k ,m v ,a))))
+       (adt-kfield-events name (cdr ufields) (+ 1 m) keyj uschema)))))
+
+(defun adt-kexports (name ufields m keyj)
+  (if (endp ufields)
+      nil
+    (let ((f (car (car ufields))))
+      (append
+       (list `(,(adt-sym3 name "-GET-" f) :logic ,(adt-sym3 name "$A-GET-" f)
+               :exec ,(adt-sym3 name "$C-KGET-" f)))
+       (if (equal m keyj)
+           nil
+         (list `(,(adt-sym3 name "-UPDATE-" f) :logic ,(adt-sym3 name "$A-UPDATE-" f)
+                 :exec ,(adt-sym3 name "$C-KUPDATE-" f) :protect t)))
+       (adt-kexports name (cdr ufields) (+ 1 m) keyj)))))
+
+(defun adt-klogic-names (name ufields m keyj)
+  (if (endp ufields)
+      nil
+    (let ((f (car (car ufields))))
+      (append (list (adt-sym3 name "$A-GET-" f))
+              (if (equal m keyj) nil (list (adt-sym3 name "$A-UPDATE-" f)))
+              (adt-klogic-names name (cdr ufields) (+ 1 m) keyj)))))
+
+(defun adt-kis-thms (name ufields m keyj)
+  (if (endp ufields)
+      nil
+    (let ((f (car (car ufields))))
+      (append
+       (list `(defthm ,(adt-sym3 name "-GET-" (adt-sym f "-IS-NTH-OF-KFIND"))
+                (equal (,(adt-sym3 name "-GET-" f) k ,name) (nth ,m (adt-kfind ,keyj k ,name)))
+                :hints (("Goal" :in-theory (enable ,(adt-sym3 name "$A-GET-" f))))))
+       (if (equal m keyj)
+           nil
+         (list `(defthm ,(adt-sym3 name "-UPDATE-" (adt-sym f "-IS-KUPDATE"))
+                  (equal (,(adt-sym3 name "-UPDATE-" f) k v ,name) (adt-kupdate ,keyj k ,m v ,name))
+                  :hints (("Goal" :in-theory (enable ,(adt-sym3 name "$A-UPDATE-" f)))))))
+       (adt-kis-thms name (cdr ufields) (+ 1 m) keyj)))))
+
+(defun defadt-keyed-fn (name order key fields0)
+  (let* ((ufields (adt-norm-fields fields0))
+         (keyj (adt-field-pos key ufields 0))
+         (uschema-v (adt-schema-of ufields))
+         (fields (cons '(live (:bool)) ufields))
+         (schema-const (adt-sym3 '* (symbol-name name) '-schema*))
+         (uschema (adt-sym3 '* (symbol-name name) '-user-schema*))
+         (cols (adt-columns name fields))
+         (p (len cols))
+         (kd (nth keyj uschema-v))
+         (st (adt-sym name "$C"))
+         (a (adt-sym name "$A"))
+         (ap (adt-sym name "$AP"))
+         (corr (adt-sym name "$CORR"))
+         (count-of (adt-sym name "$C-COUNT-OF"))
+         (idx (adt-sym name "$C-IDX"))
+         (idx-get (adt-sym idx "-GET"))
+         (idx-put (adt-sym idx "-PUT"))
+         (walk (adt-sym name "$C-WALK"))
+         (lookup (adt-sym name "$C-LOOKUP"))
+         (find-c (adt-sym name "$C-FIND"))
+         (insert-c (adt-sym name "$C-INSERT"))
+         (remove-c (adt-sym name "$C-REMOVE"))
+         (replace-c (adt-sym name "$C-REPLACE"))
+         (find-a (adt-sym name "$A-FIND"))
+         (has-c (adt-sym name "$C-HAS"))
+         (has-a (adt-sym name "$A-HAS"))
+         (insert-a (adt-sym name "$A-INSERT"))
+         (remove-a (adt-sym name "$A-REMOVE"))
+         (replace-a (adt-sym name "$A-REPLACE"))
+         (create-a (adt-sym "CREATE-" (symbol-name a)))
+         (create-c (adt-sym "CREATE-" (symbol-name st)))
+         (recog (adt-sym name "P"))
+         (keyf (adt-sym3 name "$C-GET-" key))
+         (bhints '(("Goal" :in-theory (enable adt-kinstance-unfold))))
+         (defabs
+           `(defabsstobj ,name
+              :foundation ,st
+              :recognizer (,recog :logic ,ap :exec ,(adt-sym name "$CP"))
+              :creator (,(adt-sym "CREATE-" (symbol-name name)) :logic ,create-a :exec ,create-c)
+              :corr-fn ,corr
+              :corr-fn-exists t
+              :exports ((,(adt-sym name "-FIND") :logic ,find-a :exec ,find-c)
+                        (,(adt-sym name "-HAS") :logic ,has-a :exec ,has-c)
+                        (,(adt-sym name "-INSERT") :logic ,insert-a :exec ,insert-c :protect t)
+                        (,(adt-sym name "-REMOVE") :logic ,remove-a :exec ,remove-c :protect t)
+                        (,(adt-sym name "-REPLACE") :logic ,replace-a :exec ,replace-c :protect t)
+                        ,@(adt-kexports name ufields 0 keyj))))
+         (ob-hints `(("Goal" :in-theory (enable ,corr ,ap ,create-a ,find-a ,has-a ,insert-a ,remove-a
+                                                 ,replace-a ,@(adt-klogic-names name ufields 0 keyj))))))
+    (declare (ignorable cols))
+    `(encapsulate
+       ()
+       (local (in-theory (disable nth update-nth resize-list)))
+       (defconst ,uschema ',uschema-v)
+       ,@(adt-foundation-events name fields schema-const
+                                `((,idx :type (hash-table eql)))
+                                (+ 4 p))
+       (defthm ,(adt-sym name "-PSCHEMA-IS")
+         (equal (adt-pschema ,uschema) ,schema-const)
+         :hints (("Goal" :in-theory (enable adt-pschema))))
+       (defthm ,(adt-sym create-c "-IS-CANONICAL-EMPTY")
+         (equal (,create-c) (adt-kempty-c ,uschema))
+         :hints (("Goal" :in-theory (enable adt-kempty-c adt-empty-c adt-pschema))))
+       ; The bucket walk: a functional instance of the library's walk.
+       (defun ,walk (k b ,st)
+         (declare (xargs :stobjs ,st))
+         (if (atom b)
+             nil
+           (let ((i (car b)))
+             (if (and (natp i) (< i (nfix (,count-of ,st)))
+                      (,(adt-sym name "$C-GET-LIVE-OKP") i ,st)
+                      (,(adt-sym name "$C-GET-LIVE") i ,st)
+                      (,(adt-sym keyf "-OKP") i ,st)
+                      (equal (,keyf i ,st) k))
+                 i
+               (,walk k (cdr b) ,st)))))
+       (defthm ,(adt-sym walk "-BRIDGE")
+         (equal (,walk k b c) (adt-kwalk ,schema-const ,keyj k b c))
+         :hints (("Goal" :use ((:functional-instance adt-g-kwalk-is-kwalk
+                                                     (adt-g-ks (lambda () ,schema-const))
+                                                     (adt-g-kj (lambda () ,keyj))
+                                                     (adt-g-kwalk ,walk)))
+                  :in-theory (enable adt-kgood))))
+       (defthm ,(adt-sym walk "-NATP")
+         (implies (,walk k b c) (natp (,walk k b c)))
+         :hints (("Goal" :in-theory (disable adt-kwalk-sound)
+                  :use ((:instance adt-kwalk-sound (s ,schema-const) (j ,keyj))))))
+       (in-theory (disable ,walk))
+       (defun ,lookup (k ,st)
+         (declare (xargs :stobjs ,st))
+         (,walk k (,idx-get (adt-khash ',kd k) ,st) ,st))
+       (defthm ,(adt-sym lookup "-BRIDGE")
+         (equal (,lookup k c) (adt-klookup-c ,uschema ,keyj k c))
+         :hints ,bhints)
+       (defthm ,(adt-sym lookup "-NATP")
+         (implies (,lookup k c) (natp (,lookup k c))))
+       (in-theory (disable ,lookup))
+       (defun ,find-c (k ,st)
+         (declare (xargs :stobjs ,st))
+         (let ((i (,lookup k ,st)))
+           (if i (list ,@(adt-krow-body name ufields st)) nil)))
+       (defthm ,(adt-sym find-c "-BRIDGE")
+         (equal (,find-c k c) (adt-kfind-c ,uschema ,keyj k c))
+         :hints ,bhints)
+       (defun ,has-c (k ,st)
+         (declare (xargs :stobjs ,st))
+         (if (,lookup k ,st) t nil))
+       (defthm ,(adt-sym has-c "-BRIDGE")
+         (equal (,has-c k c) (adt-kmem-c ,uschema ,keyj k c))
+         :hints ,bhints)
+       (defun ,insert-c (r ,st)
+         (declare (xargs :stobjs ,st
+                         :guard (adt-rec-p ,uschema r)
+                         :guard-hints (("Goal" :in-theory (enable adt-rec-p-open adt-schema-fns-of-atom)))))
+         (let* ((n (nfix (,count-of ,st)))
+                (h (adt-khash ',kd (nth ,keyj r)))
+                (b (,idx-get h ,st))
+                (,st (,(adt-sym name "$C-APPEND") (cons t r) ,st)))
+           (,idx-put h (cons n b) ,st)))
+       (defthm ,(adt-sym insert-c "-BRIDGE")
+         (equal (,insert-c r c) (adt-kinsert-c ,uschema ,keyj r c))
+         :hints ,bhints)
+       (defun ,remove-c (k ,st)
+         (declare (xargs :stobjs ,st))
+         (let* ((h (adt-khash ',kd k))
+                (b (,idx-get h ,st))
+                (i (,walk k b ,st)))
+           (if i
+               (let ((,st (,(adt-sym name "$C-SET-LIVE") i nil ,st)))
+                 (,idx-put h (remove-equal i (true-list-fix b)) ,st))
+             ,st)))
+       (defthm ,(adt-sym remove-c "-BRIDGE")
+         (equal (,remove-c k c) (adt-kremove-c ,uschema ,keyj k c))
+         :hints ,bhints)
+       (defun ,replace-c (r ,st)
+         (declare (xargs :stobjs ,st
+                         :guard (adt-rec-p ,uschema r)
+                         :guard-hints (("Goal" :in-theory (enable adt-rec-p-open adt-schema-fns-of-atom)))))
+         (let ((i (,lookup (nth ,keyj r) ,st)))
+           (if i
+               (let* ((r0 r) ,@(adt-ksetrec-body name ufields st)) ,st)
+             (,insert-c r ,st))))
+       (defthm ,(adt-sym replace-c "-BRIDGE")
+         (equal (,replace-c r c) (adt-kreplace-c ,uschema ,keyj r c))
+         :hints ,bhints)
+       (in-theory (disable ,find-c ,has-c ,insert-c ,remove-c ,replace-c))
+       ; The logical side.
+       (defun ,ap (,a)
+         (declare (xargs :guard t))
+         (and (adt-seq-p ,uschema ,a) (adt-kunique ,keyj ,a)))
+       (defun ,create-a ()
+         (declare (xargs :guard t))
+         nil)
+       (defun ,find-a (k ,a)
+         (declare (xargs :guard (,ap ,a)))
+         (adt-kfind ,keyj k ,a))
+       (defun ,has-a (k ,a)
+         (declare (xargs :guard (,ap ,a)))
+         (adt-kmem ,keyj k ,a))
+       (defun ,insert-a (r ,a)
+         (declare (xargs :guard (and (,ap ,a) (adt-rec-p ,uschema r)
+                                     (not (,has-a (nth ,keyj r) ,a)))))
+         (adt-kinsert ,order r ,a))
+       (defun ,remove-a (k ,a)
+         (declare (xargs :guard (,ap ,a)))
+         (adt-kremove ,keyj k ,a))
+       (defun ,replace-a (r ,a)
+         (declare (xargs :guard (and (,ap ,a) (adt-rec-p ,uschema r))))
+         (adt-kreplace ,order ,keyj r ,a))
+       ,@(adt-kfield-events name ufields 0 keyj uschema)
+       (defun ,corr (c a)
+         (declare (xargs :guard t :verify-guards nil))
+         (adt-kcorr ,uschema ,order ,keyj c a))
+       (make-event
+        (er-let* ((missing (defabsstobj-missing-events ,@(cdr defabs))))
+          (value (cons 'progn (adt-obligation-thms missing ',ob-hints (w state))))))
+       ,defabs
+       (defthm ,(adt-sym name "-FIND-IS-KFIND")
+         (equal (,(adt-sym name "-FIND") k ,name) (adt-kfind ,keyj k ,name))
+         :hints (("Goal" :in-theory (enable ,find-a))))
+       (defthm ,(adt-sym name "-HAS-IS-KMEM")
+         (equal (,(adt-sym name "-HAS") k ,name) (adt-kmem ,keyj k ,name))
+         :hints (("Goal" :in-theory (enable ,has-a))))
+       (defthm ,(adt-sym name "-INSERT-IS-KINSERT")
+         (equal (,(adt-sym name "-INSERT") r ,name) (adt-kinsert ,order r ,name))
+         :hints (("Goal" :in-theory (enable ,insert-a))))
+       (defthm ,(adt-sym name "-REMOVE-IS-KREMOVE")
+         (equal (,(adt-sym name "-REMOVE") k ,name) (adt-kremove ,keyj k ,name))
+         :hints (("Goal" :in-theory (enable ,remove-a))))
+       (defthm ,(adt-sym name "-REPLACE-IS-KREPLACE")
+         (equal (,(adt-sym name "-REPLACE") r ,name) (adt-kreplace ,order ,keyj r ,name))
+         :hints (("Goal" :in-theory (enable ,replace-a))))
+       (defthm ,(adt-sym recog "-IS")
+         (equal (,recog x) (and (adt-seq-p ,uschema x) (adt-kunique ,keyj x)))
+         :hints (("Goal" :in-theory (enable ,ap))))
+       ,@(adt-kis-thms name ufields 0 keyj))))
+
+(defun adt-keyed-args (args order key)
+  (if (and (consp args) (keywordp (car args)) (consp (cdr args)))
+      (case (car args)
+        (:order (adt-keyed-args (cddr args) (cadr args) key))
+        (:key (adt-keyed-args (cddr args) order (cadr args)))
+        (otherwise (mv order key args)))
+    (mv order key args)))
+
+(defmacro defadt-keyed (name &rest args)
+  (mv-let (order key fields) (adt-keyed-args args :append nil)
+    (defadt-keyed-fn name order key fields)))
+
+(logic)
