@@ -224,7 +224,7 @@
                  (fn-own-conns o) (fn-own-next-id o) (fn-own-max-conns o)
                  (fn-own-pending o) (fn-own-ledger o) (fn-own-clock o)
                  (fn-own-facts o) (fn-own-config o) (fn-own-queue o)
-                 (fn-own-inflight o) (fn-own-feeds o))))
+                 (fn-own-inflight o) (fn-own-feeds o) (fn-own-refused o))))
 (defconst *ocl-t-hist-bad* (ocl-t-bad-view-owner *ocl-t-hist-o*))
 (assert-event (not (fn-ocl-view-historyp *ocl-t-hist-bad*)))
 (assert-event

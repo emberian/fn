@@ -57,6 +57,8 @@
                                 :grant-control :revoke-control :set-retention
                                 ;; PRF-161: an exposure limit row.
                                 :set-exposure
+                                ;; PRF-235/236: a transit hygiene limit row.
+                                :set-transit-limit
                                 ;; O2: a group's LIST ACTIVE status.
                                 :set-group-status
                                 ;; PRF-195: a description or the message.

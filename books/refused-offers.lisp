@@ -1,0 +1,122 @@
+; fn: the memory of refused offers (PRF-235, planning/nntp-gap-inventory-
+; 2026-09-26.md T1).
+;
+; On the wider Usenet one refused article is offered by every peer that has
+; it, and each offer used to draw 238/335, a transfer and a parse, and the
+; same refusal.  INN keeps its rejects in the history for that reason
+; (RFC 5537 section 3.3 describes the history a relaying agent keeps; the
+; reject entries are INN's practice).  This book is the memory itself: a
+; list of (Message-ID . reason) pairs, newest first, never longer than the
+; operator's capacity, and oldest-first eviction when a new entry arrives at
+; capacity.  What is admitted to it and what it answers are
+; books/peer-inbound.lisp's (`fn-peer-intrinsic-refusal', the offer arm of
+; `fn-peer-decide-offer'); its soundness is books/peer-refused-offers.lisp.
+;
+; It is IN MEMORY ONLY and is not persisted: losing it on a restart costs
+; one re-parse of each refused article the next time it is offered, and
+; changes no answer (the transfer decision refuses the same octets for the
+; same reason).  A persisted copy would be a second authority over a
+; decision the octets already make.
+;
+; Cost (D27): the capacity is the operator's (`refused-offer-capacity',
+; default 4096, books/relay-checks.lisp); a lookup and an insertion are one
+; walk of at most that many entries.  No constant here bounds data.
+;
+; This book owns the prefix `fn-rof-' (docs/prefixes.md).
+
+(in-package "ACL2")
+
+(defun fn-rof-lookup (msgid mem)
+  ; The remembered reason for MSGID, or nil.
+  (declare (xargs :guard t))
+  (if (consp mem)
+      (if (and (consp (car mem)) (equal (car (car mem)) msgid))
+          (cdr (car mem))
+        (fn-rof-lookup msgid (cdr mem)))
+    nil))
+
+(defun fn-rof-first (n xs)
+  ; At most the first N elements (`take' pads; this does not).
+  (declare (xargs :guard (natp n)))
+  (if (and (consp xs) (not (zp n)))
+      (cons (car xs) (fn-rof-first (- n 1) (cdr xs)))
+    nil))
+
+; Remember REASON for MSGID under capacity CAP.  A Message-ID already held
+; keeps its first entry and its place; a new one goes to the front and the
+; list is cut to CAP, which drops the oldest.  A capacity of 0 remembers
+; nothing.
+(defun fn-rof-record (mem cap msgid reason)
+  (declare (xargs :guard (natp cap)))
+  (cond ((null reason) mem)
+        ((fn-rof-lookup msgid mem) mem)
+        (t (fn-rof-first cap (cons (cons msgid reason) mem)))))
+
+(defthm fn-rof-first-len
+  (<= (len (fn-rof-first n xs)) (nfix n))
+  :rule-classes :linear)
+
+(defthm fn-rof-first-of-short
+  (implies (and (true-listp xs) (<= (len xs) (nfix n)))
+           (equal (fn-rof-first n xs) xs)))
+
+(defthm fn-rof-first-true-listp
+  (true-listp (fn-rof-first n xs)))
+
+; KEYSTONE (the bound, D27).  Whatever the memory held, a record leaves it no
+; longer than the capacity or than it was: from the empty memory, never
+; longer than the capacity.
+(defthm fn-rof-record-within-capacity
+  (<= (len (fn-rof-record mem cap msgid reason))
+      (max (len mem) (nfix cap)))
+  :rule-classes :linear)
+
+(defthm fn-rof-record-keeps-a-bounded-memory-bounded
+  (implies (<= (len mem) (nfix cap))
+           (<= (len (fn-rof-record mem cap msgid reason)) (nfix cap)))
+  :rule-classes :linear)
+
+(defthm fn-rof-first-is-take
+  (implies (<= (nfix n) (len xs))
+           (equal (fn-rof-first n xs) (take n xs))))
+
+; KEYSTONE (eviction is oldest-first).  At capacity, a new Message-ID's entry
+; is the newest and every entry but the oldest (the last) stays, in order.
+(defthm fn-rof-record-at-capacity-evicts-the-oldest
+  (implies (and (true-listp mem) (posp cap) (equal (len mem) cap)
+                reason (not (fn-rof-lookup msgid mem)))
+           (equal (fn-rof-record mem cap msgid reason)
+                  (cons (cons msgid reason) (butlast mem 1))))
+  :hints (("Goal" :in-theory (enable butlast))))
+
+; Below capacity nothing is evicted.
+(defthm fn-rof-record-below-capacity-keeps-everything
+  (implies (and (true-listp mem) (< (len mem) (nfix cap))
+                reason (not (fn-rof-lookup msgid mem)))
+           (equal (fn-rof-record mem cap msgid reason)
+                  (cons (cons msgid reason) mem))))
+
+; What was recorded is answered (capacity at least one).
+(defthm fn-rof-lookup-of-record
+  (implies (and (posp cap) reason)
+           (fn-rof-lookup msgid (fn-rof-record mem cap msgid reason)))
+  :hints (("Goal" :expand ((fn-rof-first cap (cons (cons msgid reason) mem))))))
+
+(defthm fn-rof-lookup-of-first
+  (implies (fn-rof-lookup m (fn-rof-first n xs))
+           (equal (fn-rof-lookup m (fn-rof-first n xs))
+                  (fn-rof-lookup m xs))))
+
+; A record answers nothing new for any other Message-ID: every reason the
+; memory gives after a record it gave before, or it is the recorded one.
+(defthm fn-rof-lookup-after-record
+  (implies (fn-rof-lookup m (fn-rof-record mem cap msgid reason))
+           (equal (fn-rof-lookup m (fn-rof-record mem cap msgid reason))
+                  (if (and (equal m msgid) (not (fn-rof-lookup msgid mem)))
+                      reason
+                    (fn-rof-lookup m mem))))
+  :hints (("Goal" :in-theory (disable fn-rof-first)
+           :use ((:instance fn-rof-lookup-of-first
+                            (n cap) (xs (cons (cons msgid reason) mem)))))))
+
+(in-theory (disable fn-rof-record fn-rof-first))

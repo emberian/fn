@@ -202,7 +202,10 @@
 (assert-event (fn-node-statep *pt-node0*))
 (defconst *pt-archive* (fn-node-acceptance *pt-node0*))
 (defconst *pt-inj* (fn-inj-make-config t (pt-o "fn.example.invalid") (list (pt-o "fn.letters")) 32768))
-(defconst *pt-obs* (fn-clock-observation 1000000 843004800000 500 t))
+; 2026-09-26T00:00:00Z: after every Date these articles carry, so the
+; relay date check (RFC 5537 section 3.6 step 2, PRF-236) passes them.  The
+; 1996 reading this was before made every 2026 article a future one.
+(defconst *pt-obs* (fn-clock-observation 1000000 1790380800000 500 t))
 (defconst *pt-ps0* (fn-peer-open-session *pt-archive* "innA" *pt-node0* *pt-cfg*))
 (assert-event (fn-peer-sessionp *pt-ps0*))
 (assert-event (fn-peer-session-consistentp *pt-ps0* *pt-archive*))
@@ -524,7 +527,7 @@
                      (list (pt-reply "437 transfer rejected; duplicate"))))
 ; The remaining offer cells: 436 (defer at offer: the inflight limit) and
 ; 431, 435 not wanted / 438 for a refusal (not a peer).
-(defconst *pt-ps-full* (fn-peer-make-session (fn-peer-session-base *pt-ps0*) "innA" nil 16 *pt-node0* *pt-cfg*))
+(defconst *pt-ps-full* (fn-peer-make-session (fn-peer-session-base *pt-ps0*) "innA" nil 16 *pt-node0* *pt-cfg* nil))
 (assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps-full* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "IHAVE <a1@example.invalid>")))
                      (list (pt-reply "436 retry later; too many offers outstanding"))))
 (assert-event (equal (fn-post-result-effects (fn-peer-step *pt-ps-full* *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
@@ -536,7 +539,7 @@
                      (list (pt-echo "438 " *pt-id1*))))
 ; A feed-only peer cannot inject.
 (defconst *pt-ps-dtn* (fn-peer-open-session *pt-archive* "dtnB" *pt-node0* *pt-cfg*))
-(assert-event (equal (fn-post-result-effects (fn-peer-step (fn-peer-make-session (fn-peer-session-base *pt-ps-dtn*) "dtnB" nil 0 *pt-node0* *pt-cfg3*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
+(assert-event (equal (fn-post-result-effects (fn-peer-step (fn-peer-make-session (fn-peer-session-base *pt-ps-dtn*) "dtnB" nil 0 *pt-node0* *pt-cfg3* nil) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "CHECK <a1@example.invalid>")))
                      (list (pt-echo "238 " *pt-id1*))))
 ; Transfer refusals by article: no date, and an offered id that is not the article's.
 (assert-event (equal (fn-peer-decide-transfer *pt-node0* *pt-cfg* "innA" *pt-idnodate* *pt-nodate* nil "ob" "s") (fn-peer-decision :refuse :no-date)))

@@ -194,7 +194,7 @@
                (fn-own-pending *ocar-t-raw*) (fn-own-ledger *ocar-t-raw*)
                (fn-own-clock *ocar-t-raw*) (fn-own-facts *ocar-t-raw*)
                (fn-own-config *ocar-t-raw*) (fn-own-queue *ocar-t-raw*)
-               (fn-own-inflight *ocar-t-raw*) (fn-own-feeds *ocar-t-raw*)))
+               (fn-own-inflight *ocar-t-raw*) (fn-own-feeds *ocar-t-raw*) (fn-own-refused *ocar-t-raw*)))
 (assert-event (equal (fn-sn-node (fn-own-store *ocar-t-bad-node-raw*)) *scar-t-bad-node*))
 (assert-event (not (equal (fn-ocar-own-reader-context *ocar-t-bad-node-raw* *ocar-t-id* *ocar-t-cfg*)
           (fn-own-reader-context *ocar-t-bad-node-raw* *ocar-t-id* *ocar-t-cfg*))))

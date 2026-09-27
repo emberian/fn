@@ -7287,7 +7287,7 @@
         "PRF-201"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "planning/evidence/catalog-boundary-owner-2026-09-26.md",
         "books/catalog-refresh.lisp",
@@ -7835,7 +7835,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/config-carried-candidate.lisp",
         "tests/acl2/config-carried-candidate-tests.lisp",
@@ -7866,7 +7866,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-bpnrb-checkpoint-decode-is-decode",
         "fn-bpnrb-selection-plan-is-selection-plan",
@@ -7894,7 +7894,7 @@
         "PRF-207"
       ],
       "assumptions": [],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "evidence": [
         "books/served-tls-prefix.lisp",
         "books/served-carried.lisp",
@@ -7934,7 +7934,7 @@
       "assumptions": [
         "A-HOST"
       ],
-      "status": "certified",
+      "status": "uncertified-at-current-digest",
       "events": [
         "fn-apr-replay-establishes-refs",
         "fn-apr-apply-record-keeps-refs",
@@ -7950,6 +7950,66 @@
         "planning/evidence/manifests/certify-20260927T002614Z-565053.json"
       ],
       "progress_note": "Lane acceptance-payload-arena (2026-09-26): certified on persvati, run-20260927T001950Z-505f (certify-20260927T002614Z-565053: passed 2, failed 0, no book over 10 s at two jobs); every event REPL-admitted first."
+    },
+    {
+      "id": "PRF-235",
+      "title": "The refused-offer memory is bounded, evicts oldest-first, and answers an offer with the refusal the parse of a remembered transfer gives",
+      "statement": "books/refused-offers.lisp, books/peer-inbound.lisp, books/peer-refused-offers.lisp, books/owner.lisp. The memory (Message-ID . reason) pairs, newest first, is recorded by the owner at a transit outcome (books/owner.lisp fn-own-transit-refused under fn-own-transit-outcome, the :transit-outcome event host/owner-host.lisp steps) only for a refusal whose reason the octets decide, and the reason recorded is recomputed from the in-flight octets (fn-peer-refused-record: fn-peer-intrinsic-refusal, the arms of fn-peer-decide-transfer that read only the octets and the offered Message-ID); it is re-pinned into every peer session per read (fn-own-conn-live-session) and read by the offer arm of fn-peer-decide-offer after the history test (and its served twins fn-pix-decide-offer, fn-pgc-decide-offer). KEYSTONES: fn-rof-record-within-capacity and fn-rof-record-keeps-a-bounded-memory-bounded (D27: never longer than the operator's refused-offer-capacity, default 4096); fn-rof-record-at-capacity-evicts-the-oldest; fn-peer-decide-transfer-refuses-what-the-octets-refuse (for any node and clock, a peer with an inbound half, a well-formed Message-ID and octets within the peer's size: the transfer decision is the octets' refusal); fn-prof-run-is-sound (every Message-ID a memory built by the record step holds names a transfer of it whose octets drew exactly the remembered reason); fn-prof-offer-answer-is-the-reparse (an offer of a held, not-yet-accepted Message-ID is refused for that reason, and the remembered transfer's own decision on this node from this peer is the same refusal). Not persisted (in memory only; a restart costs one re-parse per refused article and changes no answer). A future date and a missing Path are never remembered: the first depends on the clock, the second on the operator's relay-require-path.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-049"
+      ],
+      "depends_on": [
+        "PRF-207"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/refused-offers.lisp",
+        "books/peer-refused-offers.lisp",
+        "books/peer-inbound.lisp",
+        "books/owner.lisp",
+        "tests/acl2/transit-hygiene-tests.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "progress_note": "Lane transit-hygiene 2026-09-27: every form REPL-admitted on persvati (session th; relay-checks, refused-offers, peer-inbound, peer-refused-offers, owner, owner-invariants, the teeth book); READY FOR BATCH (the batch certification is the manifest this target will cite).",
+      "events": [
+        "fn-rof-record-within-capacity",
+        "fn-rof-record-keeps-a-bounded-memory-bounded",
+        "fn-rof-record-at-capacity-evicts-the-oldest",
+        "fn-peer-decide-transfer-refuses-what-the-octets-refuse",
+        "fn-prof-run-is-sound",
+        "fn-prof-offer-answer-is-the-reparse",
+        "fn-peer-decide-offer-answers-the-memory"
+      ]
+    },
+    {
+      "id": "PRF-236",
+      "title": "A relayed article dated beyond the operator's skew, with an unreadable date, with a malformed Path, or (when required) with no Path, is refused by name",
+      "statement": "books/relay-checks.lisp and books/peer-inbound.lisp fn-peer-decide-transfer (host/owner-host.lisp fn-owner-transit-decide calls it; the reply is fn-peer-transit-outcome-effects' 437/439 with fn-peer-reason-text). RFC 5537 section 3.6 step 2: :date-future when the Injection-Date (or, absent, the Date) read by fn-rck-date-instant (RFC 5322 section 3.3 with the section 4.3 obsolete forms) is more than fn-rck-skew seconds after the clock reading; the skew is the operator's relay-date-skew limit row, at most 86400 (fn-rck-skew-within-the-rfc; the admin word is refused above it, fn-rck-limit-valuep), 86400 without a row; without a usable clock the check does not decide and fn-peer-transfer defers :no-clock. Section 3.6 step 4: :date-syntax for a date field that is not a date-time, :path-syntax for a Path present once that is not RFC 5536 section 3.1.5's grammar (fn-rck-path-wellformedp), :no-path for a missing Path when the operator's relay-require-path is 1 (default 0: fn's own authored submissions carry no Path, PKT-674). Theorem subject: the concrete witnesses of tests/acl2/transit-hygiene-tests.lisp through fn-peer-decide-transfer and the keystone fn-peer-decide-transfer-refuses-what-the-octets-refuse (PRF-235) for the octet-decided reasons.",
+      "milestone": "M5",
+      "requirements": [
+        "NNT-050"
+      ],
+      "depends_on": [
+        "PRF-235"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/relay-checks.lisp",
+        "books/peer-inbound.lisp",
+        "books/native-admin.lisp",
+        "tests/acl2/transit-hygiene-tests.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "progress_note": "Lane transit-hygiene 2026-09-27: REPL-admitted on persvati; READY FOR BATCH.",
+      "events": [
+        "fn-rck-skew-within-the-rfc",
+        "fn-peer-decide-transfer-refuses-what-the-octets-refuse"
+      ]
     }
   ]
 }

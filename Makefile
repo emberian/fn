@@ -711,6 +711,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/peer-inbound-tests \
 	books/peer-transit-forms \
 	tests/acl2/peer-transit-forms-tests \
+	books/relay-checks \
+	books/refused-offers \
+	books/peer-refused-offers \
+	tests/acl2/transit-hygiene-tests \
 	books/nntp-auth \
 	tests/acl2/nntp-auth-tests \
 	books/served \

@@ -4320,6 +4320,65 @@
         "tools/power_loss.py"
       ],
       "expected": "No acknowledged POST missing or changed, no refused POST served, lost-reply POSTs whole or absent, recover/owner/status without fault, bindings and numbers stable, reclaim accounting whole, every control caught; on barrier=0 acknowledged POSTs are lost (the assumption broken, not fn)."
+    },
+    {
+      "id": "SCN-161",
+      "title": "Refused-offer memory: one article with a malformed Path offered by three peers is transferred and parsed once",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_transit_hygiene_refused_offer_memory_and_relay_checks"
+        ],
+        "native": true,
+        "record": "planning/evidence/transit-hygiene-2026-09-27.md"
+      },
+      "requirements": [
+        "NNT-049"
+      ],
+      "steps": [
+        "Node T with peers hyg1, hyg2, hyg3 (source addresses 127.0.0.1, .2, .3): hyg1 CHECK then TAKETHIS the article.",
+        "hyg2 and hyg3: CHECK and IHAVE the same Message-ID."
+      ],
+      "evidence": [
+        "tests/acl2/transit-hygiene-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "238 then 439 for hyg1.",
+        "438 and '435 not wanted; malformed Path' for hyg2 and hyg3; no transfer."
+      ]
+    },
+    {
+      "id": "SCN-162",
+      "title": "Relay date and Path checks: a future-dated article and a Path-less article are refused by name",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_transit_hygiene_refused_offer_memory_and_relay_checks"
+        ],
+        "native": true,
+        "record": "planning/evidence/transit-hygiene-2026-09-27.md"
+      },
+      "requirements": [
+        "NNT-050"
+      ],
+      "steps": [
+        "Operator: policy set relay-date-skew 3600; policy set relay-require-path 1.",
+        "Peer hyg2 IHAVEs an article dated two hours ahead, one with no Path, and one dated 30 minutes ahead with a Path."
+      ],
+      "evidence": [
+        "tests/acl2/transit-hygiene-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "437 transfer rejected; dated in the future",
+        "437 transfer rejected; no Path",
+        "235"
+      ]
     }
   ]
 }

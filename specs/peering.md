@@ -736,6 +736,46 @@ recognizer, so the served-path rule is not violated; but a CHECK storm at
 carries a history index twin (`fn-nntp-index-` style, `books/nntp-index.lisp`)
 with the equality theorem `fn-peer-history-index-agrees-with-history`.
 
+### Refused-offer memory (NNT-049)
+
+NNT-049: An article refused for a reason its octets decide is remembered, within the operator's bound, and a later offer of its Message-ID from any peer is refused from the memory without a transfer
+
+The octet-decided refusals are `fn-peer-intrinsic-refusal`'s
+(books/peer-inbound.lisp): not a valid article, the Message-ID the article
+carries is not the one offered, no Injection-Date or Date, a date that is not
+an RFC 5322 date-time, a malformed Path. They depend on the octets and the
+offered Message-ID only, so the refusal is the one every later transfer of
+the same octets draws from any peer. The owner records one at the transit
+outcome (books/owner.lisp `fn-own-transit-refused`), recomputing the reason
+from the in-flight octets rather than trusting the host's word, into a list
+bounded by the operator's `refused-offer-capacity` (`policy set
+refused-offer-capacity N`, default 4096, 0 turns it off) that evicts the
+oldest entry first (books/refused-offers.lisp). Every peer session reads it,
+re-pinned per read with the node, after the history test: CHECK answers 438,
+IHAVE `435 not wanted; <reason>`. A future date is never remembered (it is
+acceptable later) and neither is a missing Path (the operator's to require).
+The memory is in memory only and is not persisted: a restart costs one
+re-parse per refused article and changes no answer. Its soundness is
+PRF-235 (books/peer-refused-offers.lisp `fn-prof-offer-answer-is-the-reparse`).
+
+### Relay date and Path checks (NNT-050)
+
+NNT-050: A relayed article dated more than the operator's skew (at most 24 hours) into the future, with an unreadable date, with a malformed Path, or with no Path when the operator requires one, is refused by name
+
+RFC 5537 section 3.6 step 2 is `:date-future` (437 / 439 "dated in the
+future"): the Injection-Date, or if absent the Date, read by
+books/relay-checks.lisp `fn-rck-date-instant`, is more than the operator's
+`relay-date-skew` seconds after the owner's clock reading (`policy set
+relay-date-skew SECONDS`, at most 86400, which is also the default). Without
+a usable clock reading the transfer defers (`:no-clock`). Step 4:
+`:date-syntax` for a date field that is not a date-time, `:path-syntax` for a
+Path that is not RFC 5536 section 3.1.5's grammar (the tail entry may also
+be a dotted name), and `:no-path` for a missing Path when the operator set
+`relay-require-path 1`. Requiring Path is off by default: this node's own
+authored submissions (the hybrid-signed author path and the BP application
+path) store and feed exact octets without Path, and a peer fn node requiring
+one would refuse them (PKT-674).
+
 ## 3. The outbound feed machine
 
 ### 3.0.1 Proposed versioned TLS transport profile

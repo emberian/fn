@@ -242,7 +242,7 @@
                                  (fn-own-config o) (fn-own-queue o) nil
                                  (if (equal completion :durable)
                                      (fn-own-feed-durable o sub)
-                                   (fn-own-feeds o)))))
+                                   (fn-own-feeds o)) (fn-own-refused o))))
           (cons (fn-served-result-effects
                  (fn-served-post-outcome
                   (fn-served-make-conn-group-indexed (fn-own-conn-wire conn)
@@ -286,7 +286,7 @@
                                   (fn-own-config o) (fn-own-queue o) nil
                                   (if (equal (fn-own-outcome-completion o word) :durable)
                                       (fn-own-feed-durable o (fn-own-inflight o))
-                                    (fn-own-feeds o)))))))))
+                                    (fn-own-feeds o)) (fn-own-refused o))))))))
 
 
 ; -----------------------------------------------------------------------------

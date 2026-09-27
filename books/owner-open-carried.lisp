@@ -52,7 +52,7 @@
   (fn-auth-make-session
    (fn-peer-make-session (fn-post-make-session (fn-acar-open-session archive)
                                                nil)
-                         nil nil 0 nil nil)
+                         nil nil 0 nil nil nil)
    (if (fn-auth-configp acfg) acfg (fn-auth-open-config))
    nil nil nil nil))
 
@@ -73,7 +73,7 @@
   (declare (xargs :guard t))
   (fn-peer-make-session (fn-post-make-session (fn-acar-open-session archive)
                                               nil)
-                        nil nil 0 node cfg))
+                        nil nil 0 node cfg nil))
 
 (defthm fn-ocar-peer-open-reader-is-peer-open-session
   (implies (and (fn-statep archive)
@@ -143,7 +143,7 @@
         (cons (fn-served-result-effects opened)
               (fn-own-make (fn-own-store o) view (cons conn (fn-own-conns o))
                            (1+ (nfix id)) (fn-own-max-conns o) (fn-own-pending o)
-                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o))))
+                           (fn-own-ledger o) (fn-own-clock o) (fn-own-facts o) (fn-own-config o) (fn-own-queue o) (fn-own-inflight o) (fn-own-feeds o) (fn-own-refused o))))
     (cons nil o)))
 
 (defthm fn-ocar-own-open-is-own-open

@@ -3902,6 +3902,49 @@
         "planning/evidence/transit-pipelining-2026-09-27.md"
       ],
       "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
+    },
+    {
+      "id": "NNT-049",
+      "title": "An article refused for a reason its octets decide is remembered, within the operator's bound, and a later offer of its Message-ID from any peer is refused from the memory without a transfer",
+      "specification": "specs/peering.md#refused-offer-memory-nnt-049",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-235"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/refused-offers.lisp",
+        "books/peer-refused-offers.lisp",
+        "books/owner.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.3 (the relaying agent's history) permits it; remembering rejects is INN's practice; that the memory's answer is the re-parse's, bounded by the operator's refused-offer-capacity with oldest-first eviction and kept in memory only, is the fn guarantee (D27)."
+    },
+    {
+      "id": "NNT-050",
+      "title": "A relayed article dated more than the operator's skew (at most 24 hours) into the future, with an unreadable date, with a malformed Path, or with no Path when the operator requires one, is refused by name",
+      "specification": "specs/peering.md#relay-date-and-path-checks-nnt-050",
+      "milestone": "M5",
+      "status": "implemented",
+      "proof_targets": [
+        "PRF-236"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/relay-checks.lisp",
+        "books/peer-inbound.lisp",
+        "tests/test_native_peering.py",
+        "planning/evidence/transit-hygiene-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 5537 section 3.6 step 2 (MUST reject beyond 24 hours; MAY use a smaller margin) is an RFC requirement; step 4 (SHOULD reject without the mandatory fields; MAY reject invalid contents) is RFC guidance fn follows for the date and a present Path; requiring Path is local policy, off by default (PKT-674)."
     }
   ]
 }

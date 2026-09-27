@@ -7509,6 +7509,61 @@
           "name": "fn-apr-foundp-is-article-found"
         }
       ]
+    },
+    {
+      "id": "PRF-235",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rof-record-within-capacity",
+          "note": "KEYSTONE (D27 bound). Subject fn-rof-record under fn-peer-refused-record, called by books/owner.lisp fn-own-transit-refused. Teeth: tests/acl2/transit-hygiene-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rof-record-keeps-a-bounded-memory-bounded",
+          "note": "KEYSTONE (bound from the empty memory). Teeth: tests/acl2/transit-hygiene-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-rof-record-at-capacity-evicts-the-oldest",
+          "note": "KEYSTONE (oldest-first eviction); must-fail without the at-capacity hypothesis in tests/acl2/transit-hygiene-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-transfer-refuses-what-the-octets-refuse",
+          "note": "KEYSTONE. Subject fn-peer-decide-transfer (host/owner-host.lisp fn-owner-transit-decide). Positive witness from two peers, removal witnesses and a must-fail per hypothesis in tests/acl2/transit-hygiene-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prof-run-is-sound",
+          "note": "KEYSTONE (soundness over the transfers the memory was built from). Witness: tests/acl2/transit-hygiene-tests.lisp (*th-run*, *th-w*)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-prof-offer-answer-is-the-reparse",
+          "note": "KEYSTONE. Subject fn-peer-decide-offer (served: fn-pgc-decide-offer = fn-pix-decide-offer = fn-peer-decide-offer, reached from host/owner-host.lisp fn-owner-chunk -> fn-own-read with the memory re-pinned by fn-own-conn-live-session). Teeth: tests/acl2/transit-hygiene-tests.lisp; native: tests/test_native_peering.py test_transit_hygiene_refused_offer_memory_and_relay_checks."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-offer-answers-the-memory",
+          "note": "-unfolds: the offer arm; must-fail without the history hypothesis in tests/acl2/transit-hygiene-tests.lisp."
+        }
+      ]
+    },
+    {
+      "id": "PRF-236",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-rck-skew-within-the-rfc",
+          "note": "The operator's skew never exceeds RFC 5537 section 3.6 step 2's 24 hours. Witnesses in tests/acl2/transit-hygiene-tests.lisp."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-decide-transfer-refuses-what-the-octets-refuse",
+          "note": "KEYSTONE shared with PRF-235: :path-syntax and :date-syntax are octet-decided refusals. :date-future and :no-path are witnessed through fn-peer-decide-transfer in tests/acl2/transit-hygiene-tests.lisp and natively in tests/test_native_peering.py."
+        }
+      ]
     }
   ]
 }
