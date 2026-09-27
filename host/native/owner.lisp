@@ -2247,8 +2247,11 @@ members."
 (defun fnn-owner-commit-step-action (phase event)
   "ACL2's action for the commit's PHASE and EVENT (fn-ocs-commit-step), for
 the inline commit, which holds no gate phase (only at an idle owner: while a
-batch is in flight the gate admits no class that commits inline)."
-  (let ((action (first (fnn-core 'fn-ocs-commit-step phase event))))
+batch is in flight the gate admits no class that commits inline).
+fn-ocs-commit-step answers (mv ACTION PHASE); fnn-core's value is ACTION.  (It
+read (first ACTION), a car of a keyword, which faulted at address 0 on every
+bound submission and BP transit since scheduler-2-rebase 14064da6a.)"
+  (let ((action (fnn-core 'fn-ocs-commit-step phase event)))
     (unless (member action '(:barrier :complete :stop :none :fault))
       (fnn-fault "owner returned a malformed commit step ~a" action))
     action))
