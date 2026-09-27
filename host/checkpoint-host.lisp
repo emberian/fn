@@ -378,8 +378,8 @@
   (if (fn-store-pack-memo-activep state)
       (let* ((memo (fn-ccco-remember-all chain bound (fn-store-pack-memo state)))
              (state (f-put-global 'fn-store-pack-memo memo state)))
-        (value (fn-ccco-coverage-chain chain observed-count frontier bound memo)))
-    (value (fn-ccco-coverage-chain chain observed-count frontier bound nil))))
+        (value (fn-ccco-coverage-headers chain observed-count frontier bound memo)))
+    (value (fn-ccco-coverage-headers chain observed-count frontier bound nil))))
 
 ; The line `checkpoint pack' prints for the no-op (exit 0, nothing written).
 (defun fn-store-checkpoint-pack-nothing-line (boundary count)

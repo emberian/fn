@@ -111,29 +111,30 @@
         (fn-acceptedp *vjt-c* (fn-ctl-visible-articles arts *vjt-ws* *vjt-verdicts*))
         (fn-ctl-withdrawal-status *vjt-t* *vjt-ws* arts *vjt-verdicts*))))
 
-; The buffer entry, run on a live local buffer as the host runs it.
-(defun vjt-buffer-action (msgid payload groups s)
-  (declare (xargs :guard (fn-cbor-octet-listp payload) :verify-guards nil))
-  (with-local-stobj fn-octets
-    (mv-let (r fn-octets)
-      (let ((fn-octets (fn-octets-from-list payload fn-octets)))
-        (mv (fn-rclb-existing-action msgid fn-octets groups s) fn-octets))
-      r)))
+;; The entry the host calls (books/store-intern.lisp fn-store-existing-action,
+;; which the buffer path reaches through fn-pidx-existing-action), over the
+;; arena that interned the Store's rows (*vjt-prior*: T, C, T's tombstone).
+(defun vjt-entry-in (msgid payload groups s fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-hrt-events *vjt-prior* nil 0 fn-arena)
+    (declare (ignore rows))
+    (mv (fn-store-existing-action msgid payload groups s fn-arena) fn-arena)))
+(defun vjt-entry (msgid payload groups s)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena) (vjt-entry-in msgid payload groups s fn-arena) r)))
 
 ; -----------------------------------------------------------------------------
 ; fn-vj-a-completion-keeps-a-held-message-id-answered.  Witness: T held
 ; before C's completion; after it (T withdrawn) the same source is
-; :duplicate and a changed one :conflict on both entries.
+; :duplicate and a changed one :conflict at the entry the host calls.
 (assert-event (and (stringp *vjt-t*) (fn-acceptedp *vjt-t* (fn-vj-articles *vjt-completing*))))
 (assert-event
- (and (equal (fn-rcl-existing-action *vjt-t* *vjt-t-payload* '("fn.test") *vjt-two*) :duplicate)
-      (equal (vjt-buffer-action *vjt-t* *vjt-t-payload* '("fn.test") *vjt-two*) :duplicate)
-      (equal (fn-rcl-existing-action *vjt-t* *vjt-changed* '("fn.test") *vjt-two*) :conflict)
-      (equal (vjt-buffer-action *vjt-t* *vjt-changed* '("fn.test") *vjt-two*) :conflict)))
-; The same outcomes through the entry the host calls after the flip
-; (store-intern fn-store-existing-action, here fn-hrt-existing-action over
-; the arena that interned the Store's rows): the offered octets are compared
-; with the bytes under T's handle.
+ (and (equal (vjt-entry *vjt-t* *vjt-t-payload* '("fn.test") *vjt-two*) :duplicate)
+      (equal (vjt-entry *vjt-t* *vjt-changed* '("fn.test") *vjt-two*) :conflict)))
+; The same outcomes as D25's verdict over alpha (held-rows-tests'
+; fn-hrt-existing-action; fn-store-existing-action-is-the-verdict-over-alpha).
 (assert-event
  (and (equal (fn-hrt-existing-action *vjt-prior* *vjt-t* *vjt-t-payload* '("fn.test") *vjt-two*)
              :duplicate)
@@ -144,7 +145,7 @@
 (assert-event (and (stringp *vjt-absent*)
                    (not (fn-acceptedp *vjt-absent* (fn-vj-articles *vjt-completing*)))))
 (must-fail
- (assert-event (member-equal (vjt-buffer-action *vjt-absent* *vjt-t-payload* '("fn.test")
+ (assert-event (member-equal (vjt-entry *vjt-absent* *vjt-t-payload* '("fn.test")
                                                 *vjt-two*)
                              '(:duplicate :conflict))))
 ; Teeth (2), corrupted state: drop (stringp msgid).  A Store whose article
@@ -160,7 +161,7 @@
     (update-nth 3 (update-nth (vjt-index-of acc node 0) acc2 node) *vjt-completing*)))
 (assert-event (and (not (stringp nil)) (fn-acceptedp nil (fn-vj-articles *vjt-corrupt*))))
 (must-fail
- (assert-event (member-equal (fn-rcl-existing-action nil *vjt-t-payload* '("fn.test")
+ (assert-event (member-equal (vjt-entry nil *vjt-t-payload* '("fn.test")
                                                      (fn-sn-finish *vjt-corrupt*))
                              '(:duplicate :conflict))))
 
@@ -190,14 +191,12 @@
                                        (fn-article-payload
                                         (fn-find-article *vjt-t* (fn-vj-articles *vjt-reclaimed*)))))))
 (assert-event
- (and (equal (fn-rcl-existing-action *vjt-t* *vjt-t-payload* '("fn.test") *vjt-reclaimed*)
+ (and (equal (vjt-entry *vjt-t* *vjt-t-payload* '("fn.test") *vjt-reclaimed*)
              :duplicate)
-      (equal (vjt-buffer-action *vjt-t* *vjt-t-payload* '("fn.test") *vjt-reclaimed*)
-             :duplicate)
-      (equal (vjt-buffer-action *vjt-t* *vjt-changed* '("fn.test") *vjt-reclaimed*)
+      (equal (vjt-entry *vjt-t* *vjt-changed* '("fn.test") *vjt-reclaimed*)
              :conflict)))
-; Through the post-flip entry over the arena (T's payload is now the
-; tombstone handle 2).
+; The same as D25's verdict over alpha (T's payload is now the tombstone
+; handle 2).
 (assert-event
  (and (equal (fn-hrt-existing-action *vjt-prior* *vjt-t* *vjt-t-payload* '("fn.test")
                                      *vjt-reclaimed*)
@@ -208,7 +207,7 @@
 ; Teeth (1): drop "held".
 (assert-event (not (fn-acceptedp *vjt-absent* (fn-state-articles *vjt-acc*))))
 (must-fail
- (assert-event (member-equal (vjt-buffer-action *vjt-absent* *vjt-t-payload* '("fn.test")
+ (assert-event (member-equal (vjt-entry *vjt-absent* *vjt-t-payload* '("fn.test")
                                                 *vjt-reclaimed*)
                              '(:duplicate :conflict))))
 ; Teeth (2): drop "S2 is the reclaimed Store": the initial Store holds nothing.
@@ -217,7 +216,7 @@
                           (fn-state-articles (fn-rcl-reclaim-state *vjt-acc* *vjt-t*
                                                                    *vjt-tomb*)))))
 (must-fail
- (assert-event (member-equal (vjt-buffer-action *vjt-t* *vjt-t-payload* '("fn.test")
+ (assert-event (member-equal (vjt-entry *vjt-t* *vjt-t-payload* '("fn.test")
                                                 *vjt-empty*)
                              '(:duplicate :conflict))))
 ; Teeth (3), corrupted state: drop (stringp msgid).
@@ -237,7 +236,7 @@
                           (fn-state-articles (fn-rcl-reclaim-state *vjt-corrupt-acc*
                                                                    *vjt-t* *vjt-tomb*)))))
 (must-fail
- (assert-event (member-equal (fn-rcl-existing-action nil *vjt-t-payload* '("fn.test")
+ (assert-event (member-equal (vjt-entry nil *vjt-t-payload* '("fn.test")
                                                      *vjt-corrupt-reclaimed*)
                              '(:duplicate :conflict))))
 
@@ -246,7 +245,7 @@
 ; (connection 0 in flight, nothing consumed) over the withdrawn Store and
 ; over the reclaimed one.
 (defun vjt-reply (o id msgid payload s)
-  (car (fn-own-outcome o id (vjt-buffer-action msgid payload '("fn.test") s))))
+  (car (fn-own-outcome o id (vjt-entry msgid payload '("fn.test") s))))
 (defconst *vjt-441*
   (list (fn-pb-served-reply *pbt-owner* 0 :duplicate)
         (fn-pb-served-reply *pbt-owner* 0 :conflict)))

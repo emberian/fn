@@ -196,33 +196,41 @@ OS's share, the process's limits and FN_INIT_BUDGET_MB; or a refusal."
                  ;; says which connections the reservation's threads hold.
                  (fnn-core 'fn-heap-reserve-run-connections
                            (fnn-core 'fn-native-operator-host-result-run-max-connections
-                                     result))))))))
+                                     result)))
+               ;; ACL2's native action for ARGV: the compaction verbs get
+               ;; their own figure (fn-heap-reserve-operation-decide, PKT-686).
+               (fnn-core 'fn-native-operator-host-result-native-action result))))))
     (error () nil)))
 
 (defun fnn-heap-command-profile (argv)
-  "The command's store profile (or NIL) and the client connections its run
-admits (0 when it is not a run)."
+  "The command's store profile (or NIL), the client connections its run
+admits (0 when it is not a run) and ACL2's native action for an operator
+command (NIL otherwise: a developer `store ROOT' verb gets the serve
+figure)."
   (cond ((and (string= (or (first argv) "") "operator") (second argv))
-         (multiple-value-bind (profile connections)
+         (multiple-value-bind (profile connections action)
              (fnn-heap-operator-profile (second argv) (cddr argv))
-           (values profile (if (integerp connections) connections 0))))
+           (values profile (if (integerp connections) connections 0) action)))
         ((and (string= (or (first argv) "") "store") (third argv))
-         (values (fnn-heap-store-profile (second argv)) 0))
-        (t (values nil 0))))
+         (values (fnn-heap-store-profile (second argv)) 0 nil))
+        (t (values nil 0 nil))))
 
-;; The whole reservation (books/heap-reservation.lisp fn-heap-reserve-decide,
-;; HST-025): heap-figure's heap, then the thread stacks the node's threads
-;; reserve beside it; the launcher passes `--control-stack-size KB' too.
-(defun fnn-heap-reservation (profile connections)
-  (fnn-core 'fn-heap-reserve-decide profile (fnn-heap-core-octets)
+;; The whole reservation (books/heap-reservation.lisp
+;; fn-heap-reserve-operation-decide, HST-025, PKT-686): heap-figure's heap for
+;; the command ACTION names (the compaction verbs' operation figure, every
+;; other command's fn-heap-reserve-decide), then the thread stacks the node's
+;; threads reserve beside it; the launcher passes `--control-stack-size KB'
+;; too.
+(defun fnn-heap-reservation (profile connections &optional action)
+  (fnn-core 'fn-heap-reserve-operation-decide action profile (fnn-heap-core-octets)
             +fnn-gc-nursery-octets+ (fnn-heap-observations) connections))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")
     (error 'fnn-usage-error :message "heap -- ARGV..."))
-  (let* ((decision (multiple-value-bind (profile connections)
+  (let* ((decision (multiple-value-bind (profile connections action)
                        (fnn-heap-command-profile argv)
-                     (fnn-heap-reservation profile connections)))
+                     (fnn-heap-reservation profile connections action)))
          (line (fnn-core 'fn-heap-reserve-report-line decision))
          (code (fnn-core 'fn-heap-decision-exit-code decision)))
     (if (eql code +fnn-exit-ok+)

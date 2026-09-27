@@ -465,6 +465,19 @@ with it: `start` records the lane (`--lane`, `$FN_LANE`, or the tree's name:
 lane, age, idle time and deadline, and `reap [--lane NAME | --older-than S]
 [--root TREE ...]` stops dead, overdue or a merged lane's sessions, signalling
 only the PIDs its state names (PKT-346).
+Each answer carries ACL2's own `Time:` and prover-step count for the form,
+which do not move with the box's load as elapsed seconds do; `send` takes
+several forms, `send-range NAME BOOK --from EVENT --until EVENT` sends a
+stretch of a book with one cost line per form and the totals (`--keep-going`
+lists every refusal), `forms BOOK` numbers them for `#N`, and `probe NAME
+EVENT [--hints H]` proves a renamed copy of an event in a second session
+loaded up to just before it, leaving the first where it was. A trimmed
+answer says how many lines it cut and where the whole one is, and the
+diagnostic forms (`pso`, `pe`, `pbt`, `show-accumulated-persistence`) are
+never trimmed. A dependency edited since its certificate no longer stops
+`start` blind: it names the book whose own bytes are uncertified, and
+`--certify-missing` certifies it first or `--source-deps` loads it from
+source in the session, marked as uncertified in `status`.
 
 **And when the closure is red, one run tells you every reason.**
 [`tools/triage.py`](../tools/triage.py) answers the question an ordinary

@@ -6,10 +6,11 @@
 ; of books/owner-served-invariants.lisp fn-own-sub-stored-octets, which
 ; host/owner-host.lisp fn-owner-take stages).  Those lines are injecting-node
 ; metadata, outside the authored source: the host's verdict
-; (fn-rcl-existing-action, reached through fn-rclb-existing-action and
+; (fn-store-existing-action, books/store-intern.lisp, reached through
 ; fn-pidx-existing-action at host/owner-host.lisp
-; fn-owner-existing-action-buffer and fn-owner-prepare-buffer) reads both
-; payloads through books/cancel-lock-lines.lisp fn-cll-skip.  So:
+; fn-owner-existing-action-buffer and fn-owner-prepare-buffer; the held
+; payload read through the payload arena by its handle) reads both payloads
+; through books/cancel-lock-lines.lisp fn-cll-skip.  So:
 ;
 ;   * a same-source retry under the held Message-ID is "already stored
 ;     here" whatever account and key epoch posted either copy
@@ -36,6 +37,11 @@
                            fn-inj-decision-octets fn-inj-decision-msgid
                            fn-find-article fn-cl-served-payload
                            fn-ctl-received-fields fn-cll-lines)))
+
+; An absent article's payload (nil) reads as no bytes.
+(local (defthm fn-cld-no-handle-reads-no-bytes
+  (equal (fn-handle-bytes nil fn-arena) nil)
+  :hints (("Goal" :in-theory (enable fn-handle-bytes)))))
 
 ; The verdict reads the two projections: when both projections are this
 ; agent's injections, the payloads are the same article exactly when the
@@ -155,6 +161,21 @@
                                     (d (fn-inj-decide source config obs))))
             :in-theory (disable fn-own-sub-stored-octets fn-ipp-injected-octets)))))
 
+; What an injected submission stores is not empty (an absent held article's
+; payload reads as no bytes, so it is no retry's held article).
+(local
+ (defthm fn-cld-stored-octets-of-an-injection-are-not-empty
+   (implies (and (equal (fn-own-sub-decision sub) (fn-inj-decide source config obs))
+                 (fn-inj-injectedp (fn-inj-decide source config obs)))
+            (fn-own-sub-stored-octets cfg sub ring))
+   :rule-classes nil
+   :hints (("Goal" :use (fn-cld-projection-of-a-stored-injection
+                         (:instance fn-ipp-an-injection-opens-with-p-or-i
+                                    (secret ring) (login (fn-own-sub-login sub))))
+            :in-theory (disable fn-own-sub-stored-octets fn-ipp-injected-octets
+                                fn-cld-projection-of-a-stored-injection
+                                fn-ipp-an-injection-opens-with-p-or-i)))))
+
 (local
  (defthm fn-cld-injected-octets-are-their-own-projection
    (implies (fn-inj-injectedp (fn-inj-decide source config obs))
@@ -241,8 +262,9 @@
 ; source injected at clock A, under any key ring RING-A and account; the
 ; same source submitted again at clock B by any account under any key ring
 ; RING-B, under the same Message-ID and groups, is "already stored here".
-; Subject: fn-rcl-existing-action over fn-own-sub-stored-octets, the host's
-; verdict over the octets fn-owner-take stages.
+; Subject: fn-store-existing-action over fn-own-sub-stored-octets, the
+; host's verdict over the octets fn-owner-take stages; the held article's
+; bytes are read through the arena FN-ARENA by its handle.
 (defthm fn-cld-a-retry-by-any-account-or-epoch-is-already-stored
   (let ((held (fn-find-article
                msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
@@ -250,19 +272,21 @@
         (db (fn-inj-decide source config b)))
     (implies (and (equal (fn-own-sub-decision sub-a) da)
                   (equal (fn-own-sub-decision sub-b) db)
-                  (equal (fn-article-payload held)
+                  (equal (fn-handle-bytes (fn-article-payload held) fn-arena)
                          (fn-own-sub-stored-octets cfg-a sub-a ring-a))
                   (fn-inj-injectedp da)
                   (fn-inj-injectedp db)
                   (equal (fn-inj-decision-msgid da) (fn-record-string-octets msgid))
                   (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid))
                   (equal groups (fn-article-groups held)))
-             (equal (fn-rcl-existing-action
-                     msgid (fn-own-sub-stored-octets cfg-b sub-b ring-b) groups s)
+             (equal (fn-store-existing-action
+                     msgid (fn-own-sub-stored-octets cfg-b sub-b ring-b) groups s fn-arena)
                     :duplicate)))
   :hints (("Goal" :cases ((fn-find-article
                             msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
                   :use ((:instance fn-cld-stored-octets-of-an-injection-are-not-a-tombstone
+                                   (sub sub-a) (source source) (obs a) (cfg cfg-a) (ring ring-a))
+                        (:instance fn-cld-stored-octets-of-an-injection-are-not-empty
                                    (sub sub-a) (source source) (obs a) (cfg cfg-a) (ring ring-a))
                         (:instance fn-cld-projection-of-a-stored-injection
                                    (sub sub-a) (source source) (obs a) (cfg cfg-a) (ring ring-a))
@@ -271,8 +295,10 @@
                                    (login (fn-own-sub-login sub-a)))
                         (:instance fn-cld-two-stored-injections-are-one-article-iff-one-source
                                    (source1 source) (source2 source)))
-                  :in-theory (e/d (fn-rcl-existing-action fn-rcl-same-articlep)
-                                  (fn-rcl-tombstonep fn-article-groups fn-ipp-injected-octets
+                  :in-theory (e/d (fn-store-existing-action fn-rcl-same-articlep)
+                                  (fn-handle-bytes
+                                   fn-store-existing-action-is-the-verdict-over-alpha
+                                   fn-rcl-tombstonep fn-article-groups fn-ipp-injected-octets
                                    fn-own-sub-stored-octets fn-pb-same-articlep
                                    fn-pb-path-agent fn-cll-skip fn-inj-decide
                                    fn-inj-injectedp))))
@@ -289,19 +315,21 @@
         (db (fn-inj-decide source2 config b)))
     (implies (and (equal (fn-own-sub-decision sub-a) da)
                   (equal (fn-own-sub-decision sub-b) db)
-                  (equal (fn-article-payload held)
+                  (equal (fn-handle-bytes (fn-article-payload held) fn-arena)
                          (fn-own-sub-stored-octets cfg-a sub-a ring-a))
                   (fn-inj-injectedp da)
                   (fn-inj-injectedp db)
                   (equal (fn-inj-decision-msgid da) (fn-record-string-octets msgid))
                   (equal (fn-inj-decision-msgid db) (fn-record-string-octets msgid))
                   (not (equal source1 source2)))
-             (equal (fn-rcl-existing-action
-                     msgid (fn-own-sub-stored-octets cfg-b sub-b ring-b) groups s)
+             (equal (fn-store-existing-action
+                     msgid (fn-own-sub-stored-octets cfg-b sub-b ring-b) groups s fn-arena)
                     :conflict)))
   :hints (("Goal" :cases ((fn-find-article
                             msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
                   :use ((:instance fn-cld-stored-octets-of-an-injection-are-not-a-tombstone
+                                   (sub sub-a) (source source1) (obs a) (cfg cfg-a) (ring ring-a))
+                        (:instance fn-cld-stored-octets-of-an-injection-are-not-empty
                                    (sub sub-a) (source source1) (obs a) (cfg cfg-a) (ring ring-a))
                         (:instance fn-cld-projection-of-a-stored-injection
                                    (sub sub-a) (source source1) (obs a) (cfg cfg-a) (ring ring-a))
@@ -310,8 +338,10 @@
                                    (login (fn-own-sub-login sub-a)))
                         (:instance fn-cld-two-stored-injections-are-one-article-iff-one-source
                                    (source1 source1) (source2 source2)))
-                  :in-theory (e/d (fn-rcl-existing-action fn-rcl-same-articlep)
-                                  (fn-rcl-tombstonep fn-article-groups fn-ipp-injected-octets
+                  :in-theory (e/d (fn-store-existing-action fn-rcl-same-articlep)
+                                  (fn-handle-bytes
+                                   fn-store-existing-action-is-the-verdict-over-alpha
+                                   fn-rcl-tombstonep fn-article-groups fn-ipp-injected-octets
                                    fn-own-sub-stored-octets fn-pb-same-articlep
                                    fn-pb-path-agent fn-cll-skip fn-inj-decide
                                    fn-inj-injectedp))))

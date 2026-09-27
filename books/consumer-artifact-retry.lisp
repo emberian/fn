@@ -6,9 +6,11 @@
 ; the author's keys and keyring generation -- and reconciles an attempt
 ; without a durable answer by resending exactly that artifact.  What it
 ; relies on from fn is D25 at the signed control route: the host calls
-; fn-rcl-existing-action (host/owner-host.lisp fn-owner-existing-action)
-; from host/native/hybrid-control.lisp fnn-hybrid-control-author on the
-; octets fn-hsig-injected-carrier-octets computes, before it commits.
+; fn-store-existing-action (books/store-intern.lisp; host/owner-host.lisp
+; fn-owner-existing-action) from host/native/hybrid-control.lisp
+; fnn-hybrid-control-author on the octets fn-hsig-injected-carrier-octets
+; computes, before it commits; the held carrier is read through the payload
+; arena by its handle.
 ;
 ;   * The same artifact resent is :duplicate.  That is
 ;     fn-sr-a-signed-retry-is-already-stored (books/source-routes, PRF on
@@ -278,11 +280,11 @@
         (oa (fn-hsig-injected-carrier-octets source principal keys s1 config a))
         (ob (fn-hsig-injected-carrier-octets source principal keys s2 config b)))
     (implies (and oa ob
-                  (equal (fn-article-payload held) oa)
+                  (equal (fn-handle-bytes (fn-article-payload held) fn-arena) oa)
                   (equal (fn-inj-decision-msgid pa) (fn-record-string-octets msgid))
                   (equal (fn-inj-decision-msgid pb) (fn-record-string-octets msgid))
                   (not (equal s1 s2)))
-             (equal (fn-rcl-existing-action msgid ob groups s) :conflict)))
+             (equal (fn-store-existing-action msgid ob groups s fn-arena) :conflict)))
   :hints (("Goal" :in-theory (theory 'minimal-theory)
            :use ((:instance fn-cra-carrier-octets-are-an-injection
                   (signatures s1) (obs a))

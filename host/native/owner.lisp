@@ -1162,6 +1162,12 @@ follows is justified only by this line."
                        'fn-owner-prepare-buffer (fnn-octet-list msgid) codes
                        (fnn-octet-list obligation) (fnn-octet-list subject)
                        (fnn-octet-list evidence) charge)))
+                ;; The prepare reads the arena only; on acceptance it answers
+                ;; :seal-buffer and the host seals the buffer's payload
+                ;; (host/owner-host.lisp fn-owner-prepare-buffer).
+                (when (eq prepared :seal-buffer)
+                  (fnn-seal-live-buffer)
+                  (setq prepared :prepared))
                 (unless (eq prepared :prepared)
                   (setf (fnn-store-fenced store) t)
                   (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation)
@@ -1638,12 +1644,12 @@ client, which can issue POSITION after reconnecting."
                 (:status
                  (fnn-owner-core 'fn-owner-consumer-local-status first))
                 (:poll
-                 (fnn-owner-core 'fn-owner-consumer-local-poll first))
+                 (fnn-core-arena-state 'fn-owner-consumer-local-poll first))
                 ;; PRF-234: a consumer bound to an account; SECOND is the
                 ;; account's password, which only ACL2 compares.
                 (:bound-poll
-                 (fnn-owner-core 'fn-owner-consumer-local-bound-poll
-                                 first second))
+                 (fnn-core-arena-state 'fn-owner-consumer-local-bound-poll
+                                       first second))
                 (:bound-ack
                  (fnn-owner-core 'fn-owner-consumer-local-bound-ack
                                  first second))
@@ -1768,8 +1774,8 @@ step follows a signal, a spurious wakeup or the sleep's end."
                   (step (fnn-owner-serialized
                          service nil
                          (lambda ()
-                           (fnn-owner-core 'fn-owner-consumer-local-wait-step
-                                           consumer secret
+                           (fnn-core-arena-state 'fn-owner-consumer-local-wait-step
+                                                 consumer secret
                                            (fnn-owner-wait-elapsed-ms start)
                                            seconds)))))
              (case (and (consp step) (first step))
