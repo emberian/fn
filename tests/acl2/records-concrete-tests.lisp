@@ -279,12 +279,14 @@
 ; store-level observation's guard, fn-sn-statep, is needed for its compiled
 ; code (the file step reads the files' phase, fn-sf-statep's), so a copy
 ; with guard t is refused.
-(must-fail-checked
- (defun rcon-t-sn-io-unguarded (s operation result)
-   (declare (xargs :guard t :verify-guards t))
-   (let* ((old-files (fn-sn-files s))
-          (files (fn-rcon-sn-file-step old-files operation result)))
-     (fn-sn-update s files (fn-sn-node s)))))
+; must-fail-checked checks a defun only through its guard verification: the
+; copy is admitted without guards, and verifying them is what fails.
+(defun rcon-t-sn-io-unguarded (s operation result)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((old-files (fn-sn-files s))
+         (files (fn-rcon-sn-file-step old-files operation result)))
+    (fn-sn-update s files (fn-sn-node s))))
+(must-fail-checked (verify-guards rcon-t-sn-io-unguarded))
 (assert-event
  (and (eq (symbol-class 'fn-rcon-store-event-encode (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-rcon-sbud-pending-sequence (w state)) :common-lisp-compliant)

@@ -18,11 +18,13 @@
 (defconst *pit-oc* *pcar-t-oc*)
 (defconst *pit-record* *pcar-t-record*)
 ; Held rows (records flip), as owner-served-invariants-tests' osi-record-of.
+; Spelled exactly as post-identity-index-tests spells them, which this book
+; includes below (a second, different defun of the same name is refused).
+(defun pit-record-wire-under (msgid)
+  (fn-record-make 2 2 2 msgid (fn-own-sub-octets *osi-sub*) '("fn.letters")
+                  "own-pin:pit" "own-content:pit" "own-release:pit" 2 841000000))
 (defun pit-record-under (msgid)
-  (fn-hrt-row-at
-   (fn-record-make 2 2 2 msgid (fn-own-sub-octets *osi-sub*) '("fn.letters")
-                   "own-pin:pit" "own-content:pit" "own-release:pit" 2 841000000)
-   2))
+  (fn-hrt-row-at (pit-record-wire-under msgid) 2))
 ; "<one@example>" is held by the owner's node; "<fresh@example>" is not.
 (defconst *pit-dup-record* (pit-record-under "<one@example>"))
 (defconst *pit-fresh-record* (pit-record-under "<fresh@example>"))
