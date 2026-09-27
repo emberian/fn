@@ -628,3 +628,53 @@
 
 (assert-event (equal (cet-signed-exec *cet-sws*)
                      (list '(t t) t t 2 (list *cet-w0* *cet-signed-article*) 1)))
+
+; -----------------------------------------------------------------------------
+; The lemmas books/served-catalog-owner.lisp registers under PRF-201 to
+; discharge the full open's and the recovery's row hypotheses
+; (keystone-audit 2026-09-27: none had a witness).  WS is the decoded
+; one-article journal the full-open witness interns.
+;; The intern on a fresh arena: (rows-not-bad composites-okp arena-p).
+(defun cet-intern-okp (ws generation)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (mv-let (rows fn-arena)
+        (fn-intern-events ws nil generation fn-arena)
+        (mv (list (not (equal rows :bad))
+                  (and (not (equal rows :bad)) (fn-rows-composites-okp rows fn-arena))
+                  (fn-arena-p fn-arena))
+            fn-arena))
+      r)))
+; fn-sca-intern-events-accepts-wire-events: WS a true list whose intern is
+; not :bad is wire events.  Removal of "not :bad": a journal with a number in
+; it (a true list) is refused :bad and is no wire-event list.  Removal of
+; (true-listp ws): the improper journal interns (not :bad) and is no
+; wire-event list.
+(assert-event (and (true-listp *cet-h*)
+                   (not (equal (cet-rows *cet-h*) :bad))
+                   (fn-wire-event-listp *cet-h*)))
+(assert-event (and (true-listp (list *cet-w0* 17))
+                   (equal (cet-rows (list *cet-w0* 17)) :bad)
+                   (not (fn-wire-event-listp (list *cet-w0* 17)))))
+(assert-event (and (not (true-listp *cet-improper*))
+                   (not (equal (cet-rows *cet-improper*) :bad))
+                   (not (fn-wire-event-listp *cet-improper*))))
+; fn-sca-intern-events-composites-okp: an arena, a natural generation, wire
+; events, not :bad, and the interned rows' composites are ok over the arena
+; the intern left.  (Its removal witnesses are the full-open ones above: the
+; :bad journal and the non-natural generation of E3.)
+(assert-event (and (natp 0) (fn-wire-event-listp *cet-h*)
+                   (equal (cet-intern-okp *cet-h* 0) '(t t t))))
+; fn-sca-ocl-store-rows-are-values: the recovered owner is in fn-ocl-relation
+; and its store's rows are record values (the interned held row).
+(assert-event (and (fn-ocl-relation *cet-full*)
+                   (consp (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner *cet-full*)))))
+                   (fn-sf-record-valuesp
+                    (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner *cet-full*)))))))
+; fn-sca-held-rowsp-of-record-values: the interned rows are values and held
+; rows.  No removal witness: a non-value (17, a wire record) is no catalog
+; row and so passes fn-sca-held-rowsp; the falsifier is a catalog row that is
+; not held, which no intern constructs (its guard refuses a bad generation).
+(assert-event (and (fn-sf-record-valuesp *cet-hr*) (fn-sca-held-rowsp *cet-hr*)))
+(assert-event (and (not (fn-sf-record-valuesp (list 17))) (fn-sca-held-rowsp (list 17))))

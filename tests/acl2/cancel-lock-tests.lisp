@@ -371,3 +371,24 @@
              (fn-stx-b64-encode
               (fn-ns-hmac-sha256 (fn-ns-entry-root *clt-e1*)
                                  (append (fn-cl-uid *clt-alice*) (clt-octets *clt-t-id*)))))))
+
+; books/control-authority.lisp fn-ctl-control-of-fields (PRF-210; no
+; hypothesis; keystone-audit 2026-09-27: it had no witness).  The one-pass
+; control fact the catalog row carries (books/catalog-record.lisp) is the
+; three separate parses, on the stored cancel (a target, one key, one lock:
+; every field non-empty) and on the stored target (no target, no key).
+(assert-event
+ (let ((c (fn-ctl-control-of *clt-c-alice-stored*)))
+   (and (equal (fn-ctl-control-target c) *clt-t-id*)
+        (equal (fn-ctl-control-target c) (fn-ctl-target-octets *clt-c-alice-stored*))
+        (consp (fn-ctl-control-keys c))
+        (equal (fn-ctl-control-keys c) (fn-ctl-keys-octets *clt-c-alice-stored*))
+        (consp (fn-ctl-control-locks c))
+        (equal (fn-ctl-control-locks c) (fn-ctl-locks-octets *clt-c-alice-stored*)))))
+(assert-event
+ (let ((c (fn-ctl-control-of *clt-t-stored*)))
+   (and (equal (fn-ctl-control-target c) (fn-ctl-target-octets *clt-t-stored*))
+        (null (fn-ctl-control-keys c))
+        (equal (fn-ctl-control-keys c) (fn-ctl-keys-octets *clt-t-stored*))
+        (consp (fn-ctl-control-locks c))
+        (equal (fn-ctl-control-locks c) (fn-ctl-locks-octets *clt-t-stored*)))))

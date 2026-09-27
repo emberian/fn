@@ -617,3 +617,38 @@
   (and (natp 3) (not (natp -1))
        (not (equal (sckat-seal-steps -1 3 nil) (sckat-seal-steps -1 3 t))))
   :rule-classes nil)
+
+; -----------------------------------------------------------------------------
+; fn-scka-recover-rows-rii-is-recover-rows (no hypothesis; keystone-audit
+; 2026-09-27: it had no witness).  The host's open from a checkpoint interns
+; the suffix and extends with fn-rii-sco-extend (host/store-node-host.lisp
+; fn-store-sn-recover-from-checkpoint): the body of fn-scka-recover-rows-rii.
+; Over the whole history from the emptied arena, and over a history the
+; intern refuses, both entries give the same extension and arena.
+(defun sckat-full-rii-in (history fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((fn-arena (fn-arena-clear fn-arena)))
+    (mv-let (opened fn-arena)
+      (fn-scka-recover-rows-rii (fn-sco-capture *sckat-configs* nil) *sckat-configs*
+                                history fn-arena)
+      (mv (list opened (sckat-arena-list 0 fn-arena)) fn-arena))))
+(defun sckat-full-both (history)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (out fn-arena)
+      (mv-let (full fn-arena)
+        (sckat-full-in history fn-arena)
+        (mv-let (rii fn-arena)
+          (sckat-full-rii-in history fn-arena)
+          (mv (list full rii) fn-arena)))
+      out)))
+(assert-event
+ (let ((r (sckat-full-both (append *sckat-history* (list *sckat-w4*)))))
+   (and (not (eq (car (car r)) :bad))
+        (equal (take 3 (cadr (car r))) *sckat-canon-payloads*)
+        (equal (len (cadr (car r))) 4)
+        (equal (car r) (cadr r)))))
+(assert-event
+ (let ((r (sckat-full-both (list *sckat-w4* 'not-an-event))))
+   (and (eq (car (car r)) :bad)
+        (equal (car r) (cadr r)))))

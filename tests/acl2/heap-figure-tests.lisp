@@ -825,3 +825,17 @@
                   (<= (nfix used) (nfix (fn-bs-profile-max-history-octets profile)))
                   (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
                   (<= (nfix ou) (fn-heap-open-octets-bound profile observed)))
+
+; -----------------------------------------------------------------------------
+; Lane keystone-audit (2026-09-27).  fn-heap-store-figure-observed-is-at-most-
+; unobserved (no hypothesis): the measured 3,000-article store's observation
+; and an empty store's each give a figure below the unobserved one, and
+; strictly (the observation matters).
+(assert! (< (fn-heap-store-figure-octets *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                                         '(7271160 . 3000))
+            (fn-heap-store-figure-octets *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                                         nil)))
+(assert! (< (fn-heap-store-figure-octets *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                                         '(0 . 0))
+            (fn-heap-store-figure-octets *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
+                                         '(7271160 . 3000))))

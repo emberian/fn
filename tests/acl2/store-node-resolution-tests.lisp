@@ -100,3 +100,48 @@
 (assert-event (equal (fn-sn-known-abort *snr-after-link*) *snr-after-link*))
 (assert-event (equal (fn-sn-refuse-reservation *snr-after-link* 0)
                      *snr-after-link*))
+
+; -----------------------------------------------------------------------------
+; PRF-299 keystones (keystone-audit 2026-09-27: the antecedents were not
+; asserted and no hypothesis had a removal witness).
+; fn-sn-known-abort-preserves-relation / -preserves-state, reachable
+; positive witness: the host's prepared store (a held row staged) is related
+; and a state; the abort is related and a state.
+(assert-event (and (fn-snt-relation *snr-abort-prepared*)
+                   (fn-sn-statep *snr-abort-prepared*)
+                   (fn-snt-relation *snr-aborted*)
+                   (fn-sn-statep *snr-aborted*)
+                   (not (equal *snr-aborted* *snr-abort-prepared*))))
+; Hypothesis removal (CORRUPTED state, labelled: no transition builds it): a
+; value that is no store is neither related nor a state, the abort is not
+; enabled on it and returns it unchanged, so each conclusion fails.  (The
+; abort's guard is the state recognizer: evaluated logically, outside it.)
+(assert-event (and (not (fn-snt-relation :no-store))
+                   (not (fn-sn-statep :no-store))
+                   (equal (with-guard-checking :none (fn-sn-known-abort :no-store))
+                          :no-store)))
+; fn-sn-known-abort-is-exact-node-abort, reachable positive witness: the
+; abort is enabled at the prepared store, the phase after is :ready and the
+; node is the exact node abort of the held row's txid and generation.
+(assert-event
+ (and (fn-sn-known-abort-enabledp *snr-abort-prepared*)
+      (fn-held-p (fn-sf-record-candidate (fn-sn-files *snr-abort-prepared*)))
+      (equal (fn-sf-phase (fn-sn-files *snr-aborted*)) :ready)
+      (equal (fn-sn-node *snr-aborted*)
+             (fn-node-complete (fn-sn-node *snr-abort-prepared*)
+                               (fn-record-txid *snr-abort-record*)
+                               (fn-record-generation *snr-abort-record*)
+                               :aborted))))
+; Hypothesis removal (enabledp): after the publication attempt the abort is
+; not enabled and the phase stays :record-attempted -- the conclusion fails.
+(assert-event
+ (and (not (fn-sn-known-abort-enabledp *snr-after-link*))
+      (not (equal (fn-sf-phase (fn-sn-files (fn-sn-known-abort *snr-after-link*)))
+                  :ready))))
+; fn-sn-known-abort-cannot-acknowledge (no hypothesis): a store with one
+; acknowledged success keeps exactly it across the (disabled) abort, and the
+; enabled abort keeps the empty list.
+(assert-event (equal (fn-sf-successes (fn-sn-files (fn-sn-known-abort *snr-finished-one*)))
+                     '((0 . 1))))
+(assert-event (equal (fn-sf-successes (fn-sn-files *snr-aborted*))
+                     (fn-sf-successes (fn-sn-files *snr-abort-prepared*))))
