@@ -202,6 +202,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-intern-tests \
 	books/store-existing-alpha \
 	tests/acl2/store-existing-alpha-tests \
+	books/store-recover-stream \
+	tests/acl2/store-recover-stream-tests \
 	books/store-node-traces-prepare \
 	books/store-node-traces \
 	tests/acl2/store-node-traces-tests \

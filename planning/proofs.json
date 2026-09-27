@@ -9523,6 +9523,37 @@
       ]
     },
     {
+      "id": "PRF-261",
+      "title": "The full replay takes the history in chunks, and any chunking opens the Store one step over the whole history opens",
+      "statement": "Subject, called by the host: fn-srs-step (books/store-recover-stream.lisp), whose body is the two calls host/native/io.lisp fnn-bridge-recover makes once per chunk (fnn-recover-full-replay, fnn-recover: every full-replay open, the store verbs and the owner start): fn-store-decode-records (host/store-host.lisp, which is fn-srs-decode) and the guard-verified fn-srs-intern-step with the live arena (the intern into the arena, keyring NIL and generation 0, rows accumulated newest first); the host clears the arena first and then opens over fn-srs-rows (the rows oldest first) with host/store-node-host.lisp fn-store-sn-recover-rows (flip-L6-2's open, unchanged). No :program entry updates the arena. The host closes a chunk where fn-srs-chunk-fullp says (1 MiB of record octets, a work quantum: one record is always taken first, so a record above it is a chunk by itself and nothing is refused or split for its size), converting only that chunk to octet lists. fn-srs-decode-of-append and fn-srs-intern-events-of-append: the decode and the intern (fn-intern-events, the arena threaded) of a concatenation are those of its parts. KEYSTONE fn-srs-steps-are-one-step-of-the-concatenation: for every list of chunks each a true list (fn-srs-chunksp) and any accumulator, the fold of fn-srs-step over the chunks is :bad exactly when one step over their concatenation is, and otherwise equal to it (rows and arena). fn-srs-one-step-is-the-intern-of-the-decode: one step from no rows, when not :bad, is the decode of the history interned (fn-srs-rows of it is fn-intern-events' rows, the same arena): what the one-shot open computed before the chunking. Scope: the full-replay path only; the checkpoint path's suffix (fn-store-sn-recover-from-checkpoint) and the owner's recovers still take their input at once.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-025",
+        "HST-001"
+      ],
+      "depends_on": [
+        "PRF-242"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-recover-stream.lisp",
+        "tests/acl2/store-recover-stream-tests.lisp",
+        "host/native/io.lisp",
+        "host/store-host.lisp",
+        "planning/evidence/recover-memory-2026-09-27.md",
+        "planning/evidence/manifests/certify-20260927T094014Z-2171763.json",
+        "planning/evidence/manifests/certify-20260927T091028Z-2009960.json"
+      ],
+      "progress_note": "Lane recover-memory (2026-09-27, PKT-823): every form REPL-admitted on hbox; certified on hbox at the lane's final bytes (run-20260927T093905Z-d480, certify-20260927T094014Z-2171763; both books in run-20260927T090826Z-d6d2, certify-20260927T091028Z-2009960). Measured on the 32 KiB fixture (10,064 records) post-flip: peak dynamic 11,437 -> 1,817 MB, RSS 17.0 -> 2.13 GB; native SCN-077 10 MiB OK on the post-flip image.",
+      "events": [
+        "fn-srs-steps-are-one-step-of-the-concatenation",
+        "fn-srs-one-step-is-the-intern-of-the-decode",
+        "fn-srs-decode-of-append",
+        "fn-srs-intern-events-of-append"
+      ]
+    },
+    {
       "id": "PRF-260",
       "title": "After the records flip, the store's duplicate verdict is D25's source-keyed decision over alpha (the held rows' bytes read through the arena)",
       "statement": "Subject fn-store-existing-action (books/store-intern.lisp), the entry flip-L6 routes host/store-node-host.lisp fn-store-sn-existing-action and the owner's POST duplicate test (fn-pidx-existing-action, fn-pidx-existing-action-is-store-existing-action) to; on dev at batch AV the host still calls the pre-flip forms, so the host line lands with flip-L6. fn-store-existing-action-is-pb-over-alpha (books/store-existing-alpha.lisp, KEYSTONE): for a string Message-ID whose held bytes (fn-handle-bytes of the found article's payload handle) are no tombstone, the entry equals fn-pb-action-over of the store's acceptance articles with each payload replaced by its bytes (fn-sn-alpha-articles through fn-articles-wire-of), i.e. the answer fn-pb-existing-action gave when the store retained bytes. fn-store-existing-action-refines-byte-identity-over-alpha (KEYSTONE): the entry is non-nil at exactly the Message-IDs the byte-identity decision over alpha answers, and where the held bytes are no tombstone a byte-identical resend with the same groups is :duplicate. fn-sn-existing-action-is-action-over-by-definition and fn-pb-existing-action-is-action-over-by-definition name the store forms. A tombstone's resend is decided by digest (PRF-117, fn-rcl-same-as-tombstonep). Teeth: tests/acl2/store-existing-alpha-tests.lisp (a reachable witness; per hypothesis a separating positive and a must-fail; the live-store regression: comparing offered octets with the handle answered wrongly). Id assigned by batch AV (flip-L8 took none; PRF-257 went to codec-c1 by its brief and PRF-258 to fixtures-refresh).",

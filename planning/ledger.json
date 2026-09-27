@@ -199,6 +199,8 @@
     "tests/acl2/store-intern-tests",
     "books/store-existing-alpha",
     "tests/acl2/store-existing-alpha-tests",
+    "books/store-recover-stream",
+    "tests/acl2/store-recover-stream-tests",
     "books/store-node-traces-prepare",
     "books/store-node-traces",
     "tests/acl2/store-node-traces-tests",
@@ -1148,27 +1150,27 @@
     "tests/acl2/scheduler-peers-tests"
   ],
   "totals": {
-    "books": 1191,
-    "books_in_root_closure": 1180,
-    "roots": 1144,
-    "theorems": 17514,
-    "functions": 12135,
-    "assert_events": 17489,
+    "books": 1193,
+    "books_in_root_closure": 1182,
+    "roots": 1146,
+    "theorems": 17528,
+    "functions": 12153,
+    "assert_events": 17497,
     "must_fails": 2134,
     "prover_refusals": 0,
     "encapsulates": 91,
     "guards": {
       "verified": 2423,
-      "declared-off": 1262,
-      "default-guarded": 6680,
+      "declared-off": 1274,
+      "default-guarded": 6686,
       "default-unguarded": 1770
     },
     "suspect_theorems": 187,
     "export_hygiene_warnings": 202,
     "enabled_projection_warnings": 49,
     "teeth_form_warnings": 206,
-    "include_hygiene_warnings": 1216,
-    "host_names_warnings": 1341,
+    "include_hygiene_warnings": 1220,
+    "host_names_warnings": 1338,
     "hand_written_record_warnings": 18
   },
   "books": [
@@ -18621,6 +18623,33 @@
       "read_error": null
     },
     {
+      "book": "books/store-recover-stream.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 14,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 3,
+        "default-guarded": 6,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 0,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 1,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "records-concrete",
+        "store-intern"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "books/store-retention-codec-invariants.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -33637,6 +33666,34 @@
       "read_error": null
     },
     {
+      "book": "tests/acl2/store-recover-stream-tests.lisp",
+      "in_root_closure": true,
+      "is_root": true,
+      "theorems": 0,
+      "functions": 9,
+      "guards": {
+        "verified": 0,
+        "declared-off": 9,
+        "default-guarded": 0,
+        "default-unguarded": 0
+      },
+      "verify_guards_events": 0,
+      "assert_events": 8,
+      "must_fails": 0,
+      "prover_refusals": 0,
+      "defconsts": 8,
+      "defmacros": 0,
+      "encapsulates": 0,
+      "includes": [
+        "../../books/records-attach-concrete",
+        "../../books/statement-attach",
+        "../../books/store-recover-stream"
+      ],
+      "system_includes": [],
+      "suspects": [],
+      "read_error": null
+    },
+    {
       "book": "tests/acl2/store-retention-codec-invariants-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
@@ -42636,6 +42693,13 @@
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
+        "book": "books/store-recover-stream.lisp",
+        "line": 27,
+        "include": "store-intern",
+        "included": "books/store-intern.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
         "book": "books/stx-accept-records.lisp",
         "line": 10,
         "include": "records-seam",
@@ -47372,6 +47436,27 @@
         "line": 7,
         "include": "held-rows-tests",
         "included": "tests/acl2/held-rows-tests.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-recover-stream-tests.lisp",
+        "line": 10,
+        "include": "../../books/store-recover-stream",
+        "included": "books/store-recover-stream.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-recover-stream-tests.lisp",
+        "line": 12,
+        "include": "../../books/records-attach-concrete",
+        "included": "books/records-attach-concrete.lisp",
+        "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
+      },
+      {
+        "book": "tests/acl2/store-recover-stream-tests.lisp",
+        "line": 13,
+        "include": "../../books/statement-attach",
+        "included": "books/statement-attach.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"
       },
       {
@@ -53391,161 +53476,161 @@
       },
       {
         "host": "host/native/io.lisp",
-        "line": 1187,
+        "line": 1200,
         "name": "minusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2377,
+        "line": 2390,
         "name": "fnn-%statfs",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2410,
+        "line": 2423,
         "name": "plusp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2410,
+        "line": 2423,
         "name": "fill-pointer",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 2808,
+        "line": 2821,
         "name": "functionp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 3424,
+        "line": 3437,
         "name": "search",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4455,
+        "line": 4468,
         "name": "find-if",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4479,
+        "line": 4492,
         "name": "find-class",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4479,
+        "line": 4492,
         "name": "slot-value",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4743,
+        "line": 4756,
         "name": "char/=",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4752,
+        "line": 4765,
         "name": "read-line",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 4966,
+        "line": 4979,
         "name": "*fn-lg-genesis*",
         "source": "books/store-log.lisp",
         "reason": "defined in books/store-log.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5086,
+        "line": 5099,
         "name": "namestring",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5248,
+        "line": 5261,
         "name": "open",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5248,
+        "line": 5261,
         "name": "*standard-input*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5248,
+        "line": 5261,
         "name": "*error-output*",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5248,
+        "line": 5261,
         "name": "logandc2",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt or tools/raw-common-lisp-builtins.txt, so the raw Common Lisp load of this file fails at start-up"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5282,
+        "line": 5295,
         "name": "fnn-tls-send-all",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5282,
+        "line": 5295,
         "name": "fnn-tls-read",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5282,
+        "line": 5295,
         "name": "fnn-tls-open-client-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5282,
+        "line": 5295,
         "name": "fnn-tls-connect",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5282,
+        "line": 5295,
         "name": "fnn-tls-close-channel",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/native/io.lisp",
-        "line": 5282,
+        "line": 5295,
         "name": "fnn-tls-close-context",
         "source": "host/native/tls.lisp",
         "reason": "defined in host/native/tls.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
@@ -57087,31 +57172,10 @@
       },
       {
         "host": "host/store-host.lisp",
-        "line": 109,
-        "name": "fn-rcon-wire-event-p",
-        "source": "books/records-concrete.lisp",
-        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/store-host.lisp",
-        "line": 135,
+        "line": 131,
         "name": "with-local-stobj",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
-      },
-      {
-        "host": "host/store-host.lisp",
-        "line": 145,
-        "name": "fn-rcon-wire-event-sequence",
-        "source": "books/records-concrete.lisp",
-        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
-      },
-      {
-        "host": "host/store-host.lisp",
-        "line": 153,
-        "name": "fn-rcon-wire-event-txid",
-        "source": "books/records-concrete.lisp",
-        "reason": "defined in books/records-concrete.lisp, which this file neither includes nor `ld`s: it resolves only because something else loaded that file into the same session first"
       },
       {
         "host": "host/store-node-host.lisp",
@@ -57129,35 +57193,35 @@
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 420,
+        "line": 427,
         "name": "mv",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 481,
+        "line": 488,
         "name": "last",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 510,
+        "line": 517,
         "name": "fn-arena-clear",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 764,
+        "line": 771,
         "name": "subsetp",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"
       },
       {
         "host": "host/store-node-host.lisp",
-        "line": 919,
+        "line": 926,
         "name": "fn-arena-count",
         "source": null,
         "reason": "undefined: nothing in this tree defines it and it is not in tools/acl2-builtins.txt, so the ACL2 bridge of this file fails at start-up"

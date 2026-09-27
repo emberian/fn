@@ -1061,26 +1061,39 @@ saved profile stays a fault."
 (defun fnn-bridge-recover (records frontier config-records)
   "Replay the configuration history and then the article history.
 
-The core (host/store-node-host.lisp `fn-store-sn-recover') replays
-`config-records' with the article records through `fn-cpr-replay', takes the
-allocation domain and the capacity from the configured node, and opens the
-observed store through `fn-cpo-open-observed'; a store with no configuration record never reaches
-here.  The host supplies octets and decides nothing about them."
-  (let* ((octets (mapcar #'fnn-octet-list records))
-         (configs (mapcar #'fnn-octet-list config-records))
-         (decoded (fnn-core 'fn-store-sn-recover-records octets configs)))
-    (if (eq decoded :bad)
-        :fault
-      ;; The intern at the open: the arena emptied, then the decoded wire
-      ;; events sealed and made rows by the guard-verified fn-intern-events
-      ;; (books/store-intern.lisp; KEYSTONES fn-intern-events-materializes,
-      ;; -are-store-events, -keep-coordinates, -contexts-okp), called here so
-      ;; that no :program entry updates the arena (invariant-risk).
-      (let ((arena (fnn-live-arena)))
-        (fnn-call 'fn-arena-clear arena)
-        (let ((rows (first (fnn-call 'fn-intern-events decoded nil 0 arena))))
-          (fnn-action (fnn-core-state 'fn-store-sn-recover-rows
-                                      rows frontier configs)))))))
+The core replays `config-records' with the article records through
+`fn-cpr-replay', takes the allocation domain and the capacity from the
+configured node, and opens the observed store through `fn-cpo-open-observed'
+(host/store-node-host.lisp `fn-store-sn-recover-rows'); a store with no
+configuration record never reaches here.
+
+The history goes over in CHUNKS (PKT-823; books/store-recover-stream.lisp): a
+chunk closes where ACL2 says (`fn-srs-chunk-fullp', a work quantum: one record
+is always taken first, so no record is refused or split for its size), and
+only that chunk is ever an octet list.  Per chunk, ACL2 decodes it
+(`fn-store-decode-records', which is `fn-srs-decode') and the guard-verified
+`fn-srs-intern-step' interns it into the arena, accumulating the rows; the
+arena is cleared first and updated only by those direct calls, so no :program
+entry updates it (invariant-risk: flip-L6-2).  KEYSTONE
+fn-srs-steps-are-one-step-of-the-concatenation: every chunking gives the rows
+and arena one step over the whole history gives.  The host supplies octets,
+passes ACL2's values back unread, and decides nothing about them."
+  (let ((configs (mapcar #'fnn-octet-list config-records))
+        (arena (fnn-live-arena))
+        (acc nil))
+    (fnn-call 'fn-arena-clear arena)
+    (loop while records do
+      (let ((chunk nil) (octets 0))
+        (loop while (and records (not (fnn-core 'fn-srs-chunk-fullp octets))) do
+          (let ((record (pop records)))
+            (incf octets (length record))
+            (push (fnn-octet-list record) chunk)))
+        (let ((decoded (fnn-core 'fn-store-decode-records (nreverse chunk))))
+          (setq acc (first (fnn-call 'fn-srs-intern-step acc decoded arena))))
+        (when (eq acc :bad)
+          (return-from fnn-bridge-recover :fault))))
+    (fnn-action (fnn-core-state 'fn-store-sn-recover-rows
+                                (fnn-core 'fn-srs-rows acc) frontier configs))))
 (defun fnn-bridge-config-observation-limit (store)
   "The config reader consumes an ACL2-owned bound before readdir retains names:
 the operator's max-config-generations of the profile STORE opened."
