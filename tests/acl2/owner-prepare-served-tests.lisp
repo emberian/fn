@@ -223,3 +223,72 @@
       (not (equal (fn-psrv-prepare *lgt-r-reserved* *acar-t-record* 1000000
                                    (pst-carry *lgt-r-reserved*))
                   (fn-sbud-prepare *lgt-r-reserved* *acar-t-record* 1000000)))))
+
+; =============================================================================
+; Audit packet G2-P5 (lane audit-fixes).
+; fn-psrv-deferred-record-dir-preserves-relation and
+; fn-psrv-known-abort-preserves: removal of fn-cst-relation, CORRUPTED (the
+; node advanced past the frontier; carried still holds).  At the deferred
+; directory step the relation fails after; the known abort leaves a Store
+; that is not related.
+(defconst *pst-far-ret-att*
+  (update-nth 3 (fn-replay-advance-txid (fn-sn-node *pst-ret-att*) 20) *pst-ret-att*))
+(assert-event
+ (and (not (fn-cst-relation *pst-far-ret-att*))
+      (fn-cstp-carriedp *pst-far-ret-att*)
+      (equal (fn-sf-phase (fn-sn-files *pst-far-ret-att*)) :record-attempted)
+      (not (fn-held-p (fn-sf-record-candidate (fn-sn-files *pst-far-ret-att*))))
+      (not (fn-cst-relation (fn-sn-io *pst-far-ret-att* :record-directory :ok)))))
+(defconst *pst-far-ret-staged*
+  (let ((s (lgt-store *pst-ret-staged*)))
+    (update-nth 3 (fn-replay-advance-txid (fn-sn-node s) 20) s)))
+(assert-event
+ (and (not (fn-cst-relation *pst-far-ret-staged*))
+      (fn-cstp-carriedp *pst-far-ret-staged*)
+      (not (fn-cst-relation (fn-sn-known-abort *pst-far-ret-staged*)))))
+
+; fn-psrv-prepare-preserves-invariant: no removal witness for fn-prc-carryp
+; or the two index relations.  The finished owner reserved again, with a
+; record reusing the committed obligation id (and its content and release
+; ids) under a fresh Message-ID: the host's prepare with an INCOMPLETE carry
+; (the ledger of the reservation, the trie before the commit: not carryp) is
+; still refused at this owner (evaluated), as with the host's carry.  The
+; carry tooth is at the node (post-retain-carried-tests
+; prct-sn-prepare-without-carryp); a corrupted index turns the prepare into a
+; refusal (owner-log-ocl-tests), never a staging the invariant rejects.
+(defconst *pst-f-reserved* (fn-olr-ocfg-reserve *lgt-finished*))
+(defconst *pst-pin-reuse*
+  (fn-hrt-row-at
+   (fn-record-make 3 9 9 "<pin-reuse@example>"
+                   (list 77 101 115 115 97 103 101 45 73 68 58 32 60 120 62 13 10 13 10 72 105 13 10)
+                   '("fn.letters") "own-pin:<ocmt@example>" "own-content:<pin-reuse@example>"
+                   "own-release:<pin-reuse@example>" 2 841000000)
+   3))
+(defconst *pst-short-carry*
+  (cons (fn-node-retention (fn-sn-node (lgt-store *pst-f-reserved*)))
+        (cdr (pst-carry *lgt-reserved*))))
+(defconst *pst-pin-reuse-all*
+  (fn-hrt-row-at
+   (fn-record-make 3 9 9 "<pin-reuse@example>"
+                   (list 77 101 115 115 97 103 101 45 73 68 58 32 60 120 62 13 10 13 10 72 105 13 10)
+                   '("fn.letters") "own-pin:<ocmt@example>" "own-content:<ocmt@example>"
+                   "own-release:<ocmt@example>" 2 841000000)
+   3))
+(make-event
+ `(defconst *pst-short-prepared*
+    ',(with-guard-checking
+       :none
+       (list (fn-psrv-prepare *pst-f-reserved* *pst-pin-reuse* 1000000 *pst-short-carry*)
+             (fn-psrv-prepare *pst-f-reserved* *pst-pin-reuse-all* 1000000 *pst-short-carry*)))))
+(assert-event
+ (and (fn-lgoc-invariantp *pst-f-reserved*)
+      (not (fn-prc-carryp *pst-short-carry*))
+      (not (fn-prc-has "own-pin:<ocmt@example>" (cdr *pst-short-carry*)))
+      (fn-rii-knownp "own-pin:<ocmt@example>"
+                     (fn-node-retention (fn-sn-node (lgt-store *pst-f-reserved*))))
+      (equal (lgt-phase (car *pst-short-prepared*)) :reserved)
+      (equal (lgt-phase (cadr *pst-short-prepared*)) :reserved)
+      (fn-lgoc-invariantp (car *pst-short-prepared*))
+      (equal (lgt-phase (fn-psrv-prepare *pst-f-reserved* (own-record 3 9 "<pin-reuse@example>")
+                                         1000000 (pst-carry *pst-f-reserved*)))
+             :record-staged)))
