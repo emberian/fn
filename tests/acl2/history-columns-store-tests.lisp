@@ -129,3 +129,18 @@
  (defthm hcs-false-bytes-without-r
    (equal (fn-hist-bytes-carried cache s fn-hist)
           (fn-sbud-bytes-extend cache (fn-sf-records (fn-sn-files s))))))
+
+; Stage 2b (history-columns-2): the carried readers the host calls
+; (host/owner-host.lisp fn-owner-record-octets, -record-debt,
+; -carried-usage) run guard-verified.
+(assert-event
+ (and (eq (symbol-class 'fn-hist-bytes-carried (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-hist-octets-advance (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-hist-debt-carried (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-hist-debt-advance (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-hist-usage-carried (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-hist-tally-advance (w state)) :common-lisp-compliant)))
+; The count the budget reads (fn-sf-records-count-is-used-by-definition),
+; on the four-record store: the snoc-list's count is the history's length.
+(assert-event (equal (fn-sf-records-count (fn-sn-files *hcs-s*)) (fn-sbud-used *hcs-s*)))
+(assert-event (equal (fn-sbud-used *hcs-s*) 4))
