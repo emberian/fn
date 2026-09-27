@@ -7784,6 +7784,44 @@
         "fn-bphh-request-article-matches-is-wire",
         "fn-bphh-octets-at-p-is-equal-payload"
       ]
+    },
+    {
+      "id": "PRF-223",
+      "title": "A served connection's memory is named and a node refuses, by name, at start and at every live change, a connection capacity the machine cannot hold beside the store's heap figure, the core and the fixed threads; every connection fn-exp-open admits under an accepted capacity, trusted sources included, fits the machine",
+      "statement": "books/connection-budget.lisp. The subjects are fn-cbud-run-decide, which host/owner-host.lisp fn-owner-connection-budget calls once per run after recovery and before listen (host/native/mux.lisp fnn-mux-budget-install, from host/native/owner.lisp fnn-owner-run), and fn-cbud-deltas-refusal, which host/owner-host.lisp fn-owner-reconfigure-deltas calls before any live reconfiguration is staged (native-admin, peer-invite and auth all reach it), over the host's observations (the machine: heap-figure's fn-heap-machine-octets; the core's length; the fixed threads, 12 + 2 I/O loops + the control clients; the thread control stack) and the store's profile (heap-figure's fn-heap-figure-octets is the base's heap; the profile's largest article A sizes the connection). The per-connection figure is fn-cbud-conn-octets: a heap part (the connection record, its input of two +fnn-max-read+ reads, the one reply of the STATED WORKLOAD -- the largest article rendered, 2A + 1,024 -- and the parser's line and body as octet lists, 32 octets per octet) and a native part (kernel socket buffers; the TLS session when a context is loaded); the record, kernel and TLS constants are measurements (tests/test_native_mux.py pins the resident cost). KEYSTONE fn-cbud-bound-holds-its-connections: when the base (the store's heap figure, the core, the threads with their stacks and 4 MiB of runtime each) fits the machine, the base plus n connections fits for every n up to fn-cbud-bound; fn-cbud-bound-is-the-most: one more does not. KEYSTONE fn-cbud-run-decide-holds-the-capacity: an accepted run (:hold B) holds its capacity -- capacity <= B and the base plus capacity connections fit the machine; fn-cbud-run-decide-refuses-exactly-past-the-bound: it refuses exactly when the capacity passes the bound or the base does not fit. KEYSTONE fn-cbud-admitted-connections-fit-the-machine: under PRF-211's hypotheses, when the live capacity is within the bound and fn-exp-admit-decision admits a connection with nconns held, the base plus nconns + 1 connections fit the machine; the trusted range exempts no connection from the capacity (fn-exp-open-refuses-exactly-at-the-capacity). fn-cbud-deltas-refusal-keeps-the-capacity-held: a delta list the refusal passes leaves the capacity of the applied configuration within the bound, so the maintained relation 'capacity <= held bound' (established by the run's decision) survives every live change. fn-cbud-launch-decide-keeps-the-store-figure: the launcher's probe (host/native/heap.lisp fnn-heap-decision) adds room for the connections' heap parts and never lowers heap-figure's figure. Not claimed: replies larger than the stated workload's (range OVER/LISTGROUP) until replies are rendered in windows (PKT-644); the measured constants as theorems; that the probe sees the live capacity (it cannot: PKT-644).",
+      "milestone": "M6",
+      "requirements": [
+        "HST-024"
+      ],
+      "depends_on": [
+        "PRF-211",
+        "PRF-198"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/connection-budget.lisp",
+        "tests/acl2/connection-budget-tests.lisp",
+        "host/owner-host.lisp",
+        "host/native/mux.lisp",
+        "host/native/owner.lisp",
+        "host/native/tls.lisp",
+        "host/native/heap.lisp",
+        "tests/test_native_mux.py",
+        "tests/native_owner_chunk_loop_raw.lisp",
+        "specs/host.md",
+        "planning/evidence/connection-multiplexing-2026-09-26.md"
+      ],
+      "progress_note": "Lane connection-multiplexing 2026-09-26: book and test book admitted in the lane's persvati REPL; certification is the batch's (the lane certifies itself before READY).",
+      "events": [
+        "fn-cbud-bound-holds-its-connections",
+        "fn-cbud-bound-is-the-most",
+        "fn-cbud-run-decide-holds-the-capacity",
+        "fn-cbud-run-decide-refuses-exactly-past-the-bound",
+        "fn-cbud-admitted-connections-fit-the-machine",
+        "fn-cbud-deltas-refusal-keeps-the-capacity-held",
+        "fn-cbud-launch-decide-keeps-the-store-figure"
+      ]
     }
   ]
 }

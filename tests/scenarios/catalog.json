@@ -4160,6 +4160,36 @@
         "planning/evidence/tls-reload-2026-09-26.md",
         "planning/evidence/tls-reload-2026-09-26/test-tests.test_native_tls_reload.log"
       ]
+    },
+    {
+      "id": "SCN-153",
+      "title": "Served connections cost no thread and a bounded resident figure, and a capacity past the machine's bound is refused by name at start and live, on the developer and production images",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "HST-024"
+      ],
+      "steps": [
+        "Per image: `store init fn.test`; `policy set exposure-connections 4000000`; `run`.",
+        "`policy set exposure-connections 320`; `run`; read the service log; hold 300 connections; read Threads and VmRSS before and after; GROUP on each.",
+        "Live `policy set exposure-connections B+1` (B the bound the log named); `status`; live `policy set exposure-connections 325`; 25 more connections, then one more."
+      ],
+      "expected": [
+        "exit 1 with `refused connections-exceed-memory capacity=4000000 holds=B per-connection=K KiB machine=M MB` on stderr and in the service log; nothing listens.",
+        "The log names `connections holds=B per-connection=K KiB` with B >= 320; the thread count does not grow with the 299 connections; each costs under 64 KiB resident; every GROUP answers 211.",
+        "The raise to B+1 is refused naming connections-exceed-memory and status still shows capacity=320; the raise to 325 is published; the 25 are admitted and the next reads `400 too many connections; try again later`."
+      ],
+      "implementation": {
+        "test": "tests.test_native_mux",
+        "cases": [
+          "DeveloperImageMux.test_a_capacity_the_machine_cannot_hold_is_refused_at_start",
+          "DeveloperImageMux.test_connections_cost_no_thread_and_the_bound_is_kept_live",
+          "ProductionImageMux.test_a_capacity_the_machine_cannot_hold_is_refused_at_start",
+          "ProductionImageMux.test_connections_cost_no_thread_and_the_bound_is_kept_live"
+        ],
+        "native": true,
+        "record": "planning/evidence/connection-multiplexing-2026-09-26.md"
+      }
     }
   ]
 }

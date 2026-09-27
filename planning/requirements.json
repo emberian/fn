@@ -3873,6 +3873,34 @@
         "planning/evidence/tls-reload-2026-09-26.md"
       ],
       "implementation_note": "FNCT kind 19 (request reload|status) and kind 20 (reply: status, reason word, served line). The decision is ACL2's over the library's observations; the swap is the host's, under the context lock SSL_new also takes."
+    },
+    {
+      "id": "HST-024",
+      "title": "The node serves reader and transit connections from a fixed set of I/O loop threads, and a connection capacity the machine cannot hold beside the store is refused by name at start and at a live change",
+      "specification": "specs/host.md#served-connections",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-223"
+      ],
+      "verification": [
+        "proof",
+        "scenario"
+      ],
+      "evidence": [
+        "books/connection-budget.lisp",
+        "tests/acl2/connection-budget-tests.lisp",
+        "host/native/mux.lisp",
+        "host/native/owner.lisp",
+        "host/native/tls.lisp",
+        "host/owner-host.lisp",
+        "host/native/heap.lisp",
+        "tests/test_native_mux.py",
+        "tools/mux_measure.py",
+        "specs/host.md",
+        "planning/evidence/connection-multiplexing-2026-09-26.md"
+      ],
+      "implementation_note": "PKT-605 closed for the stated workload: the capacity row (NNT-043) is checked against the machine by ACL2 at run and at every live reconfiguration; trusted sources count. No wire or delta code, no store format, no fn.toml key. PKT-631 (implicit TLS admitted before the handshake) and PKT-632 (TLS refusals in the service log) are folded in. SCN-153 is the native case on both images."
     }
   ]
 }

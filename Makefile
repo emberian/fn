@@ -213,6 +213,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-checkpoint-tables-tests \
 	books/heap-figure \
 	tests/acl2/heap-figure-tests \
+	books/connection-budget \
+	tests/acl2/connection-budget-tests \
 	books/store-open-pre-c1 \
 	tests/acl2/store-open-pre-c1-tests \
 	tests/acl2/linear-recognizers-tests \

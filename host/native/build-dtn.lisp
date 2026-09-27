@@ -245,6 +245,8 @@
         ; The BP node's Store owner and its configuration (path identity,
         ; enrolled BP boundaries) through the one public operator entry.
         (load "host/native/owner.lisp")
+        ; Its connections on a fixed set of I/O loops (PKT-605).
+        (load "host/native/mux.lisp")
         (load "host/native/operator.lisp")
         ; The heap figure (PKT-016): the launcher's probe verb `heap', and the
         ; line `status' and `health' print; after operator.lisp, whose plan it reads.

@@ -815,3 +815,59 @@ the image launcher's own figure; the installed launcher ignores both
 `FN_TEST_HEAP_MB` and the caller's `SBCL_USER_ARGS`. The D27 default profile
 (H = 1 TiB) needs about 70 TiB and is refused on every machine (PKT-582).
 PRF-198; the native case is SCN-127.
+
+
+## Served connections
+
+HST-024: The node serves every reader and transit connection from a fixed set
+of I/O loop threads, and a connection capacity the machine cannot hold beside
+the store is refused by name, at start and at a live change. Lane
+connection-multiplexing (2026-09-26, PKT-605; PRF-223).
+
+The owner thread structure is unchanged: every protocol, exposure and owner
+decision is a call through `fnn-owner-serialized`, one at a time. What
+changed is who waits. host/native/mux.lisp runs `+fnn-mux-loops+` (2)
+threads, each polling (poll(2), Linux and OpenBSD alike) the connections it
+owns and a wake pipe; the accept threads hand each accepted socket to a loop
+instead of starting a thread for it. A connection is a record: the input the
+next step is handed (one `+fnn-max-read+` read, or the suffix a step left),
+the one reply being written (the connection is neither read nor stepped
+while it is queued, so a client that does not read meets TCP backpressure
+and holds one reply), and its timers: the exposure wait (`fn-exp-charge`'s
+milliseconds), the idle check (`fn-exp-idle` each second without input), the
+send deadline (10 s), the handshake deadline (10 s) and the drain after a
+graceful close (1 s). TLS never waits inside OpenSSL: SSL_accept, SSL_read
+and SSL_write are single attempts answering which readiness to wait for,
+with partial writes, moving write buffers and released idle buffers; at
+most 8 handshakes per loop are in progress, the rest wait admitted. An
+implicit-TLS connection meets `fn-exp-open` before any handshake work
+(PKT-631), and a refused one is closed without SSL_accept; a TLS failure is
+named in the service log (`tls refused reason=... connection=N`, PKT-632).
+
+The memory (books/connection-budget.lisp): a connection costs a heap part
+(the record, its input, the one reply of the stated workload -- the
+profile's largest article rendered, 2A + 1,024 octets -- and a parser in the
+middle of an article, 32 octets of heap per octet of the line and body
+bounds) and a native part (the kernel's socket buffers; the TLS session when
+a context is loaded). The base is heap-figure's figure for the store, the
+core outside the dynamic space and the fixed threads (12 + the loops + the
+control clients) with their stacks and 4 MiB of runtime each. The bound is
+the machine less the base, divided by the per-connection figure. At `run`,
+after recovery and before listen, ACL2 decides the live capacity against it
+(`fn-cbud-run-decide`, host `fn-owner-connection-budget`): `connections
+holds=B per-connection=K KiB` to the service log, or `refused
+connections-exceed-memory capacity=C holds=B per-connection=K KiB machine=M
+MB` and exit 1. A live reconfiguration whose capacity passes the bound the
+run held is refused `:connections-exceed-memory` before anything is staged
+(`fn-owner-reconfigure-deltas`). Trusted sources count in the capacity like
+every other (the trusted range exempts a source from the per-address rule
+only, PRF-211). The launcher's heap probe adds room in the dynamic space for
+the heap parts of the connections the machine holds, at most 1,024
+(`fn-cbud-launch-decide`): it runs before the configuration journal is
+read, so it cannot see the capacity row (PKT-644).
+
+Not claimed: a reply larger than the stated workload's (an OVER or LISTGROUP
+over a large range) is outside the figure until replies are rendered in
+windows (lane owner-scheduler's plans; PKT-644); the measured constants
+(record, kernel, TLS) are measurements pinned by tests/test_native_mux.py,
+not theorems.
