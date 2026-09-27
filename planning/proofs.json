@@ -2536,7 +2536,9 @@
         "planning/evidence/manifests/certify-20260926T050746Z-356474.json",
         "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
         "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "planning/evidence/manifests/certify-20260927T082505Z-2325383.json",
+        "planning/evidence/manifests/certify-20260927T090307Z-2876073.json"
       ],
       "progress_note": "Lane T13-conform, 2026-09-22, from the INN lab's finding 1 (operator post fed INN an article with no Path; 437). Teeth: tests/acl2/owner-operator-tests.lisp builds the lab's own operator article through a real owner (configure, observe, submit, take, the store events, the completion) and asserts the queued octets byte for byte against the Path, Injection-Date and Injection-Info lines the lab's served POST carried; one must-fail per hypothesis with a refuting value beside it (the retry keystone through a macro that first admits the full statement). The native tests that run it on an image (tests/test_native_control.py) have not run: no image carries this yet.",
       "events": [
@@ -2944,7 +2946,9 @@
         "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
         "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
         "planning/evidence/manifests/certify-20260926T093114Z-1141563.json",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "planning/evidence/manifests/certify-20260927T082505Z-2325383.json",
+        "planning/evidence/manifests/certify-20260927T090307Z-2876073.json"
       ],
       "events": [
         "fn-gidx-bucket-of-build",
@@ -3143,7 +3147,9 @@
         "planning/evidence/manifests/certify-20260926T064807Z-632722.json",
         "planning/evidence/manifests/certify-20260926T092407Z-1115236.json",
         "planning/evidence/manifests/certify-20260926T093114Z-1141563.json",
-        "planning/evidence/manifests/certify-20260926T102113Z-288651.json"
+        "planning/evidence/manifests/certify-20260926T102113Z-288651.json",
+        "planning/evidence/manifests/certify-20260927T082505Z-2325383.json",
+        "planning/evidence/manifests/certify-20260927T090307Z-2876073.json"
       ],
       "note": "Lane p2-wire, from the campaign's W1/W2/W3 (planning/evidence/campaign-1a9dd747-2026-09-24.md). The refusal kind is relayed by the host from the ACL2 step that refused (fn-pb-existing-action since D25, fn-owner-prepare, fn-store-publication-admissibility, fn-owner-known-abort); the capacity comparison against max-transactions is still a host computation. The durable word of a POST commit is fn-ccar-own-finish's (host/owner-host.lisp fn-owner-finish-submission), equal to fn-own-finish by fn-ccar-own-finish-is-own-finish. The refusal words are a local policy choice pending ember's decision. D25 (lanes d25-dup-conflict, then d25-injection-inverse): the duplicate-versus-conflict decision is fn-pb-existing-action; since lane d25-injection-inverse its subject is the poster's source through the injection inverse, not a projection that drops named fields, so no scope limit on an opening Date remains for records of injection recipe v2. The provenance of generated fields is carried by the injected block itself (recipe v2: Path, then Injection-Date, generated Message-ID, generated Date, then Injection-Info closing the block); no Store record field was added. Recipe v1 records are read under v1 only where unambiguous (fn-inj-source-of-a-v1-record) and otherwise compared octet for octet (fn-inj-source-of-an-ambiguous-v1-record). A relayed article, or one another agent injected, is compared octet for octet, so a transit copy whose Path differs is again a conflict (as before D25). The supplied-Injection-Date refusal is a local acceptance policy, not an RFC requirement. It refines fn-sn-existing-action (fn-pb-existing-action-refines-the-byte-identity-decision).",
       "events": [
@@ -6879,7 +6885,9 @@
         "tests/test_native_key_statements.py",
         "tests/test_native_peer_invite.py",
         "tests/test_native_hybrid_author.py",
-        "planning/evidence/keys-and-accounts-2026-09-26.md"
+        "planning/evidence/keys-and-accounts-2026-09-26.md",
+        "planning/evidence/manifests/certify-20260927T082505Z-2325383.json",
+        "planning/evidence/manifests/certify-20260927T090307Z-2876073.json"
       ],
       "events": [
         "fn-pa-served-post-word-names-a-refused-key-change-only-when-durable",
@@ -7334,7 +7342,9 @@
         "books/catalog-number-index.lisp",
         "tests/acl2/served-catalog-tests.lisp",
         "planning/evidence/manifests/certify-20260927T044349Z-763688.json",
-        "planning/evidence/manifests/certify-20260927T053413Z-938097.json"
+        "planning/evidence/manifests/certify-20260927T053413Z-938097.json",
+        "planning/evidence/manifests/certify-20260927T082505Z-2325383.json",
+        "planning/evidence/manifests/certify-20260927T090307Z-2876073.json"
       ],
       "planning_note": "Assigned to lane catalog-slice by the deputy at launch (2026-09-26); proved by lane catalog-boundary-owner (Fable, gpt-6's wave-5 review section 5) on 2026-09-26 in books/catalog-refresh.lisp over the owner's own view vocabulary, so the statement's subject is the refresh the host reaches today; the catalog-side twins are the same book's. catalog-slice-2 and -4's groundwork (the delta grammar, fn-view-cancel-after-target, fn-cat-view-articles) is what the catalog side is stated over.",
       "events": [
