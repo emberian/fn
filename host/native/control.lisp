@@ -365,6 +365,11 @@ transition."
                                            'fn-native-control-host-reasoned-admin-decode
                                          'fn-native-control-host-admin-decode)
                                        frame-list)))
+                      ;; PKT-657, PKT-575: the moderation request (kind 21).
+                      (moderation
+                        (and frame-list
+                             (fnn-core 'fn-native-control-host-moderation-decode
+                                       frame-list)))
                       (topic
                         (and (typep frame 'fnn-octets)
                              (fnn-core 'fn-native-control-host-topic-request-decode
@@ -423,6 +428,10 @@ transition."
                       (mapcar #'fnn-octets groups) (fnn-octets article))))
                    ((and (consp admin) (eq (car admin) :admin))
                     (fnn-owner-live-admin-serialized service (second admin)))
+                   ((and (consp moderation) (eq (car moderation) :moderation))
+                    (fnn-owner-moderation-serialized
+                     service (second moderation) (third moderation)
+                     (fourth moderation) (fifth moderation)))
                    (t :refused)))
              ;; The owner has already fenced itself on these two (exit 3 and
              ;; exit 4, `fnn-owner-shared-action-locked'); the reason goes to

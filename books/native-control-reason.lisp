@@ -15,7 +15,8 @@
 ; FNCT kinds: 1 request, 2 reply, 3 admin (native-control), 4-8 hybrid
 ; (native-hybrid-control), 9-12 and 14 peer invitation and bindings
 ; (peer-invite); this book takes 13, 17 and 18; 15 and 16 are the live
-; `bp-obligation status' and `store retention' requests.
+; `bp-obligation status' and `store retention' requests; 19 and 20 the TLS
+; reload; 21 the moderation request (books/moderation-verbs.lisp).
 
 (in-package "ACL2")
 (include-book "native-control")
@@ -23,6 +24,12 @@
 (defconst *fn-nctrl-reasoned-request-kind* 13)
 (defconst *fn-nctrl-reasoned-admin-kind* 17)
 (defconst *fn-nctrl-reasoned-reply-kind* 18)
+; PKT-657/PKT-575 (lane moderation-verbs): the moderation and withdrawal
+; request (`fn-native-control-moderation-encode', below; decided by
+; books/moderation-verbs.lisp); a new
+; request answered only with the reasoned reply.  Kinds 19 and 20 are
+; books/tls-reload.lisp's.
+(defconst *fn-nctrl-moderation-request-kind* 21)
 
 ; The reason field: one word of printable ASCII, at most this many octets
 ; (a vocabulary word, not operator data: every reason ACL2 names is a
@@ -118,7 +125,62 @@
 (defun fn-native-control-reasoned-framep (octets)
   (declare (xargs :guard t))
   (or (fn-frame-result-okp (fn-nctrl-open octets *fn-nctrl-reasoned-request-kind*))
-      (fn-frame-result-okp (fn-nctrl-open octets *fn-nctrl-reasoned-admin-kind*))))
+      (fn-frame-result-okp (fn-nctrl-open octets *fn-nctrl-reasoned-admin-kind*))
+      (fn-frame-result-okp (fn-nctrl-open octets
+                                          *fn-nctrl-moderation-request-kind*))))
+
+; -----------------------------------------------------------------------------
+; The moderation request (PKT-657, PKT-575): FNCT kind 21, (enum OP, bytes
+; LOGIN, bytes ID, bytes REASON), decided by books/moderation-verbs.lisp
+; `fn-mvb-plan'; answered with the reasoned reply.
+
+(defconst *fn-nctrl-moderation-ops* '(:approve :reject :withdraw))
+; LOGIN, ID and REASON may be empty (a withdrawal names no login, an
+; approval no reason) and a frame field is never empty, so each travels
+; after one octet 1: the field is (1 . OCTETS).
+(defconst *fn-nctrl-moderation-field-octets*
+  (+ 1 *fn-native-admin-max-argument-octets*))
+(defconst *fn-nctrl-moderation-spec*
+  (list (cons :enum *fn-nctrl-moderation-ops*)
+        (cons :blob *fn-nctrl-moderation-field-octets*)
+        (cons :blob *fn-nctrl-moderation-field-octets*)
+        (cons :blob *fn-nctrl-moderation-field-octets*)))
+
+(defun fn-native-control-moderation-encode (op login id reason)
+  (declare (xargs :guard t))
+  (let ((values (list op (cons 1 login) (cons 1 id) (cons 1 reason))))
+    (if (not (and (member-equal op *fn-nctrl-moderation-ops*)
+                  (true-listp login) (true-listp id) (true-listp reason)
+                  (fn-frame-values-okp *fn-nctrl-moderation-spec* values)))
+        :bad
+      (fn-nctrl-seal *fn-nctrl-moderation-request-kind*
+                     (fn-frame-fields-octets *fn-nctrl-moderation-spec* values)))))
+
+(defun fn-nctrl-moderation-field (x)
+  (declare (xargs :guard t))
+  (if (and (consp x) (equal (car x) 1)) (cdr x) :bad))
+
+(defun fn-native-control-moderation-decode (octets)
+  (declare (xargs :guard t))
+  (let ((opened (fn-nctrl-open octets *fn-nctrl-moderation-request-kind*)))
+    (if (not (fn-frame-result-okp opened))
+        :bad
+      (let ((payload (fn-frame-result-payload opened)))
+        (if (not (fn-cbor-octet-listp payload))
+            :bad
+          (let ((fields (fn-frame-fields-parse *fn-nctrl-moderation-spec* payload)))
+            (if (not (fn-frame-parse-okp fields))
+                :bad
+              (let ((v (fn-frame-parse-value fields)))
+                (if (and (true-listp v) (equal (len v) 4)
+                         (not (equal (fn-nctrl-moderation-field (cadr v)) :bad))
+                         (not (equal (fn-nctrl-moderation-field (caddr v)) :bad))
+                         (not (equal (fn-nctrl-moderation-field (cadddr v)) :bad)))
+                    (list :moderation (car v)
+                          (fn-nctrl-moderation-field (cadr v))
+                          (fn-nctrl-moderation-field (caddr v))
+                          (fn-nctrl-moderation-field (cadddr v)))
+                  :bad)))))))))
 
 ; -----------------------------------------------------------------------------
 ; The reply

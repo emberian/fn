@@ -89,6 +89,16 @@
   (declare (xargs :mode :program))
   (fn-native-control-request-decode octets))
 
+;; PKT-657, PKT-575: the moderation request, FNCT kind 21
+;; (books/native-control-reason.lisp).
+(defun fn-native-control-host-moderation-encode (op login id reason)
+  (declare (xargs :mode :program))
+  (fn-native-control-moderation-encode op login id reason))
+
+(defun fn-native-control-host-moderation-decode (octets)
+  (declare (xargs :mode :program))
+  (fn-native-control-moderation-decode octets))
+
 (defun fn-native-control-host-admin-encode (argv)
   (declare (xargs :mode :program))
   (fn-native-control-admin-encode argv))

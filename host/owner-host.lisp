@@ -70,6 +70,8 @@
 ; service log lines (fn-olog-*): both ACL2's, read here and nowhere computed.
 (include-book "../books/owner-agent")
 (include-book "../books/owner-log")
+; PKT-657, PKT-575: the moderation and withdrawal verbs' decision.
+(include-book "../books/moderation-verbs")
 (include-book "../books/owner-results")
 ; The served article bound installed with the profile (PKT-103).
 (include-book "../books/owner-served-bound")
@@ -1273,6 +1275,17 @@
 ; already injected (fn-own-operator-retry-resubmits-the-stored-injection).
 ; The injected octets are what fn-owner-take then leaves in
 ; fn-owner-submit-octets; the host stores those, never the payload it read.
+;; PKT-657, PKT-575: the owner's decision on a moderation or withdrawal
+;; request (books/moderation-verbs.lisp `fn-mvb-plan'): (:refused REASON),
+;; (:submit MSGID GROUPS OCTETS) or (:withdraw ARGV MSGID GROUPS OCTETS).  It
+;; reads the owner and the configuration it carries and changes nothing; the
+;; host runs the named steps (host/native/control.lisp
+;; fnn-owner-moderation-serialized) through the live administration and
+;; the operator submission, each deciding again.
+(defun fn-owner-moderation-plan (op login id reason state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (fn-mvb-plan op login id reason (fn-owner-ocfg state))))
+
 (defun fn-owner-operator-submit (msgid-octets group-octets payload state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((owner (fn-owner-core state))

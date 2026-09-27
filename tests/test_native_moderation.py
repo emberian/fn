@@ -20,7 +20,14 @@ runs on the production image (FN_NATIVE_HOST) and the developer image
 PKT-658: carol, who moderates nothing, is not served the queue (LIST ACTIVE
 omits it, GROUP answers 411, ARTICLE of the envelope 430); alice is.
 PKT-657: `moderation list fn.mod` reports the envelope held, then approved,
-live and offline.  The relay: a peer (source address 127.0.0.2) offering
+live and offline.  `moderation approve ID --moderator LOGIN` and `moderation
+reject ID --moderator LOGIN --reason TEXT` (the owner's decision,
+books/moderation-verbs.lisp; FNCT kind 21): carol, who moderates nothing, is
+refused `not-a-moderator' and nothing changes; alice's approval posts the held
+article with `Approved: alice'; her rejection withdraws the envelope under
+the node's authority (PKT-575), and a later approval is refused
+`already-rejected'.  `article withdraw ID --reason TEXT` withdraws a stored
+article; it stays withdrawn after a restart.  The relay: a peer (source address 127.0.0.2) offering
 an article in fn.mod without Approved is refused 437 and nothing is
 stored; the same peer's approved article is taken (235).
 
@@ -156,6 +163,10 @@ class NativeModerationTests(unittest.TestCase):
         if process.poll() is None:
             process.send_signal(signal.SIGKILL)
             process.wait(timeout=10)
+        if process.stderr and not process.stderr.closed:
+            # The owner's log, for a failure's diagnosis (its refusal lines).
+            tail = process.stderr.read()[-4000:].decode("ascii", "replace")
+            print("NATIVE-MODERATION owner log tail:", tail.replace("\n", " | "))
         for stream in (process.stdout, process.stderr):
             if stream and not stream.closed:
                 stream.close()
@@ -236,7 +247,8 @@ class NativeModerationTests(unittest.TestCase):
     def scenario(self, image):
         node = self.node(image)
         self.ok(node, "init", "fn.test")
-        for group in ("fn.mod", "fn.mod.moderation"):
+        # control.cancel: the filing group of the node's cancel (NNT-010).
+        for group in ("fn.mod", "fn.mod.moderation", "control.cancel"):
             self.ok(node, "group", "create", group)
         # Offline, refused by name: an absent group, an absent queue.
         self.assertNotEqual(self.operator(node, "group", "moderate", "fn.absent",
@@ -257,7 +269,7 @@ class NativeModerationTests(unittest.TestCase):
 
         carol = self.login(node, "carol")
         # PKT-658: carol moderates nothing; the queue is not served to her.
-        self.assertEqual(self.active(carol), {"fn.mod": "m", "fn.test": "y"})
+        self.assertEqual(self.active(carol), {"control.cancel": "y", "fn.mod": "m", "fn.test": "y"})
         self.assertTrue(self.line(carol, "GROUP fn.mod.moderation").startswith("411"))
         # Held: 240, not in fn.mod, in the queue as the envelope.
         held = self.post_lines(carol, self.article("fn.mod", "held1"))
@@ -331,6 +343,55 @@ class NativeModerationTests(unittest.TestCase):
         self.assertTrue(held2.startswith("240"), held2)
         self.assertTrue(self.line(carol, "STAT <held2@example.invalid>").startswith("430"))
 
+        # PKT-657: the operator's verbs, decided by the owner
+        # (books/moderation-verbs.lisp fn-mvb-plan; FNCT kind 21).  A login
+        # that moderates nothing is refused by name, and nothing changes.
+        refused = self.operator(node, "moderation", "approve",
+                                "<held2@example.invalid>", "--moderator", "carol")
+        self.assertEqual(refused.returncode, 1, text(refused))
+        self.assertIn("not-a-moderator", text(refused))
+        self.assertTrue(self.line(carol, "STAT <held2@example.invalid>").startswith("430"))
+        # alice approves: the held article is posted with Approved: alice.
+        self.ok(node, "moderation", "approve", "<held2@example.invalid>",
+                "--moderator", "alice")
+        reader = self.login(node, "carol")
+        status, posted = self.multi(reader, "ARTICLE <held2@example.invalid>")
+        self.assertTrue(status.startswith("220"), status)
+        self.assertIn("Approved: alice", posted)
+        self.assertIn("Newsgroups: fn.test,fn.mod", posted)
+        again = self.operator(node, "moderation", "approve",
+                              "<held2@example.invalid>", "--moderator", "alice")
+        self.assertEqual(again.returncode, 1, text(again))
+        self.assertIn("already-approved", text(again))
+        # Reject: carol refused by name; alice withdraws the envelope under
+        # the node's authority (PKT-575: the :withdraw-article row, code 26,
+        # then the node's cancel).
+        held3 = self.post_lines(reader, self.article("fn.mod", "held3"))
+        self.assertTrue(held3.startswith("240"), held3)
+        refused = self.operator(node, "moderation", "reject",
+                                "<held3@example.invalid>", "--moderator", "carol")
+        self.assertEqual(refused.returncode, 1, text(refused))
+        self.assertIn("not-a-moderator", text(refused))
+        self.ok(node, "moderation", "reject", "<held3@example.invalid>",
+                "--moderator", "alice", "--reason", "off-topic")
+        listed = text(self.ok(node, "moderation", "list", "fn.mod"))
+        self.assertIn("approved envelope=<fn-moderate.held2@example.invalid>", listed)
+        self.assertIn("rejected envelope=<fn-moderate.held3@example.invalid>", listed)
+        self.assertIn("held=0", listed)
+        alice = self.login(node, "alice")
+        self.assertTrue(self.line(
+            alice, "STAT <fn-moderate.held3@example.invalid>").startswith("430"))
+        self.assertTrue(self.line(
+            alice, "STAT <fn-moderate.held2@example.invalid>").startswith("223"))
+        self.assertTrue(self.line(alice, "STAT <held3@example.invalid>").startswith("430"))
+        late = self.operator(node, "moderation", "approve",
+                             "<held3@example.invalid>", "--moderator", "alice")
+        self.assertEqual(late.returncode, 1, text(late))
+        self.assertIn("already-rejected", text(late))
+        self.assertIn("principal=node",
+                      text(self.ok(node, "control", "evidence",
+                                   "<fn-moderate.held3@example.invalid>")))
+
         # Live: end the moderation; a new connection lists "y" and posts.
         self.ok(node, "group", "moderate", "fn.mod", "--off")
         carol = self.login(node, "carol")
@@ -338,6 +399,25 @@ class NativeModerationTests(unittest.TestCase):
         direct = self.post_lines(carol, self.article("fn.mod", "direct1"))
         self.assertTrue(direct.startswith("240"), direct)
         self.assertTrue(self.line(carol, "STAT <direct1@example.invalid>").startswith("223"))
+        # PKT-575: the operator's withdrawal of any stored article.
+        absent = self.operator(node, "article", "withdraw", "<absent@example.invalid>",
+                               "--reason", "takedown")
+        self.assertEqual(absent.returncode, 1, text(absent))
+        self.assertIn("no-such-article", text(absent))
+        self.ok(node, "article", "withdraw", "<direct1@example.invalid>",
+                "--reason", "takedown")
+        carol = self.login(node, "carol")
+        self.assertTrue(self.line(carol, "STAT <direct1@example.invalid>").startswith("430"))
+        twice = self.operator(node, "article", "withdraw", "<direct1@example.invalid>",
+                              "--reason", "takedown")
+        self.assertEqual(twice.returncode, 1, text(twice))
+        self.assertIn("already-withdrawn", text(twice))
+        # The withdrawal is durable: after a restart the article stays withdrawn.
+        self.stop(node)
+        self.start(node)
+        carol = self.login(node, "carol")
+        self.assertTrue(self.line(carol, "STAT <direct1@example.invalid>").startswith("430"))
+        self.assertTrue(self.line(carol, "STAT <held3@example.invalid>").startswith("430"))
         self.stop(node)
 
     def test_moderated_group_holds_approves_and_refuses(self):

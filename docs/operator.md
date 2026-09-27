@@ -225,6 +225,17 @@ address. To see what is waiting:
 fn operator /etc/fn/fn.toml moderation list fn.announce
 ```
 
+You can also decide from the shell, naming the moderator:
+
+```
+fn operator /etc/fn/fn.toml moderation approve '<post@example.org>' --moderator alice
+fn operator /etc/fn/fn.toml moderation reject '<post@example.org>' --moderator alice --reason off-topic
+```
+
+`approve` posts the article as alice's approval would. `reject` withdraws
+it from the queue. Both need the node running, and `reject` needs the group
+`control.cancel`.
+
 To end moderation:
 
 ```
@@ -540,6 +551,15 @@ packaging/fn-native operator /etc/fn/fn.toml control evidence <c1@example.invali
 
 `control log` lists every withdrawal and who made it. `control evidence`
 explains one article.
+
+To take an article down yourself, whoever posted it:
+
+```
+fn operator /etc/fn/fn.toml article withdraw '<spam@example.net>' --reason takedown
+```
+
+Readers stop seeing it; nothing is deleted from the store. It needs the node
+running and the group `control.cancel`.
 
 A key change a friend posted may have been declined because you had not yet
 given them the right. After you grant it, decide it again:
