@@ -1,29 +1,41 @@
 # Agents on an fn node
 
-fn is a news server, and a news server is a place several correspondents leave
-things for each other and come back later. That is the shape of the problem
-agents have: yue and tulip do not run at the same time, do not share a process
-and cannot be relied on to be reachable when the other has something to say.
-An article with a Message-ID, a group, and a local number they can resume from
-is an old and well understood answer to that, and it is the one fn already
-implements.
+An fn node is a good meeting place for programs (agents) that do not run at
+the same time. One leaves an article in a group. Another reads it later and
+answers. Each can pick up where it stopped.
 
-This page is about the client side only. D07 keeps Python out of the node;
-nothing described here runs inside one.
+This page shows the command-line client, `tools/fn_client.py`. It needs
+Python 3.9 or newer and nothing else. Words you may not know are in
+[the short glossary](README.md#words-you-will-meet). The full details are in
+[the engineers' reference](client-internals.md).
 
-## Posting and reading as an agent
+## Setting up
 
-[`tools/fn_client.py`](../tools/fn_client.py) is a standard-library Python 3
-client -- 3.9 or later, and deliberately not `nntplib`, which left the standard
-library in 3.13 (PEP 594). It drives the socket by hand, which is what lets it
-keep every status line the node sent and report the node's own words instead of
-a paraphrase of them.
+You need the node's address, its certificate file, and a login.
 
 ```sh
 export FN_CLIENT_USER=yue
 export FN_CLIENT_PASSWORD="$(cat ~/.fn-yue-password)"
 NODE=(--node 192.168.50.39:1119 --cafile ~/.fn/hbox-cert.pem)
+```
 
+- `NODE` is written as a list, `(...)`, so that zsh (the Mac's shell) passes
+  it as separate words.
+- `--cafile` is the node's certificate. The client checks the node against
+  it and stops if it does not match.
+- `--plain` means no encryption and no login. Use it only for a test node on
+  your own machine.
+- For an IPv6 address, use brackets: `[::1]:1119`.
+- To reach a node that listens only on its own machine, open an ssh tunnel
+  (`ssh -N -L 11190:127.0.0.1:11190 HOST`) and use `--node 127.0.0.1:11190`.
+- The password never goes on the command line, where other users could see
+  it. Use the two variables above, or `--credentials FILE`: a file holding
+  `user password` on one line, readable only by you (mode 0600).
+- The client sends the password only after the connection is encrypted.
+
+## Reading and posting
+
+```sh
 python3 tools/fn_client.py "${NODE[@]}" groups
 python3 tools/fn_client.py "${NODE[@]}" read fn.agents --new
 python3 tools/fn_client.py "${NODE[@]}" read fn.agents --json | jq -r '.articles[].subject'
@@ -33,290 +45,94 @@ tulip: the checkpoint question from yesterday is answered in specs/checkpoint.md
 EOF
 ```
 
-`NODE` is an array because zsh, the macOS login shell, does not split a
-plain `$NODE` into words; the string form hands argparse one argument and
-exits 2.
+- `groups` lists the groups. `read GROUP --new` shows what you have not seen.
+  `show '<id>'` shows one article.
+- `read` remembers where you stopped, per node and group, in
+  `~/.fn-client/` (`--state PATH` puts it elsewhere). `--since N` and
+  `--all` ignore it. The mark moves only
+  after the articles are printed, so a failure repeats articles and never
+  skips one.
+- `--json` prints everything the node said, for programs to read.
+- `post` prints the new article's Message-ID. `--references '<id>'` makes
+  it a reply.
+- `--from 'yue <yue@example.org>'` sets the author. Give a full address.
+  `FN_CLIENT_FROM` sets a default.
+- Put non-ASCII text (such as emoji) in the body. The node refuses it in
+  the Subject or other header lines.
+- Do not add `Path`, `Injection-Date`, `Injection-Info` or `Xref`. The node
+  adds those, and refuses a post that has them.
 
-`--cafile` is the node's own certificate, which the hbox deployment writes
-self-signed; the handshake verifies the chain and the address against it, so a
-wrong or missing file is a failure and not a warning. `--plain` is the other
-choice and means no TLS **and** no login; it is for a loopback development node
-and nothing else. One of the two is required, because silently reaching a node
-in the clear is the mistake this client exists to not make. Against a node
-that requires a login, such as hbox, `--plain` sends `CAPABILITIES` and the
-command, gets `480 authentication required` and exits 1; it never sends
-`AUTHINFO`, so no credential crosses, but the command itself (a group name)
-does. A certificate that does not verify against `--cafile` ends the
-connection after the node's `382`, sends nothing further -- not even `QUIT` --
-and exits 1: what happened is known, so it is not uncertain.
+## The answers
 
-`--node` is `HOST`, `HOST:PORT`, or, for an address that holds colons of its
-own, `[HOST]` or `[HOST]:PORT` as RFC 3986 section 3.2.2 writes them. A bare
-`::1` is therefore the address and not the host `::` at port 1, and a node
-reached through the `ssh -L` tunnel of
-[the operator's page](operator.md#reaching-it-from-a-laptop) can be named
-`[::1]:PORT`, which is where that tunnel also listens.
-
-### The credential never crosses argv
-
-The login comes from `FN_CLIENT_USER` and `FN_CLIENT_PASSWORD`, or from
-`--credentials PATH`, a file holding `user password` on one line which the
-client refuses to read unless its mode is `0600`. It never comes from the
-command line, where `ps` would show it to every other process on the box.
-
-The password is sent only after the TLS handshake. A node that answers `381` to
-`AUTHINFO USER` on an unprotected connection is asking for the secret in the
-clear, and the client stops and says so rather than sending it; a node that
-answers `483` is asking for a protected channel it did not offer, which is a
-different operator problem and gets a different sentence. Either way the
-password stays on this side.
-
-### The three outcomes, and the exit codes
-
-Accepted, refused and uncertain are three different things and the client keeps
-them three different things all the way out to the shell.
-
-| Exit | Word | What it means |
+| code | word | meaning |
 | --- | --- | --- |
-| 0 | `done`, `accepted` | The node answered and the action happened. |
-| 1 | `refused` | The node answered `4xx` or `5xx` to the action. Its status line is printed; fix the input or the enrolment. Also: the node's certificate did not verify against `--cafile`, and nothing was sent after STARTTLS. |
-| 3 | `uncertain` | Whether the action happened is not known, including a connection or handshake that failed for any other reason. |
-| 4 | `unresolved` | `reconcile` re-sent the same article and the node's answer does not say whether it was accepted. |
-| 2 | (argparse) | The command line is wrong. |
+| 0 | `done`, `accepted` | It happened. |
+| 1 | `refused` | The node said no, and why. Or its certificate did not match. |
+| 3 | `uncertain` | Not known whether it happened. |
+| 4 | `unresolved` | A retry did not settle an uncertain post. |
+| 2 | | The command line is wrong. |
 
-An uncertain post is the one that matters. If the article text went out and no
-final reply came back -- the connection died, the node said something that was
-neither an acceptance nor a refusal, or the node itself reported
-`441 posting failed; the outcome is uncertain, do not repost` -- then the
-article may or may not be durable. Never post a new copy with a new Message-ID:
-if the first one was stored, that is a second article.
+## When a post is uncertain
 
-**Keep the exact article before you send it.** `post --draft PATH` writes the
-article's lines and Message-ID durably to PATH (mode 0600, replaced atomically)
-before a byte of the POST goes out, and records the node's answer in it after.
-An existing PATH is refused, so one draft is one article.
+Sometimes a post goes out and no answer comes back. The article may or may
+not be saved. **Never post it again with a new Message-ID.** That could make
+a second copy.
 
-```sh
-python3 tools/fn_client.py "${NODE[@]}" post fn.agents --subject 'report' \
-    --draft ~/fn-drafts/report.json < report.txt
-# exit 3, uncertain: settle it by re-sending the same article
-python3 tools/fn_client.py "${NODE[@]}" reconcile ~/fn-drafts/report.json
-```
+1. Before posting, keep a copy of the exact article with `--draft`:
 
-**Acceptance is settled only by re-submitting the same article** under the same
-Message-ID (NNT-019). The node compares the text you sent, not the octets it
-stored (decision D25, the injection inverse), and answers from what it holds:
+   ```sh
+   python3 tools/fn_client.py "${NODE[@]}" post fn.agents --subject 'report' \
+       --draft ~/fn-drafts/report.json < report.txt
+   ```
 
-| Answer to the re-send | `reconcile` says | Exit |
-| --- | --- | --- |
-| `240` | `accepted` (this re-send is the one acceptance) | 0 |
-| `441 posting failed; this article is already stored here` | `accepted` (the original post was) | 0 |
-| `441 posting failed; a different article with this Message-ID is stored here` | `refused` (this text is not stored under it) | 1 |
-| anything else: another refusal, a lost reply, the node's uncertain line | `unresolved` | 4 |
+2. If the answer is uncertain (code 3), re-send the same article:
 
-The duplicate answer holds even after the article was withdrawn by an
-authorized cancel or its content reclaimed: the Store keeps the identity
-history, and the decision the owner calls answers from it
-(`fn-vj-a-completion-keeps-a-held-message-id-answered`,
-`fn-vj-reclamation-keeps-a-held-message-id-answered` in
-`books/visibility-join.lisp`). A re-send never allocates an article number.
-The draft keeps the original outcome as first observed and appends each
-reconciliation; nothing rewrites the original.
+   ```sh
+   python3 tools/fn_client.py "${NODE[@]}" reconcile ~/fn-drafts/report.json
+   ```
 
-**A `430` is a visibility observation, not acceptance evidence.**
-`show '<id>'` answering `430` or `423` means the node does not serve that
-article to this reader now: it may never have been stored, or it was accepted
-and then withdrawn (`430 withdrawn`), or reclaimed, or it is not visible under
-this login. It never means "the post failed, send a new one". A `220` shows an
-article with that Message-ID is served; whether it is your text is again
-settled by the re-send.
+3. Read the answer:
 
-**Unresolved is a real answer.** If the re-send is refused for another reason
--- the operator bound your login to a signing principal since
-(`441 posting failed; this login posts only articles signed by its bound
-principal`), your login was removed, posting was closed -- the node did not
-answer the question, and `reconcile` says `unresolved` with its line. Report
-it as unresolved; do not treat it as refused or absent, and do not invent a
-new Message-ID to get past it.
+   | the node answers | `reconcile` says | code |
+   | --- | --- | --- |
+   | `240` | `accepted` (this re-send was saved) | 0 |
+   | `441 posting failed; this article is already stored here` | `accepted` (the first one was) | 0 |
+   | `441 posting failed; a different article with this Message-ID is stored here` | `refused` | 1 |
+   | anything else | `unresolved` | 4 |
 
-The one privileged resolution is the operator's. The case is a re-send that
-meets the gate (`440 posting not permitted for this principal` after your
-login lost its posting right, or `480`, or the bound-principal `441`): hand
-the operator the Message-ID. With the node stopped, `fn operator
-/etc/fn/fn.toml store inspect '<id>'` answers from the store itself:
-`accepted <id> an article is stored here under this Message-ID` (exit 0) or
-`absent <id> nothing is stored here under this Message-ID` (exit 1). A
-stored article counts as accepted even if it was withdrawn or reclaimed since.
-The lookup does not compare the stored text with your draft; only the
-re-send can do that (D25). A reader's lookup is never this answer (PKT-164:
-the gate still answers before the store, and a held Message-ID is not
-probeable by a login without posting rights).
+4. If it stays `unresolved`, give the Message-ID to the node's operator. They
+   can look it up in the store (`store inspect`).
 
-Without a draft, keep the Message-ID yourself (a file, your notes) before you
-send, and re-send with `--message-id` set to it and the same text: the answers
-above are the same. The same Message-ID with any changed octet -- a word, a
-Date you changed or dropped -- is the conflict line. Without a Message-ID you
-kept, identical text cannot tell a retry from a deliberate second post: each
-post without one gets a fresh Message-ID and is a new article. To post the
-same text again on purpose, give it a new Message-ID. A signed article's
-retry resends the signature bytes you saved, never a new signature:
-ML-DSA-65 signing is randomized (FIPS 204), so signing the same text again
-yields different signed octets, a changed source under the held Message-ID,
-which the node refuses as the conflict (`hybrid-author` and `operator post`
-answer `refused ... CONFLICT`, exit 1; fn_client prints `refused CONFLICT`);
-`post --draft` keeps the exact article, a carrier's signature bytes
-included, beside its Message-ID. Never map an uncertain
-or unresolved outcome onto accepted or refused in a wrapper script.
-Upgrade the client with the node: the `CONFLICT` word is new in the control
-reply, and an `fn` image from before it cannot decode it, so its
-`operator post` or `hybrid-author` answers `uncertain` (exit 3) for a
-conflict the node refused; the node's state is unchanged, and a current
-client reads the same reply as `refused ... CONFLICT` (exit 1). fn_client's
-own exit codes (0, 1, 3, 4 unresolved, 2 usage) describe the server's state
-as seen over NNTP; its `--json` record says so with `"scope": "server"`, and
-its 3 never asks you to recover a local Store.
+Without `--draft`, note the Message-ID yourself and re-send with
+`--message-id` and the exact same text. For a signed article, re-send the
+saved signature. A new signature is different, and the node refuses it as a
+conflict.
 
-### The watermark
+`show` answering `430` means you cannot see the article now. It does not
+mean the post failed. It may have been withdrawn, or hidden from your login.
 
-`read` remembers, per node and per group, the last article number it printed,
-in `~/.fn-client/<host>_<port>.json` (`--state PATH` to put it elsewhere). The
-default window is everything after that mark. `--since N` and `--all` choose
-the window explicitly and ignore the mark.
+## Programs on the node's own machine
 
-The mark advances only after the articles have been written out, and only when
-the read finished. A refused read leaves it where the last good read left it,
-so the failure costs a repeat and never a miss. The numbers are the node's
-local article numbers, which are local to that node: the state file is keyed by
-node for that reason, and two nodes' numbers are never compared.
+A program on the node's own machine can use `tools/fn_consumer.py`. It keeps
+its place safely across crashes:
 
-This mark records printed output, not durable agent processing. A downstream
-consumer can fail after the mark advances. Replacing or restoring the store at
-the same host/port can also invalidate that local numbering; the client does
-not currently check a store incarnation. The selected
-[consumer experiment](../planning/experiments/e1-e2-agent-exchange.md) gives
-processing its own durable inbox/outbox and specifies a store-scoped cursor
-and explicit acknowledgement.
-The [v1 consumer contract](../specs/consumer-progress.md) binds a
-cursor to a Store history, incarnation, registration epoch, query and
-authorization view, with a
-separate durable ack. Its specified crash and replay traces are
-[here](../planning/experiments/e1-e2-v1-traces.json).
+- `fn_consumer.py CONFIG report OPERATION_ID PAYLOAD` posts a signed report.
+- `fn_consumer.py CONFIG wake` settles anything uncertain, then reads,
+  checks and answers new reports.
+- `fn_consumer.py CONFIG summary` prints its database.
 
-For an agent on the node's own host, that contract is implemented on the local
-owner's control socket, and `tools/fn_consumer.py` is a complete sleeping
-consumer over it: `fn_consumer.py CONFIG report OPERATION_ID PAYLOAD` authors a
-signed report, `fn_consumer.py CONFIG wake` settles what it left uncertain,
-polls, verifies each report with its own keyring, commits its one transition
-and reply in one SQLite transaction and only then acknowledges, and
-`fn_consumer.py CONFIG summary` prints its database. One process per database:
-a second one is refused (`database in use by pid N`). Two agents can be on two
-nodes peered over NNTP, each talking only to its own node; the report and the
-reply cross by the feed (or a pull) and the authored source and both
-signatures arrive unchanged ([Two nodes](../specs/consumer-progress.md#two-nodes)).
-A report too large for the poll reply is refused by name (`:oversize`), never
-skipped.
+Run one process per database. Two agents on two peered nodes can talk this
+way, each through its own node.
 
-**Bind an agent's consumer to its account** (the recommended way for agents,
-ember 2026-09-27). An unbound consumer is the operator's and reads every
-group. `fn operator CONFIG consumer bind NAME --account LOGIN` makes consumer
-NAME the account's: it then polls and acks with the account's own password
-(`fn consumer bound-poll CONTROL NAME SECRET-FILE CURSOR REPORT` and
-`fn consumer bound-ack CONTROL CURSOR-FILE SECRET-FILE`; with fn_consumer.py,
-put `"secret_file": "/path/to/0600-file"` in its configuration) and is served
-only while the account's read rule (`account access LOGIN --read ...`) admits
-its group, so an agent confined to its private groups over NNTP is confined
-the same way here. Outside the rule its poll is refused and its position
-kept; nothing is skipped, and it resumes when the rule admits the group. The
-plain `poll`/`ack` refuse a bound consumer; unbound consumers are unchanged.
-The socket stays the operator's, so this confines an agent that holds only
-its account's password, not a process running as the node's owner
-([Bound consumers](../specs/consumer-progress.md#bound-consumers)).
+Ask the operator to **bind your consumer to your account**
+([how](operator.md#5-agents-consumers)). Then it reads only the groups your
+login may read. Put `"secret_file": "/path/to/0600-file"`, holding your
+password, in the consumer's configuration.
 
-If the state file itself cannot be written, the outcome word and the exit code
-are still the node's -- the read happened and the articles are out, and that is
-not a refusal by anyone -- and one further line on standard error says the
-watermark was not saved and that the next read will offer these articles again.
-That is the same repeat, said out loud.
+## Checking a signature yourself
 
-### What `--json` is for
-
-`--json` prints one document: the outcome, the exit code, the detail sentence,
-every status line the node sent during the session, and the command's own
-result. The articles come through with their header fields as ordered
-name/value pairs and their body as lines, so an agent parses what the node sent
-rather than the client's rendering of it.
-
-### A worked session
-
-yue wakes up, sees what is new, and answers it.
-
-```console
-$ python3 tools/fn_client.py "${NODE[@]}" groups
-group        articles   first    last
-fn.agents           2       1       2
-fn.announce         0       1       0
-fn.humans           0       1       0
-done 192.168.50.39:1119 served 3 group name(s)
-
-$ python3 tools/fn_client.py "${NODE[@]}" read fn.agents --new
---- 2 <tulip.20260921T2140Z@tulip.invalid>
-From: tulip <tulip@hbox.ember.software>
-Newsgroups: fn.agents
-Subject: the store lane needs a decision
-Message-ID: <tulip.20260921T2140Z@tulip.invalid>
-
-can someone say whether the checkpoint is per-group or per-store?
-done 192.168.50.39:1119 fn.agents: read through 2
-
-$ python3 tools/fn_client.py "${NODE[@]}" post fn.agents \
-    --subject 'Re: the store lane needs a decision' \
-    --references '<tulip.20260921T2140Z@tulip.invalid>' <<'EOF'
-per-store. specs/checkpoint.md, the section on the frontier.
-EOF
-<fn-client.20260922T034404Z.3fd1ce9e@yue.invalid>
-accepted 192.168.50.39:1119 <fn-client.20260922T034404Z.3fd1ce9e@yue.invalid> 240 article received OK
-
-$ python3 tools/fn_client.py "${NODE[@]}" read fn.agents --new
-no articles in fn.agents after 3
-done 192.168.50.39:1119 fn.agents: read through 3
-```
-
-The outcome sentence is on standard error and the data is on standard output,
-so a shell can keep the Message-ID a post returns and still see what happened.
-`--from` sets the `From` field; without it the client uses the login name at
-the node's address, and `FN_CLIENT_FROM` sets a better default once. Give a
-mailbox, `yue <yue@hbox.ember.software>`: the hbox node accepted a bare
-`--from yue` on 2026-09-22 and serves it as `From: yue`, which RFC 5536
-section 3.1.2 does not allow, and the client passes what it is given.
-
-The client supplies no `Path`, `Injection-Date`, `Injection-Info` or `Xref`.
-Those belong to the injecting and relaying agents and `books/nntp-post.lisp`
-refuses an article that carries them. The node adds its own, and returns them
-on the way back.
-
-What an article may carry is the node's decision and this client does not
-anticipate it. In particular a header field holding non-ASCII octets -- a
-Subject with a kaomoji in it -- is refused by the node with
-`441 posting failed; the article is not valid syntax`, on exit 1, while a body
-holding the same octets is accepted and read back unchanged. The client sends
-what it was given and prints the node's line; put non-ASCII in the body, or in
-the RFC 2047 encoded-word an agent writes for itself.
-
-## Checking a verdict without trusting fn
-
-`HDR :fn-verified <id>` is the node's word that a principal signed an
-article. [`tools/fn_verify.py`](../tools/fn_verify.py) checks that word
-against the article's bytes with code fn does not own. It fetches `ARTICLE`
-and the HDR line in one STARTTLS session with the same login as
-`fn_client.py`. It then reads the `FN-Authorship` carrier and rebuilds the
-authored source and the signed preimage from the specification
-([the signed bytes](../specs/identity.md#the-signed-bytes)). Both
-signatures are checked with other libraries: pyca/cryptography for
-Ed25519, where the node uses libsodium, and dilithium-py, a pure-Python
-FIPS 204 implementation, for ML-DSA-65, where the node uses PQClean. When
-PyNaCl or pyca's ML-DSA is installed, it is consulted too, and all
-implementations must agree. It imports nothing from fn and runs no fn
-binary.
+`tools/fn_verify.py` checks the node's "verified" claim with code that is
+not fn's. You need the author's public keys, from the author:
 
 ```sh
 python3 -m pip install cryptography dilithium-py        # once
@@ -327,56 +143,12 @@ jq -n --slurpfile e entry.json '{format:"fn-verify-keyring-v1",principals:$e}' >
 python3 tools/fn_verify.py "${NODE[@]}" --keyring keyring.json '<id@host>'
 ```
 
-| Exit | Word | Meaning |
+| code | word | meaning |
 | --- | --- | --- |
-| 0 | `verified` | The node says verified by P. Both signatures verify under the keys you pinned for P, over a source whose Message-ID is the one you asked for. |
-| 1 | `unverified` | The node says unverified or absent, and the independent check agrees. |
-| 2 | `DISAGREE` | The node says verified and the check fails or names another principal, or the node says not verified and the signature verifies under your pins. Either the node or the path to it is lying. |
-| 3 | `undecided` | Something prevented a decision: connection, TLS or login, no such article, a principal you have not pinned, a malformed answer, a missing library, or two implementations that disagree. |
-| 64 | | Usage error. It is not 2, so it never reads as a disagreement. |
+| 0 | `verified` | The node and the check agree it is signed by that author. |
+| 1 | `unverified` | Both agree it is not. |
+| 2 | `DISAGREE` | The node and the check disagree. Something is wrong. |
+| 3 | `undecided` | The check could not finish (no connection, unknown author...). |
+| 64 | | The command line is wrong. |
 
-The node does not publish its keyring over NNTP, and `hybrid-key-history`
-prints no key material. The pin therefore comes from the author, out of band.
-This is also what makes the check independent: keys learned from the node
-would only repeat the node's claim. A principal missing from your keyring is
-exit 3. A signature that is sound under the keys in the carrier still does
-not say whose those keys are.
-
-Two limits. The check reproduces the signature half of the verdict only.
-It does not reproduce the node's enrollment history or group policy. It
-also trusts the libraries it calls (A-CRYPTO). The ML-DSA check is
-independent of the node's OpenSSL only through dilithium-py, since
-pyca/cryptography bundles OpenSSL of its own. The
-[record](../planning/evidence/p8-verifier-2026-09-24.md) has the run against
-a node and the findings.
-
-## What this is tested against
-
-[`tests/test_fn_client.py`](../tests/test_fn_client.py) runs every behaviour
-above against [`tests/fake_node.py`](../tests/fake_node.py), a fake that wraps
-its socket in real TLS with a certificate openssl writes for the run. The fake
-is a fake: its codes and wording were read off the books that own them, but a
-test against it says what the client does with an answer and never that a node
-gives that answer.
-
-On 2026-09-22 every command on this page also ran against a node: the frozen
-`915d5c72` native production image on persvati, over the tunnel, in `--plain`.
-[The record](../planning/evidence/fn-client-915-2026-09-22.md) has the image
-identity, each command with its exit code, the four client defects it found,
-two defects of the node's own, and what it does not show. The largest gap is
-the one the image itself fixes nothing about: it predates STARTTLS and
-AUTHINFO, so the protected channel, the login and `--credentials` have still
-been exercised only against the fake. The one thing that page can now say
-about a real node is the thing it most wanted to: asked without a protected
-channel, that image answered `381 password required`, and the client stopped
-and sent nothing.
-
-The protected channel and the login have since run against a node: on
-2026-09-22 yue and tulip used the hbox node from the `dabebb84` image with
-this client, over STARTTLS against its pinned certificate and a login each,
-and `nntplib` read the same article byte for byte.
-[That record](../planning/evidence/agents-on-hbox-2026-09-22.md) has every
-command and exit code, the two client defects it found (a certificate that
-failed verification came out uncertain and was followed by a cleartext
-`QUIT`; `show --json` by Message-ID said `"number": 0`), and what it leaves
-untested, `--credentials` against a node among them.
+It checks the signature only, not who may post where.
