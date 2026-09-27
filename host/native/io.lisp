@@ -2789,7 +2789,7 @@ then the same batch loop as the owner's thread writes the file through the
 publication buffer, one step's rows at a time.  Before this (rep-wave-d-2,
 2026-09-26) the file was the whole frozen checkpoint encoded into the
 buffer at once."
-  (multiple-value-bind (store records)
+  (multiple-value-bind (store count)
       (fnn-open-live-store root t (fnn-state-checkpoint-test-fault))
     (unwind-protect
          (let* ((profile (fnn-store-config store))
@@ -2805,7 +2805,7 @@ buffer at once."
                                         (fnn-checkpoint-revision))))
            (unless (and (consp answer) (= (length answer) 2)
                         (consp (first answer)) (integerp (second answer))
-                        (= (second answer) (length records)))
+                        (= (second answer) count))
              (fnn-fault "ACL2 returned a malformed state checkpoint setup"))
            (let* ((setup (first answer)) (sequence (second answer))
                   (verdict (first setup)))
@@ -3517,6 +3517,20 @@ open replayed.  No file length or directory listing stands in for a record."
   (multiple-value-bind (physical lower sequences)
       (fnn-durable-records store (funcall *fnn-pack-lower-bound-callback* store))
     (funcall *fnn-pack-recover-callback* store physical sequences lower)))
+
+(defun fnn-history-last-record (store)
+  "The history's newest record's octets, or NIL when there is none: the newest
+transaction file past the selected pack (the history is the pack's records and
+then those files, `fnn-history-records'), unframed as the open unframes it;
+without such a file, the last of the pack's reconstruction.  Read after the
+open, under its lock, so it is the record the open replayed last."
+  (let ((files (fnn-transaction-files store (funcall *fnn-pack-lower-bound-callback* store))))
+    (if files
+        (let ((path (cdr (car (last files)))))
+          (fnn-check-regular path)
+          (fnn-unframe (fnn-read-regular-bounded
+                        path (fnn-core 'fn-store-profile-read-bound (fnn-store-config store)))))
+        (car (last (fnn-history-records store))))))
 
 (defun fnn-committed-history (store)
   "`fnn-history-records' with the committed-history marker checked against
