@@ -107,9 +107,12 @@
                  (car full-result))
           (equal (fn-own-tls-result-owner tls-result)
                  (cdr full-result))
-          ; NNT-042: and the same answer to "did the pin move"
+          ; NNT-042: and the same answer to "did the pin move", over the
+          ; same consumed prefix
           (equal (fn-own-tls-result-repinned tls-result)
-                 (fn-own-read-repinned (fn-ocfg-owner oc) id octets)))))
+                 (fn-own-read-repinned (fn-ocfg-owner oc) id
+                                       (take (fn-own-tls-result-consumed tls-result)
+                                             octets))))))
   :hints (("Goal"
            :in-theory (enable fn-ocfg-read-tls-prefix fn-own-read-repinned
                               fn-own-read-tls-prefix
