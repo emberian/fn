@@ -3982,7 +3982,7 @@
       ],
       "steps": [
         "Node T with peer S (inbound fn.*, max-inflight 16). On one connection: MODE STREAM; IHAVE an article (335, 235), IHAVE it again (435), IHAVE an out-of-scope article (335, 437).",
-        "Pipeline 20 fresh CHECKs and the held one in one write; TAKETHIS every 238, each 239 awaited (two TAKETHIS articles in one socket read lose the second: PKT-600, test_pipelined_takethis_in_one_read_answers_every_article, an expected failure); TAKETHIS an out-of-scope article; CHECK the deferred ones in one write and TAKETHIS them; TAKETHIS a held article; CHECK it.",
+        "Pipeline 20 fresh CHECKs and the held one in one write; TAKETHIS every 238 in one write (PKT-600 repaired, SCN-144); TAKETHIS an out-of-scope article; CHECK the deferred ones in one write and TAKETHIS them in one write; TAKETHIS a held article; CHECK it.",
         "Node A with a streaming peer record to a scripted peer answering MODE STREAM 501: post an article; then to one answering 203."
       ],
       "evidence": [
@@ -4258,6 +4258,40 @@
         "native": true,
         "record": "planning/evidence/config-consumer-catalog-2026-09-26.md"
       }
+    },
+    {
+      "id": "SCN-144",
+      "title": "Pipelined articles: eight TAKETHIS in one write from a streaming peer, and two POST blocks in one write from a reader, are each committed and answered in order",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_pipelined_takethis_in_one_read_answers_every_article",
+          "test_fragmented_takethis_without_check_answers_every_article",
+          "test_pipelined_post_in_one_read_answers_every_article"
+        ],
+        "native": true,
+        "record": "planning/evidence/transit-pipelining-2026-09-27.md",
+        "log": "planning/evidence/transit-pipelining-2026-09-27/native-peering.log"
+      },
+      "requirements": [
+        "NNT-044"
+      ],
+      "steps": [
+        "Node T with peer S: eight TAKETHIS commands with their articles in one write; QUIT.",
+        "Node T with peer S: four TAKETHIS with no CHECK, sent as small TCP_NODELAY segments cut every 7 octets and inside every .CRLF terminator.",
+        "Node P, no peer: two POST blocks in one write; POST, then the article and the next POST in one write, then the last article and QUIT in one write."
+      ],
+      "evidence": [
+        "tests/acl2/served-pipelining-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "Eight 239s in order, each echoing its Message-ID, then 205; all eight stored byte-identical.",
+        "Four 239s in order, each echoing its Message-ID, then 205; all four stored byte-identical.",
+        "340 240 340 240 340 240 340 240 205 in that order (no 340 before the 240 of the article preceding it); all four stored."
+      ]
     }
   ]
 }
