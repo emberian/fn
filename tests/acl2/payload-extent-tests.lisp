@@ -30,8 +30,8 @@
 
 (defconst *pxt-r* (fn-record-encode-impl *pxt-w*))
 
-; The entry at start 4096 of file 3, frame length 42 + |r| + 32, trailer 77.
-(defconst *pxt-pos* (list 4096 (+ 42 (len *pxt-r*) 32) 77))
+; The entry at start 4096 of file 3, frame length 42 + |r| + 32.
+(defconst *pxt-pos* (list 4096 (+ 42 (len *pxt-r*) 32) 0))
 
 (assert-event (consp *pxt-r*))
 
@@ -42,13 +42,13 @@
         (equal (nth 1 x) 4096)
         (equal (nth 2 x) (+ 42 (len *pxt-r*)))
         (equal (nth 4 x) (len *pxt-payload*))
-        (equal (nth 5 x) 77)
+        (equal (nth 5 x) 0)
         ; the payload's place inside the record octets is where the payload is
         (equal (take (nth 4 x) (nthcdr (- (nth 3 x) (+ 4096 42)) *pxt-r*)) *pxt-payload*))))
 
 ; A frame length that does not match the record, or octets that do not hold
 ; the payload at the codec's place, give no extent (the record stays resident).
-(assert-event (null (fn-arx-extent-of 3 (list 4096 (+ 43 (len *pxt-r*) 32) 77) *pxt-r* *pxt-w*)))
+(assert-event (null (fn-arx-extent-of 3 (list 4096 (+ 43 (len *pxt-r*) 32) 0) *pxt-r* *pxt-w*)))
 (assert-event (null (fn-arx-extent-of 3 *pxt-pos* (cons 0 (butlast *pxt-r* 1)) *pxt-w*)))
 
 ; --- Teeth.
@@ -101,15 +101,24 @@
        (equal (fn-arx-intern-step '(r0) nil nil nil '((1 2))) (mv '(r0) '((1 2)))))
   :rule-classes nil)
 
-; fn-arx-entry-ok-of-durable: without the recorded trailer being the digest,
-; a read is not provably accepted; with it, it is.
+; fn-arx-entry-ok-of-durable: without the file holding the prefix's digest
+; after it, a read is not provably accepted; with it, it is.
 (local
  (must-fail
   (with-prover-step-limit 50000 (defthm pxt-entry-ok-without-trailer
-    (fn-arx-entry-ok (fn-durable-octets file eoff elen) trailer)))))
+    (implies (natp elen)
+             (fn-arx-entry-ok (append (fn-durable-octets file eoff elen)
+                                      (fn-durable-octets file (+ eoff elen) 32))
+                              elen))))))
 
 (defthm pxt-entry-ok-witness
-  (fn-arx-entry-ok '(1 2 3) (fn-arx-octets-nat (fn-sha256 '(1 2 3)) 0))
+  (fn-arx-entry-ok (append '(1 2 3) (fn-sha256 '(1 2 3))) 3)
   :rule-classes nil)
 
-(assert-event (not (fn-arx-entry-ok '(1 2 3) 0)))
+; A torn trailer (zeros) and a short read are refused.
+(assert-event (not (fn-arx-entry-ok (append '(1 2 3) (make-list 32 :initial-element 0)) 3)))
+(assert-event (not (fn-arx-entry-ok (append '(1 2) (fn-sha256 '(1 2 3))) 3)))
+
+; The positions: an entry is 42 + the record + 32, padded to the unit.
+(assert-event (equal (fn-arx-positions 0 4096 '(100 5000) nil)
+                     '((0 174 0) (4096 5074 0))))

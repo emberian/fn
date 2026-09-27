@@ -5575,9 +5575,9 @@ the chain carried from each segment's kernel to the next (fn-lgk-last).
 The closed segments are read only; the active one is recovered (a writable
 open: P-LOG-RECOVER) or read.  Returns (values RECORDS LOG POSITIONS): every
 scanned record in order, the active segment's log, and per record its
-entry's (FILE START N TRAILER): FILE the extent realizer's id of the segment
+entry's (FILE START N 0): FILE the extent realizer's id of the segment
 (host/native/extent.lisp: a read-only descriptor held for the process's
-life), the rest ACL2's (fn-arx-positions over the octets the scan read)."
+life), the rest ACL2's (fn-arx-positions over the records' lengths)."
   (let ((unit (fnn-store-log-unit))
         (max (fnn-store-log-max store))
         (records nil)
@@ -5599,7 +5599,7 @@ life), the rest ACL2's (fn-arx-positions over the octets the scan read)."
                                           (fnn-core 'fn-lgs-open-chain-records (list text) genesis
                                                     unit max))))
                        (push these records)
-                       (push (fnn-extent-positions path text unit (length these)) positions))
+                       (push (fnn-extent-positions path (mapcar #'length these) unit) positions))
                      (setq genesis (fnn-core 'fn-lgs-open-chain-last (list text) genesis unit max)))
                 (fnn-close fd)))
           (progn
@@ -5610,10 +5610,7 @@ life), the rest ACL2's (fn-arx-positions over the octets the scan read)."
               (setf (fnn-log-index log) k)
               (let ((these (mapcar #'fnn-octets (fnn-core 'fn-lgk-committed (fnn-log-kernel log)))))
                 (push these records)
-                (push (fnn-extent-positions path
-                                            (fnn-log-read-string (fnn-log-fd log) (fnn-log-extent log))
-                                            unit (length these))
-                      positions))
+                (push (fnn-extent-positions path (mapcar #'length these) unit) positions))
               (return-from fnn-log-scan-segments
                 (values (apply #'append (nreverse records)) log
                         (apply #'append (nreverse positions)))))))))

@@ -30,7 +30,7 @@
 
 (in-package "ACL2")
 (include-book "payload-arena")
-(include-book "store-log-decode")
+(include-book "store-log")
 (include-book "store-intern")
 (include-book "store-recover-stream")
 (include-book "sha256-stobj")
@@ -49,28 +49,28 @@
   :rule-classes :type-prescription)
 
 ; -----------------------------------------------------------------------------
-; 2. The entries' positions in a segment read as the string S, from POS, at
-; most K of them (the scan's record count): (START FRAME-LENGTH TRAILER).
+; 2. The entries' positions in a segment, from the records the scan read: an
+; entry is the frame (the header, the chain, the record, the trailer: the
+; log's fn-lg-frame) padded to the write unit (fn-lg-entry), so entry i+1
+; starts where entry i's padding ends.  Per record (START N 0), N the frame's
+; length; the realizer checks the entry's own trailer at [START+N-32,
+; START+N) when it reads it (fn-arx-entry-ok), so a position that is not an
+; entry is refused there, never served.
 
-(defconst *fn-arx-record-at* 42)   ; the frame header (10) and the chain (32)
+(defconst *fn-arx-record-at* 42)
 
-(defun fn-arx-positions (s pos unit k acc)
-  (declare (xargs :guard (and (stringp s) (natp pos) (<= pos (length s)) (natp k)
-                              (true-listp acc))
-                  :measure (nfix k)))
-  (if (or (zp k) (not (mbt (and (stringp s) (natp pos) (<= pos (length s))))))
+(local
+ (defthm fn-arx-octets-true-listp
+   (implies (fn-cbor-octet-listp x) (true-listp x))
+   :rule-classes nil))   ; the frame header (10) and the chain (32)
+
+(defun fn-arx-positions (pos unit lens acc)
+  (declare (xargs :guard (and (natp pos) (nat-listp lens) (true-listp acc))))
+  (if (atom lens)
       (revappend acc nil)
-    (let ((n (fn-lgd-declared-at s pos)))
-      (if (not (and n (<= (+ *fn-arx-record-at* *fn-frame-trailer-octets*) n)
-                    (<= (+ pos n) (length s))))
-          (revappend acc nil)
-        (let ((next (+ pos n (fn-lg-pad-len n unit)))
-              (trailer (fn-arx-octets-nat (fn-lgd-range s (+ pos n (- *fn-frame-trailer-octets*))
-                                                        *fn-frame-trailer-octets*)
-                                          0)))
-          (if (< (length s) next)
-              (revappend (cons (list pos n trailer) acc) nil)
-            (fn-arx-positions s next unit (1- k) (cons (list pos n trailer) acc))))))))
+    (let ((n (+ *fn-arx-record-at* (nfix (car lens)) *fn-frame-trailer-octets*)))
+      (fn-arx-positions (+ (nfix pos) n (fn-lg-pad-len n unit)) unit (cdr lens)
+                        (cons (list (nfix pos) n 0) acc)))))
 
 ; -----------------------------------------------------------------------------
 ; 3. The extent of one record, verified.
@@ -358,17 +358,44 @@
 ; -----------------------------------------------------------------------------
 ; 6. The served read's check and the read cache's bound.
 
-; The realizer's check: SHA-256 of the entry's protected prefix, as read,
-; is the trailer the open recorded.
-(defun fn-arx-entry-ok (octets trailer)
-  (declare (xargs :guard t))
-  (equal (fn-arx-octets-nat (fn-sha256-stobj octets) 0) trailer))
+; The realizer's check over the entry as read, its protected prefix
+; (ELEN octets) and then its trailer: SHA-256 of the prefix is the trailer
+; (the frame's own trailer, fn-frame-digest under the host's attachment,
+; which the open's scan checked when it read the entry).
+(defun fn-arx-entry-ok (octets elen)
+  (declare (xargs :guard (natp elen)))
+  (let ((prefix (take (min (nfix elen) (len octets)) (true-list-fix octets)))
+        (trailer (nthcdr (nfix elen) (true-list-fix octets))))
+    (and (equal (len octets) (+ (nfix elen) *fn-frame-trailer-octets*))
+         (equal (fn-sha256-stobj prefix) trailer))))
 
-; A faithful read passes: when the recorded trailer is the digest of the
-; entry's durable protected prefix, reading that prefix is accepted.
+(local
+ (defthm fn-arx-durable-true-listp
+   (true-listp (fn-durable-octets file off len))
+   :hints (("Goal" :use ((:instance fn-arx-octets-true-listp
+                                    (x (fn-durable-octets file off len))))))))
+
+(local
+ (defthm fn-arx-take-append-len
+   (implies (and (true-listp a) (equal n (len a)))
+            (equal (take n (append a b)) a))))
+
+(local
+ (defthm fn-arx-nthcdr-append-len
+   (implies (equal n (len a))
+            (equal (nthcdr n (append a b)) b))))
+
+; A faithful read of an intact entry passes: when the file holds, after the
+; entry's protected prefix, that prefix's digest, reading prefix and trailer
+; is accepted (no false refusal).
 (defthm fn-arx-entry-ok-of-durable
-  (implies (equal trailer (fn-arx-octets-nat (fn-sha256 (fn-durable-octets file eoff elen)) 0))
-           (fn-arx-entry-ok (fn-durable-octets file eoff elen) trailer)))
+  (implies (and (natp elen)
+                (equal (fn-durable-octets file (+ eoff elen) *fn-frame-trailer-octets*)
+                       (fn-sha256 (fn-durable-octets file eoff elen))))
+           (fn-arx-entry-ok (append (fn-durable-octets file eoff elen)
+                                    (fn-durable-octets file (+ eoff elen) *fn-frame-trailer-octets*))
+                            elen))
+  :hints (("Goal" :in-theory (enable fn-sha256-stobj-is-sha256))))
 
 ; The realizer's cache: at most this many verified entries (each at most the
 ; log's entry bound, fnn-store-log-max): the bound on the octets the host

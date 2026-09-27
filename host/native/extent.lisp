@@ -11,8 +11,8 @@
 ;;; durable file an extent names (a log segment, registered by the open, never
 ;;; closed and never reused within the process: an unlinked segment stays
 ;;; readable through it), preads an entry's protected prefix into a bounded
-;;; cache (ACL2's fn-arx-read-cache-entries entries), and asks ACL2 whether the
-;;; octets read match the trailer the open recorded (fn-arx-entry-ok).  A
+;;; cache (ACL2's fn-arx-read-cache-entries entries) with the entry's trailer,
+;;; and asks ACL2 whether the prefix's SHA-256 is that trailer (fn-arx-entry-ok).  A
 ;;; mismatch or a short read is refused by name -- arena-extent-digest,
 ;;; arena-extent-read -- as a store fault (a recovery event: the store is
 ;;; fenced); the octet is never answered.  pread, not mmap: portable (Linux,
@@ -56,6 +56,7 @@
     done))
 
 (defun fnn-extent-entry (file eoff elen trailer)
+  (declare (ignore trailer))
   "The verified protected prefix of the entry at [EOFF, EOFF+ELEN) of FILE,
 from the cache or read and checked by ACL2 (fn-arx-entry-ok)."
   (let ((hit (find-if (lambda (e) (and (eql (first e) file) (eql (second e) eoff)))
@@ -65,21 +66,21 @@ from the cache or read and checked by ACL2 (fn-arx-entry-ok)."
                (setq *fnn-extent-cache* (cons hit (remove hit *fnn-extent-cache* :test #'eq)))
                (cddr hit))
       (let ((fd (gethash file *fnn-extent-fds*))
-            (octets (make-array elen :element-type '(unsigned-byte 8))))
+            (octets (make-array (+ elen 32) :element-type '(unsigned-byte 8))))
         (incf (second *fnn-extent-stats*))
         (unless fd
           (incf (third *fnn-extent-stats*))
           (error 'fnn-extent-fault
                  :message (format nil "arena-extent-read: no durable file ~a is registered" file)))
-        (unless (= (fnn-extent-pread fd octets eoff) elen)
+        (unless (= (fnn-extent-pread fd octets eoff) (+ elen 32))
           (incf (third *fnn-extent-stats*))
           (error 'fnn-extent-fault
                  :message (format nil "arena-extent-read: ~a at ~a holds fewer than ~a octets"
-                                  (gethash file *fnn-extent-paths*) eoff elen)))
-        (unless (eq (fnn-core 'fn-arx-entry-ok (coerce octets 'list) trailer) t)
+                                  (gethash file *fnn-extent-paths*) eoff (+ elen 32))))
+        (unless (eq (fnn-core 'fn-arx-entry-ok (coerce octets 'list) elen) t)
           (incf (third *fnn-extent-stats*))
           (error 'fnn-extent-fault
-                 :message (format nil "arena-extent-digest: the entry at ~a of ~a does not match the trailer the open recorded"
+                 :message (format nil "arena-extent-digest: the entry at ~a of ~a does not match its trailer"
                                   eoff (gethash file *fnn-extent-paths*))))
         (let ((limit (fnn-core 'fn-arx-read-cache-entries)))
           (push (list* file eoff octets) *fnn-extent-cache*)
@@ -101,13 +102,12 @@ from the cache or read and checked by ACL2 (fn-arx-entry-ok)."
   (sb-thread:with-mutex (*fnn-extent-lock*)
     (setq *fnn-extent-cache* nil)))
 
-(defun fnn-extent-positions (path text unit count)
-  "The open's positions for the COUNT records the scan read from the segment
-at PATH (read as TEXT): per record (FILE START N TRAILER), FILE this segment's
-new realizer id, the rest ACL2's (fn-arx-positions).  A segment whose
-positions ACL2 does not answer contributes nil (its records stay resident)."
-  (let ((ps (fnn-core 'fn-arx-positions text 0 unit count nil)))
-    (if (and (consp ps) (= (length ps) count))
+(defun fnn-extent-positions (path lengths unit)
+  "The open's positions for the records the scan read from the segment at
+PATH, of LENGTHS octets each: per record (FILE START N 0), FILE this
+segment's new realizer id, the rest ACL2's (fn-arx-positions)."
+  (let ((ps (fnn-core 'fn-arx-positions 0 unit lengths nil)))
+    (if (and (consp ps) (= (length ps) (length lengths)))
         (let ((file (fnn-extent-register path)))
           (mapcar (lambda (p) (cons file p)) ps))
-        (make-list count :initial-element nil))))
+        (make-list (length lengths) :initial-element nil))))
