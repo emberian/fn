@@ -1333,3 +1333,52 @@
       (cadr (nth 4 result))
       (fn-bs-profile-max-group-name-octets
        (fn-bs-profile-resolve (caddr (nth 4 result)) nil))))))
+
+;; PKT-708: fn-nop-mission-init-serves-control-cancel.  The witness: a
+;; small-community configuration's bare init serves its default pair and
+;; control.cancel.
+(defconst *nop-t-mission-config* (update-nth 21 "small-community" (make-list 40)))
+(defconst *nop-t-moon-config* (update-nth 21 "moon" (make-list 40)))
+(assert-event (equal (fn-native-operator-result-status
+                      (fn-nop-parse-init nil *nop-t-mission-config*))
+                     :accepted))
+(assert-event (equal (cadr (nth 4 (fn-nop-parse-init nil *nop-t-mission-config*)))
+                     '("local.general" "local.test" "control.cancel")))
+(assert-event (equal (cadr (nth 4 (fn-nop-parse-init '("local.friends" "control.cancel")
+                                                     *nop-t-mission-config*)))
+                     '("local.friends" "control.cancel")))
+;; Without a mission: a plain init serves exactly its named groups.
+(assert-event (equal (cadr (nth 4 (fn-nop-parse-init '("local.friends") nil)))
+                     '("local.friends")))
+(must-fail
+ (defthm nop-t-cancel-without-mission
+   (let ((result (fn-nop-parse-init words config)))
+     (implies (and (fn-native-mission-request (fn-native-config-ops-mission config))
+                   (equal (fn-native-operator-result-status result) :accepted))
+              (member-equal "control.cancel" (cadr (nth 4 result)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+;; Without a known mission: `moon' is no mission, so init is the plain one.
+(assert-event (equal (cadr (nth 4 (fn-nop-parse-init '("local.friends") *nop-t-moon-config*)))
+                     '("local.friends")))
+(must-fail
+ (defthm nop-t-cancel-without-mission-request
+   (let ((result (fn-nop-parse-init words config)))
+     (implies (and (fn-native-config-ops-mission config)
+                   (equal (fn-native-operator-result-status result) :accepted))
+              (member-equal "control.cancel" (cadr (nth 4 result)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
+;; Without acceptance: a flag word under a mission is a usage error.
+(assert-event (not (equal (fn-native-operator-result-status
+                           (fn-nop-parse-init '("--max-transactions" "5")
+                                              *nop-t-mission-config*))
+                          :accepted)))
+(must-fail
+ (defthm nop-t-cancel-without-acceptance
+   (let ((result (fn-nop-parse-init words config)))
+     (implies (and (fn-native-config-ops-mission config)
+                   (fn-native-mission-request (fn-native-config-ops-mission config)))
+              (member-equal "control.cancel" (cadr (nth 4 result)))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t :in-theory (theory 'minimal-theory)))))
