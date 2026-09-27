@@ -3982,7 +3982,7 @@
       ],
       "steps": [
         "Node T with peer S (inbound fn.*, max-inflight 16). On one connection: MODE STREAM; IHAVE an article (335, 235), IHAVE it again (435), IHAVE an out-of-scope article (335, 437).",
-        "Pipeline 20 fresh CHECKs and the held one in one write; TAKETHIS every 238, each 239 awaited (two TAKETHIS articles in one socket read lose the second: PKT-600, test_pipelined_takethis_in_one_read_answers_every_article, an expected failure); TAKETHIS an out-of-scope article; CHECK the deferred ones in one write and TAKETHIS them; TAKETHIS a held article; CHECK it.",
+        "Pipeline 20 fresh CHECKs and the held one in one write; TAKETHIS every 238 in one write (PKT-600 repaired, SCN-144); TAKETHIS an out-of-scope article; CHECK the deferred ones in one write and TAKETHIS them in one write; TAKETHIS a held article; CHECK it.",
         "Node A with a streaming peer record to a scripted peer answering MODE STREAM 501: post an article; then to one answering 203."
       ],
       "evidence": [
@@ -4178,6 +4178,201 @@
         "At and after the rename: ROOT, when present, opens to the exported history article for article; a staged directory beside a present ROOT is refused reason=publication-uncertain, never treated as no store.",
         "An existing unrelated ROOT is never replaced (reason=store-exists)."
       ]
+    },
+    {
+      "id": "SCN-146",
+      "title": "A hostile network is thrown at a running node: malformed command lines, header and body abuse, connection floods and slowloris, pipelining and transit storms, and raw TCPCL/BP abuse; the node stays up, answers a clean session throughout, holds memory bounded, and refuses every ill-formed input by name",
+      "milestone": "M5",
+      "status": "validated",
+      "requirements": [
+        "NNT-031",
+        "NNT-043",
+        "NNT-045",
+        "NNT-012",
+        "REP-012",
+        "REP-008",
+        "HST-013"
+      ],
+      "steps": [
+        "Start a scratch loopback owner under systemd-run (MemoryMax=8G) on the developer image; never the live node.",
+        "Per family (malformed, header, body, connection, pipelining, transit, bp) send bounded adversarial traffic and log the first line the node returned.",
+        "After each family run the oracle: a clean authenticated GROUP/DATE/LIST session answers, the owner is alive with RSS under the profile's heap figure, no served request exceeded the wall bound, and the service log holds no fault.",
+        "For BP, drive a bp-node serve listener with wrong TCPCL magic, a never-completing contact, and an XFER_SEGMENT declaring a 4 GiB payload with tiny data."
+      ],
+      "expected": [
+        "Every malformed command line is refused 501; header/body abuse is refused 441 by a distinct named reason or accepted only when valid (a supplied Path is injected per NNT-012); a connection flood is refused 400 past the capacity and slowloris is closed silently at the timer; 1000 pipelined DATEs all answer and non-peer TAKETHIS/CHECK/IHAVE are refused 502; the bp-node answers an oversized XFER_SEGMENT with MSG_REJECT and does not preallocate the declared length.",
+        "The node never crashes, never hangs past its bounds, never grows memory without bound, and answers a clean session correctly after every family."
+      ],
+      "evidence": [
+        "planning/evidence/hostile-input-2026-09-26.md",
+        "planning/evidence/hostile-input-2026-09-26/campaign-report.json",
+        "planning/evidence/hostile-input-2026-09-26/bp-report.json"
+      ],
+      "execution_scope": "Executed on hbox (developer image, code-identical to dev b4b343d51) against a scratch loopback owner and bp-node under systemd-run MemoryMax=8G. All seven families green, no defects. Not exercised: transit interior abuse (announced sizes, million-id promises, pipelined TAKETHIS/PKT-600) from an authenticated peer session (a non-peer connection is uniformly refused 502; the peer path is covered by SCN-138); a real 100 MiB body under a peer feed; TLS-port handshake garbage on 563 (no TLS listener configured in this run).",
+      "implementation": {
+        "test": "tools/hostile_campaign.py",
+        "cases": [],
+        "native": true,
+        "log": "planning/evidence/hostile-input-2026-09-26/campaign-report.json",
+        "record": "planning/evidence/hostile-input-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-151",
+      "title": "The TLS surface of a running node is thrown hostile traffic on 563 (implicit TLS) and 119 (STARTTLS): garbage before and mid handshake, a hello with no cipher, TLS 1.0/1.1 only, an oversized record, plain NNTP on the TLS port, STARTTLS-then-plain-then-STARTTLS, an unsolicited client cert, an unserved SNI, alert and close_notify floods, a TLS-layer slowloris, and a full-handshake burst; the node refuses each by a named TLS alert or 502, serves a clean session throughout, and holds memory bounded",
+      "milestone": "M5",
+      "status": "validated",
+      "requirements": [
+        "NNT-031",
+        "NNT-032",
+        "HST-013"
+      ],
+      "steps": [
+        "Start a scratch loopback owner under systemd-run (MemoryMax=8G) on the dev-HEAD developer image, configured with a self-signed [listener] tls_cert/tls_key pair and a tls_port; never the live node.",
+        "Against the implicit-TLS port and the STARTTLS path, send the tls family: garbage before/mid handshake, a ClientHello with no cipher and a NULL cipher, TLS 1.0 and 1.1 only offers, a 16 KiB+1 record, plain NNTP on the TLS port, STARTTLS then plain then STARTTLS again, STARTTLS then garbage, an unsolicited client certificate, SNI for an unserved name, an alert flood, a close_notify storm, and a 200-way TLS slowloris.",
+        "Measure the handshake CPU cost: 300 sequential handshakes and a 30 s 48-way full-handshake burst, reading the owner's /proc CPU and thread count.",
+        "Run the oracle: a clean plaintext session answers, the owner is alive with RSS under the heap figure, no served request exceeded the wall bound, the service log holds no fault, the second STARTTLS is 502, a reader is served during the flood, and the implicit-TLS listener still answers afterward."
+      ],
+      "expected": [
+        "Every hostile handshake is refused by a named TLS alert (record_overflow, illegal_parameter, handshake_failure, protocol_version, unexpected_message) or held to the 10 s deadline and closed; plain NNTP on the TLS port leaks no reply; the second STARTTLS is 502; unsolicited client certs and unserved SNI complete and are ignored (single cert served).",
+        "The node never crashes, hangs, or grows memory without bound; RSS stayed 585 MB under a 2,819 MB heap figure; steady-state node CPU 2.467 ms per handshake. Two host-level gaps are filed as packets: TLS handshakes are not metered by the exposure kernel (PKT-639) and TLS refusals are logged only to stderr, not the service log (PKT-640)."
+      ],
+      "evidence": [
+        "planning/evidence/hostile-input-2-2026-09-26.md",
+        "planning/evidence/hostile-input-2-2026-09-26/tls-report.json",
+        "planning/evidence/hostile-input-2-2026-09-26/openbsd-libressl-note.md"
+      ],
+      "execution_scope": "Executed on hbox against the dev-HEAD developer image 6701d5753 (system libssl OpenSSL 3.3.1) and probed against a LibreSSL node on the OpenBSD VM, both loopback under systemd-run MemoryMax=8G; never the live node. TLS family green, no crash/hang/leak/fault; two host-level packets filed (PKT-639 unmetered handshakes, PKT-640 refusals not in service log). Not exercised: a real TLS 1.3 KeyUpdate flood (an encrypted post-handshake record, not forgeable with the standard library); the OpenBSD implicit-TLS (563) port (the VM node ran STARTTLS only).",
+      "implementation": {
+        "test": "tools/hostile_campaign.py",
+        "cases": [],
+        "native": true,
+        "log": "planning/evidence/hostile-input-2-2026-09-26/tls-report.json",
+        "record": "planning/evidence/hostile-input-2-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-140",
+      "title": "An offline configuration request authorizes from the fold its open computed: 300 separate `peer carries` requests timed against the image before PRF-209",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-025"
+      ],
+      "steps": [
+        "`operator CONFIG init`; `peer add far ...`; FN_PEER_ROWS_REQUESTS=300 separate `peer carries far HEX`, timed, on the image before and after PRF-209 on the same box; `operator CONFIG group create` answers `verification=VERIFIED` (tests.test_native_admin)."
+      ],
+      "expected": [
+        "Every request exits 0 and the listing names the principals in request order; the total time is recorded before and after (planning/evidence/config-consumer-catalog-2026-09-26.md)."
+      ],
+      "evidence": [
+        "planning/evidence/config-consumer-catalog-2026-09-26.md"
+      ],
+      "implementation": {
+        "test": "tests.test_native_peer_rows_growth",
+        "cases": [
+          "test_a_peer_carries_more_than_the_old_row_cap"
+        ],
+        "native": true,
+        "record": "planning/evidence/config-consumer-catalog-2026-09-26.md"
+      }
+    },
+    {
+      "id": "SCN-144",
+      "title": "Pipelined articles: eight TAKETHIS in one write from a streaming peer, and two POST blocks in one write from a reader, are each committed and answered in order",
+      "milestone": "M5",
+      "status": "implemented",
+      "implementation": {
+        "test": "tests.test_native_peering",
+        "cases": [
+          "test_pipelined_takethis_in_one_read_answers_every_article",
+          "test_fragmented_takethis_without_check_answers_every_article",
+          "test_pipelined_post_in_one_read_answers_every_article"
+        ],
+        "native": true,
+        "record": "planning/evidence/transit-pipelining-2026-09-27.md",
+        "log": "planning/evidence/transit-pipelining-2026-09-27/native-peering.log"
+      },
+      "requirements": [
+        "NNT-044"
+      ],
+      "steps": [
+        "Node T with peer S: eight TAKETHIS commands with their articles in one write; QUIT.",
+        "Node T with peer S: four TAKETHIS with no CHECK, sent as small TCP_NODELAY segments cut every 7 octets and inside every .CRLF terminator.",
+        "Node P, no peer: two POST blocks in one write; POST, then the article and the next POST in one write, then the last article and QUIT in one write."
+      ],
+      "evidence": [
+        "tests/acl2/served-pipelining-tests.lisp",
+        "tests/test_native_peering.py"
+      ],
+      "expected": [
+        "Eight 239s in order, each echoing its Message-ID, then 205; all eight stored byte-identical.",
+        "Four 239s in order, each echoing its Message-ID, then 205; all four stored byte-identical.",
+        "340 240 340 240 340 240 340 240 205 in that order (no 340 before the 240 of the article preceding it); all four stored."
+      ]
+    },
+    {
+      "id": "SCN-147",
+      "title": "Power is cut to the block device under a committing node (dm-log-writes, ext4) at 1,281 write boundaries across POST commits, checkpoint capture, compaction, reclaim, a near-full store and a recovery cut again; every acknowledged POST is served byte-identical afterwards, no refusal becomes acceptance, no binding or number moves",
+      "milestone": "M2",
+      "status": "implemented",
+      "implementation": {
+        "test": "tools/power_loss.py",
+        "cases": [],
+        "native": true,
+        "log": "planning/evidence/power-loss-2026-09-26/main2.log",
+        "record": "planning/evidence/power-loss-2026-09-26.md"
+      },
+      "requirements": [
+        "STO-003",
+        "STO-005"
+      ],
+      "steps": [
+        "On hbox (Linux 6.11): a data and a log loop device under dm-log-writes, ext4 on the mapped device; the developer image's node on it (scale profile, small open suffix): init, POSTs with a mark in the log after every 240 and every known 441 refusal, two store compactions, retention set released-by-all-holders, store reclaim; references read from the uncut store to /dev/shm.",
+        "For each cut (an entry of the log and a mode: flush, prefix, subset of unflushed writes, or 4096-octet tears), rebuild the device, mount, e2fsck, recover, store inspect the lost-reply POSTs, start the owner, ARTICLE and OVER everything, re-POST the newest acknowledged Message-ID and a fresh one, status; rerun compact or reclaim for their cuts; for a fifth of the cuts, cut the recovery again under a second log.",
+        "Control cuts judge a POST whose writes all follow the cut as acknowledged; each must be caught. A barrier=0 run shows the fsync assumption is load-bearing."
+      ],
+      "evidence": [
+        "planning/evidence/power-loss-2026-09-26.md",
+        "planning/evidence/power-loss-2026-09-26/summary.md",
+        "tools/power_loss.py"
+      ],
+      "expected": "No acknowledged POST missing or changed, no refused POST served, lost-reply POSTs whole or absent, recover/owner/status without fault, bindings and numbers stable, reclaim accounting whole, every control caught; on barrier=0 acknowledged POSTs are lost (the assumption broken, not fn)."
+    },
+    {
+      "id": "SCN-149",
+      "title": "Articles of 2,000,000 lines and of one 4 MiB line are posted, served (ARTICLE, BODY), reopened and served again byte-identical at 1 MiB of control stack per thread and at the image's own 64 MiB, on the production and developer images",
+      "milestone": "M5",
+      "status": "implemented",
+      "requirements": [
+        "HST-001"
+      ],
+      "steps": [
+        "init a store with --max-article-octets 8388608; start the owner with SBCL_USER_ARGS=--control-stack-size 1MB; POST an article of 2,000,000 body lines (every sixteenth a lone dot), ARTICLE and BODY it; POST an article whose body is one line of 4,194,304 octets and ARTICLE it; SIGTERM.",
+        "start the owner at the image's own stack on the same store (the reopen); ARTICLE both again; POST a second 2,000,000-line article and ARTICLE it; SIGTERM.",
+        "start the owner at 1 MiB again (a second reopen); ARTICLE the second article; SIGTERM."
+      ],
+      "expected": [
+        "Every POST is 240; every reply is the status line, the stored article exactly dot-stuffed (RFC 3977 section 3.1.1) and the terminator, ending with the posted body; BODY has 2,000,002 CRLFs; the owner exits 0 each time. Before this lane the 2,000,000-line POST exhausted the stack in fn-post-body-octets and the 4 MiB line in fn-wire-list-length (Control stack exhausted in fn-owner-chunk-span).",
+        "The replies at 64 MiB are byte-identical to those at 1 MiB; the second article is served.",
+        "The reply at 1 MiB after the reopen is byte-identical to the one at 64 MiB."
+      ],
+      "evidence": [
+        "tests/test_native_served_line_stack.py",
+        "tests/acl2/served-line-iterative-tests.lisp",
+        "planning/evidence/served-line-iterative-2026-09-26.md",
+        "planning/evidence/served-line-iterative-2026-09-26/test_native_served_line_stack.76a6757b.log"
+      ],
+      "implementation": {
+        "test": "tests.test_native_served_line_stack",
+        "cases": [
+          "test_production_serves_two_million_lines_at_one_mib_of_stack",
+          "test_developer_serves_two_million_lines_at_one_mib_of_stack"
+        ],
+        "native": true,
+        "record": "planning/evidence/served-line-iterative-2026-09-26.md",
+        "log": "planning/evidence/served-line-iterative-2026-09-26/test_native_served_line_stack.76a6757b.log"
+      }
     }
   ]
 }

@@ -129,6 +129,11 @@ wildmat, outbound wildmat, `principal HEX`, the credential profile, `false`
 the name and certificate your own node presents. If yours is self-signed,
 send ember the certificate. If it is a CA's, send the CA roots, as above.
 
+Streaming: `MODE STREAM` is enabled from the release carrying 5e52ea1e (the
+served read yields after each submission, so two `TAKETHIS` in one socket
+read are both taken: PKT-600, PRF-213); it is rejected at the boundary on any
+older image.
+
 ### A5. Check it (both)
 
 - Post to `local.general` on your node. The article appears on the public

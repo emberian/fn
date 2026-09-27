@@ -43,6 +43,14 @@
                          :element-type '(unsigned-byte 8)
                          :if-exists :supersede :if-does-not-exist :create))
 
+;; fnn-err offers a diagnostic to the running log writer first (PKT-508,
+;; host/native/io.lisp fnn-log-offer); no writer runs in this harness, so the
+;; offer answers NIL, the deployed "no writer" answer, and fnn-err writes the
+;; line itself (PKT-614).
+(defun fnn-log-offer (destination octets)
+  (declare (ignore destination octets))
+  nil)
+
 (defparameter *bound-word* nil)
 (defparameter *bound-inflight* nil)
 (defparameter *bound-resolutions* nil)

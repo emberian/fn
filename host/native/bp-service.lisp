@@ -1059,19 +1059,41 @@ receive, which runs no FNBS machine."
                (second answer)))
     answer))
 
+(defvar *fnn-octets-bp* nil)
+
+(defun fnn-live-octets-bp ()
+  "The BP open's own octet buffer (books/bp-node-rotation-buffer.lisp
+`fn-octets-bp', congruent to `fn-octets'); never the owner's buffer."
+  (or *fnn-octets-bp*
+      (setq *fnn-octets-bp*
+            (or (cdr (assoc 'fn-octets-bp (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the BP octet buffer stobj is not in this image")))))
+
 (defun fnn-bps-selection-plan (root profile)
   "ACL2's reading of the generation selection file: (:none), (:selected CK)
-or (:damaged).  The read bound and decode budget are the profile's."
+or (:damaged).  The read bound and decode budget are the profile's.  The
+file's bytes go into `fn-octets-bp' as they are (one byte per octet) and
+ACL2 reads them by index: fn-bpnrb-selection-plan, equal to
+fn-bpnr-selection-plan over the buffer's octets
+(fn-bpnrb-selection-plan-is-selection-plan)."
   (let* ((path (fnn-join root (fnn-core 'fn-bpnr-selection-name)))
          (jobs (first profile))
          (octets-bound (second profile))
          (present (fnn-check-regular path))
-         (octets (and present
-                      (fnn-octet-list
-                       (fnn-read-regular-bounded
-                        path (fnn-core 'fn-bpnr-read-bound jobs octets-bound))))))
-    (fnn-core 'fn-bpnr-selection-plan (and present t) octets
-              (fnn-core 'fn-bpnr-depth-budget jobs))))
+         (bytes (if present
+                    (fnn-read-regular-bounded
+                     path (fnn-core 'fn-bpnr-read-bound jobs octets-bound))
+                    (make-array 0 :element-type '(unsigned-byte 8))))
+         (st (fnn-live-octets-bp)))
+    (fn-octets$c-reserve (length bytes) st)
+    (replace (the fnn-octets (svref st 0)) bytes)
+    (setf (svref st 1) (length bytes))
+    (unwind-protect
+         (fnn-core 'fn-bpnrb-selection-plan (and present t)
+                   (fnn-core 'fn-bpnr-depth-budget jobs) st)
+      ;; Empty the buffer and drop the file's array: the open reads it once.
+      (setf (svref st 1) 0
+            (svref st 0) (make-array 0 :element-type '(unsigned-byte 8))))))
 
 (defun fnn-bps-open (journal config wall wall-error)
   (let* ((profile-started (progn (fnn-bp-profile-points)

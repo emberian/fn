@@ -986,6 +986,25 @@ acceptance, refusal and recovery decision below is a call into it.
 4. Create an unprivileged account that owns the store, for example `fn` on
    Linux or `_fn` on macOS.
 
+## Storage requirements
+
+A `240` is exactly as durable as the store's file system makes fsync. fn
+counts an article accepted only once its records are fsynced
+(`fn-assume-physical-crash` in `books/assumptions.lisp` is that obligation on
+the platform), so the store's file system must honour fsync with write
+barriers on:
+
+- ext4 with its default barriers; never `barrier=0` or `nobarrier`.
+- ZFS with `sync=standard`; never `sync=disabled`.
+- No volatile write cache that ignores flushes, unless the drive has
+  power-loss protection; no tmpfs for a store whose acceptance matters.
+
+The power-loss campaign (`planning/evidence/power-loss-2026-09-26.md`) found
+no acknowledged POST lost at any of 1,281 cuts on ext4 with barriers on; with
+`barrier=0` acknowledged POSTs were lost at 36 of 40 cuts, and the file
+system was unmountable or unreadable at the other 4. fn does not yet refuse a
+detectable bad mount at start (PKT-648).
+
 ## Initialize
 
 ```

@@ -118,7 +118,17 @@ it, each record re-ran the whole-configuration recognizer two or three
 times, so a replay's cost grew with the configuration's size per record
 (PKT-501; planning/evidence/caps-to-profile-2026-09-26.md, Continuation).
 The replay still reads every configuration record at open; a configuration
-checkpoint the open resumes from is PKT-510.
+checkpoint the open resumes from is PKT-510. An offline request authorizes
+its one record from the fold its open computed (PRF-209): the
+configuration-only and physical folds over the history ending in that record
+are one step from the folds without it (`fn-cfgc-config-replay-of-one-more`,
+`fn-cfgc-cpr-replay-of-one-more`, the record filed after every event because
+its txid is at or past the frontier), and the host-called authorization
+`fn-cfgc-cvec-native-admin-authorize` equals the replaying one whenever the
+carried fold is the open's replay of the same histories
+(`fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization`). The
+candidate open over the whole history, and the open itself, remain one pass
+each per request (PKT-601).
 
 A BP node's held rows and held octets are the operator's too, in the node's
 own profile rather than the Store's: the FNBS journal is not a Store

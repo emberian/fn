@@ -89,6 +89,7 @@
 (include-book "../books/peer-pull")
 (include-book "../books/peer-pull-session")
 (include-book "../books/consumer-owner-local")
+(include-book "../books/acceptance-payload-ref")
 (include-book "../books/hybrid-lifecycle")
 (include-book "../books/peer-authored-accept")
 (include-book "../books/key-statements")
@@ -2179,9 +2180,11 @@
       (value nil))))
 
 ; One observed socket region is one ACL2 prefix transition.  Its effects and
-; configured-owner state equal fn-ocfg-read over the complete observation
-; (fn-ocfg-read-tls-prefix-is-full-read); fn-owner-consumed names the exact
-; physical prefix.  The native adapter leaves any suffix for the TLS record
+; configured-owner state equal fn-ocfg-read over the prefix it consumed
+; (fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix); fn-owner-consumed names the exact
+; physical prefix.  The prefix ends early after a STARTTLS 382, a closed wire,
+; or (PKT-600, PRF-213) the octet that completed a submission: the host then
+; commits and answers it and feeds the rest of the region as the next read.  The native adapter leaves any suffix for the TLS record
 ; layer instead of parsing STARTTLS in raw Lisp.
 ; The call is fn-scar-ocfg-read-tls-prefix (books/owner-served-carried.lisp),
 ; which equals fn-ocfg-read-tls-prefix under the configured owner's relation
@@ -2757,7 +2760,11 @@ a dial: the selected peer entry is the owner-feed boundary being opened."
               (value :quiet))
           (let* ((result (fn-own-feed-port-observe-peer
                          peer (fn-own-feeds owner) response
-                         (fn-own-feed-article owner msgid) obs))
+                         ; The record's payload by Message-ID through the
+                         ; Store's event index, not the acceptance state's
+                         ; article: fn-apr-feed-article-is-own-feed-article
+                         ; (books/acceptance-payload-ref.lisp).
+                         (fn-apr-feed-article owner msgid) obs))
                 ; The sender's one line for this reply (nil for a 335/238),
                 ; books/owner-log.lisp fn-olog-feed-reply-line.
                 (state (f-put-global 'fn-owner-feed-log-line
