@@ -316,8 +316,10 @@ Hello, news.
                          (fn-inj-decision-msgid (fn-inj-decide source config obs)))
           (cons :source source))))
 
-; fn-ipp-a-same-source-retry-is-the-same-article: the positive witness is
-; the D25 pair above (*ipt-d1*, *ipt-d2*, alice then bob).  Omitted
+; fn-ipp-a-same-source-retry-is-the-same-article and
+; fn-ipp-same-articlep-of-two-injections: the positive witnesses are the D25
+; pair above (*ipt-d1*, *ipt-d2*, alice then bob) and the v3 pair below; the
+; different-source witness above shows the iff's other side.  Omitted
 ; Message-ID equality: a generated Message-ID differs per clock reading, and
 ; the two injections of *ipt-source* are then two articles.  Omitted
 ; injection of the held one: a blind clock refuses it.
@@ -342,14 +344,13 @@ Hello, news.
 (must-fail
  (defthm ipt-retry-without-one-message-id
    (implies (and (fn-inj-injectedp (fn-inj-decide source config obs1))
-                 (fn-inj-injectedp (fn-inj-decide source config obs2))
-                 (not (fn-inj-supplies-pathp source)))
+                 (fn-inj-injectedp (fn-inj-decide source config obs2)))
             (fn-pb-same-articlep
              (fn-inj-decision-msgid (fn-inj-decide source config obs1))
              (fn-ipp-injected-octets (fn-inj-decide source config obs2) s2 l2 c2)
-             (fn-ipp-injected-octets (fn-inj-decide source config obs1) s1 l1 c1)))))
-; The supplied-Path hypothesis is a scope limit, not shown necessary: the
-; v3 retry is checked concretely at the end of this book.
+             (fn-ipp-injected-octets (fn-inj-decide source config obs1) s1 l1 c1)))
+   :hints (("Goal" :in-theory (disable fn-ipp-injected-octets fn-pb-same-articlep
+                                       fn-inj-decide fn-inj-injectedp)))))
 
 ; fn-ipp-an-injection-does-not-open-with-c: the alice post opens with "P";
 ; the omitted injection: a refused decision's octets are nil.
@@ -358,8 +359,8 @@ Hello, news.
  (defthm ipt-never-opens-with-c
    (not (equal (car (fn-ipp-injected-octets d secret login cfg)) 67))))
 
-; The supplied-Path (recipe v3) retry, concretely (the general theorem is
-; open, PKT-597-v3): one source with a Path and a Message-ID, injected at two
+; The supplied-Path (recipe v3) retry, concretely (the general theorem,
+; fn-ipp-a-same-source-retry-is-the-same-article, covers both recipes): one source with a Path and a Message-ID, injected at two
 ; clocks under alice's and bob's parameters, is one article for D25; the
 ; plain-line reading would have named "AGENT; posting-account=..." as the
 ; agent (fn-pb-info-line-agent refuses an agent holding ";").

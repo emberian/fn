@@ -7155,6 +7155,18 @@
         {
           "kind": "theorem",
           "name": "fn-ipp-an-injection-does-not-open-with-c"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-same-articlep-of-two-injections"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-path-agent-of-the-injected-octets"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ipp-an-injection-opens-with-p-or-i"
         }
       ]
     },

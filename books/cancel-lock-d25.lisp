@@ -29,6 +29,8 @@
 (in-package "ACL2")
 (include-book "source-routes")
 (include-book "owner-served-invariants")
+; PKT-597: the injected octets carry the Injection-Info parameters.
+(include-book "injection-info-params-invariants")
 
 (local (in-theory (disable fn-inj-decide fn-inj-injectedp fn-inj-source-of
                            fn-inj-decision-octets fn-inj-decision-msgid
@@ -69,7 +71,35 @@
    :hints (("Goal" :cases ((consp (fn-cll-lines lock keys)))
             :in-theory (e/d (fn-rcl-tombstonep fn-rcl-prefixp) (fn-cll-lines))))))
 
-; The stored octets of an injected submission are never a tombstone.
+(local
+ (defthm fn-cld-injected-car
+   (implies (fn-inj-injectedp d) (equal (car d) :injected))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-inj-injectedp fn-inj-decision-status fn-inj-car)
+            :expand ((fn-inj-nth 0 d))))))
+
+(local
+ (defthm fn-cld-an-injection-is-not-transit
+   (implies (fn-inj-injectedp d) (not (fn-peer-submissionp d)))
+   :hints (("Goal" :in-theory (e/d (fn-peer-submissionp fn-ag-car)
+                                   (fn-inj-injectedp fn-nntp-printable-tokenp
+                                    fn-af-message-idp fn-peer-submission-shapep))
+            :use fn-cld-injected-car))))
+
+; The stored octets of an injected submission are never a tombstone: they
+; open with the node's Cancel-Lock ("C") or, without one, with the injected
+; block ("P" or "I"; fn-ipp-an-injection-does-not-open-with-c).
+(local
+ (defthm fn-cld-injected-octets-are-a-cons-not-opening-with-nul
+   (let ((x (fn-ipp-injected-octets (fn-inj-decide source config obs) ring login cfg)))
+     (implies (fn-inj-injectedp (fn-inj-decide source config obs))
+              (not (fn-rcl-tombstonep x))))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+            :use ((:instance fn-ipp-an-injection-opens-with-p-or-i (secret ring))
+                  (:instance fn-cld-a-tombstone-opens-with-nul
+                             (x (fn-ipp-injected-octets (fn-inj-decide source config obs)
+                                                        ring login cfg))))))))
+
 (defthm fn-cld-stored-octets-of-an-injection-are-not-a-tombstone
   (implies (and (equal (fn-own-sub-decision sub) (fn-inj-decide source config obs))
                 (fn-inj-injectedp (fn-inj-decide source config obs)))
@@ -79,19 +109,29 @@
                         (:instance fn-cl-served-payload-is-the-lines-then-the-payload-by-definition
                                    (account (fn-own-sub-account sub))
                                    (msgid (fn-own-sub-msgid sub))
-                                   (payload (fn-own-sub-octets sub)))
-                        (:instance fn-sr-an-injection-is-not-a-tombstone (obs obs))
+                                   (payload (fn-ipp-injected-octets (fn-own-sub-decision sub)
+                                                                    ring (fn-own-sub-login sub)
+                                                                    cfg)))
+                        (:instance fn-cld-injected-octets-are-a-cons-not-opening-with-nul
+                                   (login (fn-own-sub-login sub)))
+                        (:instance fn-cld-an-injection-is-not-transit
+                                   (d (fn-inj-decide source config obs)))
                         (:instance fn-cld-no-tombstone-behind-the-lines
-                                   (x (fn-own-sub-octets sub))
+                                   (x (fn-ipp-injected-octets (fn-own-sub-decision sub)
+                                                              ring (fn-own-sub-login sub) cfg))
                                    (lock (fn-cl-lock-value ring (fn-own-sub-account sub)
                                                            (fn-own-sub-msgid sub)
                                                            (fn-ctl-received-fields
-                                                            (fn-own-sub-octets sub))))
+                                                            (fn-ipp-injected-octets
+                                                             (fn-own-sub-decision sub) ring
+                                                             (fn-own-sub-login sub) cfg))))
                                    (keys (fn-cl-key-values ring (fn-own-sub-account sub)
                                                            (fn-ctl-received-fields
-                                                            (fn-own-sub-octets sub))))))
-           :in-theory (e/d (fn-own-sub-octets fn-own-sub-msgid)
-                           (fn-own-sub-stored-octets fn-rcl-tombstonep
+                                                            (fn-ipp-injected-octets
+                                                             (fn-own-sub-decision sub) ring
+                                                             (fn-own-sub-login sub) cfg))))))
+           :in-theory (e/d (fn-own-sub-msgid)
+                           (fn-own-sub-stored-octets fn-rcl-tombstonep fn-ipp-injected-octets
                             fn-cld-no-tombstone-behind-the-lines
                             fn-cl-lock-value fn-cl-key-values)))))
 
@@ -102,11 +142,39 @@
    (implies (and (equal (fn-own-sub-decision sub) (fn-inj-decide source config obs))
                  (fn-inj-injectedp (fn-inj-decide source config obs)))
             (equal (fn-cll-skip (fn-own-sub-stored-octets cfg sub ring))
-                   (fn-inj-decision-octets (fn-inj-decide source config obs))))
+                   (fn-ipp-injected-octets (fn-inj-decide source config obs) ring
+                                           (fn-own-sub-login sub) cfg)))
    :hints (("Goal" :use ((:instance fn-own-stored-octets-keep-the-injected-octets
                                     (secret ring))
-                         (:instance fn-pb-an-injection-does-not-open-with-c))
-            :in-theory (disable fn-own-sub-stored-octets)))))
+                         (:instance fn-ipp-an-injection-does-not-open-with-c
+                                    (secret ring) (login (fn-own-sub-login sub)))
+                         (:instance fn-cld-an-injection-is-not-transit
+                                    (d (fn-inj-decide source config obs))))
+            :in-theory (disable fn-own-sub-stored-octets fn-ipp-injected-octets)))))
+
+(local
+ (defthm fn-cld-injected-octets-are-their-own-projection
+   (implies (fn-inj-injectedp (fn-inj-decide source config obs))
+            (equal (fn-cll-skip (fn-ipp-injected-octets (fn-inj-decide source config obs)
+                                                        ring login cfg))
+                   (fn-ipp-injected-octets (fn-inj-decide source config obs)
+                                           ring login cfg)))
+   :hints (("Goal" :in-theory (disable fn-ipp-injected-octets fn-cll-skip)
+            :use ((:instance fn-ipp-an-injection-does-not-open-with-c (secret ring))
+                  (:instance fn-cll-skip-of-an-article-not-opening-with-c
+                             (x (fn-ipp-injected-octets (fn-inj-decide source config obs)
+                                                        ring login cfg))))))))
+
+(local
+ (defthm fn-cld-injected-octets-read-their-source
+   (implies (fn-inj-injectedp (fn-inj-decide source config obs))
+            (fn-inj-source-of (fn-ipp-injected-octets (fn-inj-decide source config obs)
+                                                      ring login cfg)
+                              (fn-inj-config-agent config)
+                              (fn-inj-decision-msgid (fn-inj-decide source config obs))))
+   :hints (("Goal" :in-theory (disable fn-ipp-injected-octets)
+            :use ((:instance fn-ipp-injected-octets-carry-the-parameters
+                             (secret ring)))))))
 
 (local
  (defthm fn-cld-an-injection-reads-its-source
@@ -116,6 +184,54 @@
                               (fn-inj-decision-msgid (fn-inj-decide source config obs))))
    :hints (("Goal" :use ((:instance fn-inj-source-of-inverts-the-injection
                                     (observation obs)))))))
+
+; Two stored injections under one Message-ID are one article exactly when
+; their sources are one, whatever account, login, key ring and complaints
+; address stored each (the node's Cancel-Lock lines and Injection-Info
+; parameters are outside the source; PKT-597).
+(defthm fn-cld-two-stored-injections-are-one-article-iff-one-source
+  (let ((da (fn-inj-decide source1 config a))
+        (db (fn-inj-decide source2 config b)))
+    (implies (and (equal (fn-own-sub-decision sub-a) da)
+                  (equal (fn-own-sub-decision sub-b) db)
+                  (fn-inj-injectedp da) (fn-inj-injectedp db)
+                  (equal (fn-inj-decision-msgid da) (fn-inj-decision-msgid db)))
+             (equal (fn-pb-same-articlep (fn-inj-decision-msgid db)
+                                         (fn-own-sub-stored-octets cfg-b sub-b ring-b)
+                                         (fn-own-sub-stored-octets cfg-a sub-a ring-a))
+                    (equal source1 source2))))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-cld-projection-of-a-stored-injection
+                            (sub sub-a) (source source1) (obs a) (cfg cfg-a) (ring ring-a))
+                 (:instance fn-cld-projection-of-a-stored-injection
+                            (sub sub-b) (source source2) (obs b) (cfg cfg-b) (ring ring-b))
+                 (:instance fn-cld-injected-octets-are-their-own-projection
+                            (source source1) (obs a) (cfg cfg-a) (ring ring-a)
+                            (login (fn-own-sub-login sub-a)))
+                 (:instance fn-cld-injected-octets-are-their-own-projection
+                            (source source2) (obs b) (cfg cfg-b) (ring ring-b)
+                            (login (fn-own-sub-login sub-b)))
+                 (:instance fn-cld-injected-octets-read-their-source
+                            (source source1) (obs a) (cfg cfg-a) (ring ring-a)
+                            (login (fn-own-sub-login sub-a)))
+                 (:instance fn-cld-injected-octets-read-their-source
+                            (source source2) (obs b) (cfg cfg-b) (ring ring-b)
+                            (login (fn-own-sub-login sub-b)))
+                 (:instance fn-ipp-path-agent-of-the-injected-octets
+                            (source source2) (obs b) (cfg cfg-b) (secret ring-b)
+                            (login (fn-own-sub-login sub-b)))
+                 (:instance fn-cld-same-article-reads-the-projections
+                            (msgid (fn-inj-decision-msgid (fn-inj-decide source2 config b)))
+                            (p (fn-own-sub-stored-octets cfg-b sub-b ring-b))
+                            (h (fn-own-sub-stored-octets cfg-a sub-a ring-a))
+                            (x (fn-ipp-injected-octets (fn-inj-decide source2 config b)
+                                                       ring-b (fn-own-sub-login sub-b) cfg-b))
+                            (y (fn-ipp-injected-octets (fn-inj-decide source1 config a)
+                                                       ring-a (fn-own-sub-login sub-a) cfg-a)))
+                 (:instance fn-ipp-same-articlep-of-two-injections
+                            (obs1 a) (obs2 b) (secret1 ring-a) (secret2 ring-b)
+                            (login1 (fn-own-sub-login sub-a)) (login2 (fn-own-sub-login sub-b))
+                            (cfg1 cfg-a) (cfg2 cfg-b))))))
 
 ; KEYSTONE (D25 restored: a retry is a duplicate across accounts and key
 ; epochs).  The held article is the octets a submission SUB-A stored for a
@@ -144,28 +260,19 @@
   :hints (("Goal" :cases ((fn-find-article
                             msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
                   :use ((:instance fn-cld-stored-octets-of-an-injection-are-not-a-tombstone
-                                   (sub sub-a) (obs a) (cfg cfg-a) (ring ring-a))
+                                   (sub sub-a) (source source) (obs a) (cfg cfg-a) (ring ring-a))
                         (:instance fn-cld-projection-of-a-stored-injection
-                                   (sub sub-a) (obs a) (cfg cfg-a) (ring ring-a))
-                        (:instance fn-cld-projection-of-a-stored-injection
-                                   (sub sub-b) (obs b) (cfg cfg-b) (ring ring-b))
-                        (:instance fn-pb-an-injection-is-its-own-projection (obs a))
-                        (:instance fn-pb-an-injection-is-its-own-projection (obs b))
-                        (:instance fn-cld-an-injection-reads-its-source (obs a))
-                        (:instance fn-cld-an-injection-reads-its-source (obs b))
-                        (:instance fn-pb-path-agent-of-an-injection (obs b))
-                        (:instance fn-cld-same-article-reads-the-projections
-                                   (msgid (fn-record-string-octets msgid))
-                                   (p (fn-own-sub-stored-octets cfg-b sub-b ring-b))
-                                   (h (fn-own-sub-stored-octets cfg-a sub-a ring-a))
-                                   (x (fn-inj-decision-octets (fn-inj-decide source config b)))
-                                   (y (fn-inj-decision-octets (fn-inj-decide source config a))))
-                        (:instance fn-pb-one-source-at-two-clocks-is-one-article
-                                   (msgid (fn-record-string-octets msgid))))
+                                   (sub sub-a) (source source) (obs a) (cfg cfg-a) (ring ring-a))
+                        (:instance fn-ipp-an-injection-opens-with-p-or-i
+                                   (source source) (obs a) (cfg cfg-a) (secret ring-a)
+                                   (login (fn-own-sub-login sub-a)))
+                        (:instance fn-cld-two-stored-injections-are-one-article-iff-one-source
+                                   (source1 source) (source2 source)))
                   :in-theory (e/d (fn-rcl-existing-action fn-rcl-same-articlep)
-                                  (fn-rcl-tombstonep fn-article-groups
+                                  (fn-rcl-tombstonep fn-article-groups fn-ipp-injected-octets
                                    fn-own-sub-stored-octets fn-pb-same-articlep
-                                   fn-pb-path-agent fn-cll-skip))))
+                                   fn-pb-path-agent fn-cll-skip fn-inj-decide
+                                   fn-inj-injectedp))))
   :rule-classes nil)
 
 ; KEYSTONE (no over-normalization survives the lines).  A different authored
@@ -192,34 +299,17 @@
   :hints (("Goal" :cases ((fn-find-article
                             msgid (fn-state-articles (fn-node-acceptance (fn-sn-node s)))))
                   :use ((:instance fn-cld-stored-octets-of-an-injection-are-not-a-tombstone
-                                   (sub sub-a) (source source1) (obs a) (cfg cfg-a)
-                                   (ring ring-a))
+                                   (sub sub-a) (source source1) (obs a) (cfg cfg-a) (ring ring-a))
                         (:instance fn-cld-projection-of-a-stored-injection
-                                   (sub sub-a) (source source1) (obs a) (cfg cfg-a)
-                                   (ring ring-a))
-                        (:instance fn-cld-projection-of-a-stored-injection
-                                   (sub sub-b) (source source2) (obs b) (cfg cfg-b)
-                                   (ring ring-b))
-                        (:instance fn-pb-an-injection-is-its-own-projection
-                                   (source source1) (obs a))
-                        (:instance fn-pb-an-injection-is-its-own-projection
-                                   (source source2) (obs b))
-                        (:instance fn-cld-an-injection-reads-its-source
-                                   (source source1) (obs a))
-                        (:instance fn-cld-an-injection-reads-its-source
-                                   (source source2) (obs b))
-                        (:instance fn-pb-path-agent-of-an-injection
-                                   (source source2) (obs b))
-                        (:instance fn-cld-same-article-reads-the-projections
-                                   (msgid (fn-record-string-octets msgid))
-                                   (p (fn-own-sub-stored-octets cfg-b sub-b ring-b))
-                                   (h (fn-own-sub-stored-octets cfg-a sub-a ring-a))
-                                   (x (fn-inj-decision-octets (fn-inj-decide source2 config b)))
-                                   (y (fn-inj-decision-octets (fn-inj-decide source1 config a))))
-                        (:instance fn-pb-two-sources-are-two-articles
-                                   (msgid (fn-record-string-octets msgid))))
+                                   (sub sub-a) (source source1) (obs a) (cfg cfg-a) (ring ring-a))
+                        (:instance fn-ipp-an-injection-opens-with-p-or-i
+                                   (source source1) (obs a) (cfg cfg-a) (secret ring-a)
+                                   (login (fn-own-sub-login sub-a)))
+                        (:instance fn-cld-two-stored-injections-are-one-article-iff-one-source
+                                   (source1 source1) (source2 source2)))
                   :in-theory (e/d (fn-rcl-existing-action fn-rcl-same-articlep)
-                                  (fn-rcl-tombstonep fn-article-groups
+                                  (fn-rcl-tombstonep fn-article-groups fn-ipp-injected-octets
                                    fn-own-sub-stored-octets fn-pb-same-articlep
-                                   fn-pb-path-agent fn-cll-skip))))
+                                   fn-pb-path-agent fn-cll-skip fn-inj-decide
+                                   fn-inj-injectedp))))
   :rule-classes nil)
