@@ -37,7 +37,10 @@ class NativeServedCostTests(unittest.TestCase):
         self.assertIn("(fnn-core-buffer-state 'fn-owner-chunk-span cid", handoff)
         self.assertNotIn("fnn-octet-list incoming", handoff)
         self.assertNotIn("'fn-owner-chunk cid", handoff)
-        self.assertIn("(fn-scr-ocfg-read-span", definition(host, "fn-owner-chunk-span"))
+        # fn-owner-chunk-span reads at the reader view (fn-owner-at-reader-view)
+        # through fn-owner-chunk-span-at, which calls the catalog chain.
+        self.assertIn("(fn-owner-chunk-span-at", definition(host, "fn-owner-chunk-span"))
+        self.assertIn("(fn-scr-ocfg-read-span", definition(host, "fn-owner-chunk-span-at"))
         self.assertIn("(fn-scr-step-span-fast", definition(chain, "fn-scr-own-read-span"))
         fast = definition(chain, "fn-scr-step-span-fast")
         self.assertIn("fn-wire-fast-statep", fast)
