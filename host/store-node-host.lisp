@@ -19,6 +19,8 @@
 ; PKT-220: the retention figures `operator CONFIG obligations' opens with.
 (include-book "../books/retention-figures")
 (include-book "../books/store-capacity-config")
+; PKT-510 (1): the offline request authorizes from the open's carried fold.
+(include-book "../books/config-carried-candidate")
 (include-book "../books/node-config")
 (include-book "../books/native-admin")
 ; D27, PRF-102: the operator's namespace counts.
@@ -64,7 +66,8 @@
                              ; default.  The checkpoint host reads the live
                              ; node's capacity (`fn-store-sn-capacity').
                              (fn-sn-initial nil 0) state))
-        (state (f-put-global 'fn-store-sco-open nil state)))
+        (state (f-put-global 'fn-store-sco-open nil state))
+        (state (f-put-global 'fn-store-cfg-open-configs nil state)))
     (value :ready)))
 
 (defun fn-store-sn-state (state)
@@ -196,6 +199,40 @@ reopen predicate, writer-lock observation and observed final namespace."
        records frontier config-records (fn-record-parse-value parsed)
        lock-owned names profile))))
 
+;; PKT-510 (1): the offline request's authorization from the open's carried
+;; fold (books/config-carried-candidate.lisp
+;; fn-cfgc-cvec-native-admin-authorize-is-the-replayed-authorization: EQUAL to
+;; fn-cvec-native-admin-authorize whenever the carried fold is the replay of
+;; the same histories).  The records are the extended capture's (the history
+;; the open replayed, fn-sco-records of E); the fold is E's
+;; (fn-sco-store-open-of-extended-capture); the configuration history must be
+;; the one the open folded, compared here.  NIL when there is no carried open
+;; or the configuration history is not the open's: the caller then runs
+;; fn-store-cfg-native-admin-authorize over the history it read.  The live
+;; owner never calls this: its Store advanced past its open.
+(defun fn-store-cfg-native-admin-authorize-carried
+    (frontier config-octet-records record-octets lock-owned observed-name-octets
+              profile state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((carried (and (boundp-global 'fn-store-sco-open state)
+                       (f-get-global 'fn-store-sco-open state)))
+         (opened-configs (and (boundp-global 'fn-store-cfg-open-configs state)
+                              (f-get-global 'fn-store-cfg-open-configs state)))
+         (config-records (fn-store-cfg-decode-records config-octet-records))
+         (parsed (fn-cfg-decode-exact record-octets))
+         (names (fn-store-octet-lists->strings observed-name-octets)))
+    (cond ((or (not (consp carried)) (null opened-configs)
+               (equal config-records :bad)
+               (not (equal config-records opened-configs)))
+           (value nil))
+          ((or (null config-records) (equal names :bad)
+               (not (fn-record-parse-okp parsed)))
+           (value (fn-native-admin-publication-result :refused :decode nil nil nil)))
+          (t (value (fn-cfgc-cvec-native-admin-authorize
+                     (fn-sco-records (car carried)) frontier config-records
+                     (fn-record-parse-value parsed) lock-owned names profile
+                     (cadr carried)))))))
+
 ; The same authorization flattened for a caller that reads one form:
 ; (status reason generation name).  The generation and the filename are
 ; ACL2's (`fn-native-admin-publication-authorize'); the caller allocates
@@ -248,7 +285,11 @@ reopen predicate, writer-lock observation and observed final namespace."
                (state (f-put-global 'fn-store-cfg
                                     (fn-cnode-config (fn-replay-result-node replayed))
                                     state))
-               (state (f-put-global 'fn-store-sco-open (list e replayed opened) state)))
+               (state (f-put-global 'fn-store-sco-open (list e replayed opened) state))
+               ; The configuration history this open folded: the offline
+               ; request's authorization is carried only over the same one
+               ; (fn-store-cfg-native-admin-authorize-carried).
+               (state (f-put-global 'fn-store-cfg-open-configs config-records state)))
           (value :recovering))
       (let ((state (f-put-global 'fn-store-sco-open nil state)))
         (value :fault))))))

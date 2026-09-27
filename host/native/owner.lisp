@@ -1841,7 +1841,13 @@ EPIPE and the client saw a bare close)."
              (fnn-fault "owner returned a malformed exposure close"))
            (setq reply (concatenate 'fnn-octets reply (fnn-octets exposure-close))
                  closing t)))
-       (values reply (or closing uncertain) starttls consumed redeemed)))))
+       ;; PKT-600 (PRF-213): a read that emitted a submission yielded after
+       ;; its article (books/served-tls-prefix.lisp fn-served-feed-counted,
+       ;; the span fold books/served-span.lisp fn-scar-feed-span), so the
+       ;; caller feeds the rest of INCOMING as the next read, after this
+       ;; read's reply and the article's outcome are sent.
+       (values reply (or closing uncertain) starttls consumed redeemed
+               (fnn-owner-bool-global 'fn-owner-submittedp))))))
 
 ;;; PRF-161: the work budget (books/public-exposure.lisp fn-exp-charge).
 ;;; Before every served step ACL2 answers :proceed or the milliseconds to

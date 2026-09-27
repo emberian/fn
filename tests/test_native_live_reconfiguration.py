@@ -339,7 +339,10 @@ class LiveReconfigurationImageTests(unittest.TestCase):
         before = self.config_files()
         refused = offline_create("fn.offline")
         self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())
-        self.assertIn(b"already locked", refused.stderr)
+        # The named refusal (books/native-control.lisp, the :store-held
+        # route): the lock is held and the configured control socket does
+        # not reach its holder, so the offline executor is not started.
+        self.assertIn(b"refused store-held", refused.stderr)
         self.assertEqual(self.config_files(), before)
         self.assertIsNone(owner.poll(), "the offline command disturbed the owner")
         self.stop_owner(owner)

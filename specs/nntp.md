@@ -993,9 +993,11 @@ ClientHello behind the STARTTLS line in one kernel observation. This is a
 robustness property and does not relax RFC 4642's client prohibition. The
 sole connection worker observes with `MSG_PEEK`; `fn-ocfg-read-tls-prefix`
 returns the one ACL2 transition, its effects and the exact consumed count.
-`fn-ocfg-read-tls-prefix-is-full-read`, under the configured-owner state
-invariant, proves that the actual host-call result equals the checked full
-observation. The host-called path uses `fn-served-step-counted-fast`: its entry
+`fn-ocfg-read-tls-prefix-is-read-of-consumed-prefix`, under the
+configured-owner state invariant, proves that the actual host-call result
+equals the checked read of the prefix it consumed (the whole observation's,
+since a handshaking connection frames nothing more; a read also yields after
+a submission, NNT-044). The host-called path uses `fn-served-step-counted-fast`: its entry
 predicate examines the fixed eight-cell wire record and scalar counters, never
 the retained current line or article body. `fn-served-step-counted-fast-is-reference`
 equates it to the total checked transition under the full wire invariant, and
@@ -1329,6 +1331,33 @@ again. Any other answer is a refusal and stops the dial for the owner
 process (PRF-130). The form is per connection: `fn-own-feed-connect` sets
 it at every connect. RFC 4644 §2.3 prefers CAPABILITIES for discovery; fn
 asks MODE STREAM, which every legacy server answers (PKT-599).
+
+## Pipelined articles (NNT-044)
+
+NNT-044: Pipelined articles are each admitted and answered in order: two TAKETHIS or two POST articles in one socket read lose neither, and what is consumed from a stream does not depend on where it was cut
+
+A client may send a command before the previous reply arrives and the
+server must neither discard data nor lose synchronisation (RFC 3977 §3.5);
+a streaming peer pipelines TAKETHIS with its article (RFC 4644 §2.5), and
+innfeed does. One socket read can therefore carry several complete
+articles. The served read yields after the octet that completed an
+article's submission (books/served-tls-prefix.lisp `fn-served-feed-counted`,
+the span fold books/served-span.lisp `fn-scar-feed-span`): the host commits
+the article and sends the replies of the read and the article's outcome,
+then feeds the unconsumed rest of the read as the next read
+(host/native/owner.lisp, the serve loop's retained suffix). Every step's
+work is bounded by the read (D27); no octet is dropped or read twice.
+
+RFC requirement: pipelined data is neither lost nor reordered. fn guarantee
+(PRF-213): the loop driven to exhaustion is one read of the whole input
+(`fn-served-drain-is-step`), so the commands and articles consumed and their
+answers are the same wherever the network or a yield cut the stream
+(`fn-served-drain-run-is-boundary-independent`); a yield carries at most one
+submission and the ones taken are all of them
+(`fn-served-drain-takes-every-submission`); the outcome of an article is on
+the wire before the reply to any command after it. Before PKT-600 was
+repaired the second article of a read was never admitted and never
+answered.
 
 ## Scope
 
