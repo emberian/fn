@@ -557,7 +557,7 @@ label; it does not select a policy."
 ;;; process.  A saved image must not carry it: a state seeded while the image
 ;;; was built gave every process of that image the same sequence, so `init'
 ;;; and `import', whose stage names carry no PID, staged under the same
-;;; ROOT.init-77b60431a1de in every run (PKT-691).  The save hook drops it
+;;; ROOT.init-77b60431a1de in every run (PKT-819).  The save hook drops it
 ;;; before `save-lisp-and-die'; a restarted image seeds its own.
 (defvar *fnn-random-state* nil)
 (defvar *fnn-random-state-lock* (sb-thread:make-mutex :name "fn native random state"))

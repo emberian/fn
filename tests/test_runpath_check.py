@@ -172,7 +172,7 @@ class RunpathCheckTests(unittest.TestCase):
                 core.write("libpython3.12.so.1.0".encode("utf-32-le") + b"\0" * 4)
             self.assert_finding(top, "may dlopen libpython3.12.so.1.0")
 
-    # PKT-690: the OpenBSD release carries libsodium.so.11.1, which OpenBSD's
+    # PKT-723: the OpenBSD release carries libsodium.so.11.1, which OpenBSD's
     # ld.so finds for the core's libsodium.so; Linux's libsodium.so.23 in an
     # OpenBSD core is a name the release does not carry.
     def test_openbsd_tree_is_clean_under_its_platform(self):

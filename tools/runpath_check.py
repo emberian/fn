@@ -100,7 +100,7 @@ RC_VARIABLES = {"daemon", "daemon_flags", "daemon_user", "daemon_logger",
 
 # The platform's C library, the one thing outside the release an ELF object
 # may name (ld.so resolves it): glibc on Linux, libc on OpenBSD.  A tree is
-# checked against its target's rules (PKT-690): `--platform', or the program
+# checked against its target's rules (PKT-723): `--platform', or the program
 # interpreter of the release's runtime (`detect_platform'); a tree whose
 # platform is unknown gets the union, as before.
 PLATFORM_LIBC_BY = {
@@ -235,7 +235,7 @@ def scan_libraries(root: Path, findings: Findings) -> None:
         # A candidate list is chosen at read time (#+linux, #+openbsd, ...), so
         # the saved core carries only its platform's names and the tree check
         # may read every lib*.so string in the core as one it may dlopen
-        # (PKT-690).  A run-time `(member :os *features*)' would put every
+        # (PKT-723).  A run-time `(member :os *features*)' would put every
         # platform's names in every core.
         for match in LIB_LITERAL_RE.finditer(text):
             defun = enclosing_defun(text, match.start())

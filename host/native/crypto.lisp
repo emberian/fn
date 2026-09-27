@@ -37,7 +37,7 @@
   ;; Read-time conditionals, not a run-time `cond' over *features*: the saved
   ;; core then carries only its own platform's names, and
   ;; tools/runpath_check.py reads every lib*.so string in the core as a name
-  ;; it may dlopen (PKT-690: an OpenBSD core held Linux's libsodium.so.23).
+  ;; it may dlopen (PKT-723: an OpenBSD core held Linux's libsodium.so.23).
   #+darwin
   '("/opt/homebrew/opt/libsodium/lib/libsodium.dylib"
     "/usr/local/opt/libsodium/lib/libsodium.dylib"

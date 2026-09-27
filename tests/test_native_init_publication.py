@@ -29,7 +29,7 @@ What this module checks:
   leaves one staged directory, which the next init names
   (reason=interrupted-init), after whose removal init succeeds;
 * two init processes of one image killed at the same cut leave stages with
-  different suffixes (PKT-691: the random state is seeded per process).
+  different suffixes (PKT-819: the random state is seeded per process).
 
 Not checked here: power loss (lane power-loss's campaign carries these cut
 names), and the non-Linux ROOT.lock path (OpenBSD evidence is scoped
@@ -160,7 +160,7 @@ class InitCutTests(InitFixture):
         return "absent"
 
     def test_two_inits_stage_under_different_names(self):
-        """PKT-691: the stage suffix is drawn from a state each process seeds
+        """PKT-819: the stage suffix is drawn from a state each process seeds
         from the OS's entropy, not one the image carried from its build: two
         init processes killed at the same cut leave differently named
         stages."""

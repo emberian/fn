@@ -96,7 +96,7 @@ FN_OPENSSL_PREFIX is optional: unset, the system's pair is used."
     (if configured
         (list configured)
       ;; Read-time, as fnn-crypto-library-candidates: the core carries only
-      ;; its platform's names (PKT-690).
+      ;; its platform's names (PKT-723).
       #+darwin
       '(("/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib"
          "/opt/homebrew/opt/openssl@3/lib/libssl.3.dylib")
