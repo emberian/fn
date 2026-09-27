@@ -295,8 +295,8 @@
 (assert-event (fn-bpaj-node-record-committed-carriedp *osi-bad-node* *bsb-record*))
 (assert-event (not (fn-bpi-node-record-committedp *osi-bad-node* *bsb-record*)))
 (must-fail
- (thm (equal (fn-bpaj-node-record-committed-carriedp node record)
-             (fn-bpi-node-record-committedp node record))))
+ (thm (equal (fn-bpaj-node-record-committed-carriedp *osi-bad-node* *bsb-record*)
+             (fn-bpi-node-record-committedp *osi-bad-node* *bsb-record*))))
 
 ; fn-osi-ocl-store-record-accepted-fast-is-checked (books/owner-store-indexed.lisp).
 ; Positive witness: the configured owner the host holds after the recovery
@@ -327,10 +327,10 @@
 (assert-event (fn-bpaj-store-record-accepted-fast *osi-bad-oc-store* *bsb-record*))
 (assert-event (not (fn-bpr-store-record-acceptedp *osi-bad-oc-store* *bsb-record*)))
 (must-fail
- (thm (let ((store (fn-own-store (fn-ocfg-owner oc))))
+ (thm (let ((store (fn-own-store (fn-ocfg-owner *osi-bad-oc*))))
         (implies (fn-ceis-indexedp store)
-                 (equal (fn-bpaj-store-record-accepted-fast store record)
-                        (fn-bpr-store-record-acceptedp store record))))))
+                 (equal (fn-bpaj-store-record-accepted-fast store *bsb-record*)
+                        (fn-bpr-store-record-acceptedp store *bsb-record*))))))
 ; Without fn-ceis-indexedp (a STALE index, a state no host transition
 ; reaches): the live owner with the empty index.  The relation does not read
 ; the derived index, so it still holds; the fast check finds no candidate and
@@ -346,7 +346,7 @@
 (assert-event (not (fn-bpaj-store-record-accepted-fast *osi-stale-oc-store* *bsb-record*)))
 (assert-event (fn-bpr-store-record-acceptedp *osi-stale-oc-store* *bsb-record*))
 (must-fail
- (thm (let ((store (fn-own-store (fn-ocfg-owner oc))))
-        (implies (fn-ocl-relation oc)
-                 (equal (fn-bpaj-store-record-accepted-fast store record)
-                        (fn-bpr-store-record-acceptedp store record))))))
+ (thm (let ((store (fn-own-store (fn-ocfg-owner *osi-stale-oc*))))
+        (implies (fn-ocl-relation *osi-stale-oc*)
+                 (equal (fn-bpaj-store-record-accepted-fast store *bsb-record*)
+                        (fn-bpr-store-record-acceptedp store *bsb-record*))))))

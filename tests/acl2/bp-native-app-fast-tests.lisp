@@ -151,10 +151,12 @@
                          (cadr (fn-bpaj-record-lookup-fast *bpaj-bad-store*
                                                            *bpaj-request*))))))
 (must-fail
- (thm (implies (and (fn-ceis-indexedp store)
-                    (equal (car (fn-bpaj-record-lookup-fast store request)) :found))
+ (thm (implies (and (fn-ceis-indexedp *bpaj-bad-store*)
+                    (equal (car (fn-bpaj-record-lookup-fast *bpaj-bad-store* *bpaj-request*))
+                           :found))
                (fn-bpr-store-record-acceptedp
-                store (cadr (fn-bpaj-record-lookup-fast store request))))))
+                *bpaj-bad-store*
+                (cadr (fn-bpaj-record-lookup-fast *bpaj-bad-store* *bpaj-request*))))))
 ; Without fn-ceis-indexedp (a STALE index, a state no host transition
 ; reaches): the Store with its history intact and an index built from the
 ; same record at another transaction id.  The Store recognizer holds; the
@@ -172,7 +174,9 @@
                          (cadr (fn-bpaj-record-lookup-fast *bpaj-cut-store*
                                                            *bpaj-request*))))))
 (must-fail
- (thm (implies (and (fn-sn-statep store)
-                    (equal (car (fn-bpaj-record-lookup-fast store request)) :found))
+ (thm (implies (and (fn-sn-statep *bpaj-cut-store*)
+                    (equal (car (fn-bpaj-record-lookup-fast *bpaj-cut-store* *bpaj-request*))
+                           :found))
                (fn-bpr-store-record-acceptedp
-                store (cadr (fn-bpaj-record-lookup-fast store request))))))
+                *bpaj-cut-store*
+                (cadr (fn-bpaj-record-lookup-fast *bpaj-cut-store* *bpaj-request*))))))
