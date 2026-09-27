@@ -10,24 +10,24 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 1054 |
-| Certification roots in the Makefile | 1025 |
-| Books inside the root closure | 1046 |
-| `defthm` and `defthmd` events | 14982 |
-| `defun` events | 10375 |
+| Books read | 1055 |
+| Certification roots in the Makefile | 1026 |
+| Books inside the root closure | 1047 |
+| `defthm` and `defthmd` events | 15017 |
+| `defun` events | 10390 |
 | Functions with verified guards | 2336 |
-| Functions declared `:verify-guards nil` and never verified | 818 |
-| Functions left at the default with an explicit guard | 5677 |
-| Functions left at the default with no guard | 1544 |
-| `assert-event` checks | 15448 |
-| `must-fail` checks | 1836 |
+| Functions declared `:verify-guards nil` and never verified | 821 |
+| Functions left at the default with an explicit guard | 5678 |
+| Functions left at the default with no guard | 1555 |
+| `assert-event` checks | 15485 |
+| `must-fail` checks | 1839 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 77 |
 | Theorems flagged SUSPECT by shape | 145 |
 | Export-hygiene warnings | 166 |
 | Enabled-projection warnings | 43 |
-| Teeth-form warnings | 164 |
-| Include-hygiene warnings | 1046 |
+| Teeth-form warnings | 166 |
+| Include-hygiene warnings | 1047 |
 | Host-names warnings | 1191 |
 | Hand-written-record warnings | 18 |
 
@@ -507,7 +507,7 @@ that `make certify` requests.
 | `books/owner-signed-post.lisp` | root | 28 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner-store-budget.lisp` | root | 3 | 3 | 0/0/3/0 | 0 | 0 | 0 |
 | `books/owner-store-indexed.lisp` | root | 46 | 7 | 0/5/2/0 | 0 | 0 | 0 |
-| `books/owner-tls-prefix.lisp` | root | 3 | 7 | 0/0/7/0 | 0 | 0 | 0 |
+| `books/owner-tls-prefix.lisp` | root | 4 | 7 | 0/0/7/0 | 0 | 0 | 0 |
 | `books/owner-verdict-read.lisp` | root | 21 | 2 | 0/0/1/1 | 0 | 0 | 0 |
 | `books/owner-xref-read.lisp` | root | 7 | 0 | 0/0/0/0 | 0 | 0 | 0 |
 | `books/owner.lisp` | root | 92 | 164 | 0/5/159/0 | 0 | 0 | 0 |
@@ -579,7 +579,7 @@ that `make certify` requests.
 | `books/served-implicit-tls.lisp` | root | 5 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/served-reply-buffer.lisp` | root | 8 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/served-span.lisp` | root | 13 | 5 | 1/0/4/0 | 0 | 0 | 0 |
-| `books/served-tls-prefix.lisp` | root | 12 | 7 | 1/0/6/0 | 0 | 0 | 0 |
+| `books/served-tls-prefix.lisp` | root | 46 | 11 | 1/3/7/0 | 0 | 0 | 0 |
 | `books/served.lisp` | root | 111 | 52 | 2/4/46/0 | 0 | 0 | 0 |
 | `books/sha256-buffer.lisp` | root | 41 | 10 | 0/0/10/0 | 0 | 0 | 1 |
 | `books/sha256-stobj.lisp` | closure | 153 | 40 | 0/0/26/14 | 0 | 0 | 1 |
@@ -1046,6 +1046,7 @@ that `make certify` requests.
 | `tests/acl2/scheduler-peers-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 31 | 0 | 0 |
 | `tests/acl2/scheduler-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 103 | 0 | 0 |
 | `tests/acl2/served-implicit-tls-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 19 | 2 | 0 |
+| `tests/acl2/served-pipelining-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 37 | 3 | 0 |
 | `tests/acl2/served-reply-buffer-tests.lisp` | root | 0 | 4 | 0/0/4/0 | 7 | 2 | 0 |
 | `tests/acl2/served-span-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 1 | 3 | 0 |
 | `tests/acl2/served-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 116 | 0 | 0 |
