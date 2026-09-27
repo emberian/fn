@@ -11468,6 +11468,117 @@
         "fn-otm-read-span-while-shedding",
         "fn-otm-closed-posting-never-awaits-an-article"
       ]
+    },
+    {
+      "id": "PRF-328",
+      "title": "The log walk decides each entry in the octet buffer it was read into: header by index, trailer as the window digest, chain link compared in place, batch unpacked by index, each record sliced once; and the records' extent places from the same buffer",
+      "statement": "books/store-log-buffer.lisp: the host preads each log entry into its own octet buffer fn-octets-lg (an abstract stobj congruent to fn-octets) and calls fn-lgw-step-buf and fn-lgb-entry-places over it. KEYSTONE fn-lgw-step-buf-is-step: (fn-lgw-step-buf st unit max extent buf) = (fn-lgw-step buf st unit max extent), no hypothesis (the index decision fn-lgb-decide-fast runs under mbe behind the buffer's recognizer; its equality with the list decision is fn-lgb-decide-fast-is-decide over fn-lgb-decide-is-flat, the list step's closed form for an entry of at least 74 octets under a frame bound; shorter entries and other bounds take the list step on the buffer's octets). So fn-lgw-run-is-the-open (PRF-297) holds of the host's loop. KEYSTONE fn-lgb-entry-places-is-list-places: (fn-lgb-entry-places pos count unit buf) = (fn-arx-list-places buf pos count unit 0 0 nil 0 0 nil), no hypothesis. Host subject: host/native/io.lisp fnn-log-stream-segment. NOT done: the step's next-txid fold still decodes each record (fn-lgt-txid over fn-record-decode-exact-impl), and the records still reach the replay as octet lists.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-297",
+        "PRF-294",
+        "PRF-295"
+      ],
+      "assumptions": [
+        "A-CRYPTO",
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-buffer.lisp",
+        "tests/acl2/store-log-buffer-tests.lisp",
+        "planning/evidence/snapshot-open-3-2026-09-27.md"
+      ],
+      "progress_note": "Lane snapshot-open-3 (2026-09-27): the log walk over a buffer.",
+      "events": [
+        "fn-lgw-step-buf-is-step",
+        "fn-lgb-entry-places-is-list-places",
+        "fn-lgb-decide-is-decide",
+        "fn-lgb-decide-is-flat"
+      ]
+    },
+    {
+      "id": "PRF-329",
+      "title": "A replay that stops at an article its configured capacity cannot hold refuses the open by name; any other stop stays a fault and names where it stopped",
+      "statement": "books/store-open-replay-refusal.lisp: fn-sorr-stop finds the history item at the configured replay's fault position (the event whose sequence plus the configuration records fn-cpr-loop takes before it is the position). fn-sorr-refusal REPLAYED RECORDS CONFIGS answers (:refused :capacity TXID MSGID CHARGE RESERVED CAPACITY) when that item is an article whose charge exceeds the last good node's retention capacity less its reservation, else nil; it is nil unless the replay answered :fault (fn-sorr-refusal-only-on-a-stop), and its numbers are that retention state's with RESERVED + CHARGE > CAPACITY at an :event-refusal (fn-sorr-capacity-names-the-retention-state: fn-retain-admissiblep's capacity conjunct fails). fn-sorr-refusal-text renders the operator's line; fn-sorr-stop-text names any other stop (position, reason, txid). Host subject: host/store-node-host.lisp fn-store-sn-open-classified records the refusal (answering :refused, printed as the open's refusal by host/native/io.lisp) or the stop's text (answering :fault; fnn-replay-fault appends it to the fault's line, exit 4 as before). NOT done: the refusal comes after the fold, not at open: the history's charge is a property of its records, which the open has not read.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-020"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-open-replay-refusal.lisp",
+        "tests/acl2/store-open-replay-refusal-tests.lisp",
+        "planning/evidence/snapshot-open-3-2026-09-27.md"
+      ],
+      "progress_note": "Lane snapshot-open-3 (2026-09-27): the 1M seed's unnamed capacity refusal.",
+      "events": [
+        "fn-sorr-refusal-only-on-a-stop",
+        "fn-sorr-capacity-names-the-retention-state"
+      ]
+    },
+    {
+      "id": "PRF-330",
+      "title": "The replay's intern builds each held row's facts and context from one parse of the article",
+      "statement": "books/store-intern-once.lisp: fn-ipo-facts-context BYTES KEYRING GENERATION parses the article once and reads the control fact, the verdict and the delta from that parse. KEYSTONE fn-ipo-facts-context-is-facts-and-context: it is (list (fn-held-facts-of BYTES) (fn-held-context-of BYTES KEYRING GENERATION)), no hypothesis. books/payload-extent.lisp fn-arx-cat-intern-extent builds the row with it under mbe (its logic unchanged), so PRF-294's theorems are about the code the host runs (host/native/io.lisp fnn-bridge-recover-step-extents calls fn-arx-intern-step).",
+      "milestone": "M5",
+      "requirements": [
+        "REP-010"
+      ],
+      "depends_on": [
+        "PRF-294"
+      ],
+      "assumptions": [],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-intern-once.lisp",
+        "books/payload-extent.lisp",
+        "tests/acl2/store-intern-once-tests.lisp",
+        "planning/evidence/snapshot-open-3-2026-09-27.md"
+      ],
+      "progress_note": "Lane snapshot-open-3 (2026-09-27): the intern's three parses.",
+      "events": [
+        "fn-ipo-facts-context-is-facts-and-context"
+      ]
+    },
+    {
+      "id": "PRF-331",
+      "title": "The full replay's log walk decodes each record once: the walk without its txid fold, and the fold from the replay's decode",
+      "statement": "books/store-log-walk-once.lisp: fn-lgw-step-buf-nf is the buffer step keeping the stream's NEXT (fn-lgw-step-buf-nf-is-step-nf: EQUAL to fn-lgw-step-nf, the list step with NEXT kept, no hypothesis). KEYSTONE fn-lgw-run-nf-then-fold-is-run: from (fn-lgw-start GENESIS FLOOR), the run without the fold (fn-lgw-run-nf), its NEXT then set to (fn-lgw-next-fold RECORDS FLOOR) of the records it emitted (fn-lgw-set-next), IS fn-lgw-run, no hypothesis (the general form fn-lgw-run-of-set-next-is-run-nf holds from any state and NEXT); so PRF-297's fn-lgw-run-is-the-open holds of the host's composition. fn-lgb-decode-next RS NEXT answers (mv (fn-srs-decode RS) (fn-lgw-next-fold RS NEXT)) under mbe, its exec decoding each record once (fn-lgb-decode-next-exec-decode, fn-lgb-decode-next-exec-fold); the fold over any chunking is the fold of the concatenation (fn-lgw-next-fold-of-append). books/store-log-txid.lisp: fn-lgt-txid reads the record through the codec's seam (fn-record-decode-exact), as the replay's decode does. Host subject: host/native/io.lisp fnn-log-stream-segment under *fnn-log-stream-finish* (bound by fnn-recover-log's full replay) calls fn-lgw-step-buf-nf and, at the segment's end, fn-lgw-set-next with the fold fnn-recover-log-stream-flush took from fn-lgb-decode-next.",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003",
+        "HST-013"
+      ],
+      "depends_on": [
+        "PRF-297",
+        "PRF-328",
+        "PRF-261"
+      ],
+      "assumptions": [
+        "A-HOST"
+      ],
+      "status": "uncertified-at-current-digest",
+      "evidence": [
+        "books/store-log-walk-once.lisp",
+        "books/store-log-txid.lisp",
+        "tests/acl2/store-log-walk-once-tests.lisp",
+        "planning/evidence/snapshot-open-3-2026-09-27.md"
+      ],
+      "progress_note": "Lane snapshot-open-3 (2026-09-27): the walk's second decode of every record.",
+      "events": [
+        "fn-lgw-run-nf-then-fold-is-run",
+        "fn-lgw-run-of-set-next-is-run-nf",
+        "fn-lgw-step-buf-nf-is-step-nf",
+        "fn-lgb-decode-next-exec-decode",
+        "fn-lgb-decode-next-exec-fold"
+      ]
     }
   ]
 }

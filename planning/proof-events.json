@@ -11103,6 +11103,74 @@
           "name": "fn-otm-closed-posting-never-awaits-an-article"
         }
       ]
+    },
+    {
+      "id": "PRF-328",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-step-buf-is-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-entry-places-is-list-places"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-decide-is-decide"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-decide-is-flat"
+        }
+      ]
+    },
+    {
+      "id": "PRF-329",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-sorr-refusal-only-on-a-stop"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sorr-capacity-names-the-retention-state"
+        }
+      ]
+    },
+    {
+      "id": "PRF-330",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ipo-facts-context-is-facts-and-context"
+        }
+      ]
+    },
+    {
+      "id": "PRF-331",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-run-nf-then-fold-is-run"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-run-of-set-next-is-run-nf"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgw-step-buf-nf-is-step-nf"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-decode-next-exec-decode"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-decode-next-exec-fold"
+        }
+      ]
     }
   ]
 }

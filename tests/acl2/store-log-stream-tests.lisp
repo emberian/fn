@@ -21,6 +21,9 @@
 ;       not the segment's genesis reads no record and reports the splice.
 (in-package "ACL2")
 (include-book "../../books/store-log-stream")
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 (defun slw-unit () (declare (xargs :guard t)) 4)
 (defun slw-max () (declare (xargs :guard t)) 4096)

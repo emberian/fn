@@ -6,6 +6,9 @@
 (include-book "../../books/store-log-extend")
 (include-book "../../books/store-log-txid")
 (include-book "../../books/frame-trailer")
+; The record codec seam's attachment: the log's txid reads the record through
+; fn-record-decode-exact (books/store-log-txid.lisp).
+(include-book "../../books/codec-attach")
 
 (defun sle-unit () (declare (xargs :guard t)) 4)
 (defun sle-max () (declare (xargs :guard t)) 4096)

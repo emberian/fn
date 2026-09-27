@@ -39,6 +39,7 @@
 (include-book "../books/owner-checkpoint-pipeline")
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
 (include-book "../books/store-open-pre-c1")
+(include-book "../books/store-open-replay-refusal")
 ; PRF-242: the open's replay answers its identity questions from tries it
 ; builds as it advances, and the history recognizer dispatches once per record.
 (include-book "../books/replay-identity-index")
@@ -416,8 +417,19 @@ reopen predicate, writer-lock observation and observed final namespace."
                ; (fn-store-cfg-native-admin-authorize-carried).
                (state (f-put-global 'fn-store-cfg-open-configs config-records state)))
           (value :recovering))
-      (let ((state (f-put-global 'fn-store-sco-open nil state)))
-        (value :fault))))))
+      ;; A replay that stopped at an article its capacity cannot hold
+      ;; refuses the open by name (books/store-open-replay-refusal.lisp
+      ;; fn-sorr-refusal); any other stop stays a fault, its position and
+      ;; reason kept for the fault's line (fn-sorr-stop-text).
+      (let* ((records (fn-sco-records e))
+             (refusal (fn-sorr-refusal replayed records config-records))
+             (state (f-put-global 'fn-store-sco-open nil state))
+             (state (f-put-global 'fn-store-open-refusal refusal state))
+             (state (f-put-global 'fn-store-open-stop
+                                  (and (not refusal)
+                                       (fn-sorr-stop-text replayed records config-records))
+                                  state)))
+        (value (if refusal :refused :fault)))))))
 
 (defun fn-store-sn-open-extended (e config-records frontier state)
   (declare (xargs :stobjs state :mode :program))
@@ -428,7 +440,15 @@ reopen predicate, writer-lock observation and observed final namespace."
 (defun fn-store-open-refusal-text (state)
   (declare (xargs :stobjs state :mode :program))
   (value (if (boundp-global 'fn-store-open-refusal state)
-             (fn-sopc-refusal-text (f-get-global 'fn-store-open-refusal state))
+             (let ((refusal (f-get-global 'fn-store-open-refusal state)))
+               (or (fn-sopc-refusal-text refusal) (fn-sorr-refusal-text refusal)))
+           nil)))
+
+; Where the last open's replay stopped, for the fault's line, or nil.
+(defun fn-store-open-stop-text (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (if (boundp-global 'fn-store-open-stop state)
+             (f-get-global 'fn-store-open-stop state)
            nil)))
 
 ; The repair verb's answer while its semantics wait on ember (PKT-444).
