@@ -104,24 +104,104 @@
   :hints (("Goal" :induct (fn-ccar-seek pair records seq)
            :in-theory (disable fn-store-event-p))))
 
+; The seek from the newest end (post-alloc-2).  The kernel holds the history
+; newest first (books/snoc-list.lisp), so the record at position (car PAIR) is
+; read from that end (fn-sf-records-nth): the completion is the record the
+; commit just appended, zero steps away, where fn-ccar-seek stepped (car P)
+; conses from the oldest.  Equal to fn-ccar-seek from 0 for every pair and
+; every kernel state (fn-ccar-seek-at-is-seek), so no hypothesis moves.
+(local
+ (defthm fn-ccar-seek-by-position
+   (implies (natp seq)
+            (equal (fn-ccar-seek pair records seq)
+                   (if (and (consp pair) (natp (car pair)) (< seq (car pair)))
+                       (if (< (- (car pair) seq) (len records))
+                           (let ((r (nth (- (car pair) seq) records)))
+                             (if (equal pair (cons (fn-evc-sequence r)
+                                                   (fn-evc-txid r)))
+                                 r
+                               nil))
+                         nil)
+                     (if (consp records)
+                         (let ((r (car records)))
+                           (if (equal pair (cons (fn-evc-sequence r)
+                                                 (fn-evc-txid r)))
+                               r
+                             nil))
+                       nil))))
+   :hints (("Goal" :induct (fn-ccar-seek pair records seq)
+            :in-theory (e/d (fn-ccar-seek) (fn-evc-sequence fn-evc-txid))))))
+
+(local
+ (defthm fn-ccar-nth-of-values-is-an-event
+   (implies (and (fn-sf-record-valuesp records) (natp i) (< i (len records)))
+            (fn-store-event-p (nth i records)))
+   :hints (("Goal" :in-theory (disable fn-store-event-p)))))
+
+(defun fn-ccar-seek-at (pair files)
+  (declare (xargs :guard (and (fn-sf-shapep files)
+                              (fn-sf-record-valuesp (fn-sf-records files)))
+                  :guard-hints (("Goal" :in-theory (e/d (fn-sf-records-count
+                                                         fn-sf-records-nth)
+                                                        (fn-store-event-p))))))
+  (let ((n (fn-sf-records-count files))
+        (i (if (and (consp pair) (natp (car pair))) (car pair) 0)))
+    (if (< i n)
+        (let ((r (fn-sf-records-nth i files)))
+          (if (equal pair (cons (fn-evc-sequence r) (fn-evc-txid r)))
+              r
+            nil))
+      nil)))
+
+(local
+ (defthm fn-ccar-len-of-consp
+   (implies (consp x) (< 0 (len x)))
+   :rule-classes (:linear :rewrite)))
+
+(defthm fn-ccar-seek-at-is-seek
+  (equal (fn-ccar-seek-at pair files)
+         (fn-ccar-seek pair (fn-sf-records files) 0))
+  :hints (("Goal" :in-theory (e/d (fn-ccar-seek-at fn-sf-records-count
+                                   fn-sf-records-nth)
+                                  (fn-evc-sequence fn-evc-txid)))))
+
+(in-theory (disable fn-ccar-seek-at))
+
 (defun fn-ccar-completion-record (s)
-  (declare (xargs :guard (fn-sn-statep s)))
-  (fn-ccar-seek (fn-sf-completion (fn-sn-files s))
-                (fn-sf-records (fn-sn-files s)) 0))
+  (declare (xargs :guard (fn-sn-statep s)
+                  :guard-hints (("Goal" :in-theory (e/d (fn-sn-statep)
+                                                        (fn-sf-statep
+                                                         fn-node-statep))))))
+  (fn-ccar-seek-at (fn-sf-completion (fn-sn-files s)) (fn-sn-files s)))
+
+(local
+ (defthm fn-ccar-sn-statep-carries-record-list
+   (implies (fn-sn-statep s)
+            (fn-sf-record-listp (fn-sf-records (fn-sn-files s)) 0 0
+                                (fn-sf-frontier (fn-sn-files s))))
+   :hints (("Goal" :in-theory (e/d (fn-sn-statep fn-sf-statep)
+                                   (fn-node-statep fn-store-event-p))))))
 
 (defthm fn-ccar-completion-record-is-completion-record
   (implies (fn-sn-statep s)
            (equal (fn-ccar-completion-record s)
                   (fn-sn-completion-record s)))
-  :hints (("Goal" :in-theory (e/d (fn-sn-statep fn-sf-statep
-                                   fn-sn-completion-record)
-                                  (fn-node-statep fn-ccar-seek
-                                   fn-sn-find-record)))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-ccar-completion-record fn-ccar-seek-at-is-seek
+                                fn-sn-completion-record)
+                              (theory 'minimal-theory))
+           :use (fn-ccar-sn-statep-carries-record-list
+                 (:instance fn-ccar-seek-is-find-record
+                            (pair (fn-sf-completion (fn-sn-files s)))
+                            (records (fn-sf-records (fn-sn-files s)))
+                            (seq 0) (lower 0)
+                            (frontier (fn-sf-frontier (fn-sn-files s))))))))
 
 (defthm fn-ccar-completion-record-is-a-store-event
   (implies (and (fn-sn-statep s) (fn-ccar-completion-record s))
            (fn-store-event-p (fn-ccar-completion-record s)))
   :hints (("Goal" :in-theory '(fn-ccar-completion-record
+                               fn-ccar-seek-at-is-seek
                                fn-ccar-seek-finds-a-store-event
                                fn-ccar-sn-statep-carries-record-values))))
 
