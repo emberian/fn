@@ -1164,7 +1164,7 @@ and feed table, with the committed octets extended from the carried sum."
                   (fn-nh-clean-octets (cdr last) (+ 16 *fn-nh-reason-max-octets*))))
          ((equal last '(:started))
           (fn-nls-text "last-stop none: the log's last run line is its start (the process was killed, or the machine stopped)"))
-         (t (fn-nls-text "last-stop unrecorded: the service log holds no run line (no [log] path, or an older release)")))
+         (t (fn-nls-text "last-stop unrecorded: the service log holds no run line (the node has not run since it was set up, fn.toml names no [log] path, or it last ran an older release)")))
    *fn-nls-lf*))
 
 (defconst *fn-nh-not-running-words*

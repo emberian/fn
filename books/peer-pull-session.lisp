@@ -170,7 +170,14 @@
 ; The feed-machine events one host event amounts to: EV, then nil (drain the
 ; retained input) while the machine just sent a command, at most FUEL more.
 (defun fn-pull-pre-events (fc ev fuel)
-  (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
+  (declare (xargs :guard (natp fuel) :measure (nfix fuel)
+                  ;; The machine's step is opaque here: its termination and
+                  ;; guard proofs do not open it (1,691,836 steps before).
+                  :hints (("Goal" :in-theory (disable fn-fc-event-result fn-fc-kind
+                                                      fn-fc-next-state)))
+                  :guard-hints (("Goal" :in-theory (disable fn-fc-event-result
+                                                            fn-fc-kind
+                                                            fn-fc-next-state)))))
   (let ((r (fn-fc-event-result fc ev)))
     (if (and (not (zp fuel)) (fn-pull-pre-continuep (fn-fc-kind r)))
         (cons ev (fn-pull-pre-events (fn-fc-next-state r) nil (1- fuel)))
@@ -347,8 +354,12 @@
 (defthm fn-pull-s-fc-of-begin
   (equal (fn-pull-s-fc (car (fn-pull-session-begin plan cursor now credential)))
          (fn-pull-session-fc0 plan credential))
-  :hints (("Goal" :in-theory (disable fn-pull-session-fc0 fn-pull-fail
-                                      fn-pull-begin-ready))))
+  ;; 352 prover steps; 982,026 before the begin's parts were kept shut.
+  :hints (("Goal" :in-theory (e/d (fn-pull-session-begin)
+                                  (fn-pull-session-fc0 fn-pull-fail fn-pull-begin-ready
+                                   fn-pull-session-refusal fn-pull-begin-effects
+                                   fn-pull-tls-effect fn-fc-phase fn-pull-plan-security
+                                   fn-pull-plan-wildmat fn-pull-plan-bound)))))
 
 ; KEYSTONE (PRF-125, instantiating PRF-051
 ; `fn-fc-offers-and-credentials-wait-for-tls-and-login').  A pull over a TLS
@@ -484,16 +495,42 @@
                                    fn-fc-drive-state fn-pull-obs-effects
                                    fn-pull-session-fc-events fn-pull-pre-okp)))))
 
+;; The three conjuncts below, one induction each (1,076,487 prover steps as
+;; one induction).
+(local
+ (defthm fn-pull-session-run-keeps-the-cursor
+   (equal (fn-pull-round-cursor (fn-pull-s-round (car (fn-pull-session-run s events))))
+          (fn-pull-round-cursor (fn-pull-s-round s)))
+   :hints (("Goal" :induct (fn-pull-session-run s events)
+            :in-theory (e/d (fn-pull-session-run)
+                            (fn-pull-session-step fn-pull-roundp fn-pull-round-cursor
+                             fn-pull-list fn-pull-journal-effects))))))
+
+(local
+ (defthm fn-pull-session-run-keeps-roundp
+   (implies (fn-pull-roundp (fn-pull-s-round s))
+            (fn-pull-roundp (fn-pull-s-round (car (fn-pull-session-run s events)))))
+   :hints (("Goal" :induct (fn-pull-session-run s events)
+            :in-theory (e/d (fn-pull-session-run)
+                            (fn-pull-session-step fn-pull-roundp fn-pull-round-cursor
+                             fn-pull-list fn-pull-journal-effects))))))
+
+(local
+ (defthm fn-pull-session-run-journals-nothing
+   (equal (fn-pull-journal-effects (mv-nth 1 (fn-pull-session-run s events))) nil)
+   :hints (("Goal" :induct (fn-pull-session-run s events)
+            :in-theory (e/d (fn-pull-session-run fn-pull-list)
+                            (fn-pull-session-step fn-pull-roundp fn-pull-round-cursor))))))
+
 (defthm fn-pull-session-run-keeps-the-cursor-and-journals-nothing
   (and (equal (fn-pull-round-cursor (fn-pull-s-round (car (fn-pull-session-run s events))))
               (fn-pull-round-cursor (fn-pull-s-round s)))
        (implies (fn-pull-roundp (fn-pull-s-round s))
                 (fn-pull-roundp (fn-pull-s-round (car (fn-pull-session-run s events)))))
        (equal (fn-pull-journal-effects (mv-nth 1 (fn-pull-session-run s events))) nil))
-  :hints (("Goal" :induct (fn-pull-session-run s events)
-           :in-theory (e/d (fn-pull-session-run fn-pull-list)
-                           (fn-pull-session-step fn-pull-roundp
-                            fn-pull-round-cursor)))))
+  :hints (("Goal" :in-theory '(fn-pull-session-run-keeps-the-cursor
+                               fn-pull-session-run-keeps-roundp
+                               fn-pull-session-run-journals-nothing))))
 
 (defthm fn-pull-session-begin-round
   (and (equal (fn-pull-round-cursor

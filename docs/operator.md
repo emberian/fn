@@ -577,8 +577,11 @@ The second line comes from the `[log] path` file: `run` writes `run
 started` when it starts and `run stopped exit=NN reason=...` when it
 stops. `last-stop none` means the last run was killed (or the machine
 stopped) before it could write its stop line; `last-stop unrecorded` means
-the log has no run line (no `[log] path`, or a node from an older
-release).
+the log has no run line (the node has not run since it was set up, there
+is no `[log] path`, or it last ran an older release). Under systemd, after
+five failed starts in a minute the service stays down (`Start request
+repeated too quickly`); once the cause is fixed, `systemctl restart fn`
+starts it again.
 
 The memory refusals, and what to do:
 
