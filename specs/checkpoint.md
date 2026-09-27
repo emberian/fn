@@ -206,23 +206,24 @@ What the host still asserts, outside the proofs:
 
 ### Native saved image
 
-`host/native/checkpoint.lisp` exposes `checkpoint publish`, `select`, and
-`status` in the saved image.  Capture, framing, selection-marker framing,
-generation allocation, marker phase/action/outcome, decode, suffix restore,
-and the differential verdict are ACL2 calls through
-`host/checkpoint-host.lisp`.  Immutable generation publication uses the
-shared U04 no-replace effect; marker replacement is a distinct driver whose
-called phase step is related to the full `fn-cpp` transition by
-`fn-cpp-marker-driver-step-corresponds`.
-
-The native recovery hook runs only after the ordinary journal replay and all
-of its recovery barriers.  Checkpoint restore writes checkpoint-private ACL2
-globals and compares their node with the already-live `fn-store-sn`; it never
-resets or replaces that state.  `none`, `ok`, and `corrupt` remain distinct,
-and a corrupt selected generation exits 4 without trying an older generation.
-This is diagnostic adoption only: suffix-only startup is not claimed because
-the physical assumptions needed to replace full replay have not been
-discharged.
+Retired on the record log (lane matrix-reds, 2026-09-27).  The saved image
+exposed `checkpoint publish`, `select` and `status` over the generation
+frames above, and the open ran a diagnostic restore of the selected
+generation after the full replay.  Since the records flip the node
+`fn-checkpoint-capture` returns holds arena handles its frame does not
+resolve, so the capture of any store holding an article was refused
+(`store: ACL2 refused checkpoint capture`, `(:error :arena)` in
+`host/checkpoint-host.lisp` `fn-store-checkpoint-protected`).  The three
+verbs now refuse by name and the open runs no generation restore; the
+recover line has no `checkpoint=` field.  Format 9's checkpoint is the
+state checkpoint (`fn-bs-scp-program`, the arena run then the tables; the
+open reads it, `fn-sn-recover-from-checkpoint-equals-full-recover`, PRF-083,
+and `fn-scka-load-of-written-file`), natively
+`tests.test_native_state_checkpoint`, `tests.test_native_checkpoint_auto`
+and `tests.test_native_log_compaction`.  The books of this specification
+(`checkpoint`, `checkpoint-codec`, `checkpoint-publish`) remain as the
+logical model and for the per-file Python fork (`tools/checkpoint.py`);
+their deletion belongs with the rest of PKT-838's per-file deletion.
 
 The version-two auxiliary diagnostic compares the authoritative exact-history
 replay with the reopened Store's historical authorship verdicts, keyring

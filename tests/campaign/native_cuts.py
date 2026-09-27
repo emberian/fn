@@ -114,20 +114,13 @@ INIT_PUB_CUTS = tuple(
               book=INIT_PUB_BOOK)
     for c in IMPORT_CUTS)
 
-# The generation checkpoint's publication and selection (host/native/checkpoint.lisp
-# `checkpoint publish/select'), driven by their ACL2 phase machines.  The pack
+# The generation checkpoint's publication and selection cuts (candidate-*,
+# selection-*) went with `checkpoint publish/select' (lane matrix-reds,
+# 2026-09-27: the capture could not represent the flipped node).  The pack
 # chain, the prefix reclaim and the retirement went with the per-file layout
 # (lane log-recovery-2, PKT-838): compaction and reclaim on the log are the
-# checkpoint's rotation and the segments' drop (SEGMENT_PROGRAM_HOSTS below).
-CHECKPOINT_CUTS = (
-    NativeCut("candidate-file", "fn-cpp-publication-step", "absent"),
-    NativeCut("candidate-link", "fn-cpp-publication-step", "either"),
-    NativeCut("candidate-directory", "fn-cpp-publication-step", "present"),
-    NativeCut("selection-file", "fn-cpp-marker-step", "absent"),
-    NativeCut("selection-replace", "fn-cpp-marker-step", "present"),
-    NativeCut("selection-directory", "fn-cpp-marker-step", "present"),
-)
-
+# checkpoint's rotation and the segments' drop (SEGMENT_PROGRAM_HOSTS below);
+# format 9's checkpoint is the state checkpoint (STATE_CHECKPOINT_CUTS).
 
 # The record log (lane w6-log-core; books/store-log-programs.lisp).  Each cut
 # is a named point of one log program, hosted by one function of
@@ -559,18 +552,10 @@ def verify_recovery_order() -> None:
                     cut.follows))
 
 
-def verify_checkpoint_cut_map() -> None:
-    """Every generation-checkpoint cut is a hook of host/native/checkpoint.lisp,
-    and publication and selection share the marker loop (the selection-*
-    cuts).  Compaction and reclaim on the log are checked by
-    verify_log_segment_cut_map (the rotation and the drop)."""
+def verify_compact_is_rotation() -> None:
+    """`store compact' on the log is the state checkpoint's rotation and the
+    covered segments' drop (verify_log_segment_cut_map checks their cuts)."""
     native = (ROOT / "host/native/checkpoint.lisp").read_text()
-    for cut in CHECKPOINT_CUTS:
-        hook = '(fnn-checkpoint-test-stop "{}")'.format(cut.name)
-        if hook not in native:
-            raise AssertionError("native checkpoint cut absent: {}".format(cut.name))
-    if "(fnn-marker-replace " not in host_function(native, "fnn-checkpoint-select"):
-        raise AssertionError("fnn-checkpoint-select does not use the marker loop")
     command = host_function(native, "fnn-command-compact")
     if "(fnn-state-checkpoint-publish-steps store" not in command:
         raise AssertionError("store compact is not the checkpoint's rotation and drop")
