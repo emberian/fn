@@ -90,10 +90,11 @@ BUFFER_FINDINGS = [
     for name, book in (
         ("fn-pidx-existing-action", "books/post-identity-index.lisp"),
         ("fn-prc-refresh", "books/post-retain-carried.lisp"),
-        ("fn-prc-sbud-prepare", "books/post-retain-carried.lisp"))] + [
-    "included: host/owner-host.lisp uses fn-scar-ocfg-read-span, defined in "
-    "books/served-span.lisp, which host/native/build-dtn.lisp has not "
-    "included when it loads host/owner-host.lisp"]
+        ("fn-prc-sbud-prepare", "books/post-retain-carried.lisp"))]
+# The served read is the catalog chain's fn-scr-ocfg-read-span since the
+# catalog landed on the flipped store (served-readers-cat, merged by
+# catalog-columns): host/owner-host.lisp names fn-scar-ocfg-read-span only in
+# comments, so the bare copy no longer finds it.
 # checkpoint-pipeline (2026-09-26): host/store-node-host.lisp includes
 # books/store-checkpoint-tables-reader and books/owner-checkpoint-pipeline
 # itself (their closure holds octets-stobj, the buffer and the reader), so
