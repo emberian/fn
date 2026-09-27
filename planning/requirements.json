@@ -3908,7 +3908,7 @@
     },
     {
       "id": "HST-023",
-      "title": "The owner mutex is entered through a gate whose next class ACL2 picks: a control request waits at most three quanta of readers, posters and transit; a served reply is an immutable render plan the connection's thread writes off the mutex in bounded windows; health prints each class's hold and wait distribution",
+      "title": "The owner mutex is entered through a gate whose next class ACL2 picks: a control request waits at most three quanta of readers, posters and transit; a served reply is an immutable render plan the connection's I/O loop writes off the mutex in windows ACL2 sizes; health prints each class's hold and wait distribution",
       "specification": "specs/host.md#the-served-reader-path",
       "milestone": "M5",
       "status": "implemented",
