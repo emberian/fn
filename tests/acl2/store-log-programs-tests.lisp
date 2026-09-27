@@ -312,3 +312,26 @@
                     (nthcdr end (fn-bs-durable-content s 0))))
         (not (slp-t2-conclusion s (slp-d) (list (slp-r 1) (slp-r 2)) (slp-last) (slp-batch)
                                 image)))))
+
+; -----------------------------------------------------------------------------
+; The host's open kernel (fn-lg-open-kernel-is-the-recovered-kernel, no
+; hypothesis): the segment read as a string decodes to the recovered kernel.
+(defun slp-chars (codes)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp codes) (cons (code-char (car codes)) (slp-chars (cdr codes))) nil))
+
+(assert-event
+ (let* ((codes (append (slp-log (list (slp-r 1) (slp-r 2)) (slp-genesis)) (fn-bs-zeros 8)))
+        (s (coerce (slp-chars codes) 'string))
+        (ks (fn-lg-open-kernel s (slp-genesis) (slp-unit) (slp-max) 1)))
+   (and (equal (fn-lgd-octets s) codes)
+        (equal ks (fn-lgt-recover codes (slp-genesis) (slp-unit) (slp-max) 1))
+        (equal (fn-lgk-committed ks) (list (slp-r 1) (slp-r 2)))
+        (equal (mv-list 2 (fn-lg-recover-tail ks (len codes)))
+               (list (- (len codes) 8) 8)))))
+
+; The workload record carries its txid through the codec.
+(assert-event
+ (and (equal (fn-lgt-txid (fn-lg-workload-record 7 16)) 7)
+      (fn-lg-extent-okp 8192 4096)
+      (not (fn-lg-extent-okp 8190 4096))))

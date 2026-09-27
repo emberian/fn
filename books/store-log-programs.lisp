@@ -49,6 +49,17 @@
 (in-package "ACL2")
 
 (include-book "store-log-txid")
+(include-book "store-log-decode")
+
+; -----------------------------------------------------------------------------
+; The append's admission, which the runner and the host share
+; (fnn-log-append asks it before the write).
+
+(defun fn-lg-append-admitsp (ks unit extent)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (not (consp (fn-lgk-inflight ks)))
+       (not (equal (fn-lgk-phase ks) :fault))
+       (fn-lgk-fitsp ks unit extent)))
 
 ; -----------------------------------------------------------------------------
 ; The steps and the runner.
@@ -59,8 +70,7 @@
          (c (fn-bs-durable-content bs ino))
          (f (fn-lgk-frontier ks)))
     (cond ((equal step '(:write-at :segment :batch))
-           (if (or (consp (fn-lgk-inflight ks)) (equal (fn-lgk-phase ks) :fault)
-                   (not (fn-lgk-fitsp ks unit (len c))))
+           (if (not (fn-lg-append-admitsp ks unit (len c)))
                (mv :refused bs ks)
              (mv-let (r bs1) (fn-bs-write bs ino f (fn-lgk-append-octets ks unit) outcome)
                (mv r bs1 (if (equal r :ok) (fn-lgk-append ks unit (len c)) ks)))))
@@ -192,3 +202,48 @@
                                         (car (fn-lg-scan (fn-bs-durable-content bs ino)
                                                          genesis (fn-bs-unit bs) max))
                                         floor)))))))
+
+; -----------------------------------------------------------------------------
+; The host's other entries (host/native/io.lisp).  Every offset, count and
+; kernel the host uses comes from one of these.
+
+; A segment extent the host may preallocate: a positive number of whole
+; units (R's conjunct 2 and the establishment need whole units).
+(defun fn-lg-extent-okp (extent unit)
+  (declare (xargs :guard t))
+  (and (posp unit) (posp extent) (equal (mod extent unit) 0)))
+
+; The kernel at open: the executable decode of the segment read as the
+; string S (fnn-log-recover).
+(defun fn-lg-open-kernel (s genesis unit max floor)
+  (declare (xargs :guard (stringp s) :verify-guards nil))
+  (mv-let (records consumed last) (fn-lg-decode s genesis unit max)
+    (fn-lgk-make records last consumed (fn-lgt-next-after records floor)
+                 nil nil (len records) :ready)))
+
+; The host's open kernel is the recovered kernel the recovery program's
+; theorem names, over the string's octets (the durable content, A-HOST's
+; read of a regular file).
+(defthm fn-lg-open-kernel-is-the-recovered-kernel
+  (equal (fn-lg-open-kernel s genesis unit max floor)
+         (fn-lgt-recover (fn-lgd-octets s) genesis unit max floor))
+  :hints (("Goal" :in-theory (disable fn-lg-scan fn-lg-scan-last fn-lgt-next-after fn-lg-decode
+                                      fn-lgd-octets))))
+
+; Recovery's zeroing write: the offset and the count of zeros, [F, EXTENT).
+(defun fn-lg-recover-tail (ks extent)
+  (declare (xargs :guard (true-listp ks)))
+  (mv (fn-lgk-frontier ks) (nfix (- (nfix extent) (fn-lgk-frontier ks)))))
+
+; The workload record of the developer verb `log' (tests and the power-loss
+; rig): the codec's record with sequence and txid TXID and a payload of SIZE
+; octets, each TXID mod 251.
+(defun fn-lg-workload-record (txid size)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((txid (nfix txid)))
+    (fn-record-encode-impl
+     (fn-record-make txid txid 1
+                     (concatenate 'string "<log-" (coerce (explode-atom txid 10) 'string)
+                                  "@fn.invalid>")
+                     (make-list (nfix size) :initial-element (mod txid 251))
+                     '("fn.test") "o" "s" "e" 4 5))))
