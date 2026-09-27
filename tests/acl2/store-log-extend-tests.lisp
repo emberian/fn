@@ -4,6 +4,8 @@
 ; fn-bs-crash-imagep is its existential).
 (in-package "ACL2")
 (include-book "../../books/store-log-extend")
+(include-book "../../books/store-log-txid")
+(include-book "../../books/frame-trailer")
 
 (defun sle-unit () (declare (xargs :guard t)) 4)
 (defun sle-max () (declare (xargs :guard t)) 4096)
