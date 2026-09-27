@@ -229,7 +229,7 @@
   (append (if (true-listp server) server nil)
           (fn-xref-locations (fn-xref-pairs article))))
 
-(defthm fn-rcompat-hdr-value-is-the-field-value
+(defthmd fn-rcompat-hdr-value-is-the-field-value
   (equal (fn-xref-field server (fn-xref-pairs article))
          (append *fn-xref-name* (fn-rcompat-xref-value server article)))
   :hints (("Goal" :in-theory (enable fn-xref-field))))
@@ -540,6 +540,16 @@
                 (not (fn-nntp-keywordp keyword "HEAD"))
                 (not (fn-nntp-keywordp keyword "HDR"))
                 (not (fn-nntp-keywordp keyword "XHDR")))
+           (not (fn-rcompat-reply session archive index env keyword args)))
+  :hints (("Goal" :in-theory (disable fn-nntp-keywordp fn-nntp-xref-server))))
+
+; HDR and XHDR reach it only for the Xref field.
+(defthm fn-rcompat-reply-hdr-only-for-xref
+  (implies (and (not (fn-nntp-keywordp keyword "NEWGROUPS"))
+                (not (fn-nntp-keywordp keyword "LIST"))
+                (not (fn-nntp-keywordp keyword "ARTICLE"))
+                (not (fn-nntp-keywordp keyword "HEAD"))
+                (not (and (consp args) (fn-nntp-keywordp (car args) "XREF"))))
            (not (fn-rcompat-reply session archive index env keyword args)))
   :hints (("Goal" :in-theory (disable fn-nntp-keywordp fn-nntp-xref-server))))
 

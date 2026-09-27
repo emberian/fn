@@ -4355,6 +4355,24 @@
         "record": "planning/evidence/served-line-iterative-2026-09-26.md",
         "log": "planning/evidence/served-line-iterative-2026-09-26/test_native_served_line_stack.76a6757b.log"
       }
+    },
+    {
+      "id": "SCN-164",
+      "title": "slrn and pan against a scratch native owner over TLS: NEWGROUPS lists a group created live, slrn --create subscribes from LIST SUBSCRIPTIONS, slrn reads with XOVER and marks a cross-post read in its other group, on the production and developer images",
+      "milestone": "M6",
+      "status": "implemented",
+      "requirements": [
+        "NNT-052"
+      ],
+      "steps": [
+        "tools/reader_clients_phase.py: init local.general local.crosspost control.cancel over implicit TLS with a redeemed account; seed a cross-post; run slrn 1.0.3 (--create, read, follow-up, post, cancel) and pan 0.162 in the container; `fn operator CONFIG group create local.later` on the running node; NEWGROUPS and LIST ACTIVE.TIMES from a day before."
+      ],
+      "expected": [
+        "LIST SUBSCRIPTIONS 215 and slrn --create reaches its group list; slrn's read sends XOVER answered 224; the cross-post read in local.general shows 0 unread in local.crosspost; NEWGROUPS (yymmdd and yyyymmdd) and LIST ACTIVE.TIMES list local.general, local.crosspost, control.cancel and local.later; a day ahead lists none."
+      ],
+      "evidence": [
+        "tests/test_native_reader_clients.py"
+      ]
     }
   ]
 }

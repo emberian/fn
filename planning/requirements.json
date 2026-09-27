@@ -3905,6 +3905,28 @@
         "planning/evidence/transit-pipelining-2026-09-27.md"
       ],
       "implementation_note": "RFC 3977 section 3.5 (a server must not lose synchronisation or discard pipelined data) and RFC 4644 section 2.5 (TAKETHIS may be pipelined) are RFC requirements; one step per article, committed and answered before the next is framed, is the fn guarantee; the work per step is bounded by the read (D27)."
+    },
+    {
+      "id": "NNT-052",
+      "title": "NEWGROUPS and LIST ACTIVE.TIMES list the groups the configuration created, LIST SUBSCRIPTIONS answers a list, LIST OVERVIEW.FMT uses the compatibility form, and ARTICLE, HEAD and HDR carry this node's Xref",
+      "specification": "specs/nntp.md#reader-compatibility-newgroups-list-subscriptions-overviewfmt-and-xref-nnt-052",
+      "milestone": "M6",
+      "status": "specified",
+      "proof_targets": [
+        "PRF-243"
+      ],
+      "verification": [
+        "proof",
+        "test",
+        "scenario"
+      ],
+      "evidence": [
+        "books/nntp-reader-compat.lisp",
+        "tests/acl2/nntp-reader-compat-tests.lisp",
+        "tests/test_native_reader_clients.py",
+        "planning/evidence/reader-compat-2026-09-27.md"
+      ],
+      "implementation_note": "RFC 3977 sections 7.3, 8.4.2 and 8.5, RFC 6048 sections 2.3 and 2.6 and RFC 5536 section 3.2.14 are the RFC requirements; creation times from the creating configuration record and a view-restricted list are stronger fn guarantees; the configured default list with the view's groups as fallback, Bytes:/Lines:, and Xref generated at serve time are local policy (specs/nntp.md). Packets PKT-665 to PKT-668."
     }
   ]
 }

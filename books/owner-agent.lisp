@@ -128,6 +128,37 @@
         (fn-oag-group-facts (cdr es) gen))
     nil))
 
+; KEYSTONE (PKT-665).  Every entry live at GEN whose creating record's
+; stamp carries a wall reading has its fact, dated by that reading.
+(defthm fn-oag-group-facts-has-the-created-stamp
+  (implies (and (member-equal e es)
+                (fn-cfg-entry-livep e gen)
+                (fn-cfg-stampp (fn-cfg-group-created-stamp e))
+                (fn-clock-has-wall (fn-cfg-group-created-stamp e))
+                (fn-nntp-safe-group-namep (fn-cfg-group-name e)))
+           (member-equal (fn-nntp-group-fact
+                          (fn-cfg-group-name e)
+                          (* 1000 (fn-clock-wall (fn-cfg-group-created-stamp e)))
+                          (fn-oag-stamp-observation
+                           (fn-cfg-group-created-stamp e)))
+                         (fn-oag-group-facts es gen)))
+  :hints (("Goal" :in-theory (disable fn-cfg-entry-livep fn-cfg-stampp
+                                      fn-nntp-safe-group-namep
+                                      fn-oag-stamp-observation
+                                      fn-nntp-group-fact))))
+
+; Every projected fact is a well-formed creation fact (the shape
+; books/nntp-responses.lisp `fn-nntp-envp' requires of the served
+; environment's facts).
+(defthm fn-oag-group-facts-are-group-facts
+  (implies (member-equal f (fn-oag-group-facts es gen))
+           (fn-nntp-group-factp f))
+  :hints (("Goal" :in-theory (enable fn-nntp-group-factp fn-nntp-group-fact
+                                     fn-nntp-fact-name fn-nntp-fact-created
+                                     fn-nntp-fact-observation
+                                     fn-oag-stamp-observation fn-cfg-stampp
+                                     fn-clock-observationp))))
+
 ;; The listing's elements: 1 the descriptions, 2 the node's message, 3 the
 ;; path-identity (below), 4 the access table (lane group-access; nil
 ;; here), 5 the creation facts (PKT-665) and 6 the configured default

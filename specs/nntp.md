@@ -113,8 +113,10 @@ guess. `facts` is a list of `(:fn-nntp-group-fact name created-at-dtn-ms
 observation)` records: the group's name, the DTN time (RFC 9171 §4.2.6) at
 which it was created, and the clock observation under which that time was
 established, so a creation time carries its own provenance and can never be
-back-filled from the reader's current clock. The mutable-owner lane persists
-these records; the reader consumes the shape and stores none of its own. The
+back-filled from the reader's current clock. On the served path the facts
+are the configuration's (PRF-243, below): each served group's entry keeps
+the stamp of the record that created it, and the reader consumes the shape
+and stores none of its own. The
 POSIX-to-DTN epoch shift is `fn-nntp-unix-dtn-ms` in ACL2, not in the adapter.
 
 fn's reader has no timezone database. Its local time zone **is** Coordinated
@@ -167,7 +169,7 @@ NNT-016: XPAT is listed in the capability block and answers RFC 2980 section 2.9
   wildmat in one bounded `XPAT` window; it builds no pattern.
 
 `LIST ACTIVE.TIMES` reads the same persisted creation facts `NEWGROUPS`
-reads, so §7.6.4's "the results SHOULD be consistent" is true by construction.
+reads, so RFC 6048 §2.3's "the results SHOULD be consistent" is true by construction.
 Its third field is the plain text `unattributed`: a configuration record
 records who may reconfigure the node, not a mailbox to attribute a group to,
 and fn does not fabricate one. `LIST NEWSGROUPS` shows each group's description when the operator has set
@@ -339,14 +341,69 @@ distinction:
   unset, the `.invalid` agent); the eight fields are the eight-field
   renderer's (`fn-nov-served-lines-numbered-extend-the-eight-fields`). Local
   numbers are never merged across nodes: a peer's Xref is not read.
-- Local policy: Xref is overview metadata only. ARTICLE and HEAD serve the
-  stored octets as held (no Xref header is spliced in); a proto-article
-  carrying Xref is refused at injection (RFC 5537 §3.5 item 2), but an
-  article a peer relayed is stored as offered, so its HEAD may carry the
-  peer's Xref with the peer's numbers (PKT-597 (c)); the overview field is
-  the one naming this node's. A group whose name carries a colon is not listed (none is
+- Local policy: since PRF-243 (2026-09-27, below) ARTICLE and HEAD of an
+  article this node numbers carry the same field as the last header line,
+  generated at serve time; the stored octets are unchanged. A
+  proto-article carrying Xref is refused at injection (RFC 5537 §3.5 item
+  2) and a relayed article's Xref is deleted on receipt
+  (`fn-peer-relayed-octets`), so the served field is the one naming this
+  node's numbers. A group whose name carries a colon is not listed (none is
   admitted). Without a server name (a blind environment, not the served
   path) the eight fields and seven format lines of before are answered.
+
+## Reader compatibility: NEWGROUPS, LIST SUBSCRIPTIONS, OVERVIEW.FMT and Xref (NNT-052)
+
+NNT-052: NEWGROUPS and LIST ACTIVE.TIMES list the groups the configuration created, LIST SUBSCRIPTIONS answers a list, LIST OVERVIEW.FMT uses the compatibility form, and ARTICLE, HEAD and HDR carry this node's Xref
+
+Measured with slrn 1.0.3 and pan 0.162 over TLS (lane reader-clients-2,
+PKT-665 to PKT-668); decided on the served path by
+`books/nntp-reader-compat.lisp` `fn-rcompat-reply`, which
+`fn-nntp-archive-command-pinned` asks after the withdrawn arms (PRF-243).
+Every arm needs the environment's server name, which the served
+environment always carries; a blind environment answers as before.
+
+- **NEWGROUPS and LIST ACTIVE.TIMES** (RFC 3977 §7.3; RFC 6048 §2.3).
+  RFC requirement: the groups created since the instant. fn guarantee:
+  the creation time is the stamp of the configuration record that created
+  the group, durable with that record, never the reader's clock: `fn
+  operator CONFIG init` now stamps its record with the host clock, and `fn
+  operator CONFIG group create` (live or offline) with the owner's
+  (`fn-oag-group-facts`, `fn-oag-group-facts-has-the-created-stamp`). A
+  group is listed only when the connection's view holds it
+  (`fn-rcompat-newgroups-names-member`), so a retired group, and one a
+  per-login view excludes, is never named. Local policy: a group of a store
+  initialized before 2026-09-27 has a record with no wall reading and so no
+  creation time; both commands omit it rather than invent one. The offline
+  administrative clock was universal time (seconds since 1900) where the
+  live owner's is DTN seconds; it is DTN seconds now.
+- **LIST SUBSCRIPTIONS [wildmat]** (RFC 6048 §2.6). RFC requirement: 215
+  and one newsgroup per line, in order of importance, or 503 when not
+  maintained. Local policy (decided by the coordinator, PKT-666): the
+  operator's configured default list, set with `fn operator CONFIG group
+  subscribe-default [NAME ...]` (one `:set-default-subscriptions` record,
+  config delta kind code 25; each NAME a live group named once; no NAME
+  clears it), cut to the view's groups in the configured order; with none
+  configured, the view's groups. Never a group the view does not hold
+  (`fn-rcompat-subscription-names-member`,
+  `fn-rcompat-subscription-names-keep-the-configured-order`). slrn's
+  first run (`--create`) reads it; the 503 made slrn reconnect and leave
+  every group unsubscribed.
+- **LIST OVERVIEW.FMT** (RFC 3977 §8.4.2). The served list names the sixth
+  and seventh fields `Bytes:` and `Lines:`, the form §8.4.2 permits "for
+  compatibility with existing implementations"; the fields and their order
+  are unchanged. slrn 1.0.3 disables XOVER on `:bytes`/`:lines`.
+- **Xref on ARTICLE, HEAD, HDR and XHDR** (RFC 5536 §3.2.14; RFC 3977
+  §8.5). fn guarantee: ARTICLE and HEAD of an article this node numbers
+  serve the stored octets with the Xref field OVER carries inserted as the
+  last header line, nothing else changed
+  (`fn-rcompat-served-payload-inserts-one-line`); the session is the
+  generic retrieval's (`fn-rcompat-retrieval-session-is-the-generic-session`);
+  HDR and XHDR Xref answer that field's value
+  (`fn-rcompat-hdr-value-is-the-field-value`). The field is generated like
+  Injection-Info's path identity, outside the authored source: the stored
+  octets and the article's identity (D25) are unchanged. BODY, STAT and
+  XPAT are unchanged (XPAT Xref still matches the stored header, which has
+  none: a deferral).
 
 ## Sessions and framing
 

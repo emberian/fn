@@ -1184,8 +1184,10 @@
              (fn-rcompat-reply session archive index env keyword args))
             archive))
   :hints (("Goal" :use ((:instance fn-nntp-retrieval-preserves-consistent-session
-                                   (kind (fn-rcompat-retrieval-kind keyword))))
+                                   (kind (fn-rcompat-retrieval-kind keyword)))
+                        (:instance fn-rcompat-reply-session))
            :in-theory (disable fn-rcompat-reply fn-nntp-retrieval
+                               fn-rcompat-reply-session
                                fn-nntp-retrieval-preserves-consistent-session
                                fn-nntp-session-consistentp
                                fn-nntp-projectionp))))

@@ -956,8 +956,18 @@ the native image, and set `policy set path-identity` for the agent.
 The groups are **not** in the configuration file. They are durable
 configuration records inside the store, which ACL2 replays at every open;
 `init` seeds them once, and `fn operator CONFIG group create NAME` (or `group retire NAME`)
-changes them afterwards, live or offline. The
-configuration file holds only what the host needs in order to start.
+changes them afterwards, live or offline. Each group's creation time is
+its creating record's stamp, which NEWGROUPS and LIST ACTIVE.TIMES report
+(a store initialized before 2026-09-27 has none for its initial groups).
+The list a new reader is offered by LIST SUBSCRIPTIONS (RFC 6048 section
+2.6; slrn's first run reads it) is set in order, and cleared with no names:
+
+```text
+fn operator /etc/fn/fn.toml group subscribe-default fn.announce fn.test
+```
+
+With none set, LIST SUBSCRIPTIONS lists every group the reader may read.
+The configuration file holds only what the host needs in order to start.
 
 A peer this node pulls by NEWNEWS (RFC 3977 section 7.4) gets an interval,
 and optionally how many consecutive complete rounds an article the peer
