@@ -359,7 +359,16 @@ F4-R and F4-W with their hypotheses stated next to the numbers.
 - **PKT-845 (c) F4's bar** as F4-R / F4-W above, replacing "within one
   scheduling step".
 
-## 9. Slice 1: what was built (see planning/evidence/time-model-2026-09-27.md)
+## 9. Slice 1: what was built (planning/evidence/time-model-2026-09-27.md)
 
-Filled in by the slice's record: the book, its keystones and teeth, the
-host lines, the native case with an injected 30 s stall.
+books/owner-time-model.lisp (PRF-308, HST-026): the gate's value (OCP DISK
+CLOCK), recorded time per section 3.7, the barrier's deadline and the
+disk's mode; keystones fn-otm-barrier-reader-bound and
+fn-otm-disk-event-keeps-the-pipeline, with fn-otm-shed-iff-slow,
+fn-otm-return-recovers, fn-otm-wait-reaches-the-deadline and the recorded
+time's monotonicity. Host: the committer's timed wait and disk events, the
+shed in the served read quantum (441 with the reason), the disk line on
+health and status. Native (SCN-182, hbox r2): with a barrier stalled 30.4 s,
+reads peaked at 3 ms and `status` at 168 ms, flat across the stall; a new
+POST was refused in 1 ms with the reason; the held POST's 240 came 8 ms after
+the device returned; health recovered with the latency.
