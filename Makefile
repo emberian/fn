@@ -1029,6 +1029,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-log \
 	books/owner-results \
 	books/owner-served-bound \
+	books/transit-bound \
+	tests/acl2/wire-bounds-tests \
 	books/owner-log-reopen \
 	books/owner-bound-commit \
 	books/consumer-event-index \

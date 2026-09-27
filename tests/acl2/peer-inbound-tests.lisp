@@ -618,6 +618,20 @@
                      (list (pt-reply "436 transfer failed; the article was not received") (fn-nntp-close-effect))))
 (assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* (pt-cmd "QUIT")))
                      (list (pt-reply "436 the article was not received; closing") (fn-nntp-close-effect))))
+; The wire cut the article at the connection's body limit (fuzz-nntp F2):
+; refused by name and for good -- IHAVE 437 with the size's reason text,
+; TAKETHIS 439 echoing the Message-ID (RFC 4644 section 2.5.2) -- and closed,
+; since the rest of the body is never read.  Not the retry code: the same
+; article would be cut again.
+(defconst *pt-overlimit* '(:reject :body-overlimit))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-r1*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* *pt-overlimit*))
+                     (list (pt-reply "437 transfer rejected; article exceeds the configured size") (fn-nntp-close-effect))))
+(assert-event (equal (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* *pt-overlimit*))
+                     (list (pt-reply "439 <alt@example.invalid>") (fn-nntp-close-effect))))
+(assert-event (fn-nntp-effectsp (fn-post-result-effects (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* *pt-overlimit*))))
+; The transfer is over either way: no submission, the session awaits nothing.
+(assert-event (null (fn-post-result-submission (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* *pt-overlimit*))))
+(assert-event (null (fn-peer-session-transfer (fn-post-result-session (in-arena-fn-peer-step *sr-arena* (fn-post-result-session *pt-c2*) *pt-archive* *pt-inj* *pt-obs* *pt-obs* *pt-overlimit*)))))
 ; Every transit reply above is a typed effect list.
 (assert-event (fn-nntp-effectsp (fn-post-result-effects *pt-c1*)))
 (assert-event (fn-nntp-effectsp (fn-post-result-effects *pt-c2*)))

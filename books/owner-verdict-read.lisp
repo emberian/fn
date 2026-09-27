@@ -151,9 +151,9 @@
 (defthm fn-ovr-wire-of-with-wire
   (equal (fn-served-conn-wire (fn-ovr-with-wire conn w)) w))
 (defthm fn-ovr-handshaking-of-with-wire
-  (equal (fn-served-tls-handshakingp (fn-ovr-with-wire conn w))
-         (fn-served-tls-handshakingp conn))
-  :hints (("Goal" :in-theory (enable fn-served-tls-handshakingp))))
+  (equal (fn-served-haltedp (fn-ovr-with-wire conn w))
+         (fn-served-haltedp conn))
+  :hints (("Goal" :in-theory (enable fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp))))
 (defthm fn-ovr-with-own-wire
   (implies (fn-served-conn-shapep conn)
            (equal (fn-ovr-with-wire conn (fn-served-conn-wire conn)) conn))
@@ -173,7 +173,7 @@
   (implies (and (fn-served-conn-shapep conn)
                 (fn-wire-statep (fn-served-conn-wire conn))
                 (not (fn-served-closed-wirep (fn-served-conn-wire conn)))
-                (not (fn-served-tls-handshakingp conn))
+                (not (fn-served-haltedp conn))
                 (not (fn-wire-result-events
                       (fn-wire-feed-proper (fn-served-conn-wire conn) prefix))))
            (and (equal (fn-served-result-effects
@@ -197,7 +197,7 @@
   :hints (("Goal" :induct (fn-ovr-induct conn prefix)
            :in-theory (e/d (fn-served-closed-wirep)
                            (fn-served-feed-byte fn-wire-feed-byte fn-wire-statep fn-served-feed-of-append
-                            fn-served-tls-handshakingp)))
+                            fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp)))
           ("Subgoal *1/1" :expand ((fn-served-feed conn (cons (car prefix) (append (cdr prefix) rest)) fn-arena)
                                    (fn-wire-feed-proper (fn-served-conn-wire conn) prefix))
            :use ((:instance fn-wire-feed-byte-silent-step-stays-open
@@ -251,7 +251,7 @@
 
 (defthm fn-ovr-feed-one-framing-byte
   (implies (and (not (fn-served-closed-wirep (fn-served-conn-wire c)))
-                (not (fn-served-tls-handshakingp c))
+                (not (fn-served-haltedp c))
                 (equal (fn-wire-result-events
                         (fn-wire-feed-byte (fn-served-conn-wire c) byte))
                        (list event)))
@@ -281,7 +281,7 @@
     (implies (and (fn-served-conn-shapep conn)
                   (fn-wire-statep w0)
                   (not (fn-served-closed-wirep w0))
-                  (not (fn-served-tls-handshakingp conn))
+                  (not (fn-served-haltedp conn))
                   (not (fn-wire-result-events (fn-wire-feed-proper w0 prefix)))
                   (equal (fn-wire-result-events (fn-wire-feed-byte w1 byte))
                          (list event))
@@ -385,7 +385,7 @@
                   (archive (fn-served-conn-archive conn))
                   (verdicts (fn-served-conn-verdicts conn))
                   (token (caddr (fn-nntp-tokenize line)))))
-           :in-theory (e/d (fn-served-closed-wirep fn-served-tls-handshakingp)
+           :in-theory (e/d (fn-served-closed-wirep fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp)
                            (fn-served-step-of-one-framed-event
                             fn-served-dispatch-hdr-fn-verified-msgid
                             fn-served-dispatch-hdr-fn-verified-keeps-wire

@@ -1549,6 +1549,15 @@ def replay_bounds(record):
         if peak - before > record["max_growth_kib"]:
             return ("unbounded", "owner RSS grew {} KiB over {} octets sent (bound {} KiB); closed={} replies={!r}".format(
                 peak - before, result["sent"], record["max_growth_kib"], result["closed"], result["replies"][:120]))
+        # A fixed reproducer names what the bound must look like on the wire:
+        # the refusal line, and the close before the stream ends.
+        expect = record.get("expect_reply")
+        if expect and expect not in result["replies"]:
+            return ("not-refused", "no {!r} in the replies {!r} after {} octets sent".format(
+                expect, result["replies"][:200], result["sent"]))
+        if record.get("expect_closed") and not result["closed"]:
+            return ("not-closed", "the owner kept reading: {} octets sent, replies {!r}".format(
+                result["sent"], result["replies"][:200]))
         return None
     finally:
         node.stop()

@@ -10902,6 +10902,56 @@
           "name": "fn-otm-issue-is-pending-and-admits"
         }
       ]
+    },
+    {
+      "id": "PRF-312",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-stops-at-quit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-step-of-quit-connection-is-a-no-op"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-served-feed-of-quit-connection"
+        }
+      ]
+    },
+    {
+      "id": "PRF-313",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-tb-open-peer-body-limit-is-the-profile-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-own-peer-body-limit-is-within-the-profile-bound"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tb-served-run-retains-at-most-the-body-limit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tb-served-run-keeps-the-body-limit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tb-served-step-keeps-the-body-limit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-tb-open-peer-wire-is-the-peer-body-limit"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-peer-transfer-unreceived-effects-well-formed"
+        }
+      ]
     }
   ]
 }

@@ -216,7 +216,7 @@
                            (fn-wire-result-state
                             (fn-wire-feed-proper (fn-served-conn-wire conn) prefix))
                            byte))))))
-           :in-theory (e/d (fn-served-closed-wirep fn-served-tls-handshakingp)
+           :in-theory (e/d (fn-served-closed-wirep fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp)
                            (fn-olc-buckets-okp
                             fn-served-step-of-one-framed-event
                             fn-served-dispatch-list-counts
@@ -397,7 +397,7 @@
                            (fn-wire-result-state
                             (fn-wire-feed-proper (fn-served-conn-wire conn) prefix))
                            byte))))))
-           :in-theory (e/d (fn-served-closed-wirep fn-served-tls-handshakingp
+           :in-theory (e/d (fn-served-closed-wirep fn-served-haltedp fn-served-quitp fn-served-tls-handshakingp
                             fn-nntp-msgid-retrieval)
                            (fn-olc-buckets-okp
                             fn-served-step-of-one-framed-event
